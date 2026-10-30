@@ -22,12 +22,12 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-30 Moderation chatter schema source retirement and post-retirement verification",
+    "asOf": "2026-10-30 OpenRouter app-attribution source retirement and verification",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 36,
+    "locallyCompleteMappings": 37,
     "partialRows": 25,
-    "archivedSourceSnapshots": 50,
-    "liveBaselineTypeScriptFiles": 756,
+    "archivedSourceSnapshots": 51,
+    "liveBaselineTypeScriptFiles": 755,
     "excludedReactEmailTemplatesIncludedInLiveCount": 6,
     "totalCompletionPercentage": null,
     "totalMigrationCompletion": "not-established; full dependency closure audit remains incomplete"
@@ -66711,29 +66711,66 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+        "sha256": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c",
+        "nativeAreaReference": "dimabot/src/utils/ai/openrouter/app_attribution.util.rs; re-exported as dima_rust::utils::openrouter_attribution; migration-notes/openrouter-attribution-retirement-handoff.md"
+      },
+      "featureReview": "complete-local-openrouter-attribution-constant-and-dependency-closure;source-retired-and-post-retirement-verified;caller-adoption-open",
+      "localRustEvidence": [
+        "dimabot/src/utils/ai/openrouter/app_attribution.util.rs::OPENROUTER_APP_HEADERS",
+        "dimabot/src/utils/mod.rs::openrouter_attribution re-export",
+        "dimabot/src/server/services/tts/fish_tts.rs",
+        "dimabot/src/server/services/tts/kokoro_tts.rs",
+        "dimabot/src/utils/moderation/variations_provider.rs",
+        "dimabot/src/utils/moderation/semantic.rs",
+        "dimabot/tests/openrouter_attribution.rs",
+        "dimabot/tests/fixtures/openrouter_attribution_reference.cjs",
+        "migration-notes/openrouter-attribution-retirement-2026-10-30.md",
+        "migration-notes/evidence/2026-10-30-openrouter-attribution-retirement/README.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The four ordered header key/value strings map exactly to the existing native ordered slice. TypeScript as const is a compile-time literal-type assertion only.",
+        "The helper is data-only; JavaScript object identity, prototype, descriptors, freezing and mutation behavior are outside the contract.",
+        "No new native header policy, HTTP client, Cargo feature, dependency or application runtime code was added. The local constant has no missing application-specific adapter dependency."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/server/services/tts/fish_tts.service.ts",
+          "src/server/services/tts/kokoro_tts.service.ts",
+          "src/utils/moderation/variations.ts",
+          "src/utils/moderation/semantic.ts",
+          "src/utils/ai/openrouter/embeddings.ai.ts"
+        ],
+        "runtimeStatus": "Native Fish, Kokoro, variation-provider and semantic-provider callers already share the native constant. TypeScript caller adoption/cutover is not claimed; the embeddings consumer remains unmigrated."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Actual-source oracle proved the import-free exported const literal structure, key/value/order and JSON wire form; archive-aware source resolution and the 18-case resolver rejection matrix passed.",
+          "Nineteen golden report comparisons: nine byte-identical; all behavior unchanged, with 34 provenance-only changed leaf paths."
+        ],
+        "rustBehaviorEvidence": [
+          "Thirty-one selected native checks passed across final-source compiler phases 2 and 3: 25 selected tests passed in phase 2 before its jobs-provenance harness failure; six remaining tests passed in phase 3. Do not interpret this as one receipt passing 31 tests.",
+          "Jobs replay covered 38 cases with private services; five TTS source replays passed. Node compared 37 source Spam claims unchanged, but native full async Spam claim suite was not rerun.",
+          "Formatting, scoped Clippy, minimal all-target check and all-feature strict Clippy passed; production readback found 18 records unchanged and zero task-owned resources.",
+          "migration-notes/evidence/2026-10-30-openrouter-attribution-retirement/README.md"
+        ],
+        "status": "source retired and archive-aware oracles/replays verified; local data-constant dependency closure complete; caller adoption remains open"
       },
       "exports": [
         {
           "name": "OPENROUTER_APP_HEADERS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::openrouter_attribution::OPENROUTER_APP_HEADERS; existing ordered &[(&str, &str)] native constant behind existing provider features",
+          "evidence": [
+            "dimabot/src/utils/ai/openrouter/app_attribution.util.rs",
+            "dimabot/src/utils/mod.rs",
+            "dimabot/tests/openrouter_attribution.rs"
+          ]
         }
       ],
       "imports": [],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "complete-local-openrouter-attribution-data-constant-and-native-dependency-closure;source-retired-post-retirement-verified;caller-adoption-open"
     },
     {
       "source": "src/utils/ai/openrouter/attribution.test.ts",

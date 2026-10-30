@@ -1,0 +1,21 @@
+{
+  "contract": "Explicit external legacy RE2 pinned SDK bytes for source-provenance hashing. The execution addon is separately referenced, not copied. Restore these only to owned fixture directories.",
+  "legacySdkSha256": "408c383a2c1b485e3c579e5a431acb0732a8f210304a37dc52bbe296cf17a563",
+  "node24ExecutionSha256": "94064b17d6110cd5e36fb0bee49fa267144155300e03160758478b3917e5ffbb",
+  "requirements": [
+    {
+      "restoreRelativePath": "decisions-source-provenance/node_modules/re2/build/Release/re2.node",
+      "sha256": "408c383a2c1b485e3c579e5a431acb0732a8f210304a37dc52bbe296cf17a563",
+      "bytes": 1616552,
+      "immutableValidationOrigin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/decisions-source-provenance/node_modules/re2/build/Release/re2.node",
+      "purpose": "Legacy installed-SDK byte hash only; never executed. Actual Node24 execution used separate source-built94064b17 addon."
+    },
+    {
+      "restoreRelativePath": "jobs-source-provenance/node_modules/re2/build/Release/re2.node",
+      "sha256": "408c383a2c1b485e3c579e5a431acb0732a8f210304a37dc52bbe296cf17a563",
+      "bytes": 1616552,
+      "immutableValidationOrigin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/jobs-source-provenance/node_modules/re2/build/Release/re2.node",
+      "purpose": "Legacy installed-SDK byte hash only; never executed. Actual Node24 execution used separate source-built94064b17 addon."
+    }
+  ]
+}

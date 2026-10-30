@@ -1,0 +1,26 @@
+{
+  "commit": "aa8e5079de37933273c106591c1e7bedbec90ce9",
+  "source_inputs": 1510,
+  "source_tree_sha256": "0e29c964bf60d6427c296b3be75ae42cd9d6d70082fc2a6b9aabb0b6617d6117",
+  "all_inputs_bound_to_commit": true,
+  "changed_paths": [
+    "archives/dimabot-typescript/2026-10-28/README.md",
+    "archives/dimabot-typescript/2026-10-28/manifest.json",
+    "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+    "dimabot/tests/fixtures/openrouter_attribution_source.cjs",
+    "dimabot/tests/fixtures/openrouter_attribution_reference.cjs",
+    "dimabot/tests/openrouter_attribution.rs",
+    "dimabot/tests/support/moderation_variation_jobs.rs",
+    "dimabot/tests/support/moderation_semantic.rs",
+    "dimabot/tests/fixtures/fish_tts_reference.mjs",
+    "dimabot/tests/fixtures/piper_kokoro_reference.mjs",
+    "dimabot/tests/fixtures/tts_runtime_dynamic_reference.mjs",
+    "dimabot/tests/fixtures/moderation_variations_source.cjs",
+    "dimabot/tests/fixtures/moderation_variations_reference.cjs",
+    "dimabot/tests/fixtures/moderation_semantic_source.cjs",
+    "dimabot/tests/fixtures/moderation_variation_jobs_reference.cjs",
+    "dimabot/tests/fixtures/moderation_decisions_source.cjs",
+    "dimabot/tests/support/moderation_leaf_source.rs",
+    "dimabot/src/utils/ai/openrouter/app_attribution.util.ts"
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "versions": {
+    "node": "24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "typescript": "5.9.3"
+  },
+  "hashes": {
+    "src/server/services/tts/piper_tts.service.ts": "c603f39d7a54b33fe9fbd4183d21d411722b8554a5ae0065d015fb45a0362390",
+    "src/utils/pollyfills.ts": "55589df15c7eda24b34468c83ce37bd7448373222786d7cc172809474e8e5719",
+    "tests/fixtures/tts_runtime_reference.mjs": "b3c07ebc0522f5ccc7dc34140b7145c5bb6d04ee41dc0ac96c39d196719b08da",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "node_modules/typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "node-executable": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "typescript-implementation": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675"
+  },
+  "paths": [
+    {
+      "moduleDir": "/fixture/dist/server/services/tts",
+      "publicDir": "/fixture/dist/server/routes/public/speech"
+    },
+    {
+      "moduleDir": "/app/a b/server/services/tts",
+      "publicDir": "/app/a b/server/routes/public/speech"
+    },
+    {
+      "moduleDir": "/tts",
+      "publicDir": "/routes/public/speech"
+    },
+    {
+      "moduleDir": "/a/b/tts",
+      "publicDir": "/a/routes/public/speech"
+    },
+    {
+      "moduleDir": "/",
+      "publicDir": "/routes/public/speech"
+    }
+  ],
+  "cases": [
+    {
+      "env": {},
+      "result": [
+        "python3",
+        null,
+        null,
+        "http://localhost:3000",
+        "http://localhost:3000/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PIPER_PYTHON_BIN": "",
+        "PIPER_DATA_DIR": "",
+        "PIPER_HTTP_URL": "",
+        "PUBLIC_API_URL": ""
+      },
+      "result": [
+        "python3",
+        null,
+        null,
+        "http://localhost:3000",
+        "http://localhost:3000/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PIPER_PYTHON_BIN": "  ",
+        "PIPER_DATA_DIR": "﻿ x/y ﻿",
+        "PIPER_HTTP_URL": " https://host///",
+        "PUBLIC_API_URL": " https://api///",
+        "NODE_ENV": "production"
+      },
+      "result": [
+        "  ",
+        "x/y",
+        " https://host",
+        " https://api",
+        " https://api/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PIPER_DATA_DIR": "﻿ ",
+        "PIPER_HTTP_URL": "﻿ ",
+        "PUBLIC_API_URL": "﻿ ",
+        "NODE_ENV": "Production"
+      },
+      "result": [
+        "python3",
+        null,
+        null,
+        "http://localhost:3000",
+        "http://localhost:3000/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PIPER_DATA_DIR": "",
+        "PIPER_HTTP_URL": "/",
+        "PUBLIC_API_URL": "///",
+        "NODE_ENV": "production"
+      },
+      "result": [
+        "python3",
+        "",
+        "",
+        "",
+        "/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PIPER_PYTHON_BIN": "0",
+        "PIPER_DATA_DIR": " 0 ",
+        "PIPER_HTTP_URL": "/",
+        "PUBLIC_API_URL": "/",
+        "NODE_ENV": "production"
+      },
+      "result": [
+        "0",
+        "0",
+        "",
+        "",
+        "/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PIPER_PYTHON_BIN": "\n",
+        "PIPER_DATA_DIR": "a/b/../c",
+        "PIPER_HTTP_URL": "https://host/path////",
+        "PUBLIC_API_URL": "https://api/path////"
+      },
+      "result": [
+        "\n",
+        "a/b/../c",
+        "https://host/path",
+        "https://api/path",
+        "https://api/path/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PIPER_DATA_DIR": "  ",
+        "PIPER_HTTP_URL": "  ",
+        "PUBLIC_API_URL": "  ",
+        "NODE_ENV": "production"
+      },
+      "result": [
+        "python3",
+        null,
+        null,
+        "https://api.domdimabot.com",
+        "https://api.domdimabot.com/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PUBLIC_API_URL": "",
+        "NODE_ENV": "Production"
+      },
+      "result": [
+        "python3",
+        null,
+        null,
+        "http://localhost:3000",
+        "http://localhost:3000/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PUBLIC_API_URL": "",
+        "NODE_ENV": "production "
+      },
+      "result": [
+        "python3",
+        null,
+        null,
+        "http://localhost:3000",
+        "http://localhost:3000/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PUBLIC_API_URL": "  https://api/path/  ",
+        "PIPER_HTTP_URL": "  https://piper/path/  "
+      },
+      "result": [
+        "python3",
+        null,
+        "  https://piper/path/  ",
+        "  https://api/path/  ",
+        "  https://api/path/  /speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PUBLIC_API_URL": "?q=1///",
+        "PIPER_HTTP_URL": "?q=1///"
+      },
+      "result": [
+        "python3",
+        null,
+        "?q=1",
+        "?q=1",
+        "?q=1/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    },
+    {
+      "env": {
+        "PUBLIC_API_URL": "0",
+        "PIPER_PYTHON_BIN": "false",
+        "PIPER_DATA_DIR": "0",
+        "PIPER_HTTP_URL": "0"
+      },
+      "result": [
+        "false",
+        "0",
+        "0",
+        "0",
+        "0/speech/audio/a%2Fb%20%3F/%C3%A9%2B!"
+      ]
+    }
+  ]
+}

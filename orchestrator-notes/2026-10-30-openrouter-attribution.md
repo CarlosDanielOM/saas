@@ -1,0 +1,7 @@
+# 2026-10-30 OpenRouter attribution routing observation
+
+DeepSeek V4.1 Flash at high authored the bounded source-reader/oracle retirement integration. GPT-6.1 Sol at xhigh led frozen-source integration and capped verification. The committed result passed source-bound fixture checks and 31 selected native tests across two final-source compiler phases; the second phase had 25 tests pass before a missing jobs-provenance fixture field stopped it, and the later phase passed the remaining six. An earlier source epoch failed because exact archived Chatter/attribution pins were missing from the native reader. Both were harness/source-reader integration corrections, not runtime regressions. No single receipt reports all 31 tests passing.
+
+Before execution, the parent also corrected use of the wrong loader API and stale transitive Spam-reader pins, and removed a fixed whole-archive-count assumption. These were static integration findings; they were corrected before any runtime result was recorded.
+
+The local four-header constant closure is complete. TypeScript caller adoption and embeddings remain open, and total migration is incomplete. No benchmark timing, application runtime, latency, cost or efficiency result was measured. Confidence is low from one scoped authoring/integration outcome; this is not a broad tier or model-efficiency ranking. See the [retirement note](../migration-notes/openrouter-attribution-retirement-2026-10-30.md) and [indexed evidence](../migration-notes/evidence/2026-10-30-openrouter-attribution-retirement/README.md).

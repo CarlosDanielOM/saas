@@ -1,0 +1,38 @@
+{
+  "base_state": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es",
+  "candidate_base_commit": "cf0c6d72",
+  "source_inputs": 1510,
+  "source_tree_sha256": "b12e61cb68f053e0632eb9033c9807f0b76786d327fa2e4b40232c5a065712a8",
+  "candidate_overrides": [
+    "archives/dimabot-typescript/2026-10-28/README.md",
+    "archives/dimabot-typescript/2026-10-28/manifest.json",
+    "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+    "dimabot/tests/fixtures/openrouter_attribution_source.cjs",
+    "dimabot/tests/fixtures/openrouter_attribution_reference.cjs",
+    "dimabot/tests/openrouter_attribution.rs",
+    "dimabot/tests/support/moderation_variation_jobs.rs",
+    "dimabot/tests/support/moderation_semantic.rs",
+    "dimabot/tests/fixtures/fish_tts_reference.mjs",
+    "dimabot/tests/fixtures/piper_kokoro_reference.mjs",
+    "dimabot/tests/fixtures/tts_runtime_dynamic_reference.mjs",
+    "dimabot/tests/fixtures/moderation_variations_source.cjs",
+    "dimabot/tests/fixtures/moderation_variations_reference.cjs",
+    "dimabot/tests/fixtures/moderation_semantic_source.cjs",
+    "dimabot/tests/fixtures/moderation_variation_jobs_reference.cjs",
+    "dimabot/tests/fixtures/moderation_decisions_source.cjs",
+    "dimabot/tests/support/moderation_leaf_source.rs"
+  ],
+  "deleted_sources": [
+    "dimabot/src/utils/ai/openrouter/app_attribution.util.ts"
+  ],
+  "archive_entries": 51,
+  "previous_50_entries_unchanged": true,
+  "excluded_concurrent_Grok_schema_drafts": true,
+  "parent_static_corrections": [
+    "Reference oracle now uses readSource/attribution from actual variations source loader",
+    "Refresh inherited Chatter spam-loader pins in semantic/decisions sources and native semantic support",
+    "Compare actual manifest cardinality/provenance instead of a fixed whole-archive count",
+    "Pin actual TypeScript implementation; enforce retired live-source absence; use ordered JSON escaping",
+    "Failed decisions replay exposed retired Chatter and attribution paths missing from shared native leaf resolver; add exact pinned archive resolution"
+  ]
+}

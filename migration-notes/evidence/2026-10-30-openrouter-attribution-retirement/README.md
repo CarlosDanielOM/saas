@@ -1,0 +1,23 @@
+# OpenRouter app-attribution retirement evidence
+
+This package records the final source-bound archive/oracle epoch for commit `aa8e5079de37933273c106591c1e7bedbec90ce9`. The source binding covers 1,510 inputs (1,500 Git plus ten reused PostHog SDK files), tree SHA-256 `0e29c964bf60d6427c296b3be75ae42cd9d6d70082fc2a6b9aabb0b6617d6117`, all independently verified. The 368-byte source hash is `0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c`; the archive now has 51 entries and confirms the prior 50 are unchanged.
+
+The 79 attempt artifacts include all 19 generated oracle/reference outputs, source maps/bindings, archive audit, golden comparison, reader pins, captured jobs/decisions dependency bindings, cache audit and production readback. The immutable parent snapshot manifest and raw DeepSeek report are separately indexed. Source-relevant reader/oracle/native guard files are copied from the committed source epoch for reference.
+
+| Phase | Receipt | Result |
+|---|---:|---|
+| Formatting | `1793386270045423031` | Passed |
+| Node source/oracle checks | `1793386585532493945` | Passed 19 oracles and 18 resolver rejection cases |
+| Compiler, pre-pin native reader | `1793386806395824008` | Failed; archived Chatter/attribution pins were missing from the decisions native reader |
+| Compiler, final source | `1793386956258970693` | 25 selected tests passed, then failed when parent fixture setup omitted three jobs provenance fields |
+| Compiler, same final source | `1793387023855299505` | Passed the remaining six selected tests and final strict phases |
+
+The total is 31 selected native tests across the second and third compiler phases, not one all-31 successful receipt. The second and third phases used identical source; the failure was fixture setup, not product behavior. The first failure used the earlier source tree and was corrected by adding exact archive pins in the existing reader.
+
+The 19 golden comparisons report unchanged behavior: nine outputs were byte-identical and 34 changed leaf paths were provenance-only. The 160 prepared variation inputs were byte-identical (SHA-256 `07b8192f942ef9c3246720aa75926939260f3e07250d83b7973197ca6ac65d2e`). Node source report checks ran; no benchmark timing was collected. Node compared all 37 source Spam claims unchanged; the native full asynchronous Spam claim suite was not rerun.
+
+The final compiler phase passed all 38 jobs cases with private services, five TTS source replays, formatting, scoped Clippy, minimal all-target and all-feature strict phases. It took 101.029 seconds overall / 88.499 seconds for its compiler phase, with 12,771,377,152 bytes minimum available and 8,053,932,032 bytes peak private cache under 6 CPU, 4 GiB no-swap, 256 PID, two Cargo job, 5 GiB startup and 4 GiB in-flight limits. All 18 production records were unchanged and zero task-owned resources remained.
+
+RE2 is a reproducibility dependency in existing moderation readers; it is deliberately referenced, not copied into this package. See the [RE2 source-built addon handoff](../../re2-string-handoff.md), the committed [source manifest](../2026-10-30-advanced-moderation-prerequisites/artifacts/re2-node24/source-manifest.json), [build provenance](../2026-10-30-advanced-moderation-prerequisites/artifacts/re2-node24/build-provenance.json), and [independent readback](../2026-10-30-advanced-moderation-prerequisites/artifacts/re2-node24/independent-readback.json). Pins: binary `94064b17d6110cd5e36fb0bee49fa267144155300e03160758478b3917e5ffbb`; source manifest `e33073a155ce1180ee2cc52dc8ae548d3a0d24d5c81c2fbd8082834638c15664`; build provenance `4efad596bf97c83c92a825c0bb2452b182051066174951eb2644e8a6bda9ad4c`.
+
+`index.json` lists every stored payload's original absolute origin, raw/stored SHA-256, byte sizes and encoding. Large JSON and logs/receipts are losslessly gzip-compressed. The evidence includes the captured SDK text needed to verify source hashes; large text files are losslessly compressed. Executable binaries and caches are excluded. The two legacy installed-RE2 hash inputs are external prerequisites described in [external-re2-hash-inputs.json](artifacts/attempt1/external-re2-hash-inputs.json): both require SHA-256 `408c383a2c1b485e3c579e5a431acb0732a8f210304a37dc52bbe296cf17a563`. Restore those exact bytes at the listed paths in an owned fixture directory before running the native provenance checks. Those legacy bytes are only hashed; Node execution uses the separately referenced Node 24 addon with SHA-256 `94064b17d6110cd5e36fb0bee49fa267144155300e03160758478b3917e5ffbb`. Exact inert reproduction tools and relevant committed guard sources are indexed. It does not modify previous evidence packages.

@@ -1,0 +1,11 @@
+{
+  "files": 51,
+  "previous50EntriesUnchanged": true,
+  "all51FilesMatchManifest": true,
+  "newSourceByteExactAtBase": "cf0c6d72",
+  "sourceSHA256": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c",
+  "nativeRuntimeFilesUnchanged": [
+    "dimabot/src/schemas/schema.rs",
+    "dimabot/src/utils/ai/openrouter/app_attribution.util.ts"
+  ]
+}

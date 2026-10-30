@@ -1,0 +1,323 @@
+{
+  "schema": 1,
+  "provenance": {
+    "node": "24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "typescript": "5.9.3",
+    "hashes": {
+      "src/server/services/tts/piper_tts.service.ts": "c603f39d7a54b33fe9fbd4183d21d411722b8554a5ae0065d015fb45a0362390",
+      "src/server/services/tts/kokoro_tts.service.ts": "2b0b8ef0296d1575c0ee6f96204f847607022c906f9ff88c2026a82c31c346c9",
+      "src/server/services/tts/fish_tts.service.ts": "5de59066a2310b22f5b41f0610638233ee42f996872bc5ea7a77ffff5d7114af",
+      "src/server/services/tts/fish_voice_catalog.service.ts": "34d6a432cd670049bb06b2b48885080837108eaee8b6fde6034492ef9602b204",
+      "src/utils/tts/tts_deadline.util.ts": "cd2eddda7ba752a5716e0cdc68d7a32b5b666c1cbe5d7ae9801ef60b296a519a",
+      "src/utils/tts/expressive_tts_tags.util.ts": "03523ebc5bb2f8c99b528e1c61d90126f655716945f100098c6a53b9f731699e",
+      "src/utils/tts/kokoro_voices.util.ts": "6d06216a94959645a4ed75e82a2b68a39b329c01373f63644f7a3794afc5466b",
+      "src/utils/ai/openrouter/app_attribution.util.ts": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c",
+      "src/utils/pollyfills.ts": "55589df15c7eda24b34468c83ce37bd7448373222786d7cc172809474e8e5719",
+      "tests/fixtures/tts_runtime_dynamic_reference.mjs": "23cf86248d7837fff0c31f9f5e76e385761abcb98b9f596e4962e4b5a8d849fa",
+      "tests/fixtures/tts_source_resolver.cjs": "a2687c78a9855621a717c3a8cad887b0b0c6efea1157f4f41e0a49e2e99ff13d",
+      "tests/fixtures/openrouter_attribution_source.cjs": "fb99791293630249ed194a1336c2f42031c6bebc587bfa83cad500795d5c36b2",
+      "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+      "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+      "node_modules/typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+      "typescript-implementation": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+      "node-executable": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108"
+    },
+    "sourcePaths": {
+      "src/server/services/tts/piper_tts.service.ts": "src/server/services/tts/piper_tts.service.ts",
+      "src/server/services/tts/kokoro_tts.service.ts": "src/server/services/tts/kokoro_tts.service.ts",
+      "src/server/services/tts/fish_tts.service.ts": "src/server/services/tts/fish_tts.service.ts",
+      "src/server/services/tts/fish_voice_catalog.service.ts": "src/server/services/tts/fish_voice_catalog.service.ts",
+      "src/utils/tts/tts_deadline.util.ts": "src/utils/tts/tts_deadline.util.ts",
+      "src/utils/tts/expressive_tts_tags.util.ts": "../archives/dimabot-typescript/2026-10-28/src/utils/tts/expressive_tts_tags.util.ts",
+      "src/utils/tts/kokoro_voices.util.ts": "../archives/dimabot-typescript/2026-10-28/src/utils/tts/kokoro_voices.util.ts",
+      "src/utils/ai/openrouter/app_attribution.util.ts": "../archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+      "src/utils/pollyfills.ts": "src/utils/pollyfills.ts"
+    },
+    "attribution": {
+      "logical": "src/utils/ai/openrouter/app_attribution.util.ts",
+      "sha256": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c",
+      "provenance": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts"
+    },
+    "mocks": "per-case isolated environment and VM; fake fixture-only filesystem, spawn and allowlisted fetch; synthetic Fish SDK constructor/convert and controlled audio stream (SDK transport not exercised)",
+    "projection": "environment read names, fixture request bodies/auth, SDK constructor and convert, output and file operations; no timestamps"
+  },
+  "cases": [
+    {
+      "name": "fish-fallback",
+      "reads": [
+        "OPENROUTER_API_KEY",
+        "FISH_AUDIO_API_KEY",
+        "PUBLIC_API_URL"
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "authorization": "Bearer primary-key",
+          "body": {
+            "model": "fish-audio/drama-3",
+            "input": "Hello chat!",
+            "voice": "voice",
+            "response_format": "mp3",
+            "user": "channel 1"
+          }
+        }
+      ],
+      "processes": [],
+      "writes": [
+        {
+          "path": "/fixture/dist/server/routes/public/speech/channel 1/id+1.mp3",
+          "hex": "010203"
+        }
+      ],
+      "mkdirs": [
+        "/fixture/dist/server/routes/public/speech/channel 1",
+        "/fixture/dist/server/routes/public/speech/channel 1"
+      ],
+      "sdk": [
+        {
+          "apiKey": "fresh-fish-key",
+          "convert": {
+            "args": {
+              "text": "Hello chat!",
+              "reference_id": "voice",
+              "format": "mp3"
+            },
+            "backend": "s2.1-pro",
+            "timeoutInSeconds": 20
+          }
+        }
+      ],
+      "outcome": {
+        "error": false,
+        "message": "Speech synthesized with Fish Audio (s2.1-pro)",
+        "outputPath": "/fixture/dist/server/routes/public/speech/channel 1/id+1.mp3",
+        "publicPath": "http://new.test/speech/audio/channel%201/id%2B1",
+        "mimeType": "audio/mpeg"
+      }
+    },
+    {
+      "name": "fish-single",
+      "reads": [
+        "OPENROUTER_API_KEY"
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "authorization": "Bearer primary-key",
+          "body": {
+            "model": "fish-audio/drama-3",
+            "input": "Hello chat!",
+            "voice": "voice",
+            "response_format": "mp3",
+            "user": "channel 1"
+          }
+        }
+      ],
+      "processes": [],
+      "writes": [],
+      "mkdirs": [
+        "/fixture/dist/server/routes/public/speech/channel 1",
+        "/fixture/dist/server/routes/public/speech/channel 1"
+      ],
+      "sdk": [],
+      "outcome": {
+        "error": true,
+        "message": "Fish Audio TTS failed on all enabled backends: fish-audio/drama-3: OpenRouter Fish synthesis failed (HTTP 400)"
+      }
+    },
+    {
+      "name": "kokoro-success",
+      "reads": [
+        "OPENROUTER_API_KEY",
+        "PUBLIC_API_URL"
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "authorization": "Bearer primary-key",
+          "body": {
+            "model": "hexgrad/kokoro-82m",
+            "input": "Hello chat!",
+            "voice": "af_heart",
+            "response_format": "mp3",
+            "user": "channel 1",
+            "provider": {
+              "only": [
+                "deepinfra"
+              ],
+              "order": [
+                "deepinfra"
+              ],
+              "allow_fallbacks": false
+            }
+          }
+        }
+      ],
+      "processes": [],
+      "writes": [
+        {
+          "path": "/fixture/dist/server/routes/public/speech/channel 1/id+1.mp3",
+          "hex": "010203"
+        }
+      ],
+      "mkdirs": [
+        "/fixture/dist/server/routes/public/speech/channel 1"
+      ],
+      "sdk": [],
+      "outcome": {
+        "error": false,
+        "message": "Speech synthesized with Kokoro (DeepInfra)",
+        "outputPath": "/fixture/dist/server/routes/public/speech/channel 1/id+1.mp3",
+        "publicPath": "http://new.test/speech/audio/channel%201/id%2B1",
+        "mimeType": "audio/mpeg"
+      }
+    },
+    {
+      "name": "kokoro-missing",
+      "reads": [
+        "OPENROUTER_API_KEY"
+      ],
+      "requests": [],
+      "processes": [],
+      "writes": [],
+      "mkdirs": [],
+      "sdk": [],
+      "outcome": {
+        "error": true,
+        "message": "OpenRouter API key is not configured"
+      }
+    },
+    {
+      "name": "piper-cli",
+      "reads": [
+        "PIPER_HTTP_URL",
+        "PIPER_DATA_DIR",
+        "PIPER_PYTHON_BIN"
+      ],
+      "requests": [],
+      "processes": [
+        {
+          "command": " literal python ",
+          "args": [
+            "-m",
+            "piper",
+            "-m",
+            "af_heart",
+            "-f",
+            "/fixture/private/output",
+            "--data-dir",
+            "fixture-data",
+            "--",
+            "Hello chat!"
+          ]
+        }
+      ],
+      "writes": [],
+      "mkdirs": [
+        "/fixture/private"
+      ],
+      "sdk": [],
+      "outcome": {
+        "error": false,
+        "message": "Speech synthesized with Piper CLI",
+        "outputPath": "/fixture/private/output",
+        "mimeType": "audio/wav"
+      }
+    },
+    {
+      "name": "piper-http",
+      "reads": [
+        "PIPER_HTTP_URL"
+      ],
+      "requests": [
+        {
+          "url": " /synthesize",
+          "method": "POST",
+          "authorization": null,
+          "body": {
+            "text": "Hello chat!",
+            "voice": "af_heart"
+          }
+        }
+      ],
+      "processes": [],
+      "writes": [],
+      "mkdirs": [
+        "/fixture/dist/server/routes/public/speech/channel 1",
+        "/fixture/dist/server/routes/public/speech/channel 1"
+      ],
+      "sdk": [],
+      "outcome": {
+        "error": true,
+        "message": "fixture failure"
+      }
+    },
+    {
+      "name": "catalog-sequence",
+      "reads": [
+        "FISH_AUDIO_API_KEY",
+        "FISH_AUDIO_API_KEY"
+      ],
+      "requests": [
+        {
+          "url": "https://api.fish.audio/model/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "method": "GET",
+          "authorization": "Bearer old-fish-key",
+          "body": null
+        },
+        {
+          "url": "https://api.fish.audio/model/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "method": "GET",
+          "authorization": "Bearer catalog-next",
+          "body": null
+        }
+      ],
+      "processes": [],
+      "writes": [],
+      "mkdirs": [],
+      "sdk": [],
+      "outcome": [
+        {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "name": "Fixture",
+          "languages": [],
+          "gender": null,
+          "licensed": null,
+          "description": "",
+          "tags": [],
+          "coverUrl": null,
+          "sample": null,
+          "uses": null
+        },
+        {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "name": "Fixture",
+          "languages": [],
+          "gender": null,
+          "licensed": null,
+          "description": "",
+          "tags": [],
+          "coverUrl": null,
+          "sample": null,
+          "uses": null
+        },
+        {
+          "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "name": "Fixture",
+          "languages": [],
+          "gender": null,
+          "licensed": null,
+          "description": "",
+          "tags": [],
+          "coverUrl": null,
+          "sample": null,
+          "uses": null
+        }
+      ]
+    }
+  ]
+}

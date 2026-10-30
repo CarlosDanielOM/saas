@@ -1,0 +1,191 @@
+{
+  "commit": "aa8e5079de37933273c106591c1e7bedbec90ce9",
+  "source_inputs": 1510,
+  "source_tree_sha256": "0e29c964bf60d6427c296b3be75ae42cd9d6d70082fc2a6b9aabb0b6617d6117",
+  "all_inputs_bound_to_commit": true,
+  "changed_paths": [
+    "archives/dimabot-typescript/2026-10-28/README.md",
+    "archives/dimabot-typescript/2026-10-28/manifest.json",
+    "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+    "dimabot/tests/fixtures/openrouter_attribution_source.cjs",
+    "dimabot/tests/fixtures/openrouter_attribution_reference.cjs",
+    "dimabot/tests/openrouter_attribution.rs",
+    "dimabot/tests/support/moderation_variation_jobs.rs",
+    "dimabot/tests/support/moderation_semantic.rs",
+    "dimabot/tests/fixtures/fish_tts_reference.mjs",
+    "dimabot/tests/fixtures/piper_kokoro_reference.mjs",
+    "dimabot/tests/fixtures/tts_runtime_dynamic_reference.mjs",
+    "dimabot/tests/fixtures/moderation_variations_source.cjs",
+    "dimabot/tests/fixtures/moderation_variations_reference.cjs",
+    "dimabot/tests/fixtures/moderation_semantic_source.cjs",
+    "dimabot/tests/fixtures/moderation_variation_jobs_reference.cjs",
+    "dimabot/tests/fixtures/moderation_decisions_source.cjs",
+    "dimabot/tests/support/moderation_leaf_source.rs",
+    "dimabot/src/utils/ai/openrouter/app_attribution.util.ts"
+  ],
+  "archiveCountBefore": 50,
+  "archiveCountAfter": 51,
+  "archivePreviousEntriesUnchanged": true,
+  "newArchiveSourceBytes": 368,
+  "reusedNativeConstantChanged": false,
+  "cargoDependenciesChanged": false,
+  "oraclesWrittenAndChecked": 19,
+  "resolverRejectionCases": 18,
+  "goldenComparisons": 19,
+  "byteIdenticalReports": 9,
+  "changedProvenanceLeafPaths": 34,
+  "behaviorUnchangedAcrossAllComparisons": true,
+  "selectedNativeTestsAtFinalTree": 31,
+  "nativeVerificationNote": "25 selected tests pass in compiler-fixtures-1793386956258970693 before jobs capture failure; 6 pending tests pass in successful compiler-fixtures-1793387023855299505. Source unchanged between these phases. Jobs test covers all38 cases through private concrete services. Final phase also passes fmt, scoped Clippy -D warnings, minimal all-target check and all-feature all-target Clippy -D warnings.",
+  "sourceOracleCoverage": {
+    "variationJobs": 38,
+    "semanticPure": 1071,
+    "semanticEvaluate": 65,
+    "semanticWorker": 41,
+    "chatter": 25,
+    "spamPure": 1636,
+    "spamClaimsSourceOnlyNoNewNativeReplay": 37
+  },
+  "preparedBenchmarkItems": 160,
+  "preparedBenchmarkInputSha256": "07b8192f942ef9c3246720aa75926939260f3e07250d83b7973197ca6ac65d2e",
+  "preparedInputUnchanged": true,
+  "newBenchmarkTiming": false,
+  "initialFailures": [
+    {
+      "phase": "compiler-fixtures-1793386806395824008",
+      "reason": "Native decisions source resolver omitted archived Chatter and attribution paths; exact allowlisted pins added. Product code unchanged."
+    },
+    {
+      "phase": "compiler-fixtures-1793386956258970693",
+      "reason": "Parent fixture setup omitted three explicit jobs provenance fields outside loader pin list. Captured frozen bytes with independent checks; no further source changes."
+    }
+  ],
+  "limits": {
+    "cpu": 6,
+    "memoryGiB": 4,
+    "swap": false,
+    "pids": 256,
+    "cargoJobs": 2,
+    "startupAvailableMemoryGiB": 5,
+    "inflightFloorGiB": 4,
+    "privateCacheLimitGiB": 8
+  },
+  "phases": [
+    {
+      "id": "format-1793386270045423031",
+      "success": true,
+      "source_tree_sha256": "b12e61cb68f053e0632eb9033c9807f0b76786d327fa2e4b40232c5a065712a8",
+      "production_unchanged": true,
+      "elapsed_seconds": 15.757,
+      "minimum_available_bytes": 13733842944,
+      "steps": [
+        {
+          "name": "bootstrap",
+          "seconds": 4.301,
+          "exit_code": 0
+        },
+        {
+          "name": "locked-fetch",
+          "seconds": 3.343,
+          "exit_code": 0
+        },
+        {
+          "name": "format",
+          "seconds": 5.59,
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "id": "node-1793386585532493945",
+      "success": true,
+      "source_tree_sha256": "990fe98ce53641ed19f2f623cf123d7e4f958fb9166aad4de9246d545bb3251a",
+      "production_unchanged": true,
+      "elapsed_seconds": 50.779,
+      "minimum_available_bytes": 13193764864,
+      "steps": [
+        {
+          "name": "bootstrap",
+          "seconds": 0.501,
+          "exit_code": 0
+        },
+        {
+          "name": "node",
+          "seconds": 49.518,
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "id": "compiler-fixtures-1793386806395824008",
+      "success": false,
+      "source_tree_sha256": "990fe98ce53641ed19f2f623cf123d7e4f958fb9166aad4de9246d545bb3251a",
+      "production_unchanged": true,
+      "elapsed_seconds": 89.011,
+      "minimum_available_bytes": 12848816128,
+      "steps": [
+        {
+          "name": "bootstrap",
+          "seconds": 4.598,
+          "exit_code": 0
+        },
+        {
+          "name": "locked-fetch",
+          "seconds": 4.156,
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "id": "compiler-fixtures-1793386956258970693",
+      "success": false,
+      "source_tree_sha256": "0e29c964bf60d6427c296b3be75ae42cd9d6d70082fc2a6b9aabb0b6617d6117",
+      "production_unchanged": true,
+      "elapsed_seconds": 44.318,
+      "minimum_available_bytes": 13135114240,
+      "steps": [
+        {
+          "name": "bootstrap",
+          "seconds": 4.409,
+          "exit_code": 0
+        },
+        {
+          "name": "locked-fetch",
+          "seconds": 3.288,
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "id": "compiler-fixtures-1793387023855299505",
+      "success": true,
+      "source_tree_sha256": "0e29c964bf60d6427c296b3be75ae42cd9d6d70082fc2a6b9aabb0b6617d6117",
+      "production_unchanged": true,
+      "elapsed_seconds": 101.029,
+      "minimum_available_bytes": 12771377152,
+      "steps": [
+        {
+          "name": "bootstrap",
+          "seconds": 4.454,
+          "exit_code": 0
+        },
+        {
+          "name": "locked-fetch",
+          "seconds": 3.368,
+          "exit_code": 0
+        },
+        {
+          "name": "compiler-fixtures",
+          "seconds": 88.499,
+          "exit_code": 0
+        }
+      ]
+    }
+  ],
+  "productionRecordsUnchanged": 18,
+  "remainingOwnedResources": 0,
+  "callerAdoption": false,
+  "deployed": false,
+  "pushed": false,
+  "globalMigrationComplete": false
+}

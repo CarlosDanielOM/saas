@@ -1,0 +1,281 @@
+[
+  {
+    "kind": "jobs",
+    "path": "src/utils/moderation/advanced.ts",
+    "origin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/source/dimabot/src/utils/moderation/advanced.ts",
+    "sha256": "e88c52a8662a1531bdca981129e91f9cfe3b84c2543f11d38584652aede8a4d7"
+  },
+  {
+    "kind": "jobs",
+    "path": "src/utils/moderation/rules/blacklist.rule.ts",
+    "origin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/source/dimabot/src/utils/moderation/rules/blacklist.rule.ts",
+    "sha256": "8feb8779f829b72e6fc1f6907a7a8e3b3284dd92b04dcc08980b25120f9144ff"
+  },
+  {
+    "kind": "jobs",
+    "path": "src/utils/moderation/normalize.ts",
+    "omitted_for_native_archive_fallback": true,
+    "sha256": "07822ff6efe5d707173b6b9e9415b16edfb0eb055c3a03416bf4b4c0c11740ab"
+  },
+  {
+    "kind": "jobs",
+    "path": "src/utils/moderation/spam_categories.ts",
+    "omitted_for_native_archive_fallback": true,
+    "sha256": "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088"
+  },
+  {
+    "kind": "jobs",
+    "path": "src/schemas/channel_moderation_settings.schema.ts",
+    "origin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/source/dimabot/src/schemas/channel_moderation_settings.schema.ts",
+    "sha256": "e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653"
+  },
+  {
+    "kind": "jobs",
+    "path": "tsconfig.json",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variation-jobs/attempt1/source-provenance/tsconfig.json",
+    "sha256": "f2496ca26ef40f04270544ce5034eb71d272baedbbab7455c8efba229c5d93f9"
+  },
+  {
+    "kind": "jobs",
+    "path": "package.json",
+    "origin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/source/dimabot/package.json",
+    "sha256": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef"
+  },
+  {
+    "kind": "jobs",
+    "path": "package-lock.json",
+    "origin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/source/dimabot/package-lock.json",
+    "sha256": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7"
+  },
+  {
+    "kind": "jobs",
+    "path": "node_modules/typescript/package.json",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variation-jobs/attempt1/source-provenance/node_modules/typescript/package.json",
+    "sha256": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6"
+  },
+  {
+    "kind": "jobs",
+    "path": "node_modules/typescript/lib/typescript.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variation-jobs/attempt1/source-provenance/node_modules/typescript/lib/typescript.js",
+    "sha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675"
+  },
+  {
+    "kind": "jobs",
+    "path": "node_modules/re2/package.json",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variation-jobs/attempt1/source-provenance/node_modules/re2/package.json",
+    "sha256": "3bc12f3e008781cd558c278365bcc3373aaf6ff0aed18e645f3a8e53e6d5c0db"
+  },
+  {
+    "kind": "jobs",
+    "path": "node_modules/re2/re2.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variation-jobs/attempt1/source-provenance/node_modules/re2/re2.js",
+    "sha256": "651cf5db625c7f828ccef28a4eaccefb3dbcd9ce600e25966987443181a7f83a"
+  },
+  {
+    "kind": "jobs",
+    "path": "node_modules/re2/build/Release/re2.node",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variation-jobs/attempt1/source-provenance/node_modules/re2/build/Release/re2.node",
+    "sha256": "408c383a2c1b485e3c579e5a431acb0732a8f210304a37dc52bbe296cf17a563"
+  },
+  {
+    "kind": "jobs",
+    "path": "node_modules/re2/lib/wrapped_re2.h",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variation-jobs/attempt1/source-provenance/node_modules/re2/lib/wrapped_re2.h",
+    "sha256": "e4b3f23eb963f07d765d8e7ea3ebc650be81e02b782aeceda0fd2c72435e2f28"
+  },
+  {
+    "kind": "jobs",
+    "path": "node_modules/re2/lib/new.cc",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variation-jobs/attempt1/source-provenance/node_modules/re2/lib/new.cc",
+    "sha256": "dcee6f77b7cd82af66f94a66bfb757a5266273fd954e68f97f6e3a5a423a8317"
+  },
+  {
+    "kind": "jobs",
+    "path": "node_modules/re2/lib/pattern.cc",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variation-jobs/attempt1/source-provenance/node_modules/re2/lib/pattern.cc",
+    "sha256": "ed747fc232e06031ff23cc1941d605a92ee9b851b3a15e20755e6000b789d462"
+  },
+  {
+    "kind": "jobs",
+    "path": "node_modules/re2/lib/exec.cc",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variation-jobs/attempt1/source-provenance/node_modules/re2/lib/exec.cc",
+    "sha256": "c6ddf96bfd12833ca1f056232a7dcda306da73af039584b315d66d492485ab18"
+  },
+  {
+    "kind": "jobs",
+    "path": "node_modules/re2/lib/util.cc",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variation-jobs/attempt1/source-provenance/node_modules/re2/lib/util.cc",
+    "sha256": "cf3bd850db64f9bea8a05026c685544245893bda28e691d08586b510d6460d5e"
+  },
+  {
+    "kind": "jobs",
+    "path": "src/utils/moderation/variations.ts",
+    "origin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/source/dimabot/src/utils/moderation/variations.ts",
+    "sha256": "f7a21881289f63a50de733df232570c00f851333d5762ef39e1258915287580e"
+  },
+  {
+    "kind": "jobs",
+    "path": "src/utils/ai/openrouter/app_attribution.util.ts",
+    "omitted_for_native_archive_fallback": true,
+    "sha256": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c"
+  },
+  {
+    "kind": "jobs",
+    "path": "tests/fixtures/moderation_advanced_source.cjs",
+    "origin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/source/dimabot/tests/fixtures/moderation_advanced_source.cjs",
+    "sha256": "1205ade8280a3cfebb806e336570ab650a92e178db306f33aa760315fafbee50"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/typescript/package.json",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/typescript/package.json",
+    "sha256": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/typescript/lib/typescript.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/typescript/lib/typescript.js",
+    "sha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/re2/package.json",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/re2/package.json",
+    "sha256": "3bc12f3e008781cd558c278365bcc3373aaf6ff0aed18e645f3a8e53e6d5c0db"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/re2/re2.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/re2/re2.js",
+    "sha256": "651cf5db625c7f828ccef28a4eaccefb3dbcd9ce600e25966987443181a7f83a"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/re2/build/Release/re2.node",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/re2/build/Release/re2.node",
+    "sha256": "408c383a2c1b485e3c579e5a431acb0732a8f210304a37dc52bbe296cf17a563"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/re2/lib/wrapped_re2.h",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/re2/lib/wrapped_re2.h",
+    "sha256": "e4b3f23eb963f07d765d8e7ea3ebc650be81e02b782aeceda0fd2c72435e2f28"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/re2/lib/new.cc",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/re2/lib/new.cc",
+    "sha256": "dcee6f77b7cd82af66f94a66bfb757a5266273fd954e68f97f6e3a5a423a8317"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/re2/lib/pattern.cc",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/re2/lib/pattern.cc",
+    "sha256": "ed747fc232e06031ff23cc1941d605a92ee9b851b3a15e20755e6000b789d462"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/re2/lib/exec.cc",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/re2/lib/exec.cc",
+    "sha256": "c6ddf96bfd12833ca1f056232a7dcda306da73af039584b315d66d492485ab18"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/re2/lib/util.cc",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/re2/lib/util.cc",
+    "sha256": "cf3bd850db64f9bea8a05026c685544245893bda28e691d08586b510d6460d5e"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/mongoose/package.json",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/mongoose/package.json",
+    "sha256": "5136d95bcd0624a94096110ea21ac101b73f1839bc40726eab85649389c17dba"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/mongoose/index.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/mongoose/index.js",
+    "sha256": "59e21822580047abc5468d740b720d1383fa3569aa2da3ac70325265fbb0e25b"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/mongoose/lib/mongoose.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/mongoose/lib/mongoose.js",
+    "sha256": "141800e92c653c91489ab109a31e9b914dbb788ca4b20696d6a5781f12c5abb3"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/mongoose/node_modules/mongodb/lib/bson.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/mongoose/node_modules/mongodb/lib/bson.js",
+    "sha256": "1880a069aa02d09798a3a082d77198aafa4a2d6a1c0315691f25820b58c025ea"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/mongoose/node_modules/mongodb/package.json",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/mongoose/node_modules/mongodb/package.json",
+    "sha256": "54edfda15c69f02c7d6ddf045f339caa1c94cef76b45c2383e1b35071024241b"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/bson/lib/bson.cjs",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/bson/lib/bson.cjs",
+    "sha256": "64e5de269bbcdee96f2bebb57cc9729b72aaebde02d832005872b7e575899284"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/bson/package.json",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/bson/package.json",
+    "sha256": "ded0e42e4e1cd876a11c9f799e0692f83ee73ebc9fb7796a5bca05039b4b3e23"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/mongoose/node_modules/mongodb/lib/index.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/mongoose/node_modules/mongodb/lib/index.js",
+    "sha256": "d58c7e45c97513297d1ea31bd2a0331be96595dc9887856abab89f91cf944783"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/mongoose/node_modules/mongodb/lib/operations/find_and_modify.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/mongoose/node_modules/mongodb/lib/operations/find_and_modify.js",
+    "sha256": "635a1dee2dc9a2a4add02f2c6c6e47060887ba2e9102018edf89e4faa30bf003"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/mongoose/lib/query.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/mongoose/lib/query.js",
+    "sha256": "4613f14a4626d00e1ad85f0cb0c0e1326266be8b8a7eadc372fd93875820816a"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/mongoose/lib/helpers/query/castUpdate.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/mongoose/lib/helpers/query/castUpdate.js",
+    "sha256": "b2b53126ed947f1fb2fe267fcb3814e40f12181454a7a6ee24f82c48687cef9b"
+  },
+  {
+    "kind": "decisions",
+    "path": "node_modules/mongoose/lib/helpers/setDefaultsOnInsert.js",
+    "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-decisions/attempt1/source-provenance/node_modules/mongoose/lib/helpers/setDefaultsOnInsert.js",
+    "sha256": "45959792d1854b183e28359d34cefb49ca76ac9f2cb711b309ea6be26b9fb4f7"
+  },
+  {
+    "kind": "jobs",
+    "path": "src/utils/moderation/variation_jobs.ts",
+    "origin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/source/dimabot/src/utils/moderation/variation_jobs.ts",
+    "sha256": "6a4122f95723a3288e6989afa44bd922fa601f914fce00686c508a857df2228d",
+    "capture_correction": "explicit provenance field outside loader pins"
+  },
+  {
+    "kind": "jobs",
+    "path": "tests/fixtures/moderation_variation_jobs_reference.cjs",
+    "origin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/source/dimabot/tests/fixtures/moderation_variation_jobs_reference.cjs",
+    "sha256": "ef7e612c874b6b9b3588c6ef91b42fd7b1adb32aaa329a8ccf69eaafcf575ba6",
+    "capture_correction": "explicit provenance field outside loader pins"
+  },
+  {
+    "kind": "jobs",
+    "path": "tests/fixtures/moderation_variations_source.cjs",
+    "origin": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/source/dimabot/tests/fixtures/moderation_variations_source.cjs",
+    "sha256": "8f90d3498fd103c85e6269f6dc0f6712598ddeda676d74bb185a613e24e2861f",
+    "capture_correction": "explicit provenance field outside loader pins"
+  }
+]

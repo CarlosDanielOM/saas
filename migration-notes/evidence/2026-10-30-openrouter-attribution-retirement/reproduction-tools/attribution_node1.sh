@@ -1,0 +1,83 @@
+set -eux
+export TZ=UTC
+cd /source/dimabot
+export DIMA_SCHEMA_SOURCE_ROOT=/source/dimabot
+export DIMA_SCHEMA_NODE_SHA256=569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108
+export DIMA_OPENROUTER_SOURCE_ROOT=/source/dimabot
+export DIMA_ADVANCED_SOURCE_ROOT=/source/dimabot
+export DIMA_ADVANCED_RE2_FIXTURE_ROOT=/artifacts/moderation-advanced/re2-node24/re2
+export DIMA_ADVANCED_RE2_FIXTURE_BINARY_SHA256=94064b17d6110cd5e36fb0bee49fa267144155300e03160758478b3917e5ffbb
+export DIMA_ADVANCED_RE2_FIXTURE_MANIFEST_SHA256=e33073a155ce1180ee2cc52dc8ae548d3a0d24d5c81c2fbd8082834638c15664
+export DIMA_ADVANCED_RE2_FIXTURE_PROVENANCE_SHA256=4efad596bf97c83c92a825c0bb2452b182051066174951eb2644e8a6bda9ad4c
+export DIMA_VARIATIONS_BENCH_LOADER_SHA256=8f90d3498fd103c85e6269f6dc0f6712598ddeda676d74bb185a613e24e2861f
+export DIMA_VARIATIONS_READER_SHA256=31021121ab6f838a0c96779dbc887afc78bd153fc1c5b6cefea9b6b642987c3a
+export DIMA_VARIATIONS_BENCH_READER_SHA256=3be8044f795a4ed07a6e0e6bf6cbb8f8bc2820e62b9126f40b4f6a60a03eefbf
+export DIMA_VARIATION_JOBS_READER_SHA256=ef7e612c874b6b9b3588c6ef91b42fd7b1adb32aaa329a8ccf69eaafcf575ba6
+export DIMA_SPAM_LOADER_SHA256=b5cf1d8d5c0f7105e8042ce47dd323486ff000e5a7b4695716db76f010dc6558
+export DIMA_SPAM_READER_SHA256=3cd07fee4740325e384792737a396ce4ad1b69a5988c338f8a0f6b37f6f3dfd5
+export DIMA_SPAM_BENCH_READER_SHA256=ae4d6131c2e375ddc437ff12fdd34a563708bc3dd2b1c297e82369eb32e9d723
+export DIMA_SEMANTIC_LOADER_SHA256=25b2c5491f482802a5d40833b4f9854617941669201bb9735bda108f44dd53be
+export DIMA_SEMANTIC_READER_SHA256=8f968ed480ef07491cc0bf4174b365911d888e19074e0df4603ea1b3ebe00f4a
+export DIMA_SEMANTIC_WORKER_READER_SHA256=b1eaab7a015af47e493464174a3dab2f7e72061b9d72c6debdeb285980eef740
+export DIMA_DECISIONS_LOADER_SHA256=f3dc9a67a08ad06425dc5ee7eb167673552335ffe4acd68826423330fb1fdb9c
+export DIMA_DECISIONS_READER_SHA256=0b7837d2b16d5e6fcdfffb687f0a2c7b2023289f2b7351dbb2faf1dcb1cf503b
+base=/artifacts/attribution/attempt1
+mkdir -p "$base/attribution"
+node tests/fixtures/openrouter_attribution_reference.cjs --write "$base/attribution"
+node tests/fixtures/openrouter_attribution_reference.cjs --check "$base/attribution"
+mkdir -p "$base/variations"
+node tests/fixtures/moderation_variations_reference.cjs --write "$base/variations"
+node tests/fixtures/moderation_variations_reference.cjs --check "$base/variations"
+mkdir -p "$base/jobs"
+node tests/fixtures/moderation_variation_jobs_reference.cjs --write "$base/jobs"
+node tests/fixtures/moderation_variation_jobs_reference.cjs --check "$base/jobs"
+mkdir -p "$base/semantic"
+node tests/fixtures/moderation_semantic_reference.cjs --write "$base/semantic"
+node tests/fixtures/moderation_semantic_reference.cjs --check "$base/semantic"
+mkdir -p "$base/worker"
+node tests/fixtures/moderation_semantic_worker_reference.cjs --write "$base/worker"
+node tests/fixtures/moderation_semantic_worker_reference.cjs --check "$base/worker"
+mkdir -p "$base/decisions"
+node tests/fixtures/moderation_decisions_reference.cjs --write "$base/decisions"
+node tests/fixtures/moderation_decisions_reference.cjs --check "$base/decisions"
+mkdir -p "$base/variations-prepared"
+node tests/fixtures/moderation_variations_benchmark.cjs --write "$base/variations-prepared"
+node tests/fixtures/moderation_variations_benchmark.cjs --check "$base/variations-prepared"
+mkdir -p "$base/fish"
+node --experimental-vm-modules tests/fixtures/fish_tts_reference.mjs --write "$base/fish"
+node --experimental-vm-modules tests/fixtures/fish_tts_reference.mjs --check "$base/fish"
+mkdir -p "$base/piper-kokoro"
+node --experimental-vm-modules tests/fixtures/piper_kokoro_reference.mjs --write "$base/piper-kokoro"
+node --experimental-vm-modules tests/fixtures/piper_kokoro_reference.mjs --check "$base/piper-kokoro"
+mkdir -p "$base/runtime"
+node tests/fixtures/tts_runtime_reference.mjs --write "$base/runtime"
+node tests/fixtures/tts_runtime_reference.mjs --check "$base/runtime"
+mkdir -p "$base/runtime"
+node --experimental-vm-modules tests/fixtures/tts_runtime_dynamic_reference.mjs --write "$base/runtime"
+node --experimental-vm-modules tests/fixtures/tts_runtime_dynamic_reference.mjs --check "$base/runtime"
+mkdir -p "$base/chatter"
+node tests/fixtures/moderation_chatter_schema_reference.cjs --write "$base/chatter"
+node tests/fixtures/moderation_chatter_schema_reference.cjs --check "$base/chatter"
+mkdir -p "$base/application"
+node tests/fixtures/application_schemas_reference.mjs --write "$base/application"
+node tests/fixtures/application_schemas_reference.mjs --check "$base/application"
+mkdir -p "$base/additional"
+node tests/fixtures/additional_schemas_reference.mjs --write "$base/additional"
+node tests/fixtures/additional_schemas_reference.mjs --check "$base/additional"
+mkdir -p "$base/named"
+node tests/fixtures/schema_named_types_reference.cjs --write "$base/named"
+node tests/fixtures/schema_named_types_reference.cjs --check "$base/named"
+mkdir -p "$base/timer"
+node tests/fixtures/timer_chat_schema_types_reference.cjs --write "$base/timer"
+node tests/fixtures/timer_chat_schema_types_reference.cjs --check "$base/timer"
+mkdir -p "$base/action"
+node tests/fixtures/moderation_action_log_schema_reference.cjs --write "$base/action"
+node tests/fixtures/moderation_action_log_schema_reference.cjs --check "$base/action"
+mkdir -p "$base/favorites"
+node tests/fixtures/channel_fish_voice_favorites_reference.cjs --write "$base/favorites"
+node tests/fixtures/channel_fish_voice_favorites_reference.cjs --check "$base/favorites"
+mkdir -p "$base/spam"
+node tests/fixtures/moderation_spam_reference.cjs --write "$base/spam"
+node tests/fixtures/moderation_spam_reference.cjs --check "$base/spam"
+mkdir -p "$base/resolver-negative"
+node tests/fixtures/openrouter_attribution_reference.cjs --resolver-negative "$base/resolver-negative"

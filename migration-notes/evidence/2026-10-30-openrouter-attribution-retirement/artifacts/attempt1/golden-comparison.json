@@ -1,0 +1,548 @@
+{
+  "comparisons": [
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/application/application-schemas-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/application/application-schemas-reference.json",
+      "candidateSha256": "08bf1a37859778c2777215e0f8019987e60f9a6e750602a97d56016c85bf5687",
+      "acceptedSha256": "08bf1a37859778c2777215e0f8019987e60f9a6e750602a97d56016c85bf5687",
+      "byteIdentical": true,
+      "behaviorUnchanged": true,
+      "changedPaths": [],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/additional/additional-schemas-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/additional/additional-schemas-reference.json",
+      "candidateSha256": "e62682246f26f79457aadfa97f44dffd9022377fa3c91331b5567a5c38f239a9",
+      "acceptedSha256": "e62682246f26f79457aadfa97f44dffd9022377fa3c91331b5567a5c38f239a9",
+      "byteIdentical": true,
+      "behaviorUnchanged": true,
+      "changedPaths": [],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/named/schema-named-types-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/named/schema-named-types-reference.json",
+      "candidateSha256": "b381280be7fe1315826cd6faf1207386d4cf1ec0e639eb2e503f56b20edbeabd",
+      "acceptedSha256": "b381280be7fe1315826cd6faf1207386d4cf1ec0e639eb2e503f56b20edbeabd",
+      "byteIdentical": true,
+      "behaviorUnchanged": true,
+      "changedPaths": [],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/timer/timer-chat-schema-types-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/timer/timer-chat-schema-types-reference.json",
+      "candidateSha256": "a7eabb843dcf1e7d1e944bfac98ca46c62e1e6908187ebb242c12548ed2acb95",
+      "acceptedSha256": "a7eabb843dcf1e7d1e944bfac98ca46c62e1e6908187ebb242c12548ed2acb95",
+      "byteIdentical": true,
+      "behaviorUnchanged": true,
+      "changedPaths": [],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/action/moderation-action-log-schema-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/action/moderation-action-log-schema-reference.json",
+      "candidateSha256": "2376b909c43be9584396c65de5958d58304ff36e11ee6d4764f1fa408493312b",
+      "acceptedSha256": "2376b909c43be9584396c65de5958d58304ff36e11ee6d4764f1fa408493312b",
+      "byteIdentical": true,
+      "behaviorUnchanged": true,
+      "changedPaths": [],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/favorites/channel_fish_voice_favorites.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/fish/channel_fish_voice_favorites.json",
+      "candidateSha256": "02f9d9afadc122d82d5692a023edc5ce3d928c71cb3af082bd732a5f50f58b29",
+      "acceptedSha256": "02f9d9afadc122d82d5692a023edc5ce3d928c71cb3af082bd732a5f50f58b29",
+      "byteIdentical": true,
+      "behaviorUnchanged": true,
+      "changedPaths": [],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/chatter/moderation-chatter-schema-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/chatter/moderation-chatter-schema-reference.json",
+      "candidateSha256": "86cc7e18feca15ef22be9500978c14e36a285df4e283924e018ea0ce313c8b36",
+      "acceptedSha256": "883c15dac75dcc472539ab71c0210dba1f78131ff64be5265ae6c82cddc7244f",
+      "byteIdentical": false,
+      "behaviorUnchanged": true,
+      "changedPaths": [
+        {
+          "path": [
+            "metadata",
+            "source",
+            "manifest",
+            "sha256"
+          ],
+          "before": "3aaa9a778a4484d289a706830cc8ea466e799379d07f89369cd1d23f52f10662",
+          "after": "6dc49b87776011e7371554ba6de1b488e049a0d7df2c54d87b42cde8ed1b6348"
+        }
+      ],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/spam/moderation-spam-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/spam/moderation-spam-reference.json",
+      "candidateSha256": "bd682f476565af1918007b335fa4ddd11b9c127c5aa57799448d1da9dcd2a3cd",
+      "acceptedSha256": "bd682f476565af1918007b335fa4ddd11b9c127c5aa57799448d1da9dcd2a3cd",
+      "byteIdentical": true,
+      "behaviorUnchanged": true,
+      "changedPaths": [],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/variations/moderation-variations-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_variations_reference/moderation-variations-reference.json",
+      "candidateSha256": "47276de61a7f52c75090356aa688b6401e625b0af4531e127201820c5031f37b",
+      "acceptedSha256": "9b1165922e08862ba371b7d288fd514456cd7a668bec3fc4bf5dbb97dd478ad2",
+      "byteIdentical": false,
+      "behaviorUnchanged": true,
+      "changedPaths": [
+        {
+          "path": [
+            "metadata",
+            "attribution"
+          ],
+          "before": null,
+          "after": {
+            "logical": "src/utils/ai/openrouter/app_attribution.util.ts",
+            "sha256": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c",
+            "provenance": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+            "resolvedPath": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+            "manifestSha256": "6dc49b87776011e7371554ba6de1b488e049a0d7df2c54d87b42cde8ed1b6348",
+            "archiveEntries": 51
+          },
+          "missingBefore": true,
+          "missingAfter": false
+        },
+        {
+          "path": [
+            "metadata",
+            "readerSha256"
+          ],
+          "before": "3b89d8b2f638fb4da4f7dcb945f79f06a766bdb1cb737f9b5d9698d7a772fbeb",
+          "after": "31021121ab6f838a0c96779dbc887afc78bd153fc1c5b6cefea9b6b642987c3a"
+        },
+        {
+          "path": [
+            "metadata",
+            "sourceProvenance",
+            "src/utils/ai/openrouter/app_attribution.util.ts"
+          ],
+          "before": null,
+          "after": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+          "missingBefore": true,
+          "missingAfter": false
+        }
+      ],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/jobs/moderation-variation-jobs-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_variation_jobs_reference/moderation-variation-jobs-reference.json",
+      "candidateSha256": "faf65e37c9b05ee47e306077cae75762ee578105a05d3a908aabd2758c99d03d",
+      "acceptedSha256": "f310422b0d819e693927cb4dca9a666aea2e6d512a75624d8dc5bf676a9db56f",
+      "byteIdentical": false,
+      "behaviorUnchanged": true,
+      "changedPaths": [
+        {
+          "path": [
+            "provenance",
+            "loaderSha256"
+          ],
+          "before": "4b86ff3446a7ed9961d14c5d747c077c20fa82dd9ad14d1032459957c8f3faf4",
+          "after": "8f90d3498fd103c85e6269f6dc0f6712598ddeda676d74bb185a613e24e2861f"
+        },
+        {
+          "path": [
+            "provenance",
+            "readerSha256"
+          ],
+          "before": "d3755358c016725b2ddee0e61861a232c38b2fd3a836bf45fdc23901be7e7c39",
+          "after": "ef7e612c874b6b9b3588c6ef91b42fd7b1adb32aaa329a8ccf69eaafcf575ba6"
+        },
+        {
+          "path": [
+            "provenance",
+            "sourceProvenance",
+            "src/utils/ai/openrouter/app_attribution.util.ts"
+          ],
+          "before": null,
+          "after": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+          "missingBefore": true,
+          "missingAfter": false
+        }
+      ],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/semantic/moderation-semantic-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_semantic_reference/moderation-semantic-reference.json",
+      "candidateSha256": "4c4a77bb9b9e1f82be88b8eac638698cdaf3b97ce4dac98cb96030d13d57ef21",
+      "acceptedSha256": "235cf656267d3dcacdbc76cfff6f29cd3586b2a8daec49f34126d61231190989",
+      "byteIdentical": false,
+      "behaviorUnchanged": true,
+      "changedPaths": [
+        {
+          "path": [
+            "metadata",
+            "loaderSha256"
+          ],
+          "before": "bb0846e5f0331a8cf272b721bbed18471861e8a7bad4fb17f828d46074083dc0",
+          "after": "25b2c5491f482802a5d40833b4f9854617941669201bb9735bda108f44dd53be"
+        },
+        {
+          "path": [
+            "metadata",
+            "nativeReplay",
+            "tests/support/moderation_semantic.rs"
+          ],
+          "before": "843f62a398c8b378a6c71882191035de8595067fedf7a65474d94fd61200959f",
+          "after": "8aa6daf6f5b36027fcb68bfe5082ecedd3cee58bd878cce3e5d614799c6b4602"
+        },
+        {
+          "path": [
+            "metadata",
+            "pins",
+            "tests/fixtures/moderation_spam_source.cjs"
+          ],
+          "before": "19d6dd590e9f816a0d04bb36cd46fb658fb371875b0db166298aaab7543efb0c",
+          "after": "b5cf1d8d5c0f7105e8042ce47dd323486ff000e5a7b4695716db76f010dc6558"
+        },
+        {
+          "path": [
+            "metadata",
+            "sourceProvenance",
+            "src/schemas/moderation_chatter.schema.ts"
+          ],
+          "before": null,
+          "after": "archives/dimabot-typescript/2026-10-28/src/schemas/moderation_chatter.schema.ts",
+          "missingBefore": true,
+          "missingAfter": false
+        },
+        {
+          "path": [
+            "metadata",
+            "sourceProvenance",
+            "src/utils/ai/openrouter/app_attribution.util.ts"
+          ],
+          "before": null,
+          "after": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+          "missingBefore": true,
+          "missingAfter": false
+        },
+        {
+          "path": [
+            "metadata",
+            "spamLoaderSha256"
+          ],
+          "before": "19d6dd590e9f816a0d04bb36cd46fb658fb371875b0db166298aaab7543efb0c",
+          "after": "b5cf1d8d5c0f7105e8042ce47dd323486ff000e5a7b4695716db76f010dc6558"
+        }
+      ],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/worker/moderation-semantic-worker-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_semantic_worker_reference/moderation-semantic-worker-reference.json",
+      "candidateSha256": "ea24bb80204e79a0a0f1d4d22cb36582029adcd589e8306a8c8a61980c2056cb",
+      "acceptedSha256": "58df099835b57070cc783da1f3c2764bcfd4c15e4a46c78733adf76376b9843e",
+      "byteIdentical": false,
+      "behaviorUnchanged": true,
+      "changedPaths": [
+        {
+          "path": [
+            "metadata",
+            "pins",
+            "tests/fixtures/moderation_spam_source.cjs"
+          ],
+          "before": "19d6dd590e9f816a0d04bb36cd46fb658fb371875b0db166298aaab7543efb0c",
+          "after": "b5cf1d8d5c0f7105e8042ce47dd323486ff000e5a7b4695716db76f010dc6558"
+        },
+        {
+          "path": [
+            "metadata",
+            "sourceProvenance",
+            "src/schemas/moderation_chatter.schema.ts"
+          ],
+          "before": null,
+          "after": "archives/dimabot-typescript/2026-10-28/src/schemas/moderation_chatter.schema.ts",
+          "missingBefore": true,
+          "missingAfter": false
+        },
+        {
+          "path": [
+            "metadata",
+            "sourceProvenance",
+            "src/utils/ai/openrouter/app_attribution.util.ts"
+          ],
+          "before": null,
+          "after": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+          "missingBefore": true,
+          "missingAfter": false
+        }
+      ],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/decisions/moderation-decisions-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_decisions_reference/moderation-decisions-reference.json",
+      "candidateSha256": "dd6c174de8fdea154db77fdc5bb835d5ea305ffcec9cea17e37f254ef036de56",
+      "acceptedSha256": "a36006be171f7d8ce78d9a2408a0545408743a8abe21dce6ccfa0d7c91b47560",
+      "byteIdentical": false,
+      "behaviorUnchanged": true,
+      "changedPaths": [
+        {
+          "path": [
+            "provenance",
+            "loaderSha256"
+          ],
+          "before": "cfc4c598dd11f2c696bda4bac9e89da998a682ab1635d62da27d80d6e4ad72e9",
+          "after": "f3dc9a67a08ad06425dc5ee7eb167673552335ffe4acd68826423330fb1fdb9c"
+        },
+        {
+          "path": [
+            "provenance",
+            "pins",
+            "tests/fixtures/moderation_spam_source.cjs"
+          ],
+          "before": "19d6dd590e9f816a0d04bb36cd46fb658fb371875b0db166298aaab7543efb0c",
+          "after": "b5cf1d8d5c0f7105e8042ce47dd323486ff000e5a7b4695716db76f010dc6558"
+        },
+        {
+          "path": [
+            "provenance",
+            "pins",
+            "tests/fixtures/moderation_variations_source.cjs"
+          ],
+          "before": "4b86ff3446a7ed9961d14c5d747c077c20fa82dd9ad14d1032459957c8f3faf4",
+          "after": "8f90d3498fd103c85e6269f6dc0f6712598ddeda676d74bb185a613e24e2861f"
+        },
+        {
+          "path": [
+            "provenance",
+            "sourceProvenance",
+            "src/schemas/moderation_chatter.schema.ts"
+          ],
+          "before": null,
+          "after": "archives/dimabot-typescript/2026-10-28/src/schemas/moderation_chatter.schema.ts",
+          "missingBefore": true,
+          "missingAfter": false
+        }
+      ],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/fish/fish-tts-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/emotes-normalizer-retirement/fish/fish-tts-reference.json",
+      "candidateSha256": "b5e7d54a74eeb068d2c03189f3009da267cad5d57aef3931174390c71a0cc33f",
+      "acceptedSha256": "9c9f1d2e1a9d978073fb2020a084deb2e1e43dde4f97061537bb0c7b422232be",
+      "byteIdentical": false,
+      "behaviorUnchanged": true,
+      "changedPaths": [
+        {
+          "path": [
+            "provenance",
+            "attribution"
+          ],
+          "before": null,
+          "after": {
+            "logical": "src/utils/ai/openrouter/app_attribution.util.ts",
+            "sha256": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c",
+            "provenance": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts"
+          },
+          "missingBefore": true,
+          "missingAfter": false
+        },
+        {
+          "path": [
+            "provenance",
+            "sourceHashes",
+            "tests/fixtures/fish_tts_reference.mjs"
+          ],
+          "before": "212cb2655fc53c578d1884d5e16aeca3dd22e5c126e13a54e19897116f06d3d3",
+          "after": "3f3b55d895d6c5c496baf248bb70d48e053ad3d33db0b427efd141df12a740c6"
+        },
+        {
+          "path": [
+            "provenance",
+            "sourceHashes",
+            "tests/fixtures/openrouter_attribution_source.cjs"
+          ],
+          "before": null,
+          "after": "fb99791293630249ed194a1336c2f42031c6bebc587bfa83cad500795d5c36b2",
+          "missingBefore": true,
+          "missingAfter": false
+        },
+        {
+          "path": [
+            "provenance",
+            "sourcePaths",
+            "src/utils/ai/openrouter/app_attribution.util.ts"
+          ],
+          "before": "src/utils/ai/openrouter/app_attribution.util.ts",
+          "after": "../archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts"
+        }
+      ],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/piper-kokoro/piper-kokoro-reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/emotes-normalizer-retirement/piper-kokoro/piper-kokoro-reference.json",
+      "candidateSha256": "f62621ee7ec2f52a78d90a0c17e3aa9093a71c0a17553114d62454ebefe100d0",
+      "acceptedSha256": "f7eb1bbb936f5738b27694690a6ce773d2938f7da66aea6b27a3dfc8a007a498",
+      "byteIdentical": false,
+      "behaviorUnchanged": true,
+      "changedPaths": [
+        {
+          "path": [
+            "provenance",
+            "attribution"
+          ],
+          "before": null,
+          "after": {
+            "logical": "src/utils/ai/openrouter/app_attribution.util.ts",
+            "sha256": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c",
+            "provenance": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts"
+          },
+          "missingBefore": true,
+          "missingAfter": false
+        },
+        {
+          "path": [
+            "provenance",
+            "sourceHashes",
+            "tests/fixtures/openrouter_attribution_source.cjs"
+          ],
+          "before": null,
+          "after": "fb99791293630249ed194a1336c2f42031c6bebc587bfa83cad500795d5c36b2",
+          "missingBefore": true,
+          "missingAfter": false
+        },
+        {
+          "path": [
+            "provenance",
+            "sourceHashes",
+            "tests/fixtures/piper_kokoro_reference.mjs"
+          ],
+          "before": "7c75d7628a6ca7a27d404802421a901882755bd86ad511cd125ebfcab99a6152",
+          "after": "4bfbbe9712923890071c933017612ca3a8217947848c1b2991b47f38ced96907"
+        },
+        {
+          "path": [
+            "provenance",
+            "sourcePaths",
+            "src/utils/ai/openrouter/app_attribution.util.ts"
+          ],
+          "before": "src/utils/ai/openrouter/app_attribution.util.ts",
+          "after": "../archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts"
+        }
+      ],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/runtime/tts_runtime_reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/emotes-normalizer-retirement/runtime/tts_runtime_reference.json",
+      "candidateSha256": "4c6bd5a1860e6877fb7e021933eb4f3192fd9638ad42b6b20ee02eb0597a7632",
+      "acceptedSha256": "4c6bd5a1860e6877fb7e021933eb4f3192fd9638ad42b6b20ee02eb0597a7632",
+      "byteIdentical": true,
+      "behaviorUnchanged": true,
+      "changedPaths": [],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/runtime/tts_runtime_dynamic_reference.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/emotes-normalizer-retirement/runtime/tts_runtime_dynamic_reference.json",
+      "candidateSha256": "3cc3cf8d183e41a37f47e90914a68401bb16b70ba3ce97bd45a61cabfcba7710",
+      "acceptedSha256": "11912ad1904b55d83292efce962ab9bececabe41e54b80acb53f6834971360b9",
+      "byteIdentical": false,
+      "behaviorUnchanged": true,
+      "changedPaths": [
+        {
+          "path": [
+            "provenance",
+            "attribution"
+          ],
+          "before": null,
+          "after": {
+            "logical": "src/utils/ai/openrouter/app_attribution.util.ts",
+            "sha256": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c",
+            "provenance": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts"
+          },
+          "missingBefore": true,
+          "missingAfter": false
+        },
+        {
+          "path": [
+            "provenance",
+            "hashes",
+            "tests/fixtures/openrouter_attribution_source.cjs"
+          ],
+          "before": null,
+          "after": "fb99791293630249ed194a1336c2f42031c6bebc587bfa83cad500795d5c36b2",
+          "missingBefore": true,
+          "missingAfter": false
+        },
+        {
+          "path": [
+            "provenance",
+            "hashes",
+            "tests/fixtures/tts_runtime_dynamic_reference.mjs"
+          ],
+          "before": "7c540c40f14190b2baa090ba1c90daa3579addf2a008926ef60f77ecacc4394e",
+          "after": "23cf86248d7837fff0c31f9f5e76e385761abcb98b9f596e4962e4b5a8d849fa"
+        },
+        {
+          "path": [
+            "provenance",
+            "sourcePaths",
+            "src/utils/ai/openrouter/app_attribution.util.ts"
+          ],
+          "before": "src/utils/ai/openrouter/app_attribution.util.ts",
+          "after": "../archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts"
+        }
+      ],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/variations-prepared/input.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_variations_benchmark/input.json",
+      "candidateSha256": "07b8192f942ef9c3246720aa75926939260f3e07250d83b7973197ca6ac65d2e",
+      "acceptedSha256": "07b8192f942ef9c3246720aa75926939260f3e07250d83b7973197ca6ac65d2e",
+      "byteIdentical": true,
+      "behaviorUnchanged": true,
+      "changedPaths": [],
+      "unexpectedPaths": []
+    },
+    {
+      "candidate": "/root/.local/state/rust-full-migration-20261028-attribution-k2763p6a/artifacts/attribution/attempt1/variations-prepared/source-report.json",
+      "accepted": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_variations_benchmark/source-report.json",
+      "candidateSha256": "f749e9fc839465f25a89869107a09db26e7360cad9f4523670506b7aafb42e43",
+      "acceptedSha256": "871818beb4c11d97219a53ee38bdfac3349f7ad6da1151add4453b2e371654bd",
+      "byteIdentical": false,
+      "behaviorUnchanged": true,
+      "changedPaths": [
+        {
+          "path": [
+            "loaderSha256"
+          ],
+          "before": "4b86ff3446a7ed9961d14c5d747c077c20fa82dd9ad14d1032459957c8f3faf4",
+          "after": "8f90d3498fd103c85e6269f6dc0f6712598ddeda676d74bb185a613e24e2861f"
+        },
+        {
+          "path": [
+            "sourceProvenance",
+            "src/utils/ai/openrouter/app_attribution.util.ts"
+          ],
+          "before": null,
+          "after": "archives/dimabot-typescript/2026-10-28/src/utils/ai/openrouter/app_attribution.util.ts",
+          "missingBefore": true,
+          "missingAfter": false
+        }
+      ],
+      "unexpectedPaths": []
+    }
+  ],
+  "allBehaviorUnchanged": true
+}
