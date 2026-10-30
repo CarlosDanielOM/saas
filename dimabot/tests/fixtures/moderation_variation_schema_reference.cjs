@@ -19,10 +19,19 @@ const bson=bsonReq('bson'), bsonJs=bsonReq.resolve('bson'), bsonPackage=path.joi
 assert.equal(ts.version,'5.9.3'); assert.equal(mongoose.version,'8.24.2'); assert.equal(JSON.parse(fs.readFileSync(bsonPackage)).version,'6.10.4');
 const instance=new mongoose.Mongoose();
 const source=read('src/schemas/moderation_variation.schema.ts').toString('utf8');
-assert.equal(ts.createSourceFile('moderation_variation.schema.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS).parseDiagnostics.length,0);
+const tree=ts.createSourceFile('moderation_variation.schema.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+assert.deepEqual(tree.parseDiagnostics,[]);
+const imports=tree.statements.filter(ts.isImportDeclaration).map(s=>({module:s.moduleSpecifier.text,typeOnly:!!s.importClause?.isTypeOnly,bindings:s.importClause?.getText(tree)}));
+assert.deepEqual(imports.map(x=>[x.module,x.typeOnly]),[['mongoose',false],['../utils/moderation/variations.js',true]]);
+const decls=tree.statements.filter(ts.isInterfaceDeclaration), jobType=decls.find(d=>d.name.text==='VariationJob');
+assert(jobType && jobType.modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword));
+const fields=Object.fromEntries(jobType.members.map(m=>{assert(ts.isPropertySignature(m)&&m.type&&!m.questionToken);return [m.name.getText(tree),m.type.getText(tree)];}));
+assert.deepEqual(fields,{_id:'string',channelID:'string',terms:'string[]',state:"'reserved' | 'pending' | 'processing' | 'completed' | 'failed'",entries:'GeneratedVariation[]',error:'string',attempts:'number',createdAt:'Date',deadline:'Date',expiresAt:'Date',model:'string',version:'string',providerUsage:'Array<Record<string, unknown>>',creditsCharged:'number'});
+const typeEvidence={imports,interface:jobType.getText(tree),fields};
 const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const exportsObject={}; const requireSafe=name=>{assert.equal(name,'mongoose'); return {Schema:instance.Schema,model:instance.model.bind(instance)};};
 new vm.Script(`(function(exports,require){${js}\n})`,{filename:'moderation_variation.schema.ts'}).runInThisContext()(exportsObject,requireSafe);
+assert.deepEqual(Object.keys(exportsObject).sort(),['ModerationVariationCache','ModerationVariationJob']);
 const models={cache:exportsObject.ModerationVariationCache,job:exportsObject.ModerationVariationJob};
 assert.equal(models.cache.collection.name,'moderation_variation_caches'); assert.equal(models.job.collection.name,'moderation_variation_jobs');
 function norm(value) {
@@ -45,6 +54,7 @@ const samples=[{}, {_id:'a',channelID:42,unknown:'discard'}, {_id:null,channelID
  {providerUsage:7,creditsCharged:0}, {providerUsage:{nested:{},keep:true}}, {providerUsage:{}},
  {createdAt:0,deadline:'2025-02-03',expiresAt:1700000000000}, {createdAt:'bad'}, {model:{_id:''}}, {model:{_id:0}}, {model:{_id:false}}, {model:{_id:null}}, {model:{_id:'model-id'}}, {model:{_id:'0'}}];
 const cases=[]; for(const model of Object.keys(models)) for(const input of samples) cases.push({model,input,expected:evaluate(model,input)});
+const usageCases=[{}, {providerUsage:[]}, {providerUsage:[{model:'a',tokens:2},{model:'b',nested:{cost:1}}]}, {providerUsage:null}, {providerUsage:7}, {providerUsage:[{model:'a'},7]}].map(input=>({input,expected:evaluate('job',input)}));
 const indexes=Object.fromEntries(Object.entries(models).map(([key,model])=>[key,model.schema.indexes()]));
 const collections=Object.fromEntries(Object.entries(models).map(([key,model])=>[key,model.collection.name]));
 // Inspect bytes through the actual Node BSON writer, including malformed UTF-16.
@@ -57,6 +67,6 @@ for(const [key,module] of [['typescript-js','typescript'],['typescript-package',
 hashes['bson-js']=digest(fs.readFileSync(bsonJs)); hashes['bson-package']=digest(fs.readFileSync(bsonPackage)); hashes['oracle-script']=digest(fs.readFileSync(__filename));
 const mongooseDir=path.dirname(req.resolve('mongoose/package.json'));
 for(const file of ['lib/schema/array.js','lib/schema/string.js','lib/schema/number.js','lib/schema/date.js','lib/schema/mixed.js','lib/document.js','lib/helpers/clone.js','lib/helpers/minimize.js']) hashes[`mongoose/${file}`]=digest(fs.readFileSync(path.join(mongooseDir,file)));
-const output=JSON.stringify({format:1,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version,bson:'6.10.4'},nodeExecutableSha256:pin,sourceSha256:hashes,collections,indexes,cases,wire},null,2)+'\n';
+const output=JSON.stringify({format:1,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version,bson:'6.10.4'},nodeExecutableSha256:pin,sourceSha256:hashes,collections,indexes,typeEvidence,cases,usageCases,wire},null,2)+'\n';
 const target=path.join(dir,name); if(mode==='--write') fs.writeFileSync(target,output,{flag:'wx'}); else assert.equal(fs.readFileSync(target,'utf8'),output);
 console.log(`${name} sha256=${digest(output)} cases=${cases.length}`);

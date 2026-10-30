@@ -1,6 +1,7 @@
 #![cfg(feature = "moderation-variation-storage")]
 use dima_rust::schemas::moderation_variation::{
-    cache_schema, generated_variation_from_bson, generated_variation_to_bson, job_schema,
+    VariationJob, VariationJobState, cache_schema, generated_variation_from_bson,
+    generated_variation_to_bson, job_schema,
 };
 use dima_rust::utils::{
     js_string::JsString,
@@ -70,6 +71,81 @@ fn shared_generated_variation_uses_node_utf8_boundary() {
     assert_eq!(result.term.as_str(), Some("�x"));
     assert_eq!(result.pattern, v.pattern);
     assert_eq!(result.spellings, v.spellings);
+}
+#[test]
+fn declared_job_round_trips_and_raw_mixed_stays_permissive() {
+    let entry = GeneratedVariation {
+        term: "word".into(),
+        spellings: vec!["word".into(), "w0rd".into()],
+        pattern: ModerationPattern {
+            id: "pattern".into(),
+            source: "word".into(),
+            boundary: PatternBoundary::Anywhere,
+            ignore_case: true,
+        },
+        version: "v1".into(),
+        allow_spaces: Some(true),
+        symbol_version: Some("symbols".into()),
+    };
+    let date = DateTime::from_millis(1_700_000_000_000);
+    let base = VariationJob {
+        id: "job".into(),
+        channel_id: "channel".into(),
+        terms: vec!["word".into()],
+        state: VariationJobState::Processing,
+        entries: vec![entry],
+        error: "".into(),
+        attempts: 2.0,
+        created_at: date,
+        deadline: date,
+        expires_at: date,
+        model: "model".into(),
+        version: "v1".into(),
+        provider_usage: vec![],
+        credits_charged: 1.5,
+    };
+    for records in [
+        vec![],
+        vec![
+            doc! {"model":"one","tokens":2},
+            doc! {"model":"two","nested":{"cost":1}},
+        ],
+    ] {
+        let mut job = base.clone();
+        job.provider_usage = records.clone();
+        let borrowed = job.to_document();
+        let owned = job.clone().into_document();
+        assert_eq!(borrowed, owned);
+        assert_eq!(VariationJob::from_document(&borrowed).unwrap(), job);
+        assert_eq!(VariationJob::from_owned_document(owned).unwrap(), job);
+        assert_eq!(
+            borrowed.get_array("providerUsage").unwrap(),
+            &records.into_iter().map(Bson::Document).collect::<Vec<_>>()
+        );
+    }
+    let complete = base.to_document();
+    let mut missing = complete.clone();
+    missing.remove("providerUsage");
+    assert!(VariationJob::from_document(&missing).is_err());
+    let defaulted = job_schema().construct(&missing, date).unwrap();
+    assert_eq!(
+        VariationJob::from_document(&defaulted)
+            .unwrap()
+            .provider_usage,
+        Vec::<Document>::new()
+    );
+    for raw in [
+        Bson::Null,
+        Bson::Int32(7),
+        Bson::Array(vec![Bson::Document(doc! {"model":"one"}), Bson::Int32(7)]),
+    ] {
+        let mut input = complete.clone();
+        input.insert("providerUsage", raw.clone());
+        let stored = job_schema().construct(&input, date).unwrap();
+        assert_eq!(stored.get("providerUsage"), Some(&raw));
+        assert!(VariationJob::from_document(&stored).is_err());
+        assert!(VariationJob::from_owned_document(stored).is_err());
+    }
 }
 fn normalize(value: &Bson) -> Value {
     match value {
@@ -203,6 +279,43 @@ fn replay_actual_mongoose_source() {
     assert_eq!(corpus["wire"]["types"]["fraction"], "Double");
     assert_eq!(corpus["wire"]["types"]["wide"], "Double");
     assert_eq!(corpus["wire"]["types"]["negativeZero"], "Double");
+    let fields = &corpus["typeEvidence"]["fields"];
+    for (name, expected) in [
+        ("_id", "string"),
+        ("channelID", "string"),
+        ("terms", "string[]"),
+        (
+            "state",
+            "'reserved' | 'pending' | 'processing' | 'completed' | 'failed'",
+        ),
+        ("entries", "GeneratedVariation[]"),
+        ("error", "string"),
+        ("attempts", "number"),
+        ("createdAt", "Date"),
+        ("deadline", "Date"),
+        ("expiresAt", "Date"),
+        ("model", "string"),
+        ("version", "string"),
+        ("providerUsage", "Array<Record<string, unknown>>"),
+        ("creditsCharged", "number"),
+    ] {
+        assert_eq!(fields[name], expected);
+    }
+    assert_eq!(fields.as_object().unwrap().len(), 14);
+    assert_eq!(corpus["typeEvidence"]["imports"][1]["typeOnly"], true);
+    let usage_cases = corpus["usageCases"].as_array().unwrap();
+    assert_eq!(usage_cases.len(), 6);
+    for case in usage_cases {
+        let mut input: Document = mongodb::bson::serialize_to_document(&case["input"]).unwrap();
+        dima_rust::utils::bson_compat::normalize_document(&mut input);
+        let actual = job_schema()
+            .construct(&input, DateTime::from_millis(0))
+            .unwrap();
+        assert_eq!(
+            json!({"document":normalize(&Bson::Document(actual))}),
+            case["expected"]
+        );
+    }
     assert_eq!(corpus["cases"].as_array().unwrap().len(), 42);
     for case in corpus["cases"].as_array().unwrap() {
         let schema = if case["model"] == "cache" {

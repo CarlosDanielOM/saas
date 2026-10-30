@@ -93,7 +93,7 @@ pub struct VariationJob {
     pub expires_at: DateTime,
     pub model: JsString,
     pub version: JsString,
-    pub provider_usage: Bson,
+    pub provider_usage: Vec<Document>,
     pub credits_charged: f64,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -181,14 +181,46 @@ pub fn generated_variation_from_bson(value: &Bson) -> Result<GeneratedVariation,
     })
 }
 impl VariationJob {
+    /// Borrowed conversion; the owned variant moves the Mixed usage records.
     pub fn to_document(&self) -> Document {
-        let mut document = doc! {"_id": string(&self.id), "channelID": string(&self.channel_id), "terms": self.terms.iter().map(string).collect::<Vec<_>>(),
-        "state": self.state.as_str(), "entries": self.entries.iter().map(generated_variation_to_bson).collect::<Vec<_>>(),
-        "error": string(&self.error), "attempts": bson_compat::js_number(self.attempts), "createdAt": self.created_at,
-        "deadline": self.deadline, "expiresAt": self.expires_at, "model": string(&self.model), "version": string(&self.version),
-        "providerUsage": self.provider_usage.clone(), "creditsCharged": bson_compat::js_number(self.credits_charged)};
+        let mut document = self.fields_document();
+        document.insert(
+            "providerUsage",
+            self.provider_usage
+                .iter()
+                .cloned()
+                .map(Bson::Document)
+                .collect::<Vec<_>>(),
+        );
+        document.insert(
+            "creditsCharged",
+            bson_compat::js_number(self.credits_charged),
+        );
         bson_compat::normalize_document(&mut document);
         document
+    }
+    /// Serialize the declared type, moving usage records without BSON clones.
+    pub fn into_document(self) -> Document {
+        let mut document = self.fields_document();
+        document.insert(
+            "providerUsage",
+            self.provider_usage
+                .into_iter()
+                .map(Bson::Document)
+                .collect::<Vec<_>>(),
+        );
+        document.insert(
+            "creditsCharged",
+            bson_compat::js_number(self.credits_charged),
+        );
+        bson_compat::normalize_document(&mut document);
+        document
+    }
+    fn fields_document(&self) -> Document {
+        doc! {"_id": string(&self.id), "channelID": string(&self.channel_id), "terms": self.terms.iter().map(string).collect::<Vec<_>>(),
+        "state": self.state.as_str(), "entries": self.entries.iter().map(generated_variation_to_bson).collect::<Vec<_>>(),
+        "error": string(&self.error), "attempts": bson_compat::js_number(self.attempts), "createdAt": self.created_at,
+        "deadline": self.deadline, "expiresAt": self.expires_at, "model": string(&self.model), "version": string(&self.version)}
     }
 }
 
@@ -235,6 +267,30 @@ impl VariationJob {
     /// Decode a complete application-typed job, rejecting other valid Mixed
     /// or missing shapes instead of silently coercing them.
     pub fn from_document(document: &Document) -> Result<Self, &'static str> {
+        let usage = document
+            .get("providerUsage")
+            .ok_or("missing providerUsage")?
+            .clone();
+        Self::from_document_with_usage(document, usage)
+    }
+    /// Decode an owned raw document without cloning its provider usage records.
+    pub fn from_owned_document(mut document: Document) -> Result<Self, &'static str> {
+        let usage = document
+            .remove("providerUsage")
+            .ok_or("missing providerUsage")?;
+        Self::from_document_with_usage(&document, usage)
+    }
+    fn from_document_with_usage(document: &Document, usage: Bson) -> Result<Self, &'static str> {
+        let provider_usage = match usage {
+            Bson::Array(records) => records
+                .into_iter()
+                .map(|record| match record {
+                    Bson::Document(record) => Ok(record),
+                    _ => Err("expected providerUsage record"),
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+            _ => return Err("expected providerUsage array"),
+        };
         let state = match document.get_str("state").map_err(|_| "expected state")? {
             "reserved" => VariationJobState::Reserved,
             "pending" => VariationJobState::Pending,
@@ -268,10 +324,7 @@ impl VariationJob {
             expires_at: read_date(document, "expiresAt")?,
             model: read_string(document, "model")?,
             version: read_string(document, "version")?,
-            provider_usage: document
-                .get("providerUsage")
-                .ok_or("missing providerUsage")?
-                .clone(),
+            provider_usage,
             credits_charged: read_number(document, "creditsCharged")?,
         })
     }
