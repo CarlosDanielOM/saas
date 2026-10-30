@@ -22,9 +22,9 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-30 functional API admin and service slices",
+    "asOf": "2026-10-30 functional observability ingress route",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 54,
+    "locallyCompleteMappings": 55,
     "partialRows": 25,
     "archivedSourceSnapshots": 60,
     "liveBaselineTypeScriptFiles": 746,
@@ -49761,23 +49761,41 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-direct-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/server/routes/observability.route.rs",
+        "dimabot/tests/observability_route.rs",
+        "migration-notes/observability-route-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Normal typed ingress protocol, permitted URL/header forwarding, JSON and ordinary URL-encoded forms, upstream status/body handling, deadlines and cancellation are covered by actual-source and native loopback checks.",
+        "Ambiguous object/array form collisions and prototype form keys return 400; malformed-body errors use JSON rather than Express HTML; Express ETag/req.fresh behavior is not emulated.",
+        "The TypeScript source remains live. Native app-server mount/bootstrap adoption, cutover, and deployment are not established."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/server/routes/observability.route.ts: live Express ingress and mount remain in the application"
+        ],
+        "runtimeStatus": "Native route is locally verified; app-server mount/bootstrap adoption and caller cutover remain open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/observability_route_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/observability_route.rs",
+          "migration-notes/observability-route-handoff.md"
+        ],
+        "status": "Actual Express 4.22.2/body-parser 1.20.6/qs 6.15.3 and Node fetch oracle covered 24 cases. Final compiler-fixtures run passed 13 native tests (3 library, 10 integration), with the ignored source replay explicitly included; formatting, scoped all-target Clippy -D warnings, minimal all-target check, and all-feature all-target Clippy -D warnings passed. See the handoff for exact source tree, receipts, fixture hash, and boundaries."
       },
       "exports": [
         {
           "name": "observabilityRoute",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "observabilityRoute maps to the opt-in native Axum observability proxy module.",
+          "evidence": [
+            "dimabot/src/server/routes/observability.route.rs",
+            "migration-notes/observability-route-handoff.md"
+          ]
         }
       ],
       "imports": [
@@ -49787,15 +49805,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Express router import",
+          "runtimeOrTypeDependency": "Express provides the source routing surface; native ingress is implemented with the existing Axum HTTP stack.",
+          "defaultSideEffectBarrelDetails": "No separate project side-effect/barrel dependency is required for the local route contract.",
+          "directDependencyReview": "Reviewed: required routing and HTTP forwarding behavior has a concrete native Axum/reqwest implementation.",
+          "transitiveDependencyReview": "Reviewed for the bounded ingress protocol; app-server mount/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native proxy and loopback integration tests exist; mount adoption remains a separate open dependency."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-ingress-proxy-and-direct-dependencies-verified;source-live;app-server-mount-and-caller-adoption-open"
     },
     {
       "source": "src/server/routes/overlay-studio.route.ts",

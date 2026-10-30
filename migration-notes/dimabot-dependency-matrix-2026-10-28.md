@@ -207,6 +207,12 @@ Eight still-live TypeScript source rows now map to verified local native impleme
 
 Exactly these eight JSON rows changed; the other 798 rows and unrelated top-level inventory data are unchanged. The rollup is **54 locally complete, 25 partial, 60 archived, and 746 live baseline TypeScript files** among 806 rows, including six excluded React Email templates in the live count. Total completion remains `null`. See the [API admin handoff](api-admin-handoff.md), [API auth handoff](api-auth-handoff.md), [embeddings handoff](ai-embeddings-handoff.md), and [functional batch note](functional-migration-batches-2026-10-30.md).
 
+## Observability ingress route — 2026-10-30
+
+The still-live `src/server/routes/observability.route.ts` row now maps to a verified local Axum/HTTP proxy. Actual Express/body-parser/qs and Node-fetch checks covered 24 cases; 13 native tests passed, including loopback HTTP behavior for ordinary URL-encoded forms, redirect rejection, 204/304, deadlines, cancellation, and cache-control handling. Formatting, scoped strict Clippy, minimal checks, and all-feature strict Clippy passed. Native app-server mount/caller adoption remains open; ETag freshness and malformed-body error wording remain boundaries.
+
+Exactly this one JSON row changed. The rollup is **55 locally complete, 25 partial, 60 archived, and 746 live baseline TypeScript files** among 806 rows, including six excluded React Email templates in the live count. Total completion remains `null`. No source retirement, benchmark, or deployment is claimed. See the [observability route handoff](observability-route-handoff.md).
+
 ## Functional ordinary application schema retirement — 2026-10-30
 
 Nine schema source rows are now locally complete and archived byte-for-byte: `temporary_moderator`, `vip`, `title_config`, `trigger_file`, `eventsub`, `site_analytics`, `follow_attack_log`, `follow_defense_action`, and `follow_hate_raid_source`. They map to six ordinary native models and four follow-defense models using the shared schema core and concrete MongoDB driver repositories. The source-bound checks passed 11 unique tests, five timezone replay invocations, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile, and all-feature/all-target strict checks. The existing BitsStore source/private-Mongo fixture passed after retirement. No performance run or caller-adoption/cutover claim is included.
