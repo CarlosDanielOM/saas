@@ -1,0 +1,120 @@
+{
+  "status": "exploratory prepared-operation baseline verified; mixed results",
+  "inputSha256BeforeAndAfter": "65c16f8fbd2545584bef7c8a23a684e890bc465e7c23872b7c72310e06cf38f5",
+  "rows": [
+    {
+      "name": "ordinary-numeric",
+      "nodeMedianNsPerOp": 2141.788803100586,
+      "rustOwnedMedianNsPerOp": 2534.5115814208984,
+      "rustPercentLowerMedian": -18.33620465994512,
+      "nodeRangeNsPerOp": [
+        2009.2501831054688,
+        2246.244857788086
+      ],
+      "rustRangeNsPerOp": [
+        2349.4478302001953,
+        2720.449462890625
+      ]
+    },
+    {
+      "name": "nested-mixed",
+      "nodeMedianNsPerOp": 4909.444595336914,
+      "rustOwnedMedianNsPerOp": 3001.260787963867,
+      "rustPercentLowerMedian": 38.86761058848647,
+      "nodeRangeNsPerOp": [
+        4560.113189697266,
+        6150.074432373047
+      ],
+      "rustRangeNsPerOp": [
+        2960.098175048828,
+        3140.0447387695312
+      ]
+    },
+    {
+      "name": "bson-specials",
+      "nodeMedianNsPerOp": 9951.388656616211,
+      "rustOwnedMedianNsPerOp": 5741.194519042969,
+      "rustPercentLowerMedian": 42.307604323885805,
+      "nodeRangeNsPerOp": [
+        9421.437866210938,
+        10637.790954589844
+      ],
+      "rustRangeNsPerOp": [
+        5547.847900390625,
+        6116.700607299805
+      ]
+    },
+    {
+      "name": "large-context-arrays",
+      "nodeMedianNsPerOp": 63102.116943359375,
+      "rustOwnedMedianNsPerOp": 109537.39208984375,
+      "rustPercentLowerMedian": -73.5875076713588,
+      "nodeRangeNsPerOp": [
+        61155.558349609375,
+        67418.47094726562
+      ],
+      "rustRangeNsPerOp": [
+        101549.38012695312,
+        138389.4775390625
+      ]
+    }
+  ],
+  "sourceTreeRustAndFinalCheck": "6c199f40fefd469346533f57182204a8ee1aedce66dde9ace6e00a9b8c7971bb",
+  "nodeTimingRun": "node-1793353414300906233",
+  "rustTimingRun": "compiler-1793354095104743193",
+  "finalCheckRun": "node-1793354263387812460",
+  "sourceBindingNote": "Node timing source tree5cb3c5a8... differs only in later worker edits; all14 benchmark input source hashes independently matched before Rust and final Node --check reconstructed the identical input. No benchmark-source change between actors.",
+  "method": "4x32 distinct predecoded real SDK BSON documents;7sequential samples+1full-pass warmup peractor; exact128wire/checksum comparisons before timing; JSON output+UTF8fullbytesum included; decode/inputparse/setup/I/O excluded",
+  "limits": "6CPU4GiBno-swap256PIDCargo2; no simultaneous timing/compiler work",
+  "limitations": [
+    "one process block peractor; no alternated/fresh-process repeat or end-to-endproduction claim",
+    "two regressions retained: ordinary and large contexts",
+    "NodeallocatesUTF8Buffer; Rustserializes intoUTF8String and materializesownedJsonValue in this baseline"
+  ],
+  "compilerMetrics": {
+    "phase": "compiler",
+    "success": true,
+    "steps": [
+      {
+        "name": "bootstrap",
+        "seconds": 4.661,
+        "exit_code": 0
+      },
+      {
+        "name": "locked-fetch",
+        "seconds": 3.129,
+        "exit_code": 0
+      },
+      {
+        "name": "compiler",
+        "seconds": 115.608,
+        "exit_code": 0
+      }
+    ],
+    "limits": {
+      "cpus": 6,
+      "memory": 4294967296,
+      "memory_swap": 4294967296,
+      "pids": 256,
+      "cargo_jobs": 2
+    },
+    "source_tree_sha256": "6c199f40fefd469346533f57182204a8ee1aedce66dde9ace6e00a9b8c7971bb",
+    "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9",
+    "headroom_start": {
+      "mem_available_bytes": 10869055488,
+      "load_1m": 1.37841796875
+    },
+    "minimum_available_bytes": 10606145536,
+    "peak_cache_bytes": 7753998336,
+    "limits_verified": true,
+    "production_unchanged": true,
+    "elapsed_seconds": 125.637
+  },
+  "benchmarkExecutable": {
+    "artifact": "bson-js-json/benchmark1-final/owned-baseline-benchmark",
+    "sha256": "5b82ac1ceaf3150d72461eed62c10f8503aea89a2df3e25d1e7addcc30eb542d",
+    "bytes": 1748328,
+    "purpose": "immutable owned baseline; not deployed application size"
+  },
+  "codeCommit": "65d600dc"
+}

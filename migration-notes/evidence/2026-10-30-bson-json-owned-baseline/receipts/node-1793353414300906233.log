@@ -1,0 +1,6 @@
+v24.22.1
+{"mode":"--write","sha256":"bb23cdda5a0c412c6707556e8bd53758882aac6e3f306aafd8b164fdc9288bd8","records":41}
+{"mode":"--check","sha256":"bb23cdda5a0c412c6707556e8bd53758882aac6e3f306aafd8b164fdc9288bd8","records":41}
+bson-js-json-reference.json sha256=13f2bb85426b09f2367881e0cee3902cf08f4490ea39c0ce3ce80a1c0e41a4be records=54
+bson-js-json-reference.json sha256=13f2bb85426b09f2367881e0cee3902cf08f4490ea39c0ce3ce80a1c0e41a4be records=54
+{"mode":"--write","inputSha256":"65c16f8fbd2545584bef7c8a23a684e890bc465e7c23872b7c72310e06cf38f5"}
