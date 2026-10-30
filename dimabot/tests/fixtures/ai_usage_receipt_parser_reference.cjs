@@ -332,7 +332,7 @@ const sourceFiles = [
   'src/utils/credit_policy.rs','src/utils/tts/usage.rs','src/utils/tts/settings.rs',
   'src/utils/js_string.rs','src/utils/lossless_json.rs','src/utils/js_compat.rs','src/utils/json_number.rs','src/utils/bson_compat.rs',
   'src/utils/ai_usage_receipt_parser.rs','tests/ai_usage_receipt_parser.rs',
-  'src/utils/lossless_json_view.rs','tests/lossless_json_view.rs',
+  'src/utils/lossless_json_view.rs','src/utils/lossless_json_document.rs','tests/lossless_json_view.rs',
   'src/utils/mod.rs','Cargo.toml','Cargo.lock','package.json','package-lock.json',
   'tests/fixtures/ai_usage_receipt_parser_reference.cjs',
 ];

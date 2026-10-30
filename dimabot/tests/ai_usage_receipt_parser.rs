@@ -579,7 +579,7 @@ fn verify_provenance(fixture: &JsonValue) {
     let hashes = object(field(metadata, "hashes"));
     assert_eq!(
         hashes.len(),
-        32,
+        33,
         "complete source/helper/package/lock/reader hashes required"
     );
     for (file, digest) in hashes {
@@ -610,6 +610,7 @@ fn verify_provenance(fixture: &JsonValue) {
         "src/utils/json_number.rs",
         "src/utils/bson_compat.rs",
         "src/utils/lossless_json_view.rs",
+        "src/utils/lossless_json_document.rs",
         "tests/lossless_json_view.rs",
         "src/utils/mod.rs",
         "Cargo.toml",

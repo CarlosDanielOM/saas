@@ -353,7 +353,7 @@ function provenance() {
     'src/schemas/mod.rs','src/schemas/schema.rs',...Object.values(schemas).map(f=>f.replace(/\.ts$/,'.rs')),
     'src/utils/ai_usage_ledger_queries.rs','src/utils/ai_usage_ledger_reads.rs','src/utils/ai_usage_receipt_parser.rs',
     'src/utils/ai_usage.rs','src/utils/bson_compat.rs','src/utils/credit_policy.rs','src/utils/js_string.rs',
-    'src/utils/json_number.rs','src/utils/lossless_json.rs','src/utils/lossless_json_view.rs',
+    'src/utils/json_number.rs','src/utils/lossless_json.rs','src/utils/lossless_json_view.rs','src/utils/lossless_json_document.rs',
     'src/utils/js_compat.rs','src/utils/tts/settings.rs','src/utils/tts/usage.rs',
     'tests/ai_usage_ledger_queries.rs','tests/fixtures/ai_usage_ledger_queries_reference.cjs'];
   const hashes=Object.fromEntries([...new Set([...Object.keys(pins),...native])]

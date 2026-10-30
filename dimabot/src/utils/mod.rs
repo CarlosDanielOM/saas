@@ -187,6 +187,8 @@ pub mod keywords;
 pub mod logger;
 #[cfg(feature = "lossless-json")]
 pub mod lossless_json;
+#[cfg(feature = "lossless-json")]
+pub mod lossless_json_document;
 #[cfg(feature = "lossless-json-view")]
 pub mod lossless_json_view;
 #[cfg(feature = "application-schemas")]
