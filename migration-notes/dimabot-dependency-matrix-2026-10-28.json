@@ -22,9 +22,9 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-30 functional observability ingress route",
+    "asOf": "2026-10-30 functional media and extension schema batch",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 55,
+    "locallyCompleteMappings": 61,
     "partialRows": 25,
     "archivedSourceSnapshots": 60,
     "liveBaselineTypeScriptFiles": 746,
@@ -35250,53 +35250,97 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/schemas/channel_extension_item.schema.rs",
+        "dimabot/src/schemas/media_extension_schema_values.rs",
+        "dimabot/src/schemas/schema.rs",
+        "dimabot/tests/media_extension_schemas.rs",
+        "migration-notes/media-extension-schemas-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native schema enforces assetID unless the resolved category is tts, including the default video category. This row does not claim DimaFX purchase/fulfillment route adoption.",
+        "TypeScript source remains live; caller adoption and deployment are not established."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/schemas/channel_extension_item.schema.ts: source model remains live; references to related TypeScript types were reviewed for this bounded slice"
+        ],
+        "runtimeStatus": "Native schemas and repository helpers are available under an opt-in feature; TypeScript consumer services/routes remain active and unadopted."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/media_extension_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/media_extension_schemas.rs",
+          "migration-notes/media-extension-schemas-handoff.md"
+        ],
+        "status": "The exact source replay covered 35 cases. Four focused tests, one source replay, one private Mongo test, and eight shared-core regressions passed. Mongo covered wallet memory/storage/hydration and first/repeated inventory/playback upserts. An older composite-default replay was not rerun and is excluded from these results; see the handoff."
       },
       "exports": [
         {
           "name": "ChannelExtensionItemCategory",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ChannelExtensionItemCategory maps to the native channel_extension_item schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/channel_extension_item.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "ChannelExtensionItemDocument",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ChannelExtensionItemDocument maps to the native channel_extension_item schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/channel_extension_item.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "ChannelExtensionItemSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ChannelExtensionItemSchema maps to the native channel_extension_item schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/channel_extension_item.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "ChannelExtensionItemTtsConfig",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ChannelExtensionItemTtsConfig maps to the native channel_extension_item schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/channel_extension_item.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "ChannelExtensionItemTtsLanguage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ChannelExtensionItemTtsLanguage maps to the native channel_extension_item schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/channel_extension_item.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "ChannelExtensionItemTtsMode",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ChannelExtensionItemTtsMode maps to the native channel_extension_item schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/channel_extension_item.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "IChannelExtensionItem",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IChannelExtensionItem maps to the native channel_extension_item schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/channel_extension_item.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         }
       ],
       "imports": [
@@ -35313,12 +35357,12 @@
           "baselineSourceTargets": [
             "src/schemas/media_asset.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only MediaAssetType import",
+          "runtimeOrTypeDependency": "Type-only dependency on the sibling MediaAssetType union.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect import is required for the local schema contract.",
+          "directDependencyReview": "Reviewed for the bounded media/extension schema contract; native model/type mapping is concrete.",
+          "transitiveDependencyReview": "Reviewed within this schema feature; full caller services and route orchestration remain open.",
+          "rustReplacementOrGap": "Mapped to the native media_asset module type under the same feature."
         },
         {
           "ordinal": 1,
@@ -35326,12 +35370,12 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose schema construction, model export, casts/defaults and indexes for this schema.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect import is required for the local schema contract.",
+          "directDependencyReview": "Reviewed for the bounded media/extension schema contract; native model/type mapping is concrete.",
+          "transitiveDependencyReview": "Reviewed within this schema feature; full caller services and route orchestration remain open.",
+          "rustReplacementOrGap": "Native SchemaDefinition descriptor, typed values and concrete MongoDB driver repositories are covered by the feature."
         }
       ],
       "rowAssessment": "unreviewed-no-feature-completion-inferred"
@@ -37327,28 +37371,52 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/schemas/dimafx_playback.schema.rs",
+        "dimabot/src/schemas/media_extension_schema_values.rs",
+        "dimabot/src/schemas/schema.rs",
+        "dimabot/tests/media_extension_schemas.rs",
+        "migration-notes/media-extension-schemas-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The bounded atomic equality upsert preserves playback state across repeated writes; unsupported arbitrary update/filter shapes are rejected. The TypeScript queue handler remains active and unadopted.",
+        "TypeScript source remains live; caller adoption and deployment are not established."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/schemas/dimafx_playback.schema.ts: source model remains live; references to related TypeScript types were reviewed for this bounded slice"
+        ],
+        "runtimeStatus": "Native schemas and repository helpers are available under an opt-in feature; TypeScript consumer services/routes remain active and unadopted."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/media_extension_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/media_extension_schemas.rs",
+          "migration-notes/media-extension-schemas-handoff.md"
+        ],
+        "status": "The exact source replay covered 35 cases. Four focused tests, one source replay, one private Mongo test, and eight shared-core regressions passed. Mongo covered wallet memory/storage/hydration and first/repeated inventory/playback upserts. An older composite-default replay was not rerun and is excluded from these results; see the handoff."
       },
       "exports": [
         {
           "name": "DimafxPlaybackSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "DimafxPlaybackSchema maps to the native dimafx_playback schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/dimafx_playback.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "IDimafxPlayback",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IDimafxPlayback maps to the native dimafx_playback schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/dimafx_playback.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         }
       ],
       "imports": [
@@ -37365,12 +37433,12 @@
           "baselineSourceTargets": [
             "src/handlers/dimafx_queue.handler.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only DimafxQueueItem import",
+          "runtimeOrTypeDependency": "Type-only shape dependency from the live TypeScript queue handler.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect import is required for the local schema contract.",
+          "directDependencyReview": "Reviewed for the bounded media/extension schema contract; native model/type mapping is concrete.",
+          "transitiveDependencyReview": "Reviewed within this schema feature; full caller services and route orchestration remain open.",
+          "rustReplacementOrGap": "Native playback DTO supports this schema slice; the queue handler/service itself remains TypeScript and unadopted."
         },
         {
           "ordinal": 1,
@@ -37378,12 +37446,12 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose schema construction, model export, casts/defaults and indexes for this schema.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect import is required for the local schema contract.",
+          "directDependencyReview": "Reviewed for the bounded media/extension schema contract; native model/type mapping is concrete.",
+          "transitiveDependencyReview": "Reviewed within this schema feature; full caller services and route orchestration remain open.",
+          "rustReplacementOrGap": "Native SchemaDefinition descriptor, typed values and concrete MongoDB driver repositories are covered by the feature."
         }
       ],
       "rowAssessment": "unreviewed-no-feature-completion-inferred"
@@ -37752,38 +37820,70 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/schemas/extension_wallet_transaction.schema.rs",
+        "dimabot/src/schemas/media_extension_schema_values.rs",
+        "dimabot/src/schemas/schema.rs",
+        "dimabot/tests/media_extension_schemas.rs",
+        "migration-notes/media-extension-schemas-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Wallet metadata may be absent in minimized stored BSON and hydrates as an empty typed document. Full wallet transaction orchestration remains in TypeScript.",
+        "TypeScript source remains live; caller adoption and deployment are not established."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/schemas/extension_wallet_transaction.schema.ts: source model remains live; references to related TypeScript types were reviewed for this bounded slice"
+        ],
+        "runtimeStatus": "Native schemas and repository helpers are available under an opt-in feature; TypeScript consumer services/routes remain active and unadopted."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/media_extension_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/media_extension_schemas.rs",
+          "migration-notes/media-extension-schemas-handoff.md"
+        ],
+        "status": "The exact source replay covered 35 cases. Four focused tests, one source replay, one private Mongo test, and eight shared-core regressions passed. Mongo covered wallet memory/storage/hydration and first/repeated inventory/playback upserts. An older composite-default replay was not rerun and is excluded from these results; see the handoff."
       },
       "exports": [
         {
           "name": "ExtensionWalletTransactionDocument",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ExtensionWalletTransactionDocument maps to the native extension_wallet_transaction schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/extension_wallet_transaction.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "ExtensionWalletTransactionSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ExtensionWalletTransactionSchema maps to the native extension_wallet_transaction schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/extension_wallet_transaction.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "ExtensionWalletTransactionType",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ExtensionWalletTransactionType maps to the native extension_wallet_transaction schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/extension_wallet_transaction.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "IExtensionWalletTransaction",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IExtensionWalletTransaction maps to the native extension_wallet_transaction schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/extension_wallet_transaction.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         }
       ],
       "imports": [
@@ -37800,12 +37900,12 @@
           "baselineSourceTargets": [
             "src/schemas/user_extension_inventory.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only ExtensionPlatform import",
+          "runtimeOrTypeDependency": "Type-only dependency on the inventory platform union.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect import is required for the local schema contract.",
+          "directDependencyReview": "Reviewed for the bounded media/extension schema contract; native model/type mapping is concrete.",
+          "transitiveDependencyReview": "Reviewed within this schema feature; full caller services and route orchestration remain open.",
+          "rustReplacementOrGap": "Mapped to the shared native media-extension platform type."
         },
         {
           "ordinal": 1,
@@ -37813,12 +37913,12 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose schema construction, model export, casts/defaults and indexes for this schema.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect import is required for the local schema contract.",
+          "directDependencyReview": "Reviewed for the bounded media/extension schema contract; native model/type mapping is concrete.",
+          "transitiveDependencyReview": "Reviewed within this schema feature; full caller services and route orchestration remain open.",
+          "rustReplacementOrGap": "Native SchemaDefinition descriptor, typed values and concrete MongoDB driver repositories are covered by the feature."
         }
       ],
       "rowAssessment": "unreviewed-no-feature-completion-inferred"
@@ -38232,48 +38332,88 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/schemas/media_asset.schema.rs",
+        "dimabot/src/schemas/media_extension_schema_values.rs",
+        "dimabot/src/schemas/schema.rs",
+        "dimabot/tests/media_extension_schemas.rs",
+        "migration-notes/media-extension-schemas-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native schema contract and asset fields/indexes were checked. This row does not claim upload/storage service orchestration or caller adoption.",
+        "TypeScript source remains live; caller adoption and deployment are not established."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/schemas/media_asset.schema.ts: source model remains live; references to related TypeScript types were reviewed for this bounded slice"
+        ],
+        "runtimeStatus": "Native schemas and repository helpers are available under an opt-in feature; TypeScript consumer services/routes remain active and unadopted."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/media_extension_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/media_extension_schemas.rs",
+          "migration-notes/media-extension-schemas-handoff.md"
+        ],
+        "status": "The exact source replay covered 35 cases. Four focused tests, one source replay, one private Mongo test, and eight shared-core regressions passed. Mongo covered wallet memory/storage/hydration and first/repeated inventory/playback upserts. An older composite-default replay was not rerun and is excluded from these results; see the handoff."
       },
       "exports": [
         {
           "name": "IMediaAsset",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IMediaAsset maps to the native media_asset schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/media_asset.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "MediaAssetDocument",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MediaAssetDocument maps to the native media_asset schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/media_asset.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "MediaAssetMarketplaceStatus",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MediaAssetMarketplaceStatus maps to the native media_asset schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/media_asset.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "MediaAssetSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MediaAssetSchema maps to the native media_asset schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/media_asset.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "MediaAssetScope",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MediaAssetScope maps to the native media_asset schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/media_asset.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "MediaAssetType",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MediaAssetType maps to the native media_asset schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/media_asset.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         }
       ],
       "imports": [
@@ -38283,12 +38423,12 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose schema construction, model export, casts/defaults and indexes for this schema.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect import is required for the local schema contract.",
+          "directDependencyReview": "Reviewed for the bounded media/extension schema contract; native model/type mapping is concrete.",
+          "transitiveDependencyReview": "Reviewed within this schema feature; full caller services and route orchestration remain open.",
+          "rustReplacementOrGap": "Native SchemaDefinition descriptor, typed values and concrete MongoDB driver repositories are covered by the feature."
         }
       ],
       "rowAssessment": "unreviewed-no-feature-completion-inferred"
@@ -40073,68 +40213,124 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/schemas/user_extension_inventory.schema.rs",
+        "dimabot/src/schemas/media_extension_schema_values.rs",
+        "dimabot/src/schemas/schema.rs",
+        "dimabot/tests/media_extension_schemas.rs",
+        "migration-notes/media-extension-schemas-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The bounded atomic equality upsert preserves defaults, timestamps and balance across repeated writes; unsupported arbitrary update/filter shapes are rejected. This does not claim complete wallet purchase/refund orchestration.",
+        "TypeScript source remains live; caller adoption and deployment are not established."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/schemas/user_extension_inventory.schema.ts: source model remains live; references to related TypeScript types were reviewed for this bounded slice"
+        ],
+        "runtimeStatus": "Native schemas and repository helpers are available under an opt-in feature; TypeScript consumer services/routes remain active and unadopted."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/media_extension_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/media_extension_schemas.rs",
+          "migration-notes/media-extension-schemas-handoff.md"
+        ],
+        "status": "The exact source replay covered 35 cases. Four focused tests, one source replay, one private Mongo test, and eight shared-core regressions passed. Mongo covered wallet memory/storage/hydration and first/repeated inventory/playback upserts. An older composite-default replay was not rerun and is excluded from these results; see the handoff."
       },
       "exports": [
         {
           "name": "DEFAULT_EXTENSION_INVENTORY_CONFIG",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "DEFAULT_EXTENSION_INVENTORY_CONFIG maps to the native user_extension_inventory schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_extension_inventory.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "ExtensionPlatform",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ExtensionPlatform maps to the native user_extension_inventory schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_extension_inventory.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "IUserExtensionInventory",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IUserExtensionInventory maps to the native user_extension_inventory schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_extension_inventory.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "IUserExtensionInventoryConfig",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IUserExtensionInventoryConfig maps to the native user_extension_inventory schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_extension_inventory.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "IUserExtensionInventoryItem",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IUserExtensionInventoryItem maps to the native user_extension_inventory schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_extension_inventory.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "InventoryItemSource",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "InventoryItemSource maps to the native user_extension_inventory schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_extension_inventory.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "QuickPurchaseAction",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "QuickPurchaseAction maps to the native user_extension_inventory schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_extension_inventory.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "QuickPurchasePriority",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "QuickPurchasePriority maps to the native user_extension_inventory schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_extension_inventory.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "UserExtensionInventoryDocument",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "UserExtensionInventoryDocument maps to the native user_extension_inventory schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_extension_inventory.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "UserExtensionInventorySchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "UserExtensionInventorySchema maps to the native user_extension_inventory schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_extension_inventory.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         }
       ],
       "imports": [
@@ -40144,12 +40340,12 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose schema construction, model export, casts/defaults and indexes for this schema.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect import is required for the local schema contract.",
+          "directDependencyReview": "Reviewed for the bounded media/extension schema contract; native model/type mapping is concrete.",
+          "transitiveDependencyReview": "Reviewed within this schema feature; full caller services and route orchestration remain open.",
+          "rustReplacementOrGap": "Native SchemaDefinition descriptor, typed values and concrete MongoDB driver repositories are covered by the feature."
         }
       ],
       "rowAssessment": "unreviewed-no-feature-completion-inferred"
@@ -40164,38 +40360,70 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/schemas/user_media_library_item.schema.rs",
+        "dimabot/src/schemas/media_extension_schema_values.rs",
+        "dimabot/src/schemas/schema.rs",
+        "dimabot/tests/media_extension_schemas.rs",
+        "migration-notes/media-extension-schemas-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native schema contract was checked. This row does not claim media-library service or route orchestration.",
+        "TypeScript source remains live; caller adoption and deployment are not established."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/schemas/user_media_library_item.schema.ts: source model remains live; references to related TypeScript types were reviewed for this bounded slice"
+        ],
+        "runtimeStatus": "Native schemas and repository helpers are available under an opt-in feature; TypeScript consumer services/routes remain active and unadopted."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/media_extension_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/media_extension_schemas.rs",
+          "migration-notes/media-extension-schemas-handoff.md"
+        ],
+        "status": "The exact source replay covered 35 cases. Four focused tests, one source replay, one private Mongo test, and eight shared-core regressions passed. Mongo covered wallet memory/storage/hydration and first/repeated inventory/playback upserts. An older composite-default replay was not rerun and is excluded from these results; see the handoff."
       },
       "exports": [
         {
           "name": "IUserMediaLibraryItem",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IUserMediaLibraryItem maps to the native user_media_library_item schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_media_library_item.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "UserMediaLibraryItemDocument",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "UserMediaLibraryItemDocument maps to the native user_media_library_item schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_media_library_item.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "UserMediaLibraryItemSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "UserMediaLibraryItemSchema maps to the native user_media_library_item schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_media_library_item.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         },
         {
           "name": "UserMediaLibraryRelationType",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "UserMediaLibraryRelationType maps to the native user_media_library_item schema module or shared media-extension typed values.",
+          "evidence": [
+            "dimabot/src/schemas/user_media_library_item.schema.rs",
+            "dimabot/src/schemas/media_extension_schema_values.rs",
+            "dimabot/tests/media_extension_schemas.rs"
+          ]
         }
       ],
       "imports": [
@@ -40205,12 +40433,12 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose schema construction, model export, casts/defaults and indexes for this schema.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect import is required for the local schema contract.",
+          "directDependencyReview": "Reviewed for the bounded media/extension schema contract; native model/type mapping is concrete.",
+          "transitiveDependencyReview": "Reviewed within this schema feature; full caller services and route orchestration remain open.",
+          "rustReplacementOrGap": "Native SchemaDefinition descriptor, typed values and concrete MongoDB driver repositories are covered by the feature."
         }
       ],
       "rowAssessment": "unreviewed-no-feature-completion-inferred"

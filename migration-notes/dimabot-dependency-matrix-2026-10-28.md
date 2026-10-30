@@ -213,6 +213,12 @@ The still-live `src/server/routes/observability.route.ts` row now maps to a veri
 
 Exactly this one JSON row changed. The rollup is **55 locally complete, 25 partial, 60 archived, and 746 live baseline TypeScript files** among 806 rows, including six excluded React Email templates in the live count. Total completion remains `null`. No source retirement, benchmark, or deployment is claimed. See the [observability route handoff](observability-route-handoff.md).
 
+## Media and extension schema mappings — 2026-10-30
+
+Six still-live schema rows now map to native models and typed helpers under `media-extension-schemas`: media asset, user media-library item, channel extension item, user extension inventory, extension wallet transaction, and DimaFX playback. The source oracle covered 35 cases; 14 native checks passed (four focused, one source replay, one private Mongo, eight shared-core regressions). The exact Mongo checks covered wallet storage/hydration plus repeated inventory and playback upserts. One older composite-default replay was not rerun. Full caller services, source retirement, and deployment remain open.
+
+Exactly these six JSON rows changed; the other 800 rows and unrelated top-level data are unchanged. The rollup is **61 locally complete, 25 partial, 60 archived, and 746 live baseline TypeScript files** among 806 rows, including six excluded React Email templates in the live count. Total completion remains `null`. See the [media and extension schema handoff](media-extension-schemas-handoff.md).
+
 ## Functional ordinary application schema retirement — 2026-10-30
 
 Nine schema source rows are now locally complete and archived byte-for-byte: `temporary_moderator`, `vip`, `title_config`, `trigger_file`, `eventsub`, `site_analytics`, `follow_attack_log`, `follow_defense_action`, and `follow_hate_raid_source`. They map to six ordinary native models and four follow-defense models using the shared schema core and concrete MongoDB driver repositories. The source-bound checks passed 11 unique tests, five timezone replay invocations, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile, and all-feature/all-target strict checks. The existing BitsStore source/private-Mongo fixture passed after retirement. No performance run or caller-adoption/cutover claim is included.
