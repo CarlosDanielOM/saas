@@ -1,0 +1,9 @@
+{
+  "original_15_normalization_cases_unchanged": true,
+  "additional_NEL_cases": 4,
+  "all_existing_policy_constructor_BSON_protocol_outputs_unchanged": true,
+  "new_native_dependency_binding": "src/utils/js_compat.rs",
+  "benchmark_inputs_reports_untouched": true,
+  "old_fixture_sha256": "96a218de85eaf7103096cd31e24ec6edfe9f136186f7698c5ec77dfcb8971441",
+  "new_fixture_sha256": "5e38de829d73754dd6f26f2d6b46fa47c0cf05b1bf2ea1e548d1b7604a51ff12"
+}

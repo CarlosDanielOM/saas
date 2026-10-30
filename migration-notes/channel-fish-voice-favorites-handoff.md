@@ -1,6 +1,10 @@
 # Fish voice favorites: implementation and verification handoff
 
-**Status: accepted local typed-feature and dependency closure; source/test retirement is post-retirement verified.** The frozen implementation is commit `999c94441cadb586916c512fe59bbb0bf6f4a428`, tree SHA-256 `52fbe671459e76370cc9cf73b05dd94a008fce3f220c25478611e58b61c49380`, covering 1,504 inputs (1,494 Git plus ten reused SDK inputs), all hash-verified. The two TypeScript Fish favorites files are archived byte-exactly. All six Fish tests, the full source Mongoose/BSON protocol, Unicode corpora and strict checks passed. Two clean benchmark orders also passed. Application caller adoption and deployment are separate; Grok's read-only review of this exact frozen source is still pending.
+**Status: accepted local typed-feature and dependency closure; source/test retirement is post-retirement verified.** The frozen implementation is commit `999c94441cadb586916c512fe59bbb0bf6f4a428`, tree SHA-256 `52fbe671459e76370cc9cf73b05dd94a008fce3f220c25478611e58b61c49380`, covering 1,504 inputs (1,494 Git plus ten reused SDK inputs), all hash-verified. The two TypeScript Fish favorites files are archived byte-exactly. All six Fish tests, the full source Mongoose/BSON protocol, Unicode corpora and strict checks passed. Two clean benchmark orders also passed. Application caller adoption and deployment are separate. Grok 4.7 at xhigh completed a read-only review of this exact frozen source with no actionable findings; the review limits and supplemental proof epoch are recorded in the [dated review note](fish-favorites-review-2026-10-30.md).
+
+## Independent review and supplemental evidence
+
+The Grok review matched the frozen optimized3 source and rejected confirmation4. It was static only and did not run the toolchain or rehash all inputs; the parent had already verified the source binding. It found no actionable defect and left the bounded real-Mongo scheduling limits explicit. A separate follow-up added `js_compat.rs` and four NEL cases to the functional oracle while preserving prior protocol/schema/BSON behavior. This is a supplemental proof epoch, not a new Fish application implementation or benchmark run. See the [review note](fish-favorites-review-2026-10-30.md).
 
 ## Source contract and native mapping
 

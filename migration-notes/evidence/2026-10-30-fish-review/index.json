@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "package": "2026-10-30-fish-review",
+  "payloadCount": 18,
+  "payloads": [
+    {
+      "path": "artifacts/attempt1/oracle/channel_fish_voice_favorites.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/fish-review/attempt1/oracle/channel_fish_voice_favorites.json",
+      "rawSha256": "5e38de829d73754dd6f26f2d6b46fa47c0cf05b1bf2ea1e548d1b7604a51ff12",
+      "storedSha256": "5b2c8cc6ccb7f170464fd5a2eef192c973a8cb220bb8606adaa13658771aaca8",
+      "rawBytes": 86842,
+      "storedBytes": 5961,
+      "encoding": "gzip"
+    },
+    {
+      "path": "artifacts/attempt1/production-after.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/fish-review/attempt1/production-after.json",
+      "rawSha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "storedSha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "rawBytes": 27004,
+      "storedBytes": 27004,
+      "encoding": "identity"
+    },
+    {
+      "path": "artifacts/attempt1/semantic-comparison.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/fish-review/attempt1/semantic-comparison.json",
+      "rawSha256": "bdf7954e310d422b20f06387a47b4af6f62de4b3a46580a498c229cd4e01f496",
+      "storedSha256": "bdf7954e310d422b20f06387a47b4af6f62de4b3a46580a498c229cd4e01f496",
+      "rawBytes": 451,
+      "storedBytes": 451,
+      "encoding": "identity"
+    },
+    {
+      "path": "artifacts/attempt1/source-before-format.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/fish-review/attempt1/source-before-format.json",
+      "rawSha256": "ab586472579d56f64618c811620217e1ec4b1375ad40954990c8fd5558938742",
+      "storedSha256": "6171cb49458263916217615c3b5b89d1e410f5e5a67434a991e6c44e937cccf4",
+      "rawBytes": 183734,
+      "storedBytes": 72478,
+      "encoding": "gzip"
+    },
+    {
+      "path": "artifacts/attempt1/source-bindings-committed.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/fish-review/attempt1/source-bindings-committed.json",
+      "rawSha256": "48161eafa7f714e4e7b67ec67c3ab93f30c923b6ef8a672d4ab6f1bb59a55905",
+      "storedSha256": "48161eafa7f714e4e7b67ec67c3ab93f30c923b6ef8a672d4ab6f1bb59a55905",
+      "rawBytes": 473,
+      "storedBytes": 473,
+      "encoding": "identity"
+    },
+    {
+      "path": "artifacts/attempt1/source-bindings.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/fish-review/attempt1/source-bindings.json",
+      "rawSha256": "225cd2925ded51760fdc4df1c6ac188d7023e904b7837ca46f14055b1b335a93",
+      "storedSha256": "225cd2925ded51760fdc4df1c6ac188d7023e904b7837ca46f14055b1b335a93",
+      "rawBytes": 770,
+      "storedBytes": 770,
+      "encoding": "identity"
+    },
+    {
+      "path": "artifacts/attempt1/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/fish-review/attempt1/source-final.json",
+      "rawSha256": "c4da1f1ea08f8346ff47738ad1ab42a81e85277945c7ef9055ae3fdf50732474",
+      "storedSha256": "f3844c5ee75c40bc14505e7dbc1802bfb2be49882d5a2bca003d077c103a1bcb",
+      "rawBytes": 183748,
+      "storedBytes": 72487,
+      "encoding": "gzip"
+    },
+    {
+      "path": "review/grok-thread-final.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/fish-review/grok-thread-final.json",
+      "rawSha256": "0644ea5a5357401b46a1f65ee2d8679a67fa4248498a2f1b8a8eedd051bd84b9",
+      "storedSha256": "0644ea5a5357401b46a1f65ee2d8679a67fa4248498a2f1b8a8eedd051bd84b9",
+      "rawBytes": 14911,
+      "storedBytes": 14911,
+      "encoding": "identity"
+    },
+    {
+      "path": "runs/format-1793381519859330187-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/format-1793381519859330187-receipt.json",
+      "rawSha256": "7fc23f71f531595621981a223e9ab3bd4159238f32be1e4b5093fe850954f1c9",
+      "storedSha256": "85f790926b2fa1edb56b1667b998a5f2a03136473f43b494881daceeb3976db7",
+      "rawBytes": 184551,
+      "storedBytes": 72885,
+      "encoding": "gzip"
+    },
+    {
+      "path": "runs/format-1793381519859330187.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/format-1793381519859330187.log",
+      "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "storedSha256": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef",
+      "rawBytes": 1833,
+      "storedBytes": 873,
+      "encoding": "gzip"
+    },
+    {
+      "path": "runs/node-1793381587248316106-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/node-1793381587248316106-receipt.json",
+      "rawSha256": "bea6c9ec175c268308827bf0f7bf24de5afa2615a79c8b95dbdc6971e5d21c2f",
+      "storedSha256": "ba715cd1caee84b9d4f00e1851b40d5d040da1a7cc69d40d8f1ea0fab806a13b",
+      "rawBytes": 184428,
+      "storedBytes": 72848,
+      "encoding": "gzip"
+    },
+    {
+      "path": "runs/node-1793381587248316106.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/node-1793381587248316106.log",
+      "rawSha256": "249baf635bb43877fcb9422efa1a4904b702d0ddf14d3949b7cd0950d5229c81",
+      "storedSha256": "abee8d65afa95510e7e200b1183f9d1c04b0665f8e78777915fdf0bca703e9b0",
+      "rawBytes": 9,
+      "storedBytes": 29,
+      "encoding": "gzip"
+    },
+    {
+      "path": "runs/compiler-1793381672993887330-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/compiler-1793381672993887330-receipt.json",
+      "rawSha256": "7214177d9e806ae7ad3e09953864aaac2d78048b18b00a758c6a459c2b1c3f57",
+      "storedSha256": "e74dc89706c381eccf0ffaf6045b89f97f6980c28a14f35693be1723474a9307",
+      "rawBytes": 184557,
+      "storedBytes": 72885,
+      "encoding": "gzip"
+    },
+    {
+      "path": "runs/compiler-1793381672993887330.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/compiler-1793381672993887330.log",
+      "rawSha256": "bebcb8194871ab35dd154270c1365573c16903d46549e0b95688c42d9cd80fee",
+      "storedSha256": "1c09eee3129438135d96cc7861ce06f9311e89864edb8243b06518c1b7534a43",
+      "rawBytes": 4690,
+      "storedBytes": 1731,
+      "encoding": "gzip"
+    },
+    {
+      "path": "reproduction-tools/fish_review_node1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/fish_review_node1.sh",
+      "rawSha256": "b5706977426efb4110551f846494b1a63e4377267b1adb604539b800de2b0319",
+      "storedSha256": "b5706977426efb4110551f846494b1a63e4377267b1adb604539b800de2b0319",
+      "rawBytes": 276,
+      "storedBytes": 276,
+      "encoding": "identity"
+    },
+    {
+      "path": "reproduction-tools/fish_review_quality1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/fish_review_quality1.sh",
+      "rawSha256": "53e19c57ff1298ed14caedc07f73fab334757ffd2060f9b2d89276424a6eae92",
+      "storedSha256": "53e19c57ff1298ed14caedc07f73fab334757ffd2060f9b2d89276424a6eae92",
+      "rawBytes": 995,
+      "storedBytes": 995,
+      "encoding": "identity"
+    },
+    {
+      "path": "reproduction-tools/validate.py",
+      "origin": "/tmp/dimabot-full-migration-tools/validate.py",
+      "rawSha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+      "storedSha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+      "rawBytes": 12955,
+      "storedBytes": 12955,
+      "encoding": "identity"
+    },
+    {
+      "path": "reproduction-tools/final_readback.py",
+      "origin": "/tmp/dimabot-full-migration-tools/final_readback.py",
+      "rawSha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14",
+      "storedSha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14",
+      "rawBytes": 1324,
+      "storedBytes": 1324,
+      "encoding": "identity"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# 2026-10-30 Grok Fish review observation
+
+Grok 4.7 at xhigh completed a static, read-only review of the frozen Fish favorites source at commit `999c94441cadb586916c512fe59bbb0bf6f4a428` / tree `52fbe671459e76370cc9cf73b05dd94a008fce3f220c25478611e58b61c49380`. It found no actionable defect and rejected interrupted confirmation4. The review checked source policy, bounded alias/collision logic, Mongo filters/retries/order, typed BSON boundaries and benchmark samples. It did not compile, execute, query Mongo or independently rehash all inputs; parent had verified the 1,504-input binding.
+
+The review called out an oracle-coverage gap for direct `js_compat.rs` trim behavior and NEL. Parent follow-up `22aa6056edc390bed5247a2762ee7874816728e4` added that source binding plus four NEL cases, preserving the original 15 normalization cases and all protocol/schema/BSON/error outputs. Its 1,507-input bound, three capped checks, ordinary tests and strict profiles passed; no application code or benchmark inputs changed. This is a useful scoped review outcome and correction, not a general model ranking.
+
+Confidence: low, one read-only review task. No model delivery latency, cost, runtime attribution or broad tier reorder is claimed. See the [review note](../migration-notes/fish-favorites-review-2026-10-30.md) and [indexed evidence](../migration-notes/evidence/2026-10-30-fish-review/README.md).
