@@ -862,18 +862,20 @@ pub fn with_variation_spacing_value(
 ) -> Result<CompiledVariationValue<'_>, VariationError> {
     global_value_cache().with_spacing(value, allow_spaces, mode)
 }
-pub fn compile_rule_variations_value(
+/// Compile the entries selected by the rule, retaining per-entry identity.
+/// `None` denotes the unchanged rule (missing or disabled variations).
+pub(crate) fn compile_rule_variation_entries_value(
     rule: &JsonValue,
-) -> Result<Cow<'_, JsonValue>, VariationError> {
+) -> Result<Option<Vec<CompiledVariationValue<'_>>>, VariationError> {
     let Some(variations) = rule.get("variations") else {
-        return Ok(Cow::Borrowed(rule));
+        return Ok(None);
     };
     if matches!(variations, JsonValue::Null | JsonValue::Bool(false))
         || variations
             .get("mode")
             .is_some_and(|m| m.as_str_value() == Some("off"))
     {
-        return Ok(Cow::Borrowed(rule));
+        return Ok(None);
     }
     let mode = variations
         .get("mode")
@@ -883,14 +885,24 @@ pub fn compile_rule_variations_value(
     let JsonValue::Array(entries) = field(variations, "entries")? else {
         return Err(error("Invalid trusted variation value"));
     };
-    let compiled = entries
+    entries
         .iter()
-        .map(|entry| {
-            with_variation_spacing_value(entry, spaces, mode)
-                .map(CompiledVariationValue::into_owned)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let mut variations = variations.clone();
+        .map(|entry| with_variation_spacing_value(entry, spaces, mode))
+        .collect::<Result<Vec<_>, _>>()
+        .map(Some)
+}
+pub fn compile_rule_variations_value(
+    rule: &JsonValue,
+) -> Result<Cow<'_, JsonValue>, VariationError> {
+    let Some(compiled) = compile_rule_variation_entries_value(rule)? else {
+        return Ok(Cow::Borrowed(rule));
+    };
+    let compiled = compiled
+        .into_iter()
+        .map(CompiledVariationValue::into_owned)
+        .collect();
+    // The helper reaches Some only when both lookups succeeded on objects.
+    let mut variations = field(rule, "variations")?.clone();
     replace_field(&mut variations, "entries", Some(JsonValue::Array(compiled)))?;
     let mut rule = rule.clone();
     replace_field(&mut rule, "variations", Some(variations))?;
