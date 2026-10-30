@@ -62,7 +62,7 @@ eventsub = ["dep:serde", "dep:serde_json"]
 js-date = ["dep:libc"]
 domain-events = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip", "eventsub", "js-date"]
 reward-body = ["dep:serde_json", "serde_json/float_roundtrip"]
-application-schemas = ["mongo", "js-date"]
+application-schemas = ["mongo", "js-date", "js-strings"]
 # Opt-in channel TTS schema; does not alter deployed profiles.
 channel-tts-settings = ["application-schemas", "tts-utilities"]
 # Opt-in moderation model; native policy and caller-owned MongoDB persistence.
