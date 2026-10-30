@@ -1,0 +1,449 @@
+{
+  "schema": 1,
+  "nodeSha": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "versions": {
+    "node": "24.22.1",
+    "acorn": "8.18.0",
+    "ada": "4.0.0",
+    "amaro": "1.1.11",
+    "ares": "1.34.9",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.3",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "137",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.70.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "3.5.9",
+    "simdjson": "4.6.11",
+    "simdutf": "6.4.0",
+    "sqlite": "3.53.4",
+    "tz": "2026e",
+    "undici": "7.30.1",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "13.6.233.17-node.58",
+    "zlib": "1.3.2.1-motley-285e94b",
+    "zstd": "1.5.7",
+    "mongoose": "8.24.2",
+    "mongodb": "6.20.0",
+    "bson": "6.10.4"
+  },
+  "options": {
+    "raw": false,
+    "useBigInt64": false,
+    "promoteLongs": true,
+    "promoteValues": true,
+    "promoteBuffers": false,
+    "ignoreUndefined": false,
+    "bsonRegExp": false,
+    "serializeFunctions": false,
+    "fieldsAsRaw": {},
+    "enableUtf8Validation": true
+  },
+  "sdkHashes": {
+    "bson": "64e5de269bbcdee96f2bebb57cc9729b72aaebde02d832005872b7e575899284",
+    "bsonPackage": "ded0e42e4e1cd876a11c9f799e0692f83ee73ebc9fb7796a5bca05039b4b3e23",
+    "mongodb": "1880a069aa02d09798a3a082d77198aafa4a2d6a1c0315691f25820b58c025ea",
+    "mongodbPackage": "54edfda15c69f02c7d6ddf045f339caa1c94cef76b45c2383e1b35071024241b",
+    "mongoosePackage": "5136d95bcd0624a94096110ea21ac101b73f1839bc40726eab85649389c17dba"
+  },
+  "sourceHashes": {
+    "src/utils/bson_js_json.rs": "05ffe7ff53ceb75a641d492ef20a2152165e8bf23b7b8923fcb96bd6a74055b9",
+    "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+    "src/utils/lossless_json.rs": "81655862a29d68c01ab49a79027788c569d688bc1f7c9e55cbea20816dc7f2a6",
+    "src/utils/credit_policy.rs": "0b17b85d9191d921b68490bccdbcb53495537f526599d69b5e94ec1db9a7cec3",
+    "src/utils/json_number.rs": "f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419",
+    "tests/bson_js_json.rs": "022112589f7f23338ada445e87811acd5060a97f98c636ac5ddf175098a1f7b7",
+    "Cargo.toml": "9c763d9e1f70311b8716283f08d114820c393f6adcee333afe376fbce75e67be",
+    "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+    "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2",
+    "oracle": "5f9f57aa6ee9402a1653a561ecfbad1f5f343cfba11545d6f8286106daee6193"
+  },
+  "records": [
+    {
+      "name": "primitive",
+      "hex": "56000000027a0004000000efbfbd0002756e69636f64650005000000f09f98800002656d707479000100000000086200010a6e000461001e00000010300001000000083100000a320002330004000000efbfbd000000",
+      "expected": "{\"z\":\"�\",\"unicode\":\"😀\",\"empty\":\"\",\"b\":true,\"n\":null,\"a\":[1,false,null,\"�\"]}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "numbers",
+      "hex": "5400000010690000000080016e616e00000000000000f87f01696e6600000000000000f07f016e696e6600000000000000f0ff016e65677a65726f00000000000000008001666c6f617400000000000000f83f00",
+      "expected": "{\"i\":-2147483648,\"nan\":null,\"inf\":null,\"ninf\":null,\"negzero\":0,\"float\":1.5}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "long--9223372036854775808",
+      "hex": "10000000127600000000000000008000",
+      "expected": "{\"v\":{\"low\":0,\"high\":-2147483648,\"unsigned\":false}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "long--9007199254740993",
+      "hex": "10000000127600ffffffffffffdfff00",
+      "expected": "{\"v\":{\"low\":-1,\"high\":-2097153,\"unsigned\":false}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "long--9007199254740992",
+      "hex": "10000000127600000000000000e0ff00",
+      "expected": "{\"v\":-9007199254740992}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "long--1",
+      "hex": "10000000127600ffffffffffffffff00",
+      "expected": "{\"v\":-1}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "long-9007199254740992",
+      "hex": "10000000127600000000000000200000",
+      "expected": "{\"v\":9007199254740992}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "long-9007199254740993",
+      "hex": "10000000127600010000000000200000",
+      "expected": "{\"v\":{\"low\":1,\"high\":2097152,\"unsigned\":false}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "long-9223372036854775807",
+      "hex": "10000000127600ffffffffffffff7f00",
+      "expected": "{\"v\":{\"low\":-1,\"high\":2147483647,\"unsigned\":false}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dates",
+      "hex": "380000000965706f636800000000000000000009657874656e646564000000dcc208b21e00096e65676174697665000000243df74de1ff00",
+      "expected": "{\"epoch\":\"1970-01-01T00:00:00.000Z\",\"extended\":\"+275760-09-13T00:00:00.000Z\",\"negative\":\"-271821-04-20T00:00:00.000Z\"}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "objects",
+      "hex": "820000000769640000112233445566778899aabb0567656e657269630004000000000001feff056f6c6400070000000203000000010203057575696400100000000400112233445566778899aabbccddeeff0573686f72745575696400020000000401020e73796d626f6c000700000073796d626f6c00ff6d696e007f6d61780000",
+      "expected": "{\"id\":\"00112233445566778899aabb\",\"generic\":\"AAH+/w==\",\"old\":\"AQID\",\"uuid\":\"00112233-4455-6677-8899-aabbccddeeff\",\"shortUuid\":\"AQI=\",\"symbol\":\"symbol\",\"min\":{},\"max\":{}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "decimals",
+      "hex": "6400000013610008e20100000000000000000000003630136200000000000000000000000000000040b013630001000000000000000000000000007c301364000000000000000000000000000000007c1365000000000000000000000000000000007800",
+      "expected": "{\"a\":{\"$numberDecimal\":\"1.23400\"},\"b\":{\"$numberDecimal\":\"-0\"},\"c\":{\"$numberDecimal\":\"1E+30\"},\"d\":{\"$numberDecimal\":\"NaN\"},\"e\":{\"$numberDecimal\":\"Infinity\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "code-timestamp",
+      "hex": "3f0000000d706c61696e000600000078202b2031000f73636f706500160000000200000078000c000000107800030000000011747300ffffffffffffffff00",
+      "expected": "{\"plain\":{\"code\":\"x + 1\"},\"scope\":{\"code\":\"x\",\"scope\":{\"x\":3}},\"ts\":{\"$timestamp\":\"18446744073709551615\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "regex-simple",
+      "hex": "150000000b610061626300696d000b620000780000",
+      "expected": "{\"a\":{},\"b\":{}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "regex-complex",
+      "hex": "0d0000000b6100612b00690000",
+      "expected": "{\"a\":{}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "regex-invalid-reader",
+      "hex": "0c0000000b61002800690000",
+      "expected": null,
+      "error": "SyntaxError",
+      "unsupported": false
+    },
+    {
+      "name": "reference",
+      "hex": "4e000000036f7574657200420000000224726566000b000000636f6c6c656374696f6e00072469640000112233445566778899aabb02246462000300000064620010657874726100010000000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"00112233445566778899aabb\",\"extra\":1,\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-number",
+      "hex": "58000000036f75746572004c0000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef105f5f70726f746f5f5f0001000000027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-null",
+      "hex": "54000000036f7574657200480000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef0a5f5f70726f746f5f5f00027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-plain",
+      "hex": "6f000000036f7574657200630000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef035f5f70726f746f5f5f001b000000026d61726b6572000a00000070726f746f747970650000027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-array",
+      "hex": "67000000036f75746572005b0000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef045f5f70726f746f5f5f0013000000103000010000001031000200000000027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-date",
+      "hex": "5c000000036f7574657200500000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef095f5f70726f746f5f5f000000000000000000027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-objectid",
+      "hex": "60000000036f7574657200540000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef075f5f70726f746f5f5f0000112233445566778899aabb027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-binary",
+      "hex": "5b000000036f75746572004f0000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef055f5f70726f746f5f5f0002000000000102027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-uuid",
+      "hex": "69000000036f75746572005d0000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef055f5f70726f746f5f5f00100000000400112233445566778899aabbccddeeff027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-long",
+      "hex": "5c000000036f7574657200500000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef125f5f70726f746f5f5f000100000000002000027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-timestamp",
+      "hex": "5c000000036f7574657200500000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef115f5f70726f746f5f5f000200000001000000027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-decimal",
+      "hex": "64000000036f7574657200580000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef135f5f70726f746f5f5f007d000000000000000000000000003c30027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-code",
+      "hex": "5a000000036f75746572004e0000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef0d5f5f70726f746f5f5f00020000007800027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-min",
+      "hex": "54000000036f7574657200480000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdefff5f5f70726f746f5f5f00027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-max",
+      "hex": "54000000036f7574657200480000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef7f5f5f70726f746f5f5f00027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-regex",
+      "hex": "59000000036f75746572004d0000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef0b5f5f70726f746f5f5f00612b006900027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbref-proto-dbref",
+      "hex": "76000000036f75746572006a0000000224726566000e00000064622e636f6c6c656374696f6e000724696400abcdefabcdefabcdefabcdef035f5f70726f746f5f5f0022000000022472656600020000007800072469640000112233445566778899aabb00027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"abcdefabcdefabcdefabcdef\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "readonly-before-objectid",
+      "hex": "70000000036f7574657200640000000224726566000e00000064622e636f6c6c656374696f6e00022469640003000000696400025f62736f6e7479706500060000007072696f7200075f5f70726f746f5f5f0000112233445566778899aabb027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"id\",\"_bsontype\":\"prior\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "readonly-after-objectid",
+      "hex": "70000000036f7574657200640000000224726566000e00000064622e636f6c6c656374696f6e00022469640003000000696400075f5f70726f746f5f5f0000112233445566778899aabb025f62736f6e747970650006000000616674657200027461696c00050000006b657074000000",
+      "expected": null,
+      "error": "TypeError",
+      "unsupported": false
+    },
+    {
+      "name": "readonly-before-binary",
+      "hex": "6a000000036f75746572005e0000000224726566000e00000064622e636f6c6c656374696f6e00022469640003000000696400025f62736f6e7479706500060000007072696f7200055f5f70726f746f5f5f00010000000001027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"id\",\"_bsontype\":\"prior\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "readonly-after-binary",
+      "hex": "6a000000036f75746572005e0000000224726566000e00000064622e636f6c6c656374696f6e00022469640003000000696400055f5f70726f746f5f5f00010000000001025f62736f6e747970650006000000616674657200027461696c00050000006b657074000000",
+      "expected": null,
+      "error": "TypeError",
+      "unsupported": false
+    },
+    {
+      "name": "readonly-before-long",
+      "hex": "6d000000036f7574657200610000000224726566000e00000064622e636f6c6c656374696f6e00022469640003000000696400025f5f69734c6f6e675f5f00060000007072696f7200125f5f70726f746f5f5f000100000000002000027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"id\",\"__isLong__\":\"prior\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "readonly-after-long",
+      "hex": "6d000000036f7574657200610000000224726566000e00000064622e636f6c6c656374696f6e00022469640003000000696400125f5f70726f746f5f5f000100000000002000025f5f69734c6f6e675f5f0006000000616674657200027461696c00050000006b657074000000",
+      "expected": null,
+      "error": "TypeError",
+      "unsupported": false
+    },
+    {
+      "name": "readonly-before-timestamp",
+      "hex": "64000000036f7574657200580000000224726566000e00000064622e636f6c6c656374696f6e00022469640003000000696400027400060000007072696f7200115f5f70726f746f5f5f000200000001000000027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"id\",\"t\":\"prior\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "readonly-after-timestamp",
+      "hex": "64000000036f7574657200580000000224726566000e00000064622e636f6c6c656374696f6e00022469640003000000696400115f5f70726f746f5f5f00020000000100000002740006000000616674657200027461696c00050000006b657074000000",
+      "expected": null,
+      "error": "TypeError",
+      "unsupported": false
+    },
+    {
+      "name": "readonly-before-regex",
+      "hex": "66000000036f75746572005a0000000224726566000e00000064622e636f6c6c656374696f6e0002246964000300000069640002736f7572636500060000007072696f72000b5f5f70726f746f5f5f00612b006900027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"id\",\"source\":\"prior\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "readonly-after-regex",
+      "hex": "66000000036f75746572005a0000000224726566000e00000064622e636f6c6c656374696f6e000224696400030000006964000b5f5f70726f746f5f5f00612b00690002736f757263650006000000616674657200027461696c00050000006b657074000000",
+      "expected": null,
+      "error": "TypeError",
+      "unsupported": false
+    },
+    {
+      "name": "setter-objectid",
+      "hex": "69000000036f75746572005d0000000224726566000e00000064622e636f6c6c656374696f6e00022469640003000000696400075f5f70726f746f5f5f0000112233445566778899aabb0269640006000000616674657200027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"id\",\"buffer\":\"after\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "setter-uuid",
+      "hex": "72000000036f7574657200660000000224726566000e00000064622e636f6c6c656374696f6e00022469640003000000696400055f5f70726f746f5f5f00100000000400112233445566778899aabbccddeeff0269640006000000616674657200027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"id\",\"buffer\":\"after\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "setter-dbref",
+      "hex": "86000000036f75746572007a0000000224726566000e00000064622e636f6c6c656374696f6e00022469640003000000696400035f5f70726f746f5f5f0022000000022472656600020000007800072469640000112233445566778899aabb00026e616d6573706163650006000000616674657200027461696c00050000006b657074000000",
+      "expected": "{\"outer\":{\"$ref\":\"collection\",\"$id\":\"id\",\"collection\":\"after\",\"tail\":\"kept\",\"$db\":\"db\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "ordering",
+      "hex": "510000000232000400000074776f00023130000400000074656e0002303100080000006c656164696e6700036e6573746564001d0000001031000200000010390001000000107461696c00030000000000",
+      "expected": "{\"2\":\"two\",\"10\":\"ten\",\"01\":\"leading\",\"nested\":{\"1\":2,\"9\":1,\"tail\":3}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "undefined-storage",
+      "hex": "1b000000036f00080000000a780000046100080000000a30000000",
+      "expected": "{\"o\":{\"x\":null},\"a\":[null]}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "legacy-undefined",
+      "hex": "0b00000006780006790000",
+      "expected": "{}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "duplicate-keys",
+      "hex": "13000000107800010000001078000200000000",
+      "expected": "{\"x\":2}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "invalid-date",
+      "hex": "10000000096400ffffffffffffff7f00",
+      "expected": "{\"d\":null}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbpointer",
+      "hex": "1a0000000c700002000000630000112233445566778899aabb00",
+      "expected": "{\"p\":{\"$ref\":\"c\",\"$id\":\"00112233445566778899aabb\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "dbpointer-db",
+      "hex": "1d0000000c700005000000612e62630000112233445566778899aabb00",
+      "expected": "{\"p\":{\"$ref\":\"bc\",\"$id\":\"00112233445566778899aabb\",\"$db\":\"a\"}}",
+      "error": null,
+      "unsupported": false
+    },
+    {
+      "name": "depth-80",
+      "hex": "8f020000037800870200000378007f020000037800770200000378006f020000037800670200000378005f020000037800570200000378004f020000037800470200000378003f020000037800370200000378002f020000037800270200000378001f020000037800170200000378000f02000003780007020000037800ff010000037800f7010000037800ef010000037800e7010000037800df010000037800d7010000037800cf010000037800c7010000037800bf010000037800b7010000037800af010000037800a70100000378009f010000037800970100000378008f010000037800870100000378007f010000037800770100000378006f010000037800670100000378005f010000037800570100000378004f010000037800470100000378003f010000037800370100000378002f010000037800270100000378001f010000037800170100000378000f01000003780007010000037800ff000000037800f7000000037800ef000000037800e7000000037800df000000037800d7000000037800cf000000037800c7000000037800bf000000037800b7000000037800af000000037800a70000000378009f000000037800970000000378008f000000037800870000000378007f000000037800770000000378006f000000037800670000000378005f000000037800570000000378004f000000037800470000000378003f000000037800370000000378002f000000037800270000000378001f000000037800170000000378000f000000106c6561660001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expected": "{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"leaf\":1}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
+      "error": null,
+      "unsupported": false
+    }
+  ]
+}

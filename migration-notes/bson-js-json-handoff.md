@@ -1,0 +1,26 @@
+# BSON JavaScript JSON projection handoff — 2026-10-30
+
+`dima_rust::utils::bson_js_json::bson_js_json(&Bson) -> Result<JsonValue, BsonJsJsonError>` projects the default Node MongoDB BSON reader's JSON-visible values through the existing lossless JSON serializer. It is **not** a BSON storage conversion and does not replace or mutate the original BSON used for storage. The feature is opt-in as `bson-js-json`; it composes existing Mongo, TTS utility, credit-policy, Base64, SHA-256, date, JavaScript-string, and JSON foundations. The implementation is at commit `67fcccb8889cfd8f58d7f54b5bdaa92f200f4e74`.
+
+Callers should use the helper at the same boundary where their TypeScript counterpart reads BSON and subsequently stringifies the decoded value. They must propagate or handle its explicit error in the corresponding caller path. The helper does not itself replace an application adapter, select a fallback behavior, or make any caller native. It is not `compiler_bson_json` and should not be used to prepare database writes.
+
+## Confirmed behavior
+
+The pinned SDK reader uses the default promotion behavior (`promoteLongs`/`promoteValues` enabled, buffers and BSON RegExp disabled, UTF-8 validation enabled). The accepted 54-record fixture demonstrates 48 successful BSON-wire projections and five assignment-order-sensitive DBRef failures that match inherited read-only accessor `TypeError`s. It covers relevant BSON primitive and class projections, including Long's inclusive ±2^53 promotion boundary, Date JSON behavior, ObjectId, binary/UUID, Decimal128 values present in the corpus, Timestamp, Code, RegExp values accepted by Node, Symbol, undefined in root/object/array positions, DBRef and DBPointer-shaped behavior, and nested ordinary documents/arrays. JSON key ordering and string encoding use the existing serializer.
+
+The final Node run `1793353128382905292` and compiler run `1793353141707940216` share frozen source-tree SHA-256 `a0cc07bb6978725aa1a292d46c15e27c1fdfb9b69d5ce4edd50f8f90b56d2a70`, bind 1,459 inputs (1,449 Git inputs and ten previously archive-verified SDK inputs), and replay fixture SHA-256 `b609cc0af482b7cee004d13439f075bd0bd7b6848d00bd7901da7e0f97d569f4`. See the indexed [evidence package](evidence/2026-10-30-bson-js-json/README.md) and [source bindings](evidence/2026-10-30-bson-js-json/source-bindings.json).
+
+## Boundaries to preserve
+
+- One invalid-RegExp record is a **decoder boundary**: the Node reader throws `SyntaxError` while constructing `RegExp`; the Rust BSON reader accepts the bytes. The Rust projection therefore does not report a matched reader failure for it. A successfully decoded ordinary JavaScript RegExp stringifies as `{}`. Decoder-stage syntax and flag validation must be added separately before claiming reader parity.
+- Eager Node decode may fail inside a nested value even if later projection would omit that property. The observed invalid-RegExp case does not close nested exceptional DBRef or other eager decode behavior.
+- Rust BSON `Document` may collapse duplicate keys or normalize array keys before projection. Native UTF-8 decoding cannot represent malformed UTF-8 as a JavaScript string or preserve lone UTF-16 surrogates through BSON bytes. The corpus establishes neither general malformed-BSON parity nor all duplicate-key cases.
+- The replay does not establish every Decimal128 form/special value, all reader errors, or arbitrary recursion depth. Node and native Rust BSON readers can have different malformed-data and nesting limits. The adapter/serializer add no artificial depth bound; deeply nested attacker-controlled data remains a resource-safety concern.
+- DBRef `$ref` recognition depends on the driver's dollar-key heuristic. Its `toJSON` moves `$ref`/`$id` and handles `$db`; the adapter models the fixture-observed namespace split and `Object.assign` behavior, including inherited read-only properties and setters. Do not generalize this into arbitrary JavaScript prototype, monkey-patch, or callable-accessor parity.
+- Source BSON is the authoritative storage representation. The adapter's `JsonValue` is a display/serialization projection only; it is not round-trip safe.
+
+## Run history and current evidence
+
+The retained run chain documents the first formatting pass (`1793352462309573478`), the early oracle/compiler pair (`1793352767101364972` / `1793352767100764308`), the second pair (`1793353049675126137` / `1793353064626040090`), and final pair (`1793353128382905292` / `1793353141707940216`). The first two compiler runs stopped at Clippy issues; final facts and logs identify them. Across the three oracle attempts, SDK input records stayed the same 54 cases and only source provenance changed. The accepted Node and compiler receipts have identical final source-tree identity.
+
+The later authored benchmark is outside that final snapshot and was not executed. Do not infer performance from it or from compiler duration. The current freezer scripts in `/tmp/dimabot-full-migration-tools` are retained for historical reproduction, but their present defaults are not proof of the accepted input set; the final compiler receipt and this package's source binding are authoritative. No production change, deployment, or push is part of this handoff.
