@@ -1,0 +1,46 @@
+{
+  "scope": "only obsolete task-owned debug test executables; source/cache policy/benchmark exports/shared cache unchanged",
+  "removed": [
+    {
+      "path": "target/debug/deps/raid_analytics-0ff4778940abfd9e",
+      "sha256": "040e7984406652f0d48a918c67b7693a929a591d51f9306dcc0cb78b1fed3ac4",
+      "allocatedBytes": 33443840
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-1369761ec0380dd1",
+      "sha256": "4577671422ea927ae26a529a2cf1ba80ad9079966c84596d915fdd435250fae6",
+      "allocatedBytes": 33419264
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-15aefec25b811b8e",
+      "sha256": "d989fc045024f02fc4999d067779faa4d03a4958346d1fc11e0188f58c173940",
+      "allocatedBytes": 33415168
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-15e9083e2a37ccbf",
+      "sha256": "36323eb02c4cdbd4ea545e2c17c8cba311e64b5d98b7977a42a50e82d9e5bab4",
+      "allocatedBytes": 33415168
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-162062042c186ee8",
+      "sha256": "32182570d9ac960eb077f3df1fea5f3356c63848f5df89734bbaf626873c5a7c",
+      "allocatedBytes": 33411072
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-2076633bc72439f9",
+      "sha256": "56c72fb6e7a4e56d8aea2b1af1f1b55a65c924607f62891d5224883e597e694a",
+      "allocatedBytes": 33439744
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-5be67ed78ba5b892",
+      "sha256": "488d16f28870d844dcd01739d54f957ba06c2f9e5b15d92a6706725ec730168c",
+      "allocatedBytes": 33411072
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-78ca0e9839a6f690",
+      "sha256": "21e6f252e21e1fe6452308b19234bab3f2a760f568b77d77d70a459d888f6ec7",
+      "allocatedBytes": 33411072
+    }
+  ],
+  "freedBytes": 267366400
+}

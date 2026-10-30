@@ -1,0 +1,1334 @@
+import { PRODUCT_IDS } from './referral.js';
+import type { IUsers } from '../schemas/users.schema.js';
+import { getDragonflyClient } from './databases/dragonfly.database.js';
+import { createHash } from 'node:crypto';
+import { ACCEPT_PLAN_CREDITS_SCRIPT, PLAN_CACHE_VERSION_FIELD, planCacheFenceKey, planCacheVersion } from './plan_cache_fence.js';
+import {
+    CreditPackConfigurationError,
+    buildCreditPackOffers,
+    getCreditPackDefinition,
+    getRechargeExpiry,
+    type CreditPackOffer,
+    type PolarCreditPackProductLike
+} from './credit_packs.js';
+
+type BillingAction = 'auto' | 'new' | 'upgrade' | 'change' | 'reactivate';
+type BillingScenario = 'new' | 'upgrade' | 'change' | 'returning_winback' | 'reactivate' | 'active_no_change';
+type PlanTier = 'free' | 'premium' | 'pro';
+
+interface DiscountLike {
+    id: string;
+    code?: string | null;
+    type?: 'fixed' | 'percentage' | string;
+    basis_points?: number;
+    amount?: number;
+    products?: Array<{ id?: string }>;
+}
+
+interface PolarListResponse<T> {
+    items?: T[];
+}
+
+interface PolarSubscription {
+    id: string;
+    status: string;
+    product_id?: string;
+    ended_at?: string | null;
+    canceled_at?: string | null;
+    trial_start?: string | null;
+    trial_end?: string | null;
+    current_period_end?: string | null;
+    ends_at?: string | null;
+}
+
+interface CheckoutCreateRequest {
+    user: IUsers;
+    targetPlan: Exclude<PlanTier, 'free'>;
+    action?: BillingAction;
+    promoCode?: string;
+    successUrl?: string;
+    returnUrl?: string;
+    referralCode?: string;
+}
+
+interface BillingContext {
+    planTier: PlanTier;
+    hasActiveSubscription: boolean;
+    hasAnySubscriptionHistory: boolean;
+    hasPaidSubscriptionHistory: boolean;
+    hasUsedTrial: boolean;
+    inactivityMonths: number;
+    isWinbackEligible: boolean;
+    scenario: BillingScenario;
+    activeSubscriptionId?: string;
+    activeProductId?: string;
+    recoverySubscriptionId?: string;
+    targetProductId?: string;
+    isReferralEligible: boolean;
+}
+
+interface CheckoutDecision {
+    flow: 'checkout' | 'customer_portal';
+    scenario: BillingScenario;
+    selectedDiscountId: string | null;
+    selectedDiscountCode: string | null;
+    selectedDiscountReason: 'referral' | 'promo' | 'winback' | 'upgrade' | 'change' | null;
+    checkoutId: string | null;
+    portalSessionId?: string;
+    checkoutUrl: string;
+    allowDiscountCodes: boolean;
+}
+
+export interface CreditPackCatalog {
+    planTier: PlanTier;
+    hasActivePaidSubscription: boolean;
+    rechargeExpiresAt: string | null;
+    rechargeExpiryDays: number | null;
+    offers: CreditPackOffer[];
+}
+
+interface CreditPackCheckoutRequest {
+    user: IUsers;
+    productId: string;
+    successUrl?: string;
+    returnUrl?: string;
+}
+
+export interface CreditPackCheckoutDecision {
+    checkoutId: string;
+    checkoutUrl: string;
+    offer: CreditPackOffer;
+}
+
+export class CreditPackRequestError extends Error {
+    constructor(message: string, readonly statusCode: 400 | 403) {
+        super(message);
+    }
+}
+
+interface CreatePortalSessionRequest {
+    user: IUsers;
+    returnUrl?: string;
+}
+
+interface PortalSessionResponse {
+    sessionId: string;
+    url: string;
+    expiresAt?: string;
+}
+
+export const AI_CREDITS_METER_ID = '5103e79b-fd74-4ba8-a287-f95574f9addf';
+
+export const AI_CREDIT_LIMITS = {
+  free: 25000,
+  premium: 200000,
+  pro: 800000
+} as const;
+
+export const AI_CREDITS_CACHE_TTL_SECONDS = 5 * 60;
+export const AI_CREDITS_CACHE_SCHEMA_VERSION = 3;
+const CREDIT_PACK_BILLING_CONTEXT_CACHE_TTL_SECONDS = 2 * 60;
+const CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION = 1;
+
+export interface CreditPackBillingContextCacheInput {
+    customerId: string;
+    planTier: PlanTier;
+    expiresAt: string | null;
+}
+
+interface CreditPackBillingContextCacheValue {
+    version: typeof CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION;
+    planTier: PlanTier;
+    expiresAt: string | null;
+}
+
+export type AiCreditStatus = 'unavailable' | 'available' | 'exhausted';
+
+export interface AiCreditsData {
+  version: number;
+  used: number;
+  limit: number;
+  balance: number; // remaining credits
+  meterId: string;
+  updatedAt: string;
+  available: boolean;
+  status: AiCreditStatus;
+}
+
+export interface PolarAiCreditsMeterLike {
+    meter_id?: string;
+    consumed_units?: number | string | null;
+    credited_units?: number | string | null;
+    balance?: number | string | null;
+    limit?: number | string | null;
+}
+
+function toFiniteNumber(value: unknown, fallback = 0): number {
+    const numericValue = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+export function getAiCreditLimitForPlan(planTier: PlanTier | null | undefined): number {
+    const safeTier = planTier && planTier in AI_CREDIT_LIMITS ? planTier : 'free';
+    return AI_CREDIT_LIMITS[safeTier];
+}
+
+export function buildAiCreditsDataFromMeter(
+    meter: PolarAiCreditsMeterLike | null | undefined,
+    planTier: PlanTier | null | undefined,
+    updatedAt = new Date().toISOString()
+): AiCreditsData {
+    const polarLimit = toFiniteNumber(meter?.limit, 0);
+    const creditedUnits = toFiniteNumber(meter?.credited_units, 0);
+    const planLimit = getAiCreditLimitForPlan(planTier);
+
+    // Polar active_meters payload for the current credit meter exposes:
+    // - consumed_units: total credits spent in the period
+    // - balance: negative of consumed units when no explicit credits are loaded in Polar
+    // For the dashboard, source-of-truth usage is consumed_units, not balance.
+    const consumedUnits = toFiniteNumber(meter?.consumed_units, Number.NaN);
+    const balanceValue = toFiniteNumber(meter?.balance, Number.NaN);
+
+    let used = 0;
+    if (Number.isFinite(consumedUnits) && consumedUnits > 0) {
+        used = consumedUnits;
+    } else if (creditedUnits > 0 && Number.isFinite(balanceValue)) {
+        // If credits were granted, Polar can report negative consumed_units for grants.
+        // In that case, derive usage from granted credits minus current balance.
+        used = Math.max(0, creditedUnits - balanceValue);
+    } else if (Number.isFinite(balanceValue) && balanceValue < 0) {
+        used = Math.abs(balanceValue);
+    } else if (Number.isFinite(consumedUnits)) {
+        used = Math.max(0, consumedUnits);
+    }
+
+    const roundedUsed = Math.max(0, Math.round(used));
+    const remainingFromPolar = Number.isFinite(balanceValue) ? Math.max(0, Math.round(balanceValue)) : 0;
+    const limit = Math.max(
+        0,
+        Math.round(Math.max(planLimit, polarLimit, creditedUnits, remainingFromPolar))
+    );
+    const remaining = balanceValue > 0 ? Math.max(limit - roundedUsed, remainingFromPolar) : limit - roundedUsed;
+
+    return {
+        version: AI_CREDITS_CACHE_SCHEMA_VERSION,
+        used: roundedUsed,
+        limit,
+        balance: remaining,
+        meterId: AI_CREDITS_METER_ID,
+        updatedAt,
+        available: true,
+        status: remaining <= 0 ? 'exhausted' : 'available'
+    };
+}
+
+export function applyAiCreditUsageToSnapshot(
+    snapshot: AiCreditsData,
+    credits: number,
+    updatedAt = new Date().toISOString()
+): AiCreditsData {
+    const consumed = Math.max(0, Math.ceil(toFiniteNumber(credits, 0)));
+    if (!snapshot.available || consumed === 0) return { ...snapshot };
+
+    const balance = snapshot.balance - consumed;
+    return {
+        ...snapshot,
+        version: AI_CREDITS_CACHE_SCHEMA_VERSION,
+        used: snapshot.used + consumed,
+        balance,
+        updatedAt,
+        status: balance <= 0 ? 'exhausted' : 'available'
+    };
+}
+
+const APPLY_AI_CREDIT_USAGE_SCRIPT = `
+if ARGV[5] == '1' then
+    local marked = redis.call('SET', KEYS[4], '1', 'NX', 'EX', ARGV[4])
+    if not marked then return 2 end
+end
+local raw = redis.call('GET', KEYS[1])
+if not raw then return 0 end
+local ok, data = pcall(cjson.decode, raw)
+if not ok or tonumber(data.version) ~= tonumber(ARGV[3]) or data.available == false then return 0 end
+local consumed = math.max(0, math.ceil(tonumber(ARGV[1]) or 0))
+if consumed == 0 then return 0 end
+data.used = math.max(0, (tonumber(data.used) or 0) + consumed)
+data.balance = (tonumber(data.balance) or 0) - consumed
+data.updatedAt = ARGV[2]
+data.status = data.balance <= 0 and 'exhausted' or 'available'
+redis.call('SET', KEYS[1], cjson.encode(data), 'EX', ARGV[4])
+if data.balance <= 0 then
+    redis.call('SET', KEYS[2], 'true')
+    redis.call('SET', KEYS[3], 'true')
+end
+return data.balance <= 0 and 1 or 0
+`;
+
+export async function recordAiCreditUsage(
+    channelID: string,
+    credits: number,
+    externalId?: string,
+    cacheOverride?: Awaited<ReturnType<typeof getDragonflyClient>>
+): Promise<void> {
+    if (!channelID || !Number.isFinite(credits) || credits <= 0) return;
+
+    try {
+        const cache = cacheOverride || await getDragonflyClient('recordAiCreditUsage');
+        const markerSuffix = externalId
+            ? createHash('sha256').update(externalId).digest('hex')
+            : 'untracked';
+        await cache.eval(APPLY_AI_CREDIT_USAGE_SCRIPT, {
+            keys: [
+                `twitch:${channelID}:ai:credits`,
+                `twitch:${channelID}:ai:exhaust`,
+                `${channelID}:ai:exhaust`,
+                `twitch:${channelID}:ai:usage-local:${markerSuffix}`
+            ],
+            arguments: [
+                String(credits),
+                new Date().toISOString(),
+                String(AI_CREDITS_CACHE_SCHEMA_VERSION),
+                String(31 * 24 * 60 * 60),
+                externalId ? '1' : '0'
+            ]
+        });
+    } catch (err) {
+        // Polar remains the source of truth and its webhook will reconcile this
+        // best-effort local projection if Dragonfly is temporarily unavailable.
+        console.error('recordAiCreditUsage: local credit projection failed', {
+            channelID,
+            error: err instanceof Error ? err.message : String(err)
+        });
+    }
+}
+
+async function syncAiCreditExhaustionStatus(
+    cache: Awaited<ReturnType<typeof getDragonflyClient>>,
+    channelID: string,
+    exhausted: boolean
+): Promise<void> {
+    const keys = [`twitch:${channelID}:ai:exhaust`, `${channelID}:ai:exhaust`];
+    if (exhausted) {
+        await Promise.all(keys.map((key) => cache.set(key, 'true')));
+    } else {
+        await Promise.all(keys.map((key) => cache.del(key)));
+    }
+}
+
+export async function isAiCreditsExhausted(
+    channelID: string,
+    cacheOverride?: Awaited<ReturnType<typeof getDragonflyClient>>
+): Promise<boolean> {
+    if (!channelID) return false;
+    const cache = cacheOverride || await getDragonflyClient('isAiCreditsExhausted');
+    const [canonical, legacy] = await Promise.all([
+        cache.exists(`twitch:${channelID}:ai:exhaust`),
+        cache.exists(`${channelID}:ai:exhaust`)
+    ]);
+    if (canonical === 1 || legacy === 1) {
+        if (canonical !== 1 || legacy !== 1) {
+            await syncAiCreditExhaustionStatus(cache, channelID, true);
+        }
+        return true;
+    }
+
+    const cached = await cache.get(`twitch:${channelID}:ai:credits`);
+    if (!cached) return false;
+    try {
+        const parsed = JSON.parse(cached) as Partial<AiCreditsData>;
+        const exhausted = parsed.status === 'exhausted'
+            || (parsed.available === true && typeof parsed.balance === 'number' && parsed.balance <= 0);
+        if (exhausted) await syncAiCreditExhaustionStatus(cache, channelID, true);
+        return exhausted;
+    } catch {
+        return false;
+    }
+}
+
+const PLAN_PRODUCT_MAP: Record<Exclude<PlanTier, 'free'>, string> = {
+    premium: PRODUCT_IDS.PREMIUM,
+    pro: PRODUCT_IDS.PRO
+};
+
+const PLAN_RANK: Record<PlanTier, number> = {
+    free: 0,
+    premium: 1,
+    pro: 2
+};
+
+const WINBACK_MONTHS = 6;
+
+export function creditPackBillingContextCacheKey(customerId: string): string {
+    const customerHash = createHash('sha256').update(customerId).digest('hex').slice(0, 20);
+    return `billing:credit-packs:context:v${CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION}:${customerHash}`;
+}
+
+function validCachedBillingContext(
+    value: unknown,
+    nowMs = Date.now()
+): CreditPackBillingContextCacheValue | null {
+    if (!value || typeof value !== 'object') return null;
+    const candidate = value as Partial<CreditPackBillingContextCacheValue>;
+    if (
+        candidate.version !== CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION
+        || !candidate.planTier
+        || !['free', 'premium', 'pro'].includes(candidate.planTier)
+    ) {
+        return null;
+    }
+
+    if (candidate.planTier === 'free') {
+        return {
+            version: CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION,
+            planTier: 'free',
+            expiresAt: null
+        };
+    }
+
+    const expiresAtMs = Date.parse(String(candidate.expiresAt || ''));
+    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) return null;
+
+    return {
+        version: CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION,
+        planTier: candidate.planTier,
+        expiresAt: new Date(expiresAtMs).toISOString()
+    };
+}
+
+export async function cacheCreditPackBillingContext(
+    input: CreditPackBillingContextCacheInput
+): Promise<boolean> {
+    const normalized = validCachedBillingContext({
+        planTier: input.planTier,
+        expiresAt: input.expiresAt,
+        version: CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION
+    });
+    if (!normalized) return false;
+
+    const remainingSeconds = normalized.expiresAt
+        ? Math.ceil((Date.parse(normalized.expiresAt) - Date.now()) / 1000)
+        : CREDIT_PACK_BILLING_CONTEXT_CACHE_TTL_SECONDS;
+    const ttlSeconds = Math.max(
+        1,
+        Math.min(CREDIT_PACK_BILLING_CONTEXT_CACHE_TTL_SECONDS, remainingSeconds)
+    );
+
+    try {
+        const cache = await getDragonflyClient('cacheCreditPackBillingContext');
+        await cache.set(
+            creditPackBillingContextCacheKey(input.customerId),
+            JSON.stringify(normalized),
+            { EX: ttlSeconds }
+        );
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function getCachedCreditPackBillingContext(
+    customerId: string
+): Promise<CreditPackBillingContextCacheValue | null> {
+    try {
+        const cache = await getDragonflyClient('getCachedCreditPackBillingContext');
+        const cached = await cache.get(creditPackBillingContextCacheKey(customerId));
+        return cached ? validCachedBillingContext(JSON.parse(cached)) : null;
+    } catch {
+        return null;
+    }
+}
+
+class PolarApiError extends Error {
+    readonly status: number;
+    readonly body: string;
+
+    constructor(status: number, body: string) {
+        super(`Polar API error ${status}: ${body}`);
+        this.status = status;
+        this.body = body;
+    }
+}
+
+function isUuidV4(value: string | null | undefined): boolean {
+    if (!value) return false;
+
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
+}
+
+function getPolarBaseUrl(): string {
+    if (process.env.POLARSH_API_BASE_URL) {
+        return process.env.POLARSH_API_BASE_URL.replace(/\/$/, '');
+    }
+
+    if (process.env.POLARSH_ENVIRONMENT === 'sandbox') {
+        return 'https://sandbox-api.polar.sh';
+    }
+
+    return 'https://api.polar.sh';
+}
+
+function getPolarToken(): string {
+    const token = process.env.POLARSH_OAT;
+    if (!token) {
+        throw new Error('POLARSH_OAT is not set');
+    }
+    return token;
+}
+
+async function polarRequest<T>(path: string, init: RequestInit): Promise<T> {
+    const token = getPolarToken();
+    const baseUrl = getPolarBaseUrl();
+
+    const response = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            ...(init.headers || {})
+        }
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        throw new PolarApiError(response.status, errorBody);
+    }
+
+    return await response.json() as T;
+}
+
+function toDate(value: Date | string | null | undefined): Date | null {
+    if (!value) return null;
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date;
+}
+
+function diffMonths(fromDate: Date, toDate: Date): number {
+    const yearDiff = toDate.getUTCFullYear() - fromDate.getUTCFullYear();
+    const monthDiff = toDate.getUTCMonth() - fromDate.getUTCMonth();
+    const total = yearDiff * 12 + monthDiff;
+
+    if (toDate.getUTCDate() < fromDate.getUTCDate()) {
+        return Math.max(0, total - 1);
+    }
+
+    return Math.max(0, total);
+}
+
+function getLastActivityDate(user: IUsers): Date | null {
+    const lastActivity = toDate(user.last_app_activity_at);
+    if (lastActivity) return lastActivity;
+    return toDate(user.updated_at);
+}
+
+function getDefaultUrl(envVar: string): string | null {
+    const value = process.env[envVar];
+    if (!value) return null;
+    try {
+        const parsed = new URL(value);
+        return parsed.toString();
+    } catch {
+        return null;
+    }
+}
+
+function isAllowedHost(url: URL): boolean {
+    const allowList = process.env.BILLING_ALLOWED_REDIRECT_HOSTS;
+    if (!allowList) return true;
+
+    const allowedHosts = allowList
+        .split(',')
+        .map((host) => host.trim().toLowerCase())
+        .filter(Boolean);
+
+    if (allowedHosts.length === 0) return true;
+
+    return allowedHosts.includes(url.host.toLowerCase());
+}
+
+function sanitizeRedirectUrl(rawUrl: string | undefined, fallbackEnv: string): string | null {
+    if (rawUrl) {
+        try {
+            const parsed = new URL(rawUrl);
+            if (isAllowedHost(parsed)) {
+                return parsed.toString();
+            }
+        } catch {
+            return getDefaultUrl(fallbackEnv);
+        }
+    }
+
+    return getDefaultUrl(fallbackEnv);
+}
+
+function getDiscountConfigByScenario(scenario: BillingScenario): string | null {
+    switch (scenario) {
+        case 'returning_winback':
+            return process.env.POLARSH_WINBACK_DISCOUNT_ID || null;
+        case 'upgrade':
+            return process.env.POLARSH_UPGRADE_DISCOUNT_ID || null;
+        case 'change':
+            return process.env.POLARSH_CHANGE_DISCOUNT_ID || null;
+        default:
+            return null;
+    }
+}
+
+function extractPriceAmountCents(price: any): number {
+    const candidates = [
+        price?.amount,
+        price?.price_amount,
+        price?.fixed_amount,
+        price?.unit_amount
+    ];
+
+    for (const candidate of candidates) {
+        if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) {
+            return candidate;
+        }
+    }
+
+    return 0;
+}
+
+async function getProductBaseAmount(productId: string): Promise<number> {
+    try {
+        const product = await polarRequest<any>(`/v1/products/${productId}/`, {
+            method: 'GET'
+        });
+
+        const prices = Array.isArray(product?.prices) ? product.prices : [];
+        let bestAmount = 0;
+
+        for (const price of prices) {
+            const amount = extractPriceAmountCents(price);
+            if (amount > bestAmount) {
+                bestAmount = amount;
+            }
+        }
+
+        return bestAmount;
+    } catch {
+        return 0;
+    }
+}
+
+async function listSubscriptions(customerId: string, active?: boolean): Promise<PolarSubscription[]> {
+    const params = new URLSearchParams();
+    params.set('customer_id', customerId);
+    params.set('limit', '100');
+
+    if (typeof active === 'boolean') {
+        params.set('active', String(active));
+    }
+
+    const response = await polarRequest<PolarListResponse<PolarSubscription>>(`/v1/subscriptions/?${params.toString()}`, {
+        method: 'GET'
+    });
+
+    return response.items || [];
+}
+
+async function getDiscountById(discountId: string): Promise<DiscountLike | null> {
+    if (!discountId) return null;
+
+    try {
+        return await polarRequest<DiscountLike>(`/v1/discounts/${discountId}/`, {
+            method: 'GET'
+        });
+    } catch {
+        return null;
+    }
+}
+
+function isDiscountApplicableToProduct(discount: DiscountLike, productId: string): boolean {
+    if (!Array.isArray(discount.products) || discount.products.length === 0) {
+        return true;
+    }
+
+    return discount.products.some((product) => product.id === productId);
+}
+
+async function findDiscountByPromoCode(code: string, productId: string): Promise<DiscountLike | null> {
+    const queryCode = code.trim().toLowerCase();
+    if (!queryCode) return null;
+
+    const params = new URLSearchParams();
+    params.set('query', queryCode);
+    params.set('limit', '100');
+
+    const response = await polarRequest<PolarListResponse<DiscountLike>>(`/v1/discounts/?${params.toString()}`, {
+        method: 'GET'
+    });
+
+    const items = response.items || [];
+    const discount = items.find((item) => item.code?.toLowerCase() === queryCode);
+
+    if (!discount) return null;
+    if (!isDiscountApplicableToProduct(discount, productId)) return null;
+
+    return discount;
+}
+
+function estimateDiscountValue(discount: DiscountLike, productBaseAmount: number): number {
+    if (discount.type === 'fixed') {
+        return discount.amount || 0;
+    }
+
+    if (discount.type === 'percentage') {
+        const basisPoints = discount.basis_points || 0;
+        if (productBaseAmount > 0) {
+            return Math.floor(productBaseAmount * (basisPoints / 10000));
+        }
+        return basisPoints;
+    }
+
+    return 0;
+}
+
+function compactMetadata(metadata: Record<string, unknown>): Record<string, string | number | boolean> {
+    const result: Record<string, string | number | boolean> = {};
+
+    for (const [key, value] of Object.entries(metadata)) {
+        if (value === null || value === undefined) {
+            continue;
+        }
+
+        if (typeof value === 'string') {
+            if (!value.trim()) {
+                continue;
+            }
+            result[key] = value;
+            continue;
+        }
+
+        if (typeof value === 'number' || typeof value === 'boolean') {
+            result[key] = value;
+        }
+    }
+
+    return result;
+}
+
+function selectBestDiscount(candidates: Array<{ reason: CheckoutDecision['selectedDiscountReason']; discount: DiscountLike }>, productBaseAmount: number): { reason: CheckoutDecision['selectedDiscountReason']; discount: DiscountLike } | null {
+    if (candidates.length === 0) return null;
+
+    let best = candidates[0];
+    let bestValue = estimateDiscountValue(best.discount, productBaseAmount);
+
+    for (const candidate of candidates.slice(1)) {
+        const candidateValue = estimateDiscountValue(candidate.discount, productBaseAmount);
+        if (candidateValue > bestValue) {
+            best = candidate;
+            bestValue = candidateValue;
+        }
+    }
+
+    return best;
+}
+
+function inferScenario({
+    requestedAction,
+    hasActiveSubscription,
+    targetPlan,
+    currentPlan,
+    winbackEligible,
+    hasAnySubscriptionHistory
+}: {
+    requestedAction: BillingAction;
+    hasActiveSubscription: boolean;
+    targetPlan: Exclude<PlanTier, 'free'>;
+    currentPlan: PlanTier;
+    winbackEligible: boolean;
+    hasAnySubscriptionHistory: boolean;
+}): BillingScenario {
+    // Polar's current subscription wins over a caller's requested action.
+    // Otherwise action=new could buy a second plan or bypass the same-plan guard.
+    if (hasActiveSubscription) {
+        if (targetPlan === currentPlan) {
+            return 'active_no_change';
+        }
+
+        if (PLAN_RANK[targetPlan] > PLAN_RANK[currentPlan]) {
+            return 'upgrade';
+        }
+
+        return 'change';
+    }
+
+    if (requestedAction !== 'auto') {
+        if (requestedAction === 'new') return 'new';
+        if (requestedAction === 'upgrade') return 'upgrade';
+        if (requestedAction === 'change') return 'change';
+        return winbackEligible ? 'returning_winback' : 'reactivate';
+    }
+
+    if (hasAnySubscriptionHistory && winbackEligible) {
+        return 'returning_winback';
+    }
+
+    return hasAnySubscriptionHistory ? 'reactivate' : 'new';
+}
+
+function getCurrentPlanFromActiveSubscription(userPlan: PlanTier, activeProductId?: string): PlanTier {
+    if (activeProductId === PRODUCT_IDS.PRO) return 'pro';
+    if (activeProductId === PRODUCT_IDS.PREMIUM) return 'premium';
+    if (activeProductId === PRODUCT_IDS.FREE) return 'free';
+    return userPlan;
+}
+
+export async function getBillingContext(
+    user: IUsers,
+    targetPlan?: Exclude<PlanTier, 'free'>,
+    requestedAction: BillingAction = 'auto'
+): Promise<BillingContext> {
+    const inactivityMonths = (() => {
+        const lastActivityDate = getLastActivityDate(user);
+        if (!lastActivityDate) return WINBACK_MONTHS + 1;
+        return diffMonths(lastActivityDate, new Date());
+    })();
+
+    const isWinbackEligible = inactivityMonths >= WINBACK_MONTHS;
+    const customerId = user.polar_sh_customer_id;
+
+    if (!customerId) {
+        const hasReferralDiscountEligibility = Boolean(user.referralCodeUsed);
+
+        return {
+            planTier: user.plan_tier,
+            hasActiveSubscription: false,
+            hasAnySubscriptionHistory: false,
+            hasPaidSubscriptionHistory: false,
+            hasUsedTrial: false,
+            inactivityMonths,
+            isWinbackEligible,
+            scenario: inferScenario({
+                requestedAction,
+                hasActiveSubscription: false,
+                targetPlan: targetPlan || 'premium',
+                currentPlan: user.plan_tier,
+                winbackEligible: isWinbackEligible,
+                hasAnySubscriptionHistory: false
+            }),
+            targetProductId: targetPlan ? PLAN_PRODUCT_MAP[targetPlan] : undefined,
+            isReferralEligible: hasReferralDiscountEligibility
+        };
+    }
+
+    const [activeSubscriptions, allSubscriptions] = await Promise.all([
+        listSubscriptions(customerId, true),
+        listSubscriptions(customerId)
+    ]);
+
+    const activePaidSubscription = getPaidSubscriptionFromSubscriptions(activeSubscriptions)?.subscription;
+    const activeSubscription = activePaidSubscription
+        ?? activeSubscriptions.find(subscription => subscription.product_id === PRODUCT_IDS.FREE);
+    // Polar still treats an unended past-due subscription as billable; recover it
+    // in the portal without treating it as an active entitlement.
+    const recoverableSubscriptions = allSubscriptions.filter(
+        subscription => subscription.status === 'past_due' && !subscription.ended_at
+    );
+    const recoverySubscription = !activePaidSubscription
+        ? getPaidSubscriptionFromSubscriptions(recoverableSubscriptions)?.subscription
+            ?? recoverableSubscriptions.find(subscription => subscription.product_id === PRODUCT_IDS.FREE)
+        : undefined;
+    const hasActiveSubscription = Boolean(activeSubscription);
+    const hasAnySubscriptionHistory = allSubscriptions.length > 0;
+    const hasPaidSubscriptionHistory = Boolean(getPaidSubscriptionFromSubscriptions(allSubscriptions));
+    const hasUsedTrial = allSubscriptions.some(subscription => Boolean(subscription.trial_start || subscription.trial_end));
+    const hasReferralDiscountEligibility = Boolean(user.referralCodeUsed) && !hasAnySubscriptionHistory;
+    const activeProductId = activeSubscription?.product_id;
+    const currentPlan = getCurrentPlanFromActiveSubscription(user.plan_tier, activeProductId);
+
+    const scenario = recoverySubscription ? 'reactivate' : inferScenario({
+        requestedAction,
+        hasActiveSubscription,
+        targetPlan: targetPlan || 'premium',
+        currentPlan,
+        winbackEligible: isWinbackEligible,
+        hasAnySubscriptionHistory
+    });
+
+    return {
+        planTier: currentPlan,
+        hasActiveSubscription,
+        hasAnySubscriptionHistory,
+        hasPaidSubscriptionHistory,
+        hasUsedTrial,
+        inactivityMonths,
+        isWinbackEligible,
+        scenario,
+        activeSubscriptionId: activeSubscription?.id,
+        activeProductId,
+        recoverySubscriptionId: recoverySubscription?.id,
+        targetProductId: targetPlan ? PLAN_PRODUCT_MAP[targetPlan] : undefined,
+        isReferralEligible: hasReferralDiscountEligibility
+    };
+}
+
+function getPaidSubscriptionFromSubscriptions(
+    subscriptions: PolarSubscription[]
+): { planTier: Exclude<PlanTier, 'free'>; subscription: PolarSubscription } | null {
+    const proSubscription = subscriptions.find(
+        (subscription) => subscription.product_id === PRODUCT_IDS.PRO
+    );
+    if (proSubscription) {
+        return { planTier: 'pro', subscription: proSubscription };
+    }
+
+    const premiumSubscription = subscriptions.find(
+        (subscription) => subscription.product_id === PRODUCT_IDS.PREMIUM
+    );
+    return premiumSubscription
+        ? { planTier: 'premium', subscription: premiumSubscription }
+        : null;
+}
+
+function getPaidPlanFromSubscriptions(subscriptions: PolarSubscription[]): Exclude<PlanTier, 'free'> | null {
+    return getPaidSubscriptionFromSubscriptions(subscriptions)?.planTier ?? null;
+}
+
+export async function getCreditPackCatalog(user: IUsers): Promise<CreditPackCatalog> {
+    const customerId = user.polar_sh_customer_id || null;
+    const [productsResponse, cachedBillingContext] = await Promise.all([
+        polarRequest<PolarListResponse<PolarCreditPackProductLike>>(
+            '/v1/products/?limit=100',
+            { method: 'GET' }
+        ),
+        customerId ? getCachedCreditPackBillingContext(customerId) : Promise.resolve(null)
+    ]);
+
+    let paidPlan: Exclude<PlanTier, 'free'> | null = cachedBillingContext?.planTier === 'premium'
+        || cachedBillingContext?.planTier === 'pro'
+        ? cachedBillingContext.planTier
+        : null;
+    let rechargeExpiry = cachedBillingContext?.expiresAt
+        ? getRechargeExpiry({ current_period_end: cachedBillingContext.expiresAt })
+        : null;
+
+    if (!cachedBillingContext && customerId) {
+        const activeSubscriptions = await listSubscriptions(customerId, true);
+        const paidSubscription = getPaidSubscriptionFromSubscriptions(activeSubscriptions);
+        paidPlan = paidSubscription?.planTier ?? null;
+        rechargeExpiry = paidSubscription
+            ? getRechargeExpiry(paidSubscription.subscription)
+            : null;
+
+        await cacheCreditPackBillingContext({
+            customerId,
+            planTier: paidPlan || 'free',
+            expiresAt: rechargeExpiry?.expiresAt || null
+        });
+    }
+
+    const offers = buildCreditPackOffers(
+        productsResponse.items || [],
+        AI_CREDITS_METER_ID,
+        paidPlan !== null
+    );
+
+    return {
+        planTier: paidPlan || 'free',
+        hasActivePaidSubscription: paidPlan !== null,
+        rechargeExpiresAt: rechargeExpiry?.expiresAt ?? null,
+        rechargeExpiryDays: rechargeExpiry?.daysRemaining ?? null,
+        offers
+    };
+}
+
+export async function createCreditPackCheckout(
+    request: CreditPackCheckoutRequest
+): Promise<CreditPackCheckoutDecision> {
+    const definition = getCreditPackDefinition(request.productId);
+    if (!definition) {
+        throw new CreditPackRequestError('Invalid credit pack product', 400);
+    }
+
+    const catalog = await getCreditPackCatalog(request.user);
+    const offer = catalog.offers.find((candidate) => candidate.id === request.productId);
+    if (!offer) {
+        throw new CreditPackConfigurationError(`Polar credit pack ${request.productId} is unavailable`);
+    }
+    if (!offer.eligible) {
+        throw new CreditPackRequestError(
+            'Recharge packs require an active Premium or Pro subscription',
+            403
+        );
+    }
+
+    const successUrl = sanitizeRedirectUrl(request.successUrl, 'BILLING_SUCCESS_URL');
+    const returnUrl = sanitizeRedirectUrl(request.returnUrl, 'BILLING_RETURN_URL');
+    const validCustomerId = isUuidV4(request.user.polar_sh_customer_id)
+        ? request.user.polar_sh_customer_id
+        : undefined;
+    const idempotencyKey = `credit-pack:${request.user._id.toString()}:${request.productId}:${Date.now()}`;
+    const metadata = compactMetadata({
+        source: 'dimabot_credit_store',
+        pack_type: definition.kind,
+        pack_size: definition.size,
+        credits: offer.credits,
+        rollover: offer.rollover,
+        user_id: request.user._id.toString()
+    });
+
+    const checkoutPayload: Record<string, unknown> = {
+        products: [request.productId],
+        customer_id: validCustomerId,
+        external_customer_id: request.user._id.toString(),
+        customer_email: request.user.email,
+        customer_name: request.user.name,
+        allow_discount_codes: false,
+        metadata
+    };
+    if (successUrl) checkoutPayload.success_url = successUrl;
+    if (returnUrl) checkoutPayload.return_url = returnUrl;
+
+    const createCheckout = async (payload: Record<string, unknown>) =>
+        polarRequest<{ id: string; url: string }>('/v1/checkouts/', {
+            method: 'POST',
+            headers: { 'Idempotency-Key': idempotencyKey },
+            body: JSON.stringify(payload)
+        });
+
+    let checkout: { id: string; url: string };
+    try {
+        checkout = await createCheckout(checkoutPayload);
+    } catch (error) {
+        if (
+            error instanceof PolarApiError
+            && error.status === 422
+            && typeof checkoutPayload.customer_id === 'string'
+        ) {
+            const fallbackPayload = { ...checkoutPayload };
+            delete fallbackPayload.customer_id;
+            checkout = await createCheckout(fallbackPayload);
+        } else {
+            throw error;
+        }
+    }
+
+    return {
+        checkoutId: checkout.id,
+        checkoutUrl: checkout.url,
+        offer
+    };
+}
+
+export async function createBillingCheckout(request: CheckoutCreateRequest): Promise<CheckoutDecision> {
+    const targetProductId = PLAN_PRODUCT_MAP[request.targetPlan];
+    const action = request.action || 'auto';
+    const context = await getBillingContext(request.user, request.targetPlan, action);
+
+    if (context.recoverySubscriptionId || (context.scenario !== 'active_no_change'
+        && (context.activeProductId === PRODUCT_IDS.PREMIUM || context.activeProductId === PRODUCT_IDS.PRO))) {
+        // Recover payment or confirm paid-to-paid changes in Polar's portal.
+        // Checkout subscription_id only supports upgrading a free-priced subscription.
+        // Never fall back to a new purchase if creating this portal session fails.
+        const session = await createCustomerPortalSession({ user: request.user, returnUrl: request.returnUrl });
+        return {
+            flow: 'customer_portal',
+            scenario: context.scenario,
+            selectedDiscountId: null,
+            selectedDiscountCode: null,
+            selectedDiscountReason: null,
+            checkoutId: null,
+            portalSessionId: session.sessionId,
+            checkoutUrl: session.url,
+            allowDiscountCodes: false
+        };
+    }
+
+    if (context.scenario === 'active_no_change') {
+        throw new Error('You are already subscribed to this plan.');
+    }
+
+    const discountCandidates: Array<{ reason: CheckoutDecision['selectedDiscountReason']; discount: DiscountLike }> = [];
+
+    if (context.isReferralEligible && process.env.POLARSH_REFERRAL_DISCOUNT_ID) {
+        const referralDiscount = await getDiscountById(process.env.POLARSH_REFERRAL_DISCOUNT_ID);
+        if (referralDiscount && isDiscountApplicableToProduct(referralDiscount, targetProductId)) {
+            discountCandidates.push({ reason: 'referral', discount: referralDiscount });
+        }
+    }
+
+    if (request.promoCode) {
+        const promoDiscount = await findDiscountByPromoCode(request.promoCode, targetProductId);
+        if (!promoDiscount) {
+            throw new Error('Invalid or inapplicable promo code for the selected plan.');
+        }
+        discountCandidates.push({ reason: 'promo', discount: promoDiscount });
+    }
+
+    const scenarioDiscountId = getDiscountConfigByScenario(context.scenario);
+    if (scenarioDiscountId) {
+        const scenarioDiscount = await getDiscountById(scenarioDiscountId);
+        if (scenarioDiscount && isDiscountApplicableToProduct(scenarioDiscount, targetProductId)) {
+            const reason: CheckoutDecision['selectedDiscountReason'] =
+                context.scenario === 'returning_winback'
+                    ? 'winback'
+                    : context.scenario === 'upgrade'
+                        ? 'upgrade'
+                        : context.scenario === 'change'
+                            ? 'change'
+                            : null;
+
+            if (reason) {
+                discountCandidates.push({ reason, discount: scenarioDiscount });
+            }
+        }
+    }
+
+    const productBaseAmount = await getProductBaseAmount(targetProductId);
+    const bestDiscount = selectBestDiscount(discountCandidates, productBaseAmount);
+
+    const successUrl = sanitizeRedirectUrl(request.successUrl, 'BILLING_SUCCESS_URL');
+    const returnUrl = sanitizeRedirectUrl(request.returnUrl, 'BILLING_RETURN_URL');
+
+    const allowDiscountCodes = (() => {
+        if (context.scenario === 'upgrade' || context.scenario === 'change') {
+            return false;
+        }
+        return !bestDiscount;
+    })();
+
+    const idempotencyKey = `billing:${request.user._id.toString()}:${request.targetPlan}:${context.scenario}:${Date.now()}`;
+
+    const validCustomerId = isUuidV4(request.user.polar_sh_customer_id)
+        ? request.user.polar_sh_customer_id
+        : undefined;
+
+    const metadata = compactMetadata({
+        source: 'dimabot_billing',
+        scenario: context.scenario,
+        target_plan: request.targetPlan,
+        current_plan: context.planTier,
+        inactivity_months: context.inactivityMonths,
+        selected_discount_reason: bestDiscount?.reason,
+        selected_discount_code: bestDiscount?.discount.code,
+        user_id: request.user._id.toString()
+    });
+
+    const checkoutPayload: Record<string, unknown> = {
+        products: [targetProductId],
+        subscription_id: context.activeProductId === PRODUCT_IDS.FREE ? context.activeSubscriptionId : undefined,
+        customer_id: validCustomerId,
+        external_customer_id: request.user._id.toString(),
+        customer_email: request.user.email,
+        customer_name: request.user.name,
+        allow_discount_codes: allowDiscountCodes,
+        discount_id: bestDiscount?.discount.id,
+        metadata
+    };
+
+    if (context.hasPaidSubscriptionHistory || context.hasUsedTrial) checkoutPayload.allow_trial = false;
+
+    if (successUrl) checkoutPayload.success_url = successUrl;
+    if (returnUrl) checkoutPayload.return_url = returnUrl;
+
+    const createCheckout = async (payload: Record<string, unknown>) => {
+        return await polarRequest<any>('/v1/checkouts/', {
+            method: 'POST',
+            headers: {
+                'Idempotency-Key': idempotencyKey
+            },
+            body: JSON.stringify(payload)
+        });
+    };
+
+    let checkout: any;
+    try {
+        checkout = await createCheckout(checkoutPayload);
+    } catch (err) {
+        if (
+            err instanceof PolarApiError &&
+            err.status === 422 &&
+            typeof checkoutPayload.customer_id === 'string' &&
+            checkoutPayload.customer_id.length > 0
+        ) {
+            const fallbackPayload = { ...checkoutPayload };
+            delete fallbackPayload.customer_id;
+
+            console.warn('[BILLING/CHECKOUT] Retrying checkout without customer_id after Polar 422', {
+                userId: request.user._id.toString(),
+                customerId: checkoutPayload.customer_id,
+                targetPlan: request.targetPlan,
+                scenario: context.scenario,
+                polarError: err.body,
+                timestamp: new Date().toISOString()
+            });
+
+            checkout = await createCheckout(fallbackPayload);
+        } else {
+            throw err;
+        }
+    }
+
+    return {
+        flow: 'checkout',
+        scenario: context.scenario,
+        selectedDiscountId: bestDiscount?.discount.id || null,
+        selectedDiscountCode: bestDiscount?.discount.code || null,
+        selectedDiscountReason: bestDiscount?.reason || null,
+        checkoutId: checkout.id,
+        checkoutUrl: checkout.url,
+        allowDiscountCodes
+    };
+}
+
+export async function createCustomerPortalSession(request: CreatePortalSessionRequest): Promise<PortalSessionResponse> {
+    if (!request.user.polar_sh_customer_id) {
+        throw new Error('Customer does not have a Polar customer ID.');
+    }
+
+    const returnUrl = sanitizeRedirectUrl(request.returnUrl, 'BILLING_PORTAL_RETURN_URL');
+
+    const payload: Record<string, unknown> = {
+        customer_id: request.user.polar_sh_customer_id
+    };
+
+    if (returnUrl) {
+        payload.return_url = returnUrl;
+    }
+
+    const session = await polarRequest<any>('/v1/customer-sessions/', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+
+    return {
+        sessionId: session.id,
+        url: session.customer_portal_url,
+        expiresAt: session.expires_at
+    };
+}
+
+interface AiCreditReadDependencies {
+    getCache: typeof getDragonflyClient;
+    getCurrentPlan(id: string, customerId: string): Promise<Pick<IUsers,
+        'plan_tier' | 'polar_sh_customer_id' | 'polar_plan_event_at' | 'polar_plan_event_key'> | null>;
+    getState(customerId: string, signal?: AbortSignal): Promise<{ active_meters?: Array<{ meter_id?: string }> }>;
+}
+
+const aiCreditReadDependencies: AiCreditReadDependencies = {
+    getCache: getDragonflyClient,
+    async getCurrentPlan(id, customerId) {
+        const { default: UsersSchema } = await import('../schemas/users.schema.js');
+        return UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id } },
+            ...(customerId ? { polar_sh_customer_id: customerId } : {}) })
+            .select('plan_tier polar_sh_customer_id polar_plan_event_at polar_plan_event_key').lean();
+    },
+    getState: (customerId, signal) => polarRequest(`/v1/customers/${customerId}/state`, { method: 'GET', signal })
+};
+
+function unavailableAiCredits(): AiCreditsData {
+    // A rejected plan version must never escape as a paid allowance estimate.
+    return { version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 0, limit: AI_CREDIT_LIMITS.free,
+        balance: 0, meterId: AI_CREDITS_METER_ID, updatedAt: new Date().toISOString(), available: false, status: 'unavailable' };
+}
+
+export async function getAiCredits(
+    user: Pick<IUsers, 'polar_sh_customer_id' | 'plan_tier'>,
+    twitchUserId: string,
+    options: { requireVerified?: boolean; signal?: AbortSignal } = {},
+    injected: Partial<AiCreditReadDependencies> = {}
+): Promise<AiCreditsData> {
+    const channelID = twitchUserId;
+    const deps = { ...aiCreditReadDependencies, ...injected };
+    const cacheClient = await deps.getCache('getAiCredits');
+    const cacheKey = `twitch:${channelID}:ai:credits`;
+    const accept = async (payload: AiCreditsData, version: string, raw: string, mode: 'read' | 'write') =>
+        Number(await cacheClient.eval(ACCEPT_PLAN_CREDITS_SCRIPT, {
+            keys: [cacheKey, `twitch:${channelID}:ai:exhaust`, `${channelID}:ai:exhaust`, planCacheFenceKey(channelID)],
+            arguments: [version, raw, mode, payload.status === 'exhausted' ? '1' : '0', String(AI_CREDITS_CACHE_TTL_SECONDS)]
+        })) === 1;
+
+    const cached = await cacheClient.get(cacheKey);
+    if (cached) {
+        try {
+            const parsed = JSON.parse(cached) as Partial<AiCreditsData> & { [PLAN_CACHE_VERSION_FIELD]?: string };
+            if (parsed.version === AI_CREDITS_CACHE_SCHEMA_VERSION && typeof parsed.used === 'number' && typeof parsed.limit === 'number') {
+                // Paid moderation must not treat a cached unavailable estimate as verified credit.
+                const available = !options.requireVerified || (parsed.available === true && parsed.status !== 'unavailable');
+                const payload: AiCreditsData = {
+                    version: AI_CREDITS_CACHE_SCHEMA_VERSION,
+                    used: parsed.used,
+                    limit: parsed.limit,
+                    balance: typeof parsed.balance === 'number' ? parsed.balance : Math.max(0, parsed.limit - parsed.used),
+                    meterId: parsed.meterId || AI_CREDITS_METER_ID,
+                    updatedAt: parsed.updatedAt || new Date().toISOString(),
+                    available,
+                    status: !available ? 'unavailable' : parsed.status === 'exhausted' || (parsed.balance ?? parsed.limit - parsed.used) <= 0
+                        ? 'exhausted'
+                        : 'available'
+                };
+                if (await accept(payload, parsed[PLAN_CACHE_VERSION_FIELD] ?? '', cached, 'read')) return payload;
+            }
+        } catch {
+            // ignore bad cache
+        }
+    }
+
+    // A bare caller tier has no freshness proof once a plan fence exists. Read the
+    // exact Twitch owner's current Mongo plan, then fence publication after fetch.
+    let fence: string | null = null;
+    let currentUser = user;
+    let version = '';
+    try {
+        fence = await cacheClient.get(planCacheFenceKey(channelID));
+        if (fence) {
+            const current = await deps.getCurrentPlan(channelID, user.polar_sh_customer_id);
+            if (!current) return unavailableAiCredits();
+            version = planCacheVersion(current.polar_plan_event_at, current.polar_plan_event_key);
+            if (version < fence) return unavailableAiCredits();
+            currentUser = current;
+        }
+        if (!currentUser.polar_sh_customer_id) {
+            return fence ? unavailableAiCredits() : { ...unavailableAiCredits(),
+                limit: getAiCreditLimitForPlan(currentUser.plan_tier), balance: getAiCreditLimitForPlan(currentUser.plan_tier) };
+        }
+        const state = await deps.getState(currentUser.polar_sh_customer_id, options.signal);
+        const activeMeters = Array.isArray(state?.active_meters) ? state.active_meters : [];
+        const aiMeter = activeMeters.find((m: any) => m?.meter_id === AI_CREDITS_METER_ID);
+        const payload = buildAiCreditsDataFromMeter(aiMeter, currentUser.plan_tier);
+        if (options.requireVerified && !aiMeter) {
+            payload.available = false;
+            payload.status = 'unavailable';
+        }
+
+        return await accept(payload, version, JSON.stringify({ ...payload, [PLAN_CACHE_VERSION_FIELD]: version }), 'write')
+            ? payload : unavailableAiCredits();
+    } catch (err) {
+        console.error('getAiCredits: Polar fetch failed, returning fallback from plan limit', {
+            channelID,
+            error: err instanceof Error ? err.message : String(err)
+        });
+
+        // Plan/mapping lookup errors and a fence created during provider failure
+        // cannot revive the caller's old paid allowance or touch exhaustion flags.
+        try {
+            if (fence || await cacheClient.get(planCacheFenceKey(channelID))) return unavailableAiCredits();
+        } catch { return unavailableAiCredits(); }
+
+        const limit = getAiCreditLimitForPlan(currentUser.plan_tier);
+        let exhausted = false;
+        try {
+            const [canonical, legacy] = await Promise.all([
+                cacheClient.exists(`twitch:${channelID}:ai:exhaust`),
+                cacheClient.exists(`${channelID}:ai:exhaust`)
+            ]);
+            exhausted = canonical === 1 || legacy === 1;
+        } catch {
+            // Preserve the pre-existing plan-limit fallback if Dragonfly is also unavailable.
+        }
+        return {
+            version: AI_CREDITS_CACHE_SCHEMA_VERSION,
+            used: exhausted ? limit : 0,
+            limit,
+            balance: exhausted ? 0 : limit,
+            meterId: AI_CREDITS_METER_ID,
+            updatedAt: new Date().toISOString(),
+            available: exhausted,
+            status: exhausted ? 'exhausted' : 'unavailable'
+        };
+    }
+}

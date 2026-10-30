@@ -1,0 +1,11 @@
+{
+  "captureMethod": "git show from read-only production checkout; no container execution or mutation",
+  "sourceCommit": "55bd0bb79a6edc441ec9f5104c13576fca0324b3",
+  "files": {
+    "external-source-55bd0bb/dimabot/src/utils/plan_cache_fence.ts": {
+      "sha256": "2639f0021342fba252e7c9ef331dc42cdb9cc4eb19b5e063eda7d167ac7787ee",
+      "bytes": 1496
+    }
+  },
+  "candidateImageByteEquivalence": "not-established; accepted committed source only"
+}

@@ -1,0 +1,52 @@
+{
+  "files": {
+    "apply_format.py": {
+      "bytes": 548,
+      "sha256": "ce77428e3a9ca462e55fc47fe4d21bdb3494df2353f0373257076713ab22a276"
+    },
+    "credit_reader_node1.sh": {
+      "bytes": 545,
+      "sha256": "dec7cd047ead449db03ae166d7aaa7a3f3824fb10b89d587b2fd299922347e00"
+    },
+    "credit_reader_node2.sh": {
+      "bytes": 545,
+      "sha256": "6be400a0666b729e048bf5c2f45c3ba342fea39943bab7adad04e6e5e58cc121"
+    },
+    "credit_reader_node3.sh": {
+      "bytes": 545,
+      "sha256": "e3a649f408e9534fe35a3db3a01837ad353e7b09b2fe629c737119b92f283ba4"
+    },
+    "credit_reader_quality3.sh": {
+      "bytes": 583,
+      "sha256": "51a7942f228e86f07a67d4f71a5dc13d4e222fc391dd039a6843b3b0f83b2f95"
+    },
+    "credit_reader_runtime2.sh": {
+      "bytes": 1008,
+      "sha256": "32d243bb6b8b5e5024a7e3aca9209b0f8bf39852b14b28add1ff86d90cdc92f9"
+    },
+    "credit_validate.sh": {
+      "bytes": 1354,
+      "sha256": "c69ee5de121fbd67979952bc6ef275152116d58f2cc4d6e65b2c4be139a14827"
+    },
+    "final_readback.py": {
+      "bytes": 1324,
+      "sha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14"
+    },
+    "freeze_advanced_oracle.py": {
+      "bytes": 639,
+      "sha256": "4091ac4b5aeadc4cb0aa653d0346b02b30049da4ba994791b4010e7504d2aa2f"
+    },
+    "freeze_credit_reader.py": {
+      "bytes": 1504,
+      "sha256": "84893521e9a88f6860a04cbc29bc5d6066a8bab5878684c63b0e5cffe926eddb"
+    },
+    "package_ai_credit_reader_evidence.py": {
+      "bytes": 17736,
+      "sha256": "99e3f40c9a9f4e510f669d753fc7922a73f6765605476bdc640431632c9b2cb5"
+    },
+    "validate.py": {
+      "bytes": 12955,
+      "sha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be"
+    }
+  }
+}

@@ -77647,7 +77647,7 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "reviewed-bounded-partial-local-AI-credit-projection; billing adapters and callers remain open",
+      "featureReview": "reviewed-bounded-partial-AI-credit-projection-and-getAiCredits-reader; billing adapters and callers remain open",
       "localRustEvidence": [
         "dimabot/src/utils/ai_credit_projection.rs",
         "dimabot/src/utils/credit_policy.rs",
@@ -77659,12 +77659,24 @@
         "migration-notes/ai-credit-receipt-2026-10-29.md",
         "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7",
         "migration-notes/evidence/2026-10-29-ai-credit-receipt/verification-summary.json",
-        "migration-notes/evidence/2026-10-29-ai-credit-receipt/baseline-source-binding.json"
+        "migration-notes/evidence/2026-10-29-ai-credit-receipt/baseline-source-binding.json",
+        "dimabot/src/utils/ai_credit_reader.rs",
+        "dimabot/tests/ai_credit_reader.rs",
+        "dimabot/tests/ai_credit_reader_protocol.rs",
+        "dimabot/tests/fixtures/ai_credit_reader_reference.cjs",
+        "migration-notes/ai-credit-reader.md",
+        "migration-notes/ai-credit-reader-handoff.md",
+        "migration-notes/ai-credit-reader-protocol-handoff.md",
+        "migration-notes/evidence/2026-10-30-ai-credit-reader/README.md",
+        "migration-notes/evidence/2026-10-30-ai-credit-reader/source-bindings.json",
+        "node-1793347225049018031: 13 actual-source DTO/wire cases; source tree d674dd63d827f4b9c6ca0e6ce8a754f1cd5b6f05b2a4c1ac87fcf57f977e4b18",
+        "compiler-fixtures-1793347225048910930: three normal reader tests, two ignored private-service suites, reader/minimal/Mongo-Redis/all-feature strict checks"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "The Rust PlanTier API covers exactly the declared Free, Premium, Pro, Null, and Undefined variants; arbitrary invalid JavaScript runtime variants are outside the typed API.",
         "Redis EVAL claims the optional external-ID marker before reading the cached projection. An absent/malformed cache, or a later Lua error after SET NX, can consume the marker without applying the projection; an uncertain result is not replayed.",
-        "Native error payload preserves channelID and error logically; eprintln formatting and Redis diagnostic wording are not Node console.error inspector output."
+        "Native error payload preserves channelID and error logically; eprintln formatting and Redis diagnostic wording are not Node console.error inspector output.",
+        "The bounded getAiCredits reader now has a concrete opt-in Rust adapter and accepted source/reader tests; it does not cover other billing exports, usage ingestion, application caller adoption, or source-image byte equivalence."
       ],
       "callers": {
         "sourceEvidence": [
@@ -77673,12 +77685,13 @@
           "dimabot/src/utils/ai/openrouter/ai.ts, messages.ai.ts, moderation/semantic_worker.ts, ai/tools/code_execution.tool.ts: credit exhaustion and verified-credit checks remain TypeScript.",
           "dimabot/src/utils/billing.ts: getAiCredits and all plan/credit-pack/Polar functions remain open."
         ],
-        "runtimeStatus": "Only the five local projection functions and scoped constants are partially represented in an opt-in Rust library module. No request-time application adapter or caller is switched; Polar, plan fencing, the rest of billing, callers, bootstrap, and deployment remain open."
+        "runtimeStatus": "The five local projection functions and the bounded getAiCredits reader have opt-in Rust counterparts. No TypeScript application caller is switched; Polar usage ingestion, other billing exports, checkout/recovery behavior, and deployment remain open."
       },
       "testEvidence": {
         "sourceEvidence": [
           "Pinned Node 24.22.1 / V8 13.6.233.17-node.58 / TypeScript 5.9.3 source oracle: 1,956 cases (5 limits, 1,015 meter projections, 504 snapshot applications, 387 record-command cases, 45 exhaustion cases).",
-          "One Rust source replay of the 1,956 credit cases passed."
+          "One Rust source replay of the 1,956 credit cases passed.",
+          "The reader source oracle uses pinned Node 24.22.1 / V8 13.6.233.17-node.58 / TypeScript 5.9.3 and passed 13 actual-source DTO/wire cases; final code source tree d674dd63d827f4b9c6ca0e6ce8a754f1cd5b6f05b2a4c1ac87fcf57f977e4b18."
         ],
         "rustBehaviorEvidence": [
           "Full compiler-fixtures-1793256166045626940 passed in 269.868 seconds (259.765 seconds script time) for source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7.",
@@ -77686,9 +77699,10 @@
           "Post-Node source replay node-1793256476785298801 passed with the same source hash. Read-only production inspection found 19 records unchanged.",
           "Earlier E0616 private test access was corrected to the accessor; a disconnect fixture socket-retention issue was fixed. Those failed attempts were harness issues, not application defects.",
           "Current bounded receipt-builder optimization compiler and new benchmark remain pending; see migration note.",
-          "migration-notes/evidence/2026-10-29-ai-credit-receipt/baseline-source-binding.json binds the full credit implementation and oracle replay to the unchanged baseline source hash."
+          "migration-notes/evidence/2026-10-29-ai-credit-receipt/baseline-source-binding.json binds the full credit implementation and oracle replay to the unchanged baseline source hash.",
+          "The accepted reader phase passed three normal reader tests, two ignored private-service suites, reader strict checks, minimal-profile check, Mongo/Redis-profile check, and all-feature strict Clippy. Earlier reader failures and fixes are retained in the evidence package; these counts do not refer to Mongoose/schema replays."
         ],
-        "status": "Partial local projection behavior verified for the exact baseline hash; whole billing export/dependency closure and caller adoption remain open."
+        "status": "Partial local projection plus bounded getAiCredits reader behavior is verified. Whole billing export/dependency closure, cache-mode usage ingestion, application caller adoption, and source-image equivalence remain open."
       },
       "exports": [
         {
@@ -77858,8 +77872,12 @@
         },
         {
           "name": "getAiCredits",
-          "nativeMapping": "unreviewed/outside this bounded slice",
-          "evidence": []
+          "nativeMapping": "partial: bounded concrete opt-in AiCreditReader implements the verified getAiCredits read path; no TypeScript caller adoption and other billing dependencies remain open",
+          "evidence": [
+            "dimabot/src/utils/ai_credit_reader.rs",
+            "migration-notes/ai-credit-reader.md",
+            "migration-notes/evidence/2026-10-30-ai-credit-reader/README.md"
+          ]
         },
         {
           "name": "getBillingContext",
@@ -78015,7 +78033,7 @@
           "rustReplacementOrGap": "No new crate; request-time adapter/caller adoption remains open."
         }
       ],
-      "rowAssessment": "partial-local-AI-credit-projection-verified; remaining billing exports, Polar dependencies and caller adoption open"
+      "rowAssessment": "partial-local-projection-and-bounded-getAiCredits-reader-verified; billing dependency closure and caller adoption open"
     },
     {
       "source": "src/utils/bits_message.ts",

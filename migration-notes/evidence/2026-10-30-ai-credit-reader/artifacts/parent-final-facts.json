@@ -1,0 +1,62 @@
+{
+  "codeCommit": "c6ac8d0fa4a68e98bc2dd3c8466bce0d1f6540c1",
+  "acceptedRuns": [
+    "node-1793347225049018031",
+    "compiler-fixtures-1793347225048910930"
+  ],
+  "sourceTreeSha256": "d674dd63d827f4b9c6ca0e6ce8a754f1cd5b6f05b2a4c1ac87fcf57f977e4b18",
+  "frozenInputs": 1449,
+  "gitInputs": 1439,
+  "reusedSdkInputs": 10,
+  "sourceCases": 13,
+  "normalTests": 3,
+  "ignoredSuites": 2,
+  "fixtureSha256": "c11a50a2ebe61820764647258dbab9b0a4ca5b924fdc6abe94832152a1a0cd5f",
+  "fixtureRunNote": "runtime uses attempt2; attempt3 byte-identical verified independently",
+  "firstRun": 1793346593981991577,
+  "finalRun": 1793347225049018031,
+  "compilerMetrics": {
+    "steps": [
+      {
+        "name": "bootstrap",
+        "seconds": 3.845,
+        "exit_code": 0
+      },
+      {
+        "name": "locked-fetch",
+        "seconds": 2.622,
+        "exit_code": 0
+      },
+      {
+        "name": "compiler-fixtures",
+        "seconds": 132.987,
+        "exit_code": 0
+      }
+    ],
+    "elapsed_seconds": 145.477,
+    "minimum_available_bytes": 8793755648,
+    "peak_cache_bytes": 8296251392,
+    "limits": {
+      "cpus": 6,
+      "memory": 4294967296,
+      "memory_swap": 4294967296,
+      "pids": 256,
+      "cargo_jobs": 2
+    },
+    "production_unchanged": true
+  },
+  "compatibilityCorrections": [
+    "Test Redis borrowed argument lists",
+    "JavaScriptUTF16 earlycomparison beforeseparateLuaUTF8 ordering",
+    "3 nestedif strictClippy corrections"
+  ],
+  "knownBoundaries": [
+    "Unusual Mongo schema-invalid types and nonUTF8 Redisbytes outsidecontract",
+    "Reader channel/customer inputs RustUTF8; domainTwitchIDs versusgeneralJSUTF16string boundary",
+    "Atomic read-mode rawsnapshot race and uncertainwritefault injection reusedfencepriorcoverage,notnewreaderprotocol proof",
+    "Provider-onlydeadline differsfromoptionaloverall; no assertedEOF/reset atpeer",
+    "Noreadercrossorigincredentialtest; genericPolarclient remainsdependency",
+    "Sourcecommitcapture is not imagebyteequivalence"
+  ],
+  "status": "bounded concrete credit reader verified; full billing/worker/API migration incomplete; no caller adoption, retirement,deployment,push"
+}
