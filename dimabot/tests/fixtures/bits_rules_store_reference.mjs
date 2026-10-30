@@ -6,15 +6,20 @@ import { readFileSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
+import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
 const mongoose = require('mongoose');
+const { resolveSource } = require('./model_schema_source.cjs');
+const sourceRoot = fileURLToPath(new URL('../..', import.meta.url));
 assert.equal(process.env.DIMA_RUST_TEST_RESOURCE_OWNER, 'dimabot-migration');
 assert.ok(process.env.DIMA_TEST_MONGO_URI, 'isolated fixture URI required');
 const base = new URL('../../src/', import.meta.url);
 const paths = ['bits_rules/model.ts','bits_rules/store.ts','schemas/eventsub.schema.ts','utils/eventsub.ts'];
 const sources = Object.fromEntries(paths.map(path => {
-  const content = readFileSync(new URL(path,base),'utf8');
+  const content = path === 'schemas/eventsub.schema.ts'
+    ? resolveSource(sourceRoot, `src/${path}`).bytes.toString('utf8')
+    : readFileSync(new URL(path,base),'utf8');
   return [path,{content,sha256:createHash('sha256').update(content).digest('hex')}];
 }));
 function load(path, localRequire) {

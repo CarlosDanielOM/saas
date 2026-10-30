@@ -45,7 +45,11 @@ pub enum FieldDefault {
     Now,
     Epoch,
     LocalDay,
+    /// One-based local month (`tm_mon + 1`, `getMonth() + 1`).
     LocalMonth,
+    /// Zero-based local month (`Date.prototype.getMonth`, `tm_mon`).
+    /// Does not change [`FieldDefault::LocalMonth`].
+    LocalMonthZero,
     LocalYear,
 }
 #[derive(Clone, Debug)]
@@ -638,15 +642,17 @@ fn resolve_default(default: &FieldDefault, now: DateTime) -> Option<Bson> {
         FieldDefault::Object => Some(Bson::Document(Document::new())),
         FieldDefault::Value(value) => Some(value.clone()),
         FieldDefault::Epoch => Some(Bson::DateTime(DateTime::from_millis(0))),
-        FieldDefault::LocalDay | FieldDefault::LocalMonth | FieldDefault::LocalYear => {
-            local_calendar(now).map(|(year, month, day)| {
-                Bson::Int32(match default {
-                    FieldDefault::LocalDay => day,
-                    FieldDefault::LocalMonth => month,
-                    _ => year,
-                })
+        FieldDefault::LocalDay
+        | FieldDefault::LocalMonth
+        | FieldDefault::LocalMonthZero
+        | FieldDefault::LocalYear => local_calendar(now).map(|(year, month, day)| {
+            Bson::Int32(match default {
+                FieldDefault::LocalDay => day,
+                FieldDefault::LocalMonth => month,
+                FieldDefault::LocalMonthZero => month - 1,
+                _ => year,
             })
-        }
+        }),
     }
 }
 
@@ -953,15 +959,25 @@ fn cast(
                 value => vec![value],
             };
             let mut output = Vec::with_capacity(values.len());
+            let prior_errors = errors.len();
             for (index, value) in values.into_iter().enumerate() {
-                let path = format!("{path}.{index}");
+                let element_path = format!("{path}.{index}");
                 if matches!(value, Bson::Null) {
                     output.push(value);
                 } else {
-                    match cast(element, value, now, &path, errors) {
+                    match cast(element, value, now, &element_path, errors) {
                         Ok(value) => output.push(value),
+                        Err(()) if matches!(element.as_ref(), FieldType::Subdocument { .. }) => {
+                            // Mongoose rejects an invalid embedded element as a
+                            // cast failure on the containing array path.
+                            errors.truncate(prior_errors);
+                            return Err(());
+                        }
                         Err(()) => {
-                            errors.push(FieldError { path, kind: "cast" });
+                            errors.push(FieldError {
+                                path: element_path,
+                                kind: "cast",
+                            });
                         }
                     }
                 }

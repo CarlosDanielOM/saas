@@ -204,6 +204,42 @@
     {
       "source": "src/utils/ai/openrouter/app_attribution.util.ts",
       "sha256": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c"
+    },
+    {
+      "source": "src/schemas/temporary_moderator.schema.ts",
+      "sha256": "1eeab71be86ccb0df0ff7c8404cce8580d27fd280853293175433e72155ef146"
+    },
+    {
+      "source": "src/schemas/vip.schema.ts",
+      "sha256": "b68e2689c7cd4598b2719a2305d7e42ec504e15868808c26b7e8615806e78f85"
+    },
+    {
+      "source": "src/schemas/title_config.schema.ts",
+      "sha256": "5a2886025ab6ca4bd75c54f623ec732a13c392185945a967e372360e4ccb9a97"
+    },
+    {
+      "source": "src/schemas/trigger_file.schema.ts",
+      "sha256": "4ce0751c6232be1088ef05707dee271efea1157e93821c431c01bfb3a0545bd4"
+    },
+    {
+      "source": "src/schemas/eventsub.schema.ts",
+      "sha256": "9d641eb036d2dba0907ab5b70bfb58265bbd7174915ddfd8f87b676319d75bf3"
+    },
+    {
+      "source": "src/schemas/site_analytics.schema.ts",
+      "sha256": "6a187e768b8a246143a9ea04b8000583b60090639b0a904fc265bed22b6090d3"
+    },
+    {
+      "source": "src/schemas/follow_attack_log.schema.ts",
+      "sha256": "418077f7dae3dbfbea4e800eb1444920de2c202828dbe97b87c3e074cea0b032"
+    },
+    {
+      "source": "src/schemas/follow_defense_action.schema.ts",
+      "sha256": "0b56200c8aa2ad0c29668c82da87354517774c2e523e448868daf4c7fafc9cf4"
+    },
+    {
+      "source": "src/schemas/follow_hate_raid_source.schema.ts",
+      "sha256": "8b2321fcf3eed917304bd3d2e03bf975b5351a3a37494cbe1e8ad54947c1215e"
     }
   ]
 }
