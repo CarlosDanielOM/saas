@@ -1,0 +1,7 @@
+# Shared moderation types handoff
+
+`utils::moderation::types` now owns the native configuration shapes shared by channel moderation settings, advanced parsing, semantic policy parsing, and variation helpers. It reuses `SpamCategory` and `JsString`; prior public paths re-export shared definitions. `Boundary`, `ExampleLabel`, and `PolicyExample` remain aliases for `PatternBoundary`, `SemanticLabel`, and `SemanticExample`.
+
+The shared types retain the original fields/variants and the union of required derives. Pattern and variation cache keys retain `Hash`; formerly copyable enums retain `Copy`; `SemanticPolicy` keeps `PartialEq` but not `Eq`/`Hash` due to `f64`. Canonical Rust `type_name` and the `PolicyExample` alias's `Debug` label are native labels, not TypeScript contracts. The feature graph exposes the types without adding MongoDB to helper builds.
+
+The integrated cache/shared-types quality phase `1793334353011847518` passed the unchanged schema suite, seed suite, advanced application and semantic suites, two advanced cache unit tests, five advanced helper tests, and four policy tests, and its declared profiles/strict checks. The final variations phase did not rerun those unchanged suites. For variation helper verification and all exact run scopes, see the [main note](moderation-variations.md) and [evidence index](evidence/2026-10-30-moderation-variations/index.json). No caller adoption or deployment is implied.

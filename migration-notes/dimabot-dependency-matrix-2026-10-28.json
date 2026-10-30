@@ -89762,113 +89762,222 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-local-variations-and-provider; 15 runtime exports, four type exports, shared Unicode, concrete native adapters, and bounded source behavior verified; ordinary JSON/typed boundary and regex/resource compatibility limits remain; callers unadopted",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/variations.rs: pure variation implementation, typed and lossless JSON adapters, caches, and rule/pattern behavior",
+        "dimabot/src/utils/moderation/variations_provider.rs: concrete pooled HTTP provider, environment refresh, request/response mapping, and cancellation",
+        "dimabot/src/utils/moderation/types.rs: shared variation and moderation types re-exported through existing public paths",
+        "dimabot/src/utils/js_unicode.rs: pinned Unicode 17-compatible NFC behavior shared by variation terms",
+        "dimabot/tests/moderation_variations.rs and dimabot/tests/moderation_variations_provider.rs: pure, cache, and isolated provider behavior coverage",
+        "migration-notes/moderation-variations.md and scoped handoffs: source contract, accepted bounds, verification, and benchmark scope",
+        "migration-notes/evidence/2026-10-30-moderation-variations/index.json, verification-summary.json, and source-bindings.json: retained source bindings, phase receipts, generated manifests, and benchmark evidence",
+        "Source oracle: 175 calls (173 pure, two requests), 15 mocked transport observations, all 15 runtime exports and all four type exports; no live provider request.",
+        "Unicode oracle: all 1,114,112 code-point values including 2,048 surrogates and 4,116 sequences; canonical digest 4340922e94668efdcf19b7a2d57519288402aefc26a84c511b0cd52266a999ca.",
+        "Final scoped quality phase 1793335018338289470 passed. Cache/shared-types phase 1793334353011847518 separately passed related unchanged schema, seed, advanced, cache, and declared profile checks.",
+        "Three complete benchmark rounds, 210 independently checked actors total; mixed medians and overlapping ranges do not establish significance, production throughput, CPU, or RSS."
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native API provides typed structs and lossless ordinary-JSON adapters; it does not model arbitrary JavaScript values, accessors, symbols, prototypes, or own-property presence for undefined. JSON wire output represents symbolVersion: undefined as absence.",
+        "Typed and JsonValue spacing caches are independent, each FIFO-bounded at 1,000 entries, with four flag buckets, borrowed-key lookup, no hit refresh, and source/cache result identity behavior covered.",
+        "The existing lossless JSON parser retains its 128-level maximum depth.",
+        "The source override limit is 16,000 characters; native RE2 grammar/resource bounds and malformed-regex diagnostic wording may differ. JSON syntax diagnostics may also differ by engine.",
+        "NFC uses Unicode 18 crate tables only across Unicode 17-assigned spans; Unicode 17 unassigned scalars and lone UTF-16 surrogates are barriers. The pinned Unicode 17 V8 fact table supplies source /\\p{L}/u behavior rather than native RE2 property semantics.",
+        "The provider has no implicit deadline. Abandoning the future or signaling the watch receiver cancels pending I/O; dropping the watch sender alone does not signal cancellation. from_env refreshes OPENROUTER_API_KEY per call while reusing the pool.",
+        "No application caller has adopted the helper. Variation-job/Mongo orchestration is a separate integration track, not a direct dependency of variations.ts; no TypeScript source was retired and no deployment or push occurred.",
+        "Benchmark compares prepared, warm-cache pure calls only. Setup/serialization/checksum/retained-result destruction are outside timing, temporary-result destruction is inside; no statistical-significance or production-resource claim is made."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/moderation/variation_jobs.ts",
+          "dimabot/src/utils/moderation/advanced.ts",
+          "dimabot/src/handlers/moderation.handler.ts"
+        ],
+        "runtimeStatus": "unadopted; TypeScript callers remain active. Caller adoption and separate variation-job/Mongo orchestration are tracked outside this helper row."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/moderation/variations.test.ts",
+          "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_variations.rs",
+          "dimabot/tests/moderation_variations_provider.rs",
+          "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json",
+          "migration-notes/evidence/2026-10-30-moderation-variations/index.json"
+        ],
+        "status": "175-case source oracle, 15 mocked transport observations, exhaustive Unicode 17 NFC replay, scoped tests/strict checks/build profiles, and three paired benchmark rounds passed within documented boundaries; earlier warning/style failures are retained and corrected."
       },
       "exports": [
         {
           "name": "GeneratedVariation",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::types::GeneratedVariation (typed Rust contract; arbitrary JS object semantics not represented)",
+          "evidence": [
+            "dimabot/src/utils/moderation/types.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "ModerationVariations",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::types::ModerationVariations (typed Rust contract; arbitrary JS object semantics not represented)",
+          "evidence": [
+            "dimabot/src/utils/moderation/types.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "VARIATION_MODEL",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::VARIATION_MODEL",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "VARIATION_VERSION",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::VARIATION_VERSION",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "VariationMode",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::types::VariationMode (typed Rust contract; arbitrary JS object semantics not represented)",
+          "evidence": [
+            "dimabot/src/utils/moderation/types.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "VariationOverride",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::types::VariationOverride (typed Rust contract; arbitrary JS object semantics not represented)",
+          "evidence": [
+            "dimabot/src/utils/moderation/types.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "buildVariation",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::build_variation",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "compileRuleVariations",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::{compile_rule_variations, compile_rule_variations_value}",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "generateMuseVariations",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations_provider::MuseVariationsProvider::generate",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations_provider.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "museVariationRequest",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations_provider::muse_variation_request",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations_provider.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "rulePatterns",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::{rule_patterns, rule_patterns_value}",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "validateVariations",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::{validate_variations, validate_variations_value}",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "variationAllowSpaces",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::variation_allow_spaces",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "variationKey",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::{variation_key, variation_key_value}",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "variationMode",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::variation_mode",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "variationOverrides",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::variation_overrides",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "variationTerm",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::{variation_term, variation_term_value}",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "variationTerms",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::variation_terms",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         },
         {
           "name": "withVariationSpacing",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::variations::{with_variation_spacing, with_variation_spacing_value}",
+          "evidence": [
+            "dimabot/src/utils/moderation/variations.rs",
+            "migration-notes/evidence/2026-10-30-moderation-variations/source-bindings.json",
+            "migration-notes/evidence/2026-10-30-moderation-variations/verification-summary.json"
+          ]
         }
       ],
       "imports": [
@@ -89885,12 +89994,12 @@
           "baselineSourceTargets": [
             "src/utils/ai/openrouter/app_attribution.util.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "runtime dependency",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed-concrete-native-attribution-adapter",
+          "transitiveDependencyReview": "The provider request path uses the existing native attribution constants/helper; no TypeScript runtime is required.",
+          "rustReplacementOrGap": "existing native app attribution module reused by variations_provider.rs"
         },
         {
           "ordinal": 1,
@@ -89905,12 +90014,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/advanced.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime/type imports",
+          "runtimeOrTypeDependency": "runtime and type dependency",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed-shared-native-pattern/rule and regex dependencies",
+          "transitiveDependencyReview": "Variation compilation reuses native advanced pattern types and pinned native RE2; documented source regex/resource/diagnostic bounds remain.",
+          "rustReplacementOrGap": "dima_rust::utils::moderation::advanced and existing native RE2 adapter"
         },
         {
           "ordinal": 2,
@@ -89925,12 +90034,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/normalize.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "runtime dependency",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed-shared native normalization dependency",
+          "transitiveDependencyReview": "Term normalization uses shared Unicode 17-compatible js_unicode::normalize_nfc and existing moderation normalization; full source-bound Unicode replay passed.",
+          "rustReplacementOrGap": "dima_rust::utils::js_unicode and existing moderation normalize helpers"
         },
         {
           "ordinal": 3,
@@ -89938,12 +90047,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "runtime dependency",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed native UUID replacement",
+          "transitiveDependencyReview": "UUID generation is provided by the existing native UUID facility; no npm package internals are required.",
+          "rustReplacementOrGap": "existing native UUID implementation"
         },
         {
           "ordinal": 4,
@@ -89951,15 +90060,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "default runtime import",
+          "runtimeOrTypeDependency": "runtime dependency",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed bounded native regex replacement",
+          "transitiveDependencyReview": "Native RE2 behavior is source-replayed within the corpus; resource bounds, arbitrary JS RegExp shape, and some diagnostics remain limits.",
+          "rustReplacementOrGap": "existing native RE2 module; source property-letter behavior uses pinned Unicode 17 fact table"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-variations-helper-and-provider-source-behavior-verified; ordinary-json/typed-boundary-and-native-regex-resource-diagnostics-limits-remain; callers-unadopted; variation-job-orchestration-is-separate"
     },
     {
       "source": "src/utils/notifications.ts",
@@ -92642,7 +92751,7 @@
       "behaviorDifferencesOrAcceptedChanges": [
         "All six exports have local Rust payload/lifecycle counterparts and concrete SDK/lossless adapters. Verification covers 1,042 source wrapper records, 20 native HTTP transport tests and 18 installed-SDK lifecycle scenarios; see the dated migration note and evidence summary.",
         "Native lossless transport has explicit event preflight (256 KiB), depth (64), response-body (64 KiB) and queued-byte (16 MiB) bounds; redirects/proxies are disabled and shutdown is permanent. These behavior differences, UUIDv4 versus SDK UUIDv7 event metadata, and differing SDK/library metadata prevent a strict source-equivalence claim.",
-        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%\u201386.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
+        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%–86.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
       ],
       "callers": {
         "sourceEvidence": [

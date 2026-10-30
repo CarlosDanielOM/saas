@@ -1,0 +1,7 @@
+# Unicode NFC UTF-8 optimization handoff
+
+The UTF-8 normalization optimization is verified against the final source-bound Node oracle and exhaustive native replay. `normalize_nfc` returns ASCII immediately; for all-assigned Unicode 17 text it uses the pinned crate's authoritative `is_nfc` to borrow normalized input or emits NFC into one `String`. Inputs with Unicode 17-unassigned scalars normalize each assigned span independently and copy barriers. Equality preserves borrowing for unchanged barrier-containing inputs. The existing UTF-16 path for lone surrogates is unchanged. No cache or input-specific memoization was added.
+
+The assigned-scalar guard preserves the previous behavior: all-assigned input is one assigned span passed to the same crate's `nfc`; the crate's `is_nfc` quick-check falls back on equality with `chars().nfc()` for `Maybe`. For mixed input, UTF-8 `char_indices` split the same assigned runs that the prior UTF-16 decoding used, and each slice begins at a scalar boundary. Unicode 17 assigned-property data and the existing crate behavior are reused.
+
+The fresh pinned Node oracle and Rust replay covered all 1,114,112 code-point values, 2,048 surrogate values, and 4,116 context sequences. The canonical digest is `4340922e94668efdcf19b7a2d57519288402aefc26a84c511b0cd52266a999ca`; the final fixture SHA is `f8b8638a17f70d25e5fd46df06570387d16f28874da905455857079926458882`. The final full replay passed in compiler phase `1793335018338289470`. This verifies the bounded Unicode 17 behavior; it makes no separate performance claim.

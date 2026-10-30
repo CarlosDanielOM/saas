@@ -1,0 +1,56 @@
+{
+  "format": 1,
+  "buildReceipt": "compiler-1793335018338289470-receipt.json",
+  "buildReceiptSha256": "4e65b48fab799705fc7ee880d97792b69fc4332198716aea32c102c26f89001c",
+  "buildLogSha256": "f491be20f3462c389af4e92776b7235647fc5ac912b9b76db3434e312c0c0601",
+  "toolchainImage": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9",
+  "sourceTreeSha256": "4c4519693e67253af36b816edb4ba04acba559e8c56a4899638ef517e145efda",
+  "sourceInputs": 1403,
+  "binaries": [
+    {
+      "name": "moderation_variations_benchmark",
+      "cargoExecutable": "/target-cache/release/deps/moderation_variations_benchmark-b369936a987bc0e6",
+      "artifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-variations/benchmark-export-attempt3/moderation_variations_benchmark",
+      "sha256": "b274bf4bf78a7df116c570babd2d42200270899ab85913b9b7dcc39051694314",
+      "bytes": 2063624,
+      "elfMachine": "x86-64",
+      "staticNoInterpreterOrNeededLibraries": true,
+      "programHeaderTypes": [
+        1,
+        1,
+        1,
+        1,
+        2,
+        4,
+        7,
+        1685382480,
+        1685382481,
+        1685382482
+      ],
+      "profile": {
+        "opt_level": "3",
+        "debuginfo": 0,
+        "debug_assertions": false,
+        "overflow_checks": false,
+        "test": true
+      },
+      "features": [
+        "js-regexp-unicode",
+        "js-strings",
+        "js-unicode17",
+        "lossless-json-view",
+        "moderation-advanced",
+        "moderation-advanced-policy",
+        "moderation-blacklist",
+        "moderation-normalize",
+        "moderation-spam-categories",
+        "moderation-types",
+        "moderation-variations",
+        "re2-native",
+        "re2-strings",
+        "re2-unicode",
+        "tts-utilities"
+      ]
+    }
+  ]
+}

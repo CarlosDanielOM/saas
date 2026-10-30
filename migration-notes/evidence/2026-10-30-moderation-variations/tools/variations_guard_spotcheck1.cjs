@@ -1,0 +1,10 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const lib=require('/source/dimabot/tests/fixtures/moderation_variations_source.cjs'),api=lib.realm();
+const units=s=>Array.from({length:s.length},(_,i)=>s.charCodeAt(i));
+const inputs=['\ufeff AΣ\ufeff\u00a0B\u2028 ',String.fromCharCode(0xfeff,0x41,0x03a3,0xfeff,0x42,0xd800,0x20,0xdc00,0x2028)];
+const expected=['aς b',String.fromCharCode(0x61,0x03c2,0x20,0x62,0xd800,0x20,0xdc00)];
+const cases=inputs.map((input,i)=>{const output=api.variationTerm(input);assert.deepEqual(units(output),units(expected[i]));return {input:units(input),output:units(output)};});
+const rule={variations:{mode:'common',entries:[api.buildVariation('cat'),api.buildVariation('hi')],overrides:[{term:'cat',source:'custom'}],allowSpaces:true}};
+const patterns=api.rulePatterns(rule);assert.equal(patterns[0].source,'(?:(?:custom)|(?:(?:h\\s*i)))');
+const report={node:process.version,nodeSha256:lib.nodeSha,readerSha256:lib.sha(fs.readFileSync(__filename)),sourcePins:{...lib.pins,...lib.variationPins},re2Runtime:lib.re2Runtime,cases,patterns:patterns.map(p=>({...p,source:units(p.source)}))};
+fs.writeFileSync('/artifacts/moderation-variations/guard-spotcheck1.json',JSON.stringify(report,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify({termCases:cases.length,rulePatternCases:patterns.length}));

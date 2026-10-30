@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "samples": 70,
+  "operationsPerSample": 8000,
+  "beforeAfterHashesEqual": true,
+  "sourceTreeSha256": "379b640bd4b952ef59aa4cb31cce68fac61b66a4c802f947d7a3e9c74109c3f5",
+  "medianNsPerOperation": {
+    "term": {
+      "node": 451.48325,
+      "rust": 953.292125
+    },
+    "key": {
+      "node": 3606.24625,
+      "rust": 2808.366875
+    },
+    "build": {
+      "node": 13820.128875,
+      "rust": 12669.625125
+    },
+    "spacing": {
+      "node": 2316.390125,
+      "rust": 1413.441375
+    },
+    "patterns": {
+      "node": 6736.84425,
+      "rust": 8368.307875
+    }
+  },
+  "pairedReportSha256": "f7d90bbe4331b19aef3ddcad3bee4ec5cc748fb67786a80ee051924542672842"
+}

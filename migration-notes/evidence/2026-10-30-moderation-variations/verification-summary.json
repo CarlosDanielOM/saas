@@ -1,0 +1,817 @@
+{
+  "benchmarkActorsPerRound": 70,
+  "benchmarkRounds": 3,
+  "codeCommit": "e76da286da5b56e221b8fbadcbcedba898dce3c7",
+  "deployment": false,
+  "limitations": [
+    "typed and ordinary JSON boundaries; undefined own-property identity is not modeled",
+    "existing JSON nesting and regex resource/diagnostic boundaries",
+    "no application caller adoption or variation-job orchestration acceptance",
+    "synthetic prepared pure calls, warm caches; no production throughput, CPU or RSS measurement"
+  ],
+  "medianNsPerOperation": {
+    "1": {
+      "build": {
+        "node": 13820.128875,
+        "rust": 12669.625125
+      },
+      "key": {
+        "node": 3606.24625,
+        "rust": 2808.366875
+      },
+      "patterns": {
+        "node": 6736.84425,
+        "rust": 8368.307875
+      },
+      "spacing": {
+        "node": 2316.390125,
+        "rust": 1413.441375
+      },
+      "term": {
+        "node": 451.48325,
+        "rust": 953.292125
+      }
+    },
+    "2": {
+      "build": {
+        "node": 13117.306375,
+        "rust": 11613.71725
+      },
+      "key": {
+        "node": 3737.096625,
+        "rust": 2507.728625
+      },
+      "patterns": {
+        "node": 7103.366,
+        "rust": 3976.555125
+      },
+      "spacing": {
+        "node": 2167.562875,
+        "rust": 412.298625
+      },
+      "term": {
+        "node": 507.0285,
+        "rust": 614.108875
+      }
+    },
+    "3": {
+      "build": {
+        "node": 12002.5345,
+        "rust": 11032.778
+      },
+      "key": {
+        "node": 3436.8805,
+        "rust": 1901.26775
+      },
+      "patterns": {
+        "node": 6896.48975,
+        "rust": 4146.829125
+      },
+      "spacing": {
+        "node": 2209.778,
+        "rust": 315.167875
+      },
+      "term": {
+        "node": 482.541375,
+        "rust": 413.524625
+      }
+    }
+  },
+  "nfcCodepointValues": 1114112,
+  "nfcContextCases": 4116,
+  "nfcSurrogateCodepointValues": 2048,
+  "productionContainers": 18,
+  "pureCallCases": 173,
+  "push": false,
+  "requestCases": 2,
+  "reusedSdkEvidence": "../2026-10-30-advanced-moderation-prerequisites/index.json",
+  "runs": {
+    "compiler-1793333137018891959": {
+      "elapsed_seconds": 32.946,
+      "headroom_start": {
+        "load_1m": 1.04296875,
+        "mem_available_bytes": 11601387520
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11224842240,
+      "peak_cache_bytes": 5800398848,
+      "phase": "compiler",
+      "production_unchanged": true,
+      "source_tree_sha256": "02516a4351ba83a23b2ec235046f7ce4a63585059484b850ccabeb538ee569bc",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.678
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.258
+        },
+        {
+          "exit_code": 0,
+          "name": "compiler",
+          "seconds": 23.187
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "compiler-1793333263910147851": {
+      "elapsed_seconds": 61.321,
+      "error": "compiler failed; see /root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793333263910147851.log",
+      "headroom_start": {
+        "load_1m": 1.8505859375,
+        "mem_available_bytes": 11500859392
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11272941568,
+      "peak_cache_bytes": 5945540608,
+      "phase": "compiler",
+      "production_unchanged": true,
+      "source_tree_sha256": "483aecded45e2c5e18d4bad23e5475e23e9db7d4a719de42f33a096aff564bbf",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.658
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.224
+        }
+      ],
+      "success": false,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "compiler-1793333559165324575": {
+      "elapsed_seconds": 35.915,
+      "error": "compiler failed; see /root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793333559165324575.log",
+      "headroom_start": {
+        "load_1m": 1.69384765625,
+        "mem_available_bytes": 11638075392
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11290603520,
+      "peak_cache_bytes": 5960863744,
+      "phase": "compiler",
+      "production_unchanged": true,
+      "source_tree_sha256": "c5963a87b173c6b6f1140034f1c21f71f471bcb1cbb3ce8d295cb1d8c2fddea3",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.83
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.361
+        }
+      ],
+      "success": false,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "compiler-1793333693921757368": {
+      "elapsed_seconds": 140.209,
+      "headroom_start": {
+        "load_1m": 0.8916015625,
+        "mem_available_bytes": 11756310528
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 9866346496,
+      "peak_cache_bytes": 6002143232,
+      "phase": "compiler",
+      "production_unchanged": true,
+      "source_tree_sha256": "379b640bd4b952ef59aa4cb31cce68fac61b66a4c802f947d7a3e9c74109c3f5",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.752
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.322
+        },
+        {
+          "exit_code": 0,
+          "name": "compiler",
+          "seconds": 131.357
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "compiler-1793334353011847518": {
+      "elapsed_seconds": 172.148,
+      "headroom_start": {
+        "load_1m": 0.89794921875,
+        "mem_available_bytes": 11482505216
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 9584353280,
+      "peak_cache_bytes": 6221791232,
+      "phase": "compiler",
+      "production_unchanged": true,
+      "source_tree_sha256": "c371219d4dc68714d04590efcda514eff50cf773a6ad3c3804af645354acb185",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.973
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.724
+        },
+        {
+          "exit_code": 0,
+          "name": "compiler",
+          "seconds": 163.545
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "compiler-1793335018338289470": {
+      "elapsed_seconds": 132.791,
+      "headroom_start": {
+        "load_1m": 0.943359375,
+        "mem_available_bytes": 11551449088
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 9131483136,
+      "peak_cache_bytes": 6221987840,
+      "phase": "compiler",
+      "production_unchanged": true,
+      "source_tree_sha256": "4c4519693e67253af36b816edb4ba04acba559e8c56a4899638ef517e145efda",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.825
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.354
+        },
+        {
+          "exit_code": 0,
+          "name": "compiler",
+          "seconds": 122.891
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "format-1793333095615499094": {
+      "elapsed_seconds": 13.071,
+      "headroom_start": {
+        "load_1m": 1.65478515625,
+        "mem_available_bytes": 11164024832
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11164024832,
+      "peak_cache_bytes": 5764816896,
+      "phase": "format",
+      "production_unchanged": true,
+      "source_tree_sha256": "b775b8b1f3354b5b460fb8056ba7d76ab997272c470fc5f427279877cff42f2d",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.796
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.273
+        },
+        {
+          "exit_code": 0,
+          "name": "format",
+          "seconds": 4.231
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "format-1793333222235332724": {
+      "elapsed_seconds": 12.603,
+      "headroom_start": {
+        "load_1m": 1.466796875,
+        "mem_available_bytes": 11626815488
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 10569252864,
+      "peak_cache_bytes": 5800189952,
+      "phase": "format",
+      "production_unchanged": true,
+      "source_tree_sha256": "501b342f725a88f1fcf0b21261f22269bc8d735ae5680f1b5a1efbde0417e47d",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.776
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.449
+        },
+        {
+          "exit_code": 0,
+          "name": "format",
+          "seconds": 4.236
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "format-1793333487695627304": {
+      "elapsed_seconds": 12.366,
+      "headroom_start": {
+        "load_1m": 0.97265625,
+        "mem_available_bytes": 11827888128
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11653005312,
+      "peak_cache_bytes": 5945540608,
+      "phase": "format",
+      "production_unchanged": true,
+      "source_tree_sha256": "a68e5f34c583cda4a7ee2305e0ee5b0268defff9478ed2f7a1928f17387155d5",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.694
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.264
+        },
+        {
+          "exit_code": 0,
+          "name": "format",
+          "seconds": 4.415
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "format-1793333651345198669": {
+      "elapsed_seconds": 12.04,
+      "headroom_start": {
+        "load_1m": 1.39208984375,
+        "mem_available_bytes": 11731939328
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11657621504,
+      "peak_cache_bytes": 5960863744,
+      "phase": "format",
+      "production_unchanged": true,
+      "source_tree_sha256": "b8b8f68bd87f4e46716282f69a15c7eeb8a0674c2570f2b2653422412cd07867",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.742
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.2
+        },
+        {
+          "exit_code": 0,
+          "name": "format",
+          "seconds": 4.232
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "format-1793334274188889051": {
+      "elapsed_seconds": 12.861,
+      "headroom_start": {
+        "load_1m": 1.07080078125,
+        "mem_available_bytes": 11454812160
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11363164160,
+      "peak_cache_bytes": 6002143232,
+      "phase": "format",
+      "production_unchanged": true,
+      "source_tree_sha256": "7ca4d242e1d70489973a0a603def7bf90d63aa3e4e3b57eb2be72055aee48ee5",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.747
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.184
+        },
+        {
+          "exit_code": 0,
+          "name": "format",
+          "seconds": 4.814
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "format-1793334913973141419": {
+      "elapsed_seconds": 12.336,
+      "headroom_start": {
+        "load_1m": 1.7890625,
+        "mem_available_bytes": 11553968128
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11525668864,
+      "peak_cache_bytes": 6221791232,
+      "phase": "format",
+      "production_unchanged": true,
+      "source_tree_sha256": "6db3af95f234ec87ffb0f20018021215cef93c9914fb3e2ee37e632ca84a1fa1",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.817
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.239
+        },
+        {
+          "exit_code": 0,
+          "name": "format",
+          "seconds": 4.206
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "node-1793333094304865128": {
+      "elapsed_seconds": 4.525,
+      "headroom_start": {
+        "load_1m": 1.62451171875,
+        "mem_available_bytes": 11466911744
+      },
+      "limits": {
+        "cargo_jobs": null,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11397308416,
+      "phase": "node",
+      "production_unchanged": true,
+      "source_tree_sha256": "b775b8b1f3354b5b460fb8056ba7d76ab997272c470fc5f427279877cff42f2d",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.502
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 3.002
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82"
+    },
+    "node-1793333559166019117": {
+      "elapsed_seconds": 2.354,
+      "headroom_start": {
+        "load_1m": 1.69384765625,
+        "mem_available_bytes": 11657719808
+      },
+      "limits": {
+        "cargo_jobs": null,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11655585792,
+      "phase": "node",
+      "production_unchanged": true,
+      "source_tree_sha256": "c5963a87b173c6b6f1140034f1c21f71f471bcb1cbb3ce8d295cb1d8c2fddea3",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.502
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 1.001
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82"
+    },
+    "node-1793333693920485005": {
+      "elapsed_seconds": 6.272,
+      "headroom_start": {
+        "load_1m": 0.8916015625,
+        "mem_available_bytes": 11767328768
+      },
+      "limits": {
+        "cargo_jobs": null,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11767328768,
+      "phase": "node",
+      "production_unchanged": true,
+      "source_tree_sha256": "379b640bd4b952ef59aa4cb31cce68fac61b66a4c802f947d7a3e9c74109c3f5",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.502
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 2.502
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82"
+    },
+    "node-1793333878325724797": {
+      "elapsed_seconds": 62.991,
+      "headroom_start": {
+        "load_1m": 1.80224609375,
+        "mem_available_bytes": 11224363008
+      },
+      "limits": {
+        "cargo_jobs": null,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 10636926976,
+      "phase": "node",
+      "production_unchanged": true,
+      "source_tree_sha256": "379b640bd4b952ef59aa4cb31cce68fac61b66a4c802f947d7a3e9c74109c3f5",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.501
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 58.522
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82"
+    },
+    "node-1793334326900588303": {
+      "elapsed_seconds": 3.294,
+      "headroom_start": {
+        "load_1m": 1.27783203125,
+        "mem_available_bytes": 11457597440
+      },
+      "limits": {
+        "cargo_jobs": null,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11375648768,
+      "phase": "node",
+      "production_unchanged": true,
+      "source_tree_sha256": "c371219d4dc68714d04590efcda514eff50cf773a6ad3c3804af645354acb185",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.501
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 2.002
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82"
+    },
+    "node-1793334661097728572": {
+      "elapsed_seconds": 58.33,
+      "headroom_start": {
+        "load_1m": 0.984375,
+        "mem_available_bytes": 11184631808
+      },
+      "limits": {
+        "cargo_jobs": null,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 10551943168,
+      "phase": "node",
+      "production_unchanged": true,
+      "source_tree_sha256": "c371219d4dc68714d04590efcda514eff50cf773a6ad3c3804af645354acb185",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.502
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 57.021
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82"
+    },
+    "node-1793335011841345825": {
+      "elapsed_seconds": 2.339,
+      "headroom_start": {
+        "load_1m": 1.02587890625,
+        "mem_available_bytes": 11533926400
+      },
+      "limits": {
+        "cargo_jobs": null,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11529748480,
+      "phase": "node",
+      "production_unchanged": true,
+      "source_tree_sha256": "4c4519693e67253af36b816edb4ba04acba559e8c56a4899638ef517e145efda",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.501
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 1.001
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82"
+    },
+    "node-1793335272523760446": {
+      "elapsed_seconds": 56.821,
+      "headroom_start": {
+        "load_1m": 1.46630859375,
+        "mem_available_bytes": 11380211712
+      },
+      "limits": {
+        "cargo_jobs": null,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 9755496448,
+      "phase": "node",
+      "production_unchanged": true,
+      "source_tree_sha256": "4c4519693e67253af36b816edb4ba04acba559e8c56a4899638ef517e145efda",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.501
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 55.521
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82"
+    }
+  },
+  "sourceCallCases": 175,
+  "transportObservations": 15,
+  "typescriptRetirement": false
+}
