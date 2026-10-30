@@ -88735,28 +88735,74 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-partial-local-semantic-worker-adapter; source worker behavior is mapped with pinned oracle and isolated concrete fixtures; application bootstrap and full transitive closure remain open",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/semantic_worker.rs",
+        "dimabot/src/utils/moderation/semantic.rs",
+        "dimabot/src/utils/moderation/advanced_policy.rs",
+        "dimabot/src/utils/moderation/spam.rs",
+        "dimabot/src/utils/moderation/spam_categories.rs",
+        "dimabot/src/utils/ai_credit_projection.rs",
+        "dimabot/src/utils/ai_credit_reader.rs",
+        "dimabot/src/utils/polar_cache_usage.rs",
+        "dimabot/src/utils/bson_js_json.rs",
+        "dimabot/tests/moderation_semantic_worker.rs",
+        "dimabot/tests/fixtures/moderation_semantic_worker_reference.cjs",
+        "dimabot/tests/bson_js_json.rs",
+        "migration-notes/moderation-semantic-worker.md",
+        "migration-notes/evidence/2026-10-30-moderation-semantic-worker/README.md",
+        "migration-notes/evidence/2026-10-30-moderation-semantic-worker/source-bindings.json",
+        "node-1793353870017934370: 41 actual-source records; authored concrete-case map 39 plus two explicit source-only boundaries",
+        "compiler-fixtures-1793353821109683319: four ignored worker cases, four ordinary BSON regressions, one ignored 54-case BSON replay, strict profiles and final source binding",
+        "migration-notes/evidence/2026-10-30-moderation-semantic-worker/verification-summary.json"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The Rust SemanticWorker constructor is I/O-free and takes caller-owned Mongo Database, AiCreditProjection, AiCreditReader, SemanticProvider, and PolarCacheUsage handles. No application bootstrap factory or scheduled worker binary/supervisor integration is present.",
+        "One atomic pending-decision claim and at most ten oldest charge records are processed per pass. No helper sleeps were added. The existing 750 ms timeout applies to provider-only verified-credit reading; cache usage retains its adapter-owned lease/wait policy.",
+        "No application-level Mongo mutation retry is added; production driver policy remains caller-owned. Fault fixtures disable driver retries to isolate application behavior.",
+        "The shared BSON-to-JSON adapter keeps BSON storage authoritative but does not establish default-driver behavior for reader-stage invalid regex or eager nested decoder errors; arbitrary malformed schema-shaped BSON remains outside the tested contract.",
+        "Two of 41 source traces are explicit source-only cases: the synthetic available-negative-balance reader result and an unconditional ingestion throw. The latter is not treated as unreachable because logger telemetry can throw outside ordinary queue/console catches."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/workers/semantic_moderation.worker.ts imports and calls both source exports; the TypeScript worker remains live and unretired.",
+          "dimabot/src/utils/moderation/semantic_worker.ts calls Users, ModerationDecision, ChannelModerationSettingsSchema, getAiCredits/isAiCreditsExhausted, ingestPolarSHEvent, paidModeration, semantic provider/policy helpers, and spam policy.",
+          "Native reuse: AiCreditProjection, AiCreditReader, PolarCacheUsage, SemanticProvider/policy helpers, spam policy, and native BSON conversion."
+        ],
+        "runtimeStatus": "A concrete native worker service adapter exists, but no TypeScript caller switch, native scheduled-binary/supervisor registration, application-specific bootstrap binding, full Polar immediate/batch path, downstream billing closure, deployment, or source retirement is established."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Pinned actual-source fixture contains 41 scripted records. The authored trace map relates 39 cases to concrete private Mongo/Redis/loopback checks; two cases remain source-only. Fixture SHA-256: bb23cdda5a0c412c6707556e8bd53758882aac6e3f306aafd8b164fdc9288bd8.",
+          "Final Node source replay node-1793353870017934370 and compiler-fixtures compiler-fixtures-1793353821109683319 passed on identical frozen source tree 6c199f40fefd469346533f57182204a8ee1aedce66dde9ace6e00a9b8c7971bb. Postcheck node-1793354263387812460 passed on that tree.",
+          "The four ignored worker cases comprise three concrete private Mongo/Redis/loopback suites plus one 41-record source trace audit. Do not describe the audit as full concrete replay of all 41 cases.",
+          "BSON regression coverage: four ordinary cases and one ignored replay of 54 cases passed. Format and scoped, minimal, Mongo/Redis, and all-feature/all-target strict Clippy/check profiles passed.",
+          "Final compiler-fixtures phase: 194.936 seconds; 206.214 seconds total; 6 CPUs, 4 GiB memory/no swap, 256 PIDs, two Cargo jobs; minimum available memory 9,083,023,360 bytes and peak cache 7,707,127,808 bytes.",
+          "Final readback: all 18 production records unchanged and zero task-owned resources remain. Proactive private debug-cache cleanup removed 31 completed debug executables and freed 1,085,304,832 bytes; no quota increase or guard failure.",
+          "No benchmark was run and no speed claim is made."
+        ],
+        "rustBehaviorEvidence": [
+          "source-bound final Node and compiler-fixtures receipts are indexed in migration-notes/evidence/2026-10-30-moderation-semantic-worker/",
+          "Five direct Git source paths are snapshotted; the receipt binds 1,454 Git inputs and ten reused SDK inputs. Source/oracle baseline is immutable commit 65d600dc5b6b27ee62d4747caa80b7ea9e1d93b7. Native implementation is commit 1d76b435."
+        ],
+        "status": "partial-local-mapping-verified; full application-specific dependency closure and caller adoption remain open"
       },
       "exports": [
         {
           "name": "maintainSemanticDecisions",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "SemanticWorker::maintain and maintain_with_clock; partial because full Polar immediate/batch and downstream billing adapter are open",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic_worker.rs",
+            "dimabot/tests/moderation_semantic_worker.rs"
+          ]
         },
         {
           "name": "processNextSemanticDecision",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "SemanticWorker::process_next and process_next_with_clock; partial native worker service adapter with concrete projection/reader/provider/usage handles",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic_worker.rs",
+            "dimabot/tests/moderation_semantic_worker.rs"
+          ]
         }
       ],
       "imports": [
@@ -88773,12 +88819,12 @@
           "baselineSourceTargets": [
             "src/schemas/channel_moderation_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "esm-runtime-import",
+          "runtimeOrTypeDependency": "ChannelModerationSettingsSchema Mongo schema/model",
+          "defaultSideEffectBarrelDetails": "No import-time worker I/O in this module; application model/provider/logger bootstrap is not covered by constructor-only native service.",
+          "directDependencyReview": "reviewed for worker path; mapped to concrete native implementation or named application adapter boundary",
+          "transitiveDependencyReview": "partial; direct worker adapters verified where listed, but complete application-specific transitive closure is not established",
+          "rustReplacementOrGap": "Native database access is available, but application model/bootstrap adapter and exact schema closure remain open."
         },
         {
           "ordinal": 1,
@@ -88793,12 +88839,12 @@
           "baselineSourceTargets": [
             "src/schemas/moderation_decision.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "esm-runtime-import",
+          "runtimeOrTypeDependency": "ModerationDecision Mongo model and existing decision repository/schema work",
+          "defaultSideEffectBarrelDetails": "No import-time worker I/O in this module; application model/provider/logger bootstrap is not covered by constructor-only native service.",
+          "directDependencyReview": "reviewed for worker path; mapped to concrete native implementation or named application adapter boundary",
+          "transitiveDependencyReview": "partial; direct worker adapters verified where listed, but complete application-specific transitive closure is not established",
+          "rustReplacementOrGap": "Native Mongo adapter exists for bounded worker operations; full source model/worker bootstrap integration remains open."
         },
         {
           "ordinal": 2,
@@ -88813,12 +88859,12 @@
           "baselineSourceTargets": [
             "src/schemas/users.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "esm-runtime-import",
+          "runtimeOrTypeDependency": "Users Mongo schema/model",
+          "defaultSideEffectBarrelDetails": "No import-time worker I/O in this module; application model/provider/logger bootstrap is not covered by constructor-only native service.",
+          "directDependencyReview": "reviewed for worker path; mapped to concrete native implementation or named application adapter boundary",
+          "transitiveDependencyReview": "partial; direct worker adapters verified where listed, but complete application-specific transitive closure is not established",
+          "rustReplacementOrGap": "Native Mongo is available; application-specific user-model/projection adapter remains a boundary."
         },
         {
           "ordinal": 3,
@@ -88833,12 +88879,12 @@
           "baselineSourceTargets": [
             "src/utils/billing.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "esm-runtime-import",
+          "runtimeOrTypeDependency": "getAiCredits and isAiCreditsExhausted billing exports",
+          "defaultSideEffectBarrelDetails": "No import-time worker I/O in this module; application model/provider/logger bootstrap is not covered by constructor-only native service.",
+          "directDependencyReview": "reviewed for worker path; mapped to concrete native implementation or named application adapter boundary",
+          "transitiveDependencyReview": "partial; direct worker adapters verified where listed, but complete application-specific transitive closure is not established",
+          "rustReplacementOrGap": "Reuse AiCreditProjection and AiCreditReader; wider billing wrapper and application composition remain open."
         },
         {
           "ordinal": 4,
@@ -88853,12 +88899,12 @@
           "baselineSourceTargets": [
             "src/utils/polarsh.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "esm-runtime-import",
+          "runtimeOrTypeDependency": "ingestPolarSHEvent cache mode",
+          "defaultSideEffectBarrelDetails": "No import-time worker I/O in this module; application model/provider/logger bootstrap is not covered by constructor-only native service.",
+          "directDependencyReview": "reviewed for worker path; mapped to concrete native implementation or named application adapter boundary",
+          "transitiveDependencyReview": "partial; direct worker adapters verified where listed, but complete application-specific transitive closure is not established",
+          "rustReplacementOrGap": "Reuse PolarCacheUsage for cache-mode writes; full immediate/batch Polar and downstream billing paths remain open."
         },
         {
           "ordinal": 5,
@@ -88873,12 +88919,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/advanced.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "esm-runtime-import",
+          "runtimeOrTypeDependency": "paidModeration plan policy and SEMANTIC_MODEL",
+          "defaultSideEffectBarrelDetails": "No import-time worker I/O in this module; application model/provider/logger bootstrap is not covered by constructor-only native service.",
+          "directDependencyReview": "reviewed for worker path; mapped to concrete native implementation or named application adapter boundary",
+          "transitiveDependencyReview": "partial; direct worker adapters verified where listed, but complete application-specific transitive closure is not established",
+          "rustReplacementOrGap": "Reuse advanced_policy plan predicate and semantic constant."
         },
         {
           "ordinal": 6,
@@ -88893,12 +88939,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/semantic.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "esm-runtime-import",
+          "runtimeOrTypeDependency": "provider evaluation, fallback, pricing, model selection",
+          "defaultSideEffectBarrelDetails": "No import-time worker I/O in this module; application model/provider/logger bootstrap is not covered by constructor-only native service.",
+          "directDependencyReview": "reviewed for worker path; mapped to concrete native implementation or named application adapter boundary",
+          "transitiveDependencyReview": "partial; direct worker adapters verified where listed, but complete application-specific transitive closure is not established",
+          "rustReplacementOrGap": "Reuse SemanticProvider and semantic policy/result/pricing helpers; typed JSON/BSON and malformed BSON boundaries remain."
         },
         {
           "ordinal": 7,
@@ -88913,12 +88959,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/spam.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "esm-runtime-import",
+          "runtimeOrTypeDependency": "spam decision and active-policy predicates",
+          "defaultSideEffectBarrelDetails": "No import-time worker I/O in this module; application model/provider/logger bootstrap is not covered by constructor-only native service.",
+          "directDependencyReview": "reviewed for worker path; mapped to concrete native implementation or named application adapter boundary",
+          "transitiveDependencyReview": "partial; direct worker adapters verified where listed, but complete application-specific transitive closure is not established",
+          "rustReplacementOrGap": "Reuse native spam policy helpers."
         },
         {
           "ordinal": 8,
@@ -88933,15 +88979,15 @@
           "baselineSourceTargets": [
             "src/utils/moderation/spam_categories.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "esm-runtime-import",
+          "runtimeOrTypeDependency": "spam classifier model constant",
+          "defaultSideEffectBarrelDetails": "No import-time worker I/O in this module; application model/provider/logger bootstrap is not covered by constructor-only native service.",
+          "directDependencyReview": "reviewed for worker path; mapped to concrete native implementation or named application adapter boundary",
+          "transitiveDependencyReview": "partial; direct worker adapters verified where listed, but complete application-specific transitive closure is not established",
+          "rustReplacementOrGap": "Reuse native spam category constant."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-semantic-worker-adapter-verified; source retirement, application bootstrap, scheduled worker adoption, full Polar/billing closure, and whole dependency completion remain open"
     },
     {
       "source": "src/utils/moderation/semantic.ts",

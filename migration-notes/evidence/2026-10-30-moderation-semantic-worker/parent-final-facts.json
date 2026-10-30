@@ -1,0 +1,73 @@
+{
+  "status": "bounded native helper and private adapter fixtures verified; full dependency closure not claimed",
+  "finalRuns": [
+    "node-1793353870017934370",
+    "compiler-fixtures-1793353821109683319"
+  ],
+  "sourceTreeSha256": "6c199f40fefd469346533f57182204a8ee1aedce66dde9ace6e00a9b8c7971bb",
+  "inputCount": 1464,
+  "sourceRecords": 41,
+  "concreteCaseMap": 39,
+  "sourceOnlyCases": {
+    "paid-negative-balance": "mock returns available with negative balance; ordinary reader does not",
+    "maintenance-ingest-throw": "unconditional host mock; telemetry/logger throw behavior remains separate"
+  },
+  "fixtureSha256": "bb23cdda5a0c412c6707556e8bd53758882aac6e3f306aafd8b164fdc9288bd8",
+  "workerIgnoredTestsPassed": 4,
+  "bsonNormalTests": 4,
+  "bsonIgnoredReplayPassed": 1,
+  "strictProfiles": [
+    "scoped-all-targets-Clippy",
+    "minimal-all-targets-check",
+    "Mongo-Redis-all-targets-Clippy",
+    "all-features-all-targets-Clippy"
+  ],
+  "compilerMetrics": {
+    "phase": "compiler-fixtures",
+    "success": true,
+    "steps": [
+      {
+        "name": "bootstrap",
+        "seconds": 4.23,
+        "exit_code": 0
+      },
+      {
+        "name": "locked-fetch",
+        "seconds": 2.773,
+        "exit_code": 0
+      },
+      {
+        "name": "compiler-fixtures",
+        "seconds": 194.936,
+        "exit_code": 0
+      }
+    ],
+    "limits": {
+      "cpus": 6,
+      "memory": 4294967296,
+      "memory_swap": 4294967296,
+      "pids": 256,
+      "cargo_jobs": 2
+    },
+    "source_tree_sha256": "6c199f40fefd469346533f57182204a8ee1aedce66dde9ace6e00a9b8c7971bb",
+    "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9",
+    "headroom_start": {
+      "mem_available_bytes": 11255599104,
+      "load_1m": 1.3544921875
+    },
+    "minimum_available_bytes": 9083023360,
+    "peak_cache_bytes": 7707127808,
+    "limits_verified": true,
+    "production_unchanged": true,
+    "elapsed_seconds": 206.214
+  },
+  "remaining": [
+    "BSON reader-stage invalid regex/eager nested decoder errors",
+    "automatic logger telemetry/OTel bootstrap and source logging-throw semantics",
+    "native scheduled worker binary/bootstrap/supervisor adoption",
+    "full Polar immediate/batch ingestion and downstream billing pipeline",
+    "arbitrary malformed schema-shaped BSON outside tested contract"
+  ],
+  "retryPolicy": "No application-level mutation retries; inherits caller Mongo driver policy; tests disable driver retries for fault isolation",
+  "pacing": "No helper sleeps; one claim and at most10 charges per pass. Existing provider/credit deadlines and cache lease waits are reused."
+}

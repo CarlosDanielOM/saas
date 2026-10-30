@@ -1,0 +1,16 @@
+{
+  "bson-js-json-reference.json.gz": {
+    "encoding": "gzip; deterministic mtime=0",
+    "rawBytes": 23743,
+    "rawSha256": "13f2bb85426b09f2367881e0cee3902cf08f4490ea39c0ce3ce80a1c0e41a4be",
+    "storedBytes": 3848,
+    "storedSha256": "195ef9c44c7748a7ecd198fa40fbdf11e2639bc81a441bb0852688a6e1246af9"
+  },
+  "moderation-semantic-worker-reference.json.gz": {
+    "encoding": "gzip; deterministic mtime=0",
+    "rawBytes": 2648676,
+    "rawSha256": "bb23cdda5a0c412c6707556e8bd53758882aac6e3f306aafd8b164fdc9288bd8",
+    "storedBytes": 85586,
+    "storedSha256": "0bc8239d94699a679eca9b7ceb814a98270e5acff6f34c5e10241bd13826451a"
+  }
+}

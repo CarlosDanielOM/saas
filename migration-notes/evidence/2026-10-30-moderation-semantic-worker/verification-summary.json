@@ -1,0 +1,127 @@
+{
+  "authoredConcreteCaseMap": 39,
+  "benchmark": "not measured; no worker speed claim",
+  "bsonRegressionIgnoredReplayCasesPassed": 54,
+  "bsonRegressionNormalCasesPassed": 4,
+  "codeCommit": "1d76b435d81aa2ede8c9023b77bc1429cf217291",
+  "finalRuns": [
+    "node-1793353870017934370",
+    "compiler-fixtures-1793353821109683319"
+  ],
+  "formatPassed": true,
+  "gitInputs": 1454,
+  "inputCount": 1464,
+  "limits": {
+    "cargoJobs": 2,
+    "cpus": 6,
+    "memoryBytes": 4294967296,
+    "memorySwapBytes": 4294967296,
+    "minimumAvailableBytes": 9083023360,
+    "peakCacheBytes": 7707127808,
+    "pids": 256
+  },
+  "postcheckRuns": [
+    "node-1793354263387812460"
+  ],
+  "priorSdkInputs": 10,
+  "productionUnchangedRecords": 18,
+  "remainingGaps": [
+    "BSON reader-stage invalid regex and eager nested decoder errors",
+    "automatic logger telemetry/OTel bootstrap and source logging-throw behavior",
+    "scheduled binary/full Polar immediate and batch paths/downstream billing",
+    "application caller adoption",
+    "malformed schema-shaped BSON outside tested contract"
+  ],
+  "remainingTaskOwnedResources": 0,
+  "runs": [
+    {
+      "logBytes": 1833,
+      "logGzipBytes": 873,
+      "logGzipSha256": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef",
+      "logSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "phase": "format",
+      "run": "format-1793353361884976253",
+      "sourceTreeSha256": "6e15a2fc72d0a5de76f6d3948566c649faf7330ad646665e7dd4adf00fd24070",
+      "success": true
+    },
+    {
+      "logBytes": 547,
+      "logGzipBytes": 256,
+      "logGzipSha256": "46a277152580f39d247f35c58c946bc1f662fa38ddcebf5c760fc7876c68ad55",
+      "logSha256": "6218bbb4aa27b72bc328fc4ebde5c37bed1d4aee49cd048b3875c596d48387bf",
+      "phase": "node",
+      "run": "node-1793353414300906233",
+      "sourceTreeSha256": "5cb3c5a8e5994449080942138a6fe56ae67ac7190f5e6a85b700894ee16d8039",
+      "success": true
+    },
+    {
+      "logBytes": 5290,
+      "logGzipBytes": 1792,
+      "logGzipSha256": "ad4cc9e1fc27a990bbb5c008d8ad340ebb3eb569dc1f5f1015e6468c556d49b0",
+      "logSha256": "3cb978e1d168c0b22943e80772b157b798879da77bbe0268729cfac08989acbb",
+      "phase": "compiler-fixtures",
+      "run": "compiler-fixtures-1793353457207767444",
+      "sourceTreeSha256": "5cb3c5a8e5994449080942138a6fe56ae67ac7190f5e6a85b700894ee16d8039",
+      "success": false
+    },
+    {
+      "logBytes": 12216,
+      "logGzipBytes": 3033,
+      "logGzipSha256": "4add4efa458552cc06beab0fd755b255631c2a3d5b71c030acbf33bf1bc4de47",
+      "logSha256": "46f38d1a75afbb20d7fa2a1f5487b7bdc6c4b17cb2c9c2ac9bcd146b1928cd14",
+      "phase": "compiler-fixtures",
+      "run": "compiler-fixtures-1793353582519548810",
+      "sourceTreeSha256": "172c67e99fc3370f60eebafde6d1a506a9d3ff2a8182432cc46f4d7efc81098b",
+      "success": false
+    },
+    {
+      "logBytes": 228,
+      "logGzipBytes": 188,
+      "logGzipSha256": "db9bef3566dd4960e963752232742b8810757ae9932ce4cd59a3c7b2eba0a22f",
+      "logSha256": "f607092275965cdf46b53e8d7fa3838e72a4acdeff90b819750163c0c7ca83c6",
+      "phase": "node",
+      "run": "node-1793353870017934370",
+      "sourceTreeSha256": "6c199f40fefd469346533f57182204a8ee1aedce66dde9ace6e00a9b8c7971bb",
+      "success": true
+    },
+    {
+      "logBytes": 6012,
+      "logGzipBytes": 1640,
+      "logGzipSha256": "ab9ac43bc5894d96caa63b4b648b8fcd075728f5a273c4b8bf560f143acaa704",
+      "logSha256": "38fe5601f3f20bd10f128dca1cfb6328c5005f6942e61bbc0abd64285ff047ca",
+      "phase": "compiler-fixtures",
+      "run": "compiler-fixtures-1793353821109683319",
+      "sourceTreeSha256": "6c199f40fefd469346533f57182204a8ee1aedce66dde9ace6e00a9b8c7971bb",
+      "success": true
+    },
+    {
+      "logBytes": 328,
+      "logGzipBytes": 241,
+      "logGzipSha256": "401bcea0b3e29eee35f92a7ac77bf8b2251feb93c9d04f119baeaec1338b62dd",
+      "logSha256": "a5d87ad7fae1cf7625d60cace92edaa37045f522ab01d396eb3d990797b73594",
+      "phase": "node",
+      "run": "node-1793354263387812460",
+      "sourceTreeSha256": "6c199f40fefd469346533f57182204a8ee1aedce66dde9ace6e00a9b8c7971bb",
+      "success": true
+    }
+  ],
+  "runtimeSecondsCompilerFixtures": 194.936,
+  "sourceCommit": "65d600dc5b6b27ee62d4747caa80b7ea9e1d93b7",
+  "sourceOnlyCases": [
+    "paid-negative-balance",
+    "maintenance-ingest-throw"
+  ],
+  "sourceRecords": 41,
+  "sourceTreeSha256": "6c199f40fefd469346533f57182204a8ee1aedce66dde9ace6e00a9b8c7971bb",
+  "status": "partial local worker adapter verified; complete dependency closure and caller adoption remain open",
+  "strictProfiles": [
+    "scoped-all-targets-strict-Clippy",
+    "minimal-all-targets-strict-check",
+    "Mongo-Redis-all-targets-strict-Clippy",
+    "all-features-all-targets-strict-Clippy"
+  ],
+  "totalElapsedSeconds": 206.214,
+  "workerIgnoredCasesPassed": 4,
+  "workerIgnoredConcreteSuites": 3,
+  "workerIgnoredTraceAudit": 1
+}
