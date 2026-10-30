@@ -362,7 +362,9 @@ class Ops:
         available = next(int(line.split()[1]) * 1024 for line in Path("/proc/meminfo").read_text().splitlines()
                          if line.startswith("MemAvailable:"))
         load = os.getloadavg()[0]
-        minimum = RUST_MEMORY_HEADROOM + (memory_gib * GIB if starting else 0)
+        minimum = RUST_MEMORY_HEADROOM
+        if starting:
+            minimum = (5 if memory_gib == 4 else 10) * GIB
         require(available >= minimum, "Rust build stopped: insufficient production memory headroom")
         require(load < max(1, os.cpu_count() or 1) * 0.85, "Rust build stopped: production host load is too high")
         require(shutil.disk_usage(self.state).free >= 5 * GIB, "Rust build stopped: less than 5 GiB disk headroom")
@@ -1072,7 +1074,7 @@ def main(argv=None):
         sub.add_argument("target", choices=TARGETS)
         if command == "build":
             sub.add_argument("--source-dir", type=Path, help="isolated worktree of this repository; production ownership remains here")
-            sub.add_argument("--rust-memory-gib", type=int, choices=(4, 6), help="cron only: compiler memory cap in GiB (default 6); retains 4 GiB production headroom and disables compiler swap")
+            sub.add_argument("--rust-memory-gib", type=int, choices=(4, 6), help="cron only: compiler memory cap in GiB (default 6); requires 5/10 GiB available at startup for 4/6 GiB caps, 4 GiB while running; disables compiler swap")
             sub.add_argument("--rust-cpus", type=int, choices=range(1, RUST_BUILD_CPUS + 1), help="cron only: lower compiler CPU cap (integer 1-6, default 6); does not cap helper or Docker image-build work")
             sub.add_argument("--rust-feature-matrix", action="store_true", help="cron only: explicitly check optional Rust features inside the capped compiler; routine builds use mongo and mongo,redis worker profiles and a private cache capped at 8 GiB")
     sub = commands.add_parser("preview")
