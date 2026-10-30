@@ -1,0 +1,957 @@
+{
+  "title": "Fish alias helper benchmarks",
+  "source_commit": "999c94441cadb586916c512fe59bbb0bf6f4a428",
+  "input_sha256": "c4c38e943f0dbe3d37caebe7f3fe0c89bb284c021fae4a840a5663fdc5caf8aa",
+  "limits": "Each runtime: 6 CPUs, 4 GiB memory, no swap, 256 PIDs. Compiler: 2 jobs. Task-owned isolated containers.",
+  "notes": "Final comparison is the clean Rust-then-Node confirmation; the earlier Node-then-Rust run also matched. Unicode and collision ranges overlap, so their median differences are not a reliable general speed claim. No production, database, whole-application, RSS or allocation-count measurement.",
+  "series": [
+    {
+      "label": "Original Rust",
+      "kind": "baseline",
+      "workloads": [
+        {
+          "caseCount": 32,
+          "checksum": 492000,
+          "medianNsPerOp": 252.44378125,
+          "name": "normalize-valid",
+          "operations": 64000,
+          "passes": 2000,
+          "samples": [
+            {
+              "checksum": 492000,
+              "elapsedNs": 15532573,
+              "nsPerOp": 242.696453125
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 16156402,
+              "nsPerOp": 252.44378125
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 28170093,
+              "nsPerOp": 440.157703125
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 19995804,
+              "nsPerOp": 312.4344375
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 20392395,
+              "nsPerOp": 318.631171875
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 15564052,
+              "nsPerOp": 243.1883125
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 15869844,
+              "nsPerOp": 247.9663125
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 31344000,
+          "medianNsPerOp": 166.916859375,
+          "name": "normalize-invalid",
+          "operations": 64000,
+          "passes": 2000,
+          "samples": [
+            {
+              "checksum": 31344000,
+              "elapsedNs": 9772353,
+              "nsPerOp": 152.693015625
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 11539884,
+              "nsPerOp": 180.3106875
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 11575692,
+              "nsPerOp": 180.8701875
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 14229663,
+              "nsPerOp": 222.338484375
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 9007060,
+              "nsPerOp": 140.7353125
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 10487412,
+              "nsPerOp": 163.8658125
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 10682679,
+              "nsPerOp": 166.916859375
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 502000,
+          "medianNsPerOp": 850.3345625,
+          "name": "make-ascii",
+          "operations": 32000,
+          "passes": 1000,
+          "samples": [
+            {
+              "checksum": 502000,
+              "elapsedNs": 31302611,
+              "nsPerOp": 978.20659375
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 30887724,
+              "nsPerOp": 965.241375
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 24688703,
+              "nsPerOp": 771.52196875
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 26356636,
+              "nsPerOp": 823.644875
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 25764168,
+              "nsPerOp": 805.13025
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 27210706,
+              "nsPerOp": 850.3345625
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 27805611,
+              "nsPerOp": 868.92534375
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 283000,
+          "medianNsPerOp": 1545.8604375,
+          "name": "make-unicode",
+          "operations": 32000,
+          "passes": 1000,
+          "samples": [
+            {
+              "checksum": 283000,
+              "elapsedNs": 54652657,
+              "nsPerOp": 1707.89553125
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 49467534,
+              "nsPerOp": 1545.8604375
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 47660580,
+              "nsPerOp": 1489.393125
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 61856989,
+              "nsPerOp": 1933.03090625
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 45379337,
+              "nsPerOp": 1418.10428125
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 47502374,
+              "nsPerOp": 1484.4491875
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 51103939,
+              "nsPerOp": 1596.99809375
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 256000,
+          "medianNsPerOp": 5913.354,
+          "name": "make-collisions",
+          "operations": 32000,
+          "passes": 1000,
+          "samples": [
+            {
+              "checksum": 256000,
+              "elapsedNs": 199648387,
+              "nsPerOp": 6239.01209375
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 186481695,
+              "nsPerOp": 5827.55296875
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 188420316,
+              "nsPerOp": 5888.134875
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 202886182,
+              "nsPerOp": 6340.1931875
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 189227328,
+              "nsPerOp": 5913.354
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 184108892,
+              "nsPerOp": 5753.402875
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 197715937,
+              "nsPerOp": 6178.62303125
+            }
+          ],
+          "warmupPasses": 20
+        }
+      ],
+      "report_sha256": "033ae13e91659cf9bcb9086871390ad5b0193edcfd05eafd0841a76e9b16e24d"
+    },
+    {
+      "label": "Borrowed-set revision",
+      "kind": "intermediate",
+      "workloads": [
+        {
+          "caseCount": 32,
+          "checksum": 492000,
+          "medianNsPerOp": 241.317453125,
+          "name": "normalize-valid",
+          "operations": 64000,
+          "passes": 2000,
+          "samples": [
+            {
+              "checksum": 492000,
+              "elapsedNs": 13115607,
+              "nsPerOp": 204.931359375
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 15444317,
+              "nsPerOp": 241.317453125
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 27327695,
+              "nsPerOp": 426.995234375
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 19412351,
+              "nsPerOp": 303.317984375
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 19116987,
+              "nsPerOp": 298.702921875
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 14619112,
+              "nsPerOp": 228.423625
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 13201837,
+              "nsPerOp": 206.278703125
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 31344000,
+          "medianNsPerOp": 175.004515625,
+          "name": "normalize-invalid",
+          "operations": 64000,
+          "passes": 2000,
+          "samples": [
+            {
+              "checksum": 31344000,
+              "elapsedNs": 7579948,
+              "nsPerOp": 118.4366875
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 7580650,
+              "nsPerOp": 118.44765625
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 12934797,
+              "nsPerOp": 202.106203125
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 13543278,
+              "nsPerOp": 211.61371875
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 13002535,
+              "nsPerOp": 203.164609375
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 11200289,
+              "nsPerOp": 175.004515625
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 7033703,
+              "nsPerOp": 109.901609375
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 502000,
+          "medianNsPerOp": 481.82590625,
+          "name": "make-ascii",
+          "operations": 32000,
+          "passes": 1000,
+          "samples": [
+            {
+              "checksum": 502000,
+              "elapsedNs": 12681393,
+              "nsPerOp": 396.29353125
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 15462331,
+              "nsPerOp": 483.19784375
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 14286779,
+              "nsPerOp": 446.46184375
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 22373387,
+              "nsPerOp": 699.16834375
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 22896105,
+              "nsPerOp": 715.50328125
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 15418429,
+              "nsPerOp": 481.82590625
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 12759668,
+              "nsPerOp": 398.739625
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 283000,
+          "medianNsPerOp": 775.7148125,
+          "name": "make-unicode",
+          "operations": 32000,
+          "passes": 1000,
+          "samples": [
+            {
+              "checksum": 283000,
+              "elapsedNs": 23854250,
+              "nsPerOp": 745.4453125
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 37345780,
+              "nsPerOp": 1167.055625
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 30433412,
+              "nsPerOp": 951.044125
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 24203093,
+              "nsPerOp": 756.34665625
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 24646634,
+              "nsPerOp": 770.2073125
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 25932502,
+              "nsPerOp": 810.3906875
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 24822874,
+              "nsPerOp": 775.7148125
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 256000,
+          "medianNsPerOp": 2722.944875,
+          "name": "make-collisions",
+          "operations": 32000,
+          "passes": 1000,
+          "samples": [
+            {
+              "checksum": 256000,
+              "elapsedNs": 84114951,
+              "nsPerOp": 2628.59221875
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 84547139,
+              "nsPerOp": 2642.09809375
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 87134236,
+              "nsPerOp": 2722.944875
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 86310052,
+              "nsPerOp": 2697.189125
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 88864997,
+              "nsPerOp": 2777.03115625
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 94272547,
+              "nsPerOp": 2946.01709375
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 88163552,
+              "nsPerOp": 2755.111
+            }
+          ],
+          "warmupPasses": 20
+        }
+      ],
+      "report_sha256": "589989ff1a49af57b67935ec2ba298f8c36a24f8c1cb8170e6106bb30447af68"
+    },
+    {
+      "label": "Final Rust",
+      "kind": "final",
+      "workloads": [
+        {
+          "caseCount": 32,
+          "checksum": 492000,
+          "medianNsPerOp": 83.458828125,
+          "name": "normalize-valid",
+          "operations": 64000,
+          "passes": 2000,
+          "samples": [
+            {
+              "checksum": 492000,
+              "elapsedNs": 5341365,
+              "nsPerOp": 83.458828125
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 5304946,
+              "nsPerOp": 82.88978125
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 5768745,
+              "nsPerOp": 90.136640625
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 5008481,
+              "nsPerOp": 78.257515625
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 5449316,
+              "nsPerOp": 85.1455625
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 5143615,
+              "nsPerOp": 80.368984375
+            },
+            {
+              "checksum": 492000,
+              "elapsedNs": 5475876,
+              "nsPerOp": 85.5605625
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 31344000,
+          "medianNsPerOp": 111.3365,
+          "name": "normalize-invalid",
+          "operations": 64000,
+          "passes": 2000,
+          "samples": [
+            {
+              "checksum": 31344000,
+              "elapsedNs": 5257238,
+              "nsPerOp": 82.14434375
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 5508859,
+              "nsPerOp": 86.075921875
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 5414271,
+              "nsPerOp": 84.597984375
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 7125536,
+              "nsPerOp": 111.3365
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 10547497,
+              "nsPerOp": 164.804640625
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 9823530,
+              "nsPerOp": 153.49265625
+            },
+            {
+              "checksum": 31344000,
+              "elapsedNs": 9632593,
+              "nsPerOp": 150.509265625
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 502000,
+          "medianNsPerOp": 385.94915625,
+          "name": "make-ascii",
+          "operations": 32000,
+          "passes": 1000,
+          "samples": [
+            {
+              "checksum": 502000,
+              "elapsedNs": 12616212,
+              "nsPerOp": 394.256625
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 12313534,
+              "nsPerOp": 384.7979375
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 12264533,
+              "nsPerOp": 383.26665625
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 12350373,
+              "nsPerOp": 385.94915625
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 12165136,
+              "nsPerOp": 380.1605
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 14257205,
+              "nsPerOp": 445.53765625
+            },
+            {
+              "checksum": 502000,
+              "elapsedNs": 12602897,
+              "nsPerOp": 393.84053125
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 283000,
+          "medianNsPerOp": 788.88640625,
+          "name": "make-unicode",
+          "operations": 32000,
+          "passes": 1000,
+          "samples": [
+            {
+              "checksum": 283000,
+              "elapsedNs": 23793428,
+              "nsPerOp": 743.544625
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 33167235,
+              "nsPerOp": 1036.47609375
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 24934063,
+              "nsPerOp": 779.18946875
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 25244365,
+              "nsPerOp": 788.88640625
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 23956844,
+              "nsPerOp": 748.651375
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 34841522,
+              "nsPerOp": 1088.7975625
+            },
+            {
+              "checksum": 283000,
+              "elapsedNs": 26933788,
+              "nsPerOp": 841.680875
+            }
+          ],
+          "warmupPasses": 20
+        },
+        {
+          "caseCount": 32,
+          "checksum": 256000,
+          "medianNsPerOp": 2080.7699375,
+          "name": "make-collisions",
+          "operations": 32000,
+          "passes": 1000,
+          "samples": [
+            {
+              "checksum": 256000,
+              "elapsedNs": 66521962,
+              "nsPerOp": 2078.8113125
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 68185417,
+              "nsPerOp": 2130.79428125
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 64602827,
+              "nsPerOp": 2018.83834375
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 66411755,
+              "nsPerOp": 2075.36734375
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 82384654,
+              "nsPerOp": 2574.5204375
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 66584638,
+              "nsPerOp": 2080.7699375
+            },
+            {
+              "checksum": 256000,
+              "elapsedNs": 68377708,
+              "nsPerOp": 2136.803375
+            }
+          ],
+          "warmupPasses": 20
+        }
+      ],
+      "report_sha256": "6949c8c51daa70f8543cdcc3cb0d3345b9ad58afaee32d163ef6fad613a350e7"
+    },
+    {
+      "label": "Node / TypeScript",
+      "kind": "node",
+      "workloads": [
+        {
+          "name": "normalize-valid",
+          "passes": 2000,
+          "caseCount": 32,
+          "operations": 64000,
+          "warmupPasses": 20,
+          "checksum": 492000,
+          "samples": [
+            {
+              "elapsedNs": 62751099,
+              "nsPerOp": 980.485921875,
+              "checksum": 492000
+            },
+            {
+              "elapsedNs": 10668803,
+              "nsPerOp": 166.700046875,
+              "checksum": 492000
+            },
+            {
+              "elapsedNs": 10267102,
+              "nsPerOp": 160.42346875,
+              "checksum": 492000
+            },
+            {
+              "elapsedNs": 9934588,
+              "nsPerOp": 155.2279375,
+              "checksum": 492000
+            },
+            {
+              "elapsedNs": 10897953,
+              "nsPerOp": 170.280515625,
+              "checksum": 492000
+            },
+            {
+              "elapsedNs": 13640769,
+              "nsPerOp": 213.137015625,
+              "checksum": 492000
+            },
+            {
+              "elapsedNs": 13232416,
+              "nsPerOp": 206.7565,
+              "checksum": 492000
+            }
+          ],
+          "medianNsPerOp": 170.280515625
+        },
+        {
+          "name": "normalize-invalid",
+          "passes": 2000,
+          "caseCount": 32,
+          "operations": 64000,
+          "warmupPasses": 20,
+          "checksum": 31344000,
+          "samples": [
+            {
+              "elapsedNs": 553938286,
+              "nsPerOp": 8655.28571875,
+              "checksum": 31344000
+            },
+            {
+              "elapsedNs": 537448850,
+              "nsPerOp": 8397.63828125,
+              "checksum": 31344000
+            },
+            {
+              "elapsedNs": 495444481,
+              "nsPerOp": 7741.320015625,
+              "checksum": 31344000
+            },
+            {
+              "elapsedNs": 506628210,
+              "nsPerOp": 7916.06578125,
+              "checksum": 31344000
+            },
+            {
+              "elapsedNs": 492898623,
+              "nsPerOp": 7701.540984375,
+              "checksum": 31344000
+            },
+            {
+              "elapsedNs": 485141291,
+              "nsPerOp": 7580.332671875,
+              "checksum": 31344000
+            },
+            {
+              "elapsedNs": 513516993,
+              "nsPerOp": 8023.703015625,
+              "checksum": 31344000
+            }
+          ],
+          "medianNsPerOp": 7916.06578125
+        },
+        {
+          "name": "make-ascii",
+          "passes": 1000,
+          "caseCount": 32,
+          "operations": 32000,
+          "warmupPasses": 20,
+          "checksum": 502000,
+          "samples": [
+            {
+              "elapsedNs": 43830749,
+              "nsPerOp": 1369.71090625,
+              "checksum": 502000
+            },
+            {
+              "elapsedNs": 25154927,
+              "nsPerOp": 786.09146875,
+              "checksum": 502000
+            },
+            {
+              "elapsedNs": 23655009,
+              "nsPerOp": 739.21903125,
+              "checksum": 502000
+            },
+            {
+              "elapsedNs": 23725690,
+              "nsPerOp": 741.4278125,
+              "checksum": 502000
+            },
+            {
+              "elapsedNs": 24556917,
+              "nsPerOp": 767.40365625,
+              "checksum": 502000
+            },
+            {
+              "elapsedNs": 23093988,
+              "nsPerOp": 721.687125,
+              "checksum": 502000
+            },
+            {
+              "elapsedNs": 22778686,
+              "nsPerOp": 711.8339375,
+              "checksum": 502000
+            }
+          ],
+          "medianNsPerOp": 741.4278125
+        },
+        {
+          "name": "make-unicode",
+          "passes": 1000,
+          "caseCount": 32,
+          "operations": 32000,
+          "warmupPasses": 20,
+          "checksum": 283000,
+          "samples": [
+            {
+              "elapsedNs": 28479153,
+              "nsPerOp": 889.97353125,
+              "checksum": 283000
+            },
+            {
+              "elapsedNs": 28436584,
+              "nsPerOp": 888.64325,
+              "checksum": 283000
+            },
+            {
+              "elapsedNs": 30693311,
+              "nsPerOp": 959.16596875,
+              "checksum": 283000
+            },
+            {
+              "elapsedNs": 29984413,
+              "nsPerOp": 937.01290625,
+              "checksum": 283000
+            },
+            {
+              "elapsedNs": 29884677,
+              "nsPerOp": 933.89615625,
+              "checksum": 283000
+            },
+            {
+              "elapsedNs": 32346529,
+              "nsPerOp": 1010.82903125,
+              "checksum": 283000
+            },
+            {
+              "elapsedNs": 30331132,
+              "nsPerOp": 947.847875,
+              "checksum": 283000
+            }
+          ],
+          "medianNsPerOp": 937.01290625
+        },
+        {
+          "name": "make-collisions",
+          "passes": 1000,
+          "caseCount": 32,
+          "operations": 32000,
+          "warmupPasses": 20,
+          "checksum": 256000,
+          "samples": [
+            {
+              "elapsedNs": 70297974,
+              "nsPerOp": 2196.8116875,
+              "checksum": 256000
+            },
+            {
+              "elapsedNs": 67758978,
+              "nsPerOp": 2117.4680625,
+              "checksum": 256000
+            },
+            {
+              "elapsedNs": 70783544,
+              "nsPerOp": 2211.98575,
+              "checksum": 256000
+            },
+            {
+              "elapsedNs": 70908699,
+              "nsPerOp": 2215.89684375,
+              "checksum": 256000
+            },
+            {
+              "elapsedNs": 69405042,
+              "nsPerOp": 2168.9075625,
+              "checksum": 256000
+            },
+            {
+              "elapsedNs": 83437425,
+              "nsPerOp": 2607.41953125,
+              "checksum": 256000
+            },
+            {
+              "elapsedNs": 67246028,
+              "nsPerOp": 2101.438375,
+              "checksum": 256000
+            }
+          ],
+          "medianNsPerOp": 2196.8116875
+        }
+      ],
+      "report_sha256": "9e2c5dc1f0f171d018ce68ce37b014968a0cc891486adaed8bfdfc0af26d88ba"
+    }
+  ]
+}

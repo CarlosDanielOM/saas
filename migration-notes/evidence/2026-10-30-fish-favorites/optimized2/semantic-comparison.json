@@ -1,0 +1,169 @@
+{
+  "comparisons": [
+    {
+      "name": "additional",
+      "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/timer-chat-retirement/attempt1/additional/additional-schemas-reference.json",
+      "new": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/schema/additional/additional-schemas-reference.json",
+      "old_sha256": "dac2c8b62bf349ae77e4e174fe1ccf8d8ab5c8f1a2e24c257dc530e84d049f07",
+      "new_sha256": "b9b6becfb4852bdb2cdac1b45a04e6e3d5f2a6ce3aa4094d9de8013bc2de474d",
+      "changed_provenance_fields": [
+        "nativeSha256"
+      ],
+      "changed_provenance_keys": {
+        "nativeSha256": [
+          "Cargo.toml",
+          "src/schemas/mod.rs",
+          "tests/fixtures/schema_source_resolver.cjs",
+          "tests/support/schema_source.rs"
+        ]
+      },
+      "semantic_sha256": "0d6f97ff7deffa783395b1c11f59afbf7ebc291f09d6a45d7e829704e8f63bbf",
+      "semantic_equal": true
+    },
+    {
+      "name": "timer",
+      "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/timer-chat-retirement/attempt1/timer/timer-chat-schema-types-reference.json",
+      "new": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/schema/timer/timer-chat-schema-types-reference.json",
+      "old_sha256": "6903b2d3f58e7ae63097406900250e943014bc4a252ec6efd614658639ad8828",
+      "new_sha256": "64598d9ca34bc9d43ce82bd5dfe1b547c348cd27b9067ca304832324c6b7eac4",
+      "changed_provenance_fields": [
+        "hashes"
+      ],
+      "changed_provenance_keys": {
+        "hashes": [
+          "tests/fixtures/schema_source_resolver.cjs",
+          "tests/support/schema_source.rs"
+        ]
+      },
+      "semantic_sha256": "fd7163bff0960a5c397b7f67196e45242199d32d89f9ef3b9fe5a328d231f621",
+      "semantic_equal": true
+    },
+    {
+      "name": "application",
+      "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/timer-chat-retirement/attempt1/application/application-schemas-reference.json",
+      "new": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/schema/application/application-schemas-reference.json",
+      "old_sha256": "baa34c51a60eb1156aacc73a09e4fa3679432772d403eb2438dc845a4defd113",
+      "new_sha256": "45c3d5b364528cd4f04b1cf22178445527af33d46d94e4312daa07e867aa958a",
+      "changed_provenance_fields": [
+        "nativeSha256"
+      ],
+      "changed_provenance_keys": {
+        "nativeSha256": [
+          "Cargo.toml",
+          "src/schemas/mod.rs",
+          "tests/fixtures/schema_source_resolver.cjs",
+          "tests/support/schema_source.rs"
+        ]
+      },
+      "semantic_sha256": "f15dc672892e93bf943622948ed27381abbdfa26527f41289e6b963f662f1f20",
+      "semantic_equal": true
+    },
+    {
+      "name": "named",
+      "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/timer-chat-retirement/attempt1/named/schema-named-types-reference.json",
+      "new": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/schema/named/schema-named-types-reference.json",
+      "old_sha256": "7bab0f8ea2bc07547881b2509cd5a2667a9072b45a13bb96613ad3c63cdd8e6b",
+      "new_sha256": "8be5c2f679f6835837e501412e9acb4f056cdf96006cd4ebf6a96696e5d94bb6",
+      "changed_provenance_fields": [
+        "hashes"
+      ],
+      "changed_provenance_keys": {
+        "hashes": [
+          "tests/fixtures/schema_source_resolver.cjs",
+          "tests/support/schema_source.rs"
+        ]
+      },
+      "semantic_sha256": "01260b3ec725979de55fb05b3b83f9862f0a1c87e8fe92b8ef601f50893cf07a",
+      "semantic_equal": true
+    },
+    {
+      "name": "action",
+      "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/timer-chat-retirement/attempt1/action/moderation-action-log-schema-reference.json",
+      "new": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/schema/action/moderation-action-log-schema-reference.json",
+      "old_sha256": "94a69b7f7fe10b60bb7c76976708d44b9dcb235136d78a5ae40dcec86781e7db",
+      "new_sha256": "ae0052604904005a4dafcf69bd2c188a2620917cac2b48ada42a4906028f44ba",
+      "changed_provenance_fields": [
+        "sourceSha256"
+      ],
+      "changed_provenance_keys": {
+        "sourceSha256": [
+          "Cargo.toml",
+          "source-guard",
+          "source-resolver"
+        ]
+      },
+      "semantic_sha256": "9c2d9f2158c767b671daf9317599f37de6368640a8ab051bbec9588fe968069b",
+      "semantic_equal": true
+    },
+    {
+      "name": "fish",
+      "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt4/oracle/channel_fish_voice_favorites.json",
+      "new": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized2/oracle/channel_fish_voice_favorites.json",
+      "old_sha256": "0b8bc0597a4583b575ef1583608867561415cc3868b2a35833c1500d3a0f3b73",
+      "new_sha256": "ae44ad54424ad745e99179830fd4bc6d726fa14020c58fde1923d9ca31b971bd",
+      "changed_provenance_fields": [
+        "hashes",
+        "sharedNfkd",
+        "sourcePaths"
+      ],
+      "changed_provenance_keys": {
+        "hashes": [
+          "src/schemas/channel_fish_voice_favorites.schema.rs",
+          "src/utils/js_unicode.rs",
+          "tests/channel_fish_voice_favorites.rs",
+          "tests/fixtures/channel_fish_voice_favorites_reference.cjs",
+          "tests/fixtures/schema_source_resolver.cjs",
+          "tests/support/schema_source.rs"
+        ],
+        "sharedNfkd": [
+          "hashes"
+        ],
+        "sourcePaths": [
+          "src/schemas/channel_fish_voice_favorites.schema.test.ts",
+          "src/schemas/channel_fish_voice_favorites.schema.ts",
+          "tests/fixtures/schema_source_resolver.cjs",
+          "tests/support/schema_source.rs"
+        ]
+      },
+      "semantic_sha256": "1477c7a26504c0d62ed5ea8d903ade626088a91228ebfddee904423e48635da9",
+      "semantic_equal": true
+    },
+    {
+      "name": "nfkd",
+      "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/js-unicode-nfkd/attempt2/nfkd/js_unicode_nfkd.json",
+      "new": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/nfkd/js_unicode_nfkd.json",
+      "old_sha256": "aad332503d1767eb7fb6e2810af5e0a9b52f97446a082bac9e644eb858c2975e",
+      "new_sha256": "e19010bbb5672dd7be3aa5c6de20ffa9b2f94a88640cbbd2aeb0af8b79130279",
+      "changed_provenance_fields": [
+        "hashes"
+      ],
+      "changed_provenance_keys": {
+        "hashes": [
+          "Cargo.toml",
+          "src/utils/js_unicode.rs",
+          "tests/js_unicode_nfkd.rs"
+        ]
+      },
+      "semantic_sha256": "244bf58bad24bc25d7a0e12a8fb7d24c1cb6b7da4625fc112b06767ab43f2127",
+      "semantic_equal": true
+    },
+    {
+      "name": "nfc",
+      "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/js-unicode-nfkd/attempt2/nfc/js-unicode-nfc-reference.json",
+      "new": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/nfc/js-unicode-nfc-reference.json",
+      "old_sha256": "ee40e8f77f4e047e2b1ee0ce42eb703ff99e91954b548f6b96078141479a0372",
+      "new_sha256": "c32934cd6a1a132e0848b0e6cbf7887bdeccd5ff162db0ae02704bbb718af153",
+      "changed_provenance_fields": [
+        "sourceSha256"
+      ],
+      "changed_provenance_keys": {
+        "sourceSha256": [
+          "src/utils/js_unicode.rs"
+        ]
+      },
+      "semantic_sha256": "d8fa3c4c9fead712305429907558e5be87bedf6bf90c15f2743bf09439bda518",
+      "semantic_equal": true
+    }
+  ],
+  "all_semantics_equal": true
+}

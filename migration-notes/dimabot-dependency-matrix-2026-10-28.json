@@ -22,12 +22,12 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-30 Twitch diagnostics and flat delete response update",
+    "asOf": "2026-10-30 Fish favorites source retirement and final alias benchmark",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 32,
+    "locallyCompleteMappings": 34,
     "partialRows": 25,
-    "archivedSourceSnapshots": 45,
-    "liveBaselineTypeScriptFiles": 761,
+    "archivedSourceSnapshots": 47,
+    "liveBaselineTypeScriptFiles": 759,
     "excludedReactEmailTemplatesIncludedInLiveCount": 6,
     "totalCompletionPercentage": null,
     "totalMigrationCompletion": "not-established; full dependency closure audit remains incomplete"
@@ -35184,19 +35184,41 @@
         "role": "test"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/channel_fish_voice_favorites.schema.test.ts",
+        "sha256": "4fb11013883efd0d99ba9125711c18d78517f87e401b5193722b6c79d616d02f",
+        "nativeAreaReference": "migration-notes/channel-fish-voice-favorites.md; archived test obligation mapped to native Fish/source-fixture tests; not an independent runtime feature"
+      },
+      "featureReview": "complete-local-source-test-obligation-mapping; source-retired-and-post-retirement-verified; not-an-independent-application-feature",
+      "localRustEvidence": [
+        "dimabot/tests/channel_fish_voice_favorites.rs: six Fish tests, including source fixture and isolated real Mongo behavior",
+        "dimabot/tests/fixtures/channel_fish_voice_favorites_reference.cjs",
+        "dimabot/tests/js_unicode_ascii_lower.rs",
+        "dimabot/tests/js_unicode_nfkd.rs",
+        "dimabot/tests/js_unicode_nfc.rs",
+        "migration-notes/channel-fish-voice-favorites.md",
+        "migration-notes/evidence/2026-10-30-fish-favorites/README.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source test uses Node assertions, mocks, and node:test; its behavior obligations are mapped to native assertions, source replay, and private Mongo checks. The test file is not an independent application feature."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "Archived source test imports the Fish schema/model and accepted ChannelTtsSettings model, plus node:assert/strict and node:test/mock."
+        ],
+        "runtimeStatus": "Test obligations are mapped to native tests; no application caller adoption is implied."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/schemas/channel_fish_voice_favorites.schema.test.ts: exact retired source test.",
+          "Source-bound Mongoose/BSON oracle, actual helper behavior, legacy settings update and source fixture flows are included in Fish-specific checks."
+        ],
+        "rustBehaviorEvidence": [
+          "All six dimabot/tests/channel_fish_voice_favorites.rs tests passed, along with full source Mongoose/BSON protocol and post-retirement checks.",
+          "Full lowercase ASCII classification, NFKD, NFC, format, scoped/minimal/all-feature strict checks passed; see the Fish note and indexed evidence."
+        ],
+        "status": "archived source-test behavior mapped to passed native checks; no independent runtime feature counted"
       },
       "exports": [],
       "imports": [
@@ -35213,12 +35235,12 @@
           "baselineSourceTargets": [
             "src/schemas/channel_fish_voice_favorites.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named-import",
+          "runtimeOrTypeDependency": "Runtime test dependency on the Fish model/helpers plus type-only FishVoiceFavorite.",
+          "defaultSideEffectBarrelDetails": "Test imports the actual model/helpers; source fixture remains disconnected, while separate native private-Mongo coverage exercises the production repository.",
+          "directDependencyReview": "Mapped to the actual-source oracle and native Fish schema/repository tests.",
+          "transitiveDependencyReview": "Native schema core, JsString, Unicode helpers, MongoDB/BSON and private source-flow tests are covered for this slice.",
+          "rustReplacementOrGap": "dimabot/tests/channel_fish_voice_favorites.rs and pinned source fixture replay."
         },
         {
           "ordinal": 1,
@@ -35233,12 +35255,12 @@
           "baselineSourceTargets": [
             "src/schemas/channel_tts_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named-import",
+          "runtimeOrTypeDependency": "Runtime mock dependency used to verify the legacy cloneDefault update during rename.",
+          "defaultSideEffectBarrelDetails": "Named settings model import is mocked in the source unit test to assert only the legacy cloneDefault update.",
+          "directDependencyReview": "Mapped to the existing accepted native channel TTS settings schema/Mongo update path.",
+          "transitiveDependencyReview": "No general TTS provider/application migration is implied.",
+          "rustReplacementOrGap": "Source-flow assertion and native channel settings repository behavior."
         },
         {
           "ordinal": 2,
@@ -35246,12 +35268,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default-import",
+          "runtimeOrTypeDependency": "Test-only Node assertion API.",
+          "defaultSideEffectBarrelDetails": "Node builtin used only for test assertions; no production side effect.",
+          "directDependencyReview": "Mapped to Rust assertions and exact fixture comparisons.",
+          "transitiveDependencyReview": "No production dependency.",
+          "rustReplacementOrGap": "Native test assertions/source-protocol comparison."
         },
         {
           "ordinal": 3,
@@ -35259,15 +35281,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default-and-named-import",
+          "runtimeOrTypeDependency": "Test-only Node test runner and mock API.",
+          "defaultSideEffectBarrelDetails": "Node builtin used only for test registration/mocking; no production side effect.",
+          "directDependencyReview": "Mapped to native test harness, explicit repositories, and scoped private Mongo fixture.",
+          "transitiveDependencyReview": "No production dependency.",
+          "rustReplacementOrGap": "Rust tests and explicit repository/source-flow checks; no general Node mock framework port."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "archived-fish-test-obligation-mapped-and-post-retirement-verified;not-an-independent-application-feature;caller-adoption-separate"
     },
     {
       "source": "src/schemas/channel_fish_voice_favorites.schema.ts",
@@ -35277,70 +35299,134 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/channel_fish_voice_favorites.schema.ts",
+        "sha256": "30b6361cdcc62f66716183d19bcf9a2bb3269507f2c705ea059cb19de44e60e2",
+        "nativeAreaReference": "migration-notes/channel-fish-voice-favorites.md; typed exports and dependency closure only; TypeScript callers remain unadopted"
+      },
+      "featureReview": "complete-local-typed-schema/export/type/dependency-closure; source-retired-and-post-retirement-verified; caller-adoption-open",
+      "localRustEvidence": [
+        "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+        "dimabot/src/utils/js_string.rs::JsString",
+        "dimabot/src/utils/js_unicode.rs::{lowercase_ascii_bounded,lowercase,normalize_nfkd}",
+        "dimabot/src/utils/js_compat.rs::trim",
+        "dimabot/src/utils/lossless_json.rs::JsonValue",
+        "dimabot/src/server/services/tts/fish_tts.rs::FISH_VOICES (four data rows only)",
+        "dimabot/src/schemas/channel_tts_settings.schema.rs::schema/native collection update",
+        "dimabot/tests/channel_fish_voice_favorites.rs",
+        "dimabot/tests/fixtures/channel_fish_voice_favorites_reference.cjs",
+        "dimabot/tests/js_unicode_ascii_lower.rs",
+        "dimabot/tests/js_unicode_nfkd.rs",
+        "dimabot/tests/js_unicode_nfc.rs",
+        "migration-notes/channel-fish-voice-favorites.md",
+        "migration-notes/evidence/2026-10-30-fish-favorites/README.md",
+        "source 999c94441cadb586916c512fe59bbb0bf6f4a428; tree 52fbe671459e76370cc9cf73b05dd94a008fce3f220c25478611e58b61c49380"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native schema preserves model/collection channel_fish_voice_favorites, version key, unique channelID index, favorites default, 20-item limit, and no generated favorite subdocument IDs; index installation and Mongo access use an explicit caller-owned native database.",
+        "FishVoiceFavorite maps to a typed Favorite record and the private channel document descriptor maps to the native schema. Arbitrary Mongoose document identity or dynamic model behavior is not claimed.",
+        "Ordinary typed BSON records are the boundary: malformed stored values are rejected and undeclared favorite fields are projected away. This does not provide unknown-shape JavaScript prototype parity.",
+        "Strings retain UTF-16 code units through alias normalization/generation; unpaired units are replaced only at the BSON UTF-8 boundary. JavaScript Error stack and subclass/prototype identity are not claimed.",
+        "Alias generation and normalization use the verified shared Unicode 17/NFKD, case, trim, bounded ASCII, reserved-catalog and collision behavior."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/server/routes/speech.route.ts uses get/add/remove/rename helpers and the limit/error exports.",
+          "dimabot/src/utils/ast_parser/functions/channel.functions.ts uses getFishVoiceFavorites and the FishVoiceFavorite type."
+        ],
+        "runtimeStatus": "TypeScript route and AST voice-resolver callsites remain unadopted; deployment/cutover is separate."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Source-bound Mongoose/BSON oracle and six Fish test obligations are preserved in the archived baseline/source evidence.",
+          "All six Fish tests and source/model/BSON checks passed against the frozen post-retirement tree.",
+          "The exact final source commit is 999c94441cadb586916c512fe59bbb0bf6f4a428; Grok review remains pending."
+        ],
+        "rustBehaviorEvidence": [
+          "compiler-fixtures-1793374519204764792: all six Fish tests, complete Mongoose/BSON protocol, Unicode ASCII-lower/NFKD/NFC corpus and strict feature profiles passed.",
+          "Node source/check run 1793374407049965675 and post-retirement oracles; full paired benchmark and confirmation outcomes are in migration-notes/channel-fish-voice-favorites.md.",
+          "Final readback: 18 production records unchanged and zero task-owned resources."
+        ],
+        "status": "source-bound actual Mongoose/BSON and post-retirement native tests passed; local typed feature closure complete; caller adoption open"
       },
       "exports": [
         {
           "name": "ChannelFishVoiceFavoritesSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "schema(), explicit install_indexes(&Database), and concrete MongoFavorites repository operations; no generic Mongoose model identity claim",
+          "evidence": [
+            "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+            "dimabot/tests/channel_fish_voice_favorites.rs"
+          ]
         },
         {
           "name": "FavoriteAliasError",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "FavoriteAliasError plus FavoritesError::Alias, preserving status/code/message values within the typed boundary",
+          "evidence": [
+            "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+            "source error oracle and native Fish tests"
+          ]
         },
         {
           "name": "FishVoiceFavorite",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Favorite { id, name, alias }; the private ChannelFishVoiceFavorites record maps through schema() fields",
+          "evidence": [
+            "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+            "dimabot/tests/channel_fish_voice_favorites.rs"
+          ]
         },
         {
           "name": "MAX_FISH_VOICE_FAVORITES",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MAX_FISH_VOICE_FAVORITES = 20",
+          "evidence": [
+            "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs"
+          ]
         },
         {
           "name": "addFishVoiceFavorite",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "add_fish_voice_favorite and add_with over the MongoFavorites repository",
+          "evidence": [
+            "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+            "dimabot/tests/channel_fish_voice_favorites.rs"
+          ]
         },
         {
           "name": "getFishVoiceFavorites",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "get_fish_voice_favorites and get_with over the MongoFavorites repository",
+          "evidence": [
+            "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs"
+          ]
         },
         {
           "name": "makeFavoriteAlias",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "make_favorite_alias over lossless JsString and assigned-Unicode NFKD helpers",
+          "evidence": [
+            "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+            "dimabot/src/utils/js_unicode.rs"
+          ]
         },
         {
           "name": "normalizeFavoriteAlias",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "normalize_favorite_alias over lossless JsonValue, JS-compatible trim/case, bounded ASCII and reserved catalog checks",
+          "evidence": [
+            "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+            "dimabot/src/utils/js_unicode.rs"
+          ]
         },
         {
           "name": "removeFishVoiceFavorite",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "remove_fish_voice_favorite and remove_with over MongoFavorites",
+          "evidence": [
+            "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs"
+          ]
         },
         {
           "name": "renameFishVoiceFavorite",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "rename_fish_voice_favorite and rename_with, including the concrete legacy cloneDefault migration through the accepted channel TTS settings schema",
+          "evidence": [
+            "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+            "dimabot/src/schemas/channel_tts_settings.schema.rs"
+          ]
         }
       ],
       "imports": [
@@ -35357,12 +35443,12 @@
           "baselineSourceTargets": [
             "src/server/services/tts/fish_tts.service.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named-import",
+          "runtimeOrTypeDependency": "Runtime value import FISH_VOICES, used only for four built-in reserved/generation entries.",
+          "defaultSideEffectBarrelDetails": "Named FISH_VOICES import from the service module; the Fish provider singleton may initialize at module load, but provider/session/network behavior is not part of this favorites mapping. No barrel import.",
+          "directDependencyReview": "Verified exact required symbol and four native catalog data rows.",
+          "transitiveDependencyReview": "The Fish provider/session/transport implementation is not needed by the Fish favorites schema mapping.",
+          "rustReplacementOrGap": "crate::tts_services::fish_tts::FISH_VOICES; no whole-provider mapping is inferred."
         },
         {
           "ordinal": 1,
@@ -35377,12 +35463,12 @@
           "baselineSourceTargets": [
             "src/schemas/channel_tts_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named-import",
+          "runtimeOrTypeDependency": "Runtime ChannelTtsSettingsSchema import, used by rename to migrate a legacy cloneDefault alias to the stable favorite ID.",
+          "defaultSideEffectBarrelDetails": "Named existing Mongoose settings-model import and model registration. The verified native path uses the explicit accepted schema/Mongo repository update; no global model registration is reproduced.",
+          "directDependencyReview": "Concrete existing native channel TTS schema/repository verified for this targeted Mongo update.",
+          "transitiveDependencyReview": "Reuses the accepted native schema core, MongoDB driver and BSON; unrelated TTS caller/application closure remains separately tracked.",
+          "rustReplacementOrGap": "channel_tts_settings::schema().native_collection update with the same scoped cloneDefault filter/change; no new adapter or dependency."
         },
         {
           "ordinal": 2,
@@ -35390,15 +35476,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named-import",
+          "runtimeOrTypeDependency": "Runtime Schema/model construction for the channel descriptor.",
+          "defaultSideEffectBarrelDetails": "Named Schema/model construction registers the source model; definition does not connect to MongoDB, query, write, or install indexes. Native database and index operations are explicit.",
+          "directDependencyReview": "Actual model name, collection pluralization, version key, unique index, defaults and subdocument ID option are source-oracle verified.",
+          "transitiveDependencyReview": "MongoDB schema core/driver/BSON are concrete; Mongoose npm internals beyond the declared model contract are outside scope.",
+          "rustReplacementOrGap": "Native SchemaDefinition, mongodb crate and BSON representation; explicit caller-owned database/index installation."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "complete-local-typed-fish-favorites-feature-and-dependency-closure;source-retired-post-retirement-verified;callers-unadopted"
     },
     {
       "source": "src/schemas/channel_moderation_settings.schema.ts",

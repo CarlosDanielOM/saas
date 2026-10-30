@@ -1,0 +1,10 @@
+{
+  "source_commit": "999c94441cadb586916c512fe59bbb0bf6f4a428",
+  "source_tree_sha256": "52fbe671459e76370cc9cf73b05dd94a008fce3f220c25478611e58b61c49380",
+  "input_count": 1504,
+  "git_input_count": 1494,
+  "reused_sdk_input_count": 10,
+  "reused_sdk_capture_root": "migration-notes/evidence/2026-10-30-moderation-semantic/reproduction-tools/reused-sdk-inputs",
+  "all_input_hashes_match": true,
+  "grok_review": "pending; separate read-only review of this exact frozen source"
+}

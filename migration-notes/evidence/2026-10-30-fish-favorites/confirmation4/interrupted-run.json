@@ -1,0 +1,12 @@
+{
+  "status": "interrupted-without-driver-receipt",
+  "phase": "compiler",
+  "log": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793375452908420576.log",
+  "recorded_at": "2026-10-30T16:01:28.368123+00:00",
+  "container": "full-rust-5ad445d87cdc",
+  "only_idle_processes_before_cleanup": "PID                 COMMAND             COMMAND\n1830009             sh                  sh -c while :; do sleep 60; done\n1842947             sleep               sleep 60\n",
+  "report_exists": true,
+  "report_sha256": "2f8058550501e2046fe2381a9ab20a6530481ce5f4503e20854f86721a8874a9",
+  "benchmark_confirmation_accepted": false,
+  "next": "Preserve partial run and retry confirmation in a fresh directory; do not overwrite this report."
+}

@@ -19,3 +19,5 @@ The first Node wrapper attempt generated and checked its NFKD fixture, then fail
 The frozen source explicitly excluded three unverified Fish favorite schema/consumer draft files. It restored only `dimabot/Cargo.toml` and `dimabot/src/schemas/mod.rs` from the frozen baseline while preserving those working drafts. The verified result is the shared Unicode utility capability; it does not verify the Fish consumer, its Mongo/schema policy, or caller integration.
 
 Final readback found all 18 production records unchanged and zero task-owned resources. No deployment or caller adoption occurred. This utility change does not retire TypeScript and does not complete total migration; total migration remains incomplete. Full source bindings, fixtures, run receipts/logs, reproduction scripts, and readback are in the [indexed evidence package](evidence/2026-10-30-js-unicode-nfkd/README.md).
+
+The Fish favorites alias feature now uses this shared NFKD capability in a separately verified, retired source slice; see the [Fish favorites note](channel-fish-voice-favorites.md) for the allocation-candidate results.

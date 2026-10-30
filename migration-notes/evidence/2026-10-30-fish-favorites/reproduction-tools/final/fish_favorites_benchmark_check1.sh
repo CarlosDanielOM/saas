@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+cd /source/dimabot
+. /task-tools/fish_favorites_benchmark_env1.sh
+export DIMA_FISH_ALIAS_NODE_SHA256=114d268ce053fcee7cf90b8dfe5eb0d8321b3e4a23d5c6c6f43441daba9e17e3
+export DIMA_FISH_ALIAS_RUST_SHA256=033ae13e91659cf9bcb9086871390ad5b0193edcfd05eafd0841a76e9b16e24d
+node tests/fixtures/fish_favorite_alias_benchmark.cjs --check "$DIMA_FISH_ALIAS_DIR"

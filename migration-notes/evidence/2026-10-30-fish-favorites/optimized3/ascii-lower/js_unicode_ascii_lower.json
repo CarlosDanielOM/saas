@@ -1,0 +1,1512 @@
+{
+  "schema": 1,
+  "versions": {
+    "node": "24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "icu": "78.3",
+    "unicode": "17.0"
+  },
+  "nodeSha": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "count": 1112064,
+  "hashes": {
+    "src/utils/js_unicode.rs": "32515868d2d519621e47b2e11b94cfd480d7ce3d03b3a664b051f2d79f31ebad",
+    "src/utils/js_unicode_data.rs": "6c9529a54bd192de38852f31421383d3295dc9010ca463037b6383e361040aeb",
+    "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+    "src/schemas/channel_fish_voice_favorites.schema.rs": "ff9d62050eca3fe839462551d3cc156dc1221fb40941175385ab911727c770b8",
+    "tests/js_unicode_ascii_lower.rs": "1322b36c3dbb9d09c2308b174d597d7c286df26a87cb9b6f6ad9a33cf74946ea",
+    "tests/channel_fish_voice_favorites.rs": "1342626ceacd259e1c34555aaea992eecf44a6b2f12e4692a23f4fc8e62b89c1",
+    "tests/support/sha256.rs": "be1fbeade9ca428358081d30b47d0241734db05c94d343634b7e04520c42cf6a",
+    "tests/fixtures/js_unicode_ascii_lower_reference.cjs": "7689800c9a6d7d5758ee3f61fbaf9222b6f009da0848e41ac09d37c94332436b",
+    "Cargo.toml": "f64e2502a2d77772d18169be80ac0580be26964b24d01095951159ade3509305",
+    "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+    "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2"
+  },
+  "scalars": [
+    {
+      "cp": 0,
+      "output": "\u0000"
+    },
+    {
+      "cp": 1,
+      "output": "\u0001"
+    },
+    {
+      "cp": 2,
+      "output": "\u0002"
+    },
+    {
+      "cp": 3,
+      "output": "\u0003"
+    },
+    {
+      "cp": 4,
+      "output": "\u0004"
+    },
+    {
+      "cp": 5,
+      "output": "\u0005"
+    },
+    {
+      "cp": 6,
+      "output": "\u0006"
+    },
+    {
+      "cp": 7,
+      "output": "\u0007"
+    },
+    {
+      "cp": 8,
+      "output": "\b"
+    },
+    {
+      "cp": 9,
+      "output": "\t"
+    },
+    {
+      "cp": 10,
+      "output": "\n"
+    },
+    {
+      "cp": 11,
+      "output": "\u000b"
+    },
+    {
+      "cp": 12,
+      "output": "\f"
+    },
+    {
+      "cp": 13,
+      "output": "\r"
+    },
+    {
+      "cp": 14,
+      "output": "\u000e"
+    },
+    {
+      "cp": 15,
+      "output": "\u000f"
+    },
+    {
+      "cp": 16,
+      "output": "\u0010"
+    },
+    {
+      "cp": 17,
+      "output": "\u0011"
+    },
+    {
+      "cp": 18,
+      "output": "\u0012"
+    },
+    {
+      "cp": 19,
+      "output": "\u0013"
+    },
+    {
+      "cp": 20,
+      "output": "\u0014"
+    },
+    {
+      "cp": 21,
+      "output": "\u0015"
+    },
+    {
+      "cp": 22,
+      "output": "\u0016"
+    },
+    {
+      "cp": 23,
+      "output": "\u0017"
+    },
+    {
+      "cp": 24,
+      "output": "\u0018"
+    },
+    {
+      "cp": 25,
+      "output": "\u0019"
+    },
+    {
+      "cp": 26,
+      "output": "\u001a"
+    },
+    {
+      "cp": 27,
+      "output": "\u001b"
+    },
+    {
+      "cp": 28,
+      "output": "\u001c"
+    },
+    {
+      "cp": 29,
+      "output": "\u001d"
+    },
+    {
+      "cp": 30,
+      "output": "\u001e"
+    },
+    {
+      "cp": 31,
+      "output": "\u001f"
+    },
+    {
+      "cp": 32,
+      "output": " "
+    },
+    {
+      "cp": 33,
+      "output": "!"
+    },
+    {
+      "cp": 34,
+      "output": "\""
+    },
+    {
+      "cp": 35,
+      "output": "#"
+    },
+    {
+      "cp": 36,
+      "output": "$"
+    },
+    {
+      "cp": 37,
+      "output": "%"
+    },
+    {
+      "cp": 38,
+      "output": "&"
+    },
+    {
+      "cp": 39,
+      "output": "'"
+    },
+    {
+      "cp": 40,
+      "output": "("
+    },
+    {
+      "cp": 41,
+      "output": ")"
+    },
+    {
+      "cp": 42,
+      "output": "*"
+    },
+    {
+      "cp": 43,
+      "output": "+"
+    },
+    {
+      "cp": 44,
+      "output": ","
+    },
+    {
+      "cp": 45,
+      "output": "-"
+    },
+    {
+      "cp": 46,
+      "output": "."
+    },
+    {
+      "cp": 47,
+      "output": "/"
+    },
+    {
+      "cp": 48,
+      "output": "0"
+    },
+    {
+      "cp": 49,
+      "output": "1"
+    },
+    {
+      "cp": 50,
+      "output": "2"
+    },
+    {
+      "cp": 51,
+      "output": "3"
+    },
+    {
+      "cp": 52,
+      "output": "4"
+    },
+    {
+      "cp": 53,
+      "output": "5"
+    },
+    {
+      "cp": 54,
+      "output": "6"
+    },
+    {
+      "cp": 55,
+      "output": "7"
+    },
+    {
+      "cp": 56,
+      "output": "8"
+    },
+    {
+      "cp": 57,
+      "output": "9"
+    },
+    {
+      "cp": 58,
+      "output": ":"
+    },
+    {
+      "cp": 59,
+      "output": ";"
+    },
+    {
+      "cp": 60,
+      "output": "<"
+    },
+    {
+      "cp": 61,
+      "output": "="
+    },
+    {
+      "cp": 62,
+      "output": ">"
+    },
+    {
+      "cp": 63,
+      "output": "?"
+    },
+    {
+      "cp": 64,
+      "output": "@"
+    },
+    {
+      "cp": 65,
+      "output": "a"
+    },
+    {
+      "cp": 66,
+      "output": "b"
+    },
+    {
+      "cp": 67,
+      "output": "c"
+    },
+    {
+      "cp": 68,
+      "output": "d"
+    },
+    {
+      "cp": 69,
+      "output": "e"
+    },
+    {
+      "cp": 70,
+      "output": "f"
+    },
+    {
+      "cp": 71,
+      "output": "g"
+    },
+    {
+      "cp": 72,
+      "output": "h"
+    },
+    {
+      "cp": 73,
+      "output": "i"
+    },
+    {
+      "cp": 74,
+      "output": "j"
+    },
+    {
+      "cp": 75,
+      "output": "k"
+    },
+    {
+      "cp": 76,
+      "output": "l"
+    },
+    {
+      "cp": 77,
+      "output": "m"
+    },
+    {
+      "cp": 78,
+      "output": "n"
+    },
+    {
+      "cp": 79,
+      "output": "o"
+    },
+    {
+      "cp": 80,
+      "output": "p"
+    },
+    {
+      "cp": 81,
+      "output": "q"
+    },
+    {
+      "cp": 82,
+      "output": "r"
+    },
+    {
+      "cp": 83,
+      "output": "s"
+    },
+    {
+      "cp": 84,
+      "output": "t"
+    },
+    {
+      "cp": 85,
+      "output": "u"
+    },
+    {
+      "cp": 86,
+      "output": "v"
+    },
+    {
+      "cp": 87,
+      "output": "w"
+    },
+    {
+      "cp": 88,
+      "output": "x"
+    },
+    {
+      "cp": 89,
+      "output": "y"
+    },
+    {
+      "cp": 90,
+      "output": "z"
+    },
+    {
+      "cp": 91,
+      "output": "["
+    },
+    {
+      "cp": 92,
+      "output": "\\"
+    },
+    {
+      "cp": 93,
+      "output": "]"
+    },
+    {
+      "cp": 94,
+      "output": "^"
+    },
+    {
+      "cp": 95,
+      "output": "_"
+    },
+    {
+      "cp": 96,
+      "output": "`"
+    },
+    {
+      "cp": 97,
+      "output": "a"
+    },
+    {
+      "cp": 98,
+      "output": "b"
+    },
+    {
+      "cp": 99,
+      "output": "c"
+    },
+    {
+      "cp": 100,
+      "output": "d"
+    },
+    {
+      "cp": 101,
+      "output": "e"
+    },
+    {
+      "cp": 102,
+      "output": "f"
+    },
+    {
+      "cp": 103,
+      "output": "g"
+    },
+    {
+      "cp": 104,
+      "output": "h"
+    },
+    {
+      "cp": 105,
+      "output": "i"
+    },
+    {
+      "cp": 106,
+      "output": "j"
+    },
+    {
+      "cp": 107,
+      "output": "k"
+    },
+    {
+      "cp": 108,
+      "output": "l"
+    },
+    {
+      "cp": 109,
+      "output": "m"
+    },
+    {
+      "cp": 110,
+      "output": "n"
+    },
+    {
+      "cp": 111,
+      "output": "o"
+    },
+    {
+      "cp": 112,
+      "output": "p"
+    },
+    {
+      "cp": 113,
+      "output": "q"
+    },
+    {
+      "cp": 114,
+      "output": "r"
+    },
+    {
+      "cp": 115,
+      "output": "s"
+    },
+    {
+      "cp": 116,
+      "output": "t"
+    },
+    {
+      "cp": 117,
+      "output": "u"
+    },
+    {
+      "cp": 118,
+      "output": "v"
+    },
+    {
+      "cp": 119,
+      "output": "w"
+    },
+    {
+      "cp": 120,
+      "output": "x"
+    },
+    {
+      "cp": 121,
+      "output": "y"
+    },
+    {
+      "cp": 122,
+      "output": "z"
+    },
+    {
+      "cp": 123,
+      "output": "{"
+    },
+    {
+      "cp": 124,
+      "output": "|"
+    },
+    {
+      "cp": 125,
+      "output": "}"
+    },
+    {
+      "cp": 126,
+      "output": "~"
+    },
+    {
+      "cp": 127,
+      "output": ""
+    },
+    {
+      "cp": 8490,
+      "output": "k"
+    }
+  ],
+  "cases": [
+    {
+      "units": [],
+      "bound": 0,
+      "output": "",
+      "wellFormed": true
+    },
+    {
+      "units": [],
+      "bound": 1,
+      "output": "",
+      "wellFormed": true
+    },
+    {
+      "units": [],
+      "bound": 2,
+      "output": "",
+      "wellFormed": true
+    },
+    {
+      "units": [],
+      "bound": 40,
+      "output": "",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65
+      ],
+      "bound": 1,
+      "output": "a",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65
+      ],
+      "bound": 2,
+      "output": "a",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65
+      ],
+      "bound": 40,
+      "output": "a",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490
+      ],
+      "bound": 1,
+      "output": "k",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490
+      ],
+      "bound": 2,
+      "output": "k",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490
+      ],
+      "bound": 40,
+      "output": "k",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490
+      ],
+      "bound": 40,
+      "output": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490,
+        8490
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        304
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        304
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        304
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        304
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        931
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        931
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        931
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        931
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65,
+        931
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65,
+        931
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65,
+        931
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65,
+        931
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65,
+        931,
+        65
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65,
+        931,
+        65
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65,
+        931,
+        65
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65,
+        931,
+        65
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        0
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        0
+      ],
+      "bound": 1,
+      "output": "\u0000",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        0
+      ],
+      "bound": 2,
+      "output": "\u0000",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        0
+      ],
+      "bound": 40,
+      "output": "\u0000",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        55357,
+        56832
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        55357,
+        56832
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        55357,
+        56832
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        55357,
+        56832
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        233
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        233
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        233
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        233
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65279,
+        32,
+        65,
+        32,
+        8232
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65279,
+        32,
+        65,
+        32,
+        8232
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65279,
+        32,
+        65,
+        32,
+        8232
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65279,
+        32,
+        65,
+        32,
+        8232
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        55296
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        55296
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        55296
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        55296
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        56320
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        56320
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        56320
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        56320
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        55296,
+        56320
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        55296,
+        56320
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        55296,
+        56320
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        55296,
+        56320
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        55296,
+        65,
+        56320
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        55296,
+        65,
+        56320
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        55296,
+        65,
+        56320
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        55296,
+        65,
+        56320
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": false
+    },
+    {
+      "units": [
+        65,
+        66,
+        67
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65,
+        66,
+        67
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65,
+        66,
+        67
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        65,
+        66,
+        67
+      ],
+      "bound": 40,
+      "output": "abc",
+      "wellFormed": true
+    },
+    {
+      "units": [
+        223
+      ],
+      "bound": 0,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        223
+      ],
+      "bound": 1,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        223
+      ],
+      "bound": 2,
+      "output": null,
+      "wellFormed": true
+    },
+    {
+      "units": [
+        223
+      ],
+      "bound": 40,
+      "output": null,
+      "wellFormed": true
+    }
+  ]
+}

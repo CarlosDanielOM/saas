@@ -1,0 +1,14 @@
+{
+  "source_tree_sha256": "52fbe671459e76370cc9cf73b05dd94a008fce3f220c25478611e58b61c49380",
+  "binary_path_in_run": "/target-cache/release/deps/fish_favorite_alias_benchmark-14ac91ca11951020",
+  "binary_sha256": "174c5b6fa66b1df1baa8f2c461972064a787de31f232ffe34e3f6a37ccbc94a7",
+  "binary_bytes": 1905040,
+  "order": "Rust then Node",
+  "input_sha256": "c4c38e943f0dbe3d37caebe7f3fe0c89bb284c021fae4a840a5663fdc5caf8aa",
+  "report_sha256": {
+    "fish-alias-input.json": "c4c38e943f0dbe3d37caebe7f3fe0c89bb284c021fae4a840a5663fdc5caf8aa",
+    "fish-alias-provenance.json": "5984251f1ad71e5ffe5956316acb842aa95c8f65ced49cdadf0f9cd6ba436ac7",
+    "fish-alias-node.json": "9e2c5dc1f0f171d018ce68ce37b014968a0cc891486adaed8bfdfc0af26d88ba",
+    "fish-alias-rust.json": "6949c8c51daa70f8543cdcc3cb0d3345b9ad58afaee32d163ef6fad613a350e7"
+  }
+}
