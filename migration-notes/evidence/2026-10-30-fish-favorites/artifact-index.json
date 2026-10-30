@@ -1,0 +1,547 @@
+{
+  "format_version": 1,
+  "description": "Immutable Fish favorites baseline evidence. Payload bytes are preserved exactly; gzip is lossless.",
+  "payload_count": 60,
+  "payloads": [
+    {
+      "stored_path": "state/fish-favorites/attempt1/oracle/channel_fish_voice_favorites.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt1/oracle/channel_fish_voice_favorites.json",
+      "raw_sha256": "2d4109b5e324366151acbb1aadd0a441862c5d292629bea4dee690ba7b540a65",
+      "raw_bytes": 77158,
+      "stored_sha256": "06887797efde3a06499846330c3a807be7aebda435820368d68960646fb1f7c5",
+      "stored_bytes": 4678,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt1/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt1/source-final.json",
+      "raw_sha256": "4b03f3bee765a304970f0cd67c3b06954b9eecf4744e849c25451f2b9f03370d",
+      "raw_bytes": 179609,
+      "stored_sha256": "37f303a39b50ac5226d2078ad589816be166bc61b44e3447bc69534a90e2b5b2",
+      "stored_bytes": 71973,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt1/source-overrides/dimabot/Cargo.toml.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt1/source-overrides/dimabot/Cargo.toml",
+      "raw_sha256": "f64e2502a2d77772d18169be80ac0580be26964b24d01095951159ade3509305",
+      "raw_bytes": 14978,
+      "stored_sha256": "7229a7056a870c628373d4b9d99ac2a655cae035199c82e759c7b5455903a177",
+      "stored_bytes": 4045,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt1/source-overrides/dimabot/src/schemas/channel_fish_voice_favorites.schema.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt1/source-overrides/dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+      "raw_sha256": "d885117d49ae8aa3dc1ec506bbfde5d00fc56d65ebddf8d64d3172cae6b68657",
+      "raw_bytes": 15743,
+      "stored_sha256": "3110384e4bd630514852b072f4a9083a3feb415d6f87204f712c3923092fe14e",
+      "stored_bytes": 4145,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt1/source-overrides/dimabot/src/schemas/mod.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt1/source-overrides/dimabot/src/schemas/mod.rs",
+      "raw_sha256": "d08f4b05068bc44c9a207bee6c36f6cf84312b470cbfea33071f1c09424415be",
+      "raw_bytes": 5201,
+      "stored_sha256": "91e246b2ac03933ab6a509b2da2b4b099193dbe3fe1a8304b4977fe32aef5d6e",
+      "stored_bytes": 1130,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt1/source-overrides/dimabot/tests/channel_fish_voice_favorites.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt1/source-overrides/dimabot/tests/channel_fish_voice_favorites.rs",
+      "raw_sha256": "5605638ba47871178bc7417322d9eb49a9790701f553e259f50809b607e9967d",
+      "raw_bytes": 32913,
+      "stored_sha256": "2a60ec4b40c15555821ac57e7c926c81be0543db5622b4a020ab870aaa10a273",
+      "stored_bytes": 6929,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt1/source-overrides/dimabot/tests/fixtures/channel_fish_voice_favorites_reference.cjs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt1/source-overrides/dimabot/tests/fixtures/channel_fish_voice_favorites_reference.cjs",
+      "raw_sha256": "571d7b8f9ec9cad93dd64a940406b3e14d740def5a276bcb861c3f1f7762e478",
+      "raw_bytes": 11926,
+      "stored_sha256": "804eb77bfd43be47ab43928c82c551dcff65ce98c6f92cc2b5625d550a4566c7",
+      "stored_bytes": 4062,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt2/oracle/channel_fish_voice_favorites.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt2/oracle/channel_fish_voice_favorites.json",
+      "raw_sha256": "e4392cfffa71f23759ffcea02df00360df1d7c2cd5144eb7a1ca8f36764137ac",
+      "raw_bytes": 77158,
+      "stored_sha256": "fda4290a26fbaa9b8465613a03aa32f99ab3385ad060abed04c13e7883c21614",
+      "stored_bytes": 4678,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt2/production-after.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt2/production-after.json",
+      "raw_sha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "raw_bytes": 27004,
+      "stored_sha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "stored_bytes": 27004,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt2/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt2/source-final.json",
+      "raw_sha256": "abb85144f0054ad6809c0b3000a4e5a55e5edc5b1ae830cd72e8e6aec59c6805",
+      "raw_bytes": 179609,
+      "stored_sha256": "506456ed1197eb38609f88635a2417d1d2b969a9f9b99daf85b3c63c76428698",
+      "stored_bytes": 71972,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt2/source-overrides/dimabot/Cargo.toml.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt2/source-overrides/dimabot/Cargo.toml",
+      "raw_sha256": "f64e2502a2d77772d18169be80ac0580be26964b24d01095951159ade3509305",
+      "raw_bytes": 14978,
+      "stored_sha256": "7229a7056a870c628373d4b9d99ac2a655cae035199c82e759c7b5455903a177",
+      "stored_bytes": 4045,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt2/source-overrides/dimabot/src/schemas/channel_fish_voice_favorites.schema.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt2/source-overrides/dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+      "raw_sha256": "d885117d49ae8aa3dc1ec506bbfde5d00fc56d65ebddf8d64d3172cae6b68657",
+      "raw_bytes": 15743,
+      "stored_sha256": "3110384e4bd630514852b072f4a9083a3feb415d6f87204f712c3923092fe14e",
+      "stored_bytes": 4145,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt2/source-overrides/dimabot/src/schemas/mod.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt2/source-overrides/dimabot/src/schemas/mod.rs",
+      "raw_sha256": "d08f4b05068bc44c9a207bee6c36f6cf84312b470cbfea33071f1c09424415be",
+      "raw_bytes": 5201,
+      "stored_sha256": "91e246b2ac03933ab6a509b2da2b4b099193dbe3fe1a8304b4977fe32aef5d6e",
+      "stored_bytes": 1130,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt2/source-overrides/dimabot/tests/channel_fish_voice_favorites.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt2/source-overrides/dimabot/tests/channel_fish_voice_favorites.rs",
+      "raw_sha256": "66e62e1398677634de156e368480ca0e4f34c7ced531a095bf10a2d4e5e650ac",
+      "raw_bytes": 32923,
+      "stored_sha256": "922be6050f927a5372dbeef02481c4e2ee89e937aa993692471a8cdeeacb9274",
+      "stored_bytes": 6932,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt2/source-overrides/dimabot/tests/fixtures/channel_fish_voice_favorites_reference.cjs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt2/source-overrides/dimabot/tests/fixtures/channel_fish_voice_favorites_reference.cjs",
+      "raw_sha256": "571d7b8f9ec9cad93dd64a940406b3e14d740def5a276bcb861c3f1f7762e478",
+      "raw_bytes": 11926,
+      "stored_sha256": "804eb77bfd43be47ab43928c82c551dcff65ce98c6f92cc2b5625d550a4566c7",
+      "stored_bytes": 4062,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt3/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt3/source-final.json",
+      "raw_sha256": "ffb7707a2f2876d2d1ca5483489a57cf2474f1c5e72beb873e196ace77c316ae",
+      "raw_bytes": 179859,
+      "stored_sha256": "5d37b0f669940eb1ddfd301540ec90137a011bd02c9f60b8d05d48097c9ef381",
+      "stored_bytes": 72067,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt3/source-overrides/dimabot/Cargo.toml.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt3/source-overrides/dimabot/Cargo.toml",
+      "raw_sha256": "f64e2502a2d77772d18169be80ac0580be26964b24d01095951159ade3509305",
+      "raw_bytes": 14978,
+      "stored_sha256": "7229a7056a870c628373d4b9d99ac2a655cae035199c82e759c7b5455903a177",
+      "stored_bytes": 4045,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt3/source-overrides/dimabot/src/schemas/channel_fish_voice_favorites.schema.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt3/source-overrides/dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+      "raw_sha256": "ebe18728df52445b22e587ad340777254f5902db8d7e9750fdb99e101e6324fe",
+      "raw_bytes": 16282,
+      "stored_sha256": "95aebc7c737ad0de8c29975b541123c8ca23822bd303934e6537f7591d0149d1",
+      "stored_bytes": 4323,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt3/source-overrides/dimabot/src/schemas/mod.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt3/source-overrides/dimabot/src/schemas/mod.rs",
+      "raw_sha256": "d08f4b05068bc44c9a207bee6c36f6cf84312b470cbfea33071f1c09424415be",
+      "raw_bytes": 5201,
+      "stored_sha256": "91e246b2ac03933ab6a509b2da2b4b099193dbe3fe1a8304b4977fe32aef5d6e",
+      "stored_bytes": 1130,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt3/source-overrides/dimabot/tests/channel_fish_voice_favorites.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt3/source-overrides/dimabot/tests/channel_fish_voice_favorites.rs",
+      "raw_sha256": "23f8fdf6796bc11da5b8948cdb4f3c8da741c2b1b49ca313e350ea7e9df4303d",
+      "raw_bytes": 36379,
+      "stored_sha256": "56d06359abc73590a9de0efb972f4cb656bd8eb36d54adbf967177730134ab04",
+      "stored_bytes": 7688,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt3/source-overrides/dimabot/tests/fish_favorite_alias_benchmark.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt3/source-overrides/dimabot/tests/fish_favorite_alias_benchmark.rs",
+      "raw_sha256": "e000ea69b1ab1174989cf422ffb86073036ff153fe39ec5c407112aa07a8cf7f",
+      "raw_bytes": 12291,
+      "stored_sha256": "7ae9aa7ddec95b90e82f8f216ae30318687adc9d2863b04975d90b3addb1c44c",
+      "stored_bytes": 3690,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt3/source-overrides/dimabot/tests/fixtures/channel_fish_voice_favorites_reference.cjs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt3/source-overrides/dimabot/tests/fixtures/channel_fish_voice_favorites_reference.cjs",
+      "raw_sha256": "8d1b4d889670d5577c916a934cd18ba8a3d20914db659142dd1c376d166ab33c",
+      "raw_bytes": 14448,
+      "stored_sha256": "b726f572ac5283bced78ce2c51958ad24aaaf655c0ac92fbc12af031cff72abb",
+      "stored_bytes": 4801,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt3/source-overrides/dimabot/tests/fixtures/fish_favorite_alias_benchmark.cjs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt3/source-overrides/dimabot/tests/fixtures/fish_favorite_alias_benchmark.cjs",
+      "raw_sha256": "f6fba9004f574c7e9f236c18a10bedae15c9f2a5a02db98eabe5cd8a2a9a7592",
+      "raw_bytes": 12520,
+      "stored_sha256": "411eb6993db5d4c537050501478abd2c62ece734ef21b950838d1e7dabb2f6f3",
+      "stored_bytes": 4302,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt4/benchmark/fish-alias-input.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt4/benchmark/fish-alias-input.json",
+      "raw_sha256": "c4c38e943f0dbe3d37caebe7f3fe0c89bb284c021fae4a840a5663fdc5caf8aa",
+      "raw_bytes": 51862,
+      "stored_sha256": "fc76bb7c077c5e6285e7c1585702b954add81e6f15d9e6ce405099bb4a9d52d4",
+      "stored_bytes": 1813,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt4/benchmark/fish-alias-node.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt4/benchmark/fish-alias-node.json",
+      "raw_sha256": "114d268ce053fcee7cf90b8dfe5eb0d8321b3e4a23d5c6c6f43441daba9e17e3",
+      "raw_bytes": 3219,
+      "stored_sha256": "114d268ce053fcee7cf90b8dfe5eb0d8321b3e4a23d5c6c6f43441daba9e17e3",
+      "stored_bytes": 3219,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt4/benchmark/fish-alias-provenance.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt4/benchmark/fish-alias-provenance.json",
+      "raw_sha256": "0a39aa549193818ce611cd4fc39a619b034f52ee8ebe1d74138d002187d69512",
+      "raw_bytes": 2726,
+      "stored_sha256": "0a39aa549193818ce611cd4fc39a619b034f52ee8ebe1d74138d002187d69512",
+      "stored_bytes": 2726,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt4/benchmark/fish-alias-rust.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt4/benchmark/fish-alias-rust.json",
+      "raw_sha256": "033ae13e91659cf9bcb9086871390ad5b0193edcfd05eafd0841a76e9b16e24d",
+      "raw_bytes": 3221,
+      "stored_sha256": "033ae13e91659cf9bcb9086871390ad5b0193edcfd05eafd0841a76e9b16e24d",
+      "stored_bytes": 3221,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt4/binary-binding.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt4/binary-binding.json",
+      "raw_sha256": "9c2b6e9bb3999a7fb903172752aecdc414463fadd5d7570f119fb60bd078f1d6",
+      "raw_bytes": 489,
+      "stored_sha256": "9c2b6e9bb3999a7fb903172752aecdc414463fadd5d7570f119fb60bd078f1d6",
+      "stored_bytes": 489,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt4/oracle/channel_fish_voice_favorites.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt4/oracle/channel_fish_voice_favorites.json",
+      "raw_sha256": "0b8bc0597a4583b575ef1583608867561415cc3868b2a35833c1500d3a0f3b73",
+      "raw_bytes": 84941,
+      "stored_sha256": "87632e8108be08d442e54837fee8b8f03f3f5c8419dc98e1446d5488b110fbe8",
+      "stored_bytes": 5748,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt4/production-after.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt4/production-after.json",
+      "raw_sha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "raw_bytes": 27004,
+      "stored_sha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "stored_bytes": 27004,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt4/source-bindings.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt4/source-bindings.json",
+      "raw_sha256": "9077b89b2c1ac17e2e06f41bdbe3de2360ee63e15dfd25ac4cd040f0da8b07cd",
+      "raw_bytes": 399,
+      "stored_sha256": "9077b89b2c1ac17e2e06f41bdbe3de2360ee63e15dfd25ac4cd040f0da8b07cd",
+      "stored_bytes": 399,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/fish-favorites/attempt4/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/attempt4/source-final.json",
+      "raw_sha256": "fa506432457f0f6f259dd4391638dd6f0a2871e4d36d8296287a2b2b32a62cc5",
+      "raw_bytes": 179859,
+      "stored_sha256": "ff1656716e062fd2b5c82a64f45de0437cca953361bde13253227383c8d7a2ca",
+      "stored_bytes": 72062,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/fish-favorites/cache-maintenance-release.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/cache-maintenance-release.json",
+      "raw_sha256": "12d42cf9e0b9c722a6d467177f996ed07042d15d21a97d526d0a6cce849f8b9b",
+      "raw_bytes": 10703,
+      "stored_sha256": "12d42cf9e0b9c722a6d467177f996ed07042d15d21a97d526d0a6cce849f8b9b",
+      "stored_bytes": 10703,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/fish-favorites/cache-maintenance.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/cache-maintenance.json",
+      "raw_sha256": "ca9dcef21b963365f6c0dd27e6c950e91523eb9edc8230d4650b3ddb35dc25ec",
+      "raw_bytes": 8268,
+      "stored_sha256": "ca9dcef21b963365f6c0dd27e6c950e91523eb9edc8230d4650b3ddb35dc25ec",
+      "stored_bytes": 8268,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/fish-favorites/snapshot-isolation.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/snapshot-isolation.json",
+      "raw_sha256": "e8610790c45a5c6b8b5995dda6ed796d669d6e10030982b57abdbcbac8defae1",
+      "raw_bytes": 233,
+      "stored_sha256": "e8610790c45a5c6b8b5995dda6ed796d669d6e10030982b57abdbcbac8defae1",
+      "stored_bytes": 233,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/fish-favorites/toolchain/rustc.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/toolchain/rustc.json",
+      "raw_sha256": "3e05ac673a05e508be9fcc8e23966d10a5b833243fb23a52041dcc6dd4590736",
+      "raw_bytes": 463,
+      "stored_sha256": "3e05ac673a05e508be9fcc8e23966d10a5b833243fb23a52041dcc6dd4590736",
+      "stored_bytes": 463,
+      "compression": "none"
+    },
+    {
+      "stored_path": "runs/format-1793372051509244858-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793372051509244858-receipt.json",
+      "raw_sha256": "89db3afb0228614ec4c0a1f83c50517ecd71c0d2a3786fb86cb265f3ddc4d2ac",
+      "raw_bytes": 183519,
+      "stored_sha256": "d776faecb78a30a63cd9091f1d8b6dc694252e08ab6e2019322d29d552ea5c28",
+      "stored_bytes": 72529,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/format-1793372051509244858.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793372051509244858.log",
+      "raw_sha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "raw_bytes": 1833,
+      "stored_sha256": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef",
+      "stored_bytes": 873,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/format-1793372664150568263-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793372664150568263-receipt.json",
+      "raw_sha256": "99b83f581713c9351c455dddf0026f750dc947dd00d715ed9f4aaf5c2b010d59",
+      "raw_bytes": 183775,
+      "stored_sha256": "88a66948bb613680aefb352e4048a0f0d76b12ef331f0b56927e8923b37e2dbb",
+      "stored_bytes": 72621,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/format-1793372664150568263.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793372664150568263.log",
+      "raw_sha256": "093e3ddb6fb28c6f223081daa47391e2fe2aa09ba6fa48784fc2dcbda9c819cf",
+      "raw_bytes": 2369,
+      "stored_sha256": "bfcfe08a734fc99d325e1371675d019db69e93cc19d6c380b1e7da676f1452d6",
+      "stored_bytes": 1076,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793372202614796892-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793372202614796892-receipt.json",
+      "raw_sha256": "5a491de272c1508b4f924f46f6abdfab033e53a29d7cf60c9879a565a6976c0a",
+      "raw_bytes": 183398,
+      "stored_sha256": "f8c37154657216f02f1a430b8b3319c5dc370f86f4aabfd7388440c87d294b66",
+      "stored_bytes": 72495,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793372202614796892.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793372202614796892.log",
+      "raw_sha256": "249baf635bb43877fcb9422efa1a4904b702d0ddf14d3949b7cd0950d5229c81",
+      "raw_bytes": 9,
+      "stored_sha256": "abee8d65afa95510e7e200b1183f9d1c04b0665f8e78777915fdf0bca703e9b0",
+      "stored_bytes": 29,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793372331496319154-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793372331496319154-receipt.json",
+      "raw_sha256": "ba81634d765726e998cb79fe3db01daab8d65471beeb036c21306265501938b7",
+      "raw_bytes": 183398,
+      "stored_sha256": "1e8ba36957949c00a4ba2884d7521b48c942383911f0dea119ff1e7b7f29e392",
+      "stored_bytes": 72497,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793372331496319154.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793372331496319154.log",
+      "raw_sha256": "249baf635bb43877fcb9422efa1a4904b702d0ddf14d3949b7cd0950d5229c81",
+      "raw_bytes": 9,
+      "stored_sha256": "abee8d65afa95510e7e200b1183f9d1c04b0665f8e78777915fdf0bca703e9b0",
+      "stored_bytes": 29,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793372687312785068-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793372687312785068-receipt.json",
+      "raw_sha256": "3d9e11d71e02543f3afdb84520ca886b7a916fcc301fd369b9b29113d879c2da",
+      "raw_bytes": 183697,
+      "stored_sha256": "6d9e74311e3d6960b5616e751a7629a128f9197278af12deae24bab62e6cb28b",
+      "stored_bytes": 72654,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793372687312785068.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793372687312785068.log",
+      "raw_sha256": "bc1dc545c49951b8e72e48c7826e7c044f00dfebe09c9250c9c7241e14381276",
+      "raw_bytes": 848,
+      "stored_sha256": "a13deb180eb82331203ad0ddcd5f3ebafe7e5b7371668924ab81d31b516ac0b1",
+      "stored_bytes": 369,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793372728187388168-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793372728187388168-receipt.json",
+      "raw_sha256": "5dda51523da02556aef84dc0cc79a3fa30112f13fcb49749a728773654a61c22",
+      "raw_bytes": 183652,
+      "stored_sha256": "690ad00a5c7ab3f508fa42481050c474f227de68966618f89eefa2f1bb1ad45f",
+      "stored_bytes": 72581,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793372728187388168.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793372728187388168.log",
+      "raw_sha256": "d900c6a3a7cdc7fe6b814d918399b56aecff2694afab5980333f195a6ca69ad5",
+      "raw_bytes": 178,
+      "stored_sha256": "a2b19ebe1e1fb05fab0dcf7e5b9e6fec91ce8c8a207ad3d7619f4447e9fe13b9",
+      "stored_bytes": 154,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793372896217503097-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793372896217503097-receipt.json",
+      "raw_sha256": "07a9ba6d1de22eb63c6f98ef3d108c60368e068910f0ec97f8551a5f296c3291",
+      "raw_bytes": 183651,
+      "stored_sha256": "2dc3d31e58df231d9789c985fdfb512a4218cfd1891bf0f502d4e4c1e4384cfc",
+      "stored_bytes": 72582,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793372896217503097.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793372896217503097.log",
+      "raw_sha256": "45aa12beab7cd96c740284d75b081ab68f9a55c16dcaeb5a66afccf1b8ee8199",
+      "raw_bytes": 97,
+      "stored_sha256": "02c065a1ecd245c46203194024be823b29846109519fcc47bb24e7782613f7c9",
+      "stored_bytes": 107,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793373209694818208-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793373209694818208-receipt.json",
+      "raw_sha256": "6e0b26f53eee0fd76d003a67596c8db59915947821d526ec836419fa2ffae54b",
+      "raw_bytes": 183652,
+      "stored_sha256": "aceb04284a51ebfbaac792739d3522b805c1a1746b6e69bf37d930b30acb69fc",
+      "stored_bytes": 72582,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793373209694818208.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793373209694818208.log",
+      "raw_sha256": "27d847b6b13882d03816106a885f4cd8836a8cc27fee551714fb0fd37b9283e6",
+      "raw_bytes": 365,
+      "stored_sha256": "40fdf8907b05cd54ae7ba4d6250c366906986e30011f4a66c2ac88b9944bcae4",
+      "stored_bytes": 258,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/compiler-fixtures-1793372221031233511-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793372221031233511-receipt.json",
+      "raw_sha256": "704ed46e3393cba848b5236fdd2cb6670a44428891f243bb0821b57472657c97",
+      "raw_bytes": 183601,
+      "stored_sha256": "79d06bfd3f04bee50fb0178fcb92e0bd98ab3a03fc098bdb0325a4835c40b918",
+      "stored_bytes": 72620,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/compiler-fixtures-1793372221031233511.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793372221031233511.log",
+      "raw_sha256": "3d3d87528c2e309553335c7a244ae70b49576ceadcfb3b094917c5408489ba3e",
+      "raw_bytes": 2658,
+      "stored_sha256": "f5b024d7f0eff4beb4c1eb23c84334b998739b7cbb587133dc4bfd61a081396b",
+      "stored_bytes": 1273,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/compiler-fixtures-1793372338140280775-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793372338140280775-receipt.json",
+      "raw_sha256": "7ba89f7ba3b9a3484d3fdd22c14c623483393338484d3beb2361eda9dd7a87e5",
+      "raw_bytes": 183605,
+      "stored_sha256": "2be5c211b6cd1802024da6b4d569453f5c849ed0ae2f50c9c6a5f1b8d947e7e7",
+      "stored_bytes": 72624,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/compiler-fixtures-1793372338140280775.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793372338140280775.log",
+      "raw_sha256": "8bf5805192884476415f8a760fd086e0d2e64c2a0da6b04079c147c2667d8683",
+      "raw_bytes": 4378,
+      "stored_sha256": "fb89618260dbce5b08b80619a4c1554af184fd0216634a9c56a8afbf351506dc",
+      "stored_bytes": 1858,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/compiler-fixtures-1793372737318120079-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793372737318120079-receipt.json",
+      "raw_sha256": "ea3d66369d080e6f82d0eef01f7330831652a6a995d2383b577af28494b016a1",
+      "raw_bytes": 183800,
+      "stored_sha256": "4af004f600e94feabf63fd017b3e58b09fcf454967be1eea44691c5218183ba7",
+      "stored_bytes": 72626,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/compiler-fixtures-1793372737318120079.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793372737318120079.log",
+      "raw_sha256": "82aef5cf44a03565af17ec938ee9d1cb5b3e39b4bce503456ef77280eed18914",
+      "raw_bytes": 3315,
+      "stored_sha256": "7808c8de10bfe1159090ac033f4f1f1df9cc75cf69d6be933fb1ce5327ff11c8",
+      "stored_bytes": 1384,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/compiler-1793372914152563479-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793372914152563479-receipt.json",
+      "raw_sha256": "fc1172bb2d2f6a0e248ad62daad7a6f9bc488ef8934e390fdd412525d9ee346c",
+      "raw_bytes": 183782,
+      "stored_sha256": "3509a47bf4e0b820965e654d88bbf9492c30647bed08d6eecf6272c5b1c4fdf4",
+      "stored_bytes": 72622,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/compiler-1793372914152563479.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793372914152563479.log",
+      "raw_sha256": "914dbcfcdd035348ebfb2efb261be9af42b7b29c220e4bd24e27531f2abfafc2",
+      "raw_bytes": 2561,
+      "stored_sha256": "b42af19a3e790c483031a105801d6090e9f8691d8e7ff9b7c6c5320adcc2cb1e",
+      "stored_bytes": 1235,
+      "compression": "gzip"
+    }
+  ]
+}

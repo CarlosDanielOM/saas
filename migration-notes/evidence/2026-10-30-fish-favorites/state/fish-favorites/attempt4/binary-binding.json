@@ -1,0 +1,10 @@
+{
+  "source_tree_sha256": "9b11ced33a15768bb42fb28268bb92440e5692f21a50976544cd018da656841e",
+  "binary_path_in_run": "/target-cache/release/deps/fish_favorite_alias_benchmark-14ac91ca11951020",
+  "binary_sha256": "9a3d7832a0fe860f5c2a542eeb7b2d6a53cec40483b0f1ee71cc390a949fcb5f",
+  "binary_bytes": 1760704,
+  "reports": {
+    "NODE": "114d268ce053fcee7cf90b8dfe5eb0d8321b3e4a23d5c6c6f43441daba9e17e3",
+    "RUST": "033ae13e91659cf9bcb9086871390ad5b0193edcfd05eafd0841a76e9b16e24d"
+  }
+}

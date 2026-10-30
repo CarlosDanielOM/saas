@@ -1,0 +1,6 @@
+{
+  "scope": "combined Fish favorites repository/core plus accepted Unicode17 NFKD capability",
+  "excluded_files": [],
+  "read_only_source": true,
+  "previous_unicode_acceptance_commit": "9d6da9bb808a14f48e23cbc96ff45a17dbe5b154"
+}
