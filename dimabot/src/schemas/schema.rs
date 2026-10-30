@@ -59,6 +59,7 @@ pub struct Field {
     pub default: FieldDefault,
     pub required: bool,
     pub required_when: Option<(&'static str, &'static str)>,
+    pub required_unless: Option<(&'static str, &'static str)>,
     pub enum_values: &'static [&'static str],
     pub min: Option<f64>,
     pub max: Option<f64>,
@@ -78,6 +79,7 @@ impl Field {
             default: FieldDefault::Missing,
             required: false,
             required_when: None,
+            required_unless: None,
             enum_values: &[],
             min: None,
             max: None,
@@ -99,6 +101,10 @@ impl Field {
     }
     pub fn required_when(mut self, field: &'static str, value: &'static str) -> Self {
         self.required_when = Some((field, value));
+        self
+    }
+    pub fn required_unless(mut self, field: &'static str, value: &'static str) -> Self {
+        self.required_unless = Some((field, value));
         self
     }
     pub fn enumeration(mut self, values: &'static [&'static str]) -> Self {
@@ -263,7 +269,126 @@ impl fmt::Display for FlatInsertError {
 }
 impl std::error::Error for FlatInsertError {}
 
+/// Error from the bounded, top-level equality upsert adapter.
+#[derive(Debug)]
+pub enum UpsertError {
+    Preparation(FlatInsertError),
+    Mongo(mongodb::error::Error),
+    MissingResult,
+}
+impl fmt::Display for UpsertError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Preparation(error) => error.fmt(f),
+            Self::Mongo(error) => error.fmt(f),
+            Self::MissingResult => f.write_str("upsert returned no document"),
+        }
+    }
+}
+impl std::error::Error for UpsertError {}
+
 impl SchemaDefinition {
+    /// Prepare the normal top-level equality upsert used by inventory and queue.
+    /// Only `$set` and `$setOnInsert` are supported; callers supply complete,
+    /// typed top-level values. Dotted paths, operators and conflicting paths are
+    /// rejected. Top-level update validators do not run; nested values use the
+    /// shared constructor and must satisfy its validation contract.
+    pub fn prepare_equality_upsert(
+        &self,
+        filter: &Document,
+        insert: &Document,
+        set: &Document,
+        now: DateTime,
+    ) -> Result<(Document, Document), FlatInsertError> {
+        if self.save_clock_field.is_some() || filter.is_empty() {
+            return Err(FlatInsertError::Unsupported(
+                "upsert requires equality filter and no save hook",
+            ));
+        }
+        let mut errors = Vec::new();
+        let mut cast_doc = |input: &Document| -> Result<Document, FlatInsertError> {
+            let mut result = Document::new();
+            for (name, value) in input {
+                if name.contains('.')
+                    || name.starts_with('$')
+                    || matches!(value, Bson::Undefined)
+                    || matches!(value, Bson::Document(d) if d.keys().any(|key| key.starts_with('$')))
+                {
+                    return Err(FlatInsertError::Unsupported(
+                        "only top-level typed values are supported",
+                    ));
+                }
+                let implicit_id = Field::new(
+                    "_id",
+                    if self.string_id {
+                        FieldType::String
+                    } else {
+                        FieldType::ObjectId
+                    },
+                );
+                let field = self
+                    .fields
+                    .iter()
+                    .find(|field| field.name == name)
+                    .or_else(|| (name == "_id").then_some(&implicit_id))
+                    .ok_or(FlatInsertError::Unsupported(
+                        "unknown or implicit upsert path",
+                    ))?;
+                if let Some(value) = cast_field(field, value.clone(), now, name, &mut errors) {
+                    result.insert(name, value);
+                }
+                if !errors.is_empty() {
+                    return Err(FlatInsertError::Cast(ValidationErrors(std::mem::take(
+                        &mut errors,
+                    ))));
+                }
+            }
+            Ok(result)
+        };
+        let filter = cast_doc(filter)?;
+        let mut insert = cast_doc(insert)?;
+        let mut set = cast_doc(set)?;
+        if insert.keys().any(|name| set.contains_key(name)) {
+            return Err(FlatInsertError::Unsupported(
+                "conflicting set and setOnInsert paths",
+            ));
+        }
+        for field in &self.fields {
+            if filter.contains_key(field.name)
+                || insert.contains_key(field.name)
+                || set.contains_key(field.name)
+            {
+                continue;
+            }
+            let value = match &field.kind {
+                FieldType::Object(children) if matches!(field.default, FieldDefault::Missing) => {
+                    let nested =
+                        construct_fields(children, &Document::new(), now, field.name, &mut errors);
+                    (!nested.is_empty()).then_some(Bson::Document(nested))
+                }
+                _ => resolve_default(&field.default, now),
+            };
+            if let Some(value) = value {
+                insert.insert(field.name, value);
+            }
+        }
+        if !errors.is_empty() {
+            return Err(FlatInsertError::Cast(ValidationErrors(errors)));
+        }
+        if self.version_key {
+            insert.insert("__v", 0);
+        }
+        if let Some((created, updated)) = self.timestamps {
+            insert.insert(created, now);
+            set.insert(updated, now);
+        }
+        let mut update = doc! {"$setOnInsert": insert};
+        if !set.is_empty() {
+            update.insert("$set", set);
+        }
+        Ok((filter, update))
+    }
+
     /// Cast a flat `$setOnInsert` and add unmodified defaults for an upsert.
     /// `filter` contains only flat equality predicates; other update operators,
     /// schema timestamps, version keys, nested paths and subdocuments are outside
@@ -496,6 +621,26 @@ pub struct SchemaRepository {
     pub collection: Collection<Document>,
 }
 impl SchemaRepository {
+    /// Upsert and return the stored document after applying the bounded update.
+    pub async fn upsert_equality(
+        &self,
+        filter: &Document,
+        insert: &Document,
+        set: &Document,
+        now: DateTime,
+    ) -> Result<Document, UpsertError> {
+        let (filter, update) = self
+            .schema
+            .prepare_equality_upsert(filter, insert, set, now)
+            .map_err(UpsertError::Preparation)?;
+        self.collection
+            .find_one_and_update(filter, update)
+            .upsert(true)
+            .return_document(mongodb::options::ReturnDocument::After)
+            .await
+            .map_err(UpsertError::Mongo)?
+            .ok_or(UpsertError::MissingResult)
+    }
     pub async fn insert(
         &self,
         input: Document,
@@ -673,7 +818,16 @@ fn construct_fields(
         let required = field.required
             || field
                 .required_when
-                .is_some_and(|(name, expected)| input.get_str(name).ok() == Some(expected));
+                .is_some_and(|(name, expected)| input.get_str(name).ok() == Some(expected))
+            || field.required_unless.is_some_and(|(name, expected)| {
+                let value = input.get(name).cloned().or_else(|| {
+                    fields
+                        .iter()
+                        .find(|candidate| candidate.name == name)
+                        .and_then(|candidate| resolve_default(&candidate.default, now))
+                });
+                value.as_ref().and_then(Bson::as_str) != Some(expected)
+            });
         let value = match input.get(field.name) {
             Some(value) => Some(value.clone()),
             None => match &field.default {

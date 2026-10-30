@@ -180,3 +180,31 @@ pub fn by_model(model: &str) -> Option<&'static SchemaDefinition> {
         .into_iter()
         .find(|schema| schema.model == model)
 }
+
+#[cfg(feature = "media-extension-schemas")]
+#[path = "media_extension_schema_values.rs"]
+pub mod media_extension_schema_values;
+
+#[cfg(feature = "media-extension-schemas")]
+#[path = "media_asset.schema.rs"]
+pub mod media_asset;
+
+#[cfg(feature = "media-extension-schemas")]
+#[path = "user_media_library_item.schema.rs"]
+pub mod user_media_library_item;
+
+#[cfg(feature = "media-extension-schemas")]
+#[path = "channel_extension_item.schema.rs"]
+pub mod channel_extension_item;
+
+#[cfg(feature = "media-extension-schemas")]
+#[path = "user_extension_inventory.schema.rs"]
+pub mod user_extension_inventory;
+
+#[cfg(feature = "media-extension-schemas")]
+#[path = "extension_wallet_transaction.schema.rs"]
+pub mod extension_wallet_transaction;
+
+#[cfg(feature = "media-extension-schemas")]
+#[path = "dimafx_playback.schema.rs"]
+pub mod dimafx_playback;
