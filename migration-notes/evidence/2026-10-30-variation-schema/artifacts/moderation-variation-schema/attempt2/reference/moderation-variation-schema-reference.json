@@ -1,0 +1,846 @@
+{
+  "format": 1,
+  "versions": {
+    "node": "24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "icu": "78.3",
+    "unicode": "17.0",
+    "typescript": "5.9.3",
+    "mongoose": "8.24.2",
+    "bson": "6.10.4"
+  },
+  "nodeExecutableSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "sourceSha256": {
+    "src/schemas/moderation_variation.schema.ts": "75847e39ad4c22338bef0dd7d74a624b7f8bc666ebbed4fc33a6579ba6f5f143",
+    "src/schemas/moderation_variation.schema.rs": "e9ed40267ac91d6a64ca9843c3d1ab04d70f1e915d4c6e98a14e50ab9afdca30",
+    "src/schemas/schema.rs": "04ed743aa8e11ec278b5c6ad7d42bcde72a154d0ec5c4f15b9889897a1cff99a",
+    "src/utils/bson_compat.rs": "bd6772ef74ec73708d3828d59496c8d2a9156d2325864b63c7f40544300802e4",
+    "src/utils/mongoose_date.rs": "d64fc10dfce3513d02598c9408bd3b6b5cccb7ed3c2e6fbad589f61e20087573",
+    "src/utils/moderation/types.rs": "23da7fb070caf4d35cf08ae47f17d6346136fe11fc8f0059ac46bdd10b4812ff",
+    "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+    "tests/moderation_variation_schema.rs": "ca8a1fcc7eaa658040dbd68417d2d74ff3fba8c0869122ba0b77d520eff0c346",
+    "Cargo.toml": "0b25e2ae91dd369d802c68930fd078e9862e69e2ecfbafcf6209b2d0429deecd",
+    "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+    "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "typescript-js": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "typescript-package": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "mongoose-js": "59e21822580047abc5468d740b720d1383fa3569aa2da3ac70325265fbb0e25b",
+    "mongoose-package": "5136d95bcd0624a94096110ea21ac101b73f1839bc40726eab85649389c17dba",
+    "bson-js": "64e5de269bbcdee96f2bebb57cc9729b72aaebde02d832005872b7e575899284",
+    "bson-package": "ded0e42e4e1cd876a11c9f799e0692f83ee73ebc9fb7796a5bca05039b4b3e23",
+    "oracle-script": "65b6dfa1c38e6b82aa7662d4ddde921df2087913328f05b6199cb7c5bc62fc91",
+    "mongoose/lib/schema/array.js": "3ac735b06a68a3d1377a6522dd691698dc0eef22c04675e13524df73954f0035",
+    "mongoose/lib/schema/string.js": "ae16be84b7a33ba66b4695decb847dc2f0cde86beb86914b14a7eb687410f072",
+    "mongoose/lib/schema/number.js": "986ec7fe59c927ac04e48e15950e3cc6e042a4e9b8241dbc8a403d34730a169e",
+    "mongoose/lib/schema/date.js": "1bffe2a1868e648c7b5c28da2b51d362e9d6d441f8dc85e2a240018995323e3c",
+    "mongoose/lib/schema/mixed.js": "840fcaff2d2f5406eec5b69bf9071c80c4af04f74c962113d29149be0ead6fd1",
+    "mongoose/lib/document.js": "d19e9bd7cbf55f09cdc8b2ccdacadee739bbd2d639e2b7571e584de53abc3bde",
+    "mongoose/lib/helpers/clone.js": "74915a9317d875f8cf8b266f2a3798c0b5859d72e123a40a632d16f3007708c6",
+    "mongoose/lib/helpers/minimize.js": "ee4cd90a8f096f16e7856ad1b84bf504c46a61c45a832f456d474edb8ce97c26"
+  },
+  "collections": {
+    "cache": "moderation_variation_caches",
+    "job": "moderation_variation_jobs"
+  },
+  "indexes": {
+    "cache": [
+      [
+        {
+          "expiresAt": 1
+        },
+        {
+          "expireAfterSeconds": 0,
+          "background": true
+        }
+      ]
+    ],
+    "job": [
+      [
+        {
+          "state": 1,
+          "createdAt": 1
+        },
+        {
+          "background": true
+        }
+      ],
+      [
+        {
+          "expiresAt": 1
+        },
+        {
+          "expireAfterSeconds": 0,
+          "background": true
+        }
+      ]
+    ]
+  },
+  "cases": [
+    {
+      "model": "cache",
+      "input": {},
+      "expected": {
+        "document": {}
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "_id": "a",
+        "channelID": 42,
+        "unknown": "discard"
+      },
+      "expected": {
+        "document": {
+          "_id": "a",
+          "channelID": "42"
+        }
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "_id": null,
+        "channelID": null
+      },
+      "expected": {
+        "document": {
+          "_id": null,
+          "channelID": null
+        }
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "entry": {
+          "term": "é😀",
+          "spellings": [
+            "a"
+          ],
+          "pattern": {
+            "id": "i",
+            "source": "x",
+            "boundary": "anywhere",
+            "ignoreCase": true
+          },
+          "version": "v",
+          "empty": {}
+        }
+      },
+      "expected": {
+        "document": {
+          "entry": {
+            "pattern": {
+              "boundary": "anywhere",
+              "id": "i",
+              "ignoreCase": true,
+              "source": "x"
+            },
+            "spellings": [
+              "a"
+            ],
+            "term": "é😀",
+            "version": "v"
+          }
+        }
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "entry": [
+          {},
+          {
+            "nested": {},
+            "value": 1
+          }
+        ],
+        "expiresAt": "2025-01-01T00:00:00.000Z"
+      },
+      "expected": {
+        "document": {
+          "entry": [
+            {},
+            {
+              "value": 1
+            }
+          ],
+          "expiresAt": {
+            "$date": 1735689600000
+          }
+        }
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "entry": null,
+        "expiresAt": "bad"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "expiresAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "terms": "single",
+        "entries": "mixed",
+        "state": "unrestricted",
+        "attempts": "2",
+        "creditsCharged": "1.5"
+      },
+      "expected": {
+        "document": {}
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "terms": [
+          1,
+          true,
+          null
+        ],
+        "entries": [
+          {},
+          {
+            "nested": {},
+            "value": 1
+          },
+          null
+        ],
+        "providerUsage": [
+          {
+            "tokens": 10,
+            "empty": {}
+          }
+        ]
+      },
+      "expected": {
+        "document": {}
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "terms": [
+          {}
+        ],
+        "attempts": "bad"
+      },
+      "expected": {
+        "document": {}
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "terms": null,
+        "entries": null,
+        "providerUsage": null,
+        "error": null,
+        "attempts": null
+      },
+      "expected": {
+        "document": {}
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "providerUsage": 7,
+        "creditsCharged": 0
+      },
+      "expected": {
+        "document": {}
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "providerUsage": {
+          "nested": {},
+          "keep": true
+        }
+      },
+      "expected": {
+        "document": {}
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "providerUsage": {}
+      },
+      "expected": {
+        "document": {}
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "createdAt": 0,
+        "deadline": "2025-02-03",
+        "expiresAt": 1700000000000
+      },
+      "expected": {
+        "document": {
+          "expiresAt": {
+            "$date": 1700000000000
+          }
+        }
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "createdAt": "bad"
+      },
+      "expected": {
+        "document": {}
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "model": {
+          "_id": ""
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "model",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "model": {
+          "_id": 0
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "model",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "model": {
+          "_id": false
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "model",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "model": {
+          "_id": null
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "model",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "model": {
+          "_id": "model-id"
+        }
+      },
+      "expected": {
+        "document": {
+          "model": "model-id"
+        }
+      }
+    },
+    {
+      "model": "cache",
+      "input": {
+        "model": {
+          "_id": "0"
+        }
+      },
+      "expected": {
+        "document": {
+          "model": "0"
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {},
+      "expected": {
+        "document": {
+          "attempts": 1,
+          "creditsCharged": 0,
+          "entries": [],
+          "error": "",
+          "providerUsage": [],
+          "terms": []
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "_id": "a",
+        "channelID": 42,
+        "unknown": "discard"
+      },
+      "expected": {
+        "document": {
+          "_id": "a",
+          "attempts": 1,
+          "channelID": "42",
+          "creditsCharged": 0,
+          "entries": [],
+          "error": "",
+          "providerUsage": [],
+          "terms": []
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "_id": null,
+        "channelID": null
+      },
+      "expected": {
+        "document": {
+          "_id": null,
+          "attempts": 1,
+          "channelID": null,
+          "creditsCharged": 0,
+          "entries": [],
+          "error": "",
+          "providerUsage": [],
+          "terms": []
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "entry": {
+          "term": "é😀",
+          "spellings": [
+            "a"
+          ],
+          "pattern": {
+            "id": "i",
+            "source": "x",
+            "boundary": "anywhere",
+            "ignoreCase": true
+          },
+          "version": "v",
+          "empty": {}
+        }
+      },
+      "expected": {
+        "document": {
+          "attempts": 1,
+          "creditsCharged": 0,
+          "entries": [],
+          "error": "",
+          "providerUsage": [],
+          "terms": []
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "entry": [
+          {},
+          {
+            "nested": {},
+            "value": 1
+          }
+        ],
+        "expiresAt": "2025-01-01T00:00:00.000Z"
+      },
+      "expected": {
+        "document": {
+          "attempts": 1,
+          "creditsCharged": 0,
+          "entries": [],
+          "error": "",
+          "expiresAt": {
+            "$date": 1735689600000
+          },
+          "providerUsage": [],
+          "terms": []
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "entry": null,
+        "expiresAt": "bad"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "expiresAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "terms": "single",
+        "entries": "mixed",
+        "state": "unrestricted",
+        "attempts": "2",
+        "creditsCharged": "1.5"
+      },
+      "expected": {
+        "document": {
+          "attempts": 2,
+          "creditsCharged": 1.5,
+          "entries": [
+            "mixed"
+          ],
+          "error": "",
+          "providerUsage": [],
+          "state": "unrestricted",
+          "terms": [
+            "single"
+          ]
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "terms": [
+          1,
+          true,
+          null
+        ],
+        "entries": [
+          {},
+          {
+            "nested": {},
+            "value": 1
+          },
+          null
+        ],
+        "providerUsage": [
+          {
+            "tokens": 10,
+            "empty": {}
+          }
+        ]
+      },
+      "expected": {
+        "document": {
+          "attempts": 1,
+          "creditsCharged": 0,
+          "entries": [
+            {},
+            {
+              "value": 1
+            },
+            null
+          ],
+          "error": "",
+          "providerUsage": [
+            {
+              "tokens": 10
+            }
+          ],
+          "terms": [
+            "1",
+            "true",
+            null
+          ]
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "terms": [
+          {}
+        ],
+        "attempts": "bad"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "attempts",
+            "kind": "cast"
+          },
+          {
+            "path": "terms.0",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "terms": null,
+        "entries": null,
+        "providerUsage": null,
+        "error": null,
+        "attempts": null
+      },
+      "expected": {
+        "document": {
+          "attempts": null,
+          "creditsCharged": 0,
+          "entries": null,
+          "error": null,
+          "providerUsage": null,
+          "terms": null
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "providerUsage": 7,
+        "creditsCharged": 0
+      },
+      "expected": {
+        "document": {
+          "attempts": 1,
+          "creditsCharged": 0,
+          "entries": [],
+          "error": "",
+          "providerUsage": 7,
+          "terms": []
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "providerUsage": {
+          "nested": {},
+          "keep": true
+        }
+      },
+      "expected": {
+        "document": {
+          "attempts": 1,
+          "creditsCharged": 0,
+          "entries": [],
+          "error": "",
+          "providerUsage": {
+            "keep": true
+          },
+          "terms": []
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "providerUsage": {}
+      },
+      "expected": {
+        "document": {
+          "attempts": 1,
+          "creditsCharged": 0,
+          "entries": [],
+          "error": "",
+          "terms": []
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "createdAt": 0,
+        "deadline": "2025-02-03",
+        "expiresAt": 1700000000000
+      },
+      "expected": {
+        "document": {
+          "attempts": 1,
+          "createdAt": {
+            "$date": 0
+          },
+          "creditsCharged": 0,
+          "deadline": {
+            "$date": 1738540800000
+          },
+          "entries": [],
+          "error": "",
+          "expiresAt": {
+            "$date": 1700000000000
+          },
+          "providerUsage": [],
+          "terms": []
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "createdAt": "bad"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "model": {
+          "_id": ""
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "model",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "model": {
+          "_id": 0
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "model",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "model": {
+          "_id": false
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "model",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "model": {
+          "_id": null
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "model",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "model": {
+          "_id": "model-id"
+        }
+      },
+      "expected": {
+        "document": {
+          "attempts": 1,
+          "creditsCharged": 0,
+          "entries": [],
+          "error": "",
+          "model": "model-id",
+          "providerUsage": [],
+          "terms": []
+        }
+      }
+    },
+    {
+      "model": "job",
+      "input": {
+        "model": {
+          "_id": "0"
+        }
+      },
+      "expected": {
+        "document": {
+          "attempts": 1,
+          "creditsCharged": 0,
+          "entries": [],
+          "error": "",
+          "model": "0",
+          "providerUsage": [],
+          "terms": []
+        }
+      }
+    }
+  ],
+  "wire": {
+    "hex": "6100000002746578740008000000efbfbd78efbfbd00036e6573746564002c000000106e0001000000016672616374696f6e00000000000000f83f017769646500000000000000e04100016e656761746976655a65726f00000000000000008000",
+    "text": "�x�",
+    "types": {
+      "n": "Int32",
+      "fraction": "Double",
+      "wide": "Double",
+      "negativeZero": "Double"
+    }
+  }
+}

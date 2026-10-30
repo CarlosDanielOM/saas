@@ -1,0 +1,56 @@
+{
+  "acceptedNodeRun": "node-1793337045953211227",
+  "acceptedRun": "compiler-fixtures-1793337057616332027",
+  "additionalSchemaRegressionTests": 2,
+  "applicationSchemaRegressionTests": 3,
+  "bsonHexMatched": true,
+  "callerAdoption": false,
+  "codeCommit": "3b5b92b6040e622f47467299db6eed76242951f8",
+  "compilerSeconds": 103.2,
+  "compositeDefaultRegressionTests": 3,
+  "deployment": false,
+  "elapsedSeconds": 114.658,
+  "failedAttempts": {
+    "compiler-1793336430628464119": "empty document _id String cast mismatch",
+    "compiler-1793336637743889453": "nested Mixed-array empty object minimization mismatch"
+  },
+  "gitBoundInputs": 1396,
+  "limitations": [
+    "Raw BSON repositories accept missing, null, and Mixed document shapes; typed DTOs are strict complete views.",
+    "The fixture does not cover arbitrary JavaScript prototypes, hooks/getters, undefined, or sparse arrays.",
+    "Local feature coverage does not complete total migration; global dependencies and application callers remain incomplete."
+  ],
+  "limits": {
+    "cargo_jobs": 2,
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256
+  },
+  "minimumAvailableBytes": 9462595584,
+  "mongoCrudAndIndexReplay": true,
+  "oracleCases": 42,
+  "oracleFixtureSha256": "6afcb081ec891116bc63cc3d1f8ce2e9e00876fc082c9533df07fe3e05f1d870",
+  "ordinaryVariationTests": 2,
+  "peakCacheBytes": 6449954816,
+  "performanceBenchmark": false,
+  "productionContainers": 18,
+  "productionUnchanged": true,
+  "push": false,
+  "quality": [
+    "scoped strict Clippy",
+    "all-feature/all-target strict Clippy",
+    "minimal feature check",
+    "Mongo/Redis feature checks"
+  ],
+  "remainingOwnedResources": {
+    "containers": 0,
+    "networks": 0,
+    "volumes": 0
+  },
+  "reusedVerifiedPosthogSdkInputs": 10,
+  "sourceInputs": 1406,
+  "sourceTreeSha256": "ecf01f50421602aec6dba6f7ccf9811e47691816a1817fbca8185b3f7756af83",
+  "startupThresholdBytes": 5368709120,
+  "typescriptRetirement": false
+}
