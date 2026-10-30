@@ -1,0 +1,21 @@
+[
+  "archives/dimabot-typescript/2026-10-28/README.md",
+  "archives/dimabot-typescript/2026-10-28/manifest.json",
+  "dimabot/tests/application_schemas.rs",
+  "dimabot/tests/moderation_action_log_schema.rs",
+  "dimabot/tests/fixtures/application_schemas_reference.mjs",
+  "dimabot/tests/fixtures/moderation_action_log_schema_reference.cjs",
+  "dimabot/tests/fixtures/schema_source_resolver.cjs",
+  "dimabot/tests/fixtures/schema_source_resolver.test.cjs",
+  "dimabot/tests/support/schema_source.rs",
+  "dimabot/src/schemas/oauth_client.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/oauth_client.schema.ts",
+  "dimabot/src/schemas/oauth_grant.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/oauth_grant.schema.ts",
+  "dimabot/src/schemas/oauth_refresh_token.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/oauth_refresh_token.schema.ts",
+  "dimabot/src/schemas/oauth_session.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/oauth_session.schema.ts",
+  "dimabot/src/schemas/moderation_action_log.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/moderation_action_log.schema.ts"
+]

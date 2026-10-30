@@ -1,0 +1,156 @@
+{
+  "scope": "obsolete completed test executables in this task-owned private debug cache only; no source, SDK, shared cache, release export or production resources",
+  "removed": [
+    {
+      "path": "target/debug/deps/moderation_semantic_worker-9aa5d7f4032e252b",
+      "bytes": 43382792,
+      "allocatedBytes": 43388928,
+      "sha256": "fdbdaf8d6fbbe34efa3ed226fd630e2e5526f9d8153c0d11a61fe8082bbe1611",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_semantic_worker-a93affaf2f95949b",
+      "bytes": 43378272,
+      "allocatedBytes": 43384832,
+      "sha256": "edefd85f7c9029e6c6ed9fa726f1a8a1b7f8d7209513f6ec386a650ddcacf734",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_spam_source-c82e6316b149f39a",
+      "bytes": 39795896,
+      "allocatedBytes": 39800832,
+      "sha256": "9b2908e46b454cbd865b9b3961ca61b587a123ad293efcc7f1633cd55bd81f28",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_settings_store-662e48f7b1f7ecb7",
+      "bytes": 38359264,
+      "allocatedBytes": 38367232,
+      "sha256": "c807a807d5acd4d36f7851aa6b67c500ff714efe336d705905f0dc636f64f734",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_decisions-0c1dc8b93b3f48c6",
+      "bytes": 33447880,
+      "allocatedBytes": 33452032,
+      "sha256": "87f3a7e0db4c9226014b5b63cf85034839c8b001b7712123faf4ad479dcc52e5",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/ai_usage_receipts-03cf7e318860f5ac",
+      "bytes": 32995344,
+      "allocatedBytes": 33001472,
+      "sha256": "90f0ea87d4a92ea8c9882bd15c7c245b46bd0fe22a8447e5a9864ad95bd753eb",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/ai_usage_receipts-6256b50ab775135c",
+      "bytes": 32819224,
+      "allocatedBytes": 32825344,
+      "sha256": "a2d4eff2eff59f6d5544a554d0c8a13c5ea6cab3dbc62385524d8ec1b1351d24",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_variation_schema-04486ad44e06a4ba",
+      "bytes": 31116224,
+      "allocatedBytes": 31117312,
+      "sha256": "946f973373e895458d13a516f10c57f7524b28116814a7cd9c1d345e207de766",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_decision_schema-a6adcb36861e9181",
+      "bytes": 31069736,
+      "allocatedBytes": 31076352,
+      "sha256": "8195e2aaee28bddedf6040da53c0bdb08c819d8780855003152c05ccc9e663c7",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_decision_schema-0cdce911e35d1ded",
+      "bytes": 31007824,
+      "allocatedBytes": 31010816,
+      "sha256": "b6e39a007a167397c2f1e19e4e3c4621df7735a4866c9a31384e380783304630",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_variation_schema-c3889243b467ad4d",
+      "bytes": 30915584,
+      "allocatedBytes": 30916608,
+      "sha256": "9b40bda21a6bf3b227d48cbd2bb7cad450673ebcb9a1d9f016d0a7251ec857e8",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_variations_provider-d468ab8f05f03ac6",
+      "bytes": 20461056,
+      "allocatedBytes": 20463616,
+      "sha256": "cecbe10678c9780c167cef9045dd65e3913b23a6fa8a8d1886bc129a325c0876",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_variations_provider-a65b4df393fe8cba",
+      "bytes": 19996968,
+      "allocatedBytes": 20000768,
+      "sha256": "2291721eda323a780f625f6db6a7950165f1e4376c369c368f359037258ceb7b",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_variations_provider-3e44dfb2c19333f9",
+      "bytes": 19962024,
+      "allocatedBytes": 19963904,
+      "sha256": "9e639359607663e3c7ac34a6c0cbc7882a9e75ed849a69796a5047f01a7b325e",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_semantic_source-f3b6d59d25d2897f",
+      "bytes": 14140840,
+      "allocatedBytes": 14143488,
+      "sha256": "44d48f35186d72e6dfcf1bbde556d90fd2f9c7492ff00bfe526a8ce5625f463f",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_semantic_source-f9684b57a91df5e8",
+      "bytes": 13612648,
+      "allocatedBytes": 13615104,
+      "sha256": "271a8dd9969c242bb671667e0a1ef22b2ff665fab2cdd682fb2c502d1ecc6aea",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_offenses_redis-9e9967f5afa764b0",
+      "bytes": 13242312,
+      "allocatedBytes": 13242368,
+      "sha256": "92f7a2dff5befe66c8a8e431cbdbe964a44e3ee2ad1913a4d7e9b4aa1dfb86ac",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_offenses_redis-4cb8b7a3f01991ef",
+      "bytes": 13240944,
+      "allocatedBytes": 13242368,
+      "sha256": "a85d73faf2d24618fb637dbb4084ce2e962ab708f1cac268e3a3e370773e2b7c",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_permit_redis-bcb97d4985a5d647",
+      "bytes": 13199776,
+      "allocatedBytes": 13201408,
+      "sha256": "82e512f7873c08c5778e40bcc7bd4bb2b7731351232714c04192594bfe8eb6d7",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_permit_redis-bedb77c8f4a6777b",
+      "bytes": 13200272,
+      "allocatedBytes": 13201408,
+      "sha256": "60348a96864ed11b8d61b32c924c059ad08dc55682847d08f61a42a726b5808b",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_semantic_provider-42f3bbc36380d025",
+      "bytes": 13043144,
+      "allocatedBytes": 13045760,
+      "sha256": "e4afed5066e42771b0a216223fd2a0c8056cf9db54616c2fb65510b647e1ebe3",
+      "removed": true
+    }
+  ],
+  "cacheBefore": 8531124224,
+  "status": "complete",
+  "freedAllocatedBytes": 542461952,
+  "cacheAfter": 7988662272
+}

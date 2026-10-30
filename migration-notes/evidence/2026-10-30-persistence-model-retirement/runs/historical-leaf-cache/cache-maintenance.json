@@ -1,0 +1,6 @@
+{
+  "scope": "only private task-owned completed debug test executables matching ai_usage_,posthog_,bson_js_json-,ai_credit_reader,polar_cache_usage-,raid_analytics-,raid_sessions-,stream_activity-; no source/shared/release/production mutation",
+  "previousCompilerPeakCacheBytes": 8142704640,
+  "cacheAfterBytes": 7470886912,
+  "maintenanceFailure": "Inherited script asserted at least700MiB freed after unlinking before writing its receipt; not enough eligible files remained. Exact removed per-file list unavailable; no compiler active. Cache size comparison retained rather than fabricated."
+}

@@ -1,0 +1,322 @@
+{
+  "schemaVersion": 1,
+  "note": "Raw SHA-256 and byte length identify the original artifact. For gzip entries, stored SHA-256 and length identify the retained compressed bytes. Log bytes are preserved without line normalization.",
+  "files": [
+    {
+      "path": "artifacts/archive-manifest.json",
+      "origin": "git:6af3a89731e4219d66a4dfa99a7ce128a0edb825:archives/dimabot-typescript/2026-10-28/manifest.json",
+      "rawBytes": 5743,
+      "rawSha256": "a36d0b1265c70e1dbd33ec01e0ea28c327540b3134ac7eff3c63c60cb9be869f",
+      "storedBytes": 5743,
+      "storedSha256": "a36d0b1265c70e1dbd33ec01e0ea28c327540b3134ac7eff3c63c60cb9be869f",
+      "compression": "none",
+      "originKind": "git-blob"
+    },
+    {
+      "path": "artifacts/archive-verification.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/persistence-model-retirement/archive-verification.json",
+      "rawBytes": 6454,
+      "rawSha256": "6838255e4d35c6d7b5b30f57dbe2825de1130529495ea9667979e8b414dfcd59",
+      "storedBytes": 6454,
+      "storedSha256": "6838255e4d35c6d7b5b30f57dbe2825de1130529495ea9667979e8b414dfcd59",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/oracle-semantic-comparison.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/persistence-model-retirement/oracle-semantic-comparison.json",
+      "rawBytes": 473,
+      "rawSha256": "47a1e5bc8dcf19c26e9bdc081a2c66ebfc293cc27bb96c8d00d1aa7fbb0dcfcb",
+      "storedBytes": 473,
+      "storedSha256": "47a1e5bc8dcf19c26e9bdc081a2c66ebfc293cc27bb96c8d00d1aa7fbb0dcfcb",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/post-archive/application-schemas-reference.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/persistence-model-retirement/attempt1/application/application-schemas-reference.json",
+      "rawBytes": 77394,
+      "rawSha256": "6ab0bc587797470b9af3698b6b993f4c6d858b766f978ad2e22f1796bf565bdf",
+      "storedBytes": 6565,
+      "storedSha256": "136126a65fe8cbab64af850e22d4c82f0fb1afb05d5a949c5aa08fea24012822",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/post-archive/moderation-action-log-schema-reference.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/persistence-model-retirement/attempt1/action/moderation-action-log-schema-reference.json",
+      "rawBytes": 23016,
+      "rawSha256": "fb1fff2c0437b1681776ec7a41c2cb07466b6c4e991035c2d00df8fc47fb31a6",
+      "storedBytes": 23016,
+      "storedSha256": "fb1fff2c0437b1681776ec7a41c2cb07466b6c4e991035c2d00df8fc47fb31a6",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/pre-archive/moderation-action-log-schema-reference.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-action-log-schema/attempt1/reference/moderation-action-log-schema-reference.json",
+      "rawBytes": 22542,
+      "rawSha256": "6791c274bae1dd9f58c835512017f6346dd575c1e023a4133fb6746ddd9ce55d",
+      "storedBytes": 22542,
+      "storedSha256": "6791c274bae1dd9f58c835512017f6346dd575c1e023a4133fb6746ddd9ce55d",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/pre-archive/production-after-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-action-log-schema/production-after-final.json",
+      "rawBytes": 27004,
+      "rawSha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "storedBytes": 4943,
+      "storedSha256": "254c47cad79994f1652d3bfbf7410aca9d2b75b8069f07fe8e7e4f29aff4b958",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/pre-archive/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-action-log-schema/source-final.json",
+      "rawBytes": 176353,
+      "rawSha256": "c888439ede9665c77a4f6e3ccf14661e8841b55fe0be19ca0e7b5266ed43de45",
+      "storedBytes": 70803,
+      "storedSha256": "96d69592e8184f492115e180bdb63e76e69e9088d07ad1add456eeb880c5bbab",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/pre-archive/tested-delta-paths.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-action-log-schema/tested-delta-paths.json",
+      "rawBytes": 238,
+      "rawSha256": "aa2637f5c839d777fbc46911107cf06ae55757a16eebbf47166bcf8e7f76c90d",
+      "storedBytes": 120,
+      "storedSha256": "a63df372606c6c07d24fb4f8731e278a0ea9a9d2144da5cf35b9ded8ef88ce26",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/production-after-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/persistence-model-retirement/production-after-final.json",
+      "rawBytes": 27004,
+      "rawSha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "storedBytes": 4971,
+      "storedSha256": "4ed5688c6809af365bbe514e34ae58abc93a1bf9c2f56889668e80f050634e21",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/production-before.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/production-before.json",
+      "rawBytes": 25406,
+      "rawSha256": "34f990d75dc0fc757f79f114a2eeffcb4d980d8e108837829ed3a26fe73247ac",
+      "storedBytes": 4812,
+      "storedSha256": "b2034deb84384a24568c38f1b65753d4401cb52461b6a31d499ba8981568cb23",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/snapshot-isolation.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/persistence-model-retirement/snapshot-isolation.json",
+      "rawBytes": 653,
+      "rawSha256": "293dbd108260f67625f6dc2d2d0be33b8388c5a44fb2fb87620a4cd1e233681d",
+      "storedBytes": 653,
+      "storedSha256": "293dbd108260f67625f6dc2d2d0be33b8388c5a44fb2fb87620a4cd1e233681d",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/source-bindings.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/persistence-model-retirement/source-bindings.json",
+      "rawBytes": 399,
+      "rawSha256": "cb4c65f3538d64c1190eaff5a41c3e8c2863041bf8818e63f8e7d1329d51537c",
+      "storedBytes": 399,
+      "storedSha256": "cb4c65f3538d64c1190eaff5a41c3e8c2863041bf8818e63f8e7d1329d51537c",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/persistence-model-retirement/source-final.json",
+      "rawBytes": 176871,
+      "rawSha256": "8be4391c1d9c03903ddf3cb038c2d640ac4426fd0d7ca6468134b75d239ae5ca",
+      "storedBytes": 70992,
+      "storedSha256": "6c965ef2d52d9c2808b002538399fbbf961ace2513384ca59e988a6119735d87",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/tested-delta-paths.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/persistence-model-retirement/tested-delta-paths.json",
+      "rawBytes": 1167,
+      "rawSha256": "a42b398fa461d963db1b66a999bc8d9c4df43973bfae23f123d1c99f4179a15e",
+      "storedBytes": 1167,
+      "storedSha256": "a42b398fa461d963db1b66a999bc8d9c4df43973bfae23f123d1c99f4179a15e",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/action_log_schema_node1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/action_log_schema_node1.sh",
+      "rawBytes": 513,
+      "rawSha256": "259b79595545160186b4966ab722647486d0c976fbc36b6afcb16545887ff6c1",
+      "storedBytes": 513,
+      "storedSha256": "259b79595545160186b4966ab722647486d0c976fbc36b6afcb16545887ff6c1",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/action_log_schema_runtime1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/action_log_schema_runtime1.sh",
+      "rawBytes": 974,
+      "rawSha256": "a75584cccce562d3a38f975a6a8079e97d6b81651ec7910ab94e0ba19352c7b4",
+      "storedBytes": 974,
+      "storedSha256": "a75584cccce562d3a38f975a6a8079e97d6b81651ec7910ab94e0ba19352c7b4",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/final_readback.py",
+      "origin": "/tmp/dimabot-full-migration-tools/final_readback.py",
+      "rawBytes": 1324,
+      "rawSha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14",
+      "storedBytes": 1324,
+      "storedSha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/persistence_retirement_node1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/persistence_retirement_node1.sh",
+      "rawBytes": 753,
+      "rawSha256": "af34e6ff2a9c03200c26060ebba9133b30da349a3386efdbd538bd331ab0e2b1",
+      "storedBytes": 753,
+      "storedSha256": "af34e6ff2a9c03200c26060ebba9133b30da349a3386efdbd538bd331ab0e2b1",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/persistence_retirement_runtime1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/persistence_retirement_runtime1.sh",
+      "rawBytes": 1301,
+      "rawSha256": "9e59b447f9eaa580f07e88a8f0086a20cf9df1779fb5123b2fcfe751ec277407",
+      "storedBytes": 1301,
+      "storedSha256": "9e59b447f9eaa580f07e88a8f0086a20cf9df1779fb5123b2fcfe751ec277407",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/validate.py",
+      "origin": "/tmp/dimabot-full-migration-tools/validate.py",
+      "rawBytes": 12955,
+      "rawSha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+      "storedBytes": 12955,
+      "storedSha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+      "compression": "none"
+    },
+    {
+      "path": "runs/historical-leaf-cache/cache-maintenance.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/cache-maintenance.json",
+      "rawBytes": 597,
+      "rawSha256": "f471bd5d3df26aa2fce82bad50441d3f67569cfc6b540f5c4490c50733ea6a53",
+      "storedBytes": 597,
+      "storedSha256": "f471bd5d3df26aa2fce82bad50441d3f67569cfc6b540f5c4490c50733ea6a53",
+      "compression": "none"
+    },
+    {
+      "path": "runs/post-archive-retirement/compiler-fixtures-1793362234253284528-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793362234253284528-receipt.json",
+      "rawBytes": 180767,
+      "rawSha256": "209ef50f2396e765d85b174cbe749e90e8abcffdf7f7b46a089c33d7dd5e0f98",
+      "storedBytes": 71587,
+      "storedSha256": "3204f98b844daf12c010f0a1e4e6373aa8eb75f990bfd9e0b09a76347bd8aefe",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/post-archive-retirement/compiler-fixtures-1793362234253284528.log",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793362234253284528.log",
+      "rawBytes": 3809,
+      "rawSha256": "cf856b372e72c8c13745fb2f5f14c6f0e8c42a1567423c587fda9cc6875baa90",
+      "storedBytes": 3809,
+      "storedSha256": "cf856b372e72c8c13745fb2f5f14c6f0e8c42a1567423c587fda9cc6875baa90",
+      "compression": "none"
+    },
+    {
+      "path": "runs/post-archive-retirement/format-1793362062445951357-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793362062445951357-receipt.json",
+      "rawBytes": 180744,
+      "rawSha256": "48418a9c73e8b7e5f00135db5d4ce3eb51b2abef353c05fb11b658bfcc8afed7",
+      "storedBytes": 71568,
+      "storedSha256": "a6cc0e5c6089e6727349fbd307afbdbb846fb08839f09c7691c9cf7746c082ca",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/post-archive-retirement/format-1793362062445951357.log",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793362062445951357.log",
+      "rawBytes": 1833,
+      "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "storedBytes": 1833,
+      "storedSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "compression": "none"
+    },
+    {
+      "path": "runs/post-archive-retirement/node-1793362118754074174-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793362118754074174-receipt.json",
+      "rawBytes": 180619,
+      "rawSha256": "26ac5f25f9fb6fa4d75fef9b21059cabb8a00f649c278257a5f37d9f543800a6",
+      "storedBytes": 71529,
+      "storedSha256": "8a87f5de17edb8d7ee7bf471649c554f68967b6607c3fb8ee1dfc1de67198d91",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/post-archive-retirement/node-1793362118754074174.log",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793362118754074174.log",
+      "rawBytes": 539,
+      "rawSha256": "2d45334d7df7adea8657de09eeb5047a47bfc33d8e3df594f5b4c6b0431cc43d",
+      "storedBytes": 539,
+      "storedSha256": "2d45334d7df7adea8657de09eeb5047a47bfc33d8e3df594f5b4c6b0431cc43d",
+      "compression": "none"
+    },
+    {
+      "path": "runs/pre-archive-action-log/cache-maintenance.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-action-log-schema/cache-maintenance.json",
+      "rawBytes": 5679,
+      "rawSha256": "b2184013ca9285b11659823e022110b2f7d922986773152fbcff0f8fe4dedbb8",
+      "storedBytes": 5679,
+      "storedSha256": "b2184013ca9285b11659823e022110b2f7d922986773152fbcff0f8fe4dedbb8",
+      "compression": "none"
+    },
+    {
+      "path": "runs/pre-archive-action-log/compiler-fixtures-1793361084297861260-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793361084297861260-receipt.json",
+      "rawBytes": 180242,
+      "rawSha256": "7e6845dc218c574baa78eeb38b64aa640926fb93e7efcbcb8bccce712f7cd1b0",
+      "storedBytes": 71420,
+      "storedSha256": "b0d2145204717920bc521eae8c0d5b9337b0cc985baf8f1f5c46cfd2f1cce4b5",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/pre-archive-action-log/compiler-fixtures-1793361084297861260.log",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793361084297861260.log",
+      "rawBytes": 3117,
+      "rawSha256": "6eb1345722c521d274206518d8e94e1db8898e0cdd473434d55ebd05b5453a41",
+      "storedBytes": 3117,
+      "storedSha256": "6eb1345722c521d274206518d8e94e1db8898e0cdd473434d55ebd05b5453a41",
+      "compression": "none"
+    },
+    {
+      "path": "runs/pre-archive-action-log/format-1793360800409464196-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793360800409464196-receipt.json",
+      "rawBytes": 180219,
+      "rawSha256": "ab97014e2b935b0a46bcf1c11f322c5faf78070581a73781a45870e8d19bcd1c",
+      "storedBytes": 71397,
+      "storedSha256": "bd5f4921531c5211df12ee54769711eabcb320797612a9f14b949200778285a1",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/pre-archive-action-log/format-1793360800409464196.log",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793360800409464196.log",
+      "rawBytes": 1833,
+      "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "storedBytes": 1833,
+      "storedSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "compression": "none"
+    },
+    {
+      "path": "runs/pre-archive-action-log/node-1793360989182975978-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793360989182975978-receipt.json",
+      "rawBytes": 180095,
+      "rawSha256": "c623ce8ba4186885cd2438f343e8e920fc901ba0b3c72d1201a5a68f0d00d793",
+      "storedBytes": 71362,
+      "storedSha256": "b74aef230e88853ab2b6430b8ca4dc4865aee8735e63253944704f5487f5d6b7",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/pre-archive-action-log/node-1793360989182975978.log",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793360989182975978.log",
+      "rawBytes": 259,
+      "rawSha256": "a78894e48206581db3ec09feaef6fe66e922b771591b464a91df08c931cbe66a",
+      "storedBytes": 259,
+      "storedSha256": "a78894e48206581db3ec09feaef6fe66e922b771591b464a91df08c931cbe66a",
+      "compression": "none"
+    }
+  ]
+}

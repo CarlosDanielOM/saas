@@ -1,0 +1,6 @@
+v24.22.1
+Application schema oracle: 11 schemas, 70 cases
+application-schemas-reference.json sha256=6ab0bc587797470b9af3698b6b993f4c6d858b766f978ad2e22f1796bf565bdf cases=70
+application-schemas-reference.json sha256=6ab0bc587797470b9af3698b6b993f4c6d858b766f978ad2e22f1796bf565bdf cases=70
+moderation-action-log-schema-reference.json sha256=fb1fff2c0437b1681776ec7a41c2cb07466b6c4e991035c2d00df8fc47fb31a6 cases=32
+moderation-action-log-schema-reference.json sha256=fb1fff2c0437b1681776ec7a41c2cb07466b6c4e991035c2d00df8fc47fb31a6 cases=32

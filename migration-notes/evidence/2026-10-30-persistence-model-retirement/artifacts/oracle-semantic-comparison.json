@@ -1,0 +1,22 @@
+{
+  "application_fields_equal_embedded": {
+    "sources": true,
+    "fixedNow": true,
+    "definitions": true,
+    "cases": true,
+    "workloads": true
+  },
+  "application_case_count": 70,
+  "action_log_fields_equal_pre_retirement": {
+    "versions": true,
+    "nodeExecutableSha256": true,
+    "compiledSha256": true,
+    "model": true,
+    "collection": true,
+    "indexes": true,
+    "now": true,
+    "cases": true,
+    "wire": true
+  },
+  "action_log_case_count": 32
+}

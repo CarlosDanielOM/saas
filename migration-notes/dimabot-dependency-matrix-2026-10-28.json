@@ -37549,30 +37549,67 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/moderation_action_log.schema.ts",
+        "sha256": "637955d22fc1c7e0ba953ec410a15a2bb324b0340062bd17bc08c13cd975e28b",
+        "nativeAreaReference": "migration-notes/persistence-model-retirement.md; local model mapping is backed by post-archive source, Mongoose and Mongo CRUD/index evidence"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/moderation_action_log.schema.rs: native moderation_action_log schema descriptor, collection moderation_action_logs, required fields/defaults/indexes and repository behavior as applicable",
+        "dimabot/src/schemas/schema.rs: shared Mongoose-compatible descriptor, validation, BSON casting, index installation and repository machinery",
+        "dimabot/src/utils/js_string.rs and dimabot/src/schemas/channel_moderation_settings.schema.rs: JavaScript UTF-16 excerpt limit and reused ModerationAction enum",
+        "dimabot/src/utils/bson_compat.rs and dimabot/src/utils/mongoose_date.rs: native BSON and date semantics",
+        "migration-notes/persistence-model-retirement.md and migration-notes/evidence/2026-10-30-persistence-model-retirement/README.md: dependency closure, source retirement and post-archive evidence",
+        "6af3a89731e4219d66a4dfa99a7ce128a0edb825; frozen source tree SHA-256 18d0d5c5dcf9353e69ad85d9237cdf365c97fecff11adde29038b3cfe75d9e80"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source default createdAt is Date.now; it is represented as an ordinary native default with no timestamp/update middleware.",
+        "Mongoose source metadata has background:true on an index; the pinned MongoDB Rust driver exposes a deprecated no-effect background option, so the native descriptor installs equivalent practical index semantics without copying no-op metadata.",
+        "Source action values are represented by the existing shared ModerationAction enum (off, warn, delete, timeout, ban); the action excerpt maximum uses JavaScript UTF-16 code units."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/functions/moderation/execute_action.moderation.ts",
+          "dimabot/src/server/routes/moderation.route.ts"
+        ],
+        "runtimeStatus": "TypeScript application callers remain active and unadopted. The user-authorized migration-checkout source retirement removed the live TypeScript model; no caller cutover, deployment or push occurred."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/application_schemas_reference.mjs",
+          "dimabot/tests/fixtures/moderation_action_log_schema_reference.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.test.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/application_schemas.rs",
+          "dimabot/tests/moderation_action_log_schema.rs",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/runs/post-archive-retirement/node-1793362118754074174-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/runs/post-archive-retirement/compiler-fixtures-1793362234253284528-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/artifacts/oracle-semantic-comparison.json"
+        ],
+        "status": "Post-archive validation passed. Fresh actual-source Mongoose output matched the 70-case application golden on all five recorded fields and the 32-case action-log oracle on all nine semantic fields. Isolated Mongo CRUD/index checks and strict native profiles passed. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "IModerationActionLog",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Native IModerationActionLog struct in dimabot/src/schemas/moderation_action_log.schema.rs, with UTF-16-preserving string fields and the shared ModerationAction enum.",
+          "evidence": [
+            "dimabot/src/schemas/moderation_action_log.schema.rs",
+            "migration-notes/persistence-model-retirement.md",
+            "migration-notes/evidence/2026-10-30-persistence-model-retirement/artifacts/oracle-semantic-comparison.json"
+          ]
         },
         {
           "name": "ModerationActionLogSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IModerationActionLog maps the source interface; ModerationActionLogSchema maps to the native descriptor and get_moderation_action_log_model database-backed repository accessor.",
+          "evidence": [
+            "dimabot/src/schemas/moderation_action_log.schema.rs",
+            "migration-notes/persistence-model-retirement.md",
+            "migration-notes/evidence/2026-10-30-persistence-model-retirement/artifacts/oracle-semantic-comparison.json"
+          ]
         }
       ],
       "imports": [
@@ -37582,15 +37619,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Action-log runtime imports are Mongoose Schema/model only; the enum is a shared local schema value and is not an external dependency.",
+          "defaultSideEffectBarrelDetails": "No side-effect import or barrel is involved; Mongoose model/schema behavior is directly represented by the native model descriptor.",
+          "directDependencyReview": "Reviewed: Mongoose Schema/model dependency replaced by the native MongoDB Rust driver plus shared SchemaDefinition repository implementation.",
+          "transitiveDependencyReview": "Reviewed: BSON/date/index behavior reuses the existing native shared schema and BSON/date foundation; no application-specific adapter is missing.",
+          "rustReplacementOrGap": "Native descriptor and isolated actual-Mongoose/MongoDB checks cover this model contract. npm Mongoose internals are not a required port; production caller adoption remains open."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/moderation_chatter.schema.ts",
@@ -37904,25 +37941,55 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/oauth_client.schema.ts",
+        "sha256": "48e796d493fbbc16466e50c2e6dd9f2c46558c76854b900c8b1d585f20b71dc8",
+        "nativeAreaReference": "migration-notes/persistence-model-retirement.md; concrete native model and post-archive Mongoose replay verified; previously accepted common Mongo repository; fresh Mongo CRUD/index replay in this batch is action-log-specific"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/oauth_client.schema.rs: native OAuthClient schema descriptor, collection oauth_clients, required fields/defaults/indexes and repository behavior as applicable",
+        "dimabot/src/schemas/schema.rs: shared Mongoose-compatible descriptor, validation, BSON casting, index installation and repository machinery",
+        "dimabot/src/utils/bson_compat.rs and dimabot/src/utils/mongoose_date.rs: native BSON and date semantics",
+        "migration-notes/persistence-model-retirement.md and migration-notes/evidence/2026-10-30-persistence-model-retirement/README.md: dependency closure, source retirement and post-archive evidence",
+        "6af3a89731e4219d66a4dfa99a7ce128a0edb825; frozen source tree SHA-256 18d0d5c5dcf9353e69ad85d9237cdf365c97fecff11adde29038b3cfe75d9e80"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "No application behavior deviation is recorded for this descriptor; the native schema retains source field, default, timestamp, hidden projection and index behavior covered by the application-schema Mongoose oracle."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/server/oauth/routes.ts",
+          "dimabot/src/server/oauth/service.ts"
+        ],
+        "runtimeStatus": "TypeScript application callers remain active and unadopted. The user-authorized migration-checkout source retirement removed the live TypeScript model; no caller cutover, deployment or push occurred."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/application_schemas_reference.mjs",
+          "dimabot/tests/fixtures/moderation_action_log_schema_reference.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.test.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/application_schemas.rs",
+          "dimabot/tests/moderation_action_log_schema.rs",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/runs/post-archive-retirement/node-1793362118754074174-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/runs/post-archive-retirement/compiler-fixtures-1793362234253284528-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/artifacts/oracle-semantic-comparison.json"
+        ],
+        "status": "Post-archive 70-case application-schema Mongoose replay and strict native profiles passed. The shared repository is concrete; fresh Mongo CRUD/index checks in this batch covered the action-log model, not OAuth flows. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "OAuthClient",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "OAuthClient maps to the native OAuthClient SchemaDefinition descriptor in dimabot/src/schemas/oauth_client.schema.rs.",
+          "evidence": [
+            "dimabot/src/schemas/oauth_client.schema.rs",
+            "migration-notes/persistence-model-retirement.md",
+            "migration-notes/evidence/2026-10-30-persistence-model-retirement/artifacts/oracle-semantic-comparison.json"
+          ]
         }
       ],
       "imports": [
@@ -37932,15 +37999,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "The source has one runtime import from mongoose: named Schema and model. It exports this model and no named types.",
+          "defaultSideEffectBarrelDetails": "No side-effect import or barrel is involved; Mongoose model/schema behavior is directly represented by the native model descriptor.",
+          "directDependencyReview": "Reviewed: Mongoose Schema/model dependency replaced by the native MongoDB Rust driver plus shared SchemaDefinition repository implementation.",
+          "transitiveDependencyReview": "Reviewed: BSON/date/index behavior reuses the existing native shared schema and BSON/date foundation; no application-specific adapter is missing.",
+          "rustReplacementOrGap": "Native descriptor and isolated actual-Mongoose/MongoDB checks cover this model contract. npm Mongoose internals are not a required port; production caller adoption remains open."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/oauth_grant.schema.ts",
@@ -37950,25 +38017,55 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/oauth_grant.schema.ts",
+        "sha256": "b82f455eeb977def6100a19e3d190acfed616d6fa9ad7501cc3c1f3523c00df1",
+        "nativeAreaReference": "migration-notes/persistence-model-retirement.md; concrete native model and post-archive Mongoose replay verified; previously accepted common Mongo repository; fresh Mongo CRUD/index replay in this batch is action-log-specific"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/oauth_grant.schema.rs: native OAuthGrant schema descriptor, collection oauth_grants, required fields/defaults/indexes and repository behavior as applicable",
+        "dimabot/src/schemas/schema.rs: shared Mongoose-compatible descriptor, validation, BSON casting, index installation and repository machinery",
+        "dimabot/src/utils/bson_compat.rs and dimabot/src/utils/mongoose_date.rs: native BSON and date semantics",
+        "migration-notes/persistence-model-retirement.md and migration-notes/evidence/2026-10-30-persistence-model-retirement/README.md: dependency closure, source retirement and post-archive evidence",
+        "6af3a89731e4219d66a4dfa99a7ce128a0edb825; frozen source tree SHA-256 18d0d5c5dcf9353e69ad85d9237cdf365c97fecff11adde29038b3cfe75d9e80"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "No application behavior deviation is recorded for this descriptor; the native schema retains source field, default, timestamp, hidden projection and index behavior covered by the application-schema Mongoose oracle."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/server/oauth/routes.ts",
+          "dimabot/src/server/oauth/service.ts"
+        ],
+        "runtimeStatus": "TypeScript application callers remain active and unadopted. The user-authorized migration-checkout source retirement removed the live TypeScript model; no caller cutover, deployment or push occurred."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/application_schemas_reference.mjs",
+          "dimabot/tests/fixtures/moderation_action_log_schema_reference.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.test.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/application_schemas.rs",
+          "dimabot/tests/moderation_action_log_schema.rs",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/runs/post-archive-retirement/node-1793362118754074174-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/runs/post-archive-retirement/compiler-fixtures-1793362234253284528-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/artifacts/oracle-semantic-comparison.json"
+        ],
+        "status": "Post-archive 70-case application-schema Mongoose replay and strict native profiles passed. The shared repository is concrete; fresh Mongo CRUD/index checks in this batch covered the action-log model, not OAuth flows. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "OAuthGrant",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "OAuthGrant maps to the native OAuthGrant SchemaDefinition descriptor in dimabot/src/schemas/oauth_grant.schema.rs.",
+          "evidence": [
+            "dimabot/src/schemas/oauth_grant.schema.rs",
+            "migration-notes/persistence-model-retirement.md",
+            "migration-notes/evidence/2026-10-30-persistence-model-retirement/artifacts/oracle-semantic-comparison.json"
+          ]
         }
       ],
       "imports": [
@@ -37978,15 +38075,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "The source has one runtime import from mongoose: named Schema and model. It exports this model and no named types.",
+          "defaultSideEffectBarrelDetails": "No side-effect import or barrel is involved; Mongoose model/schema behavior is directly represented by the native model descriptor.",
+          "directDependencyReview": "Reviewed: Mongoose Schema/model dependency replaced by the native MongoDB Rust driver plus shared SchemaDefinition repository implementation.",
+          "transitiveDependencyReview": "Reviewed: BSON/date/index behavior reuses the existing native shared schema and BSON/date foundation; no application-specific adapter is missing.",
+          "rustReplacementOrGap": "Native descriptor and isolated actual-Mongoose/MongoDB checks cover this model contract. npm Mongoose internals are not a required port; production caller adoption remains open."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/oauth_refresh_token.schema.ts",
@@ -37996,25 +38093,55 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/oauth_refresh_token.schema.ts",
+        "sha256": "21568d96d49bc49ee0bc94e0c1b6715cc626368ed736522eeb3ce04152ae54ae",
+        "nativeAreaReference": "migration-notes/persistence-model-retirement.md; concrete native model and post-archive Mongoose replay verified; previously accepted common Mongo repository; fresh Mongo CRUD/index replay in this batch is action-log-specific"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/oauth_refresh_token.schema.rs: native OAuthRefreshToken schema descriptor, collection oauth_refresh_tokens, required fields/defaults/indexes and repository behavior as applicable",
+        "dimabot/src/schemas/schema.rs: shared Mongoose-compatible descriptor, validation, BSON casting, index installation and repository machinery",
+        "dimabot/src/utils/bson_compat.rs and dimabot/src/utils/mongoose_date.rs: native BSON and date semantics",
+        "migration-notes/persistence-model-retirement.md and migration-notes/evidence/2026-10-30-persistence-model-retirement/README.md: dependency closure, source retirement and post-archive evidence",
+        "6af3a89731e4219d66a4dfa99a7ce128a0edb825; frozen source tree SHA-256 18d0d5c5dcf9353e69ad85d9237cdf365c97fecff11adde29038b3cfe75d9e80"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "No application behavior deviation is recorded for this descriptor; the native schema retains source field, default, timestamp, hidden projection and index behavior covered by the application-schema Mongoose oracle."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/server/oauth/routes.ts",
+          "dimabot/src/server/oauth/service.ts"
+        ],
+        "runtimeStatus": "TypeScript application callers remain active and unadopted. The user-authorized migration-checkout source retirement removed the live TypeScript model; no caller cutover, deployment or push occurred."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/application_schemas_reference.mjs",
+          "dimabot/tests/fixtures/moderation_action_log_schema_reference.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.test.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/application_schemas.rs",
+          "dimabot/tests/moderation_action_log_schema.rs",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/runs/post-archive-retirement/node-1793362118754074174-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/runs/post-archive-retirement/compiler-fixtures-1793362234253284528-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/artifacts/oracle-semantic-comparison.json"
+        ],
+        "status": "Post-archive 70-case application-schema Mongoose replay and strict native profiles passed. The shared repository is concrete; fresh Mongo CRUD/index checks in this batch covered the action-log model, not OAuth flows. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "OAuthRefreshToken",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "OAuthRefreshToken maps to the native OAuthRefreshToken SchemaDefinition descriptor in dimabot/src/schemas/oauth_refresh_token.schema.rs.",
+          "evidence": [
+            "dimabot/src/schemas/oauth_refresh_token.schema.rs",
+            "migration-notes/persistence-model-retirement.md",
+            "migration-notes/evidence/2026-10-30-persistence-model-retirement/artifacts/oracle-semantic-comparison.json"
+          ]
         }
       ],
       "imports": [
@@ -38024,15 +38151,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "The source has one runtime import from mongoose: named Schema and model. It exports this model and no named types.",
+          "defaultSideEffectBarrelDetails": "No side-effect import or barrel is involved; Mongoose model/schema behavior is directly represented by the native model descriptor.",
+          "directDependencyReview": "Reviewed: Mongoose Schema/model dependency replaced by the native MongoDB Rust driver plus shared SchemaDefinition repository implementation.",
+          "transitiveDependencyReview": "Reviewed: BSON/date/index behavior reuses the existing native shared schema and BSON/date foundation; no application-specific adapter is missing.",
+          "rustReplacementOrGap": "Native descriptor and isolated actual-Mongoose/MongoDB checks cover this model contract. npm Mongoose internals are not a required port; production caller adoption remains open."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/oauth_session.schema.ts",
@@ -38042,25 +38169,55 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/oauth_session.schema.ts",
+        "sha256": "d383f6bb4c900cfa8323c32719f1b04c8aec0f468d6cfb0fedae7416d6251556",
+        "nativeAreaReference": "migration-notes/persistence-model-retirement.md; concrete native model and post-archive Mongoose replay verified; previously accepted common Mongo repository; fresh Mongo CRUD/index replay in this batch is action-log-specific"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/oauth_session.schema.rs: native OAuthSession schema descriptor, collection oauth_sessions, required fields/defaults/indexes and repository behavior as applicable",
+        "dimabot/src/schemas/schema.rs: shared Mongoose-compatible descriptor, validation, BSON casting, index installation and repository machinery",
+        "dimabot/src/utils/bson_compat.rs and dimabot/src/utils/mongoose_date.rs: native BSON and date semantics",
+        "migration-notes/persistence-model-retirement.md and migration-notes/evidence/2026-10-30-persistence-model-retirement/README.md: dependency closure, source retirement and post-archive evidence",
+        "6af3a89731e4219d66a4dfa99a7ce128a0edb825; frozen source tree SHA-256 18d0d5c5dcf9353e69ad85d9237cdf365c97fecff11adde29038b3cfe75d9e80"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "No application behavior deviation is recorded for this descriptor; the native schema retains source field, default, timestamp, hidden projection and index behavior covered by the application-schema Mongoose oracle."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/server/oauth/routes.ts",
+          "dimabot/src/server/oauth/service.ts"
+        ],
+        "runtimeStatus": "TypeScript application callers remain active and unadopted. The user-authorized migration-checkout source retirement removed the live TypeScript model; no caller cutover, deployment or push occurred."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/application_schemas_reference.mjs",
+          "dimabot/tests/fixtures/moderation_action_log_schema_reference.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.test.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/application_schemas.rs",
+          "dimabot/tests/moderation_action_log_schema.rs",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/runs/post-archive-retirement/node-1793362118754074174-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/runs/post-archive-retirement/compiler-fixtures-1793362234253284528-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-persistence-model-retirement/artifacts/oracle-semantic-comparison.json"
+        ],
+        "status": "Post-archive 70-case application-schema Mongoose replay and strict native profiles passed. The shared repository is concrete; fresh Mongo CRUD/index checks in this batch covered the action-log model, not OAuth flows. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "OAuthSession",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "OAuthSession maps to the native OAuthSession SchemaDefinition descriptor in dimabot/src/schemas/oauth_session.schema.rs.",
+          "evidence": [
+            "dimabot/src/schemas/oauth_session.schema.rs",
+            "migration-notes/persistence-model-retirement.md",
+            "migration-notes/evidence/2026-10-30-persistence-model-retirement/artifacts/oracle-semantic-comparison.json"
+          ]
         }
       ],
       "imports": [
@@ -38070,15 +38227,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "The source has one runtime import from mongoose: named Schema and model. It exports this model and no named types.",
+          "defaultSideEffectBarrelDetails": "No side-effect import or barrel is involved; Mongoose model/schema behavior is directly represented by the native model descriptor.",
+          "directDependencyReview": "Reviewed: Mongoose Schema/model dependency replaced by the native MongoDB Rust driver plus shared SchemaDefinition repository implementation.",
+          "transitiveDependencyReview": "Reviewed: BSON/date/index behavior reuses the existing native shared schema and BSON/date foundation; no application-specific adapter is missing.",
+          "rustReplacementOrGap": "Native descriptor and isolated actual-Mongoose/MongoDB checks cover this model contract. npm Mongoose internals are not a required port; production caller adoption remains open."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/pet_runtime.schema.ts",
@@ -93320,7 +93477,7 @@
       "behaviorDifferencesOrAcceptedChanges": [
         "All six exports have local Rust payload/lifecycle counterparts and concrete SDK/lossless adapters. Verification covers 1,042 source wrapper records, 20 native HTTP transport tests and 18 installed-SDK lifecycle scenarios; see the dated migration note and evidence summary.",
         "Native lossless transport has explicit event preflight (256 KiB), depth (64), response-body (64 KiB) and queued-byte (16 MiB) bounds; redirects/proxies are disabled and shutdown is permanent. These behavior differences, UUIDv4 versus SDK UUIDv7 event metadata, and differing SDK/library metadata prevent a strict source-equivalence claim.",
-        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%\u201386.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
+        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%–86.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
       ],
       "callers": {
         "sourceEvidence": [
