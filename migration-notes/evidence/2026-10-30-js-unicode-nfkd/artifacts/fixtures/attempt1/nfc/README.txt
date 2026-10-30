@@ -1,0 +1,1 @@
+Attempt 1 did not produce an NFC fixture. The wrapper generated and checked the NFKD fixture, then stopped because it did not pass the required existing NFC fixture SHA-256 pin. The NFC output directory was empty. This note records that absence; it is not an oracle payload.
