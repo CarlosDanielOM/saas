@@ -5,8 +5,6 @@ pub mod emote_spam;
 
 #[cfg(feature = "moderation-caps")]
 pub mod caps;
-#[cfg(feature = "moderation-caps")]
-mod caps_unicode_data;
 
 #[cfg(feature = "moderation-links")]
 pub mod links_rule;
@@ -24,3 +22,6 @@ pub mod offenses;
 
 #[cfg(feature = "moderation-seed-plan")]
 pub mod seed_plan;
+
+#[cfg(feature = "moderation-blacklist")]
+pub mod blacklist;

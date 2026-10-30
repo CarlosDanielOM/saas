@@ -1,8 +1,8 @@
 //! Pure caps evaluation for the declared TypeScript input contract.
 use std::borrow::Cow;
 
-use super::caps_unicode_data::{LETTER_RANGES, UPPERCASE_RANGES};
 use crate::utils::js_string::JsString;
+use crate::utils::js_unicode_categories::{LETTER_RANGES, UPPERCASE_RANGES};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CapsThresholdMode {

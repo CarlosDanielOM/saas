@@ -68,6 +68,7 @@ pub mod json_number;
 #[cfg(any(
     feature = "moderation-emote-spam",
     feature = "moderation-caps",
+    feature = "moderation-blacklist",
     feature = "moderation-normalize",
     feature = "moderation-links",
     feature = "moderation-spam-categories",
@@ -139,6 +140,8 @@ pub mod domain_events;
 pub mod eventsub;
 #[cfg(feature = "js-date")]
 pub mod js_date;
+#[cfg(feature = "js-regexp-unicode")]
+pub mod js_regexp_unicode;
 #[cfg(any(
     feature = "tts-utilities",
     feature = "permissions",
@@ -150,6 +153,13 @@ pub mod js_date;
 pub mod js_string;
 #[cfg(feature = "js-unicode17")]
 pub mod js_unicode;
+#[cfg(feature = "js-regexp-unicode")]
+#[rustfmt::skip]
+mod js_regexp_unicode_data;
+#[cfg(any(feature = "moderation-caps", feature = "js-regexp-unicode"))]
+#[path = "moderation/caps_unicode_data.rs"]
+#[rustfmt::skip]
+mod js_unicode_categories;
 #[cfg(feature = "js-unicode17")]
 #[rustfmt::skip]
 mod js_unicode_data;
