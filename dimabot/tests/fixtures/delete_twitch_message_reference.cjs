@@ -1,0 +1,35 @@
+// Actual-source oracle; run only with pinned isolated Node/TypeScript.
+const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto'), vm = require('node:vm'), ts = require('typescript');
+const root = path.resolve(__dirname, '../..');
+const files = {source:path.join(root,'src/functions/chats/delete_message.chat.ts'), header:path.join(root,'src/utils/header.ts'), links:path.resolve(root,'../archives/dimabot-typescript/2026-10-28/src/utils/links.ts'), logger:path.join(root,'src/utils/logger.ts'), oracle:__filename, package:path.join(root,'package.json'), lock:path.join(root,'package-lock.json'), typescript:require.resolve('typescript'), typescriptPackage:require.resolve('typescript/package.json'), node:process.execPath, native:path.join(root,'src/functions/chats/delete_message.chat.rs'), nativeTest:path.join(root,'tests/delete_twitch_message.rs'), chatsModule:path.join(root,'src/functions/chats/mod.rs'), testDigest:path.join(root,'tests/support/sha256.rs'), auth:path.join(root,'src/functions/mod.rs'), transport:path.join(root,'src/utils/twitch.rs'), parser:path.join(root,'src/utils/lossless_json.rs'), jsString:path.join(root,'src/utils/js_string.rs'), nativeLogger:path.join(root,'src/utils/logger.rs'), nativeLinks:path.join(root,'src/utils/links.rs'), number:path.join(root,'src/utils/json_number.rs')};
+const sha = p => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+function provenance() {
+  if(process.version !== 'v24.22.1' || process.versions.v8 !== '13.6.233.17-node.58' || ts.version !== '5.9.3') throw Error('wrong oracle toolchain');
+  const text=fs.readFileSync(files.source,'utf8'), ast=ts.createSourceFile(files.source,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+  const fn=ast.statements.filter(s=>ts.isFunctionDeclaration(s) && s.name?.text==='deleteMessage');
+  const iface=ast.statements.filter(s=>ts.isInterfaceDeclaration(s) && s.name.text==='DeleteMessageResponse');
+  if(fn.length!==1 || iface.length!==1 || iface[0].modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword) || !fn[0].modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword) || !fn[0].modifiers?.some(m=>m.kind===ts.SyntaxKind.AsyncKeyword) || fn[0].parameters.map(p=>`${p.name.getText(ast)}:${p.type?.getText(ast)}`).join(',')!=='messageID:string,channelID:string,modID:string' || fn[0].type?.getText(ast)!=='Promise<DeleteMessageResponse>' || iface[0].members.map(m=>`${m.name.getText(ast)}${m.questionToken?'?':''}:${m.type?.getText(ast)}`).join(',')!=='error:boolean,message:string,status?:number,type?:string') throw Error('source export or signature changed');
+  return {node:process.version,v8:process.versions.v8,typescript:ts.version,hashes:Object.fromEntries(Object.entries(files).map(([k,v])=>[k,sha(v)])),boundary:'Actual deleteMessage source; mocked header, URL, fetch and logger. Header/links/logger source hashes record contract evidence, not execution.'};
+}
+async function run(id,spec) {
+ const calls=[];
+ const getTwitchModeratorHeader=async (...args)=>{calls.push(['header',...args]); if(spec.headerThrow) throw Error('header failure'); return spec.denied ? {error:true,message:'denied'} : spec.noHeader ? {error:false,message:'missing'} : {error:false,message:'Success',header:{Authorization:'Bearer fixture'}};};
+ const logError=async value=>{calls.push(['log',value.function,value.messageID,value.channelID,value.modID,value.error]); if(spec.logThrow) throw Error('log failure'); return spec.logReport;};
+ const getTwitchHelixUrl=(endpoint,query)=>`https://api.twitch.tv/helix/${endpoint}?${query}`;
+ const fetch=async (url,options)=>{calls.push(['fetch',url,options]); if(spec.fetchThrow) throw Error('fetch failure'); return {status:spec.status,json:async()=>{calls.push(['json']); const bytes=Buffer.from(spec.body || '', 'base64'); return JSON.parse(new TextDecoder().decode(bytes));}};};
+ const code=ts.transpileModule(fs.readFileSync(files.source,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+ const exports={}; const req=id=>id.endsWith('header.js')?{getTwitchModeratorHeader,TWITCH_BOT_ACCOUNT_ID:'698614112'}:id.endsWith('logger.js')?{error:logError}:id.endsWith('links.js')?{getTwitchHelixUrl}:(()=>{throw Error('unexpected import '+id)})();
+ vm.runInNewContext(`(function(exports,require){${code}\n})`,{fetch,Error,String},{filename:files.source})(exports,req);
+ if(typeof exports.deleteMessage !== 'function' || Object.keys(exports).join(',') !== 'deleteMessage') throw Error('unexpected runtime exports');
+ let outcome; try {outcome={returned:await exports.deleteMessage('message','channel','requester')};} catch(e) {outcome={thrown:String(e.message)};}
+ if(spec.nativeDepthLimit && outcome.returned) outcome={returnedJsonBase64:Buffer.from(JSON.stringify(outcome.returned)).toString('base64')};
+ return {id,spec,outcome,calls};
+}
+async function main(){
+ const [mode,dir,...extra]=process.argv.slice(2); if(!['--write','--check'].includes(mode)||!dir||extra.length) throw Error('usage: --write DIR | --check DIR');
+ const stat=fs.lstatSync(dir); if(!stat.isDirectory()||stat.isSymbolicLink()||fs.realpathSync(dir)!==path.resolve(dir)) throw Error('canonical directory required');
+ const body=s=>Buffer.from(s,'utf8').toString('base64'); const specs=[['204',{status:204,body:body('invalid')}],...['{}','{"other":1}','{"error":false}','{"error":0}','{"error":""}','{"error":null}','{"error":"bad"}','{"error":{}}','{"error":[]}','{"error":true}','{"error":42}','{"error":-1}','{"error":0.0}','{"error":"0"}','{"error":" "}','{"error":false,"error":"last"}','{"error":"first","error":null}','{"error":{"nested":false}}','null','true','false','0','-1','""','"x"','[]','[null]','','  \n\t','\ufeff','{','\ufeff{"error":"bom"}','{"error":"😀"}','{"error":"\\ud800"}'].flatMap((raw,i)=>[200,400,500].map(status=>[`body-${i}-${status}`,{status,body:body(raw)}])),['invalid-utf8',{status:400,body:Buffer.from([123,34,101,114,114,111,114,34,58,34,255,34,125]).toString('base64')}],['invalid-utf8-syntax',{status:400,body:Buffer.from([255]).toString('base64')}],...[129,256].map(depth=>[`depth-${depth}`,{status:400,body:body('{"error":'+'['.repeat(depth)+'0'+']'.repeat(depth)+'}'),nativeDepthLimit:true}]),['denied',{denied:true}],['missing-header',{noHeader:true}],['header-throw',{headerThrow:true}],['fetch-throw',{fetchThrow:true}],['logger-report-failed',{fetchThrow:true,logReport:{success:false,error:'sink failure'}}],['logger-throw',{fetchThrow:true,logThrow:true}]];
+ const output=JSON.stringify({schema:1,provenance:provenance(),cases:await Promise.all(specs.map(([id,s])=>run(id,s)))},null,2)+'\n'; const target=path.join(dir,'delete_twitch_message_cases.json');
+ if(mode==='--write'){if(fs.readdirSync(dir).length)throw Error('write directory must be empty'); fs.writeFileSync(target,output,{flag:'wx'});} else if(fs.readFileSync(target,'utf8')!==output)throw Error('fixture differs');
+}
+main().catch(e=>{console.error(e);process.exitCode=1;});

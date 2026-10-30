@@ -5,6 +5,7 @@
 //! Each HTTP operation makes one attempt, matching the source's raw fetch.
 //! Moderation always pairs the bot token with the bot's moderator identity.
 
+pub mod chats;
 pub mod moderation;
 pub mod polls;
 pub mod predictions;
