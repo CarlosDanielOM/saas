@@ -9,7 +9,7 @@ use crate::{
         js_compat::is_whitespace,
         js_regexp_unicode::canonicalize,
         js_string::JsString,
-        lossless_json::JsonValue,
+        lossless_json::{JsonValue, JsonValueRef},
         moderation::{
             advanced_policy::paid_moderation_owned,
             spam_categories::{
@@ -28,7 +28,10 @@ use mongodb::{
 };
 use redis::{RedisResult, aio::ConnectionManager};
 use sha2::{Digest, Sha256};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::{
+    borrow::Cow,
+    sync::{Arc, Mutex, OnceLock},
+};
 
 pub const SPAM_RULE_ID: &str = "builtin-spam-protection";
 pub const SPAM_CHANNEL_REVIEWS_PER_MINUTE: i32 = 30;
@@ -58,7 +61,7 @@ pub fn spam_rule_template() -> &'static IModerationRule {
             categories: Some(DEFAULT_SPAM_CATEGORIES.to_vec()),
             threshold_percent: Some(DEFAULT_SPAM_THRESHOLD),
             broadcaster_invitation: None,
-            policy: SPAM_POLICY.into(),
+            policy: JsString::from_static(SPAM_POLICY),
             examples: [
                 (
                     "Want to buy more viewers? Visit viewerbuy . com!",
@@ -250,13 +253,28 @@ fn invited(s: &[u32]) -> bool {
     }
     false
 }
+fn message_matches(message: &JsString) -> bool {
+    if let Some(text) = message.as_str().filter(|v| v.is_ascii()) {
+        static NEGATED: OnceLock<regex::bytes::Regex> = OnceLock::new();
+        static INVITED: OnceLock<regex::bytes::Regex> = OnceLock::new();
+        let neg = NEGATED.get_or_init(|| {
+            regex::bytes::Regex::new(
+                r"(?i-u)\b(?:don't|dont|do not|never|stop|no|not|prohibido|prohibida|nunca)\b",
+            )
+            .unwrap()
+        });
+        let invite = INVITED.get_or_init(|| regex::bytes::Regex::new(r"(?i-u)\b(?:share|post|drop)[\x09-\x0d ]+(?:your[\x09-\x0d ]+)?(?:channel|twitch|social)(?:[\x09-\x0d ]+links?)?\b|\b(?:comparte|compartan|compartid|publica|publiquen|deja|dejen)[\x09-\x0d ]+(?:(?:tu|tus|su|sus|vuestro|vuestros)[\x09-\x0d ]+)?(?:canal|canales|redes|enlaces)\b").unwrap());
+        return !neg.is_match(text.as_bytes()) && invite.is_match(text.as_bytes());
+    }
+    let s = folded(message);
+    !negated(&s) && invited(&s)
+}
 pub fn broadcaster_invited_promotion(context: &[ContextMessage]) -> bool {
     context.iter().any(|m| {
         if !m.is_broadcaster {
             return false;
         }
-        let s = folded(&m.message);
-        !negated(&s) && invited(&s)
+        message_matches(&m.message)
     })
 }
 
@@ -542,80 +560,120 @@ fn duplicate(e: &mongodb::error::Error) -> bool {
 /// Lossless ordinary-JSON version of the source settings spread. Array values
 /// may contain arbitrary JSON; strings are spread by JS code points. Objects,
 /// numbers and booleans are non-iterable and return an explicit TypeError.
-pub fn spam_protection_settings_value(settings: &JsonValue) -> Result<JsonValue, &'static str> {
-    if matches!(settings, JsonValue::Null) {
-        return Err("cannot read spamProtection of null");
+/// Read-only normalized source settings. Array inputs retain their original values;
+/// string iterables are expanded into code points just as JavaScript spread does.
+#[derive(Debug)]
+pub struct SpamProtectionValueView<'a> {
+    pub enabled: bool,
+    pub review_all_messages: bool,
+    pub categories: Cow<'a, [JsonValue]>,
+    pub threshold_percent: JsonValueRef<'a>,
+    pub exempt_tags: Cow<'a, [JsonValue]>,
+}
+impl SpamProtectionValueView<'_> {
+    pub fn to_owned_json(&self) -> JsonValue {
+        JsonValue::Object(vec![
+            (
+                JsString::from_static("enabled"),
+                JsonValue::Bool(self.enabled),
+            ),
+            (
+                JsString::from_static("reviewAllMessages"),
+                JsonValue::Bool(self.review_all_messages),
+            ),
+            (
+                JsString::from_static("categories"),
+                JsonValue::Array(self.categories.to_vec()),
+            ),
+            (
+                JsString::from_static("thresholdPercent"),
+                self.threshold_percent.into_owned(),
+            ),
+            (
+                JsString::from_static("exemptTags"),
+                JsonValue::Array(self.exempt_tags.to_vec()),
+            ),
+        ])
     }
-    fn spread(
-        value: Option<&JsonValue>,
-        defaults: Vec<JsonValue>,
-    ) -> Result<Vec<JsonValue>, &'static str> {
-        match value {
-            None | Some(JsonValue::Null) => Ok(defaults),
-            Some(JsonValue::Array(items)) => Ok(items.clone()),
-            Some(JsonValue::String(s)) => Ok(char::decode_utf16(s.code_units())
+    pub fn write_json(&self, out: &mut String) {
+        self.to_owned_json().write_json_string(out);
+    }
+}
+fn default_categories_json() -> &'static [JsonValue] {
+    static VALUES: OnceLock<Vec<JsonValue>> = OnceLock::new();
+    VALUES.get_or_init(|| {
+        DEFAULT_SPAM_CATEGORIES
+            .iter()
+            .map(|v| JsonValue::String(JsString::from_static(v.as_str())))
+            .collect()
+    })
+}
+fn default_tags_json() -> &'static [JsonValue] {
+    static VALUES: OnceLock<Vec<JsonValue>> = OnceLock::new();
+    VALUES.get_or_init(|| {
+        DEFAULT_SPAM_EXEMPT_TAGS
+            .iter()
+            .map(|v| JsonValue::String(JsString::from_static(v.as_str())))
+            .collect()
+    })
+}
+fn spread_view<'a>(
+    value: Option<&'a JsonValue>,
+    defaults: &'static [JsonValue],
+) -> Result<Cow<'a, [JsonValue]>, &'static str> {
+    match value {
+        None | Some(JsonValue::Null) => Ok(Cow::Borrowed(defaults)),
+        Some(JsonValue::Array(items)) => Ok(Cow::Borrowed(items)),
+        Some(JsonValue::String(s)) => Ok(Cow::Owned(
+            char::decode_utf16(s.code_units())
                 .map(|v| {
                     JsonValue::String(match v {
                         Ok(c) => JsString::from(c.to_string()),
                         Err(e) => JsString::from_units(vec![e.unpaired_surrogate()]),
                     })
                 })
-                .collect()),
-            _ => Err("value is not iterable"),
-        }
+                .collect(),
+        )),
+        _ => Err("value is not iterable"),
+    }
+}
+pub fn spam_protection_settings_view(
+    settings: &JsonValue,
+) -> Result<SpamProtectionValueView<'_>, &'static str> {
+    if matches!(settings, JsonValue::Null) {
+        return Err("cannot read spamProtection of null");
     }
     let p = settings.get("spamProtection");
     let get = |key| p.and_then(|v| v.get(key));
-    let categories = spread(
-        get("categories"),
-        DEFAULT_SPAM_CATEGORIES
-            .iter()
-            .map(|v| JsonValue::String(v.as_str().into()))
-            .collect(),
-    )?;
-    let tags = spread(
-        get("exemptTags"),
-        DEFAULT_SPAM_EXEMPT_TAGS
-            .iter()
-            .map(|v| JsonValue::String(v.as_str().into()))
-            .collect(),
-    )?;
-    let threshold = match get("thresholdPercent") {
-        None | Some(JsonValue::Null) => JsonValue::Number(DEFAULT_SPAM_THRESHOLD),
-        Some(v) => v.clone(),
+    // Preserve source evaluation order, including errors from both spreads.
+    let categories = spread_view(get("categories"), default_categories_json())?;
+    let exempt_tags = spread_view(get("exemptTags"), default_tags_json())?;
+    let threshold_percent = match get("thresholdPercent") {
+        None | Some(JsonValue::Null) => JsonValueRef::Number(DEFAULT_SPAM_THRESHOLD),
+        Some(v) => JsonValueRef::Value(v),
     };
-    Ok(JsonValue::Object(vec![
-        (
-            "enabled".into(),
-            JsonValue::Bool(!matches!(get("enabled"), Some(JsonValue::Bool(false)))),
-        ),
-        (
-            "reviewAllMessages".into(),
-            JsonValue::Bool(matches!(
-                get("reviewAllMessages"),
-                Some(JsonValue::Bool(true))
-            )),
-        ),
-        ("categories".into(), JsonValue::Array(categories)),
-        ("thresholdPercent".into(), threshold),
-        ("exemptTags".into(), JsonValue::Array(tags)),
-    ]))
+    Ok(SpamProtectionValueView {
+        enabled: !matches!(get("enabled"), Some(JsonValue::Bool(false))),
+        review_all_messages: matches!(get("reviewAllMessages"), Some(JsonValue::Bool(true))),
+        categories,
+        threshold_percent,
+        exempt_tags,
+    })
+}
+pub fn spam_protection_settings_value(settings: &JsonValue) -> Result<JsonValue, &'static str> {
+    Ok(spam_protection_settings_view(settings)?.to_owned_json())
 }
 pub fn spam_review_source_value(
     first_message: bool,
     settings: &JsonValue,
     tier: Option<&JsonValue>,
 ) -> Result<Option<&'static str>, &'static str> {
-    let p = spam_protection_settings_value(settings)?;
-    if matches!(p.get("enabled"), Some(JsonValue::Bool(false)))
-        || matches!(p.get("categories"), Some(JsonValue::Array(v)) if v.is_empty())
-    {
+    let p = spam_protection_settings_view(settings)?;
+    if !p.enabled || p.categories.is_empty() {
         Ok(None)
     } else if first_message {
         Ok(Some("first_message"))
-    } else if matches!(p.get("reviewAllMessages"), Some(JsonValue::Bool(true)))
-        && paid_moderation_owned(tier)
-    {
+    } else if p.review_all_messages && paid_moderation_owned(tier) {
         Ok(Some("spam_continuous"))
     } else {
         Ok(None)
@@ -669,11 +727,11 @@ pub fn semantic_policy_active_value(
     if is_spam_decision_value(decision)? {
         let empty = JsonValue::Object(vec![]);
         let p =
-            spam_protection_settings_value(settings.filter(|v| truthy(Some(v))).unwrap_or(&empty))?;
-        return Ok(!matches!(p.get("enabled"), Some(JsonValue::Bool(false)))
-            && matches!(p.get("categories"), Some(JsonValue::Array(v)) if !v.is_empty())
+            spam_protection_settings_view(settings.filter(|v| truthy(Some(v))).unwrap_or(&empty))?;
+        return Ok(p.enabled
+            && !p.categories.is_empty()
             && (string_is(decision.get("reviewSource"), "first_message")
-                || matches!(p.get("reviewAllMessages"), Some(JsonValue::Bool(true)))));
+                || p.review_all_messages));
     }
     if !truthy(settings.and_then(|s| s.get("enabled"))) {
         return Ok(false);
@@ -712,8 +770,13 @@ pub fn spam_rule_for_context_value(
 ) -> Result<JsonValue, &'static str> {
     spam_rule_for_invitation_value(broadcaster_invited_promotion(context), settings)
 }
-fn json_object(fields: Vec<(&str, JsonValue)>) -> JsonValue {
-    JsonValue::Object(fields.into_iter().map(|(k, v)| (k.into(), v)).collect())
+fn json_object(fields: Vec<(&'static str, JsonValue)>) -> JsonValue {
+    JsonValue::Object(
+        fields
+            .into_iter()
+            .map(|(k, v)| (JsString::from_static(k), v))
+            .collect(),
+    )
 }
 fn json_set(object: &mut JsonValue, key: &'static str, value: JsonValue) {
     let JsonValue::Object(fields) = object else {
@@ -722,7 +785,7 @@ fn json_set(object: &mut JsonValue, key: &'static str, value: JsonValue) {
     if let Some((_, old)) = fields.iter_mut().find(|(k, _)| k.as_str() == Some(key)) {
         *old = value;
     } else {
-        fields.push((key.into(), value));
+        fields.push((JsString::from_static(key), value));
     }
 }
 
@@ -865,53 +928,104 @@ pub fn spam_rule_template_value() -> JsonValue {
     }
     result
 }
+/// Read-only contextual rule: template arcs and examples retain source identity.
+/// The JSON projection snapshots shared mutable template fields on request.
+pub struct SpamRuleValueView<'a> {
+    pub template: &'static IModerationRule,
+    pub protection: SpamProtectionValueView<'a>,
+    pub broadcaster_invitation: bool,
+}
+impl SpamRuleValueView<'_> {
+    pub fn examples(&self) -> &[SemanticExample] {
+        &self
+            .template
+            .semantic
+            .as_ref()
+            .expect("spam semantic")
+            .examples
+    }
+    pub fn policy(&self) -> &JsString {
+        if self.broadcaster_invitation {
+            static POLICY: OnceLock<JsString> = OnceLock::new();
+            POLICY.get_or_init(|| JsString::from_static(INVITED_POLICY))
+        } else {
+            &self
+                .template
+                .semantic
+                .as_ref()
+                .expect("spam semantic")
+                .policy
+        }
+    }
+    pub fn to_owned_json(&self) -> JsonValue {
+        let role = |v| json_object(vec![("role", v)]);
+        let tags = &self.protection.exempt_tags;
+        let exempt = if tags.is_empty() {
+            json_object(vec![(
+                "not",
+                role(JsonValue::String(JsString::from_static("everyone"))),
+            )])
+        } else {
+            json_object(vec![(
+                "or",
+                JsonValue::Array(tags.iter().cloned().map(role).collect()),
+            )])
+        };
+        let mut rule = spam_rule_template_value();
+        let mut semantic = rule.get("semantic").expect("spam semantic").clone();
+        json_set(
+            &mut semantic,
+            "categories",
+            JsonValue::Array(self.protection.categories.to_vec()),
+        );
+        json_set(
+            &mut semantic,
+            "thresholdPercent",
+            self.protection.threshold_percent.into_owned(),
+        );
+        json_set(
+            &mut semantic,
+            "broadcasterInvitation",
+            JsonValue::Bool(self.broadcaster_invitation),
+        );
+        if self.broadcaster_invitation {
+            json_set(
+                &mut semantic,
+                "policy",
+                JsonValue::String(JsString::from_static(INVITED_POLICY)),
+            );
+        }
+        json_set(&mut rule, "exemptExpression", exempt);
+        json_set(&mut rule, "semantic", semantic);
+        rule
+    }
+    pub fn write_json(&self, out: &mut String) {
+        self.to_owned_json().write_json_string(out);
+    }
+}
 fn spam_rule_for_invitation_value(
     invitation: bool,
     settings: &JsonValue,
 ) -> Result<JsonValue, &'static str> {
-    let p = spam_protection_settings_value(settings)?;
-    let tags = match p.get("exemptTags").unwrap() {
-        JsonValue::Array(v) => v,
-        _ => unreachable!(),
-    };
-    let role = |v| json_object(vec![("role", v)]);
-    let exempt = if tags.is_empty() {
-        json_object(vec![("not", role(JsonValue::String("everyone".into())))])
-    } else {
-        json_object(vec![(
-            "or",
-            JsonValue::Array(tags.iter().cloned().map(role).collect()),
-        )])
-    };
-    let mut rule = spam_rule_template_value();
-    let mut semantic = rule.get("semantic").expect("spam semantic").clone();
-    json_set(
-        &mut semantic,
-        "categories",
-        p.get("categories").unwrap().clone(),
-    );
-    json_set(
-        &mut semantic,
-        "thresholdPercent",
-        p.get("thresholdPercent").unwrap().clone(),
-    );
-    json_set(
-        &mut semantic,
-        "broadcasterInvitation",
-        JsonValue::Bool(invitation),
-    );
-    if invitation {
-        json_set(
-            &mut semantic,
-            "policy",
-            JsonValue::String(INVITED_POLICY.into()),
-        );
+    Ok(SpamRuleValueView {
+        template: spam_rule_template(),
+        protection: spam_protection_settings_view(settings)?,
+        broadcaster_invitation: invitation,
     }
-    json_set(&mut rule, "exemptExpression", exempt);
-    json_set(&mut rule, "semantic", semantic);
-    Ok(rule)
+    .to_owned_json())
 }
-
+pub fn spam_rule_for_json_context_view<'a>(
+    context: &JsonValue,
+    settings: &'a JsonValue,
+) -> Result<SpamRuleValueView<'a>, &'static str> {
+    let protection = spam_protection_settings_view(settings)?;
+    let broadcaster_invitation = broadcaster_invited_promotion_value(context)?;
+    Ok(SpamRuleValueView {
+        template: spam_rule_template(),
+        protection,
+        broadcaster_invitation,
+    })
+}
 /// Number(reply) === 1 for node-redis' ordinary RESP replies. The exact Lua
 /// returns integers, but retaining JS conversion matters at the wire boundary.
 fn budget_reply_is_one(value: &redis::Value) -> bool {
@@ -951,12 +1065,16 @@ pub fn broadcaster_invited_promotion_value(context: &JsonValue) -> Result<bool, 
         }
         let converted = match message.get("message") {
             None => JsString::from_static("undefined"),
-            Some(JsonValue::String(s)) => s.clone(),
+            Some(JsonValue::String(s)) => {
+                if message_matches(s) {
+                    return Ok(true);
+                }
+                continue;
+            }
             Some(value) => crate::utils::tts::settings::js_string(value)
                 .map_err(|_| "Cannot convert object to primitive value")?,
         };
-        let folded = folded(&converted);
-        if !negated(&folded) && invited(&folded) {
+        if message_matches(&converted) {
             return Ok(true);
         }
     }
@@ -968,6 +1086,5 @@ pub fn spam_rule_for_json_context_value(
 ) -> Result<JsonValue, &'static str> {
     // Source computes settings before evaluating context, so invalid settings
     // must win over an invalid context.
-    let _ = spam_protection_settings_value(settings)?;
-    spam_rule_for_invitation_value(broadcaster_invited_promotion_value(context)?, settings)
+    Ok(spam_rule_for_json_context_view(context, settings)?.to_owned_json())
 }

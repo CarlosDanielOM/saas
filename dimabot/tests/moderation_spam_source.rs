@@ -15,7 +15,20 @@ fn all_pure_source_records() {
     for case in cases {
         let id = case["id"].as_str().unwrap();
         assert!(visited.insert(id));
-        check_result(Prepared::from_case(case).run(), &case["result"], id);
+        let prepared = Prepared::from_case(case);
+        check_result(prepared.run(), &case["result"], id);
+        let borrowed = match &prepared {
+            Prepared::Settings(s) => {
+                Some(spam_protection_settings_view(s).map(|v| Output::Value(v.to_owned_json())))
+            }
+            Prepared::Rule(c, s) => Some(
+                spam_rule_for_json_context_view(c, s).map(|v| Output::Value(v.to_owned_json())),
+            ),
+            _ => None,
+        };
+        if let Some(result) = borrowed {
+            check_result(result, &case["result"], id);
+        }
     }
     assert_eq!(visited.len(), cases.len());
     // Replay the disconnected actual Mongoose document through the native

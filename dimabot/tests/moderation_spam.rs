@@ -239,3 +239,49 @@ fn template_value_uses_typed_base_and_context_overrides_only() {
         Some(&parse_json(r#"{"not":{"role":"everyone"}}"#).unwrap())
     );
 }
+
+#[test]
+fn read_views_borrow_input_arrays_and_shared_template() {
+    use std::borrow::Cow;
+    let settings = JsonValue::Object(vec![(
+        "spamProtection".into(),
+        JsonValue::Object(vec![
+            (
+                "categories".into(),
+                JsonValue::Array(vec![JsonValue::Number(42.0), JsonValue::Null]),
+            ),
+            (
+                "exemptTags".into(),
+                JsonValue::Array(vec![JsonValue::Bool(true)]),
+            ),
+            (
+                "thresholdPercent".into(),
+                JsonValue::String(JsString::from_units(vec![0xd800])),
+            ),
+        ]),
+    )]);
+    let p = spam_protection_settings_view(&settings).unwrap();
+    assert!(matches!(&p.categories, Cow::Borrowed(_)));
+    assert!(matches!(&p.exempt_tags, Cow::Borrowed(_)));
+    assert_eq!(
+        p.to_owned_json(),
+        spam_protection_settings_value(&settings).unwrap()
+    );
+    let context = JsonValue::Array(vec![]);
+    let a = spam_rule_for_json_context_view(&context, &settings).unwrap();
+    let b = spam_rule_for_json_context_view(&context, &settings).unwrap();
+    assert!(std::ptr::eq(a.template, b.template));
+    assert!(std::ptr::eq(a.examples(), b.examples()));
+    assert_eq!(
+        a.to_owned_json(),
+        spam_rule_for_json_context_value(&context, &settings).unwrap()
+    );
+    let bad = JsonValue::Object(vec![(
+        "spamProtection".into(),
+        JsonValue::Object(vec![("categories".into(), JsonValue::Bool(true))]),
+    )]);
+    assert!(matches!(
+        spam_rule_for_json_context_view(&JsonValue::Null, &bad),
+        Err("value is not iterable")
+    ));
+}

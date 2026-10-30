@@ -10,6 +10,44 @@ function matrix(){
  const negative=["don't share channel",'dont post twitch','do not drop social','never share channel','stop share channel','no share channel','not share channel','prohibido comparte canal','prohibida comparte canal','nunca comparte canal','reshare channel','share channels','shareyour channel','comparte canalesx','share your own channel','share-channel','do\tnot share channel'];
  const unicode=['ſhare channel','ſhare\u00a0channel','share\ufeffyour\u2028channel','share\nchannel','share\r\nchannel','share\u0085channel','share\u180echannel','share\u200bchannel','Kshare channel','éshare channel','_share channel','😀share channel','\ud800share channel','share channel\udc00','share channeℓ','share channel\u0301','NO\u0301 share channel','don’t share channel','do\nnot share channel'];
  for(const [i,text] of [...positive,...negative,...unicode].entries()){add('broadcasterInvitedPromotion',`invite-${i}`,[ctx(text)]);add('broadcasterInvitedPromotion',`unverified-${i}`,[ctx(text,false)]);}
+ // Compiled ASCII matcher stress: each control is tested as a separator,
+ // as both word-boundary neighbors, and next to a possible negation. The
+ // source RegExp itself determines the expected result for every record.
+ for(const code of [...Array.from({length:32},(_,i)=>i),127]){
+  const c=String.fromCharCode(code);
+  for(const [kind,text] of [
+   ['separator',`share${c}channel`],['prefix',`${c}share channel`],
+   ['suffix',`share channel${c}`],['negation',`no${c} share channel`],
+  ])add('broadcasterInvitedPromotion',`invite-ascii-control-${code}-${kind}`,[ctx(text)]);
+ }
+ // ASCII word characters must suppress the corresponding RegExp boundary,
+ // including after a negation that otherwise vetoes the invitation.
+ for(const c of 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'){
+  for(const [kind,text] of [
+   ['prefix',`${c}share channel`],['suffix',`share channel${c}`],
+   ['negation',`no${c} share channel`],
+  ])add('broadcasterInvitedPromotion',`invite-ascii-word-${c.charCodeAt(0)}-${kind}`,[ctx(text)]);
+ }
+ const invitationMixedCase=[
+  'ShArE YoUr ChAnNeL LiNkS','PoSt TwItCh LiNk','DrOp SoCiAl',
+  "DoN'T share channel",'DoNt share channel','Do NoT share channel',
+  'NeVeR share channel','StOp share channel','No share channel','NoT share channel',
+  'PrOhIbIdO comparte canal','PrOhIbIdA comparte canal','NuNcA comparte canal',
+  'CoMpArTe Tu CaNaL','CoMpArTaN TuS CaNaLeS','CoMpArTiD Su ReDeS',
+  'PuBlIcA SuS EnLaCeS','PuBlIqUeN VuEsTrO CaNaL','DeJa VuEsTrOs CaNaLeS',
+  'DeJeN ReDeS','share channel LINK','SHARE CHANNEL LINKS','post your twitch link',
+  'drop your social links','share your channel linksx','share channel links_',
+  'nope share channel','notable share channel','do  not share channel',
+  'share\tchannel','share\vchannel','share\fchannel',
+ ];
+ for(const [i,text] of invitationMixedCase.entries())add('broadcasterInvitedPromotion',`invite-mixed-${i}`,[ctx(text)]);
+ const invitationUnicodeFallback=[
+  '\u017fHARE channel','share channel\u212a','\u212ashare channel','\u017fshare channel',
+  'share\u00a0channel','share\ufeffchannel','share\u2028channel','share\u2029channel',
+  'share\u0085channel','share\u200bchannel','\ud800share channel','share channel\udc00',
+  'no\ud800 share channel','share\ud800channel','\ud800share channel\udc00','\u00e9share channel',
+ ];
+ for(const [i,text] of invitationUnicodeFallback.entries())add('broadcasterInvitedPromotion',`invite-fallback-${i}`,[ctx(text)]);
  add('broadcasterInvitedPromotion','empty-context',[[]]);add('broadcasterInvitedPromotion','one-negative-one-positive',[[...ctx('no share channel'),...ctx('post social')]]);
  // Test .some short-circuit and a sparse context without replacing source logic.
  const sparse=new Array(3);sparse[2]=ctx('share channel')[0];add('broadcasterInvitedPromotion','sparse-context',[sparse]);
