@@ -5,7 +5,7 @@
 //! are pinned to the Node runtime described in the migration handoff.
 use std::borrow::Cow;
 
-use unicode_normalization::char::decompose_canonical;
+use unicode_normalization::{UnicodeNormalization, char::decompose_canonical};
 
 use super::js_string::JsString;
 use super::js_unicode_data::{
@@ -110,6 +110,41 @@ fn ascii_lower(value: &JsString) -> Option<Cow<'_, JsString>> {
     } else {
         Some(Cow::Owned(JsString::from(text.to_ascii_lowercase())))
     }
+}
+
+/// ECMAScript `String.prototype.normalize("NFC")` for Unicode 17 and
+/// arbitrary UTF-16, including lone surrogates. The dependency carries newer
+/// tables, so unassigned Unicode 17 scalars and surrogates form barriers.
+/// Unchanged input is borrowed, with an allocation-free ASCII fast path.
+pub fn normalize_nfc(value: &JsString) -> Cow<'_, JsString> {
+    if value.as_str().is_some_and(str::is_ascii) {
+        return Cow::Borrowed(value);
+    }
+    fn flush(run: &mut String, out: &mut Vec<u16>) {
+        out.extend(run.nfc().flat_map(|c| {
+            let mut units = [0; 2];
+            let count = c.encode_utf16(&mut units).len();
+            units.into_iter().take(count)
+        }));
+        run.clear();
+    }
+    let mut out = Vec::with_capacity(value.len());
+    let mut run = String::new();
+    for point in char::decode_utf16(value.code_units()) {
+        match point {
+            Ok(c) if contains(ASSIGNED_RANGES, c as u32) => run.push(c),
+            Ok(c) => {
+                flush(&mut run, &mut out);
+                push_point(&mut out, c as u32);
+            }
+            Err(e) => {
+                flush(&mut run, &mut out);
+                out.push(e.unpaired_surrogate());
+            }
+        }
+    }
+    flush(&mut run, &mut out);
+    result(value, out)
 }
 
 /// ECMAScript default `String.prototype.toLowerCase` with pinned Unicode 17 data.

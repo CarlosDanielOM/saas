@@ -6,6 +6,12 @@ pub mod advanced;
 #[cfg(feature = "moderation-advanced-policy")]
 pub mod advanced_policy;
 
+#[cfg(feature = "moderation-variations")]
+pub mod variations;
+
+#[cfg(feature = "moderation-variations-provider")]
+pub mod variations_provider;
+
 #[cfg(feature = "moderation-emote-spam")]
 pub mod emote_spam;
 

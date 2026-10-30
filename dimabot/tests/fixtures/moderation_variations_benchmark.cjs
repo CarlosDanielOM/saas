@@ -1,0 +1,28 @@
+'use strict';
+// Source-backed pure-operation fixture and one isolated fresh-process sample.
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const lib=require('./moderation_variations_source.cjs');
+const readerPin=process.env.DIMA_VARIATIONS_BENCH_READER_SHA256;
+assert(/^[a-f0-9]{64}$/.test(readerPin||'') && lib.sha(fs.readFileSync(__filename))===readerPin,'independently pinned benchmark reader');
+const names=['term','key','build','spacing','patterns'];
+const units=s=>Array.from({length:s.length},(_,i)=>s.charCodeAt(i));
+const decode=u=>String.fromCharCode(...u);
+const wire=v=>units(JSON.stringify(v));
+const words=['  CAFÉ\tTest ','e\u0301clair','ΟΣ ΟΣΑ','İstanbul','rinn','foo bar','a.b','😀a','\ud800ab','cottage','zebra','stream'];
+function term(i){return words[i%words.length]+String(i);}
+function cases(api){return Array.from({length:32},(_,i)=>{const t=term(i),entry=api.buildVariation(t),next=api.buildVariation(term((i+1)%32));return {term:t,channel:`channel-${i}`,entry,rule:{patterns:[{id:`manual-${i}`,source:'dog',boundary:'anywhere',ignoreCase:false}],variations:{mode:i%2?'common':'broad',allowSpaces:true,entries:[entry,next],overrides:[{term:next.term,source:'c.t'}]}}};});}
+function invoke(api,name,c){switch(name){case 'term':return api.variationTerm(c.term);case 'key':return api.variationKey(c.channel,c.term);case 'build':return api.buildVariation(c.term);case 'spacing':return api.withVariationSpacing(c.entry,true,'broad');case 'patterns':return api.rulePatterns(c.rule);default:throw Error('unknown workload');}}
+function build(){const api=lib.realm(),pool=cases(api);assert.equal(new Set(pool.map(c=>c.term)).size,32);const workloads={};for(const name of names)workloads[name]=pool.map(c=>({term:units(c.term),channel:units(c.channel),result:wire(invoke(api,name,c))}));return {format:1,workloads};}
+function checksum(results){let h=2166136261;for(const r of results){for(const u of r)h=Math.imul(h^u,16777619)>>>0;h=Math.imul(h^65536,16777619)>>>0;}return h;}
+function external(dir){assert(path.isAbsolute(dir));const real=fs.realpathSync(dir),workspace=fs.realpathSync(path.join(lib.root,'..'));assert(real!==workspace&&!real.startsWith(workspace+path.sep));return real;}
+function bytes(){return JSON.stringify(build(),null,2)+'\n';}
+function report(input){return {format:1,inputSha256:lib.sha(input),benchmarkSha256:lib.sha(fs.readFileSync(__filename)),loaderSha256:lib.sha(lib.read('tests/fixtures/moderation_variations_source.cjs')),advancedLoaderSha256:lib.sha(lib.read('tests/fixtures/moderation_advanced_source.cjs')),nodeSha256:lib.nodeSha,versions:process.versions,re2Runtime:lib.re2Runtime,sourcePins:{...lib.pins,...lib.variationPins},transpiled:{...lib.compiled,...lib.variationCompiled},poolChecksums:Object.fromEntries(names.map(n=>[n,checksum(JSON.parse(input).workloads[n].map(c=>c.result))])),poolUniqueTerms:32};}
+function input(){const file=process.env.DIMA_VARIATIONS_BENCHMARK_FIXTURE;assert(file&&path.isAbsolute(file));const real=fs.realpathSync(file);external(path.dirname(real));const data=fs.readFileSync(real,'utf8'),hash=lib.sha(data);assert(/^[a-f0-9]{64}$/.test(process.env.DIMA_VARIATIONS_BENCHMARK_SHA256||''));assert.equal(hash,process.env.DIMA_VARIATIONS_BENCHMARK_SHA256);assert.equal(data,bytes(),'source golden fixture');return {data:JSON.parse(data),hash};}
+function actor(name){assert(names.includes(name));const {data,hash}=input(),api=lib.realm(),pool=cases(api),rounds=Number(process.env.DIMA_VARIATIONS_BENCH_ROUNDS||250);assert(Number.isSafeInteger(rounds)&&rounds>=1&&rounds<=500);for(const n of names){assert.equal(data.workloads[n].length,32);for(let i=0;i<32;i++){assert.deepEqual(units(pool[i].term),data.workloads[n][i].term);assert.deepEqual(units(pool[i].channel),data.workloads[n][i].channel);assert.deepEqual(wire(invoke(api,n,pool[i])),data.workloads[n][i].result);}}
+ if(name==='spacing')for(const c of pool){const first=invoke(api,name,c);assert.strictEqual(first,invoke(api,name,c),'shared cache identity');}
+ const count=rounds*32;for(let w=0;w<3;w++){const retained=new Array(count);let n=0;for(let i=0;i<rounds;i++)for(const c of pool)retained[n++]=invoke(api,name,c);assert.equal(n,count);}assert.equal(typeof global.gc,'function');global.gc();const results=new Array(count);let n=0;const start=process.hrtime.bigint();for(let i=0;i<rounds;i++)for(const c of pool)results[n++]=invoke(api,name,c);const elapsed=process.hrtime.bigint()-start;const projected=results.map(wire);for(let i=0;i<count;i++)assert.deepEqual(projected[i],data.workloads[name][i%32].result);return {format:1,actor:'node',workload:name,rounds,operations:count,warmups:3,warmupOperations:count*3,nanoseconds:elapsed.toString(),checksum:checksum(projected),inputSha256:hash,nodeSha256:lib.nodeSha,node:process.versions.node,abi:process.versions.modules,re2Runtime:lib.re2Runtime};}
+const [mode,arg,...extra]=process.argv.slice(2);assert.equal(extra.length,0);
+if(mode==='--write'){const dir=external(arg);assert.deepEqual(fs.readdirSync(dir),[]);const data=bytes();fs.writeFileSync(path.join(dir,'input.json'),data,{flag:'wx'});fs.writeFileSync(path.join(dir,'source-report.json'),JSON.stringify(report(data),null,2)+'\n',{flag:'wx'});console.log(JSON.stringify({inputSha256:lib.sha(data)}));}
+else if(mode==='--check'){const dir=external(arg),data=fs.readFileSync(path.join(dir,'input.json'),'utf8');assert.equal(data,bytes());assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'source-report.json'))),report(data));console.log(JSON.stringify({inputSha256:lib.sha(data),checked:true}));}
+else if(mode==='--actor')console.log(JSON.stringify(actor(arg)));
+else throw Error('usage: --write DIR | --check DIR | --actor WORKLOAD');
