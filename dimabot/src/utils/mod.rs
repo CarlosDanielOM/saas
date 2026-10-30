@@ -166,6 +166,8 @@ pub mod js_regexp_unicode;
 pub mod js_string;
 #[cfg(feature = "js-unicode17")]
 pub mod js_unicode;
+#[cfg(feature = "polar-cache-usage")]
+pub mod polar_cache_usage;
 #[cfg(feature = "js-regexp-unicode")]
 #[rustfmt::skip]
 mod js_regexp_unicode_data;
