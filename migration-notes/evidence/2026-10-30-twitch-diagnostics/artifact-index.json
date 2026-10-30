@@ -1,0 +1,303 @@
+{
+  "schemaVersion": 1,
+  "note": "Every payload under artifacts/, runs/, and reproduction-tools/ is indexed with original path, raw/stored SHA-256, and byte length. Gzip payloads preserve exact raw bytes. Immutable source bindings and both fixture attempts are retained; the failed attempt is marked as a test expectation error, not a passing result. Mutable task state snapshots and duplicate Node/SDK binaries are excluded.",
+  "files": [
+    {
+      "path": "artifacts/source-bindings.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/source-bindings.json",
+      "rawBytes": 399,
+      "rawSha256": "7014f2026daf7f224f3777c7b1a7a2d49a5e95e996ba54b4dc84808e20371854",
+      "storedBytes": 399,
+      "storedSha256": "7014f2026daf7f224f3777c7b1a7a2d49a5e95e996ba54b4dc84808e20371854",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/tested-delta-paths.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/tested-delta-paths.json",
+      "rawBytes": 354,
+      "rawSha256": "f7230c7155ef11f61ea74daadb205850c7b677c28945ab7417fe3970ffe55255",
+      "storedBytes": 354,
+      "storedSha256": "f7230c7155ef11f61ea74daadb205850c7b677c28945ab7417fe3970ffe55255",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/snapshot-isolation.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/snapshot-isolation.json",
+      "rawBytes": 235,
+      "rawSha256": "eca1f171d9f082d8f1439cf48e8b2515644f762f72d2f2102e50a247dcafa098",
+      "storedBytes": 235,
+      "storedSha256": "eca1f171d9f082d8f1439cf48e8b2515644f762f72d2f2102e50a247dcafa098",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/cache-maintenance.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/cache-maintenance.json",
+      "rawBytes": 2035,
+      "rawSha256": "05693bc19eab3dd641ff9edef0d653b2afc0df001696fd3726a482f82a634783",
+      "storedBytes": 2035,
+      "storedSha256": "05693bc19eab3dd641ff9edef0d653b2afc0df001696fd3726a482f82a634783",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/production-after-final.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/production-after-final.json",
+      "rawBytes": 27004,
+      "rawSha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "storedBytes": 27004,
+      "storedSha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/source-final.json",
+      "rawBytes": 178731,
+      "rawSha256": "848230d3bc5c69ad5b1a5631af7e936188c2cda071f26d5b7045a58f310bd916",
+      "storedBytes": 71645,
+      "storedSha256": "a37e7a500cd76c08cbf7e355577d50213594d6e2a79b2592002a004b37afa6f7",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/attempt1/delete/delete_twitch_message_cases.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/attempt1/delete/delete_twitch_message_cases.json",
+      "rawBytes": 95962,
+      "rawSha256": "b96ced4a23539cf87f8dee0a13d5c98b30732e8b91a84c314f2884453ec8df0f",
+      "storedBytes": 3964,
+      "storedSha256": "eb9e49c619b86771d1461b4425758592a092515200170e5c9e285dca1fd3e79e",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/attempt1/diagnostics/twitch_function_diagnostics.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/attempt1/diagnostics/twitch_function_diagnostics.json",
+      "rawBytes": 5183,
+      "rawSha256": "e97029dacfcf6316b338a5efcbab1aa601f8849f24e45faa7b486a8e2deef741",
+      "storedBytes": 5183,
+      "storedSha256": "e97029dacfcf6316b338a5efcbab1aa601f8849f24e45faa7b486a8e2deef741",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/attempt1/fixture-digests.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/attempt1/fixture-digests.json",
+      "rawBytes": 258,
+      "rawSha256": "b1305d1a7d22e4266a253569217ee59d3873c9d7aa46a2fc26cc3bbe17a0bdf1",
+      "storedBytes": 258,
+      "storedSha256": "b1305d1a7d22e4266a253569217ee59d3873c9d7aa46a2fc26cc3bbe17a0bdf1",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/attempt1/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/attempt1/source-final.json",
+      "rawBytes": 178731,
+      "rawSha256": "77c9c302831aa531ba6f2a704ed39f8d5087d2952b15e59a4a74c1892c7d7470",
+      "storedBytes": 71646,
+      "storedSha256": "250a8aba668a66cd43a5d5009862a2dabd598f97ad1a17edeca3ae0b15296cec",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/attempt2/delete/delete_twitch_message_cases.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/attempt2/delete/delete_twitch_message_cases.json",
+      "rawBytes": 95962,
+      "rawSha256": "b96ced4a23539cf87f8dee0a13d5c98b30732e8b91a84c314f2884453ec8df0f",
+      "storedBytes": 3964,
+      "storedSha256": "eb9e49c619b86771d1461b4425758592a092515200170e5c9e285dca1fd3e79e",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/attempt2/diagnostics/twitch_function_diagnostics.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/attempt2/diagnostics/twitch_function_diagnostics.json",
+      "rawBytes": 5183,
+      "rawSha256": "1a29ecacc16a11112698a963923fd37ea6d17ed84da3d0c28e57cb67104596af",
+      "storedBytes": 5183,
+      "storedSha256": "1a29ecacc16a11112698a963923fd37ea6d17ed84da3d0c28e57cb67104596af",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/attempt2/fixture-digests.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/twitch-diagnostics/attempt2/fixture-digests.json",
+      "rawBytes": 258,
+      "rawSha256": "8e7da8d1a4e3446eb33509bae528bd5e2ad8c3f55ab398e2f2d57a2e17dc79e7",
+      "storedBytes": 258,
+      "storedSha256": "8e7da8d1a4e3446eb33509bae528bd5e2ad8c3f55ab398e2f2d57a2e17dc79e7",
+      "compression": "none"
+    },
+    {
+      "path": "runs/final/format-1793367274471263742-log",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793367274471263742.log",
+      "rawBytes": 1833,
+      "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "storedBytes": 1833,
+      "storedSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "compression": "none"
+    },
+    {
+      "path": "runs/final/format-1793367274471263742-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793367274471263742-receipt.json",
+      "rawBytes": 182629,
+      "rawSha256": "c62e8af17a52db1b0de4134f14752191cb742d281178479947bdfb2ae9ba7d73",
+      "storedBytes": 72235,
+      "storedSha256": "466bd64e3070afc1a2a185add57464ae119100a6cacadeca4d0342b5cca119f6",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/final/node-1793367306739481771-log",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793367306739481771.log",
+      "rawBytes": 237,
+      "rawSha256": "6c242c77975dd6492f9f96df286c46f0edb6d58f27464711315986548aed4c75",
+      "storedBytes": 237,
+      "storedSha256": "6c242c77975dd6492f9f96df286c46f0edb6d58f27464711315986548aed4c75",
+      "compression": "none"
+    },
+    {
+      "path": "runs/final/node-1793367306739481771-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793367306739481771-receipt.json",
+      "rawBytes": 182505,
+      "rawSha256": "ebb8128f79382355c9dfc80f38e48f0dde28de042ee51e344189bcdc7ff5928e",
+      "storedBytes": 72197,
+      "storedSha256": "e18bfb11f39f0a7ab693640cf3734db6cffc574f93e9626cf74d1f04b7eaa9d4",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/failed-attempt/compiler-fixtures-1793367320762131497-log",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793367320762131497.log",
+      "rawBytes": 3949,
+      "rawSha256": "7ccf46453661ff792bc92e6a6a96e7f11cfb179042f5f909bada0c39aacfdad2",
+      "storedBytes": 3949,
+      "storedSha256": "7ccf46453661ff792bc92e6a6a96e7f11cfb179042f5f909bada0c39aacfdad2",
+      "compression": "none"
+    },
+    {
+      "path": "runs/failed-attempt/compiler-fixtures-1793367320762131497-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793367320762131497-receipt.json",
+      "rawBytes": 182712,
+      "rawSha256": "46ec57d9b96cb162051e7f20d01a41fd4f4dfdcbec8557c55feeb7e89490aa6a",
+      "storedBytes": 72335,
+      "storedSha256": "e16b8bff8fbb5de7acbfd839bbffb6d7d8c3afab5129bbad01866f53eea1ef06",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/final/node-1793367385515642920-log",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793367385515642920.log",
+      "rawBytes": 237,
+      "rawSha256": "31efe4b25f64539e4d425eb6ff23cd33b9bc856b4aae0fccea7233c0ef0059a1",
+      "storedBytes": 237,
+      "storedSha256": "31efe4b25f64539e4d425eb6ff23cd33b9bc856b4aae0fccea7233c0ef0059a1",
+      "compression": "none"
+    },
+    {
+      "path": "runs/final/node-1793367385515642920-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793367385515642920-receipt.json",
+      "rawBytes": 182506,
+      "rawSha256": "98be2a6771f379a39d9d7d4264dd93cf524b468f83f311674426c9837dd59281",
+      "storedBytes": 72197,
+      "storedSha256": "98713372d70a3618f94a64d6857d578c7d3ce0060e6f04372564fcc39333971b",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/final/compiler-fixtures-1793367404207072126-log",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793367404207072126.log",
+      "rawBytes": 5490,
+      "rawSha256": "ce91aa6e5fc62f764b40eee5c01cdde7e52606eaa877b9ba0b70f5406e394e97",
+      "storedBytes": 5490,
+      "storedSha256": "ce91aa6e5fc62f764b40eee5c01cdde7e52606eaa877b9ba0b70f5406e394e97",
+      "compression": "none"
+    },
+    {
+      "path": "runs/final/compiler-fixtures-1793367404207072126-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-fixtures-1793367404207072126-receipt.json",
+      "rawBytes": 182650,
+      "rawSha256": "4416582e8aeac777820f781d40d27392aa7b53694d6a15b504e94312259703f5",
+      "storedBytes": 72251,
+      "storedSha256": "ca393d2496223e09967264aa125db9b4b38a4979a8c9547bc769a1889c8110ae",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/final/compiler-1793367558103768384-log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793367558103768384.log",
+      "rawBytes": 4670,
+      "rawSha256": "220d9d42d54461485e27eefa1c72caaba8fad672d7355eb0161e383c62dcfca0",
+      "storedBytes": 2006,
+      "storedSha256": "a532c237d85706e3c3b9c6bd6b6de32e30498ab2bc200f9a7e35a9fb52cdffbb",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/final/compiler-1793367558103768384-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793367558103768384-receipt.json",
+      "rawBytes": 182634,
+      "rawSha256": "cec1e87a693ad280ace310ee23d4a0f63f42b5f65958222973279b99cb9dbd22",
+      "storedBytes": 72237,
+      "storedSha256": "68308a6c111b36065627419fcb73824d3e97994aef17ae18547d374b4f5a342a",
+      "compression": "gzip"
+    },
+    {
+      "path": "reproduction-tools/twitch_diagnostics_node1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/twitch_diagnostics_node1.sh",
+      "rawBytes": 1278,
+      "rawSha256": "b0ebf3046f47dbf783a06b44bd0ac33e890db8c19004892912f75c2eb67159b3",
+      "storedBytes": 1278,
+      "storedSha256": "b0ebf3046f47dbf783a06b44bd0ac33e890db8c19004892912f75c2eb67159b3",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/twitch_diagnostics_node2.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/twitch_diagnostics_node2.sh",
+      "rawBytes": 1278,
+      "rawSha256": "9f66d55dd79f80956da3e82598fba8d4136570dfe5f8649d14c97e06eb1f4bf1",
+      "storedBytes": 1278,
+      "storedSha256": "9f66d55dd79f80956da3e82598fba8d4136570dfe5f8649d14c97e06eb1f4bf1",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/twitch_diagnostics_quality1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/twitch_diagnostics_quality1.sh",
+      "rawBytes": 2245,
+      "rawSha256": "f73e33a11e830bfc5b4747b6a129b545b4b8ac2a99e2c57fa27cb28e7dc3ddd1",
+      "storedBytes": 2245,
+      "storedSha256": "f73e33a11e830bfc5b4747b6a129b545b4b8ac2a99e2c57fa27cb28e7dc3ddd1",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/twitch_diagnostics_quality2.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/twitch_diagnostics_quality2.sh",
+      "rawBytes": 2245,
+      "rawSha256": "3d0463c6fff6ed676c0ef2a7e43c226fb596fb506dc8a6d72c09e746b0d51de3",
+      "storedBytes": 2245,
+      "storedSha256": "3d0463c6fff6ed676c0ef2a7e43c226fb596fb506dc8a6d72c09e746b0d51de3",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/twitch_diagnostics_token_regression1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/twitch_diagnostics_token_regression1.sh",
+      "rawBytes": 176,
+      "rawSha256": "9726b84d0f328e6fc81c6ed572e2f524893a9beb8f6f4613a3e230557809d9c0",
+      "storedBytes": 176,
+      "storedSha256": "9726b84d0f328e6fc81c6ed572e2f524893a9beb8f6f4613a3e230557809d9c0",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/trim_twitch_diagnostics_cache.py",
+      "origin": "/tmp/dimabot-full-migration-tools/trim_twitch_diagnostics_cache.py",
+      "rawBytes": 2080,
+      "rawSha256": "cb97b03d0888f5bbb09739734cbb7398306c9059ac2b323ff28e1624ecc79702",
+      "storedBytes": 2080,
+      "storedSha256": "cb97b03d0888f5bbb09739734cbb7398306c9059ac2b323ff28e1624ecc79702",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/validate.py",
+      "origin": "/tmp/dimabot-full-migration-tools/validate.py",
+      "rawBytes": 12955,
+      "rawSha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+      "storedBytes": 12955,
+      "storedSha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/final_readback.py",
+      "origin": "/tmp/dimabot-full-migration-tools/final_readback.py",
+      "rawBytes": 1324,
+      "rawSha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14",
+      "storedBytes": 1324,
+      "storedSha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14",
+      "compression": "none"
+    }
+  ]
+}

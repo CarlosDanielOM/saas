@@ -1,0 +1,8 @@
+{
+  "excluded_unverified_files": [
+    "dimabot/tests/lossless_json_document_benchmark.rs",
+    "dimabot/tests/fixtures/lossless_json_document_benchmark.cjs"
+  ],
+  "working_drafts_preserved": true,
+  "restored_in_snapshot_only": []
+}

@@ -1,0 +1,58 @@
+{
+  "scope": "completed task-owned private debug test executables only; no shared caches, source, release artifacts or production resources",
+  "cacheBefore": 8479768576,
+  "removed": [
+    {
+      "path": "target/debug/deps/timer_chat_schema_types-5c56a031003bce08",
+      "bytes": 4903072,
+      "allocatedBytes": 4907008,
+      "sha256": "d6327c2078b6c7ccd9f003665390cdae350a2d8824f4c16a97dcec1edf6c9acb",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/schema_named_types-470502182ffbb454",
+      "bytes": 6044352,
+      "allocatedBytes": 6049792,
+      "sha256": "77bcc5ec4f9f9def62e29e2b3f1ade78604c7d07f839399850487becee1ee06c",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/additional_schemas-763538cb842a248f",
+      "bytes": 31133336,
+      "allocatedBytes": 31137792,
+      "sha256": "9d7be7589700b0d79a1b176dd392c33ee9fb1e6b37e06db2dee88147fc3f182d",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/application_schemas-f06a092248772653",
+      "bytes": 30882032,
+      "allocatedBytes": 30887936,
+      "sha256": "3ecc6016fefb58f155ce72814d8cfd5e5e05839c7af609afb79fa5b8e5022f2b",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_action_log_schema-a8447063c2997e37",
+      "bytes": 31465920,
+      "allocatedBytes": 31473664,
+      "sha256": "680bea63f674764b122503174dd33da8bdbbc742d5a140563690f34af5c8eff4",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/timer_chat_schema_types-5c7517969b8f5caf",
+      "bytes": 4734832,
+      "allocatedBytes": 4734976,
+      "sha256": "2d3080943f007f98414e6810e1e4718c0d833559af25d75e0cd2412aa59bf31c",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/schema_named_types-d40de2a091964ece",
+      "bytes": 5880432,
+      "allocatedBytes": 5885952,
+      "sha256": "851a7c758a38395363a59c6049c2a01ce21482ea66feac351ef5b890f9d1a51d",
+      "removed": true
+    }
+  ],
+  "status": "complete",
+  "freedAllocatedBytes": 115077120,
+  "cacheAfter": 8364691456
+}

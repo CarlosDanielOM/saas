@@ -1,0 +1,167 @@
+{
+  "schema": 1,
+  "versions": {
+    "node": "24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "icu": "78.3",
+    "unicode": "17.0",
+    "typescript": "5.9.3"
+  },
+  "nodeSha": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "boundary": "actual declarations with mocked class, cache, logger and notification boundaries; class-throw is synthetic because the real class catches lookup errors",
+  "hashes": {
+    "src/utils/tokens.ts": "b5265073a62aee18e5e3244628be6aa2ed8ae2aba58f05a3ab70d83987796ce4",
+    "src/utils/header.ts": "2fd03bce05402e6a63bf4a0713c9df714efe7fdd3d46d47fb747a8bc1bce0000",
+    "src/functions/chats/delete_message.chat.ts": "5b105c9814efab2f1ca0863f14cd8516378bab98933a5dbdf89b2cc2d9c89878",
+    "src/functions/mod.rs": "85ba91dbf08e6bb4c0e98921eef33dc7d1f1ef4f24db4a4663aff9810e15b75e",
+    "src/utils/tokens.rs": "1709f92db0198cbe0204f1455c705e878cf765731ca5374873a4ffb85fbe4c2a",
+    "src/functions/chats/delete_message.chat.rs": "701eede65f59d6908a002cd6ef75e8ed39f0ddfdd951e64958dc69753d27b197",
+    "src/utils/test_http.rs": "8f7b1c3bfe2da59fe49903da00d5487053b7549fb2b130ee8f2bf15a08ee3e1e",
+    "tests/twitch_function_diagnostics.rs": "ff1daeef37c51b5175172cb30e828d3e55af7c8319940ddc28403f10e1708465",
+    "tests/support/sha256.rs": "be1fbeade9ca428358081d30b47d0241734db05c94d343634b7e04520c42cf6a",
+    "tests/fixtures/twitch_function_diagnostics_reference.cjs": "cc98b9171e343e81faa39d3497f2c58b824175aada562c302b420622ac34ad0b",
+    "tests/fixtures/twitch_functions_cases.json": "0e7fc6da88e99233a6ee9c6ed04741676fe31ab90deff7ebaea8e26284be25a5",
+    "Cargo.toml": "97096e0f4073d8c175d13ba8e4111685a8f3cdb8502072937ba10d3e106875d3",
+    "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+    "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7"
+  },
+  "cases": [
+    {
+      "mode": "missing",
+      "response": {
+        "error": true,
+        "message": "Bot's account does not have the permissions required"
+      },
+      "calls": [
+        [
+          "account",
+          "698614112",
+          "twitch"
+        ],
+        [
+          "log",
+          {
+            "function": "getBotToken",
+            "userId": "698614112",
+            "action": "bot_token_unavailable",
+            "reason": "getAccountTokenById returned null for the bot account; bot-executed features (moderation, clips, shoutouts) will fail until the bot reauthorizes"
+          },
+          {
+            "channelId": "698614112",
+            "destination": "both"
+          }
+        ],
+        [
+          "notify",
+          "Bot does not have valid authentication. Please authorize the bot account.",
+          "error"
+        ]
+      ]
+    },
+    {
+      "mode": "success",
+      "response": {
+        "error": false,
+        "message": "Success",
+        "header": {
+          "Client-Id": "fixture-client",
+          "Authorization": "Bearer fixture-token",
+          "Content-Type": "application/json"
+        }
+      },
+      "calls": [
+        [
+          "account",
+          "698614112",
+          "twitch"
+        ],
+        [
+          "client",
+          "Tokens"
+        ],
+        [
+          "hSet",
+          "app:twitch:bot",
+          "access_token",
+          "fixture-token"
+        ]
+      ]
+    },
+    {
+      "mode": "mirror-throw",
+      "response": {
+        "error": true,
+        "message": "Bot's account does not have the permissions required"
+      },
+      "calls": [
+        [
+          "account",
+          "698614112",
+          "twitch"
+        ],
+        [
+          "client",
+          "Tokens"
+        ],
+        [
+          "hSet",
+          "app:twitch:bot",
+          "access_token",
+          "fixture-token"
+        ],
+        [
+          "log",
+          {
+            "function": "getBotToken",
+            "userId": "698614112",
+            "action": "bot_token_exception",
+            "reason": "fixture mirror error"
+          },
+          {
+            "channelId": "698614112",
+            "destination": "both"
+          }
+        ],
+        [
+          "notify",
+          "Bot does not have valid authentication. Please authorize the bot account.",
+          "error"
+        ]
+      ]
+    },
+    {
+      "mode": "class-throw",
+      "response": {
+        "error": true,
+        "message": "Bot's account does not have the permissions required"
+      },
+      "calls": [
+        [
+          "account",
+          "698614112",
+          "twitch"
+        ],
+        [
+          "log",
+          {
+            "function": "getBotToken",
+            "userId": "698614112",
+            "action": "bot_token_exception",
+            "reason": "fixture class error"
+          },
+          {
+            "channelId": "698614112",
+            "destination": "both"
+          }
+        ],
+        [
+          "notify",
+          "Bot does not have valid authentication. Please authorize the bot account.",
+          "error"
+        ]
+      ]
+    }
+  ]
+}

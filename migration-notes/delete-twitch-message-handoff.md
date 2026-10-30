@@ -1,19 +1,9 @@
-# Delete Twitch message adapter
+# Delete Twitch message adapter handoff
 
-The native `delete_message` adapter is a **verified partial local feature**.
-The TypeScript source remains live. The final source-bound validation passed at
-commit `df3223f28769060202a216b1c8baf68a6cdadf31`; source callers have not
-adopted the native function. The adapter is not deployed, and no deployment or
-push is implied.
+The deletion adapter remains a **partial local feature**, with a later verified update for flat response serialization, directory account-token acquisition, fenced token-cache publication, and safe diagnostics. The original adapter evidence remains in the [baseline evidence package](evidence/2026-10-30-delete-twitch-message/README.md); the follow-up source binding, corrected fixtures, run history, and final readback are indexed in the [Twitch diagnostics evidence package](evidence/2026-10-30-twitch-diagnostics/README.md).
 
-See [`delete-twitch-message.md`](delete-twitch-message.md) for the bounded
-behavior, verified outcomes and open parity gaps. The indexed package at
-[`evidence/2026-10-30-delete-twitch-message/README.md`](evidence/2026-10-30-delete-twitch-message/README.md)
-preserves the exact source bindings, three Node/compiler attempts, Clippy
-corrections, fixtures, cleanup audit, final readback and reproduction tools.
+The follow-up candidate is bound to commit `c49f654206aa5a68331d0e57fa77ab2b983acb58`, tree `5d9cdc6ab77860e1fc0be8fb094f184dc37db8bc854cff68ff8bd55771feee0b`, and 1,493 inputs (1,483 Git plus ten reused SDK inputs). Formatting, corrected Node/source replay, final fixtures, and supplemental token lifecycle checks passed. The first fixture compiler attempt failed only on the incorrect expected URL literal: the loopback base `/` normalizes `../secret-url` to `/secret-url`. Only the expected literal was corrected before the passing final run.
 
-This is partial because the reused native JSON parser has a 128-level depth
-limit while JavaScript `JSON.parse` accepts the tested depth 129 and 256
-payloads. The feature also has documented logger error/stack and concrete
-header-error boundaries. The unrelated deep JSON parser work remains
-unverified and is not credited to this feature.
+The shared flat JSON response path passes exact depth-129/depth-256 source wire checks. A native depth-4,096 check covers native capability only; it does not establish Node serialization parity there. The deletion oracle has 125 exact wire matches and one synthetic source-only logger throw. The four-case header oracle includes a synthetic class-throw boundary; the concrete SDK catches asynchronous lookup errors, so the mock throw is not represented as normal SDK behavior. Private Mongo/Redis missing/success/WRONGTYPE/no-HTTP cases passed. Safe diagnostic categories redact raw URL, credentials, and body content.
+
+The feature remains partial for strict URL/header and redirect policy differences, native error/backtrace wording, and the source-only synthetic logger-throw boundary. The TypeScript action caller remains active. There was no source retirement, caller adoption, deployment, push, or benchmark. Final readback found 18 production records unchanged and zero task-owned resources.

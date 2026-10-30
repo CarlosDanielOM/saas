@@ -1,0 +1,10 @@
+{
+  "delete": {
+    "fixture_sha256": "b96ced4a23539cf87f8dee0a13d5c98b30732e8b91a84c314f2884453ec8df0f",
+    "cases": 126
+  },
+  "diagnostics": {
+    "fixture_sha256": "1a29ecacc16a11112698a963923fd37ea6d17ed84da3d0c28e57cb67104596af",
+    "cases": 4
+  }
+}

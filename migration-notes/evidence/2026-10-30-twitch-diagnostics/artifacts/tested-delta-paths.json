@@ -1,0 +1,9 @@
+[
+  "dimabot/src/functions/chats/delete_message.chat.rs",
+  "dimabot/src/functions/mod.rs",
+  "dimabot/src/utils/tokens.rs",
+  "dimabot/tests/delete_twitch_message.rs",
+  "dimabot/tests/fixtures/delete_twitch_message_reference.cjs",
+  "dimabot/tests/twitch_function_diagnostics.rs",
+  "dimabot/tests/fixtures/twitch_function_diagnostics_reference.cjs"
+]
