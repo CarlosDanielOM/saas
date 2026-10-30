@@ -22,12 +22,12 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-30 OpenRouter app-attribution source retirement and verification",
+    "asOf": "2026-10-30 functional ordinary application schema retirement",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 37,
+    "locallyCompleteMappings": 46,
     "partialRows": 25,
-    "archivedSourceSnapshots": 51,
-    "liveBaselineTypeScriptFiles": 755,
+    "archivedSourceSnapshots": 60,
+    "liveBaselineTypeScriptFiles": 746,
     "excludedReactEmailTemplatesIncludedInLiveCount": 6,
     "totalCompletionPercentage": null,
     "totalMigrationCompletion": "not-established; full dependency closure audit remains incomplete"
@@ -37495,40 +37495,74 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/eventsub.schema.ts",
+        "sha256": "9d641eb036d2dba0907ab5b70bfb58265bbd7174915ddfd8f87b676319d75bf3",
+        "nativeAreaReference": "dimabot/src/schemas/eventsub.schema.rs; migration-notes/functional-migration-batches-2026-10-30.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/eventsub.schema.rs: concrete native model descriptor and typed values",
+        "dimabot/src/schemas/schema.rs: shared schema construction, validation, persistence and index support",
+        "migration-notes/functional-migration-batches-2026-10-30.md: frozen batch scope and verification summary",
+        "dimabot/src/schemas/ordinary_model_values.rs: shared typed BSON projection helpers",
+        "dimabot/tests/ordinary_application_schemas.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The Mongoose model/schema runtime contract is represented by opt-in native Rust schema descriptors and MongoDB driver repositories; npm Mongoose internals are not a required runtime dependency.",
+        "Raw BSON documents and strict typed views remain distinct; strict projections do not claim arbitrary JavaScript prototype or Mongoose document identity.",
+        "This row records the verified local schema/type dependency closure. Application caller adoption, cutover, and deployment were not verified."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/schemas/eventsub.schema.ts: exact retired source and exported model contract"
+        ],
+        "runtimeStatus": "TypeScript source retired; native model feature is local and opt-in. Caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/ordinary_application_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ordinary_application_schemas.rs",
+          "dimabot/tests/follow_defense_schemas.rs",
+          "migration-notes/functional-migration-batches-2026-10-30.md"
+        ],
+        "status": "The batch passed 11 unique tests, five timezone replay invocations, actual-source checks, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile and all-feature/all-target strict Clippy. The existing BitsStore source/private-Mongo fixture also passed after retirement. See the batch note for scope and limits."
       },
       "exports": [
         {
           "name": "ICheerTiers",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ICheerTiers maps to the native eventsub schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/eventsub.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "ICondition",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ICondition maps to the native eventsub schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/eventsub.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "IEventsub",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IEventsub maps to the native eventsub schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/eventsub.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "ITransport",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ITransport maps to the native eventsub schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/eventsub.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         }
       ],
       "imports": [
@@ -37538,15 +37572,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose provided schema construction, model export and casting/default/index behavior for this source module.",
+          "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
+          "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
+          "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/extension_wallet_transaction.schema.ts",
@@ -37637,50 +37671,90 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/follow_attack_log.schema.ts",
+        "sha256": "418077f7dae3dbfbea4e800eb1444920de2c202828dbe97b87c3e074cea0b032",
+        "nativeAreaReference": "dimabot/src/schemas/follow_attack_log.schema.rs; migration-notes/functional-migration-batches-2026-10-30.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/follow_attack_log.schema.rs: concrete native model descriptor and typed values",
+        "dimabot/src/schemas/schema.rs: shared schema construction, validation, persistence and index support",
+        "migration-notes/functional-migration-batches-2026-10-30.md: frozen batch scope and verification summary",
+        "dimabot/src/schemas/follow_defense_schema_values.rs: follow-defense value helpers",
+        "dimabot/tests/follow_defense_schemas.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The Mongoose model/schema runtime contract is represented by opt-in native Rust schema descriptors and MongoDB driver repositories; npm Mongoose internals are not a required runtime dependency.",
+        "Raw BSON documents and strict typed views remain distinct; strict projections do not claim arbitrary JavaScript prototype or Mongoose document identity.",
+        "This row records the verified local schema/type dependency closure. Application caller adoption, cutover, and deployment were not verified."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/schemas/follow_attack_log.schema.ts: exact retired source and exported model contract"
+        ],
+        "runtimeStatus": "TypeScript source retired; native model feature is local and opt-in. Caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/follow_defense_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ordinary_application_schemas.rs",
+          "dimabot/tests/follow_defense_schemas.rs",
+          "migration-notes/functional-migration-batches-2026-10-30.md"
+        ],
+        "status": "The batch passed 11 unique tests, five timezone replay invocations, actual-source checks, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile and all-feature/all-target strict Clippy. The existing BitsStore source/private-Mongo fixture also passed after retirement. See the batch note for scope and limits."
       },
       "exports": [
         {
           "name": "FollowAttackLogSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "FollowAttackLogSchema maps to the native follow_attack_log schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/follow_attack_log.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "FollowDefenseMode",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "FollowDefenseMode maps to the native follow_attack_log schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/follow_attack_log.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "FollowDefenseTriggerSource",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "FollowDefenseTriggerSource maps to the native follow_attack_log schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/follow_attack_log.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "IFollowAttackLog",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IFollowAttackLog maps to the native follow_attack_log schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/follow_attack_log.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "IFollowAttackRaidInfo",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IFollowAttackRaidInfo maps to the native follow_attack_log schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/follow_attack_log.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "IFollowAttackTrackedFollow",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IFollowAttackTrackedFollow maps to the native follow_attack_log schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/follow_attack_log.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         }
       ],
       "imports": [
@@ -37690,15 +37764,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose provided schema construction, model export and casting/default/index behavior for this source module.",
+          "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
+          "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
+          "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/follow_defense_action.schema.ts",
@@ -37708,35 +37782,66 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/follow_defense_action.schema.ts",
+        "sha256": "0b56200c8aa2ad0c29668c82da87354517774c2e523e448868daf4c7fafc9cf4",
+        "nativeAreaReference": "dimabot/src/schemas/follow_defense_action.schema.rs; migration-notes/functional-migration-batches-2026-10-30.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/follow_defense_action.schema.rs: concrete native model descriptor and typed values",
+        "dimabot/src/schemas/schema.rs: shared schema construction, validation, persistence and index support",
+        "migration-notes/functional-migration-batches-2026-10-30.md: frozen batch scope and verification summary",
+        "dimabot/src/schemas/follow_defense_schema_values.rs: follow-defense value helpers",
+        "dimabot/tests/follow_defense_schemas.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The Mongoose model/schema runtime contract is represented by opt-in native Rust schema descriptors and MongoDB driver repositories; npm Mongoose internals are not a required runtime dependency.",
+        "Raw BSON documents and strict typed views remain distinct; strict projections do not claim arbitrary JavaScript prototype or Mongoose document identity.",
+        "This row records the verified local schema/type dependency closure. Application caller adoption, cutover, and deployment were not verified."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/schemas/follow_defense_action.schema.ts: exact retired source and exported model contract"
+        ],
+        "runtimeStatus": "TypeScript source retired; native model feature is local and opt-in. Caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/follow_defense_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ordinary_application_schemas.rs",
+          "dimabot/tests/follow_defense_schemas.rs",
+          "migration-notes/functional-migration-batches-2026-10-30.md"
+        ],
+        "status": "The batch passed 11 unique tests, five timezone replay invocations, actual-source checks, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile and all-feature/all-target strict Clippy. The existing BitsStore source/private-Mongo fixture also passed after retirement. See the batch note for scope and limits."
       },
       "exports": [
         {
           "name": "FollowDefenseAction",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "FollowDefenseAction maps to the native follow_defense_action schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/follow_defense_action.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "FollowDefenseActionSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "FollowDefenseActionSchema maps to the native follow_defense_action schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/follow_defense_action.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "FollowDefenseControlSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "FollowDefenseControlSchema maps to the native follow_defense_action schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/follow_defense_action.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         }
       ],
       "imports": [
@@ -37746,15 +37851,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose provided schema construction, model export and casting/default/index behavior for this source module.",
+          "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
+          "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
+          "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/follow_defense_settings.schema.ts",
@@ -37820,30 +37925,58 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/follow_hate_raid_source.schema.ts",
+        "sha256": "8b2321fcf3eed917304bd3d2e03bf975b5351a3a37494cbe1e8ad54947c1215e",
+        "nativeAreaReference": "dimabot/src/schemas/follow_hate_raid_source.schema.rs; migration-notes/functional-migration-batches-2026-10-30.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/follow_hate_raid_source.schema.rs: concrete native model descriptor and typed values",
+        "dimabot/src/schemas/schema.rs: shared schema construction, validation, persistence and index support",
+        "migration-notes/functional-migration-batches-2026-10-30.md: frozen batch scope and verification summary",
+        "dimabot/src/schemas/follow_defense_schema_values.rs: follow-defense value helpers",
+        "dimabot/tests/follow_defense_schemas.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The Mongoose model/schema runtime contract is represented by opt-in native Rust schema descriptors and MongoDB driver repositories; npm Mongoose internals are not a required runtime dependency.",
+        "Raw BSON documents and strict typed views remain distinct; strict projections do not claim arbitrary JavaScript prototype or Mongoose document identity.",
+        "This row records the verified local schema/type dependency closure. Application caller adoption, cutover, and deployment were not verified."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/schemas/follow_hate_raid_source.schema.ts: exact retired source and exported model contract"
+        ],
+        "runtimeStatus": "TypeScript source retired; native model feature is local and opt-in. Caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/follow_defense_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ordinary_application_schemas.rs",
+          "dimabot/tests/follow_defense_schemas.rs",
+          "migration-notes/functional-migration-batches-2026-10-30.md"
+        ],
+        "status": "The batch passed 11 unique tests, five timezone replay invocations, actual-source checks, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile and all-feature/all-target strict Clippy. The existing BitsStore source/private-Mongo fixture also passed after retirement. See the batch note for scope and limits."
       },
       "exports": [
         {
           "name": "FollowHateRaidSourceSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "FollowHateRaidSourceSchema maps to the native follow_hate_raid_source schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/follow_hate_raid_source.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "IFollowHateRaidSource",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IFollowHateRaidSource maps to the native follow_hate_raid_source schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/follow_hate_raid_source.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         }
       ],
       "imports": [
@@ -37853,15 +37986,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose provided schema construction, model export and casting/default/index behavior for this source module.",
+          "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
+          "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
+          "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/follow_relationship_ledger.schema.ts",
@@ -39138,35 +39271,66 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/site_analytics.schema.ts",
+        "sha256": "6a187e768b8a246143a9ea04b8000583b60090639b0a904fc265bed22b6090d3",
+        "nativeAreaReference": "dimabot/src/schemas/site_analytics.schema.rs; migration-notes/functional-migration-batches-2026-10-30.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/site_analytics.schema.rs: concrete native model descriptor and typed values",
+        "dimabot/src/schemas/schema.rs: shared schema construction, validation, persistence and index support",
+        "migration-notes/functional-migration-batches-2026-10-30.md: frozen batch scope and verification summary",
+        "dimabot/src/schemas/ordinary_model_values.rs: shared typed BSON projection helpers",
+        "dimabot/tests/ordinary_application_schemas.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The Mongoose model/schema runtime contract is represented by opt-in native Rust schema descriptors and MongoDB driver repositories; npm Mongoose internals are not a required runtime dependency.",
+        "Raw BSON documents and strict typed views remain distinct; strict projections do not claim arbitrary JavaScript prototype or Mongoose document identity.",
+        "This row records the verified local schema/type dependency closure. Application caller adoption, cutover, and deployment were not verified."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/schemas/site_analytics.schema.ts: exact retired source and exported model contract"
+        ],
+        "runtimeStatus": "TypeScript source retired; native model feature is local and opt-in. Caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/ordinary_application_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ordinary_application_schemas.rs",
+          "dimabot/tests/follow_defense_schemas.rs",
+          "migration-notes/functional-migration-batches-2026-10-30.md"
+        ],
+        "status": "The batch passed 11 unique tests, five timezone replay invocations, actual-source checks, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile and all-feature/all-target strict Clippy. The existing BitsStore source/private-Mongo fixture also passed after retirement. See the batch note for scope and limits."
       },
       "exports": [
         {
           "name": "ILiveChannel",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ILiveChannel maps to the native site_analytics schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/site_analytics.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "ISiteAnalytics",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ISiteAnalytics maps to the native site_analytics schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/site_analytics.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "SiteAnalyticsSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "SiteAnalyticsSchema maps to the native site_analytics schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/site_analytics.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         }
       ],
       "imports": [
@@ -39176,15 +39340,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose provided schema construction, model export and casting/default/index behavior for this source module.",
+          "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
+          "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
+          "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/stream_activity.schema.ts",
@@ -39459,30 +39623,58 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/temporary_moderator.schema.ts",
+        "sha256": "1eeab71be86ccb0df0ff7c8404cce8580d27fd280853293175433e72155ef146",
+        "nativeAreaReference": "dimabot/src/schemas/temporary_moderator.schema.rs; migration-notes/functional-migration-batches-2026-10-30.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/temporary_moderator.schema.rs: concrete native model descriptor and typed values",
+        "dimabot/src/schemas/schema.rs: shared schema construction, validation, persistence and index support",
+        "migration-notes/functional-migration-batches-2026-10-30.md: frozen batch scope and verification summary",
+        "dimabot/src/schemas/ordinary_model_values.rs: shared typed BSON projection helpers",
+        "dimabot/tests/ordinary_application_schemas.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The Mongoose model/schema runtime contract is represented by opt-in native Rust schema descriptors and MongoDB driver repositories; npm Mongoose internals are not a required runtime dependency.",
+        "Raw BSON documents and strict typed views remain distinct; strict projections do not claim arbitrary JavaScript prototype or Mongoose document identity.",
+        "This row records the verified local schema/type dependency closure. Application caller adoption, cutover, and deployment were not verified."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/schemas/temporary_moderator.schema.ts: exact retired source and exported model contract"
+        ],
+        "runtimeStatus": "TypeScript source retired; native model feature is local and opt-in. Caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/ordinary_application_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ordinary_application_schemas.rs",
+          "dimabot/tests/follow_defense_schemas.rs",
+          "migration-notes/functional-migration-batches-2026-10-30.md"
+        ],
+        "status": "The batch passed 11 unique tests, five timezone replay invocations, actual-source checks, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile and all-feature/all-target strict Clippy. The existing BitsStore source/private-Mongo fixture also passed after retirement. See the batch note for scope and limits."
       },
       "exports": [
         {
           "name": "ITemporaryModerator",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ITemporaryModerator maps to the native temporary_moderator schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/temporary_moderator.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "TemporaryModeratorSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TemporaryModeratorSchema maps to the native temporary_moderator schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/temporary_moderator.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         }
       ],
       "imports": [
@@ -39492,15 +39684,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose provided schema construction, model export and casting/default/index behavior for this source module.",
+          "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
+          "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
+          "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/title_config.schema.ts",
@@ -39510,30 +39702,58 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/title_config.schema.ts",
+        "sha256": "5a2886025ab6ca4bd75c54f623ec732a13c392185945a967e372360e4ccb9a97",
+        "nativeAreaReference": "dimabot/src/schemas/title_config.schema.rs; migration-notes/functional-migration-batches-2026-10-30.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/title_config.schema.rs: concrete native model descriptor and typed values",
+        "dimabot/src/schemas/schema.rs: shared schema construction, validation, persistence and index support",
+        "migration-notes/functional-migration-batches-2026-10-30.md: frozen batch scope and verification summary",
+        "dimabot/src/schemas/ordinary_model_values.rs: shared typed BSON projection helpers",
+        "dimabot/tests/ordinary_application_schemas.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The Mongoose model/schema runtime contract is represented by opt-in native Rust schema descriptors and MongoDB driver repositories; npm Mongoose internals are not a required runtime dependency.",
+        "Raw BSON documents and strict typed views remain distinct; strict projections do not claim arbitrary JavaScript prototype or Mongoose document identity.",
+        "This row records the verified local schema/type dependency closure. Application caller adoption, cutover, and deployment were not verified."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/schemas/title_config.schema.ts: exact retired source and exported model contract"
+        ],
+        "runtimeStatus": "TypeScript source retired; native model feature is local and opt-in. Caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/ordinary_application_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ordinary_application_schemas.rs",
+          "dimabot/tests/follow_defense_schemas.rs",
+          "migration-notes/functional-migration-batches-2026-10-30.md"
+        ],
+        "status": "The batch passed 11 unique tests, five timezone replay invocations, actual-source checks, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile and all-feature/all-target strict Clippy. The existing BitsStore source/private-Mongo fixture also passed after retirement. See the batch note for scope and limits."
       },
       "exports": [
         {
           "name": "ITitleConfig",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ITitleConfig maps to the native title_config schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/title_config.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "TitleConfigSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TitleConfigSchema maps to the native title_config schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/title_config.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         }
       ],
       "imports": [
@@ -39543,15 +39763,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose provided schema construction, model export and casting/default/index behavior for this source module.",
+          "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
+          "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
+          "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/trigger_file.schema.ts",
@@ -39561,30 +39781,58 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/trigger_file.schema.ts",
+        "sha256": "4ce0751c6232be1088ef05707dee271efea1157e93821c431c01bfb3a0545bd4",
+        "nativeAreaReference": "dimabot/src/schemas/trigger_file.schema.rs; migration-notes/functional-migration-batches-2026-10-30.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/trigger_file.schema.rs: concrete native model descriptor and typed values",
+        "dimabot/src/schemas/schema.rs: shared schema construction, validation, persistence and index support",
+        "migration-notes/functional-migration-batches-2026-10-30.md: frozen batch scope and verification summary",
+        "dimabot/src/schemas/ordinary_model_values.rs: shared typed BSON projection helpers",
+        "dimabot/tests/ordinary_application_schemas.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The Mongoose model/schema runtime contract is represented by opt-in native Rust schema descriptors and MongoDB driver repositories; npm Mongoose internals are not a required runtime dependency.",
+        "Raw BSON documents and strict typed views remain distinct; strict projections do not claim arbitrary JavaScript prototype or Mongoose document identity.",
+        "This row records the verified local schema/type dependency closure. Application caller adoption, cutover, and deployment were not verified."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/schemas/trigger_file.schema.ts: exact retired source and exported model contract"
+        ],
+        "runtimeStatus": "TypeScript source retired; native model feature is local and opt-in. Caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/ordinary_application_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ordinary_application_schemas.rs",
+          "dimabot/tests/follow_defense_schemas.rs",
+          "migration-notes/functional-migration-batches-2026-10-30.md"
+        ],
+        "status": "The batch passed 11 unique tests, five timezone replay invocations, actual-source checks, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile and all-feature/all-target strict Clippy. The existing BitsStore source/private-Mongo fixture also passed after retirement. See the batch note for scope and limits."
       },
       "exports": [
         {
           "name": "ITriggerFile",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ITriggerFile maps to the native trigger_file schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/trigger_file.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "TriggerFileSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TriggerFileSchema maps to the native trigger_file schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/trigger_file.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         }
       ],
       "imports": [
@@ -39594,15 +39842,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose provided schema construction, model export and casting/default/index behavior for this source module.",
+          "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
+          "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
+          "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/trigger.schema.ts",
@@ -39871,30 +40119,58 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/vip.schema.ts",
+        "sha256": "b68e2689c7cd4598b2719a2305d7e42ec504e15868808c26b7e8615806e78f85",
+        "nativeAreaReference": "dimabot/src/schemas/vip.schema.rs; migration-notes/functional-migration-batches-2026-10-30.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/vip.schema.rs: concrete native model descriptor and typed values",
+        "dimabot/src/schemas/schema.rs: shared schema construction, validation, persistence and index support",
+        "migration-notes/functional-migration-batches-2026-10-30.md: frozen batch scope and verification summary",
+        "dimabot/src/schemas/ordinary_model_values.rs: shared typed BSON projection helpers",
+        "dimabot/tests/ordinary_application_schemas.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The Mongoose model/schema runtime contract is represented by opt-in native Rust schema descriptors and MongoDB driver repositories; npm Mongoose internals are not a required runtime dependency.",
+        "Raw BSON documents and strict typed views remain distinct; strict projections do not claim arbitrary JavaScript prototype or Mongoose document identity.",
+        "This row records the verified local schema/type dependency closure. Application caller adoption, cutover, and deployment were not verified."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/schemas/vip.schema.ts: exact retired source and exported model contract"
+        ],
+        "runtimeStatus": "TypeScript source retired; native model feature is local and opt-in. Caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/ordinary_application_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ordinary_application_schemas.rs",
+          "dimabot/tests/follow_defense_schemas.rs",
+          "migration-notes/functional-migration-batches-2026-10-30.md"
+        ],
+        "status": "The batch passed 11 unique tests, five timezone replay invocations, actual-source checks, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile and all-feature/all-target strict Clippy. The existing BitsStore source/private-Mongo fixture also passed after retirement. See the batch note for scope and limits."
       },
       "exports": [
         {
           "name": "IVip",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IVip maps to the native vip schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/vip.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         },
         {
           "name": "VipSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "VipSchema maps to the native vip schema/type module and its corresponding descriptor or typed value.",
+          "evidence": [
+            "dimabot/src/schemas/vip.schema.rs",
+            "migration-notes/functional-migration-batches-2026-10-30.md"
+          ]
         }
       ],
       "imports": [
@@ -39904,15 +40180,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose provided schema construction, model export and casting/default/index behavior for this source module.",
+          "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
+          "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
+          "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/scripts/ast_lookup.script.ts",
