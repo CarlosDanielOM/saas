@@ -142,6 +142,8 @@ pub mod ai_usage_producer;
 pub mod ai_usage_receipt_parser;
 #[cfg(feature = "ai-usage-retention")]
 pub mod ai_usage_retention;
+#[cfg(feature = "bson-js-json")]
+pub mod bson_js_json;
 #[cfg(feature = "chat-events")]
 pub mod chat_events;
 #[cfg(feature = "command-utils")]

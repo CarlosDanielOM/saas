@@ -72,6 +72,7 @@ ai-credit-projection = ["credit-policy", "tts-utilities", "plan-cache", "dep:sha
 ai-credit-reader = ["ai-credit-projection", "polar-client", "mongo"]
 ai-usage-lossless = ["ai-usage", "tts-utilities", "dep:sha2"]
 polar-cache-usage = ["ai-usage-lossless", "ai-credit-projection", "ai-usage-producer", "posthog-tracking", "ai-usage-lock", "logger-redis"]
+bson-js-json = ["mongo", "tts-utilities", "credit-policy", "dep:base64", "dep:sha2"]
 ai-usage-producer = ["ai-usage", "redis", "credit-policy", "tts-utilities"]
 ai-usage-lock = ["redis", "tts-utilities", "dep:sha2", "dep:uuid"]
 ai-usage-ledger-reads = ["application-schemas", "credit-policy", "tts-utilities"]
