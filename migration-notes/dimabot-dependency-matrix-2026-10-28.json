@@ -22,15 +22,15 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-30 functional ordinary application schema retirement",
+    "asOf": "2026-10-30 functional API admin and service slices",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 46,
+    "locallyCompleteMappings": 54,
     "partialRows": 25,
     "archivedSourceSnapshots": 60,
     "liveBaselineTypeScriptFiles": 746,
     "excludedReactEmailTemplatesIncludedInLiveCount": 6,
     "totalCompletionPercentage": null,
-    "totalMigrationCompletion": "not-established; full dependency closure audit remains incomplete"
+    "totalMigrationCompletion": "not-established; full application dependency closure remains incomplete"
   },
   "methodLimits": [
     "The baseline import list omits TypeScript import syntax. Runtime versus type-only, default, namespace, side-effect, and barrel semantics remain unresolved until source review.",
@@ -25803,103 +25803,168 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/middleware/admin.middleware.rs: concrete native implementation of the source module contract",
+        "dimabot/Cargo.toml: opt-in api-admin feature wiring",
+        "migration-notes/api-admin-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Normal declared typed inputs and outputs are covered. JavaScript-only prototype/hooks, arbitrary malformed upstream shapes, and platform-specific Error/stack wording are outside this native contract.",
+        "TypeScript source remains live; this local mapping does not establish application caller adoption, API/bootstrap integration, cutover, or deployment."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/middleware/admin.middleware.ts: reviewed source exports and direct local dependency contract"
+        ],
+        "runtimeStatus": "TypeScript source remains live; opt-in api-admin feature is available locally; caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/api_admin_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/api_admin.rs",
+          "migration-notes/api-admin-handoff.md"
+        ],
+        "status": "Final source-bound API admin run passed 27 native tests and replayed 98 source cases across middleware, helpers, grants and workspace authorization, including private-service composition."
       },
       "exports": [
         {
           "name": "AdminRole",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "AdminRole maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "CREATOR_TWITCH_USER_ID",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "CREATOR_TWITCH_USER_ID maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "ChannelAccessContext",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ChannelAccessContext maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "ChannelAccessDecisions",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ChannelAccessDecisions maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "GlobalAdminRole",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "GlobalAdminRole maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "MAX_ACCESS_PERMISSIONS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MAX_ACCESS_PERMISSIONS maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "adminMiddleware",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "adminMiddleware maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "canModifyCreatorAdminAssignment",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "canModifyCreatorAdminAssignment maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "expandChannelPermissionChecks",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "expandChannelPermissionChecks maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "getChannelAccessContext",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "getChannelAccessContext maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "getChannelAccessDecisions",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "getChannelAccessDecisions maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "getGlobalAdminRole",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "getGlobalAdminRole maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "hasGlobalChannelOwnerAccess",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "hasGlobalChannelOwnerAccess maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "isCreatorTarget",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "isCreatorTarget maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "isCreatorUser",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "isCreatorUser maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "parsePermissionList",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "parsePermissionList maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "resolveGrantedPermissions",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "resolveGrantedPermissions maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/admin.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         }
       ],
       "imports": [
@@ -25916,12 +25981,12 @@
           "baselineSourceTargets": [
             "src/schemas/admin.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         },
         {
           "ordinal": 1,
@@ -25936,12 +26001,12 @@
           "baselineSourceTargets": [
             "src/utils/logger.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         },
         {
           "ordinal": 2,
@@ -25956,12 +26021,12 @@
           "baselineSourceTargets": [
             "src/middleware/types.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         },
         {
           "ordinal": 3,
@@ -25969,15 +26034,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-native-dependency-closure-verified;source-live;caller-adoption-open"
     },
     {
       "source": "src/middleware/auth.middleware.ts",
@@ -25989,23 +26054,40 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/middleware/auth.middleware.rs: concrete native implementation of the source module contract",
+        "dimabot/Cargo.toml: opt-in api-auth feature wiring",
+        "dimabot/tests/ai_constants.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Normal declared typed inputs and outputs are covered. JavaScript-only prototype/hooks, arbitrary malformed upstream shapes, and platform-specific Error/stack wording are outside this native contract.",
+        "TypeScript source remains live; this local mapping does not establish application caller adoption, API/bootstrap integration, cutover, or deployment."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/middleware/auth.middleware.ts: reviewed source exports and direct local dependency contract"
+        ],
+        "runtimeStatus": "TypeScript source remains live; opt-in api-auth feature is available locally; caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/api_auth_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/api_auth.rs",
+          "dimabot/tests/ai_constants.rs"
+        ],
+        "status": "Combined source-bound API-services run passed; the auth oracle covers 27 source cases and auth integration is included in the 30-test combined compiler-fixtures run."
       },
       "exports": [
         {
           "name": "authMiddleware",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "authMiddleware maps to the opt-in native api-auth module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/auth.middleware.rs",
+            "dimabot/tests/api_auth.rs"
+          ]
         }
       ],
       "imports": [
@@ -26022,12 +26104,12 @@
           "baselineSourceTargets": [
             "src/schemas/users.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         },
         {
           "ordinal": 1,
@@ -26042,12 +26124,12 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         },
         {
           "ordinal": 2,
@@ -26062,12 +26144,12 @@
           "baselineSourceTargets": [
             "src/utils/logger.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         },
         {
           "ordinal": 3,
@@ -26082,12 +26164,12 @@
           "baselineSourceTargets": [
             "src/utils/observability/telemetry.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         },
         {
           "ordinal": 4,
@@ -26102,12 +26184,12 @@
           "baselineSourceTargets": [
             "src/middleware/types.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         },
         {
           "ordinal": 5,
@@ -26115,15 +26197,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-native-dependency-closure-verified;source-live;caller-adoption-open"
     },
     {
       "source": "src/middleware/channel_permissions.test.ts",
@@ -26208,42 +26290,68 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/middleware/channel_permissions.rs: concrete native implementation of the source module contract",
+        "dimabot/Cargo.toml: opt-in api-admin feature wiring",
+        "migration-notes/api-admin-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Normal declared typed inputs and outputs are covered. JavaScript-only prototype/hooks, arbitrary malformed upstream shapes, and platform-specific Error/stack wording are outside this native contract.",
+        "TypeScript source remains live; this local mapping does not establish application caller adoption, API/bootstrap integration, cutover, or deployment."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/middleware/channel_permissions.ts: reviewed source exports and direct local dependency contract"
+        ],
+        "runtimeStatus": "TypeScript source remains live; opt-in api-admin feature is available locally; caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/api_admin_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/api_admin.rs",
+          "migration-notes/api-admin-handoff.md"
+        ],
+        "status": "Final source-bound API admin run passed 27 native tests and replayed 98 source cases across middleware, helpers, grants and workspace authorization, including private-service composition."
       },
       "exports": [
         {
           "name": "CHANNEL_ADMIN_PERMISSIONS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "CHANNEL_ADMIN_PERMISSIONS maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/channel_permissions.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "CHANNEL_WEBSITE_ACCESS_PERMISSIONS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "CHANNEL_WEBSITE_ACCESS_PERMISSIONS maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/channel_permissions.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "grantsChatAdminRole",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "grantsChatAdminRole maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/channel_permissions.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         },
         {
           "name": "parseChannelAdminPermissions",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "parseChannelAdminPermissions maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/channel_permissions.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         }
       ],
       "imports": [],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-native-dependency-closure-verified;source-live;caller-adoption-open"
     },
     {
       "source": "src/middleware/index.ts",
@@ -26448,53 +26556,88 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/middleware/types.rs: concrete native implementation of the source module contract",
+        "dimabot/Cargo.toml: opt-in api-auth feature wiring",
+        "dimabot/tests/ai_constants.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Normal declared typed inputs and outputs are covered. JavaScript-only prototype/hooks, arbitrary malformed upstream shapes, and platform-specific Error/stack wording are outside this native contract.",
+        "TypeScript source remains live; this local mapping does not establish application caller adoption, API/bootstrap integration, cutover, or deployment."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/middleware/types.ts: reviewed source exports and direct local dependency contract"
+        ],
+        "runtimeStatus": "TypeScript source remains live; opt-in api-auth feature is available locally; caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/api_auth_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/api_auth.rs",
+          "dimabot/tests/ai_constants.rs"
+        ],
+        "status": "Combined source-bound API-services run passed; the auth oracle covers 27 source cases and auth integration is included in the 30-test combined compiler-fixtures run."
       },
       "exports": [
         {
           "name": "AuthRequest",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "AuthRequest maps to the opt-in native api-auth module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/types.rs",
+            "dimabot/tests/api_auth.rs"
+          ]
         },
         {
           "name": "AuthenticatedUser",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "AuthenticatedUser maps to the opt-in native api-auth module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/types.rs",
+            "dimabot/tests/api_auth.rs"
+          ]
         },
         {
           "name": "CachedTokenData",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "CachedTokenData maps to the opt-in native api-auth module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/types.rs",
+            "dimabot/tests/api_auth.rs"
+          ]
         },
         {
           "name": "ErrorResponse",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ErrorResponse maps to the opt-in native api-auth module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/types.rs",
+            "dimabot/tests/api_auth.rs"
+          ]
         },
         {
           "name": "TwitchTokenValidation",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TwitchTokenValidation maps to the opt-in native api-auth module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/types.rs",
+            "dimabot/tests/api_auth.rs"
+          ]
         },
         {
           "name": "TwitchUser",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TwitchUser maps to the opt-in native api-auth module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/types.rs",
+            "dimabot/tests/api_auth.rs"
+          ]
         },
         {
           "name": "TwitchUsersResponse",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TwitchUsersResponse maps to the opt-in native api-auth module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/types.rs",
+            "dimabot/tests/api_auth.rs"
+          ]
         }
       ],
       "imports": [
@@ -26504,15 +26647,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-native-dependency-closure-verified;source-live;caller-adoption-open"
     },
     {
       "source": "src/middleware/workspace-owner.middleware.ts",
@@ -26524,23 +26667,40 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/middleware/workspace-owner.middleware.rs: concrete native implementation of the source module contract",
+        "dimabot/Cargo.toml: opt-in api-admin feature wiring",
+        "migration-notes/api-admin-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Normal declared typed inputs and outputs are covered. JavaScript-only prototype/hooks, arbitrary malformed upstream shapes, and platform-specific Error/stack wording are outside this native contract.",
+        "TypeScript source remains live; this local mapping does not establish application caller adoption, API/bootstrap integration, cutover, or deployment."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/middleware/workspace-owner.middleware.ts: reviewed source exports and direct local dependency contract"
+        ],
+        "runtimeStatus": "TypeScript source remains live; opt-in api-admin feature is available locally; caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/api_admin_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/api_admin.rs",
+          "migration-notes/api-admin-handoff.md"
+        ],
+        "status": "Final source-bound API admin run passed 27 native tests and replayed 98 source cases across middleware, helpers, grants and workspace authorization, including private-service composition."
       },
       "exports": [
         {
           "name": "workspaceOwnerMiddleware",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "workspaceOwnerMiddleware maps to the opt-in native api-admin module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/middleware/workspace-owner.middleware.rs",
+            "dimabot/tests/api_admin.rs"
+          ]
         }
       ],
       "imports": [
@@ -26550,15 +26710,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-native-dependency-closure-verified;source-live;caller-adoption-open"
     },
     {
       "source": "src/overlays/alert-events.test.ts",
@@ -63662,102 +63822,164 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/utils/ai/constants.rs: concrete native implementation of the source module contract",
+        "dimabot/Cargo.toml: opt-in ai-constants feature wiring",
+        "dimabot/tests/ai_constants.rs"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Normal declared typed inputs and outputs are covered. JavaScript-only prototype/hooks, arbitrary malformed upstream shapes, and platform-specific Error/stack wording are outside this native contract.",
+        "TypeScript source remains live; this local mapping does not establish application caller adoption, API/bootstrap integration, cutover, or deployment."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/ai/constants.ts: reviewed source exports and direct local dependency contract"
+        ],
+        "runtimeStatus": "TypeScript source remains live; opt-in ai-constants feature is available locally; caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/ai_constants_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ai_constants.rs",
+          "dimabot/tests/ai_constants.rs"
+        ],
+        "status": "The source-bound constants slice passed 12 selected native tests and strict source checks; source remains live."
       },
       "exports": [
         {
           "name": "BACKGROUND_MODELS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "BACKGROUND_MODELS maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "BACKGROUND_MODEL_FALLBACK",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "BACKGROUND_MODEL_FALLBACK maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "CODING_MODELS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "CODING_MODELS maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "DEFAULT_TIMEOUT_MS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "DEFAULT_TIMEOUT_MS maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "EMBEDDING_DIMENSIONS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "EMBEDDING_DIMENSIONS maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "EMBEDDING_MODELS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "EMBEDDING_MODELS maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "MINIMAX_BASE_URL",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MINIMAX_BASE_URL maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "MINIMAX_COST_PER_M_INPUT",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MINIMAX_COST_PER_M_INPUT maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "MINIMAX_COST_PER_M_OUTPUT",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MINIMAX_COST_PER_M_OUTPUT maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "MINIMAX_MODEL",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MINIMAX_MODEL maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "MODELS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MODELS maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "MODEL_PROVIDER_RESTRICTIONS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "MODEL_PROVIDER_RESTRICTIONS maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "TOKEN_LIMITS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TOKEN_LIMITS maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "getBackgroundSummaryModel",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "getBackgroundSummaryModel maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "getProviderRestriction",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "getProviderRestriction maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         },
         {
           "name": "selectChatModel",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "selectChatModel maps to the opt-in native ai-constants module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/constants.rs",
+            "dimabot/tests/ai_constants.rs"
+          ]
         }
       ],
       "imports": [],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-native-dependency-closure-verified;source-live;caller-adoption-open"
     },
     {
       "source": "src/utils/ai/emote_context.ai.ts",
@@ -63882,37 +64104,60 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/utils/ai/fetch.utils.rs: concrete native implementation of the source module contract",
+        "dimabot/Cargo.toml: opt-in ai-embeddings feature wiring",
+        "migration-notes/ai-embeddings-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Normal declared typed inputs and outputs are covered. JavaScript-only prototype/hooks, arbitrary malformed upstream shapes, and platform-specific Error/stack wording are outside this native contract.",
+        "TypeScript source remains live; this local mapping does not establish application caller adoption, API/bootstrap integration, cutover, or deployment."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/ai/fetch.utils.ts: reviewed source exports and direct local dependency contract"
+        ],
+        "runtimeStatus": "TypeScript source remains live; opt-in ai-embeddings feature is available locally; caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/ai_embeddings_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ai_fetch_retry.rs",
+          "migration-notes/ai-embeddings-handoff.md"
+        ],
+        "status": "Combined source-bound API-services run passed; embedding oracle covers 12 HTTP cases plus language checks, and the 30-test compiler-fixtures run includes embedding and retry tests."
       },
       "exports": [
         {
           "name": "DEFAULT_RETRY_OPTIONS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "DEFAULT_RETRY_OPTIONS maps to the opt-in native ai-embeddings module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/fetch.utils.rs",
+            "dimabot/tests/ai_fetch_retry.rs"
+          ]
         },
         {
           "name": "RetryOptions",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "RetryOptions maps to the opt-in native ai-embeddings module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/fetch.utils.rs",
+            "dimabot/tests/ai_fetch_retry.rs"
+          ]
         },
         {
           "name": "createFetchWithRetry",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "createFetchWithRetry maps to the opt-in native ai-embeddings module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/fetch.utils.rs",
+            "dimabot/tests/ai_fetch_retry.rs"
+          ]
         }
       ],
       "imports": [],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-native-dependency-closure-verified;source-live;caller-adoption-open"
     },
     {
       "source": "src/utils/ai/lfm2_embeddings/index.ts",
@@ -67407,58 +67652,96 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/utils/ai/openrouter/embeddings.ai.rs: concrete native implementation of the source module contract",
+        "dimabot/Cargo.toml: opt-in ai-embeddings feature wiring",
+        "migration-notes/ai-embeddings-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Normal declared typed inputs and outputs are covered. JavaScript-only prototype/hooks, arbitrary malformed upstream shapes, and platform-specific Error/stack wording are outside this native contract.",
+        "TypeScript source remains live; this local mapping does not establish application caller adoption, API/bootstrap integration, cutover, or deployment."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/ai/openrouter/embeddings.ai.ts: reviewed source exports and direct local dependency contract"
+        ],
+        "runtimeStatus": "TypeScript source remains live; opt-in ai-embeddings feature is available locally; caller adoption/cutover not verified."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/ai_embeddings_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/ai_embeddings.rs",
+          "migration-notes/ai-embeddings-handoff.md"
+        ],
+        "status": "Combined source-bound API-services run passed; embedding oracle covers 12 HTTP cases plus language checks, and the 30-test compiler-fixtures run includes embedding and retry tests."
       },
       "exports": [
         {
           "name": "IBatchEmbeddingResult",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IBatchEmbeddingResult maps to the opt-in native ai-embeddings module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/openrouter/embeddings.ai.rs",
+            "dimabot/tests/ai_embeddings.rs"
+          ]
         },
         {
           "name": "IEmbeddingResult",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IEmbeddingResult maps to the opt-in native ai-embeddings module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/openrouter/embeddings.ai.rs",
+            "dimabot/tests/ai_embeddings.rs"
+          ]
         },
         {
           "name": "IOpenRouterEmbeddingError",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IOpenRouterEmbeddingError maps to the opt-in native ai-embeddings module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/openrouter/embeddings.ai.rs",
+            "dimabot/tests/ai_embeddings.rs"
+          ]
         },
         {
           "name": "IOpenRouterEmbeddingRequest",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IOpenRouterEmbeddingRequest maps to the opt-in native ai-embeddings module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/openrouter/embeddings.ai.rs",
+            "dimabot/tests/ai_embeddings.rs"
+          ]
         },
         {
           "name": "IOpenRouterEmbeddingResponse",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IOpenRouterEmbeddingResponse maps to the opt-in native ai-embeddings module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/openrouter/embeddings.ai.rs",
+            "dimabot/tests/ai_embeddings.rs"
+          ]
         },
         {
           "name": "detectLanguage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "detectLanguage maps to the opt-in native ai-embeddings module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/openrouter/embeddings.ai.rs",
+            "dimabot/tests/ai_embeddings.rs"
+          ]
         },
         {
           "name": "generateEmbedding",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "generateEmbedding maps to the opt-in native ai-embeddings module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/openrouter/embeddings.ai.rs",
+            "dimabot/tests/ai_embeddings.rs"
+          ]
         },
         {
           "name": "generateEmbeddings",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "generateEmbeddings maps to the opt-in native ai-embeddings module and its typed/helper contract.",
+          "evidence": [
+            "dimabot/src/utils/ai/openrouter/embeddings.ai.rs",
+            "dimabot/tests/ai_embeddings.rs"
+          ]
         }
       ],
       "imports": [
@@ -67475,12 +67758,12 @@
           "baselineSourceTargets": [
             "src/utils/logger.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         },
         {
           "ordinal": 1,
@@ -67495,12 +67778,12 @@
           "baselineSourceTargets": [
             "src/utils/ai/constants.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         },
         {
           "ordinal": 2,
@@ -67515,12 +67798,12 @@
           "baselineSourceTargets": [
             "src/utils/ai/fetch.utils.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         },
         {
           "ordinal": 3,
@@ -67535,15 +67818,15 @@
           "baselineSourceTargets": [
             "src/utils/ai/openrouter/app_attribution.util.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "source import form reviewed against native dependency",
+          "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
+          "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
+          "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-native-dependency-closure-verified;source-live;caller-adoption-open"
     },
     {
       "source": "src/utils/ai/openrouter/index.ts",
