@@ -37713,33 +37713,63 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "Reviewed partial local schema mapping: both Mongoose model exports and the VariationJob type have native counterparts and pinned actual-Mongoose/BSON behavior evidence. The strict typed values cover complete application records; raw BSON remains required for arbitrary Mixed, missing/null, JavaScript undefined, and other serialized-boundary values. TypeScript model callers remain live.",
+      "localRustEvidence": [
+        "dimabot/src/schemas/moderation_variation.schema.rs: disconnected native cache/job repositories, defaults, declared indexes, raw BSON path, and typed application views",
+        "dimabot/tests/moderation_variation_schema.rs: native schema behavior and exact-Mongoose reference replay",
+        "migration-notes/evidence/2026-10-30-variation-schema/README.md, verification-summary.json, source-bindings.json, and index.json: 42-case actual Mongoose oracle, BSON-byte match, pinned source, focused native validation, and private Mongo CRUD/index evidence",
+        "migration-notes/moderation-variation-schema-handoff.md: typed/raw BSON boundary and adoption status"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Native raw BSON repositories preserve missing, null, Mixed, and unknown fields at the storage boundary; VariationCache and VariationJob DTOs are strict complete typed views and are not general Mongoose document replacements.",
+        "The pinned oracle covers the documented serialized/BSON inputs and full BSON-byte results. It does not establish arbitrary JavaScript prototypes, getters/hooks, own properties whose value is undefined, sparse arrays, or unrestricted dynamic Mongoose behavior.",
+        "Schema repository constructors are disconnected and do not connect or install indexes; callers provide the database and explicitly install declared indexes.",
+        "The TypeScript model and job-module callers remain active and have not adopted the Rust schema."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/moderation/variation_jobs.ts: imports both runtime Mongoose models and the VariationJob type"
+        ],
+        "runtimeStatus": "Native raw/typed repositories are implemented. The live TypeScript variation-job module still imports Mongoose models; caller adoption is not established."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/schemas/moderation_variation.schema.ts",
+          "migration-notes/evidence/2026-10-30-variation-schema/source-bindings.json",
+          "migration-notes/evidence/2026-10-30-variation-schema/artifacts/moderation-variation-schema/attempt4/reference/moderation-variation-schema-reference.json"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_variation_schema.rs",
+          "migration-notes/evidence/2026-10-30-variation-schema/verification-summary.json",
+          "migration-notes/evidence/2026-10-30-variation-schema/index.json"
+        ],
+        "status": "The pinned actual-Mongoose oracle covered 42 cases with matching full BSON hex bytes; focused Rust/profile checks and private Mongo CRUD/index verification passed. Arbitrary JavaScript and serialized-value boundaries listed above remain excluded."
       },
       "exports": [
         {
           "name": "ModerationVariationCache",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::moderation_variation::{cache_schema, get_moderation_variation_cache_model}; native repository is disconnected and raw BSON remains authoritative for Mixed records.",
+          "evidence": [
+            "dimabot/src/schemas/moderation_variation.schema.rs",
+            "migration-notes/evidence/2026-10-30-variation-schema/verification-summary.json"
+          ]
         },
         {
           "name": "ModerationVariationJob",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::moderation_variation::{job_schema, get_moderation_variation_job_model}; native repository is disconnected and raw BSON remains authoritative for Mixed records.",
+          "evidence": [
+            "dimabot/src/schemas/moderation_variation.schema.rs",
+            "migration-notes/evidence/2026-10-30-variation-schema/verification-summary.json"
+          ]
         },
         {
           "name": "VariationJob",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::moderation_variation::VariationJob and VariationJobState; strict complete typed view only, with raw BSON available for untyped/missing shapes.",
+          "evidence": [
+            "dimabot/src/schemas/moderation_variation.schema.rs",
+            "dimabot/tests/moderation_variation_schema.rs",
+            "migration-notes/evidence/2026-10-30-variation-schema/verification-summary.json"
+          ]
         }
       ],
       "imports": [
@@ -37756,12 +37786,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/variations.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "type-only import of GeneratedVariation",
+          "runtimeOrTypeDependency": "Type-only contract for a generated cache/job entry; no JavaScript runtime side effect.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Reviewed: GeneratedVariation maps to the existing native moderation type used by the schema BSON adapter.",
+          "transitiveDependencyReview": "The native schema feature reuses the existing variation types and BSON-compatible string representation; serialized value limits are documented on the row.",
+          "rustReplacementOrGap": "dima_rust::utils::moderation::types::GeneratedVariation plus explicit BSON conversion helpers."
         },
         {
           "ordinal": 1,
@@ -37769,15 +37799,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import of Schema and model",
+          "runtimeOrTypeDependency": "Mongoose runtime constructs models, casts schema fields/defaults, applies Mixed/minimization behavior, and declares indexes.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Reviewed partial: schema repositories reproduce selected fields, defaults, and indexes, with 42 actual-source model/input records checked against full BSON output.",
+          "transitiveDependencyReview": "Native BSON/Mongo adapters provide concrete persistence. Raw repositories preserve Mixed storage shapes; strict DTOs and ordinary serialized cases do not implement arbitrary JavaScript object/prototype behavior.",
+          "rustReplacementOrGap": "dima_rust::schemas::moderation_variation schema definitions and raw BSON repositories; native implementation remains partial at the Mongoose/serialized-value boundary."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-moderation-variation-schema-and-bson-boundary-verified;strict-typed-dtos-do-not-cover-arbitrary-mixed-or-js-own-property-semantics;callers-unadopted"
     },
     {
       "source": "src/schemas/oauth_client.schema.ts",
@@ -89478,48 +89508,100 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "Reviewed partial local variation-job mapping: all six runtime exports have a concrete Rust service/helper path and source/runtime evidence. Storage, provider, paid-plan, retention, user lookup, and lazy shared-Redis dependencies are concrete; raw BSON/JSON and JavaScript own-property boundaries, source error wording, complete bootstrap logging, and caller adoption remain bounded/open.",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/variation_jobs.rs: saved/resolve/request/process operations, job view/ID helpers, quota Lua, one bounded claim, application Redis acquisition, and quota cache/eval telemetry",
+        "dimabot/src/schemas/moderation_variation.schema.rs: native cache/job repository and typed/raw BSON paths",
+        "dimabot/src/utils/moderation/variations.rs, variations_provider.rs, and advanced_policy.rs: reused key/spacing/validation/provider, paid-plan, and retention behavior",
+        "dimabot/tests/moderation_variation_jobs.rs, moderation_variation_jobs_source.rs, moderation_variation_jobs_bootstrap.rs, and tests/support/moderation_variation_jobs.rs: ordinary, source-replay, private service, and bootstrap fixtures",
+        "migration-notes/evidence/2026-10-30-variation-jobs/README.md, verification-summary.json, source-bindings.json, and index.json: final source-bound run receipts, oracle, provenance, cleanup readback, and checksum index"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native service uses raw BSON to preserve Mixed and incomplete stored values; strict Rust DTOs cover typed complete application values. The oracle comparison bridge projects uncommon BSON values and does not claim arbitrary BSON-to-Node identity.",
+        "The source job view may own an optional symbolVersion field whose value is undefined; the accepted JSON helper omits it at serialization. The focused assertion adapts only at that JSON boundary; own-property identity is not claimed.",
+        "Synthetic Mongoose failures are injected at equivalent native operations; generic driver error categories are compared where SDK/ORM message text differs.",
+        "Application Redis acquisition is lazy at the quota-spend point. Shared native cache/eval telemetry is present, but all source console messages, connection-event logging, and Dragonfly wrapper observability are not reproduced.",
+        "The existing native provider and RE2 adapters cover the documented bounded behavior; arbitrary JavaScript values, accessors/prototypes, sparse arrays, and all native regex/resource diagnostics are outside this row.",
+        "No job loop/worker was added in this service. The TypeScript route and semantic-moderation worker still call the live TypeScript exports; caller adoption and deployment remain separate and unestablished."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/server/routes/moderation.route.ts: invokes resolveVariations, requestVariationJob, variationJobView, and VariationError",
+          "dimabot/src/workers/semantic_moderation.worker.ts: invokes processNextVariationJob"
+        ],
+        "runtimeStatus": "The Rust service and concrete dependencies are verified locally, but both callers remain on the live TypeScript module. No Rust caller adoption or worker cutover is claimed."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/moderation/variation_jobs.ts",
+          "dimabot/tests/fixtures/moderation_variation_jobs_reference.cjs",
+          "migration-notes/evidence/2026-10-30-variation-jobs/attempt1/reference/moderation-variation-jobs-reference.json",
+          "migration-notes/evidence/2026-10-30-variation-jobs/attempt1/source-provenance-manifest.json"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_variation_jobs.rs",
+          "dimabot/tests/moderation_variation_jobs_source.rs",
+          "dimabot/tests/moderation_variation_jobs_bootstrap.rs",
+          "migration-notes/moderation-variation-jobs.md",
+          "migration-notes/evidence/2026-10-30-variation-jobs/verification-summary.json",
+          "migration-notes/evidence/2026-10-30-variation-jobs/index.json"
+        ],
+        "status": "Final Node source check and isolated native compiler-fixtures phase passed at the same 1,412-input source tree, bound to code commit c4844a1f89316f57c8a072a37f0473721fb43797. The 38-case actual-source fixture byte-matched; full runtime/targeted private Mongo-Redis/provider/bootstrap checks and five view/source plus three adapter tests passed. The final phase also passed 11 ordinary schema/helper/provider tests, formatting, scoped strict Clippy, minimal and Mongo/Redis profile checks, and all-feature strict Clippy. Earlier optional-undefined and lint/style failures remain retained with their separate source hashes. See the indexed evidence package for all receipts/logs, the 24 pinned oracle provenance files, final readback, and source binding."
       },
       "exports": [
         {
           "name": "VariationError",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "VariationJobsService errors::VariationError, exposed through JobError::Variation with source status/message; generic driver text follows the documented category boundary.",
+          "evidence": [
+            "dimabot/src/utils/moderation/variation_jobs.rs",
+            "dimabot/tests/moderation_variation_jobs_source.rs",
+            "migration-notes/evidence/2026-10-30-variation-jobs/verification-summary.json"
+          ]
         },
         {
           "name": "processNextVariationJob",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "VariationJobsService::process_next_variation_job; one oldest-first bounded claim and concrete user/cache/provider/usage/finalization paths; it is not a worker loop.",
+          "evidence": [
+            "dimabot/src/utils/moderation/variation_jobs.rs",
+            "dimabot/tests/moderation_variation_jobs_source.rs",
+            "migration-notes/evidence/2026-10-30-variation-jobs/verification-summary.json"
+          ]
         },
         {
           "name": "requestVariationJob",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "VariationJobsService::request_variation_job; concrete request reuse/race/retry, Mongo repository, lazy quota Redis, and persisted source transitions.",
+          "evidence": [
+            "dimabot/src/utils/moderation/variation_jobs.rs",
+            "dimabot/tests/moderation_variation_jobs_source.rs",
+            "migration-notes/evidence/2026-10-30-variation-jobs/verification-summary.json"
+          ]
         },
         {
           "name": "resolveVariations",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "VariationJobsService::resolve_variations; uses the existing native key/spacing/validation adapters and typed mode.",
+          "evidence": [
+            "dimabot/src/utils/moderation/variation_jobs.rs",
+            "dimabot/tests/moderation_variation_jobs_source.rs",
+            "migration-notes/evidence/2026-10-30-variation-jobs/verification-summary.json"
+          ]
         },
         {
           "name": "savedVariations",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "VariationJobsService::saved_variations; reuses native raw cache repository and saved-rule values.",
+          "evidence": [
+            "dimabot/src/utils/moderation/variation_jobs.rs",
+            "dimabot/tests/moderation_variation_jobs_source.rs",
+            "migration-notes/evidence/2026-10-30-variation-jobs/verification-summary.json"
+          ]
         },
         {
           "name": "variationJobView",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "variation_job_view over the source fields with the documented JSON omission for optional undefined values.",
+          "evidence": [
+            "dimabot/src/utils/moderation/variation_jobs.rs",
+            "dimabot/tests/moderation_variation_jobs_source.rs",
+            "migration-notes/evidence/2026-10-30-variation-jobs/verification-summary.json"
+          ]
         }
       ],
       "imports": [
@@ -89536,12 +89618,12 @@
           "baselineSourceTargets": [
             "src/schemas/channel_moderation_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "type-only import of IModerationRule",
+          "runtimeOrTypeDependency": "Type-only field contract for prior moderation rules; no schema model runtime is used by this import.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Reviewed: the native jobs path uses existing typed moderation rule/variation contracts for the fields it reads.",
+          "transitiveDependencyReview": "No additional Mongo schema side effect follows from this type-only import; runtime persistence comes from the separate variation schema dependency.",
+          "rustReplacementOrGap": "Existing dima_rust moderation types; no channel-schema runtime adapter is required by this import."
         },
         {
           "ordinal": 1,
@@ -89556,12 +89638,12 @@
           "baselineSourceTargets": [
             "src/schemas/moderation_variation.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "runtime model imports plus type-only VariationJob import",
+          "runtimeOrTypeDependency": "Mongoose cache/job models provide persistence/default/cast behavior and the VariationJob application type.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Reviewed partial: native moderation_variation repositories, defaults/indexes, raw BSON, and typed values are covered by the paired schema evidence.",
+          "transitiveDependencyReview": "Strict typed DTOs do not replace arbitrary Mixed/missing/undefined values; raw BSON is required at this storage boundary.",
+          "rustReplacementOrGap": "dima_rust::schemas::moderation_variation plus its repositories; serialized/BSON contract limits remain."
         },
         {
           "ordinal": 2,
@@ -89576,12 +89658,12 @@
           "baselineSourceTargets": [
             "src/schemas/users.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "default runtime import of Users model",
+          "runtimeOrTypeDependency": "Runtime entitlement lookup for the Twitch account owner and projected plan_tier.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Reviewed: native service queries the existing users collection with the Twitch account match and plan-tier projection.",
+          "transitiveDependencyReview": "The native query is concrete and uses the existing MongoDB client; broader application user-model middleware is not imported by the source lookup.",
+          "rustReplacementOrGap": "Native collection query in VariationJobsService; no mock or callback substitutes for the lookup."
         },
         {
           "ordinal": 3,
@@ -89596,12 +89678,12 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import of getDragonflyClient",
+          "runtimeOrTypeDependency": "Runtime application Redis acquisition and quota EVAL.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Reviewed partial: from_application lazily acquires the shared native Redis application runtime at reservation quota spend; supplied managers remain supported.",
+          "transitiveDependencyReview": "The quota EVAL is wrapped in cache/eval telemetry. Arbitrary TypeScript console messages, connection-event logging, and the complete Dragonfly wrapper are not reproduced.",
+          "rustReplacementOrGap": "redis_application_runtime::acquire plus supplied ConnectionManager support and shared telemetry; selected bootstrap behavior is concrete."
         },
         {
           "ordinal": 4,
@@ -89616,12 +89698,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/advanced.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime imports of paidModeration and MODERATION_RETENTION_DAYS",
+          "runtimeOrTypeDependency": "Runtime paid-plan entitlement and retention policy.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Reviewed: native advanced_policy provides concrete paid-moderation and retention values used by jobs.",
+          "transitiveDependencyReview": "No plan or retention callback/mock remains; user plan lookup is separately mapped through the native users collection.",
+          "rustReplacementOrGap": "dima_rust::utils::moderation::advanced_policy::paid_moderation_owned and MODERATION_RETENTION_DAYS."
         },
         {
           "ordinal": 5,
@@ -89636,12 +89718,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/variations.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "runtime and type-only variation/provider imports",
+          "runtimeOrTypeDependency": "Runtime key/term/spacing/validation/provider helpers and type-only variation contracts/constants.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Reviewed against the already mapped native variations/provider module and its documented source boundaries.",
+          "transitiveDependencyReview": "Provider request/response, model, usage, cancellation and timeout bounds are concrete; regex/resource and ordinary serialized/typed value limits remain documented.",
+          "rustReplacementOrGap": "dima_rust::utils::moderation::variations and variations_provider; existing typed types and lossless JSON/BSON adapters."
         },
         {
           "ordinal": 6,
@@ -89649,15 +89731,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import of createHash",
+          "runtimeOrTypeDependency": "Runtime SHA-256 job-ID construction.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Reviewed: the existing Rust sha2 dependency supplies SHA-256 without npm internals.",
+          "transitiveDependencyReview": "The native ID path sorts JavaScript UTF-16 code units and uses the shared JS-compatible JSON string encoding before hashing.",
+          "rustReplacementOrGap": "Existing sha2 crate plus JsString encoding helpers."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-variation-job-service-and-concrete-native-mongo-redis-provider-adapters-verified;serialized-bson-and-js-identity-boundaries-plus-caller-adoption-remain-open"
     },
     {
       "source": "src/utils/moderation/variations.test.ts",
