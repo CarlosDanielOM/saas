@@ -38,6 +38,103 @@ fn canonicalizes_duplicates_indices_scalars_and_utf16() {
 }
 
 #[test]
+fn canonical_fast_paths_preserve_unicode_keys_and_numeric_boundaries() {
+    let raw = "{\"é😀\u{2028}\u{2029}\":\"raw é😀\u{2028}\u{2029}\",\"a\":1,\"\\u0061\":2,\"\\u0062\":3,\"b\":4}";
+    let expected = "{\"é😀\u{2028}\u{2029}\":\"raw é😀\u{2028}\u{2029}\",\"a\":2,\"b\":4}";
+    assert_eq!(canonical(raw), expected);
+    let raw = "[0,-0,999999999999999,-999999999999999,1000000000000000,9007199254740993,-9007199254740993,1.0,-0.0,1e0,1e21,1e-7,1e999]";
+    let expected = "[0,0,999999999999999,-999999999999999,1000000000000000,9007199254740992,-9007199254740992,1,0,1,1e+21,1e-7,null]";
+    assert_eq!(canonical(raw), expected);
+    let mut out = String::from("prefix:");
+    JsonDocument::parse(raw)
+        .unwrap()
+        .root()
+        .write_json_string(&mut out);
+    assert_eq!(out, format!("prefix:{expected}"));
+}
+
+#[test]
+fn indexer_handles_escaped_quotes_and_backslash_run_parity() {
+    use dima_rust::utils::lossless_json::parse_json;
+    // JSON encoding produces odd/even escape runs before quotes. Other strings
+    // surround each token so an early close would disturb subsequent spans.
+    for count in 0..=12 {
+        let text = format!(
+            "start{}\"middle{}tail",
+            "\\".repeat(count),
+            "\\".repeat(count + 1)
+        );
+        let token = serde_json::to_string(&text).unwrap();
+        let raw = format!(r#"{{"first":"before","payload":{token},"after":[1,2]}}"#);
+        let doc = JsonDocument::parse(&raw).unwrap();
+        assert_eq!(
+            doc.root().get("payload").unwrap().as_string().unwrap(),
+            JsString::from(text)
+        );
+        assert_eq!(doc.root().get("after").unwrap().raw(), "[1,2]");
+        assert_eq!(
+            doc.root().to_json_string(),
+            parse_json(&raw).unwrap().to_json_string()
+        );
+    }
+    let raw = r#"{"a\\\"b":1,"a\u005c\u0022b":2,"trailing":"x\\\\","next":"ok"}"#;
+    let doc = JsonDocument::parse(raw).unwrap();
+    assert_eq!(doc.root().get("a\\\"b").unwrap().raw(), "2");
+    assert_eq!(doc.root().get("next").unwrap().raw(), r#""ok""#);
+    assert_eq!(
+        doc.root().to_json_string(),
+        parse_json(raw).unwrap().to_json_string()
+    );
+}
+
+#[test]
+fn nested_array_frames_preserve_empty_and_sibling_order() {
+    let raw = r#"[[],{},[[],[{},[],[1,[],{}]],{}],{"x":[],"y":[{},[[]],3]},[],null]"#;
+    assert_eq!(canonical(raw), raw);
+    let raw = format!(
+        "[{}]",
+        std::iter::repeat_n(r#"[{},[],[{},[]]]"#, 256)
+            .collect::<Vec<_>>()
+            .join(",")
+    );
+    assert_eq!(canonical(&raw), raw);
+    for raw in [
+        "null",
+        "false",
+        "0",
+        "-0",
+        "1e999",
+        r#""raw 😀""#,
+        r#""\u0061""#,
+    ] {
+        let mut out = String::from("prefix:");
+        JsonDocument::parse(raw)
+            .unwrap()
+            .root()
+            .write_json_string(&mut out);
+        assert_eq!(
+            out,
+            format!(
+                "prefix:{}",
+                dima_rust::utils::lossless_json::parse_json(raw)
+                    .unwrap()
+                    .to_json_string()
+            )
+        );
+    }
+}
+
+#[test]
+fn borrowed_and_decoded_object_keys_share_utf16_identity() {
+    let raw = r#"{"é":1,"\u00e9":2,"\ud83d\ude00":3,"😀":4,"�":5,"\ud800":6,"\ufffd":7,"\ud800":8,"10":9,"\u0032":10,"2":11,"1":12,"z":13}"#;
+    let expected = r#"{"1":12,"2":11,"10":9,"é":2,"😀":4,"�":7,"\ud800":8,"z":13}"#;
+    assert_eq!(canonical(raw), expected);
+    let reverse = r#"{"\u00e9":1,"é":2,"😀":3,"\ud83d\ude00":4,"\ufffd":5,"�":6,"\ud800":7,"\ud801":8,"\ud800":9}"#;
+    let expected = r#"{"é":2,"😀":4,"�":6,"\ud800":9,"\ud801":8}"#;
+    assert_eq!(canonical(reverse), expected);
+}
+
+#[test]
 fn borrowed_owned_subtrees_and_last_utf16_key_survive_source_drop() {
     let owned = {
         let raw = String::from(r#"  {"item":{"\ud800":1,"\ud800":[-0,1e999]},"n":9}  "#);

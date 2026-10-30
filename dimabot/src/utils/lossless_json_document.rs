@@ -4,7 +4,11 @@ use super::{
     js_string::JsString,
     lossless_json::{JsonValue, array_index_str, parse_json},
 };
-use std::{borrow::Cow, collections::HashMap};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    hash::{Hash, Hasher},
+};
 
 #[derive(Debug)]
 struct Span {
@@ -57,13 +61,23 @@ impl<'a> JsonDocument<'a> {
                     let start = pos;
                     if bytes[pos] == b'"' {
                         pos += 1;
-                        while bytes[pos] != b'"' {
-                            if bytes[pos] == b'\\' {
-                                pos += 1; // skip escaped quote/backslash (or escape tag)
+                        loop {
+                            // Each quote and backslash is ASCII, hence a UTF-8
+                            // boundary. A quote closes only after an even run
+                            // of immediately preceding backslashes.
+                            let quote = pos
+                                + raw[pos..]
+                                    .find('"')
+                                    .expect("validated string closing quote");
+                            let mut before = quote;
+                            while before > start + 1 && bytes[before - 1] == b'\\' {
+                                before -= 1;
                             }
-                            pos += 1;
+                            pos = quote + 1;
+                            if (quote - before).is_multiple_of(2) {
+                                break;
+                            }
                         }
-                        pos += 1;
                     } else {
                         while pos < bytes.len()
                             && !matches!(
@@ -260,6 +274,51 @@ impl<'a> Iterator for ArrayIter<'a> {
     }
 }
 
+// Plain UTF-8 keys borrow directly from the validated document. Escaped keys
+// own their decoded value. Matching text hashes identically in either form;
+// invalid UTF-16 has a separate domain and remains distinct from U+FFFD.
+enum ObjectKey<'a> {
+    Borrowed(&'a str),
+    Decoded(JsString),
+}
+impl ObjectKey<'_> {
+    fn text(&self) -> Option<&str> {
+        match self {
+            Self::Borrowed(text) => Some(text),
+            Self::Decoded(text) => text.as_str(),
+        }
+    }
+}
+impl PartialEq for ObjectKey<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self.text(), other.text()) {
+            (Some(a), Some(b)) => a == b,
+            (None, None) => match (self, other) {
+                (Self::Decoded(a), Self::Decoded(b)) => a == b,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+}
+impl Eq for ObjectKey<'_> {}
+impl Hash for ObjectKey<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self.text() {
+            Some(text) => {
+                0_u8.hash(state);
+                text.hash(state);
+            }
+            None => {
+                1_u8.hash(state);
+                if let Self::Decoded(value) = self {
+                    value.hash(state);
+                }
+            }
+        }
+    }
+}
+
 impl JsonView<'_> {
     /// Copy just this subtree into an independent, flat document.
     pub fn into_owned(self) -> JsonDocument<'static> {
@@ -271,65 +330,104 @@ impl JsonView<'_> {
     /// ECMAScript JSON.parse followed by compact JSON.stringify for JSON data.
     /// Traversal, including deeply nested containers, uses a heap stack.
     pub fn to_json_string(self) -> String {
-        let mut out = String::new();
+        let mut out = String::with_capacity(self.raw().len().min(4096));
         self.write_json_string(&mut out);
         out
     }
 
+    fn write_scalar(self, out: &mut String) {
+        match self.tag() {
+            b'"' if self.unescaped_string().is_some() => out.push_str(self.raw()),
+            b'-' | b'0'..=b'9' if canonical_short_integer(self.raw()) => out.push_str(self.raw()),
+            _ => self.scalar().expect("scalar").write_json_string(out),
+        }
+    }
+
     pub fn write_json_string(self, out: &mut String) {
+        if !matches!(self.tag(), b'[' | b'{') {
+            self.write_scalar(out);
+            return;
+        }
         enum Action {
             Value(usize),
-            Key(JsString),
+            Key(usize),
             Byte(char),
+            ArrayNext {
+                next: usize,
+                end: usize,
+                first: bool,
+            },
         }
         let mut pending = vec![Action::Value(self.index)];
         while let Some(action) = pending.pop() {
             match action {
                 Action::Byte(ch) => out.push(ch),
-                Action::Key(key) => key.write_json_string(out),
+                Action::Key(index) => {
+                    let view = JsonView { index, ..self };
+                    if view.unescaped_string().is_some() {
+                        out.push_str(view.raw());
+                    } else {
+                        view.as_string()
+                            .expect("validated object key")
+                            .write_json_string(out);
+                    }
+                }
+                Action::ArrayNext { next, end, first } => {
+                    if next == end {
+                        out.push(']');
+                    } else {
+                        if !first {
+                            out.push(',');
+                        }
+                        pending.push(Action::ArrayNext {
+                            next: self.spans[next].next,
+                            end,
+                            first: false,
+                        });
+                        pending.push(Action::Value(next));
+                    }
+                }
                 Action::Value(index) => {
                     let view = JsonView { index, ..self };
                     match view.tag() {
                         b'[' => {
                             out.push('[');
-                            let values: Vec<_> =
-                                view.array().expect("array").map(|v| v.index).collect();
-                            pending.push(Action::Byte(']'));
-                            for (position, index) in values.into_iter().enumerate().rev() {
-                                pending.push(Action::Value(index));
-                                if position > 0 {
-                                    pending.push(Action::Byte(','));
-                                }
-                            }
+                            pending.push(Action::ArrayNext {
+                                next: index + 1,
+                                end: view.spans[index].next,
+                                first: true,
+                            });
                         }
                         b'{' => {
                             out.push('{');
-                            let mut entries: Vec<(JsString, usize)> = Vec::new();
-                            let mut positions: HashMap<JsString, usize> = HashMap::new();
+                            let mut entries: Vec<(Option<u32>, usize, usize)> = Vec::new();
+                            let mut positions: HashMap<ObjectKey<'_>, usize> = HashMap::new();
                             let mut child = index + 1;
                             while child < view.spans[index].next {
-                                let key = JsonView {
+                                let key_view = JsonView {
                                     index: child,
                                     ..view
-                                }
-                                .as_string()
-                                .expect("validated object key");
+                                };
+                                let key = match key_view.unescaped_string() {
+                                    Some(text) => ObjectKey::Borrowed(text),
+                                    None => ObjectKey::Decoded(
+                                        key_view.as_string().expect("validated object key"),
+                                    ),
+                                };
                                 let value = child + 1;
                                 if let Some(&position) = positions.get(&key) {
-                                    entries[position].1 = value;
+                                    entries[position].2 = value;
                                 } else {
-                                    positions.insert(key.clone(), entries.len());
-                                    entries.push((key, value));
+                                    let array_index = key.text().and_then(array_index_str);
+                                    positions.insert(key, entries.len());
+                                    entries.push((array_index, child, value));
                                 }
                                 child = view.spans[value].next;
                             }
-                            entries.sort_by_key(|(key, _)| {
-                                key.as_str()
-                                    .and_then(array_index_str)
-                                    .map_or((1, 0), |i| (0, i))
-                            });
+                            entries.sort_by_key(|(key, _, _)| key.map_or((1, 0), |i| (0, i)));
                             pending.push(Action::Byte('}'));
-                            for (position, (key, value)) in entries.into_iter().enumerate().rev() {
+                            for (position, (_, key, value)) in entries.into_iter().enumerate().rev()
+                            {
                                 pending.push(Action::Value(value));
                                 pending.push(Action::Byte(':'));
                                 pending.push(Action::Key(key));
@@ -338,10 +436,21 @@ impl JsonView<'_> {
                                 }
                             }
                         }
-                        _ => view.scalar().expect("scalar").write_json_string(out),
+                        _ => view.write_scalar(out),
                     }
                 }
             }
         }
     }
+}
+
+/// Validation already enforces JSON number grammar. Integers with at most 15
+/// decimal digits are exactly representable in binary64 and stringify in the
+/// same decimal spelling. Negative zero is the one exception.
+fn canonical_short_integer(raw: &str) -> bool {
+    if raw == "-0" {
+        return false;
+    }
+    let digits = raw.strip_prefix('-').unwrap_or(raw);
+    !digits.is_empty() && digits.len() <= 15 && digits.bytes().all(|byte| byte.is_ascii_digit())
 }
