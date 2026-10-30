@@ -1,0 +1,7 @@
+{
+  "root_cause": "Parent runner omitted three explicit fixture variables required by existing mongo_crud_and_indexes; 4 other tests passed; database operations did not run.",
+  "source_unchanged": true,
+  "fixed_script": "variation_type_quality2.sh",
+  "private_fixture_uri": "mongodb://keyword-mongo:27017",
+  "owner": "a280405f5a161df8bd6dea7c"
+}

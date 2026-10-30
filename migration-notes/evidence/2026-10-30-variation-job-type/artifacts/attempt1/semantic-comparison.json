@@ -1,0 +1,16 @@
+{
+  "original_42_constructor_cases_indexes_collections_wire_unchanged": true,
+  "compared_keys": [
+    "versions",
+    "collections",
+    "indexes",
+    "cases",
+    "wire"
+  ],
+  "old_sha256": "fc419312c63aa5ef13f441dccc8353dd5f538690ffc2ddc6fd62035dcb81840a",
+  "new_sha256": "2d446d970060e76f3a0ef37e3fe71d9d135b57bc30eed68a0213f3422c2ba4a7",
+  "additional_evidence": [
+    "declared interface imports/fields/export audit",
+    "six providerUsage constructor cases"
+  ]
+}
