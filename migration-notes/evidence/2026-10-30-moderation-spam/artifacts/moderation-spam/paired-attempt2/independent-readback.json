@@ -1,0 +1,73 @@
+{
+  "all70ActorsAndChecksumsVerified": true,
+  "alternatingPairOrderVerified": true,
+  "inputSha256": "9f54153d86b2f91417733343c744d4f8e17d0a1a6bf744df1779ea3bcad6086b",
+  "beforeAfterHashesMatch": true,
+  "metricsNsPerOperation": {
+    "invitation": {
+      "node": {
+        "median": 888.92625,
+        "min": 749.720625,
+        "max": 1377.401375
+      },
+      "rust": {
+        "median": 785.626625,
+        "min": 737.460125,
+        "max": 1131.076125
+      },
+      "rustChangePercent": -11.620719379138599
+    },
+    "settings": {
+      "node": {
+        "median": 177.4085,
+        "min": 129.4425,
+        "max": 276.70325
+      },
+      "rust": {
+        "median": 51.147125,
+        "min": 47.88975,
+        "max": 79.98225
+      },
+      "rustChangePercent": -71.1698565739522
+    },
+    "rule_context": {
+      "node": {
+        "median": 1047.343125,
+        "min": 938.583,
+        "max": 1728.0445
+      },
+      "rust": {
+        "median": 1015.55725,
+        "min": 882.812375,
+        "max": 1389.462625
+      },
+      "rustChangePercent": -3.0349055855023788
+    },
+    "review_policy": {
+      "node": {
+        "median": 190.84125,
+        "min": 154.882625,
+        "max": 297.493375
+      },
+      "rust": {
+        "median": 87.382375,
+        "min": 75.658,
+        "max": 112.631
+      },
+      "rustChangePercent": -54.21200867212932
+    },
+    "marker": {
+      "node": {
+        "median": 3734.07575,
+        "min": 3303.495625,
+        "max": 4636.7115
+      },
+      "rust": {
+        "median": 612.52375,
+        "min": 527.133625,
+        "max": 842.349125
+      },
+      "rustChangePercent": -83.59637589033912
+    }
+  }
+}

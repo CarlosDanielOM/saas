@@ -1,0 +1,29 @@
+{
+  "workloads": ["invitation", "settings", "rule_context", "review_policy", "marker"],
+  "checksumKind": "tagged-result",
+  "benchmarkPath": "tests/fixtures/moderation_spam_benchmark.cjs",
+  "loaderPath": "tests/fixtures/moderation_spam_source.cjs",
+  "target": "moderation_spam_benchmark",
+  "targetSource": "/source/dimabot/tests/moderation_spam_benchmark.rs",
+  "feature": "moderation-spam",
+  "reportName": "spam-paired-report.json",
+  "actorEnv": {
+    "loader": "DIMA_SPAM_LOADER_SHA256",
+    "reader": "DIMA_SPAM_BENCH_READER_SHA256",
+    "binary": "DIMA_SPAM_BENCH_BINARY_SHA256",
+    "fixture": "DIMA_SPAM_BENCHMARK_FIXTURE",
+    "fixtureHash": "DIMA_SPAM_BENCHMARK_SHA256",
+    "rounds": "DIMA_SPAM_BENCH_ROUNDS",
+    "workload": "DIMA_SPAM_BENCH_WORKLOAD"
+  },
+  "packageManifest": {"path": "node_modules/mongoose", "count": 707, "sha256": "63200fe45fbe04c23f601aaa191eb08934ea6795a4442d22ca5a5ba9b679b722"},
+  "requiredSources": [
+    "dimabot/tests/moderation_spam_benchmark.rs",
+    "dimabot/tests/support/moderation_spam.rs",
+    "dimabot/tests/support/sha256.rs",
+    "dimabot/tests/fixtures/moderation_spam_benchmark.cjs",
+    "dimabot/tests/fixtures/moderation_spam_source.cjs",
+    "dimabot/src/utils/moderation/spam.rs",
+    "dimabot/Cargo.toml", "dimabot/Cargo.lock", "dimabot/rust-toolchain.toml"
+  ]
+}

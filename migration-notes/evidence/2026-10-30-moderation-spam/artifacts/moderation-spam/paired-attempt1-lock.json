@@ -1,0 +1,8 @@
+{
+  "compilerLockHeldDuringNodeValidation": true,
+  "compilerLock": "/root/.local/state/saas-ops-rust-build.lock",
+  "sourceTreeSha256": "af844965a21ab0dc59c0d84fd6ebc950737f5399de537e795d69c7260f275fc8",
+  "activeCompilersBefore": [],
+  "success": true,
+  "activeCompilersAfter": []
+}

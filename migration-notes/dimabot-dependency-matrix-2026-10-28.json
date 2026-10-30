@@ -37571,23 +37571,44 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-native-moderation-chatter-schema; native descriptor and actual-Mongoose constructor replay verified; complete Mongoose runtime/model parity and caller adoption remain open",
+      "localRustEvidence": [
+        "dimabot/src/schemas/moderation_chatter.schema.rs::schema",
+        "dimabot/src/schemas/moderation_chatter.schema.rs::get_moderation_chatter_model",
+        "dimabot/tests/moderation_spam_source.rs::actual_mongoose_chatter_constructor",
+        "migration-notes/moderation-spam.md",
+        "migration-notes/evidence/2026-10-30-moderation-spam/README.md",
+        "migration-notes/evidence/2026-10-30-moderation-spam/verification-summary.json"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native schema descriptor preserves the moderation_chatter model and moderation_chatters collection, string _id, required firstSeenAt Date, versionKey false, and no indexes or TTL.",
+        "The actual source Mongoose constructor is replayed; generic Mongoose model behavior and all invalid-model matrices are not claimed as ported."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/spam.ts imports the Mongoose ModerationChatter model.",
+          "src/handlers/moderation.handler.ts and src/server/routes/moderation.route.ts still use the TypeScript moderation helper path."
+        ],
+        "runtimeStatus": "The native schema descriptor and Mongo repository are implemented, but the live TypeScript spam helper, handler, and route have not adopted them."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "src/schemas/moderation_chatter.schema.ts is exercised through the actual source-bound spam oracle."
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_spam_source.rs::actual_mongoose_chatter_constructor",
+          "dimabot/tests/moderation_spam_storage.rs"
+        ],
+        "status": "Native descriptor and actual-Mongoose constructor replay passed; borrowed-view final phase compiler-fixtures-1793340894915777003 passed updated source replay, concrete Mongo marker storage, bootstrap, response-loss checks, and strict profiles. Final readback confirmed all 18 production records unchanged and zero task-owned containers, networks, or volumes."
       },
       "exports": [
         {
           "name": "ModerationChatter",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::moderation_chatter::{schema,get_moderation_chatter_model}",
+          "evidence": [
+            "actual Mongoose constructor replay",
+            "isolated native Mongo marker storage checks"
+          ]
         }
       ],
       "imports": [
@@ -37597,15 +37618,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named import of Schema and model",
+          "runtimeOrTypeDependency": "Mongoose constructs and exports the application model.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed: model schema, model name, pluralized collection, field types/default constraints, version key, and indexes are covered by the source oracle and native descriptor.",
+          "transitiveDependencyReview": "Partial: native BSON/database adapter is concrete; full Mongoose model/casting middleware behavior is outside the native descriptor mapping.",
+          "rustReplacementOrGap": "dima_rust::schemas::moderation_chatter::schema plus get_moderation_chatter_model; broader Mongoose runtime parity remains open."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-moderation-chatter-schema-and-concrete-mongo-adapter-verified; full-mongoose-runtime-parity-and-caller-adoption-open"
     },
     {
       "source": "src/schemas/moderation_decision.schema.ts",
@@ -89257,113 +89278,202 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-local-spam-policy-and-concrete-mongo-redis-claims; borrowed read-only settings/context views and invitation fast path passed source-bound correctness/strict checks; both owned-JSON baseline and borrowed-view helper benchmarks recorded; semantic boundaries, shared source logging, and caller adoption remain open",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/spam.rs",
+        "dimabot/src/schemas/moderation_chatter.schema.rs",
+        "dimabot/tests/moderation_spam.rs",
+        "dimabot/tests/moderation_spam_source.rs",
+        "dimabot/tests/moderation_spam_storage.rs",
+        "dimabot/tests/moderation_spam_bootstrap.rs",
+        "migration-notes/moderation-spam.md",
+        "migration-notes/evidence/2026-10-30-moderation-spam/README.md",
+        "migration-notes/evidence/2026-10-30-moderation-spam/verification-summary.json"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Ordinary JSON adapters do not represent executable JavaScript prototypes/accessors/hooks, undefined values, or sparse-array identity.",
+        "The owned semantic-policy vector does not preserve arbitrary mutable JavaScript example identity; borrowed template/view paths retain native shared identities.",
+        "Native driver error wording is not claimed identical to Mongoose/Node diagnostic wording.",
+        "The source console connection-logging dependency remains a shared application boundary; source callers remain TypeScript and unadopted.",
+        "The owned-JSON helper benchmark was slower than Node on invitation, settings, rule context, and review policy, and faster only on marker; all baseline regressions are retained.",
+        "Borrowed-view Rust medians were lower than Node on all five helper workloads; observed min/max ranges overlapped for invitation and rule context, so no clear repeatable advantage is claimed for those two.",
+        "The borrowed benchmark excludes owned-JSON projection, checksum, serialization, and destruction. Existing callers that request owned JSON retain that cost; no end-to-end caller or production performance is inferred."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/handlers/moderation.handler.ts imports spam policy, review, marker, and budget helpers.",
+          "src/server/routes/moderation.route.ts imports spam settings and policy helpers.",
+          "src/utils/moderation/semantic_worker.ts imports spam decision and policy helpers.",
+          "src/workers/semantic_moderation.worker.ts delegates to the TypeScript semantic moderation path."
+        ],
+        "runtimeStatus": "The Rust helper and concrete MongoDB/Dragonfly adapters are verified locally. The TypeScript moderation handler, route, semantic worker, and their consumers remain live and have not adopted the Rust module."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/spam.test.ts",
+          "source-bound complete spam.ts oracle; 1,636 pure and 37 async records"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_spam.rs",
+          "dimabot/tests/moderation_spam_source.rs",
+          "dimabot/tests/moderation_spam_storage.rs",
+          "dimabot/tests/moderation_spam_bootstrap.rs",
+          "dimabot/tests/support/redis_response_loss.rs",
+          "compiler-fixtures-1793340894915777003: eight feature units, 1,636 pure and 37 async records, private storage/bootstrap/response-loss/telemetry paths, minimal and Mongo/Redis profiles, all-feature strict Clippy",
+          "migration-notes/evidence/2026-10-30-moderation-spam/verification-summary.json"
+        ],
+        "status": "Node source check node-1793340868529956618 and isolated compiler-fixtures-1793340894915777003 passed on tree 1628f8c23147e68073ca16eb33683452fba0532e544662348fee381ccffe2694 (commit 16159856fd21044d42658c9a02eb56be1f313e89; 1,424 inputs). The source oracle covers 1,636 pure and 37 async records; nine async records use explicit synthetic boundary adapters and are not native wire passes. The unchanged 38 variation-job cases were not rerun for this optimization because their shared proxy/storage paths were unaffected; they passed in the earlier verification. Borrowed paired run node-1793341268777902038 and its independent readback verified all 70 actors/checksums, alternating order and file hashes. Final production readback confirmed 18 records unchanged and zero task-owned containers/networks/volumes."
       },
       "exports": [
         {
+          "name": "SPAM_RULE_ID",
+          "nativeMapping": "SPAM_RULE_ID",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
+        },
+        {
           "name": "SPAM_CHANNEL_REVIEWS_PER_MINUTE",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "SPAM_CHANNEL_REVIEWS_PER_MINUTE",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "SPAM_GLOBAL_REVIEWS_PER_MINUTE",
-          "nativeMapping": "unreviewed",
-          "evidence": []
-        },
-        {
-          "name": "SPAM_RULE_ID",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "SPAM_GLOBAL_REVIEWS_PER_MINUTE",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "broadcasterInvitedPromotion",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "broadcaster_invited_promotion and broadcaster_invited_promotion_value",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "chatterMarkerID",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "chatter_marker_id and chatter_marker_id_value",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "claimFirstObservedMessage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "SpamService::claim_first_observed_message plus claim_first_observed_message_value",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "claimSpamReviewBudget",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "SpamService::claim_spam_review_budget plus claim_spam_review_budget_value",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "defaultSpamModerationSettings",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "default_spam_moderation_settings and default_spam_moderation_settings_value",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "isSpamDecision",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "is_spam_decision and is_spam_decision_value",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "semanticPolicyActive",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "semantic_policy_active and semantic_policy_active_value",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "spamProtectionSettings",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "spam_protection_settings and spam_protection_settings_value",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "spamReviewSource",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "spam_review_source and spam_review_source_value",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "spamRule",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "spam_rule_template, spam_rule_view, and spam_rule",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         },
         {
           "name": "spamRuleForContext",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "spam_rule_for_context and spam_rule_for_json_context_value",
+          "evidence": [
+            "complete-source export audit and source-bound replay",
+            "dima_rust::utils::moderation::spam"
+          ]
         }
       ],
       "imports": [
         {
           "ordinal": 0,
-          "specifier": "../../schemas/channel_moderation_settings.schema.js",
+          "specifier": "./spam_categories.js",
           "specifierCategory": "relative-module-candidate",
           "relativeSourceCandidates": [
-            "src/schemas/channel_moderation_settings.schema.js",
-            "src/schemas/channel_moderation_settings.schema.ts",
-            "src/schemas/channel_moderation_settings.schema.tsx",
-            "src/schemas/channel_moderation_settings.schema.d.ts"
+            "src/utils/moderation/spam_categories.js",
+            "src/utils/moderation/spam_categories.ts",
+            "src/utils/moderation/spam_categories.tsx",
+            "src/utils/moderation/spam_categories.d.ts"
           ],
           "baselineSourceTargets": [
-            "src/schemas/channel_moderation_settings.schema.ts"
+            "src/utils/moderation/spam_categories.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named import",
+          "runtimeOrTypeDependency": "Runtime catalog/default constants.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed and reused.",
+          "transitiveDependencyReview": "Reviewed through fixed spam-category catalog.",
+          "rustReplacementOrGap": "Existing dima_rust::utils::moderation::spam_categories; existing module reused."
         },
         {
           "ordinal": 1,
+          "specifier": "node:crypto",
+          "specifierCategory": "node-builtin-candidate",
+          "relativeSourceCandidates": [],
+          "baselineSourceTargets": [],
+          "importSyntaxKind": "runtime named import of createHash",
+          "runtimeOrTypeDependency": "SHA-256 for chatter marker IDs.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed.",
+          "transitiveDependencyReview": "Native SHA-256 implementation uses the existing crate dependency.",
+          "rustReplacementOrGap": "Existing sha2 crate; no Node runtime required."
+        },
+        {
+          "ordinal": 2,
           "specifier": "../../schemas/moderation_chatter.schema.js",
           "specifierCategory": "relative-module-candidate",
           "relativeSourceCandidates": [
@@ -89375,52 +89485,32 @@
           "baselineSourceTargets": [
             "src/schemas/moderation_chatter.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
-        },
-        {
-          "ordinal": 2,
-          "specifier": "../../schemas/moderation_decision.schema.js",
-          "specifierCategory": "relative-module-candidate",
-          "relativeSourceCandidates": [
-            "src/schemas/moderation_decision.schema.js",
-            "src/schemas/moderation_decision.schema.ts",
-            "src/schemas/moderation_decision.schema.tsx",
-            "src/schemas/moderation_decision.schema.d.ts"
-          ],
-          "baselineSourceTargets": [
-            "src/schemas/moderation_decision.schema.ts"
-          ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named import",
+          "runtimeOrTypeDependency": "Mongoose ModerationChatter model for durable first-observation upsert.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed as concrete native schema/repository plus source-constructor replay.",
+          "transitiveDependencyReview": "Full Mongoose model/casting runtime parity remains outside the partial schema row.",
+          "rustReplacementOrGap": "Native moderation_chatter schema descriptor and concrete Mongo repository; broad Mongoose runtime parity remains bounded."
         },
         {
           "ordinal": 3,
-          "specifier": "../databases/dragonfly.database.js",
+          "specifier": "../../schemas/channel_moderation_settings.schema.js",
           "specifierCategory": "relative-module-candidate",
           "relativeSourceCandidates": [
-            "src/utils/databases/dragonfly.database.js",
-            "src/utils/databases/dragonfly.database.ts",
-            "src/utils/databases/dragonfly.database.tsx",
-            "src/utils/databases/dragonfly.database.d.ts"
+            "src/schemas/channel_moderation_settings.schema.js",
+            "src/schemas/channel_moderation_settings.schema.ts",
+            "src/schemas/channel_moderation_settings.schema.tsx",
+            "src/schemas/channel_moderation_settings.schema.d.ts"
           ],
           "baselineSourceTargets": [
-            "src/utils/databases/dragonfly.database.ts"
+            "src/schemas/channel_moderation_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "mixed runtime values plus type-only IChannelModerationSettings",
+          "runtimeOrTypeDependency": "Default moderation rule/settings values plus typed settings view.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Runtime source values and type contract are mapped to the existing native settings schema.",
+          "transitiveDependencyReview": "Shared nested rules, permission/settings values, and required defaults are reused.",
+          "rustReplacementOrGap": "Existing channel_moderation_settings native schema and equivalent Rust types; broader source schema behavior remains separately scoped."
         },
         {
           "ordinal": 4,
@@ -89435,15 +89525,55 @@
           "baselineSourceTargets": [
             "src/utils/permissions/index.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only PermissionExpression",
+          "runtimeOrTypeDependency": "Type-only contract for the constructed exempt expression.",
+          "defaultSideEffectBarrelDetails": "Type-only import; no runtime side effect.",
+          "directDependencyReview": "Type-only native equivalent is used.",
+          "transitiveDependencyReview": "No runtime import closure required.",
+          "rustReplacementOrGap": "Existing native permission expression type."
         },
         {
           "ordinal": 5,
+          "specifier": "../../schemas/moderation_decision.schema.js",
+          "specifierCategory": "relative-module-candidate",
+          "relativeSourceCandidates": [
+            "src/schemas/moderation_decision.schema.js",
+            "src/schemas/moderation_decision.schema.ts",
+            "src/schemas/moderation_decision.schema.tsx",
+            "src/schemas/moderation_decision.schema.d.ts"
+          ],
+          "baselineSourceTargets": [
+            "src/schemas/moderation_decision.schema.ts"
+          ],
+          "importSyntaxKind": "type-only IModerationDecision and ModerationContextMessage",
+          "runtimeOrTypeDependency": "Type-only contracts for decision and context fields.",
+          "defaultSideEffectBarrelDetails": "Type-only import; no runtime side effect.",
+          "directDependencyReview": "Equivalent native views are used.",
+          "transitiveDependencyReview": "No application model runtime is loaded through this type-only import.",
+          "rustReplacementOrGap": "Existing decision types plus dima_rust::utils::moderation::types::DecisionView and ContextMessage."
+        },
+        {
+          "ordinal": 6,
+          "specifier": "../databases/dragonfly.database.js",
+          "specifierCategory": "relative-module-candidate",
+          "relativeSourceCandidates": [
+            "src/utils/databases/dragonfly.database.js",
+            "src/utils/databases/dragonfly.database.ts",
+            "src/utils/databases/dragonfly.database.tsx",
+            "src/utils/databases/dragonfly.database.d.ts"
+          ],
+          "baselineSourceTargets": [
+            "src/utils/databases/dragonfly.database.ts"
+          ],
+          "importSyntaxKind": "runtime named import of getDragonflyClient",
+          "runtimeOrTypeDependency": "Shared Redis/Dragonfly connection acquisition, telemetry, logging, and marker/budget commands.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Concrete native shared application Redis runtime is reused for connection ownership and telemetry.",
+          "transitiveDependencyReview": "Source console connection logging remains a shared application dependency boundary.",
+          "rustReplacementOrGap": "redis_application_runtime plus Redis ConnectionManager; exact source-global console logging parity remains open."
+        },
+        {
+          "ordinal": 7,
           "specifier": "./advanced.js",
           "specifierCategory": "relative-module-candidate",
           "relativeSourceCandidates": [
@@ -89455,48 +89585,15 @@
           "baselineSourceTargets": [
             "src/utils/moderation/advanced.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
-        },
-        {
-          "ordinal": 6,
-          "specifier": "./spam_categories.js",
-          "specifierCategory": "relative-module-candidate",
-          "relativeSourceCandidates": [
-            "src/utils/moderation/spam_categories.js",
-            "src/utils/moderation/spam_categories.ts",
-            "src/utils/moderation/spam_categories.tsx",
-            "src/utils/moderation/spam_categories.d.ts"
-          ],
-          "baselineSourceTargets": [
-            "src/utils/moderation/spam_categories.ts"
-          ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
-        },
-        {
-          "ordinal": 7,
-          "specifier": "node:crypto",
-          "specifierCategory": "node-builtin-candidate",
-          "relativeSourceCandidates": [],
-          "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named import of paidModeration",
+          "runtimeOrTypeDependency": "Paid-tier policy predicate for continuous review.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Concrete existing native advanced moderation policy is reused.",
+          "transitiveDependencyReview": "Actual source oracle uses existing pinned Node 24 private RE2 loader and actual paidModeration implementation.",
+          "rustReplacementOrGap": "Existing advanced_policy::paid_moderation_owned; no duplicate policy added."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-spam-policy-concrete-storage-and-borrowed-read-views-verified; ordinary-json-identity-boundaries-shared-logging-and-caller-adoption-open"
     },
     {
       "source": "src/utils/moderation/variation_jobs.ts",
