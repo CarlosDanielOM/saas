@@ -168,10 +168,14 @@ fn source_semantic_subset_replay() {
             "string" => units(&v["utf16"]).write_json_string(out),
             "number" => {
                 let n = number(v);
-                if !n.is_finite() {
+                if n.is_nan() {
                     return Err(());
                 }
-                if n.to_bits() == (-0.0f64).to_bits() {
+                if n == f64::INFINITY {
+                    out.push_str("1e9999");
+                } else if n == f64::NEG_INFINITY {
+                    out.push_str("-1e9999");
+                } else if n.to_bits() == (-0.0f64).to_bits() {
                     out.push_str("-0");
                 } else {
                     JsonValue::Number(n).write_json_string(out);
@@ -208,6 +212,32 @@ fn source_semantic_subset_replay() {
             _ => panic!("unexpected fixture tag"),
         }
         Ok(())
+    }
+    fn owned(v: &Value) -> Option<JsonValue> {
+        Some(match v["kind"].as_str().unwrap() {
+            "undefined" => return None,
+            "null" => JsonValue::Null,
+            "boolean" => JsonValue::Bool(v["value"].as_bool().unwrap()),
+            "string" => JsonValue::String(units(&v["utf16"])),
+            "number" => JsonValue::Number(number(v)),
+            "array" => JsonValue::Array(
+                v["items"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|x| owned(x).expect("undefined array element unsupported"))
+                    .collect(),
+            ),
+            "object" => JsonValue::Object(
+                v["entries"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter_map(|entry| owned(&entry[1]).map(|value| (units(&entry[0]), value)))
+                    .collect(),
+            ),
+            _ => panic!("unexpected fixture tag"),
+        })
     }
     fn text(v: &Value) -> JsString {
         assert_eq!(v["kind"], "string");
@@ -289,6 +319,11 @@ fn source_semantic_subset_replay() {
     for case in paid {
         let tier = &case["tier"];
         let mut input = String::new();
+        let native = owned(tier);
+        assert_eq!(
+            paid_moderation_owned(native.as_ref()),
+            case["result"].as_bool().unwrap()
+        );
         if tier["kind"] == "undefined" {
             assert_eq!(paid_moderation(None), case["result"].as_bool().unwrap());
         } else {
@@ -309,8 +344,8 @@ fn source_semantic_subset_replay() {
         "uncertain-",
     ];
     let mut selected = 0;
-    let mut skipped = 0;
     let mut replayed = 0;
+    let mut view_replayed = 0;
     for case in fixture["cases"].as_array().unwrap() {
         let id = case["id"].as_str().unwrap();
         if case["kind"] != "parse" || !prefixes.iter().any(|p| id.starts_with(p)) {
@@ -332,14 +367,27 @@ fn source_semantic_subset_replay() {
                 "{id}"
             );
         }
-        let mut json = String::new();
-        if ordinary(input, &mut json).is_err() {
-            skipped += 1;
-            continue;
-        }
+        let native = owned(input).unwrap();
+        let actual = parse_semantic_policy_owned(native.get("semantic"));
         replayed += 1;
-        let doc = JsonDocument::parse(&json).unwrap();
-        let actual = parse_semantic_policy(doc.root().get("semantic"));
+        let mut json = String::new();
+        if ordinary(input, &mut json).is_ok() {
+            let doc = JsonDocument::parse(&json).unwrap();
+            let borrowed = parse_semantic_policy(doc.root().get("semantic"));
+            match (&actual, borrowed) {
+                (Ok(native), Ok(view)) => {
+                    assert_eq!(native, &view, "{id}");
+                    assert_eq!(
+                        native.threshold_percent.unwrap().to_bits(),
+                        view.threshold_percent.unwrap().to_bits(),
+                        "{id}"
+                    );
+                }
+                (Err(native), Err(view)) => assert_eq!(*native, view, "{id}"),
+                _ => panic!("owned/view mismatch {id}"),
+            }
+            view_replayed += 1;
+        }
         let result = &case["result"];
         if result["ok"].as_bool().unwrap() {
             let rule = &result["value"];
@@ -361,5 +409,5 @@ fn source_semantic_subset_replay() {
             );
         }
     }
-    assert_eq!((selected, skipped, replayed), (84, 3, 81));
+    assert_eq!((selected, replayed, view_replayed), (84, 84, 83));
 }

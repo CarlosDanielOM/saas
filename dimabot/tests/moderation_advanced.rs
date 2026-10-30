@@ -3,7 +3,7 @@ use dima_rust::utils::{
     js_string::JsString, lossless_json_view::JsonDocument, moderation::advanced::*,
 };
 
-fn parse(s: &str) -> Result<AdvancedRule, &'static str> {
+fn parse(s: &str) -> Result<AdvancedRule, AdvancedRuleError> {
     let doc = JsonDocument::parse(s).unwrap();
     parse_advanced_rule_with(doc.root(), &PatternCache::new(), || "generated".into())
 }
@@ -11,29 +11,83 @@ fn parse(s: &str) -> Result<AdvancedRule, &'static str> {
 #[test]
 fn parser_order_ids_and_utf16_lengths() {
     assert_eq!(
-        parse(r#"{"patterns":[{"source":"("}],"semantic":null}"#).unwrap_err(),
+        parse(r#"{"patterns":[{"source":"("}],"semantic":null}"#)
+            .unwrap_err()
+            .message,
         "Invalid or unsupported regex. Use RE2 syntax without lookaround/backreferences or empty matches; select whole-word boundaries separately."
     );
     assert_eq!(
-        parse(r#"{"type":"other","patterns":[{"source":"x"}],"semantic":null}"#).unwrap_err(),
+        parse(r#"{"type":"other","patterns":[{"source":"x"}],"semantic":null}"#)
+            .unwrap_err()
+            .message,
         "Invalid contextual policy"
     );
-    assert_eq!(parse(r#"{"type":"blacklist","patterns":[{"source":"x","id":"a\n"},{"source":"x","id":"generated"}]}"#).unwrap_err(), "Regex pattern IDs must be unique");
+    assert_eq!(parse(r#"{"type":"blacklist","patterns":[{"source":"x","id":"a\n"},{"source":"x","id":"generated"}]}"#).unwrap_err().message, "Regex pattern IDs must be unique");
     let s = format!(
         "{{\"type\":\"blacklist\",\"patterns\":[{{\"source\":\"{}\"}}]}}",
         "😀".repeat(126)
     );
     assert_eq!(
-        parse(&s).unwrap_err(),
+        parse(&s).unwrap_err().message,
         "Regex patterns must contain 1–250 characters"
     );
     let rule = parse(r#"{"type":"blacklist","patterns":[{"id":"ok-1","source":"cat"}]}"#).unwrap();
     assert_eq!(rule.patterns[0].boundary, Boundary::WholeWord);
     assert!(rule.patterns[0].ignore_case);
     assert_eq!(
-        parse(r#"{"type":"blacklist","patterns":[{"source":"a*"}]}"#).unwrap_err(),
+        parse(r#"{"type":"blacklist","patterns":[{"source":"a*"}]}"#)
+            .unwrap_err()
+            .message,
         "Invalid or unsupported regex. Use RE2 syntax without lookaround/backreferences or empty matches; select whole-word boundaries separately."
     );
+}
+
+#[test]
+fn native_values_preserve_number_classification_and_null_error() {
+    use dima_rust::utils::lossless_json::JsonValue;
+
+    let cache = PatternCache::new();
+    let error =
+        parse_advanced_rule_owned_with(&JsonValue::Null, &cache, || "unused".into()).unwrap_err();
+    assert_eq!(error.name, "TypeError");
+    assert_eq!(
+        error.message,
+        "Cannot read properties of null (reading 'patterns')"
+    );
+    let doc = JsonDocument::parse("null").unwrap();
+    assert_eq!(
+        parse_advanced_rule_with(doc.root(), &cache, || "unused".into()).unwrap_err(),
+        error
+    );
+
+    for number in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -0.0] {
+        let input = JsonValue::Object(vec![
+            ("type".into(), JsonValue::String("blacklist".into())),
+            (
+                "semantic".into(),
+                JsonValue::Object(vec![("thresholdPercent".into(), JsonValue::Number(number))]),
+            ),
+        ]);
+        let result = parse_advanced_rule_owned_with(&input, &cache, || "unused".into());
+        if number.is_finite() {
+            assert_eq!(
+                result
+                    .unwrap()
+                    .semantic
+                    .threshold_percent
+                    .unwrap()
+                    .to_bits(),
+                number.to_bits()
+            );
+        } else {
+            let error = result.unwrap_err();
+            assert_eq!(error.name, "Error");
+            assert_eq!(
+                error.message,
+                "Flagging confidence must be a percentage from 0 to 100"
+            );
+        }
+    }
 }
 
 #[test]
@@ -209,6 +263,82 @@ mod fixture {
             _ => return Err("unsupported fixture kind"),
         })
     }
+    // Convert tagged source values directly; undefined object members are absent.
+    fn owned(v: &Value) -> Option<JsonValue> {
+        Some(match v["kind"].as_str().unwrap() {
+            "undefined" => return None,
+            "null" => JsonValue::Null,
+            "boolean" => JsonValue::Bool(v["value"].as_bool().unwrap()),
+            "string" => JsonValue::String(string(&v["utf16"])),
+            "number" => JsonValue::Number(f64::from_bits(
+                u64::from_str_radix(v["bits"].as_str().unwrap(), 16).unwrap(),
+            )),
+            "array" => JsonValue::Array(
+                v["items"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|x| owned(x).expect("undefined array element unsupported"))
+                    .collect(),
+            ),
+            "object" => JsonValue::Object(
+                v["entries"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter_map(|entry| owned(&entry[1]).map(|value| (string(&entry[0]), value)))
+                    .collect(),
+            ),
+            _ => panic!("unsupported fixture kind"),
+        })
+    }
+    fn assert_value(actual: &JsonValue, expected: &Value, id: &str) {
+        match (actual, expected["kind"].as_str().unwrap()) {
+            (JsonValue::Null, "null") => {}
+            (JsonValue::Bool(v), "boolean") => {
+                assert_eq!(*v, expected["value"].as_bool().unwrap(), "{id}")
+            }
+            (JsonValue::Number(v), "number") => assert_eq!(
+                v.to_bits(),
+                u64::from_str_radix(expected["bits"].as_str().unwrap(), 16).unwrap(),
+                "{id}"
+            ),
+            (JsonValue::String(v), "string") => assert_eq!(*v, string(&expected["utf16"]), "{id}"),
+            (JsonValue::Array(values), "array") => {
+                let items = expected["items"].as_array().unwrap();
+                assert_eq!(values.len(), items.len(), "{id}");
+                for (value, item) in values.iter().zip(items) {
+                    assert_value(value, item, id);
+                }
+            }
+            (JsonValue::Object(values), "object") => {
+                let entries = expected["entries"].as_array().unwrap();
+                assert_eq!(values.len(), entries.len(), "{id}");
+                for ((key, value), entry) in values.iter().zip(entries) {
+                    assert_eq!(*key, string(&entry[0]), "{id}");
+                    assert_value(value, &entry[1], id);
+                }
+            }
+            _ => panic!("{id}: incompatible tagged value: {actual:?} {expected:?}"),
+        }
+    }
+    fn check_parse(actual: Result<AdvancedRule, AdvancedRuleError>, expected: &Value, id: &str) {
+        match actual {
+            Ok(r) => {
+                assert_eq!(expected["ok"], true, "{id}");
+                assert_value(&rule(r), &expected["value"], id);
+            }
+            Err(e) => {
+                assert_eq!(expected["ok"], false, "{id}: {e}");
+                assert_eq!(JsString::from(e.name), string(&expected["name"]), "{id}");
+                assert_eq!(
+                    JsString::from(e.message),
+                    string(&expected["message"]),
+                    "{id}"
+                );
+            }
+        }
+    }
     fn object(fields: Vec<(&str, JsonValue)>) -> JsonValue {
         JsonValue::Object(fields.into_iter().map(|(k, v)| (k.into(), v)).collect())
     }
@@ -287,18 +417,23 @@ mod fixture {
                 .collect(),
         )
     }
-    fn view_pattern(v: dima_rust::utils::lossless_json_view::JsonView<'_>) -> ModerationPattern {
+    fn owned_pattern(v: &JsonValue) -> ModerationPattern {
+        let text = |key| match v.get(key).unwrap() {
+            JsonValue::String(value) => value.clone(),
+            _ => panic!("pattern field must be a string"),
+        };
         ModerationPattern {
-            id: v.get("id").unwrap().as_string().unwrap(),
-            source: v.get("source").unwrap().as_string().unwrap(),
-            boundary: if v.get("boundary").unwrap().as_string().unwrap().as_str()
-                == Some("whole_word")
-            {
+            id: text("id"),
+            source: text("source"),
+            boundary: if text("boundary").as_str() == Some("whole_word") {
                 Boundary::WholeWord
             } else {
                 Boundary::Anywhere
             },
-            ignore_case: v.get("ignoreCase").unwrap().as_bool().unwrap(),
+            ignore_case: match v.get("ignoreCase").unwrap() {
+                JsonValue::Bool(value) => *value,
+                _ => panic!("pattern ignoreCase must be boolean"),
+            },
         }
     }
 
@@ -325,35 +460,20 @@ mod fixture {
         let fixture: Value = serde_json::from_slice(&bytes).unwrap();
         let cases = fixture["cases"].as_array().unwrap();
         assert_eq!(cases.len(), 464);
-        let mut excluded = std::collections::BTreeMap::<&str, usize>::new();
         let mut exercised = 0;
+        let mut view_exercised = 0;
         for c in cases {
             let id = c["id"].as_str().unwrap();
-            let raw = match json(&c["input"]) {
-                Ok(Some(s)) => s,
-                Ok(None) => {
-                    *excluded.entry("undefined root").or_default() += 1;
-                    continue;
-                }
-                Err(e) => {
-                    *excluded.entry(e).or_default() += 1;
-                    continue;
-                }
-            };
-            if c["kind"] == "parse" && raw == "null" {
-                *excluded.entry("null root TypeError").or_default() += 1;
-                continue;
-            }
-            let doc = JsonDocument::parse(&raw).unwrap();
+            let input = owned(&c["input"]).expect("undefined root unsupported");
             let cache = PatternCache::new();
             let expected = &c["result"];
             if c["kind"] == "parse" {
                 let mut queue = c["uuidQueue"].as_array().unwrap().iter().map(string);
                 let mut draws = Vec::new();
-                let actual = parse_advanced_rule_with_fallible_uuid(doc.root(), &cache, || {
-                    let id = queue.next();
-                    draws.push(id.clone());
-                    id.ok_or("fixture UUID queue exhausted")
+                let actual = parse_advanced_rule_owned_with_fallible_uuid(&input, &cache, || {
+                    let value = queue.next();
+                    draws.push(value.clone());
+                    value.ok_or("fixture UUID queue exhausted")
                 });
                 let expected_draws: Vec<_> = c["draws"]
                     .as_array()
@@ -362,42 +482,39 @@ mod fixture {
                     .map(|value| (!value.is_null()).then(|| string(value)))
                     .collect();
                 assert_eq!(draws, expected_draws, "UUID draws {id}");
-                match actual {
-                    Ok(r) => {
-                        assert_eq!(expected["ok"], true, "{id}");
-                        let wire = String::from_utf16(
-                            &expected["wire"]
-                                .as_array()
-                                .unwrap()
-                                .iter()
-                                .map(|u| u.as_u64().unwrap() as u16)
-                                .collect::<Vec<_>>(),
-                        )
-                        .unwrap();
-                        assert_eq!(rule(r), parse_json(&wire).unwrap(), "{id}");
-                    }
-                    Err(e) => {
-                        assert_eq!(expected["ok"], false, "{id}: {e}");
-                        assert_eq!(JsString::from(e), string(&expected["message"]), "{id}");
-                    }
+                check_parse(actual, expected, id);
+                if let Ok(Some(raw)) = json(&c["input"]) {
+                    let doc = JsonDocument::parse(&raw).unwrap();
+                    let mut queue = c["uuidQueue"].as_array().unwrap().iter().map(string);
+                    let mut draws = Vec::new();
+                    let actual = parse_advanced_rule_with_fallible_uuid(doc.root(), &cache, || {
+                        let value = queue.next();
+                        draws.push(value.clone());
+                        value.ok_or("fixture UUID queue exhausted")
+                    });
+                    assert_eq!(draws, expected_draws, "view UUID draws {id}");
+                    check_parse(actual, expected, id);
+                    view_exercised += 1;
                 }
             } else {
-                let root = doc.root();
-                let text = root.get("text").unwrap().as_string().unwrap();
-                let terms: Vec<_> = root
-                    .get("terms")
-                    .unwrap()
-                    .array()
-                    .unwrap()
-                    .map(|v| v.as_string().unwrap())
-                    .collect();
-                let patterns: Vec<_> = root
-                    .get("patterns")
-                    .unwrap()
-                    .array()
-                    .unwrap()
-                    .map(view_pattern)
-                    .collect();
+                let text = match input.get("text").unwrap() {
+                    JsonValue::String(value) => value.clone(),
+                    _ => panic!("match text must be a string"),
+                };
+                let terms: Vec<_> = match input.get("terms").unwrap() {
+                    JsonValue::Array(values) => values
+                        .iter()
+                        .map(|value| match value {
+                            JsonValue::String(value) => value.clone(),
+                            _ => panic!("match term must be a string"),
+                        })
+                        .collect(),
+                    _ => panic!("match terms must be an array"),
+                };
+                let patterns: Vec<_> = match input.get("patterns").unwrap() {
+                    JsonValue::Array(values) => values.iter().map(owned_pattern).collect(),
+                    _ => panic!("match patterns must be an array"),
+                };
                 let actual = find_blacklist_matches_with_cache(&text, &terms, &patterns, &cache);
                 match actual {
                     Ok(ms) => {
@@ -411,18 +528,16 @@ mod fixture {
                                 .collect::<Vec<_>>(),
                         )
                         .unwrap();
-                        assert_eq!(matched(ms), parse_json(&wire).unwrap(), "{id}");
+                        let actual = matched(ms);
+                        assert_eq!(actual, parse_json(&wire).unwrap(), "{id}");
+                        assert_value(&actual, &expected["value"], id);
                     }
                     Err(_) => assert_eq!(expected["ok"], false, "{id}"),
                 }
             }
             exercised += 1;
         }
-        eprintln!("source cases exercised={exercised}; exclusions={excluded:?}");
-        assert_eq!(exercised, 462);
-        assert_eq!(
-            excluded,
-            std::collections::BTreeMap::from([("NaN", 1), ("null root TypeError", 1),])
-        );
+        assert_eq!(exercised, 464);
+        assert_eq!(view_exercised, 233);
     }
 }

@@ -11,9 +11,10 @@ pub use crate::utils::moderation::advanced_policy::{
 };
 use crate::utils::{
     js_string::JsString,
+    lossless_json::JsonValue,
     lossless_json_view::JsonView,
     moderation::{
-        advanced_policy::parse_semantic_policy,
+        advanced_policy::{InputValue, parse_semantic_policy_input},
         blacklist::{BlacklistPattern, compile_blacklist_pattern},
         normalize::fold_text,
     },
@@ -128,49 +129,106 @@ fn valid_id(id: &JsString) -> bool {
             .all(|c| matches!(c, 0x30..=0x39 | 0x41..=0x5a | 0x61..=0x7a | 0x5f | 0x2d))
 }
 
-/// Parse a JSON object. Missing keys model undefined; non-JSON JS values and
-/// null input are outside this typed boundary. UUIDs default to real v4 values.
-pub fn parse_advanced_rule(input: JsonView<'_>) -> Result<AdvancedRule, &'static str> {
+/// The JavaScript error class and message produced by the parser.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AdvancedRuleError {
+    pub name: &'static str,
+    pub message: &'static str,
+}
+impl From<&'static str> for AdvancedRuleError {
+    fn from(message: &'static str) -> Self {
+        Self {
+            name: "Error",
+            message,
+        }
+    }
+}
+impl std::fmt::Display for AdvancedRuleError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.message)
+    }
+}
+impl std::error::Error for AdvancedRuleError {}
+
+/// Parse a validated JSON view. UUIDs default to real v4 values.
+pub fn parse_advanced_rule(input: JsonView<'_>) -> Result<AdvancedRule, AdvancedRuleError> {
     parse_advanced_rule_with(input, global_cache(), || {
         JsString::from(uuid::Uuid::new_v4().to_string())
     })
 }
 
-/// The UUID generator seam permits deterministic fixture replay. It is invoked
-/// only for invalid or absent IDs, at the same point as the source.
+/// Parse native values without serializing non-finite numbers or negative zero.
+pub fn parse_advanced_rule_owned(input: &JsonValue) -> Result<AdvancedRule, AdvancedRuleError> {
+    parse_advanced_rule_owned_with(input, global_cache(), || {
+        JsString::from(uuid::Uuid::new_v4().to_string())
+    })
+}
+
+/// UUID seams invoke the generator only for invalid or absent IDs.
 pub fn parse_advanced_rule_with<F: FnMut() -> JsString>(
     input: JsonView<'_>,
     cache: &PatternCache,
     mut uuid: F,
-) -> Result<AdvancedRule, &'static str> {
+) -> Result<AdvancedRule, AdvancedRuleError> {
     parse_advanced_rule_with_fallible_uuid(input, cache, || Ok(uuid()))
+}
+pub fn parse_advanced_rule_owned_with<F: FnMut() -> JsString>(
+    input: &JsonValue,
+    cache: &PatternCache,
+    mut uuid: F,
+) -> Result<AdvancedRule, AdvancedRuleError> {
+    parse_advanced_rule_owned_with_fallible_uuid(input, cache, || Ok(uuid()))
 }
 
 /// Preserve failures from an explicitly supplied UUID source.
 pub fn parse_advanced_rule_with_fallible_uuid<F: FnMut() -> Result<JsString, &'static str>>(
     input: JsonView<'_>,
     cache: &PatternCache,
+    uuid: F,
+) -> Result<AdvancedRule, AdvancedRuleError> {
+    parse_advanced_rule_input(InputValue::View(input), cache, uuid)
+}
+pub fn parse_advanced_rule_owned_with_fallible_uuid<
+    F: FnMut() -> Result<JsString, &'static str>,
+>(
+    input: &JsonValue,
+    cache: &PatternCache,
+    uuid: F,
+) -> Result<AdvancedRule, AdvancedRuleError> {
+    parse_advanced_rule_input(InputValue::Owned(input), cache, uuid)
+}
+
+fn parse_advanced_rule_input<F: FnMut() -> Result<JsString, &'static str>>(
+    input: InputValue<'_>,
+    cache: &PatternCache,
     mut uuid: F,
-) -> Result<AdvancedRule, &'static str> {
+) -> Result<AdvancedRule, AdvancedRuleError> {
+    if input.is_null() {
+        return Err(AdvancedRuleError {
+            name: "TypeError",
+            message: "Cannot read properties of null (reading 'patterns')",
+        });
+    }
     let raw_patterns = match input.get("patterns") {
         None => Vec::new(),
         Some(value) => value
             .array()
             .ok_or("Patterns must be a list")?
+            .take(11)
             .collect::<Vec<_>>(),
     };
     if raw_patterns.len() > 10 {
-        return Err("A rule can have at most 10 regex patterns");
+        return Err("A rule can have at most 10 regex patterns".into());
     }
     let mut ids = HashSet::new();
     let mut patterns = Vec::with_capacity(raw_patterns.len());
     for raw in raw_patterns {
-        if !raw.raw().starts_with('{') && !raw.raw().starts_with('[') {
-            return Err("Invalid regex pattern");
+        if !raw.is_object() && raw.array().is_none() {
+            return Err("Invalid regex pattern".into());
         }
         let source = raw
             .get("source")
-            .and_then(JsonView::as_string)
+            .and_then(InputValue::as_string)
             .filter(|s| !s.trim().is_empty() && s.len() <= 250)
             .ok_or("Regex patterns must contain 1–250 characters")?;
         let boundary = match raw.get("boundary") {
@@ -178,19 +236,23 @@ pub fn parse_advanced_rule_with_fallible_uuid<F: FnMut() -> Result<JsString, &'s
             Some(v) => match v.as_string().as_ref().and_then(JsString::as_str) {
                 Some("whole_word") => Boundary::WholeWord,
                 Some("anywhere") => Boundary::Anywhere,
-                _ => return Err("Invalid regex boundary"),
+                _ => return Err("Invalid regex boundary".into()),
             },
         };
         let ignore_case = match raw.get("ignoreCase") {
             None => true,
             Some(v) => v.as_bool().ok_or("Invalid regex case option")?,
         };
-        let id = match raw.get("id").and_then(JsonView::as_string).filter(valid_id) {
+        let id = match raw
+            .get("id")
+            .and_then(InputValue::as_string)
+            .filter(valid_id)
+        {
             Some(id) => id,
             None => uuid()?,
         };
         if !ids.insert(id.clone()) {
-            return Err("Regex pattern IDs must be unique");
+            return Err("Regex pattern IDs must be unique".into());
         }
         let pattern = ModerationPattern {
             id,
@@ -201,21 +263,21 @@ pub fn parse_advanced_rule_with_fallible_uuid<F: FnMut() -> Result<JsString, &'s
         let plain = Re2Native::compile(&pattern.source, pattern.ignore_case, false)
             .map_err(|_| INVALID_REGEX)?;
         if plain.exec(&JsString::from_static("")).is_some() {
-            return Err(INVALID_REGEX);
+            return Err(INVALID_REGEX.into());
         }
         cache.compile(&pattern).map_err(|_| INVALID_REGEX)?;
         patterns.push(pattern);
     }
-    let semantic = parse_semantic_policy(input.get("semantic"))?;
+    let semantic = parse_semantic_policy_input(input.get("semantic"))?;
     if input
         .get("type")
-        .and_then(JsonView::as_string)
+        .and_then(InputValue::as_string)
         .as_ref()
         .and_then(JsString::as_str)
         != Some("blacklist")
         && (!patterns.is_empty() || semantic.enabled)
     {
-        return Err("Regex and contextual review are only available for blocked-word rules");
+        return Err("Regex and contextual review are only available for blocked-word rules".into());
     }
     Ok(AdvancedRule { patterns, semantic })
 }
