@@ -1,4 +1,7 @@
 //! Pure native counterparts of `variations.ts`. Transport is intentionally separate.
+pub use crate::utils::moderation::types::{
+    GeneratedVariation, ModerationVariations, VariationMode, VariationOverride,
+};
 use crate::utils::{
     js_compat, js_regexp_unicode,
     js_string::JsString,
@@ -23,33 +26,6 @@ pub const VARIATION_MODEL: &str = "meta/muse-spark-1.3-contributor";
 pub const SYMBOL_VERSION: &str = "symbol-families-v1";
 const MAX_SOURCE: usize = 16000;
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub enum VariationMode {
-    Off,
-    Common,
-    Broad,
-}
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct GeneratedVariation {
-    pub term: JsString,
-    pub spellings: Vec<JsString>,
-    pub pattern: ModerationPattern,
-    pub version: JsString,
-    pub allow_spaces: Option<bool>,
-    pub symbol_version: Option<JsString>,
-}
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct VariationOverride {
-    pub term: JsString,
-    pub source: JsString,
-}
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ModerationVariations {
-    pub mode: VariationMode,
-    pub entries: Vec<GeneratedVariation>,
-    pub overrides: Option<Vec<VariationOverride>>,
-    pub allow_spaces: Option<bool>,
-}
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct VariationRule {
     pub patterns: Option<Vec<ModerationPattern>>,
@@ -91,7 +67,35 @@ pub fn variation_mode(raw: Option<&JsonValue>) -> Result<VariationMode, Variatio
     }
 }
 pub fn variation_term(term: &JsString) -> JsString {
-    let normalized = js_unicode::normalize_nfc(term).trim();
+    let normalized = js_unicode::normalize_nfc(term);
+    if let Some(text) = normalized.as_str() {
+        let text = js_compat::trim(text);
+        let mut collapsed = String::with_capacity(text.len());
+        let mut was_space = false;
+        for c in text.chars() {
+            if js_compat::is_whitespace(c) {
+                if !was_space {
+                    collapsed.push(' ');
+                }
+                was_space = true;
+            } else {
+                collapsed.push(c);
+                was_space = false;
+            }
+        }
+        // Lowercase after collapsing: whitespace such as U+FEFF is also
+        // case-ignorable and can otherwise change the Final_Sigma context.
+        if collapsed.is_ascii() {
+            collapsed.make_ascii_lowercase();
+            return JsString::from(collapsed);
+        }
+        let collapsed = JsString::from(collapsed);
+        if let Cow::Owned(lowercase) = js_unicode::lowercase(&collapsed) {
+            return lowercase;
+        }
+        return collapsed;
+    }
+    let normalized = normalized.trim();
     let mut out = Vec::new();
     let mut was_space = false;
     for c in char::decode_utf16(normalized.code_units()) {
@@ -451,11 +455,12 @@ pub fn build_variation(
     })
 }
 
-type CacheKey = (GeneratedVariation, bool, bool);
 #[derive(Default)]
 struct CacheEntries {
-    values: HashMap<CacheKey, Arc<GeneratedVariation>>,
-    order: VecDeque<CacheKey>,
+    // The flags select a bucket so hits can use a borrowed entry as the key.
+    // A single queue retains insertion order across all four buckets.
+    values: [HashMap<Arc<GeneratedVariation>, Arc<GeneratedVariation>>; 4],
+    order: VecDeque<(usize, Arc<GeneratedVariation>)>,
 }
 /// Borrowed means the input already had the requested configuration; Shared
 /// retains JavaScript's same-object cache identity across hits.
@@ -493,7 +498,7 @@ impl VariationCache {
         self.entries
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .values
+            .order
             .len()
     }
     pub fn is_empty(&self) -> bool {
@@ -505,19 +510,19 @@ impl VariationCache {
         allow_spaces: bool,
         mode: VariationMode,
     ) -> Result<CompiledVariation<'a>, VariationError> {
-        let symbols = mode == VariationMode::Broad && points(&entry.term).len() >= 3;
+        let short = char::decode_utf16(entry.term.code_units()).take(3).count() < 3;
+        let symbols = mode == VariationMode::Broad && !short;
         if entry.allow_spaces.unwrap_or(false) == allow_spaces
             && (entry.symbol_version.as_ref().and_then(JsString::as_str) == Some(SYMBOL_VERSION))
                 == symbols
         {
             return Ok(CompiledVariation::Borrowed(entry));
         }
-        let key = (entry.clone(), allow_spaces, symbols);
+        let bucket = usize::from(allow_spaces) * 2 + usize::from(symbols);
         let mut cache = self.entries.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some(found) = cache.values.get(&key) {
+        if let Some(found) = cache.values[bucket].get(entry) {
             return Ok(CompiledVariation::Shared(found.clone()));
         }
-        let short = points(&entry.term).len() < 3;
         let mut sources = Vec::new();
         let mut seen = HashSet::new();
         for spelling in &entry.spellings {
@@ -535,14 +540,15 @@ impl VariationCache {
         result.allow_spaces = Some(allow_spaces);
         result.symbol_version = symbols.then(|| SYMBOL_VERSION.into());
         result.pattern.source = source;
-        if cache.values.len() >= 1000
-            && let Some(oldest) = cache.order.pop_front()
+        if cache.order.len() >= 1000
+            && let Some((old_bucket, oldest)) = cache.order.pop_front()
         {
-            cache.values.remove(&oldest);
+            cache.values[old_bucket].remove(oldest.as_ref());
         }
         let result = Arc::new(result);
-        cache.order.push_back(key.clone());
-        cache.values.insert(key, result.clone());
+        let key = Arc::new(entry.clone());
+        cache.order.push_back((bucket, key.clone()));
+        cache.values[bucket].insert(key, result.clone());
         Ok(CompiledVariation::Shared(result))
     }
     pub fn with_spacing<'a>(
@@ -608,22 +614,27 @@ pub fn rule_patterns(rule: &VariationRule) -> Result<Cow<'_, [ModerationPattern]
         .iter()
         .map(|o| (&o.term, &o.source))
         .collect();
-    let mut sources = Vec::new();
-    for entry in &variations.entries {
-        let source = match overrides.get(&entry.term) {
-            Some(s) => (*s).clone(),
-            None => with_variation_spacing(
+    let mut source = Vec::new();
+    source.extend("(?:".encode_utf16());
+    for (index, entry) in variations.entries.iter().enumerate() {
+        if index != 0 {
+            source.push(u16::from(b'|'));
+        }
+        source.extend("(?:".encode_utf16());
+        if let Some(override_source) = overrides.get(&entry.term) {
+            append(&mut source, override_source);
+        } else {
+            let compiled = global_cache().with_spacing_shared(
                 entry,
                 variations.allow_spaces.unwrap_or(false),
                 variations.mode,
-            )?
-            .pattern
-            .source
-            .clone(),
-        };
-        sources.push(surround("(?:", &source, ")"));
+            )?;
+            append(&mut source, &compiled.as_ref().pattern.source);
+        }
+        source.push(u16::from(b')'));
     }
-    let source = surround("(?:", &join(&sources, "|"), ")");
+    source.push(u16::from(b')'));
+    let source = JsString::from_units(source);
     let id = format!(
         "auto-all-{}",
         &hash_hex(source.to_utf8_lossy().as_bytes())[..24]

@@ -1,5 +1,6 @@
 //! Advanced blocked-word parser and matcher. Regex compatibility is limited by
 //! the experimental `re2_native` implementation; see the migration handoff.
+pub use crate::utils::moderation::types::{ModerationPattern, PatternBoundary as Boundary};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex, OnceLock},
@@ -21,18 +22,6 @@ use crate::utils::{
     re2_native::{CompileError, Re2Native},
 };
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub enum Boundary {
-    WholeWord,
-    Anywhere,
-}
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ModerationPattern {
-    pub id: JsString,
-    pub source: JsString,
-    pub boundary: Boundary,
-    pub ignore_case: bool,
-}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AdvancedRule {
     pub patterns: Vec<ModerationPattern>,

@@ -1,5 +1,8 @@
 //! Native moderation rule evaluation.
 
+#[cfg(feature = "moderation-types")]
+pub mod types;
+
 #[cfg(feature = "moderation-advanced")]
 pub mod advanced;
 

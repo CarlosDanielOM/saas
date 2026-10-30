@@ -13,6 +13,17 @@ fn terms_preserve_nfc_whitespace_utf16_and_source_validation_order() {
         vec![0xd800, 32, 0x61]
     );
     assert_eq!(
+        variation_term(&"\u{feff} AΣ\u{feff}\u{a0}B\u{2028} ".into()),
+        JsString::from("aς b")
+    );
+    assert_eq!(
+        variation_term(&JsString::from_units(vec![
+            0xfeff, 0x41, 0x03a3, 0xfeff, 0x42, 0xd800, 0x20, 0xdc00, 0x2028,
+        ]))
+        .units(),
+        vec![0x61, 0x03c2, 0x20, 0x62, 0xd800, 0x20, 0xdc00]
+    );
+    assert_eq!(
         variation_terms(Some(&JsonValue::Array(vec![
             JsonValue::String(" É ".into()),
             JsonValue::String("e\u{301}".into())
@@ -92,9 +103,16 @@ fn overrides_check_membership_before_regex_and_cache_is_bounded() {
     for i in 1..1000 {
         let mut entry = first.clone();
         entry.version = format!("{i}").into();
-        cache
-            .with_spacing(&entry, true, VariationMode::Common)
-            .unwrap();
+        let (spaces, mode) = match i % 4 {
+            0 => {
+                entry.allow_spaces = Some(true);
+                (false, VariationMode::Common)
+            }
+            1 => (true, VariationMode::Common),
+            2 => (false, VariationMode::Broad),
+            _ => (true, VariationMode::Broad),
+        };
+        cache.with_spacing(&entry, spaces, mode).unwrap();
     }
     let hit = cache
         .with_spacing_shared(&first, true, VariationMode::Common)
@@ -106,7 +124,7 @@ fn overrides_check_membership_before_regex_and_cache_is_bounded() {
     let mut overflow = first.clone();
     overflow.version = "1000".into();
     cache
-        .with_spacing(&overflow, true, VariationMode::Common)
+        .with_spacing(&overflow, true, VariationMode::Broad)
         .unwrap();
     assert_eq!(shared.len(), 1000);
     let after = shared
@@ -116,6 +134,62 @@ fn overrides_check_membership_before_regex_and_cache_is_bounded() {
         panic!("expected cached value")
     };
     assert!(!std::sync::Arc::ptr_eq(a, &after));
+}
+
+#[test]
+fn rule_patterns_preserves_override_order_and_compiled_sources() {
+    let cat = build_variation(&"cat".into(), None).unwrap();
+    let hi = build_variation(&"hi".into(), None).unwrap();
+    let rule = VariationRule {
+        patterns: None,
+        variations: Some(ModerationVariations {
+            mode: VariationMode::Common,
+            entries: vec![cat, hi],
+            overrides: Some(vec![VariationOverride {
+                term: "cat".into(),
+                source: "custom".into(),
+            }]),
+            allow_spaces: Some(true),
+        }),
+    };
+    let first = rule_patterns(&rule).unwrap();
+    assert_eq!(first.len(), 1);
+    assert_eq!(
+        first[0].source.as_str(),
+        Some("(?:(?:custom)|(?:(?:h\\s*i)))")
+    );
+    assert_eq!(rule_patterns(&rule).unwrap(), first);
+}
+
+#[test]
+fn concurrent_cache_hits_share_one_compilation() {
+    use std::sync::{Arc, Barrier};
+    let cache = VariationCache::new();
+    let entry = Arc::new(build_variation(&"cat".into(), None).unwrap());
+    let barrier = Arc::new(Barrier::new(8));
+    let threads: Vec<_> = (0..8)
+        .map(|_| {
+            let cache = cache.clone();
+            let entry = entry.clone();
+            let barrier = barrier.clone();
+            std::thread::spawn(move || {
+                barrier.wait();
+                match cache
+                    .with_spacing_shared(&entry, true, VariationMode::Broad)
+                    .unwrap()
+                {
+                    CompiledVariation::Shared(value) => value,
+                    CompiledVariation::Borrowed(_) => panic!("expected shared value"),
+                }
+            })
+        })
+        .collect();
+    let values: Vec<_> = threads
+        .into_iter()
+        .map(|thread| thread.join().unwrap())
+        .collect();
+    assert!(values.iter().all(|value| Arc::ptr_eq(&values[0], value)));
+    assert_eq!(cache.len(), 1);
 }
 
 // The parent generates this source-bound fixture in an isolated environment.

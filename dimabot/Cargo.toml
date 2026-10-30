@@ -64,7 +64,7 @@ application-schemas = ["mongo", "js-date"]
 # Opt-in channel TTS schema; does not alter deployed profiles.
 channel-tts-settings = ["application-schemas", "tts-utilities"]
 # Opt-in moderation model; native policy and caller-owned MongoDB persistence.
-channel-moderation-settings = ["application-schemas", "moderation-spam-categories", "moderation-caps", "dep:uuid"]
+channel-moderation-settings = ["application-schemas", "moderation-spam-categories", "moderation-caps", "moderation-types", "dep:uuid"]
 moderation-seed-plan = ["channel-moderation-settings"]
 # Request-time usage adapters, independent of deployed workers and defaults.
 ai-credit-projection = ["credit-policy", "tts-utilities", "plan-cache", "dep:sha2"]
@@ -112,7 +112,8 @@ js-unicode17 = ["dep:serde_json", "dep:unicode-normalization"]
 # Unicode tables shared by literal RegExp adapters; existing dependencies only.
 js-regexp-unicode = []
 moderation-blacklist = ["moderation-normalize", "js-regexp-unicode", "dep:regex"]
-moderation-advanced-policy = ["moderation-spam-categories", "lossless-json-view"]
+moderation-types = ["js-strings", "moderation-spam-categories"]
+moderation-advanced-policy = ["moderation-types", "lossless-json-view"]
 moderation-advanced = ["moderation-advanced-policy", "moderation-blacklist", "re2-native", "dep:uuid"]
 moderation-variations = ["moderation-advanced", "dep:sha2"]
 moderation-variations-provider = ["moderation-variations", "http-client"]

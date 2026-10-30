@@ -5,11 +5,15 @@ use super::{
     Field, FieldDefault as D, FieldType as T, SchemaDefinition, SchemaIndex, SchemaRepository,
 };
 pub use crate::utils::moderation::caps::CapsThresholdMode;
+pub use crate::utils::moderation::types::{
+    GeneratedVariation, ModerationPattern, ModerationVariations, OnUncertain, PatternBoundary,
+    SemanticExample, SemanticLabel, SemanticPolicy, VariationMode, VariationOverride,
+};
 use crate::utils::{
     js_string::JsString,
     moderation::spam_categories::{
         DEFAULT_SPAM_CATEGORIES, DEFAULT_SPAM_EXEMPT_TAGS, DEFAULT_SPAM_THRESHOLD, SPAM_CATEGORIES,
-        SPAM_EXEMPT_TAGS, SpamCategory, SpamProtection,
+        SPAM_EXEMPT_TAGS, SpamProtection,
     },
 };
 use mongodb::{
@@ -38,71 +42,6 @@ pub struct IModerationOffenseStep {
     pub action: ModerationAction,
     pub timeout_seconds: f64,
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum PatternBoundary {
-    WholeWord,
-    Anywhere,
-}
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ModerationPattern {
-    pub id: JsString,
-    pub source: JsString,
-    pub boundary: PatternBoundary,
-    pub ignore_case: bool,
-}
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SemanticLabel {
-    Allow,
-    Violation,
-}
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SemanticExample {
-    pub message: JsString,
-    pub label: SemanticLabel,
-}
-#[derive(Clone, Debug, PartialEq)]
-pub struct SemanticPolicy {
-    pub categories: Option<Vec<SpamCategory>>,
-    pub broadcaster_invitation: Option<bool>,
-    pub enabled: bool,
-    pub threshold_percent: Option<f64>,
-    pub policy: JsString,
-    pub examples: Vec<SemanticExample>,
-    // The TypeScript union has exactly one member: 'allow_and_log'.
-    pub on_uncertain: OnUncertain,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OnUncertain {
-    AllowAndLog,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum VariationMode {
-    Off,
-    Common,
-    Broad,
-}
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GeneratedVariation {
-    pub term: JsString,
-    pub spellings: Vec<JsString>,
-    pub pattern: ModerationPattern,
-    pub version: JsString,
-    pub allow_spaces: Option<bool>,
-    pub symbol_version: Option<JsString>,
-}
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct VariationOverride {
-    pub term: JsString,
-    pub source: JsString,
-}
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ModerationVariations {
-    pub mode: VariationMode,
-    pub entries: Vec<GeneratedVariation>,
-    pub overrides: Option<Vec<VariationOverride>>,
-    pub allow_spaces: Option<bool>,
-}
-
 /// A BSON Mixed value intentionally retains malformed permission expressions;
 /// the source does not validate it in the schema. `None` is an absent field.
 pub type PermissionExpressionMixed = Bson;

@@ -1,10 +1,12 @@
 //! Semantic-only portion of `advanced.ts`; pattern validation and the final
 //! rule-type restriction belong to the outer parser and must run around this.
+pub use crate::utils::moderation::types::{
+    OnUncertain, SemanticExample as PolicyExample, SemanticLabel as ExampleLabel, SemanticPolicy,
+};
 use crate::utils::{
     js_string::JsString,
     lossless_json::JsonValue,
     lossless_json_view::{ArrayIter, JsonView},
-    moderation::spam_categories::SpamCategory,
 };
 
 /// Read the same ordinary JS values from either a validated JSON view or an
@@ -94,31 +96,6 @@ pub const SEMANTIC_MODEL: &str = "respan/span-01-lite";
 pub const DECISION_POLICY_VERSION: &str = "contextual-v2";
 pub const SEMANTIC_DEADLINE_MS: u32 = 4_000;
 pub const ALLOW_THRESHOLD: f64 = 0.1;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ExampleLabel {
-    Allow,
-    Violation,
-}
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PolicyExample {
-    pub message: JsString,
-    pub label: ExampleLabel,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OnUncertain {
-    AllowAndLog,
-}
-#[derive(Clone, Debug, PartialEq)]
-pub struct SemanticPolicy {
-    pub categories: Option<Vec<SpamCategory>>,
-    pub broadcaster_invitation: Option<bool>,
-    pub enabled: bool,
-    pub threshold_percent: Option<f64>,
-    pub policy: JsString,
-    pub examples: Vec<PolicyExample>,
-    pub on_uncertain: OnUncertain,
-}
 
 pub fn empty_semantic_policy() -> SemanticPolicy {
     SemanticPolicy {
