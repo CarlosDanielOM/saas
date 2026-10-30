@@ -1,0 +1,82 @@
+{
+  "codeCommit": "de0606ed9b8b2dbdc73f7ffd457090e7cc9404fa",
+  "acceptedRuns": [
+    "node-1793351297978993028",
+    "compiler-fixtures-1793351297978548916"
+  ],
+  "sourceTreeSha256": "c73089d01b8073f9aa8e0ddb4e8c87a05a19b8c448cf40df016f72ad87f96130",
+  "frozenInputs": 1456,
+  "gitInputs": 1446,
+  "reusedSdkInputs": 10,
+  "sourceCases": 32,
+  "normalTests": 1,
+  "ignoredTestsPassed": 4,
+  "fixtureSha256": "c54a4e0a61f9dc04b1230e932ca37f95ee50afcec2c1d14db0ac860e6eb501b1",
+  "fixtureNamespace": "keyword-fixture-fca01b6f57a8:",
+  "fixtureNote": "All3Nodecorpora byteidentical; finalruntimeusesattempt1 afterindependentcomparisonwithattempt3.",
+  "firstRun": 1793348797395254281,
+  "finalRun": 1793351297978993028,
+  "compilerMetrics": {
+    "steps": [
+      {
+        "name": "bootstrap",
+        "seconds": 3.841,
+        "exit_code": 0
+      },
+      {
+        "name": "locked-fetch",
+        "seconds": 2.675,
+        "exit_code": 0
+      },
+      {
+        "name": "compiler-fixtures",
+        "seconds": 116.913,
+        "exit_code": 0
+      }
+    ],
+    "elapsed_seconds": 127.794,
+    "minimum_available_bytes": 9371762688,
+    "peak_cache_bytes": 7786528768,
+    "limits": {
+      "cpus": 6,
+      "memory": 4294967296,
+      "memory_swap": 4294967296,
+      "pids": 256,
+      "cargo_jobs": 2
+    },
+    "production_unchanged": true
+  },
+  "coverage": [
+    "32sourceeventwires",
+    "32realRedisnormalizedI/O/logger/receipt/analyticsreplays",
+    "legacyqueueconversion/null/arraylike/failedmigration",
+    "queuebeforeprojectionbeforereceiptbeforeanalytics",
+    "partialprojection/receipt/analytics failures",
+    "duplicateexternalIDprojection",
+    "NX/PX8000leaseand2.5scontention",
+    "changedlockownerretained",
+    "appliedRPUSHreplylossonewriteoneatomicreleaseattempt",
+    "concretePosthogloopbackpayloads"
+  ],
+  "approvedChanges": [
+    "Atomicownercheckedreleaseusingexistingai_usage_lockLua replacesGETthenDELrace",
+    "Final350mscoordinationpoll cappedremaining2.5smonotonicbudget; noartificialreadyworkpause"
+  ],
+  "guardHistory": {
+    "failedRun": "compiler-1793348950309695669",
+    "observedCacheBytes": 8607584256,
+    "configuredLimitBytes": 8589934592,
+    "outcome": "guardstoppedcompilerandcleanedownedcontainers; noquota/resourcechanges",
+    "cleanupArtifact": "artifacts/polar-cache-usage/attempt1/private-cache-maintenance.json",
+    "removedPrivateDebugBinaries": 29,
+    "freedBytes": 891744256
+  },
+  "knownBoundaries": [
+    "Cachemodeonly; immediate/batchPolarHTTPandfullSDKmodule remainopen",
+    "Defaultloggerusesconcretecache/console butautomatictelemetry/OTelattachmentandUTF16diagnosticpayloadremainseparate",
+    "FullI/OreplaynormalizesUUIDs/clockfields/drivererrorwording and maps sourceGETDELrelease toacceptedatomicLua",
+    "Clock/read/SDKdefaults notarbitraryJSprototypes orinvalidruntimecasts",
+    "Nooverallruntimebenchmark/performanceclaim; high-levelpendingcharge recovery usesstableid distinctfromwithin-callblindRPUSHreplay"
+  ],
+  "status": "boundedcache-modeapplicationadapterverified; wholepolarsh/billing/worker migrationincomplete; no deployment/calleradoption/retirement/push"
+}

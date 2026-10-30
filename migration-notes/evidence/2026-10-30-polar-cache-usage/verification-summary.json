@@ -1,0 +1,79 @@
+{
+  "approvedChanges": [
+    "Atomicownercheckedreleaseusingexistingai_usage_lockLua replacesGETthenDELrace",
+    "Final350mscoordinationpoll cappedremaining2.5smonotonicbudget; noartificialreadyworkpause"
+  ],
+  "commit": "de0606ed9b8b2dbdc73f7ffd457090e7cc9404fa",
+  "compilerMetrics": {
+    "elapsed_seconds": 127.794,
+    "limits": {
+      "cargo_jobs": 2,
+      "cpus": 6,
+      "memory": 4294967296,
+      "memory_swap": 4294967296,
+      "pids": 256
+    },
+    "minimum_available_bytes": 9371762688,
+    "peak_cache_bytes": 7786528768,
+    "production_unchanged": true,
+    "steps": [
+      {
+        "exit_code": 0,
+        "name": "bootstrap",
+        "seconds": 3.841
+      },
+      {
+        "exit_code": 0,
+        "name": "locked-fetch",
+        "seconds": 2.675
+      },
+      {
+        "exit_code": 0,
+        "name": "compiler-fixtures",
+        "seconds": 116.913
+      }
+    ]
+  },
+  "counts": {
+    "gitInputs": 1446,
+    "ignoredTestsPassed": 4,
+    "normalTests": 1,
+    "reusedSdkInputs": 10,
+    "sourceCases": 32
+  },
+  "coverage": [
+    "32sourceeventwires",
+    "32realRedisnormalizedI/O/logger/receipt/analyticsreplays",
+    "legacyqueueconversion/null/arraylike/failedmigration",
+    "queuebeforeprojectionbeforereceiptbeforeanalytics",
+    "partialprojection/receipt/analytics failures",
+    "duplicateexternalIDprojection",
+    "NX/PX8000leaseand2.5scontention",
+    "changedlockownerretained",
+    "appliedRPUSHreplylossonewriteoneatomicreleaseattempt",
+    "concretePosthogloopbackpayloads"
+  ],
+  "failedGuard": {
+    "cleanupArtifact": "artifacts/polar-cache-usage/attempt1/private-cache-maintenance.json",
+    "configuredLimitBytes": 8589934592,
+    "failedRun": "compiler-1793348950309695669",
+    "freedBytes": 891744256,
+    "observedCacheBytes": 8607584256,
+    "outcome": "guardstoppedcompilerandcleanedownedcontainers; noquota/resourcechanges",
+    "removedPrivateDebugBinaries": 29
+  },
+  "finalRuns": [
+    "node-1793351297978993028",
+    "compiler-fixtures-1793351297978548916"
+  ],
+  "knownBoundaries": [
+    "Cachemodeonly; immediate/batchPolarHTTPandfullSDKmodule remainopen",
+    "Defaultloggerusesconcretecache/console butautomatictelemetry/OTelattachmentandUTF16diagnosticpayloadremainseparate",
+    "FullI/OreplaynormalizesUUIDs/clockfields/drivererrorwording and maps sourceGETDELrelease toacceptedatomicLua",
+    "Clock/read/SDKdefaults notarbitraryJSprototypes orinvalidruntimecasts",
+    "Nooverallruntimebenchmark/performanceclaim; high-levelpendingcharge recovery usesstableid distinctfromwithin-callblindRPUSHreplay"
+  ],
+  "productionReadback": "All 18 production records unchanged; zero task-owned resources remain, per production-readback.json.",
+  "sourceTreeSha256": "c73089d01b8073f9aa8e0ddb4e8c87a05a19b8c448cf40df016f72ad87f96130",
+  "status": "bounded-cache-mode-branch-verified; full Polar helper/application migration incomplete"
+}

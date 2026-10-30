@@ -1,0 +1,62 @@
+{
+  "apply_format.py": {
+    "bytes": 548,
+    "sha256": "ce77428e3a9ca462e55fc47fe4d21bdb3494df2353f0373257076713ab22a276",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/apply_format.py"
+  },
+  "final_readback.py": {
+    "bytes": 1324,
+    "sha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/final_readback.py"
+  },
+  "freeze_advanced_oracle.py": {
+    "bytes": 639,
+    "sha256": "4091ac4b5aeadc4cb0aa653d0346b02b30049da4ba994791b4010e7504d2aa2f",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/freeze_advanced_oracle.py"
+  },
+  "freeze_credit_reader.py": {
+    "bytes": 2053,
+    "sha256": "e9c97281662e95b93c108048bd735d03c17d5346c8cf1dd739e6e6e6093e34bc",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/freeze_credit_reader.py"
+  },
+  "freeze_polar_cache_usage.py": {
+    "bytes": 192,
+    "sha256": "b977040ed11717f575926fb3fc7f8082d9a8d83f46c05948e2b0706584f0f659",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/freeze_polar_cache_usage.py"
+  },
+  "polar_cache_node1.sh": {
+    "bytes": 485,
+    "sha256": "1d726f9206c4fc098b02f374518a311f104059f3b084148491b15236c2bd19fe",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/polar_cache_node1.sh"
+  },
+  "polar_cache_node2.sh": {
+    "bytes": 485,
+    "sha256": "597993d144bfbff53950d1204e313c113574348a3be376288c362cbdfef9bed7",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/polar_cache_node2.sh"
+  },
+  "polar_cache_node3.sh": {
+    "bytes": 485,
+    "sha256": "833e1aeb8d204c241dc2a03c48b6a9dd3401e1b58a7e05727cc8339fec677592",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/polar_cache_node3.sh"
+  },
+  "polar_cache_pure1.sh": {
+    "bytes": 507,
+    "sha256": "4879fc6a36038fb0f4e364a4ab3313f8cbcf48bd2e2a9d341fc10b0f12e23197",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/polar_cache_pure1.sh"
+  },
+  "polar_cache_quality2.sh": {
+    "bytes": 855,
+    "sha256": "8d6f5f0b40741ef7a18201a2f15b3840fd1602cc2d52f64948fc4d1aecb0438b",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/polar_cache_quality2.sh"
+  },
+  "polar_cache_runtime1.sh": {
+    "bytes": 449,
+    "sha256": "b65c38dde1836f663f1d7523248457f26c579d70c33f1c0c3224ff3836cb5a44",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/polar_cache_runtime1.sh"
+  },
+  "validate.py": {
+    "bytes": 12955,
+    "sha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+    "sourcePath": "/tmp/dimabot-full-migration-tools/validate.py"
+  }
+}

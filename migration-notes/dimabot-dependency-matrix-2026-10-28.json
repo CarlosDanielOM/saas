@@ -92877,33 +92877,64 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-cache-mode-usage-branch; immediate/batch Polar ingestion, billing adapter, semantic worker/caller adoption, and whole-helper closure remain open",
+      "localRustEvidence": [
+        "dimabot/src/utils/polar_cache_usage.rs: native cache-mode event preparation, queue/lease coordination, projection, receipt enqueue, and analytics adapter",
+        "dimabot/tests/polar_cache_usage.rs and dimabot/tests/support/polar_cache_usage.rs: ordinary cases plus private Redis normalized-I/O, owner-release, and RPUSH response-loss fixtures",
+        "dimabot/tests/fixtures/polar_cache_usage_reference.cjs: pinned actual TypeScript source oracle and 32-record cache-mode corpus",
+        "migration-notes/polar-cache-usage.md: source contract, reuse map, pacing decisions, and remaining integration gaps",
+        "migration-notes/evidence/2026-10-30-polar-cache-usage/README.md: indexed source bindings, corpora, accepted receipts/logs, facts, and readback"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Only the source mode:\"cache\" path is mapped. It prepares the event, durably queues it, projects credits, enqueues the receipt, tracks analytics, and returns without calling the Polar HTTP ingest endpoint. Immediate mode, batch flush behavior, and the complete Polar SDK adapter are not mapped.",
+        "The source GET then DEL lock release is replaced by the existing atomic owner-checked ai_usage_lock Lua release. The final 350 ms contention wait is capped to the remaining 2.5-second monotonic coordination budget. These are accepted improvements, not byte-identical source operations.",
+        "The source replay normalizes generated UUIDs, clock fields, Redis driver error wording, and the accepted atomic-release protocol. It does not claim a byte-for-byte match of the entire source RPC trace or an end-to-end Redis RPC timeout.",
+        "The concrete logger exercises cache and console sinks. Default automatic telemetry/OpenTelemetry attachment and lone UTF-16-surrogate diagnostic payloads are not covered by this adapter.",
+        "High-level pending-charge recovery uses stable IDs; it is distinct from within-call replay of an ambiguous RPUSH or EVAL outcome. No performance benchmark or production-latency claim is made."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/semantic_worker.ts: cache-mode Polar usage call path; semantic worker remains TypeScript-owned."
+        ],
+        "runtimeStatus": "The native cache-mode adapter is verified as opt-in library code. The semantic worker and other TypeScript callers remain active and have not adopted it; adoption, deployment, and source retirement are separate."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Final Node run node-1793351297978993028: actual-source, source-bound 32-record cache-mode corpus; all three retained corpus outputs are byte-identical.",
+          "Source bindings cover 1,456 inputs: 1,446 Git objects verified with git show at de0606ed9b8b2dbdc73f7ffd457090e7cc9404fa and ten SDK inputs reused from the previously archive-verified binding."
+        ],
+        "rustBehaviorEvidence": [
+          "One ordinary Rust test and four ignored fixture tests passed in compiler-fixtures-1793351297978548916.",
+          "Private Redis normalized-I/O/logger/receipt/analytics replay, changed-owner atomic release, and applied Polar RPUSH response-loss (one write, one release attempt) passed.",
+          "Scoped, minimal, Mongo/Redis, and all-feature strict validation passed. The final compiler phase used six CPUs, 4 GiB memory/no-swap, 256 PIDs, two Cargo jobs; compiler/fixtures took 116.913 seconds and total elapsed time was 127.794 seconds.",
+          "All 18 production records were unchanged and zero task-owned resources remained in the final readback. No production deployment occurred."
+        ],
+        "status": "Bounded cache-mode branch verified on source tree SHA-256 c73089d01b8073f9aa8e0ddb4e8c87a05a19b8c448cf40df016f72ad87f96130. The containing Polar helper, billing/application wrapper, immediate/batch HTTP path, semantic worker integration, and caller adoption remain open."
       },
       "exports": [
         {
           "name": "getPolarShClient",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Unmapped; the cache-mode path returns before Polar client construction. Immediate ingestion and batch flush remain open.",
+          "evidence": [
+            "dimabot/src/utils/polar_cache_usage.rs",
+            "migration-notes/polar-cache-usage.md"
+          ]
         },
         {
           "name": "grantPolarAiCredits",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Unmapped; separate Polar credit-grant operation remains open.",
+          "evidence": [
+            "migration-notes/polar-cache-usage.md"
+          ]
         },
         {
           "name": "ingestPolarSHEvent",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Partial: mode:\"cache\" is mapped to the opt-in native polar_cache_usage adapter; immediate and batch modes and full source helper closure remain open.",
+          "evidence": [
+            "dimabot/src/utils/polar_cache_usage.rs",
+            "dimabot/tests/polar_cache_usage.rs",
+            "migration-notes/evidence/2026-10-30-polar-cache-usage/README.md"
+          ]
         }
       ],
       "imports": [
@@ -92920,12 +92951,12 @@
           "baselineSourceTargets": [
             "src/utils/ai_usage_event.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Runtime context creation and metadata enrichment are reused from the verified native AI usage helper for this branch.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
+          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
+          "rustReplacementOrGap": "Runtime context creation and metadata enrichment are reused from the verified native AI usage helper for this branch."
         },
         {
           "ordinal": 1,
@@ -92940,12 +92971,12 @@
           "baselineSourceTargets": [
             "src/utils/ai_usage_ledger.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Receipt construction and enqueue are reused from the verified native AI usage producer/ledger path for this branch.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
+          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
+          "rustReplacementOrGap": "Receipt construction and enqueue are reused from the verified native AI usage producer/ledger path for this branch."
         },
         {
           "ordinal": 2,
@@ -92960,12 +92991,12 @@
           "baselineSourceTargets": [
             "src/utils/billing.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "The cache-mode credit projection adapter is reused; broader billing wrapper/source ownership remains open.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
+          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
+          "rustReplacementOrGap": "The cache-mode credit projection adapter is reused; broader billing wrapper/source ownership remains open."
         },
         {
           "ordinal": 3,
@@ -92980,12 +93011,12 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Private Redis behavior is backed by the native Redis manager and isolated Redis fixtures for this branch.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
+          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
+          "rustReplacementOrGap": "Private Redis behavior is backed by the native Redis manager and isolated Redis fixtures for this branch."
         },
         {
           "ordinal": 4,
@@ -93000,12 +93031,12 @@
           "baselineSourceTargets": [
             "src/utils/logger.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Concrete cache/console logging is exercised; default telemetry/OpenTelemetry attachment and UTF-16 diagnostic parity remain open.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
+          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
+          "rustReplacementOrGap": "Concrete cache/console logging is exercised; default telemetry/OpenTelemetry attachment and UTF-16 diagnostic parity remain open."
         },
         {
           "ordinal": 5,
@@ -93020,12 +93051,12 @@
           "baselineSourceTargets": [
             "src/utils/posthog_events.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Cache-mode analytics is exercised through the existing native PostHog tracking adapter; this does not complete unrelated event wrappers.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
+          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
+          "rustReplacementOrGap": "Cache-mode analytics is exercised through the existing native PostHog tracking adapter; this does not complete unrelated event wrappers."
         },
         {
           "ordinal": 6,
@@ -93034,11 +93065,11 @@
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
           "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "runtimeOrTypeDependency": "Not used by the cache-mode return path; immediate and batch HTTP ingestion still require the application-specific provider adapter.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
+          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
+          "rustReplacementOrGap": "Not used by the cache-mode return path; immediate and batch HTTP ingestion still require the application-specific provider adapter."
         },
         {
           "ordinal": 7,
@@ -93047,14 +93078,14 @@
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
           "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "runtimeOrTypeDependency": "The cache-mode context UUID behavior is supplied by the existing native UUID dependency; receipt bindings cover generated IDs.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
+          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
+          "rustReplacementOrGap": "The cache-mode context UUID behavior is supplied by the existing native UUID dependency; receipt bindings cover generated IDs."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-cache-mode-usage-adapter-verified; immediate/batch-Polar-http, billing/application-wrapper, semantic-worker/caller-adoption, and whole-helper-dependency-closure-open"
     },
     {
       "source": "src/utils/pollyfills.ts",

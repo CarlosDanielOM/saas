@@ -1,0 +1,152 @@
+{
+  "reason": "8GiB disk cache guard stopped prior phase; ceilings remain unchanged",
+  "scope": "only obsolete task-owned debug test executables; shared cache/source/immutable benchmark exports unchanged",
+  "removed": [
+    {
+      "path": "target/debug/deps/follow_defense_baseline-6fe463393307a85a",
+      "sha256": "bb755199860bdeb04ddc9c0818dd9b132765099b157c222e3329b29694901d17",
+      "allocatedBytes": 31313920
+    },
+    {
+      "path": "target/debug/deps/follow_defense_baseline-925dcd0619f99c66",
+      "sha256": "45b4e4c2c5db049bfa86b8615b986e91af530457e0170424a0ea7a7e52648b0a",
+      "allocatedBytes": 31342592
+    },
+    {
+      "path": "target/debug/deps/follow_defense_baseline-e7b99ace0c57e157",
+      "sha256": "f6a414685d9a189d16b8c79f604a2cc966cc59fd7b124f41e93a7aad26b3d040",
+      "allocatedBytes": 31313920
+    },
+    {
+      "path": "target/debug/deps/follow_defense_baseline-f5499aafa37815cc",
+      "sha256": "98e58c859e55f7cd38241e624850c3deea992161c1c30ae176c8e8cc8a90ac2a",
+      "allocatedBytes": 31338496
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-0ff4778940abfd9e",
+      "sha256": "2b6322c3acb5836eee24cebd99d54c24053b76379cd67d9f9c04accc1be72961",
+      "allocatedBytes": 33439744
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-8274c3adc2fea01e",
+      "sha256": "994fab86268ad3659366f8f745aadf5e34fb896628229ab11d9d57dbc3474aef",
+      "allocatedBytes": 33411072
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-9d7341241abb8dbd",
+      "sha256": "545d2efa353884ce9211ae7c06bbdd98bca3bfe4c1ea87026047982713191902",
+      "allocatedBytes": 33439744
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-d389be21a58a157f",
+      "sha256": "a667dc7eacf447dfb2ee8614c4fd6495cc253474493a4f35c196093c2fab802d",
+      "allocatedBytes": 33443840
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-e057a986ed7ce9d7",
+      "sha256": "512eaf27093b89a8b4ed5733f006db7cc28666b1d24469df36e536432e06159e",
+      "allocatedBytes": 33423360
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-ea895c8f2456c076",
+      "sha256": "777de4b1aea47d974de3b21b48c96a263504a702eaa00300bf821cca55c11a30",
+      "allocatedBytes": 33411072
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-f7dfb3490959efa3",
+      "sha256": "4652096fcd5ab810b0d00f81459576b02dd9f814b1acb7ee15a04f459cd2e0c8",
+      "allocatedBytes": 33411072
+    },
+    {
+      "path": "target/debug/deps/raid_sessions-2e05063573e58250",
+      "sha256": "f1aebb71cc149a08b58f1bb68d8cfccadd009abf4a8455bb257dded145e2c4a3",
+      "allocatedBytes": 35160064
+    },
+    {
+      "path": "target/debug/deps/raid_sessions-63713e064e3c1a6c",
+      "sha256": "5bcd6d5512e8865f4c8193c00b8f9298a9f81799ea81b4ad3d39be7f26ff5b82",
+      "allocatedBytes": 35155968
+    },
+    {
+      "path": "target/debug/deps/raid_sessions-6b9f82ed9cbb1bb0",
+      "sha256": "6e28b86a274e36c2a432c2b53b30cad1d3caa04f6b1d755039704d870e1e28e2",
+      "allocatedBytes": 35188736
+    },
+    {
+      "path": "target/debug/deps/raid_sessions-d324943294483769",
+      "sha256": "f72867ee3d7300d6c8bf5e836e815e6efe7b8cf8d8bb176ffd4ca7e5e585eb44",
+      "allocatedBytes": 35188736
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-5ea5728d2cf8e468",
+      "sha256": "99d2be6d159c60d8301e9d1a3df3a9d74893607c12f8475ac0012a9aab7c88eb",
+      "allocatedBytes": 27975680
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-63c98ecdf9fbf91a",
+      "sha256": "e89daab70e12a06ad5d195222da289c6238606f23e3cc929e66bc41850ea5742",
+      "allocatedBytes": 28000256
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-664c47474d1b5a86",
+      "sha256": "020abfe12c68b99c646571a9bb209dafcf538863f0b1e32f66bc8500a4843dc5",
+      "allocatedBytes": 28004352
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-826b6a6e463f76b9",
+      "sha256": "a23a6120621818ea70edf8552fd8a0345427d67cc8725db903cf43fa49ab5534",
+      "allocatedBytes": 27975680
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-83cd42fb3e2bbe06",
+      "sha256": "0662f2732f5d3a4c5825b4c24e4bb2bb0d4fe3bd309c7a6b95de7ddb1a8bc3c9",
+      "allocatedBytes": 27983872
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-9329fbe5f2bb8f0f",
+      "sha256": "69b4b548ae7278e8df64f06b4f0b3b3fa154332349d0f27fab12e7830d52341d",
+      "allocatedBytes": 27975680
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-965b04259cbf5793",
+      "sha256": "1db273ec0a4e75fa251543737866319c6f80e0fe283f2e5f3448e9a0a5e83caa",
+      "allocatedBytes": 27975680
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-a4650725671c3cf2",
+      "sha256": "383d6f24b2b7804f383b17188407f4cd96d23ff8be5cbd333d2975b88119027c",
+      "allocatedBytes": 27975680
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-ac281633f8c35b5e",
+      "sha256": "129484e1d2eec77092d1c06837b1cda93de095ffd8007089640719d43c368faf",
+      "allocatedBytes": 27975680
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-c31a8fbef8d43af5",
+      "sha256": "08afcf8a063ff9b30cfcaee1aa432f86c8f1800636886b491a0caf80f4b1d4d0",
+      "allocatedBytes": 27975680
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-c62b17535f45e539",
+      "sha256": "cce20edd4eb5a6357c94a25181546d39d7ebb5a36adb35b043f9d667b5e1ed64",
+      "allocatedBytes": 27975680
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-c7c7e0e161bb5d29",
+      "sha256": "631fb9acbfd7c941fe4ad1d7b919481a8c5b0998947d748cb792419d99b33a67",
+      "allocatedBytes": 27996160
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-ebe0e37c314342ec",
+      "sha256": "ef4cabe594f36150426233acd3dba6f4838282b0fee113f53dd8a900061618d1",
+      "allocatedBytes": 27996160
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-ee929a036cb99d8f",
+      "sha256": "79596082ad28bef8756bd1b663a8a494f03fa7bc4874e3604339a5e2afc1370d",
+      "allocatedBytes": 27975680
+    }
+  ],
+  "freedBytes": 891744256
+}
