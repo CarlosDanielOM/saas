@@ -1,8 +1,9 @@
 'use strict';
+const leaf = require('./moderation_leaf_source_resolver.cjs');
 // Actual unchanged TypeScript module, real pinned Mongoose, no database.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),Module=require('node:module'),assert=require('node:assert/strict');
 const root=fs.realpathSync(process.env.DIMA_MODERATION_SCHEMA_SOURCE_ROOT || path.join(__dirname,'../..'));
-const sha=b=>crypto.createHash('sha256').update(b).digest('hex');const read=f=>fs.readFileSync(path.join(root,f));
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');const read=f=>fs.readFileSync(leaf.sourcePath(root, f));
 const pins={
  'src/schemas/channel_moderation_settings.schema.ts':'e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653',
  'src/utils/moderation/spam_categories.ts':'29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088',
@@ -42,7 +43,7 @@ const overlays={
  'src/utils/permissions/roles.ts':`${roleConst.getText(roles)}\n${declarations(roles,['RoleTag'])}`,
 };
 const options={target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.NodeNext,moduleResolution:ts.ModuleResolutionKind.NodeNext,strict:true,noEmit:true,skipLibCheck:true,esModuleInterop:true,types:['node']};
-const host=ts.createCompilerHost(options),origRead=host.readFile.bind(host),origGet=host.getSourceFile.bind(host);
+const host=leaf.overlaySource(ts.createCompilerHost(options), ts, root, ["src/utils/moderation/spam_categories.ts"]),origRead=host.readFile.bind(host),origGet=host.getSourceFile.bind(host);
 const overlayFor=file=>overlays[path.relative(root,path.resolve(file)).split(path.sep).join('/')];
 host.readFile=file=>overlayFor(file)??origRead(file);
 host.getSourceFile=(file,version,...rest)=>{const text=overlayFor(file);return text===undefined?origGet(file,version,...rest):ts.createSourceFile(file,text,version,true,ts.ScriptKind.TS);};
@@ -90,7 +91,7 @@ const cases=inputs.map(snapshot);
 const a=new model({channelID:'a'}),b=new model({channelID:'b'});a.spamProtection.categories.push('insults');const independence={otherCategories:[...b.spamProtection.categories],differentInstances:a.spamProtection!==b.spamProtection};
 const nativeFiles=['src/schemas/channel_moderation_settings.schema.rs','src/schemas/schema.rs','src/utils/moderation/spam_categories.rs','src/utils/moderation/caps.rs','tests/channel_moderation_settings_schema.rs','tests/channel_moderation_settings_store.rs','tests/fixtures/channel_moderation_settings_reference.cjs','Cargo.toml','Cargo.lock'];
 const hashes=Object.fromEntries(nativeFiles.map(f=>[f,sha(read(f))]));hashes['src/utils/permissions/roles.ts']=sha(read('src/utils/permissions/roles.ts'));
-const metadata={format:1,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version},nodeSha:nodePin,pins,hashes,compiled,imports,model:model.modelName,collection:model.collection.name,timestamps:model.schema.options.timestamps,indexes:model.schema.indexes(),cases:cases.length};
+const metadata={format:1,sourceProvenance:leaf.provenance(root,["src/utils/moderation/spam_categories.ts"]),versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version},nodeSha:nodePin,pins,hashes,compiled,imports,model:model.modelName,collection:model.collection.name,timestamps:model.schema.options.timestamps,indexes:model.schema.indexes(),cases:cases.length};
 const output=JSON.stringify({metadata,defaults,independence,cases},null,2)+'\n';
 const [mode,dir,...extra]=process.argv.slice(2);assert(['--write','--check'].includes(mode)&&dir&&path.isAbsolute(dir)&&!extra.length);
 const real=fs.realpathSync(dir),workspace=fs.realpathSync(path.join(root,'..'));assert(real!==workspace&&!real.startsWith(workspace+path.sep));

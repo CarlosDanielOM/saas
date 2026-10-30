@@ -453,7 +453,7 @@ mod fixture {
             .expect("independent fixture SHA required");
         assert_eq!(
             expected_sha,
-            "dbdc74c2127fdbe434de83bb4153521d4cc22b639bb7c08c10db375da2e0c78a"
+            "cf7e63b3ca33641673b0eaf8878f08938fd299ad05fd651f3933727987f460f7"
         );
         let bytes = std::fs::read(path).unwrap();
         assert_eq!(digest::sha256_hex(&bytes), expected_sha);

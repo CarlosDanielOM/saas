@@ -34,8 +34,8 @@ const pins = {
   'node_modules/mongoose/lib/helpers/query/castUpdate.js': 'b2b53126ed947f1fb2fe267fcb3814e40f12181454a7a6ee24f82c48687cef9b',
   'node_modules/mongoose/lib/helpers/setDefaultsOnInsert.js': '45959792d1854b183e28359d34cefb49ca76ac9f2cb711b309ea6be26b9fb4f7',
   'src/schemas/moderation_decision.schema.ts': '749f450beb060ccba72447cc765f4e372b8d6fcbfa20d7c74ecd21a7d09b4466',
-  'tests/fixtures/moderation_variations_source.cjs': 'a90b6a9bf8e6c9a859c2454c76b0222d99d1c8b6d3e0c930ce4ee1f072a28653',
-  'tests/fixtures/moderation_spam_source.cjs': '24173a6f2eb5979c89aa27cf5804c4c2c9f92df02daf7a66d9479e5e52cb7b8a',
+  'tests/fixtures/moderation_variations_source.cjs': '4b86ff3446a7ed9961d14c5d747c077c20fa82dd9ad14d1032459957c8f3faf4',
+  'tests/fixtures/moderation_spam_source.cjs': '19d6dd590e9f816a0d04bb36cd46fb658fb371875b0db166298aaab7543efb0c',
 };
 for (const [file, hash] of Object.entries(pins)) assert.equal(variation.sha(variation.read(file)), hash, file);
 audited.independent('DIMA_DECISIONS_LOADER_SHA256', __filename);

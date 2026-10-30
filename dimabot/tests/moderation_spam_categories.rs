@@ -1,5 +1,8 @@
 #![cfg(feature = "moderation-spam-categories")]
 
+#[path = "support/moderation_leaf_source.rs"]
+mod moderation_leaf_source;
+
 use dima_rust::utils::moderation::spam_categories::*;
 
 #[test]
@@ -59,6 +62,10 @@ fn duplicate_order_and_invitation() {
 #[test]
 #[ignore = "requires externally generated pinned TypeScript oracle"]
 fn replay_reference_full_wire() {
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/spam_categories.ts",
+    );
     let file =
         std::env::var("DIMA_SPAM_CATEGORIES_REFERENCE").expect("absolute reference JSON path");
     assert!(std::path::Path::new(&file).is_absolute());

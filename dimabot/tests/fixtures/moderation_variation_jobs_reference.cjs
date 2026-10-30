@@ -2,8 +2,8 @@
 // Actual-source oracle. All I/O is scripted; never sends a real request.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),Module=require('node:module');
 const lib=require('./moderation_variations_source.cjs');
-assert.equal(lib.sha(lib.read('tests/fixtures/moderation_variations_source.cjs')),'a90b6a9bf8e6c9a859c2454c76b0222d99d1c8b6d3e0c930ce4ee1f072a28653');
-assert.equal(process.env.DIMA_VARIATIONS_BENCH_LOADER_SHA256,'a90b6a9bf8e6c9a859c2454c76b0222d99d1c8b6d3e0c930ce4ee1f072a28653');
+assert.equal(lib.sha(lib.read('tests/fixtures/moderation_variations_source.cjs')),'4b86ff3446a7ed9961d14c5d747c077c20fa82dd9ad14d1032459957c8f3faf4');
+assert.equal(process.env.DIMA_VARIATIONS_BENCH_LOADER_SHA256,'4b86ff3446a7ed9961d14c5d747c077c20fa82dd9ad14d1032459957c8f3faf4');
 const pin=process.env.DIMA_VARIATION_JOBS_READER_SHA256;
 assert(/^[0-9a-f]{64}$/.test(pin||''));assert.equal(lib.sha(fs.readFileSync(__filename)),pin,'reader');
 const file='src/utils/moderation/variation_jobs.ts';
@@ -96,6 +96,6 @@ async function run(c){
 }
 (async()=>{try{
  const observed=[];for(const c of cases)observed.push(await run(c));
- const reference={schema:1,provenance:{sourceSha256:lib.sha(source),readerSha256:pin,loaderSha256:lib.sha(lib.read('tests/fixtures/moderation_variations_source.cjs')),node:process.versions.node,v8:process.versions.v8,nodeSha256:lib.nodeSha,typescript:ts.version,re2Runtime:lib.re2Runtime,pins:{...lib.pins,...lib.variationPins},compiled:{...lib.compiled,...lib.variationCompiled,[file]:lib.sha(compiled.outputText)},evidence:{...lib.evidence,...lib.variationEvidence,[file]:{imports,declarations}},runtimeExports:['VariationError','savedVariations','resolveVariations','variationJobView','requestVariationJob','processNextVariationJob'],typeExports:[],caseCount:observed.length},cases:observed};
+ const reference={schema:1,provenance:{sourceProvenance:lib.sourceProvenance,sourceSha256:lib.sha(source),readerSha256:pin,loaderSha256:lib.sha(lib.read('tests/fixtures/moderation_variations_source.cjs')),node:process.versions.node,v8:process.versions.v8,nodeSha256:lib.nodeSha,typescript:ts.version,re2Runtime:lib.re2Runtime,pins:{...lib.pins,...lib.variationPins},compiled:{...lib.compiled,...lib.variationCompiled,[file]:lib.sha(compiled.outputText)},evidence:{...lib.evidence,...lib.variationEvidence,[file]:{imports,declarations}},runtimeExports:['VariationError','savedVariations','resolveVariations','variationJobView','requestVariationJob','processNextVariationJob'],typeExports:[],caseCount:observed.length},cases:observed};
  const [mode,dir,...extra]=process.argv.slice(2);assert(['--write','--check'].includes(mode)&&dir&&path.isAbsolute(dir)&&!extra.length,'usage: --write|--check ABSOLUTE_EXTERNAL_DIR');const real=fs.realpathSync(dir),workspace=fs.realpathSync(path.join(lib.root,'..'));assert(real!==workspace&&!real.startsWith(workspace+path.sep),'output must be outside workspace');const outputFile=path.join(real,'moderation-variation-jobs-reference.json');assert.deepEqual(fs.readdirSync(real),mode==='--write'?[]:[path.basename(outputFile)]);const output=JSON.stringify(reference,null,2)+'\n';if(mode==='--write')fs.writeFileSync(outputFile,output,{flag:'wx'});else assert.equal(fs.readFileSync(outputFile,'utf8'),output);console.log(JSON.stringify({mode,sha256:lib.sha(output),cases:observed.length}));
  }finally{global.Date=RealDate;AbortSignal.timeout=realTimeout;global.fetch=realFetch;if(realKey===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=realKey;}})().catch(e=>{console.error(e);process.exitCode=1;});

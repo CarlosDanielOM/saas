@@ -1,4 +1,7 @@
 #![cfg(feature = "moderation-links")]
+
+#[path = "support/moderation_leaf_source.rs"]
+mod moderation_leaf_source;
 use dima_rust::utils::js_string::JsString;
 use dima_rust::utils::moderation::links_rule::{
     LinksEvaluationInput, LinksRule, evaluate_links_rule,
@@ -133,6 +136,10 @@ fn short_ascii_and_general_path_agree_at_boundary() {
 #[test]
 #[ignore = "external pinned actual-source corpus required"]
 fn replay_actual_source() {
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/rules/links.rule.ts",
+    );
     use serde_json::Value;
     let dir = std::env::var("DIMA_LINKS_REFERENCE_DIR").expect("reference directory");
     let data: Value = serde_json::from_slice(

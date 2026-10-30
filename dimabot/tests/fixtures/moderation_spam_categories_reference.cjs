@@ -1,7 +1,8 @@
 'use strict';
+const leaf = require('./moderation_leaf_source_resolver.cjs');
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto'), Module = require('node:module'), assert = require('node:assert/strict');
 const root = fs.realpathSync(process.env.DIMA_SPAM_CATEGORIES_SOURCE_ROOT || path.join(__dirname, '../..'));
-const read = f => fs.readFileSync(path.join(root, f));
+const read = f => fs.readFileSync(leaf.sourcePath(root, f));
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const pins = {
   'src/utils/moderation/spam_categories.ts':'29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088',
@@ -27,7 +28,7 @@ assert.deepEqual(iface.members.map(f => [f.name.getText(ast),!!f.questionToken,f
 assert(ast.statements.every(s => !ts.isImportDeclaration(s)));
 const exported = ast.statements.filter(s => s.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)); assert.equal(exported.length,11);
 const options = {target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,strict:true,noEmit:true,skipLibCheck:true,types:[],lib:['lib.es2022.d.ts']};
-const program = ts.createProgram([filename], options); assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => ts.flattenDiagnosticMessageText(d.messageText,'\n')),[]);
+const program = ts.createProgram([filename], options, leaf.overlaySource(ts.createCompilerHost(options), ts, root, ['src/utils/moderation/spam_categories.ts'])); assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => ts.flattenDiagnosticMessageText(d.messageText,'\n')),[]);
 const compiled = ts.transpileModule(source,{compilerOptions:options,reportDiagnostics:true}); assert.deepEqual(compiled.diagnostics,[]);
 const runtime = new Module(filename,module); runtime.filename=filename; runtime.require = name => { throw Error(`unexpected runtime import ${name}`); }; runtime._compile(compiled.outputText,filename);
 const lib = runtime.exports;
@@ -45,7 +46,7 @@ for (const a of lib.SPAM_CATEGORIES) for (const b of lib.SPAM_CATEGORIES) inputs
 const cases=[]; for (const categories of inputs) for (const invitation of [false,true]) cases.push({categories,invitation,wire:JSON.stringify(lib.categoryQuestions(categories,invitation))});
 const nativeFiles=['src/utils/moderation/spam_categories.rs','src/utils/js_string.rs','tests/moderation_spam_categories.rs','tests/fixtures/moderation_spam_categories_reference.cjs'];
 const hashes=Object.fromEntries(nativeFiles.map(f=>[f,sha(read(f))]));
-const metadata={format:1,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version},nodeSha,pins,hashes,compiledSha:sha(compiled.outputText),aliases:ast.statements.filter(ts.isTypeAliasDeclaration).map(s=>s.getText(ast)),interface:iface.getText(ast),constants:{categories:lib.SPAM_CATEGORIES,defaults:lib.DEFAULT_SPAM_CATEGORIES,threshold:lib.DEFAULT_SPAM_THRESHOLD,model:lib.SPAM_CLASSIFIER_MODEL,tags:lib.SPAM_EXEMPT_TAGS,defaultTags:lib.DEFAULT_SPAM_EXEMPT_TAGS,policies:lib.SPAM_CATEGORY_POLICIES},total:cases.length};
+const metadata={format:1,sourceProvenance:leaf.provenance(root,["src/utils/moderation/spam_categories.ts"]),versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version},nodeSha,pins,hashes,compiledSha:sha(compiled.outputText),aliases:ast.statements.filter(ts.isTypeAliasDeclaration).map(s=>s.getText(ast)),interface:iface.getText(ast),constants:{categories:lib.SPAM_CATEGORIES,defaults:lib.DEFAULT_SPAM_CATEGORIES,threshold:lib.DEFAULT_SPAM_THRESHOLD,model:lib.SPAM_CLASSIFIER_MODEL,tags:lib.SPAM_EXEMPT_TAGS,defaultTags:lib.DEFAULT_SPAM_EXEMPT_TAGS,policies:lib.SPAM_CATEGORY_POLICIES},total:cases.length};
 const output=JSON.stringify({metadata,cases},null,2)+'\n';
 const [mode,dir,...extra]=process.argv.slice(2); assert(['--write','--check'].includes(mode) && dir && path.isAbsolute(dir) && extra.length===0,'usage: --write|--check ABSOLUTE_EXTERNAL_DIR');
 const real=fs.realpathSync(dir), workspace=fs.realpathSync(path.join(root,'..')); assert(real!==workspace && !real.startsWith(workspace+path.sep));

@@ -72,7 +72,7 @@ fn replay_native_syntax_oracle() {
     );
     assert_eq!(
         meta["loaderSha256"],
-        "5263edb4c997171c2e172e9d4c47093126a0d6146ff37ad432dac100865b52c2"
+        "1205ade8280a3cfebb806e336570ab650a92e178db306f33aa760315fafbee50"
     );
     assert_eq!(
         meta["readerSha256"],

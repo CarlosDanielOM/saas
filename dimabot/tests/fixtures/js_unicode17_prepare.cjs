@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const leaf = require('./moderation_leaf_source_resolver.cjs');
 
 // Run only with the pinned Node binary and the explicit source root. This reads
 // source and SDK bytes, executes the two isolated pure exports, and writes only
@@ -34,7 +35,7 @@ const entries = fs.readdirSync(dir).sort();
 assert.deepEqual(entries, mode === '--write' ? [] : [...names].sort(), 'output directory contents');
 if (mode === '--check') for (const name of names) assert(fs.lstatSync(path.join(dir, name)).isFile(), 'artifact must be a regular file');
 
-const read = relative => fs.readFileSync(path.join(root, relative));
+const read = relative => fs.readFileSync(leaf.sourcePath(root, relative));
 const localRequire = createRequire(path.join(root, 'package.json'));
 const tsPath = localRequire.resolve('typescript');
 const ts = localRequire('typescript');
@@ -141,7 +142,7 @@ inputs['normalize-canonical-declarations'] = digest(printer.printFile(sf));
 const result = {
   format: 1,
   versions: { node: process.versions.node, v8: process.versions.v8, icu: process.versions.icu, unicode: process.versions.unicode, typescript: ts.version },
-  nodeExecutableSha256: pin, sourceSha256: inputs, generatedRustSha256: digest(rust),
+  nodeExecutableSha256: pin, sourceProvenance: leaf.provenance(root,["src/utils/moderation/normalize.ts"]), sourceSha256: inputs, generatedRustSha256: digest(rust),
   methods: {
     enumeration: 'String.fromCodePoint for every integer 0..0x10ffff inclusive, including lone surrogate values',
     lowercase: 'single-code-point String.prototype.toLowerCase; identity omitted; outputs encoded as code point arrays',

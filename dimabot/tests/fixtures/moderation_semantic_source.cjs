@@ -6,7 +6,7 @@ const spam=require('./moderation_spam_source.cjs'),advanced=require('./moderatio
 const pins={
  'src/utils/moderation/semantic.ts':'8e14987048727194d8e55b48f5c0890a0984c3fd1fa4634488c8758d1a835e25',
  'src/utils/ai/openrouter/app_attribution.util.ts':'0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c',
- 'tests/fixtures/moderation_spam_source.cjs':'24173a6f2eb5979c89aa27cf5804c4c2c9f92df02daf7a66d9479e5e52cb7b8a'
+ 'tests/fixtures/moderation_spam_source.cjs':'19d6dd590e9f816a0d04bb36cd46fb658fb371875b0db166298aaab7543efb0c'
 };
 for(const [file,hash] of Object.entries(pins))assert.equal(spam.sha(spam.read(file)),hash,file);
 spam.independent('DIMA_SEMANTIC_LOADER_SHA256',__filename);

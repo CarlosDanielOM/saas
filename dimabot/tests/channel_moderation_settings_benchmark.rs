@@ -1,4 +1,7 @@
 #![cfg(feature = "channel-moderation-settings")]
+
+#[path = "support/moderation_leaf_source.rs"]
+mod moderation_leaf_source;
 use dima_rust::{
     schemas::{ValidationErrors, channel_moderation_settings::schema},
     utils::json_number::number_string,
@@ -162,6 +165,10 @@ struct Item {
 #[test]
 #[ignore = "external prepared paired benchmark coordinator required"]
 fn prepared_moderation_schema_server() {
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/spam_categories.ts",
+    );
     assert!(
         !std::hint::black_box(cfg!(debug_assertions)),
         "release only"
@@ -277,7 +284,7 @@ fn prepared_moderation_schema_server() {
         ),
         (
             "src/utils/moderation/spam_categories.ts",
-            include_bytes!("../src/utils/moderation/spam_categories.ts").as_slice(),
+            include_bytes!("../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/spam_categories.ts").as_slice(),
         ),
         (
             "src/utils/moderation/variations.ts",

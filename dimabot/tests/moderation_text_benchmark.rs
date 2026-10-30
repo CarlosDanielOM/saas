@@ -1,4 +1,7 @@
 #![cfg(all(feature = "moderation-links", feature = "moderation-normalize"))]
+
+#[path = "support/moderation_leaf_source.rs"]
+mod moderation_leaf_source;
 use dima_rust::utils::{
     js_string::JsString,
     moderation::{
@@ -140,6 +143,14 @@ fn units(v: &serde_json::Value) -> Vec<u16> {
 #[test]
 #[ignore = "external prepared paired benchmark coordinator required"]
 fn prepared_moderation_text_server() {
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/rules/links.rule.ts",
+    );
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/normalize.ts",
+    );
     use serde_json::{Value, json};
     assert!(
         !std::hint::black_box(cfg!(debug_assertions)),
@@ -212,11 +223,11 @@ fn prepared_moderation_text_server() {
     for (file, content) in [
         (
             "src/utils/moderation/rules/links.rule.ts",
-            include_bytes!("../src/utils/moderation/rules/links.rule.ts").as_slice(),
+            include_bytes!("../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/links.rule.ts").as_slice(),
         ),
         (
             "src/utils/moderation/normalize.ts",
-            include_bytes!("../src/utils/moderation/normalize.ts").as_slice(),
+            include_bytes!("../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/normalize.ts").as_slice(),
         ),
         (
             "src/schemas/channel_moderation_settings.schema.ts",

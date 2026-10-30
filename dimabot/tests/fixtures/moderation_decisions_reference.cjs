@@ -107,7 +107,7 @@ async function run(c) {
 (async()=>{
  const observed=[];for(const c of cases) observed.push(await run(c));
  const queryProbe=await mongooseWireProbe();
- const reference={schema:1,queryProbe,provenance:{readerSha256:readerPin,loaderSha256:process.env.DIMA_DECISIONS_LOADER_SHA256,node:process.versions.node,v8:process.versions.v8,nodeSha256:lib.nodeSha,typescript:'5.9.3',mongoose:'8.24.2',mongodb:'6.20.0',bson:'6.10.4',re2Runtime:lib.re2Runtime,pins:lib.pins,compiled:lib.compiled,evidence:lib.evidence,mongooseFiles:lib.mongooseFiles,sdkLoaded:lib.sdk(),runtimeExports:['moderationDecisionID','createModerationDecision','awaitSemanticDecision'],caseCount:observed.length,boundary:'scripted model and clock; no Mongo casting or durable storage'},cases:observed};
+ const reference={schema:1,queryProbe,provenance:{sourceProvenance:lib.sourceProvenance,readerSha256:readerPin,loaderSha256:process.env.DIMA_DECISIONS_LOADER_SHA256,node:process.versions.node,v8:process.versions.v8,nodeSha256:lib.nodeSha,typescript:'5.9.3',mongoose:'8.24.2',mongodb:'6.20.0',bson:'6.10.4',re2Runtime:lib.re2Runtime,pins:lib.pins,compiled:lib.compiled,evidence:lib.evidence,mongooseFiles:lib.mongooseFiles,sdkLoaded:lib.sdk(),runtimeExports:['moderationDecisionID','createModerationDecision','awaitSemanticDecision'],caseCount:observed.length,boundary:'scripted model and clock; no Mongo casting or durable storage'},cases:observed};
  const [mode,dir,...extra]=process.argv.slice(2);
  assert(['--write','--check'].includes(mode)&&dir&&!extra.length,'usage: --write|--check ABSOLUTE_EXTERNAL_DIR');
  const real=lib.external(dir), filename=path.join(real,'moderation-decisions-reference.json');

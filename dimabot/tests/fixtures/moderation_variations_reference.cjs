@@ -13,7 +13,7 @@ assert.equal(lib.sha(fs.readFileSync(__filename)),readerPin,'reader');
 const pins={
  'src/utils/moderation/variations.ts':'f7a21881289f63a50de733df232570c00f851333d5762ef39e1258915287580e',
  'src/utils/ai/openrouter/app_attribution.util.ts':'0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c',
- 'tests/fixtures/moderation_advanced_source.cjs':'5263edb4c997171c2e172e9d4c47093126a0d6146ff37ad432dac100865b52c2',
+ 'tests/fixtures/moderation_advanced_source.cjs':'1205ade8280a3cfebb806e336570ab650a92e178db306f33aa760315fafbee50',
 };
 for(const [file,hash] of Object.entries(pins))assert.equal(lib.sha(lib.read(file)),hash,file);
 const local=Module.createRequire(path.join(lib.root,'package.json')),ts=local('typescript');
@@ -118,7 +118,7 @@ async function transport(){
  return observations;
 }
 (async()=>{
- const reference={metadata:{format:1,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,re2:'1.27.0'},nodeSha:lib.nodeSha,pins:{...lib.pins,...pins},readerSha256:lib.sha(fs.readFileSync(__filename)),re2Runtime:lib.re2Runtime,compiled:{...lib.compiled,...compiled},evidence:{...lib.evidence,...evidence},runtimeExports:Object.keys(api).sort(),typeExports:typeNames,caseCount:cases.length,boundary:'Own enumerable JSON-like values with tagged UTF-16, undefined, array holes and IEEE-754 bits; no accessors, proxies, symbols, functions, BigInt or cycles. Only HTTP, API key and abort are test seams; no provider calls.'},constants:enc({VARIATION_VERSION:api.VARIATION_VERSION,VARIATION_MODEL:api.VARIATION_MODEL}),cases,cache:cacheEvidence(),transport:await transport()};
+ const reference={metadata:{format:1,sourceProvenance:lib.sourceProvenance,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,re2:'1.27.0'},nodeSha:lib.nodeSha,pins:{...lib.pins,...pins},readerSha256:lib.sha(fs.readFileSync(__filename)),re2Runtime:lib.re2Runtime,compiled:{...lib.compiled,...compiled},evidence:{...lib.evidence,...evidence},runtimeExports:Object.keys(api).sort(),typeExports:typeNames,caseCount:cases.length,boundary:'Own enumerable JSON-like values with tagged UTF-16, undefined, array holes and IEEE-754 bits; no accessors, proxies, symbols, functions, BigInt or cycles. Only HTTP, API key and abort are test seams; no provider calls.'},constants:enc({VARIATION_VERSION:api.VARIATION_VERSION,VARIATION_MODEL:api.VARIATION_MODEL}),cases,cache:cacheEvidence(),transport:await transport()};
  const [mode,dir,...extra]=process.argv.slice(2);assert(['--write','--check'].includes(mode)&&dir&&path.isAbsolute(dir)&&extra.length===0,'usage: --write|--check ABSOLUTE_EXTERNAL_DIR');
  const real=fs.realpathSync(dir),workspace=fs.realpathSync(path.join(lib.root,'..'));assert(real!==workspace&&!real.startsWith(workspace+path.sep),'output must be outside workspace');
  const file=path.join(real,'moderation-variations-reference.json');assert.deepEqual(fs.readdirSync(real),mode==='--write'?[]:[path.basename(file)]);

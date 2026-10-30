@@ -5,6 +5,8 @@ use mongodb::bson::{Bson, DateTime, Document};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{collections::VecDeque, sync::Mutex};
+#[path = "moderation_leaf_source.rs"]
+mod moderation_leaf_source;
 
 pub fn tagged_string(v: &Value) -> JsString {
     assert_eq!(v["kind"], "string");
@@ -146,7 +148,7 @@ pub fn reference() -> Value {
             );
             sdk.join(relative)
         } else {
-            root.join(relative)
+            moderation_leaf_source::path(root, source)
         };
         assert_eq!(
             format!("{:x}", Sha256::digest(std::fs::read(file).unwrap())),

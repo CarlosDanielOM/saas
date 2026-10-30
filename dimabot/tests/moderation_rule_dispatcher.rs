@@ -1,4 +1,7 @@
 #![cfg(feature = "moderation-rules")]
+
+#[path = "support/moderation_leaf_source.rs"]
+mod moderation_leaf_source;
 use dima_rust::utils::{
     js_string::JsString,
     moderation::{
@@ -9,8 +12,7 @@ use dima_rust::utils::{
         rule_dispatcher::{ModerationRule, ModerationRuleInput, evaluate_rule},
     },
 };
-#[path = "support/sha256.rs"]
-mod digest;
+use moderation_leaf_source::digest;
 
 fn input<'a>(
     text: Option<&'a JsString>,
@@ -122,6 +124,14 @@ fn number(value: &serde_json::Value) -> f64 {
 #[test]
 #[ignore = "requires independently hash-pinned actual TypeScript fixture"]
 fn replay_actual_dispatcher() {
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/rules/links.rule.ts",
+    );
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/normalize.ts",
+    );
     use std::path::PathBuf;
     let dir = PathBuf::from(
         std::env::var_os("DIMA_RULE_DISPATCHER_FIXTURE_DIR").expect("external fixture directory"),
@@ -162,9 +172,9 @@ fn replay_actual_dispatcher() {
     }
     for (key, bytes, pin) in [
         ("dimabot/src/utils/moderation/rules/index.ts", include_bytes!("../src/utils/moderation/rules/index.ts").as_slice(), "39e93288c898eaa68826ec2f011d2ea3fc326d5993293815c3df588552a65d08"),
-        ("dimabot/src/utils/moderation/rules/links.rule.ts", include_bytes!("../src/utils/moderation/rules/links.rule.ts").as_slice(), "802150266d30c163a4069dd434b723e0320aed50ed34bc2f5674ac267aa41ad0"),
+        ("dimabot/src/utils/moderation/rules/links.rule.ts", include_bytes!("../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/links.rule.ts").as_slice(), "802150266d30c163a4069dd434b723e0320aed50ed34bc2f5674ac267aa41ad0"),
         ("dimabot/src/utils/moderation/rules/blacklist.rule.ts", include_bytes!("../src/utils/moderation/rules/blacklist.rule.ts").as_slice(), "8feb8779f829b72e6fc1f6907a7a8e3b3284dd92b04dcc08980b25120f9144ff"),
-        ("dimabot/src/utils/moderation/normalize.ts", include_bytes!("../src/utils/moderation/normalize.ts").as_slice(), "07822ff6efe5d707173b6b9e9415b16edfb0eb055c3a03416bf4b4c0c11740ab"),
+        ("dimabot/src/utils/moderation/normalize.ts", include_bytes!("../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/normalize.ts").as_slice(), "07822ff6efe5d707173b6b9e9415b16edfb0eb055c3a03416bf4b4c0c11740ab"),
         ("dimabot/src/schemas/channel_moderation_settings.schema.ts", include_bytes!("../src/schemas/channel_moderation_settings.schema.ts").as_slice(), "e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653"),
         ("archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/caps.rule.ts", include_bytes!("../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/caps.rule.ts").as_slice(), "62f7fe37760cbf5640544cab646a639d06b42883532657634a00e25488888797"),
         ("archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/emote_spam.rule.ts", include_bytes!("../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/emote_spam.rule.ts").as_slice(), "24e7c603569d1063642575372de1066e4f5d5d5de46c88e15e450a549c17f12f"),

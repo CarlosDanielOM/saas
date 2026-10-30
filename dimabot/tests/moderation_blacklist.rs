@@ -1,5 +1,8 @@
 #![cfg(feature = "moderation-blacklist")]
 
+#[path = "support/moderation_leaf_source.rs"]
+mod moderation_leaf_source;
+
 use dima_rust::utils::{
     js_string::JsString,
     moderation::blacklist::{
@@ -181,9 +184,8 @@ fn unicode_cases_boundaries_and_utf16() {
         !evaluate_blacklist_rule(&BlacklistRule::default(), None, Some(&pattern(&["x"]))).triggered
     );
 }
-#[path = "support/sha256.rs"]
-mod digest;
 use digest::sha256_hex;
+use moderation_leaf_source::digest;
 
 fn fixture_units(value: &serde_json::Value) -> JsString {
     JsString::from_units(
@@ -199,6 +201,10 @@ fn fixture_units(value: &serde_json::Value) -> JsString {
 #[test]
 #[ignore = "requires hash-pinned external fixture from actual TypeScript exports"]
 fn replay_actual_blacklist_exports() {
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/normalize.ts",
+    );
     use dima_rust::utils::moderation::normalize::fold_text;
     use std::path::PathBuf;
 
@@ -250,7 +256,10 @@ fn replay_actual_blacklist_exports() {
         ),
         (
             "src/utils/moderation/normalize.ts",
-            include_bytes!("../src/utils/moderation/normalize.ts").as_slice(),
+            include_bytes!(
+                "../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/normalize.ts"
+            )
+            .as_slice(),
             "07822ff6efe5d707173b6b9e9415b16edfb0eb055c3a03416bf4b4c0c11740ab",
         ),
     ] {

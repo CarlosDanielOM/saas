@@ -1,5 +1,8 @@
 #![cfg(feature = "js-unicode17")]
 
+#[path = "support/moderation_leaf_source.rs"]
+mod moderation_leaf_source;
+
 use dima_rust::utils::{
     js_string::JsString,
     js_unicode::{fold_text, lowercase},
@@ -295,7 +298,7 @@ fn borrowed_ascii_and_lossless_context() {
 #[test]
 #[ignore = "requires pinned external Node-generated reference artifacts"]
 fn replay_node_unicode17_and_actual_source() {
-    const DATA_HASH: &str = "aba3756c8cacc9a25432c282f15141dc5d34da317c13618cfcfa43253c0e3246";
+    const DATA_HASH: &str = "07f5dec8895f155a91f2bc7807a028dca7af308638091cc60bd5edd85f16c0a5";
     const RUST_HASH: &str = "6c9529a54bd192de38852f31421383d3295dc9010ca463037b6383e361040aeb";
     let data = fixture(
         "DIMA_JS_UNICODE_DATA_DIR",
@@ -331,7 +334,7 @@ fn replay_node_unicode17_and_actual_source() {
         "rust-toolchain.toml",
     ] {
         assert_eq!(
-            sha256_hex(&std::fs::read(root.join(path)).unwrap()),
+            sha256_hex(&std::fs::read(moderation_leaf_source::path(&root, path)).unwrap()),
             source["sourceSha256"][path].as_str().unwrap()
         );
         assert_eq!(source["sourceSha256"][path], data["sourceSha256"][path]);

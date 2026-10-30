@@ -112,6 +112,18 @@
     {
       "source": "src/utils/ai_usage_event.test.ts",
       "sha256": "d882a40637225a6454c5d6dde78741fc4f15732a37f48fc2027bc85f5a8e2619"
+    },
+    {
+      "source": "src/utils/moderation/normalize.ts",
+      "sha256": "07822ff6efe5d707173b6b9e9415b16edfb0eb055c3a03416bf4b4c0c11740ab"
+    },
+    {
+      "source": "src/utils/moderation/rules/links.rule.ts",
+      "sha256": "802150266d30c163a4069dd434b723e0320aed50ed34bc2f5674ac267aa41ad0"
+    },
+    {
+      "source": "src/utils/moderation/spam_categories.ts",
+      "sha256": "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088"
     }
   ]
 }

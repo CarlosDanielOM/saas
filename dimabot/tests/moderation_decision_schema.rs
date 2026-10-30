@@ -1,4 +1,7 @@
 #![cfg(feature = "moderation-decision-schema")]
+
+#[path = "support/moderation_leaf_source.rs"]
+mod moderation_leaf_source;
 use dima_rust::schemas::moderation_decision::{get_moderation_decision_model, schema};
 use mongodb::bson::{Bson, DateTime, Document, doc};
 use serde_json::{Value, json};
@@ -51,6 +54,10 @@ fn normalize(v: &Bson) -> Value {
 #[test]
 #[ignore = "requires pinned external Mongoose oracle"]
 fn replay_actual_source() {
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/spam_categories.ts",
+    );
     use sha2::{Digest, Sha256};
     let dir = std::path::PathBuf::from(
         std::env::var_os("DIMA_DECISION_SCHEMA_FIXTURE_DIR").expect("fixture directory"),
@@ -109,7 +116,7 @@ fn replay_actual_source() {
         ),
         (
             "src/utils/moderation/spam_categories.ts",
-            include_bytes!("../src/utils/moderation/spam_categories.ts").as_slice(),
+            include_bytes!("../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/spam_categories.ts").as_slice(),
         ),
         (
             "src/utils/permissions/expression.ts",

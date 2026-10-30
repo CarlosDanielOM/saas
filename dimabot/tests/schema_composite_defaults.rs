@@ -1,4 +1,7 @@
 #![cfg(feature = "application-schemas")]
+
+#[path = "support/moderation_leaf_source.rs"]
+mod moderation_leaf_source;
 use dima_rust::schemas::{Field, FieldDefault as D, FieldType as T, SchemaDefinition};
 use mongodb::bson::{Bson, DateTime, Document, doc};
 use serde_json::{Value, json};
@@ -325,6 +328,10 @@ fn array_element_cast_and_validation_are_per_path_and_cast_first() {
 #[test]
 #[ignore = "requires pinned disconnected Mongoose external fixture"]
 fn replay_mongoose_composite_defaults() {
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/spam_categories.ts",
+    );
     let dir = PathBuf::from(
         std::env::var_os("DIMA_SCHEMA_COMPOSITE_FIXTURE_DIR")
             .expect("external fixture directory required"),
@@ -376,7 +383,7 @@ fn replay_mongoose_composite_defaults() {
         ),
         (
             "src/utils/moderation/spam_categories.ts",
-            include_bytes!("../src/utils/moderation/spam_categories.ts").as_slice(),
+            include_bytes!("../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/spam_categories.ts").as_slice(),
         ),
         (
             "src/utils/bson_compat.rs",

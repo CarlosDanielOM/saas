@@ -1,9 +1,10 @@
 'use strict';
+const leaf = require('./moderation_leaf_source_resolver.cjs');
 // Entire unchanged source modules, transpiled in memory; no application mocks.
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
 const Module = require('node:module'), assert = require('node:assert/strict');
 const root = fs.realpathSync(process.env.DIMA_BLACKLIST_SOURCE_ROOT || path.resolve(__dirname, '../..'));
-const read = p => fs.readFileSync(path.join(root, p));
+const read = p => fs.readFileSync(leaf.sourcePath(root, p));
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const pins = {
   'src/utils/moderation/rules/blacklist.rule.ts': '8feb8779f829b72e6fc1f6907a7a8e3b3284dd92b04dcc08980b25120f9144ff',
@@ -91,7 +92,7 @@ for (const terms of [
 function reference() {
   const nativeFiles=['src/utils/moderation/blacklist.rs','src/utils/moderation/normalize.rs','src/utils/moderation/caps_unicode_data.rs','src/utils/js_string.rs','src/utils/js_regexp_unicode.rs','src/utils/js_regexp_unicode_data.rs','src/utils/js_compat.rs','src/utils/js_unicode.rs','src/utils/js_unicode_data.rs','tests/support/sha256.rs','tests/js_regexp_unicode.rs','tests/fixtures/js_regexp_unicode_prepare.cjs','tests/fixtures/unicode-17.0.0/CaseFolding.txt','tests/fixtures/unicode-17.0.0/LICENSE.txt','tests/fixtures/unicode-17.0.0/source-manifest.json','tests/moderation_blacklist.rs','tests/moderation_blacklist_benchmark.rs','tests/fixtures/moderation_blacklist_reference.cjs','tests/fixtures/moderation_blacklist_benchmark.cjs','Cargo.toml','Cargo.lock','rust-toolchain.toml'];
   const hashes=Object.fromEntries(nativeFiles.map(p=>[p,sha(read(p))]));
-  return {metadata:{format:1,pins,compiled,evidence,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version},nodeSha,hashes},cases:cases.map(snapshot)};
+  return {metadata:{format:1,sourceProvenance:leaf.provenance(root,["src/utils/moderation/normalize.ts"]),pins,compiled,evidence,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version},nodeSha,hashes},cases:cases.map(snapshot)};
 }
 if (require.main===module) {
   const [mode,dir,...extra]=process.argv.slice(2); assert(['--write','--check'].includes(mode)&&dir&&path.isAbsolute(dir)&&extra.length===0);

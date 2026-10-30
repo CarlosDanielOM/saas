@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const leaf = require('./moderation_leaf_source_resolver.cjs');
 // Disconnected, pinned Mongoose constructor + validateSync oracle. No services.
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
 const assert = require('node:assert/strict'), vm = require('node:vm');
@@ -15,7 +16,7 @@ const [mode,dirArg,...extra]=process.argv.slice(2); assert(['--write','--check']
 const dir=fs.realpathSync(dirArg); assert.equal(dir,dirArg); assert(fs.statSync(dir).isDirectory() && dir!==root && !dir.startsWith(root+path.sep));
 const name='schema-composite-defaults-reference.json'; assert.deepEqual(fs.readdirSync(dir).sort(),mode==='--write'?[]:[name]);
 if(mode==='--check') assert(fs.lstatSync(path.join(dir,name)).isFile());
-const read=f=>fs.readFileSync(path.join(root,f));
+const read=f=>fs.readFileSync(leaf.sourcePath(root, f));
 const req=createRequire(path.join(root,'package.json'));
 const ts=req('typescript'), mongoose=req('mongoose');
 const mongooseRequire=createRequire(req.resolve('mongoose'));
@@ -137,6 +138,6 @@ hashes['bson-js']=digest(fs.readFileSync(bsonJs)); hashes['bson-package']=digest
 const mongooseDir=path.dirname(req.resolve('mongoose/package.json'));
 for (const file of ['lib/schema/array.js','lib/schema/string.js','lib/schemaType.js','lib/document.js','lib/helpers/document/applyDefaults.js','lib/helpers/minimize.js','lib/helpers/clone.js','lib/helpers/specialProperties.js','lib/helpers/getFunctionName.js','lib/helpers/isObject.js','lib/helpers/isPOJO.js']) hashes[`mongoose/${file}`]=digest(fs.readFileSync(path.join(mongooseDir,file)));
 hashes['oracle-script']=digest(fs.readFileSync(__filename));
-const output=JSON.stringify({format:1,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version,bson:bsonVersion},nodeExecutableSha256:pin,sourceSha256:hashes,cases,actualCases,elementDefaults,cloneEvidence},null,2)+'\n';
+const output=JSON.stringify({format:1,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version,bson:bsonVersion},nodeExecutableSha256:pin,sourceProvenance:leaf.provenance(root,["src/utils/moderation/spam_categories.ts"]),sourceSha256:hashes,cases,actualCases,elementDefaults,cloneEvidence},null,2)+'\n';
 const target=path.join(dir,name); if(mode==='--write') fs.writeFileSync(target,output,{flag:'wx'}); else assert.equal(fs.readFileSync(target,'utf8'),output);
 console.log(`${name} sha256=${digest(output)} cases=${cases.length} actualCases=${actualCases.length}`);

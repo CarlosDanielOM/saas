@@ -1,10 +1,11 @@
 'use strict';
+const leaf = require('./moderation_leaf_source_resolver.cjs');
 // Strictly check and execute the complete, pinned actual TypeScript source.
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
 const Module = require('node:module'), assert = require('node:assert/strict');
 const root = fs.realpathSync(process.env.DIMA_LINKS_SOURCE_ROOT || path.join(__dirname,'../..'));
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
-const read = name => fs.readFileSync(path.join(root,name));
+const read = name => fs.readFileSync(leaf.sourcePath(root, name));
 const pins = {
  'src/utils/moderation/rules/links.rule.ts':'802150266d30c163a4069dd434b723e0320aed50ed34bc2f5674ac267aa41ad0',
  'src/schemas/channel_moderation_settings.schema.ts':'e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653',
@@ -44,7 +45,7 @@ assert.equal(fields.length,1); const field=fields[0];
 assert(ts.isPropertySignature(field) && !field.questionToken && field.type.getText(schema)==='string[]');
 const declaration=`export interface IModerationRule { ${field.getText(schema)} }\n`;
 const options={target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,moduleResolution:ts.ModuleResolutionKind.Node10,strict:true,noEmit:true,skipLibCheck:true,types:[],lib:['lib.es2022.d.ts']};
-const host=ts.createCompilerHost(options), readFile=host.readFile.bind(host);
+const host=leaf.overlaySource(ts.createCompilerHost(options), ts, root, ["src/utils/moderation/rules/links.rule.ts"]), readFile=host.readFile.bind(host);
 host.readFile=file=>path.resolve(file)===schemaName?declaration:readFile(file);
 const program=ts.createProgram([sourceName],options,host);
 assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d=>ts.flattenDiagnosticMessageText(d.messageText,'\n')),[]);
@@ -106,7 +107,7 @@ function enumerate(prefix,depth){
 for(let length=1;length<=4;length++) enumerate('',length);
 const files=['src/utils/moderation/links_rule.rs','src/utils/js_string.rs','src/utils/js_compat.rs','src/utils/js_unicode.rs','src/utils/js_unicode_data.rs','tests/moderation_links.rs','tests/fixtures/moderation_links_reference.cjs'];
 const hashes=Object.fromEntries(files.map(name=>[name,sha(read(name))]));
-const metadata={format:1,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version},nodeSha:nodePin,pins,hashes,compiledSha:sha(compiled.outputText),schemaField:field.getText(schema),total:cases.length};
+const metadata={format:1,sourceProvenance:leaf.provenance(root,["src/utils/moderation/rules/links.rule.ts"]),versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version},nodeSha:nodePin,pins,hashes,compiledSha:sha(compiled.outputText),schemaField:field.getText(schema),total:cases.length};
 const output=JSON.stringify({metadata,cases},null,2)+'\n';
 const [mode,dir,...extra]=process.argv.slice(2);
 assert(['--write','--check'].includes(mode)&&dir&&path.isAbsolute(dir)&&extra.length===0,'usage: --write|--check ABSOLUTE_EXTERNAL_DIR');

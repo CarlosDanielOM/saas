@@ -1,9 +1,10 @@
 'use strict';
+const leaf = require('./moderation_leaf_source_resolver.cjs');
 // Actual unchanged TypeScript module, real pinned Mongoose, no database.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),Module=require('node:module'),assert=require('node:assert/strict');
 const {resolveModerationSource,overlaySource}=require('./moderation_source_resolver.cjs');
 const root=fs.realpathSync(process.env.DIMA_SEED_PLAN_SOURCE_ROOT || path.join(__dirname,'../..'));
-const sha=b=>crypto.createHash('sha256').update(b).digest('hex');const read=f=>fs.readFileSync(path.join(root,f));
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');const read=f=>fs.readFileSync(leaf.sourcePath(root, f));
 const pins={
  'src/schemas/channel_moderation_settings.schema.ts':'e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653',
  'src/utils/moderation/spam_categories.ts':'29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088',
@@ -43,7 +44,7 @@ const overlays={
  'src/utils/permissions/roles.ts':`${roleConst.getText(roles)}\n${declarations(roles,['RoleTag'])}`,
 };
 const options={target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.NodeNext,moduleResolution:ts.ModuleResolutionKind.NodeNext,strict:true,noEmit:true,skipLibCheck:true,esModuleInterop:true,types:['node']};
-const host=ts.createCompilerHost(options),origRead=host.readFile.bind(host),origGet=host.getSourceFile.bind(host);
+const host=leaf.overlaySource(ts.createCompilerHost(options), ts, root, ["src/utils/moderation/spam_categories.ts"]),origRead=host.readFile.bind(host),origGet=host.getSourceFile.bind(host);
 const overlayFor=file=>overlays[path.relative(root,path.resolve(file)).split(path.sep).join('/')];
 host.readFile=file=>overlayFor(file)??origRead(file);
 host.getSourceFile=(file,version,...rest)=>{const text=overlayFor(file);return text===undefined?origGet(file,version,...rest):ts.createSourceFile(file,text,version,true,ts.ScriptKind.TS);};
@@ -81,6 +82,6 @@ const hashes=Object.fromEntries(files.map(f=>[f,f===seedFile?sha(seedSource.byte
 hashes['tests/fixtures/moderation_source_resolver.cjs']=sha(read('tests/fixtures/moderation_source_resolver.cjs'));
 for(const [name,module] of [['typescript-js','typescript'],['typescript-package','typescript/package.json'],['mongoose-js','mongoose'],['mongoose-package','mongoose/package.json']])hashes[name]=sha(fs.readFileSync(local.resolve(module)));
 const mongooseDir=path.dirname(local.resolve('mongoose/package.json'));for(const file of ['lib/document.js','lib/schema.js','lib/model.js'])hashes[`mongoose/${file}`]=sha(fs.readFileSync(path.join(mongooseDir,file)));
-const result={format:1,nodeSha:nodePin,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version},hashes,pins,compiled,seedImports,modelImports:imports,seedResolution:{path:seedSource.relativePath,virtualPath:`dimabot/${seedFile}`,sha256:sha(seedSource.bytes),resolverSha256:hashes['tests/fixtures/moderation_source_resolver.cjs']},cases,views};
+const result={format:1,sourceProvenance:leaf.provenance(root,[spamFile]),nodeSha:nodePin,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version},hashes,pins,compiled,seedImports,modelImports:imports,seedResolution:{path:seedSource.relativePath,virtualPath:`dimabot/${seedFile}`,sha256:sha(seedSource.bytes),resolverSha256:hashes['tests/fixtures/moderation_source_resolver.cjs']},cases,views};
 const output=JSON.stringify(result,null,2)+'\n';
 const [mode,dir,...extra]=process.argv.slice(2);assert(['--write','--check'].includes(mode)&&dir&&path.isAbsolute(dir)&&!extra.length);const real=fs.realpathSync(dir),workspace=fs.realpathSync(path.join(root,'..'));assert.equal(real,dir);assert(real!==workspace&&!real.startsWith(workspace+path.sep));const file=path.join(real,'moderation-seed-plan-reference.json');assert.deepEqual(fs.readdirSync(real),mode==='--write'?[]:[path.basename(file)]);if(mode==='--write')fs.writeFileSync(file,output,{flag:'wx'});else assert.equal(fs.readFileSync(file,'utf8'),output);console.log(JSON.stringify({mode,sha256:sha(output),cases:cases.length,views:views.length}));

@@ -13,7 +13,7 @@ assert.equal(lib.sha(fs.readFileSync(__filename)),readerPin,'reader');
 const pins={
  'src/utils/moderation/variations.ts':'f7a21881289f63a50de733df232570c00f851333d5762ef39e1258915287580e',
  'src/utils/ai/openrouter/app_attribution.util.ts':'0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c',
- 'tests/fixtures/moderation_advanced_source.cjs':'5263edb4c997171c2e172e9d4c47093126a0d6146ff37ad432dac100865b52c2',
+ 'tests/fixtures/moderation_advanced_source.cjs':'1205ade8280a3cfebb806e336570ab650a92e178db306f33aa760315fafbee50',
 };
 for(const [file,hash] of Object.entries(pins))assert.equal(lib.sha(lib.read(file)),hash,file);
 const local=Module.createRequire(path.join(lib.root,'package.json')),ts=local('typescript');

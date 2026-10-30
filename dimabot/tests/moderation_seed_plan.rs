@@ -1,4 +1,7 @@
 #![cfg(feature = "moderation-seed-plan")]
+
+#[path = "support/moderation_leaf_source.rs"]
+mod moderation_leaf_source;
 use dima_rust::utils::{
     js_string::JsString,
     moderation::seed_plan::{
@@ -143,6 +146,10 @@ fn plans_and_ordered_views_cover_boundaries() {
 #[test]
 #[ignore = "requires pinned disconnected actual-source fixture"]
 fn replay_actual_seed_plan() {
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/spam_categories.ts",
+    );
     let dir =
         PathBuf::from(std::env::var_os("DIMA_SEED_PLAN_FIXTURE_DIR").expect("fixture directory"));
     assert!(dir.is_absolute());
@@ -218,7 +225,7 @@ fn replay_actual_seed_plan() {
         ),
         (
             "src/utils/moderation/spam_categories.ts",
-            include_bytes!("../src/utils/moderation/spam_categories.ts").as_slice(),
+            include_bytes!("../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/spam_categories.ts").as_slice(),
         ),
         (
             "src/utils/moderation/spam_categories.rs",

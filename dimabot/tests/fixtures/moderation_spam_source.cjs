@@ -15,7 +15,7 @@ const pins={
  'node_modules/mongoose/package.json':'5136d95bcd0624a94096110ea21ac101b73f1839bc40726eab85649389c17dba',
  'node_modules/mongoose/index.js':'59e21822580047abc5468d740b720d1383fa3569aa2da3ac70325265fbb0e25b',
  'node_modules/mongoose/lib/mongoose.js':'141800e92c653c91489ab109a31e9b914dbb788ca4b20696d6a5781f12c5abb3',
- 'tests/fixtures/moderation_advanced_source.cjs':'5263edb4c997171c2e172e9d4c47093126a0d6146ff37ad432dac100865b52c2',
+ 'tests/fixtures/moderation_advanced_source.cjs':'1205ade8280a3cfebb806e336570ab650a92e178db306f33aa760315fafbee50',
 };
 for(const [file,hash] of Object.entries(pins))assert.equal(base.sha(base.read(file)),hash,file);
 function independent(name,file){const pin=process.env[name];assert(/^[0-9a-f]{64}$/.test(pin||''),`${name} must be supplied independently`);assert.equal(base.sha(fs.readFileSync(file)),pin,name);return pin;}

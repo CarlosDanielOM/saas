@@ -1,9 +1,10 @@
 'use strict';
+const leaf = require('./moderation_leaf_source_resolver.cjs');
 // Full unchanged source and actual real disconnected Mongoose in the CommonJS realm.
 // Bootstrap mirrors the pinned source oracle; no source or runtime implementation is stubbed.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),Module=require('node:module'),assert=require('node:assert/strict');
 const root=fs.realpathSync(process.env.DIMA_MODERATION_SCHEMA_BENCH_SOURCE_ROOT || path.join(__dirname,'../..'));
-const sha=b=>crypto.createHash('sha256').update(b).digest('hex');const read=f=>fs.readFileSync(path.join(root,f));
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');const read=f=>fs.readFileSync(leaf.sourcePath(root, f));
 const pins={
  'src/schemas/channel_moderation_settings.schema.ts':'e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653',
  'src/utils/moderation/spam_categories.ts':'29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088',
@@ -43,7 +44,7 @@ const overlays={
  'src/utils/permissions/roles.ts':`${roleConst.getText(roles)}\n${declarations(roles,['RoleTag'])}`,
 };
 const options={target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.NodeNext,moduleResolution:ts.ModuleResolutionKind.NodeNext,strict:true,noEmit:true,skipLibCheck:true,esModuleInterop:true,types:['node']};
-const host=ts.createCompilerHost(options),origRead=host.readFile.bind(host),origGet=host.getSourceFile.bind(host);
+const host=leaf.overlaySource(ts.createCompilerHost(options), ts, root, ["src/utils/moderation/spam_categories.ts"]),origRead=host.readFile.bind(host),origGet=host.getSourceFile.bind(host);
 const overlayFor=file=>overlays[path.relative(root,path.resolve(file)).split(path.sep).join('/')];
 host.readFile=file=>overlayFor(file)??origRead(file);
 host.getSourceFile=(file,version,...rest)=>{const text=overlayFor(file);return text===undefined?origGet(file,version,...rest):ts.createSourceFile(file,text,version,true,ts.ScriptKind.TS);};
@@ -96,7 +97,7 @@ function toRecord(result){
 function wire(record){return JSON.stringify(canonical(record));}
 function checksum(wires){let h=2166136261;for(const value of wires){for(const b of Buffer.from(value,'utf8'))h=Math.imul(h^b,16777619)>>>0;h=Math.imul(h^0xffffffff,16777619)>>>0;}return h;}
 function prepare(){const pools={};for(const [kind,list] of Object.entries(inputs)){assert.equal(list.length,8);pools[kind]=list.map((input,i)=>{const result=toRecord(evaluate(toInput(input)));assert.equal(result.ok,kind!=='invalid',`${kind}:${i}`);const output=wire(result);return {id:`${kind}-${i}`,input,expected:result,wire:output,checksum:checksum([output])};});}
- return {metadata:{format:1,nodeSha:nodePin,versions,pins,nativeHashes,compiled,oracleSha:sha(read('tests/fixtures/channel_moderation_settings_reference.cjs')),objectId:id,realm:'commonjs-real-mongoose'},pools};}
+ return {metadata:{format:1,sourceProvenance:leaf.provenance(root,["src/utils/moderation/spam_categories.ts"]),nodeSha:nodePin,versions,pins,nativeHashes,compiled,oracleSha:sha(read('tests/fixtures/channel_moderation_settings_reference.cjs')),objectId:id,realm:'commonjs-real-mongoose'},pools};}
 const dirArg=process.env.DIMA_MODERATION_SCHEMA_BENCH_DIR;assert(dirArg&&path.isAbsolute(dirArg));const dir=fs.realpathSync(dirArg);assert.equal(dir,dirArg);
 const workspace=fs.realpathSync(path.join(root,'..'));assert(dir!==workspace&&!dir.startsWith(workspace+path.sep));
 const file=path.join(dir,'channel-moderation-settings-benchmark-input.json');const [mode,...extra]=process.argv.slice(2);assert(['--write','--check','--serve'].includes(mode)&&extra.length===0);

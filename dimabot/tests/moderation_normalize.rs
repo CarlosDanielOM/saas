@@ -1,5 +1,8 @@
 #![cfg(feature = "moderation-normalize")]
 
+#[path = "support/moderation_leaf_source.rs"]
+mod moderation_leaf_source;
+
 use dima_rust::utils::{
     js_string::JsString,
     moderation::normalize::{escape_reg_exp, fold_text},
@@ -126,6 +129,10 @@ fn typed_boundary_borrows_and_preserves_utf16() {
 #[test]
 #[ignore = "requires pinned actual-TypeScript external fixture"]
 fn replay_actual_normalize_exports() {
+    moderation_leaf_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/utils/moderation/normalize.ts",
+    );
     let dir = PathBuf::from(
         std::env::var_os("DIMA_MODERATION_NORMALIZE_FIXTURE_DIR")
             .expect("external fixture directory required"),
@@ -165,7 +172,10 @@ fn replay_actual_normalize_exports() {
     let files = [
         (
             "src/utils/moderation/normalize.ts",
-            include_bytes!("../src/utils/moderation/normalize.ts").as_slice(),
+            include_bytes!(
+                "../../archives/dimabot-typescript/2026-10-28/src/utils/moderation/normalize.ts"
+            )
+            .as_slice(),
         ),
         (
             "src/utils/moderation/normalize.rs",

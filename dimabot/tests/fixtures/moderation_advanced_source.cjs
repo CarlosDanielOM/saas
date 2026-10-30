@@ -1,9 +1,10 @@
 'use strict';
+const leaf = require('./moderation_leaf_source_resolver.cjs');
 // In-memory transpilation of complete application modules; real RE2 addon.
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
 const Module = require('node:module'), assert = require('node:assert/strict');
 const root = fs.realpathSync(process.env.DIMA_ADVANCED_SOURCE_ROOT || path.resolve(__dirname, '../..'));
-const read = p => fs.readFileSync(path.join(root,p));
+const read = p => fs.readFileSync(leaf.sourcePath(root, p));
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const pins = {
   'src/utils/moderation/advanced.ts':'e88c52a8662a1531bdca981129e91f9cfe3b84c2543f11d38584652aede8a4d7',
@@ -137,4 +138,4 @@ function realm({uuidQueue=null,observe=false}={}) {
   return {api:mods[files[2]],draws,constructions};
 }
 const provenanceFiles=['src/utils/re2_compat.rs','src/utils/js_string.rs','src/utils/lossless_json.rs','src/server/routes/moderation.route.ts','src/handlers/moderation.handler.ts','tests/fixtures/moderation_advanced_source.cjs','tests/fixtures/moderation_advanced_reference.cjs'];
-module.exports={root,read,sha,pins,nodeSha,compiled,evidence,realm,RE2,re2Runtime,provenance:()=>Object.fromEntries(provenanceFiles.map(p=>[p,sha(read(p))]))};
+module.exports={sourceProvenance:leaf.provenance(root,["src/utils/moderation/normalize.ts", "src/utils/moderation/spam_categories.ts"]),root,read,sha,pins,nodeSha,compiled,evidence,realm,RE2,re2Runtime,provenance:()=>Object.fromEntries(provenanceFiles.map(p=>[p,sha(read(p))]))};

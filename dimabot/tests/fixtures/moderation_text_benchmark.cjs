@@ -1,4 +1,5 @@
 'use strict';
+const leaf = require('./moderation_leaf_source_resolver.cjs');
 // Prepared, source-generated inputs; CommonJS realm is used for all timing.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict');
 const Module=require('node:module'),readline=require('node:readline');
@@ -17,7 +18,7 @@ const pins={
  'node_modules/typescript/package.json':'822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6',
  'node_modules/typescript/lib/typescript.js':'3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675',
 };
-const read=file=>fs.readFileSync(path.join(root,file));
+const read=file=>fs.readFileSync(leaf.sourcePath(root, file));
 for(const [f,h] of Object.entries(pins))assert.equal(digest(read(f)),h,f);
 const local=Module.createRequire(path.join(root,'package.json')),ts=local('typescript');assert.equal(ts.version,'5.9.3');
 assert.equal(fs.realpathSync(local.resolve('typescript')),fs.realpathSync(path.join(root,'node_modules/typescript/lib/typescript.js')));
@@ -33,7 +34,7 @@ const rule=schema.statements.find(s=>ts.isInterfaceDeclaration(s)&&s.name.text==
 const fields=rule.members.filter(m=>m.name?.getText(schema)==='allowlistDomains');assert.equal(fields.length,1);assert(ts.isPropertySignature(fields[0])&&!fields[0].questionToken&&fields[0].type.getText(schema)==='string[]');
 const declaration=`export interface IModerationRule { ${fields[0].getText(schema)} }\n`;
 const options={target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,moduleResolution:ts.ModuleResolutionKind.Node10,strict:true,noEmit:true,skipLibCheck:true,types:[],lib:['lib.es2022.d.ts']};
-const host=ts.createCompilerHost(options),readFile=host.readFile.bind(host);host.readFile=f=>path.resolve(f)===schemaName?declaration:readFile(f);
+const host=leaf.overlaySource(ts.createCompilerHost(options), ts, root, ["src/utils/moderation/rules/links.rule.ts", "src/utils/moderation/normalize.ts"]),readFile=host.readFile.bind(host);host.readFile=f=>path.resolve(f)===schemaName?declaration:readFile(f);
 const program=ts.createProgram([linkName,normName],options,host);assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d=>ts.flattenDiagnosticMessageText(d.messageText,'\n')),[]);
 function load(name,source){const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS},reportDiagnostics:true});assert.deepEqual(compiled.diagnostics,[]);const mod=new Module(name,module);mod.filename=name;mod.paths=Module._nodeModulePaths(path.dirname(name));mod.require=x=>{throw Error(`unexpected require ${x}`)};mod._compile(compiled.outputText,name);return {exports:mod.exports,sha:digest(compiled.outputText)};}
 const links=load(linkName,link),normal=load(normName,norm);
@@ -59,7 +60,7 @@ const specs={
 };
 function evaluate(kind,p){if(kind.startsWith('link-'))return links.exports.evaluateLinksRule(p.rule,p.input);if(kind==='fold-text')return normal.exports.foldText(p.text);return normal.exports.escapeRegExp(p.text);}
 function prepare(){const pools={};for(const [kind,list] of Object.entries(specs)){assert.equal(list.length,8);pools[kind]=list.map(([id,text,domains])=>{const p=kind.startsWith('link-')?{rule:{allowlistDomains:domains},input:{text}}:{text};const result=evaluate(kind,p);return {id,text:toUnits(text),domains:domains?domains.map(toUnits):null,expected:kind.startsWith('link-')?{triggered:result.triggered,urls:result.urls.map(toUnits),blocked:result.blockedUrl===null?null:toUnits(result.blockedUrl)}:{units:toUnits(result)},wire:JSON.stringify(result)};});}
-return {metadata:{format:1,versions,nodeSha:pinNode,pins,nativeHashes,compiledSha,realm:'commonjs'},pools};}
+return {metadata:{format:1,sourceProvenance:leaf.provenance(root,["src/utils/moderation/normalize.ts", "src/utils/moderation/rules/links.rule.ts"]),versions,nodeSha:pinNode,pins,nativeHashes,compiledSha,realm:'commonjs'},pools};}
 const dirArg=process.env.DIMA_MODERATION_TEXT_BENCH_DIR;assert(dirArg&&path.isAbsolute(dirArg));const dir=fs.realpathSync(dirArg);assert.equal(dir,dirArg);
 const workspace=fs.realpathSync(path.join(root,'..'));assert(dir!==workspace&&!dir.startsWith(workspace+path.sep));
 const file=path.join(dir,'moderation-text-benchmark-input.json');

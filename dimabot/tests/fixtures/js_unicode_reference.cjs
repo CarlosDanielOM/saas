@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const leaf = require('./moderation_leaf_source_resolver.cjs');
 // Pinned source oracle. Only writes one file in an empty external directory;
 // --check regenerates and compares exact bytes. No application is started.
 const fs = require('node:fs');
@@ -27,7 +28,7 @@ assert(fs.statSync(dir).isDirectory() && dir !== root && !dir.startsWith(root + 
 const name = 'js-unicode-source-reference.json';
 assert.deepEqual(fs.readdirSync(dir).sort(), mode === '--write' ? [] : [name]);
 if (mode === '--check') assert(fs.lstatSync(path.join(dir, name)).isFile());
-const read = relative => fs.readFileSync(path.join(root, relative));
+const read = relative => fs.readFileSync(leaf.sourcePath(root, relative));
 const localRequire = createRequire(path.join(root, 'package.json'));
 const ts = localRequire('typescript');
 assert.equal(ts.version, '5.9.3');
@@ -83,7 +84,7 @@ sourceSha256['normalize-canonical-declarations'] = digest(ts.createPrinter({remo
 const output = JSON.stringify({
   format: 1, implementation: 'actual-typescript',
   versions: {node: process.versions.node, v8: process.versions.v8, icu: process.versions.icu, unicode: process.versions.unicode, typescript: ts.version},
-  nodeExecutableSha256: pin, sourceSha256, scalarFolds, cases,
+  nodeExecutableSha256: pin, sourceProvenance: leaf.provenance(root,["src/utils/moderation/normalize.ts"]), sourceSha256, scalarFolds, cases,
 }, null, 2) + '\n';
 const target = path.join(dir, name);
 if (mode === '--write') fs.writeFileSync(target, output, {flag: 'wx'});
