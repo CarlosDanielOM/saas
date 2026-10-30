@@ -88020,33 +88020,57 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-local-rule-dispatcher; upstream arbitrary-RegExp blacklist interface remains open",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/rule_dispatcher.rs",
+        "dimabot/tests/moderation_rule_dispatcher.rs",
+        "migration-notes/moderation-rule-dispatcher-2026-10-30.md",
+        "migration-notes/evidence/2026-10-30-moderation-rule-dispatcher/README.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The pure Rust dispatcher directly reuses existing native caps, links, emote-spam, and blacklist evaluators plus the JavaScript-compatible number formatter; no evaluator mocks or application-service adapters are used.",
+        "The schema import is type-only; Rust maps the branch-selected rule fields to local types without MongoDB schema runtime dependencies.",
+        "The source accepts arbitrary blacklist RegExp values while the native blacklist path accepts patterns from its term compiler. Reviewed application callers compile patterns from terms, but the source API difference remains an open dependency and this row is partial."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/handlers/moderation.handler.ts"
+        ],
+        "runtimeStatus": "The TypeScript handler still calls the TypeScript dispatcher; reviewed native behavior is not adopted by callers."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/rules/index.ts"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_rule_dispatcher.rs",
+          "migration-notes/evidence/2026-10-30-moderation-rule-dispatcher/README.md"
+        ],
+        "status": "All four branches and unknown fallback are covered by 22-case source replay plus the dispatcher ordinary test; related existing evaluator regressions passed. The row remains partial because of the blacklist RegExp interface gap."
       },
       "exports": [
         {
           "name": "ModerationRuleInput",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::rule_dispatcher::ModerationRuleInput",
+          "evidence": [
+            "dimabot/src/utils/moderation/rule_dispatcher.rs"
+          ]
         },
         {
           "name": "ModerationRuleResult",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::rule_dispatcher::ModerationRuleResult",
+          "evidence": [
+            "dimabot/src/utils/moderation/rule_dispatcher.rs"
+          ]
         },
         {
           "name": "evaluateRule",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::rule_dispatcher::evaluate_rule; branch behavior verified, blacklist pattern accepts native compiled patterns only",
+          "evidence": [
+            "dimabot/src/utils/moderation/rule_dispatcher.rs",
+            "dimabot/tests/moderation_rule_dispatcher.rs",
+            "migration-notes/evidence/2026-10-30-moderation-rule-dispatcher/README.md"
+          ]
         }
       ],
       "imports": [
@@ -88063,35 +88087,15 @@
           "baselineSourceTargets": [
             "src/schemas/channel_moderation_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only named import: IModerationRule",
+          "runtimeOrTypeDependency": "type-only",
+          "defaultSideEffectBarrelDetails": "no schema runtime, side-effect, or barrel dependency identified",
+          "directDependencyReview": "reviewed-type-only-contract",
+          "transitiveDependencyReview": "Selected interface fields and union aliases are read from the source schema; MongoDB schema runtime is not required by the pure dispatcher.",
+          "rustReplacementOrGap": "local ModerationRule branch variants (CapsRule, LinksRule, EmoteSpamRule, BlacklistRule)"
         },
         {
           "ordinal": 1,
-          "specifier": "./blacklist.rule.js",
-          "specifierCategory": "relative-module-candidate",
-          "relativeSourceCandidates": [
-            "src/utils/moderation/rules/blacklist.rule.js",
-            "src/utils/moderation/rules/blacklist.rule.ts",
-            "src/utils/moderation/rules/blacklist.rule.tsx",
-            "src/utils/moderation/rules/blacklist.rule.d.ts"
-          ],
-          "baselineSourceTargets": [
-            "src/utils/moderation/rules/blacklist.rule.ts"
-          ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
-        },
-        {
-          "ordinal": 2,
           "specifier": "./caps.rule.js",
           "specifierCategory": "relative-module-candidate",
           "relativeSourceCandidates": [
@@ -88103,12 +88107,32 @@
           "baselineSourceTargets": [
             "src/utils/moderation/rules/caps.rule.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime value import: evaluateCapsRule",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "named evaluator import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-native-evaluator-reuse",
+          "transitiveDependencyReview": "Concrete native evaluator and shared string/Unicode or numeric helpers are reused; these imports introduce no additional application-service adapter.",
+          "rustReplacementOrGap": "dima_rust::utils::moderation::caps::evaluate_caps_rule"
+        },
+        {
+          "ordinal": 2,
+          "specifier": "./links.rule.js",
+          "specifierCategory": "relative-module-candidate",
+          "relativeSourceCandidates": [
+            "src/utils/moderation/rules/links.rule.js",
+            "src/utils/moderation/rules/links.rule.ts",
+            "src/utils/moderation/rules/links.rule.tsx",
+            "src/utils/moderation/rules/links.rule.d.ts"
+          ],
+          "baselineSourceTargets": [
+            "src/utils/moderation/rules/links.rule.ts"
+          ],
+          "importSyntaxKind": "named runtime value import: evaluateLinksRule",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "named evaluator import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-native-evaluator-reuse",
+          "transitiveDependencyReview": "Concrete native evaluator and shared string/Unicode or numeric helpers are reused; these imports introduce no additional application-service adapter.",
+          "rustReplacementOrGap": "dima_rust::utils::moderation::links_rule::evaluate_links_rule"
         },
         {
           "ordinal": 3,
@@ -88123,35 +88147,35 @@
           "baselineSourceTargets": [
             "src/utils/moderation/rules/emote_spam.rule.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime value import: evaluateEmoteSpamRule",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "named evaluator import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-native-evaluator-reuse",
+          "transitiveDependencyReview": "Concrete native evaluator and shared string/Unicode or numeric helpers are reused; these imports introduce no additional application-service adapter.",
+          "rustReplacementOrGap": "dima_rust::utils::moderation::emote_spam::evaluate_emote_spam_rule"
         },
         {
           "ordinal": 4,
-          "specifier": "./links.rule.js",
+          "specifier": "./blacklist.rule.js",
           "specifierCategory": "relative-module-candidate",
           "relativeSourceCandidates": [
-            "src/utils/moderation/rules/links.rule.js",
-            "src/utils/moderation/rules/links.rule.ts",
-            "src/utils/moderation/rules/links.rule.tsx",
-            "src/utils/moderation/rules/links.rule.d.ts"
+            "src/utils/moderation/rules/blacklist.rule.js",
+            "src/utils/moderation/rules/blacklist.rule.ts",
+            "src/utils/moderation/rules/blacklist.rule.tsx",
+            "src/utils/moderation/rules/blacklist.rule.d.ts"
           ],
           "baselineSourceTargets": [
-            "src/utils/moderation/rules/links.rule.ts"
+            "src/utils/moderation/rules/blacklist.rule.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime value import: evaluateBlacklistRule",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "named evaluator import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-native-evaluator-reuse",
+          "transitiveDependencyReview": "required evaluator is a concrete native implementation; blacklist supports only patterns made by its term compiler",
+          "rustReplacementOrGap": "dima_rust::utils::moderation::blacklist::{BlacklistPattern, evaluate_blacklist_rule}"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-four-branch-dispatcher-verified; arbitrary-RegExp-blacklist-dependency-remains-open; callers-unadopted"
     },
     {
       "source": "src/utils/moderation/rules/links.rule.test.ts",

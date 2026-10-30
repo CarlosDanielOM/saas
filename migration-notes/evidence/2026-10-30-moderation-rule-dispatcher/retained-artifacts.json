@@ -1,0 +1,142 @@
+{
+  "artifacts/final-production.json": {
+    "rawBytes": 26955,
+    "rawSha256": "fe1a1dbc6a6cc6afe9f9cafbf150e9e1a1db0d33f69603609620198a6f61385c",
+    "storedPath": "artifacts/final-production.json"
+  },
+  "artifacts/independent-reference-readback.json": {
+    "rawBytes": 223,
+    "rawSha256": "ddbe2010fc4c8f1e6a6045ed705db391af0d902a0aa7f0fab12b18393cab200d",
+    "storedPath": "artifacts/independent-reference-readback.json"
+  },
+  "artifacts/reference/moderation-rule-dispatcher-reference.json": {
+    "rawBytes": 31139,
+    "rawSha256": "bcd9ffc9be201032c500e465f8443ae5f5abc9a57d7b95e9dd62909b924fddc6",
+    "storedPath": "artifacts/reference/moderation-rule-dispatcher-reference.json"
+  },
+  "production-baseline/acknowledgement.json": {
+    "rawBytes": 275,
+    "rawSha256": "1541dddcf34df73e6762017199a80c13b61648bb1de602b2999b4b5789d5b9bf",
+    "storedPath": "production-baseline/acknowledgement.json"
+  },
+  "production-baseline/after.json": {
+    "rawBytes": 25406,
+    "rawSha256": "34f990d75dc0fc757f79f114a2eeffcb4d980d8e108837829ed3a26fe73247ac",
+    "storedPath": "production-baseline/after.json"
+  },
+  "production-baseline/before.json": {
+    "rawBytes": 26753,
+    "rawSha256": "045867835645cf8a5c8913f6a7d2dcd895e61661c716fb689b601c67bd36a954",
+    "storedPath": "production-baseline/before.json"
+  },
+  "reproduction-tools/apply_format.py": {
+    "rawBytes": 548,
+    "rawSha256": "ce77428e3a9ca462e55fc47fe4d21bdb3494df2353f0373257076713ab22a276",
+    "storedPath": "reproduction-tools/apply_format.py"
+  },
+  "reproduction-tools/final_readback.py": {
+    "rawBytes": 1279,
+    "rawSha256": "2517f7f3d38a84b5894f310f5d9211478bac2fa5a8180e84fcf092ba54ff2120",
+    "storedPath": "reproduction-tools/final_readback.py"
+  },
+  "reproduction-tools/freeze_offenses.py": {
+    "rawBytes": 638,
+    "rawSha256": "9c8a5d4f87f7f78930aa17e45659ee4cb709a9d5617efe56d186f23f2472a263",
+    "storedPath": "reproduction-tools/freeze_offenses.py"
+  },
+  "reproduction-tools/freeze_permit.py": {
+    "rawBytes": 303,
+    "rawSha256": "ce689ff71d74e81571d2e7851127adc5e4af7306a10c7823fcf0f9aad6c39924",
+    "storedPath": "reproduction-tools/freeze_permit.py"
+  },
+  "reproduction-tools/freeze_redis_application.py": {
+    "rawBytes": 150,
+    "rawSha256": "18a1c3dafd7a978998a74f637dc2a0085a80f7800ac10293c96eda9fdc102458",
+    "storedPath": "reproduction-tools/freeze_redis_application.py"
+  },
+  "reproduction-tools/freeze_rule_dispatcher.py": {
+    "rawBytes": 152,
+    "rawSha256": "6e1138c879e54be04013c27ac0384f59137afbf3fca3112635e73c916086d709",
+    "storedPath": "reproduction-tools/freeze_rule_dispatcher.py"
+  },
+  "reproduction-tools/freeze_seed_plan.py": {
+    "rawBytes": 143,
+    "rawSha256": "98ae7e347446c939102a914722d7d33375372238408194f6ddc1ded7152254f9",
+    "storedPath": "reproduction-tools/freeze_seed_plan.py"
+  },
+  "reproduction-tools/freeze_seed_retirement.py": {
+    "rawBytes": 144,
+    "rawSha256": "f91976c3a48a4e42a58f9f9b5f39991ef734c6757fb221eafc914fbf2f31e1c1",
+    "storedPath": "reproduction-tools/freeze_seed_retirement.py"
+  },
+  "reproduction-tools/package_rule_dispatcher.py": {
+    "rawBytes": 8014,
+    "rawSha256": "636a7ff3b8a7ca1ee87fb51ad80bbba6f0d8f0180801fd7f8c9e88ff402a9740",
+    "storedPath": "reproduction-tools/package_rule_dispatcher.py"
+  },
+  "reproduction-tools/prepare_posthog_sdk.py": {
+    "rawBytes": 2149,
+    "rawSha256": "fe140630c04c41cfcb3f001e5d416b32d889c52c4ba477ac467ea6220e6c1b26",
+    "storedPath": "reproduction-tools/prepare_posthog_sdk.py"
+  },
+  "reproduction-tools/rule_dispatcher_check1.sh": {
+    "rawBytes": 392,
+    "rawSha256": "c564ff88d75c25624abb9e4dfe419b956f77883ed623736deb98a4dc53d09ff6",
+    "storedPath": "reproduction-tools/rule_dispatcher_check1.sh"
+  },
+  "reproduction-tools/rule_dispatcher_node1.sh": {
+    "rawBytes": 297,
+    "rawSha256": "713a6230cc0f7f1bac7057ed7238eaea593a951db6a26f3e4723ab5b295ee998",
+    "storedPath": "reproduction-tools/rule_dispatcher_node1.sh"
+  },
+  "reproduction-tools/rule_dispatcher_replay1.sh": {
+    "rawBytes": 585,
+    "rawSha256": "acdc9e6f82986ae83dd7e3003852b4a693f925893d4f94ba56d56e2e0b525d8e",
+    "storedPath": "reproduction-tools/rule_dispatcher_replay1.sh"
+  },
+  "reproduction-tools/validate.py": {
+    "rawBytes": 12955,
+    "rawSha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+    "storedPath": "reproduction-tools/validate.py"
+  },
+  "runs/compiler-1793324608852932493-receipt.json": {
+    "rawBytes": 166729,
+    "rawSha256": "ebe25007b390d2d34b819f72248f479b3fa0d77bca1e16442b0898522456d827",
+    "storedPath": "runs/compiler-1793324608852932493-receipt.json.gz"
+  },
+  "runs/compiler-1793324608852932493.log": {
+    "rawBytes": 4872,
+    "rawSha256": "0c16dbbf78d59159f77f2017ae23832ae02df6f47fb2a6e39b9f344302f97739",
+    "storedPath": "runs/compiler-1793324608852932493.log.gz"
+  },
+  "runs/compiler-1793324693380466159-receipt.json": {
+    "rawBytes": 166731,
+    "rawSha256": "4c829e6da330ca4ac2cafa24ef47b2af43c8140dfbcef2b7926c638c05e33e12",
+    "storedPath": "runs/compiler-1793324693380466159-receipt.json.gz"
+  },
+  "runs/compiler-1793324693380466159.log": {
+    "rawBytes": 2488,
+    "rawSha256": "050a38a8b306096f1e5580a03cd37468ca23a956129bac53f96a49a326d4082f",
+    "storedPath": "runs/compiler-1793324693380466159.log.gz"
+  },
+  "runs/format-1793324584169033656-receipt.json": {
+    "rawBytes": 166723,
+    "rawSha256": "6318a22b2a7bf6abca420b3a6475f1552ab07f2775a1c3d2618d1e8158b4714b",
+    "storedPath": "runs/format-1793324584169033656-receipt.json.gz"
+  },
+  "runs/format-1793324584169033656.log": {
+    "rawBytes": 1833,
+    "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "storedPath": "runs/format-1793324584169033656.log.gz"
+  },
+  "runs/node-1793324608846532854-receipt.json": {
+    "rawBytes": 166602,
+    "rawSha256": "67cb29fd8e026a4a4ba8d215a7d33754b471ea65e4cd7d1e355ad27f0813c38a",
+    "storedPath": "runs/node-1793324608846532854-receipt.json.gz"
+  },
+  "runs/node-1793324608846532854.log": {
+    "rawBytes": 221,
+    "rawSha256": "bb27625355838ca9e8552d04f471e45a4a97892493a869ef8b6ba7750154ee25",
+    "storedPath": "runs/node-1793324608846532854.log.gz"
+  }
+}

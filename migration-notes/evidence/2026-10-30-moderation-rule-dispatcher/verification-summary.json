@@ -1,0 +1,185 @@
+{
+  "acceptedRuns": [
+    "node-1793324608846532854",
+    "compiler-1793324608852932493",
+    "compiler-1793324693380466159"
+  ],
+  "codeCommit": "c90cdd98e431df675fbc905c9e33cd8fae04a07e",
+  "deploymentPerformed": false,
+  "fixtureSha256": "bcd9ffc9be201032c500e465f8443ae5f5abc9a57d7b95e9dd62909b924fddc6",
+  "formatRun": "format-1793324584169033656",
+  "formatSourceTreeSha256": "543049766cc1e1043391b146ab7ee6e9bad207efd2681c138e8969fd15b23089",
+  "fullReferenceReplayCases": 22,
+  "ordinaryHelperRegressionTests": {
+    "blacklist": 7,
+    "caps": 4,
+    "dispatcher": 1,
+    "emote": 2,
+    "links": 4,
+    "normalize": 1,
+    "total": 19
+  },
+  "performanceMeasured": false,
+  "productionRecords": 18,
+  "receipts": {
+    "compiler-1793324608852932493": {
+      "elapsed_seconds": 22.1,
+      "headroom_start": {
+        "load_1m": 1.5810546875,
+        "mem_available_bytes": 11363606528
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 10934693888,
+      "peak_cache_bytes": 5521313792,
+      "phase": "compiler",
+      "production_unchanged": true,
+      "source_tree_sha256": "050b65cf06adb805637948c65ab2010b23dde85fc3a263654dc8dd9ca6d62170",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.516
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.029
+        },
+        {
+          "exit_code": 0,
+          "name": "compiler",
+          "seconds": 13.758
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "compiler-1793324693380466159": {
+      "elapsed_seconds": 80.365,
+      "headroom_start": {
+        "load_1m": 1.89013671875,
+        "mem_available_bytes": 11454398464
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 9661513728,
+      "peak_cache_bytes": 5541797888,
+      "phase": "compiler",
+      "production_unchanged": true,
+      "source_tree_sha256": "050b65cf06adb805637948c65ab2010b23dde85fc3a263654dc8dd9ca6d62170",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.702
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.075
+        },
+        {
+          "exit_code": 0,
+          "name": "compiler",
+          "seconds": 69.954
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "format-1793324584169033656": {
+      "elapsed_seconds": 11.857,
+      "headroom_start": {
+        "load_1m": 1.7421875,
+        "mem_available_bytes": 11398557696
+      },
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11313537024,
+      "peak_cache_bytes": 5493420032,
+      "phase": "format",
+      "production_unchanged": true,
+      "source_tree_sha256": "543049766cc1e1043391b146ab7ee6e9bad207efd2681c138e8969fd15b23089",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 4.077
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.018
+        },
+        {
+          "exit_code": 0,
+          "name": "format",
+          "seconds": 4.037
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
+    },
+    "node-1793324608846532854": {
+      "elapsed_seconds": 2.915,
+      "headroom_start": {
+        "load_1m": 1.5810546875,
+        "mem_available_bytes": 11364409344
+      },
+      "limits": {
+        "cargo_jobs": null,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "limits_verified": true,
+      "minimum_available_bytes": 11194949632,
+      "phase": "node",
+      "production_unchanged": true,
+      "source_tree_sha256": "050b65cf06adb805637948c65ab2010b23dde85fc3a263654dc8dd9ca6d62170",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.501
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 1.502
+        }
+      ],
+      "success": true,
+      "toolchain_image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82"
+    }
+  },
+  "referenceCases": 22,
+  "remainingGap": "Partial RegExp coverage remains; this pure dispatcher does not complete migration.",
+  "remainingOwnedResources": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "sourceTreeSha256": "050b65cf06adb805637948c65ab2010b23dde85fc3a263654dc8dd9ca6d62170",
+  "typescriptRetirement": false
+}
