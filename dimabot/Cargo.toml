@@ -107,6 +107,7 @@ js-unicode17 = ["dep:serde_json", "dep:unicode-normalization"]
 # Unicode tables shared by literal RegExp adapters; existing dependencies only.
 js-regexp-unicode = []
 moderation-blacklist = ["moderation-normalize", "js-regexp-unicode", "dep:regex"]
+moderation-rules = ["moderation-caps", "moderation-links", "moderation-emote-spam", "moderation-blacklist"]
 moderation-normalize = ["js-unicode17"]
 moderation-links = ["js-unicode17"]
 moderation-spam-categories = ["dep:serde_json"]

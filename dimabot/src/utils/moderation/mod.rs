@@ -25,3 +25,6 @@ pub mod seed_plan;
 
 #[cfg(feature = "moderation-blacklist")]
 pub mod blacklist;
+
+#[cfg(feature = "moderation-rules")]
+pub mod rule_dispatcher;
