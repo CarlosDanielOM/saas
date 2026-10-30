@@ -88,8 +88,8 @@
     "sha256": "f034c03efc450fc8a845cf4121402a27b79e1401b944d6f874b44bdd4393017b"
   },
   "reproduction-tools/package_moderation_decision_model_evidence.py": {
-    "bytes": 15755,
-    "sha256": "a5501833352ff543f945b5200a71fc8e2f07299aa0450a214352a7e6fc6ec70d"
+    "bytes": 15749,
+    "sha256": "84409cc4dbff020307871d3a3f426bc1e4d9e42f708b5d2e4bba72f458cd8092"
   },
   "reproduction-tools/prepare_variation_jobs_provenance.py": {
     "bytes": 1410,
