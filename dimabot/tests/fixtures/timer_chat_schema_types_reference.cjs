@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const ts = require('typescript');
 const bson = require('bson');
+const {resolveSource} = require('./schema_source_resolver.cjs');
 const root = path.resolve(__dirname, '../..');
 const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 const pins = {
@@ -27,7 +28,7 @@ assert.equal(process.versions.v8,'13.6.233.17-node.58');
 assert.equal(ts.version,'5.9.3');
 assert.equal(sha(fs.readFileSync(process.execPath)),nodePin);
 assert.equal(fs.realpathSync(require.resolve('bson')),fs.realpathSync(path.join(root,'node_modules/bson/lib/bson.cjs')));
-for(const [file,pin] of Object.entries(pins)) assert.equal(sha(fs.readFileSync(path.join(root,file))),pin,file);
+for(const [file,pin] of Object.entries(pins)) { const bytes=file.startsWith('src/schemas/')?resolveSource(root,file,pin).bytes:fs.readFileSync(path.join(root,file)); assert.equal(sha(bytes),pin,file); }
 const expected={
   command_timer:['ICommandTimer','CommandTimerSchema'],
   countdown_timer:['ICountdownTimer','CountdownTimerSchema'],
@@ -35,10 +36,11 @@ const expected={
   custom_timer:['ICustomTimer','CustomTimerSchema'],
   chat_logs:['IChatLog','ChatLogSchema'],
 };
-const declarations={},imports={},hooks={},sources={};
+const declarations={},imports={},hooks={},sources={},provenance={};
 let extracted='declare namespace Types { class ObjectId { private _id: never; } }\n';
 for(const [file,names] of Object.entries(expected)) {
-  const logical=`src/schemas/${file}.schema.ts`,source=fs.readFileSync(path.join(root,logical),'utf8');
+  const logical=`src/schemas/${file}.schema.ts`,resolved=resolveSource(root,logical,pins[logical]),source=resolved.bytes.toString('utf8');
+  provenance[logical]=resolved.provenance;
   sources[logical]=sha(source);
   const ast=ts.createSourceFile(logical,source,ts.ScriptTarget.ES2022,true);
   assert.deepEqual(ast.parseDiagnostics,[]);
@@ -68,7 +70,7 @@ const program=ts.createProgram([virtual],options,host);
 assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d=>ts.flattenDiagnosticMessageText(d.messageText,'\n')),[]);
 const checker=program.getTypeChecker(), checked=program.getSourceFile(virtual), signatures={};
 for(const s of checked.statements) if(s.name&&declarations[s.name.text]&&ts.isInterfaceDeclaration(s)) signatures[s.name.text]=s.members.map(m=>({name:m.name.getText(checked),type:checker.typeToString(checker.getTypeAtLocation(m),undefined,ts.TypeFormatFlags.NoTruncation),optional:!!m.questionToken}));
-const dependencies=[...Object.keys(expected).map(n=>`src/schemas/${n}.schema.rs`),'src/schemas/schema.rs','src/utils/js_string.rs','tests/fixtures/timer_chat_schema_types_reference.cjs','tests/timer_chat_schema_types.rs','tests/support/sha256.rs'];
+const dependencies=[...Object.keys(expected).map(n=>`src/schemas/${n}.schema.rs`),'src/schemas/schema.rs','src/utils/js_string.rs','tests/fixtures/timer_chat_schema_types_reference.cjs','tests/fixtures/schema_source_resolver.cjs','tests/timer_chat_schema_types.rs','tests/support/schema_source.rs','tests/support/sha256.rs'];
 const hashes=Object.fromEntries(dependencies.map(f=>[f,sha(fs.readFileSync(path.join(root,f)))]));
 const bsonStrings=[[0x61],[0xd800],[0xdc00],[0xd800,0x61,0xdc00],[0xd83d,0xde00],[0x540d,0,0x3a9]].map(units=>{
   const bytes=bson.serialize({value:String.fromCharCode(...units)}), output=bson.deserialize(bytes).value;
@@ -79,7 +81,7 @@ const bsonNumbers=[['nan',NaN],['positiveInfinity',Infinity],['negativeInfinity'
   assert(Number.isNaN(value)?Number.isNaN(output):Object.is(output,value));
   return {name,bsonHex:bytes.toString('hex')};
 });
-const output=JSON.stringify({format:1,versions:{node:process.version,v8:process.versions.v8,typescript:ts.version},nodePin,pins,sources,imports,hooks,declarations,signatures,hashes,bsonStrings,bsonNumbers},null,2)+'\n';
+const output=JSON.stringify({format:1,versions:{node:process.version,v8:process.versions.v8,typescript:ts.version},nodePin,pins,sources,provenance,imports,hooks,declarations,signatures,hashes,bsonStrings,bsonNumbers},null,2)+'\n';
 const [mode,dir,...extra]=process.argv.slice(2);
 assert(['--write','--check'].includes(mode)&&dir&&path.isAbsolute(dir)&&!extra.length);
 const real=fs.realpathSync(dir),workspace=fs.realpathSync(path.join(root,'..'));

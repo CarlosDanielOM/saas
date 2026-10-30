@@ -12,7 +12,7 @@ use std::{path::Path, str::FromStr};
 #[test]
 fn named_type_sources_are_archived_and_pinned() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    for (logical, _) in schema_source::PINS.iter().skip(5) {
+    for (logical, _) in schema_source::PINS.iter().skip(5).take(4) {
         schema_source::archived(root, logical);
     }
 }
@@ -41,7 +41,7 @@ fn source_oracle_and_catalogs() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let sources = value["sources"].as_object().unwrap();
     assert_eq!(sources.len(), 4);
-    for (logical, pin) in schema_source::PINS.iter().skip(5) {
+    for (logical, pin) in schema_source::PINS.iter().skip(5).take(4) {
         let source = schema_source::archived(root, logical);
         assert_eq!(sources[*logical], *pin);
         assert_eq!(schema_source::sha256(&source), *pin);

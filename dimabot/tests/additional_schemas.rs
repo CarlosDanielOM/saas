@@ -5,9 +5,135 @@ use dima_rust::schemas::{self, SchemaDefinition};
 use mongodb::bson::{Bson, DateTime, Document, doc};
 use serde_json::{Value, json};
 
+#[path = "support/schema_source.rs"]
+mod schema_source;
+const NAMES: [&str; 24] = [
+    "ai_usage_daily",
+    "ai_usage_dashboard",
+    "ai_usage_ledger_state",
+    "ai_usage_receipt",
+    "ast_variables",
+    "chat_logs",
+    "command_timer",
+    "command_user_variables",
+    "countdown_timer",
+    "countdown_timer_config",
+    "custom_timer",
+    "dashboard_activity",
+    "dashboard_insights",
+    "domain_event",
+    "domain_event_checkpoint",
+    "domain_event_delivery",
+    "raid_analytics",
+    "raid_session",
+    "raid_subscription_preference",
+    "stream_activity",
+    "stream_session",
+    "stream_subscription_ledger",
+    "stream_timeline",
+    "stream_viewer_snapshot",
+];
 fn fixture() -> Value {
-    serde_json::from_str(include_str!("fixtures/additional_schemas_cases.json"))
-        .expect("source-backed additional schema corpus")
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    for (logical, _) in schema_source::PINS.iter().skip(9).take(5) {
+        schema_source::archived(root, logical);
+    }
+    if let Some(dir) = std::env::var_os("DIMA_ADDITIONAL_SCHEMAS_FIXTURE_DIR") {
+        let dir = std::path::PathBuf::from(dir);
+        assert!(dir.is_absolute());
+        assert_eq!(dir.canonicalize().unwrap(), dir);
+        assert!(!dir.starts_with(root.canonicalize().unwrap()));
+        let file = dir.join("additional-schemas-reference.json");
+        assert!(
+            std::fs::symlink_metadata(&file)
+                .unwrap()
+                .file_type()
+                .is_file()
+        );
+        let bytes = std::fs::read(file).unwrap();
+        assert_eq!(
+            schema_source::sha256(&bytes),
+            std::env::var("DIMA_ADDITIONAL_SCHEMAS_FIXTURE_SHA256")
+                .expect("independent fixture digest")
+        );
+        let data: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(
+            data["nodeExecutableSha256"],
+            "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108"
+        );
+        for (key, value) in [
+            ("node", "24.22.1"),
+            ("v8", "13.6.233.17-node.58"),
+            ("icu", "78.3"),
+            ("unicode", "17.0"),
+            ("typescript", "5.9.3"),
+            ("mongoose", "8.24.2"),
+        ] {
+            assert_eq!(data["versions"][key], value);
+        }
+        assert_eq!(data["sources"].as_object().unwrap().len(), NAMES.len());
+        assert_eq!(data["sourceProvenance"].as_object().unwrap().len(), 5);
+        for name in NAMES {
+            let logical = format!("src/schemas/{name}.schema.ts");
+            let bytes = if schema_source::PINS
+                .iter()
+                .skip(9)
+                .take(5)
+                .any(|(id, _)| *id == logical)
+            {
+                assert_eq!(
+                    data["sourceProvenance"][name],
+                    schema_source::provenance(&logical)
+                );
+                schema_source::archived(root, &logical)
+            } else {
+                std::fs::read(root.join(&logical)).unwrap()
+            };
+            assert_eq!(
+                data["sources"][name],
+                schema_source::sha256(&bytes),
+                "{name}"
+            );
+        }
+        let files = data["nativeSha256"].as_object().unwrap();
+        let mut expected: Vec<String> = NAMES
+            .iter()
+            .map(|name| format!("src/schemas/{name}.schema.rs"))
+            .collect();
+        expected.extend(
+            [
+                "src/schemas/schema.rs",
+                "src/schemas/mod.rs",
+                "src/utils/bson_compat.rs",
+                "src/utils/mongoose_date.rs",
+                "src/utils/js_string.rs",
+                "tests/additional_schemas.rs",
+                "tests/support/schema_source.rs",
+                "tests/support/sha256.rs",
+                "tests/fixtures/schema_source_resolver.cjs",
+                "tests/fixtures/additional_schemas_reference.mjs",
+                "Cargo.toml",
+                "Cargo.lock",
+                "rust-toolchain.toml",
+                "package.json",
+                "package-lock.json",
+            ]
+            .iter()
+            .map(|s| s.to_string()),
+        );
+        assert_eq!(files.len(), expected.len());
+        for file in expected {
+            assert_eq!(
+                files[&file],
+                schema_source::sha256(&std::fs::read(root.join(&file)).unwrap()),
+                "{file}"
+            );
+        }
+        data
+    } else {
+        serde_json::from_str(include_str!("fixtures/additional_schemas_cases.json"))
+            .expect("source-backed additional schema corpus")
+    }
 }
 fn definition(model: &str) -> &'static SchemaDefinition {
     schemas::by_model(model).unwrap_or_else(|| panic!("register native schema {model}"))

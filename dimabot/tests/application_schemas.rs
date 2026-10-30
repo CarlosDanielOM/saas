@@ -9,7 +9,7 @@ fn fixture() -> Value {
     for (logical, _) in schema_source::PINS
         .iter()
         .take(4)
-        .chain(schema_source::PINS.iter().skip(5))
+        .chain(schema_source::PINS.iter().skip(5).take(4))
     {
         schema_source::archived(root, logical);
     }
@@ -49,7 +49,7 @@ fn fixture() -> Value {
         for (logical, pin) in schema_source::PINS
             .iter()
             .take(4)
-            .chain(schema_source::PINS.iter().skip(5))
+            .chain(schema_source::PINS.iter().skip(5).take(4))
         {
             let name = logical
                 .strip_prefix("src/schemas/")

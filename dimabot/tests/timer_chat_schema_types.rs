@@ -1,7 +1,7 @@
 //! Source-declared timer/chat types and their BSON projections.
 #![cfg(feature = "application-schemas")]
-#[path = "support/sha256.rs"]
-mod digest;
+#[path = "support/schema_source.rs"]
+mod schema_source;
 use dima_rust::schemas::{
     FieldDefault, chat_logs, command_timer, countdown_timer, countdown_timer_config, custom_timer,
 };
@@ -296,6 +296,14 @@ fn existing_descriptor_contracts() {
 }
 
 #[test]
+fn timer_chat_sources_are_archived_and_pinned() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    for (logical, _) in schema_source::PINS.iter().skip(9).take(5) {
+        schema_source::archived(root, logical);
+    }
+}
+
+#[test]
 #[ignore = "requires pinned external source fixture and SHA-256"]
 fn source_oracle_and_bson_boundaries() {
     let fixture =
@@ -307,7 +315,7 @@ fn source_oracle_and_bson_boundaries() {
     assert!(!path.starts_with(root.canonicalize().unwrap()));
     let bytes = std::fs::read(path).unwrap();
     assert_eq!(
-        digest::sha256_hex(&bytes),
+        schema_source::sha256(&bytes),
         std::env::var("TIMER_CHAT_TYPES_SHA256").unwrap()
     );
     let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
@@ -337,9 +345,10 @@ fn source_oracle_and_bson_boundaries() {
     for (file, pin) in sources {
         assert_eq!(value["sources"][file], pin);
         assert_eq!(
-            digest::sha256_hex(&std::fs::read(root.join(file)).unwrap()),
+            schema_source::sha256(&schema_source::archived(root, file)),
             pin
         );
+        assert_eq!(value["provenance"][file], schema_source::provenance(file));
     }
     let dependencies = [
         "src/schemas/command_timer.schema.rs",
@@ -350,7 +359,9 @@ fn source_oracle_and_bson_boundaries() {
         "src/schemas/schema.rs",
         "src/utils/js_string.rs",
         "tests/fixtures/timer_chat_schema_types_reference.cjs",
+        "tests/fixtures/schema_source_resolver.cjs",
         "tests/timer_chat_schema_types.rs",
+        "tests/support/schema_source.rs",
         "tests/support/sha256.rs",
     ];
     assert_eq!(
@@ -359,7 +370,7 @@ fn source_oracle_and_bson_boundaries() {
     );
     for file in dependencies {
         assert_eq!(
-            digest::sha256_hex(&std::fs::read(root.join(file)).unwrap()),
+            schema_source::sha256(&std::fs::read(root.join(file)).unwrap()),
             value["hashes"][file].as_str().unwrap(),
             "{file}"
         );

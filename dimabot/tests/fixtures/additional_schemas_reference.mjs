@@ -5,10 +5,15 @@
 // TZ=UTC node tests/fixtures/additional_schemas_reference.mjs [--check]
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, realpathSync, readdirSync, lstatSync } from 'node:fs';
+import { join, isAbsolute, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 const require = createRequire(import.meta.url);
+const {pins,resolveSource} = require('./schema_source_resolver.cjs');
+const root = realpathSync(fileURLToPath(new URL('../..',import.meta.url)));
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const ts = require('typescript');
 const mongoose = require('mongoose');
 const fixedNow = 1_900_000_000_000;
@@ -20,7 +25,7 @@ const FixedDate = class Date extends globalThis.Date {
     constructor(...args) { super(...(args.length ? args : [fixedNow])); }
     static now() { return fixedNow; }
 };
-const sources = {};
+const sources = {}, provenance = {};
 const instance = new mongoose.Mongoose();
 instance.now = () => new globalThis.Date(fixedNow);
 const names = [
@@ -32,7 +37,10 @@ const names = [
     'stream_session','stream_subscription_ledger','stream_timeline','stream_viewer_snapshot',
 ];
 for (const name of names) {
-    const source = readFileSync(new URL(`../../src/schemas/${name}.schema.ts`,import.meta.url),'utf8');
+    const logical = `src/schemas/${name}.schema.ts`;
+    const resolved = Object.hasOwn(pins,logical) ? resolveSource(root,logical) : null;
+    const source = resolved ? resolved.bytes.toString('utf8') : readFileSync(join(root,logical),'utf8');
+    if (resolved) provenance[name] = resolved.provenance;
     sources[name] = createHash('sha256').update(source).digest('hex');
     const code = ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
     const exports = {};
@@ -127,7 +135,25 @@ for (const extra of [{origin:'other'},{status:'active'},{status:'unknown'},{incl
 add('stream_subscription_ledger',{_id:rootId,...valid.stream_subscription_ledger,platform:'other',status:'invalid',sub_tier_normalized:'tier4'});
 add('stream_marker',{_id:rootId,...valid.stream_marker,label:'🎮'.repeat(61)});
 const output = new URL('additional_schemas_cases.json',import.meta.url);
-const text = JSON.stringify({fixedNow,timeZone:process.env.TZ||'system',sources,definitions,cases},null,2)+'\n';
-if (process.argv.includes('--check')) assert.equal(readFileSync(output,'utf8'),text,'additional schema source corpus is stale');
-else writeFileSync(output,text);
+const fixture = {fixedNow,timeZone:process.env.TZ||'system',sources,definitions,cases};
+const args = process.argv.slice(2);
+if ((args[0]==='--write'||args[0]==='--check') && args.length===2) {
+    const dir=args[1], name='additional-schemas-reference.json';
+    assert(isAbsolute(dir)); assert.equal(realpathSync(dir),dir); assert(dir!==root&&!dir.startsWith(root+sep));
+    assert.deepEqual(readdirSync(dir).sort(),args[0]==='--write'?[]:[name]); if(args[0]==='--check') assert(lstatSync(join(dir,name)).isFile());
+    const pin='569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108';
+    assert.equal(process.env.DIMA_SCHEMA_NODE_SHA256,pin); assert.equal(sha(readFileSync(process.execPath)),pin);
+    assert.deepEqual([process.versions.node,process.versions.v8,process.versions.icu,process.versions.unicode,ts.version,mongoose.version,process.env.TZ],['24.22.1','13.6.233.17-node.58','78.3','17.0','5.9.3','8.24.2','UTC']);
+    const nativeFiles=[...names.map(name=>`src/schemas/${name}.schema.rs`),'src/schemas/schema.rs','src/schemas/mod.rs','src/utils/bson_compat.rs','src/utils/mongoose_date.rs','src/utils/js_string.rs','tests/additional_schemas.rs','tests/support/schema_source.rs','tests/support/sha256.rs','tests/fixtures/schema_source_resolver.cjs','tests/fixtures/additional_schemas_reference.mjs','Cargo.toml','Cargo.lock','rust-toolchain.toml','package.json','package-lock.json'];
+    const nativeSha256=Object.fromEntries(nativeFiles.map(file=>[file,sha(readFileSync(join(root,file)))]));
+    const dependencySha256=Object.fromEntries(['typescript','typescript/package.json','mongoose','mongoose/package.json'].map(id=>[id,sha(readFileSync(require.resolve(id)))]));
+    const external={...fixture,sourceProvenance:provenance,nodeExecutableSha256:pin,dependencySha256,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version},nativeSha256};
+    const text=JSON.stringify(external,null,2)+'\n',target=join(dir,name);
+    if(args[0]==='--write') writeFileSync(target,text,{flag:'wx'}); else assert.equal(readFileSync(target,'utf8'),text);
+    console.log(`${name} sha256=${sha(text)} cases=${cases.length}`);
+} else {
+    const text=JSON.stringify(fixture,null,2)+'\n';
+    if (process.argv.includes('--check')) assert.equal(readFileSync(output,'utf8'),text,'additional schema source corpus is stale');
+    else writeFileSync(output,text);
+}
 console.log(`Additional schema oracle: ${Object.keys(definitions).length} models, ${cases.length} cases; disconnected Mongoose only`);

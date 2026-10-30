@@ -1,6 +1,6 @@
 # Archived dimabot TypeScript source snapshots — 2026-10-28
 
-These forty files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, credential/activation exports, TTS session/playback and credit fallback helpers, the channel TTS settings schema, TTS normalization and its source test, and the caps and emote-spam rules with the caps source test mapped to native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
+These forty-five files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, credential/activation exports, TTS session/playback and credit fallback helpers, the channel TTS settings schema, TTS normalization and its source test, and the caps and emote-spam rules with the caps source test mapped to native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
 
 | Archived source | Native implementation area |
 |---|---|
@@ -46,3 +46,5 @@ Archived byte-for-byte moderation leaf sources: normalize.ts, rules/links.rule.t
 Five persistence model sources (four OAuth models and moderation action log) are archived byte-for-byte. Native descriptors and the shared repository provide local model parity; TypeScript caller adoption remains open. Post-retirement validation is pending; see [the handoff](../../../migration-notes/persistence-model-retirement-handoff.md).
 
 Four named-schema source files (admin, accounts, credit gift and credit transaction) are archived byte-for-byte. Their native descriptors and named contracts were previously verified; post-retirement source replay remains pending. See the [named-types handoff](../../../migration-notes/schema-named-types-handoff.md). TypeScript caller adoption remains open.
+
+Five timer and chat model sources are preserved byte-for-byte; their named contracts and descriptors were verified before retirement. Post-retirement validation and TypeScript caller adoption remain pending; see the [handoff](../../../migration-notes/timer-chat-schema-types-handoff.md).

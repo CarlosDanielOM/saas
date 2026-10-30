@@ -13,6 +13,11 @@ const pins = Object.freeze({
   'src/schemas/accounts.schema.ts': '7eab86b048cb05d44e9b17c7498c18b713e4c722b71f58f545158fde040431f1',
   'src/schemas/credit_gift.schema.ts': 'f76f4472354751b42587baa1271214c198aac40b86b5fcb85fd046e4de9c0607',
   'src/schemas/credit_transaction.schema.ts': '14017b20e83ec2eebf7a10475b5ade495554cc9043685af3dd5045350a9e985f',
+  'src/schemas/command_timer.schema.ts': 'db42c5b989f6e154551c714f51736585b0230fa743f6bc51fe935b54530af4f5',
+  'src/schemas/countdown_timer.schema.ts': '5d6ab4812c726b2aab0a8fee4a3ca060c6dacc97f59b8aee66c46b669766b990',
+  'src/schemas/countdown_timer_config.schema.ts': 'b4cf0d5f8cfe85dc1e04f11970aac8bbab48a27c86fc9fab43d935cdbb1ada8a',
+  'src/schemas/custom_timer.schema.ts': '6c59b38b43615325f87c870dcbd5dfe2cd0b50e91822dbe884d3c32dd45f387f',
+  'src/schemas/chat_logs.schema.ts': '732abc7b27b820fa6ded0d62b1dc3bf3aed8539c7fd636a47f47d98f70b63433',
 });
 const archiveRelative = 'archives/dimabot-typescript/2026-10-28';
 function stat(file) {
