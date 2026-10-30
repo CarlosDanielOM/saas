@@ -53,6 +53,7 @@ pub mod js_compat;
 
 #[cfg(any(
     feature = "credit-policy",
+    feature = "lossless-json",
     feature = "ast-evaluator",
     feature = "reward-body",
     feature = "domain-events",
@@ -184,7 +185,7 @@ mod js_unicode_data;
 pub mod keywords;
 #[cfg(feature = "logger")]
 pub mod logger;
-#[cfg(feature = "tts-utilities")]
+#[cfg(feature = "lossless-json")]
 pub mod lossless_json;
 #[cfg(feature = "lossless-json-view")]
 pub mod lossless_json_view;

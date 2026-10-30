@@ -19,6 +19,8 @@ use crate::utils::{
 };
 use std::fmt;
 
+pub(crate) use crate::utils::lossless_json::truthy;
+
 const DEFAULT_CLONE_VOICE: &str = "gojo";
 const DEFAULT_MAX_LENGTH: f64 = 280.0;
 const DEFAULT_MAX_ITEMS: f64 = 5.0;
@@ -64,15 +66,6 @@ fn string(value: Option<&JsonValue>) -> Option<&JsString> {
 }
 fn is_null(value: &JsonValue) -> bool {
     matches!(value, JsonValue::Null)
-}
-pub(crate) fn truthy(value: &JsonValue) -> bool {
-    match value {
-        JsonValue::Null => false,
-        JsonValue::Bool(value) => *value,
-        JsonValue::Number(value) => *value != 0.0 && !value.is_nan(),
-        JsonValue::String(value) => !value.is_empty(),
-        JsonValue::Array(_) | JsonValue::Object(_) => true,
-    }
 }
 fn nullish_flag(value: Option<&JsonValue>) -> JsonValue {
     value

@@ -16,6 +16,18 @@ pub enum JsonValue {
     Object(Vec<(JsString, JsonValue)>),
 }
 
+/// JavaScript truthiness for a present JSON-data value. An absent value is
+/// falsy; callers can use `Option::is_some_and(truthy)` for that case.
+pub fn truthy(value: &JsonValue) -> bool {
+    match value {
+        JsonValue::Null => false,
+        JsonValue::Bool(value) => *value,
+        JsonValue::Number(value) => *value != 0.0 && !value.is_nan(),
+        JsonValue::String(value) => !value.is_empty(),
+        JsonValue::Array(_) | JsonValue::Object(_) => true,
+    }
+}
+
 /// Scalar fields or an existing value borrowed for JSON serialization. This
 /// avoids constructing an owned tree solely to write a known object's wire.
 #[derive(Clone, Copy, Debug)]
@@ -374,8 +386,35 @@ fn write_json_object<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::{JsonValue, parse_json};
+    use super::{JsonValue, parse_json, truthy};
     use crate::utils::js_string::JsString;
+
+    #[test]
+    fn javascript_truthiness_covers_absence_scalars_and_containers() {
+        assert!(!Option::<&JsonValue>::None.is_some_and(truthy));
+        for value in [
+            JsonValue::Null,
+            JsonValue::Bool(false),
+            JsonValue::Number(0.0),
+            JsonValue::Number(-0.0),
+            JsonValue::Number(f64::NAN),
+            JsonValue::String(JsString::from_units(vec![])),
+        ] {
+            assert!(!truthy(&value), "{value:?}");
+        }
+        for value in [
+            JsonValue::Bool(true),
+            JsonValue::Number(1.0),
+            JsonValue::Number(-1.0),
+            JsonValue::Number(f64::INFINITY),
+            JsonValue::Number(f64::NEG_INFINITY),
+            JsonValue::String(JsString::from_units(vec![0xd800])),
+            JsonValue::Array(vec![]),
+            JsonValue::Object(vec![]),
+        ] {
+            assert!(truthy(&value), "{value:?}");
+        }
+    }
 
     #[test]
     fn compact_objects_keep_nonnumeric_insertion_duplicates_and_utf16() {

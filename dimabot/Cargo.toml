@@ -39,6 +39,8 @@ jwt = ["dep:jsonwebtoken", "dep:base64", "dep:serde", "dep:serde_json", "serde_j
 re2-compat = ["dep:regex"]
 # Pure pinned SDK facts and string boundaries; no runtime or worker coupling.
 js-strings = []
+# Lossless JavaScript JSON values without TTS policy or runtime dependencies.
+lossless-json = ["js-strings", "dep:serde_json", "serde_json/float_roundtrip"]
 re2-strings = ["js-strings"]
 re2-unicode = []
 re2-native = ["dep:regex", "re2-strings", "re2-unicode"]
@@ -95,7 +97,7 @@ logger = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip", "dep:toki
 observability = ["redis", "logger", "dep:getrandom", "dep:serde", "dep:serde_json", "dep:uuid"]
 # Application-owned cache telemetry; never enabled by deployed worker profiles.
 redis-application-runtime = ["redis", "observability"]
-tts-utilities = ["dep:regex", "dep:serde_json", "serde_json/float_roundtrip", "dep:tokio"]
+tts-utilities = ["lossless-json", "dep:regex", "dep:tokio"]
 tts-services = ["tts-utilities", "http-client", "js-date", "tokio/fs", "tokio/io-util", "tokio/process"]
 bits-rules = ["mongo", "eventsub", "serde_json/float_roundtrip"]
 logger-redis = ["logger", "redis"]
