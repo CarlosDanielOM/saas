@@ -19,6 +19,7 @@ http = ["dep:axum", "dep:tokio", "dep:tower-http"]
 ai-constants = []
 ai-embeddings = ["ai-constants", "http-client", "logger", "js-unicode17", "js-strings"]
 api-auth = ["http", "http-client", "redis", "application-schemas", "observability", "logger-redis"]
+api-admin = ["api-auth"]
 # Native WebSockets use Axum's transport rather than a separate client crate.
 http-form = ["http", "axum/form"]
 http-multipart = ["http", "axum/multipart"]

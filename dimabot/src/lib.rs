@@ -89,6 +89,18 @@ pub mod schemas;
 #[path = "middleware/auth.middleware.rs"]
 pub mod api_auth;
 
+#[cfg(feature = "api-admin")]
+#[path = "middleware/admin.middleware.rs"]
+pub mod api_admin;
+
+#[cfg(feature = "api-admin")]
+#[path = "middleware/channel_permissions.rs"]
+pub mod channel_permissions;
+
+#[cfg(feature = "api-admin")]
+#[path = "middleware/workspace-owner.middleware.rs"]
+pub mod workspace_owner;
+
 #[cfg(feature = "domain-event-runtime")]
 #[path = "domain_events/runtime/mod.rs"]
 pub mod domain_event_runtime;
