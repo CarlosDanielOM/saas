@@ -23,6 +23,10 @@
 //! # }
 //! ```
 
+#[cfg(feature = "ai-constants")]
+#[path = "ai/constants.rs"]
+pub mod ai_constants;
+
 #[cfg(any(
     feature = "js-strings",
     feature = "mongo",
