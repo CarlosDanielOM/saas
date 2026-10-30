@@ -22,9 +22,9 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-30 functional media and extension schema batch",
+    "asOf": "2026-10-30 functional command and reward persistence batch",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 61,
+    "locallyCompleteMappings": 64,
     "partialRows": 25,
     "archivedSourceSnapshots": 60,
     "liveBaselineTypeScriptFiles": 746,
@@ -36685,28 +36685,54 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/schemas/commands.schema.rs",
+        "dimabot/src/schemas/command_schema_values.rs",
+        "dimabot/src/schemas/schema.rs",
+        "dimabot/tests/command_reward_schemas.rs",
+        "migration-notes/command-reward-schemas-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Normal command schema and bounded persistence behaviors are covered, including schema-cast/strict-stripped updates, selective hidden blocks reads, typed availability writes, return-after equality upserts, tracked saves, explicit atomic array append, and version-fenced replacement.",
+        "Array version conflicts currently return PersistenceError::NotFound; unsupported update operators are rejected and full Mongoose overload/object semantics are not claimed.",
+        "The type-only ast_blocks/types.ts import is absent from both baseline source and archive; the fixture uses a narrow compiler-host StoredBlocks declaration and does not claim that missing module exists.",
+        "Command execution, availability scheduling/service, TypeScript callers, and deployment remain open."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/schemas/commands.schema.ts: live source exports and direct schema/plugin dependency reviewed"
+        ],
+        "runtimeStatus": "Native local persistence/helper mapping is verified; TypeScript source remains live and broader application caller adoption is open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/command_reward_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/command_reward_schemas.rs",
+          "migration-notes/command-reward-schemas-handoff.md"
+        ],
+        "status": "Actual-source oracle covered 30 records: 8 constructions, 14 query-hook transformations before Mongoose update casting, and 8 save-hook cases. Native run passed 6 unit checks, 1 source replay, 1 private Mongo check and 5 shared-core regressions. Parent strict validation on the integrated source tree passed formatting, scoped/all-target Clippy -D warnings, all-feature/all-target Clippy -D warnings and minimal all-target checks. One older composite-default replay was not rerun and is not claimed."
       },
       "exports": [
         {
           "name": "CommandsSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "CommandsSchema maps to Native Commands schema descriptor and typed command values.",
+          "evidence": [
+            "dimabot/src/schemas/commands.schema.rs",
+            "dimabot/src/schemas/command_schema_values.rs",
+            "dimabot/tests/command_reward_schemas.rs"
+          ]
         },
         {
           "name": "ICommands",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ICommands maps to Native Commands schema descriptor and typed command values.",
+          "evidence": [
+            "dimabot/src/schemas/commands.schema.rs",
+            "dimabot/src/schemas/command_schema_values.rs",
+            "dimabot/tests/command_reward_schemas.rs"
+          ]
         }
       ],
       "imports": [
@@ -36721,12 +36747,12 @@
             "src/utils/ast_blocks/types.d.ts"
           ],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only StoredBlocks import; no baseline source or archive target exists",
+          "runtimeOrTypeDependency": "A narrow type declaration is supplied by the actual-source oracle from the native StoredBlocks/live-index contract; the imported TypeScript file is missing and is not claimed present.",
+          "defaultSideEffectBarrelDetails": "Type-only import; no runtime side effect.",
+          "directDependencyReview": "Reviewed as a missing type-only source target with a bounded native value mapping.",
+          "transitiveDependencyReview": "No runtime dependency is introduced; do not infer existence of the absent TypeScript module.",
+          "rustReplacementOrGap": "Native StoredBlocks type supports the bounded schema field contract; the missing TS file is not a required source dependency claim."
         },
         {
           "ordinal": 1,
@@ -36741,12 +36767,12 @@
           "baselineSourceTargets": [
             "src/utils/availability/schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime helper import",
+          "runtimeOrTypeDependency": "Availability fields, state construction, and write semantics used by model/plugin.",
+          "defaultSideEffectBarrelDetails": "Direct module import; no separate barrel dependency.",
+          "directDependencyReview": "Reviewed and implemented by the native availability schema helper.",
+          "transitiveDependencyReview": "Local state/write helper is covered; scheduler/service behavior remains open.",
+          "rustReplacementOrGap": "Native typed availability helper and internal-write API are covered by the command-reward feature."
         },
         {
           "ordinal": 2,
@@ -36761,12 +36787,12 @@
           "baselineSourceTargets": [
             "src/utils/keywords.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only KeywordSettings import",
+          "runtimeOrTypeDependency": "Type-only command keyword settings shape.",
+          "defaultSideEffectBarrelDetails": "Type-only import; no runtime side effect.",
+          "directDependencyReview": "Reviewed against native command typed values.",
+          "transitiveDependencyReview": "Command execution behavior is outside this schema batch.",
+          "rustReplacementOrGap": "Native command value type covers the declared schema contract."
         },
         {
           "ordinal": 3,
@@ -36781,12 +36807,12 @@
           "baselineSourceTargets": [
             "src/utils/permissions/expression.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only PermissionExpression import",
+          "runtimeOrTypeDependency": "Type-only permission expression value stored in the schema.",
+          "defaultSideEffectBarrelDetails": "Type-only import; no runtime side effect.",
+          "directDependencyReview": "Reviewed against the existing native permission-expression type/helper.",
+          "transitiveDependencyReview": "This row covers the persisted type field, not full command authorization/caller behavior.",
+          "rustReplacementOrGap": "Existing native permission-expression value supports this schema contract."
         },
         {
           "ordinal": 4,
@@ -36794,15 +36820,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose schema construction, casting, model API, and middleware/plugin behavior.",
+          "defaultSideEffectBarrelDetails": "Direct import; no separate barrel dependency.",
+          "directDependencyReview": "The bounded native schema/repository implementation covers the verified model behavior.",
+          "transitiveDependencyReview": "Full Mongoose overload and application service behavior remain outside this local mapping.",
+          "rustReplacementOrGap": "Concrete native schema descriptors, typed values and MongoDB driver helpers are available under command-reward-schemas."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-plugin-and-bounded-persistence-contract-verified;source-live;application-adapters-and-caller-adoption-open"
     },
     {
       "source": "src/schemas/countdown_timer_config.schema.ts",
@@ -39441,28 +39467,53 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/schemas/redemption_reward.schema.rs",
+        "dimabot/src/utils/availability/schema.rs",
+        "dimabot/src/schemas/schema.rs",
+        "dimabot/tests/command_reward_schemas.rs",
+        "migration-notes/command-reward-schemas-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Reward schema persistence and equality upsert with $set/$setOnInsert defaults are verified; full reward HTTP synchronization and application caller adoption are not covered.",
+        "Availability writes use the typed internal marker and bounded native repository operations; arbitrary update operator shapes are not claimed.",
+        "TypeScript source remains live; deployment and total application completion remain open."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/schemas/redemption_reward.schema.ts: live source exports and direct schema/plugin dependency reviewed"
+        ],
+        "runtimeStatus": "Native local persistence/helper mapping is verified; TypeScript source remains live and broader application caller adoption is open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/command_reward_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/command_reward_schemas.rs",
+          "migration-notes/command-reward-schemas-handoff.md"
+        ],
+        "status": "Actual-source oracle covered 30 records: 8 constructions, 14 query-hook transformations before Mongoose update casting, and 8 save-hook cases. Native run passed 6 unit checks, 1 source replay, 1 private Mongo check and 5 shared-core regressions. Parent strict validation on the integrated source tree passed formatting, scoped/all-target Clippy -D warnings, all-feature/all-target Clippy -D warnings and minimal all-target checks. One older composite-default replay was not rerun and is not claimed."
       },
       "exports": [
         {
           "name": "IRedemptionReward",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IRedemptionReward maps to Native RedemptionReward schema descriptor and availability persistence.",
+          "evidence": [
+            "dimabot/src/schemas/redemption_reward.schema.rs",
+            "dimabot/src/utils/availability/schema.rs",
+            "dimabot/tests/command_reward_schemas.rs"
+          ]
         },
         {
           "name": "RedemptionRewardSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "RedemptionRewardSchema maps to Native RedemptionReward schema descriptor and availability persistence.",
+          "evidence": [
+            "dimabot/src/schemas/redemption_reward.schema.rs",
+            "dimabot/src/utils/availability/schema.rs",
+            "dimabot/tests/command_reward_schemas.rs"
+          ]
         }
       ],
       "imports": [
@@ -39479,12 +39530,12 @@
           "baselineSourceTargets": [
             "src/utils/availability/schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime helper import",
+          "runtimeOrTypeDependency": "Availability fields, state construction, and write semantics used by model/plugin.",
+          "defaultSideEffectBarrelDetails": "Direct module import; no separate barrel dependency.",
+          "directDependencyReview": "Reviewed and implemented by the native availability schema helper.",
+          "transitiveDependencyReview": "Local state/write helper is covered; scheduler/service behavior remains open.",
+          "rustReplacementOrGap": "Native typed availability helper and internal-write API are covered by the command-reward feature."
         },
         {
           "ordinal": 1,
@@ -39492,15 +39543,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose schema construction, casting, model API, and middleware/plugin behavior.",
+          "defaultSideEffectBarrelDetails": "Direct import; no separate barrel dependency.",
+          "directDependencyReview": "The bounded native schema/repository implementation covers the verified model behavior.",
+          "transitiveDependencyReview": "Full Mongoose overload and application service behavior remain outside this local mapping.",
+          "rustReplacementOrGap": "Concrete native schema descriptors, typed values and MongoDB driver helpers are available under command-reward-schemas."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-plugin-and-bounded-persistence-contract-verified;source-live;application-adapters-and-caller-adoption-open"
     },
     {
       "source": "src/schemas/referral_code.schema.ts",
@@ -78769,43 +78820,79 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/utils/availability/schema.rs",
+        "dimabot/src/schemas/redemption_reward.schema.rs",
+        "dimabot/src/schemas/schema.rs",
+        "dimabot/tests/command_reward_schemas.rs",
+        "migration-notes/command-reward-schemas-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Availability state, UUID token creation, and typed internal-write fencing are represented by the native helper and covered within command/reward persistence checks.",
+        "The wider availability scheduling worker/service and application caller adoption remain open; arbitrary Mongoose hook execution is not emulated."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/availability/schema.ts: live source exports and direct schema/plugin dependency reviewed"
+        ],
+        "runtimeStatus": "Native local persistence/helper mapping is verified; TypeScript source remains live and broader application caller adoption is open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/command_reward_schemas_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/command_reward_schemas.rs",
+          "migration-notes/command-reward-schemas-handoff.md"
+        ],
+        "status": "Actual-source oracle covered 30 records: 8 constructions, 14 query-hook transformations before Mongoose update casting, and 8 save-hook cases. Native run passed 6 unit checks, 1 source replay, 1 private Mongo check and 5 shared-core regressions. Parent strict validation on the integrated source tree passed formatting, scoped/all-target Clippy -D warnings, all-feature/all-target Clippy -D warnings and minimal all-target checks. One older composite-default replay was not rerun and is not claimed."
       },
       "exports": [
         {
           "name": "AvailabilityState",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "AvailabilityState maps to Native availability state helper, UUID token generation, and typed internal-write API.",
+          "evidence": [
+            "dimabot/src/utils/availability/schema.rs",
+            "dimabot/src/schemas/redemption_reward.schema.rs",
+            "dimabot/tests/command_reward_schemas.rs"
+          ]
         },
         {
           "name": "INTERNAL_AVAILABILITY_WRITE",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "INTERNAL_AVAILABILITY_WRITE maps to Native availability state helper, UUID token generation, and typed internal-write API.",
+          "evidence": [
+            "dimabot/src/utils/availability/schema.rs",
+            "dimabot/src/schemas/redemption_reward.schema.rs",
+            "dimabot/tests/command_reward_schemas.rs"
+          ]
         },
         {
           "name": "addAvailabilityFields",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "addAvailabilityFields maps to Native availability state helper, UUID token generation, and typed internal-write API.",
+          "evidence": [
+            "dimabot/src/utils/availability/schema.rs",
+            "dimabot/src/schemas/redemption_reward.schema.rs",
+            "dimabot/tests/command_reward_schemas.rs"
+          ]
         },
         {
           "name": "availabilityState",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "availabilityState maps to Native availability state helper, UUID token generation, and typed internal-write API.",
+          "evidence": [
+            "dimabot/src/utils/availability/schema.rs",
+            "dimabot/src/schemas/redemption_reward.schema.rs",
+            "dimabot/tests/command_reward_schemas.rs"
+          ]
         },
         {
           "name": "internalWrite",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "internalWrite maps to Native availability state helper, UUID token generation, and typed internal-write API.",
+          "evidence": [
+            "dimabot/src/utils/availability/schema.rs",
+            "dimabot/src/schemas/redemption_reward.schema.rs",
+            "dimabot/tests/command_reward_schemas.rs"
+          ]
         }
       ],
       "imports": [
@@ -78815,12 +78902,12 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Mongoose Schema/model import",
+          "runtimeOrTypeDependency": "Mongoose schema construction, casting, model API, and middleware/plugin behavior.",
+          "defaultSideEffectBarrelDetails": "Direct import; no separate barrel dependency.",
+          "directDependencyReview": "The bounded native schema/repository implementation covers the verified model behavior.",
+          "transitiveDependencyReview": "Full Mongoose overload and application service behavior remain outside this local mapping.",
+          "rustReplacementOrGap": "Concrete native schema descriptors, typed values and MongoDB driver helpers are available under command-reward-schemas."
         },
         {
           "ordinal": 1,
@@ -78828,15 +78915,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime randomUUID import",
+          "runtimeOrTypeDependency": "Random UUID generation for availability state tokens.",
+          "defaultSideEffectBarrelDetails": "Node builtin; no project barrel.",
+          "directDependencyReview": "Mapped to native UUID support.",
+          "transitiveDependencyReview": "No additional runtime dependency required for the helper.",
+          "rustReplacementOrGap": "Existing native UUID support provides availability tokens."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-schema-plugin-and-bounded-persistence-contract-verified;source-live;application-adapters-and-caller-adoption-open"
     },
     {
       "source": "src/utils/availability/service.ts",

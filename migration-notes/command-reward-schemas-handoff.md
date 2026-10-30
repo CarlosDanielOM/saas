@@ -1,0 +1,13 @@
+# Command, reward, and availability persistence — functional native slice (2026-10-30)
+
+**Status:** `command-reward-schemas` provides verified local persistence behavior for command and reward models and their availability metadata. TypeScript sources remain live; command execution, reward HTTP synchronization, availability scheduling/service behavior, caller adoption, and deployment remain open.
+
+The native `CommandRewardRepository` supports schema-cast and strict-stripped normal updates, typed internal availability writes, selective `+blocks` reads, return-after equality upserts with defaults, and tracked-document saves. For tracked edits, load the document, modify the tracked value, and save it. Array append is an explicit atomic operation; replacement uses version fencing. An array version conflict currently returns `PersistenceError::NotFound`. Reward creation uses the bounded `$set`/`$setOnInsert` equality upsert. Unsupported update operators are rejected; update pipelines retain the source hook-bypass behavior. This is a narrow persistence contract, not a full Mongoose overload or object/prototype emulation.
+
+Availability state uses a typed internal-write marker rather than a client-settable payload flag and native UUID support. The command schema also uses native keyword/permission value mappings. Its type-only `ast_blocks/types.ts` import is absent from both the baseline source and archive; the oracle uses a narrow compiler-host declaration based on the native `StoredBlocks` type. This does not claim that the missing source module exists.
+
+## Verification
+
+Implementation commit `9fa9e27a52b732edef6bcf5fd27f2f2d710853df` introduced the native modules. Node receipt `1793402025425187554` generated the source oracle. The native behavior replay and private fixtures then passed on frozen tree `3ccc6fb7c6760feb4365e84f61333f1eef420ea11eb417200190ae51e3994b3a` in compiler-fixtures receipt `1793402324945122526`. The actual-source oracle covered 30 records: eight constructions, 14 query-hook transformations before Mongoose update casting, and eight save-hook cases (SHA-256 `3fce7dcb81449c8c3097934996bc6381b873643066ccca2f943410962a7efb52`). The native fixture passed six unit checks, one source replay, one private Mongo check, and five shared-core regressions.
+
+The parent then ran strict validation on the integrated source tree `051d45263637623c67f2100f8e402510578e33d3462f33526f6b73ae7df493b3` (1,576 inputs), receipt `1793402470201968605` (125.578 seconds): formatting, scoped all-target Clippy with warnings denied, all-feature/all-target Clippy with warnings denied, and minimal all-target checks passed. Production readback was unchanged; no push or deployment occurred. No benchmark was run.
