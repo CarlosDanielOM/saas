@@ -1,0 +1,397 @@
+{
+  "acceptedRuns": [
+    {
+      "elapsedSeconds": 5.209,
+      "limits": {
+        "cargo_jobs": null,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "minimumAvailableBytes": 11315081216,
+      "peakCacheBytes": null,
+      "phase": "node",
+      "run": "node-1793346195791403743",
+      "sourceTreeSha256": "631224c9ae10bd9e8df7bbf5f7446dfc6b4c229a1990b4fd7d2d83c066c6bd8d",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.502
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 3.502
+        }
+      ],
+      "success": true
+    },
+    {
+      "elapsedSeconds": 206.329,
+      "limits": {
+        "cargo_jobs": 2,
+        "cpus": 6,
+        "memory": 4294967296,
+        "memory_swap": 4294967296,
+        "pids": 256
+      },
+      "minimumAvailableBytes": 8798339072,
+      "peakCacheBytes": 8218406912,
+      "phase": "compiler-fixtures",
+      "run": "compiler-fixtures-1793346251694408763",
+      "sourceTreeSha256": "631224c9ae10bd9e8df7bbf5f7446dfc6b4c229a1990b4fd7d2d83c066c6bd8d",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 4.165
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.589
+        },
+        {
+          "exit_code": 0,
+          "name": "compiler-fixtures",
+          "seconds": 191.354
+        }
+      ],
+      "success": true
+    }
+  ],
+  "callerAdoption": false,
+  "codeCommit": "1575f7edc76b5e51639bc76c16d473ddb459aa3f",
+  "deployment": false,
+  "finalReadback": {
+    "path": "artifacts/final-production-readback.json",
+    "sha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4"
+  },
+  "frozenSourceTreeSha256": "631224c9ae10bd9e8df7bbf5f7446dfc6b4c229a1990b4fd7d2d83c066c6bd8d",
+  "limitations": [
+    "The source reference hashes identifier strings before insertion. Creation uses the shared flat $setOnInsert compiler and one atomic Mongo upsert; general Mongoose document behavior is outside this mapping.",
+    "The shared compiler avoids redundant whole-rule materialization. Cache FIFO access history can differ for trusted inputs above 1,000 entries or concurrent interleavings; keys and per-call identity remain unchanged.",
+    "awaitSemanticDecision retains its 80 ms future-work poll, capped to the remaining deadline. This can finish earlier than a source overshoot; no pause is added when ready work exists.",
+    "Native BSON default ignoreUndefined=false maps only the compiler-generated own-undefined symbolVersion sentinel to null. Unrelated raw BSON is preserved, and URI-level BSON overrides are not inferred.",
+    "The typed JSON/BSON contract does not cover arbitrary JavaScript hooks, prototypes, getters, sparse arrays, proxies, or exact engine/driver diagnostic text.",
+    "Semantic-worker success orchestration, billing, moderation consequences, route/handler integration, general Mongoose behavior, and caller adoption remain open.",
+    "No new benchmark or performance claim was made; no TypeScript retirement, deployment, or push occurred."
+  ],
+  "migrationStatus": "partial local moderation-decision store and shared compiler mapping; broader application dependencies remain open",
+  "performanceBenchmark": false,
+  "productionAndCleanupReadback": {
+    "productionRecords": 18,
+    "productionUnchanged": true,
+    "taskOwnedResourcesRemaining": 0
+  },
+  "push": false,
+  "regressions": {
+    "bootstrapRegressionPassed": true,
+    "moderationVariationsJobs": 38,
+    "nativeCases": 4,
+    "variationCompilerNormalTests": 6,
+    "variationCompilerSourceCases": 175,
+    "variationProviderNormalTests": 3
+  },
+  "retainedRunCount": 11,
+  "retainedRunInterval": {
+    "first": 1793344777438566339,
+    "last": 1793346251694408763
+  },
+  "retainedRuns": [
+    {
+      "elapsedSeconds": 49.163,
+      "error": "compiler failed; see /root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793344906835345647.log",
+      "minimumAvailableBytes": 10444632064,
+      "peakCacheBytes": 8195321856,
+      "phase": "compiler",
+      "run": "compiler-1793344906835345647",
+      "sourceTreeSha256": "51f13b9f9a3ef11894a18201f7e2fdc408567bea5eb1d1b10f447185b22b375e",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 4.098
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.702
+        }
+      ],
+      "success": false
+    },
+    {
+      "elapsedSeconds": 49.409,
+      "error": null,
+      "minimumAvailableBytes": 10701709312,
+      "peakCacheBytes": 8195321856,
+      "phase": "compiler",
+      "run": "compiler-1793345005864121294",
+      "sourceTreeSha256": "42abe9090f708c89bfa8de9a3f9326134b2c082b78506c50c90dd9772e534c87",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 4.22
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.708
+        },
+        {
+          "exit_code": 0,
+          "name": "compiler",
+          "seconds": 39.935
+        }
+      ],
+      "success": true
+    },
+    {
+      "elapsedSeconds": 11.273,
+      "error": "compiler failed; see /root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793345271926811083.log",
+      "minimumAvailableBytes": 11197362176,
+      "peakCacheBytes": 8195321856,
+      "phase": "compiler",
+      "run": "compiler-1793345271926811083",
+      "sourceTreeSha256": "42abe9090f708c89bfa8de9a3f9326134b2c082b78506c50c90dd9772e534c87",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 4.182
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.519
+        }
+      ],
+      "success": false
+    },
+    {
+      "elapsedSeconds": 32.986,
+      "error": "compiler failed; see /root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793345561257738890.log",
+      "minimumAvailableBytes": 10900836352,
+      "peakCacheBytes": 8195325952,
+      "phase": "compiler",
+      "run": "compiler-1793345561257738890",
+      "sourceTreeSha256": "5044982c60890b35b28d2855dd7a5b97ce774d6cb6224fdc2c4c84ba115b9a45",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 4.158
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.697
+        }
+      ],
+      "success": false
+    },
+    {
+      "elapsedSeconds": 22.443,
+      "error": null,
+      "minimumAvailableBytes": 11049627648,
+      "peakCacheBytes": 8195325952,
+      "phase": "compiler-fixtures",
+      "run": "compiler-fixtures-1793345873673225517",
+      "sourceTreeSha256": "5044982c60890b35b28d2855dd7a5b97ce774d6cb6224fdc2c4c84ba115b9a45",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 4.227
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.733
+        },
+        {
+          "exit_code": 0,
+          "name": "compiler-fixtures",
+          "seconds": 10.253
+        }
+      ],
+      "success": true
+    },
+    {
+      "elapsedSeconds": 206.329,
+      "error": null,
+      "minimumAvailableBytes": 8798339072,
+      "peakCacheBytes": 8218406912,
+      "phase": "compiler-fixtures",
+      "run": "compiler-fixtures-1793346251694408763",
+      "sourceTreeSha256": "631224c9ae10bd9e8df7bbf5f7446dfc6b4c229a1990b4fd7d2d83c066c6bd8d",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 4.165
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.589
+        },
+        {
+          "exit_code": 0,
+          "name": "compiler-fixtures",
+          "seconds": 191.354
+        }
+      ],
+      "success": true
+    },
+    {
+      "elapsedSeconds": 14.617,
+      "error": null,
+      "minimumAvailableBytes": 11196395520,
+      "peakCacheBytes": 8046002176,
+      "phase": "format",
+      "run": "format-1793344777438566339",
+      "sourceTreeSha256": "f35662816002a2cf0aacafbe2ca2f13a29cca3db939edd7bf838fb774c9547df",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 4.12
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.761
+        },
+        {
+          "exit_code": 0,
+          "name": "format",
+          "seconds": 5.102
+        }
+      ],
+      "success": true
+    },
+    {
+      "elapsedSeconds": 14.512,
+      "error": null,
+      "minimumAvailableBytes": 11319132160,
+      "peakCacheBytes": 8195321856,
+      "phase": "format",
+      "run": "format-1793345513098364514",
+      "sourceTreeSha256": "d5939ac8227acba870a28d9e33847b42cba056a7aeb95d7cea741c8077cc4ef9",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 3.832
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.835
+        },
+        {
+          "exit_code": 0,
+          "name": "format",
+          "seconds": 4.857
+        }
+      ],
+      "success": true
+    },
+    {
+      "elapsedSeconds": 13.493,
+      "error": null,
+      "minimumAvailableBytes": 11332071424,
+      "peakCacheBytes": 8195325952,
+      "phase": "format",
+      "run": "format-1793346171763215246",
+      "sourceTreeSha256": "d17096f43512974d63d4d8bf22f1e316bdf4796fbab747c0c2db807bebf605df",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 4.088
+        },
+        {
+          "exit_code": 0,
+          "name": "locked-fetch",
+          "seconds": 2.63
+        },
+        {
+          "exit_code": 0,
+          "name": "format",
+          "seconds": 4.72
+        }
+      ],
+      "success": true
+    },
+    {
+      "elapsedSeconds": 5.748,
+      "error": null,
+      "minimumAvailableBytes": 11328143360,
+      "peakCacheBytes": null,
+      "phase": "node",
+      "run": "node-1793344906816880468",
+      "sourceTreeSha256": "51f13b9f9a3ef11894a18201f7e2fdc408567bea5eb1d1b10f447185b22b375e",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.502
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 4.002
+        }
+      ],
+      "success": true
+    },
+    {
+      "elapsedSeconds": 5.209,
+      "error": null,
+      "minimumAvailableBytes": 11315081216,
+      "peakCacheBytes": null,
+      "phase": "node",
+      "run": "node-1793346195791403743",
+      "sourceTreeSha256": "631224c9ae10bd9e8df7bbf5f7446dfc6b4c229a1990b4fd7d2d83c066c6bd8d",
+      "steps": [
+        {
+          "exit_code": 0,
+          "name": "bootstrap",
+          "seconds": 0.502
+        },
+        {
+          "exit_code": 0,
+          "name": "node",
+          "seconds": 3.502
+        }
+      ],
+      "success": true
+    }
+  ],
+  "sourceOracle": {
+    "actualMongooseNodeBsonWireProbe": true,
+    "allPrior41CasesAndQueryProbeUnchanged": true,
+    "awaitCases": 16,
+    "createCases": 19,
+    "fixtureSha256": "ade6b18d2fb680e2b1a74e30d508d83cde891439fe14b2429d2487f154231b9f",
+    "hashCases": 6,
+    "ignoredRustTestsPassed": 8,
+    "normalRustTests": 2,
+    "referenceSha256": "ade6b18d2fb680e2b1a74e30d508d83cde891439fe14b2429d2487f154231b9f",
+    "sourceCaseTotal": 41
+  },
+  "typescriptRetirement": false,
+  "validation": {
+    "allFeaturesStrictClippyPassed": true,
+    "minimalStrictRustPassed": true,
+    "mongoRedisStrictRustPassed": true,
+    "nodeSourceOraclePassed": true,
+    "scopedStrictRustPassed": true
+  }
+}

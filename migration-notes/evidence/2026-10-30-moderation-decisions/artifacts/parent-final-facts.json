@@ -1,0 +1,53 @@
+{
+  "codeCommit": "1575f7edc76b5e51639bc76c16d473ddb459aa3f",
+  "acceptedRuns": [
+    "node-1793346195791403743",
+    "compiler-fixtures-1793346251694408763"
+  ],
+  "sourceTreeSha256": "631224c9ae10bd9e8df7bbf5f7446dfc6b4c229a1990b4fd7d2d83c066c6bd8d",
+  "frozenInputs": 1442,
+  "gitInputs": 1432,
+  "sdkInputs": 10,
+  "sourceRecords": {
+    "hash": 6,
+    "create": 19,
+    "await": 16
+  },
+  "normalTests": 2,
+  "ignoredPassed": 8,
+  "allPrior41CasesAndQueryProbeUnchanged": true,
+  "fixtureSha256": "ade6b18d2fb680e2b1a74e30d508d83cde891439fe14b2429d2487f154231b9f",
+  "firstRun": 1793344777438566339,
+  "finalRun": 1793346251694408763,
+  "finalReceiptMetrics": {
+    "steps": [
+      {
+        "name": "bootstrap",
+        "seconds": 4.165,
+        "exit_code": 0
+      },
+      {
+        "name": "locked-fetch",
+        "seconds": 2.589,
+        "exit_code": 0
+      },
+      {
+        "name": "compiler-fixtures",
+        "seconds": 191.354,
+        "exit_code": 0
+      }
+    ],
+    "elapsed_seconds": 206.329,
+    "minimum_available_bytes": 8798339072,
+    "peak_cache_bytes": 8218406912,
+    "limits": {
+      "cpus": 6,
+      "memory": 4294967296,
+      "memory_swap": 4294967296,
+      "pids": 256,
+      "cargo_jobs": 2
+    },
+    "production_unchanged": true
+  },
+  "status": "bounded local adapter verified; general model/semantic-worker/billing/action/caller migration remains open; no retirement deployment or push; do not count overall complete"
+}

@@ -86905,33 +86905,66 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-local-decision-id-atomic-create-and-durable-semantic-wait; 41 source records and actual Mongoose/Node BSON wire probe passed; caller/business workflow and documented JSON/BSON/cache/deadline boundaries remain open",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/decisions.rs: native decision ID, atomic Mongo $setOnInsert creation, durable wait reads, and deadline-fenced fallback update",
+        "dimabot/src/utils/moderation/variations.rs: reused flat rule compiler, compiler projection, and selective BSON patching; avoids redundant whole-rule materialization",
+        "dimabot/tests/moderation_decisions.rs and dimabot/tests/support/moderation_decisions.rs: 41 source records, actual query/BSON probe, ordinary tests, and isolated Mongo race/response-loss fixtures",
+        "migration-notes/moderation-decisions.md and migration-notes/moderation-decisions-handoff.md: bounded behavior, pacing, accepted differences, and remaining application dependencies",
+        "migration-notes/evidence/2026-10-30-moderation-decisions/README.md and verification-summary.json: accepted source bindings, complete attempt history, validation scope, and production/resource readback"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native flat insert path mirrors the observed findOneAndUpdate $setOnInsert/upsert/return-after/defaults behavior without running schema validation, save hooks, minimization, or general Mongoose document machinery.",
+        "The shared compiler avoids redundant whole-rule materialization. Cache FIFO access history may differ for trusted inputs above 1,000 entries or concurrent interleavings; keys and per-call identity remain unchanged.",
+        "The wait retains the 80 ms future-completion poll, capped to the remaining deadline. It may finish earlier than a source overshoot and does not pause while a completed result is ready.",
+        "Under the native default BSON writer, only the compiler-generated own-undefined symbolVersion sentinel maps to BSON null. Unrelated raw BSON is preserved; URI-level BSON overrides are not inferred.",
+        "The typed JSON/BSON boundary does not claim arbitrary JavaScript prototypes, getters, sparse arrays, proxies, hooks, or exact engine/driver diagnostic text. General Mongoose behavior remains open.",
+        "No benchmark or performance claim was made. The semantic worker success path, billing, moderation consequences, handler/route integration, and caller adoption remain open."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/handlers/moderation.handler.ts imports createModerationDecision and awaitSemanticDecision and invokes them in semantic and non-semantic paths.",
+          "src/utils/moderation/semantic_worker.ts claims and completes decision rows directly; its provider, billing, and completion orchestration are not covered by this helper mapping."
+        ],
+        "runtimeStatus": "The native helper/store and shared compiler are verified locally; the moderation handler and semantic worker still use TypeScript and have not adopted Rust."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "tests/fixtures/moderation_decisions_source.cjs and tests/fixtures/moderation_decisions_reference.cjs: pinned actual source and reference replay for six ID hashes, 19 creation cases, and 16 await outcomes.",
+          "A distinct pinned actual Mongoose query probe and Node BSON serialization check validated the observed cast/default and wire shape."
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_decisions.rs: two ordinary tests and eight isolated ignored tests passed, including concurrency, read-crossing, late-worker fence, response-loss, cancellation, and error-order cases.",
+          "The regression run passed six variation-compiler checks, three provider checks, the 175-case compiler source replay, 38 variation-job source cases, four native job checks, and bootstrap coverage.",
+          "Final source and compiler-fixtures phases passed; scoped, minimal, Mongo/Redis, and all-feature strict checks passed. Earlier failed attempts remain in the evidence package.",
+          "Final readback found 18 production records unchanged and zero remaining task-owned resources; no benchmark, deployment, retirement, or push was performed."
+        ],
+        "status": "Partial local mapping only; exact accepted runs node-1793346195791403743 and compiler-fixtures-1793346251694408763 bind source tree 631224c9ae10bd9e8df7bbf5f7446dfc6b4c229a1990b4fd7d2d83c066c6bd8d (1,432 verified Git inputs and ten reused SDK inputs)."
       },
       "exports": [
         {
           "name": "awaitSemanticDecision",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: typed native awaitSemanticDecision path is source-bound within the documented decision store boundary; broader application behavior/caller adoption remains open",
+          "evidence": [
+            "dimabot/src/utils/moderation/decisions.rs",
+            "migration-notes/evidence/2026-10-30-moderation-decisions/verification-summary.json"
+          ]
         },
         {
           "name": "createModerationDecision",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: typed native createModerationDecision path is source-bound within the documented decision store boundary; broader application behavior/caller adoption remains open",
+          "evidence": [
+            "dimabot/src/utils/moderation/decisions.rs",
+            "migration-notes/evidence/2026-10-30-moderation-decisions/verification-summary.json"
+          ]
         },
         {
           "name": "moderationDecisionID",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: typed native moderationDecisionID path is source-bound within the documented decision store boundary; broader application behavior/caller adoption remains open",
+          "evidence": [
+            "dimabot/src/utils/moderation/decisions.rs",
+            "migration-notes/evidence/2026-10-30-moderation-decisions/verification-summary.json"
+          ]
         }
       ],
       "imports": [
@@ -86948,12 +86981,12 @@
           "baselineSourceTargets": [
             "src/schemas/moderation_decision.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "mixed-runtime-and-type-only: ModerationDecision runtime model; IModerationDecision type-only",
+          "runtimeOrTypeDependency": "mixed-runtime-and-type-only",
+          "defaultSideEffectBarrelDetails": "named import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-local-feature",
+          "transitiveDependencyReview": "shared dependency path reviewed for the bounded store/compiler; broader application services and callers remain outside this row",
+          "rustReplacementOrGap": "Existing native moderation-decision schema/repository and equivalent Rust input/output types cover the local store path; general Mongoose model behavior remains open"
         },
         {
           "ordinal": 1,
@@ -86968,12 +87001,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/advanced.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime imports: DECISION_POLICY_VERSION, MODERATION_RETENTION_DAYS, SEMANTIC_MODEL",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "named import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-local-feature",
+          "transitiveDependencyReview": "shared dependency path reviewed for the bounded store/compiler; broader application services and callers remain outside this row",
+          "rustReplacementOrGap": "Existing advanced_policy constants are reused; semantic-worker decisions and model/provider integration remain outside the local store"
         },
         {
           "ordinal": 2,
@@ -86988,12 +87021,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/variations.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import: compileRuleVariations",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "named import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-local-feature",
+          "transitiveDependencyReview": "shared dependency path reviewed for the bounded store/compiler; broader application services and callers remain outside this row",
+          "rustReplacementOrGap": "Existing native rule variation compiler is reused through the shared compiler path; documented cache/access-history boundary remains"
         },
         {
           "ordinal": 3,
@@ -87001,15 +87034,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import: createHash",
+          "runtimeOrTypeDependency": "runtime Node builtin",
+          "defaultSideEffectBarrelDetails": "named import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-local-feature",
+          "transitiveDependencyReview": "shared dependency path reviewed for the bounded store/compiler; broader application services and callers remain outside this row",
+          "rustReplacementOrGap": "Native SHA-256 implementation plus JsString::to_json_string reproduces the bounded identifier input contract"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-decision-store-and-shared-compiler-mapping; broader Mongoose, semantic worker, billing, moderation consequences and caller migration remain open"
     },
     {
       "source": "src/utils/moderation/defaults.test.ts",
