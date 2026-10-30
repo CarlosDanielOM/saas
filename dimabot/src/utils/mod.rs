@@ -134,6 +134,8 @@ pub mod ai_usage_ledger_queries;
 pub mod ai_usage_ledger_reads;
 #[cfg(feature = "ai-usage-lock")]
 pub mod ai_usage_lock;
+#[cfg(feature = "ai-usage-lossless")]
+pub mod ai_usage_lossless;
 #[cfg(feature = "ai-usage-producer")]
 pub mod ai_usage_producer;
 #[cfg(feature = "ai-usage-receipt-parser")]

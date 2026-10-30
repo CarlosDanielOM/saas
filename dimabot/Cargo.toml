@@ -70,6 +70,7 @@ moderation-seed-plan = ["channel-moderation-settings"]
 # Request-time usage adapters, independent of deployed workers and defaults.
 ai-credit-projection = ["credit-policy", "tts-utilities", "plan-cache", "dep:sha2"]
 ai-credit-reader = ["ai-credit-projection", "polar-client", "mongo"]
+ai-usage-lossless = ["ai-usage", "tts-utilities", "dep:sha2"]
 ai-usage-producer = ["ai-usage", "redis", "credit-policy", "tts-utilities"]
 ai-usage-lock = ["redis", "tts-utilities", "dep:sha2", "dep:uuid"]
 ai-usage-ledger-reads = ["application-schemas", "credit-policy", "tts-utilities"]
