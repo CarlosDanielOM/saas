@@ -27,6 +27,16 @@
 #[path = "ai/constants.rs"]
 pub mod ai_constants;
 
+#[cfg(feature = "ai-embeddings")]
+#[path = "ai/openrouter/language_detection.rs"]
+pub mod ai_embedding_language;
+#[cfg(feature = "ai-embeddings")]
+#[path = "ai/openrouter/embeddings.ai.rs"]
+pub mod ai_embeddings;
+#[cfg(feature = "ai-embeddings")]
+#[path = "ai/fetch.utils.rs"]
+pub mod ai_fetch_retry;
+
 #[cfg(any(
     feature = "js-strings",
     feature = "mongo",
@@ -88,6 +98,7 @@ pub mod tts_defaults;
 
 #[cfg(any(
     feature = "tts-services",
+    feature = "ai-embeddings",
     feature = "moderation-variations-provider",
     feature = "moderation-semantic"
 ))]
