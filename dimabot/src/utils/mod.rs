@@ -117,6 +117,9 @@ pub mod ast_syntax;
 
 #[cfg(feature = "ai-credit-projection")]
 pub mod ai_credit_projection;
+
+#[cfg(feature = "ai-credit-reader")]
+pub mod ai_credit_reader;
 #[cfg(feature = "ai-usage")]
 pub mod ai_usage;
 #[cfg(all(feature = "mongo", feature = "redis"))]
