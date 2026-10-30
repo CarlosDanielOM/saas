@@ -1,0 +1,9 @@
+# Moderation decision model evidence
+
+This package binds the bounded model/schema and shared flat insert-preparation evidence to code commit `585850cdd71d01783d548186f6ec4e505b16528f` and frozen source tree `2db513b98a4e957935c10400f673e112ba6eecc899483c219524e1729d3af3f8`. The source binding checks 1,427 Git inputs against the commit and records ten reused verified SDK inputs from the `cache-and-types` binding in [moderation variations evidence](../../2026-10-30-moderation-variations/source-bindings.json).
+
+The package retains all receipts and logs from the first format run through the final compiler phase, including failed intermediate attempts. That initial format receipt is retained as pre-freeze history; accepted feature phases bind to the frozen `2db513...` source. The accepted source replay covers 18 decision-model constructor cases and 11 flat `$setOnInsert` cases under pinned Node/TypeScript/Mongoose/BSON. A fresh 42-case variation-schema regression confirmed its expected output did not change. The exact phase receipts, source hashes, reference hashes, runtime bounds, and production/resource readback are in `verification-summary.json`. Log payloads are gzip-compressed; `artifact-sha256.json` records both raw and stored hashes and sizes.
+
+The native model/schema mapping is partial. General Mongoose document behavior and the broader moderation decision producer, worker, handler/route, persistence adapter, and caller adoption remain open. The shared BSON/JSON helper is a lossy compiler projection only; raw BSON stays authoritative for Mixed and non-JSON values. No benchmark, deployment, TypeScript retirement, push, or total-migration claim is made.
+
+The exact source-freeze chain, task scripts, variation-job regression runner, SDK package guard, and packager are under `reproduction-tools/`. This bundle preserves references and verification evidence without copying the current uncommitted decision creation/store draft files.

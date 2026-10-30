@@ -1,0 +1,4 @@
+const fs=require('node:fs'),crypto=require('node:crypto'),path=require('node:path'),assert=require('node:assert/strict');
+const root='/source/dimabot/node_modules/mongoose',entries=[];
+function walk(relative=''){for(const e of fs.readdirSync(path.join(root,relative),{withFileTypes:true})){const r=relative?relative+'/'+e.name:e.name;assert(!e.isSymbolicLink());if(e.isDirectory())walk(r);else{assert(e.isFile());entries.push([r,crypto.createHash('sha256').update(fs.readFileSync(path.join(root,r))).digest('hex')]);}}}
+walk();entries.sort(([a],[b])=>a<b?-1:a>b?1:0);const sha=crypto.createHash('sha256').update(JSON.stringify(Object.fromEntries(entries))).digest('hex');assert.equal(entries.length,707);assert.equal(sha,'63200fe45fbe04c23f601aaa191eb08934ea6795a4442d22ca5a5ba9b679b722');console.log(JSON.stringify({mongooseFiles:entries.length,manifestSha256:sha}));

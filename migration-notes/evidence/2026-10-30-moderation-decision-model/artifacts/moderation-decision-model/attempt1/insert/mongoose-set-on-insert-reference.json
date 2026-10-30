@@ -1,0 +1,596 @@
+{
+  "versions": {
+    "node": "24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "icu": "78.3",
+    "unicode": "17.0",
+    "typescript": "5.9.3",
+    "mongoose": "8.24.2",
+    "bson": "6.10.4"
+  },
+  "nodeExecutableSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "sourceSha256": {
+    "src/schemas/moderation_decision.schema.ts": "749f450beb060ccba72447cc765f4e372b8d6fcbfa20d7c74ecd21a7d09b4466",
+    "src/schemas/moderation_decision.schema.rs": "3f08b81c0f49b35d9667041603153097a2f75b6bbe7634a40f485a362d6068f9",
+    "src/schemas/schema.rs": "9a350c13b4bd62479463af37e3f3a19479247350fe5271f3a4dacf7e01b0c73d",
+    "src/utils/bson_compat.rs": "bd6772ef74ec73708d3828d59496c8d2a9156d2325864b63c7f40544300802e4",
+    "src/utils/mongoose_date.rs": "d64fc10dfce3513d02598c9408bd3b6b5cccb7ed3c2e6fbad589f61e20087573",
+    "tests/mongoose_set_on_insert.rs": "bd9175bd0a919a56361f13a24c6ca33848fb405dcadbf7c2f65221c54f4275d9",
+    "Cargo.toml": "5e14602689c1d1a3a60db23670236e8f9a07a514b710d9298ea1629a438434d8",
+    "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+    "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "oracle-script": "5cf77ef1ed5dcf7f9120d5e507f5b635d313fc368d9e635742ff55a0dec6bf83",
+    "query.js": "4613f14a4626d00e1ad85f0cb0c0e1326266be8b8a7eadc372fd93875820816a",
+    "setDefaultsOnInsert.js": "45959792d1854b183e28359d34cefb49ca76ac9f2cb711b309ea6be26b9fb4f7",
+    "castUpdate.js": "b2b53126ed947f1fb2fe267fcb3814e40f12181454a7a6ee24f82c48687cef9b",
+    "schemaType.js": "ea76d4fd915c2bde521dfdb46257852464d0ffda4165c8af330e0b30c869e7f0",
+    "bson-js": "64e5de269bbcdee96f2bebb57cc9729b72aaebde02d832005872b7e575899284",
+    "bson-package": "ded0e42e4e1cd876a11c9f799e0692f83ee73ebc9fb7796a5bca05039b4b3e23",
+    "typescript": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "mongoose": "59e21822580047abc5468d740b720d1383fa3569aa2da3ac70325265fbb0e25b",
+    "mongoose/package.json": "5136d95bcd0624a94096110ea21ac101b73f1839bc40726eab85649389c17dba"
+  },
+  "compiledSha256": "56c7bb4df7295ef9f72e0413188a9af9d80f7692a9d6106e673d1dc726c75342",
+  "metadata": {
+    "_id": {
+      "instance": "String",
+      "hasDefault": false
+    },
+    "channelID": {
+      "instance": "String",
+      "hasDefault": false
+    },
+    "userID": {
+      "instance": "String",
+      "hasDefault": false
+    },
+    "username": {
+      "instance": "String",
+      "hasDefault": false
+    },
+    "messageID": {
+      "instance": "String",
+      "hasDefault": false
+    },
+    "messageText": {
+      "instance": "String",
+      "hasDefault": false
+    },
+    "ruleID": {
+      "instance": "String",
+      "hasDefault": false
+    },
+    "rule": {
+      "instance": "Mixed",
+      "hasDefault": false
+    },
+    "settingsVersion": {
+      "instance": "Number",
+      "hasDefault": false
+    },
+    "matches": {
+      "instance": "Array",
+      "hasDefault": true
+    },
+    "context": {
+      "instance": "Array",
+      "hasDefault": true
+    },
+    "mode": {
+      "instance": "String",
+      "hasDefault": false
+    },
+    "reviewSource": {
+      "instance": "String",
+      "hasDefault": true
+    },
+    "state": {
+      "instance": "String",
+      "hasDefault": true
+    },
+    "verdict": {
+      "instance": "String",
+      "hasDefault": true
+    },
+    "status": {
+      "instance": "String",
+      "hasDefault": true
+    },
+    "model": {
+      "instance": "String",
+      "hasDefault": true
+    },
+    "provider": {
+      "instance": "String",
+      "hasDefault": true
+    },
+    "decisionPolicyVersion": {
+      "instance": "String",
+      "hasDefault": false
+    },
+    "scores": {
+      "instance": "Mixed",
+      "hasDefault": true
+    },
+    "providerRequestID": {
+      "instance": "String",
+      "hasDefault": true
+    },
+    "inputTokens": {
+      "instance": "Number",
+      "hasDefault": true
+    },
+    "cost": {
+      "instance": "Number",
+      "hasDefault": true
+    },
+    "latencyMs": {
+      "instance": "Number",
+      "hasDefault": true
+    },
+    "charge": {
+      "instance": "Mixed",
+      "hasDefault": true
+    },
+    "consequence": {
+      "instance": "Mixed",
+      "hasDefault": true
+    },
+    "feedback": {
+      "instance": "Mixed",
+      "hasDefault": true
+    },
+    "deadline": {
+      "instance": "Date",
+      "hasDefault": false
+    },
+    "createdAt": {
+      "instance": "Date",
+      "hasDefault": true
+    },
+    "expiresAt": {
+      "instance": "Date",
+      "hasDefault": false
+    }
+  },
+  "now": 1700000000000,
+  "cases": [
+    {
+      "filter": {},
+      "input": {},
+      "expected": {
+        "document": {
+          "charge": {
+            "credits": 0,
+            "customerID": "",
+            "externalID": "",
+            "status": "none"
+          },
+          "consequence": {
+            "status": "none"
+          },
+          "context": [],
+          "cost": 0,
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "feedback": null,
+          "inputTokens": 0,
+          "latencyMs": 0,
+          "matches": [],
+          "model": "",
+          "provider": "",
+          "providerRequestID": "",
+          "reviewSource": "rule",
+          "scores": null,
+          "state": "pending",
+          "status": "pending",
+          "verdict": "uncertain"
+        }
+      }
+    },
+    {
+      "filter": {
+        "_id": "id"
+      },
+      "input": {
+        "channelID": 42,
+        "unknown": 3
+      },
+      "expected": {
+        "document": {
+          "channelID": "42",
+          "charge": {
+            "credits": 0,
+            "customerID": "",
+            "externalID": "",
+            "status": "none"
+          },
+          "consequence": {
+            "status": "none"
+          },
+          "context": [],
+          "cost": 0,
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "feedback": null,
+          "inputTokens": 0,
+          "latencyMs": 0,
+          "matches": [],
+          "model": "",
+          "provider": "",
+          "providerRequestID": "",
+          "reviewSource": "rule",
+          "scores": null,
+          "state": "pending",
+          "status": "pending",
+          "verdict": "uncertain"
+        }
+      }
+    },
+    {
+      "filter": {
+        "state": "existing",
+        "createdAt": 100
+      },
+      "input": {},
+      "expected": {
+        "document": {
+          "charge": {
+            "credits": 0,
+            "customerID": "",
+            "externalID": "",
+            "status": "none"
+          },
+          "consequence": {
+            "status": "none"
+          },
+          "context": [],
+          "cost": 0,
+          "createdAt": 100,
+          "feedback": null,
+          "inputTokens": 0,
+          "latencyMs": 0,
+          "matches": [],
+          "model": "",
+          "provider": "",
+          "providerRequestID": "",
+          "reviewSource": "rule",
+          "scores": null,
+          "state": "existing",
+          "status": "pending",
+          "verdict": "uncertain"
+        }
+      }
+    },
+    {
+      "filter": {},
+      "input": {
+        "channelID": "",
+        "reviewSource": "invalid",
+        "expiresAt": null
+      },
+      "expected": {
+        "document": {
+          "channelID": "",
+          "charge": {
+            "credits": 0,
+            "customerID": "",
+            "externalID": "",
+            "status": "none"
+          },
+          "consequence": {
+            "status": "none"
+          },
+          "context": [],
+          "cost": 0,
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "expiresAt": null,
+          "feedback": null,
+          "inputTokens": 0,
+          "latencyMs": 0,
+          "matches": [],
+          "model": "",
+          "provider": "",
+          "providerRequestID": "",
+          "reviewSource": "invalid",
+          "scores": null,
+          "state": "pending",
+          "status": "pending",
+          "verdict": "uncertain"
+        }
+      }
+    },
+    {
+      "filter": {},
+      "input": {
+        "rule": {},
+        "scores": {},
+        "charge": {},
+        "matches": [
+          {},
+          {
+            "nested": {}
+          }
+        ]
+      },
+      "expected": {
+        "document": {
+          "charge": {},
+          "consequence": {
+            "status": "none"
+          },
+          "context": [],
+          "cost": 0,
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "feedback": null,
+          "inputTokens": 0,
+          "latencyMs": 0,
+          "matches": [
+            {},
+            {
+              "nested": {}
+            }
+          ],
+          "model": "",
+          "provider": "",
+          "providerRequestID": "",
+          "reviewSource": "rule",
+          "rule": {},
+          "scores": {},
+          "state": "pending",
+          "status": "pending",
+          "verdict": "uncertain"
+        }
+      }
+    },
+    {
+      "filter": {},
+      "input": {
+        "matches": "x",
+        "context": {
+          "a": 1
+        },
+        "inputTokens": "2",
+        "cost": "1.5",
+        "latencyMs": true
+      },
+      "expected": {
+        "document": {
+          "charge": {
+            "credits": 0,
+            "customerID": "",
+            "externalID": "",
+            "status": "none"
+          },
+          "consequence": {
+            "status": "none"
+          },
+          "context": [
+            {
+              "a": 1
+            }
+          ],
+          "cost": 1.5,
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "feedback": null,
+          "inputTokens": 2,
+          "latencyMs": 1,
+          "matches": [
+            "x"
+          ],
+          "model": "",
+          "provider": "",
+          "providerRequestID": "",
+          "reviewSource": "rule",
+          "scores": null,
+          "state": "pending",
+          "status": "pending",
+          "verdict": "uncertain"
+        }
+      }
+    },
+    {
+      "filter": {},
+      "input": {
+        "reviewSource": null,
+        "matches": null,
+        "context": null,
+        "createdAt": 0,
+        "deadline": "2025-01-01"
+      },
+      "expected": {
+        "document": {
+          "charge": {
+            "credits": 0,
+            "customerID": "",
+            "externalID": "",
+            "status": "none"
+          },
+          "consequence": {
+            "status": "none"
+          },
+          "context": null,
+          "cost": 0,
+          "createdAt": {
+            "$date": 0
+          },
+          "deadline": {
+            "$date": 1735689600000
+          },
+          "feedback": null,
+          "inputTokens": 0,
+          "latencyMs": 0,
+          "matches": null,
+          "model": "",
+          "provider": "",
+          "providerRequestID": "",
+          "reviewSource": null,
+          "scores": null,
+          "state": "pending",
+          "status": "pending",
+          "verdict": "uncertain"
+        }
+      }
+    },
+    {
+      "filter": {},
+      "input": {
+        "inputTokens": "bad"
+      },
+      "expected": {
+        "error": {
+          "path": "inputTokens",
+          "kind": "cast"
+        }
+      }
+    },
+    {
+      "filter": {},
+      "input": {
+        "expiresAt": "bad"
+      },
+      "expected": {
+        "error": {
+          "path": "expiresAt",
+          "kind": "cast"
+        }
+      }
+    },
+    {
+      "filter": {},
+      "input": {
+        "providerRequestID": {
+          "_id": "x"
+        }
+      },
+      "expected": {
+        "document": {
+          "charge": {
+            "credits": 0,
+            "customerID": "",
+            "externalID": "",
+            "status": "none"
+          },
+          "consequence": {
+            "status": "none"
+          },
+          "context": [],
+          "cost": 0,
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "feedback": null,
+          "inputTokens": 0,
+          "latencyMs": 0,
+          "matches": [],
+          "model": "",
+          "provider": "",
+          "providerRequestID": "x",
+          "reviewSource": "rule",
+          "scores": null,
+          "state": "pending",
+          "status": "pending",
+          "verdict": "uncertain"
+        }
+      }
+    },
+    {
+      "filter": {},
+      "input": {
+        "_id": "x",
+        "channelID": "c",
+        "userID": "u",
+        "username": "n",
+        "messageID": "m",
+        "messageText": "t",
+        "ruleID": "r",
+        "rule": {
+          "type": "x"
+        },
+        "settingsVersion": 2,
+        "matches": [],
+        "context": [],
+        "mode": "semantic",
+        "reviewSource": "rule",
+        "state": "pending",
+        "verdict": "uncertain",
+        "status": "pending",
+        "model": "m",
+        "provider": "p",
+        "decisionPolicyVersion": "v",
+        "scores": null,
+        "providerRequestID": "q",
+        "inputTokens": 3,
+        "cost": 0.1,
+        "latencyMs": 4,
+        "charge": {
+          "status": "none"
+        },
+        "consequence": {
+          "status": "none"
+        },
+        "feedback": null,
+        "deadline": 1800000000000,
+        "createdAt": 1700000000000,
+        "expiresAt": 1900000000000
+      },
+      "expected": {
+        "document": {
+          "_id": "x",
+          "channelID": "c",
+          "charge": {
+            "status": "none"
+          },
+          "consequence": {
+            "status": "none"
+          },
+          "context": [],
+          "cost": 0.1,
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "deadline": {
+            "$date": 1800000000000
+          },
+          "decisionPolicyVersion": "v",
+          "expiresAt": {
+            "$date": 1900000000000
+          },
+          "feedback": null,
+          "inputTokens": 3,
+          "latencyMs": 4,
+          "matches": [],
+          "messageID": "m",
+          "messageText": "t",
+          "mode": "semantic",
+          "model": "m",
+          "provider": "p",
+          "providerRequestID": "q",
+          "reviewSource": "rule",
+          "rule": {
+            "type": "x"
+          },
+          "ruleID": "r",
+          "scores": null,
+          "settingsVersion": 2,
+          "state": "pending",
+          "status": "pending",
+          "userID": "u",
+          "username": "n",
+          "verdict": "uncertain"
+        }
+      }
+    }
+  ]
+}

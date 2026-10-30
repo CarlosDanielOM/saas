@@ -37638,33 +37638,68 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-moderation-decision-model-schema; native descriptor/repository and actual-source model constructor plus isolated Mongo CRUD/index behavior verified; full Mongoose runtime and decision application path remain open",
+      "localRustEvidence": [
+        "dimabot/src/schemas/moderation_decision.schema.rs: native decision descriptor, typed row, disconnected repository, declared indexes, and explicit index creation",
+        "dimabot/src/schemas/schema.rs: shared flat cast-only $setOnInsert preparation using the existing caster/default resolver",
+        "dimabot/src/utils/bson_json.rs: extracted compiler-facing BSON/JSON projection reused by variation jobs; raw BSON remains authoritative",
+        "dimabot/tests/moderation_decision_schema.rs and dimabot/tests/mongoose_set_on_insert.rs: schema/model and flat-upsert behavior fixtures",
+        "migration-notes/moderation-decision-model.md and migration-notes/evidence/2026-10-30-moderation-decision-model/README.md: source-bound replay, isolated storage checks, strict profiles, and retained receipts"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native model descriptor and repository are partial local schema mappings, not a Mongoose document engine. Model casting, save hooks, validators, middleware, object identity, and implicit ID/version/timestamp behavior are not generally ported.",
+        "The flat insert helper supports declared flat String, Number, Bool, Date, Mixed, and Array<Mixed> paths only. It skips validators, save hooks, and minimization, suppresses defaults when filter/update paths are present, retains Mixed empty objects, and excludes top-level BSON Undefined, operators, dotted paths, and nested schema types.",
+        "The model has a TTL index and three compound indexes. Native repository construction is disconnected; index creation is explicit.",
+        "compiler_bson_json is a lossy compiler projection for JSON-like fields only. Raw BSON remains authoritative for Mixed and non-JSON values; unsupported BSON conversion is not claimed as business-field behavior.",
+        "The source Mongoose paths mode, state, and verdict are runtime-permissive Strings despite narrower TypeScript unions; corresponding native enum DTO fields are narrower typed views.",
+        "The decision producer, semantic worker, handler/route callers, and broader persistence/adoption path remain open. Caller adoption and deployment are reported separately."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/decisions.ts imports and writes ModerationDecision.",
+          "src/handlers/moderation.handler.ts and src/server/routes/moderation.route.ts use the TypeScript model and surrounding moderation path.",
+          "src/utils/moderation/semantic.ts imports IModerationDecision as a type-only dependency; the semantic worker/application flow remains separate."
+        ],
+        "runtimeStatus": "The native descriptor/repository and shared core are verified locally. TypeScript producer, handler/route, semantic worker, model callers, and application adoption remain separate and unadopted."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/schemas/moderation_decision.schema.ts: pinned actual-source Mongoose constructor replay (18 cases).",
+          "Pinned Mongoose Query._castUpdate and setDefaultsOnInsert behavior: 11 flat-upsert cases.",
+          "Related variation schema regression: a fresh 42-case actual-source replay matched the prior expected result."
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_decision_schema.rs and dimabot/tests/mongoose_set_on_insert.rs.",
+          "compiler-fixtures-1793344052447834554: private Mongo CRUD/index behavior, variation-job regressions, and strict feature/profile checks.",
+          "compiler-1793344259615786190: final source-regression strict compiler phase."
+        ],
+        "status": "The pinned actual-source constructor/upsert replays, fresh 42-case variation-schema regression, isolated Mongo CRUD/index checks, and strict compiler phases passed. The 18-case model and 11-case flat-upsert reference hashes and full phase history are recorded in migration-notes/evidence/2026-10-30-moderation-decision-model/verification-summary.json. Final readback confirmed 18 production records unchanged and zero task-owned containers, networks, or volumes."
       },
       "exports": [
         {
-          "name": "IModerationDecision",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "name": "ModerationContextMessage",
+          "nativeMapping": "Equivalent local native context type used by the bounded decision model mapping.",
+          "evidence": [
+            "dimabot/src/schemas/moderation_decision.schema.rs",
+            "18-case actual-source model constructor replay"
+          ]
         },
         {
-          "name": "ModerationContextMessage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "name": "IModerationDecision",
+          "nativeMapping": "Equivalent local typed native model view; number-valued match coordinates preserve the TypeScript number contract.",
+          "evidence": [
+            "dimabot/src/schemas/moderation_decision.schema.rs",
+            "dimabot/tests/moderation_decision_schema.rs"
+          ]
         },
         {
           "name": "ModerationDecision",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::moderation_decision::{schema, get_moderation_decision_model}; disconnected native repository with explicit index creation.",
+          "evidence": [
+            "dimabot/src/schemas/moderation_decision.schema.rs",
+            "18-case actual-source Mongoose constructor replay",
+            "isolated Mongo CRUD/index validation"
+          ]
         }
       ],
       "imports": [
@@ -37681,12 +37716,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/advanced.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only import of ModerationMatch",
+          "runtimeOrTypeDependency": "Type-only number-valued match contract; no JavaScript runtime side effect.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed: native context retains arbitrary TypeScript number coordinates even though the existing advanced matcher uses usize.",
+          "transitiveDependencyReview": "Type dependency only; existing advanced policy is separate from the decision model schema mapping.",
+          "rustReplacementOrGap": "Equivalent local ModerationMatch view; arbitrary number-valued coordinates remain representable."
         },
         {
           "ordinal": 1,
@@ -37701,12 +37736,12 @@
           "baselineSourceTargets": [
             "src/schemas/channel_moderation_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only import of IModerationRule",
+          "runtimeOrTypeDependency": "Type-only rule contract; no JavaScript runtime side effect.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed: reuses the existing native channel moderation rule representation; Mixed persisted rule values remain BSON-authoritative.",
+          "transitiveDependencyReview": "The model descriptor supports Mixed storage; the broader dynamic Mongoose contract is not covered.",
+          "rustReplacementOrGap": "Existing native IModerationRule type plus Mixed BSON storage."
         },
         {
           "ordinal": 2,
@@ -37714,15 +37749,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named import of Schema and model",
+          "runtimeOrTypeDependency": "Mongoose constructs and exports the application model.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed: actual source constructor covers the model name, collection behavior, field descriptor/defaults, version key, TTL index, and three compound indexes.",
+          "transitiveDependencyReview": "Partial: native disconnected descriptor/repository and explicit index installer are concrete; general Mongoose casting, hooks, middleware, and document behavior remain open.",
+          "rustReplacementOrGap": "dima_rust::schemas::moderation_decision schema/repository; no general Mongoose model engine is claimed."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-moderation-decision-model-schema-and-native-repository-verified; broader-mongoose-runtime-and-decision-application-path-open"
     },
     {
       "source": "src/schemas/moderation_variation.schema.ts",
