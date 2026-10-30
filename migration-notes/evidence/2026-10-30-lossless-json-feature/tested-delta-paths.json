@@ -1,0 +1,6 @@
+[
+  "dimabot/Cargo.toml",
+  "dimabot/src/utils/mod.rs",
+  "dimabot/src/utils/lossless_json.rs",
+  "dimabot/src/utils/tts/settings.rs"
+]
