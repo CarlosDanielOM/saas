@@ -1,0 +1,101 @@
+{
+  "all_semantic_comparisons_match": true,
+  "action_log_provenance_only_changes": [
+    "Cargo.toml",
+    "source-resolver",
+    "source-guard"
+  ],
+  "action_log_cargo_change": "Accepted intervening feature wiring; no action-log behavior difference. Fresh replay validates current hashes.",
+  "comparisons": [
+    {
+      "label": "additional embedded 194-case Mongoose corpus",
+      "before": "/root/saas-rust/dimabot/tests/fixtures/additional_schemas_cases.json",
+      "after": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/timer-chat-retirement/attempt1/additional/additional-schemas-reference.json",
+      "before_sha256": "298cc93c124f7abc6047dba83c3f870eb7f89c655d4c4e491c302db6696e6b8b",
+      "after_sha256": "dac2c8b62bf349ae77e4e174fe1ccf8d8ab5c8f1a2e24c257dc530e84d049f07",
+      "equal_fields": [
+        "fixedNow",
+        "timeZone",
+        "sources",
+        "definitions",
+        "cases"
+      ],
+      "equal": true
+    },
+    {
+      "label": "timer/chat named types before source retirement",
+      "before": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/timer-chat-schema-types/attempt1/oracle/timer-chat-schema-types-reference.json",
+      "after": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/timer-chat-retirement/attempt1/timer/timer-chat-schema-types-reference.json",
+      "before_sha256": "d8850aa4974635a3ffb5ba13dcee7269b094de4a44006c08b81972f33f0172a6",
+      "after_sha256": "6903b2d3f58e7ae63097406900250e943014bc4a252ec6efd614658639ad8828",
+      "equal_fields": [
+        "format",
+        "versions",
+        "nodePin",
+        "pins",
+        "sources",
+        "imports",
+        "hooks",
+        "declarations",
+        "signatures",
+        "bsonStrings",
+        "bsonNumbers"
+      ],
+      "equal": true
+    },
+    {
+      "label": "application regression corpus",
+      "before": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/schema-named-retirement/attempt1/application/application-schemas-reference.json",
+      "after": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/timer-chat-retirement/attempt1/application/application-schemas-reference.json",
+      "before_sha256": "67dfa2f55bd60f0ee712a94c31efd7bc55d6277d1c6ef5f92ad7bf2d4867c7cf",
+      "after_sha256": "baa34c51a60eb1156aacc73a09e4fa3679432772d403eb2438dc845a4defd113",
+      "equal_fields": [
+        "sources",
+        "fixedNow",
+        "definitions",
+        "cases",
+        "workloads"
+      ],
+      "equal": true
+    },
+    {
+      "label": "named regression corpus",
+      "before": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/schema-named-retirement/attempt1/named/schema-named-types-reference.json",
+      "after": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/timer-chat-retirement/attempt1/named/schema-named-types-reference.json",
+      "before_sha256": "48afd0169519f26e2babaefa654a14c2d6dc44e150fb94f9e036314c5640bb54",
+      "after_sha256": "7bab0f8ea2bc07547881b2509cd5a2667a9072b45a13bb96613ad3c63cdd8e6b",
+      "equal_fields": [
+        "format",
+        "bsonStrings",
+        "bsonNumbers",
+        "versions",
+        "nodePin",
+        "sources",
+        "imports",
+        "declarations",
+        "signatures",
+        "catalogs"
+      ],
+      "equal": true
+    },
+    {
+      "label": "action regression corpus",
+      "before": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/schema-named-retirement/attempt1/action/moderation-action-log-schema-reference.json",
+      "after": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/timer-chat-retirement/attempt1/action/moderation-action-log-schema-reference.json",
+      "before_sha256": "3dd7bca1c760a562c7f27d4811eb908d380e04f11737510f44808ccb3ecaf271",
+      "after_sha256": "94a69b7f7fe10b60bb7c76976708d44b9dcb235136d78a5ae40dcec86781e7db",
+      "equal_fields": [
+        "versions",
+        "nodeExecutableSha256",
+        "compiledSha256",
+        "model",
+        "collection",
+        "indexes",
+        "now",
+        "cases",
+        "wire"
+      ],
+      "equal": true
+    }
+  ]
+}

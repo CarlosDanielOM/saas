@@ -1,0 +1,22 @@
+{
+  "status": "incomplete-interrupted-no-driver-receipt",
+  "source_tree_sha256": "06d19561a1f9a97ce0b4c7a8d442ce6ed841457f68dd0bec8a575941c41ac888",
+  "container": "full-rust-5ad445d87cdc",
+  "container_state": {
+    "Status": "running",
+    "Running": true,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 1618264,
+    "ExitCode": 0,
+    "Error": "",
+    "StartedAt": "2026-10-30T13:26:01.008196689Z",
+    "FinishedAt": "0001-01-01T00:00:00Z"
+  },
+  "task_owner": "full-rust-5ad445d87cdc",
+  "remaining_processes": "PID                 PPID                ELAPSED             COMMAND\n1618264             1618239             05:06               sh -c while :; do sleep 60; done\n1627568             1618264             00:06               sleep 60\n",
+  "production_unchanged_before_cleanup": true,
+  "raw_log": "compiler-1793366759535595789.log"
+}

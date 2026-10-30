@@ -1,0 +1,23 @@
+[
+  "archives/dimabot-typescript/2026-10-28/README.md",
+  "archives/dimabot-typescript/2026-10-28/manifest.json",
+  "dimabot/src/schemas/command_timer.schema.ts",
+  "dimabot/src/schemas/countdown_timer.schema.ts",
+  "dimabot/src/schemas/countdown_timer_config.schema.ts",
+  "dimabot/src/schemas/custom_timer.schema.ts",
+  "dimabot/src/schemas/chat_logs.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/command_timer.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/countdown_timer.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/countdown_timer_config.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/custom_timer.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/chat_logs.schema.ts",
+  "dimabot/tests/additional_schemas.rs",
+  "dimabot/tests/application_schemas.rs",
+  "dimabot/tests/schema_named_types.rs",
+  "dimabot/tests/support/schema_source.rs",
+  "dimabot/tests/timer_chat_schema_types.rs",
+  "dimabot/tests/fixtures/additional_schemas_reference.mjs",
+  "dimabot/tests/fixtures/schema_source_resolver.cjs",
+  "dimabot/tests/fixtures/schema_source_resolver.test.cjs",
+  "dimabot/tests/fixtures/timer_chat_schema_types_reference.cjs"
+]

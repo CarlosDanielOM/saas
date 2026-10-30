@@ -1,0 +1,10 @@
+{
+  "excluded_unverified_json_core": [
+    "dimabot/src/utils/lossless_json_document.rs",
+    "dimabot/tests/lossless_json_document.rs",
+    "dimabot/tests/fixtures/lossless_json_document_reference.cjs"
+  ],
+  "restored_frozen_only": "dimabot/src/utils/lossless_json_view.rs",
+  "baseline_commit": "df3223f2",
+  "working_author_edits_preserved": true
+}

@@ -1,0 +1,7 @@
+# Timer and chat schema named types and retirement
+
+The five native timer/chat schema type implementations passed source-bound validation, then their TypeScript sources were retired and archived byte-for-byte. The accepted named-type feature commit is `c9caf56d5f58db2f7bce78c74e73dfcb341bd562`; the separate retirement source commit is `6ff13fe929c0915f6e424c2f081eb96e3795e0d7`, bound to 1,491 inputs and tree SHA-256 `06d19561a1f9a97ce0b4c7a8d442ce6ed841457f68dd0bec8a575941c41ac888`.
+
+The archive advanced from 40 to 45 entries with every source hash verified and all prior entries and metadata preserved. Five semantic comparisons matched. Final Node run `1793366711705641175`, formatting run `1793366593205430608`, and capped compiler run `1793367075031965693` passed. An earlier compiler attempt `1793366759535595789` was interrupted without a driver receipt; its log and state record are retained as incomplete, not passing evidence. Final readback found 18 production records unchanged and zero owned resources.
+
+The [migration note](timer-chat-schema-types.md) describes the bounded contracts and limits. The [indexed evidence package](evidence/2026-10-30-timer-chat-schema-types/README.md) preserves both evidence epochs and hashes every payload. No new benchmark or MongoDB runtime/CRUD check was performed for this retirement. Caller adoption and deployment remain separate; total migration completion remains unscored/null.

@@ -1,0 +1,4 @@
+v24.22.1
+Additional schema oracle: 31 models, 194 cases; disconnected Mongoose only
+{"mode":"--write","sha256":"d8850aa4974635a3ffb5ba13dcee7269b094de4a44006c08b81972f33f0172a6"}
+{"mode":"--check","sha256":"d8850aa4974635a3ffb5ba13dcee7269b094de4a44006c08b81972f33f0172a6"}

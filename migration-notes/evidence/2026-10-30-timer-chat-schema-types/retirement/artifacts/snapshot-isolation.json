@@ -1,0 +1,13 @@
+{
+  "excluded_unverified_benchmark": [
+    "dimabot/tests/lossless_json_document_benchmark.rs",
+    "dimabot/tests/fixtures/lossless_json_document_benchmark.cjs"
+  ],
+  "restored_frozen_only_deletion_baseline": [
+    "dimabot/src/functions/chats/delete_message.chat.rs",
+    "dimabot/tests/delete_twitch_message.rs",
+    "dimabot/tests/fixtures/delete_twitch_message_reference.cjs"
+  ],
+  "baseline_commit": "94fd1031",
+  "working_drafts_preserved": true
+}

@@ -21,6 +21,17 @@
     }
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
+  "summary": {
+    "asOf": "2026-10-30 timer/chat schema type retirement",
+    "inventoryRows": 806,
+    "locallyCompleteMappings": 32,
+    "partialRows": 25,
+    "archivedSourceSnapshots": 45,
+    "liveBaselineTypeScriptFiles": 761,
+    "excludedReactEmailTemplatesIncludedInLiveCount": 6,
+    "totalCompletionPercentage": null,
+    "totalMigrationCompletion": "not-established; full dependency closure audit remains incomplete"
+  },
   "methodLimits": [
     "The baseline import list omits TypeScript import syntax. Runtime versus type-only, default, namespace, side-effect, and barrel semantics remain unresolved until source review.",
     "Relative .js specifiers are preserved exactly and possible .ts/.tsx/.d.ts source targets are listed as candidates only; candidate resolution is not proof of import semantics.",
@@ -35961,30 +35972,61 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/chat_logs.schema.ts",
+        "sha256": "732abc7b27b820fa6ded0d62b1dc3bf3aed8539c7fd636a47f47d98f70b63433",
+        "nativeAreaReference": "dimabot/src/schemas/chat_logs.schema.rs; migration-notes/timer-chat-schema-types.md; indexed named-type and post-retirement evidence"
+      },
+      "featureReview": "complete-local-schema/type-contract-and-dependency-closure; source-retired-and-post-retirement-verified; caller-adoption-open",
+      "localRustEvidence": [
+        "dimabot/src/schemas/chat_logs.schema.rs: native named type(s) and existing schema descriptor",
+        "dimabot/src/schemas/schema.rs and dimabot/src/utils/bson_compat.rs: shared SchemaDefinition repository behavior and BSON serialization boundary",
+        "dimabot/src/utils/js_string.rs: lossless UTF-16 string value representation through native typed layer",
+        "migration-notes/evidence/2026-10-30-timer-chat-schema-types/artifacts/source-bindings.json: accepted named-type source binding",
+        "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/source-bindings.json: post-retirement binding at commit 6ff13fe929c0915f6e424c2f081eb96e3795e0d7; 1,491 inputs and all hashes matched",
+        "migration-notes/timer-chat-schema-types.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Native schema descriptors and typed values replace the bounded Mongoose schema/type contract; generic npm Mongoose internals and full application workflows are not claimed.",
+        "Declared optional fields remain distinct from explicit null; arbitrary UTF-16 units remain in JsString until explicit BSON conversion, which follows the pinned Node BSON boundary.",
+        "Existing raw BSON Document/repository paths remain available for partially populated stored records where the declared source type is stricter."
+      ],
       "callers": {
         "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "runtimeStatus": "No TypeScript caller adoption or native cutover was verified. Caller adoption, deployment, and whole-migration completion remain separately tracked."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/timer_chat_schema_types_reference.cjs",
+          "archives/dimabot-typescript/2026-10-28/src/schemas/chat_logs.schema.ts: exact archived source used in post-retirement binding"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/timer_chat_schema_types.rs",
+          "dimabot/tests/application_schemas.rs",
+          "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/oracle-semantic-comparison.json",
+          "migration-notes/evidence/2026-10-30-timer-chat-schema-types/README.md"
+        ],
+        "status": "The accepted source-bound named-type checks passed; post-retirement Node, formatting, and capped compiler runs passed, and all five semantic/regression comparisons matched. No new MongoDB runtime/CRUD check or benchmark was performed for this retirement. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "ChatLogSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::chat_logs::schema()/native descriptor",
+          "evidence": [
+            "dimabot/src/schemas/chat_logs.schema.rs",
+            "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/attempt1/timer/timer-chat-schema-types-reference.json",
+            "migration-notes/timer-chat-schema-types.md"
+          ]
         },
         {
           "name": "IChatLog",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::chat_logs::IChatLog",
+          "evidence": [
+            "dimabot/src/schemas/chat_logs.schema.rs",
+            "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/attempt1/timer/timer-chat-schema-types-reference.json",
+            "migration-notes/timer-chat-schema-types.md"
+          ]
         }
       ],
       "imports": [
@@ -35994,15 +36036,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named Mongoose schema/model import",
+          "runtimeOrTypeDependency": "Mongoose supplies the source schema/model construction and named type declarations for this module.",
+          "defaultSideEffectBarrelDetails": "No default, side-effect, or barrel import is involved.",
+          "directDependencyReview": "Reviewed for the local schema/type contract: the native MongoDB Rust driver, explicit native descriptor, typed values, BSON/date/ObjectId support, and shared SchemaDefinition path are reused.",
+          "transitiveDependencyReview": "Reviewed: JsString and explicit Node-compatible BSON conversion reuse existing native value boundaries; no new crate dependency or missing adapter was identified for this bounded contract.",
+          "rustReplacementOrGap": "The local schema/type contract is mapped and post-retirement verified. Generic Mongoose npm internals, TypeScript caller adoption, and broader application workflows remain outside this row."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-native-schema-and-named-types-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/clip_design.schema.ts",
@@ -36215,30 +36257,61 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/command_timer.schema.ts",
+        "sha256": "db42c5b989f6e154551c714f51736585b0230fa743f6bc51fe935b54530af4f5",
+        "nativeAreaReference": "dimabot/src/schemas/command_timer.schema.rs; migration-notes/timer-chat-schema-types.md; indexed named-type and post-retirement evidence"
+      },
+      "featureReview": "complete-local-schema/type-contract-and-dependency-closure; source-retired-and-post-retirement-verified; caller-adoption-open",
+      "localRustEvidence": [
+        "dimabot/src/schemas/command_timer.schema.rs: native named type(s) and existing schema descriptor",
+        "dimabot/src/schemas/schema.rs and dimabot/src/utils/bson_compat.rs: shared SchemaDefinition repository behavior and BSON serialization boundary",
+        "dimabot/src/utils/js_string.rs: lossless UTF-16 string value representation through native typed layer",
+        "migration-notes/evidence/2026-10-30-timer-chat-schema-types/artifacts/source-bindings.json: accepted named-type source binding",
+        "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/source-bindings.json: post-retirement binding at commit 6ff13fe929c0915f6e424c2f081eb96e3795e0d7; 1,491 inputs and all hashes matched",
+        "migration-notes/timer-chat-schema-types.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Native schema descriptors and typed values replace the bounded Mongoose schema/type contract; generic npm Mongoose internals and full application workflows are not claimed.",
+        "Declared optional fields remain distinct from explicit null; arbitrary UTF-16 units remain in JsString until explicit BSON conversion, which follows the pinned Node BSON boundary.",
+        "Existing raw BSON Document/repository paths remain available for partially populated stored records where the declared source type is stricter."
+      ],
       "callers": {
         "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "runtimeStatus": "No TypeScript caller adoption or native cutover was verified. Caller adoption, deployment, and whole-migration completion remain separately tracked."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/timer_chat_schema_types_reference.cjs",
+          "archives/dimabot-typescript/2026-10-28/src/schemas/command_timer.schema.ts: exact archived source used in post-retirement binding"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/timer_chat_schema_types.rs",
+          "dimabot/tests/application_schemas.rs",
+          "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/oracle-semantic-comparison.json",
+          "migration-notes/evidence/2026-10-30-timer-chat-schema-types/README.md"
+        ],
+        "status": "The accepted source-bound named-type checks passed; post-retirement Node, formatting, and capped compiler runs passed, and all five semantic/regression comparisons matched. No new MongoDB runtime/CRUD check or benchmark was performed for this retirement. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "CommandTimerSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::command_timer::schema()/native descriptor",
+          "evidence": [
+            "dimabot/src/schemas/command_timer.schema.rs",
+            "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/attempt1/timer/timer-chat-schema-types-reference.json",
+            "migration-notes/timer-chat-schema-types.md"
+          ]
         },
         {
           "name": "ICommandTimer",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::command_timer::ICommandTimer and CommandTimerDate",
+          "evidence": [
+            "dimabot/src/schemas/command_timer.schema.rs",
+            "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/attempt1/timer/timer-chat-schema-types-reference.json",
+            "migration-notes/timer-chat-schema-types.md"
+          ]
         }
       ],
       "imports": [
@@ -36248,15 +36321,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named Mongoose schema/model import",
+          "runtimeOrTypeDependency": "Mongoose supplies the source schema/model construction and named type declarations for this module.",
+          "defaultSideEffectBarrelDetails": "No default, side-effect, or barrel import is involved.",
+          "directDependencyReview": "Reviewed for the local schema/type contract: the native MongoDB Rust driver, explicit native descriptor, typed values, BSON/date/ObjectId support, and shared SchemaDefinition path are reused.",
+          "transitiveDependencyReview": "Reviewed: JsString and explicit Node-compatible BSON conversion reuse existing native value boundaries; no new crate dependency or missing adapter was identified for this bounded contract.",
+          "rustReplacementOrGap": "The local schema/type contract is mapped and post-retirement verified. Generic Mongoose npm internals, TypeScript caller adoption, and broader application workflows remain outside this row."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-native-schema-and-named-types-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/command_user_variables.schema.ts",
@@ -36446,30 +36519,61 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/countdown_timer_config.schema.ts",
+        "sha256": "b4cf0d5f8cfe85dc1e04f11970aac8bbab48a27c86fc9fab43d935cdbb1ada8a",
+        "nativeAreaReference": "dimabot/src/schemas/countdown_timer_config.schema.rs; migration-notes/timer-chat-schema-types.md; indexed named-type and post-retirement evidence"
+      },
+      "featureReview": "complete-local-schema/type-contract-and-dependency-closure; source-retired-and-post-retirement-verified; caller-adoption-open",
+      "localRustEvidence": [
+        "dimabot/src/schemas/countdown_timer_config.schema.rs: native named type(s) and existing schema descriptor",
+        "dimabot/src/schemas/schema.rs and dimabot/src/utils/bson_compat.rs: shared SchemaDefinition repository behavior and BSON serialization boundary",
+        "dimabot/src/utils/js_string.rs: lossless UTF-16 string value representation through native typed layer",
+        "migration-notes/evidence/2026-10-30-timer-chat-schema-types/artifacts/source-bindings.json: accepted named-type source binding",
+        "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/source-bindings.json: post-retirement binding at commit 6ff13fe929c0915f6e424c2f081eb96e3795e0d7; 1,491 inputs and all hashes matched",
+        "migration-notes/timer-chat-schema-types.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Native schema descriptors and typed values replace the bounded Mongoose schema/type contract; generic npm Mongoose internals and full application workflows are not claimed.",
+        "Declared optional fields remain distinct from explicit null; arbitrary UTF-16 units remain in JsString until explicit BSON conversion, which follows the pinned Node BSON boundary.",
+        "Existing raw BSON Document/repository paths remain available for partially populated stored records where the declared source type is stricter."
+      ],
       "callers": {
         "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "runtimeStatus": "No TypeScript caller adoption or native cutover was verified. Caller adoption, deployment, and whole-migration completion remain separately tracked."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/timer_chat_schema_types_reference.cjs",
+          "archives/dimabot-typescript/2026-10-28/src/schemas/countdown_timer_config.schema.ts: exact archived source used in post-retirement binding"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/timer_chat_schema_types.rs",
+          "dimabot/tests/application_schemas.rs",
+          "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/oracle-semantic-comparison.json",
+          "migration-notes/evidence/2026-10-30-timer-chat-schema-types/README.md"
+        ],
+        "status": "The accepted source-bound named-type checks passed; post-retirement Node, formatting, and capped compiler runs passed, and all five semantic/regression comparisons matched. No new MongoDB runtime/CRUD check or benchmark was performed for this retirement. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "CountdownTimerConfigSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::countdown_timer_config::schema()/native descriptor",
+          "evidence": [
+            "dimabot/src/schemas/countdown_timer_config.schema.rs",
+            "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/attempt1/timer/timer-chat-schema-types-reference.json",
+            "migration-notes/timer-chat-schema-types.md"
+          ]
         },
         {
           "name": "ICountdownTimerConfig",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::countdown_timer_config::ICountdownTimerConfig",
+          "evidence": [
+            "dimabot/src/schemas/countdown_timer_config.schema.rs",
+            "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/attempt1/timer/timer-chat-schema-types-reference.json",
+            "migration-notes/timer-chat-schema-types.md"
+          ]
         }
       ],
       "imports": [
@@ -36479,15 +36583,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named Mongoose schema/model import",
+          "runtimeOrTypeDependency": "Mongoose supplies the source schema/model construction and named type declarations for this module.",
+          "defaultSideEffectBarrelDetails": "No default, side-effect, or barrel import is involved.",
+          "directDependencyReview": "Reviewed for the local schema/type contract: the native MongoDB Rust driver, explicit native descriptor, typed values, BSON/date/ObjectId support, and shared SchemaDefinition path are reused.",
+          "transitiveDependencyReview": "Reviewed: JsString and explicit Node-compatible BSON conversion reuse existing native value boundaries; no new crate dependency or missing adapter was identified for this bounded contract.",
+          "rustReplacementOrGap": "The local schema/type contract is mapped and post-retirement verified. Generic Mongoose npm internals, TypeScript caller adoption, and broader application workflows remain outside this row."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-native-schema-and-named-types-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/countdown_timer.schema.ts",
@@ -36497,30 +36601,61 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/countdown_timer.schema.ts",
+        "sha256": "5d6ab4812c726b2aab0a8fee4a3ca060c6dacc97f59b8aee66c46b669766b990",
+        "nativeAreaReference": "dimabot/src/schemas/countdown_timer.schema.rs; migration-notes/timer-chat-schema-types.md; indexed named-type and post-retirement evidence"
+      },
+      "featureReview": "complete-local-schema/type-contract-and-dependency-closure; source-retired-and-post-retirement-verified; caller-adoption-open",
+      "localRustEvidence": [
+        "dimabot/src/schemas/countdown_timer.schema.rs: native named type(s) and existing schema descriptor",
+        "dimabot/src/schemas/schema.rs and dimabot/src/utils/bson_compat.rs: shared SchemaDefinition repository behavior and BSON serialization boundary",
+        "dimabot/src/utils/js_string.rs: lossless UTF-16 string value representation through native typed layer",
+        "migration-notes/evidence/2026-10-30-timer-chat-schema-types/artifacts/source-bindings.json: accepted named-type source binding",
+        "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/source-bindings.json: post-retirement binding at commit 6ff13fe929c0915f6e424c2f081eb96e3795e0d7; 1,491 inputs and all hashes matched",
+        "migration-notes/timer-chat-schema-types.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Native schema descriptors and typed values replace the bounded Mongoose schema/type contract; generic npm Mongoose internals and full application workflows are not claimed.",
+        "Declared optional fields remain distinct from explicit null; arbitrary UTF-16 units remain in JsString until explicit BSON conversion, which follows the pinned Node BSON boundary.",
+        "Existing raw BSON Document/repository paths remain available for partially populated stored records where the declared source type is stricter."
+      ],
       "callers": {
         "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "runtimeStatus": "No TypeScript caller adoption or native cutover was verified. Caller adoption, deployment, and whole-migration completion remain separately tracked."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/timer_chat_schema_types_reference.cjs",
+          "archives/dimabot-typescript/2026-10-28/src/schemas/countdown_timer.schema.ts: exact archived source used in post-retirement binding"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/timer_chat_schema_types.rs",
+          "dimabot/tests/application_schemas.rs",
+          "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/oracle-semantic-comparison.json",
+          "migration-notes/evidence/2026-10-30-timer-chat-schema-types/README.md"
+        ],
+        "status": "The accepted source-bound named-type checks passed; post-retirement Node, formatting, and capped compiler runs passed, and all five semantic/regression comparisons matched. No new MongoDB runtime/CRUD check or benchmark was performed for this retirement. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "CountdownTimerSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::countdown_timer::schema()/native descriptor",
+          "evidence": [
+            "dimabot/src/schemas/countdown_timer.schema.rs",
+            "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/attempt1/timer/timer-chat-schema-types-reference.json",
+            "migration-notes/timer-chat-schema-types.md"
+          ]
         },
         {
           "name": "ICountdownTimer",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::countdown_timer::ICountdownTimer",
+          "evidence": [
+            "dimabot/src/schemas/countdown_timer.schema.rs",
+            "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/attempt1/timer/timer-chat-schema-types-reference.json",
+            "migration-notes/timer-chat-schema-types.md"
+          ]
         }
       ],
       "imports": [
@@ -36530,15 +36665,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named Mongoose schema/model import",
+          "runtimeOrTypeDependency": "Mongoose supplies the source schema/model construction and named type declarations for this module.",
+          "defaultSideEffectBarrelDetails": "No default, side-effect, or barrel import is involved.",
+          "directDependencyReview": "Reviewed for the local schema/type contract: the native MongoDB Rust driver, explicit native descriptor, typed values, BSON/date/ObjectId support, and shared SchemaDefinition path are reused.",
+          "transitiveDependencyReview": "Reviewed: JsString and explicit Node-compatible BSON conversion reuse existing native value boundaries; no new crate dependency or missing adapter was identified for this bounded contract.",
+          "rustReplacementOrGap": "The local schema/type contract is mapped and post-retirement verified. Generic Mongoose npm internals, TypeScript caller adoption, and broader application workflows remain outside this row."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-native-schema-and-named-types-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/credit_gift.schema.ts",
@@ -36762,30 +36897,61 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/custom_timer.schema.ts",
+        "sha256": "6c59b38b43615325f87c870dcbd5dfe2cd0b50e91822dbe884d3c32dd45f387f",
+        "nativeAreaReference": "dimabot/src/schemas/custom_timer.schema.rs; migration-notes/timer-chat-schema-types.md; indexed named-type and post-retirement evidence"
+      },
+      "featureReview": "complete-local-schema/type-contract-and-dependency-closure; source-retired-and-post-retirement-verified; caller-adoption-open",
+      "localRustEvidence": [
+        "dimabot/src/schemas/custom_timer.schema.rs: native named type(s) and existing schema descriptor",
+        "dimabot/src/schemas/schema.rs and dimabot/src/utils/bson_compat.rs: shared SchemaDefinition repository behavior and BSON serialization boundary",
+        "dimabot/src/utils/js_string.rs: lossless UTF-16 string value representation through native typed layer",
+        "migration-notes/evidence/2026-10-30-timer-chat-schema-types/artifacts/source-bindings.json: accepted named-type source binding",
+        "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/source-bindings.json: post-retirement binding at commit 6ff13fe929c0915f6e424c2f081eb96e3795e0d7; 1,491 inputs and all hashes matched",
+        "migration-notes/timer-chat-schema-types.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Native schema descriptors and typed values replace the bounded Mongoose schema/type contract; generic npm Mongoose internals and full application workflows are not claimed.",
+        "Declared optional fields remain distinct from explicit null; arbitrary UTF-16 units remain in JsString until explicit BSON conversion, which follows the pinned Node BSON boundary.",
+        "Existing raw BSON Document/repository paths remain available for partially populated stored records where the declared source type is stricter."
+      ],
       "callers": {
         "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "runtimeStatus": "No TypeScript caller adoption or native cutover was verified. Caller adoption, deployment, and whole-migration completion remain separately tracked."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/timer_chat_schema_types_reference.cjs",
+          "archives/dimabot-typescript/2026-10-28/src/schemas/custom_timer.schema.ts: exact archived source used in post-retirement binding"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/timer_chat_schema_types.rs",
+          "dimabot/tests/application_schemas.rs",
+          "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/oracle-semantic-comparison.json",
+          "migration-notes/evidence/2026-10-30-timer-chat-schema-types/README.md"
+        ],
+        "status": "The accepted source-bound named-type checks passed; post-retirement Node, formatting, and capped compiler runs passed, and all five semantic/regression comparisons matched. No new MongoDB runtime/CRUD check or benchmark was performed for this retirement. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "CustomTimerSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::custom_timer::schema()/native descriptor",
+          "evidence": [
+            "dimabot/src/schemas/custom_timer.schema.rs",
+            "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/attempt1/timer/timer-chat-schema-types-reference.json",
+            "migration-notes/timer-chat-schema-types.md"
+          ]
         },
         {
           "name": "ICustomTimer",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::schemas::custom_timer::ICustomTimer and FrequencyUnit",
+          "evidence": [
+            "dimabot/src/schemas/custom_timer.schema.rs",
+            "migration-notes/evidence/2026-10-30-timer-chat-schema-types/retirement/artifacts/attempt1/timer/timer-chat-schema-types-reference.json",
+            "migration-notes/timer-chat-schema-types.md"
+          ]
         }
       ],
       "imports": [
@@ -36795,15 +36961,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named Mongoose schema/model import",
+          "runtimeOrTypeDependency": "Mongoose supplies the source schema/model construction and named type declarations for this module.",
+          "defaultSideEffectBarrelDetails": "No default, side-effect, or barrel import is involved.",
+          "directDependencyReview": "Reviewed for the local schema/type contract: the native MongoDB Rust driver, explicit native descriptor, typed values, BSON/date/ObjectId support, and shared SchemaDefinition path are reused.",
+          "transitiveDependencyReview": "Reviewed: JsString and explicit Node-compatible BSON conversion reuse existing native value boundaries; no new crate dependency or missing adapter was identified for this bounded contract.",
+          "rustReplacementOrGap": "The local schema/type contract is mapped and post-retirement verified. Generic Mongoose npm internals, TypeScript caller adoption, and broader application workflows remain outside this row."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-native-schema-and-named-types-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/dashboard_activity.schema.ts",

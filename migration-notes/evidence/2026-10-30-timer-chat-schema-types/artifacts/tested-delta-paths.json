@@ -1,0 +1,9 @@
+[
+  "dimabot/src/schemas/command_timer.schema.rs",
+  "dimabot/src/schemas/countdown_timer.schema.rs",
+  "dimabot/src/schemas/countdown_timer_config.schema.rs",
+  "dimabot/src/schemas/custom_timer.schema.rs",
+  "dimabot/src/schemas/chat_logs.schema.rs",
+  "dimabot/tests/timer_chat_schema_types.rs",
+  "dimabot/tests/fixtures/timer_chat_schema_types_reference.cjs"
+]

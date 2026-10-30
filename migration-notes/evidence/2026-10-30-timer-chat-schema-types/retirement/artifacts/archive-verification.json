@@ -1,0 +1,39 @@
+{
+  "archive_count_before": 40,
+  "archive_count_after": 45,
+  "previous_entries_and_top_metadata_unchanged": true,
+  "all_archive_hashes_match": true,
+  "new_source_count": 5,
+  "sources": [
+    {
+      "logical_source": "dimabot/src/schemas/command_timer.schema.ts",
+      "archived_source": "archives/dimabot-typescript/2026-10-28/src/schemas/command_timer.schema.ts",
+      "sha256": "db42c5b989f6e154551c714f51736585b0230fa743f6bc51fe935b54530af4f5",
+      "matches_accepted_native_type_commit": true
+    },
+    {
+      "logical_source": "dimabot/src/schemas/countdown_timer.schema.ts",
+      "archived_source": "archives/dimabot-typescript/2026-10-28/src/schemas/countdown_timer.schema.ts",
+      "sha256": "5d6ab4812c726b2aab0a8fee4a3ca060c6dacc97f59b8aee66c46b669766b990",
+      "matches_accepted_native_type_commit": true
+    },
+    {
+      "logical_source": "dimabot/src/schemas/countdown_timer_config.schema.ts",
+      "archived_source": "archives/dimabot-typescript/2026-10-28/src/schemas/countdown_timer_config.schema.ts",
+      "sha256": "b4cf0d5f8cfe85dc1e04f11970aac8bbab48a27c86fc9fab43d935cdbb1ada8a",
+      "matches_accepted_native_type_commit": true
+    },
+    {
+      "logical_source": "dimabot/src/schemas/custom_timer.schema.ts",
+      "archived_source": "archives/dimabot-typescript/2026-10-28/src/schemas/custom_timer.schema.ts",
+      "sha256": "6c59b38b43615325f87c870dcbd5dfe2cd0b50e91822dbe884d3c32dd45f387f",
+      "matches_accepted_native_type_commit": true
+    },
+    {
+      "logical_source": "dimabot/src/schemas/chat_logs.schema.ts",
+      "archived_source": "archives/dimabot-typescript/2026-10-28/src/schemas/chat_logs.schema.ts",
+      "sha256": "732abc7b27b820fa6ded0d62b1dc3bf3aed8539c7fd636a47f47d98f70b63433",
+      "matches_accepted_native_type_commit": true
+    }
+  ]
+}

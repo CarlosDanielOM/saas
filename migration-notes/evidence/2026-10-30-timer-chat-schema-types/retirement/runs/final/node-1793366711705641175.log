@@ -1,0 +1,15 @@
+v24.22.1
+Additional schema oracle: 31 models, 194 cases; disconnected Mongoose only
+additional-schemas-reference.json sha256=dac2c8b62bf349ae77e4e174fe1ccf8d8ab5c8f1a2e24c257dc530e84d049f07 cases=194
+Additional schema oracle: 31 models, 194 cases; disconnected Mongoose only
+additional-schemas-reference.json sha256=dac2c8b62bf349ae77e4e174fe1ccf8d8ab5c8f1a2e24c257dc530e84d049f07 cases=194
+Additional schema oracle: 31 models, 194 cases; disconnected Mongoose only
+{"mode":"--write","sha256":"6903b2d3f58e7ae63097406900250e943014bc4a252ec6efd614658639ad8828"}
+{"mode":"--check","sha256":"6903b2d3f58e7ae63097406900250e943014bc4a252ec6efd614658639ad8828"}
+Application schema oracle: 11 schemas, 70 cases
+application-schemas-reference.json sha256=baa34c51a60eb1156aacc73a09e4fa3679432772d403eb2438dc845a4defd113 cases=70
+application-schemas-reference.json sha256=baa34c51a60eb1156aacc73a09e4fa3679432772d403eb2438dc845a4defd113 cases=70
+{"mode":"--write","sha256":"7bab0f8ea2bc07547881b2509cd5a2667a9072b45a13bb96613ad3c63cdd8e6b"}
+{"mode":"--check","sha256":"7bab0f8ea2bc07547881b2509cd5a2667a9072b45a13bb96613ad3c63cdd8e6b"}
+moderation-action-log-schema-reference.json sha256=94a69b7f7fe10b60bb7c76976708d44b9dcb235136d78a5ae40dcec86781e7db cases=32
+moderation-action-log-schema-reference.json sha256=94a69b7f7fe10b60bb7c76976708d44b9dcb235136d78a5ae40dcec86781e7db cases=32
