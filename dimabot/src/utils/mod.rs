@@ -244,6 +244,8 @@ pub mod posthog_tracking;
 pub mod qdrant;
 #[cfg(feature = "re2-compat")]
 pub mod re2_compat;
+#[cfg(feature = "re2-native")]
+pub mod re2_native;
 #[cfg(feature = "re2-unicode")]
 pub mod re2_unicode;
 #[cfg(feature = "re2-unicode")]
