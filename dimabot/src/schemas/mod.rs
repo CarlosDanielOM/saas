@@ -8,6 +8,9 @@ pub mod channel_moderation_settings;
 #[cfg(feature = "channel-tts-settings")]
 #[path = "channel_tts_settings.schema.rs"]
 pub mod channel_tts_settings;
+#[cfg(feature = "moderation-action-log-schema")]
+#[path = "moderation_action_log.schema.rs"]
+pub mod moderation_action_log;
 #[cfg(feature = "moderation-spam")]
 #[path = "moderation_chatter.schema.rs"]
 pub mod moderation_chatter;

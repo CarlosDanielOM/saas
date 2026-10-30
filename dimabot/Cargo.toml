@@ -68,6 +68,7 @@ channel-tts-settings = ["application-schemas", "tts-utilities"]
 # Opt-in moderation model; native policy and caller-owned MongoDB persistence.
 channel-moderation-settings = ["application-schemas", "moderation-spam-categories", "moderation-caps", "moderation-types", "dep:uuid"]
 moderation-decision-schema = ["channel-moderation-settings", "dep:sha2"]
+moderation-action-log-schema = ["channel-moderation-settings", "dep:sha2"]
 moderation-seed-plan = ["channel-moderation-settings"]
 # Request-time usage adapters, independent of deployed workers and defaults.
 ai-credit-projection = ["credit-policy", "tts-utilities", "plan-cache", "dep:sha2"]
