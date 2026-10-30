@@ -82,7 +82,7 @@ for (const terms of [
   ['x y z','x     y'], ['x!','x'], ['x','x!'], ['!x','x'],
   ['[x]','x'], ['x_y','x'], ['.','..'], ['..','.'],
   ['a+b','a'], ['a','a+b'], ['x/y','x'], ['\\x','x']
-]) for (const prefix of ['', '!', '_', 'a', '9', '\n']) for (const text of [
+]) for (const prefix of ['', '!', '_', 'a', '9', '\n', 'ordinary message '.repeat(40)]) for (const text of [
   'x', 'x y', 'x y z', 'x yz x', 'x!x', '!x', '[x]', 'x_y',
   '...x', 'a+b a', 'x/y', '\\x', 'x\t \r\n\v\fy z', 'x! x y'
 ]) {

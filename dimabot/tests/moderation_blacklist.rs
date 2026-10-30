@@ -122,6 +122,28 @@ fn ascii_whitespace_runs_and_unicode_fallback() {
 }
 
 #[test]
+fn long_ascii_prefilter_preserves_boundaries_and_priority() {
+    let prefix = "ordinary message ".repeat(40);
+    let p = pattern(&["badword", "free money"]);
+    assert!(p.exec(&js(&prefix)).is_none());
+    assert!(p.exec(&js(&format!("{prefix}xbadword badword2"))).is_none());
+    let text = format!("{prefix}xbadword BADWORD! free money");
+    let hit = p.exec(&js(&text)).unwrap();
+    assert_eq!(
+        (hit.start, hit.end, hit.matched_text),
+        (prefix.len() + 9, prefix.len() + 16, js("BADWORD"))
+    );
+    let text = format!("{prefix}FREE\t MONEY_");
+    assert_eq!(p.exec(&js(&text)).unwrap().matched_text, js("FREE\t MONEY"));
+
+    let p = pattern(&["a       b", "a b!", "a bc"]);
+    let hit = p.exec(&js(&format!("{prefix}a b!"))).unwrap();
+    assert_eq!((hit.start, hit.matched_text), (prefix.len(), js("a b")));
+    let hit = p.exec(&js(&format!("{prefix}a bc"))).unwrap();
+    assert_eq!((hit.start, hit.matched_text), (prefix.len(), js("a bc")));
+}
+
+#[test]
 fn source_escape_and_whitespace() {
     let p = pattern(&["  a/b.+\\c\t  d  "]);
     assert_eq!(p.flags(), "iu");

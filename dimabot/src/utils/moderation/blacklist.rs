@@ -46,27 +46,33 @@ struct Node {
 pub struct BlacklistPattern {
     source: JsString,
     nodes: Vec<Node>,
-    ascii_regex: Option<Regex>,
+    ascii_regex: Option<AsciiPattern>,
+}
+
+#[derive(Clone, Debug)]
+struct AsciiPattern {
+    bounded: Regex,
+    prefilter: Option<Regex>,
 }
 
 // The input and all terms are ASCII on this path. A consuming non-word byte
 // represents each lookaround; the capture excludes those boundary bytes.
 // Placing the right boundary after the alternation lets the engine retry a
 // later term when an earlier term fails its right boundary.
-fn compile_ascii_regex(terms: &[JsString]) -> Option<Regex> {
-    let mut pattern = String::from(r"(?:^|[^A-Za-z0-9])(?P<matched>");
+fn compile_ascii_regex(terms: &[JsString]) -> Option<AsciiPattern> {
+    let mut body = String::new();
     for (rank, term) in terms.iter().enumerate() {
         let term = term.as_str().filter(|term| term.is_ascii())?;
         if rank != 0 {
-            pattern.push('|');
+            body.push('|');
         }
         let mut literal_start = 0;
         let bytes = term.as_bytes();
         let mut i = 0;
         while i < bytes.len() {
             if matches!(bytes[i], b' ' | b'\t' | b'\n' | b'\r' | 0x0b | 0x0c) {
-                pattern.push_str(&regex::escape(&term[literal_start..i]));
-                pattern.push_str(r"[ \t\n\r\x0B\x0C]+");
+                body.push_str(&regex::escape(&term[literal_start..i]));
+                body.push_str(r"[ \t\n\r\x0B\x0C]+");
                 i += 1;
                 while i < bytes.len()
                     && matches!(bytes[i], b' ' | b'\t' | b'\n' | b'\r' | 0x0b | 0x0c)
@@ -78,14 +84,22 @@ fn compile_ascii_regex(terms: &[JsString]) -> Option<Regex> {
                 i += 1;
             }
         }
-        pattern.push_str(&regex::escape(&term[literal_start..]));
+        body.push_str(&regex::escape(&term[literal_start..]));
     }
-    pattern.push_str(r")(?:$|[^A-Za-z0-9])");
-    RegexBuilder::new(&pattern)
-        .unicode(false)
-        .case_insensitive(true)
-        .build()
-        .ok()
+    let build = |pattern: &str| {
+        RegexBuilder::new(pattern)
+            .unicode(false)
+            .case_insensitive(true)
+            .build()
+            .ok()
+    };
+    let bounded = build(&format!(
+        r"(?:^|[^A-Za-z0-9])(?P<matched>{body})(?:$|[^A-Za-z0-9])"
+    ))?;
+    // Omitting boundaries can only add candidate matches. If compiling this
+    // optional filter fails, the bounded expression remains authoritative.
+    let prefilter = build(&format!(r"(?:{body})"));
+    Some(AsciiPattern { bounded, prefilter })
 }
 
 fn whitespace(cp: u32) -> bool {
@@ -128,7 +142,15 @@ impl BlacklistPattern {
         if let (Some(regex), Some(input)) = (&self.ascii_regex, text.as_str())
             && input.is_ascii()
         {
-            let captures = regex.captures(input.as_bytes())?;
+            // Long misses can skip boundary matching when no term occurs at
+            // all. Short inputs avoid a second search.
+            if input.len() >= 512
+                && let Some(prefilter) = &regex.prefilter
+                && !prefilter.is_match(input.as_bytes())
+            {
+                return None;
+            }
+            let captures = regex.bounded.captures(input.as_bytes())?;
             let matched = captures.name("matched")?;
             return Some(BlacklistMatch {
                 start: matched.start(),
