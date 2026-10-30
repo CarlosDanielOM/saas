@@ -1,0 +1,7 @@
+{
+  "source": "7a3838885a098ff348b779d684d360445d269a0a1e96d4d93f92abf4daa9ab18",
+  "compilerFailure": "temporary CLIENT command dropped while borrowed in try_join test",
+  "compilerWarning": "guard.done assigned butneverread; explicit drop(guard) ensures whole RAIIguard and destructor captured in spawnedtask",
+  "oracleFailure": "two guessed microtask awaits insufficient for cross-realm Promiseadoption; await one eventloopturn withoutsleep beforeobservingabandonedinitialization",
+  "runtimeNegativeControl": "not executed on this failedcandidate; no claim runtime caught potentialguardcapturedeadlock"
+}

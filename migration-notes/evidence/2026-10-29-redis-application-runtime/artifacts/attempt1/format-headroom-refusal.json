@@ -1,0 +1,8 @@
+{
+  "phase": "format",
+  "result": "refused before task resource creation",
+  "reason": "insufficient production memory headroom",
+  "requiredAvailableBytes": 8589934592,
+  "exactAvailableAtRefusal": "not recorded",
+  "applicationExecuted": false
+}

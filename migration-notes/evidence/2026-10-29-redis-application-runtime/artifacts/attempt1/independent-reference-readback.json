@@ -1,0 +1,43 @@
+{
+  "permit": {
+    "fixtureSha256": "7aac5f38a8d8ba5b36926bcbdc59c4e3461421a56e1371be8184f5adfa5c00fc",
+    "fileHashesChecked": 21,
+    "semanticFieldsUnchanged": [
+      "constants",
+      "parsed",
+      "logins",
+      "keys",
+      "grants",
+      "reads",
+      "heldReads",
+      "contextCase",
+      "setFailure"
+    ]
+  },
+  "offenses": {
+    "fixtureSha256": "8bda32e9b7f15f473421876aa0e3ba8b084159ee32500144000e21c36476205e",
+    "fileHashesChecked": 21,
+    "semanticFieldsUnchanged": [
+      "keys",
+      "steps",
+      "cases",
+      "abandonedCase"
+    ]
+  },
+  "runtime": {
+    "fixtureSha256": "58533607bf518a85e37df0a05e0fc5ac9356239bb98f0dbae1308bb8ca5909e3",
+    "fileHashesChecked": 17,
+    "semanticFieldsUnchanged": []
+  },
+  "derivedDigests": [
+    {
+      "oracle": "permit",
+      "derivedCanonicalDeclarationDigest": "31d24a2955a8be32d29cf145722cb1972c6e9581c1f10cb4c610eaa10e78aab2"
+    },
+    {
+      "oracle": "offenses",
+      "derivedCanonicalDeclarationDigest": "42b45b38f41f0370f5bba6ecf09678465a644b4f422bb976684f5ba710a0be2c"
+    }
+  ],
+  "nodeBinaryHashChecked": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108"
+}

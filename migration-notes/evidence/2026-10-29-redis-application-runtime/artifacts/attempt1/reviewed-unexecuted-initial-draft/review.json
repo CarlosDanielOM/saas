@@ -1,0 +1,8 @@
+{
+  "executed": false,
+  "findings": [
+    "Mutex-await initializer gives concurrentwaiters independentretry afterfirstfailure unlikeactualsource sharedPromise.",
+    "Caller cancellationrestartsnativeinitialization unlikeactualsource Promisecontinuation."
+  ],
+  "resolution": "Authoring runtime-ownedsharedflight; willvalidateupdatedcandidate."
+}

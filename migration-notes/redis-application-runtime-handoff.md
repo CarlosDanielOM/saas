@@ -1,0 +1,20 @@
+# Redis application runtime handoff
+
+The implementation and accepted verification are recorded in [the dated note](redis-application-runtime-2026-10-29.md). Accepted code: `8d278890`; frozen source-tree SHA-256 `48aee6a62657916c8864f12be863214e5af61737dfec4f6fdb4cf950056b7739`, 1,353 inputs.
+
+## Passed receipts
+
+- Node source-oracle and reference-regeneration run `1793318109381474999`: passed. Runtime fixture `58533607bf518a85e37df0a05e0fc5ac9356239bb98f0dbae1308bb8ca5909e3` was identical in write/check modes. Permit and offenses references were regenerated without semantic-field changes. Independent readback checked 59 file-hash entries across the three fixture sets (some entries repeat) and separately checked the pinned Node binary.
+- Focused compiler run `1793318109387466453`: passed runtime-only and combined permit/offenses formatting, checks, and Clippy.
+- Compiler-fixtures run `1793318149837990834`: passed the six fresh child probes, including the private Redis read-only case, shared runtime, shutdown, retry, cancellation, and default-store instrumentation.
+- Final compiler-fixtures run `1793318201251403369`: passed. One ordinary permit test and one ordinary offenses test, both source replays, three library context tests, and both private Redis suites passed. No-feature, Mongo/Redis, all-features/all-targets checks, and all Clippy checks passed. The final receipt confirms production unchanged; the final readback records 19 unchanged production records and zero remaining owned resources. Phase duration was 127.038 seconds and total elapsed time 136.461 seconds; the capped run's minimum available memory was 7,431,737,344 bytes and peak cache was 5,399,449,600 bytes. These are run conditions, not performance measurements.
+
+## Review notes
+
+The first compiler attempt failed with E0716 because temporary `CLIENT` command values did not live through the joined query. The correction keeps them alive. A warning about `guard.done` led to explicitly dropping the whole RAII guard inside the spawned task, preserving its destructor. The first source-oracle attempt failed because two microtask turns were insufficient for cross-realm Promise adoption; the corrected fixture waits one event-loop turn with `setImmediate`. The corrected frozen candidate passed the receipts above.
+
+Two earlier no-op format driver runs did not invoke a formatter and are not verification. The explicit formatting step in the focused compiler receipt passed. A separate format launch was refused before creating task resources by the 8 GiB startup headroom guard; exact available memory was not recorded, and application code did not run. These operational events are distinct from the corrected compiler/oracle failures.
+
+The runtime's shared initialization, owned continuation, retry, shutdown, and telemetry startup are verified for `PermitStore::connect` and `OffenseStore::connect`. The native `getDragonflyClient` proxy behavior for other methods and callers remains open. Other gaps include process RSS/CPU/V8 measurements, dropped-runtime telemetry, logging and suppression, Redis SDK connection events, exporter environment refresh, robust native service identity, and a native telemetry-gate-change test. The runtime must stay on one long-lived Tokio runtime. TypeScript application callers remain unadopted; adoption is reported separately from dependency completeness. This is one reviewed partial row, not a 100% migration claim. No archive, production deployment, push, or performance result is claimed.
+
+Pacing review: retain the existing ten-second exporter aggregation interval and five-second Redis initialization deadline. The two-second held `PING` and bounded cancellation/shutdown deadlines are fixture controls for in-flight I/O, not delays inserted ahead of ready production work. The evidence index is retained at [`evidence/2026-10-29-redis-application-runtime/README.md`](evidence/2026-10-29-redis-application-runtime/README.md); this handoff does not claim its contents were independently reviewed.

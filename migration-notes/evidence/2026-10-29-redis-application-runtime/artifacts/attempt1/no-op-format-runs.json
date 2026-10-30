@@ -1,0 +1,8 @@
+{
+  "runs": [
+    "format-1793317903471560505",
+    "format-1793317955169396329"
+  ],
+  "classification": "driver environment startup succeeded but caller omitted --script and default true executed; NOT formatter verification",
+  "replacement": "rerun explicit cargo fmt --all"
+}

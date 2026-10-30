@@ -1,0 +1,262 @@
+{
+  "format": 1,
+  "nodeSha": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "versions": {
+    "node": "24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "icu": "78.3",
+    "unicode": "17.0",
+    "typescript": "5.9.3"
+  },
+  "hashes": {
+    "src/utils/databases/dragonfly.database.ts": "0d08dd4cdb931633473227fb59f043251b7be59a09a034ef6f392e0f64aebe9c",
+    "src/utils/observability/telemetry.ts": "44c9a71e5699abf9ef49242beaf8b883bbc9825e977de29e371011912ce52c2b",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "Cargo.toml": "b07d5dbaf960b9dc9a7acc1675ae1271cebbf67bd924e388863fa6bcb489d647",
+    "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+    "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2",
+    "tests/fixtures/redis_application_runtime_reference.cjs": "5a58979aa64ba9eecb7e71057d4433be102782c6c53c5a97fd6964b8e1acb7ce",
+    "src/utils/redis_application_runtime.rs": "df0cbeb39490ad507dc5ba30e8173c335f4f5b37707a7a06a04d5a61b76a1a98",
+    "src/utils/databases/dragonfly.database.rs": "6a6c4b95c2ee59b57ce041fbe25882d8d73a95946661d1ba32539ec31695cd46",
+    "src/utils/observability/mod.rs": "1ab14ed519a0a09d070ab7e114de85b9dfc3eca096921f7f24b9190afaaefea3",
+    "src/utils/moderation/permit.rs": "3e15a61716b89fd564547168f599a131b4e800bb20bd7bcb9626d51150af7731",
+    "src/utils/moderation/offenses.rs": "9ffd95e9ea8dbd3718d38dbdff237dab96a71d32440cde840dfbc9eec139b680",
+    "tests/redis_application_runtime.rs": "da90c0360ce7cb80e44ba6e090a743f5b9f67284ad8c11103b5fe8d07b26b149",
+    "tests/ai_credit_projection_support/mod.rs": "d0045dee88f4e2162f5201178b515254826dfa40625d5a465490e6de8bf92cbb",
+    "typescript-js": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "typescript-package": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6"
+  },
+  "sourceFiles": {
+    "src/utils/databases/dragonfly.database.ts": "0d08dd4cdb931633473227fb59f043251b7be59a09a034ef6f392e0f64aebe9c",
+    "src/utils/observability/telemetry.ts": "44c9a71e5699abf9ef49242beaf8b883bbc9825e977de29e371011912ce52c2b"
+  },
+  "compiled": {
+    "src/utils/databases/dragonfly.database.ts": "f9da626a96d5d747eae0d63c0f33d2b88519edccdea8a1bf3f2f80100dd4cb72",
+    "src/utils/observability/telemetry.ts": "9032f380890c61ffc7315a57cb525da6cf39d59b2f31d032bad90a429c6ecdde"
+  },
+  "astEvidence": {
+    "src/utils/databases/dragonfly.database.ts": {
+      "imports": [
+        {
+          "module": "../observability/telemetry.js",
+          "typeOnly": false
+        },
+        {
+          "module": "redis",
+          "typeOnly": false
+        },
+        {
+          "module": "redis",
+          "typeOnly": true
+        }
+      ],
+      "exports": [
+        "getDragonflyClient"
+      ]
+    },
+    "src/utils/observability/telemetry.ts": {
+      "imports": [
+        {
+          "module": "node:async_hooks",
+          "typeOnly": false
+        },
+        {
+          "module": "node:crypto",
+          "typeOnly": false
+        },
+        {
+          "module": "node:perf_hooks",
+          "typeOnly": false
+        },
+        {
+          "module": "node:path",
+          "typeOnly": false
+        },
+        {
+          "module": "redis",
+          "typeOnly": false
+        },
+        {
+          "module": "express",
+          "typeOnly": true
+        }
+      ],
+      "exports": [
+        "LATENCY_BOUNDS",
+        "TELEMETRY_INBOX",
+        "TraceContext",
+        "startTelemetry",
+        "observe",
+        "telemetryContext",
+        "bindChannel",
+        "traceOutcome",
+        "restoreContext",
+        "beginSpan",
+        "traced",
+        "recordLog",
+        "httpTelemetry",
+        "instrumentFetch",
+        "flushTelemetry",
+        "telemetryTesting"
+      ]
+    }
+  },
+  "cases": {
+    "disabledFirst": {
+      "initial": {
+        "clients": 1,
+        "intervals": 0,
+        "intervalMs": [],
+        "metric": []
+      },
+      "after": {
+        "clients": 1,
+        "intervals": 0,
+        "intervalMs": [],
+        "metric": []
+      },
+      "same": true
+    },
+    "activeFirst": {
+      "initial": {
+        "clients": 1,
+        "intervals": 1,
+        "intervalMs": [
+          10000
+        ],
+        "metric": []
+      },
+      "after": {
+        "clients": 1,
+        "intervals": 1,
+        "intervalMs": [
+          10000
+        ],
+        "metric": [
+          {
+            "kind": "cache",
+            "name": "get",
+            "outcome": "ok",
+            "count": 1,
+            "sum": 0
+          },
+          {
+            "kind": "cache_lookup",
+            "name": "get",
+            "outcome": "miss",
+            "count": 1,
+            "sum": 0
+          }
+        ]
+      },
+      "same": true
+    },
+    "concurrent": {
+      "clients": 1,
+      "sameHandle": true,
+      "intervals": 1
+    },
+    "retry": {
+      "failure": "fixture failure",
+      "clients": 2,
+      "intervals": 1
+    },
+    "failedConcurrent": {
+      "clientsBeforeRetry": 1,
+      "bothRejected": true,
+      "sameErrorIdentity": true,
+      "messages": [
+        "shared fixture failure",
+        "shared fixture failure"
+      ],
+      "intervalsBeforeRetry": 0,
+      "clientsAfterRetry": 2,
+      "intervalsAfterRetry": 1
+    },
+    "abandoned": {
+      "before": {
+        "clients": 1,
+        "intervals": 0,
+        "intervalMs": [],
+        "metric": []
+      },
+      "after": {
+        "clients": 1,
+        "intervals": 1,
+        "intervalMs": [
+          10000
+        ],
+        "metric": []
+      },
+      "rejoined": true
+    },
+    "gating": [
+      {
+        "label": "disabled-true",
+        "clients": 0,
+        "intervals": 0,
+        "intervalMs": [],
+        "metric": []
+      },
+      {
+        "label": "disabled-false",
+        "clients": 0,
+        "intervals": 1,
+        "intervalMs": [
+          10000
+        ],
+        "metric": []
+      },
+      {
+        "label": "disabled-upper",
+        "clients": 0,
+        "intervals": 1,
+        "intervalMs": [
+          10000
+        ],
+        "metric": []
+      },
+      {
+        "label": "disabled-empty",
+        "clients": 0,
+        "intervals": 1,
+        "intervalMs": [
+          10000
+        ],
+        "metric": []
+      },
+      {
+        "label": "host-empty",
+        "clients": 0,
+        "intervals": 0,
+        "intervalMs": [],
+        "metric": []
+      },
+      {
+        "label": "host-missing",
+        "clients": 0,
+        "intervals": 0,
+        "intervalMs": [],
+        "metric": []
+      }
+    ],
+    "sourceOnlyLogs": {
+      "connect": [
+        [
+          "Connected to DragonFlyDB from first"
+        ]
+      ],
+      "errors": [
+        [
+          "Error connecting to DragonFlyDB from first",
+          "Error: Error: fixture issue"
+        ],
+        [
+          "Error connecting to DragonFlyDB from first (suppressed 1 similar errors in last 30s)",
+          "Error: Error: fixture issue"
+        ]
+      ]
+    }
+  }
+}

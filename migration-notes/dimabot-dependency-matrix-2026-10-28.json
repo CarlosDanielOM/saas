@@ -79569,23 +79569,51 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-partial-native-application-cache-runtime-and-selected-store-telemetry; full-TypeScript-wrapper-parity-and-broader-callers-remain-open",
+      "localRustEvidence": [
+        "dimabot/src/utils/databases/dragonfly.database.rs: concrete global get_redis_client and shared Redis/Dragonfly ConnectionManager with bounded initial connect/PING",
+        "dimabot/src/utils/redis_application_runtime.rs: opt-in ApplicationCacheRuntime owns one initialization flight, shares success/failure, continues independently of waiter cancellation, retries failed initialization, and shuts down the exporter explicitly",
+        "dimabot/src/utils/moderation/permit.rs and dimabot/src/utils/moderation/offenses.rs: both default store connect paths acquire the shared application runtime and attach its Telemetry handle",
+        "dimabot/tests/redis_application_runtime.rs: six isolated child probes for real-fixture disabled telemetry, shutdown, shared initialization, both default stores, retry, and waiter cancellation",
+        "migration-notes/redis-application-runtime-2026-10-29.md: scope, compatibility gaps, and accepted verification",
+        "migration-notes/evidence/2026-10-29-redis-application-runtime/README.md: indexed evidence location; package verification is tracked separately"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native base connection provider is get_redis_client; the opt-in global redis_application_runtime::acquire adds a shared initialization result and application-owned telemetry lifecycle. It is not a full method-proxy replacement for getDragonflyClient across its other TypeScript callers.",
+        "Concurrent native callers share one pending connection result. Waiter cancellation does not cancel the leader, failed initialization permits retry, and explicit shutdown aborts pending initialization or flushes the active exporter. PermitStore and OffenseStore are the only application stores wired to this owner.",
+        "Native telemetry starts once after successful manager initialization. Runtime RSS/CPU/V8 metrics, dropped-runtime metric, connection/error logging and suppression, Redis SDK connection events, exporter endpoint refresh, and robust source-compatible service identity remain open. The native service label is inferred from the executable name."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/permit.ts and src/utils/moderation/offenses.ts use the TypeScript getDragonflyClient wrapper; these native store connect paths now use redis_application_runtime::acquire",
+          "Other TypeScript utilities, handlers, functions, and workers continue to use getDragonflyClient; full caller replacement/adoption is outside this bounded runtime mapping"
+        ],
+        "runtimeStatus": "The two native store connect paths use the shared owner. Broader TypeScript callers remain live and unadopted; caller adoption is tracked separately."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/databases/dragonfly.database.ts",
+          "src/utils/observability/telemetry.ts"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/redis_application_runtime.rs",
+          "tests/moderation_permit_redis.rs",
+          "tests/moderation_offenses_redis.rs",
+          "migration-notes/redis-application-runtime-2026-10-29.md"
+        ],
+        "status": "The source oracle/regeneration passed in Node run 1793318109381474999. Six private child probes passed in compiler-fixtures run 1793318149837990834. Final run 1793318201251403369 passed the permit/offense ordinary tests, both source replays, three library context tests, both private Redis suites, and strict feature/profile checks. Final production readback recorded 19 unchanged records and zero owned resources."
       },
       "exports": [
         {
           "name": "getDragonflyClient",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Partial mapping: base connection uses get_redis_client; selected native PermitStore::connect and OffenseStore::connect callers use redis_application_runtime::{acquire, shutdown} and the shared Telemetry lifecycle. This does not replace the full getDragonflyClient proxy for other methods and callers.",
+          "evidence": [
+            "dimabot/src/utils/redis_application_runtime.rs",
+            "dimabot/src/utils/databases/dragonfly.database.rs",
+            "dimabot/src/utils/moderation/permit.rs",
+            "dimabot/src/utils/moderation/offenses.rs",
+            "dimabot/tests/redis_application_runtime.rs"
+          ]
         }
       ],
       "imports": [
@@ -79602,12 +79630,12 @@
           "baselineSourceTargets": [
             "src/utils/observability/telemetry.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import of the TypeScript global telemetry wrapper",
+          "runtimeOrTypeDependency": "Runtime telemetry lifecycle, metrics, and logging wrapper dependency.",
+          "defaultSideEffectBarrelDetails": "The TypeScript wrapper owns telemetry and proxy instrumentation; the bounded native runtime starts one shared TelemetryTask for selected native stores but does not reproduce the whole wrapper.",
+          "directDependencyReview": "Reviewed partial. Native Telemetry and TelemetryTask are reused by the opt-in application runtime.",
+          "transitiveDependencyReview": "Partial/open. Shared initialization and selected cache operation telemetry are verified; process metrics, logging/suppression, SDK events, and exporter environment refresh remain missing.",
+          "rustReplacementOrGap": "Native redis_application_runtime starts and shares telemetry for the permit and offenses stores. Full telemetry wrapper behavior and broader getDragonflyClient callers remain open."
         },
         {
           "ordinal": 1,
@@ -79615,15 +79643,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import of redis client and ConnectionManager APIs",
+          "runtimeOrTypeDependency": "Redis client/manager transport and cache command wrapper dependency.",
+          "defaultSideEffectBarrelDetails": "The TypeScript module constructs a shared Redis client and proxies selected commands. Native get_redis_client supplies the shared ConnectionManager; the application runtime owns its shared initialization flight.",
+          "directDependencyReview": "Reviewed partial. The existing redis crate provides concrete client/manager behavior; no new crate dependency was added.",
+          "transitiveDependencyReview": "Partial/open. Concrete manager acquisition, shared result delivery, retries, shutdown, and selected-store instrumentation are verified; the full method proxy and all callers remain open.",
+          "rustReplacementOrGap": "Concrete base manager plus opt-in application runtime is implemented. Full getDragonflyClient proxy parity, application-wide adoption, runtime/process observability, and logging remain open."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-application-runtime-and-selected-store-telemetry-verified; full-TypeScript-wrapper-proxy-process-observability-and-broader-caller-adoption-remain-open"
     },
     {
       "source": "src/utils/databases/mongodb.database.ts",
@@ -87086,26 +87114,27 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "reviewed-bounded-partial-offense-source-and-native-store; global telemetry/process metrics, connection-event logging, and TypeScript caller adoption remain open",
+      "featureReview": "reviewed-bounded-partial-offense-source-and-native-store; shared-application-cache-bootstrap-and-selected-store-telemetry-verified; process-metrics-logging-and-TypeScript-caller-adoption-remain-open",
       "localRustEvidence": [
         "dimabot/src/utils/moderation/offenses.rs: typed offense keys and window formatting, borrowed escalation ladder, OffenseStore with exact Lua and separate INCR/EXPIRE paths, concrete shared connection acquisition, and cancellation/context-preserving operation",
-        "dimabot/src/utils/databases/dragonfly.database.rs: concrete shared Redis/Dragonfly ConnectionManager used by the native default acquisition path",
-        "dimabot/src/utils/observability/mod.rs: explicit native Telemetry used only when supplied to OffenseStore::with_telemetry",
+        "dimabot/src/utils/databases/dragonfly.database.rs and dimabot/src/utils/redis_application_runtime.rs: concrete shared Redis/Dragonfly ConnectionManager, result-sharing application owner, owned initialization continuation, and explicit telemetry lifecycle used by the default permit/offenses stores",
+        "dimabot/src/utils/observability/mod.rs and dimabot/src/utils/redis_application_runtime.rs: shared Telemetry handle and exporter task; OffenseStore receives it through the application runtime",
         "migration-notes/moderation-offenses-2026-10-29.md: source contract, private Dragonfly behavior, startup guard, accepted validation, and dependency gaps",
-        "migration-notes/evidence/2026-10-29-moderation-offenses/README.md: source-bound accepted Node/compiler/fixture runs, private Dragonfly evidence, production identity, and resource cleanup"
+        "migration-notes/evidence/2026-10-29-moderation-offenses/README.md: source-bound accepted Node/compiler/fixture runs, private Dragonfly evidence, production identity, and resource cleanup",
+        "migration-notes/redis-application-runtime-2026-10-29.md: accepted runtime-bootstrap integration checks and named remaining gaps"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "The native API is typed around JsString and f64. JsString preserves UTF-16 units through key construction and converts to UTF-8 with Node-compatible replacement at the Redis boundary; arbitrary JavaScript casts and coercion hooks are outside this contract.",
         "The typed offense ladder borrows the three selected fields and preserves the source comparison branches, including fractional values and NaN, returning the selected field by identity. It can use the existing Arc<Mutex<_>> fields without importing Mongo runtime behavior.",
         "For nonempty decision IDs, native code runs the exact source Lua script with a global one-day receipt; otherwise it issues separate INCR and EXPIRE commands and expires only when the decoded JavaScript-number count equals one. An empty decision ID uses the no-receipt path. Window formatting follows floor then a 60-second minimum.",
         "The native path adds no automatic mutation retry. Redis/script errors can happen after earlier mutations; a lost INCR reply can leave an increment without expiry. Once polled, the operation continues after caller cancellation and preserves telemetry context; default connection acquisition may be cancelled before the operation is spawned.",
-        "The source wrapper starts global telemetry/process instrumentation and logs connection/error events with per-caller suppression. The native default does not bootstrap global telemetry/process metrics or connection-event logging; explicit telemetry covers EVAL only, while source INCR/EXPIRE are not wrapped. Native Redis errors do not claim source JavaScript error-object parity."
+        "The native shared application runtime now starts and shares one Telemetry handle after successful cache initialization; OffenseStore::connect uses it for EVAL telemetry. Runtime RSS/CPU/V8 metrics, dropped-runtime metric, connection/error logging and suppression, Redis SDK connection events, exporter endpoint refresh, and robust native service identity remain open. The TypeScript moderation handler remains live and unadopted; broader caller adoption is tracked separately."
       ],
       "callers": {
         "sourceEvidence": [
           "src/handlers/moderation.handler.ts: still imports recordOffense and resolveOffenseStep; records the offense decision and selects the consequence step"
         ],
-        "runtimeStatus": "Unadopted. The moderation handler continues to call the live TypeScript module; no Rust application caller or wrapper integration is present."
+        "runtimeStatus": "The native OffenseStore::connect path uses the shared application runtime and selected telemetry. The TypeScript moderation handler still calls the live module; caller adoption is tracked separately."
       },
       "testEvidence": {
         "sourceEvidence": [
@@ -87182,14 +87211,14 @@
             "src/utils/databases/dragonfly.database.ts"
           ],
           "importSyntaxKind": "named runtime import of getDragonflyClient",
-          "runtimeOrTypeDependency": "Runtime Redis client, telemetry, metrics, and connection/error logging dependency.",
-          "defaultSideEffectBarrelDetails": "getDragonflyClient owns shared client initialization, starts global telemetry after connection, wraps selected commands, observes GET/HGET outcomes, and installs caller-specific connect/error event logging with suppression. In this source, EVAL is wrapped; INCR and EXPIRE are not.",
-          "directDependencyReview": "Reviewed partial. Native OffenseStore::connect acquires the concrete shared Redis/Dragonfly ConnectionManager through get_redis_client; no mock or trait is used as the default adapter.",
-          "transitiveDependencyReview": "Partial/open. Explicit with_telemetry instruments EVAL; native default acquisition does not reproduce global telemetry/process metrics or the source connection/error event logging and suppression.",
-          "rustReplacementOrGap": "Concrete native Redis/Dragonfly commands and opt-in EVAL telemetry are present. Default global telemetry/process metrics and connection-event logging remain missing; no Rust application caller is integrated."
+          "runtimeOrTypeDependency": "Runtime shared Redis/Dragonfly client plus application cache initialization and selected telemetry lifecycle.",
+          "defaultSideEffectBarrelDetails": "The native shared runtime now owns connection result sharing, leader continuation, retry, exporter startup, and explicit shutdown for PermitStore and OffenseStore. It does not fully proxy every source wrapper method or route TypeScript callers.",
+          "directDependencyReview": "Reviewed partial. Native OffenseStore::connect uses the concrete shared adapter from get_redis_client and redis_application_runtime.",
+          "transitiveDependencyReview": "Partial/open. Shared bootstrap and selected store telemetry are verified; runtime/process metrics, logging/suppression, SDK events, exporter endpoint refresh, and broader application callers remain open.",
+          "rustReplacementOrGap": "The former blanket global-bootstrap gap is closed for the selected native stores. The full getDragonflyClient method proxy and other callers are not integrated; named process observability and exporter parity gaps remain."
         }
       ],
-      "rowAssessment": "partial-local-offense-source-and-concrete-native-redis-adapter-verified; global-telemetry/process-metrics/connection-event-logging and TypeScript-caller-adoption remain open"
+      "rowAssessment": "partial-local-offense-source-and-shared-application-bootstrap-with-selected-telemetry-verified; process-observability-gaps-and-TypeScript-caller-adoption-remain-open"
     },
     {
       "source": "src/utils/moderation/permit_offenses.test.ts",
@@ -87314,26 +87343,27 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "reviewed-bounded-partial-permit-source-and-native-store; global runtime telemetry/process metrics, connection-event logging, and TypeScript caller adoption remain open",
+      "featureReview": "reviewed-bounded-partial-permit-source-and-native-store; shared-application-cache-bootstrap-and-selected-store-telemetry-verified; process-metrics-logging-and-TypeScript-caller-adoption-remain-open",
       "localRustEvidence": [
         "dimabot/src/utils/moderation/permit.rs: typed normalization, parsing, constants, user/channel keys, grant planning, concurrent active-permit reads, PermitStore, and default exports",
-        "dimabot/src/utils/databases/dragonfly.database.rs: concrete shared Redis/Dragonfly ConnectionManager acquisition from DRAGONFLY_HOST/DRAGONFLY_PORT with bounded initial connect/PING; no cache telemetry wrapper",
-        "dimabot/src/utils/observability/mod.rs: explicit native Telemetry operations used only when supplied to PermitStore::with_telemetry",
+        "dimabot/src/utils/databases/dragonfly.database.rs and dimabot/src/utils/redis_application_runtime.rs: concrete shared Redis/Dragonfly ConnectionManager, result-sharing application owner, owned initialization continuation, and explicit telemetry lifecycle used by the default permit/offenses stores",
+        "dimabot/src/utils/observability/mod.rs and dimabot/src/utils/redis_application_runtime.rs: shared Telemetry handle and exporter task; PermitStore receives it through the application runtime",
         "migration-notes/moderation-permit-2026-10-29.md: source contract, context correction, isolated Redis behavior, remaining dependency gaps, and accepted evidence",
-        "migration-notes/evidence/2026-10-29-moderation-permit-retirement/README.md: source-bound accepted compiler, Node, fixture, private Redis, production-identity, and cleanup evidence"
+        "migration-notes/evidence/2026-10-29-moderation-permit-retirement/README.md: source-bound accepted compiler, Node, fixture, private Redis, production-identity, and cleanup evidence",
+        "migration-notes/redis-application-runtime-2026-10-29.md: accepted runtime-bootstrap integration checks and named remaining gaps"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "The native typed API preserves the source behavior for string arguments and models optional login as None (null/undefined); empty login selects the channel-wide key. Arbitrary invalid JavaScript casts, custom coercion hooks, and non-string arguments are outside this API contract.",
         "Duration parsing preserves the source ASCII-digit/range decisions, including very long digit strings that overflow JavaScript parseInt to Infinity; values above 600 use the same out-of-range branch.",
         "The native default exports acquire the shared concrete Redis/Dragonfly manager and implement SET key value EX seconds and concurrent user/channel GET operations. The shared manager has a five-second initial connect/PING bound and no per-command timeout; no application retry is added for an uncertain SET.",
-        "The TypeScript wrapper starts global telemetry, instruments cache calls and successful GET hit/miss outcomes, and logs connect/error events with caller-specific suppression. Native operation telemetry is opt-in; the default path does not reproduce process telemetry/metrics bootstrap or connection-event logging. The source runtime wrapper therefore remains a missing application-specific dependency."
+        "The native shared application runtime now starts and shares one Telemetry handle after successful cache initialization; PermitStore::connect uses it for selected cache-operation metrics. Runtime RSS/CPU/V8 metrics, dropped-runtime metric, connection/error logging and suppression, Redis SDK connection events, exporter endpoint refresh, and robust native service identity remain open. TypeScript permit callers remain live and unadopted; broader caller adoption is tracked separately."
       ],
       "callers": {
         "sourceEvidence": [
           "src/utils/ast_parser/functions/moderation.functions.ts: parses permit command arguments and calls grantPermit",
           "src/handlers/moderation.handler.ts: calls hasActivePermit from moderation paths"
         ],
-        "runtimeStatus": "Unadopted; TypeScript permit source and both caller paths remain live. No Rust application caller or wrapper adapter is integrated."
+        "runtimeStatus": "The native PermitStore::connect path uses the shared application runtime and selected telemetry. TypeScript permit source and its parser/handler callers remain live and unadopted; caller adoption is tracked separately."
       },
       "testEvidence": {
         "sourceEvidence": [
@@ -87461,14 +87491,14 @@
             "src/utils/databases/dragonfly.database.ts"
           ],
           "importSyntaxKind": "named-runtime-import",
-          "runtimeOrTypeDependency": "Runtime import of getDragonflyClient from src/utils/databases/dragonfly.database.ts; the wrapper uses redis and telemetry at runtime.",
-          "defaultSideEffectBarrelDetails": "The import itself has no side-effect form. Calling getDragonflyClient starts global telemetry, wraps cache operations with spans and GET hit/miss metrics, and installs caller-specific connect/error logging.",
-          "directDependencyReview": "Reviewed. A concrete native Redis/Dragonfly ConnectionManager and default acquisition path exist in dimabot/src/utils/databases/dragonfly.database.rs; the source wrapper is only partially replaced.",
-          "transitiveDependencyReview": "Partial/open. Native shared connection acquisition and explicit opt-in operation telemetry exist. Default global telemetry/process metrics and wrapper connection-event logging with caller suppression remain missing.",
-          "rustReplacementOrGap": "Native get_redis_client provides concrete host/port parsing, shared connection acquisition, and bounded initial PING. PermitStore::with_telemetry provides opt-in spans and GET hit/miss observations; no default telemetry bootstrap, process metrics, connection/error event logging, or Rust caller adoption is integrated."
+          "runtimeOrTypeDependency": "Runtime shared Redis/Dragonfly client plus application cache initialization and selected telemetry lifecycle.",
+          "defaultSideEffectBarrelDetails": "The native shared runtime now owns connection result sharing, leader continuation, retry, exporter startup, and explicit shutdown for PermitStore and OffenseStore. It does not fully proxy every source wrapper method or route TypeScript callers.",
+          "directDependencyReview": "Reviewed partial. Native get_redis_client and redis_application_runtime provide a concrete shared adapter used by PermitStore::connect.",
+          "transitiveDependencyReview": "Partial/open. Shared bootstrap and selected store telemetry are verified; runtime/process metrics, logging/suppression, SDK events, exporter endpoint refresh, and broader application callers remain open.",
+          "rustReplacementOrGap": "The former blanket global-bootstrap gap is closed for the selected native stores. The full getDragonflyClient method proxy and other callers are not integrated; named process observability and exporter parity gaps remain."
         }
       ],
-      "rowAssessment": "partial-local-permit-source-behavior-and-concrete-native-redis-adapter-verified; global-telemetry/process-metrics/connection-event-logging and TypeScript-caller-adoption remain open"
+      "rowAssessment": "partial-local-permit-source-and-shared-application-bootstrap-with-selected-telemetry-verified; process-observability-gaps-and-TypeScript-caller-adoption-remain-open"
     },
     {
       "source": "src/utils/moderation/rules/blacklist.rule.ts",
