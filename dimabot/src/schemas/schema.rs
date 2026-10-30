@@ -243,7 +243,122 @@ impl From<mongodb::error::Error> for PersistenceError {
         Self::Mongo(e)
     }
 }
+/// Failure of the deliberately bounded flat upsert insert preparation.
+#[derive(Debug)]
+pub enum FlatInsertError {
+    Unsupported(&'static str),
+    Cast(ValidationErrors),
+}
+impl fmt::Display for FlatInsertError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unsupported(reason) => f.write_str(reason),
+            Self::Cast(errors) => errors.fmt(f),
+        }
+    }
+}
+impl std::error::Error for FlatInsertError {}
+
 impl SchemaDefinition {
+    /// Cast a flat `$setOnInsert` and add unmodified defaults for an upsert.
+    /// `filter` contains only flat equality predicates; other update operators,
+    /// schema timestamps, version keys, nested paths and subdocuments are outside
+    /// this contract. No validators, minimization, or save middleware run.
+    pub fn cast_flat_set_on_insert(
+        &self,
+        filter: &Document,
+        insert: &Document,
+        now: DateTime,
+    ) -> Result<Document, FlatInsertError> {
+        if self.version_key || self.timestamps.is_some() || !self.string_id {
+            return Err(FlatInsertError::Unsupported(
+                "implicit schema paths are unsupported",
+            ));
+        }
+        for (key, value) in filter.iter().chain(insert.iter()) {
+            if key.contains('.') || key.starts_with('$') {
+                return Err(FlatInsertError::Unsupported(
+                    "dotted and operator paths are unsupported",
+                ));
+            }
+            let _ = value;
+        }
+        if filter
+            .values()
+            .any(|value| matches!(value, Bson::Document(d) if d.keys().any(|k| k.starts_with('$'))))
+        {
+            return Err(FlatInsertError::Unsupported(
+                "filter operators are unsupported",
+            ));
+        }
+        for field in &self.fields {
+            if field.name.contains('.')
+                || !matches!(
+                    &field.kind,
+                    FieldType::String
+                        | FieldType::Number
+                        | FieldType::Boolean
+                        | FieldType::Date
+                        | FieldType::Mixed
+                ) && !matches!(&field.kind, FieldType::Array(element) if matches!(element.as_ref(), FieldType::Mixed))
+            {
+                return Err(FlatInsertError::Unsupported(
+                    "only flat scalar, Mixed and Array<Mixed> fields are supported",
+                ));
+            }
+        }
+        if filter
+            .values()
+            .chain(insert.values())
+            .any(|v| matches!(v, Bson::Undefined))
+        {
+            return Err(FlatInsertError::Unsupported(
+                "BSON undefined is unsupported",
+            ));
+        }
+        // castUpdate walks update keys backwards, but updates the original object
+        // in place. Preserve its order while reporting the first cast error.
+        let mut casted = Document::new();
+        let mut errors = Vec::new();
+        let entries: Vec<_> = insert.iter().collect();
+        for (key, value) in entries.into_iter().rev() {
+            if let Some(field) = self.fields.iter().find(|field| field.name == key) {
+                if let Some(value) = cast_field(field, value.clone(), now, field.name, &mut errors)
+                {
+                    casted.insert(key, value);
+                }
+                if !errors.is_empty() {
+                    return Err(FlatInsertError::Cast(ValidationErrors(errors)));
+                }
+            }
+        }
+        let mut output = Document::new();
+        for key in insert.keys() {
+            if let Some(value) = casted.remove(key) {
+                output.insert(key, value);
+            }
+        }
+        // Mongoose's castUpdate copies a nonempty filter when no update keys
+        // survive strict casting. It does so without casting these values here.
+        if output.is_empty() && !filter.is_empty() {
+            output.extend(filter.clone());
+        }
+        for field in &self.fields {
+            if output.contains_key(field.name) || filter.contains_key(field.name) {
+                continue;
+            }
+            if let Some(value) = resolve_default(&field.default, now)
+                && let Some(value) = cast_field(field, value, now, field.name, &mut errors)
+            {
+                output.insert(field.name, value);
+            }
+        }
+        if errors.is_empty() {
+            Ok(output)
+        } else {
+            Err(FlatInsertError::Cast(ValidationErrors(errors)))
+        }
+    }
     /// Match new Model(document) + validate, preserving BSON IDs/dates and
     /// null versus missing. Unknown paths are discarded (source strict mode).
     pub fn construct(&self, input: &Document, now: DateTime) -> Result<Document, ValidationErrors> {
@@ -511,6 +626,30 @@ fn restore_immutable(fields: &[Field], target: &mut Document, current: &Document
     }
 }
 
+fn resolve_default(default: &FieldDefault, now: DateTime) -> Option<Bson> {
+    match default {
+        FieldDefault::Missing => None,
+        FieldDefault::Null => Some(Bson::Null),
+        FieldDefault::String(text) => Some((*text).into()),
+        FieldDefault::Number(value) => Some(crate::utils::bson_compat::js_number(*value)),
+        FieldDefault::Boolean(value) => Some((*value).into()),
+        FieldDefault::Array => Some(Bson::Array(Vec::new())),
+        FieldDefault::Now => Some(Bson::DateTime(now)),
+        FieldDefault::Object => Some(Bson::Document(Document::new())),
+        FieldDefault::Value(value) => Some(value.clone()),
+        FieldDefault::Epoch => Some(Bson::DateTime(DateTime::from_millis(0))),
+        FieldDefault::LocalDay | FieldDefault::LocalMonth | FieldDefault::LocalYear => {
+            local_calendar(now).map(|(year, month, day)| {
+                Bson::Int32(match default {
+                    FieldDefault::LocalDay => day,
+                    FieldDefault::LocalMonth => month,
+                    _ => year,
+                })
+            })
+        }
+    }
+}
+
 fn construct_fields(
     fields: &[Field],
     input: &Document,
@@ -544,24 +683,7 @@ fn construct_fields(
                     }
                     _ => None,
                 },
-                FieldDefault::Null => Some(Bson::Null),
-                FieldDefault::String(text) => Some((*text).into()),
-                FieldDefault::Number(value) => Some(crate::utils::bson_compat::js_number(*value)),
-                FieldDefault::Boolean(value) => Some((*value).into()),
-                FieldDefault::Array => Some(Bson::Array(Vec::new())),
-                FieldDefault::Now => Some(Bson::DateTime(now)),
-                FieldDefault::Object => Some(Bson::Document(Document::new())),
-                FieldDefault::Value(value) => Some(value.clone()),
-                FieldDefault::Epoch => Some(Bson::DateTime(DateTime::from_millis(0))),
-                FieldDefault::LocalDay | FieldDefault::LocalMonth | FieldDefault::LocalYear => {
-                    local_calendar(now).map(|(year, month, day)| {
-                        Bson::Int32(match &field.default {
-                            FieldDefault::LocalDay => day,
-                            FieldDefault::LocalMonth => month,
-                            _ => year,
-                        })
-                    })
-                }
+                _ => resolve_default(&field.default, now),
             },
         };
         let Some(value) = value else {

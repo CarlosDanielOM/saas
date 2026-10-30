@@ -98,6 +98,8 @@ pub mod twitch_reward_body;
 
 #[cfg(feature = "mongo")]
 pub mod bson_compat;
+#[cfg(all(feature = "mongo", feature = "tts-utilities"))]
+pub mod bson_json;
 #[cfg(feature = "mongo")]
 pub mod utc_time;
 #[cfg(any(feature = "mongo", feature = "cron-supervisor"))]

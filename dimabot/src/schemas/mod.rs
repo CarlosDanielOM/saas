@@ -11,6 +11,9 @@ pub mod channel_tts_settings;
 #[cfg(feature = "moderation-spam")]
 #[path = "moderation_chatter.schema.rs"]
 pub mod moderation_chatter;
+#[cfg(feature = "moderation-decision-schema")]
+#[path = "moderation_decision.schema.rs"]
+pub mod moderation_decision;
 #[cfg(feature = "moderation-variation-storage")]
 #[path = "moderation_variation.schema.rs"]
 pub mod moderation_variation;

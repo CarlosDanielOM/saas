@@ -7,7 +7,7 @@ use crate::{
         moderation_variation::{self as schema, generated_variation_to_bson},
     },
     utils::{
-        bson_compat,
+        bson_json::{compiler_bson_json, json_bson},
         js_string::JsString,
         lossless_json::JsonValue,
         moderation::{
@@ -354,7 +354,7 @@ impl VariationJobsService {
                     &variations::build_variation(term, None).map_err(other)?,
                 )
             };
-            let original = bson_json(&raw)?;
+            let original = compiler_bson_json(&raw);
             let compiled = variations::with_variation_spacing_value(&original, allow_spaces, mode)
                 .map_err(other)?;
             let changed = matches!(&compiled, variations::CompiledVariationValue::Shared(_));
@@ -631,22 +631,6 @@ fn duplicate(error: &mongodb::error::Error) -> bool {
     use mongodb::error::{ErrorKind, WriteFailure};
     matches!(error.kind.as_ref(), ErrorKind::Write(WriteFailure::WriteError(e)) if e.code == 11000)
 }
-fn json_bson(value: &JsonValue) -> Bson {
-    match value {
-        JsonValue::Null => Bson::Null,
-        JsonValue::Bool(v) => Bson::Boolean(*v),
-        JsonValue::Number(v) => bson_compat::js_number(*v),
-        JsonValue::String(v) => Bson::String(js(v)),
-        JsonValue::Array(values) => Bson::Array(values.iter().map(json_bson).collect()),
-        JsonValue::Object(fields) => {
-            let mut d = Document::new();
-            for (k, v) in fields {
-                d.insert(js(k), json_bson(v));
-            }
-            Bson::Document(d)
-        }
-    }
-}
 fn spread_usage(target: &mut Document, usage: &JsonValue) {
     match usage {
         JsonValue::Object(fields) => {
@@ -669,29 +653,4 @@ fn spread_usage(target: &mut Document, usage: &JsonValue) {
         }
         _ => {}
     }
-}
-
-// Conversion is used only for the compiler's view; the authoritative mixed
-// BSON document is retained and patched, preserving unknown fields verbatim.
-fn bson_json(value: &Bson) -> Result<JsonValue, JobError> {
-    Ok(match value {
-        Bson::Null => JsonValue::Null,
-        Bson::Boolean(v) => JsonValue::Bool(*v),
-        Bson::Int32(v) => JsonValue::Number(f64::from(*v)),
-        Bson::Int64(v) => JsonValue::Number(*v as f64),
-        Bson::Double(v) => JsonValue::Number(*v),
-        Bson::String(v) => JsonValue::String(v.as_str().into()),
-        Bson::Array(items) => {
-            JsonValue::Array(items.iter().map(bson_json).collect::<Result<_, _>>()?)
-        }
-        Bson::Document(fields) => JsonValue::Object(
-            fields
-                .iter()
-                .map(|(k, v)| Ok((JsString::from(k.as_str()), bson_json(v)?)))
-                .collect::<Result<_, JobError>>()?,
-        ),
-        // Mongo's Date and other BSON objects are retained in the original raw
-        // entry; they have no role in compiler fields.
-        _ => JsonValue::Object(Vec::new()),
-    })
 }
