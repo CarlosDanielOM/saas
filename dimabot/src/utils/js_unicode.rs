@@ -112,6 +112,21 @@ fn ascii_lower(value: &JsString) -> Option<Cow<'_, JsString>> {
     }
 }
 
+// The pinned normalization crate has newer tables than Node. Assigned Unicode
+// 17 runs normalize together; unassigned points and lone surrogates are barriers.
+fn flush_normalization_run(run: &mut String, out: &mut Vec<u16>, compatibility: bool) {
+    let mut push = |c: char| {
+        let mut units = [0; 2];
+        out.extend_from_slice(c.encode_utf16(&mut units));
+    };
+    if compatibility {
+        run.nfkd().for_each(&mut push);
+    } else {
+        run.nfc().for_each(&mut push);
+    }
+    run.clear();
+}
+
 /// ECMAScript `String.prototype.normalize("NFC")` for Unicode 17 and
 /// arbitrary UTF-16, including lone surrogates. The dependency carries newer
 /// tables, so unassigned Unicode 17 scalars and surrogates form barriers.
@@ -156,30 +171,47 @@ pub fn normalize_nfc(value: &JsString) -> Cow<'_, JsString> {
             Cow::Owned(JsString::from(out))
         };
     }
-    fn flush(run: &mut String, out: &mut Vec<u16>) {
-        out.extend(run.nfc().flat_map(|c| {
-            let mut units = [0; 2];
-            let count = c.encode_utf16(&mut units).len();
-            units.into_iter().take(count)
-        }));
-        run.clear();
-    }
     let mut out = Vec::with_capacity(value.len());
     let mut run = String::new();
     for point in char::decode_utf16(value.code_units()) {
         match point {
             Ok(c) if contains(ASSIGNED_RANGES, c as u32) => run.push(c),
             Ok(c) => {
-                flush(&mut run, &mut out);
+                flush_normalization_run(&mut run, &mut out, false);
                 push_point(&mut out, c as u32);
             }
             Err(e) => {
-                flush(&mut run, &mut out);
+                flush_normalization_run(&mut run, &mut out, false);
                 out.push(e.unpaired_surrogate());
             }
         }
     }
-    flush(&mut run, &mut out);
+    flush_normalization_run(&mut run, &mut out, false);
+    result(value, out)
+}
+
+/// ECMAScript NFKD using the same Unicode 17 assignment barriers as NFC.
+/// Unchanged text, including ASCII and unpaired-surrogate inputs, is borrowed.
+pub fn normalize_nfkd(value: &JsString) -> Cow<'_, JsString> {
+    if value.as_str().is_some_and(str::is_ascii) {
+        return Cow::Borrowed(value);
+    }
+    let mut out = Vec::with_capacity(value.len());
+    let mut run = String::new();
+    for point in char::decode_utf16(value.code_units()) {
+        match point {
+            Ok(c) if c.is_ascii() || contains(ASSIGNED_RANGES, c as u32) => run.push(c),
+            Ok(c) => {
+                flush_normalization_run(&mut run, &mut out, true);
+                push_point(&mut out, c as u32);
+            }
+            Err(e) => {
+                flush_normalization_run(&mut run, &mut out, true);
+                out.push(e.unpaired_surrogate());
+            }
+        }
+    }
+    flush_normalization_run(&mut run, &mut out, true);
     result(value, out)
 }
 
