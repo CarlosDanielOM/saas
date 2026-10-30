@@ -291,6 +291,7 @@ async fn source_oracle_pure_and_protocol() {
         "src/schemas/schema.rs",
         "src/server/services/tts/fish_tts.rs",
         "src/utils/js_string.rs",
+        "src/utils/js_compat.rs",
         "src/utils/js_unicode.rs",
         "src/utils/js_unicode_data.rs",
         "src/utils/lossless_json.rs",
@@ -486,7 +487,21 @@ async fn source_oracle_pure_and_protocol() {
             );
         }
     }
-    for case in fixture["normalization"].as_array().unwrap() {
+    let normalization = fixture["normalization"].as_array().unwrap();
+    assert_eq!(normalization.len(), 19);
+    // U+0085 is Rust whitespace but must survive JavaScript trim and fail the
+    // alias grammar. Preserve these actual-source regression cases explicitly.
+    for case in &normalization[15..] {
+        assert!(
+            case["input"]["units"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|unit| unit.as_u64() == Some(0x85))
+        );
+        assert!(case["error"].is_object());
+    }
+    for case in normalization {
         let input = if case["input"].is_object() {
             JsonValue::String(units(&case["input"]["units"]))
         } else if let Some(n) = case["input"].as_f64() {

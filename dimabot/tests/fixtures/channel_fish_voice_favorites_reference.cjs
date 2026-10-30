@@ -13,7 +13,7 @@ const versions={node:process.versions.node,v8:process.versions.v8,icu:process.ve
 const nodeSha=sha(process.execPath);
 if(mongoose.version!=='8.24.2')throw Error('wrong Mongoose');
 if(JSON.stringify(versions)!==JSON.stringify({node:'24.22.1',v8:'13.6.233.17-node.58',icu:'78.3',unicode:'17.0',typescript:'5.9.3'})||nodeSha!=='569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108')throw Error('toolchain mismatch');
-const files=['src/schemas/channel_fish_voice_favorites.schema.ts','src/schemas/channel_fish_voice_favorites.schema.test.ts','src/schemas/channel_tts_settings.schema.ts','src/server/services/tts/fish_tts.service.ts','src/schemas/channel_fish_voice_favorites.schema.rs','src/schemas/channel_tts_settings.schema.rs','src/schemas/schema.rs','src/server/services/tts/fish_tts.rs','src/utils/js_string.rs','src/utils/js_unicode.rs','src/utils/js_unicode_data.rs','src/utils/lossless_json.rs','tests/channel_fish_voice_favorites.rs','tests/support/schema_source.rs','tests/fixtures/schema_source_resolver.cjs','tests/fixtures/channel_fish_voice_favorites_reference.cjs','Cargo.toml','Cargo.lock','rust-toolchain.toml','package.json','package-lock.json'];
+const files=['src/schemas/channel_fish_voice_favorites.schema.ts','src/schemas/channel_fish_voice_favorites.schema.test.ts','src/schemas/channel_tts_settings.schema.ts','src/server/services/tts/fish_tts.service.ts','src/schemas/channel_fish_voice_favorites.schema.rs','src/schemas/channel_tts_settings.schema.rs','src/schemas/schema.rs','src/server/services/tts/fish_tts.rs','src/utils/js_string.rs','src/utils/js_compat.rs','src/utils/js_unicode.rs','src/utils/js_unicode_data.rs','src/utils/lossless_json.rs','tests/channel_fish_voice_favorites.rs','tests/support/schema_source.rs','tests/fixtures/schema_source_resolver.cjs','tests/fixtures/channel_fish_voice_favorites_reference.cjs','Cargo.toml','Cargo.lock','rust-toolchain.toml','package.json','package-lock.json'];
 const settingsLogical='src/schemas/channel_tts_settings.schema.ts';
 const archivedLogicals=new Set([files[0],files[1],settingsLogical]);
 const archived=Object.fromEntries([...archivedLogicals].map(f=>[f,resolveSource(root,f)]));
@@ -44,7 +44,7 @@ const exportsObj={};
 const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
 vm.runInNewContext(code,{exports:exportsObj,require(id){if(id==='mongoose')return {Schema,model:()=>model};if(id.includes('fish_tts'))return fishExports;if(id.includes('channel_tts_settings'))return {ChannelTtsSettingsSchema:settingsModel};throw Error(id)},Object,Error,String,Set});
 const api=exportsObj;
-const inputs=[null,3,'',' Bill ','bill cypher','_bill','a'.repeat(41),'gojo','RIAS_GREMORY','\ufeffABC\u2028','İ','\ud800','K','Ａ','😀'];
+const inputs=[null,3,'',' Bill ','bill cypher','_bill','a'.repeat(41),'gojo','RIAS_GREMORY','\ufeffABC\u2028','İ','\ud800','K','Ａ','😀','\u0085bill','bill\u0085',' \u0085Bill\u00a0','\u0085'];
 function capture(fn){try{return {value:fn()}}catch(e){return {error:{status:e.status,code:e.code,message:e.message}}}}
 async function scenario(name,fn){current=null;calls=[];settings=[];forceMiss=false;renameMiss=null;let result;try{result={value:await fn()}}catch(e){result={error:{status:e.status??null,code:e.code??null,message:e.message}}}return {name,result,calls,settings,stored:current}}
 async function main(){
