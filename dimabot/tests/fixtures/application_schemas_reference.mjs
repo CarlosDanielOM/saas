@@ -8,9 +8,9 @@
 // TypeScript compiler remains exclusively in the unmeasured parent process.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { readFileSync,writeFileSync,mkdtempSync,rmSync } from 'node:fs';
+import { readFileSync,writeFileSync,mkdtempSync,rmSync,realpathSync,readdirSync,lstatSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join,resolve,isAbsolute,sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +18,9 @@ import vm from 'node:vm';
 import { performance } from 'node:perf_hooks';
 const require=createRequire(import.meta.url);
 const mongoose=require('mongoose');
+const {resolveSource,pins}=require('./schema_source_resolver.cjs');
+const root=realpathSync(fileURLToPath(new URL('../..',import.meta.url)));
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const fixedNow=1_900_000_000_000;
 const rootId='507f1f77bcf86cd799439011';
 const secondId='507f1f77bcf86cd799439012';
@@ -65,7 +68,8 @@ if(args[0]==='--benchmark-worker'){
 }
 const ts=require('typescript');
 const sources={},compiled={};
-for(const name of files){const text=readFileSync(new URL(`../../src/schemas/${name}.schema.ts`,import.meta.url),'utf8');sources[name]=createHash('sha256').update(text).digest('hex');compiled[name]=ts.transpileModule(text,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;}
+const provenance={};
+for(const name of files){const logical=`src/schemas/${name}.schema.ts`;const resolved=Object.hasOwn(pins,logical)?resolveSource(root,logical):null;const text=resolved?resolved.bytes.toString('utf8'):readFileSync(join(root,logical),'utf8');if(resolved)provenance[name]=resolved.provenance;sources[name]=sha(text);compiled[name]=ts.transpileModule(text,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;}
 const models=loadModels(compiled);
 const cases=[];
 function add(schema,input,operation='construct'){cases.push({schema,operation,input,expected:construct(models[schema],input)});}
@@ -107,4 +111,14 @@ const workloads=[1,24].map(count=>({name:count===1?'normal-user':'large-user',sc
 const fixture={sources,fixedNow,definitions,cases,workloads};
 if(args[0]==='--benchmark'){
   assert.equal(args.length,2);const directory=mkdtempSync(join(tmpdir(),'native-schema-benchmark-'));try{const payload=join(directory,'compiled.json');writeFileSync(payload,JSON.stringify({compiled,workloads}));const child=spawnSync(process.execPath,[fileURLToPath(import.meta.url),'--benchmark-worker',payload,args[1]],{stdio:'inherit'});assert.equal(child.status,0);}finally{rmSync(directory,{recursive:true,force:true});}
+}else if((args[0]==='--write'||args[0]==='--check')&&args.length===2){
+  const dir=args[1],name='application-schemas-reference.json';assert(isAbsolute(dir));assert.equal(realpathSync(dir),dir);assert(dir!==root&&!dir.startsWith(root+sep));
+  assert.deepEqual(readdirSync(dir).sort(),args[0]==='--write'?[]:[name]);if(args[0]==='--check')assert(lstatSync(join(dir,name)).isFile());
+  const pin='569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108';assert.equal(process.env.DIMA_SCHEMA_NODE_SHA256,pin);assert.equal(sha(readFileSync(process.execPath)),pin);
+  assert.deepEqual([process.versions.node,process.versions.v8,process.versions.icu,process.versions.unicode,ts.version,mongoose.version],['24.22.1','13.6.233.17-node.58','78.3','17.0','5.9.3','8.24.2']);
+  const nativeFiles=[...files.map(name=>`src/schemas/${name}.schema.rs`),'src/schemas/schema.rs','src/schemas/mod.rs','src/utils/bson_compat.rs','src/utils/mongoose_date.rs','tests/application_schemas.rs','tests/support/schema_source.rs','tests/support/sha256.rs','tests/fixtures/schema_source_resolver.cjs','tests/fixtures/application_schemas_reference.mjs','Cargo.toml','Cargo.lock','rust-toolchain.toml','package.json','package-lock.json'];
+  const nativeSha256=Object.fromEntries(nativeFiles.map(file=>[file,sha(readFileSync(join(root,file)))]));
+  const dependencySha256=Object.fromEntries(['typescript','typescript/package.json','mongoose','mongoose/package.json'].map(id=>[id,sha(readFileSync(require.resolve(id)))]));
+  const external={...fixture,sourceProvenance:provenance,nodeExecutableSha256:pin,dependencySha256,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version},nativeSha256};
+  const body=JSON.stringify(external,null,2)+'\n',target=join(dir,name);if(args[0]==='--write')writeFileSync(target,body,{flag:'wx'});else assert.equal(readFileSync(target,'utf8'),body);console.log(`${name} sha256=${sha(body)} cases=${cases.length}`);
 }else{assert.ok(args.length===0||args.length===1&&args[0]==='--check');const body=JSON.stringify(fixture,null,2)+'\n';if(args[0]==='--check')assert.equal(readFileSync(outputUrl,'utf8'),body);else writeFileSync(outputUrl,body);console.log(`Application schema oracle: ${files.length} schemas, ${cases.length} cases`);}

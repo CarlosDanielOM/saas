@@ -1,6 +1,6 @@
 # Archived dimabot TypeScript source snapshots — 2026-10-28
 
-These twenty-eight files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, credential/activation exports, TTS session/playback and credit fallback helpers, the channel TTS settings schema, TTS normalization and its source test, and the caps and emote-spam rules with the caps source test mapped to native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
+These thirty-six files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, credential/activation exports, TTS session/playback and credit fallback helpers, the channel TTS settings schema, TTS normalization and its source test, and the caps and emote-spam rules with the caps source test mapped to native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
 
 | Archived source | Native implementation area |
 |---|---|
@@ -42,3 +42,5 @@ The seed-plan helper and its four-group `defaults.test.ts` are retired as two by
 The AI usage helper and its two-group source test are archived byte-for-byte; source and test SHA-256 are recorded in the manifest. The typed context tests and 132-case lossless source replay map their behavior. Post-retirement execution is pending; caller adoption and migration-checkout TypeScript build integration remain open. See the [handoff](../../../migration-notes/ai-usage-source-retirement-handoff.md).
 
 Archived byte-for-byte moderation leaf sources: normalize.ts, rules/links.rule.ts, and spam_categories.ts. See migration-notes/moderation-leaf-retirement-handoff.md for scope and validation.
+
+Five persistence model sources (four OAuth models and moderation action log) are archived byte-for-byte. Native descriptors and the shared repository provide local model parity; TypeScript caller adoption remains open. Post-retirement validation is pending; see [the handoff](../../../migration-notes/persistence-model-retirement-handoff.md).

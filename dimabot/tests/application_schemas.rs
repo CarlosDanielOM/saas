@@ -2,8 +2,124 @@
 use dima_rust::schemas::{self, SchemaDefinition};
 use mongodb::bson::{Bson, DateTime, Document, doc};
 use serde_json::{Value, json};
+#[path = "support/schema_source.rs"]
+mod schema_source;
 fn fixture() -> Value {
-    serde_json::from_str(include_str!("fixtures/application_schemas_cases.json")).unwrap()
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    for (logical, _) in schema_source::PINS.iter().take(4) {
+        schema_source::archived(root, logical);
+    }
+    if let Some(dir) = std::env::var_os("DIMA_APPLICATION_SCHEMAS_FIXTURE_DIR") {
+        let dir = std::path::PathBuf::from(dir);
+        assert!(dir.is_absolute());
+        assert_eq!(dir.canonicalize().unwrap(), dir);
+        assert!(!dir.starts_with(root.canonicalize().unwrap()));
+        let file = dir.join("application-schemas-reference.json");
+        assert!(
+            std::fs::symlink_metadata(&file)
+                .unwrap()
+                .file_type()
+                .is_file()
+        );
+        let bytes = std::fs::read(file).unwrap();
+        assert_eq!(
+            schema_source::sha256(&bytes),
+            std::env::var("DIMA_APPLICATION_SCHEMAS_FIXTURE_SHA256")
+                .expect("independent fixture digest")
+        );
+        let data: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(
+            data["nodeExecutableSha256"],
+            "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108"
+        );
+        for (key, value) in [
+            ("node", "24.22.1"),
+            ("v8", "13.6.233.17-node.58"),
+            ("icu", "78.3"),
+            ("unicode", "17.0"),
+            ("typescript", "5.9.3"),
+            ("mongoose", "8.24.2"),
+        ] {
+            assert_eq!(data["versions"][key], value);
+        }
+        for (logical, pin) in schema_source::PINS.iter().take(4) {
+            let name = logical
+                .strip_prefix("src/schemas/")
+                .unwrap()
+                .strip_suffix(".schema.ts")
+                .unwrap();
+            assert_eq!(data["sources"][name], *pin);
+            assert_eq!(
+                data["sourceProvenance"][name],
+                schema_source::provenance(logical)
+            );
+        }
+        for name in [
+            "users",
+            "accounts",
+            "admin",
+            "app_config",
+            "channel_config",
+            "credit_gift",
+            "credit_transaction",
+        ] {
+            let path = root.join(format!("src/schemas/{name}.schema.ts"));
+            assert_eq!(
+                data["sources"][name],
+                schema_source::sha256(&std::fs::read(path).unwrap()),
+                "{name}"
+            );
+        }
+        let files = data["nativeSha256"].as_object().unwrap();
+        let names = [
+            "users",
+            "accounts",
+            "admin",
+            "app_config",
+            "channel_config",
+            "oauth_client",
+            "oauth_grant",
+            "oauth_refresh_token",
+            "oauth_session",
+            "credit_gift",
+            "credit_transaction",
+        ];
+        let mut expected: Vec<String> = names
+            .iter()
+            .map(|name| format!("src/schemas/{name}.schema.rs"))
+            .collect();
+        expected.extend(
+            [
+                "src/schemas/schema.rs",
+                "src/schemas/mod.rs",
+                "src/utils/bson_compat.rs",
+                "src/utils/mongoose_date.rs",
+                "tests/application_schemas.rs",
+                "tests/support/schema_source.rs",
+                "tests/support/sha256.rs",
+                "tests/fixtures/schema_source_resolver.cjs",
+                "tests/fixtures/application_schemas_reference.mjs",
+                "Cargo.toml",
+                "Cargo.lock",
+                "rust-toolchain.toml",
+                "package.json",
+                "package-lock.json",
+            ]
+            .iter()
+            .map(|s| s.to_string()),
+        );
+        assert_eq!(files.len(), expected.len());
+        for file in expected {
+            assert_eq!(
+                files[&file],
+                schema_source::sha256(&std::fs::read(root.join(&file)).unwrap()),
+                "{file}"
+            );
+        }
+        data
+    } else {
+        serde_json::from_str(include_str!("fixtures/application_schemas_cases.json")).unwrap()
+    }
 }
 fn bson(value: &Value) -> Bson {
     match value {

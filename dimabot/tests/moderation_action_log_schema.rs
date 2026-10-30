@@ -2,7 +2,16 @@
 use dima_rust::schemas::moderation_action_log::{get_moderation_action_log_model, schema};
 use mongodb::bson::{Bson, DateTime, Document, doc};
 use serde_json::{Value, json};
+#[path = "support/schema_source.rs"]
+mod schema_source;
 
+#[test]
+fn retired_source_archive_is_pinned() {
+    schema_source::archived(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        "src/schemas/moderation_action_log.schema.ts",
+    );
+}
 fn base() -> Document {
     doc! {"_id":"0123456789abcdef01234567","channelID":"c","userID":"u","ruleID":"r","ruleType":"t","action":"warn"}
 }
@@ -86,10 +95,28 @@ fn replay_actual_mongoose_source() {
     ] {
         assert_eq!(corpus["versions"][k], v);
     }
+    let logical = "src/schemas/moderation_action_log.schema.ts";
+    let source = schema_source::archived(std::path::Path::new(env!("CARGO_MANIFEST_DIR")), logical);
+    assert_eq!(
+        corpus["sourceProvenance"],
+        schema_source::provenance(logical)
+    );
+    assert_eq!(
+        corpus["sourceSha256"][logical],
+        schema_source::sha256(&source)
+    );
     for (k, b) in [
         (
-            "src/schemas/moderation_action_log.schema.ts",
-            include_bytes!("../src/schemas/moderation_action_log.schema.ts").as_slice(),
+            "source-resolver",
+            include_bytes!("fixtures/schema_source_resolver.cjs").as_slice(),
+        ),
+        (
+            "source-guard",
+            include_bytes!("support/schema_source.rs").as_slice(),
+        ),
+        (
+            "source-digest",
+            include_bytes!("support/sha256.rs").as_slice(),
         ),
         (
             "src/schemas/moderation_action_log.schema.rs",
@@ -106,6 +133,10 @@ fn replay_actual_mongoose_source() {
         (
             "src/utils/mongoose_date.rs",
             include_bytes!("../src/utils/mongoose_date.rs").as_slice(),
+        ),
+        (
+            "src/utils/js_string.rs",
+            include_bytes!("../src/utils/js_string.rs").as_slice(),
         ),
         (
             "oracle-script",

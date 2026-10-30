@@ -124,6 +124,26 @@
     {
       "source": "src/utils/moderation/spam_categories.ts",
       "sha256": "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088"
+    },
+    {
+      "source": "src/schemas/oauth_client.schema.ts",
+      "sha256": "48e796d493fbbc16466e50c2e6dd9f2c46558c76854b900c8b1d585f20b71dc8"
+    },
+    {
+      "source": "src/schemas/oauth_grant.schema.ts",
+      "sha256": "b82f455eeb977def6100a19e3d190acfed616d6fa9ad7501cc3c1f3523c00df1"
+    },
+    {
+      "source": "src/schemas/oauth_refresh_token.schema.ts",
+      "sha256": "21568d96d49bc49ee0bc94e0c1b6715cc626368ed736522eeb3ce04152ae54ae"
+    },
+    {
+      "source": "src/schemas/oauth_session.schema.ts",
+      "sha256": "d383f6bb4c900cfa8323c32719f1b04c8aec0f468d6cfb0fedae7416d6251556"
+    },
+    {
+      "source": "src/schemas/moderation_action_log.schema.ts",
+      "sha256": "637955d22fc1c7e0ba953ec410a15a2bb324b0340062bd17bc08c13cd975e28b"
     }
   ]
 }
