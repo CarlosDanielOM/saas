@@ -22,7 +22,7 @@ use std::{
     net::TcpListener,
     sync::{
         Arc, Mutex,
-        atomic::{AtomicBool, AtomicI64, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicI64, Ordering},
         mpsc,
     },
     thread,
@@ -683,134 +683,6 @@ pub fn assert_value(actual: &Bson, expected: &Bson, context: &str) {
     }
 }
 
-/// RESP2 forwarding proxy to the exact guarded private Redis alias. It drops
-/// the first applied EVALSHA response, producing a genuinely uncertain result.
-pub struct RedisResponseLoss {
-    pub url: String,
-    pub script_count: Arc<AtomicUsize>,
-    stop: Arc<AtomicBool>,
-    worker: Option<thread::JoinHandle<()>>,
-}
-impl RedisResponseLoss {
-    pub fn start() -> Self {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        listener.set_nonblocking(true).unwrap();
-        let url = format!("redis://{}/", listener.local_addr().unwrap());
-        let stop = Arc::new(AtomicBool::new(false));
-        let stopped = stop.clone();
-        let script_count = Arc::new(AtomicUsize::new(0));
-        let counted = script_count.clone();
-        let worker = thread::spawn(move || {
-            while !stopped.load(Ordering::SeqCst) {
-                let (mut downstream, _) = match listener.accept() {
-                    Ok(pair) => pair,
-                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                        thread::sleep(Duration::from_millis(1));
-                        continue;
-                    }
-                    Err(error) => panic!("private RESP accept: {error}"),
-                };
-                downstream
-                    .set_read_timeout(Some(Duration::from_millis(100)))
-                    .unwrap();
-                let mut upstream = std::net::TcpStream::connect("keyword-redis:6379").unwrap();
-                upstream
-                    .set_read_timeout(Some(Duration::from_secs(2)))
-                    .unwrap();
-                let mut down_reader = BufReader::new(downstream.try_clone().unwrap());
-                let mut up_reader = BufReader::new(upstream.try_clone().unwrap());
-                loop {
-                    if stopped.load(Ordering::SeqCst) {
-                        return;
-                    }
-                    let mut request = Vec::new();
-                    match resp_frame(&mut down_reader, &mut request) {
-                        Ok(()) => {}
-                        Err(error)
-                            if request.is_empty()
-                                && matches!(
-                                    error.kind(),
-                                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
-                                ) =>
-                        {
-                            continue;
-                        }
-                        Err(_) => break,
-                    }
-                    let script = request
-                        .windows(b"EVALSHA".len())
-                        .any(|window| window.eq_ignore_ascii_case(b"EVALSHA"))
-                        || request
-                            .windows(b"EVAL".len())
-                            .any(|window| window.eq_ignore_ascii_case(b"EVAL"));
-                    upstream.write_all(&request).unwrap();
-                    let mut response = Vec::new();
-                    resp_frame(&mut up_reader, &mut response).unwrap();
-                    if script {
-                        let index = counted.fetch_add(1, Ordering::SeqCst);
-                        if index == 0 {
-                            assert_ne!(
-                                response.first(),
-                                Some(&b'-'),
-                                "uncertainty fixture must drop a successful applied script response"
-                            );
-                            break;
-                        }
-                    }
-                    if downstream.write_all(&response).is_err() {
-                        break;
-                    }
-                }
-            }
-        });
-        Self {
-            url,
-            script_count,
-            stop,
-            worker: Some(worker),
-        }
-    }
-}
-impl Drop for RedisResponseLoss {
-    fn drop(&mut self) {
-        self.stop.store(true, Ordering::SeqCst);
-        if let Some(worker) = self.worker.take() {
-            let result = worker.join();
-            if !thread::panicking() {
-                result.unwrap();
-            }
-        }
-    }
-}
-fn resp_frame(reader: &mut impl BufRead, output: &mut Vec<u8>) -> std::io::Result<()> {
-    let mut line = Vec::new();
-    reader.read_until(b'\n', &mut line)?;
-    if line.is_empty() {
-        return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof));
-    }
-    if !line.ends_with(b"\r\n") {
-        return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
-    }
-    let kind = line[0];
-    let count = if kind == b'$' || kind == b'*' {
-        std::str::from_utf8(&line[1..line.len() - 2])
-            .unwrap()
-            .parse::<i64>()
-            .unwrap()
-    } else {
-        0
-    };
-    output.extend_from_slice(&line);
-    if kind == b'$' && count >= 0 {
-        let mut data = vec![0; count as usize + 2];
-        reader.read_exact(&mut data)?;
-        output.extend_from_slice(&data);
-    } else if kind == b'*' && count >= 0 {
-        for _ in 0..count {
-            resp_frame(reader, output)?;
-        }
-    } else if !matches!(kind, b'+' | b'-' | b':' | b'$' | b'*') {
-        return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
-    }
-    Ok(())
-}
+#[path = "redis_response_loss.rs"]
+mod redis_response_loss;
+pub use redis_response_loss::RedisResponseLoss;

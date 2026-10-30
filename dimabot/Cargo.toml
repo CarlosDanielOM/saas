@@ -115,6 +115,7 @@ moderation-blacklist = ["moderation-normalize", "js-regexp-unicode", "dep:regex"
 moderation-types = ["js-strings", "moderation-spam-categories"]
 moderation-variation-storage = ["application-schemas", "moderation-types"]
 moderation-variation-jobs = ["moderation-variation-storage", "moderation-variations-provider", "redis-application-runtime"]
+moderation-spam = ["channel-moderation-settings", "moderation-advanced-policy", "redis-application-runtime", "js-regexp-unicode", "dep:sha2"]
 moderation-advanced-policy = ["moderation-types", "lossless-json-view"]
 moderation-advanced = ["moderation-advanced-policy", "moderation-blacklist", "re2-native", "dep:uuid"]
 moderation-variations = ["moderation-advanced", "dep:sha2"]
