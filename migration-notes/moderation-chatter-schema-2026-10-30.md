@@ -1,6 +1,6 @@
 # Moderation Chatter schema verification — 2026-10-30
 
-**Status: focused schema and first-seen verification passed; TypeScript remains live.** This work adds source-backed test and fixture coverage around the existing native schema and moderation spam primitive. It does not retire the TypeScript schema, complete the broader spam migration, or change production code.
+**Pre-retirement status:** focused schema and first-seen verification passed at source commit `81f2d07ce7adc09fb27b59199c9715f83ed3bbde`. This original epoch added source-backed coverage around the existing native schema and moderation spam primitive. The schema has since been retired and post-retirement validated at `a2a0b3ab9d5398fee8ee9551a34fa4e7d6022f02`; see the [retirement note](moderation-chatter-retirement-2026-10-30.md) and [handoff](moderation-chatter-retirement-handoff.md). The source/test results below remain the earlier epoch, not a replacement or re-run of that evidence.
 
 ## Bound source and schema contract
 
@@ -18,6 +18,6 @@ Two small harness/test corrections preceded the passing verification. The TypeSc
 
 ## Limits and follow-up
 
-This verifies one schema contract and the tested first-seen path. Duplicate-key fault injection remains covered by the existing protocol fixtures, not forced in this real-Mongo run. The broader spam feature remains partial. TypeScript retirement, caller adoption, deployment, and push are separate and were not performed. No new Cargo dependency, performance benchmark, RSS measurement, or whole-application claim is made.
+This verifies one schema contract and the tested first-seen path. Duplicate-key fault injection remains covered by the existing protocol fixtures, not forced in this real-Mongo run. The broader spam feature remains partial. At this earlier epoch, TypeScript retirement, caller adoption, deployment, and push were separate and not performed; subsequent source retirement is recorded in the linked later epoch. No new Cargo dependency, performance benchmark, RSS measurement, or whole-application claim is made.
 
 The updated [handoff](moderation-chatter-schema-handoff.md) preserves the fixture and test design. The [indexed evidence package](evidence/2026-10-30-moderation-chatter-schema/README.md) contains immutable source maps, bindings, oracle, readback, failed overrides, all run receipts/logs, and inert reproduction scripts. For the single-task DeepSeek routing observation, see [the dated routing note](../orchestrator-notes/2026-10-30-deepseek-chatter.md).

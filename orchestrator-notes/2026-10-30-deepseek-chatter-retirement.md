@@ -1,0 +1,7 @@
+# 2026-10-30 DeepSeek Chatter retirement observation
+
+DeepSeek V4.1 Flash at high authored the archive-aware Chatter schema retirement integration. GPT-6.1 Sol at xhigh led frozen-source review, integration corrections and capped verification. The final source commit `a2a0b3ab9d5398fee8ee9551a34fa4e7d6022f02` passed 37 selected Rust checks, all seven Chatter tests, actual-source replay and isolated Mongo first-seen coverage; no runtime failure occurred in the accepted epoch.
+
+Static review before first execution corrected two test-integration details: reuse the shared `schema_source::sha256` helper instead of introducing a duplicate import, and expect already-archived provenance for the existing normalize and Spam-category sources. Those are source-reader/test assumptions, not product failures. Node compared all 37 source Spam claims unchanged; the native full async Spam claim suite was not rerun. The broad Spam feature remains partial.
+
+Confidence is low from one scoped task. This supports DeepSeek for bounded implementation and Sol for xhigh integration/review only in this task category. It does not imply a general capability/efficiency ranking, runtime attribution, tier reorder, or latency/cost measurement. See the [retirement evidence](../migration-notes/evidence/2026-10-30-moderation-chatter-retirement/README.md) and [handoff](../migration-notes/moderation-chatter-retirement-handoff.md).

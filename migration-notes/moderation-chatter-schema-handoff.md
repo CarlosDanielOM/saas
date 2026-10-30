@@ -1,5 +1,7 @@
 # Moderation chatter schema: focused model and first-seen verification handoff
 
+**Epoch status:** the verification below records the pre-retirement schema validation at commit `81f2d07ce7adc09fb27b59199c9715f83ed3bbde`. Its schema/oracle and concrete first-seen Mongo results remain valid. The source has since been archived and post-retirement resolver/replay checks passed at commit `a2a0b3ab9d5398fee8ee9551a34fa4e7d6022f02`; see the [retirement handoff](moderation-chatter-retirement-handoff.md) and [dated retirement note](moderation-chatter-retirement-2026-10-30.md). This document preserves the separate earlier evidence epoch.
+
 **Status: isolated parent verification passed.** The authored tests and fixture
 are recorded in source commit `81f2d07ce7adc09fb27b59199c9715f83ed3bbde`.
 The author did not run Cargo, rustfmt, Node, application, tests, containers,
@@ -150,9 +152,10 @@ Run receipts, full logs, exact source/oracle bindings, the failed attempt, produ
   is not directly forced here; the atomic test exercises the matched-upsert
   path (`upserted_id == None`). The existing protocol fixtures own fault
   injection for the duplicate branch.
-- Caller adoption, the wider spam feature surface, and any decision to retire
-  `src/schemas/moderation_chatter.schema.ts` remain separate. The TypeScript
-  source is intentionally still live and is **not** declared retired.
+- At this pre-retirement epoch, caller adoption, the wider spam feature surface,
+  and source retirement remained separate. The source was live during those
+  checks; its later archive and post-retirement verification are recorded in the
+  linked retirement handoff.
 - Deployment is out of scope. Passing these checks does not authorize a
   production release.
 
@@ -161,5 +164,5 @@ Run receipts, full logs, exact source/oracle bindings, the failed attempt, produ
 The test and fixture author did not execute builds, tests, or runtime checks;
 the parent results above are the verification record. No deployment, caller
 adoption, push, or production release was performed or authorized by these
-tests. The TypeScript schema remains active, and this focused evidence does not
-complete the broader spam migration.
+tests. The TypeScript schema was active in this pre-retirement epoch; the later
+retirement is covered separately and does not complete the broader spam migration.

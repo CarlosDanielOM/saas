@@ -1,0 +1,34 @@
+{
+  "candidate_base_commit": "7a2576e7",
+  "source_tree_sha256": "6d3e0f96d8cab8e6b261462c6644573a453f679d4ac79daf79a43169cc804d3c",
+  "source_input_count": 1507,
+  "counts": {
+    "git": 1485,
+    "sdk": 10,
+    "overrides": 12
+  },
+  "candidate_overrides": {
+    "archives/dimabot-typescript/2026-10-28/README.md": "de7bb450da4e1f90ad126c047900be4dffd031ac59dc3f2a256ac0f09832efa4",
+    "archives/dimabot-typescript/2026-10-28/manifest.json": "3aaa9a778a4484d289a706830cc8ea466e799379d07f89369cd1d23f52f10662",
+    "archives/dimabot-typescript/2026-10-28/src/schemas/moderation_chatter.schema.ts": "71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e",
+    "dimabot/tests/fixtures/schema_source_resolver.cjs": "1d5bfb0281bd4a370a662d8e73f5be1720ab080e26bbbd386e0d2f0f9a82d68c",
+    "dimabot/tests/fixtures/schema_source_resolver.test.cjs": "ea66b894432c76ab44f697f2beae169ebe87388e05c73ef71b4ac2f0f66a1c1b",
+    "dimabot/tests/support/schema_source.rs": "31a9aaf8a70189fdf059dab96be30f27798eea67bb47c101301f2d0551c41294",
+    "dimabot/tests/fixtures/moderation_chatter_schema_reference.cjs": "54fab150219b39e0570015521485b7c59b3413401c8f237d41fa8b582e865f10",
+    "dimabot/tests/moderation_chatter_schema.rs": "07da873c5dc9e1dc20bd5d757c90d633ce4526b7e10ccde187074e2c953f30ff",
+    "dimabot/tests/fixtures/moderation_spam_source.cjs": "b5cf1d8d5c0f7105e8042ce47dd323486ff000e5a7b4695716db76f010dc6558",
+    "dimabot/tests/fixtures/moderation_spam_reference.cjs": "3cd07fee4740325e384792737a396ce4ad1b69a5988c338f8a0f6b37f6f3dfd5",
+    "dimabot/tests/fixtures/moderation_spam_benchmark.cjs": "ae4d6131c2e375ddc437ff12fdd34a563708bc3dd2b1c297e82369eb32e9d723",
+    "dimabot/tests/support/moderation_spam.rs": "fcbf2fdd910aa3eab7f4e4e0737bf1269d9756a252fced62846adc67f3a3a08d"
+  },
+  "deleted_sources": [
+    "dimabot/src/schemas/moderation_chatter.schema.ts"
+  ],
+  "all_inputs_independently_verified": true,
+  "reused_sdk_capture_root": "migration-notes/evidence/2026-10-30-moderation-semantic/reproduction-tools/reused-sdk-inputs",
+  "parent_static_corrections": [
+    "Reuse schema_source::sha256 instead of loading sha256.rs twice",
+    "Compare existing normalize/spam_categories provenance to archived paths, as existing leaf resolver requires",
+    "Update already-completed Fish review status in archive README"
+  ]
+}

@@ -1,0 +1,99 @@
+[
+  {
+    "corpus": "chatter",
+    "old": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt2/oracle/moderation-chatter-schema-reference.json",
+    "new": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/chatter/moderation-chatter-schema-reference.json",
+    "changed_paths": [
+      "/metadata/boundary",
+      "/metadata/source/manifest",
+      "/metadata/source/provenance",
+      "/metadata/source/resolvedPath",
+      "/metadata/source/resolver",
+      "/sourceSha256/oracle-script",
+      "/sourceSha256/tests/fixtures/schema_source_resolver.cjs",
+      "/sourceSha256/tests/moderation_chatter_schema.rs"
+    ],
+    "old_sha256": "42a11d1ed626b0be9fac05e8afce671dce33b442da69f5a53905e4e201394358",
+    "new_sha256": "883c15dac75dcc472539ab71c0210dba1f78131ff64be5265ae6c82cddc7244f"
+  },
+  {
+    "corpus": "spam",
+    "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_spam_reference/moderation-spam-reference.json",
+    "new": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/spam/moderation-spam-reference.json",
+    "changed_paths": [
+      "/metadata/chatterSource",
+      "/metadata/loaderSha256",
+      "/metadata/readerSha256",
+      "/metadata/resolver",
+      "/metadata/sourceProvenance/src/schemas/moderation_chatter.schema.ts"
+    ],
+    "old_sha256": "9c2a9712491afc651fba912206f9856202b9ad7a83ea6aafdf8983f24d00d47c",
+    "new_sha256": "bd682f476565af1918007b335fa4ddd11b9c127c5aa57799448d1da9dcd2a3cd"
+  },
+  {
+    "corpus": "application",
+    "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/schema/application/application-schemas-reference.json",
+    "new": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/application/application-schemas-reference.json",
+    "changed_paths": [
+      "/nativeSha256/tests/fixtures/schema_source_resolver.cjs",
+      "/nativeSha256/tests/support/schema_source.rs"
+    ],
+    "old_sha256": "45c3d5b364528cd4f04b1cf22178445527af33d46d94e4312daa07e867aa958a",
+    "new_sha256": "08bf1a37859778c2777215e0f8019987e60f9a6e750602a97d56016c85bf5687"
+  },
+  {
+    "corpus": "additional",
+    "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/schema/additional/additional-schemas-reference.json",
+    "new": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/additional/additional-schemas-reference.json",
+    "changed_paths": [
+      "/nativeSha256/tests/fixtures/schema_source_resolver.cjs",
+      "/nativeSha256/tests/support/schema_source.rs"
+    ],
+    "old_sha256": "b9b6becfb4852bdb2cdac1b45a04e6e3d5f2a6ce3aa4094d9de8013bc2de474d",
+    "new_sha256": "e62682246f26f79457aadfa97f44dffd9022377fa3c91331b5567a5c38f239a9"
+  },
+  {
+    "corpus": "named",
+    "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/schema/named/schema-named-types-reference.json",
+    "new": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/named/schema-named-types-reference.json",
+    "changed_paths": [
+      "/hashes/tests/fixtures/schema_source_resolver.cjs",
+      "/hashes/tests/support/schema_source.rs"
+    ],
+    "old_sha256": "8be5c2f679f6835837e501412e9acb4f056cdf96006cd4ebf6a96696e5d94bb6",
+    "new_sha256": "b381280be7fe1315826cd6faf1207386d4cf1ec0e639eb2e503f56b20edbeabd"
+  },
+  {
+    "corpus": "timer",
+    "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/schema/timer/timer-chat-schema-types-reference.json",
+    "new": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/timer/timer-chat-schema-types-reference.json",
+    "changed_paths": [
+      "/hashes/tests/fixtures/schema_source_resolver.cjs",
+      "/hashes/tests/support/schema_source.rs"
+    ],
+    "old_sha256": "64598d9ca34bc9d43ce82bd5dfe1b547c348cd27b9067ca304832324c6b7eac4",
+    "new_sha256": "a7eabb843dcf1e7d1e944bfac98ca46c62e1e6908187ebb242c12548ed2acb95"
+  },
+  {
+    "corpus": "action",
+    "old": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/fish-favorites/optimized1/schema/action/moderation-action-log-schema-reference.json",
+    "new": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/action/moderation-action-log-schema-reference.json",
+    "changed_paths": [
+      "/sourceSha256/source-guard",
+      "/sourceSha256/source-resolver"
+    ],
+    "old_sha256": "ae0052604904005a4dafcf69bd2c188a2620917cac2b48ada42a4906028f44ba",
+    "new_sha256": "2376b909c43be9584396c65de5958d58304ff36e11ee6d4764f1fa408493312b"
+  },
+  {
+    "corpus": "fish",
+    "old": "/root/.local/state/rust-full-migration-20261028-fish-review-__r9_453/artifacts/fish-review/attempt1/oracle/channel_fish_voice_favorites.json",
+    "new": "/root/.local/state/rust-full-migration-20261028-chatter-retire-q5v0j_es/artifacts/chatter-retirement/attempt1/fish/channel_fish_voice_favorites.json",
+    "changed_paths": [
+      "/hashes/tests/fixtures/schema_source_resolver.cjs",
+      "/hashes/tests/support/schema_source.rs"
+    ],
+    "old_sha256": "5e38de829d73754dd6f26f2d6b46fa47c0cf05b1bf2ea1e548d1b7604a51ff12",
+    "new_sha256": "02f9d9afadc122d82d5692a023edc5ce3d928c71cb3af082bd732a5f50f58b29"
+  }
+]

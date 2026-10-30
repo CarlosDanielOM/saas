@@ -1,0 +1,513 @@
+{
+  "format": 1,
+  "metadata": {
+    "format": 1,
+    "nodeExecutableSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "versions": {
+      "node": "24.22.1",
+      "v8": "13.6.233.17-node.58",
+      "icu": "78.3",
+      "unicode": "17.0",
+      "typescript": "5.9.3",
+      "mongoose": "8.24.2",
+      "bson": "6.10.4"
+    },
+    "source": {
+      "logical": "src/schemas/moderation_chatter.schema.ts",
+      "virtualPath": "/source/dimabot/src/schemas/moderation_chatter.schema.ts",
+      "resolvedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/moderation_chatter.schema.ts",
+      "provenance": "archives/dimabot-typescript/2026-10-28/src/schemas/moderation_chatter.schema.ts",
+      "sha256": "71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e",
+      "manifest": {
+        "path": "archives/dimabot-typescript/2026-10-28/manifest.json",
+        "sha256": "3aaa9a778a4484d289a706830cc8ea466e799379d07f89369cd1d23f52f10662"
+      },
+      "resolver": {
+        "path": "dimabot/tests/fixtures/schema_source_resolver.cjs",
+        "sha256": "1d5bfb0281bd4a370a662d8e73f5be1720ab080e26bbbd386e0d2f0f9a82d68c",
+        "pin": "71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e"
+      }
+    },
+    "boundary": "Complete actual archived TypeScript module resolved through the shared schema archive resolver, compiled with pinned TypeScript and executed in a restricted CommonJS boundary with only the disconnected pinned Mongoose import. Ordinary JSON-like inputs; no accessors, symbols, proxies, functions, BigInt or cycles. Only Mongoose validation and document construction are exercised; no connection, index creation, query, or write occurs.",
+    "caseCount": 25
+  },
+  "sourceMetadata": {
+    "imports": [
+      {
+        "module": "mongoose",
+        "typeOnly": false,
+        "bindings": "{ Schema, model }"
+      }
+    ],
+    "export": {
+      "kind": "VariableStatement",
+      "symbol": "ModerationChatter",
+      "initializer": "model",
+      "modelName": "moderation_chatter"
+    },
+    "runtimeKeys": [
+      "ModerationChatter"
+    ],
+    "typeDeclarations": [],
+    "typecheckDiagnostics": 0,
+    "compiledSha256": "bca73cc01208b7785c985bd38757a200bbf19f6951f505be6369e062424f2e4a"
+  },
+  "modelMetadata": {
+    "modelName": "moderation_chatter",
+    "collection": "moderation_chatters",
+    "connectionReadyState": 0,
+    "versionKey": false,
+    "indexes": [],
+    "paths": [
+      "_id",
+      "firstSeenAt"
+    ],
+    "fields": [
+      {
+        "path": "_id",
+        "instance": "String",
+        "required": true,
+        "hasDefault": false
+      },
+      {
+        "path": "firstSeenAt",
+        "instance": "Date",
+        "required": true,
+        "hasDefault": false
+      }
+    ],
+    "collectionOption": null
+  },
+  "constants": {
+    "modelName": "moderation_chatter",
+    "collection": "moderation_chatters",
+    "versionKey": false,
+    "indexCount": 0,
+    "stringID": true
+  },
+  "cases": [
+    {
+      "id": "empty",
+      "input": {},
+      "expected": {
+        "errors": [
+          {
+            "path": "_id",
+            "kind": "required"
+          },
+          {
+            "path": "firstSeenAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "id": "missing-first-seen",
+      "input": {
+        "_id": "marker"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "firstSeenAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "id": "missing-id",
+      "input": {
+        "firstSeenAt": 0
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "id": "null-both",
+      "input": {
+        "_id": null,
+        "firstSeenAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "_id",
+            "kind": "required"
+          },
+          {
+            "path": "firstSeenAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "id": "null-first-seen",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "firstSeenAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "id": "empty-id",
+      "input": {
+        "_id": "",
+        "firstSeenAt": 0
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "id": "valid-epoch",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": 0
+      },
+      "expected": {
+        "document": {
+          "_id": "marker",
+          "firstSeenAt": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "valid-now",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": 1700000000000
+      },
+      "expected": {
+        "document": {
+          "_id": "marker",
+          "firstSeenAt": {
+            "$date": 1700000000000
+          }
+        }
+      }
+    },
+    {
+      "id": "valid-iso",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": "2025-01-01T00:00:00.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": "marker",
+          "firstSeenAt": {
+            "$date": 1735689600000
+          }
+        }
+      }
+    },
+    {
+      "id": "valid-max-date",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": 8640000000000000
+      },
+      "expected": {
+        "document": {
+          "_id": "marker",
+          "firstSeenAt": {
+            "$date": 8640000000000000
+          }
+        }
+      }
+    },
+    {
+      "id": "valid-min-date",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": -8640000000000000
+      },
+      "expected": {
+        "document": {
+          "_id": "marker",
+          "firstSeenAt": {
+            "$date": -8640000000000000
+          }
+        }
+      }
+    },
+    {
+      "id": "fractional-ms",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": 1.9
+      },
+      "expected": {
+        "document": {
+          "_id": "marker",
+          "firstSeenAt": {
+            "$date": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "negative-fractional-ms",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": -1.9
+      },
+      "expected": {
+        "document": {
+          "_id": "marker",
+          "firstSeenAt": {
+            "$date": -1
+          }
+        }
+      }
+    },
+    {
+      "id": "empty-string-date",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": ""
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "firstSeenAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "id": "invalid-string-date",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": "not-a-date"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "firstSeenAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "id": "beyond-max-date",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": 8640000000000001
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "firstSeenAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "id": "beyond-min-date",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": -8640000000000001
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "firstSeenAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "id": "id-number",
+      "input": {
+        "_id": 42,
+        "firstSeenAt": 0
+      },
+      "expected": {
+        "document": {
+          "_id": "42",
+          "firstSeenAt": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "id-fraction",
+      "input": {
+        "_id": 42.5,
+        "firstSeenAt": 0
+      },
+      "expected": {
+        "document": {
+          "_id": "42.5",
+          "firstSeenAt": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "id-true",
+      "input": {
+        "_id": true,
+        "firstSeenAt": 0
+      },
+      "expected": {
+        "document": {
+          "_id": "true",
+          "firstSeenAt": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "id-false",
+      "input": {
+        "_id": false,
+        "firstSeenAt": 0
+      },
+      "expected": {
+        "document": {
+          "_id": "false",
+          "firstSeenAt": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "id-zero",
+      "input": {
+        "_id": 0,
+        "firstSeenAt": 0
+      },
+      "expected": {
+        "document": {
+          "_id": "0",
+          "firstSeenAt": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "id-wide-number",
+      "input": {
+        "_id": 1e+21,
+        "firstSeenAt": 0
+      },
+      "expected": {
+        "document": {
+          "_id": "1e+21",
+          "firstSeenAt": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "unknown-fields",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": 0,
+        "unknown": "discard",
+        "nested": {
+          "value": 1
+        },
+        "__v": 9
+      },
+      "expected": {
+        "document": {
+          "_id": "marker",
+          "firstSeenAt": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "unknown-only",
+      "input": {
+        "_id": "marker",
+        "firstSeenAt": 0,
+        "other": {}
+      },
+      "expected": {
+        "document": {
+          "_id": "marker",
+          "firstSeenAt": {
+            "$date": 0
+          }
+        }
+      }
+    }
+  ],
+  "wire": {
+    "hex": "2b000000025f69640008000000efbfbd78efbfbd000966697273745365656e4174007b7c291f9401000000",
+    "decodedId": "�x�",
+    "firstSeenAtMs": 1735689600123,
+    "maxDateMs": 8640000000000000,
+    "minDateMs": -8640000000000000
+  },
+  "sourceSha256": {
+    "src/schemas/moderation_chatter.schema.ts": "71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e",
+    "src/schemas/moderation_chatter.schema.rs": "40bc8d2019ed0ca9fe21cc3fb73c6cb354ea72d3079ce73b5777ca3dab687b44",
+    "src/schemas/schema.rs": "60a84d33368cc1d1732422c6aea71c89bdedb1ba10a05b7500ca5ff3d6d82bbb",
+    "src/utils/bson_compat.rs": "bd6772ef74ec73708d3828d59496c8d2a9156d2325864b63c7f40544300802e4",
+    "src/utils/mongoose_date.rs": "d64fc10dfce3513d02598c9408bd3b6b5cccb7ed3c2e6fbad589f61e20087573",
+    "src/utils/js_date/mod.rs": "0f8aafce154dcfa6da2b3a7fd07f942f4defba175b22d6a19abe33145a39b4ca",
+    "src/utils/js_date/parser.rs": "5fe7f3e0621a51383068a71c5f715d917d3ce19d0b597fbcdb4ef17809085ff8",
+    "src/utils/json_number.rs": "f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419",
+    "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+    "src/utils/moderation/spam.rs": "8979c9bae469f6a997c2019ff268fd0cdcf69042d31e5b8da3986109f47e599a",
+    "tests/moderation_chatter_schema.rs": "07da873c5dc9e1dc20bd5d757c90d633ce4526b7e10ccde187074e2c953f30ff",
+    "tests/fixtures/schema_source_resolver.cjs": "1d5bfb0281bd4a370a662d8e73f5be1720ab080e26bbbd386e0d2f0f9a82d68c",
+    "Cargo.toml": "f64e2502a2d77772d18169be80ac0580be26964b24d01095951159ade3509305",
+    "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+    "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "oracle-script": "54fab150219b39e0570015521485b7c59b3413401c8f237d41fa8b582e865f10",
+    "typescript-js": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "typescript-package": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "mongoose-js": "59e21822580047abc5468d740b720d1383fa3569aa2da3ac70325265fbb0e25b",
+    "mongoose-package": "5136d95bcd0624a94096110ea21ac101b73f1839bc40726eab85649389c17dba",
+    "mongoose/index.js": "59e21822580047abc5468d740b720d1383fa3569aa2da3ac70325265fbb0e25b",
+    "mongoose/lib/mongoose.js": "141800e92c653c91489ab109a31e9b914dbb788ca4b20696d6a5781f12c5abb3",
+    "mongoose/lib/schema/string.js": "ae16be84b7a33ba66b4695decb847dc2f0cde86beb86914b14a7eb687410f072",
+    "mongoose/lib/schema/date.js": "1bffe2a1868e648c7b5c28da2b51d362e9d6d441f8dc85e2a240018995323e3c",
+    "mongoose/lib/document.js": "d19e9bd7cbf55f09cdc8b2ccdacadee739bbd2d639e2b7571e584de53abc3bde",
+    "mongoose/lib/helpers/clone.js": "74915a9317d875f8cf8b266f2a3798c0b5859d72e123a40a632d16f3007708c6",
+    "bson-js": "64e5de269bbcdee96f2bebb57cc9729b72aaebde02d832005872b7e575899284",
+    "bson-package": "ded0e42e4e1cd876a11c9f799e0692f83ee73ebc9fb7796a5bca05039b4b3e23"
+  }
+}

@@ -1,0 +1,671 @@
+{
+  "format": 1,
+  "versions": {
+    "node": "v24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "typescript": "5.9.3"
+  },
+  "nodePin": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "pins": {
+    "src/schemas/command_timer.schema.ts": "db42c5b989f6e154551c714f51736585b0230fa743f6bc51fe935b54530af4f5",
+    "src/schemas/countdown_timer.schema.ts": "5d6ab4812c726b2aab0a8fee4a3ca060c6dacc97f59b8aee66c46b669766b990",
+    "src/schemas/countdown_timer_config.schema.ts": "b4cf0d5f8cfe85dc1e04f11970aac8bbab48a27c86fc9fab43d935cdbb1ada8a",
+    "src/schemas/custom_timer.schema.ts": "6c59b38b43615325f87c870dcbd5dfe2cd0b50e91822dbe884d3c32dd45f387f",
+    "src/schemas/chat_logs.schema.ts": "732abc7b27b820fa6ded0d62b1dc3bf3aed8539c7fd636a47f47d98f70b63433",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "node_modules/typescript/lib/typescript.js": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "node_modules/typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "node_modules/bson/package.json": "ded0e42e4e1cd876a11c9f799e0692f83ee73ebc9fb7796a5bca05039b4b3e23",
+    "node_modules/bson/lib/bson.cjs": "64e5de269bbcdee96f2bebb57cc9729b72aaebde02d832005872b7e575899284"
+  },
+  "sources": {
+    "src/schemas/command_timer.schema.ts": "db42c5b989f6e154551c714f51736585b0230fa743f6bc51fe935b54530af4f5",
+    "src/schemas/countdown_timer.schema.ts": "5d6ab4812c726b2aab0a8fee4a3ca060c6dacc97f59b8aee66c46b669766b990",
+    "src/schemas/countdown_timer_config.schema.ts": "b4cf0d5f8cfe85dc1e04f11970aac8bbab48a27c86fc9fab43d935cdbb1ada8a",
+    "src/schemas/custom_timer.schema.ts": "6c59b38b43615325f87c870dcbd5dfe2cd0b50e91822dbe884d3c32dd45f387f",
+    "src/schemas/chat_logs.schema.ts": "732abc7b27b820fa6ded0d62b1dc3bf3aed8539c7fd636a47f47d98f70b63433"
+  },
+  "provenance": {
+    "src/schemas/command_timer.schema.ts": "archives/dimabot-typescript/2026-10-28/src/schemas/command_timer.schema.ts",
+    "src/schemas/countdown_timer.schema.ts": "archives/dimabot-typescript/2026-10-28/src/schemas/countdown_timer.schema.ts",
+    "src/schemas/countdown_timer_config.schema.ts": "archives/dimabot-typescript/2026-10-28/src/schemas/countdown_timer_config.schema.ts",
+    "src/schemas/custom_timer.schema.ts": "archives/dimabot-typescript/2026-10-28/src/schemas/custom_timer.schema.ts",
+    "src/schemas/chat_logs.schema.ts": "archives/dimabot-typescript/2026-10-28/src/schemas/chat_logs.schema.ts"
+  },
+  "imports": {
+    "command_timer": [
+      "mongoose"
+    ],
+    "countdown_timer": [
+      "mongoose"
+    ],
+    "countdown_timer_config": [
+      "mongoose"
+    ],
+    "custom_timer": [
+      "mongoose"
+    ],
+    "chat_logs": [
+      "mongoose"
+    ]
+  },
+  "hooks": {
+    "command_timer": [],
+    "countdown_timer": [],
+    "countdown_timer_config": [],
+    "custom_timer": [],
+    "chat_logs": []
+  },
+  "declarations": {
+    "ICommandTimer": {
+      "file": "src/schemas/command_timer.schema.ts",
+      "kind": "InterfaceDeclaration",
+      "text": "export interface ICommandTimer {\n    _id: Types.ObjectId;\n    command: string;\n    timer: number;\n    channel: string;\n    channelID: string;\n    createdAt: Date;\n    date: {\n        day: number;\n        month: number;\n        year: number;\n    };\n}",
+      "sha256": "a583da334745bb72a4313b2fb51d55f60b57948378cb0278d4cb0d616aa5ec6a",
+      "members": [
+        {
+          "name": "_id",
+          "type": "Types.ObjectId",
+          "optional": false
+        },
+        {
+          "name": "command",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "timer",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "channel",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "channelID",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "optional": false
+        },
+        {
+          "name": "date",
+          "type": "{\n        day: number;\n        month: number;\n        year: number;\n    }",
+          "optional": false
+        }
+      ]
+    },
+    "CommandTimerSchema": {
+      "file": "src/schemas/command_timer.schema.ts",
+      "kind": "FirstStatement",
+      "text": "export const CommandTimerSchema = model<ICommandTimer>('timer_command', commandTimerSchema);",
+      "sha256": "53da291841d33ba2d038bcc7635cdecf43c137f819bfc607d4ffe5fd8fb4bf22",
+      "members": null
+    },
+    "ICountdownTimer": {
+      "file": "src/schemas/countdown_timer.schema.ts",
+      "kind": "InterfaceDeclaration",
+      "text": "export interface ICountdownTimer {\n    _id: Types.ObjectId;\n    channel: string;\n    channelID: string;\n    startTime: number;\n    resumedAt: Date;\n    pausedAt: Date;\n    time: number;\n    paused: boolean;\n    active: boolean;\n}",
+      "sha256": "97c1eb992abc79a46a661080fb9c12151cf81a3bd8c5e029fb2994700aecdb06",
+      "members": [
+        {
+          "name": "_id",
+          "type": "Types.ObjectId",
+          "optional": false
+        },
+        {
+          "name": "channel",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "channelID",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "startTime",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "resumedAt",
+          "type": "Date",
+          "optional": false
+        },
+        {
+          "name": "pausedAt",
+          "type": "Date",
+          "optional": false
+        },
+        {
+          "name": "time",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "paused",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "optional": false
+        }
+      ]
+    },
+    "CountdownTimerSchema": {
+      "file": "src/schemas/countdown_timer.schema.ts",
+      "kind": "FirstStatement",
+      "text": "export const CountdownTimerSchema = model<ICountdownTimer>('Countdowntimer', countdownTimerSchema);",
+      "sha256": "b260ba8fff4d84e1396b88a0049ab6fc07b7d0309fca73a2b30dad8bddc0074c",
+      "members": null
+    },
+    "ICountdownTimerConfig": {
+      "file": "src/schemas/countdown_timer_config.schema.ts",
+      "kind": "InterfaceDeclaration",
+      "text": "export interface ICountdownTimerConfig {\n    _id: Types.ObjectId;\n    channel: string;\n    channelID: string;\n    bits: number;\n    tier1: number;\n    tier2: number;\n    tier3: number;\n    follows: number;\n    raids: number;\n    viewers: number;\n    donations: number;\n}",
+      "sha256": "a75e1ae436e81fca81bea0f188e3c98acb80b590d2bf48b80dd39683f1395266",
+      "members": [
+        {
+          "name": "_id",
+          "type": "Types.ObjectId",
+          "optional": false
+        },
+        {
+          "name": "channel",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "channelID",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "bits",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "tier1",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "tier2",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "tier3",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "follows",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "raids",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "viewers",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "donations",
+          "type": "number",
+          "optional": false
+        }
+      ]
+    },
+    "CountdownTimerConfigSchema": {
+      "file": "src/schemas/countdown_timer_config.schema.ts",
+      "kind": "FirstStatement",
+      "text": "export const CountdownTimerConfigSchema = model<ICountdownTimerConfig>('Countdowntimerconfig', countdownTimerConfigSchema);",
+      "sha256": "6c4fd9b83c2d5484dee08de596e58e34d6094910789f283180ab599496d87d8d",
+      "members": null
+    },
+    "ICustomTimer": {
+      "file": "src/schemas/custom_timer.schema.ts",
+      "kind": "InterfaceDeclaration",
+      "text": "export interface ICustomTimer {\n    _id?: Types.ObjectId;\n    name: string;\n    message: string;\n    frequency: number;\n    frequencyUnit?: 'minutes';\n    channel: string;\n    channelID: string;\n    active: boolean;\n    created_at?: Date;\n    updated_at?: Date;\n}",
+      "sha256": "c74f8921021fececdcc347863128feb3788b5c6f8539e962beb5d0455010d344",
+      "members": [
+        {
+          "name": "_id",
+          "type": "Types.ObjectId",
+          "optional": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "frequency",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "frequencyUnit",
+          "type": "'minutes'",
+          "optional": true
+        },
+        {
+          "name": "channel",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "channelID",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "created_at",
+          "type": "Date",
+          "optional": true
+        },
+        {
+          "name": "updated_at",
+          "type": "Date",
+          "optional": true
+        }
+      ]
+    },
+    "CustomTimerSchema": {
+      "file": "src/schemas/custom_timer.schema.ts",
+      "kind": "FirstStatement",
+      "text": "export const CustomTimerSchema = model<ICustomTimer>('custom_timer', customTimerSchema);",
+      "sha256": "339e4427e48f3747b8ce7d1b4910e688b46a90cec34e068ea331055f6a7ef86c",
+      "members": null
+    },
+    "IChatLog": {
+      "file": "src/schemas/chat_logs.schema.ts",
+      "kind": "InterfaceDeclaration",
+      "text": "export interface IChatLog {\n    _id: Types.ObjectId;\n    channel: string;\n    message: string;\n    username: string;\n    timestamp: Date;\n}",
+      "sha256": "d83552d1920cfc32c7877376995d6e22effa300cea533ea5398e6fe8ec490d32",
+      "members": [
+        {
+          "name": "_id",
+          "type": "Types.ObjectId",
+          "optional": false
+        },
+        {
+          "name": "channel",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "username",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "timestamp",
+          "type": "Date",
+          "optional": false
+        }
+      ]
+    },
+    "ChatLogSchema": {
+      "file": "src/schemas/chat_logs.schema.ts",
+      "kind": "FirstStatement",
+      "text": "export const ChatLogSchema = model<IChatLog>('Chat_Log', chatLogSchema);",
+      "sha256": "da478a39b423ccd9e3db0d5aaeb64995828066da51087f39efb38eb9a0b5ab13",
+      "members": null
+    }
+  },
+  "signatures": {
+    "ICommandTimer": [
+      {
+        "name": "_id",
+        "type": "ObjectId",
+        "optional": false
+      },
+      {
+        "name": "command",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "timer",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "channel",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "channelID",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "createdAt",
+        "type": "Date",
+        "optional": false
+      },
+      {
+        "name": "date",
+        "type": "{ day: number; month: number; year: number; }",
+        "optional": false
+      }
+    ],
+    "ICountdownTimer": [
+      {
+        "name": "_id",
+        "type": "ObjectId",
+        "optional": false
+      },
+      {
+        "name": "channel",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "channelID",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "startTime",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "resumedAt",
+        "type": "Date",
+        "optional": false
+      },
+      {
+        "name": "pausedAt",
+        "type": "Date",
+        "optional": false
+      },
+      {
+        "name": "time",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "paused",
+        "type": "boolean",
+        "optional": false
+      },
+      {
+        "name": "active",
+        "type": "boolean",
+        "optional": false
+      }
+    ],
+    "ICountdownTimerConfig": [
+      {
+        "name": "_id",
+        "type": "ObjectId",
+        "optional": false
+      },
+      {
+        "name": "channel",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "channelID",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "bits",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "tier1",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "tier2",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "tier3",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "follows",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "raids",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "viewers",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "donations",
+        "type": "number",
+        "optional": false
+      }
+    ],
+    "ICustomTimer": [
+      {
+        "name": "_id",
+        "type": "ObjectId | undefined",
+        "optional": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "message",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "frequency",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "frequencyUnit",
+        "type": "\"minutes\" | undefined",
+        "optional": true
+      },
+      {
+        "name": "channel",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "channelID",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "active",
+        "type": "boolean",
+        "optional": false
+      },
+      {
+        "name": "created_at",
+        "type": "Date | undefined",
+        "optional": true
+      },
+      {
+        "name": "updated_at",
+        "type": "Date | undefined",
+        "optional": true
+      }
+    ],
+    "IChatLog": [
+      {
+        "name": "_id",
+        "type": "ObjectId",
+        "optional": false
+      },
+      {
+        "name": "channel",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "message",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "username",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "timestamp",
+        "type": "Date",
+        "optional": false
+      }
+    ]
+  },
+  "hashes": {
+    "src/schemas/command_timer.schema.rs": "144367d301da96babba79e08a9bb5385dd788c299028d036ba0e534920551fa8",
+    "src/schemas/countdown_timer.schema.rs": "062ad3a59fc2cb5d755f0b17f7408c4f2ae985187b547aafa90bce622cf49d2f",
+    "src/schemas/countdown_timer_config.schema.rs": "6190d8d874b688f3fb9a49af0a43c488fdb4c69347405346e099800056d83ffc",
+    "src/schemas/custom_timer.schema.rs": "9de3e6ca4afbe96dfa6138625036ae9917ce3011989e23b1ebb6b29773caee0f",
+    "src/schemas/chat_logs.schema.rs": "1d9c7458c77abc0bea4b05452e53931d844477254b044af33c1729e2e745b446",
+    "src/schemas/schema.rs": "60a84d33368cc1d1732422c6aea71c89bdedb1ba10a05b7500ca5ff3d6d82bbb",
+    "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+    "tests/fixtures/timer_chat_schema_types_reference.cjs": "cffbfff438867d6e49fa5c80289d515a543d5e14a7508a7de7460f00e6364293",
+    "tests/fixtures/schema_source_resolver.cjs": "1d5bfb0281bd4a370a662d8e73f5be1720ab080e26bbbd386e0d2f0f9a82d68c",
+    "tests/timer_chat_schema_types.rs": "d4c3f7caffcc1dea391479cd3c897848e0e4cde145831b41b513563c8ea74b8c",
+    "tests/support/schema_source.rs": "31a9aaf8a70189fdf059dab96be30f27798eea67bb47c101301f2d0551c41294",
+    "tests/support/sha256.rs": "be1fbeade9ca428358081d30b47d0241734db05c94d343634b7e04520c42cf6a"
+  },
+  "bsonStrings": [
+    {
+      "units": [
+        97
+      ],
+      "bsonHex": "120000000276616c75650002000000610000",
+      "outputUnits": [
+        97
+      ]
+    },
+    {
+      "units": [
+        55296
+      ],
+      "bsonHex": "140000000276616c75650004000000efbfbd0000",
+      "outputUnits": [
+        65533
+      ]
+    },
+    {
+      "units": [
+        56320
+      ],
+      "bsonHex": "140000000276616c75650004000000efbfbd0000",
+      "outputUnits": [
+        65533
+      ]
+    },
+    {
+      "units": [
+        55296,
+        97,
+        56320
+      ],
+      "bsonHex": "180000000276616c75650008000000efbfbd61efbfbd0000",
+      "outputUnits": [
+        65533,
+        97,
+        65533
+      ]
+    },
+    {
+      "units": [
+        55357,
+        56832
+      ],
+      "bsonHex": "150000000276616c75650005000000f09f98800000",
+      "outputUnits": [
+        55357,
+        56832
+      ]
+    },
+    {
+      "units": [
+        21517,
+        0,
+        937
+      ],
+      "bsonHex": "170000000276616c75650007000000e5908d00cea90000",
+      "outputUnits": [
+        21517,
+        0,
+        937
+      ]
+    }
+  ],
+  "bsonNumbers": [
+    {
+      "name": "nan",
+      "bsonHex": "140000000176616c756500000000000000f87f00"
+    },
+    {
+      "name": "positiveInfinity",
+      "bsonHex": "140000000176616c756500000000000000f07f00"
+    },
+    {
+      "name": "negativeInfinity",
+      "bsonHex": "140000000176616c756500000000000000f0ff00"
+    },
+    {
+      "name": "negativeZero",
+      "bsonHex": "140000000176616c756500000000000000008000"
+    },
+    {
+      "name": "fraction",
+      "bsonHex": "140000000176616c756500000000000000f83f00"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "scope": "inactive task-owned private debug ELF test executables only; no release artifacts, source, shared or production resources",
+  "removed": [
+    {
+      "path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/target/debug/deps/raid_analytics-e0491b53181957f9",
+      "allocatedBytes": 33419264,
+      "sha256": "cb10989b99e62d77c3b5dd46a89df1c98c76d71ac60c9b27303ea669fe379da9"
+    },
+    {
+      "path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/target/debug/deps/lossless_json_document-2433369f728a01b3",
+      "allocatedBytes": 2318336,
+      "sha256": "5aaa2a5eb711f63483af45f46e2ad2a2b681e6ac07c6fee4a6f9f6d2b99b37f7"
+    },
+    {
+      "path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/target/debug/deps/lossless_json_view-20367d9a6909d511",
+      "allocatedBytes": 2183168,
+      "sha256": "91eca85cbc4eb47f2390dc6e81bc869f6d17decdcd0cf537951c96146416103d"
+    },
+    {
+      "path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/target/debug/deps/raid_analytics-2466598c2a2f8c78",
+      "allocatedBytes": 33419264,
+      "sha256": "449cde19db9bf07e5d0b95b88d81a60160efe80cedbd79de0c4a0f704fd6aaba"
+    },
+    {
+      "path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/target/debug/deps/roulette_completion-b5db958e739078a5",
+      "allocatedBytes": 27979776,
+      "sha256": "b2e5bd51f9a2d473fc0021ac8f22cf3e067ee9bd9045b683a41fd10fe685a5a1"
+    },
+    {
+      "path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/target/debug/deps/stream_activity-d70d60f2b2e1a065",
+      "allocatedBytes": 32264192,
+      "sha256": "d7433e02fe25f8912a214b708303ce378949110686893fdc6661b2e4b0f10645"
+    },
+    {
+      "path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/target/debug/deps/ai_usage_ledger_queries-14e9c1f8fbb27c35",
+      "allocatedBytes": 32358400,
+      "sha256": "8cca2e7e5a013bac811a2c4da81abebecbe7d3048fb4c9ff555c133703ffa245"
+    },
+    {
+      "path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/target/debug/deps/ai_usage_receipt_parser-118e87609d3cb4ad",
+      "allocatedBytes": 4333568,
+      "sha256": "22038477e56b4175b363467ab89995e489322a0183ec0546893046195c30a04b"
+    },
+    {
+      "path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/target/debug/deps/delete_twitch_message-728da53a7f0280fc",
+      "allocatedBytes": 22523904,
+      "sha256": "fc99fc596f8d90bf0f75633623f3fc9c632e69b8442aea31b49954875389eb89"
+    },
+    {
+      "path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/target/debug/deps/twitch_function_diagnostics-103dc17d3d207218",
+      "allocatedBytes": 38567936,
+      "sha256": "63e9c89033f35ef073b6ac94330fde2a91101b058b0ddb8033719a138884bbc1"
+    }
+  ],
+  "cacheBefore": 8323448832,
+  "freedAllocatedBytes": 229367808,
+  "cacheAfter": 8094081024
+}

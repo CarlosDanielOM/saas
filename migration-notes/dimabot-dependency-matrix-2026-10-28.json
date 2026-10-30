@@ -22,12 +22,12 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-30 Permission error limiter source and original test post-retirement verification",
+    "asOf": "2026-10-30 Moderation chatter schema source retirement and post-retirement verification",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 35,
+    "locallyCompleteMappings": 36,
     "partialRows": 25,
-    "archivedSourceSnapshots": 49,
-    "liveBaselineTypeScriptFiles": 757,
+    "archivedSourceSnapshots": 50,
+    "liveBaselineTypeScriptFiles": 756,
     "excludedReactEmailTemplatesIncludedInLiveCount": 6,
     "totalCompletionPercentage": null,
     "totalMigrationCompletion": "not-established; full dependency closure audit remains incomplete"
@@ -38096,45 +38096,57 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "reviewed-bounded-partial-native-moderation-chatter-schema; native descriptor and actual-Mongoose constructor replay verified; complete Mongoose runtime/model parity and caller adoption remain open",
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/moderation_chatter.schema.ts",
+        "sha256": "71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e",
+        "nativeAreaReference": "dimabot/src/schemas/moderation_chatter.schema.rs; existing SpamService first-seen Mongo primitive; migration-notes/moderation-chatter-retirement-handoff.md"
+      },
+      "featureReview": "complete-local-moderation-chatter-model-schema-and-declared-native-dependency-closure;source-retired-and-post-retirement-verified;caller-adoption-open",
       "localRustEvidence": [
-        "dimabot/src/schemas/moderation_chatter.schema.rs::schema",
-        "dimabot/src/schemas/moderation_chatter.schema.rs::get_moderation_chatter_model",
-        "dimabot/tests/moderation_spam_source.rs::actual_mongoose_chatter_constructor",
-        "migration-notes/moderation-spam.md",
-        "migration-notes/evidence/2026-10-30-moderation-spam/README.md",
-        "migration-notes/evidence/2026-10-30-moderation-spam/verification-summary.json"
+        "dimabot/src/schemas/moderation_chatter.schema.rs::{schema,get_moderation_chatter_model}",
+        "dimabot/src/utils/moderation/spam.rs::SpamService::claim_first_observed_message",
+        "dimabot/tests/moderation_chatter_schema.rs",
+        "dimabot/tests/moderation_spam_source.rs",
+        "dimabot/tests/moderation_spam_storage.rs",
+        "migration-notes/moderation-chatter-retirement-2026-10-30.md",
+        "migration-notes/evidence/2026-10-30-moderation-chatter-retirement/README.md",
+        "source a2a0b3ab9d5398fee8ee9551a34fa4e7d6022f02; tree 6d3e0f96d8cab8e6b261462c6644573a453f679d4ac79daf79a43169cc804d3c; 1,507 inputs independently bound"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
-        "The native schema descriptor preserves the moderation_chatter model and moderation_chatters collection, string _id, required firstSeenAt Date, versionKey false, and no indexes or TTL.",
-        "The actual source Mongoose constructor is replayed; generic Mongoose model behavior and all invalid-model matrices are not claimed as ported."
+        "The native schema preserves the moderation_chatter model, moderation_chatters collection, required string _id, required firstSeenAt Date, versionKey false, and no declared defaults, indexes, TTL, timestamps, hooks, or custom save clock.",
+        "The Mongoose runtime import maps to the native schema descriptor/model factory plus existing MongoDB, BSON and date support. The model has complete local declared-schema dependency closure; arbitrary JavaScript prototypes, executable hooks, getters, and general Mongoose/npm runtime parity are not claimed.",
+        "The existing SpamService::claim_first_observed_message supplies the concrete first-seen Mongo $setOnInsert adapter. This does not complete the wider Spam feature."
       ],
       "callers": {
         "sourceEvidence": [
-          "src/utils/moderation/spam.ts imports the Mongoose ModerationChatter model.",
-          "src/handlers/moderation.handler.ts and src/server/routes/moderation.route.ts still use the TypeScript moderation helper path."
+          "Archived moderation_chatter.schema.ts was imported by src/utils/moderation/spam.ts.",
+          "TypeScript moderation handlers, route and semantic worker remain on their existing application path."
         ],
-        "runtimeStatus": "The native schema descriptor and Mongo repository are implemented, but the live TypeScript spam helper, handler, and route have not adopted them."
+        "runtimeStatus": "The chatter model source is archived; existing TypeScript spam helper imports may now be unresolved. Callers have not adopted or cut over to the native descriptor/service."
       },
       "testEvidence": {
         "sourceEvidence": [
-          "src/schemas/moderation_chatter.schema.ts is exercised through the actual source-bound spam oracle."
+          "Actual-source 25-case Mongoose oracle regenerated from the archived byte-exact source and compared semantically with the pre-retirement corpus.",
+          "Eight affected corpora were behavior-identical; only enumerated source/archive/resolver/script-hash provenance changed."
         ],
         "rustBehaviorEvidence": [
-          "dimabot/tests/moderation_spam_source.rs::actual_mongoose_chatter_constructor",
-          "dimabot/tests/moderation_spam_storage.rs"
+          "Selected compiler-fixtures passed 37 checks including all seven Chatter tests, 25-case actual-Mongoose replay, isolated real-Mongo CRUD/atomic firstSeen, 1,636 Spam pure records, and six affected schema oracle/replay suites.",
+          "Node compared all 37 source Spam claims unchanged; native full asynchronous Spam claim suite was not rerun.",
+          "Formatting, scoped Clippy, minimal and all-feature strict checks passed; final readback found 18 production records unchanged and zero task-owned resources.",
+          "migration-notes/evidence/2026-10-30-moderation-chatter-retirement/README.md"
         ],
-        "status": "Native descriptor and actual-Mongoose constructor replay passed; borrowed-view final phase compiler-fixtures-1793340894915777003 passed updated source replay, concrete Mongo marker storage, bootstrap, response-loss checks, and strict profiles. Final readback confirmed all 18 production records unchanged and zero task-owned containers, networks, or volumes."
+        "status": "declared schema contract and required native dependencies complete locally; source archived and post-retirement verified; broader Spam/caller adoption open"
       },
       "exports": [
         {
           "name": "ModerationChatter",
-          "nativeMapping": "dima_rust::schemas::moderation_chatter::{schema,get_moderation_chatter_model}",
+          "nativeMapping": "dima_rust::schemas::moderation_chatter::{schema,get_moderation_chatter_model}; concrete first-seen Mongo behavior reuses existing SpamService::claim_first_observed_message",
           "evidence": [
-            "actual Mongoose constructor replay",
-            "isolated native Mongo marker storage checks"
+            "dimabot/src/schemas/moderation_chatter.schema.rs",
+            "dimabot/src/utils/moderation/spam.rs",
+            "dimabot/tests/moderation_chatter_schema.rs",
+            "dimabot/tests/moderation_spam_storage.rs"
           ]
         }
       ],
@@ -38146,14 +38158,14 @@
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
           "importSyntaxKind": "runtime named import of Schema and model",
-          "runtimeOrTypeDependency": "Mongoose constructs and exports the application model.",
+          "runtimeOrTypeDependency": "Mongoose builds and exports the declared application model.",
           "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
-          "directDependencyReview": "Reviewed: model schema, model name, pluralized collection, field types/default constraints, version key, and indexes are covered by the source oracle and native descriptor.",
-          "transitiveDependencyReview": "Partial: native BSON/database adapter is concrete; full Mongoose model/casting middleware behavior is outside the native descriptor mapping.",
-          "rustReplacementOrGap": "dima_rust::schemas::moderation_chatter::schema plus get_moderation_chatter_model; broader Mongoose runtime parity remains open."
+          "directDependencyReview": "Verified model name, derived collection, declared fields, requiredness, and versionKey behavior against the source oracle.",
+          "transitiveDependencyReview": "Complete for the declared schema contract through the existing native schema core, MongoDB driver, BSON and date support. General Mongoose npm model behavior is outside this schema closure.",
+          "rustReplacementOrGap": "dima_rust::schemas::moderation_chatter::{schema,get_moderation_chatter_model}; no missing application-specific adapter for this single-model contract."
         }
       ],
-      "rowAssessment": "partial-local-moderation-chatter-schema-and-concrete-mongo-adapter-verified; full-mongoose-runtime-parity-and-caller-adoption-open"
+      "rowAssessment": "complete-local-moderation-chatter-model-schema-and-dependency-closure;source-retired-post-retirement-verified;callers-unadopted"
     },
     {
       "source": "src/schemas/moderation_decision.schema.ts",
