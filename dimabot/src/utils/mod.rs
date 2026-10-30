@@ -81,7 +81,11 @@ pub mod moderation;
 pub mod links;
 pub mod tts_defaults;
 
-#[cfg(any(feature = "tts-services", feature = "moderation-variations-provider"))]
+#[cfg(any(
+    feature = "tts-services",
+    feature = "moderation-variations-provider",
+    feature = "moderation-semantic"
+))]
 #[path = "ai/openrouter/app_attribution.util.rs"]
 pub mod openrouter_attribution;
 

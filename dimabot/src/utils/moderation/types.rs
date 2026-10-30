@@ -1,6 +1,8 @@
 //! Shared, transport-independent moderation configuration types.
 use crate::utils::{js_string::JsString, moderation::spam_categories::SpamCategory};
 
+pub const SPAM_RULE_ID: &str = "builtin-spam-protection";
+
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum PatternBoundary {
     WholeWord,

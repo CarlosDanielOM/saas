@@ -35,6 +35,9 @@ pub mod spam_categories;
 #[cfg(feature = "moderation-spam")]
 pub mod spam;
 
+#[cfg(feature = "moderation-semantic")]
+pub mod semantic;
+
 #[cfg(feature = "moderation-permit")]
 pub mod permit;
 
