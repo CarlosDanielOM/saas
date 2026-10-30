@@ -1,0 +1,36 @@
+{
+  "buildReceipt": "compiler-1793324226916895770-receipt.json",
+  "toolchainImage": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9",
+  "sourceTreeSha256": "edf8fdd9496cd676dcf74730a9a4018a0448143fffbab309698171272a7baa02",
+  "sourceInputs": 1366,
+  "binaries": [
+    {
+      "name": "moderation_blacklist_benchmark",
+      "cargoExecutable": "/target-cache/release/deps/moderation_blacklist_benchmark-24acb05029da9077",
+      "artifactPath": "moderation-blacklist/attempt4/bin/moderation_blacklist_benchmark",
+      "sha256": "f738319035b090a5dfdf75b7828611502ac01c5d9a6f51490f21545d3fd85d99",
+      "bytes": 3978592,
+      "elfMachine": "x86-64",
+      "staticNoInterpreterOrNeededLibraries": true,
+      "programHeaderTypes": [
+        1,
+        1,
+        1,
+        1,
+        2,
+        4,
+        7,
+        1685382480,
+        1685382481,
+        1685382482
+      ],
+      "profile": {
+        "opt_level": "3",
+        "debuginfo": 0,
+        "debug_assertions": false,
+        "overflow_checks": false,
+        "test": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "codeCommit": "0aea6a84b16a059aee11624895599800ece41b01",
+  "finalAcceptedRuns": [
+    "node-1793324198554386413",
+    "compiler-1793324198556056020",
+    "compiler-1793324226916895770",
+    "node-1793324344061879850"
+  ],
+  "finalBuildRun": "compiler-1793324226916895770",
+  "finalBenchmarkRun": "node-1793324344061879850",
+  "baselineAcceptedRuns": [
+    "compiler-1793322701237322608",
+    "node-1793322890142509580",
+    "compiler-1793322965278247652",
+    "node-1793323167311731526"
+  ],
+  "finalReadback": "artifacts/moderation-blacklist/attempt4/final-production.json",
+  "finalReport": "artifacts/moderation-blacklist/attempt4/paired1/blacklist-paired-report.json"
+}

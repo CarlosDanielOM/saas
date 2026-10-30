@@ -1,0 +1,15 @@
+{
+  "blacklistCases": 1592,
+  "original248Unchanged": true,
+  "sourceCompiledHashesUnchanged": true,
+  "coreChangeKeys": [
+    "hashes"
+  ],
+  "coreSourceChange": "Cargo.toml existing dep:regex feature enablement only",
+  "metadataHashesVerified": 31,
+  "benchmarkInputsByteIdentical": true,
+  "source": "6af9cf85ddbeca387ea2207058d258b6added7c5f43bd03bf542d161b6c11909",
+  "fixtureSha256": "6ec11ae503801b2bd5cfc810118e8008e2fdc1e18bee02a8c1940fb58c589d39",
+  "coreSha256": "3873b6d263563f1598c560d23106914afc24e0b38d9c9471074720afd438c7bd",
+  "benchmarkSha256": "21414b376066cbd415c32344e2c6843a864f91c4fff753445aedf3a2fce7cc3a"
+}

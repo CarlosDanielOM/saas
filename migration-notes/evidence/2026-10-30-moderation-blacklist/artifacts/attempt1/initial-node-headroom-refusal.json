@@ -1,0 +1,8 @@
+{
+  "phase": "node",
+  "resourceCreation": false,
+  "applicationExecuted": false,
+  "requiredAvailableBytes": 8589934592,
+  "exactAvailableBytesAtRefusal": null,
+  "reason": "insufficient production memory headroom"
+}

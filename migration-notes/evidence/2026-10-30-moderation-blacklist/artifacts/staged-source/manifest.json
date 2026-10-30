@@ -1,0 +1,86 @@
+{
+  "baseCommit": "09ac5cabff474a1bc55f54e60b2f9c6808f7c4ef",
+  "status": "unverified authoring, no generated Rust table yet",
+  "files": {
+    "dimabot/Cargo.toml": {
+      "sha256": "0dfa162788bae4d1938bfac058d81f508542ceb0f060e0431713f9e7ecfd50b8",
+      "baseSha256": "b07d5dbaf960b9dc9a7acc1675ae1271cebbf67bd924e388863fa6bcb489d647",
+      "tracked": true
+    },
+    "dimabot/src/utils/mod.rs": {
+      "sha256": "d72688d94405245337a93255a992aa42d6d95fb6ecbda57df582baccaea11c8f",
+      "baseSha256": "bd9f3a27e01148b74915f36da51229aafb3c2d0ac1c54d345e00139e14a52f6b",
+      "tracked": true
+    },
+    "dimabot/src/utils/moderation/mod.rs": {
+      "sha256": "e45cc74b5d77d2d13550a5c0812c5422fb5143ad8ec2c868bc78e351290e7245",
+      "baseSha256": "e4a4e1124b460eac517387873446a3fd25659f1b7f1e917eb5a7601792727446",
+      "tracked": true
+    },
+    "dimabot/src/utils/moderation/caps.rs": {
+      "sha256": "36f0454aab917dc19373500a321c21d51a18284501c09d3baf43ce61abfbd664",
+      "baseSha256": "815088acaf0afe7338baae37816f645238e6063c310a305d326df842f0493396",
+      "tracked": true
+    },
+    "dimabot/src/utils/moderation/blacklist.rs": {
+      "sha256": "4ea7c95e34effd321ab25373f2de038807bd696b6f324f5605932678d8d4f5b3",
+      "baseSha256": null,
+      "tracked": false
+    },
+    "dimabot/src/utils/js_regexp_unicode.rs": {
+      "sha256": "0d9e2f8a59f3999bffe520eef5fa32670bd2f07421f4e606a0c1a802607f5d5f",
+      "baseSha256": null,
+      "tracked": false
+    },
+    "dimabot/tests/js_regexp_unicode.rs": {
+      "sha256": "87a78c46908ebda56e2752cd09d6593c96c2bce2b2b74c340b50e80332d761b8",
+      "baseSha256": null,
+      "tracked": false
+    },
+    "dimabot/tests/moderation_blacklist.rs": {
+      "sha256": "ba19cbdaaa1a962c14ba7bcb829a33a6427dd601c8323943fcf589b08ec40b7b",
+      "baseSha256": null,
+      "tracked": false
+    },
+    "dimabot/tests/moderation_blacklist_benchmark.rs": {
+      "sha256": "37f69af13d86964cb537030eac8643cb76b896502f823f9719a9e90ade769ee3",
+      "baseSha256": null,
+      "tracked": false
+    },
+    "dimabot/tests/support/sha256.rs": {
+      "sha256": "be1fbeade9ca428358081d30b47d0241734db05c94d343634b7e04520c42cf6a",
+      "baseSha256": null,
+      "tracked": false
+    },
+    "dimabot/tests/fixtures/moderation_blacklist_reference.cjs": {
+      "sha256": "96e68bd8cf444e67a873f4562832109ffc93e2d3b6c74c3013f58da2fcb4a46b",
+      "baseSha256": null,
+      "tracked": false
+    },
+    "dimabot/tests/fixtures/moderation_blacklist_benchmark.cjs": {
+      "sha256": "a0c88a6d7e706cab0dd3a6bf43f73785b23b691a17437e8453badd7deed4161c",
+      "baseSha256": null,
+      "tracked": false
+    },
+    "dimabot/tests/fixtures/js_regexp_unicode_prepare.cjs": {
+      "sha256": "6ea5195da6ab422afb273a65c915c3413d4ddf8e0b7af98ebc6b8e1a1e40dc04",
+      "baseSha256": null,
+      "tracked": false
+    },
+    "dimabot/tests/fixtures/unicode-17.0.0/CaseFolding.txt": {
+      "sha256": "ff8d8fefbf123574205085d6714c36149eb946d717a0c585c27f0f4ef58c4183",
+      "baseSha256": null,
+      "tracked": false
+    },
+    "dimabot/tests/fixtures/unicode-17.0.0/LICENSE.txt": {
+      "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
+      "baseSha256": null,
+      "tracked": false
+    },
+    "dimabot/tests/fixtures/unicode-17.0.0/source-manifest.json": {
+      "sha256": "85ba12f9a13d2fd50d0a5056ada50a49d1317a1cab3ad55f5cf6a4a51d55083e",
+      "baseSha256": null,
+      "tracked": false
+    }
+  }
+}

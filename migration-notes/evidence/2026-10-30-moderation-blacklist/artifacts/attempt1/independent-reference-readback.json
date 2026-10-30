@@ -1,0 +1,16 @@
+{
+  "core": {
+    "fixtureSha256": "e0374c942603059ee5b220d51628c74c5dd430bd0cae0077842412164b6cc26b",
+    "checkedFileHashes": 9
+  },
+  "blacklist": {
+    "fixtureSha256": "590272c51cdd39bd64ef1f1b153f43e15825806da2fc0b045130d48b039b71fb",
+    "checkedFileHashes": 25,
+    "cases": 248
+  },
+  "caps": {
+    "fixtureSha256": "94e487935412c344e54ec57cce41eb9e30b4206e60af40c8c2ea4da320521523",
+    "checkedFileHashes": 20,
+    "unchangedCases": 5348
+  }
+}

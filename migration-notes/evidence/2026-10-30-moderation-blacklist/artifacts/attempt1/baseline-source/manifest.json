@@ -1,0 +1,6 @@
+{
+  "dimabot/Cargo.toml": "0dfa162788bae4d1938bfac058d81f508542ceb0f060e0431713f9e7ecfd50b8",
+  "dimabot/src/utils/moderation/blacklist.rs": "574e8643bfcbc5996f54bc54ba24e8352a5037674d42abfd174db0b3c7bb0535",
+  "dimabot/tests/moderation_blacklist.rs": "5f2b3f8cbeece29df085781e706f0dca3889b5dd9723f44dbb758aaf6a9511e0",
+  "dimabot/tests/fixtures/moderation_blacklist_reference.cjs": "91bb0535dbfa90a780c0f105f515ed54b959e9ddcc7237560ca4002e185f6191"
+}

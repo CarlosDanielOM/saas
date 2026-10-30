@@ -1,0 +1,132 @@
+{
+  "all56ActorExitsZero": true,
+  "independentPreparedFixtureChecksumsVerified": true,
+  "sourceAndBinaryHashesUnchanged": true,
+  "iterations": 4000,
+  "results": {
+    "short": {
+      "node": {
+        "medianNsPerOperation": 372.40875,
+        "minNsPerOperation": 330.112125,
+        "maxNsPerOperation": 504.30075,
+        "samples": [
+          437.274,
+          504.30075,
+          347.948,
+          330.112125,
+          438.657875,
+          366.130875,
+          372.40875
+        ]
+      },
+      "rust": {
+        "medianNsPerOperation": 272.599375,
+        "minNsPerOperation": 229.27075,
+        "maxNsPerOperation": 447.282875,
+        "samples": [
+          229.27075,
+          287.422125,
+          232.436625,
+          381.316625,
+          447.282875,
+          236.349,
+          272.599375
+        ]
+      },
+      "rustTimeReductionPercent": 26.801028439852715
+    },
+    "long": {
+      "node": {
+        "medianNsPerOperation": 17514.66725,
+        "minNsPerOperation": 16950.23,
+        "maxNsPerOperation": 22267.96375,
+        "samples": [
+          22267.96375,
+          17375.33875,
+          19236.07925,
+          17514.66725,
+          17541.48,
+          17145.72375,
+          16950.23
+        ]
+      },
+      "rust": {
+        "medianNsPerOperation": 4051.54425,
+        "minNsPerOperation": 3929.776,
+        "maxNsPerOperation": 4737.0055,
+        "samples": [
+          4429.958,
+          3929.776,
+          4737.0055,
+          4085.1645,
+          4026.54975,
+          4051.54425,
+          3962.36725
+        ]
+      },
+      "rustTimeReductionPercent": 76.86770640761102
+    },
+    "many": {
+      "node": {
+        "medianNsPerOperation": 366.336125,
+        "minNsPerOperation": 351.125125,
+        "maxNsPerOperation": 614.0425,
+        "samples": [
+          383.91675,
+          351.125125,
+          375.058875,
+          614.0425,
+          363.8365,
+          365.319375,
+          366.336125
+        ]
+      },
+      "rust": {
+        "medianNsPerOperation": 414.600375,
+        "minNsPerOperation": 306.93625,
+        "maxNsPerOperation": 533.617,
+        "samples": [
+          414.600375,
+          306.93625,
+          368.286125,
+          533.617,
+          421.84375,
+          319.512125,
+          439.485625
+        ]
+      },
+      "rustTimeReductionPercent": -13.17485410427377
+    },
+    "unicode": {
+      "node": {
+        "medianNsPerOperation": 1375.949875,
+        "minNsPerOperation": 1098.631625,
+        "maxNsPerOperation": 1778.634125,
+        "samples": [
+          1775.50325,
+          1139.87275,
+          1778.634125,
+          1730.241,
+          1375.949875,
+          1098.631625,
+          1204.206875
+        ]
+      },
+      "rust": {
+        "medianNsPerOperation": 813.73925,
+        "minNsPerOperation": 647.704375,
+        "maxNsPerOperation": 1298.459625,
+        "samples": [
+          1298.459625,
+          671.30125,
+          693.237125,
+          813.73925,
+          647.704375,
+          1126.269625,
+          896.582
+        ]
+      },
+      "rustTimeReductionPercent": 40.85981874884796
+    }
+  }
+}

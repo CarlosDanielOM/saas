@@ -87510,33 +87510,62 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-local-blacklist; arbitrary externally-constructed-RegExp interface remains open",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/blacklist.rs",
+        "dimabot/tests/moderation_blacklist.rs",
+        "migration-notes/moderation-blacklist-2026-10-30.md",
+        "migration-notes/evidence/2026-10-30-moderation-blacklist/README.md",
+        "migration-notes/evidence/2026-10-30-moderation-blacklist/verification-summary.json"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Native patterns are accepted only when produced by the literal-term compiler; arbitrary externally-constructed JavaScript RegExp values accepted by the source evaluator are unsupported. Reviewed application callers compile patterns from terms, but the source interface difference keeps this row partial.",
+        "The opt-in moderation-blacklist feature uses the existing regex 1.13.1 dependency and does not change Cargo.lock, default features, or worker profiles."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/handlers/moderation.handler.ts",
+          "dimabot/src/utils/moderation/rules/index.ts",
+          "dimabot/src/utils/moderation/advanced.ts"
+        ],
+        "runtimeStatus": "Live TypeScript callers; reviewed pattern construction uses compileBlacklistPattern. No Rust caller adoption."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/rules/emote_spam_blacklist.rule.test.ts"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_blacklist.rs",
+          "dimabot/tests/moderation_emote_spam.rs",
+          "migration-notes/evidence/2026-10-30-moderation-blacklist/verification-summary.json"
+        ],
+        "status": "Seven blacklist groups and two related emote-spam groups are covered; this row remains partial because of the source RegExp interface gap."
       },
       "exports": [
         {
           "name": "BlacklistEvaluationResult",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::blacklist::BlacklistEvaluationResult (local equivalent result type)",
+          "evidence": [
+            "dimabot/src/utils/moderation/blacklist.rs",
+            "migration-notes/moderation-blacklist-2026-10-30.md"
+          ]
         },
         {
           "name": "compileBlacklistPattern",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::blacklist::compile_blacklist_pattern",
+          "evidence": [
+            "dimabot/src/utils/moderation/blacklist.rs",
+            "dimabot/tests/moderation_blacklist.rs"
+          ]
         },
         {
           "name": "evaluateBlacklistRule",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::blacklist::evaluate_blacklist_rule (compiled literal-term patterns only)",
+          "evidence": [
+            "dimabot/src/utils/moderation/blacklist.rs",
+            "dimabot/tests/moderation_blacklist.rs",
+            "migration-notes/evidence/2026-10-30-moderation-blacklist/README.md"
+          ]
         }
       ],
       "imports": [
@@ -87553,12 +87582,12 @@
           "baselineSourceTargets": [
             "src/schemas/channel_moderation_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only named import: IModerationRule",
+          "runtimeOrTypeDependency": "type-only",
+          "defaultSideEffectBarrelDetails": "no runtime, side-effect, or barrel dependency for this import",
+          "directDependencyReview": "reviewed-type-only-contract",
+          "transitiveDependencyReview": "type-only contract; no schema runtime dependency required",
+          "rustReplacementOrGap": "local BlacklistRule with terms: Vec<JsString>; MongoDB schema types are not needed by this pure evaluator"
         },
         {
           "ordinal": 1,
@@ -87573,15 +87602,15 @@
           "baselineSourceTargets": [
             "src/utils/moderation/normalize.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named value import: escapeRegExp, foldText",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "named runtime functions; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-native-replacement",
+          "transitiveDependencyReview": "normalization, UTF-16 JsString, and Unicode 17 dependencies are concrete for the mapped evaluator",
+          "rustReplacementOrGap": "dima_rust::utils::moderation::normalize::{escape_reg_exp, fold_text} plus existing JsString and Unicode 17 utilities; arbitrary JavaScript RegExp adapter remains unsupported"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-literal-blacklist-evaluator-verified; externally-constructed-RegExp-interface-remains-open; callers-unadopted"
     },
     {
       "source": "src/utils/moderation/rules/caps.rule.test.ts",
@@ -87787,17 +87816,32 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-test-obligation-mapped-to-native-blacklist-and-emote-spam-coverage",
+      "localRustEvidence": [
+        "dimabot/tests/moderation_blacklist.rs",
+        "dimabot/tests/moderation_emote_spam.rs",
+        "migration-notes/evidence/2026-10-30-moderation-blacklist/verification-summary.json"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "This source test file records test obligations, not an independent application feature. Its seven blacklist groups and two emote-spam groups are represented by existing Rust integration test files; no source retirement or caller adoption is implied."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/rules/blacklist.rule.ts",
+          "src/utils/moderation/rules/emote_spam.rule.ts"
+        ],
+        "runtimeStatus": "test-only source; no runtime callers"
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/rules/emote_spam_blacklist.rule.test.ts"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_blacklist.rs",
+          "dimabot/tests/moderation_emote_spam.rs",
+          "migration-notes/evidence/2026-10-30-moderation-blacklist/verification-summary.json"
+        ],
+        "status": "Seven blacklist and two emote-spam test groups passed; test behavior mapped, not an independent feature completion."
       },
       "exports": [],
       "imports": [
@@ -87814,12 +87858,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/rules/blacklist.rule.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime imports: compileBlacklistPattern, evaluateBlacklistRule",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "named test imports; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-test-obligation",
+          "transitiveDependencyReview": "source test behavior is represented by native blacklist tests; application RegExp interface gap remains on the source row",
+          "rustReplacementOrGap": "dimabot/tests/moderation_blacklist.rs"
         },
         {
           "ordinal": 1,
@@ -87834,12 +87878,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/rules/emote_spam.rule.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime test import: evaluateEmoteSpamRule",
+          "runtimeOrTypeDependency": "runtime for test execution only",
+          "defaultSideEffectBarrelDetails": "named test import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-test-obligation",
+          "transitiveDependencyReview": "source test behavior is represented by native emote-spam tests",
+          "rustReplacementOrGap": "dimabot/tests/moderation_emote_spam.rs"
         },
         {
           "ordinal": 2,
@@ -87847,12 +87891,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default runtime test import",
+          "runtimeOrTypeDependency": "test harness only",
+          "defaultSideEffectBarrelDetails": "Node assertion API; test-only",
+          "directDependencyReview": "test-harness-only",
+          "transitiveDependencyReview": "not an application feature dependency",
+          "rustReplacementOrGap": "Rust assert macros in the native integration tests"
         },
         {
           "ordinal": 3,
@@ -87860,15 +87904,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default runtime test import",
+          "runtimeOrTypeDependency": "test harness only",
+          "defaultSideEffectBarrelDetails": "Node test runner API; test-only",
+          "directDependencyReview": "test-harness-only",
+          "transitiveDependencyReview": "not an application feature dependency",
+          "rustReplacementOrGap": "Cargo integration test harness"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "test-behavior-mapped-not-an-independent-feature-completion; native-groups-passed"
     },
     {
       "source": "src/utils/moderation/rules/emote_spam.rule.ts",
@@ -92489,7 +92533,7 @@
       "behaviorDifferencesOrAcceptedChanges": [
         "All six exports have local Rust payload/lifecycle counterparts and concrete SDK/lossless adapters. Verification covers 1,042 source wrapper records, 20 native HTTP transport tests and 18 installed-SDK lifecycle scenarios; see the dated migration note and evidence summary.",
         "Native lossless transport has explicit event preflight (256 KiB), depth (64), response-body (64 KiB) and queued-byte (16 MiB) bounds; redirects/proxies are disabled and shutdown is permanent. These behavior differences, UUIDv4 versus SDK UUIDv7 event metadata, and differing SDK/library metadata prevent a strict source-equivalence claim.",
-        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%\u201386.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
+        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%–86.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
       ],
       "callers": {
         "sourceEvidence": [
