@@ -9,7 +9,7 @@ assert.equal(fs.realpathSync(dir),dir);
 const root=fs.realpathSync(process.env.DIMA_BSON_SOURCE_ROOT);
 assert.equal(root,process.env.DIMA_BSON_SOURCE_ROOT);
 assert(dir!==root && !dir.startsWith(root+path.sep));
-assert.deepEqual(fs.readdirSync(dir).sort(),mode==='--write'?[]:['bson-js-json-input.json','bson-js-json-node.json','bson-js-json-rust.json']);
+assert.deepEqual(fs.readdirSync(dir).sort(),mode==='--write'?[]:['bson-js-json-input.json','bson-js-json-node.json','bson-js-json-rust-borrowed.json','bson-js-json-rust.json']);
 const nodeSha='569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108';
 assert.equal(sha(fs.readFileSync(process.execPath)),nodeSha);
 assert.deepEqual([process.versions.node,process.versions.v8,process.versions.icu,process.versions.unicode],['24.22.1','13.6.233.17-node.58','78.3','17.0']);
@@ -38,7 +38,7 @@ function make(name,i) {
 const workloads=definitions.map(([name,iterations])=>({name,iterations,warmup:iterations,pool:Array.from({length:32},(_,i)=>{const raw=bson.serialize(make(name,i),{ignoreUndefined:false}); const value=driver.deserialize(raw,options); const wire=JSON.stringify(value); assert.equal(typeof wire,'string'); return {hex:raw.toString('hex'),wire,checksum:sum(Buffer.from(wire,'utf8'))};})}));
 const input={format:1,label:'prepared BSON projection + JSON + UTF-8 byte sum',nodeSha,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,mongoose:mongoose.version,mongodb:'6.20.0',bson:'6.10.4'},options,sdkHashes:Object.fromEntries(Object.entries(pins).map(([k,v])=>[k,v[1]])),sourceHashes:hashes,workloads};
 const inputBytes=JSON.stringify(input,null,2)+'\n',inputSha256=sha(inputBytes);
-const inputPath=path.join(dir,'bson-js-json-input.json'),nodePath=path.join(dir,'bson-js-json-node.json'),rustPath=path.join(dir,'bson-js-json-rust.json');
+const inputPath=path.join(dir,'bson-js-json-input.json'),nodePath=path.join(dir,'bson-js-json-node.json'),rustPath=path.join(dir,'bson-js-json-rust.json'),borrowedPath=path.join(dir,'bson-js-json-rust-borrowed.json');
 function expected(w) {let s=0; for(let i=0;i<w.iterations;i++) s=(s+w.pool[i%32].checksum)>>>0; return s;}
 function validate(report,runtime) {
   assert.equal(report.format,1); assert.equal(report.label,input.label); assert.equal(report.runtime,runtime); assert.equal(report.inputSha256,inputSha256); assert.equal(report.workloads.length,workloads.length);
@@ -56,5 +56,5 @@ if(mode==='--write') {
     return {name:w.name,iterations:w.iterations,warmup:w.warmup,checksum:expected(w),samples,sampleChecksums,medianNs:[...samples].sort((a,b)=>a-b)[3]};
   });
   const report={format:1,label:input.label,runtime:'node-commonjs',inputSha256,workloads:results}; validate(report,'node-commonjs'); fs.writeFileSync(nodePath,JSON.stringify(report,null,2)+'\n',{flag:'wx'});
-} else {assert.equal(fs.readFileSync(inputPath,'utf8'),inputBytes); validate(JSON.parse(fs.readFileSync(nodePath)),'node-commonjs'); validate(JSON.parse(fs.readFileSync(rustPath)),'rust-release');}
+} else {assert.equal(fs.readFileSync(inputPath,'utf8'),inputBytes); validate(JSON.parse(fs.readFileSync(nodePath)),'node-commonjs'); validate(JSON.parse(fs.readFileSync(rustPath)),'rust-release'); validate(JSON.parse(fs.readFileSync(borrowedPath)),'rust-release-borrowed');}
 console.log(JSON.stringify({mode,inputSha256}));

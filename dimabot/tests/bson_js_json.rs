@@ -1,5 +1,5 @@
 #![cfg(feature = "bson-js-json")]
-use dima_rust::utils::bson_js_json::bson_js_json;
+use dima_rust::utils::bson_js_json::{append_bson_js_json, bson_js_json, bson_js_json_string};
 use mongodb::bson::{Bson, DateTime, Document, doc};
 
 #[test]
@@ -14,6 +14,43 @@ fn ordinary_values_and_undefined_contexts() {
         r#"{"date":"1970-01-01T00:00:00.000Z","large":{"low":1,"high":2097152,"unsigned":false},"array":[null,2],"nonfinite":null}"#
     );
     assert!(bson_js_json(&Bson::Undefined).is_err());
+    assert_eq!(
+        bson_js_json_string(&v).unwrap(),
+        bson_js_json(&v).unwrap().to_json_string()
+    );
+    assert_eq!(
+        bson_js_json_string(&Bson::Undefined).unwrap_err(),
+        bson_js_json(&Bson::Undefined).unwrap_err()
+    );
+}
+
+#[test]
+fn borrowed_order_undefined_proto_and_transactional_append() {
+    let value = Bson::Document(doc! {
+        "z": 1, "10": "ten", "2": "two", "01": "leading", "4294967295": "limit",
+        "__proto__": {"x": 1}, "omitted": Bson::Undefined,
+        "array": [Bson::Undefined, Bson::String("é\n".into())],
+    });
+    let expected = r#"{"2":"two","10":"ten","z":1,"01":"leading","4294967295":"limit","__proto__":{"x":1},"array":[null,"é\n"]}"#;
+    assert_eq!(bson_js_json(&value).unwrap().to_json_string(), expected);
+    assert_eq!(bson_js_json_string(&value).unwrap(), expected);
+    let mut out = String::from("prefix-é:");
+    append_bson_js_json(&value, &mut out).unwrap();
+    assert_eq!(out, format!("prefix-é:{expected}"));
+
+    let rejected = Bson::Document(doc! {
+        "prefix": [1, 2], "bad": {"$ref": "c", "$id": "id",
+            "__proto__": mongodb::bson::oid::ObjectId::parse_str("00112233445566778899aabb").unwrap(),
+            "_bsontype": "readonly"},
+    });
+    let before = out.clone();
+    assert_eq!(
+        append_bson_js_json(&rejected, &mut out).unwrap_err(),
+        bson_js_json(&rejected).unwrap_err()
+    );
+    assert_eq!(out, before);
+    assert!(append_bson_js_json(&Bson::Undefined, &mut out).is_err());
+    assert_eq!(out, before);
 }
 
 #[test]
@@ -106,7 +143,9 @@ fn replay_pinned_driver_bson_bytes() {
         );
         assert_eq!(digest, expected.as_str().unwrap(), "source pin: {name}");
     }
-    for case in fixture["records"].as_array().unwrap() {
+    let records = fixture["records"].as_array().unwrap();
+    assert_eq!(records.len(), 54);
+    for case in records {
         let name = case["name"].as_str().unwrap();
         let hex = case["hex"].as_str().unwrap().as_bytes();
         assert_eq!(hex.len() % 2, 0);
@@ -118,7 +157,17 @@ fn replay_pinned_driver_bson_bytes() {
             .collect();
         let doc = Document::from_reader(raw.as_slice())
             .unwrap_or_else(|e| panic!("{name}: native BSON decode: {e}"));
-        let projected = bson_js_json(&Bson::Document(doc));
+        let value = Bson::Document(doc);
+        let projected = bson_js_json(&value);
+        let streamed = bson_js_json_string(&value);
+        assert_eq!(
+            streamed,
+            projected
+                .as_ref()
+                .map(|v| v.to_json_string())
+                .map_err(Clone::clone),
+            "{name}: both APIs"
+        );
         if !case["error"].is_null() {
             if name == "regex-invalid-reader" {
                 // Reader-only RegExp validation is outside projection scope.

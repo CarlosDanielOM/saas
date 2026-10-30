@@ -2,7 +2,12 @@
 //!
 //! This is not a BSON storage conversion. Keep the original BSON for writes.
 //! Unsupported reader cases fail explicitly; see the handoff for the boundary.
-use crate::utils::{credit_policy::JsDate, js_string::JsString, lossless_json::JsonValue};
+use crate::utils::{
+    credit_policy::JsDate,
+    js_string::{JsString, write_json_utf8},
+    json_number::number_string,
+    lossless_json::{JsonValue, array_index_str},
+};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use mongodb::bson::{Bson, Document};
 use std::fmt;
@@ -27,6 +32,93 @@ fn object(fields: Vec<(&str, JsonValue)>) -> JsonValue {
 /// and returns an error; nested document and array undefined follow JS rules.
 pub fn bson_js_json(value: &Bson) -> Result<JsonValue, BsonJsJsonError> {
     project(value)
+}
+
+/// Write the same JSON.stringify view without building an owned JSON tree for
+/// ordinary BSON values. The original BSON remains available for storage.
+pub fn bson_js_json_string(value: &Bson) -> Result<String, BsonJsJsonError> {
+    let mut out = String::new();
+    append_bson_js_json(value, &mut out)?;
+    Ok(out)
+}
+
+/// Append a complete wire value, leaving `out` unchanged on projection error.
+pub fn append_bson_js_json(value: &Bson, out: &mut String) -> Result<(), BsonJsJsonError> {
+    let original_len = out.len();
+    if let Err(error) = write_bson(value, out) {
+        out.truncate(original_len);
+        return Err(error);
+    }
+    Ok(())
+}
+
+fn write_bson(value: &Bson, out: &mut String) -> Result<(), BsonJsJsonError> {
+    match value {
+        Bson::Null => out.push_str("null"),
+        Bson::Boolean(v) => out.push_str(if *v { "true" } else { "false" }),
+        Bson::Int32(v) => out.push_str(&number_string(f64::from(*v))),
+        Bson::Int64(v) if (-9_007_199_254_740_992..=9_007_199_254_740_992).contains(v) => {
+            out.push_str(&number_string(*v as f64));
+        }
+        Bson::Double(v) => {
+            if v.is_finite() {
+                out.push_str(&number_string(*v));
+            } else {
+                out.push_str("null");
+            }
+        }
+        Bson::String(v) | Bson::Symbol(v) => write_json_utf8(v, out),
+        Bson::Array(values) => {
+            out.push('[');
+            for (index, value) in values.iter().enumerate() {
+                if index != 0 {
+                    out.push(',');
+                }
+                if matches!(value, Bson::Undefined) {
+                    out.push_str("null");
+                } else {
+                    write_bson(value, out)?;
+                }
+            }
+            out.push(']');
+        }
+        Bson::Document(values) if !dbref_like(values) => {
+            out.push('{');
+            // Stable sort is needed only for canonical JS array-index keys.
+            // Undefined document properties are omitted before enumeration.
+            let entries = values.iter().filter(|(_, v)| !matches!(v, Bson::Undefined));
+            if values.keys().any(|key| array_index_str(key).is_some()) {
+                let mut ordered: Vec<_> = entries.collect();
+                ordered.sort_by_key(|(key, _)| {
+                    array_index_str(key).map_or((1, 0), |index| (0, index))
+                });
+                write_document_entries(ordered, out)?;
+            } else {
+                write_document_entries(entries, out)?;
+            }
+            out.push('}');
+        }
+        // Keep DBRef copying, special BSON representations and their errors in
+        // the owned projector. Node's eager decoding and RegExp validation are
+        // still reader boundaries, not checks introduced by this serializer.
+        _ => project(value)?.write_json_string(out),
+    }
+    Ok(())
+}
+
+fn write_document_entries<'a>(
+    entries: impl IntoIterator<Item = (&'a String, &'a Bson)>,
+    out: &mut String,
+) -> Result<(), BsonJsJsonError> {
+    for (index, (key, value)) in entries.into_iter().enumerate() {
+        if index != 0 {
+            out.push(',');
+        }
+        write_json_utf8(key, out);
+        out.push(':');
+        write_bson(value, out)?;
+    }
+    Ok(())
 }
 
 fn project(value: &Bson) -> Result<JsonValue, BsonJsJsonError> {

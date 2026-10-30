@@ -225,7 +225,7 @@ fn array_index(key: &JsString) -> Option<u32> {
     array_index_str(key.as_str()?)
 }
 
-fn array_index_str(key: &str) -> Option<u32> {
+pub(crate) fn array_index_str(key: &str) -> Option<u32> {
     if key.is_empty()
         || (key.len() > 1 && key.starts_with('0'))
         || !key.bytes().all(|byte| byte.is_ascii_digit())

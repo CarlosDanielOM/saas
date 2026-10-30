@@ -1,6 +1,6 @@
 #![cfg(feature = "bson-js-json")]
 //! Isolated, independently hashed prepared-document benchmark; decoding is excluded.
-use dima_rust::utils::bson_js_json::bson_js_json;
+use dima_rust::utils::bson_js_json::{bson_js_json, bson_js_json_string};
 use mongodb::bson::{Bson, Document};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -25,17 +25,61 @@ fn hash(bytes: &[u8]) -> String {
 fn sum(s: &str) -> u32 {
     s.bytes().fold(0u32, |n, b| n.wrapping_add(u32::from(b)))
 }
-fn run(pool: &[Bson], count: usize) -> u32 {
+fn run<F: Fn(&Bson) -> String>(pool: &[Bson], count: usize, serialize: F) -> u32 {
     let mut total = 0u32;
     for i in 0..count {
-        let wire = black_box(
-            bson_js_json(black_box(&pool[i % pool.len()]))
-                .expect("projection")
-                .to_json_string(),
-        );
+        let wire = black_box(serialize(black_box(&pool[i % pool.len()])));
         total = total.wrapping_add(sum(black_box(&wire)));
     }
     black_box(total)
+}
+fn owned(value: &Bson) -> String {
+    bson_js_json(value).expect("projection").to_json_string()
+}
+fn borrowed(value: &Bson) -> String {
+    bson_js_json_string(value).expect("projection")
+}
+
+fn measure<F: Fn(&Bson) -> String + Copy>(
+    prepared: &[(Vec<Bson>, usize, u32)],
+    serialize: F,
+) -> Vec<Value> {
+    let mut results = Vec::new();
+    for (i, (pool, count, expected)) in prepared.iter().enumerate() {
+        assert_eq!(run(pool, *count, serialize), *expected);
+        let mut times = Vec::new();
+        let mut sums = Vec::new();
+        for _ in 0..7 {
+            let start = Instant::now();
+            let actual = run(pool, *count, serialize);
+            let elapsed = u64::try_from(start.elapsed().as_nanos()).unwrap();
+            assert!(elapsed > 0 && elapsed <= 9_007_199_254_740_991);
+            assert_eq!(actual, *expected);
+            times.push(elapsed);
+            sums.push(actual);
+        }
+        let mut sorted = times.clone();
+        sorted.sort_unstable();
+        results.push(json!({"name":NAMES[i], "iterations":count, "warmup":count, "checksum":expected, "samples":times, "sampleChecksums":sums, "medianNs":sorted[3]}));
+    }
+    results
+}
+
+fn write_report(
+    dir: &std::path::Path,
+    name: &str,
+    runtime: &str,
+    input: &str,
+    results: Vec<Value>,
+) {
+    let output = json!({"format":1, "label":LABEL, "runtime":runtime, "inputSha256":input, "workloads":results});
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(dir.join(name))
+        .unwrap();
+    serde_json::to_writer_pretty(&mut file, &output).unwrap();
+    file.write_all(b"\n").unwrap();
 }
 #[test]
 #[ignore = "isolated benchmark requires independently hashed external SDK fixture"]
@@ -117,6 +161,12 @@ fn matched_prepared_bson_json() {
                 "{}",
                 NAMES[index]
             );
+            assert_eq!(
+                bson_js_json_string(&value).unwrap(),
+                wire,
+                "{} streamed",
+                NAMES[index]
+            );
             let checksum = sum(wire);
             assert_eq!(u64::from(checksum), number(&item["checksum"]));
             pool.push(value);
@@ -139,30 +189,20 @@ fn matched_prepared_bson_json() {
         assert_eq!(number(&report["medianNs"]), times[3]);
         prepared.push((pool, count, expected));
     }
-    let mut results = Vec::new();
-    for (i, (pool, count, expected)) in prepared.iter().enumerate() {
-        assert_eq!(run(pool, *count), *expected);
-        let mut times = Vec::new();
-        let mut sums = Vec::new();
-        for _ in 0..7 {
-            let start = Instant::now();
-            let actual = run(pool, *count);
-            let elapsed = u64::try_from(start.elapsed().as_nanos()).unwrap();
-            assert!(elapsed > 0 && elapsed <= 9_007_199_254_740_991);
-            assert_eq!(actual, *expected);
-            times.push(elapsed);
-            sums.push(actual);
-        }
-        let mut sorted = times.clone();
-        sorted.sort_unstable();
-        results.push(json!({"name":NAMES[i], "iterations":count, "warmup":count, "checksum":expected, "samples":times, "sampleChecksums":sums, "medianNs":sorted[3]}));
-    }
-    let output = json!({"format":1, "label":LABEL, "runtime":"rust-release", "inputSha256":supplied, "workloads":results});
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(dir.join("bson-js-json-rust.json"))
-        .unwrap();
-    serde_json::to_writer_pretty(&mut file, &output).unwrap();
-    file.write_all(b"\n").unwrap();
+    let owned_results = measure(&prepared, owned);
+    let borrowed_results = measure(&prepared, borrowed);
+    write_report(
+        &dir,
+        "bson-js-json-rust.json",
+        "rust-release",
+        &supplied,
+        owned_results,
+    );
+    write_report(
+        &dir,
+        "bson-js-json-rust-borrowed.json",
+        "rust-release-borrowed",
+        &supplied,
+        borrowed_results,
+    );
 }
