@@ -38,6 +38,9 @@ pub mod spam;
 #[cfg(feature = "moderation-semantic")]
 pub mod semantic;
 
+#[cfg(feature = "moderation-semantic-worker")]
+pub mod semantic_worker;
+
 #[cfg(feature = "moderation-decisions")]
 pub mod decisions;
 
