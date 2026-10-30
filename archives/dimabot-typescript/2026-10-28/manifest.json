@@ -188,6 +188,14 @@
     {
       "source": "src/schemas/channel_fish_voice_favorites.schema.test.ts",
       "sha256": "4fb11013883efd0d99ba9125711c18d78517f87e401b5193722b6c79d616d02f"
+    },
+    {
+      "source": "src/utils/permissions/error_rate_limit.ts",
+      "sha256": "4e840093ef500738588ea7990f4303ea18f9368abd4d9e898557af73e08e8d56"
+    },
+    {
+      "source": "src/utils/permissions/error_rate_limit.test.ts",
+      "sha256": "95bee599c425783a84f093c637624eb1ceed5713669c21da596557e95981f0fa"
     }
   ]
 }

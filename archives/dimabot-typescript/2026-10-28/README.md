@@ -1,9 +1,10 @@
 # Archived dimabot TypeScript source snapshots — 2026-10-28
 
-These forty-seven files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, credential/activation exports, TTS session/playback and credit fallback helpers, the channel TTS settings and Fish favorites schemas and the Fish favorites source test, TTS normalization and its source test, and the caps and emote-spam rules with the caps source test mapped to native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
+These forty-nine files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, credential/activation exports, TTS session/playback and credit fallback helpers, the channel TTS settings and Fish favorites schemas and the Fish favorites source test, TTS normalization and its source test, and the caps and emote-spam rules with the caps source test mapped to native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
 
 | Archived source | Native implementation area |
 |---|---|
+| `src/utils/permissions/error_rate_limit.ts` and `src/utils/permissions/error_rate_limit.test.ts` | [`dimabot/src/utils/permissions/error_rate_limit.rs`](../../../dimabot/src/utils/permissions/error_rate_limit.rs) and [retirement handoff](../../../migration-notes/permission-error-rate-limit-handoff.md) |
 | `src/utils/shared_chat_origin.ts` | [`dimabot/src/utils/chat_message.rs`](../../../dimabot/src/utils/chat_message.rs) |
 | `src/utils/raid_direction.ts` | [`dimabot/src/utils/eventsub.rs`](../../../dimabot/src/utils/eventsub.rs) |
 | `src/utils/twitch_reward_body.util.ts` | [`dimabot/src/utils/twitch_reward_body.util.rs`](../../../dimabot/src/utils/twitch_reward_body.util.rs) |
@@ -51,3 +52,5 @@ Four named-schema source files (admin, accounts, credit gift and credit transact
 Five timer and chat model sources are preserved byte-for-byte; their named contracts and descriptors were verified before retirement. Post-retirement validation and TypeScript caller adoption remain pending; see the [handoff](../../../migration-notes/timer-chat-schema-types-handoff.md).
 
 The Fish favorites schema and source test are archived byte-for-byte from accepted native commit `5cf74ba0`, increasing the archive from 45 to 47 entries. Their frozen pre-retirement source and concrete Mongo verification passed; post-retirement source resolution and replay are pending. Active TypeScript callers remain unadopted; no deployment follows from this local retirement. The native contract covers declared typed records and ordinary BSON; malformed or extra stored fields and platform-specific error stacks remain documented boundaries. See the [handoff](../../../migration-notes/channel-fish-voice-favorites-handoff.md).
+
+The permission error limiter and its original two-group source test are archived byte-for-byte, increasing this archive from 47 to 49 entries. Their standalone native port and pre-retirement source replay passed isolated verification; post-retirement source resolution and replay remain pending. TypeScript caller adoption and deployment are separate. See the [handoff](../../../migration-notes/permission-error-rate-limit-handoff.md).
