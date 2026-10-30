@@ -1,0 +1,74 @@
+{
+  "git_base": "420a89ebf2281f94f8496c925bf561c5098d47fb",
+  "input_count": 1506,
+  "base_git_or_sdk_inputs": 1490,
+  "reused_sdk_capture_root": "migration-notes/evidence/2026-10-30-moderation-semantic/reproduction-tools/reused-sdk-inputs",
+  "overrides": [
+    {
+      "path": "archives/dimabot-typescript/2026-10-28/README.md",
+      "sha256": "14df592d24e2197c1d3275a89926079b419e9d0fd182026d5b57c51b5fb0fca5"
+    },
+    {
+      "path": "archives/dimabot-typescript/2026-10-28/manifest.json",
+      "sha256": "afe6aed2d7434ba5ae19d27110706d2e9b9b829e35cdc9839c930628cfc590de"
+    },
+    {
+      "path": "archives/dimabot-typescript/2026-10-28/src/schemas/channel_fish_voice_favorites.schema.test.ts",
+      "sha256": "4fb11013883efd0d99ba9125711c18d78517f87e401b5193722b6c79d616d02f"
+    },
+    {
+      "path": "archives/dimabot-typescript/2026-10-28/src/schemas/channel_fish_voice_favorites.schema.ts",
+      "sha256": "30b6361cdcc62f66716183d19bcf9a2bb3269507f2c705ea059cb19de44e60e2"
+    },
+    {
+      "path": "dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+      "sha256": "ff9d62050eca3fe839462551d3cc156dc1221fb40941175385ab911727c770b8"
+    },
+    {
+      "path": "dimabot/src/utils/js_unicode.rs",
+      "sha256": "32515868d2d519621e47b2e11b94cfd480d7ce3d03b3a664b051f2d79f31ebad"
+    },
+    {
+      "path": "dimabot/tests/channel_fish_voice_favorites.rs",
+      "sha256": "1342626ceacd259e1c34555aaea992eecf44a6b2f12e4692a23f4fc8e62b89c1"
+    },
+    {
+      "path": "dimabot/tests/fixtures/channel_fish_voice_favorites_reference.cjs",
+      "sha256": "0c7429d7f63280bb89a0c7eab8bcc3978dbbb852c9f979afababb1961b9a30f7"
+    },
+    {
+      "path": "dimabot/tests/fixtures/js_unicode_ascii_lower_reference.cjs",
+      "sha256": "7689800c9a6d7d5758ee3f61fbaf9222b6f009da0848e41ac09d37c94332436b"
+    },
+    {
+      "path": "dimabot/tests/fixtures/moderation_chatter_schema_reference.cjs",
+      "sha256": "1adcca6d69131d97c98f0ab046ae1786c5cb7cab9337067f612544fc955c2848"
+    },
+    {
+      "path": "dimabot/tests/fixtures/schema_source_resolver.cjs",
+      "sha256": "63f65a1805d700eb35b4dcb1e1a4c23bc5dc07614ed374eb8b0d87ed69e603c8"
+    },
+    {
+      "path": "dimabot/tests/fixtures/schema_source_resolver.test.cjs",
+      "sha256": "7a71726d46d191abd69819194c8f6b00cc8a18d4bcd08ad8797b5e4063b95a9a"
+    },
+    {
+      "path": "dimabot/tests/js_unicode_ascii_lower.rs",
+      "sha256": "1322b36c3dbb9d09c2308b174d597d7c286df26a87cb9b6f6ad9a33cf74946ea"
+    },
+    {
+      "path": "dimabot/tests/js_unicode_nfkd.rs",
+      "sha256": "940531e2e69e5e158487c290ec118226174a92a830e0cf91008ddf2f200f2e6b"
+    },
+    {
+      "path": "dimabot/tests/moderation_chatter_schema.rs",
+      "sha256": "a6255642814cf24f9359dfe4badacb35aad9c2fb2d39f7d0bdc87d205d4db6d2"
+    },
+    {
+      "path": "dimabot/tests/support/schema_source.rs",
+      "sha256": "4753f929afa50d9e0d9d6a625a57d4e8d6b9aa06f5d62be2f211eb659e965677"
+    }
+  ],
+  "source_tree_sha256": "890fa5739f2e69c7715b2d04e7fa78a4603e755f1b036199370320b251e6b472",
+  "all_inputs_verified": true
+}

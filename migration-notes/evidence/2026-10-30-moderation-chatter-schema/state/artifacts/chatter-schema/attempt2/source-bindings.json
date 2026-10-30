@@ -1,0 +1,10 @@
+{
+  "source_commit": "81f2d07ce7adc09fb27b59199c9715f83ed3bbde",
+  "source_tree_sha256": "d96e31df4e8e7c222bbdd404eeaaa10f5b5e9f202b5c5ff106fc91ade45959fc",
+  "input_count": 1506,
+  "git_input_count": 1496,
+  "reused_sdk_input_count": 10,
+  "reused_sdk_capture_root": "migration-notes/evidence/2026-10-30-moderation-semantic/reproduction-tools/reused-sdk-inputs",
+  "all_input_hashes_match": true,
+  "authorship": "DeepSeek V4.1 Flash high; parent corrected required-ID assertion and TypeScript AST enum alias, then ran all checks"
+}

@@ -1,0 +1,340 @@
+{
+  "format_version": 1,
+  "payload_count": 37,
+  "description": "Immutable Chatter schema verification evidence. All compressed payloads are lossless; no mutable snapshots, source trees, toolchain binaries, or build caches are included.",
+  "payloads": [
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-final.json",
+      "raw_sha256": "c0eacdece574ce3c94be741ea7e4293c491efab18a19f3976ed657982e890490",
+      "raw_bytes": 180419,
+      "stored_sha256": "5af8aa6d820a7daee75da958d392adcc12100121bb6f487f0e8dd33e53c3fbc2",
+      "stored_bytes": 72256,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/candidate-source-bindings.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/candidate-source-bindings.json",
+      "raw_sha256": "425ee8d53f5dce7483b2a74d8eda6dbd1919df61967f65b871ec0f491e35e1c7",
+      "raw_bytes": 3068,
+      "stored_sha256": "425ee8d53f5dce7483b2a74d8eda6dbd1919df61967f65b871ec0f491e35e1c7",
+      "stored_bytes": 3068,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt2/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt2/source-final.json",
+      "raw_sha256": "54d2ce1541c436e2bb6a9f1156ca2cecf7e7dd0226bcd8efe81653fcd49bf8da",
+      "raw_bytes": 180419,
+      "stored_sha256": "b718fbbc80a71cd7d38aff385d4c156c3682c0cbaf328d35749ae48811e5b73f",
+      "stored_bytes": 72259,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt2/source-bindings.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt2/source-bindings.json",
+      "raw_sha256": "c14ebd6ee4d80126490d2da0cd99803d2a836648bf5fbd76808dc018e125a22e",
+      "raw_bytes": 534,
+      "stored_sha256": "c14ebd6ee4d80126490d2da0cd99803d2a836648bf5fbd76808dc018e125a22e",
+      "stored_bytes": 534,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt2/oracle/moderation-chatter-schema-reference.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt2/oracle/moderation-chatter-schema-reference.json",
+      "raw_sha256": "42a11d1ed626b0be9fac05e8afce671dce33b442da69f5a53905e4e201394358",
+      "raw_bytes": 12334,
+      "stored_sha256": "42a11d1ed626b0be9fac05e8afce671dce33b442da69f5a53905e4e201394358",
+      "stored_bytes": 12334,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/production-after-verified.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/production-after-verified.json",
+      "raw_sha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "raw_bytes": 27004,
+      "stored_sha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "stored_bytes": 27004,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/chatter-snapshot.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/chatter-snapshot.json",
+      "raw_sha256": "e00612033d3536384df4ab9626b07c9677c5676966a71ede36336c554523708f",
+      "raw_bytes": 808,
+      "stored_sha256": "e00612033d3536384df4ab9626b07c9677c5676966a71ede36336c554523708f",
+      "stored_bytes": 808,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/baseline-commit",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/baseline-commit",
+      "raw_sha256": "ec0b866af1d3659ca20670c0c6e4e505a6086144d7762f1b3cf0db05a149aac0",
+      "raw_bytes": 41,
+      "stored_sha256": "ec0b866af1d3659ca20670c0c6e4e505a6086144d7762f1b3cf0db05a149aac0",
+      "stored_bytes": 41,
+      "compression": "none"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/archives/dimabot-typescript/2026-10-28/README.md.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/archives/dimabot-typescript/2026-10-28/README.md",
+      "raw_sha256": "14df592d24e2197c1d3275a89926079b419e9d0fd182026d5b57c51b5fb0fca5",
+      "raw_bytes": 11417,
+      "stored_sha256": "960844231b4afc8b2dfc7eac884d276ffa3cc15d47f596a72dbd7e206a8002ea",
+      "stored_bytes": 3217,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/archives/dimabot-typescript/2026-10-28/manifest.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/archives/dimabot-typescript/2026-10-28/manifest.json",
+      "raw_sha256": "afe6aed2d7434ba5ae19d27110706d2e9b9b829e35cdc9839c930628cfc590de",
+      "raw_bytes": 7435,
+      "stored_sha256": "e08d421f05b6ef4389f6f1aece7e4a714e8001a16425d6b7cf3d4aa242ed4bdb",
+      "stored_bytes": 2689,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/archives/dimabot-typescript/2026-10-28/src/schemas/channel_fish_voice_favorites.schema.test.ts.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/archives/dimabot-typescript/2026-10-28/src/schemas/channel_fish_voice_favorites.schema.test.ts",
+      "raw_sha256": "4fb11013883efd0d99ba9125711c18d78517f87e401b5193722b6c79d616d02f",
+      "raw_bytes": 2635,
+      "stored_sha256": "e0b2b9b9095d484a24723f8c21198b4589c3d5d362be4473c328d7d2e3cfef3f",
+      "stored_bytes": 975,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/archives/dimabot-typescript/2026-10-28/src/schemas/channel_fish_voice_favorites.schema.ts.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/archives/dimabot-typescript/2026-10-28/src/schemas/channel_fish_voice_favorites.schema.ts",
+      "raw_sha256": "30b6361cdcc62f66716183d19bcf9a2bb3269507f2c705ea059cb19de44e60e2",
+      "raw_bytes": 5414,
+      "stored_sha256": "66be5b329762d3653e97ebe1de632657a0475ff4b31b183924486e78595c65b6",
+      "stored_bytes": 1677,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/src/schemas/channel_fish_voice_favorites.schema.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/src/schemas/channel_fish_voice_favorites.schema.rs",
+      "raw_sha256": "ff9d62050eca3fe839462551d3cc156dc1221fb40941175385ab911727c770b8",
+      "raw_bytes": 16751,
+      "stored_sha256": "8d82d5a7506074dea2ad68ce0818dbcbf733607cc75a3092868677f17ed48e3d",
+      "stored_bytes": 4537,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/src/utils/js_unicode.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/src/utils/js_unicode.rs",
+      "raw_sha256": "32515868d2d519621e47b2e11b94cfd480d7ce3d03b3a664b051f2d79f31ebad",
+      "raw_bytes": 12200,
+      "stored_sha256": "8a0b9c338a1f816718c70adc65ce23780a271b3eb03da4e3b7b4643165492805",
+      "stored_bytes": 3364,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/channel_fish_voice_favorites.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/channel_fish_voice_favorites.rs",
+      "raw_sha256": "1342626ceacd259e1c34555aaea992eecf44a6b2f12e4692a23f4fc8e62b89c1",
+      "raw_bytes": 38313,
+      "stored_sha256": "58ebff59674f7c2664f60869bcb8f3c14c054594b222b36e1ad83009ba4c4ab7",
+      "stored_bytes": 7993,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/fixtures/channel_fish_voice_favorites_reference.cjs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/fixtures/channel_fish_voice_favorites_reference.cjs",
+      "raw_sha256": "0c7429d7f63280bb89a0c7eab8bcc3978dbbb852c9f979afababb1961b9a30f7",
+      "raw_bytes": 14431,
+      "stored_sha256": "bb15ebeeb551d8712b42a44f52269e64510c9893265c1b2197045cc507caa505",
+      "stored_bytes": 4762,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/fixtures/js_unicode_ascii_lower_reference.cjs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/fixtures/js_unicode_ascii_lower_reference.cjs",
+      "raw_sha256": "7689800c9a6d7d5758ee3f61fbaf9222b6f009da0848e41ac09d37c94332436b",
+      "raw_bytes": 2581,
+      "stored_sha256": "25de9b7390cf620b01f1573d4f153c3dc3984869653e42d7a41845119b91775f",
+      "stored_bytes": 1314,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/fixtures/moderation_chatter_schema_reference.cjs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/fixtures/moderation_chatter_schema_reference.cjs",
+      "raw_sha256": "1adcca6d69131d97c98f0ab046ae1786c5cb7cab9337067f612544fc955c2848",
+      "raw_bytes": 13136,
+      "stored_sha256": "c608a42e968008a370fe4b7c2ab427eae82ab37c542340526f1a98d06c0ebb4c",
+      "stored_bytes": 4635,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/fixtures/schema_source_resolver.cjs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/fixtures/schema_source_resolver.cjs",
+      "raw_sha256": "63f65a1805d700eb35b4dcb1e1a4c23bc5dc07614ed374eb8b0d87ed69e603c8",
+      "raw_bytes": 4687,
+      "stored_sha256": "0a185cf8456426a303b96a4b4d13fa3ce478af646b8c60d36faf314fbb802a9a",
+      "stored_bytes": 2030,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/fixtures/schema_source_resolver.test.cjs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/fixtures/schema_source_resolver.test.cjs",
+      "raw_sha256": "7a71726d46d191abd69819194c8f6b00cc8a18d4bcd08ad8797b5e4063b95a9a",
+      "raw_bytes": 2446,
+      "stored_sha256": "cc92d2969ebd6ff3f821fefbe2154ab7873edea35c08d4b89d7a25a9c85188d9",
+      "stored_bytes": 701,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/js_unicode_ascii_lower.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/js_unicode_ascii_lower.rs",
+      "raw_sha256": "1322b36c3dbb9d09c2308b174d597d7c286df26a87cb9b6f6ad9a33cf74946ea",
+      "raw_bytes": 4432,
+      "stored_sha256": "b2e4fcf103f1882f7e775559ead508122d0c2dcc6cad740551fd2d9aee422295",
+      "stored_bytes": 1690,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/js_unicode_nfkd.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/js_unicode_nfkd.rs",
+      "raw_sha256": "940531e2e69e5e158487c290ec118226174a92a830e0cf91008ddf2f200f2e6b",
+      "raw_bytes": 5987,
+      "stored_sha256": "a8f5002ba176810ed97fcbb2d99d0d2cbe01fd9c5153da60553906f33f6b43ce",
+      "stored_bytes": 2010,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/moderation_chatter_schema.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/moderation_chatter_schema.rs",
+      "raw_sha256": "a6255642814cf24f9359dfe4badacb35aad9c2fb2d39f7d0bdc87d205d4db6d2",
+      "raw_bytes": 27279,
+      "stored_sha256": "c61d54c7cb87ba9313af8acb813aac706f68aa44b3130ce7a2cb51c89ff9b7e1",
+      "stored_bytes": 6885,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "state/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/support/schema_source.rs.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/chatter-schema/attempt1/source-overrides/dimabot/tests/support/schema_source.rs",
+      "raw_sha256": "4753f929afa50d9e0d9d6a625a57d4e8d6b9aa06f5d62be2f211eb659e965677",
+      "raw_bytes": 4183,
+      "stored_sha256": "244a5c293104911f729aede1ff906d302fef5bd52a96c129e1ff24b1ebe9e790",
+      "stored_bytes": 1713,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/format-1793378085800438916-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/format-1793378085800438916-receipt.json",
+      "raw_sha256": "7f87375cba1ecbc144b477d35767945dd76a0e235cb46c1c444b8dc93e5f85ed",
+      "raw_bytes": 184344,
+      "stored_sha256": "4300063cc590abe3168c21f4a83640a320695a56f92f33a99c99fffce6bed89f",
+      "stored_bytes": 72820,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/format-1793378085800438916.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/format-1793378085800438916.log",
+      "raw_sha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "raw_bytes": 1833,
+      "stored_sha256": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef",
+      "stored_bytes": 873,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793378254470748610-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/node-1793378254470748610-receipt.json",
+      "raw_sha256": "4c9cc151ed4bd593910dc0c972bf9f5189407f1f9aa3caa1aee2d0f8f5b7b5c9",
+      "raw_bytes": 184276,
+      "stored_sha256": "f644b7c6102493154c64cc27b5e60debab51deb523aa4000148b4d142f8020c7",
+      "stored_bytes": 72860,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793378254470748610.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/node-1793378254470748610.log",
+      "raw_sha256": "12e610ad657aec712ed4f9d7a8bda383626be7ffdbb98785b98c8af12cf81f09",
+      "raw_bytes": 959,
+      "stored_sha256": "e34ecd2026bce001dda11e7e4e28e995978958f7e9b2bd45e059d1df1ef9451f",
+      "stored_bytes": 486,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793378358067268671-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/node-1793378358067268671-receipt.json",
+      "raw_sha256": "1fffa9d83ca85a0740f5d455a68eeba97de36a78b45936009113f6a78b0ef946",
+      "raw_bytes": 184218,
+      "stored_sha256": "74f35ae7ca00183c86be877dee4aaa551f4484cf245023629c624ad068ff85fd",
+      "stored_bytes": 72789,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/node-1793378358067268671.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/node-1793378358067268671.log",
+      "raw_sha256": "90b114f814b5cb1981d714a764a4ceb81f4c982f618370e02df3d27be5fb5fa6",
+      "raw_bytes": 1029,
+      "stored_sha256": "c6957207c1d2b1a1b33d8fdb8e50df93442d00630d0787624d7f8e402dbe1b7d",
+      "stored_bytes": 332,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/compiler-fixtures-1793378495563542513-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/compiler-fixtures-1793378495563542513-receipt.json",
+      "raw_sha256": "dcac487132474238e93c1fa3281c75a4f7b339c93500ab5be3be740998f8f127",
+      "raw_bytes": 184366,
+      "stored_sha256": "de107b3c09ba142c19dad7389c107c8ea7c3a16181bdc7508c0432e3a3842741",
+      "stored_bytes": 72835,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "runs/compiler-fixtures-1793378495563542513.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj/artifacts/compiler-fixtures-1793378495563542513.log",
+      "raw_sha256": "45c1b37c9444e72203a6e463e82d7e0061458d42d5faf9203b314af3c4da01d7",
+      "raw_bytes": 2994,
+      "stored_sha256": "0022cc6813ab83cf6e77d809fc8ee0b373f9f4bb2dbe7d6d29cd1c8f6fc8674f",
+      "stored_bytes": 1355,
+      "compression": "gzip"
+    },
+    {
+      "stored_path": "reproduction-tools/chatter_schema_node1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/chatter_schema_node1.sh",
+      "raw_sha256": "8154c7ac9940c1c9022f91471f915b1f4e58438900244fe9d372334dd34ebb54",
+      "raw_bytes": 451,
+      "stored_sha256": "8154c7ac9940c1c9022f91471f915b1f4e58438900244fe9d372334dd34ebb54",
+      "stored_bytes": 451,
+      "compression": "none"
+    },
+    {
+      "stored_path": "reproduction-tools/chatter_schema_node2.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/chatter_schema_node2.sh",
+      "raw_sha256": "757e6028e6cbf9dbc6a505d69cf72edd2b0fcbb6a5a3dc09145fc0a13d3cd9b0",
+      "raw_bytes": 451,
+      "stored_sha256": "757e6028e6cbf9dbc6a505d69cf72edd2b0fcbb6a5a3dc09145fc0a13d3cd9b0",
+      "stored_bytes": 451,
+      "compression": "none"
+    },
+    {
+      "stored_path": "reproduction-tools/chatter_schema_quality2.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/chatter_schema_quality2.sh",
+      "raw_sha256": "284126de87817e83ab9e4ac0a8aa7f8b783b0ac6ee03386f38d07330b46026d7",
+      "raw_bytes": 681,
+      "stored_sha256": "284126de87817e83ab9e4ac0a8aa7f8b783b0ac6ee03386f38d07330b46026d7",
+      "stored_bytes": 681,
+      "compression": "none"
+    },
+    {
+      "stored_path": "reproduction-tools/validate.py",
+      "origin": "/tmp/dimabot-full-migration-tools/validate.py",
+      "raw_sha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+      "raw_bytes": 12955,
+      "stored_sha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+      "stored_bytes": 12955,
+      "compression": "none"
+    },
+    {
+      "stored_path": "reproduction-tools/final_readback.py",
+      "origin": "/tmp/dimabot-full-migration-tools/final_readback.py",
+      "raw_sha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14",
+      "raw_bytes": 1324,
+      "stored_sha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14",
+      "stored_bytes": 1324,
+      "compression": "none"
+    }
+  ]
+}

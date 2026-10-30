@@ -1,0 +1,13 @@
+{
+  "created_utc": "2026-10-30T16:34:45.422349+00:00",
+  "parent_state": "/root/.local/state/rust-full-migration-20261028-lu443ytp",
+  "state": "/root/.local/state/rust-full-migration-20261028-chatter-tt5gnptj",
+  "source_inputs": 1506,
+  "source_tree_sha256": "722b297d4a33801cf0411d2060701c948e073c4b483198e85cd768e723abe4f6",
+  "source_additions": [
+    "dimabot/tests/moderation_chatter_schema.rs",
+    "dimabot/tests/fixtures/moderation_chatter_schema_reference.cjs"
+  ],
+  "cache_reuse": "same task-owned capped cache through canonical symlinks; global compiler lock and no overlapping phases; no second cache copy",
+  "parent_static_review_correction": "Required _id insert is PersistenceError::Validation before MissingId guard; one authored test assertion corrected; no production logic changed."
+}
