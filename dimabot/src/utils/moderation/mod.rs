@@ -1,5 +1,8 @@
 //! Native moderation rule evaluation.
 
+#[cfg(feature = "moderation-advanced-policy")]
+pub mod advanced_policy;
+
 #[cfg(feature = "moderation-emote-spam")]
 pub mod emote_spam;
 

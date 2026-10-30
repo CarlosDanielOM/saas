@@ -24,6 +24,7 @@
 //! ```
 
 #[cfg(any(
+    feature = "js-strings",
     feature = "mongo",
     feature = "cron-supervisor",
     feature = "bot-utils",
@@ -143,6 +144,7 @@ pub mod js_date;
 #[cfg(feature = "js-regexp-unicode")]
 pub mod js_regexp_unicode;
 #[cfg(any(
+    feature = "js-strings",
     feature = "tts-utilities",
     feature = "permissions",
     feature = "moderation-caps",
@@ -242,6 +244,13 @@ pub mod posthog_tracking;
 pub mod qdrant;
 #[cfg(feature = "re2-compat")]
 pub mod re2_compat;
+#[cfg(feature = "re2-unicode")]
+pub mod re2_unicode;
+#[cfg(feature = "re2-unicode")]
+#[rustfmt::skip]
+mod re2_unicode_data;
+#[cfg(feature = "re2-strings")]
+pub mod re2_string;
 #[cfg(feature = "redis")]
 #[path = "databases/dragonfly.database.rs"]
 pub mod redis;
