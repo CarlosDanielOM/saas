@@ -53,13 +53,13 @@ pub struct CacheUsageResponse {
     pub message: Option<String>,
 }
 impl CacheUsageResponse {
-    fn ok(message: Option<&str>) -> Self {
+    pub(crate) fn ok(message: Option<&str>) -> Self {
         Self {
             error: false,
             message: message.map(str::to_owned),
         }
     }
-    fn error(message: impl Into<String>) -> Self {
+    pub(crate) fn error(message: impl Into<String>) -> Self {
         Self {
             error: true,
             message: Some(message.into()),
@@ -279,6 +279,22 @@ pub fn prepare_event(options: &CacheUsageOptions) -> Result<PreparedCacheEvent, 
     })
 }
 
+/// Owner-fenced ingest lease. It has no `Drop` glue: cancellation must leave
+/// the Redis key until its TTL, because an async drop must not mutate Redis.
+#[derive(Debug)]
+pub(crate) struct IngestLease {
+    lock_key: String,
+    owner: String,
+    #[cfg(feature = "polar-batch-usage")]
+    pub(crate) queue_key: String,
+}
+
+#[derive(Debug)]
+pub(crate) struct DurableEnqueue {
+    pub(crate) response: CacheUsageResponse,
+    pub(crate) lease: Option<IngestLease>,
+}
+
 #[derive(Clone)]
 pub struct PolarCacheUsage {
     cache: ConnectionManager,
@@ -305,11 +321,22 @@ impl PolarCacheUsage {
         posthog: PosthogTracking,
         logger: Logger,
     ) -> Self {
+        Self::with_optional_tracking(cache, projection, producer, Some(posthog), logger)
+    }
+    /// `posthog: None` keeps analytics lazy on the best-effort path. Callers
+    /// that already hold a concrete handle pass `Some`.
+    pub fn with_optional_tracking(
+        cache: ConnectionManager,
+        projection: AiCreditProjection,
+        producer: AiUsageProducer,
+        posthog: Option<PosthogTracking>,
+        logger: Logger,
+    ) -> Self {
         Self {
             cache,
             projection,
             producer,
-            posthog: Some(posthog),
+            posthog,
             logger,
         }
     }
@@ -323,18 +350,32 @@ impl PolarCacheUsage {
         diagnostic(&self.logger, channel, function, message, detail).await;
     }
     pub async fn ingest(&self, options: &CacheUsageOptions) -> CacheUsageResponse {
+        let queued = self.enqueue_durable(options).await;
+        if let Some(lease) = queued.lease.as_ref() {
+            self.release_lease(lease).await;
+        }
+        queued.response
+    }
+    /// Validates, locks, migrates, queues, and projects. A lease is returned
+    /// only after that prefix succeeds while this caller holds the lock.
+    /// Acquired queue failures release the lease here, once, and are not retried.
+    pub(crate) async fn enqueue_durable(&self, options: &CacheUsageOptions) -> DurableEnqueue {
+        let rejected = |message: String| DurableEnqueue {
+            response: CacheUsageResponse::error(message),
+            lease: None,
+        };
         if options.customer_id.is_empty() {
-            return CacheUsageResponse::error("customerId is required");
+            return rejected("customerId is required".to_owned());
         }
         if options.channel_id.is_empty() {
-            return CacheUsageResponse::error("channelID is required for batch/cache modes");
+            return rejected("channelID is required for batch/cache modes".to_owned());
         }
         let event = match prepare_event(options) {
             Ok(event) => event,
-            Err(e) => {
-                self.diagnostic(&options.channel_id, "ingestPolarSHEvent", &e, None)
+            Err(error) => {
+                self.diagnostic(&options.channel_id, "ingestPolarSHEvent", &error, None)
                     .await;
-                return CacheUsageResponse::error(e);
+                return rejected(error);
             }
         };
         let lock_key = format!("locks:polar-ingest:{}", options.channel_id.to_utf8_lossy());
@@ -355,13 +396,13 @@ impl PolarCacheUsage {
                 .query_async(&mut cache)
                 .await;
             match result {
-                Err(e) => {
-                    let message = e.to_string();
+                Err(error) => {
+                    let message = error.to_string();
                     self.diagnostic(&options.channel_id, "ingestPolarSHEvent", &message, None)
                         .await;
-                    return CacheUsageResponse::error(message);
+                    return rejected(message);
                 }
-                Ok(Some(v)) if v == "OK" => break true,
+                Ok(Some(value)) if value == "OK" => break true,
                 _ => {}
             }
             let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
@@ -376,39 +417,86 @@ impl PolarCacheUsage {
         let result = self
             .queue_and_project(&mut cache, &key, options, &event)
             .await;
-        if acquired {
-            // Accepted migration improvement: owner-fenced atomic release.
-            // A lost EVAL reply is unknown and is never replayed here.
-            let _ = redis::cmd("EVAL")
-                .arg(super::ai_usage_lock::RELEASE_SCRIPT)
-                .arg(1)
-                .arg(&lock_key)
-                .arg(&owner)
-                .query_async::<i64>(&mut cache)
-                .await;
-        }
+        let lease = acquired.then_some(IngestLease {
+            lock_key,
+            owner,
+            #[cfg(feature = "polar-batch-usage")]
+            queue_key: key,
+        });
         match result {
-            Ok(()) => CacheUsageResponse::ok(if acquired {
-                None
-            } else {
-                Some("queued (flush in progress)")
-            }),
-            Err(e) if !acquired => {
+            Ok(()) => DurableEnqueue {
+                response: CacheUsageResponse::ok(if acquired {
+                    None
+                } else {
+                    Some("queued (flush in progress)")
+                }),
+                lease,
+            },
+            Err(error) if !acquired => {
                 self.diagnostic(
                     &options.channel_id,
                     "ingestPolarSHEvent",
                     "Failed to queue AI event while flush in progress",
-                    Some(&e),
+                    Some(&error),
                 )
                 .await;
-                CacheUsageResponse::error("Failed to queue AI event")
+                rejected("Failed to queue AI event".to_owned())
             }
-            Err(e) => {
-                self.diagnostic(&options.channel_id, "ingestPolarSHEvent", &e, None)
+            Err(error) => {
+                if let Some(lease) = lease.as_ref() {
+                    // The caller receives no lease, so this is the only release.
+                    // A lost EVAL reply is unknown and is never replayed.
+                    self.release_lease(lease).await;
+                }
+                self.diagnostic(&options.channel_id, "ingestPolarSHEvent", &error, None)
                     .await;
-                CacheUsageResponse::error(e)
+                rejected(error)
             }
         }
+    }
+    #[cfg(feature = "polar-batch-usage")]
+    pub(crate) async fn list_pending(&self, queue_key: &str) -> Result<Vec<String>, String> {
+        let mut cache = self.cache.clone();
+        redis::cmd("LRANGE")
+            .arg(queue_key)
+            .arg(0)
+            .arg(-1)
+            .query_async(&mut cache)
+            .await
+            .map_err(|error: redis::RedisError| error.to_string())
+    }
+    #[cfg(feature = "polar-batch-usage")]
+    pub(crate) async fn trim_pending(&self, queue_key: &str, start: i64) -> Result<(), String> {
+        let mut cache = self.cache.clone();
+        redis::cmd("LTRIM")
+            .arg(queue_key)
+            .arg(start)
+            .arg(-1)
+            .query_async::<String>(&mut cache)
+            .await
+            .map(|_| ())
+            .map_err(|error: redis::RedisError| error.to_string())
+    }
+    #[cfg(feature = "polar-batch-usage")]
+    pub(crate) async fn delete_queue(&self, queue_key: &str) -> Result<(), String> {
+        let mut cache = self.cache.clone();
+        redis::cmd("DEL")
+            .arg(queue_key)
+            .query_async::<i64>(&mut cache)
+            .await
+            .map(|_| ())
+            .map_err(|error: redis::RedisError| error.to_string())
+    }
+    /// Owner-fenced atomic release. A lost EVAL reply is unknown and is not replayed.
+    pub(crate) async fn release_lease(&self, lease: &IngestLease) {
+        let mut cache = self.cache.clone();
+        let _ = redis::cmd("EVAL")
+            .arg(super::ai_usage_lock::RELEASE_SCRIPT)
+            .arg(1)
+            .arg(&lease.lock_key)
+            .arg(&lease.owner)
+            .query_async::<i64>(&mut cache)
+            .await;
     }
     async fn queue_and_project(
         &self,

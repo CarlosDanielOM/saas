@@ -346,3 +346,8 @@ pub fn install_default_tls_provider() {
 #[cfg(feature = "commands-service")]
 #[path = "../classes/command.class.rs"]
 pub mod commands;
+
+#[cfg(feature = "polar-batch-usage")]
+pub mod polar_usage;
+#[cfg(feature = "tts-usage-tracking")]
+pub mod tts_usage;

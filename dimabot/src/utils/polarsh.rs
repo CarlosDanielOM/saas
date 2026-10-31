@@ -273,9 +273,16 @@ impl fmt::Display for PolarError {
 }
 impl std::error::Error for PolarError {}
 
+enum OutboundBody<'a> {
+    Absent,
+    Json(&'a Value),
+    Exact(&'a str),
+}
+
 #[derive(Clone)]
 pub struct PolarClient {
     http: Client,
+    exact_http: Client,
     config: PolarConfig,
     policy: PolarPolicy,
 }
@@ -284,6 +291,24 @@ impl PolarClient {
     /// to the configured origin. Gift rejects redirects and fixes the entire
     /// send/body/decode deadline to 15 seconds, like AbortSignal.timeout.
     pub fn new(config: PolarConfig, policy: PolarPolicy) -> Result<Self, PolarError> {
+        let http = Self::build_transport(&config, policy, false)?;
+        // The events SDK explicitly uses retry strategy "none". Keep the
+        // existing JSON helper's transport policy intact and give exact-body
+        // writes a separate clone-shared pool with protocol retries disabled.
+        let exact_http = Self::build_transport(&config, policy, true)?;
+        Ok(Self {
+            http,
+            exact_http,
+            config,
+            policy,
+        })
+    }
+
+    fn build_transport(
+        config: &PolarConfig,
+        policy: PolarPolicy,
+        no_retry: bool,
+    ) -> Result<Client, PolarError> {
         let origin = config.base.origin();
         let redirects = match policy {
             PolarPolicy::Gift => Policy::none(),
@@ -301,17 +326,15 @@ impl PolarClient {
             }),
         };
         let mut builder = Client::builder().redirect(redirects);
+        if no_retry {
+            builder = builder.retry(reqwest::retry::never());
+        }
         if policy == PolarPolicy::Gift {
             builder = builder.timeout(GIFT_TIMEOUT);
         }
-        let http = builder.build().map_err(|_| PolarError::Configuration {
+        builder.build().map_err(|_| PolarError::Configuration {
             policy,
             kind: PolarConfigError::ClientInitialization,
-        })?;
-        Ok(Self {
-            http,
-            config,
-            policy,
         })
     }
 
@@ -350,6 +373,43 @@ impl PolarClient {
         body: Option<&Value>,
         extra_headers: &HeaderMap,
     ) -> Result<T, PolarError> {
+        let body = match body {
+            Some(value) => OutboundBody::Json(value),
+            None => OutboundBody::Absent,
+        };
+        self.request_with_body(method, path, body, extra_headers, false)
+            .await
+    }
+
+    /// Send exact body bytes using a separate clone-shared pool with retries
+    /// disabled, and require HTTP 200 with JSON content type as the events SDK
+    /// does. The older
+    /// [`Self::request_json`] keeps its own transport and 2xx behavior.
+    /// Event ingest needs SDK key order, which `serde_json::Value` does not
+    /// preserve in this crate.
+    pub async fn request_json_text<T: DeserializeOwned>(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<&str>,
+        extra_headers: &HeaderMap,
+    ) -> Result<T, PolarError> {
+        let body = match body {
+            Some(text) => OutboundBody::Exact(text),
+            None => OutboundBody::Absent,
+        };
+        self.request_with_body(method, path, body, extra_headers, true)
+            .await
+    }
+
+    async fn request_with_body<T: DeserializeOwned>(
+        &self,
+        method: Method,
+        path: &str,
+        body: OutboundBody<'_>,
+        extra_headers: &HeaderMap,
+        exact_transport: bool,
+    ) -> Result<T, PolarError> {
         let url = self.config.request_url(path)?;
         if extra_headers.contains_key(AUTHORIZATION)
             || extra_headers.contains_key(HOST)
@@ -363,10 +423,17 @@ impl PolarClient {
         if !headers.contains_key(CONTENT_TYPE) {
             headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
         }
-        let mut request = self.http.request(method, url).headers(headers);
-        if let Some(body) = body {
-            request = request.json(body);
-        }
+        let client = if exact_transport {
+            &self.exact_http
+        } else {
+            &self.http
+        };
+        let mut request = client.request(method, url).headers(headers);
+        request = match body {
+            OutboundBody::Absent => request,
+            OutboundBody::Json(value) => request.json(value),
+            OutboundBody::Exact(text) => request.body(text.to_owned()),
+        };
         let send_and_read = async {
             let response = request
                 .send()
@@ -381,7 +448,9 @@ impl PolarClient {
             {
                 return Err(self.connection_error(mutation));
             }
-            if !response.status().is_success() {
+            // The events SDK accepts its documented 200 response only.
+            // The older generic JSON helper retains its existing 2xx policy.
+            if !response.status().is_success() || (exact_transport && status != 200) {
                 let body = if self.policy == PolarPolicy::Billing {
                     Some(
                         response
@@ -397,6 +466,19 @@ impl PolarClient {
                     status,
                     body,
                     mutation_outcome_unknown: mutation && status >= 500,
+                });
+            }
+            if exact_transport
+                && !response
+                    .headers()
+                    .get(CONTENT_TYPE)
+                    .and_then(|value| value.to_str().ok())
+                    .and_then(|value| value.split(';').next())
+                    .is_some_and(|value| value.trim().eq_ignore_ascii_case("application/json"))
+            {
+                return Err(PolarError::InvalidJson {
+                    policy: self.policy,
+                    mutation_outcome_unknown: mutation,
                 });
             }
             let bytes = response
@@ -733,5 +815,26 @@ mod tests {
             assert!(error.mutation_outcome_unknown());
             assert!(!format!("{error:?} {error}").contains("secret-path"));
         }
+    }
+
+    #[tokio::test]
+    async fn request_json_text_sends_the_exact_body() {
+        let recorder = Recorder::start(|_| CannedResponse::json(200, r#"{"inserted":1}"#));
+        let body = r#"{"events":[{"name":"ai_usage","external_id":"entry","customer_id":"cust"}]}"#;
+        let result: Value = client(&recorder, PolarPolicy::Billing)
+            .request_json_text(
+                Method::POST,
+                "/v1/events/ingest",
+                Some(body),
+                &HeaderMap::new(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(result["inserted"], 1);
+        let request = recorder.next(Duration::from_secs(2));
+        assert_eq!(request.method, "POST");
+        assert_eq!(request.path, "/v1/events/ingest");
+        assert_eq!(request.header("content-type"), Some("application/json"));
+        assert_eq!(request.body, body.as_bytes());
     }
 }
