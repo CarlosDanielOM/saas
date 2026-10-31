@@ -17,6 +17,9 @@ pub mod command_schema_values;
 #[cfg(feature = "command-reward-schemas")]
 #[path = "commands.schema.rs"]
 pub mod commands;
+#[cfg(feature = "site-analytics-api")]
+#[path = "event.schema.rs"]
+pub mod event;
 #[cfg(feature = "ordinary-application-schemas")]
 #[path = "eventsub.schema.rs"]
 pub mod eventsub;

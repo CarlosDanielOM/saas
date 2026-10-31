@@ -27,6 +27,7 @@ api-auth = ["http", "http-client", "redis", "application-schemas", "observabilit
 api-admin = ["api-auth"]
 api-observability-route = ["http", "http-client", "dep:serde_json"]
 api-validation-route = ["api-auth", "dep:serde_json"]
+site-analytics-api = ["api-admin", "mongo", "redis", "logger-redis", "ordinary-application-schemas", "domain-event-runtime", "twitch-client", "twitch-streamers", "eventsub", "bson-js-json", "dep:serde_json"]
 # Native WebSockets use Axum's transport rather than a separate client crate.
 http-form = ["http", "axum/form"]
 http-multipart = ["http", "axum/multipart"]

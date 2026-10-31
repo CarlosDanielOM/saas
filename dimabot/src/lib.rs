@@ -109,6 +109,10 @@ pub mod observability_route;
 #[path = "server/routes/validation.route.rs"]
 pub mod validation_route;
 
+#[cfg(feature = "site-analytics-api")]
+#[path = "server/routes/site.route.rs"]
+pub mod site_route;
+
 #[cfg(feature = "domain-event-runtime")]
 #[path = "domain_events/runtime/mod.rs"]
 pub mod domain_event_runtime;

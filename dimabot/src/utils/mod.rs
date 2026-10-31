@@ -199,6 +199,8 @@ mod js_unicode_categories;
 #[cfg(feature = "js-unicode17")]
 #[rustfmt::skip]
 mod js_unicode_data;
+#[cfg(feature = "site-analytics-api")]
+pub mod chat_event_catalog;
 #[cfg(feature = "keywords")]
 pub mod keywords;
 #[cfg(feature = "logger")]
@@ -220,6 +222,9 @@ pub mod plan_cache_fence;
 pub mod polar;
 #[cfg(feature = "redis-application-runtime")]
 pub mod redis_application_runtime;
+#[cfg(feature = "site-analytics-api")]
+pub mod siteanalytics;
+
 #[cfg(feature = "tts-utilities")]
 pub mod tts;
 #[cfg(any(feature = "credit-policy", feature = "tts-utilities"))]
