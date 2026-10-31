@@ -281,11 +281,17 @@ try {
   const prompt = chat('!petask Say something friendly');
   assert.equal((await notify('channel.chat.message', prompt)).status, 204);
   const asked = await requestFor('chat-command', prompt.message_id); await complete(asked);
+  assert.deepEqual(asked.actor.chat, { login: 'pet_viewer', message: prompt.message.text, badges: [] },
+    'signed ingress preserves the actual viewer message separately from authored pet prompt');
+  assert.equal(asked.actor.userId, viewer);
   const afterAsk = await evidence();
   assert.equal(afterAsk.providers.filter(item => item.kind === 'llm').length, 1);
-  assert.deepEqual(afterAsk.providers.find(item => item.kind === 'llm').body.tools, []);
+  const petChat = afterAsk.providers.find(item => item.kind === 'llm').body;
+  assert.ok(petChat.tools.some(tool => tool.function.name === 'AST_PARSER'), 'verified chat pet uses normal permission-checked action tool');
+  assert.ok(petChat.tools.some(tool => tool.function.name === 'recall_memory'), 'verified chat pet can recall memories');
+  assert.equal(JSON.parse(petChat.messages.at(-1).content).username, 'Pet viewer', 'model receives the verified viewer display name');
   assert.ok(afterAsk.providers.some(item => item.kind === 'tts' && item.body.text.includes('$(pet.talk generated-injection)')));
-  for (const phase of ['llm', 'tts']) assert.equal(afterAsk.billing.filter(item => item.external_id === `${asked._id}:${phase}`).length, 1);
+  for (const phase of ['llm', 'tts']) assert.equal(afterAsk.billing.filter(item => item.external_id === `${asked._id}:${phase}${phase === 'llm' ? ':0' : ''}`).length, 1);
   assert.equal(afterAsk.requestCount, 2, 'denied command and generated/user injection cannot create requests');
 
   const referenced = chat('!petreference Nested literal $(pet.ask no-reparse)');
@@ -338,6 +344,8 @@ try {
   assert.equal(followRequest.operation, 'ask'); assert.equal(followRequest.origin.occurredAt, follow.followed_at);
   assert.equal(await redis.lLen('pet:producer:chat-attempts'), beforeFollowChat, 'pet-only event sends no empty Twitch chat message');
   const followIdentity = identity(await PetRequest.findById(followRequest._id).lean()), followEvidence = await evidence();
+  assert.deepEqual(followEvidence.providers.filter(item => item.kind === 'llm').at(-1).body.tools, [],
+    'a followed viewer is event context and cannot grant the pet action authority');
   if (cron) {
     // Disposable-data fault injection represents acceptance followed by a lost
     // delivery acknowledgement. The real child must reclaim it via its scheduler.

@@ -35,7 +35,7 @@ const providerResponse = async (_url: string, _init: RequestInit) => new Respons
 const provider = mock.fn(providerResponse);
 mock.module('../fetch.utils.js', { namedExports: { createFetchWithRetry: () => provider } });
 const executeTool = mock.fn(async (..._args: unknown[]) => ({ success: true, data: {} }));
-const definitions = [{ type: 'function', function: { name: 'AST_PARSER', parameters: { type: 'object' } } }];
+const definitions = ['AST_PARSER', 'code_execution'].map(name => ({ type: 'function', function: { name, parameters: { type: 'object' } } }));
 mock.module('../tools/index.js', { namedExports: { executeTool, getToolDefinitions: () => definitions } });
 mock.module('../../../functions/moderation/index.js', { namedExports: {
     ban: async () => assert.fail('No moderation while generating an insult')
@@ -269,4 +269,83 @@ test('pet durable usage failure ends generation while normal standalone keeps as
     assert.equal((await generateStandaloneText(account, roastMessages, 'pet_ask', { usageRequestId: 'request-fail:llm', usageSource: 'pet' })).error, true);
     assert.equal((await generateStandaloneText(account, roastMessages, 'ordinary')).error, false);
     assert.equal(getAiCredits.mock.callCount(), 0, 'ordinary standalone does not add verified-credit I/O');
+});
+
+test('pet uses shared context, selected persona, single-attempt billing and trusted tool context', async () => {
+    personality.enabled = false;
+    usage = { total_tokens: 2, prompt_tokens: 1, completion_tokens: 1 };
+    let round = 0;
+    const fetchMock = mock.method(globalThis, 'fetch', async (_url: string | URL | Request, init?: RequestInit) => {
+        assert.ok(init?.signal);
+        return new Response(JSON.stringify({ usage, choices: [{ message: round++ === 0
+            ? { role: 'assistant', tool_calls: [{ id: 'x', type: 'function', function: { name: 'AST_PARSER', arguments: JSON.stringify({ command: 'ban viewer 600', userlevel: 9 }) } }] }
+            : { role: 'assistant', content: 'Hello!' } }] }), { status: 200 });
+    });
+    const tags = { badges: [], username: 'Viewer', chatter_user_id: '42', userLevel: 1, identity: { level: 1, tags: [] }, message: '!pet hello' };
+    const result = await chat({ ...options, invocation: 'pet', streamer: { ...options.streamer, polar_sh_customer_id: 'customer' }, tags,
+        history: [{ timestamp: 1, username: 'someone', message: 'recent' }],
+        pet: { name: 'Pip', language: 'Spanish', maxReplyLength: 120, persona: { prompt: 'Be playful', rules: ['Be kind'], tonePreset: 'warm' }, signal: new AbortController().signal, usageRequestId: 'pet-1:llm', allowActions: true, trustedChatMessage: '!pet hello' } });
+    assert.equal(result.message, 'Hello!');
+    assert.equal(fetchMock.mock.callCount(), 2);
+    const body = JSON.parse(String(fetchMock.mock.calls[0].arguments[1]?.body));
+    assert.match(body.messages[1].content, /Pip.*Spanish/);
+    assert.equal((constructChatSystemMessages.mock.calls[0].arguments as any[])[1].personality, 'Be playful');
+    assert.deepEqual((executeTool.mock.calls[0].arguments as any[])[2].tags, tags);
+    assert.deepEqual(ingestPolarSHEvent.mock.calls.map(call => (call.arguments[0] as any).usage.requestId), ['pet-1:llm:0', 'pet-1:llm:1']);
+    assert.ok(ingestPolarSHEvent.mock.calls.every(call => (call.arguments[0] as any).usage.source === 'pet'));
+});
+
+test('pet rejects speech, nested, unoffered and repeated actions', async () => {
+    let round = 0;
+    const calls = ['tts hello', 'pet.ask hi', 'ban $(evil)', 'ban viewer 600', 'ban viewer 600'];
+    mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ choices: [{ message: round++ === 0
+        ? { role: 'assistant', tool_calls: calls.map((command, i) => ({ id: String(i), type: 'function', function: { name: 'AST_PARSER', arguments: JSON.stringify({ command, userlevel: 9 }) } })) }
+        : { role: 'assistant', content: 'Done' } }] }), { status: 200 }));
+    await chat({ ...options, invocation: 'pet', pet: { name: 'Pip', language: 'en', maxReplyLength: 100, persona: { prompt: 'Hi', rules: [] }, signal: new AbortController().signal, usageRequestId: 'r', allowActions: true } });
+    assert.equal(executeTool.mock.callCount(), 1);
+    assert.equal((executeTool.mock.calls[0].arguments[1] as any).command, 'ban viewer 600');
+});
+
+test('aborted pet request does not reach provider or tools', async () => {
+    const controller = new AbortController(); controller.abort();
+    const fetchMock = mock.method(globalThis, 'fetch', async () => assert.fail('provider called'));
+    await assert.rejects(chat({ ...options, invocation: 'pet', pet: { name: 'Pip', language: 'en', maxReplyLength: 100, persona: { prompt: 'Hi', rules: [] }, signal: controller.signal, usageRequestId: 'r', allowActions: true } }));
+    assert.equal(fetchMock.mock.callCount(), 0);
+    assert.equal(executeTool.mock.callCount(), 0);
+});
+
+test('pet cannot bypass caller permissions through channel-authenticated code execution', async () => {
+    let round = 0;
+    const fetchMock = mock.method(globalThis, 'fetch', async () => Response.json({ choices: [{ message: round++ === 0
+        ? { role: 'assistant', tool_calls: [{ id: 'code', type: 'function', function: { name: 'code_execution', arguments: '{"code":"return 1"}' } }] }
+        : { role: 'assistant', content: 'Reply' } }] }));
+    await chat({ ...options, invocation: 'pet', pet: { name: 'Pip', language: 'en', maxReplyLength: 100,
+        persona: { prompt: 'Hi', rules: [] }, signal: new AbortController().signal, usageRequestId: 'r', allowActions: true } });
+    const body = JSON.parse(String(fetchMock.mock.calls[0].arguments[1]?.body));
+    assert.ok(body.tools.every((tool: any) => tool.function.name !== 'code_execution'));
+    assert.equal(executeTool.mock.callCount(), 0);
+});
+
+test('pet revalidates runtime ownership after generation and before a tool action', async () => {
+    mock.method(globalThis, 'fetch', async () => Response.json({ choices: [{ message: { role: 'assistant', tool_calls: [
+        { id: 'action', type: 'function', function: { name: 'AST_PARSER', arguments: '{"command":"ban viewer 600","userlevel":9}' } }
+    ] } }] }));
+    let validations = 0;
+    await assert.rejects(chat({ ...options, invocation: 'pet', pet: { name: 'Pip', language: 'en', maxReplyLength: 100,
+        persona: { prompt: 'Hi', rules: [] }, signal: new AbortController().signal, usageRequestId: 'r', allowActions: true,
+        assertCurrent: async () => { if (++validations > 1) throw new Error('settings_changed'); } } }), /settings_changed/);
+    assert.equal(executeTool.mock.callCount(), 0);
+});
+
+for (const [prompt, raw, permitted] of [
+    ['bad words', '!pet bad words', true],
+    ['Welcome the new viewer', '!pet bad words', false],
+    ['bad words', 'bad words', true]
+] as const) test(`pet self moderation only uses direct verified message (${permitted}, ${raw})`, async () => {
+    let round = 0;
+    mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ choices: [{ message: round++ === 0
+        ? { role: 'assistant', tool_calls: [{ id: 'x', type: 'function', function: { name: 'AST_PARSER', arguments: JSON.stringify({ command: 'ban.self 600', userlevel: 9 }) } }] }
+        : { role: 'assistant', content: 'Done' } }] }), { status: 200 }));
+    await chat({ ...options, message: prompt, invocation: 'pet', pet: { name: 'Pip', language: 'en', maxReplyLength: 100, persona: { prompt: 'Hi', rules: [] }, signal: new AbortController().signal, usageRequestId: 'r', allowActions: true, trustedChatMessage: raw } });
+    assert.equal(executeTool.mock.callCount(), permitted ? 1 : 0);
 });

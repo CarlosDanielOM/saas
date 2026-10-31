@@ -11,7 +11,12 @@ import { getPetConfiguration } from '../server/services/pet_settings.service.js'
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import Users from '../schemas/users.schema.js';
 import { getAiCredits, isAiCreditsExhausted, type AiCreditStatus } from '../utils/billing.js';
-import { generateStandaloneText } from '../utils/ai/openrouter/ai.js';
+import { chat, getChannelPersonality } from '../utils/ai/openrouter/ai.js';
+import ChatHistory from '../classes/chat_history.js';
+import { getExistingUserThreadContext } from '../utils/ai/threading/thread_router.js';
+import { getThreadLimitsForTier } from '../utils/ai/threading/thread_limits.js';
+import { resolveUserIdentity, serializeUserIdentity } from '../utils/permissions/index.js';
+import { getChannelModerators } from '../functions/moderation/get_moderators.moderation.js';
 import { resolveTtsForCreditStatus } from '../utils/tts/tts_credit_fallback.util.js';
 import { trackTtsUsage } from '../utils/tts_usage.js';
 import { piperTtsService } from '../server/services/tts/piper_tts.service.js';
@@ -112,12 +117,40 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
             await current(request);
             signal.throwIfAborted();
             const persona = configuration.runtime.personality;
-            const result = await generateStandaloneText(streamer, [{ role: 'system', content:
-                `You are ${configuration.settings.name}, a virtual stream companion. Reply in ${configuration.settings.tts.language}. ` +
-                `Return only spoken text, at most ${configuration.settings.behavior.maxReplyLength} characters. Never execute actions, commands, or tools. ` +
-                `Persona and rules: ${JSON.stringify(persona)}` }, { role: 'user', content: text }], 'pet_ask', {
-                    signal, singleAttempt: true, verifyCredits: true, usageRequestId: `${request._id}:llm`, usageSource: 'pet', maxTokens: 1024
-                });
+            const provenance = request.origin.kind === 'chat-command' ? request.actor.chat : undefined;
+            const trusted = !!(provenance && /^[a-z0-9_]{1,25}$/i.test(provenance.login) && /^\d{1,30}$/.test(request.actor.userId) && provenance.message && Array.isArray(provenance.badges));
+            // Moderator badges at admission may have expired while the request waited.
+            const moderator = trusted && request.actor.userId !== request.channelId
+                ? await getChannelModerators(request.channelId, [request.actor.userId], false) : null;
+            const badges = trusted ? provenance!.badges.filter(b => !['moderator', 'lead_moderator', 'broadcaster'].includes(b.set_id)) : [];
+            if (moderator && !moderator.error && moderator.ids?.includes(request.actor.userId)) badges.push({ set_id: 'moderator', id: '1', info: '' });
+            const identity = trusted ? await resolveUserIdentity(request.channelId, { chatter_user_id: request.actor.userId, chatter_user_login: provenance!.login, badges } as any) : null;
+            const personality = await getChannelPersonality(request.channelId);
+            const history = (await ChatHistory.getRecentMessages(request.channelId, personality?.contextWindow ?? (streamer.plan_tier === 'pro' ? 15 : 7))).map((msg: any) => ({
+                timestamp: msg.timestamp, badges: msg.badges?.join(' '), username: msg.username, message: msg.message
+            }));
+            const planTier = streamer.plan_tier === 'pro' || streamer.plan_tier === 'premium' ? streamer.plan_tier : 'free';
+            // Completed rows are already durable, unique by request, and contain only heard output.
+            // Reuse them as a separate per-user pet thread with the bot thread's 24h/tier limits.
+            const prior = trusted ? await PetRequest.find({ ownerId: request.ownerId, channelId: request.channelId,
+                'origin.kind': 'chat-command', 'actor.userId': request.actor.userId, 'actor.chat.login': { $exists: true },
+                operation: 'ask', status: 'completed', playbackStarted: true, outputText: { $type: 'string', $ne: '' },
+                createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }, _id: { $ne: request._id } })
+                .sort({ createdAt: -1, _id: -1 }).limit(Math.floor(getThreadLimitsForTier(planTier).promptTurns / 2)).lean() : [];
+            const petThread = prior.reverse().flatMap(row => [
+                { role: 'user' as const, timestamp: row.createdAt.getTime(), username: row.actor.displayName, message: row.text },
+                { role: 'assistant' as const, timestamp: row.createdAt.getTime(), username: configuration.settings.name, message: row.outputText! }
+            ]);
+            const threadHistory = petThread.length ? petThread : trusted ? await getExistingUserThreadContext({ channelID: request.channelId, userID: request.actor.userId,
+                username: request.actor.displayName, message: text, planTier }).catch(() => []) : [];
+            signal.throwIfAborted();
+            const result = await chat({ channelID: request.channelId, invocation: 'pet', streamer, message: text, history, threadHistory,
+                disableTools: !trusted, tags: { badges, username: request.actor.displayName, chatter_user_id: request.actor.userId,
+                    ...(identity ? { userLevel: identity.level, identity: serializeUserIdentity(identity), message: provenance!.message } : {}) },
+                pet: { name: configuration.settings.name, language: configuration.settings.tts.language,
+                    maxReplyLength: configuration.settings.behavior.maxReplyLength, persona, signal, usageRequestId: `${request._id}:llm`,
+                    trustedChatMessage: trusted ? provenance!.message : undefined, allowActions: trusted,
+                    assertCurrent: async () => { await current(request); } } });
             if (result.error || typeof result.message !== 'string' || !result.message.trim()) throw new PetError('generation_failed');
             text = result.message.trim().slice(0, configuration.settings.behavior.maxReplyLength);
         }

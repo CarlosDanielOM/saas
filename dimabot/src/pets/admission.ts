@@ -13,7 +13,7 @@ import { PetError, notifyPet, runtimeFor } from './state.js';
 export interface AdmitPetActionInput {
     channelId: string; operation: 'talk' | 'ask'; text: string;
     origin: { kind: 'chat-command' | 'twitch-event'; id: string; occurredAt: string };
-    actionKey: string; actor: { userId: string; displayName: string };
+    actionKey: string; actor: { userId: string; displayName: string; chat?: { login: string; message: string; badges: { set_id: string; id: string; info: string }[] } };
 }
 export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requestId: string; status: string }> {
     if (!input || !/^\d{1,30}$/.test(input.channelId) || !['talk', 'ask'].includes(input.operation) ||
@@ -29,7 +29,8 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
     const ownerId = String(user._id);
     const identity = { ownerId, 'origin.kind': input.origin.kind, 'origin.id': input.origin.id, actionKey: input.actionKey };
     const payloadHash = createHash('sha256').update(JSON.stringify({ operation: input.operation, text: input.text,
-        actor: { userId: input.actor.userId, displayName: input.actor.displayName }, occurredAt: input.origin.occurredAt })).digest('hex');
+        actor: { userId: input.actor.userId, displayName: input.actor.displayName }, occurredAt: input.origin.occurredAt,
+        ...(input.actor.chat ? { chat: input.actor.chat } : {}) })).digest('hex');
     await PetRequest.init();
     const outcome = (record: PetRequestRecord) => {
         if (record.errorCode === 'busy') throw new PetError('busy', 409);

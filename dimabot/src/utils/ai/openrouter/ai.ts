@@ -144,7 +144,8 @@ export interface IRouterResponse {
 
 export interface AIHarnessOptions {
   /** Commands remain available when mention-based chat replies are disabled. */
-  invocation?: 'chat' | 'command';
+  invocation?: 'chat' | 'command' | 'pet';
+  pet?: { name: string; language: string; maxReplyLength: number; persona: { prompt: string; rules: string[]; [key: string]: unknown }; signal: AbortSignal; usageRequestId: string; trustedChatMessage?: string; allowActions: boolean; assertCurrent?: () => Promise<void> };
   channelID: string;
   message: string;
   streamer: IStreamerData;
@@ -771,12 +772,14 @@ export async function chat(
     options: extraOptions = [],
     disableTools = false,
     invocation = 'chat',
+    pet,
   } = options;
 
   const cacheClient = await getDragonflyClient("Messages");
 
   // Check if user has exhausted AI credits
-  const isExhausted = await isAiCreditsExhausted(channelID, cacheClient);
+  pet?.signal.throwIfAborted();
+  const isExhausted = await isAiCreditsExhausted(channelID, cacheClient) || !!(pet && (await getAiCredits({ plan_tier: streamer.plan_tier ?? 'free', polar_sh_customer_id: streamer.polar_sh_customer_id ?? '' }, channelID, { requireVerified: true, signal: pet.signal })).status !== 'available');
 
   // Get streamer and personality data
   const streamerData = await TwitchStreamers.getTwitchAccountById(channelID);
@@ -786,7 +789,7 @@ export async function chat(
   const effectivePersonality =
     personality || getDefaultPersonality(channelID, streamerData);
 
-  if (invocation !== 'command' && effectivePersonality.enabled === false) {
+  if (invocation === 'chat' && effectivePersonality.enabled === false) {
     return {
       error: true,
       message: "AI chat responses are disabled for this channel",
@@ -795,7 +798,7 @@ export async function chat(
 
   // Select model based on streamer tier
   const selectedModel = selectChatModel(streamer, isExhausted);
-  const maxTokens = getTokenLimit(selectedModel);
+  const maxTokens = pet ? Math.min(getTokenLimit(selectedModel), 1024) : getTokenLimit(selectedModel);
 
   // Generate tracing IDs for this conversation
   const sessionId = generateUUIDv7();
@@ -1004,7 +1007,7 @@ export async function chat(
   // Returns stable instructions, reference context, direct turns, and the latest request.
   const systemMessages = constructChatSystemMessages(
     streamerData,
-    effectivePersonality,
+    pet ? { ...effectivePersonality, personality: pet.persona.prompt, rules: pet.persona.rules } : effectivePersonality,
     userContext,
     message,
     chatHistory,
@@ -1021,18 +1024,28 @@ export async function chat(
     content: msg.content,
   }));
 
-  // Get tool definitions (skipped for system-generated announcements)
-  const toolDefinitions = disableTools ? [] : getToolDefinitions();
+  if (pet) messages.splice(1, 0, { role: 'system', content: `For this response you are the virtual companion ${JSON.stringify(pet.name)}. Follow this selected persona: ${JSON.stringify(pet.persona)}. Speak in ${JSON.stringify(pet.language)}; output only spoken text, at most ${pet.maxReplyLength} characters. Do not invoke speech or pet actions; playback is handled separately. Never retry an action. The actual triggering chat message, as reference data, is ${JSON.stringify(pet.trustedChatMessage ?? null)}. Judge only that message for ban.self, never the authored request or history.` });
+  // Pet events and legacy rows have no verified caller authority.
+  // Code execution uses channel-level API credentials rather than the caller's
+  // identity, so pet actions must go through the permission-checked AST tool.
+  const toolDefinitions = disableTools ? [] : getToolDefinitions().filter(tool => !pet ||
+    tool.function.name !== 'code_execution' && (pet.allowActions || !['AST_PARSER', 'create_memory'].includes(tool.function.name)));
+  const allowedTools = new Set(toolDefinitions.map(tool => tool.function.name));
+  let providerRound = 0;
 
   // Track tool calls to prevent infinite loops
   let toolCallCount = 0;
 
   // Self-healing AST budget: one attempt + at most one corrected retry.
-  const MAX_AST_PARSER_ATTEMPTS = 2;
+  const MAX_AST_PARSER_ATTEMPTS = pet ? 1 : 2;
   let astParserAttempts = 0;
+  let petMemoryAttempted = false;
 
   // Main AI loop
   while (toolCallCount < MAX_TOOL_CALLS) {
+    pet?.signal.throwIfAborted();
+    await pet?.assertCurrent?.();
+    const roundId = pet ? `${pet.usageRequestId}:${providerRound++}` : traceId;
     // Make API call with tools
     const data = await callOpenRouter(
       selectedModel,
@@ -1044,6 +1057,7 @@ export async function chat(
       sessionId,
       traceId,
       extraOptions.reduce((acc, opt) => ({ ...acc, ...opt }), {}),
+      pet ? { signal: pet.signal, singleAttempt: true } : {},
     );
 
     // Handle API errors
@@ -1118,7 +1132,7 @@ export async function chat(
     // Track usage with appropriate reason based on whether AI called tools
     if (data.usage) {
       const reason = hasToolCalls ? "harness_tools" : "harness_end";
-      await trackUsage(channelID, streamer, data.usage, selectedModel, reason, traceId, sessionId);
+      await trackUsage(channelID, streamer, data.usage, selectedModel, reason, roundId, pet?.usageRequestId ?? sessionId, pet ? { source: "pet", awaitIngest: true } : {});
     }
 
     // No tool calls - return the response
@@ -1180,6 +1194,17 @@ export async function chat(
         break;
       }
 
+      pet?.signal.throwIfAborted();
+      await pet?.assertCurrent?.();
+      const command = typeof toolCall.arguments?.command === 'string' ? toolCall.arguments.command.trim() : '';
+      const rawArgument = pet?.trustedChatMessage?.match(/^![a-z0-9_]+\s+([\s\S]+)$/i)?.[1]?.trim();
+      const petUnsafeAst = pet && toolCall.name === 'AST_PARSER' && (!command || /[$%*(){}]/.test(command) || /^(?:tts(?:\.|\s|$)|pet\.)/i.test(command) || (/^ban\.self(?:\s|$)/i.test(command) && pet.trustedChatMessage !== message && rawArgument !== message.trim()));
+      const duplicateMemory = pet && toolCall.name === 'create_memory' && petMemoryAttempted;
+      if (pet && toolCall.name === 'create_memory') petMemoryAttempted = true;
+      if ((pet && !allowedTools.has(toolCall.name)) || petUnsafeAst || duplicateMemory) {
+        messages.push({ role: 'tool', tool_call_id: toolCall.id, content: JSON.stringify({ success: false, error: 'Tool or action unavailable for this request' }) });
+        continue;
+      }
       const toolContext: ToolContext = {
         channelID,
         streamer: streamerData || streamer,
@@ -1259,6 +1284,8 @@ export async function chat(
   );
 
   // Make one final call without tools to get a response
+  pet?.signal.throwIfAborted();
+  const finalRoundId = pet ? `${pet.usageRequestId}:${providerRound++}` : traceId;
   const finalData = await callOpenRouter(
     selectedModel,
     messages,
@@ -1268,6 +1295,7 @@ export async function chat(
     maxTokens,
     sessionId,
     traceId,
+    {}, pet ? { signal: pet.signal, singleAttempt: true } : {},
   );
 
   if (finalData.error) {
@@ -1305,8 +1333,9 @@ export async function chat(
       finalData.usage,
       selectedModel,
       "harness_end",
-      traceId,
-      sessionId,
+      finalRoundId,
+      pet?.usageRequestId ?? sessionId,
+      pet ? { source: "pet", awaitIngest: true } : {},
     );
   }
 

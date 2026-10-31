@@ -6,6 +6,7 @@ const suites = [
   'utils/domain_event_wakeups', 'utils/tts_usage', 'utils/ai_credit_status',
   'utils/ai/openrouter/ai.tools_disabled', 'utils/ai/openrouter/command.ai',
   'utils/ai/openrouter/attribution', 'server/services/tts/fish_tts_backend',
+  'utils/ai/prompts.ai', 'utils/ai/tools/ast_parser.tool', 'utils/permissions/roles',
   'server/services/tts/kokoro_tts', 'handlers/tts_credit_fallback', 'handlers/tts_queue_credits',
 ];
 const env = { ...process.env }; delete env.NODE_OPTIONS;

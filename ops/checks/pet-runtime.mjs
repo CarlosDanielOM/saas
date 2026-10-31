@@ -84,7 +84,7 @@ async function connect(namespace, auth, reject = false, needsSnapshot = true) {
         assert.equal(packet.length, 2, `${namespace} wire event must be exactly [event, object], without a recovery offset`);
         assert.equal(typeof event, 'string'); assert.ok(data && typeof data === 'object' && !Array.isArray(data));
       }
-      events.push({ event, data, offset: packet.length > 2 ? packet.at(-1) : undefined }); if (events.length > 500) events.shift();
+      events.push({ event, data, offset: packet.length > 2 ? packet.at(-1) : undefined, receivedAt: Date.now() }); if (events.length > 500) events.shift();
     }
     if (message.startsWith(`43${namespace},`)) {
       const rest = message.slice(`43${namespace},`.length), bracket = rest.indexOf('[');
@@ -160,9 +160,16 @@ await save(settings => ({ ...settings, appearance: { ...settings.appearance, kin
 let lease = await acquire(desktop);
 assert.equal((await overlap.send('pet:lease', { v: 1, action: 'acquire' })).error.code, 'player_not_selected' /* unready overlap */);
 await overlap.send('pet:ready', { ...ready, audioReady: false });
+// Lease acquisition and the overlap's changed readiness each publish asynchronously.
+// Drain those observed notifications before measuring an unchanged readiness call.
+await until(() => {
+  const last = desktop.events.filter(item => item.event === 'pet:snapshot').at(-1);
+  return last?.data.settingsRevision === configuration.revision && last.data.lease?.leaseId === lease.leaseId && Date.now() - last.receivedAt >= 200;
+}, 'previous readiness and lease snapshots settled');
 const before = desktop.mark();
 await desktop.send('pet:ready', ready); await pause(150);
-assert.ok(desktop.events.slice(before).filter(item => item.event === 'pet:snapshot').length <= 1, 'unchanged readiness does not republish snapshots');
+const readinessSnapshots = desktop.events.slice(before).filter(item => item.event === 'pet:snapshot');
+assert.ok(readinessSnapshots.length <= 1, `unchanged readiness does not republish snapshots: ${JSON.stringify(readinessSnapshots.map(item => ({ revision: item.data.settingsRevision, generation: item.data.generation, lease: item.data.lease?.leaseId })))}`);
 const action = (text = 'Hello pet', operation = 'talk') => ({ channelId: owner, operation, text,
   origin: { kind: 'chat-command', id: randomUUID(), occurredAt: new Date().toISOString() }, actionKey: 'command:pet:0', actor: { userId: owner, displayName: 'Fixture' } });
 async function separateProducer(input, env = {}) {
@@ -346,22 +353,60 @@ await until(() => PetRequest.findOne({ _id: failed.requestId, status: 'failed' }
 assert.equal(await redis.lLen('pet:test:provider-calls'), countBefore + 1, 'no provider retry');
 await redis.del('pet:test:provider-mode');
 // No-tool LLM is raw spoken text; its AST-looking reply never executes.
+// Legacy requests have no authenticated chat provenance, but still receive normal
+// channel context. Passive retrieval must validate vector hits against Mongo policy.
+const { ChannelAIMemorySchema } = await import('/app/dist/schemas/channel_ai_memory.schema.js');
+const { default: ChatHistory } = await import('/app/dist/classes/chat_history.js');
+await ChannelAIPersonalitySchema.findOneAndUpdate({ channelID: owner }, { $set: { channel: 'pet_owner',
+  personality: 'NORMAL_BOT_PERSONA_ONLY', rules: ['Keep the community welcoming.'],
+  knownUsers: [{ username: 'fixture_friend', description: 'KNOWN_USER_CONTEXT_MARKER', relationship: 'friend' }] } }, { upsert: true });
+await redis.del(`twitch:${owner}:chatbot:personality`);
+await ChatHistory.addMessage(owner, 'fixture_friend', 'RECENT_CHAT_CONTEXT_MARKER', [], 'twitch', 'context-message');
+await redis.set('site:analytics:live:channels', JSON.stringify([{ channelID: owner, channel: 'pet_owner', streamId: 'fixture-stream',
+  title: 'LIVE_STREAM_CONTEXT_MARKER', gameName: 'Hollow Knight', viewers: 42, startedAt: new Date(Date.now() - 60_000).toISOString(), fetchedAt: new Date().toISOString() }]));
+const loreMemoryId = new ObjectId(), factMemoryId = new ObjectId(), foreignMemoryId = new ObjectId(), sensitiveMemoryId = new ObjectId(), pendingMemoryId = new ObjectId();
+const memory = (id, channelID, summary, extra = {}) => ({ _id: id, channelID, type: 'channel_lore', status: 'confirmed', risk: 'low', confidence: 0.95,
+  subject: { scope: 'channel', username: '', userID: '' }, content: summary, summary, fingerprint: String(id), createdAt: new Date(), updatedAt: new Date(), ...extra });
+await ChannelAIMemorySchema.collection.insertMany([
+  memory(loreMemoryId, owner, 'CONFIRMED_CHANNEL_MEMORY_MARKER'),
+  memory(factMemoryId, owner, 'CURRENT_USER_FACT_MARKER', { type: 'known_user_fact', subject: { scope: 'user', username: 'fixture', userID: owner } }),
+  memory(foreignMemoryId, other, 'FOREIGN_CHANNEL_MUST_NOT_APPEAR'),
+  memory(sensitiveMemoryId, owner, 'SENSITIVE_MEMORY_MUST_NOT_APPEAR', { risk: 'high' }),
+  memory(pendingMemoryId, owner, 'PENDING_MEMORY_MUST_NOT_APPEAR', { status: 'pending_review' })
+]);
+await redis.set('pet:test:memory-points', JSON.stringify([loreMemoryId, foreignMemoryId, sensitiveMemoryId, pendingMemoryId].map(id => ({ id: String(id), score: 0.99,
+  payload: { channel_id: owner, memory_id: String(id), status: 'confirmed', content: 'candidate', summary: 'candidate' } }))));
+await redis.set('pet:test:chat-points', JSON.stringify([{ id: 1, score: 0.99, payload: { channel_id: owner, username: 'fixture_friend',
+  user_id: '99003103', message: 'SEMANTIC_CHAT_CONTEXT_MARKER', timestamp: Date.now() - 60_000 } },
+  { id: 2, score: 0.99, payload: { channel_id: other, username: 'other', message: 'FOREIGN_CHAT_MUST_NOT_APPEAR', timestamp: Date.now() } }]));
 await upsertChannelTtsSettings(owner, { filters: { skipEmotes: true, stripLinks: true, normalizeWhitespace: true, maxLength: 30 } });
 const askInput = action('Kappa [happy] example.com', 'ask');
 const ask = await admitPetAction(askInput);
 const askPlay = await desktop.event('pet:play', data => data.requestId === ask.requestId);
 const calls = (await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse);
 assert.deepEqual(calls.find(item => item.kind === 'llm').body.tools, []);
-assert.equal(calls.filter(item => item.kind === 'llm').at(-1).body.messages.at(-1).content, askInput.text);
+const askBody = calls.filter(item => item.kind === 'llm').at(-1).body;
+const askMessages = JSON.stringify(askBody.messages);
+assert.equal(JSON.parse(askBody.messages.at(-1).content).message, askInput.text);
+for (const marker of ['KNOWN_USER_CONTEXT_MARKER', 'RECENT_CHAT_CONTEXT_MARKER', 'CONFIRMED_CHANNEL_MEMORY_MARKER', 'CURRENT_USER_FACT_MARKER', 'SEMANTIC_CHAT_CONTEXT_MARKER', 'LIVE_STREAM_CONTEXT_MARKER']) {
+  assert.ok(askMessages.includes(marker), `normal chat context reaches pet model: ${marker}`);
+}
+for (const marker of ['NORMAL_BOT_PERSONA_ONLY', 'FOREIGN_CHANNEL_MUST_NOT_APPEAR', 'SENSITIVE_MEMORY_MUST_NOT_APPEAR', 'PENDING_MEMORY_MUST_NOT_APPEAR', 'FOREIGN_CHAT_MUST_NOT_APPEAR']) {
+  assert.ok(!askMessages.includes(marker), `pet persona and context policy preserved: ${marker}`);
+}
+assert.ok(askMessages.includes('friendly, playful virtual companion'), 'pet custom persona remains selected');
+assert.ok((await redis.lRange('pet:test:context-queries', 0, -1)).map(JSON.parse).every(query =>
+  query.body.filter.must.some(filter => filter.key === 'channel_id' && filter.match.value === owner)), 'all vector retrieval is channel scoped');
 assert.equal(calls.filter(item => item.kind === 'tts').at(-1).body.text, 'Kappa [happy] example.com $(counter must-not-evaluate)');
 assert.equal((await PetRequest.findById(ask.requestId).lean()).outputText, 'Kappa [happy] example.com $(counter must-not-evaluate)');
 assert.equal((await desktop.send('pet:playback', identityFor(askPlay, 0))).ok, true);
 assert.equal((await desktop.send('pet:playback', identityFor(askPlay, 1, 'ended'))).ok, true);
 const queued = (await redis.lRange('pet:test:billing-events', 0, -1)).map(JSON.parse);
 for (const phase of ['llm', 'tts']) {
-  const billed = queued.filter(item => item.external_id === `${ask.requestId}:${phase}`);
+  const usageId = `${ask.requestId}:${phase}${phase === 'llm' ? ':0' : ''}`;
+  const billed = queued.filter(item => item.external_id === usageId);
   assert.equal(billed.length, 1, `exactly one ${phase} ingest`);
-  assert.equal(billed[0].metadata.request_id, `${ask.requestId}:${phase}`);
+  assert.equal(billed[0].metadata.request_id, usageId);
   assert.equal(billed[0].metadata.usage_source, 'pet');
 }
 const beforeAskReplay = { providers: await redis.lLen('pet:test:provider-calls'), billing: queued.length };
@@ -369,6 +414,48 @@ assert.equal((await admitPetAction(askInput)).status, 'completed');
 await pause(100);
 assert.equal(await redis.lLen('pet:test:provider-calls'), beforeAskReplay.providers);
 assert.equal(await redis.lLen('pet:test:billing-events'), beforeAskReplay.billing);
+// Verified chat gets the existing bot thread, then its own completed spoken turns.
+const { resolveUserThreadForMessage, appendAssistantTurnToThread } = await import('/app/dist/utils/ai/threading/thread_router.js');
+const botThread = await resolveUserThreadForMessage({ channelID: owner, userID: owner, username: 'Fixture',
+  message: 'NORMAL_THREAD_CONTEXT_MARKER', planTier: 'premium', sourceMessageId: 'normal-thread-fixture' });
+await appendAssistantTurnToThread({ channelID: owner, threadID: botThread.threadID, message: 'NORMAL_THREAD_REPLY_MARKER', planTier: 'premium', delivered: true });
+const verifiedAsk = text => ({ ...action(text, 'ask'), actor: { userId: owner, displayName: 'Fixture', chat: { login: 'fixture', message: `!petask ${text}`, badges: [] } } });
+const heardInput = verifiedAsk('PET_HEARD_USER_TURN');
+const heard = await admitPetAction(heardInput);
+const heardPlay = await desktop.event('pet:play', data => data.requestId === heard.requestId);
+let chatCall = (await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).filter(item => item.kind === 'llm').at(-1).body;
+assert.ok(JSON.stringify(chatCall.messages).includes('NORMAL_THREAD_CONTEXT_MARKER'));
+assert.ok(JSON.stringify(chatCall.messages).includes('NORMAL_THREAD_REPLY_MARKER'));
+assert.ok(chatCall.tools.some(tool => tool.function.name === 'AST_PARSER'));
+assert.ok(chatCall.tools.every(tool => tool.function.name !== 'code_execution'));
+assert.equal((await desktop.send('pet:playback', identityFor(heardPlay, 0))).ok, true);
+assert.equal((await desktop.send('pet:playback', identityFor(heardPlay, 1, 'ended'))).ok, true);
+const heardRow = await PetRequest.findById(heard.requestId).lean();
+assert.equal(heardRow.playbackStarted, true);
+await PetRequest.collection.insertMany([
+  { ...heardRow, _id: randomUUID(), origin: { ...heardRow.origin, id: randomUUID() }, status: 'failed', outputText: 'FAILED_PET_REPLY_MUST_NOT_APPEAR' },
+  { ...heardRow, _id: randomUUID(), origin: { ...heardRow.origin, id: randomUUID() }, actor: { ...heardRow.actor, userId: other }, outputText: 'OTHER_VIEWER_PET_REPLY_MUST_NOT_APPEAR' }
+]);
+const followup = await admitPetAction(verifiedAsk('What did we just discuss?'));
+const followupPlay = await desktop.event('pet:play', data => data.requestId === followup.requestId);
+chatCall = (await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).filter(item => item.kind === 'llm').at(-1).body;
+assert.ok(chatCall.messages.some(message => message.role === 'user' && message.content.includes('PET_HEARD_USER_TURN')));
+assert.ok(chatCall.messages.some(message => message.role === 'assistant' && message.content === heardRow.outputText));
+assert.ok(!JSON.stringify(chatCall.messages).includes('FAILED_PET_REPLY_MUST_NOT_APPEAR'));
+assert.ok(!JSON.stringify(chatCall.messages).includes('OTHER_VIEWER_PET_REPLY_MUST_NOT_APPEAR'));
+await desktop.send('pet:playback', identityFor(followupPlay, 0));
+await desktop.send('pet:playback', identityFor(followupPlay, 1, 'ended'));
+// A stale moderator badge and model-requested level 9 cannot elevate a viewer.
+await redis.set('pet:test:provider-mode', 'moderation-denied');
+const deniedInput = verifiedAsk('Ban protected_fixture_user');
+deniedInput.actor = { userId: '99003103', displayName: 'Pet viewer', chat: { login: 'pet_viewer', message: '!petask Ban protected_fixture_user', badges: [{ set_id: 'moderator', id: '1', info: '' }] } };
+const deniedAsk = await admitPetAction(deniedInput);
+const deniedPlay = await desktop.event('pet:play', data => data.requestId === deniedAsk.requestId);
+chatCall = (await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).filter(item => item.kind === 'llm').at(-1).body;
+assert.ok(chatCall.messages.some(message => message.role === 'tool' && /permission denied/i.test(message.content)), 'moderation enforced against refreshed viewer identity');
+await desktop.send('pet:playback', identityFor(deniedPlay, 0));
+await desktop.send('pet:playback', identityFor(deniedPlay, 1, 'ended'));
+await redis.del('pet:test:provider-mode');
 await upsertChannelTtsSettings(owner, {});
 // Exhausted/unverified credits use the existing provider fallback policy.
 await credits('unavailable');
@@ -475,5 +562,5 @@ await OAuthSession.updateOne({ _id: secondToken.session_id }, { $set: { revoked_
 assert.ok(!(await call(`/pets/${owner}/runtime`, { token: 'pet-owner-token' })).body.data.sessions.some(session => session.sessionId === secondToken.session_id));
 clearInterval(renewal);
 for (const ws of sockets) ws.close();
-console.log('PASS pet runtime: exact Socket.IO contract, consent/owner isolation, readiness/telemetry bursts, sole lease, durable dedup/busy, private delivery, actual playback/terminal broadcast, no-tools AI/stable usage, verified-credit fallback, token rotation, unknown-outcome recovery and revocation.');
+console.log('PASS pet runtime: shared chat/memory/facts/stream context, pet persona, per-viewer spoken continuity, refreshed moderation denial, legacy no-tools, exact Socket.IO contract, consent/owner isolation, readiness/telemetry bursts, sole lease, durable dedup/busy, private delivery/playback, stable usage, verified-credit fallback, token rotation, unknown-outcome recovery and revocation.');
 process.exit(0);

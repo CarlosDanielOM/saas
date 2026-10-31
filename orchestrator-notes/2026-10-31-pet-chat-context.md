@@ -1,0 +1,7 @@
+# Pet chat-context integration routing observation — 2026-10-31
+
+- **Task:** Multi-file TypeScript backend integration for `pet.ask`, sharing normal chat context while preserving pet persona/TTS and constraining tools to verified caller authority; API and bot candidates had exact-image verification and deployment.
+- **Routing:** GPT-6.1 Terra at high via Codex handled bounded implementation. GPT-6.1 Sol at high via Codex led integration review, tests, and deployment. GPT-6 Luna at high handled source-backed documentation.
+- **Corrections:** Lead review required excluding `code_execution` because it holds channel credentials and revalidating the pet request before each tool action. The isolated checks added a test-only quiescence barrier; fixture seed and display-name corrections fixed test setup, not production behavior.
+- **Evidence:** [Pet chat-context release record](../migration-notes/pet-chat-context.md): API run `api-8ecf385f0aa3` passed 168 regression assertions; bot run `bot-50f5a661f020` passed 98 pet-trigger assertions plus the signed-command/durable-event check. Both deployed exact candidates passed readiness. Production observations were limited to read-only API responses and container running/restart state; no live paid audio or real moderation was exercised.
+- **Confidence and routing implication:** Low, single task. Supports Terra's existing provisional route for bounded backend integration, with Sol leading integration/release and Luna documenting. No tier reorder, comparative quality ranking, or runtime-performance claim.

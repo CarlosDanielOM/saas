@@ -233,7 +233,9 @@ export function createTwitchEventsubApp({
                 const chatEffectContext = eventType === 'channel.chat.message' ? createTwitchEffectContext({
                     channelId: notification.event.broadcaster_user_id,
                     origin: { kind: 'chat-command', id: notification.event.message_id, occurredAt: messageTimestamp },
-                    actor: { userId: notification.event.chatter_user_id, displayName: notification.event.chatter_user_name || '' }
+                    actor: { userId: notification.event.chatter_user_id, displayName: notification.event.chatter_user_name || '',
+                        chat: { login: notification.event.chatter_user_login || '', message: notification.event.message?.text || '',
+                            badges: (notification.event.badges || []).map((badge: any) => ({ set_id: badge.set_id || '', id: badge.id || '', info: badge.info || '' })) } }
                 }) : undefined;
                 res.sendStatus(204);
                 void handleEvent(

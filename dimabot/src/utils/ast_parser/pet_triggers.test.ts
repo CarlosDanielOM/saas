@@ -43,7 +43,7 @@ const { parseSpecialCommands } = await import('../../handlers/special_parser.han
 const { sendTwitchChatMessage } = await import('../../functions/chats/send_message.chat.js');
 const { applyChatAnnouncementDomainEvent } = await import('../../domain_events/chat_announcement_events.js');
 const { deliverAstMessage } = await import('../ast_command_delivery.js');
-const { createTwitchEffectContext, scopeAstEffectContext } = await import('./effects.js');
+const { createTwitchEffectContext, scopeAstEffectContext, nextPetAction } = await import('./effects.js');
 const { createExecutionContext, evaluate, registerFunction, getFunctionMetadata } = await import('./evaluator.js');
 const { parse } = await import('./parser.js');
 const { snapshotTimerContext } = await import('./timer.js');
@@ -259,4 +259,15 @@ test('empty output still dispatches nested configured command references without
     assert.equal(admissions[0].operation, 'ask');
     assert.equal(admissions[0].origin.id, event.eventKey);
     assert.equal(tokenReads, 0);
+});
+
+
+test('verified chat provenance survives only the opaque scoped effect', () => {
+    const chat = { login: 'viewer', message: '!pet real message', badges: [{ set_id: 'moderator', id: '1', info: '' }] };
+    const effect = createTwitchEffectContext({ channelId: channelID, origin: { kind: 'chat-command', id: 'verified-1', occurredAt }, actor: { userId: '42', displayName: 'Viewer', chat } });
+    const resolved = scopeAstEffectContext(effect, channelID, 'command:fixture');
+    assert.deepEqual(nextPetAction(resolved, channelID)?.actor.chat, chat);
+    assert.equal(nextPetAction(JSON.parse(JSON.stringify(resolved)), channelID), undefined);
+    const eventEffect = createTwitchEffectContext({ channelId: channelID, origin: { kind: 'twitch-event', id: 'event-1', occurredAt }, actor: { userId: '42', displayName: 'Viewer', chat } });
+    assert.equal(nextPetAction(scopeAstEffectContext(eventEffect, channelID, 'event:fixture'), channelID)?.actor.chat, undefined);
 });

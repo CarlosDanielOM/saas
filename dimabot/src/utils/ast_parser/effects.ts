@@ -26,7 +26,10 @@ export function createTwitchEffectContext(input: Pick<AdmitPetActionInput, 'chan
         || !['chat-command', 'twitch-event'].includes(input.origin.kind)
         || typeof input.actor?.userId !== 'string' || !input.actor.userId.trim() || input.actor.userId.length > 100
         || typeof input.actor.displayName !== 'string' || input.actor.displayName.length > 100) return;
-    return mint({ channelId: input.channelId, origin: { ...input.origin }, actor: { ...input.actor }, path: [], next: 0 });
+    const chat = input.origin.kind === 'chat-command' && input.actor.chat;
+    const safeChat = chat && /^[a-z0-9_]{1,25}$/i.test(chat.login) && typeof chat.message === 'string' && chat.message.length > 0 && chat.message.length <= 2000 && Array.isArray(chat.badges) && chat.badges.length <= 50
+        ? { login: chat.login, message: chat.message, badges: chat.badges.map(b => ({ set_id: String(b.set_id || '').slice(0, 80), id: String(b.id || '').slice(0, 80), info: String(b.info || '').slice(0, 80) })) } : undefined;
+    return mint({ channelId: input.channelId, origin: { ...input.origin }, actor: { userId: input.actor.userId, displayName: input.actor.displayName, ...(safeChat ? { chat: safeChat } : {}) }, path: [], next: 0 });
 }
 
 /** Config IDs come from stored command/EventSub configuration, never tag arguments. */

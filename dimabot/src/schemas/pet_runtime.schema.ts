@@ -6,10 +6,10 @@ export const PET_TERMINAL: PetStatus[] = ['completed', 'cancelled', 'failed', 'e
 export interface PetRequestRecord {
     _id: string; ownerId: string; channelId: string; operation: 'talk' | 'ask' | 'tts'; text: string;
     origin: { kind: 'chat-command' | 'twitch-event' | 'tts-queue'; id: string; occurredAt: string };
-    actionKey: string; actor: { userId: string; displayName: string }; payloadHash: string;
+    actionKey: string; actor: { userId: string; displayName: string; chat?: { login: string; message: string; badges: { set_id: string; id: string; info: string }[] } }; payloadHash: string;
     admitted: boolean; startBefore?: Date; generation: number; settingsRevision: number; status: PetStatus; version: number;
     outputText?: string; errorCode?: string; phaseDeadline: Date;
-    deliveryAttempted?: boolean; audioFetched?: boolean;
+    deliveryAttempted?: boolean; audioFetched?: boolean; playbackStarted?: boolean;
     /** 'tts' requests wait in the normal TTS queue as item `ttsSpeechId`; others use the pet's own queue. */
     lane?: 'independent' | 'tts'; ttsSpeechId?: string;
     privateDir?: string; audio?: { path: string; mimeType: 'audio/wav' | 'audio/mpeg'; durationMs: number };
@@ -18,9 +18,9 @@ export interface PetRequestRecord {
 const request = new Schema<PetRequestRecord>({
     _id: String, ownerId: { type: String, required: true }, channelId: String, operation: String, text: String,
     origin: { kind: String, id: String, occurredAt: String }, actionKey: String,
-    actor: { userId: String, displayName: String }, payloadHash: String,
+    actor: { userId: String, displayName: String, chat: { login: String, message: String, badges: [{ set_id: String, id: String, info: String, _id: false }] } }, payloadHash: String,
     admitted: { type: Boolean, default: false }, startBefore: Date, generation: Number, settingsRevision: Number, status: { type: String, enum: PET_STATUSES }, version: Number,
-    deliveryAttempted: Boolean, audioFetched: Boolean, lane: { type: String, enum: ['independent', 'tts'] }, ttsSpeechId: String, privateDir: String, outputText: String, errorCode: String, phaseDeadline: Date,
+    deliveryAttempted: Boolean, audioFetched: Boolean, playbackStarted: Boolean, lane: { type: String, enum: ['independent', 'tts'] }, ttsSpeechId: String, privateDir: String, outputText: String, errorCode: String, phaseDeadline: Date,
     audio: { type: new Schema({ path: String, mimeType: String, durationMs: Number }, { _id: false }), default: null },
     createdAt: Date, expiresAt: Date
 }, { versionKey: false, collection: 'pet_requests' });

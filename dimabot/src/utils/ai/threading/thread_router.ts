@@ -91,6 +91,20 @@ async function scoreThread(meta: ThreadMeta, incomingMessage: string, userID: st
     return lexicalScore * 0.45 + recency * 0.35 + continuity * 0.2;
 }
 
+/** Read a matching conversation without appending a pet turn to the bot thread. */
+export async function getExistingUserThreadContext(params: ResolveThreadParams): Promise<PromptContextTurn[]> {
+    const limits = getThreadLimitsForTier(params.planTier);
+    const candidates = await getUserThreadCandidates(params.channelID, params.userID, Math.max(5, limits.maxUserThreads * 3));
+    let best: ThreadMeta | undefined;
+    let score = 0;
+    if (candidates[0] && Date.now() - candidates[0].lastActivityTs <= STICKY_THREAD_WINDOW_MS) return getThreadPromptContext(params.channelID, candidates[0].threadID, limits.promptTurns);
+    for (const candidate of candidates) {
+        const candidateScore = await scoreThread(candidate, params.message, params.userID);
+        if (candidateScore > score) { score = candidateScore; best = candidate; }
+    }
+    return best && score >= THREAD_MATCH_THRESHOLD ? getThreadPromptContext(params.channelID, best.threadID, limits.promptTurns) : [];
+}
+
 export async function resolveUserThreadForMessage(params: ResolveThreadParams): Promise<ResolvedThread> {
     const startedAt = Date.now();
     const limits = getThreadLimitsForTier(params.planTier);

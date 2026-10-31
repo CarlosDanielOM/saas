@@ -174,7 +174,7 @@ export async function registerPetSockets(io: SocketServer) {
                 peer.seq = Number(value.seq);
                 if (value.phase === 'started') {
                     if (request.status !== 'ready' || !request.startBefore || request.startBefore.getTime() < Date.now()) throw new PetError('stale_playback', 409);
-                    await PetRequest.updateOne({ _id: request._id, status: 'ready' }, { $set: { status: 'playing' }, $inc: { version: 1 } });
+                    await PetRequest.updateOne({ _id: request._id, status: 'ready' }, { $set: { status: 'playing', playbackStarted: true }, $inc: { version: 1 } });
                 } else if (value.phase === 'progress') {
                     if (request.status !== 'playing') throw new PetError('invalid_playback');
                     peer.lastProgressAt = Date.now();
