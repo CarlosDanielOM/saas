@@ -17,6 +17,7 @@
 - `src/server/index.ts` – HTTP server bootstrap
 - `src/server/server.ts` – Route registration and middleware
 - `src/server/websocket.ts` – WebSocket event contracts
+- **Desktop AI ingress:** turn routes, durable execution, and speech delivery live in `src/server/oauth/routes.ts` and `src/desktop_ai/`; cross-source playback coordination is registered from `src/server/websocket.ts`. See the [v1 wire contract](./DESKTOP_AI_CONTRACT.md) and [release evidence](../migration-notes/desktop-ai-turns.md).
 - `src/bot/index.ts` – Twitch chat bot entrypoint
 - `src/workers/cron.index.ts` – Cron supervisor (self-healing workers)
 
