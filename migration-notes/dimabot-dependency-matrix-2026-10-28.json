@@ -22,10 +22,10 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-31 functional Twitch headers and notifications",
+    "asOf": "2026-10-31 Polar batch usage and TTS tracking",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 69,
-    "partialRows": 25,
+    "locallyCompleteMappings": 70,
+    "partialRows": 24,
     "archivedSourceSnapshots": 60,
     "liveBaselineTypeScriptFiles": 746,
     "excludedReactEmailTemplatesIncludedInLiveCount": 6,
@@ -94758,47 +94758,46 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "reviewed-bounded-partial-cache-mode-usage-branch; immediate/batch Polar ingestion, billing adapter, semantic worker/caller adoption, and whole-helper closure remain open",
+      "featureReview": "reviewed-bounded-partial-cache-and-batch-usage-adapters; immediate ingestion, credit grants, public SDK factory closure, billing wrapper and whole-helper closure remain open",
       "localRustEvidence": [
-        "dimabot/src/utils/polar_cache_usage.rs: native cache-mode event preparation, queue/lease coordination, projection, receipt enqueue, and analytics adapter",
-        "dimabot/tests/polar_cache_usage.rs and dimabot/tests/support/polar_cache_usage.rs: ordinary cases plus private Redis normalized-I/O, owner-release, and RPUSH response-loss fixtures",
-        "dimabot/tests/fixtures/polar_cache_usage_reference.cjs: pinned actual TypeScript source oracle and 32-record cache-mode corpus",
-        "migration-notes/polar-cache-usage.md: source contract, reuse map, pacing decisions, and remaining integration gaps",
-        "migration-notes/evidence/2026-10-30-polar-cache-usage/README.md: indexed source bindings, corpora, accepted receipts/logs, facts, and readback"
+        "dimabot/src/utils/polar_cache_usage.rs: existing cache-mode event preparation, durable queue/lease, credit projection, receipt enqueue and analytics path",
+        "dimabot/src/utils/polar_usage.rs: concrete batch flush and SDK-compatible request/response behavior",
+        "dimabot/src/utils/polarsh.rs: shared native Polar HTTP client and transport policy",
+        "dimabot/tests/polar_usage.rs and dimabot/tests/support/polar_batch_http.rs: SDK and private HTTP/queue fixtures",
+        "migration-notes/polar-batch-usage-handoff.md: final source binding, receipts and remaining gaps"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
-        "Only the source mode:\"cache\" path is mapped. It prepares the event, durably queues it, projects credits, enqueues the receipt, tracks analytics, and returns without calling the Polar HTTP ingest endpoint. Immediate mode, batch flush behavior, and the complete Polar SDK adapter are not mapped.",
-        "The source GET then DEL lock release is replaced by the existing atomic owner-checked ai_usage_lock Lua release. The final 350 ms contention wait is capped to the remaining 2.5-second monotonic coordination budget. These are accepted improvements, not byte-identical source operations.",
-        "The source replay normalizes generated UUIDs, clock fields, Redis driver error wording, and the accepted atomic-release protocol. It does not claim a byte-for-byte match of the entire source RPC trace or an end-to-end Redis RPC timeout.",
-        "The concrete logger exercises cache and console sinks. Default automatic telemetry/OpenTelemetry attachment and lone UTF-16-surrogate diagnostic payloads are not covered by this adapter.",
-        "High-level pending-charge recovery uses stable IDs; it is distinct from within-call replay of an ambiguous RPUSH or EVAL outcome. No performance benchmark or production-latency claim is made."
+        "Both cache-only and batch-ingest branches have concrete native adapters. The cache path reuses the existing durable queue, projection, receipt and analytics primitives.",
+        "The batch path matches the covered @polar-sh/sdk 0.42.5 request/response contract, accepts JSON media-type parameters/case variants, rejects missing or non-JSON content types, validates integer SDK counts, and disables transport retries.",
+        "Raw-length queue trimming preserves a concurrently appended tail; cancellation leaves queue/lease state to expiry. The SDK endpoint and process-wide pooled HTTP client are configured explicitly.",
+        "Immediate ingestion, credit grants, and full public SDK-factory export closure remain open. Application metadata/OTel composition and callers remain separate."
       ],
       "callers": {
         "sourceEvidence": [
           "src/utils/moderation/semantic_worker.ts: cache-mode Polar usage call path; semantic worker remains TypeScript-owned."
         ],
-        "runtimeStatus": "The native cache-mode adapter is verified as opt-in library code. The semantic worker and other TypeScript callers remain active and have not adopted it; adoption, deployment, and source retirement are separate."
+        "runtimeStatus": "The native cache and batch adapters are verified library paths. TypeScript callers, billing wrapper, semantic worker, and application composition remain live and have not adopted them; caller adoption, source retirement, and deployment are separate."
       },
       "testEvidence": {
         "sourceEvidence": [
-          "Final Node run node-1793351297978993028: actual-source, source-bound 32-record cache-mode corpus; all three retained corpus outputs are byte-identical.",
-          "Source bindings cover 1,456 inputs: 1,446 Git objects verified with git show at de0606ed9b8b2dbdc73f7ffd457090e7cc9404fa and ten SDK inputs reused from the previously archive-verified binding."
+          "Final Node run node-1793407300128374595 checked the actual source-bound Polar SDK oracle: SHA-256 1c278529b096c16b867a8e3c260e3565b2f6e113d0a35b87f273563cb3032ddf, covering three wires, eight rejected inputs, and eleven SDK response boundaries.",
+          "Source tree SHA-256 af1571e140266d70f46eadff6ec3867e19a4d4e4aa00cba855cebed4aa122b7f; parent independently verified 1,591 bound inputs and 11 owned workspace files."
         ],
         "rustBehaviorEvidence": [
-          "One ordinary Rust test and four ignored fixture tests passed in compiler-fixtures-1793351297978548916.",
-          "Private Redis normalized-I/O/logger/receipt/analytics replay, changed-owner atomic release, and applied Polar RPUSH response-loss (one write, one release attempt) passed.",
-          "Scoped, minimal, Mongo/Redis, and all-feature strict validation passed. The final compiler phase used six CPUs, 4 GiB memory/no-swap, 256 PIDs, two Cargo jobs; compiler/fixtures took 116.913 seconds and total elapsed time was 127.794 seconds.",
-          "All 18 production records were unchanged and zero task-owned resources remained in the final readback. No production deployment occurred."
+          "Final compiler-fixtures-1793407453850684030 passed six SDK-focused tests, one private batch fixture, one global idle transport unit, eight Polar transport tests, and the TTS tracking/pricing tests and source replay.",
+          "The batch fixture verifies ordinary SDK content-type variants, missing/text/plain rejection with queue state intact, count validation, no transport retry, and queue trimming/cancellation boundaries.",
+          "Scoped strict Clippy, minimal library checks, and all-feature/all-target strict Clippy passed. The executed immutable validation script SHA-256 was 850543e0a45d35fde2715c12029238dd39b54c2fdc4af80d910d4344882e519f.",
+          "Parent readback confirmed all 18 production containers unchanged and no task-owned resources remaining; no production deployment occurred."
         ],
-        "status": "Bounded cache-mode branch verified on source tree SHA-256 c73089d01b8073f9aa8e0ddb4e8c87a05a19b8c448cf40df016f72ad87f96130. The containing Polar helper, billing/application wrapper, immediate/batch HTTP path, semantic worker integration, and caller adoption remain open."
+        "status": "Cache-only and batch usage adapters are locally verified at commit 3e99f5d03b000ce94bf6d21aabed81bb296b2b66. Immediate ingestion, grants, public factory closure and whole-helper/application dependency closure remain open."
       },
       "exports": [
         {
           "name": "getPolarShClient",
-          "nativeMapping": "Unmapped; the cache-mode path returns before Polar client construction. Immediate ingestion and batch flush remain open.",
+          "nativeMapping": "Partial: the native PolarClient and shared transport are concrete; source factory export parity for all policies remains open.",
           "evidence": [
-            "dimabot/src/utils/polar_cache_usage.rs",
-            "migration-notes/polar-cache-usage.md"
+            "dimabot/src/utils/polarsh.rs",
+            "migration-notes/polar-batch-usage-handoff.md"
           ]
         },
         {
@@ -94810,11 +94809,12 @@
         },
         {
           "name": "ingestPolarSHEvent",
-          "nativeMapping": "Partial: mode:\"cache\" is mapped to the opt-in native polar_cache_usage adapter; immediate and batch modes and full source helper closure remain open.",
+          "nativeMapping": "Partial: cache-only mode is mapped to polar_cache_usage and batch mode to PolarUsage; immediate mode and full source helper closure remain open.",
           "evidence": [
             "dimabot/src/utils/polar_cache_usage.rs",
-            "dimabot/tests/polar_cache_usage.rs",
-            "migration-notes/evidence/2026-10-30-polar-cache-usage/README.md"
+            "dimabot/src/utils/polar_usage.rs",
+            "dimabot/tests/polar_usage.rs",
+            "migration-notes/polar-batch-usage-handoff.md"
           ]
         }
       ],
@@ -94835,9 +94835,9 @@
           "importSyntaxKind": "runtime import",
           "runtimeOrTypeDependency": "Runtime context creation and metadata enrichment are reused from the verified native AI usage helper for this branch.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
-          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
-          "rustReplacementOrGap": "Runtime context creation and metadata enrichment are reused from the verified native AI usage helper for this branch."
+          "directDependencyReview": "Reviewed for the verified cache and batch branches; complete Polar helper closure remains open.",
+          "transitiveDependencyReview": "Native cache/batch, SDK, queue, projection, receipt and analytics dependencies are concrete for these branches; immediate/grant/application closure remains open.",
+          "rustReplacementOrGap": "Native create/enrich context policy supplies the cache/batch accounting metadata; immediate/grant orchestration remains open."
         },
         {
           "ordinal": 1,
@@ -94855,9 +94855,9 @@
           "importSyntaxKind": "runtime import",
           "runtimeOrTypeDependency": "Receipt construction and enqueue are reused from the verified native AI usage producer/ledger path for this branch.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
-          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
-          "rustReplacementOrGap": "Receipt construction and enqueue are reused from the verified native AI usage producer/ledger path for this branch."
+          "directDependencyReview": "Reviewed for the verified cache and batch branches; complete Polar helper closure remains open.",
+          "transitiveDependencyReview": "Native cache/batch, SDK, queue, projection, receipt and analytics dependencies are concrete for these branches; immediate/grant/application closure remains open.",
+          "rustReplacementOrGap": "The concrete AiUsageProducer builds and enqueues receipts in the shared durable cache/batch prefix; full ledger workflows remain separate."
         },
         {
           "ordinal": 2,
@@ -94875,9 +94875,9 @@
           "importSyntaxKind": "runtime import",
           "runtimeOrTypeDependency": "The cache-mode credit projection adapter is reused; broader billing wrapper/source ownership remains open.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
-          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
-          "rustReplacementOrGap": "The cache-mode credit projection adapter is reused; broader billing wrapper/source ownership remains open."
+          "directDependencyReview": "Reviewed for the verified cache and batch branches; complete Polar helper closure remains open.",
+          "transitiveDependencyReview": "Native cache/batch, SDK, queue, projection, receipt and analytics dependencies are concrete for these branches; immediate/grant/application closure remains open.",
+          "rustReplacementOrGap": "AiCreditProjection supplies recordAiCreditUsage for accepted cache/batch usage; broader billing and immediate/grant orchestration remain open."
         },
         {
           "ordinal": 3,
@@ -94895,9 +94895,9 @@
           "importSyntaxKind": "runtime import",
           "runtimeOrTypeDependency": "Private Redis behavior is backed by the native Redis manager and isolated Redis fixtures for this branch.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
-          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
-          "rustReplacementOrGap": "Private Redis behavior is backed by the native Redis manager and isolated Redis fixtures for this branch."
+          "directDependencyReview": "Reviewed for the verified cache and batch branches; complete Polar helper closure remains open.",
+          "transitiveDependencyReview": "Native cache/batch, SDK, queue, projection, receipt and analytics dependencies are concrete for these branches; immediate/grant/application closure remains open.",
+          "rustReplacementOrGap": "The concrete shared Redis ConnectionManager supplies lock, migration, queue, projection, receipt and trim operations against private fixtures."
         },
         {
           "ordinal": 4,
@@ -94915,9 +94915,9 @@
           "importSyntaxKind": "runtime import",
           "runtimeOrTypeDependency": "Concrete cache/console logging is exercised; default telemetry/OpenTelemetry attachment and UTF-16 diagnostic parity remain open.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
-          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
-          "rustReplacementOrGap": "Concrete cache/console logging is exercised; default telemetry/OpenTelemetry attachment and UTF-16 diagnostic parity remain open."
+          "directDependencyReview": "Reviewed for the verified cache and batch branches; complete Polar helper closure remains open.",
+          "transitiveDependencyReview": "Native cache/batch, SDK, queue, projection, receipt and analytics dependencies are concrete for these branches; immediate/grant/application closure remains open.",
+          "rustReplacementOrGap": "The concrete Logger supplies console/Redis diagnostics for cache/batch paths; application metadata/OTel composition remains open."
         },
         {
           "ordinal": 5,
@@ -94935,9 +94935,9 @@
           "importSyntaxKind": "runtime import",
           "runtimeOrTypeDependency": "Cache-mode analytics is exercised through the existing native PostHog tracking adapter; this does not complete unrelated event wrappers.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
-          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
-          "rustReplacementOrGap": "Cache-mode analytics is exercised through the existing native PostHog tracking adapter; this does not complete unrelated event wrappers."
+          "directDependencyReview": "Reviewed for the verified cache and batch branches; complete Polar helper closure remains open.",
+          "transitiveDependencyReview": "Native cache/batch, SDK, queue, projection, receipt and analytics dependencies are concrete for these branches; immediate/grant/application closure remains open.",
+          "rustReplacementOrGap": "The existing concrete PosthogTracking adapter supplies best-effort accepted-usage analytics without blocking durable queueing on analytics initialization."
         },
         {
           "ordinal": 6,
@@ -94948,9 +94948,9 @@
           "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
           "runtimeOrTypeDependency": "Not used by the cache-mode return path; immediate and batch HTTP ingestion still require the application-specific provider adapter.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
-          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
-          "rustReplacementOrGap": "Not used by the cache-mode return path; immediate and batch HTTP ingestion still require the application-specific provider adapter."
+          "directDependencyReview": "Reviewed for the verified cache and batch branches; complete Polar helper closure remains open.",
+          "transitiveDependencyReview": "Native cache/batch, SDK, queue, projection, receipt and analytics dependencies are concrete for these branches; immediate/grant/application closure remains open.",
+          "rustReplacementOrGap": "PolarClient plus events_ingest_body implements the installed SDK 0.42.5 batch request/response contract; immediate/grant and public factory export closure remain open."
         },
         {
           "ordinal": 7,
@@ -94961,12 +94961,12 @@
           "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
           "runtimeOrTypeDependency": "The cache-mode context UUID behavior is supplied by the existing native UUID dependency; receipt bindings cover generated IDs.",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "reviewed for cache-mode branch; complete Polar helper dependency closure remains open",
-          "transitiveDependencyReview": "reused native dependency or named adapter boundary; see bounded evidence package",
-          "rustReplacementOrGap": "The cache-mode context UUID behavior is supplied by the existing native UUID dependency; receipt bindings cover generated IDs."
+          "directDependencyReview": "Reviewed for the verified cache and batch branches; complete Polar helper closure remains open.",
+          "transitiveDependencyReview": "Native cache/batch, SDK, queue, projection, receipt and analytics dependencies are concrete for these branches; immediate/grant/application closure remains open.",
+          "rustReplacementOrGap": "The existing UUID implementation supplies ingest lease ownership and generated context IDs; no new crypto dependency."
         }
       ],
-      "rowAssessment": "partial-local-cache-mode-usage-adapter-verified; immediate/batch-Polar-http, billing/application-wrapper, semantic-worker/caller-adoption, and whole-helper-dependency-closure-open"
+      "rowAssessment": "partial-local-cache-and-batch-usage-adapters-verified; immediate-ingest, credit-grants, public-SDK-factory, billing-wrapper, and whole-helper-closure-open"
     },
     {
       "source": "src/utils/pollyfills.ts",
@@ -99968,19 +99968,19 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "reviewed-bounded-pure-pricing; tracking and billing dependency closure open",
+      "featureReview": "reviewed-local-tracker-pricing-and-direct-dependency-closure; TypeScript callers and application bootstrap adoption remain open",
       "localRustEvidence": [
-        "dimabot/src/utils/tts/usage.rs",
-        "dimabot/src/utils/tts/mod.rs",
-        "dimabot/src/utils/credit_policy.rs",
-        "dimabot/tests/tts_usage_pricing.rs",
-        "dimabot/tests/fixtures/tts_usage_oracle.cjs",
-        "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md",
-        "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/verification-summary.json",
-        "compiler-fixtures-1793251319915932834: final source 64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92"
+        "dimabot/src/utils/tts_usage.rs: concrete TTS tracker, six Redis counter/expiry operations, pricing reuse, cache-only and durable-batch modes",
+        "dimabot/src/utils/polar_usage.rs: concrete durable Polar batch ingestion reused by normal TTS billing",
+        "dimabot/src/utils/tts/usage.rs: existing shared TTS pricing implementation",
+        "dimabot/tests/tts_usage_tracking.rs and dimabot/tests/polar_usage.rs: tracking, source replay, real loopback POST/queue trim, and transport coverage",
+        "migration-notes/tts-usage-tracking-handoff.md and migration-notes/polar-batch-usage-handoff.md: accepted behavior, verification and boundaries"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
-        "The native bounded exact-floor implementation is covered by 4,157 JavaScript Math.round raw-bit cases in both standalone credit-policy and TTS-utilities profiles; non-finite inputs, negative zero, ties and values at/above the exact-integer boundary retain explicit guards."
+        "The six Redis counter/expiry operations and local 30-day expiry formula are implemented, including nonpositive values. Cache failures are logged and billing continues; durable-ingestion errors are surfaced only when durable usage is required.",
+        "Cache-only ingestion is explicit. Normal tracking uses the native Polar batch adapter. The tracker reuses the existing pricing implementation and lazily acquired shared Redis/HTTP clients.",
+        "Default logging uses console and Redis sinks; application metadata/OTel sink composition and caller/bootstrap adoption remain outside this local feature closure.",
+        "No JavaScript prototype identity, TypeScript caller cutover, source retirement, deployment, or performance result is claimed."
       ],
       "callers": {
         "sourceEvidence": [
@@ -99988,52 +99988,56 @@
           "dimabot/src/pets/runtime.ts: trackTtsUsage",
           "dimabot/src/server/services/tts/voice_preview.service.ts: calculateTtsUsage and trackTtsUsage"
         ],
-        "runtimeStatus": "Pricing calculation has verified native local coverage; all three callers still invoke TypeScript. Tracking, logging, cache mutation, durable billing/ledger and PostHog remain open."
+        "runtimeStatus": "Native tracking and direct dependencies are locally verified. TTS queue, pet runtime, and voice preview callers remain TypeScript-owned and have not adopted the native tracker; application metadata/OTel composition, adoption, deployment, and source retirement are separate."
       },
       "testEvidence": {
         "sourceEvidence": [
-          "Actual tts_usage.ts was loaded by the isolated Node oracle; 1,738 pricing cases compared all four raw binary64 fields and serialized wire values.",
-          "Same-realm six-workload prepared benchmark used unchanged input SHA-256 83ac085b3541474db906d8808923518168303d6ad1f96f8eea83158af62eddbe."
+          "Final source-bound Node run node-1793407300128374595: TTS oracle SHA-256 10323e9171456a7042250fbd0f641b34bb601d3f6eba69d0cbb51eacbd8e1906; all 14 cases checked.",
+          "Final source tree SHA-256 af1571e140266d70f46eadff6ec3867e19a4d4e4aa00cba855cebed4aa122b7f; parent independently verified 1,591 bound inputs."
         ],
         "rustBehaviorEvidence": [
-          "tts_usage_pricing.rs: formula, special provider names, shared credit-policy API/Serde and lossless TTS JSON behavior.",
-          "Final compiler: 254 ordinary executions (overlapping), five explicit fixture executions, one release benchmark; standalone credit-policy and TTS-utilities all-target strict check/Clippy, all-features strict check/Clippy, and no-feature all-target check passed.",
-          "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/verification-summary.json",
-          "compiler-fixtures-1793251319915932834: final source 64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92"
+          "Final compiler-fixtures-1793407453850684030 passed the TTS pricing/expiry test and private 14-case actual-source replay with loopback POST and queue trimming, plus six SDK-focused tests, private Polar batch fixture, global idle transport unit, and eight Polar transport tests.",
+          "Scoped TTS/batch and independent cache-only strict Clippy, minimal library checks, and all-feature/all-target strict Clippy passed. Final receipt elapsed 22.387 seconds under six CPUs, 4 GiB/no-swap, 256 PID and two Cargo-job caps.",
+          "An earlier receipt compiler-fixtures-1793406878852830820 passed five TTS fixtures but later failed all-feature lint due to test-module placement; it is not treated as a wholly passing receipt.",
+          "Parent readback confirmed all 18 production containers unchanged and no task-owned resources remaining; no production deployment occurred."
         ],
-        "status": "bounded pure pricing behavior verified; tracking feature and application dependency closure remain open"
+        "status": "Native TTS tracking, existing pricing reuse, and the direct Redis/logger/Polar/PostHog dependencies are locally verified at commit 3e99f5d03b000ce94bf6d21aabed81bb296b2b66. Source callers remain live and unadopted; total application migration remains incomplete."
       },
       "exports": [
         {
           "name": "TtsUsageResult",
           "nativeMapping": "TtsUsageResult shared by utils::tts_usage_pricing, utils::tts and utils::credit_policy",
           "evidence": [
-            "dimabot/src/utils/tts/usage.rs",
-            "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md"
+            "dimabot/src/utils/tts_usage.rs",
+            "dimabot/tests/tts_usage_tracking.rs",
+            "migration-notes/tts-usage-tracking-handoff.md"
           ]
         },
         {
           "name": "TtsUsageTrackOptions",
-          "nativeMapping": "OPEN: no native tracking-options/API adapter in this slice",
+          "nativeMapping": "Native TtsUsageTrackOptions and TtsUsageContext types in utils::tts_usage",
           "evidence": [
-            "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md"
+            "dimabot/src/utils/tts_usage.rs",
+            "dimabot/tests/tts_usage_tracking.rs",
+            "migration-notes/tts-usage-tracking-handoff.md"
           ]
         },
         {
           "name": "calculateTtsUsage",
-          "nativeMapping": "calculate_tts_usage and calculate_tts_usage_js",
+          "nativeMapping": "calculate_tts_usage and calculate_tts_usage_js, reusing shared pricing",
           "evidence": [
-            "dimabot/src/utils/tts/usage.rs",
-            "dimabot/tests/tts_usage_pricing.rs",
-            "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md",
-            "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/verification-summary.json"
+            "dimabot/src/utils/tts_usage.rs",
+            "dimabot/tests/tts_usage_tracking.rs",
+            "migration-notes/tts-usage-tracking-handoff.md"
           ]
         },
         {
           "name": "trackTtsUsage",
-          "nativeMapping": "OPEN: pricing helper only; Redis tracking, logging, durable Polar/ledger path, and PostHog integration remain TypeScript",
+          "nativeMapping": "TtsUsageTracker/track_tts_usage with concrete Redis, logging, durable Polar batch and PostHog dependencies",
           "evidence": [
-            "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md"
+            "dimabot/src/utils/tts_usage.rs",
+            "dimabot/tests/tts_usage_tracking.rs",
+            "migration-notes/tts-usage-tracking-handoff.md"
           ]
         }
       ],
@@ -100054,9 +100058,9 @@
           "importSyntaxKind": "named type-only import",
           "runtimeOrTypeDependency": "type-only AiUsageResourceType used by TtsUsageTrackOptions",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "No runtime dependency for pure pricing; equivalent tracking type/application mapping not claimed.",
-          "transitiveDependencyReview": "Tracking options are open.",
-          "rustReplacementOrGap": "TtsUsageTrackOptions and AiUsageResourceType mapping for tracking remain open."
+          "directDependencyReview": "Reviewed for the complete native TTS tracking path.",
+          "transitiveDependencyReview": "Concrete native counterpart verified for this feature; application callers remain separate.",
+          "rustReplacementOrGap": "Type-only usage.resourceType is carried as an optional JsString; native context construction and classification reuse the existing AI usage policy."
         },
         {
           "ordinal": 1,
@@ -100074,9 +100078,9 @@
           "importSyntaxKind": "named runtime import",
           "runtimeOrTypeDependency": "Runtime tracking only; not called by calculateTtsUsage",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "Used by trackTtsUsage to obtain Dragonfly Messages client.",
-          "transitiveDependencyReview": "Native lazy Redis client exists but this tracking behavior and logging integration are not ported.",
-          "rustReplacementOrGap": "OPEN: sequential HINCR/EXPIRE calls, Messages key contract, local month-expiry rule and error handling."
+          "directDependencyReview": "Reviewed for the complete native TTS tracking path.",
+          "transitiveDependencyReview": "Concrete native counterpart verified for this feature; application callers remain separate.",
+          "rustReplacementOrGap": "Concrete shared Redis connection used by the native tracker; six counter/expiry operations are verified."
         },
         {
           "ordinal": 2,
@@ -100094,9 +100098,9 @@
           "importSyntaxKind": "named runtime import",
           "runtimeOrTypeDependency": "Runtime tracking failure logging only; not called by calculateTtsUsage",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "Used by trackTtsUsage cache-failure path.",
-          "transitiveDependencyReview": "Application logger/telemetry path not implemented by pure pricing helper.",
-          "rustReplacementOrGap": "OPEN: application logging and telemetry adapter."
+          "directDependencyReview": "Reviewed for the complete native TTS tracking path.",
+          "transitiveDependencyReview": "Concrete native counterpart verified for this feature; application callers remain separate.",
+          "rustReplacementOrGap": "Native logger with console and Redis sinks handles cache failures; application metadata/OTel sink composition remains outside scope."
         },
         {
           "ordinal": 3,
@@ -100114,36 +100118,37 @@
           "importSyntaxKind": "named runtime import",
           "runtimeOrTypeDependency": "Runtime tracking/billing only; not called by calculateTtsUsage",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "Used by trackTtsUsage durable Polar event ingestion.",
-          "transitiveDependencyReview": "Polar, durable usage ledger and PostHog dependencies are not in the pure pricing module.",
-          "rustReplacementOrGap": "OPEN: durable billing/ledger/PostHog integration."
+          "directDependencyReview": "Reviewed for the complete native TTS tracking path.",
+          "transitiveDependencyReview": "Concrete native counterpart verified for this feature; application callers remain separate.",
+          "rustReplacementOrGap": "Concrete PolarUsage batch adapter covers durable TTS ingestion; immediate Polar mode and grant/public-factory closure remain open on the Polar source row."
         }
       ],
-      "rowAssessment": "partial-local-pure-pricing-verified; tracking-and-application-dependency-closure-open",
+      "rowAssessment": "locally-complete-native-tracking-pricing-and-direct-dependency-closure; TypeScript callers and application bootstrap adoption remain open",
       "dependencyClosure": {
-        "scope": "calculateTtsUsage pure calculation and TtsUsageResult only",
-        "status": "bounded local pricing behavior verified; source tracking feature dependency closure open",
+        "scope": "TTS usage tracking, its existing pricing helper, and direct Redis/logger/durable Polar/PostHog dependencies",
+        "status": "locally complete for the typed native feature contract; callers/application adoption remain open",
         "typescriptRuntime": [
-          "getDragonflyClient for trackTtsUsage",
-          "error logger for tracking failures",
-          "ingestPolarSHEvent for billing/durable usage"
+          "getDragonflyClient for Redis tracking",
+          "logger for cache failures",
+          "ingestPolarSHEvent durable billing path",
+          "existing TTS pricing implementation"
         ],
         "typescriptTypeOnly": [
-          "AiUsageResourceType used in TtsUsageTrackOptions"
+          "AiUsageResourceType used by TtsUsageTrackOptions"
         ],
         "nativeReplacement": [
-          "shared utils::tts_usage_pricing implementation reused by credit_policy and TTS utilities",
-          "JavaScript-compatible bounded rounding, provider formula and TtsUsageResult wire/Serde forms"
+          "TtsUsageTracker and track_tts_usage",
+          "six Redis counter/expiry operations with source local 30-day expiry",
+          "explicit cache-only and durable batch modes",
+          "existing utils::tts_usage_pricing implementation",
+          "PolarUsage batch adapter with durable queue/projection/receipt/PostHog reuse"
         ],
         "missingPrimitiveDependency": null,
         "applicationDependenciesOutsidePrimitive": [
-          "TtsUsageTrackOptions tracking API",
-          "sequential Dragonfly HINCR/EXPIRE and local 30-day expiry behavior",
-          "application logging/telemetry",
-          "durable Polar/ledger/PostHog usage path",
-          "callers in TTS queue, pet runtime and voice preview remain TypeScript"
+          "TTS queue, pet runtime, and voice preview callers remain TypeScript",
+          "application metadata/OTel logger composition and caller/bootstrap adoption"
         ],
-        "boundary": "Pure pricing is verified; no tracking, billing, caller adoption or application dependency-complete migration is claimed."
+        "boundary": "Normal typed tracking and direct dependency behavior are verified. No caller adoption, source retirement, production deployment, or total migration completion is claimed."
       }
     },
     {
