@@ -336,3 +336,7 @@ pub const POSTHOG_PROJECT_KEY: &str = "phc_ApcLd2XbNHavPCcyD9fFDVHxs7cCBPozWmSBF
 pub fn install_default_tls_provider() {
     let _ = rustls::crypto::ring::default_provider().install_default();
 }
+
+#[cfg(feature = "commands-service")]
+#[path = "../classes/command.class.rs"]
+pub mod commands;

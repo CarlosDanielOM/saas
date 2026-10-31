@@ -287,6 +287,41 @@ impl fmt::Display for UpsertError {
 }
 impl std::error::Error for UpsertError {}
 
+#[cfg(feature = "command-reward-schemas")]
+fn unvalidated_field(field: &Field) -> Field {
+    let mut copy = field.clone();
+    copy.required = false;
+    copy.required_when = None;
+    copy.required_unless = None;
+    copy.enum_values = &[];
+    copy.min = None;
+    copy.max = None;
+    copy.max_utf16 = None;
+    copy.integer = false;
+    fn kind(value: &FieldType) -> FieldType {
+        match value {
+            FieldType::Object(fields) => {
+                FieldType::Object(fields.iter().map(unvalidated_field).collect())
+            }
+            FieldType::Subdocument {
+                fields,
+                generate_id,
+            } => FieldType::Subdocument {
+                fields: fields.iter().map(unvalidated_field).collect(),
+                generate_id: *generate_id,
+            },
+            FieldType::Array(inner) => FieldType::Array(Box::new(kind(inner))),
+            FieldType::ArrayElement(inner) => {
+                FieldType::ArrayElement(Box::new(unvalidated_field(inner)))
+            }
+            FieldType::Map(inner) => FieldType::Map(Box::new(kind(inner))),
+            other => other.clone(),
+        }
+    }
+    copy.kind = kind(&field.kind);
+    copy
+}
+
 impl SchemaDefinition {
     /// Cast a known update path without running schema validators. Unknown
     /// paths return `None`, so callers can apply Mongoose's strict update rule.
@@ -297,39 +332,6 @@ impl SchemaDefinition {
         value: Bson,
         now: DateTime,
     ) -> Result<Option<Bson>, ValidationErrors> {
-        fn unvalidated(field: &Field) -> Field {
-            let mut copy = field.clone();
-            copy.required = false;
-            copy.required_when = None;
-            copy.required_unless = None;
-            copy.enum_values = &[];
-            copy.min = None;
-            copy.max = None;
-            copy.max_utf16 = None;
-            copy.integer = false;
-            fn kind(value: &FieldType) -> FieldType {
-                match value {
-                    FieldType::Object(fields) => {
-                        FieldType::Object(fields.iter().map(unvalidated).collect())
-                    }
-                    FieldType::Subdocument {
-                        fields,
-                        generate_id,
-                    } => FieldType::Subdocument {
-                        fields: fields.iter().map(unvalidated).collect(),
-                        generate_id: *generate_id,
-                    },
-                    FieldType::Array(inner) => FieldType::Array(Box::new(kind(inner))),
-                    FieldType::ArrayElement(inner) => {
-                        FieldType::ArrayElement(Box::new(unvalidated(inner)))
-                    }
-                    FieldType::Map(inner) => FieldType::Map(Box::new(kind(inner))),
-                    other => other.clone(),
-                }
-            }
-            copy.kind = kind(&field.kind);
-            copy
-        }
         let mut parts = path.split('.');
         let first = parts.next().unwrap_or_default();
         let implicit = match first {
@@ -355,7 +357,7 @@ impl SchemaDefinition {
         if field.immutable {
             return Ok(None);
         }
-        let mut target = unvalidated(field);
+        let mut target = unvalidated_field(field);
         for part in parts {
             target = match &target.kind {
                 FieldType::Object(fields) | FieldType::Subdocument { fields, .. } => {
@@ -607,6 +609,17 @@ impl SchemaDefinition {
         } else {
             Err(ValidationErrors(errors))
         }
+    }
+    /// Apply schema defaults and casts to an existing projected document without
+    /// running required, enum, range, or other write-time validators.
+    #[cfg(feature = "command-reward-schemas")]
+    pub fn hydrate(&self, input: &Document, now: DateTime) -> Result<Document, ValidationErrors> {
+        let fields = self.fields.iter().map(unvalidated_field).collect();
+        let schema = Self {
+            fields,
+            ..self.clone()
+        };
+        schema.construct(input, now)
     }
     pub fn prepare_insert(
         &self,

@@ -1,0 +1,2841 @@
+{
+  "version": 1,
+  "source": {
+    "commandClass": "60d7d36129e28605d18273013fdc1b277f363aadced7fafe68f9bd0d4226371c",
+    "cooldownWrite": "efbcf9f1a83b32022b521a46c109acb13b0e4da68cb26970e3d2c15a21d39586",
+    "cooldownArchive": "a884a2dfb8072ba1b0419bb3fd90380257c834f8526dd7309ffa67f6489e3a2b"
+  },
+  "cases": [
+    {
+      "id": "create_and_cache",
+      "channel": "cmd-svc-01",
+      "plan": "pro",
+      "inputDocs": [],
+      "cache": [],
+      "steps": [
+        {
+          "method": "createCommand",
+          "args": [
+            "cmd-svc-01",
+            {
+              "name": "hello",
+              "cmd": "hello",
+              "activation": "command",
+              "func": "hello",
+              "message": "Hi",
+              "type": "command",
+              "platform": "twitch",
+              "reserved": false,
+              "description": "No description provided.",
+              "cooldown": 10,
+              "count": 0,
+              "userLevelName": "everyone",
+              "userLevel": 0,
+              "enabled": true,
+              "paused": false,
+              "channel": "cmd-svc-01",
+              "channelID": "cmd-svc-01",
+              "premiumRequired": false,
+              "premiumLevelRequired": 0,
+              "responses": [],
+              "variables": {}
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "created": true,
+          "command": {
+            "name": "hello",
+            "cmd": "hello",
+            "activation": "command",
+            "func": "hello",
+            "message": "Hi",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 10,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-01",
+            "channelID": "cmd-svc-01",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command created successfully",
+          "status": 200,
+          "type": "command_created"
+        }
+      ],
+      "docs": [
+        {
+          "name": "hello",
+          "cmd": "hello",
+          "activation": "command",
+          "func": "hello",
+          "message": "Hi",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 10,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-01",
+          "channelID": "cmd-svc-01",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [
+        "cmd-svc-01:commands:hello"
+      ],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 1
+    },
+    {
+      "id": "create_duplicate",
+      "channel": "cmd-svc-02",
+      "plan": "pro",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "dup",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-02",
+          "channelID": "cmd-svc-02",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000002"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "createCommand",
+          "args": [
+            "cmd-svc-02",
+            {
+              "name": "demo",
+              "cmd": "dup",
+              "activation": "command",
+              "func": "demo",
+              "message": "demo message",
+              "type": "command",
+              "platform": "twitch",
+              "reserved": false,
+              "description": "No description provided.",
+              "cooldown": 20,
+              "count": 0,
+              "userLevelName": "everyone",
+              "userLevel": 0,
+              "enabled": true,
+              "paused": false,
+              "channel": "cmd-svc-02",
+              "channelID": "cmd-svc-02",
+              "premiumRequired": false,
+              "premiumLevelRequired": 0,
+              "responses": [],
+              "variables": {}
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": true,
+          "message": "Command already exists",
+          "status": 400,
+          "type": "command_already_exists"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "dup",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-02",
+          "channelID": "cmd-svc-02",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 0
+    },
+    {
+      "id": "create_keyword_duplicate_ignored",
+      "channel": "cmd-svc-03",
+      "plan": "pro",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "kw",
+          "activation": "keyword",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-03",
+          "channelID": "cmd-svc-03",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000003"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "createCommand",
+          "args": [
+            "cmd-svc-03",
+            {
+              "name": "demo",
+              "cmd": "kw",
+              "activation": "command",
+              "func": "demo",
+              "message": "editable",
+              "type": "command",
+              "platform": "twitch",
+              "reserved": false,
+              "description": "No description provided.",
+              "cooldown": 20,
+              "count": 0,
+              "userLevelName": "everyone",
+              "userLevel": 0,
+              "enabled": true,
+              "paused": false,
+              "channel": "cmd-svc-03",
+              "channelID": "cmd-svc-03",
+              "premiumRequired": false,
+              "premiumLevelRequired": 0,
+              "responses": [],
+              "variables": {}
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "created": true,
+          "command": {
+            "name": "demo",
+            "cmd": "kw",
+            "activation": "command",
+            "func": "demo",
+            "message": "editable",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-03",
+            "channelID": "cmd-svc-03",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command created successfully",
+          "status": 200,
+          "type": "command_created"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "kw",
+          "activation": "command",
+          "func": "demo",
+          "message": "editable",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-03",
+          "channelID": "cmd-svc-03",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        },
+        {
+          "name": "demo",
+          "cmd": "kw",
+          "activation": "keyword",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-03",
+          "channelID": "cmd-svc-03",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [
+        "cmd-svc-03:commands:kw"
+      ],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 1
+    },
+    {
+      "id": "create_invalid_cooldown",
+      "channel": "cmd-svc-04",
+      "plan": "premium",
+      "inputDocs": [],
+      "cache": [],
+      "steps": [
+        {
+          "method": "createCommand",
+          "args": [
+            "cmd-svc-04",
+            {
+              "name": "demo",
+              "cmd": "bad",
+              "activation": "command",
+              "func": "demo",
+              "message": "demo message",
+              "type": "command",
+              "platform": "twitch",
+              "reserved": false,
+              "description": "No description provided.",
+              "cooldown": 2,
+              "count": 0,
+              "userLevelName": "everyone",
+              "userLevel": 0,
+              "enabled": true,
+              "paused": false,
+              "channel": "cmd-svc-04",
+              "channelID": "cmd-svc-04",
+              "premiumRequired": false,
+              "premiumLevelRequired": 0,
+              "responses": [],
+              "variables": {}
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": true,
+          "message": "Command cooldown must be 0 or at least 3 seconds",
+          "status": 400,
+          "type": "invalid_cooldown"
+        }
+      ],
+      "docs": [],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 1
+    },
+    {
+      "id": "create_zero_conflict",
+      "channel": "cmd-svc-05",
+      "plan": "pro",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "taken",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 0,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-05",
+          "channelID": "cmd-svc-05",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000005"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "createCommand",
+          "args": [
+            "cmd-svc-05",
+            {
+              "name": "demo",
+              "cmd": "other",
+              "activation": "command",
+              "func": "demo",
+              "message": "demo message",
+              "type": "command",
+              "platform": "twitch",
+              "reserved": false,
+              "description": "No description provided.",
+              "cooldown": 0,
+              "count": 0,
+              "userLevelName": "everyone",
+              "userLevel": 0,
+              "enabled": true,
+              "paused": false,
+              "channel": "cmd-svc-05",
+              "channelID": "cmd-svc-05",
+              "premiumRequired": false,
+              "premiumLevelRequired": 0,
+              "responses": [],
+              "variables": {}
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": true,
+          "message": "Only one editable command per channel can have a 0-second cooldown.",
+          "status": 400,
+          "type": "invalid_cooldown"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "taken",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 0,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-05",
+          "channelID": "cmd-svc-05",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 1
+    },
+    {
+      "id": "create_zero_reserved_excluded",
+      "channel": "cmd-svc-06",
+      "plan": "pro",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "reserved",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": true,
+          "description": "No description provided.",
+          "cooldown": 0,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-06",
+          "channelID": "cmd-svc-06",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000006"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "createCommand",
+          "args": [
+            "cmd-svc-06",
+            {
+              "name": "demo",
+              "cmd": "editable",
+              "activation": "command",
+              "func": "demo",
+              "message": "demo message",
+              "type": "command",
+              "platform": "twitch",
+              "reserved": false,
+              "description": "No description provided.",
+              "cooldown": 0,
+              "count": 0,
+              "userLevelName": "everyone",
+              "userLevel": 0,
+              "enabled": true,
+              "paused": false,
+              "channel": "cmd-svc-06",
+              "channelID": "cmd-svc-06",
+              "premiumRequired": false,
+              "premiumLevelRequired": 0,
+              "responses": [],
+              "variables": {}
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "created": true,
+          "command": {
+            "name": "demo",
+            "cmd": "editable",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 0,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-06",
+            "channelID": "cmd-svc-06",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command created successfully",
+          "status": 200,
+          "type": "command_created"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "editable",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 0,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-06",
+          "channelID": "cmd-svc-06",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        },
+        {
+          "name": "demo",
+          "cmd": "reserved",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": true,
+          "description": "No description provided.",
+          "cooldown": 0,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-06",
+          "channelID": "cmd-svc-06",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [
+        "cmd-svc-06:commands:editable"
+      ],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 1
+    },
+    {
+      "id": "create_zero_lease_busy",
+      "channel": "cmd-svc-07",
+      "plan": "pro",
+      "inputDocs": [],
+      "cache": [
+        [
+          "command-cooldown-write:cmd-svc-07",
+          "held-token"
+        ]
+      ],
+      "steps": [
+        {
+          "method": "createCommand",
+          "args": [
+            "cmd-svc-07",
+            {
+              "name": "demo",
+              "cmd": "blocked",
+              "activation": "command",
+              "func": "demo",
+              "message": "demo message",
+              "type": "command",
+              "platform": "twitch",
+              "reserved": false,
+              "description": "No description provided.",
+              "cooldown": 0,
+              "count": 0,
+              "userLevelName": "everyone",
+              "userLevel": 0,
+              "enabled": true,
+              "paused": false,
+              "channel": "cmd-svc-07",
+              "channelID": "cmd-svc-07",
+              "premiumRequired": false,
+              "premiumLevelRequired": 0,
+              "responses": [],
+              "variables": {}
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": true,
+          "message": "Another command is being saved. Please retry.",
+          "status": 400,
+          "type": "invalid_cooldown"
+        }
+      ],
+      "docs": [],
+      "cacheKeys": [],
+      "lease": "present",
+      "logs": [],
+      "planLookups": 1
+    },
+    {
+      "id": "get_cold_warm_missing",
+      "channel": "cmd-svc-08",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "read",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 5,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-08",
+          "channelID": "cmd-svc-08",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000008"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "getCommandFromDB",
+          "args": [
+            "cmd-svc-08",
+            "read"
+          ]
+        },
+        {
+          "method": "getCommandFromDB",
+          "args": [
+            "cmd-svc-08",
+            "read"
+          ]
+        },
+        {
+          "method": "getCommandFromDB",
+          "args": [
+            "cmd-svc-08",
+            "missing"
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "read",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 5,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-08",
+            "channelID": "cmd-svc-08",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command retrieved",
+          "status": 200,
+          "type": "command_retrieved"
+        },
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "read",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 5,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-08",
+            "channelID": "cmd-svc-08",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command retrieved from cache",
+          "status": 200,
+          "type": "command_retrieved"
+        },
+        {
+          "error": true,
+          "message": "Command does not exist",
+          "status": 400,
+          "type": "command_does_not_exist"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "read",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 5,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-08",
+          "channelID": "cmd-svc-08",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [
+        "cmd-svc-08:commands:read"
+      ],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 0
+    },
+    {
+      "id": "get_invalid_cache",
+      "channel": "cmd-svc-09",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "broken",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-09",
+          "channelID": "cmd-svc-09",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000009"
+        }
+      ],
+      "cache": [
+        [
+          "cmd-svc-09:commands:broken",
+          "{not json"
+        ]
+      ],
+      "steps": [
+        {
+          "method": "getCommandFromDB",
+          "args": [
+            "cmd-svc-09",
+            "broken"
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": true,
+          "message": "Error retrieving command",
+          "status": 500,
+          "type": "error_retrieving_command"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "broken",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-09",
+          "channelID": "cmd-svc-09",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [
+        "cmd-svc-09:commands:broken"
+      ],
+      "lease": "absent",
+      "logs": [
+        {
+          "function": "Commands.getCommandFromDB",
+          "channelID": "cmd-svc-09"
+        }
+      ],
+      "planLookups": 0
+    },
+    {
+      "id": "get_cache_failure_no_fallback",
+      "channel": "cmd-svc-10",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "cachefail",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-10",
+          "channelID": "cmd-svc-10",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000010"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "getCommandFromDB",
+          "args": [
+            "cmd-svc-10",
+            "cachefail"
+          ]
+        }
+      ],
+      "native": false,
+      "responses": [
+        {
+          "error": true,
+          "message": "Error retrieving command",
+          "status": 500,
+          "type": "error_retrieving_command"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "cachefail",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-10",
+          "channelID": "cmd-svc-10",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [
+        {
+          "function": "Commands.getCommandFromDB",
+          "channelID": "cmd-svc-10"
+        }
+      ],
+      "planLookups": 0
+    },
+    {
+      "id": "reserved_shared_cache",
+      "channel": "cmd-svc-11",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "res",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": true,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-11",
+          "channelID": "cmd-svc-11",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000011"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "getReservedCommandFromDB",
+          "args": [
+            "cmd-svc-11",
+            "res"
+          ]
+        },
+        {
+          "method": "getReservedCommandFromDB",
+          "args": [
+            "cmd-svc-11",
+            "res"
+          ]
+        },
+        {
+          "method": "getCommandFromDB",
+          "args": [
+            "cmd-svc-11",
+            "res"
+          ]
+        },
+        {
+          "method": "checkIfReservedCommandExists",
+          "args": [
+            "cmd-svc-11",
+            "res"
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "res",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": true,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-11",
+            "channelID": "cmd-svc-11",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Reserved command retrieved",
+          "status": 200,
+          "type": "command_retrieved"
+        },
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "res",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": true,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-11",
+            "channelID": "cmd-svc-11",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Reserved command retrieved from cache",
+          "status": 200,
+          "type": "command_retrieved"
+        },
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "res",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": true,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-11",
+            "channelID": "cmd-svc-11",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command retrieved from cache",
+          "status": 200,
+          "type": "command_retrieved"
+        },
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "res",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": true,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-11",
+            "channelID": "cmd-svc-11",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Reserved command exists",
+          "status": 200,
+          "type": "command_exists"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "res",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": true,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-11",
+          "channelID": "cmd-svc-11",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [
+        "cmd-svc-11:commands:res"
+      ],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 0
+    },
+    {
+      "id": "exists_cold_warm_missing",
+      "channel": "cmd-svc-12",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "exists",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-12",
+          "channelID": "cmd-svc-12",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000012"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "checkIfCommandExists",
+          "args": [
+            "cmd-svc-12",
+            "exists"
+          ]
+        },
+        {
+          "method": "checkIfCommandExists",
+          "args": [
+            "cmd-svc-12",
+            "exists"
+          ]
+        },
+        {
+          "method": "checkIfCommandExists",
+          "args": [
+            "cmd-svc-12",
+            "nope"
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "exists",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-12",
+            "channelID": "cmd-svc-12",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command exists",
+          "status": 200,
+          "type": "command_exists"
+        },
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "exists",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-12",
+            "channelID": "cmd-svc-12",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command exists",
+          "status": 200,
+          "type": "command_exists"
+        },
+        {
+          "error": true,
+          "message": "Command does not exist",
+          "status": 400,
+          "type": "command_does_not_exist"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "exists",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-12",
+          "channelID": "cmd-svc-12",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [
+        "cmd-svc-12:commands:exists"
+      ],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 0
+    },
+    {
+      "id": "delete_invalidates",
+      "channel": "cmd-svc-13",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "remove",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-13",
+          "channelID": "cmd-svc-13",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000013"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "getCommandFromDB",
+          "args": [
+            "cmd-svc-13",
+            "remove"
+          ]
+        },
+        {
+          "method": "deleteCommand",
+          "args": [
+            "cmd-svc-13",
+            "remove"
+          ]
+        },
+        {
+          "method": "deleteCommand",
+          "args": [
+            "cmd-svc-13",
+            "remove"
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "remove",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-13",
+            "channelID": "cmd-svc-13",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command retrieved",
+          "status": 200,
+          "type": "command_retrieved"
+        },
+        {
+          "error": false,
+          "deleted": true,
+          "command": {
+            "name": "demo",
+            "cmd": "remove",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-13",
+            "channelID": "cmd-svc-13",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command deleted successfully",
+          "status": 200,
+          "type": "command_deleted"
+        },
+        {
+          "error": true,
+          "message": "Command does not exist",
+          "status": 400,
+          "type": "command_does_not_exist"
+        }
+      ],
+      "docs": [],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 0
+    },
+    {
+      "id": "delete_invalidation_failure_keeps_success",
+      "channel": "cmd-svc-14",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "remove",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-14",
+          "channelID": "cmd-svc-14",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000014"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "deleteCommand",
+          "args": [
+            "cmd-svc-14",
+            "remove"
+          ]
+        }
+      ],
+      "native": false,
+      "responses": [
+        {
+          "error": false,
+          "deleted": true,
+          "command": {
+            "name": "demo",
+            "cmd": "remove",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-14",
+            "channelID": "cmd-svc-14",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command deleted successfully",
+          "status": 200,
+          "type": "command_deleted"
+        }
+      ],
+      "docs": [],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [
+        {
+          "function": "Commands.invalidateCache",
+          "cmd": "remove"
+        }
+      ],
+      "planLookups": 0
+    },
+    {
+      "id": "update_invalidates",
+      "channel": "cmd-svc-15",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "edit",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 5,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-15",
+          "channelID": "cmd-svc-15",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000015"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "getCommandFromDB",
+          "args": [
+            "cmd-svc-15",
+            "edit"
+          ]
+        },
+        {
+          "method": "updateCommandInDB",
+          "args": [
+            "cmd-svc-15",
+            "edit",
+            {
+              "message": "edited"
+            }
+          ]
+        },
+        {
+          "method": "getCommandFromDB",
+          "args": [
+            "cmd-svc-15",
+            "edit"
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "edit",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 5,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-15",
+            "channelID": "cmd-svc-15",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command retrieved",
+          "status": 200,
+          "type": "command_retrieved"
+        },
+        {
+          "error": false,
+          "message": "Command updated",
+          "status": 200,
+          "type": "command_updated"
+        },
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "edit",
+            "activation": "command",
+            "func": "demo",
+            "message": "edited",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 5,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-15",
+            "channelID": "cmd-svc-15",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command retrieved",
+          "status": 200,
+          "type": "command_retrieved"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "edit",
+          "activation": "command",
+          "func": "demo",
+          "message": "edited",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 5,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-15",
+          "channelID": "cmd-svc-15",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [
+        "cmd-svc-15:commands:edit"
+      ],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 0
+    },
+    {
+      "id": "update_invalid_cooldown",
+      "channel": "cmd-svc-16",
+      "plan": "pro",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "edit",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 5,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-16",
+          "channelID": "cmd-svc-16",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000016"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "updateCommandInDB",
+          "args": [
+            "cmd-svc-16",
+            "edit",
+            {
+              "cooldown": 0.5
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": true,
+          "message": "Command cooldown must be 0 or at least 1 seconds",
+          "status": 400,
+          "type": "invalid_cooldown"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "edit",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 5,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-16",
+          "channelID": "cmd-svc-16",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 1
+    },
+    {
+      "id": "update_reserved_zero",
+      "channel": "cmd-svc-17",
+      "plan": "pro",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "reserved",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": true,
+          "description": "No description provided.",
+          "cooldown": 5,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-17",
+          "channelID": "cmd-svc-17",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000017"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "updateCommandInDB",
+          "args": [
+            "cmd-svc-17",
+            "reserved",
+            {
+              "cooldown": 0
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": true,
+          "message": "Only editable commands can use the 0-second cooldown slot.",
+          "status": 400,
+          "type": "invalid_cooldown"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "reserved",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": true,
+          "description": "No description provided.",
+          "cooldown": 5,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-17",
+          "channelID": "cmd-svc-17",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 1
+    },
+    {
+      "id": "update_zero_own_exclusion",
+      "channel": "cmd-svc-18",
+      "plan": "pro",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "zero",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 0,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-18",
+          "channelID": "cmd-svc-18",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000018"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "updateCommandInDB",
+          "args": [
+            "cmd-svc-18",
+            "zero",
+            {
+              "cooldown": 0,
+              "message": "still zero"
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "message": "Command updated",
+          "status": 200,
+          "type": "command_updated"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "zero",
+          "activation": "command",
+          "func": "demo",
+          "message": "still zero",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 0,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-18",
+          "channelID": "cmd-svc-18",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 1
+    },
+    {
+      "id": "update_zero_conflict",
+      "channel": "cmd-svc-19",
+      "plan": "pro",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "edit",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 5,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-19",
+          "channelID": "cmd-svc-19",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000019"
+        },
+        {
+          "name": "demo",
+          "cmd": "other",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 0,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-19",
+          "channelID": "cmd-svc-19",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000020"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "updateCommandInDB",
+          "args": [
+            "cmd-svc-19",
+            "edit",
+            {
+              "cooldown": 0
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": true,
+          "message": "Only one editable command per channel can have a 0-second cooldown.",
+          "status": 400,
+          "type": "invalid_cooldown"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "edit",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 5,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-19",
+          "channelID": "cmd-svc-19",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        },
+        {
+          "name": "demo",
+          "cmd": "other",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 0,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-19",
+          "channelID": "cmd-svc-19",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 1
+    },
+    {
+      "id": "update_grandfathers_unchanged",
+      "channel": "cmd-svc-20",
+      "plan": null,
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "old",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 1,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-20",
+          "channelID": "cmd-svc-20",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000021"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "updateCommandInDB",
+          "args": [
+            "cmd-svc-20",
+            "old",
+            {
+              "cooldown": 1,
+              "message": "grandfathered"
+            }
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "message": "Command updated",
+          "status": 200,
+          "type": "command_updated"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "old",
+          "activation": "command",
+          "func": "demo",
+          "message": "grandfathered",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 1,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-20",
+          "channelID": "cmd-svc-20",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 0
+    },
+    {
+      "id": "update_count",
+      "channel": "cmd-svc-21",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "count",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-21",
+          "channelID": "cmd-svc-21",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000022"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "getCommandFromDB",
+          "args": [
+            "cmd-svc-21",
+            "count"
+          ]
+        },
+        {
+          "method": "updateCountableCommandInDB",
+          "args": [
+            "cmd-svc-21",
+            "count",
+            7
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "count",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-21",
+            "channelID": "cmd-svc-21",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command retrieved",
+          "status": 200,
+          "type": "command_retrieved"
+        },
+        {
+          "error": false,
+          "message": "Command count updated",
+          "status": 200,
+          "type": "command_updated"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "count",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 7,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-21",
+          "channelID": "cmd-svc-21",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 0
+    },
+    {
+      "id": "update_availability",
+      "channel": "cmd-svc-22",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "toggle",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-22",
+          "channelID": "cmd-svc-22",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000023"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "getCommandFromDB",
+          "args": [
+            "cmd-svc-22",
+            "toggle"
+          ]
+        },
+        {
+          "method": "updateCommandAvailability",
+          "args": [
+            "cmd-svc-22",
+            "toggle",
+            false
+          ]
+        }
+      ],
+      "native": true,
+      "responses": [
+        {
+          "error": false,
+          "command": {
+            "name": "demo",
+            "cmd": "toggle",
+            "activation": "command",
+            "func": "demo",
+            "message": "demo message",
+            "responses": [],
+            "variables": {},
+            "type": "command",
+            "platform": "twitch",
+            "reserved": false,
+            "description": "No description provided.",
+            "cooldown": 20,
+            "count": 0,
+            "userLevelName": "everyone",
+            "userLevel": 0,
+            "enabled": true,
+            "paused": false,
+            "channel": "cmd-svc-22",
+            "channelID": "cmd-svc-22",
+            "premiumRequired": false,
+            "premiumLevelRequired": 0
+          },
+          "message": "Command retrieved",
+          "status": 200,
+          "type": "command_retrieved"
+        },
+        {
+          "error": false,
+          "message": "Command disabled",
+          "status": 200,
+          "type": "command_updated"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "toggle",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": false,
+          "paused": false,
+          "channel": "cmd-svc-22",
+          "channelID": "cmd-svc-22",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [],
+      "planLookups": 0
+    },
+    {
+      "id": "create_save_failure",
+      "channel": "cmd-svc-23",
+      "plan": "pro",
+      "inputDocs": [],
+      "cache": [],
+      "steps": [
+        {
+          "method": "createCommand",
+          "args": [
+            "cmd-svc-23",
+            {
+              "name": "demo",
+              "cmd": "broken",
+              "activation": "command",
+              "func": "demo",
+              "message": "demo message",
+              "type": "command",
+              "platform": "twitch",
+              "reserved": false,
+              "description": "No description provided.",
+              "cooldown": 20,
+              "count": 0,
+              "userLevelName": "everyone",
+              "userLevel": 0,
+              "enabled": true,
+              "paused": false,
+              "channel": "cmd-svc-23",
+              "channelID": "cmd-svc-23",
+              "premiumRequired": false,
+              "premiumLevelRequired": 0,
+              "responses": [],
+              "variables": {}
+            }
+          ]
+        }
+      ],
+      "native": false,
+      "responses": [
+        {
+          "error": true,
+          "message": "Error creating command",
+          "status": 500,
+          "type": "error_creating_command"
+        }
+      ],
+      "docs": [],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [
+        {
+          "function": "Commands.createCommand",
+          "channelID": "cmd-svc-23"
+        }
+      ],
+      "planLookups": 1
+    },
+    {
+      "id": "create_find_failure",
+      "channel": "cmd-svc-24",
+      "plan": "pro",
+      "inputDocs": [],
+      "cache": [],
+      "steps": [
+        {
+          "method": "createCommand",
+          "args": [
+            "cmd-svc-24",
+            {
+              "name": "demo",
+              "cmd": "broken",
+              "activation": "command",
+              "func": "demo",
+              "message": "demo message",
+              "type": "command",
+              "platform": "twitch",
+              "reserved": false,
+              "description": "No description provided.",
+              "cooldown": 20,
+              "count": 0,
+              "userLevelName": "everyone",
+              "userLevel": 0,
+              "enabled": true,
+              "paused": false,
+              "channel": "cmd-svc-24",
+              "channelID": "cmd-svc-24",
+              "premiumRequired": false,
+              "premiumLevelRequired": 0,
+              "responses": [],
+              "variables": {}
+            }
+          ]
+        }
+      ],
+      "native": false,
+      "responses": [
+        {
+          "error": true,
+          "message": "Error creating command",
+          "status": 500,
+          "type": "error_creating_command"
+        }
+      ],
+      "docs": [],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [
+        {
+          "function": "Commands.createCommand",
+          "channelID": "cmd-svc-24"
+        }
+      ],
+      "planLookups": 0
+    },
+    {
+      "id": "create_cache_failure",
+      "channel": "cmd-svc-25",
+      "plan": "pro",
+      "inputDocs": [],
+      "cache": [],
+      "steps": [
+        {
+          "method": "createCommand",
+          "args": [
+            "cmd-svc-25",
+            {
+              "name": "demo",
+              "cmd": "cached",
+              "activation": "command",
+              "func": "demo",
+              "message": "demo message",
+              "type": "command",
+              "platform": "twitch",
+              "reserved": false,
+              "description": "No description provided.",
+              "cooldown": 20,
+              "count": 0,
+              "userLevelName": "everyone",
+              "userLevel": 0,
+              "enabled": true,
+              "paused": false,
+              "channel": "cmd-svc-25",
+              "channelID": "cmd-svc-25",
+              "premiumRequired": false,
+              "premiumLevelRequired": 0,
+              "responses": [],
+              "variables": {}
+            }
+          ]
+        }
+      ],
+      "native": false,
+      "responses": [
+        {
+          "error": true,
+          "message": "Error creating command",
+          "status": 500,
+          "type": "error_creating_command"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "cached",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-25",
+          "channelID": "cmd-svc-25",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [
+        {
+          "function": "Commands.createCommand",
+          "channelID": "cmd-svc-25"
+        }
+      ],
+      "planLookups": 1
+    },
+    {
+      "id": "update_storage_failure",
+      "channel": "cmd-svc-26",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "edit",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-26",
+          "channelID": "cmd-svc-26",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000026"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "updateCommandInDB",
+          "args": [
+            "cmd-svc-26",
+            "edit",
+            {
+              "message": "nope"
+            }
+          ]
+        }
+      ],
+      "native": false,
+      "responses": [
+        {
+          "error": true,
+          "message": "Error updating command",
+          "status": 500,
+          "type": "error_updating_command"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "edit",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-26",
+          "channelID": "cmd-svc-26",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [
+        {
+          "function": "Commands.updateCommandInDB",
+          "channelID": "cmd-svc-26"
+        }
+      ],
+      "planLookups": 0
+    },
+    {
+      "id": "delete_storage_failure",
+      "channel": "cmd-svc-27",
+      "plan": "free",
+      "inputDocs": [
+        {
+          "name": "demo",
+          "cmd": "remove",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-27",
+          "channelID": "cmd-svc-27",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0,
+          "responses": [],
+          "variables": {},
+          "_id": "000000000000000000000027"
+        }
+      ],
+      "cache": [],
+      "steps": [
+        {
+          "method": "deleteCommand",
+          "args": [
+            "cmd-svc-27",
+            "remove"
+          ]
+        }
+      ],
+      "native": false,
+      "responses": [
+        {
+          "error": true,
+          "message": "Error deleting command",
+          "status": 500,
+          "type": "error_deleting_command"
+        }
+      ],
+      "docs": [
+        {
+          "name": "demo",
+          "cmd": "remove",
+          "activation": "command",
+          "func": "demo",
+          "message": "demo message",
+          "responses": [],
+          "variables": {},
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "description": "No description provided.",
+          "cooldown": 20,
+          "count": 0,
+          "userLevelName": "everyone",
+          "userLevel": 0,
+          "enabled": true,
+          "paused": false,
+          "channel": "cmd-svc-27",
+          "channelID": "cmd-svc-27",
+          "premiumRequired": false,
+          "premiumLevelRequired": 0
+        }
+      ],
+      "cacheKeys": [],
+      "lease": "absent",
+      "logs": [
+        {
+          "function": "Commands.deleteCommand",
+          "channelID": "cmd-svc-27"
+        }
+      ],
+      "planLookups": 0
+    }
+  ]
+}

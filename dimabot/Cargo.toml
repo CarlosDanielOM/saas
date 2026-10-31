@@ -8,6 +8,7 @@ publish = false
 path = "src/lib.rs"
 
 [features]
+commands-service = ["command-reward-schemas", "command-utils", "twitch-streamers", "logger-redis", "bson-js-json"]
 # Preserve the original complete foundation for manual/library consumers.
 # Deployed MongoDB workers select only `--no-default-features --features mongo`.
 default = ["mongo", "redis", "postgres", "http"]
