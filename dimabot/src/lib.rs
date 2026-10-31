@@ -105,6 +105,10 @@ pub mod workspace_owner;
 #[path = "server/routes/observability.route.rs"]
 pub mod observability_route;
 
+#[cfg(feature = "api-validation-route")]
+#[path = "server/routes/validation.route.rs"]
+pub mod validation_route;
+
 #[cfg(feature = "domain-event-runtime")]
 #[path = "domain_events/runtime/mod.rs"]
 pub mod domain_event_runtime;

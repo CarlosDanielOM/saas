@@ -24,6 +24,7 @@ ai-embeddings = ["ai-constants", "http-client", "logger", "js-unicode17", "js-st
 api-auth = ["http", "http-client", "redis", "application-schemas", "observability", "logger-redis"]
 api-admin = ["api-auth"]
 api-observability-route = ["http", "http-client", "dep:serde_json"]
+api-validation-route = ["api-auth", "dep:serde_json"]
 # Native WebSockets use Axum's transport rather than a separate client crate.
 http-form = ["http", "axum/form"]
 http-multipart = ["http", "axum/multipart"]
