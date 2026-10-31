@@ -276,3 +276,12 @@ completion remains `null`. The TypeScript sources remain live; application
 mount/caller adoption, retirement, and deployment are not claimed. See the
 [accepted file-routes note](file-routes-2026-10-31.md) and
 [handoff](file-routes-handoff.md).
+
+
+## Temporary role announcements — 2026-10-31
+
+The `src/utils/temporary_roles_announcements.ts` row now records a locally complete helper and concrete dependency closure: native Redis queue operations, logger, app-token/OAuth/Helix adapters, and the context-free plain chat sender. The accepted source tree is `05443b8e540247ceb8ea33afe261e9a07e2d6d61abd45ab78753c3f6408b54b5` (1,605 inputs), accepted in commit `e803ab78`. The source-bound oracle covered 26 ordered cases; 21 unique tests passed, including 14 isolated private cases, concrete application wiring, and disconnect behavior. Focused and combined strict checks and formatting passed. Root verification found 18 production containers unchanged and task resources cleaned.
+
+The `src/functions/chats/send_message.chat.ts` row is **partial** for the verified blank/context-free plain-send branch only. AST parsing/context, command references, reply IDs, and context-dependent delivery remain open. The distinct `TwitchFunctions::sendAnnouncement` path is not included. Both TypeScript sources remain live; caller adoption and deployment are not claimed. Source boundaries include ASCII login casing, native diagnostic/redirect/logger behavior, and unsupported non-contract JSON edge shapes. See the [accepted feature note](temporary-role-announcements-2026-10-31.md) and [handoff](temporary-roles-announcements-handoff.md).
+
+Exactly these two source rows changed; the other 804 rows are unchanged. The rollup is **75 locally complete, 25 partial, 60 archived, and 746 live baseline TypeScript files** among 806 rows, including six excluded React Email templates in the live count. Total completion remains `null`. No benchmark, source retirement, deployment, or push is claimed.

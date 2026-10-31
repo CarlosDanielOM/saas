@@ -22,10 +22,10 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-31 file routes feature wiring",
+    "asOf": "2026-10-31 temporary role announcements integration",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 74,
-    "partialRows": 24,
+    "locallyCompleteMappings": 75,
+    "partialRows": 25,
     "archivedSourceSnapshots": 60,
     "liveBaselineTypeScriptFiles": 746,
     "excludedReactEmailTemplatesIncludedInLiveCount": 6,
@@ -13716,28 +13716,45 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-partial-context-free-plain-chat-send-adapter; AST/context/reply delivery remains open",
+      "localRustEvidence": [
+        "dimabot/src/functions/chats/send_message_plain.rs (accepted source tree 05443b8e540247ceb8ea33afe261e9a07e2d6d61abd45ab78753c3f6408b54b5)",
+        "dimabot/tests/temporary_roles_announcements.rs",
+        "migration-notes/temporary-role-announcements-2026-10-31.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Only the blank and context-free, nonblank, no-reply plain-send branches are mapped. AST parsing/context, command references, replyToMessageId, and context-dependent post-send delivery remain open.",
+        "Native diagnostic wording, redirect policy, logger timestamp/stack payload, non-array response data edge, and cancellation addition are bounded as described in the source and feature note."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/temporary_roles_announcements.ts imports sendTwitchChatMessage at the TypeScript layer; native queue uses TwitchFunctions directly."
+        ],
+        "runtimeStatus": "TypeScript callers remain live; native caller adoption and deployment are not established."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "second-sol-announcements-verified.json: plain group of pinned source oracle"
+        ],
+        "rustBehaviorEvidence": [
+          "26 ordered source cases total across enqueue, flush, and plain sender; 21 unique native test functions, including actual TwitchFunctions::native app-token/OAuth/Redis/Helix path and disconnect cases."
+        ],
+        "status": "verified only for the bounded plain-send adapter; chat source as a whole remains partial."
       },
       "exports": [
         {
           "name": "SendMessageContext",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unmapped; context contract remains open",
           "evidence": []
         },
         {
           "name": "sendTwitchChatMessage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: blank and context-free plain send without reply target",
+          "evidence": [
+            "dimabot/src/functions/chats/send_message_plain.rs",
+            "dimabot/tests/temporary_roles_announcements.rs",
+            "migration-notes/temporary-role-announcements-2026-10-31.md"
+          ]
         }
       ],
       "imports": [
@@ -13754,12 +13771,12 @@
           "baselineSourceTargets": [
             "src/handlers/special_parser.handler.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "ES named type import",
+          "runtimeOrTypeDependency": "type-only dependency",
+          "defaultSideEffectBarrelDetails": "not-applicable; direct named/type import",
+          "directDependencyReview": "reviewed; AST command-reference contract is not implemented by this bounded branch",
+          "transitiveDependencyReview": "open: parser, AST, and command-context closure not covered",
+          "rustReplacementOrGap": "unmapped here; context-dependent chat implementation remains open"
         },
         {
           "ordinal": 1,
@@ -13774,12 +13791,12 @@
           "baselineSourceTargets": [
             "src/interfaces/twitch/eventsub.interface.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "ES named runtime import",
+          "runtimeOrTypeDependency": "runtime dependency",
+          "defaultSideEffectBarrelDetails": "not-applicable; direct named/type import",
+          "directDependencyReview": "reviewed; blank branch behavior is represented without invoking delivery; context-dependent delivery remains open",
+          "transitiveDependencyReview": "open for full AST effects and command-reference delivery",
+          "rustReplacementOrGap": "partial: context-free blank response only"
         },
         {
           "ordinal": 2,
@@ -13794,12 +13811,12 @@
           "baselineSourceTargets": [
             "src/schemas/eventsub.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "ES named runtime imports with aliases",
+          "runtimeOrTypeDependency": "runtime dependency",
+          "defaultSideEffectBarrelDetails": "not-applicable; direct named/type import",
+          "directDependencyReview": "reviewed; concrete native logger used",
+          "transitiveDependencyReview": "logger adapter behavior exercised in bounded sender fixtures; whole source logger semantics not claimed",
+          "rustReplacementOrGap": "dimabot/src/utils/logger.rs; native best-effort logging boundary documented"
         },
         {
           "ordinal": 3,
@@ -13814,12 +13831,12 @@
           "baselineSourceTargets": [
             "src/utils/ast_command_delivery.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "ES named runtime import",
+          "runtimeOrTypeDependency": "runtime dependency",
+          "defaultSideEffectBarrelDetails": "not-applicable; direct named/type import",
+          "directDependencyReview": "reviewed; concrete native Twitch Helix URL/request path used",
+          "transitiveDependencyReview": "existing native Twitch client/auth path reused and exercised in adapter integration",
+          "rustReplacementOrGap": "TwitchFunctions native request path; no distinct Twitch sendAnnouncement claim"
         },
         {
           "ordinal": 4,
@@ -13834,12 +13851,12 @@
           "baselineSourceTargets": [
             "src/utils/ast_parser/effects.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "ES named runtime import",
+          "runtimeOrTypeDependency": "runtime dependency",
+          "defaultSideEffectBarrelDetails": "not-applicable; direct named/type import",
+          "directDependencyReview": "reviewed; concrete native app-token storage used",
+          "transitiveDependencyReview": "Redis app-token miss/OAuth exchange/publish/TTL/reuse verified",
+          "rustReplacementOrGap": "TwitchFunctions::native token path"
         },
         {
           "ordinal": 5,
@@ -13854,12 +13871,12 @@
           "baselineSourceTargets": [
             "src/utils/ast_parser/types.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "ES named runtime import",
+          "runtimeOrTypeDependency": "runtime dependency",
+          "defaultSideEffectBarrelDetails": "not-applicable; direct named/type import",
+          "directDependencyReview": "reviewed; required for context-dependent command parsing",
+          "transitiveDependencyReview": "open: full AST/context branch not covered",
+          "rustReplacementOrGap": "unmapped for full chat function"
         },
         {
           "ordinal": 6,
@@ -13874,12 +13891,12 @@
           "baselineSourceTargets": [
             "src/utils/links.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "ES named type import",
+          "runtimeOrTypeDependency": "type-only dependency",
+          "defaultSideEffectBarrelDetails": "not-applicable; direct named/type import",
+          "directDependencyReview": "reviewed; source-only context type; no full native equivalent claimed",
+          "transitiveDependencyReview": "open with full chat context branch",
+          "rustReplacementOrGap": "unmapped for full chat function"
         },
         {
           "ordinal": 7,
@@ -13894,12 +13911,12 @@
           "baselineSourceTargets": [
             "src/utils/logger.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "ES named type import",
+          "runtimeOrTypeDependency": "type-only dependency",
+          "defaultSideEffectBarrelDetails": "not-applicable; direct named/type import",
+          "directDependencyReview": "reviewed; source-only context schema type; no full native equivalent claimed",
+          "transitiveDependencyReview": "open with full chat context branch",
+          "rustReplacementOrGap": "unmapped for full chat function"
         },
         {
           "ordinal": 8,
@@ -13914,15 +13931,15 @@
           "baselineSourceTargets": [
             "src/utils/tokens.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "ES named type import",
+          "runtimeOrTypeDependency": "type-only dependency",
+          "defaultSideEffectBarrelDetails": "not-applicable; direct named/type import",
+          "directDependencyReview": "reviewed; source-only AST effect context type; no full native equivalent claimed",
+          "transitiveDependencyReview": "open with full chat context branch",
+          "rustReplacementOrGap": "unmapped for full chat function"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-context-free-plain-send-branch-only; full AST/context/reply behavior and caller adoption remain open"
     },
     {
       "source": "src/functions/chats/set_only_emotes.chat.ts",
@@ -99193,28 +99210,52 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/utils/temporary_roles_announcements.rs (accepted source tree 05443b8e540247ceb8ea33afe261e9a07e2d6d61abd45ab78753c3f6408b54b5)",
+        "dimabot/tests/temporary_roles_announcements.rs",
+        "dimabot/tests/fixtures/temporary_roles_announcements_reference.cjs",
+        "dimabot/src/functions/chats/send_message_plain.rs (required context-free sender adapter)",
+        "migration-notes/temporary-role-announcements-2026-10-31.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Native plain sender is for context-free, nonblank messages without a reply target; full send_message.chat.ts AST/context/reply behavior remains open.",
+        "Documented source boundaries: Twitch login case-folding assumes ASCII; native transport/JSON diagnostics differ; redirects are not followed; logger payload timestamp/JS stack are not duplicated; non-array data.data and deep/non-finite JSON edge behavior are outside the declared contract."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/functions/chats/send_message.chat.ts (runtime import in TypeScript source; native dependency is the concrete TwitchFunctions sender)"
+        ],
+        "runtimeStatus": "TypeScript callers remain live; native caller adoption and deployment are not established."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "second-sol-announcements-verified.json: pinned actual-source oracle, 26 ordered cases"
+        ],
+        "rustBehaviorEvidence": [
+          "21 unique tests passed: seven ordinary and 14 ignored/private serial cases; concrete Redis queue and native TwitchFunctions app-token/OAuth/Helix path; two disconnect paths; four missing/empty/substituted/removed fixture controls.",
+          "Focused check and strict Clippy, cargo fmt --all -- --check, and strict all-feature/all-target Clippy on combined accepted candidate passed."
+        ],
+        "status": "verified against accepted candidate; no benchmark or deployment evidence."
       },
       "exports": [
         {
           "name": "enqueueTemporaryRoleRemovalAnnouncement",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "implemented-and-verified",
+          "evidence": [
+            "dimabot/src/utils/temporary_roles_announcements.rs",
+            "dimabot/tests/temporary_roles_announcements.rs",
+            "migration-notes/temporary-role-announcements-2026-10-31.md"
+          ]
         },
         {
           "name": "flushTemporaryRoleRemovalAnnouncements",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "implemented-and-verified",
+          "evidence": [
+            "dimabot/src/utils/temporary_roles_announcements.rs",
+            "dimabot/tests/temporary_roles_announcements.rs",
+            "migration-notes/temporary-role-announcements-2026-10-31.md"
+          ]
         }
       ],
       "imports": [
@@ -99231,12 +99272,12 @@
           "baselineSourceTargets": [
             "src/functions/chats/send_message.chat.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "ES named runtime import",
+          "runtimeOrTypeDependency": "runtime dependency",
+          "defaultSideEffectBarrelDetails": "not-applicable; direct named/type import",
+          "directDependencyReview": "reviewed; mapped to TwitchFunctions context-free plain sender",
+          "transitiveDependencyReview": "verified concrete native app-token, Twitch HTTP, logger, Redis adapters",
+          "rustReplacementOrGap": "dimabot/src/functions/chats/send_message_plain.rs; full chat context/AST/reply branch is not part of this helper closure"
         },
         {
           "ordinal": 1,
@@ -99251,15 +99292,15 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "ES named runtime import",
+          "runtimeOrTypeDependency": "runtime dependency",
+          "defaultSideEffectBarrelDetails": "not-applicable; direct named/type import",
+          "directDependencyReview": "reviewed; mapped to native shared Redis manager",
+          "transitiveDependencyReview": "verified concrete redis::aio::ConnectionManager and Redis queue operations",
+          "rustReplacementOrGap": "dimabot/src/utils/redis.rs plus concrete injected manager; enqueue/flush Redis behavior covered"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "locally-complete-temporary-role-announcement-helper-with-concrete-redis-logger-token-http-and-context-free-chat-sender-dependencies; caller-adoption-open"
     },
     {
       "source": "src/utils/thumbnail_generator.ts",
