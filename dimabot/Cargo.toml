@@ -8,6 +8,7 @@ publish = false
 path = "src/lib.rs"
 
 [features]
+temporary-role-announcements = ["twitch-functions"]
 api-file-routes = ["api-admin", "dep:futures-util", "tokio/fs", "tokio/io-util"]
 polar-batch-usage = ["polar-cache-usage", "polar-client"]
 tts-usage-tracking = ["polar-batch-usage", "dep:libc"]

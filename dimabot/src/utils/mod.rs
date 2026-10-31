@@ -354,3 +354,6 @@ pub mod tts_usage;
 
 #[cfg(feature = "api-file-routes")]
 pub mod fs;
+
+#[cfg(feature = "temporary-role-announcements")]
+pub mod temporary_roles_announcements;
