@@ -22,9 +22,9 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-31 validation route feature wiring",
+    "asOf": "2026-10-31 file routes feature wiring",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 71,
+    "locallyCompleteMappings": 74,
     "partialRows": 24,
     "archivedSourceSnapshots": 60,
     "liveBaselineTypeScriptFiles": 746,
@@ -44906,23 +44906,45 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-direct-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/utils/fs.rs: bounded native stat/read adapter preserving source UTF-8 replacement and size behavior",
+        "dimabot/src/server/routes/admin-tools.route.rs: concrete mounted router and read-file contract",
+        "dimabot/src/server/routes/file.route.rs: bounded Tokio file stream, range handling, and route-relative constructors",
+        "dimabot/Cargo.toml and dimabot/src/lib.rs: committed api-file-routes feature, dependencies, and module wiring in 46d90b8c",
+        "dimabot/tests/file_routes.rs and dimabot/tests/fixtures/file_routes_reference.cjs: two separate passing native test invocations and 20-case actual-source replay",
+        "migration-notes/file-routes-handoff.md and migration-notes/file-routes-2026-10-31.md: accepted evidence and documented contract boundaries"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source normalized string-prefix allowlist is retained, including acceptance of prefix siblings, .., and symlinks; it is not a canonical containment boundary.",
+        "Malformed/reversed ranges return native 400/416 responses where the Express/Node source may throw or hang; framework headers/error pages and uncommon I/O diagnostic wording are not claimed identical.",
+        "The remaining source-level module path is supplied explicitly through the native route configuration. Source TypeScript remains live; application mount, caller adoption and deployment remain open."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "The existing TypeScript routes remain live; no native production server mount/caller cutover was part of this local feature verification."
+        ],
+        "runtimeStatus": "The committed api-file-routes library feature is locally verified with concrete route dependencies. Server mounting, TypeScript retirement, caller adoption and deployment remain separate and open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Actual-TypeScript oracle: 20 exact ordered cases; SHA-256 dba13ece94f65768d064c6637c231a93cd635771dcb3df7423c6ccf3595aa840."
+        ],
+        "rustBehaviorEvidence": [
+          "Two unique tests passed in separate isolated invocations: controlled stream cancellation/error/truncation and private HTTP/auth fixture replay. The latter checked all 20 cases, protected 401/403 bodies, two Mongo activity updates and two Redis throttle readbacks. Formatting, scoped check/strict Clippy, and all-feature/all-target strict Clippy passed. See file-routes handoff for immutable receipts and parent proof."
+        ],
+        "status": "Final source snapshot tree 1073b81a0c98fb1fc928e7a20e1a458a0ecc129540ff629dedaed0516b588457 (1,600 inputs), verified and wired in local commit 46d90b8c. No benchmark, caller adoption or deployment claim."
       },
       "exports": [
         {
           "name": "adminToolsRoute",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "adminToolsRoute maps to the opt-in AdminToolsRoute with concrete AuthService and workspace-owner protection.",
+          "evidence": [
+            "dimabot/src/utils/fs.rs",
+            "dimabot/src/server/routes/file.route.rs",
+            "dimabot/src/server/routes/admin-tools.route.rs",
+            "dimabot/tests/file_routes.rs"
+          ]
         }
       ],
       "imports": [
@@ -44939,12 +44961,12 @@
           "baselineSourceTargets": [
             "src/middleware/auth.middleware.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Authentication guard on the admin read-file route.",
+          "defaultSideEffectBarrelDetails": "No additional side-effect or barrel dependency is required for the accepted route contract.",
+          "directDependencyReview": "Concrete native implementation or adapter was exercised in the source-bound/HTTP behavior checks.",
+          "transitiveDependencyReview": "Required native route, filesystem, auth, workspace-owner, and private MongoDB/Redis dependencies are concretely covered; framework-specific differences are recorded as boundaries.",
+          "rustReplacementOrGap": "Existing concrete native api_auth::AuthService middleware was composed and exercised, including exact 401/403 bodies."
         },
         {
           "ordinal": 1,
@@ -44959,12 +44981,12 @@
           "baselineSourceTargets": [
             "src/middleware/workspace-owner.middleware.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Workspace-owner access guard on the admin read-file route.",
+          "defaultSideEffectBarrelDetails": "No additional side-effect or barrel dependency is required for the accepted route contract.",
+          "directDependencyReview": "Concrete native implementation or adapter was exercised in the source-bound/HTTP behavior checks.",
+          "transitiveDependencyReview": "Required native route, filesystem, auth, workspace-owner, and private MongoDB/Redis dependencies are concretely covered; framework-specific differences are recorded as boundaries.",
+          "rustReplacementOrGap": "Existing concrete workspace_owner::protect_workspace_owner middleware was composed and exercised."
         },
         {
           "ordinal": 2,
@@ -44979,12 +45001,12 @@
           "baselineSourceTargets": [
             "src/utils/fs.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Bounded UTF-8 file read helper for admin read-file responses.",
+          "defaultSideEffectBarrelDetails": "No additional side-effect or barrel dependency is required for the accepted route contract.",
+          "directDependencyReview": "Concrete native implementation or adapter was exercised in the source-bound/HTTP behavior checks.",
+          "transitiveDependencyReview": "Required native route, filesystem, auth, workspace-owner, and private MongoDB/Redis dependencies are concretely covered; framework-specific differences are recorded as boundaries.",
+          "rustReplacementOrGap": "The native shared filesystem adapter provides source size/stat/UTF-8 replacement behavior and is wired into AdminToolsRoute."
         },
         {
           "ordinal": 3,
@@ -44992,15 +45014,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Express router and request/response surface; Request and Response are type-only in the source imports.",
+          "defaultSideEffectBarrelDetails": "No additional side-effect or barrel dependency is required for the accepted route contract.",
+          "directDependencyReview": "Concrete native implementation or adapter was exercised in the source-bound/HTTP behavior checks.",
+          "transitiveDependencyReview": "Required native route, filesystem, auth, workspace-owner, and private MongoDB/Redis dependencies are concretely covered; framework-specific differences are recorded as boundaries.",
+          "rustReplacementOrGap": "Axum router and typed request/response APIs implement the local route behavior; framework headers and error pages are documented boundaries."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-direct-dependency-closure-verified;source-live;server-mount-and-caller-adoption-open"
     },
     {
       "source": "src/server/routes/admin.route.ts",
@@ -48947,23 +48969,45 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-direct-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/utils/fs.rs: bounded native stat/read adapter preserving source UTF-8 replacement and size behavior",
+        "dimabot/src/server/routes/admin-tools.route.rs: concrete mounted router and read-file contract",
+        "dimabot/src/server/routes/file.route.rs: bounded Tokio file stream, range handling, and route-relative constructors",
+        "dimabot/Cargo.toml and dimabot/src/lib.rs: committed api-file-routes feature, dependencies, and module wiring in 46d90b8c",
+        "dimabot/tests/file_routes.rs and dimabot/tests/fixtures/file_routes_reference.cjs: two separate passing native test invocations and 20-case actual-source replay",
+        "migration-notes/file-routes-handoff.md and migration-notes/file-routes-2026-10-31.md: accepted evidence and documented contract boundaries"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source normalized string-prefix allowlist is retained, including acceptance of prefix siblings, .., and symlinks; it is not a canonical containment boundary.",
+        "Malformed/reversed ranges return native 400/416 responses where the Express/Node source may throw or hang; framework headers/error pages and uncommon I/O diagnostic wording are not claimed identical.",
+        "The remaining source-level module path is supplied explicitly through the native route configuration. Source TypeScript remains live; application mount, caller adoption and deployment remain open."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "The existing TypeScript routes remain live; no native production server mount/caller cutover was part of this local feature verification."
+        ],
+        "runtimeStatus": "The committed api-file-routes library feature is locally verified with concrete route dependencies. Server mounting, TypeScript retirement, caller adoption and deployment remain separate and open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Actual-TypeScript oracle: 20 exact ordered cases; SHA-256 dba13ece94f65768d064c6637c231a93cd635771dcb3df7423c6ccf3595aa840."
+        ],
+        "rustBehaviorEvidence": [
+          "Two unique tests passed in separate isolated invocations: controlled stream cancellation/error/truncation and private HTTP/auth fixture replay. The latter checked all 20 cases, protected 401/403 bodies, two Mongo activity updates and two Redis throttle readbacks. Formatting, scoped check/strict Clippy, and all-feature/all-target strict Clippy passed. See file-routes handoff for immutable receipts and parent proof."
+        ],
+        "status": "Final source snapshot tree 1073b81a0c98fb1fc928e7a20e1a458a0ecc129540ff629dedaed0516b588457 (1,600 inputs), verified and wired in local commit 46d90b8c. No benchmark, caller adoption or deployment claim."
       },
       "exports": [
         {
           "name": "fileRoute",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "fileRoute maps to the opt-in Axum/Tokio FileRoute router and bounded file stream.",
+          "evidence": [
+            "dimabot/src/utils/fs.rs",
+            "dimabot/src/server/routes/file.route.rs",
+            "dimabot/src/server/routes/admin-tools.route.rs",
+            "dimabot/tests/file_routes.rs"
+          ]
         }
       ],
       "imports": [
@@ -48980,12 +49024,12 @@
           "baselineSourceTargets": [
             "src/utils/pollyfills.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "getDirname supplies the source route module directory.",
+          "defaultSideEffectBarrelDetails": "No additional side-effect or barrel dependency is required for the accepted route contract.",
+          "directDependencyReview": "Concrete native implementation or adapter was exercised in the source-bound/HTTP behavior checks.",
+          "transitiveDependencyReview": "Required native route, filesystem, auth, workspace-owner, and private MongoDB/Redis dependencies are concretely covered; framework-specific differences are recorded as boundaries.",
+          "rustReplacementOrGap": "The native route accepts an explicit module directory or public directory; the application config value remains a mount-time integration responsibility."
         },
         {
           "ordinal": 1,
@@ -48993,12 +49037,12 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Express router and request/response surface; Request and Response are type-only in the source imports.",
+          "defaultSideEffectBarrelDetails": "No additional side-effect or barrel dependency is required for the accepted route contract.",
+          "directDependencyReview": "Concrete native implementation or adapter was exercised in the source-bound/HTTP behavior checks.",
+          "transitiveDependencyReview": "Required native route, filesystem, auth, workspace-owner, and private MongoDB/Redis dependencies are concretely covered; framework-specific differences are recorded as boundaries.",
+          "rustReplacementOrGap": "Axum router and typed request/response APIs implement the local route behavior; framework headers and error pages are documented boundaries."
         },
         {
           "ordinal": 2,
@@ -49006,12 +49050,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Node filesystem stat/read or clip streaming behavior.",
+          "defaultSideEffectBarrelDetails": "No additional side-effect or barrel dependency is required for the accepted route contract.",
+          "directDependencyReview": "Concrete native implementation or adapter was exercised in the source-bound/HTTP behavior checks.",
+          "transitiveDependencyReview": "Required native route, filesystem, auth, workspace-owner, and private MongoDB/Redis dependencies are concretely covered; framework-specific differences are recorded as boundaries.",
+          "rustReplacementOrGap": "Native std/Tokio filesystem metadata/read and bounded Tokio streaming implement the local contract; common Linux errors are mapped and uncommon diagnostic text may differ."
         },
         {
           "ordinal": 3,
@@ -49019,15 +49063,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Path resolution and route file path construction.",
+          "defaultSideEffectBarrelDetails": "No additional side-effect or barrel dependency is required for the accepted route contract.",
+          "directDependencyReview": "Concrete native implementation or adapter was exercised in the source-bound/HTTP behavior checks.",
+          "transitiveDependencyReview": "Required native route, filesystem, auth, workspace-owner, and private MongoDB/Redis dependencies are concretely covered; framework-specific differences are recorded as boundaries.",
+          "rustReplacementOrGap": "Native PathBuf/path operations plus explicit module/public directory configuration supply the local path behavior."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-direct-dependency-closure-verified;source-live;server-mount-and-caller-adoption-open"
     },
     {
       "source": "src/server/routes/follow_defense.route.ts",
@@ -87511,23 +87555,45 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-direct-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/utils/fs.rs: bounded native stat/read adapter preserving source UTF-8 replacement and size behavior",
+        "dimabot/src/server/routes/admin-tools.route.rs: concrete mounted router and read-file contract",
+        "dimabot/src/server/routes/file.route.rs: bounded Tokio file stream, range handling, and route-relative constructors",
+        "dimabot/Cargo.toml and dimabot/src/lib.rs: committed api-file-routes feature, dependencies, and module wiring in 46d90b8c",
+        "dimabot/tests/file_routes.rs and dimabot/tests/fixtures/file_routes_reference.cjs: two separate passing native test invocations and 20-case actual-source replay",
+        "migration-notes/file-routes-handoff.md and migration-notes/file-routes-2026-10-31.md: accepted evidence and documented contract boundaries"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source normalized string-prefix allowlist is retained, including acceptance of prefix siblings, .., and symlinks; it is not a canonical containment boundary.",
+        "Malformed/reversed ranges return native 400/416 responses where the Express/Node source may throw or hang; framework headers/error pages and uncommon I/O diagnostic wording are not claimed identical.",
+        "The remaining source-level module path is supplied explicitly through the native route configuration. Source TypeScript remains live; application mount, caller adoption and deployment remain open."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "The existing TypeScript routes remain live; no native production server mount/caller cutover was part of this local feature verification."
+        ],
+        "runtimeStatus": "The committed api-file-routes library feature is locally verified with concrete route dependencies. Server mounting, TypeScript retirement, caller adoption and deployment remain separate and open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Actual-TypeScript oracle: 20 exact ordered cases; SHA-256 dba13ece94f65768d064c6637c231a93cd635771dcb3df7423c6ccf3595aa840."
+        ],
+        "rustBehaviorEvidence": [
+          "Two unique tests passed in separate isolated invocations: controlled stream cancellation/error/truncation and private HTTP/auth fixture replay. The latter checked all 20 cases, protected 401/403 bodies, two Mongo activity updates and two Redis throttle readbacks. Formatting, scoped check/strict Clippy, and all-feature/all-target strict Clippy passed. See file-routes handoff for immutable receipts and parent proof."
+        ],
+        "status": "Final source snapshot tree 1073b81a0c98fb1fc928e7a20e1a458a0ecc129540ff629dedaed0516b588457 (1,600 inputs), verified and wired in local commit 46d90b8c. No benchmark, caller adoption or deployment claim."
       },
       "exports": [
         {
           "name": "readFile",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "readFile maps to the native shared filesystem adapter used by the admin route.",
+          "evidence": [
+            "dimabot/src/utils/fs.rs",
+            "dimabot/src/server/routes/file.route.rs",
+            "dimabot/src/server/routes/admin-tools.route.rs",
+            "dimabot/tests/file_routes.rs"
+          ]
         }
       ],
       "imports": [
@@ -87537,12 +87603,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Node filesystem stat/read or clip streaming behavior.",
+          "defaultSideEffectBarrelDetails": "No additional side-effect or barrel dependency is required for the accepted route contract.",
+          "directDependencyReview": "Concrete native implementation or adapter was exercised in the source-bound/HTTP behavior checks.",
+          "transitiveDependencyReview": "Required native route, filesystem, auth, workspace-owner, and private MongoDB/Redis dependencies are concretely covered; framework-specific differences are recorded as boundaries.",
+          "rustReplacementOrGap": "Native std/Tokio filesystem metadata/read and bounded Tokio streaming implement the local contract; common Linux errors are mapped and uncommon diagnostic text may differ."
         },
         {
           "ordinal": 1,
@@ -87550,15 +87616,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Path resolution and route file path construction.",
+          "defaultSideEffectBarrelDetails": "No additional side-effect or barrel dependency is required for the accepted route contract.",
+          "directDependencyReview": "Concrete native implementation or adapter was exercised in the source-bound/HTTP behavior checks.",
+          "transitiveDependencyReview": "Required native route, filesystem, auth, workspace-owner, and private MongoDB/Redis dependencies are concretely covered; framework-specific differences are recorded as boundaries.",
+          "rustReplacementOrGap": "Native PathBuf/path operations plus explicit module/public directory configuration supply the local path behavior."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-direct-dependency-closure-verified;source-live;server-mount-and-caller-adoption-open"
     },
     {
       "source": "src/utils/header.ts",

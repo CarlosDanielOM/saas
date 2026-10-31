@@ -254,3 +254,25 @@ Exactly these two JSON rows changed. The rollup is **70 locally complete, 24 par
 The still-live `src/server/routes/validation.route.ts` row now maps to the committed `api-validation-route` feature and `validation_route` library module in commit `60e8fd29bcc9928542412992e95e330ad1e23725`. The source oracle covers 19 cases. The final fixtures passed 20 integration tests, including 18 HTTP replay comparisons plus an explicit acquisition-boundary mapping, real auth middleware composition, disposable MongoDB/Dragonfly, and a loopback Twitch provider. Four library tests and the feature-gated/all-feature strict checks passed. A separate raw-socket Node probe established that duplicate Authorization lines keep the first value; the source oracle otherwise replays the effective header value. Auth middleware handles missing credentials before the route's own missing-token branch. Server mounting and caller adoption remain open; no TypeScript retirement or deployment is claimed.
 
 Exactly this one JSON row changed. The rollup is **71 locally complete, 24 partial, 60 archived, and 746 live baseline TypeScript files** among 806 rows, including six excluded React Email templates in the live count. Total completion remains `null`. See the [validation route handoff](validation-route-handoff.md).
+
+## File routes local feature closure — 2026-10-31
+
+The still-live `src/utils/fs.ts`, `src/server/routes/file.route.ts`, and
+`src/server/routes/admin-tools.route.ts` rows now map to the committed
+`api-file-routes` native feature and its concrete filesystem, streaming, auth,
+workspace-owner, and private MongoDB/Redis dependencies. The immutable
+1,600-input source snapshot replayed all 20 ordered actual-TypeScript oracle
+cases. Two unique native tests passed in separate invocations, including
+controlled stream cancellation/failure behavior and private HTTP/auth
+integration. Formatting, scoped strict checks, and all-feature/all-target
+strict Clippy passed. The handoff preserves source-contract boundaries,
+failed-attempt history, exact proof locations, and caller-adoption limits.
+
+Exactly these three JSON rows changed; the other 803 rows and unrelated
+top-level inventory data are unchanged. The rollup is **74 locally complete,
+24 partial, 60 archived, and 746 live baseline TypeScript files** among 806
+rows, including six excluded React Email templates in the live count. Total
+completion remains `null`. The TypeScript sources remain live; application
+mount/caller adoption, retirement, and deployment are not claimed. See the
+[accepted file-routes note](file-routes-2026-10-31.md) and
+[handoff](file-routes-handoff.md).
