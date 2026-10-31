@@ -1,0 +1,48 @@
+{
+  "source": "src/server/services/media_library.service.ts",
+  "sha256": "00e94178e6eaed6693bb038a4dde8f562d68fb040e384504557d7c593b5ef4f1",
+  "provenance": "live dimabot TypeScript source; no archive substituted",
+  "uploadBytesBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+  "sources": {
+    "src/assets/library.ts": {"sha256":"77ff2ce78bcb3ab5cce35b23dcff147c761a7ce5f48f464fed7372ff5da5f806","provenance":"live dimabot TypeScript source; no archive substituted"},
+    "src/assets/http.ts": {"sha256":"ab2662c4a291f2f1e43f8774a611ccc230ec9e3f6eee290795b5572d2cf57807","provenance":"live dimabot TypeScript source; no archive substituted"},
+    "src/server/routes/asset-library.route.ts": {"sha256":"1f046135a823a7074c04a7c7c48a83ee65f37730599ebc1a5fe236717ec38fdc","provenance":"live dimabot TypeScript source; no archive substituted"}
+  },
+  "cases": [
+    {"name":"free", "tier":"free", "scope":"private", "bytes":100, "mime":"image/gif", "filename":"image.JPEG", "search":"país.*"},
+    {"name":"premium", "tier":"premium", "scope":"private", "bytes":-1, "mime":"audio/mpeg", "filename":"music", "search":"Mejor país"},
+    {"name":"pro", "tier":"pro", "scope":"public", "bytes":1024, "mime":"video/quicktime", "filename":"clip.mov", "search":"a_b"},
+    {"name":"unknown", "tier":"unknown", "scope":"system", "bytes":12, "mime":"application/x-custom", "filename":"sample", "search":"Café [x]"}
+  ],
+  "extensions": [
+    {"filename":"image.JPEG","mime":"image/png"}, {"filename":"logo.svg+xml","mime":"image/png"},
+    {"filename":"clip.quicktime","mime":"video/mp4"}, {"filename":"file","mime":"audio/mpeg"},
+    {"filename":"file","mime":"audio/mp3"}, {"filename":"file","mime":"audio/x-wav"},
+    {"filename":"file","mime":"audio/mp4"}, {"filename":"file","mime":"audio/x-m4a"},
+    {"filename":"file","mime":"image/jpeg"}, {"filename":"file","mime":"image/svg+xml"},
+    {"filename":"file","mime":"video/quicktime"}, {"filename":"file","mime":"application/x-foo"},
+    {"filename":"file","mime":"no-slash"}, {"filename":"file","mime":"application/---"}
+  ],
+  "documents": [
+    {"name":"defaults","input":{"_id":"fixture-owner"}},
+    {"name":"ready","input":{"_id":"fixture-owner","usedBytes":19,"assets":[{"id":"507f1f77bcf86cd799439011","name":"fixture.png","kind":"image","mime":"image/png","bytes":19,"width":1,"height":1,"createdAt":"2030-01-01T00:00:00.000Z","state":"ready"}]}},
+    {"name":"cast-error","input":{"_id":"fixture-owner","usedBytes":"invalid"}},
+    {"name":"partial-asset","input":{"_id":"fixture-owner","assets":[{}]}},
+    {"name":"embedded-casts","input":{"_id":"fixture-owner","assets":[{"id":123,"bytes":"19","width":true,"kind":"unrestricted","state":"unrestricted"}]}},
+    {"name":"embedded-null","input":{"_id":"fixture-owner","assets":[{"id":null,"bytes":null,"kind":null}]}},
+    {"name":"embedded-number-error","input":{"_id":"fixture-owner","assets":[{"bytes":"invalid"}]}}
+  ],
+  "http": [
+    {"name":"list","path":"/fixture-owner","user":"fixture-owner"},
+    {"name":"owner-required","path":"/fixture-owner","user":"other"},
+    {"name":"access","path":"/fixture-owner/507f1f77bcf86cd799439011/access","user":"fixture-owner"},
+    {"name":"full","path":"/content/507f1f77bcf86cd799439011","ticket":true},
+    {"name":"partial","path":"/content/507f1f77bcf86cd799439011","ticket":true,"range":"bytes=1-3"},
+    {"name":"cross-chunk","path":"/content/507f1f77bcf86cd799439011","ticket":true,"range":"bytes=6-11"},
+    {"name":"clamped","path":"/content/507f1f77bcf86cd799439011","ticket":true,"range":"bytes=0-999999"},
+    {"name":"invalid-start","path":"/content/507f1f77bcf86cd799439011","ticket":true,"range":"bytes=19-"},
+    {"name":"invalid-ticket","path":"/content/507f1f77bcf86cd799439011?ticket=invalid"},
+    {"name":"upload","path":"/fixture-owner","user":"fixture-owner","method":"POST","multipart":true},
+    {"name":"delete","path":"/fixture-owner/507f1f77bcf86cd799439011","user":"fixture-owner","method":"DELETE"}
+  ]
+}

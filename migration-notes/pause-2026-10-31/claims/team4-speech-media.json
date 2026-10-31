@@ -1,0 +1,647 @@
+{
+  "team": "team4-speech-media",
+  "role": "explorer / team lead (MiniMax M3.1 Flash via MiniMax Code)",
+  "ownerThreadId": "mvs_e2ba29ddec4146efa49d37bc3a82f24e",
+  "rootThreadId": "9cc467f1-f5c3-45a8-989a-e8e02361df4b",
+  "checkout": "/root/saas-rust",
+  "branch": "master",
+  "wave": "authoring-only",
+  "executionLease": null,
+  "centralPathsNotOwned": [
+    "dimabot/Cargo.toml",
+    "dimabot/Cargo.lock",
+    "dimabot/rust-toolchain.toml",
+    "dimabot/src/lib.rs",
+    "dimabot/src/utils/mod.rs",
+    "dimabot/src/schemas/mod.rs",
+    "dimabot/src/schemas/schema.rs",
+    "dimabot/src/functions/mod.rs",
+    "dimabot/src/domain_events/mod.rs",
+    "dimabot/src/functions/chats/mod.rs",
+    "dimabot/src/utils/tts/mod.rs",
+    "dimabot/src/utils/tts/session.rs",
+    "dimabot/src/utils/tts/settings.rs",
+    "dimabot/src/utils/tts/tag_types.rs",
+    "dimabot/src/utils/tts/playback_timeout.rs",
+    "dimabot/src/utils/tts/credit_fallback.rs",
+    "dimabot/src/utils/tts_usage_pricing.rs",
+    "dimabot/src/server/services/tts/mod.rs",
+    "dimabot/src/server/services/tts/fish_tts.rs",
+    "dimabot/src/server/services/tts/fish_voice_catalog.rs",
+    "dimabot/src/server/services/tts/kokoro_tts.rs",
+    "dimabot/src/server/services/tts/piper_tts.rs",
+    "dimabot/src/server/services/tts/runtime.rs",
+    "dimabot/src/server/services/tts/tts_provider.rs",
+    "dimabot/src/server/services/tts/speech_paths.rs",
+    "dimabot/src/server/services/tts/http_support.rs",
+    "dimabot/src/server/services/tts/lossless_json.rs",
+    "dimabot/src/pets/speech_text.rs",
+    "dimabot/src/schemas/media_asset.schema.rs",
+    "dimabot/src/schemas/user_media_library_item.schema.rs",
+    "dimabot/src/schemas/channel_extension_item.schema.rs",
+    "dimabot/src/schemas/user_extension_inventory.schema.rs",
+    "dimabot/src/schemas/extension_wallet_transaction.schema.rs",
+    "dimabot/src/schemas/dimafx_playback.schema.rs",
+    "dimabot/src/schemas/media_extension_schema_values.rs",
+    "dimabot/src/utils/s3.rs",
+    "dimabot/src/utils/mongo.rs",
+    "dimabot/src/utils/redis.rs",
+    "dimabot/src/utils/logger.rs",
+    "dimabot/src/server/websocket.rs",
+    "dimabot/src/middleware/auth.middleware.rs",
+    "dimabot/src/middleware/admin.middleware.rs"
+  ],
+  "temporaryPathReservationsHonoured": [
+    "dimabot/src/pets/ \u2014 legacy Polar worker still owns its WIP inside this tree; do not touch files it owns",
+    "dimabot/src/server/routes/file.route.ts \u2014 reserved integration job (shared generic fs + clip-file route)",
+    "dimabot/src/server/routes/announcements* \u2014 reserved integration validation",
+    "dimabot/src/functions/chats/mod.rs \u2014 reserved legacy-announcements integration"
+  ],
+  "lanes": [
+    {
+      "id": "lane-a-speech-core",
+      "implementer": "DeepSeek V4.1 Flash (opencode-go/deepseek-v4.1-flash, variant=high, full-access)",
+      "scope": "Speech/TTS request path: internal TTS client, default queue resolution, voice preview, speech session reset.",
+      "ownsNewRustFiles": [
+        "dimabot/src/speech/mod.rs",
+        "dimabot/src/speech/tts_client.rs",
+        "dimabot/src/speech/default_queue.rs",
+        "dimabot/src/speech/voice_preview.rs",
+        "dimabot/src/speech/session_reset.rs"
+      ],
+      "ownsSourceFiles": [
+        "dimabot/src/functions/chats/speech.chat.ts",
+        "dimabot/src/functions/chats/speech.chat.test.ts",
+        "dimabot/src/utils/tts/queue_default_tts.util.ts",
+        "dimabot/src/server/services/tts/voice_preview.service.ts",
+        "dimabot/src/utils/speech.ts"
+      ],
+      "centralPatch": {
+        "Cargo.toml": "speech-core = [\"http-client\", \"tts-services\", \"tts-utilities\", \"channel-tts-settings\", \"channel-fish-voice-favorites\", \"redis\", \"mongo\", \"logger\", \"js-date\", \"tokio/process\", \"tokio/fs\"]",
+        "src/lib.rs": "#[cfg(feature = \"speech-core\")]\n#[path = \"speech/mod.rs\"]\npub mod speech_core;"
+      },
+      "reviewRound1": {
+        "verdict": "NOT ACCEPTED \u2014 sent back for a second round (child thread run ordinal 2)",
+        "reviewer": "team4 explorer/team lead (MiniMax M3.1 Flash via MiniMax Code)",
+        "verifiedGood": [
+          "resolve_internal_api_url with all five URL rows including the derived https://api.domdimabot.com/speech/fixture case (tts_client.rs:80, tests :596-:650)",
+          "session_reset.rs: TTS_SESSION_ENDED at :42, SessionPublisher trait plus concrete RedisSessionPublisher, clear_speech_files at :201 with read-then-remove-then-publish ordering (read_dir :217, publish :247)",
+          "correct reuse of TwitchEmoteRuntime::get_tts_emote_names, get_ai_credits_default/CreditOwner, track_tts_usage, and the single existing TtsSession Redis layout"
+        ],
+        "blockingGap": "The voice preview had no synthesis path: no service.synthesize call, no fish voice existence pre-check, no temp output read/removal, no ack payload with the audio, no per-socket busy flag, no 5-minute expiry, no 30-second renewal task. The implementer read 'do not recreate the providers' as 'do not call them'. The already-ported concrete adapter was available and callable: TtsRuntime::synthesize (src/server/services/tts/runtime.rs:150), TtsRuntime::get_fish_voice (:190), TtsRuntime::search_fish_voices (:194), TtsRuntime::new/with_client (:91/:94), and TtsSynthesisRequest/TtsSynthesisResult in src/server/services/tts/tts_provider.rs, whose signal field is a typed cancellation channel.",
+        "secondaryItems": [
+          "settings_from_json hand-rolled its field expectations instead of using the already-ported bson_to_settings_json decoder at src/schemas/channel_tts_settings.schema.rs:174",
+          "the feature list pulls a large graph via ai-credit-reader (polar-client, posthog-tracking, twitch-tokens, credential-crypto) and two features were reported unused (channel-fish-voice-favorites, tokio/process)",
+          "socket namespace wiring not attempted; the implementer reported that server/websocket.rs exposes socket_io_builder, socket_io_layer and dyn_ns but no namespace middleware example, and correctly refused to invent socketioxide APIs"
+        ],
+        "fileSizeNote": "voice_preview.rs at 1140 lines and default_queue.rs at 951 lines were accepted as consistent with existing repo practice (src/utils/tts/mod.rs is 1148 lines); no split required."
+      },
+      "status": "COMPLETE \u2014 READY-AUTHORING. Handoff at ready/team4-speech-media-lane-a-speech-core.json. READY event sent to root thread 9cc467f1-f5c3-45a8-989a-e8e02361df4b (delivered at root position 18282)."
+    },
+    {
+      "id": "lane-b-widgets-roulette",
+      "implementer": "Grok 4.7 (grok-4.7, reasoningEffort=xhigh, full-access)",
+      "scope": "Roulette value objects + action model + Mongo service, and the Widgets overlay domain (catalog, event model, events, model, service) plus its HTTP route.",
+      "rationale": "Pets runtime was assessed as blocked: it depends on five team2-owned modules (pet_runtime.schema, pet_settings.schema, pet_settings.service, overlay-token, domain_event_wakeups) that have no Rust port yet. Widgets/roulette depend only on already-ported seams (team3 domain_event.types, team3 get.poll, team2 users.schema, team2 mongodb) plus team4 roulette/model, which this lane owns. Pets is queued for wave 2 behind a team2 contract.",
+      "ownsNewRustFiles": [
+        "dimabot/src/roulette/mod.rs",
+        "dimabot/src/roulette/model.rs",
+        "dimabot/src/roulette/action_model.rs",
+        "dimabot/src/roulette/service.rs",
+        "dimabot/src/widgets/mod.rs",
+        "dimabot/src/widgets/catalog.rs",
+        "dimabot/src/widgets/event_model.rs",
+        "dimabot/src/widgets/events.rs",
+        "dimabot/src/widgets/model.rs",
+        "dimabot/src/widgets/service.rs",
+        "dimabot/src/widgets/route.rs",
+        "dimabot/src/roulette/actions.rs"
+      ],
+      "ownsSourceFiles": [
+        "dimabot/src/roulette/model.ts",
+        "dimabot/src/roulette/action-model.ts",
+        "dimabot/src/roulette/service.ts",
+        "dimabot/src/roulette/model.test.ts",
+        "dimabot/src/roulette/action-model.test.ts",
+        "dimabot/src/roulette/service.test.ts",
+        "dimabot/src/widgets/catalog.ts",
+        "dimabot/src/widgets/event-model.ts",
+        "dimabot/src/widgets/events.ts",
+        "dimabot/src/widgets/model.ts",
+        "dimabot/src/widgets/service.ts",
+        "dimabot/src/widgets/model.test.ts",
+        "dimabot/src/widgets/events.test.ts",
+        "dimabot/src/widgets/service.test.ts",
+        "dimabot/src/server/routes/widgets.route.ts",
+        "dimabot/src/roulette/actions.ts"
+      ],
+      "centralPatch": {
+        "Cargo.toml": "widgets-runtime = [\"http\", \"http-client\", \"mongo\", \"redis\", \"application-schemas\", \"domain-events\", \"logger\", \"tts-utilities\", \"dep:uuid\", \"dep:sha2\"]",
+        "src/lib.rs": "#[cfg(feature = \"widgets-runtime\")]\n#[path = \"widgets/mod.rs\"]\npub mod widgets_runtime;\n\n#[cfg(feature = \"widgets-runtime\")]\n#[path = \"roulette/mod.rs\"]\npub mod roulette_runtime;"
+      },
+      "status": "Partial authoring; winner actions and other parity gaps remain"
+    },
+    {
+      "id": "lane-c-media-assets",
+      "implementer": "GPT-6.1 Terra (codex/gpt-6.1-terra, reasoningEffort=high, runtimeMode=inherit) \u2014 re-routed after the opencode/openai-gpt-6.1-terra attempt failed with a provider 401 before any work was done",
+      "scope": "Media/asset library: S3-backed asset records, media library service, asset-library + media HTTP routes.",
+      "ownsNewRustFiles": [
+        "dimabot/src/media/mod.rs",
+        "dimabot/src/media/library.rs",
+        "dimabot/src/media/http.rs",
+        "dimabot/src/media/library_service.rs",
+        "dimabot/src/media/asset_library_route.rs",
+        "dimabot/src/media/media_route.rs"
+      ],
+      "ownsSourceFiles": [
+        "dimabot/src/assets/library.ts",
+        "dimabot/src/assets/http.ts",
+        "dimabot/src/server/services/media_library.service.ts",
+        "dimabot/src/server/services/media_library.service.test.ts",
+        "dimabot/src/server/routes/asset-library.route.ts",
+        "dimabot/src/server/routes/media.route.ts"
+      ],
+      "centralPatch": {
+        "Cargo.toml": "media-assets = [\"http\", \"http-client\", \"http-multipart\", \"jwt\", \"mongo\", \"redis\", \"s3\", \"logger\", \"application-schemas\", \"media-extension-schemas\", \"api-admin\", \"js-unicode17\", \"lossless-json\", \"futures-util/io\", \"dep:uuid\", \"tokio/fs\", \"tokio/io-util\", \"tokio/process\"]",
+        "src/lib.rs": "#[cfg(feature = \"media-assets\")]\n#[path = \"media/mod.rs\"]\npub mod media_assets;",
+        "superseded": "The round-3 handoff ready/team4-speech-media-lane-c-media-assets.json listed dep:base64 instead of jwt because the team lead wrongly believed jsonwebtoken could not be used without a new dependency. The coordinator corrected this: jsonwebtoken 11.1.0 is already declared at dimabot/Cargo.toml:244, already pinned in Cargo.lock, and the sanctioned cargo fetch --locked may fetch already-locked dependencies, so using it is NOT a new dependency. The hand-written sha2 HMAC is being replaced by the pinned crate's own JWT validation."
+      },
+      "status": "COMPLETE \u2014 READY-AUTHORING (round 6). Handoff rewritten at ready/team4-speech-media-lane-c-media-assets.json; READY event delivered to root thread 9cc467f1-f5c3-45a8-989a-e8e02361df4b at root run ordinal 54."
+    }
+  ],
+  "reuseOnlyReadOnlyDependencies": [
+    "dimabot/src/utils/tts_usage_pricing.rs (team1/shared): TTS usage + pricing policy \u2014 read only, do not modify",
+    "dimabot/src/utils/tts/mod.rs: normalize_tts_message, filter_expressive_tts_tags, extract_emote_names, generate_speech_id, migrate_legacy_speech_template, parse_tts_status, build_spoken_user_message, TtsMode, TtsLanguage, TtsProvider, SpeechSource, DeadlineError, AudioStream",
+    "dimabot/src/utils/tts/session.rs: Redis TTS session queue (enqueue/pop/reset) \u2014 read only",
+    "dimabot/src/utils/tts/playback_timeout.rs, settings.rs, tag_types.rs, credit_fallback.rs \u2014 read only",
+    "dimabot/src/server/services/tts/{fish_tts,fish_voice_catalog,kokoro_tts,piper_tts,runtime,tts_provider,speech_paths,http_support}.rs \u2014 read only, do not recreate providers",
+    "dimabot/src/schemas/{media_asset,user_media_library_item,channel_extension_item,user_extension_inventory,extension_wallet_transaction,dimafx_playback}.schema.rs \u2014 read only",
+    "dimabot/src/schemas/media_extension_schema_values.rs \u2014 read only shared decode helpers",
+    "dimabot/src/utils/s3.rs \u2014 read only S3 adapter"
+  ],
+  "deferredToWave2": {
+    "reason": "Wave 1 must keep three independent lanes busy; these team4 rows are still unmigrated and are queued for the next authoring wave once wave 1 lands and a lease is granted.",
+    "petsRuntime": [
+      "dimabot/src/pets/state.ts",
+      "dimabot/src/pets/tokens.ts",
+      "dimabot/src/pets/selection.ts",
+      "dimabot/src/pets/queue_limits.ts",
+      "dimabot/src/pets/queue.ts",
+      "dimabot/src/pets/delivery.ts",
+      "dimabot/src/pets/tts_envelope.ts",
+      "dimabot/src/pets/tts_lane.ts",
+      "dimabot/src/pets/admission.ts",
+      "dimabot/src/pets/readiness.ts",
+      "dimabot/src/pets/readiness.schema.ts",
+      "dimabot/src/pets/peers.ts",
+      "dimabot/src/pets/wakeups.ts",
+      "dimabot/src/pets/socket_adapter.ts",
+      "dimabot/src/pets/read_tts.ts",
+      "dimabot/src/pets/runtime.ts",
+      "dimabot/src/pets/socket.ts",
+      "dimabot/src/pets/service.ts"
+    ],
+    "speechAndQueue": [
+      "dimabot/src/server/routes/speech.route.ts",
+      "dimabot/src/handlers/tts_queue.handler.ts",
+      "dimabot/src/server/services/tts/piper_tts.service.ts",
+      "dimabot/src/server/services/tts/kokoro_tts.service.ts",
+      "dimabot/src/server/services/tts/fish_tts.service.ts"
+    ],
+    "overlaysAndDimafx": [
+      "dimabot/src/overlays/*.ts",
+      "dimabot/src/server/routes/dimafx.route.ts",
+      "dimabot/src/server/routes/clip-design.route.ts",
+      "dimabot/src/server/routes/promo.route.ts"
+    ],
+    "gameDomains": [
+      "dimabot/src/duel/*.ts",
+      "dimabot/src/goals/*.ts",
+      "dimabot/src/server/routes/duel-widget.route.ts",
+      "dimabot/src/server/routes/goals.route.ts",
+      "dimabot/src/server/routes/roulette.route.ts"
+    ],
+    "mediaRemainder": [
+      "dimabot/src/utils/media_cleanup.ts",
+      "dimabot/src/utils/thumbnail_generator.ts",
+      "dimabot/src/server/routes/media.route.ts"
+    ],
+    "scriptsAndMisc": [
+      "dimabot/src/scripts/*.ts",
+      "dimabot/src/handlers/*.ts"
+    ]
+  },
+  "crossTeamContractsToRaise": [
+    {
+      "owner": "team2-api-data",
+      "needs": "dimabot/src/utils/overlay-token.ts -> Rust (overlayTokenHash, storedOverlayToken, manageOverlayToken, readOverlayToken). Blocked by widgets, roulette, duel and pets lanes.",
+      "raisedBy": "lane-b-widgets-roulette"
+    },
+    {
+      "owner": "team2-api-data",
+      "needs": "dimabot/src/schemas/pet_runtime.schema.ts + pet_settings.schema.ts + src/server/services/pet_settings.service.ts + src/utils/domain_event_wakeups.ts -> Rust. Blocks the whole pets runtime lane.",
+      "raisedBy": "team4 exploration"
+    },
+    {
+      "owner": "team2-api-data",
+      "needs": "dimabot/src/classes/pubsub_manager.class.ts -> Rust (pubSubManager.publish). Blocks dimabot/src/utils/speech.ts clearSpeechFiles publish step.",
+      "raisedBy": "lane-a-speech-core"
+    },
+    {
+      "owner": "team1-billing-ai",
+      "needs": "credit balance read for voice preview (getAiCredits equivalent). dimabot/src/utils/tts_usage.rs exists (tts usage + pricing) but a balance/availability read is not exposed to team4.",
+      "raisedBy": "lane-a-speech-core"
+    }
+  ],
+  "wave1Reviews": [
+    {
+      "lane": "lane-c-media-assets",
+      "round": 1,
+      "verdict": "REJECTED \u2014 returned incomplete; sent back for completion (child thread run ordinal 2)",
+      "reviewer": "team4 explorer/team lead (MiniMax M3.1 Flash via MiniMax Code)",
+      "gaps": [
+        "library.rs: the GridFS/Mongo application adapter was absent entirely (withAssetLibrary per-owner lock, registerAssetConsumer, assetQuota, findAsset, removeBytes, recover, listAssets, inspectFile magic-byte+ffprobe, uploadAsset atomic quota reservation, deleteAsset, readAsset)",
+        "http.rs: only the Range arithmetic was ported; the serveAsset response contract was missing (security headers, ETag/304 revalidation, Content-Range 416 header, Content-Length, HEAD, body streaming)",
+        "asset_library_route.rs: no routes at all; only is_channel_owner plus two constants",
+        "library_service.rs: missing get_file_extension, build_stored_media_file_name, build_media_playback_url, build_media_asset_search_pattern, get_channel_quota_usage_bytes, has_trigger_permission and the DOMDIMABOT_SITE_OWNER_* constants",
+        "behavioural bug: ready_newest_first used reverse-then-filter; the source is filter-then-reverse, which differs when non-ready entries are interleaved"
+      ],
+      "briefCorrectionsIssued": [
+        "dimabot/src/utils/jwt.rs does not exist; the jwt module is the email-activation helper at src/utils/email/email-activation-token.rs and is not a general HS256 sign/verify \u2014 use the jsonwebtoken crate directly",
+        "mongodb 3.9.1 does not feature-gate GridFS (pub mod gridfs at src/lib.rs:43), so no dependency change is required; Database::gridfs_bucket is at src/db.rs:142"
+      ]
+    },
+    {
+      "lane": "lane-c-media-assets",
+      "round": 2,
+      "verdict": "STILL INCOMPLETE \u2014 large progress (library.rs 69->449, http.rs 55->119, library_service.rs 90->209, asset_library_route.rs 29->156); sent back for a third and final round",
+      "reviewer": "team4 explorer/team lead (MiniMax M3.1 Flash via MiniMax Code)",
+      "gaps": [
+        "preview-ticket surface still absent: GET /content/:id and GET /:channelID/:id/access, so 3 of the source's 5 asset-library endpoints do not exist",
+        "GridFS ranged read reads and discards the preceding bytes instead of selecting the covering chunks",
+        "the repository seam had no injectable Mongo/GridFS repository, violating the house trait-plus-concrete-adapter pattern",
+        "ffprobe's 65536-byte cap was applied after collection rather than during the read, so a runaway probe could buffer unbounded",
+        "UTF-16 truncation at an unpaired surrogate was lossy; the source's .slice(0,120) is 120 UTF-16 code units"
+      ],
+      "reviewerRetractedOwnInstruction": "My round-1 P4 instruction claiming the source's filter-then-reverse and the port's reverse-then-filter differ was WRONG \u2014 filtering by a pure predicate and reversing commute. The worker correctly pushed back; the instruction was retracted and the current source-faithful filter-then-reverse form kept.",
+      "briefCorrectionsIssued": [
+        "jsonwebtoken is absent from the local registry but is in Cargo.lock, so it is not usable in an offline authoring wave; the `jwt` feature was therefore dropped from media-assets to avoid forcing a validation-time download",
+        "HS256 is implemented directly on sha2 (already enabled transitively through the mongo feature) with base64 URL_SAFE_NO_PAD (base64 0.22.1, an existing optional dependency), so no new Cargo dependency is introduced; the RFC 4231 case-1 vector 97yD9DBThCS6MpjE3Mj3yOz3AW9nl1DIxvxzRnpn8 is the required oracle",
+        "feature list corrected to media-assets = [http, http-client, http-multipart, mongo, redis, s3, logger, application-schemas, media-extension-schemas, api-admin, js-unicode17, futures-util/io, dep:uuid, dep:base64, tokio/fs, tokio/io-util, tokio/process]; dep:sha2 is not listed because it arrives via mongo"
+      ],
+      "contractAccepted": "Cross-process owner locks: overlay and pet write paths must share the same AssetLibrary instance and owner-lock registry as deletes; the source's in-process Map cannot be shared across independent processes. Owner: integration."
+    },
+    {
+      "lane": "lane-c-media-assets",
+      "round": 3,
+      "verdict": "READY-AUTHORING \u2014 implementation and oracle tests complete; not compiled, not run. Handoff saved to ready/team4-speech-media-lane-c-media-assets.json",
+      "reviewer": "team4 explorer/team lead (MiniMax M3.1 Flash via MiniMax Code)",
+      "verifiedInReview": [
+        "hmac_sha256: key normalisation (>64 bytes hashed, else zero-padded to the 64-byte block), ipad/opad XOR, inner/outer hash \u2014 correct",
+        "constant_time_signature_eq: XOR accumulate over 32 bytes with a length guard and no early exit",
+        "verify_ticket: exactly three parts, constant-time signature check BEFORE claim parsing, alg must be HS256, aud must equal asset-preview, sub must equal the path id, exp must be finite and in the future, owner must be a string",
+        "chunk_bounds and assemble_chunk_window implemented as pure functions over the GridFS files length/chunkSize and ordered chunk n",
+        "injectable seam present: AssetConsumer, AssetInspector, GridFsRangeRepository (+MongoGridFsRangeRepository), AssetRecordRepository (+MongoAssetRecordRepository), with_repositories constructor",
+        "ffprobe stdout bounded during collection via take(65_537) then a >65_536 rejection"
+      ],
+      "reviewerOwnErrorCorrected": "The team lead's supplied HMAC oracle was internally inconsistent: the hex bytes f7bc83f4...3cd8 were correct for HMAC-SHA256(key, quick brown fox) but the base64url text supplied for them was not their encoding. Independently recomputed: the correct base64url is 97yD9DBThCSxMpjmqm-xQ-9NWaFJRhdZl0edvC0aPNg. The worker detected the inconsistency and used the correct value, so the implementation is right and the brief was wrong. The worker also correctly noted that the key/quick-brown-fox pair is not RFC 4231 case 1 (case 1 uses key 0x0b x20) and used RFC 4231 case 6 for the long-key case.",
+      "residualDivergencesForVerification": [
+        "ffprobe stderr is discarded, so the source's combined stdout+stderr maxBuffer failure behaviour is not reproduced",
+        "ranged reads select only covering chunks but assemble the window in memory rather than streaming it",
+        "the upload's returned Asset.name converts the sanitised name to UTF-8 for BSON, so an unpaired UTF-16 unit is not retained in the immediate response",
+        "the EXTERNAL APIS USED audit is explicitly not exhaustive over every Axum, BSON and Tokio method used"
+      ]
+    }
+  ],
+  "concurrencyCap": {
+    "limit": 3,
+    "note": "Three authorized implementation workers are running: lane B (Grok 4.7, round 1), lane D (Terra, round 7) and lane E (Terra, round 1). Lane A and lane C are complete and released for integration to compile and verify.",
+    "lanesRunning": [
+      "lane-b-widgets-roulette",
+      "lane-d-overlays-runtime",
+      "lane-e-dimafx-delivery"
+    ],
+    "lanesPaused": [],
+    "lanesQueued": [],
+    "lanesComplete": [
+      "lane-a-speech-core",
+      "lane-c-media-assets"
+    ],
+    "lanesIncomplete": [
+      "lane-d-overlays-runtime (round 7 in flight)"
+    ]
+  },
+  "pausedLaneD_round4Checklist": {
+    "status": "PAUSED by the three-worker cap after partial application; the remaining items below are PRESERVED for verbatim re-issue into the same child thread. The child thread retains its full context, so re-issue is cheap.",
+    "landedBeforeInterrupt": [
+      "live.rs grew 157 -> 274 lines and now has replace_tts_epoch(peer_key, epoch) -> Arc<AtomicBool> which installs a newer epoch and cancels the previous one",
+      "owns_tts_epoch(peer_key, epoch) with a cancellation flag check",
+      "enqueue(item, expires_at_ms) -> bool: ordered append rejecting duplicate delivery IDs",
+      "disconnect(peer_key, now_ms) -> Vec<String>: marks the peer disconnected, revokes and cancels its speech epoch, and removes its pending speech",
+      "poll_expired(now_ms) -> Vec<String>: expires pending deliveries and disconnected peer leases, returning expired delivery IDs in original delivery order",
+      "reconnecting(peer, now_ms) now uses the LEASE_MS window",
+      "PeerTransport trait plus CallbackTransport with emit and disconnect callbacks",
+      "register_socket_namespace now takes the MongoStudioStore and performs the published-state lookup asynchronously inside the handler"
+    ],
+    "stillMissing": {
+      "P1_durable_delivery": "The complete durable delivery path: persisting deliveries and source leases into overlay_deliveries and overlay_source_leases through the widened repository, and the polling drain that reads pending deliveries and emits them to peers. The core decisions alone do not provide those application behaviours.",
+      "P1_live_bridge": "A CONCRETE Bridge implementation registered through the bridge.rs slot, built from the runtime, so the source's bridge.ts publishing loop is closed.",
+      "P2_store_rs": "Studio validation, optimistic mutation with revision-based stale-rejection, and the unique index on the public id alongside install_indexes.",
+      "P3_recover_rs": "Asset validation and actual persistence of the recovered copies.",
+      "P4_widget_state": "The full generic authorization/projection contract for widget reads, not only the built-in interaction provider; build on the existing project_states, denied_states and select_widgets.",
+      "P5_delivery_store_rs": "Widen DeliveryRepository beyond range reads to the full operation set, keeping MongoDeliveryStore as the concrete implementation and the generic entry points per operation.",
+      "P6_tests": "Port dimabot/src/overlays/dima032_delivery.test.ts and dimabot/src/overlays/widget-state.test.ts into the lane inline test modules; do not re-port interaction-model.test.ts, which is already ported.",
+      "P7_utf16": "The alert renderer rejects unpaired UTF-16 at its parser boundary; use the repo's own js_string.rs and js_unicode.rs primitives to match the source rather than rejecting."
+    },
+    "handedToIntegration": [
+      "socketioxide binding of handshake-auth extraction, socket identity, event listeners, disconnect handlers and broadcast (UNVERIFIED in socketioxide 0.18.7 because the crate is not vendored locally)",
+      "Redis presence for the live runtime",
+      "EventSub activation/unsubscription remote adapters, owned by team2-api-data"
+    ]
+  },
+  "registryDiscovery": {
+    "status": "IMPORTANT \u2014 corrects two earlier team4 claims of 'crate not vendored locally'",
+    "finding": "There is a SECOND, fuller cargo registry on this host at /root/.local/state/rust-full-migration-20261028-commands-closure-01/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ (and sibling registries under /root/.local/state/*/cargo/registry/src/). It contains socketioxide-0.18.7, socketioxide-core-0.19.0, socketioxide-parser-common-0.17.2, jsonwebtoken-11.1.0, mongodb-3.9.1 and sha2-0.10.9.",
+    "impact": [
+      "Lane A found and used the socketioxide 0.18.7 source there and implemented the preview namespace with dyn_ns plus ConnectHandler::with middleware, so the socket transport is real rather than deferred to integration.",
+      "Lane C was steered in round 6 to verify its jsonwebtoken calls against jsonwebtoken-11.1.0 and to drop the 'jsonwebtoken API unverifiable' caveat if the source confirms the usage.",
+      "Lane D was resumed and told the socketoxide path, so the handshake-auth extraction, socket identity, event listeners, disconnect handlers and broadcast that were previously handed to integration are implementable in-lane again."
+    ],
+    "residual": "jsonwebtoken and socketioxide are readable, but the sanctioned cargo fetch --locked still needs to place them in the validation cargo home; the coordinator's guidance that fetching already-locked dependencies is not a new dependency still stands and is unaffected by this discovery."
+  },
+  "laneA_round2": {
+    "status": "COMPLETED \u2014 READY-AUTHORING. Handoff saved to ready/team4-speech-media-lane-a-speech-core.json",
+    "verdict": "The blocking gap is closed: the preview now calls the already-ported TtsRuntime, and the socket namespace is implemented rather than deferred.",
+    "verifiedInReview": [
+      "voice_preview.rs:1065 calls runtime.synthesize(Some(job.provider), &request) with output_path = PathBuf::new() and private_output = false, which reproduces the source's outputPath: '' because every provider ignores output_path on that branch",
+      "voice_preview.rs:1100 calls runtime.get_fish_voice(voice_id) for the 400 invalid_voice pre-check",
+      "voice_preview.rs:1517 register_voice_preview binds io.dyn_ns(PREVIEW_NAMESPACE_ROUTE, handler.with(middleware)) with ConnectHandler::with middleware and TryData auth extraction",
+      "voice_preview.rs:1633 socket.on_disconnect with DisconnectReason cancels the synthesis, releases the lock and aborts the renewal task",
+      "AckSender is used for the ack, mapping the source's `if (typeof ack !== 'function') return;` onto socketioxide's no-op send"
+    ],
+    "implementerSelfFoundDefects": [
+      "#[derive(Debug)] on SpeechCancellation and PreviewSynthesisJob cannot compile because tokio 1.54's watch::Sender and watch::Receiver have no Debug impl; the derives were removed",
+      "Option::filter hands the predicate a &&T, so valid_ticket_format(value) and truthy(message) were wrong at the type level and now use *value and *message"
+    ],
+    "documentedSourceDifferences": [
+      "the source's io.of(/^\\/speech-preview\\/\\d+$/) makes a non-numeric namespace nonexistent, whereas the dyn_ns route matches any segment and authorize_preview rejects a non-numeric channel with \"Unauthorized preview\"",
+      "socket.connected() is checked at the start of the preview handler whereas the source checks it after the credit gate, which only skips work for an already-closed socket",
+      "the renewal cadence is lock-relative rather than connection-relative: the source's setInterval ticks every 30 s from connection time while PreviewSession::renewal_due arms 30 s from the lock acquisition; same TTL effect, one fewer edge case"
+    ],
+    "queuedCleanup": "voice_preview.rs is 2780 lines. The implementer offered to split the socket wiring into a sixth file under speech/; team4 queued that mechanical, behaviour-preserving split for the next free worker slot."
+  },
+  "laneC_round5": {
+    "status": "COMPLETED \u2014 round 6 now in flight (child thread run ordinal 6)",
+    "verdict": "Clamping restored with unit and loopback assertions; the oracle now drives the actual private-library schema and the Express handlers on shared inputs. Two items remained, one of them a real correctness defect the oracle itself surfaced.",
+    "verifiedGood": [
+      "clamping restored: an explicit end beyond the asset length now clamps instead of returning 416, with unit and loopback assertions distinguishing a clamped end from an invalid start",
+      "the oracle drives the actual private-library schema and the Express route handlers on shared inputs, with the cases file grown from 11 to 43 lines and the reference script from 41 to 136 lines",
+      "the guarded Rust tests grew: media_asset_library.rs 124 -> 139 lines, media_asset_routes.rs 129 -> 183 lines",
+      "the shared house helper tests/support/api_admin.rs is reused for the case lookup, the loopback server, the fixture identity middleware, the guarded database and the cleanup"
+    ],
+    "remainingAtRound5": [
+      "REAL DEFECT: Mongoose accepts a partial embedded asset while the Rust Asset decoder rejects it \u2014 the Rust decoder must accept exactly what the source's inline Mongoose schema accepts, including casting defaults, and must not reject earlier than the source's validation layer",
+      "the oracle's HTTP handlers used an explicitly labeled in-memory repository double, so live TypeScript GridFS upload, list, delete and streaming were not compared; the live task-owned Mongo is available in the same fixtures phase and the repo has the precedent in tests/fixtures/ai_usage_ledger_persistence_reference.cjs",
+      "compilation and execution still needed for multipart cancellation and error mapping, the BSON/UTF-8 upload-name boundary, and the source comparisons"
+    ],
+    "provenanceVerified": "The team lead confirmed there is NO archive copy of any of the five media sources \u2014 archives/dimabot-typescript/2026-10-28/ contains none of src/assets/library.ts, src/assets/http.ts, src/server/services/media_library.service.ts, src/server/routes/asset-library.route.ts, src/server/routes/media.route.ts. The implementer's live-source path plus pinned hash is therefore the correct provenance record and is accepted as-is."
+  },
+  "laneC_round6": {
+    "status": "IN FLIGHT \u2014 child thread run ordinal 6. Final round for the media lane.",
+    "P0_partial_asset_decoder": "Mirror the source's inline Mongoose asset schema in dimabot/src/assets/library.ts field for field \u2014 required flags, defaults, enums, min/max/match \u2014 so the Rust decoder accepts exactly what Mongoose accepts and rejects exactly what it rejects. Reproduce the casting-versus-validation split: Mongoose casting applies defaults and rarely throws, while validation enforces required/enum and is what save() runs. Follow the house pattern in dimabot/src/schemas/schema.rs and dimabot/src/schemas/channel_fish_voice_favorites.schema.rs. Add oracle parity cases for a partial asset and a fully-populated one plus a Rust unit test per case.",
+    "P1_live_gridfs_oracle": "Drive the source's GridFS operations against the LIVE task-owned Mongo in the fixtures phase, following the shape of tests/fixtures/ai_usage_ledger_persistence_reference.cjs, so the comparison covers the upload chunking and files document shape, the asset_libraries listing with usedBytes and embedded assets, the delete of BOTH private_assets.chunks documents and the private_assets.files document plus the $pull and $inc, and the range read over the covering chunks. Use the same guarded alias and namespace as the Rust tests but a distinct database name so the two sides cannot collide. Record anything that genuinely cannot be compared rather than skipping it silently.",
+    "P2_provenance": "Keep the live-source path plus pinned hash for every driven source \u2014 there is no archive copy.",
+    "constraints": "Authoring only. No cargo, cargo fetch, rustfmt, node, docker, network or git operations. The guarded Rust tests stay #[ignore]-attributed and unrun; the Node oracle is executed by the coordinator's node-fixtures phase."
+  },
+  "laneE": {
+    "id": "lane-e-dimafx-delivery",
+    "status": "Round 2 interrupted; preserve partial edits; continuation required",
+    "brief": "claims/team4-lane-e-dimafx-brief.md",
+    "ownedFiles": [
+      "dimabot/src/dimafx/mod.rs",
+      "dimabot/src/dimafx/service.rs",
+      "dimabot/src/dimafx/overlay_service.rs",
+      "dimabot/src/dimafx/fulfillment.rs",
+      "dimabot/src/dimafx/queue_handler.rs",
+      "dimabot/src/dimafx/thumbnail.rs"
+    ],
+    "sources": [
+      "dimabot/src/server/services/dimafx.service.ts",
+      "dimabot/src/server/services/dimafx-overlay.service.ts",
+      "dimabot/src/server/services/dimafx-fulfillment.service.ts",
+      "dimabot/src/handlers/dimafx_queue.handler.ts",
+      "dimabot/src/utils/thumbnail_generator.ts"
+    ],
+    "excluded": [
+      "dimabot/src/server/routes/dimafx.route.ts (1327 lines, wave 3)",
+      "dimabot/src/utils/media_cleanup.ts (needs team3 trigger.schema.ts)",
+      "dimabot/src/pets/** (blocked on team2)"
+    ],
+    "candidateFeatureLine": "dimafx-delivery = [\"http\", \"http-client\", \"mongo\", \"redis\", \"socketio\", \"logger\", \"application-schemas\", \"media-extension-schemas\", \"channel-tts-settings\", \"tts-utilities\", \"tts-services\", \"dep:uuid\", \"dep:base64\", \"dep:sha2\", \"tokio/fs\", \"tokio/io-util\", \"tokio/process\"]"
+  },
+  "laneD": {
+    "id": "lane-d-overlays-runtime",
+    "implementer": "GPT-6.1 Terra (codex/gpt-6.1-terra, reasoningEffort=high, runtimeMode=inherit)",
+    "scope": "Overlay live runtime and studio bridge: overlay scene model and queue controls, the studio socket bridge, delivery store with leases and retention, overlay persistence store, layout AST rendering, alert events, keyframes, widget contract and widget state providers, interaction resync, and the live composition root.",
+    "ownsNewRustFiles": [
+      "dimabot/src/overlays/mod.rs",
+      "dimabot/src/overlays/model.rs",
+      "dimabot/src/overlays/controls.rs",
+      "dimabot/src/overlays/bridge.rs",
+      "dimabot/src/overlays/delivery_store.rs",
+      "dimabot/src/overlays/store.rs",
+      "dimabot/src/overlays/ast.rs",
+      "dimabot/src/overlays/alert_events.rs",
+      "dimabot/src/overlays/keyframes.rs",
+      "dimabot/src/overlays/live.rs",
+      "dimabot/src/overlays/widget_contract.rs",
+      "dimabot/src/overlays/widget_state.rs",
+      "dimabot/src/overlays/widget_state_providers.rs",
+      "dimabot/src/overlays/interactions.rs",
+      "dimabot/src/overlays/interaction_subscriptions.rs",
+      "dimabot/src/overlays/recover.rs"
+    ],
+    "ownsSourceFiles": [
+      "dimabot/src/overlays/model.ts",
+      "dimabot/src/overlays/controls.ts",
+      "dimabot/src/overlays/bridge.ts",
+      "dimabot/src/overlays/delivery-store.ts",
+      "dimabot/src/overlays/store.ts",
+      "dimabot/src/overlays/ast.ts",
+      "dimabot/src/overlays/alert-events.ts",
+      "dimabot/src/overlays/keyframes.ts",
+      "dimabot/src/overlays/live.ts",
+      "dimabot/src/overlays/widget-contract.ts",
+      "dimabot/src/overlays/widget-state.ts",
+      "dimabot/src/overlays/widget-state-providers.ts",
+      "dimabot/src/overlays/interactions.ts",
+      "dimabot/src/overlays/interaction-subscriptions.ts",
+      "dimabot/src/overlays/recover.ts"
+    ],
+    "mustNotDeclare": "src/overlays/interaction-model.rs is ALREADY compiled as crate::domain_event_contracts::interaction via src/domain_events/mod.rs. Do NOT declare it again in src/overlays/mod.rs and do NOT modify it.",
+    "reviewRound3": {
+      "verdict": "16 of 16 files exist but the lane is still incomplete; sent back for a final fourth round (child thread run ordinal 4)",
+      "reviewer": "team4 explorer/team lead (MiniMax M3.1 Flash via MiniMax Code)",
+      "verifiedGood": [
+        "live.rs exposes Handshake, Peer, PendingDelivery, LiveCore, valid_client_id, reconnecting, connect, replay_ids, acknowledge_command, queue_control and register_socket_namespace(io, core, extract: HandshakeExtractor) \u2014 a real transport seam with an injected extractor",
+        "delivery_store.rs constants match the source exactly (DELIVERY_TTL_MS 30min, LEASE_MS 120000, MAX_PENDING 200, MAX_MEDIA_BYTES 100MB, MAX_CHANNEL_BYTES 512MB, overlay_deliveries, overlay_source_leases, overlay_media) and it has a DeliveryRepository trait, MongoDeliveryStore, and a pure assemble_window over synthetic chunks",
+        "store.rs has STUDIO_COLLECTION, schema(), install_indexes, load and public_state",
+        "widget_state.rs has WidgetStateReadScope, WidgetStateRegistry with coalescing, project_states, denied_states and select_widgets"
+      ],
+      "remainingLaneOwnedWork": [
+        "live.rs: durable delivery ordering, TTS epoch ownership/cancellation, polling drain, event handling, disconnect processing, and a registered live bridge",
+        "store.rs: Studio validation, optimistic mutation with revision-based stale rejection, unique index on the public id",
+        "recover.rs: asset validation and actual persistence of the recovered copies",
+        "widget_state.rs / widget_state_providers.rs: the full generic authorization/projection contract, not only the built-in interaction provider",
+        "delivery_store.rs: widen DeliveryRepository beyond range reads to the full operation set",
+        "port the source suites dima032_delivery.test.ts and widget-state.test.ts",
+        "the alert renderer rejects unpaired UTF-16 at its parser boundary; the repo's own js_string/js_unicode primitives should be used to match the source"
+      ],
+      "explicitlyHandedToIntegration": [
+        "the socketioxide binding of handshake-auth extraction, socket identity, event listeners, disconnect handlers and broadcast \u2014 UNVERIFIED availability in socketioxide 0.18.7, not disproven, because the crate is not vendored on this machine",
+        "Redis presence for the live runtime",
+        "the EventSub activation/unsubscription remote adapters, owned by team2-api-data"
+      ],
+      "slotAccounting": "Lanes A, B and C were running concurrently when Lane D round 3 returned, so Lane D round 4 was resumed in the single free slot and Lane E stays queued. The three-worker authorization is not exceeded."
+    },
+    "centralPatch": {
+      "Cargo.toml": "overlays-runtime = [\"http\", \"http-client\", \"mongo\", \"redis\", \"socketio\", \"logger\", \"application-schemas\", \"domain-events\", \"tts-utilities\", \"channel-tts-settings\", \"bits-rules\", \"twitch-streamers\", \"eventsub\", \"ast-evaluator\", \"js-unicode17\", \"media-extension-schemas\", \"dep:uuid\", \"dep:sha2\", \"tokio/fs\", \"tokio/io-util\", \"tokio/process\", \"futures-util/io\"]",
+      "src/lib.rs": "#[cfg(feature = \"overlays-runtime\")]\n#[path = \"overlays/mod.rs\"]\npub mod overlays_runtime;"
+    },
+    "reviewRound5": {
+      "verdict": "NOT ACCEPTED \u2014 all sixteen files exist (mod 33, model 157, controls 143, bridge 138, delivery_store 287, store 143, ast 133, alert_events 92, keyframes 106, live 373, widget_contract 147, widget_state 215, widget_state_providers 28, interactions 171, interaction_subscriptions 87, recover 104) but the lane is still incomplete; sent back for a final sixth round (child thread run ordinal 6).",
+      "reviewer": "team4 explorer/team lead (MiniMax M3.1 Flash via MiniMax Code)",
+      "verifiedGood": [
+        "mod.rs declares the sixteen lane modules and correctly does NOT declare interaction-model.rs, which is already compiled as crate::domain_event_contracts::interaction",
+        "delivery_store.rs has the DeliveryRepository TRAIT plus the concrete MongoDeliveryStore impl, and the source constants match exactly (DELIVERY_TTL_MS 30min, LEASE_MS 120000, MAX_PENDING 200, MAX_MEDIA_BYTES 100MB, MAX_CHANNEL_BYTES 512MB, overlay_deliveries, overlay_source_leases, overlay_media)",
+        "widget_state.rs has the WidgetStateSource TRAIT plus the concrete InteractionStateSource impl",
+        "live.rs really uses socketioxide: SocketIo::dyn_ns at :312, ConnectHandler::with at :312, socket.on_disconnect at :279, TryData auth extraction at :297",
+        "51 inline #[test] functions exist across the lane"
+      ],
+      "blockingGaps": [
+        "B1: the Bridge TRAIT has no concrete production adapter. bridge.rs:54 declares the trait and the ONLY impl is NoBridge at :76, which is the degraded default, not the production adapter. The source registers a real bridge via registerStudioBridge(value: Bridge) and every publishStudio*/studioHas*/controlStudioTts/studioTtsStatus call dispatches to it.",
+        "B2: the PeerTransport TRAIT has no concrete socket-backed adapter. live.rs:191 declares it and the only impl is CallbackTransport at :215, a closure double. register_socket_namespace at :221 uses socketioxide concretely but BYPASSES the trait, so the transport-agnostic core is never driven through the seam by the production path.",
+        "B3: durable delivery restoration, the polling drain and durable acknowledgements are not wired. LiveCore::acknowledge_command at :167 mutates in-memory state only; the source persists acknowledgements into overlay_deliveries.",
+        "B4: TTS epoch ownership and cancellation are not wired to a real speaker. replace_tts_epoch at :89, owns_tts_epoch at :97 and disconnect at :121 implement the epoch semantics, but nothing cancels a real speech operation.",
+        "B5: Studio input validation and asset-validated recovery persistence are missing (store.rs and recover.rs).",
+        "B6: the source test suites dimabot/src/overlays/dima032_delivery.test.ts (111 lines) and dimabot/src/overlays/widget-state.test.ts (67 lines) are NOT ported.",
+        "B7: widget_contract.rs covers only the currently registered module validation, not the source's full getWidgetDefinition/validWidgetModuleConfig contract.",
+        "B8: mixed unpaired-UTF-16 templates were handed to team3-bot-ast as a contract, but the lane's own js_string/js_unicode primitives already exist in the repo, so it is an in-lane gap."
+      ],
+      "reviewerOwnCorrection": "The round-3 review instruction that delivery-store.ts is Redis-backed was wrong: the source uses MongoDB collections overlay_deliveries and overlay_source_leases plus the GridFS bucket overlay_media. MongoDeliveryStore is the correct concrete adapter and was confirmed as such in round 5."
+    },
+    "round6": {
+      "status": "IN FLIGHT \u2014 child thread run ordinal 6, dispatched 2026-10-31 with the full B1-B8 acceptance criteria and the socketioxide registry path.",
+      "acceptanceCriteria": [
+        "every declared trait has a CONCRETE production adapter in the same file",
+        "Bridge, PeerTransport, DeliveryRepository and WidgetStateSource are all driven by the real production path",
+        "durable delivery restore + polling drain + durable acks are wired",
+        "TTS epoch ownership/cancellation reaches the already-ported TTS seam (crate::server::services::tts::runtime TtsRuntime::synthesize, TtsSynthesisRequest/TtsSynthesisResult in tts_provider, whose signal field is the typed cancellation channel)",
+        "Studio validation and recovery persistence are real",
+        "both source test suites are ported",
+        "mod.rs still does not declare interaction-model.rs",
+        "the final report gives the FINAL feature line for a complete lane"
+      ]
+    },
+    "status": "Round 8 completed but incomplete; source parity and lifecycle work remains",
+    "sourceActivationOwnedFiles": [
+      "dimabot/src/overlays/source_activation.rs",
+      "dimabot/tests/overlay_source_activation.rs"
+    ]
+  },
+  "constraints": {
+    "wave": "authoring-only",
+    "cargo": false,
+    "rustfmt": false,
+    "node": false,
+    "tests": false,
+    "docker": false,
+    "networkProviderCalls": false,
+    "installs": false,
+    "commits": false,
+    "push": false,
+    "productionMutation": false,
+    "cacheMutation": false,
+    "newCargoDependencies": false,
+    "newNpmDependencies": false
+  },
+  "lastUpdated": "2026-10-31T02:52:00Z (team4 lead)",
+  "leadDeliverables": {
+    "centralPatch": "ready/team4-speech-media.central.patch \u2014 consolidated integration patch: SECTION 1 holds the READY-AUTHORING lanes A (speech-core) and C (media-assets) with the Cargo.toml [features] lines, the two [[test]] entries and the src/lib.rs module declarations; SECTION 2 lists the not-yet-applicable candidate lines for lanes D, B and E.",
+    "laneEBrief": "claims/team4-lane-e-dimafx-brief.md \u2014 a complete, ready-to-dispatch brief for the DimaFX delivery core lane, with the exact file list, the authoring-only constraints, the house seam pattern, per-file behaviour notes read from the five TypeScript sources, the test targets and the required final-report sections.",
+    "laneEBehaviourNotesCaptured": [
+      "dimafx.service.ts: DEFAULT_SKU_MAP, DIMAFX_SKU_MAP parsing with four distinct fallback branches, hasDimafxPermission (self, global owner, admin permissions $in), selectRedeemCandidate ordering, DIMAFX_TTS_FIXED_TEXT_MAX 500, DIMAFX_TTS_VIEWER_TEXT_MAX 280, PIPER_VOICE_PATTERN",
+      "dimafx-fulfillment.service.ts: refundDimafxOnce and saveDimafxPurchaseOnce are one-shot by receipt through dimafxReceipts $ne / $addToSet, one document update each",
+      "dimafx-overlay.service.ts: HMAC-SHA256 over `dimafx-overlay:{channelID}` keyed with SECRET_KEY, hex output, constant-time compare, channelID from socket.nsp.name.split('/')[3], 2000 ms poll, dimafx-ready / dimafx-ended events, persistSession stub has no socketioxide equivalent because socketioxide has no connection-state recovery",
+      "dimafx_queue.handler.ts: LEASE_MS 15000, MAX_QUEUE_ITEMS 25, TTS_SYNTHESIS_TIMEOUT_MS 45000, MIN/MAX_PLAYBACK_WAIT_MS 2000/120000, DEFAULT_MEDIA/IMAGE/TTS_WAIT_MS 30000/5000/15000, PLAYBACK_GRACE_MS 750, queued/playing/completed/refunding/refunded states with leaseOwner and leaseUntil",
+      "thumbnail_generator.ts: THUMB_WIDTH 480, THUMB_JPEG_QUALITY 5, MAX_INPUT_FETCH_BYTES 200MB, execFile timeout 30000 / maxBuffer 8MB, p-limit(2), thumbnailStatus pending/ready/skipped with thumbnailAttempts"
+    ]
+  },
+  "rootThreadCoordination": {
+    "rootThreadId": "9cc467f1-f5c3-45a8-989a-e8e02361df4b",
+    "observedRootRuns": [
+      49,
+      50,
+      51
+    ],
+    "noVerificationLease": "The coordinator has NOT granted team4 a verification lease. Root states that the new team handoffs 'remain queued as authored, not yet verified' and that a single isolated validation queue (Sol FS job) owns execution. Team4 therefore continues to author only.",
+    "rootCommitActivityObserved": "File routes committed as 46d90b8c and the documentation commit as 722e84ff; the migration ledger records 74 locally complete mappings and 24 partial. No push, no deployment, 18 production containers unchanged.",
+    "nodePinNote": "Team1 raised a host-wide blocker: the *_reference.cjs fixtures pin Node v24.22.1 / V8 13.6.233.17-node.58 / typescript 5.9.3, while the host node is v26.8.2. Root replied that the pinned Node 24 runtime is already available in the isolated oracle container, so the host version does not block validation. team4's media oracle uses the same convention.",
+    "eventsSentToRoot": [
+      "lane C READY (round 3, earlier)",
+      "lane A READY-AUTHORING (earlier)",
+      "lane C media-assets feature-line correction (earlier)",
+      "lane C READY (round 6 final) \u2014 root run ordinal 54",
+      "lane D INCOMPLETE status with named gaps and contracts \u2014 steered into root run ordinal 54"
+    ],
+    "eventsStillOwed": [
+      "lane B handoff and event",
+      "lane D round 7 handoff and READY event if it closes",
+      "lane E handoff and event"
+    ]
+  },
+  "leadVerificationAudit": {
+    "tooling": "claims/audit-tools/{path_audit.py,trait_audit.py,README.md}",
+    "method": "Static, read-only Python audits: crate:: path resolution through lib.rs #[path] aliases, pub mod children and glob re-exports; public-trait-without-concrete-adapter detection that strips the #[cfg(test)] module first.",
+    "results": {
+      "laneA-speech": "0 unresolved paths; all 10 public traits have a concrete adapter",
+      "laneC-media": "0 unresolved paths; the lane declares no public traits",
+      "laneD-overlays": "0 unresolved paths; after round 6 all 4 public traits have a concrete adapter",
+      "laneB-roulette-widgets": "the lane's own crate-root aliases (crate::widgets_runtime::*, crate::roulette_runtime::*) resolve only once the central patch adds the lib.rs module declarations; crate::domain_event_contracts::DomainEventEnvelope is valid through the glob re-export at src/domain_events/mod.rs"
+    },
+    "caveat": "Heuristic, not a compiler."
+  },
+  "contractsFile": "contracts/team4-speech-media-contracts.json \u2014 nine named contracts, each with exactly one owner.",
+  "coordinationHandover": {
+    "date": "2026-10-31",
+    "lead": "codex/gpt-6.1-terra",
+    "inventory": "C and D completed; E round 2 interrupted, files retained; B completed partial; no active child in one-time inventory",
+    "authoringOnly": true
+  },
+  "providerQuotaSteering": {
+    "date": "2026-10-31",
+    "source": "user report, not live catalog proof or model quality evidence",
+    "grok": "32% weekly quota reported; preserve existing assignment, avoid new assignments by default",
+    "preferred": "DeepSeek V4.1 Flash or Codex Terra by task fit; Sol integration only; MiniMax disabled",
+    "integration": "Polar usage modes/grants/shared factory accepted as 6ff0c67c; documentation reconciliation pending; authoring only, root controls execution leases"
+  },
+  "clipQueueLane": {
+    "sources": [
+      "dimabot/src/handlers/clip_queue.handler.ts"
+    ],
+    "ownedFiles": [
+      "dimabot/src/handlers/clip_queue.handler.rs",
+      "dimabot/tests/clip_queue_parity.rs",
+      "dimabot/tests/fixtures/clip_queue_cases.json"
+    ],
+    "status": "authoring; no execution lease"
+  },
+  "dimafxRecoveryLane": {
+    "source": "dimabot/src/server/routes/dimafx.route.ts:435-595",
+    "ownedFiles": [
+      "dimabot/src/dimafx/purchase_recovery.rs",
+      "dimabot/tests/dimafx_purchase_recovery.rs"
+    ],
+    "status": "authoring only; route remains excluded outside recovery functions"
+  }
+}

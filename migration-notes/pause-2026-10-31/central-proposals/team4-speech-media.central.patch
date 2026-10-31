@@ -1,0 +1,150 @@
+TEAM4 — team4-speech-media — CONSOLIDATED CENTRAL PATCH
+================================================================================
+Owner of this file: team4 lead (MiniMax M3.1 Flash via MiniMax Code)
+State: AUTHORING ONLY. Nothing in team4 has been compiled, executed or tested.
+       The integration team applies this patch; team4 must not edit the
+       central files it touches.
+
+Repository: /root/saas-rust   Crate root: /root/saas-rust/dimabot   Branch: master
+
+HOW TO READ THIS FILE
+  SECTION 1 — READY-AUTHORING lanes. These hunks are complete as written and
+               can be applied once integration compiles them.
+  SECTION 2 — NOT YET APPLICABLE. Candidate lines from lanes that are still
+               authoring. Do NOT apply these yet; each is superseded by the
+               lane's own final report.
+
+================================================================================
+SECTION 1 — READY-AUTHORING (apply after reviewing the lane handoff)
+================================================================================
+
+--- a/dimabot/Cargo.toml
++++ b/dimabot/Cargo.toml
+@@ -8,6 +8,8 @@
+ path = "src/lib.rs"
+
+ [features]
++speech-core = ["http-client", "tts-services", "tts-utilities", "channel-tts-settings", "redis", "mongo", "logger", "tokio/fs", "twitch-emotes", "ai-credit-reader", "tts-usage-tracking", "socketio", "dep:uuid", "dep:getrandom", "dep:base64"]
++media-assets = ["http", "http-client", "http-multipart", "jwt", "mongo", "redis", "s3", "logger", "application-schemas", "media-extension-schemas", "api-admin", "js-unicode17", "lossless-json", "futures-util/io", "dep:uuid", "tokio/fs", "tokio/io-util", "tokio/process"]
+ api-file-routes = ["api-admin", "dep:futures-util", "tokio/fs", "tokio/io-util"]
+ polar-batch-usage = ["polar-cache-usage", "polar-client"]
+ tts-usage-tracking = ["polar-batch-usage", "dep:libc"]
+@@ -209,6 +211,14 @@
+ [[test]]
+ name = "js_date"
+ required-features = ["js-date"]
++
++[[test]]
++name = "media_asset_library"
++required-features = ["media-assets"]
++
++[[test]]
++name = "media_asset_routes"
++required-features = ["media-assets"]
++
+ [[bin]]
+ name = "dashboard_activity"
+ path = "src/workers/dashboard_activity.worker.rs"
+--- a/dimabot/src/lib.rs
++++ b/dimabot/src/lib.rs
+@@ -tail,3 +tail,13 @@
+ #[cfg(feature = "api-file-routes")]
+ #[path = "server/routes/file.route.rs"]
+ pub mod file_route;
++
++// team4-speech-media: lane A — speech/TTS core.
++#[cfg(feature = "speech-core")]
++#[path = "speech/mod.rs"]
++pub mod speech_core;
++
++// team4-speech-media: lane C — media/asset library.
++#[cfg(feature = "media-assets")]
++#[path = "media/mod.rs"]
++pub mod media_assets;
+
+LANE A — speech-core — handoff: ready/team4-speech-media-lane-a-speech-core.json
+  Files: dimabot/src/speech/{mod,tts_client,default_queue,voice_preview,session_reset}.rs
+  4937 lines, 61 inline tests. Ported from src/functions/chats/speech.chat.ts,
+  src/utils/tts/queue_default_tts.util.ts, src/server/services/tts/voice_preview.service.ts
+  and src/utils/speech.ts.
+
+  SIDE EFFECT THE INTEGRATION TEAM MUST HANDLE: the feature line pulls
+  tts-usage-tracking -> polar-batch-usage -> polar-cache-usage -> posthog-tracking,
+  so posthog is in the feature graph. dragonfly.database.rs:104-110 then calls
+  install_default_tls_provider(). The api, bot and cron binaries should call
+  utils::install_default_tls_provider() at startup, as the repo already documents.
+
+LANE C — media-assets — handoff: ready/team4-speech-media-lane-c-media-assets.json
+  Files: dimabot/src/media/{mod,library,http,library_service,asset_library_route,media_route}.rs
+  Tests: dimabot/tests/media_asset_library.rs, dimabot/tests/media_asset_routes.rs
+  Fixtures: dimabot/tests/fixtures/media_asset_library_cases.json
+            dimabot/tests/fixtures/media_asset_library_reference.cjs
+
+================================================================================
+SECTION 2 — NOT YET APPLICABLE (lanes still authoring; do not apply)
+================================================================================
+
+LANE D — overlays-runtime — ROUND 6 IN FLIGHT, line not final.
+  Candidate from round 6 (PROVISIONAL — round 7 in flight, the graph may still change):
+  overlays-runtime = ["application-schemas", "domain-events", "tts-services", "ast-pure-functions", "socketio", "twitch-headers", "http-client", "credit-policy", "dep:getrandom", "dep:sha2", "dep:uuid", "tokio/fs", "tokio/io-util", "futures-util/io"]
+  #[cfg(feature = "overlays-runtime")]
+  #[path = "overlays/mod.rs"]
+  pub mod overlays_runtime;
+  Note: dimabot/src/overlays/interaction-model.rs is ALREADY compiled as
+  crate::domain_event_contracts::interaction via src/domain_events/mod.rs.
+  Do NOT declare it again in src/overlays/mod.rs and do NOT modify it.
+
+LANE B — widgets-runtime + roulette_runtime — ROUND 1 IN FLIGHT, line not final.
+  Candidate from the lane scope:
+  widgets-runtime = ["http", "http-client", "mongo", "redis", "application-schemas", "domain-events", "logger", "tts-utilities", "dep:uuid", "dep:sha2"]
+  #[cfg(feature = "widgets-runtime")]
+  #[path = "widgets/mod.rs"]
+  pub mod widgets_runtime;
+  #[cfg(feature = "widgets-runtime")]
+  #[path = "roulette/mod.rs"]
+  pub mod roulette_runtime;
+
+LANE E — dimafx-delivery — QUEUED, not started.
+  Candidate from the lane scope:
+  dimafx-delivery = ["http", "http-client", "mongo", "redis", "socketio", "logger", "application-schemas", "media-extension-schemas", "channel-tts-settings", "tts-utilities", "tts-services", "dep:uuid", "dep:base64", "tokio/fs", "tokio/io-util", "tokio/process"]
+  #[cfg(feature = "dimafx-delivery")]
+  #[path = "dimafx/mod.rs"]
+  pub mod dimafx_delivery;
+
+================================================================================
+CROSS-TEAM CONTRACTS RAISED BY TEAM4 (each names exactly one owner)
+================================================================================
+  team2-api-data  — dimabot/src/utils/overlay-token.ts -> Rust (overlayTokenHash,
+                    storedOverlayToken, manageOverlayToken, readOverlayToken).
+                    Blocks widgets, roulette, duel and pets.
+  team2-api-data  — dimabot/src/schemas/pet_runtime.schema.ts + pet_settings.schema.ts
+                    + src/server/services/pet_settings.service.ts
+                    + src/utils/domain_event_wakeups.ts -> Rust. Blocks the pets
+                    runtime lane entirely.
+  team2-api-data  — dimabot/src/classes/pubsub_manager.class.ts -> Rust
+                    (pubSubManager.publish). Blocks the clearSpeechFiles publish step.
+  team2-api-data  — EventSub activation/unsubscription remote adapters used by the
+                    overlay live runtime.
+  team1-billing-ai — a credit balance/availability read for voice preview.
+                    dimabot/src/utils/tts_usage.rs exists (usage + pricing) but no
+                    balance read is exposed to team4.
+  team3-bot-ast  — a lossless UTF-16 parser/evaluator boundary for arbitrary alert
+                    templates. The current AST syntax parser accepts &str and
+                    AstNode::Literal stores String. (Lane D is attempting this
+                    in-lane with js_string/js_unicode before escalating it.)
+  integration     — Redis presence for the overlay live runtime; the overlay and
+                    pet write paths must share one AssetLibrary instance and one
+                    owner-lock registry with uploads/deletes, because the source's
+                    in-process Map cannot coordinate separate processes.
+  integration     — lease the isolated fixtures phase before running the guarded
+                    media tests and the Node oracle.
+
+================================================================================
+ENVIRONMENT NOTE THAT AFFECTS THE TEAM4 ORACLE
+================================================================================
+  The *_reference.cjs oracle pattern pins the Node runtime to v24.22.1 / V8
+  13.6.233.17-node.58 / typescript 5.9.3. The host node is v26.8.2, so the pin
+  fails on the host; the pinned runtime exists in the isolated oracle container.
+  team4's media oracle (tests/fixtures/media_asset_library_reference.cjs) uses
+  the same convention. The Rust consumers read the golden JSON from an
+  env-var directory and skip cleanly when the golden file is absent.

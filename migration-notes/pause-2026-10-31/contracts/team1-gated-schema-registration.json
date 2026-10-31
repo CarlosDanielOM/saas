@@ -1,0 +1,23 @@
+{
+  "contractId": "tl1-c3",
+  "version": 1,
+  "raisedBy": "team1-billing-ai",
+  "raisedAt": "2026-10-31T02:14:00Z",
+  "status": "resolved",
+  "scope": "How a feature-gated application schema is registered in the native schema registry.",
+  "question": "Lane C needs to add dimabot/src/schemas/channel_ai_personality.schema.rs (feature channel-ai-personality). Does it belong in src/schemas/mod.rs::definitions(), which currently returns an unconditional [&'static SchemaDefinition; 42]?",
+  "resolution": "No. definitions() stays at 42 entries and is NOT modified by this team.",
+  "rationale": "The repo precedent is that feature-gated schema modules are declared with #[cfg(feature = ...)] and are deliberately absent from definitions(). Verified in the accepted base: channel_fish_voice_favorites (channel-fish-voice-favorites), channel_moderation_settings (channel-moderation-settings), channel_tts_settings (channel-tts-settings), follow_defense_* (follow-defense-schemas), moderation_action_log (moderation-action-log-schema), moderation_decision (moderation-decision-schema), moderation_variation (moderation-variation-storage), and the media_extension_schemas group are all declared behind a feature gate and appear nowhere in the 42-entry array. There is no separate registration function for gated schemas; they are reachable only through their module path.",
+  "centralPatch": {
+    "file": "dimabot/src/schemas/mod.rs",
+    "change": "Add the gated declaration only. Do NOT change the definitions() array length or append an entry.",
+    "snippet": "#[cfg(feature = \"channel-ai-personality\")]\n#[path = \"channel_ai_personality.schema.rs\"]\npub mod channel_ai_personality;"
+  },
+  "note": "The #[path] attribute is required because the file carries the .schema.rs suffix, exactly like the existing channel_tts_settings and channel_moderation_settings declarations.",
+  "resolvedBy": "team1-billing-ai (team lead)",
+  "affects": ["lane-c-personality-threading"],
+  "verification": {
+    "status": "unverified",
+    "note": "Authoring wave only. No Cargo, rustfmt, Node, Docker or network command has been run."
+  }
+}

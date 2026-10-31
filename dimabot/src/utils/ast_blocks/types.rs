@@ -1,8 +1,14 @@
+use crate::utils::ast_syntax::PersistedJsString;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fmt, sync::Arc};
 
+/// Version-1 storage is the original UTF-8 editor document and stays unchanged.
 pub const BLOCKS_VERSION: u8 = 1;
+/// Version-2 storage adds the `literalUtf16` block without changing version 1.
+/// Readers accept roots written by either version and keep UTF-8 documents
+/// readable.
+pub const BLOCKS_LOSSLESS_VERSION: u8 = 2;
 pub const MAX_BLOCK_NODES: usize = 7_500;
 pub const MAX_BLOCK_DEPTH: usize = 48;
 pub const MAX_COMMAND_TEXT: usize = 10_000;
@@ -226,6 +232,11 @@ pub enum BlockKind {
     Literal {
         value: String,
     },
+    /// Additive version-2 literal for AST text that is not valid UTF-8.
+    /// Values are exact JavaScript UTF-16 code units, never replaced scalars.
+    LiteralUtf16 {
+        value: PersistedJsString,
+    },
     Raw {
         source: String,
     },
@@ -395,6 +406,10 @@ pub enum BlocksErrorCode {
     InvalidRaw,
     SyntaxLimit,
     InvalidNamespace,
+    /// Persisted `literalUtf16` data is not a valid code-unit array.
+    InvalidUtf16,
+    /// A UTF-8 entry point cannot represent the value's unpaired surrogates.
+    UnpairedSurrogate,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlocksError {

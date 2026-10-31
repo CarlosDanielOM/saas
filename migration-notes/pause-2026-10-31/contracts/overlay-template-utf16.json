@@ -1,0 +1,19 @@
+{
+  "contractId": "overlay-template-utf16",
+  "status": "OPEN-shared-owner-assigned-awaiting-parser-signature-and-implementation",
+  "owner": "team3-bot-ast",
+  "consumer": "team4-speech-media",
+  "boundary": "SyntaxEngine input and AstNode literal currentlyUTF8; reuse existing losslessVM values; shared extension, no overlay parserfork",
+  "sharedDecision": "contracts/team3-lossless-ast-shared-boundaries-v2.json",
+  "canonicalSharedString": "crate::utils::ast_syntax::JsString",
+  "consumerPlan": "retain UTF-8 APIs; copy JSON JsString UTF-16 units to shared AST JsString; parse and validate complete shared tree; evaluate; copy output units and slice to 8000",
+  "sourceProbe": "dimabot/tests/fixtures/overlay_utf16_reference.cjs (authored, unexecuted, needs isolated fixture review and Mongo persistence evidence)",
+  "noExecutionLease": true,
+  "proposedOnly": {
+    "parser": "SyntaxEngine::parse_utf16(&JsString) -> Result<CompiledProgramUtf16, Diagnostic>",
+    "template": "compile_template_utf16(&JsString) -> Result<CompiledTemplateUtf16, Diagnostic>",
+    "representation": "lossless literal/template text variants; traversal API remains under design",
+    "status": "not implemented or frozen; canonical extraction authored unverified",
+    "handoff": "migration-notes/ast-lossless-utf16-handoff.md"
+  }
+}

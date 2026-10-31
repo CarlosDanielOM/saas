@@ -127,6 +127,7 @@ pub(super) fn json_container_depth(root: &AstNode) -> usize {
                 AstNode::Custom { data, .. } => {
                     pending.push((Container::Value(data), depth));
                 }
+                AstNode::LiteralUtf16 { .. } => maximum = maximum.max(depth + 1),
                 AstNode::Literal { .. }
                 | AstNode::LoopVar { .. }
                 | AstNode::LoopAssign { value: None, .. } => {}
@@ -145,6 +146,7 @@ pub(super) fn json_container_depth(root: &AstNode) -> usize {
             },
             Container::Segment(segment) => match segment {
                 TemplateSegment::Expr { node } => pending.push((Container::Node(node), depth)),
+                TemplateSegment::TextUtf16 { .. } => maximum = maximum.max(depth + 1),
                 TemplateSegment::Text { .. } => {}
             },
             Container::Value(value) => match value {

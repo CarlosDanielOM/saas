@@ -27,25 +27,7 @@ pub use value::{
     resolve_array_index, to_number, to_number_safe,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EvalError {
-    pub name: String,
-    pub message: String,
-}
-impl EvalError {
-    pub fn new(message: impl Into<String>) -> Self {
-        Self {
-            name: "Error".into(),
-            message: message.into(),
-        }
-    }
-}
-impl std::fmt::Display for EvalError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.message)
-    }
-}
-impl std::error::Error for EvalError {}
+pub use crate::utils::ast_syntax::EvalError;
 #[derive(Clone, Copy, Debug, Default, serde::Serialize)]
 pub struct EvalStats {
     pub nodes: u64,

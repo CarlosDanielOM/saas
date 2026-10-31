@@ -1,0 +1,7 @@
+{
+  "contractId": "overlay-eventsub-remote",
+  "status": "OPEN",
+  "owner": "team3-bot-ast",
+  "consumer": "team4-speech-media",
+  "source": "overlays/interaction-subscriptions.ts imports utils/eventsub.ts and get_scopes.users.ts; Team2 ownership assumption corrected"
+}

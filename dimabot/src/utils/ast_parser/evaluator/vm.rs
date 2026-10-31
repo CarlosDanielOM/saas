@@ -371,6 +371,7 @@ impl<'e> Vm<'e> {
                     self.stats.nodes = self.stats.nodes.saturating_add(1);
                     match node {
                         AstNode::Literal { value } => last = (JsValue::string(value), ctx),
+                        AstNode::LiteralUtf16 { value } => last = (JsValue::String(value.0.clone()), ctx),
                         AstNode::Custom { custom_type, .. } => {
                             last = (
                                 JsValue::string(format!(
@@ -701,6 +702,10 @@ impl<'e> Vm<'e> {
                         match &segments[index] {
                             TemplateSegment::Text { value } => {
                                 output.push(&value.into());
+                                index += 1;
+                            }
+                            TemplateSegment::TextUtf16 { value } => {
+                                output.push(&value.0);
                                 index += 1;
                             }
                             TemplateSegment::Expr { node } => {

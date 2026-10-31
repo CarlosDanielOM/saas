@@ -1,0 +1,170 @@
+Team2-api-data — central integration patch v2 (slices 2a, 3, 4a, 6)
+
+Applies to /root/saas-rust (branch master). Apply from the repository root:
+
+    git apply --check team2-api-data-central-20261031.v2.patch
+    git apply       team2-api-data-central-20261031.v2.patch
+
+SUPERSEDES v1 (sha256 af218702329fc4c1d330317f6fe3be822403a6e732f7c857aa23a8bf9559f5ab),
+which covered slices 2a, 3 and 4a only. v1 is retained for history and still
+applies cleanly on its own; use v2 for the whole team.
+
+HARD PREREQUISITE — team1-billing-ai
+  The `paid-order-reward` feature below references `referral-service`, and the
+  slice-6 adapter imports `crate::utils::referral`, `crate::utils::referral_ledger`
+  and `crate::schemas::referral_code`. None of those are declared in the current
+  central files. team1 owns them; their wave-2C handoff
+  (migration-notes/team1-wave2-c-handoff.md, "Central snippets - not applied")
+  publishes them as position-agnostic snippets:
+      referral-service = ["application-schemas", "mongo", "billing-service", "js-date", "dep:sha2"]
+      utils/mod.rs   -> #[cfg(feature = "referral-service")] pub mod referral;
+                        #[cfg(feature = "referral-service")] pub mod referral_ledger;
+      schemas/mod.rs -> #[cfg(feature = "referral-service")]
+                        #[path = "referral_code.schema.rs"] pub mod referral_code;
+  Those snippets carry no line anchors, so they cannot conflict with the
+  line-anchored hunks in this patch. Apply them alongside it. Until they land,
+  the manifest references a feature that does not exist yet.
+
+WHY A MERGED PATCH EXISTS
+  The per-slice central patches in the individual handoff notes cannot be
+  applied mechanically as written:
+  1. Slices 2a and 4a insert their Cargo.toml feature at the SAME anchor (after
+     `api-validation-route`), so each hunk's context is broken by the other's
+     insertion and NEITHER ordering applies cleanly.
+  2. Slice 3's Cargo.toml and schemas/mod.rs hunk headers carried context counts
+     that did not match the lines in their hunks - arithmetically corrupt for
+     `git apply`.
+  3. Slice 2a's lib.rs hunk used a section heading instead of an explicit
+     context block and its line offsets were stale.
+  4. Slice 6's Cargo.toml feature also lands in the same manifest region.
+  This file is the merged, conflict-free, count-correct equivalent of all four.
+
+VERIFIED BEFORE PUBLISHING
+  - Every hunk header count matches the lines actually present in its hunk.
+  - Every insertion anchor was confirmed UNIQUE in its target file before the
+    edit was applied.
+  - `git apply --check` exits 0 against the current master tree for all four
+    files. This was a READ-ONLY validation: the patch was NOT applied and the
+    central files are unmodified in the working tree.
+  - Every referenced Cargo feature and optional dependency was confirmed to
+    exist in dimabot/Cargo.toml, except `referral-service`, which is team1's
+    and is called out above as a hard prerequisite.
+  - No new crate is added. No `[[test]]` entry is required for team2's suites:
+    they self-gate with `#![cfg(feature = "...")]`.
+
+FILES TOUCHED BY THIS PATCH
+  dimabot/Cargo.toml            4 new feature lines
+  dimabot/src/lib.rs            1 new module (site_route)
+  dimabot/src/schemas/mod.rs    3 new schema modules
+  dimabot/src/utils/mod.rs      6 new modules
+
+--- a/dimabot/Cargo.toml	2026-10-31 02:52:47.828768153 +0000
++++ b/dimabot/Cargo.toml	2026-10-31 02:52:47.863005949 +0000
+@@ -27,6 +27,8 @@
+ api-admin = ["api-auth"]
+ api-observability-route = ["http", "http-client", "dep:serde_json"]
+ api-validation-route = ["api-auth", "dep:serde_json"]
++site-analytics-api = ["api-admin", "mongo", "redis", "logger-redis", "ordinary-application-schemas", "domain-event-runtime", "twitch-client", "twitch-streamers", "eventsub", "bson-js-json", "dep:serde_json"]
++stream-timeline-data = ["mongo", "redis", "application-schemas", "ordinary-application-schemas", "dep:serde_json", "dep:sha2"]
+ # Native WebSockets use Axum's transport rather than a separate client crate.
+ http-form = ["http", "axum/form"]
+ http-multipart = ["http", "axum/multipart"]
+@@ -76,6 +78,7 @@
+ application-schemas = ["mongo", "js-date", "js-strings"]
+ ordinary-application-schemas = ["application-schemas"]
+ follow-defense-schemas = ["application-schemas"]
++follow-ledger-data = ["mongo", "redis", "twitch-streamers", "twitch-client", "twitch-headers", "cron-queue", "logger", "application-schemas", "dep:serde_json"]
+ media-extension-schemas = ["application-schemas"]
+ command-reward-schemas = ["application-schemas", "permissions", "ast-blocks", "keywords", "dep:uuid"]
+ # Opt-in channel TTS schema; does not alter deployed profiles.
+@@ -166,6 +169,9 @@
+ twitch-streamers-posthog = ["twitch-streamers", "posthog"]
+ # Standalone process supervision and telemetry; never widens worker profiles.
+ cron-supervisor = ["dep:redis", "dep:serde", "dep:serde_json", "dep:tokio", "dep:uuid", "dep:libc", "dep:dotenvy", "tokio/process", "tokio/fs", "tokio/io-util"]
++# Paid-order reward adapter for the Polar reward consumer; reuses the shared
++# referral policy and application schemas. Not in `default` or a worker profile.
++paid-order-reward = ["application-schemas", "referral-service"]
+ 
+ [[bin]]
+ name = "cron_index"
+--- a/dimabot/src/lib.rs	2026-10-31 02:52:47.832581746 +0000
++++ b/dimabot/src/lib.rs	2026-10-31 02:52:47.865005946 +0000
+@@ -109,6 +109,10 @@
+ #[path = "server/routes/validation.route.rs"]
+ pub mod validation_route;
+ 
++#[cfg(feature = "site-analytics-api")]
++#[path = "server/routes/site.route.rs"]
++pub mod site_route;
++
+ #[cfg(feature = "domain-event-runtime")]
+ #[path = "domain_events/runtime/mod.rs"]
+ pub mod domain_event_runtime;
+--- a/dimabot/src/schemas/mod.rs	2026-10-31 02:52:47.836194062 +0000
++++ b/dimabot/src/schemas/mod.rs	2026-10-31 02:52:47.869005938 +0000
+@@ -17,6 +17,9 @@
+ #[cfg(feature = "command-reward-schemas")]
+ #[path = "commands.schema.rs"]
+ pub mod commands;
++#[cfg(feature = "site-analytics-api")]
++#[path = "event.schema.rs"]
++pub mod event;
+ #[cfg(feature = "ordinary-application-schemas")]
+ #[path = "eventsub.schema.rs"]
+ pub mod eventsub;
+@@ -32,6 +35,9 @@
+ #[cfg(feature = "follow-defense-schemas")]
+ #[path = "follow_hate_raid_source.schema.rs"]
+ pub mod follow_hate_raid_source;
++#[cfg(feature = "follow-ledger-data")]
++#[path = "follow_relationship_ledger.schema.rs"]
++pub mod follow_relationship_ledger;
+ #[cfg(feature = "moderation-action-log-schema")]
+ #[path = "moderation_action_log.schema.rs"]
+ pub mod moderation_action_log;
+@@ -127,6 +133,9 @@
+ pub mod raid_session;
+ #[path = "raid_subscription_preference.schema.rs"]
+ pub mod raid_subscription_preference;
++#[cfg(feature = "stream-timeline-data")]
++#[path = "channel_stream_summary.schema.rs"]
++pub mod channel_stream_summary;
+ #[path = "stream_activity.schema.rs"]
+ pub mod stream_activity;
+ #[path = "stream_session.schema.rs"]
+--- a/dimabot/src/utils/mod.rs	2026-10-31 02:52:47.840159450 +0000
++++ b/dimabot/src/utils/mod.rs	2026-10-31 02:52:47.872005932 +0000
+@@ -222,6 +222,13 @@
+ pub mod redis_application_runtime;
+ #[cfg(feature = "tts-utilities")]
+ pub mod tts;
++#[cfg(feature = "site-analytics-api")]
++pub mod siteanalytics;
++#[cfg(feature = "site-analytics-api")]
++pub mod chat_event_catalog;
++
++#[cfg(feature = "stream-timeline-data")]
++pub mod stream_timeline;
+ #[cfg(any(feature = "credit-policy", feature = "tts-utilities"))]
+ #[path = "tts/usage.rs"]
+ pub mod tts_usage_pricing;
+@@ -240,6 +247,10 @@
+ #[cfg(feature = "cron-queue")]
+ #[path = "cron_jobs_queue.rs"]
+ pub mod cron_queue;
++#[cfg(feature = "follow-ledger-data")]
++pub mod follow_ledger;
++#[cfg(feature = "follow-ledger-data")]
++pub mod follow_ledger_queue;
+ #[cfg(feature = "permissions")]
+ #[path = "permissions/index.rs"]
+ pub mod permissions;
+@@ -355,5 +366,8 @@
+ #[cfg(feature = "api-file-routes")]
+ pub mod fs;
+ 
++#[cfg(feature = "paid-order-reward")]
++pub mod paid_order_reward;
++
+ #[cfg(feature = "temporary-role-announcements")]
+ pub mod temporary_roles_announcements;

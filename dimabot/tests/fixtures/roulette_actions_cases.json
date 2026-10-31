@@ -1,0 +1,221 @@
+{
+  "claimAttempts": 20,
+  "dueBatch": 4,
+  "pollSleepMs": 1000,
+  "rustBatchSleepMs": 0,
+  "collection": "roulette_channels",
+  "claimCases": [
+    {
+      "name": "array order beats an earlier dueAt",
+      "channelId": "123",
+      "now": 1000,
+      "revision": 4,
+      "actions": [
+        {
+          "drawId": "later-index",
+          "rouletteId": "wheel",
+          "itemId": "prize",
+          "label": "Prize",
+          "source": "plain text",
+          "dueAt": 900,
+          "status": "pending",
+          "actor": {
+            "userId": "user-1",
+            "userLogin": "ada",
+            "userDisplayName": "Ada",
+            "argument": "kept"
+          }
+        },
+        {
+          "drawId": "earlier-due",
+          "dueAt": 100,
+          "status": "pending"
+        }
+      ],
+      "expect": {
+        "claimedDrawId": "later-index",
+        "revision": 5,
+        "claimUpdates": 1,
+        "actionDueAt": 100
+      }
+    },
+    {
+      "name": "dueAt equal to now is due",
+      "channelId": "123",
+      "now": 1000,
+      "revision": 1,
+      "actions": [
+        {
+          "drawId": "equal",
+          "dueAt": 1000,
+          "status": "pending"
+        }
+      ],
+      "expect": {
+        "claimedDrawId": "equal",
+        "revision": 2,
+        "claimUpdates": 1,
+        "actionDueAt": null
+      }
+    },
+    {
+      "name": "a future pending row is left pending",
+      "channelId": "123",
+      "now": 1000,
+      "revision": 8,
+      "actions": [
+        {
+          "drawId": "waiting",
+          "dueAt": 1001,
+          "status": "pending"
+        }
+      ],
+      "expect": {
+        "claimedDrawId": null,
+        "revision": 8,
+        "claimUpdates": 0,
+        "actionDueAt": 1001
+      }
+    },
+    {
+      "name": "running and done rows are not claimed",
+      "channelId": "123",
+      "now": 1000,
+      "revision": 2,
+      "actions": [
+        {
+          "drawId": "busy",
+          "dueAt": 1,
+          "status": "running",
+          "startedAt": 1
+        },
+        {
+          "drawId": "finished",
+          "dueAt": 1,
+          "status": "done",
+          "finishedAt": 2
+        }
+      ],
+      "expect": {
+        "claimedDrawId": null,
+        "revision": 2,
+        "claimUpdates": 0,
+        "actionDueAt": null
+      }
+    },
+    {
+      "name": "skipped is not a claimable status",
+      "channelId": "123",
+      "now": 1000,
+      "revision": 2,
+      "actions": [
+        {
+          "drawId": "downgrade",
+          "dueAt": 1,
+          "status": "skipped"
+        }
+      ],
+      "expect": {
+        "claimedDrawId": null,
+        "revision": 2,
+        "claimUpdates": 0,
+        "actionDueAt": null
+      }
+    },
+    {
+      "name": "a later pending row is claimed when earlier rows are not due",
+      "channelId": "123",
+      "now": 1000,
+      "revision": 4,
+      "actions": [
+        {
+          "drawId": "future",
+          "dueAt": 5000,
+          "status": "pending"
+        },
+        {
+          "drawId": "ready",
+          "dueAt": 500,
+          "status": "pending"
+        }
+      ],
+      "expect": {
+        "claimedDrawId": "ready",
+        "revision": 5,
+        "claimUpdates": 1,
+        "actionDueAt": 5000
+      }
+    },
+    {
+      "name": "a missing channel is not inserted",
+      "channelId": "123",
+      "now": 1000,
+      "missing": true,
+      "expect": {
+        "claimedDrawId": null
+      }
+    },
+    {
+      "name": "nineteen compare-and-set misses then a claim",
+      "channelId": "123",
+      "now": 10,
+      "revision": 3,
+      "rejectClaims": 19,
+      "actions": [
+        {
+          "drawId": "retry",
+          "dueAt": 1,
+          "status": "pending"
+        }
+      ],
+      "expect": {
+        "claimedDrawId": "retry",
+        "revision": 23,
+        "claimUpdates": 20,
+        "actionDueAt": null
+      }
+    },
+    {
+      "name": "twenty compare-and-set misses leave the row pending",
+      "channelId": "123",
+      "now": 10,
+      "revision": 3,
+      "rejectClaims": 20,
+      "actions": [
+        {
+          "drawId": "lost",
+          "dueAt": 1,
+          "status": "pending"
+        }
+      ],
+      "expect": {
+        "claimedDrawId": null,
+        "revision": 23,
+        "claimUpdates": 20,
+        "actionDueAt": 1
+      }
+    },
+    {
+      "name": "a lost race that removes the job returns null",
+      "channelId": "123",
+      "now": 10,
+      "revision": 6,
+      "rejectClaims": 1,
+      "clearOnReject": true,
+      "actions": [
+        {
+          "drawId": "removed",
+          "dueAt": 1,
+          "status": "pending"
+        }
+      ],
+      "expect": {
+        "claimedDrawId": null,
+        "revision": 7,
+        "claimUpdates": 1,
+        "actionDueAt": null,
+        "cleared": true
+      }
+    }
+  ]
+}

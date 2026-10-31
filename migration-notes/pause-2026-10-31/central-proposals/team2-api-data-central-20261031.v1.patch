@@ -1,0 +1,137 @@
+Team2-api-data — central integration patch (slices 2a, 3, 4a)
+
+Applies to /root/saas-rust (branch master). Apply from the repository root:
+
+    git apply --check team2-api-data-central-20261031.patch
+    git apply       team2-api-data-central-20261031.patch
+
+WHY THIS FILE EXISTS
+  The per-slice central patches published in the individual handoff notes are
+  prose-oriented and cannot be applied mechanically as written:
+
+  1. Slice 2a (site-analytics-api) and slice 4a (stream-timeline-data) both
+     insert a Cargo.toml feature line at the SAME anchor (after
+     `api-validation-route = [...]`). Each hunk's context is broken by the
+     other hunk's insertion, so NEITHER ordering applies cleanly.
+  2. Slice 3's Cargo.toml and schemas/mod.rs hunk headers carry context counts
+     that do not match the lines in their hunks, which makes them
+     arithmetically corrupt for `git apply`.
+  3. Slice 2a's lib.rs hunk is expressed with a section heading instead of an
+     explicit context block, and its line offsets are stale.
+
+  This file is the merged, conflict-free, count-correct equivalent of all three.
+  The per-slice notes stay the narrative source of truth for WHAT each line
+  does; this file is the machine-appliable form.
+
+VERIFIED BEFORE PUBLISHING
+  - Every hunk header count matches the lines actually present in its hunk.
+  - `git apply --check` exits 0 against the current master tree for all four
+    files. This was a READ-ONLY validation: the patch was NOT applied and the
+    central files are unmodified in the working tree.
+  - Each insertion anchor was confirmed unique in its target file.
+  - Every referenced Cargo feature and optional dependency was confirmed to
+    exist in dimabot/Cargo.toml before this patch was written:
+    api-admin, mongo, redis, logger-redis, ordinary-application-schemas,
+    domain-event-runtime, twitch-client, twitch-streamers, eventsub,
+    bson-js-json, application-schemas, cron-queue, twitch-headers, logger,
+    and the optional deps serde_json + sha2.
+  - No `[[test]]` entry is required: the suites self-gate with
+    `#![cfg(feature = "...")]`.
+
+FILES TOUCHED BY THIS PATCH
+  dimabot/Cargo.toml            3 new feature lines
+  dimabot/src/lib.rs            1 new module (site_route)
+  dimabot/src/schemas/mod.rs    3 new schema modules
+  dimabot/src/utils/mod.rs      5 new modules
+
+--- a/dimabot/Cargo.toml	2026-10-31 02:33:29.598958054 +0000
++++ b/dimabot/Cargo.toml	2026-10-31 02:33:29.610261006 +0000
+@@ -25,6 +25,8 @@
+ api-admin = ["api-auth"]
+ api-observability-route = ["http", "http-client", "dep:serde_json"]
+ api-validation-route = ["api-auth", "dep:serde_json"]
++site-analytics-api = ["api-admin", "mongo", "redis", "logger-redis", "ordinary-application-schemas", "domain-event-runtime", "twitch-client", "twitch-streamers", "eventsub", "bson-js-json", "dep:serde_json"]
++stream-timeline-data = ["mongo", "redis", "application-schemas", "ordinary-application-schemas", "dep:serde_json", "dep:sha2"]
+ # Native WebSockets use Axum's transport rather than a separate client crate.
+ http-form = ["http", "axum/form"]
+ http-multipart = ["http", "axum/multipart"]
+@@ -74,6 +76,7 @@
+ application-schemas = ["mongo", "js-date", "js-strings"]
+ ordinary-application-schemas = ["application-schemas"]
+ follow-defense-schemas = ["application-schemas"]
++follow-ledger-data = ["mongo", "redis", "twitch-streamers", "twitch-client", "twitch-headers", "cron-queue", "logger", "application-schemas", "dep:serde_json"]
+ media-extension-schemas = ["application-schemas"]
+ command-reward-schemas = ["application-schemas", "permissions", "ast-blocks", "keywords", "dep:uuid"]
+ # Opt-in channel TTS schema; does not alter deployed profiles.
+--- a/dimabot/src/lib.rs	2026-10-31 02:33:29.600281454 +0000
++++ b/dimabot/src/lib.rs	2026-10-31 02:33:29.614260998 +0000
+@@ -109,6 +109,10 @@
+ #[path = "server/routes/validation.route.rs"]
+ pub mod validation_route;
+ 
++#[cfg(feature = "site-analytics-api")]
++#[path = "server/routes/site.route.rs"]
++pub mod site_route;
++
+ #[cfg(feature = "domain-event-runtime")]
+ #[path = "domain_events/runtime/mod.rs"]
+ pub mod domain_event_runtime;
+--- a/dimabot/src/schemas/mod.rs	2026-10-31 02:33:29.601757629 +0000
++++ b/dimabot/src/schemas/mod.rs	2026-10-31 02:33:29.617260992 +0000
+@@ -17,6 +17,9 @@
+ #[cfg(feature = "command-reward-schemas")]
+ #[path = "commands.schema.rs"]
+ pub mod commands;
++#[cfg(feature = "site-analytics-api")]
++#[path = "event.schema.rs"]
++pub mod event;
+ #[cfg(feature = "ordinary-application-schemas")]
+ #[path = "eventsub.schema.rs"]
+ pub mod eventsub;
+@@ -32,6 +35,9 @@
+ #[cfg(feature = "follow-defense-schemas")]
+ #[path = "follow_hate_raid_source.schema.rs"]
+ pub mod follow_hate_raid_source;
++#[cfg(feature = "follow-ledger-data")]
++#[path = "follow_relationship_ledger.schema.rs"]
++pub mod follow_relationship_ledger;
+ #[cfg(feature = "moderation-action-log-schema")]
+ #[path = "moderation_action_log.schema.rs"]
+ pub mod moderation_action_log;
+@@ -127,6 +133,9 @@
+ pub mod raid_session;
+ #[path = "raid_subscription_preference.schema.rs"]
+ pub mod raid_subscription_preference;
++#[cfg(feature = "stream-timeline-data")]
++#[path = "channel_stream_summary.schema.rs"]
++pub mod channel_stream_summary;
+ #[path = "stream_activity.schema.rs"]
+ pub mod stream_activity;
+ #[path = "stream_session.schema.rs"]
+--- a/dimabot/src/utils/mod.rs	2026-10-31 02:33:29.602956143 +0000
++++ b/dimabot/src/utils/mod.rs	2026-10-31 02:33:29.620260986 +0000
+@@ -222,6 +222,13 @@
+ pub mod redis_application_runtime;
+ #[cfg(feature = "tts-utilities")]
+ pub mod tts;
++#[cfg(feature = "site-analytics-api")]
++pub mod siteanalytics;
++#[cfg(feature = "site-analytics-api")]
++pub mod chat_event_catalog;
++
++#[cfg(feature = "stream-timeline-data")]
++pub mod stream_timeline;
+ #[cfg(any(feature = "credit-policy", feature = "tts-utilities"))]
+ #[path = "tts/usage.rs"]
+ pub mod tts_usage_pricing;
+@@ -240,6 +247,10 @@
+ #[cfg(feature = "cron-queue")]
+ #[path = "cron_jobs_queue.rs"]
+ pub mod cron_queue;
++#[cfg(feature = "follow-ledger-data")]
++pub mod follow_ledger;
++#[cfg(feature = "follow-ledger-data")]
++pub mod follow_ledger_queue;
+ #[cfg(feature = "permissions")]
+ #[path = "permissions/index.rs"]
+ pub mod permissions;

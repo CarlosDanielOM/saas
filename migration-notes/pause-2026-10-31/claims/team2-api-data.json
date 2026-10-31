@@ -1,0 +1,749 @@
+{
+ "team": "team2-api-data",
+ "claimedAt": "2026-10-31",
+ "updatedAt": "2026-10-31T02:43:27Z",
+ "workspace": "/root/saas-rust",
+ "branch": "master",
+ "baselineSourceOwner": "manifest.sourceOwners[team2-api-data] (209 rows)",
+ "note": "Temporary path reservations in manifest.temporaryPathReservations override these permanent owners. Central paths are integration-team only and are NOT claimed; this team submits patch snippets instead of editing them.",
+ "notClaimed": [
+  "dimabot/Cargo.toml",
+  "dimabot/Cargo.lock",
+  "dimabot/rust-toolchain.toml",
+  "dimabot/src/lib.rs",
+  "dimabot/src/utils/mod.rs",
+  "dimabot/src/schemas/mod.rs",
+  "dimabot/src/functions/mod.rs",
+  "dimabot/src/domain_events/mod.rs",
+  "dimabot/src/server/routes/admin-tools.route.rs",
+  "dimabot/src/server/routes/file.route.rs",
+  "dimabot/src/utils/fs.rs",
+  "dimabot/src/functions/chats/send_message_plain.rs",
+  "dimabot/src/functions/chats/mod.rs",
+  "dimabot/src/utils/polar_usage.rs",
+  "dimabot/src/utils/polar_cache_usage.rs",
+  "dimabot/src/utils/polarsh.rs",
+  "dimabot/src/utils/temporary_roles_announcements.rs",
+  "dimabot/src/utils/eventsub.rs",
+  "dimabot/tests/polar_usage_modes.rs",
+  "dimabot/tests/temporary_roles_announcements.rs",
+  "dimabot/tests/file_routes.rs",
+  "dimabot/tests/fixtures/file_routes_reference.cjs",
+  "dimabot/tests/fixtures/polar_usage_modes_reference.cjs",
+  "dimabot/tests/fixtures/temporary_roles_announcements_reference.cjs",
+  "migration-notes/polar-usage-modes-handoff.md",
+  "migration-notes/temporary-roles-announcements-handoff.md",
+  "migration-notes/file-routes-handoff.md",
+  "migration-notes/parallel-teams-2026-10-31.md"
+ ],
+ "slices": [
+  {
+   "id": "team2-slice-1-oauth",
+   "title": "Dima OAuth desktop-beta HTTP API (catalog + service + routes)",
+   "worker": "grok-4.7 (grok provider, reasoningEffort high, full-access)",
+   "state": "AUTHORED_NEEDS_COMPLETION (turn 1: 3891 lines across 7 files; route inventory verified complete and correct on both routers; 4 gaps issued in turn 2 - desktop websocket unported, no source oracle, oauth_debug_cache row needs a reuse record, the 503 adapter envelope needs labelling. Turn 2 running on the Grok lane.)",
+   "sourceFiles": [
+    "dimabot/src/server/oauth/catalog.ts",
+    "dimabot/src/server/oauth/service.ts",
+    "dimabot/src/server/oauth/routes.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/server/oauth/mod.rs",
+    "dimabot/src/server/oauth/catalog.rs",
+    "dimabot/src/server/oauth/service.rs",
+    "dimabot/src/server/oauth/routes.rs",
+    "dimabot/tests/oauth_api.rs",
+    "migration-notes/oauth-api-handoff.md"
+   ],
+   "centralPatchRequired": [
+    "dimabot/Cargo.toml (feature oauth-api)",
+    "dimabot/src/lib.rs (pub mod oauth_api)"
+   ],
+   "knownGaps": [
+    "dimabot/src/server/oauth/desktop-websocket.ts (native WebSocket transport) - not ported",
+    "dimabot/src/server/services/pet_settings.service.ts - not ported"
+   ],
+   "lane": "grok / grok-4.7 @ high (thread delegate-task:2c64f80e)",
+   "files": {
+    "dimabot/src/server/oauth/mod.rs": 32,
+    "dimabot/src/server/oauth/catalog.rs": 675,
+    "dimabot/src/server/oauth/service.rs": 1683,
+    "dimabot/src/server/oauth/routes.rs": 747,
+    "dimabot/tests/oauth_api.rs": 583,
+    "dimabot/tests/support/oauth_support.rs": 171,
+    "migration-notes/oauth-api-handoff.md": 222
+   },
+   "verified": [
+    "route inventory matches the source EXACTLY on both routers: oauthRoute -> GET /metadata, /authorize, /requests/{request}, POST /requests/{request}/decision, /token, /revoke, GET /browser-session, /connections, DELETE /connections/{session}, /grants/{grant}; oauthApiRoute -> GET /me, /me/credits, /me/pet, /me/pet/runtime, PUT /me/pet/playback, POST /me/pet/requests/{requestId}/cancel, GET+DELETE /desktop/session",
+    "404 handling is more precise than the source: Router::fallback for an unmatched path AND MethodRouter::fallback for an unmatched method on a matched path",
+    "MethodRouter::fallback exists at axum-0.8.9/src/routing/method_routing.rs:654 and ConnectInfo<T>(pub T) at axum-0.8.9/src/extract/connect_info.rs:151 - both worker uncertainties resolved",
+    "both central hunks arithmetically correct (Cargo.toml 6->7, lib.rs 3->7) and the lib.rs anchor resolves at src/lib.rs:108-110",
+    "scope-before-adapter ordering matches the source (oauthApiRoute.use(...) at routes.ts:174 precedes the handlers)"
+   ],
+   "gaps": [
+    "G1 desktop-websocket.ts (team2-owned) unported while the native metadata advertises websocket_endpoint ws://.../v1/desktop/ws (catalog.rs:543) and nothing serves it - a functional defect; native axum WebSocketUpgrade port directed (axum/ws feature already exists; reproduce 426/403/401/429, 4096 payload cap, 4401 heartbeat close)",
+    "G2 src/utils/oauth_debug_cache.ts has no native sibling but is COVERED BY REUSE (utils/twitch.rs api_failure_diagnostic + slice 3 cache_oauth_api_failure; refresh_failure_message/classify_refresh_failure/refresh_failure_diagnostic) - record as covered, not duplicated",
+    "G3 no .cjs source oracle - directed a lean one covering /metadata, error envelopes, /token grant-type dispatch, scope/boundary ordering and the not_found fallback, naming the Mongo-backed flows that are not source-comparable",
+    "G4 the 503 temporarily_unavailable envelope for an unwired adapter has no source counterpart - keep it but label it an adapter-boundary convention, not source parity"
+   ],
+   "crossTeamNote": "the socket_io /desktop namespace advertised in the OAuth metadata is registered by src/pets/socket.ts (team4-speech-media pets domain), not by the OAuth tree - advertised for parity, explicitly left to team4",
+   "featureLine": "oauth-api = [\"api-auth\",\"http\",\"http-client\",\"mongo\",\"redis\",\"logger-redis\",\"application-schemas\",\"observability\",\"dep:serde_json\",\"dep:sha2\",\"dep:base64\",\"dep:getrandom\"] (needs axum/ws added once the websocket is ported)",
+   "adapters": {
+    "team1-billing-ai": {
+     "trait": "OAuthCreditsReader",
+     "method": "credits_document(user, channel_id) -> Result<Value, CreditsError>",
+     "for": "GET /v1/me/credits",
+     "errors": [
+      "NotWired",
+      "Failed"
+     ]
+    },
+    "team4-speech-media": {
+     "trait": "OAuthPetAccess",
+     "methods": [
+      "configuration(user_id, channel_id)",
+      "runtime(user_id, channel_id)",
+      "select_playback(identity, body)",
+      "ensure_configuration(user_id, channel_id)",
+      "cancel_request(user_id, request_id, command_id)"
+     ],
+     "for": [
+      "GET /v1/me/pet",
+      "GET /v1/me/pet/runtime",
+      "PUT /v1/me/pet/playback",
+      "POST /v1/me/pet/requests/{requestId}/cancel"
+     ],
+     "errors": [
+      "NotWired",
+      "Settings{code,status}",
+      "Pet{code,status}",
+      "Failed"
+     ]
+    }
+   }
+  },
+  {
+   "id": "team2-slice-2a-site",
+   "title": "Site-analytics collector completion + site route + event schema + chat event catalog",
+   "worker": "gpt-6.1-terra (codex provider, reasoningEffort high) - turn 2 continuation",
+   "state": "READY v2 (published 2026-10-31; supersedes v1; coordinator gaps A/B/C closed plus slice-4a gap D)",
+   "handoffCopies": [
+    "/root/.local/state/dimabot-migration-teams-20261031/ready/team2-api-data-slice-2a-site-analytics.v2.md",
+    "/root/.local/state/dimabot-migration-teams-20261031/results/team2-api-data-slice-2a-site-analytics.v2.md"
+   ],
+   "handoffSha256": "fd5a0979ba8175fc43abdf03134976e7820d03e9ccb148bcdac8a8936f72c2e7",
+   "leadCorrectionsApplied": [
+    "Added the missing PATCH /events/:id route (source lines 226-283) - the original brief's route enumeration omitted the 'patch' verb.",
+    "Corrected the malformed-body status from 500 to 400: server.ts installs express.json() at app level and the server/ tree registers no Express error-handling middleware, so Express's default handler answers 400 with an HTML body. Native now answers 400 with the JSON envelope."
+   ],
+   "reviewOutcome": "Turn 2 verified correct by lead source-comparison: event.schema.rs is a faithful field-by-field port; chat_event_catalog.rs reproduces all eight builtins and the object-spread semantics; site.route.rs GET /, POST /events, GET /events and GET /events/:type match the source's validation, status codes, envelopes and field order. One real gap found: PATCH /events/:id (source lines 226-283), missed because the original brief's route grep omitted the 'patch' verb. Turn 3 supplies it plus the malformed-body envelope fix.",
+   "sourceFiles": [
+    "dimabot/src/utils/siteanalytics.ts",
+    "dimabot/src/server/routes/site.route.ts",
+    "dimabot/src/schemas/event.schema.ts",
+    "dimabot/src/utils/chat_event_catalog.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/utils/siteanalytics.rs",
+    "dimabot/src/server/routes/site.route.rs",
+    "dimabot/src/schemas/event.schema.rs",
+    "dimabot/src/utils/chat_event_catalog.rs",
+    "dimabot/tests/site_analytics_api.rs",
+    "migration-notes/site-analytics-api-handoff.md"
+   ],
+   "centralPatchRequired": [
+    "dimabot/Cargo.toml (feature site-analytics-api)",
+    "dimabot/src/lib.rs (pub mod site_route only - NOT analytics_route yet)",
+    "dimabot/src/utils/mod.rs (pub mod siteanalytics, pub mod chat_event_catalog)",
+    "dimabot/src/schemas/mod.rs (pub mod event)"
+   ],
+   "alreadyAuthored": {
+    "dimabot/src/utils/siteanalytics.rs": "141 lines - counter subset, reviewed and verified correct against source",
+    "dimabot/tests/site_analytics_api.rs": "37 lines - alias/pipeline pure tests",
+    "migration-notes/site-analytics-api-handoff.md": "120 lines - needs updating, lib.rs patch currently names a non-existent analytics.route.rs"
+   },
+   "outstandingGaps": [
+    "A2: the native side must CONSUME the oracle - a new dimabot/tests/support/site_analytics_support.rs with fixture()/fixture_case()/fixture_case_names()/assert_case() plus #[ignore] tests pinning the case names."
+   ]
+  },
+  {
+   "id": "team2-slice-3-follow-ledger",
+   "title": "Follow relationship ledger schema + collector + Redis queue",
+   "worker": "deepseek-v4.1-flash (opencode provider, variant high) - turn 3",
+   "state": "READY v2 (published 2026-10-31T02:38:57; supersedes v1 SHA 89a06f59; coordinator gaps D/E/F/G closed and independently re-verified by team2 against the TS source and the pinned mongodb 3.9.1 driver)",
+   "handoffCopies": [
+    "/root/.local/state/dimabot-migration-teams-20261031/ready/team2-api-data-slice-3-follow-ledger.md",
+    "/root/.local/state/dimabot-migration-teams-20261031/results/team2-api-data-slice-3-follow-ledger.md"
+   ],
+   "handoffSha256": "e982e72f192054ef939fa59b43a33d7bfb2bbfe51842ba97098a547eade2e099",
+   "leadVerification": [
+    "Schema field-by-field against the TS including all 10 indexes and the unique partial index on {status:'active'}; no TTL index in the source so none declared.",
+    "Queue delegates to the native get_cron_job_dedupe_key rather than reimplementing it.",
+    "Math.max(60, Number(env || 900)) reproduced with f64 and explicit NaN/Infinity handling matching JS Number semantics.",
+    "Blank-channel branch returns dedupeKey:'' with no Redis call.",
+    "Both error types implement Display + std::error::Error manually.",
+    "No todo!/unimplemented!/TODO/FIXME/stub bodies across all five files.",
+    "Implementer correctly used the real native type RedisCronQueue, not the name the brief guessed.",
+    "Two #[ignore] fixture tests with a FOLLOW_LEDGER_TEST_* env contract are present."
+   ],
+   "sourceFiles": [
+    "dimabot/src/schemas/follow_relationship_ledger.schema.ts",
+    "dimabot/src/utils/follow_ledger.ts",
+    "dimabot/src/utils/follow_ledger_queue.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/schemas/follow_relationship_ledger.schema.rs",
+    "dimabot/src/utils/follow_ledger.rs",
+    "dimabot/src/utils/follow_ledger_queue.rs",
+    "dimabot/tests/follow_ledger_data.rs",
+    "migration-notes/follow-ledger-data-handoff.md"
+   ],
+   "centralPatchRequired": [
+    "dimabot/Cargo.toml (feature follow-ledger-data)",
+    "dimabot/src/utils/mod.rs (pub mod follow_ledger, pub mod follow_ledger_queue)",
+    "dimabot/src/schemas/mod.rs (pub mod follow_relationship_ledger)"
+   ],
+   "outstandingGaps": [
+    "D: the source transaction branch is REQUIRED - atomicity is not optional. The pinned driver source IS locally available at /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mongodb-3.9.1 (start_session at src/action/session.rs:17, start_transaction at src/action/transaction.rs:38, Session at src/client/session.rs). Read it and author the branch.",
+    "E: author a replica-set fixture plan the integration team can execute (single-node replica set, env contract, ordering, cleanup, detection) AND standalone fallback coverage that runs against a plain standalone MongoDB.",
+    "F: hold ONE Arc<TwitchTokenStorage> and share it; the repo pattern is NativeFunctionAuth in dimabot/src/functions/mod.rs (tokens/directory/logger all Arc).",
+    "G: cacheOAuthAPIFailure is a REQUIRED ADAPTER or a NAMED CONTRACT GAP with an owner and an exact signature - not a diagnostic-only difference and not a no-gap. The team3-bot-ast Helix 401-retry contract stands and must not be downgraded."
+   ],
+   "publishedHandoff": "ready/team2-api-data-slice-3-follow-ledger.v2.md + results/team2-api-data-slice-3-follow-ledger.v2.md; repo copy migration-notes/follow-ledger-data-handoff.md (776 lines)",
+   "fileSha256": {
+    "dimabot/src/utils/follow_ledger.rs": "103e84911fa2671fb6adc2e7d009efb8ace9864f0e346c10a3d99ebe15cc1274",
+    "dimabot/src/utils/follow_ledger_queue.rs": "0b5c05db83e5f6f35735d8da170ac1acb1e76e4a6e5302d0ebac38ccbc5a0be1",
+    "dimabot/src/schemas/follow_relationship_ledger.schema.rs": "e993214b1a97230fc7ca4d363fd02b43a324f3b5205cbbbbd3beb6d901dcb72c",
+    "dimabot/tests/follow_ledger_data.rs": "92577793c540ddeec23c95621a1493a34e4466726aa9ec88129802badb717c63"
+   }
+  },
+  {
+   "id": "team2-slice-4a-stream-timeline-data",
+   "title": "Stream-activity capture/read half + stream timeline collector + channel summary schema",
+   "worker": "gpt-6.1-terra (codex provider, reasoningEffort high) - turn 5",
+   "state": "AUTHORED_ACCEPTED_NEEDS_COMPLETION (coordinator accepted the authored slice 2026-10-31 but requires, before READY-for-validation: a lean actual-source comparison oracle plus private Mongo/Redis tests covering capture dedupe/upsert defaults, read/timeline queries and cursors, participant timestamp update, and failure/cancellation no-replay. The 10 pure tests do NOT verify those concrete adapters.)",
+   "reviewOutcome": "Turn 4 verified correct by lead source-comparison: the SHA-256 hash vectors, the fractional-second offset, the bounded() default of 100 matching the TS, and the {w:1,j:true} write concern on the activity upsert (WriteConcern::builder().w(Acknowledgment::Nodes(1)).journal(true)). The $min update for chat_tracking_started_at is implemented. Turn 5 closes the one real gap the worker itself flagged: raw driver writes did not reproduce Mongoose setDefaultsOnInsert, payload casting, or the BSON Double numeric type. The remedy is the existing native SchemaDefinition::construct over the merged upsert document.",
+   "leadVerifiedFindings": [
+    "bounded(value, length = 100) matches the TS default, so key/label at 100 and actor/actorLabel at 64 are correct.",
+    "The TS activity schema declares NO timestamps option, so there are no activity createdAt/updatedAt to reproduce - the native timestamps: None is correct.",
+    "The TS $setOnInsert omits dashboardProcessed, whose schema default is null, so Mongoose's setDefaultsOnInsert writes dashboardProcessed: null - the native raw write omitted it entirely.",
+    "A JS number is stored as BSON Double, so an i64 value/offset/bucket diverges in stored type.",
+    "recordTimelineMoment passes value: input.value which may be undefined; Mongoose strips undefined update paths rather than writing null.",
+    "hydrate() is gated behind the command-reward-schemas feature and is NOT available to stream-timeline-data, so construct() is the tool.",
+    "CORRECTED: dimabot/src/schemas/stream_timeline.schema.ts sets { versionKey: false } for BOTH participant (line 10) and marker (line 29), matching the native version_key: false. The earlier __v divergence claim was wrong - the worker correctly checked the source instead of trusting the brief."
+   ],
+   "sourceFiles": [
+    "dimabot/src/utils/stream_activity.ts",
+    "dimabot/src/utils/stream_timeline.ts",
+    "dimabot/src/schemas/channel_stream_summary.schema.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/utils/stream_activity/capture.rs",
+    "dimabot/src/utils/stream_activity/read.rs",
+    "dimabot/src/utils/stream_activity.rs",
+    "dimabot/src/utils/stream_timeline.rs",
+    "dimabot/src/schemas/channel_stream_summary.schema.rs",
+    "dimabot/tests/stream_timeline_data.rs",
+    "migration-notes/stream-timeline-data-handoff.md"
+   ],
+   "centralPatchRequired": [
+    "dimabot/Cargo.toml (feature stream-timeline-data)",
+    "dimabot/src/utils/mod.rs (pub mod stream_timeline)",
+    "dimabot/src/schemas/mod.rs (pub mod channel_stream_summary)"
+   ],
+   "note": "utils/stream_activity.rs is registered as dima_rust::workers::stream_activity via src/workers/mod.rs (feature mongo), NOT via utils/mod.rs. The existing native file is the projector half only; captureStreamActivity, getStreamActivity, ActivityKind and extractTimelineEmotes are unported. The capture/read submodules need no central registration because they are declared inside that file.",
+   "outstandingGaps": [],
+   "handoffCopies": [
+    "/root/.local/state/dimabot-migration-teams-20261031/ready/team2-api-data-slice-4a-stream-timeline-data.md",
+    "/root/.local/state/dimabot-migration-teams-20261031/results/team2-api-data-slice-4a-stream-timeline-data.md"
+   ],
+   "handoffSha256": "c6e20f7a563fc738bfc9df2ffaab524758812d9cbffa015b3f3517d65f8b1de1",
+   "ownershipRetained": true,
+   "completionRequired": [
+    "lean actual-source comparison oracle (source-vs-native) for the capture/read/timeline path",
+    "private Mongo test: capture dedupe + upsert defaults",
+    "private Mongo test: read/timeline queries and cursor behaviour",
+    "private Mongo test: participant timestamp update",
+    "private Mongo/Redis test: failure and cancellation cause no replay"
+   ]
+  },
+  {
+   "id": "team2-slice-4b-stream-timeline-routes",
+   "title": "Stream timeline + channel summary + analytics routes",
+   "worker": "gpt-6.1-terra (codex provider, reasoningEffort high) - turn 8",
+   "state": "AUTHORED_NEEDS_COMPLETION (turn 11: seam architecture landed - injectable TimelineRouteData / SummaryRouteData / AnalyticsRouteData traits covering the union of the 7 oracle stubbed boundaries, default constructors still concrete, 28/28 replay authored, 0 executed. Turn 12 running (thread 4c0df256) to fix the ORACLE auth stub.)",
+   "dependsOn": [
+    "team2-slice-4a-stream-timeline-data",
+    "team2-slice-3-follow-ledger (follow_relationship_ledger schema, required by analytics.route.rs)"
+   ],
+   "sourceFiles": [
+    "dimabot/src/server/routes/stream_timeline.route.ts",
+    "dimabot/src/server/routes/stream-summary.route.ts",
+    "dimabot/src/server/routes/analytics.route.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/server/routes/stream_timeline.route.rs",
+    "dimabot/src/server/routes/stream_summary.route.rs",
+    "dimabot/src/server/routes/analytics.route.rs",
+    "dimabot/tests/stream_timeline_api.rs",
+    "migration-notes/stream-timeline-routes-handoff.md"
+   ],
+   "centralPatchRequired": [
+    "dimabot/Cargo.toml (feature stream-timeline-routes)",
+    "dimabot/src/lib.rs (pub mod stream_timeline_route, pub mod stream_summary_route, pub mod analytics_route)"
+   ],
+   "lane": "codex / gpt-6.1-terra @ high (thread delegate-task:4c0df256, turn 9 completion)",
+   "reviewVerifiedCorrect": [
+    "route inventory + verbs match the TS exactly, including the deliberate PUT markers/:key vs DELETE markers/:markerID difference",
+    "gate order 401 -> 400 invalid channel -> 403 analytics access -> owner lookup",
+    "Cache-Control no-store absent on gate failures, present on handler failures and successes (the after_gate() naming is confusing but the behavior is right)",
+    "canSeeCredits is the billing permission at the middleware and canSeeCredits && tier==pro at the details route",
+    "mutual filter mapping mutual->true / non-mutual->false / all->omitted",
+    "totalPages integer ceiling equals Math.max(1, Math.ceil(total/limit))",
+    "base64url-no-pad cursor for people and ISO|id cursor for moments",
+    "people cursor id must be 64 LOWERCASE hex (TS regex has no /i) while objectID is 24 hex case-insensitive - both handled correctly",
+    "UTF-16 label.length>120 and key.length>100 checks",
+    "bson_js_json date output uses JsDate::to_iso_string = the full ECMAScript toISOString algorithm, so followed_at/ended_at match the TS .toISOString()",
+    "$setOnInsert upsert derives channelID/session_id/key from the filter exactly like the Mongoose upsert; the 11000 swallow uses capture::is_duplicate",
+    "all native dependencies exist: marker_schema(), aggregate_schema(), capture::is_duplicate, AdminService::{collection, has_global_channel_owner_access, get_channel_access_context, get_channel_access_decisions}, ChannelAccessContext{allowed,role}, ChannelAccessRole::as_str, TwitchStreamers::metadata_by_id"
+   ],
+   "defectsToFix": [
+    "D1 put_marker uses Json<Value> directly, so a malformed body yields axum plain-text rejection instead of the repo JSON envelope; must use the house Result<Json<Value>, JsonRejection> + INVALID_JSON_MESSAGE pattern (site.route.rs / observability.route.rs) without editing those files",
+    "D2 Query<HashMap<String,String>> can reject a query string Express accepts (repeated params -> array -> NaN -> the source 400 Invalid page JSON); use a lenient query representation and reproduce the source coercion",
+    "D3 stream_summary limit/skip silently fall back to the default; the source yields NaN -> driver error -> 500 Internal server error",
+    "D4 analytics search truncates by code points, the TS slice(0,64) counts UTF-16 code units",
+    "D5 parse_page numeric grammar differs from JS Number() (hex \"0x10\" accepted by JS, rejected by f64::from_str); replicate or document",
+    "D6 moments `to` default: TS uses ended_at?.getTime() || Date.now() so an epoch-0 ended_at falls back to now; native only falls back when missing",
+    "D7 error logging discards the underlying cause; the TS logs the error object - carry it with credential/URL redaction and never log the customer id or owner id",
+    "D8 the summary route 500 log text must be route-specific (Error in GET /stream-summaries/:channelID: and .../:summaryID:)"
+   ],
+   "mainGap": "the source oracle must actually replay the native routers through axum (tower::ServiceExt::oneshot) against protected_router() and the per-service routers, asserting status+body+headers, with the full operation inventory (7 timeline GETs, PUT, DELETE, both summary GETs, follows GET) plus protected-router 401 and cached-bearer coverage - the same standard the coordinator rejected in slice 4a",
+   "defectsClosedInTurn9": [
+    "put_marker -> Result<Json<Value>, JsonRejection> + INVALID_JSON_MESSAGE (house pattern)",
+    "rejecting Query extractor replaced by RawQuery + parse_query",
+    "summary limit/skip NaN -> source 500 instead of silent default",
+    "parse_page + summary pagination now use crate::utils::json_number::to_number (house ECMAScript Number())",
+    "analytics search uses crate::utils::js_string::JsString::slice(0,64) (house UTF-16 helper)",
+    "epoch-zero ended_at default and route-specific error log text addressed"
+   ],
+   "towerBlockerResolved": "no tower needed: the repo drives axum routers over a real loopback socket - tests/observability_route.rs:179 (serve/TcpListener 127.0.0.1:0 + axum::serve), :228 (send via reqwest::Client), :781 (replays_the_typescript_source_oracle template); fixture digest uses the dependency-free tests/support/sha256.rs, so dep:sha2 is unnecessary",
+   "featureLineVerified": "stream-timeline-routes = [\"http\",\"api-auth\",\"api-admin\",\"stream-timeline-data\",\"follow-ledger-data\",\"ordinary-application-schemas\",\"logger-redis\",\"bson-js-json\",\"axum/query\",\"dep:serde_json\"] - transitive closure confirmed to enable js_string, json_number, js_compat, reqwest, tokio net and axum/query",
+   "mergedPatchLocation": "/root/.local/state/dimabot-migration-teams-20261031/ready/team2-api-data-central-20261031.patch (sha256 af218702...) - coordinator state dir, NOT the repo checkout",
+   "residualReviewItems": [
+    "qs bracket-syntax divergence: Express 4 default parser is extended/qs, so ?page[a]=1 becomes an object -> the source 400; the flat parse_query key \"page[a]\" is invisible to the parameter lookup and silently defaults to 200",
+    "redaction policy divergence: the new safe_error redacts any message containing a digit, unlike the accepted slice-2a helper at src/server/routes/site.route.rs:77 - two policies in one repo, and the stricter one discards nearly every Mongo diagnostic; align with slice 2a and redact customer id/owner id/channel id explicitly at the call site",
+    "malformed-body ordering: axum runs the gate before body rejection, unlike the app-level express.json(); replay the malformed case authenticated (both 400) and document the unauthenticated 401-vs-400 difference"
+   ],
+   "coverageRule": "the claim that counts is the number of oracle cases actually replayed against the native routers, not the case count; the handoff must state both",
+   "featureLine": "stream-timeline-routes = [\"http\",\"api-auth\",\"api-admin\",\"stream-timeline-data\",\"follow-ledger-data\",\"ordinary-application-schemas\",\"logger-redis\",\"bson-js-json\",\"axum/query\",\"dep:serde_json\"] (verified transitively correct)",
+   "turn10Closed": [
+    "bracketed query handling for object keys and simple arrays (complex qs merges documented as a boundary)",
+    "redaction aligned with the slice-2a site-route policy, plus explicit replacement of request-scoped channel/requester/customer identifiers before logging",
+    "malformed-body ordering difference documented (unauthenticated: source 400 vs native 401)",
+    "fixture reader now uses the dependency-free tests/support/sha256.rs helper",
+    "merged patch static SHA-256 confirmed to match the supplied digest"
+   ],
+   "turn10Blocker": "the source oracle stubs 7 boundaries while the native hard-wires all of them, so a stubbed source cannot be compared to the native; the source stubs a successful timeline as {points: []} while the concrete native service returns a full timeline with a dynamic asOf",
+   "seamSets": {
+    "sourceOracleStubs": [
+     "utils/stream_timeline.js (listTimelineStreams/getTimelineSession/getStreamTimeline)",
+     "schemas/users.schema.js (owner lookup)",
+     "schemas/stream_activity.schema.js (people aggregate read)",
+     "schemas/ai_usage_receipt.schema.js (credits read)",
+     "schemas/stream_timeline.schema.js (StreamMarkerSchema: moments read + PUT/DELETE marker)",
+     "schemas/admin.schema.js (admin access decisions)",
+     "schemas/follow_relationship_ledger.schema.js (analytics follows read)"
+    ],
+    "nativeHardWired": [
+     "stream_timeline.route.rs:158 users owner lookup",
+     "stream_timeline.route.rs:210/221/281 stream_timeline markers",
+     "stream_timeline.route.rs:252 stream_activity aggregates",
+     "stream_timeline.route.rs:296 ai_usage_receipt",
+     "concrete StreamTimelineService",
+     "AdminService access decisions",
+     "analytics.route.rs follow_relationship_ledger"
+    ]
+   },
+   "turn11Direction": "injectable data-access seam covering the union of all 7 stubbed boundaries, with the real implementation as the default so the production path, filters, sorts, limits, max_time and journaled write concern are unchanged; StreamTimelineRouteService::new(database, admin, logger) keeps wiring the real ones. This makes per-case isolation trivial (a per-case double seeded from the recorded case, no per-case Mongo) and removes the asOf mismatch.",
+   "rejectedAlternative": "making the source oracle use the real TypeScript data service against a live Mongo - it turns the fixture into a full-stack test, depends on live DB state and destroys the static, deterministic, diffable property that makes the oracle valuable",
+   "turn11Delivered": [
+    "injectable TimelineRouteData / SummaryRouteData / AnalyticsRouteData traits covering the union of the oracle stubbed boundaries (timeline service, owner, activity aggregate, receipt, marker, admin, follow-ledger, summary data, streamer metadata)",
+    "default constructors still select the concrete MongoDB, admin, timeline and streamer adapters - production path unchanged",
+    "each of the 28 oracle cases gets its own double - per-case isolation needs no Mongo",
+    "replay coverage 28 of 28 authored, 0 executed"
+   ],
+   "turn12Defect": "THE ORACLE IS WRONG, NOT THE NATIVE. The oracle stubs middleware/auth.middleware.js with a pass-through (tests/fixtures/stream_timeline_routes_reference.cjs:21) that always calls next(). The real middleware (src/middleware/auth.middleware.ts:188-196 and :204-212) answers 401 {error:true,message:\"No token provided\",status:401,type:\"no_token\"} for a missing or empty token and does NOT call next(), so in the real source such a request never reaches the route. The native is already faithful (src/middleware/auth.middleware.rs ErrorResponse::no_token -> the same envelope, same field order, verified by its own tests at :751-760 and :769-774). The route-level \"Authentication required\" is unreachable-from-source defensive code.",
+   "turn12Instruction": "mirror the real middleware in the oracle stub; re-record the missing-auth case with no Authorization header; replay it through the native protected_router so the production path is compared on both sides; move the route-level \"Authentication required\" branch to a native gate-ordering test and document it as unreachable-from-source; apply the same to the summary and analytics routers, whose middleware 401 carries type:\"no_token\" while their route-level fallback does not"
+  },
+  {
+   "id": "team2-slice-5-command-services",
+   "title": "Command defaults + command blocks service",
+   "worker": "DeepSeek V4.1 Flash via OpenCode high",
+   "state": "authored v2, handed to integration; pending isolated validation and dependency closure; ownership retained",
+   "sourceFiles": [
+    "dimabot/src/server/services/command_defaults.service.ts",
+    "dimabot/src/server/services/command_blocks.service.ts",
+    "dimabot/src/server/services/command_defaults.service.test.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/server/services/command_defaults.service.rs",
+    "dimabot/src/server/services/command_blocks.service.rs",
+    "dimabot/tests/command_services.rs",
+    "migration-notes/command-services-handoff.md",
+    "dimabot/tests/fixtures/command_services_reference.cjs",
+    "dimabot/tests/support/command_services_support.rs"
+   ],
+   "centralPatchRequired": [
+    "dimabot/Cargo.toml (feature command-services)",
+    "dimabot/src/lib.rs (pub mod command_defaults_service, pub mod command_blocks_service via two #[path] entries - no new mod.rs)"
+   ],
+   "nativeReuse": [
+    "dimabot/src/utils/ast_blocks/ (MAX_COMMAND_TEXT at ast_blocks/types.rs:8, re-exported by index.rs:30; compile_blocks, compile_blocks_owned, stored_blocks, StoredBlocks, BlocksError, import_command_text) - already migrated, do not re-port",
+    "dimabot/src/utils/command_cooldown.rs (write_command_with_cooldown at line 122, minimum_command_cooldown, command_write_key, CurrentCommand, CooldownError) - native equivalent of team3's command_cooldown_write.ts, which must NOT be ported",
+    "dimabot/src/schemas/commands.schema.rs (schema, collection, repository, repository_with_clock, CommandsRepository)",
+    "dimabot/src/schemas/users.schema.rs",
+    "dimabot/src/config/commands/reservedcommands.json - embed with include_str! at ../../config/commands/reservedcommands.json from src/server/services/, parse once into a LazyLock"
+   ],
+   "notes": [
+    "The too_long check must use JavaScript UTF-16 code-unit length, not Rust byte length.",
+    "command_defaults.service.test.ts is the source oracle for the port's test expectations."
+   ],
+   "handoff": "/root/.local/state/dimabot-migration-teams-20261031/ready/team2-slice-5-command-services-v2.md",
+   "handoffSHA256": "45c58cd549a043e7edbf374fb15302073215b0d0cdc49ebf98850c89e6124ad5"
+  },
+  {
+   "id": "team2-slice-6-paid-order-reward",
+   "name": "native applyPaidOrderReward adapter (contract tl1-c4)",
+   "state": "READY (published 2026-10-31; lead-verified against the TS source; blocked on team1 central snippets)",
+   "lane": "opencode / opencode-go/deepseek-v4.1-flash @ high (thread delegate-task:1242a25e)",
+   "source": "dimabot/src/utils/paid_order_reward.ts + dimabot/src/utils/paid_order_reward.test.ts",
+   "ownedFiles": [
+    "dimabot/src/utils/paid_order_reward.rs",
+    "dimabot/tests/paid_order_reward.rs",
+    "migration-notes/paid-order-reward-handoff.md"
+   ],
+   "consumer": "team1-billing-ai :: dimabot/src/domain_events/polar_billing/plan_projection.rs (applyPolarRewardDomainEvent)",
+   "note": "coordinator asked team2 to prioritise an owner/lane for the concrete reward adapter on 2026-10-31; team2 owns the TS source and now owns the native adapter. team1 keeps the consumer and must not re-implement reward granting. Reuses team1 native referral module + reward table; proposes a new `referral` feature name that team1 must confirm.",
+   "publishedHandoff": "ready/team2-api-data-slice-6-paid-order-reward.md + results/team2-api-data-slice-6-paid-order-reward.md; repo copy migration-notes/paid-order-reward-handoff.md (373 lines)",
+   "handoffSha256": "7585412863206a416a2cd161d764b77153fc5fdc1770c862e1bc737c48166a3a",
+   "fileSha256": {
+    "dimabot/src/utils/paid_order_reward.rs": "8791fea47a1ab9f1b997bf6e3648a63f4c68e8737dab29273ebe1d8bbf2cf8cb",
+    "dimabot/tests/paid_order_reward.rs": "570ecf61a6f9f78cf4022b8b01798accd07e72fd78142d07d4735e398829a5bd"
+   },
+   "featureLine": "paid-order-reward = [\"application-schemas\", \"referral-service\"]",
+   "featureNameEvidence": "team1 wave-2C handoff migration-notes/team1-wave2-c-handoff.md:54 -> referral-service = [\"application-schemas\",\"mongo\",\"billing-service\",\"js-date\",\"dep:sha2\"]; team1 must confirm or rename",
+   "blockingDependency": "crate::utils::referral, crate::utils::referral_ledger and crate::schemas::referral_code are not declared in the current central files, so this slice cannot compile until team1's wave-2C central snippets land (referral-service feature + 3 module registrations). Local feature coverage is complete; total Polar reward path completion is not.",
+   "team1Seam": "PaidOrderRewardApplier trait + PaidOrderRewardService::new(Database); apply_paid_order_reward accepts &Concrete and &dyn; from_cadence_str bridges team1 String cadence; parse_cadence accepts only 'monthly'|'yearly'",
+   "tests": "17 pure tests + 1 #[ignore] disposable-Mongo suite (PAID_ORDER_REWARD_TEST_MONGO_URI / _DATABASE, must start rust_paid_order_reward_fixture_); nothing executed"
+  },
+  {
+   "id": "team2-slice-7-bot-runtime-metrics",
+   "state": "authoring assigned; not verified",
+   "sourceFiles": [
+    "dimabot/src/utils/observability/bot_runtime_metrics.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/utils/observability/bot_runtime_metrics.rs",
+    "dimabot/tests/bot_runtime_metrics.rs",
+    "dimabot/tests/support/bot_runtime_metrics_support.rs",
+    "dimabot/tests/fixtures/bot_runtime_metrics_reference.cjs",
+    "migration-notes/bot-runtime-metrics-handoff.md"
+   ],
+   "dependency": "team1 contract tl1-c2 v2: single threading metric emitter; no duplicate writer"
+  },
+  {
+   "id": "team2-slice-8-raid-subscriptions",
+   "state": "authoring assigned; not verified",
+   "sourceFiles": [
+    "dimabot/src/utils/raid_subscriptions.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/utils/raid_subscriptions.rs",
+    "dimabot/tests/raid_subscriptions.rs",
+    "dimabot/tests/support/raid_subscriptions_support.rs",
+    "dimabot/tests/fixtures/raid_subscriptions_reference.cjs",
+    "migration-notes/raid-subscriptions-handoff.md"
+   ],
+   "reuse": [
+    "dimabot/src/utils/eventsub.rs raid_direction_value",
+    "dimabot/src/schemas/raid_subscription_preference.schema.rs",
+    "dimabot/src/schemas/eventsub.schema.rs"
+   ]
+  },
+  {
+   "id": "team2-slice-9-pet-schemas-wakeups",
+   "state": "authoring assigned; not verified",
+   "sourceFiles": [
+    "dimabot/src/schemas/pet_runtime.schema.ts",
+    "dimabot/src/schemas/pet_settings.schema.ts",
+    "dimabot/src/utils/domain_event_wakeups.ts",
+    "dimabot/src/utils/domain_event_wakeups.test.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/schemas/pet_runtime.schema.rs",
+    "dimabot/src/schemas/pet_settings.schema.rs",
+    "dimabot/src/utils/domain_event_wakeups.rs",
+    "dimabot/tests/pet_schemas_wakeups.rs",
+    "dimabot/tests/support/pet_schemas_wakeups_support.rs",
+    "dimabot/tests/fixtures/pet_schemas_wakeups_reference.cjs",
+    "migration-notes/pet-schemas-wakeups-handoff.md"
+   ],
+   "dependency": "team4-pets-runtime-schemas contract; no shared or central file edits"
+  },
+  {
+   "id": "team2-slice-10-overlay-token",
+   "state": "authoring assigned; not verified",
+   "sourceFiles": [
+    "dimabot/src/utils/overlay-token.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/utils/overlay_token.rs",
+    "dimabot/tests/overlay_token.rs",
+    "dimabot/tests/support/overlay_token_support.rs",
+    "dimabot/tests/fixtures/overlay_token_reference.cjs",
+    "migration-notes/overlay-token-handoff.md"
+   ],
+   "dependency": "team4-overlay-token; reuse native crypto; application-specific stores owned by respective consumer teams"
+  },
+  {
+   "id": "team2-slice-11-pet-settings-service",
+   "state": "authoring assigned; not verified",
+   "sourceFiles": [
+    "dimabot/src/server/services/pet_settings.service.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/server/services/pet_settings.service.rs",
+    "dimabot/tests/pet_settings_service.rs",
+    "dimabot/tests/support/pet_settings_service_support.rs",
+    "dimabot/tests/fixtures/pet_settings_service_reference.cjs",
+    "migration-notes/pet-settings-service-handoff.md"
+   ],
+   "dependencies": "slice 9 pet schemas, team4 pets state/readiness/peers/assets; no shared or central file edits"
+  },
+  {
+   "id": "team2-slice-12-pubsub-manager",
+   "state": "authoring assigned; not verified",
+   "sourceFiles": [
+    "dimabot/src/classes/pubsub_manager.class.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/classes/pubsub_manager.class.rs",
+    "dimabot/tests/pubsub_manager.rs",
+    "dimabot/tests/support/pubsub_manager_support.rs",
+    "dimabot/tests/fixtures/pubsub_manager_reference.cjs",
+    "migration-notes/pubsub-manager-handoff.md"
+   ],
+   "dependency": "team4-pubsub-manager contract; central registration integration only"
+  },
+  {
+   "id": "team2-slice-13-email-auth",
+   "state": "authoring assigned; not verified",
+   "sourceFiles": [
+    "dimabot/src/server/routes/email-auth.route.ts"
+   ],
+   "ownedPaths": [
+    "dimabot/src/server/routes/email_auth.route.rs",
+    "dimabot/tests/email_auth_route.rs",
+    "dimabot/tests/support/email_auth_route_support.rs",
+    "dimabot/tests/fixtures/email_auth_route_reference.cjs",
+    "migration-notes/email-auth-route-handoff.md"
+   ],
+   "reuse": "existing native email activation token and user schema; central registration integration only"
+  },
+  {
+   "id": "team2-slice-14-auth-authorize",
+   "state": "authoring assigned; not verified",
+   "sourceFiles": [
+    "dimabot/src/server/routes/auth.route.ts (GET /authorize only)"
+   ],
+   "ownedPaths": [
+    "dimabot/src/server/routes/auth_authorize.route.rs",
+    "dimabot/tests/auth_authorize_route.rs",
+    "dimabot/tests/support/auth_authorize_route_support.rs",
+    "dimabot/tests/fixtures/auth_authorize_route_reference.cjs",
+    "migration-notes/auth-authorize-route-handoff.md"
+   ],
+   "dependencies": "email auth redirect consumer; other auth.route.ts handlers remain unported"
+  },
+  {
+   "id": "team2-slice-15-auth-callbacks",
+   "state": "authoring assigned; not verified",
+   "sourceFiles": [
+    "dimabot/src/server/routes/auth.route.ts (register and reauthenticate only)"
+   ],
+   "ownedPaths": [
+    "dimabot/src/server/routes/auth_callbacks.route.rs",
+    "dimabot/tests/auth_callbacks_route.rs",
+    "dimabot/tests/support/auth_callbacks_route_support.rs",
+    "dimabot/tests/fixtures/auth_callbacks_route_reference.cjs",
+    "migration-notes/auth-callbacks-route-handoff.md"
+   ],
+   "dependencies": "team1 Polar, team3 moderation and EventSub, team2 commands/site analytics/mail, accepted Twitch account/token primitives; integration-owned server mount"
+  }
+ ],
+ "intraTeamDependencyChain": {
+  "note": "Discovered during slice-2 review on 2026-10-31. analytics.route.ts imports stream_timeline.route.ts AND follow_relationship_ledger.schema.ts, so analytics.route.rs is deliberately NOT in slice 2a.",
+  "chain": [
+   "team2-slice-3-follow-ledger",
+   "team2-slice-4-stream-timeline (stream_timeline route)",
+   "analytics.route.rs"
+  ]
+ },
+ "verifiedNativeApiFacts": {
+  "note": "Confirmed by reading the native source, for use in later briefs so no worker re-derives them.",
+  "modulePaths": [
+   "crate::utils::mongo::get_mongo_client() -> mongodb::error::Result<&'static Client> (feature mongo)",
+   "crate::utils::redis::get_redis_client() -> redis::RedisResult<redis::aio::ConnectionManager> (feature redis)",
+   "crate::utils::eventsub::{CANONICAL_BITS_EVENT_TYPE, LEGACY_BITS_EVENT_TYPES} (feature eventsub)",
+   "crate::utils::twitch::{TwitchClient, TwitchCredentials, HelixRetryPolicy, HelixResult} (feature twitch-client)",
+   "crate::domain_event_contracts::time::native_date_iso(i64) -> String",
+   "crate::schemas::<name>::schema() -> &'static SchemaDefinition"
+  ],
+  "schemaFramework": [
+   "SchemaDefinition::{construct, hydrate, prepare_insert, prepare_save, apply_save_hooks, default_projection, repository, native_collection}",
+   "Field::{new, required, required_when, required_unless, default, enumeration, min, max, max_utf16, hidden, trim, integer, minimize, immutable}",
+   "FieldType::{String, Number, Boolean, Date, ObjectId, Mixed, Array, ArrayElement, Map, Object, Subdocument{fields, generate_id}}",
+   "FieldDefault::{Missing, Null, String, Number, Boolean, Array, Object, Value, Now, Epoch, LocalDay, LocalMonth, LocalMonthZero, LocalYear}",
+   "SchemaIndex::{new, unique, sparse, ttl, partial, model}"
+  ],
+  "features": [
+   "api-auth",
+   "api-admin",
+   "api-observability-route",
+   "api-validation-route",
+   "application-schemas",
+   "ordinary-application-schemas",
+   "domain-events",
+   "domain-event-runtime",
+   "logger",
+   "logger-redis",
+   "eventsub",
+   "chat-events",
+   "twitch-client",
+   "twitch-streamers",
+   "cron-queue",
+   "bson-js-json",
+   "http",
+   "http-client",
+   "http-form",
+   "http-ws"
+  ]
+ },
+ "hardWonLessons": {
+  "axum08PathParams": "axum 0.8.9 (Cargo.toml line 221). Two route entries whose paths differ only by parameter name (e.g. /events/{type} and /events/{id}) conflict, and registering the same path twice with separate .route() calls panics with an overlapping-method-route error. When the TypeScript source has one path with two verbs (GET /events/:type and PATCH /events/:id), register ONE route entry with a combined method router: .route(\"/events/{id}\", get(read_event).patch(update_event)). The externally visible path is unchanged.",
+  "routeInventory": "When porting a TypeScript router, enumerate EVERY verb: router.get/post/put/patch/delete, not just a get/post/put/delete subset. A 'patch' route was missed in the first slice-2 brief.",
+  "malformedBody": "Axum's Json extractor rejects a malformed body BEFORE the handler runs, returning plain text instead of the source's JSON envelope. Express body-parser throws inside the try block, so the source answers {error:true,message:'Internal server error',status:500}. Use Option<Json<Value>> and map the absent case to that envelope to preserve parity.",
+  "mongooseUpdateSemantics": "Mongoose findByIdAndUpdate(id, plainObject) performs a partial update (it wraps the object in $set), returns the post-update document with {new:true}, strips _id and __v from the payload, runs schema validators ONLY with runValidators:true (the source omits it), and does NOT fire pre('save') hooks - so updatedAt is not refreshed on that path.",
+  "mongooseUpsertSemantics": "Mongoose updateOne(filter, {$setOnInsert: body}, {upsert:true}) applies setDefaultsOnInsert (a schema default for any path absent from $setOnInsert is written on insert), casts BOTH the $setOnInsert payload AND the filter's equality fields, builds the upserted document as the filter's equality fields MERGED with the $setOnInsert payload, stores a JavaScript number as a BSON Double, and STRIPS undefined update paths (an undefined value is absent from the stored document, not null). Mongoose's updateOne does NOT run validators by default - only save() does. Native remedy that already exists in this repo: SchemaDefinition::construct(&merged_doc, now) applies defaults and casts (it also runs the required/enum validators, which Mongoose's update path does not, so it is strictly narrower); hydrate() does the same without validators but is gated behind the command-reward-schemas feature. Do NOT write a parallel ad-hoc caster - use the schema framework or report a framework gap.",
+  "mongoNumericType": "The native framework's js_number helper (dimabot/src/utils/bson_compat.rs:15) reproduces the Node BSON rule: an integral finite number inside the Int32 range becomes Bson::Int32, everything else becomes Bson::Double. A JavaScript number is NOT always stored as a BSON Double - an earlier lead claim to that effect was wrong and is withdrawn. Do not write assertions that contradict the framework.",
+  "routeOracleRequiresMatchingSeam": "A route-layer oracle requires the native route to expose the SAME seam set the source oracle stubs. A native that hard-wires its data access can never be compared against a stubbed source. This composes with the data-layer slice: the data layer is verified against a disposable Mongo plus its own source oracle, the route layer against the source stubbed data - neither needs the other Mongo.",
+  "oracleStubMustReproduceMiddlewareRejection": "An oracle stub for a middleware must reproduce that middleware's REJECTION behaviour, not only its happy path. A pass-through stub silently changes the source's observable behaviour and forces the comparison onto an unrealistic path: it made the source produce a route-level fallback envelope the real source can never produce, and forced the native onto an unprotected builder it never uses in production."
+ },
+ "crossTeamContracts": [
+  {
+   "neededBy": "team2-slice-1-oauth",
+   "owner": "team1-billing-ai",
+   "source": "dimabot/src/utils/ai_credit_display.ts",
+   "contract": "getAiCredits / getFreeAiCreditDisplay for OAuth GET /oauth/v1/me/credits",
+   "status": "reported, not yet sent"
+  },
+  {
+   "neededBy": "team2-slice-1-oauth",
+   "owner": "team4-speech-media",
+   "source": "dimabot/src/pets/runtime.ts, dimabot/src/pets/state.ts, dimabot/src/pets/selection.ts",
+   "contract": "pet runtime / cancel / playback-selection adapters for OAuth /me/pet* endpoints",
+   "status": "reported, not yet sent"
+  },
+  {
+   "neededBy": "team2-slice-2a-site, team2-slice-4-stream-timeline",
+   "owner": "team3-bot-ast",
+   "source": "dimabot/src/utils/eventsub.ts",
+   "contract": "canonicalize_eventsub_type / get_equivalent_eventsub_types are absent from the native dimabot/src/utils/eventsub.rs; native file already exports CANONICAL_BITS_EVENT_TYPE and LEGACY_BITS_EVENT_TYPES. Local seam implemented in slice 2a over those shared constants, no constant duplicated.",
+   "status": "reported, not yet sent"
+  },
+  {
+   "neededBy": "team2-slice-2a-site, team2-slice-3-follow-ledger",
+   "owner": "team3-bot-ast",
+   "source": "dimabot/src/utils/twitch_helix_retry.ts",
+   "contract": "native dimabot/src/utils/twitch.rs must cover executeHelixAppRequestWith401Retry / executeHelixStreamerRequestWith401Retry (401 token refresh + single retry). Team3 owns the TS source; this team must not edit the native file.",
+   "status": "reported, not yet sent"
+  },
+  {
+   "neededBy": "team2-slice-7-bot-runtime-metrics (queued)",
+   "owner": "team1-billing-ai",
+   "source": "dimabot/src/utils/observability/bot_runtime_metrics.ts (team2 owns the source; team1 owns the thread-routing emitter)",
+   "contract": "contract tl1-c2 v2: reuse crate::utils::ai_threading::thread_router::{ThreadRoutingMetric, record_thread_routing_metric} and enable ai-threading at consumer wiring. All THREE metrics:bot:threading:* keys expire with 86400. team1 stays the only writer of the metrics:bot:threading:* namespace; team2 must not create a second writer.",
+   "status": "accepted by team2; the bot_runtime_metrics.ts port must depend on the team1 emitter, not re-implement it"
+  },
+  {
+   "neededBy": "team2-slice-6-paid-order-reward",
+   "owner": "team2-api-data (adapter) consumed by team1-billing-ai",
+   "source": "dimabot/src/utils/paid_order_reward.ts",
+   "contract": "contract tl1-c4: team2 owns the concrete applyPaidOrderReward adapter; team1 injects it into applyPolarRewardDomainEvent. No duplicate grant implementation. team2 depends on team1 native modules crate::utils::referral (reward table + SubscriptionCadence) and crate::schemas::referral_code; those two modules are authored but NOT yet registered, so team1 must add them plus a `referral` feature name.",
+   "status": "assigned to team2 lane 1242a25e on 2026-10-31; feature name `referral` proposed for team1 confirmation"
+  }
+ ],
+ "executionPolicy": {
+  "wave": "authoring-only",
+  "cargoAllowed": false,
+  "nodeAllowed": false,
+  "testsAllowed": false,
+  "dockerAllowed": false,
+  "networkAllowed": false,
+  "commitsAllowed": false,
+  "pushAllowed": false,
+  "allowed": [
+   "static file reads",
+   "static file edits",
+   "sha256 hashing",
+   "git diff --check"
+  ]
+ },
+ "providerRouting": {
+  "opencode + openai/gpt-6.1-terra": "401 on 2026-10-31; use the codex driver for Terra",
+  "codex + gpt-6.1-terra": "working",
+  "grok + grok-4.7": "working",
+  "opencode + opencode-go/deepseek-v4.1-flash": "working"
+ },
+ "coordinatorState": {
+  "source": "integration coordinator message, 2026-10-31",
+  "slices_2a_and_3": "2a READY v2; 3 READY v2 as of 2026-10-31 (gaps D/E/F/G closed and independently re-verified against the TS source and the pinned mongodb 3.9.1 driver)",
+  "log": "/root/.local/state/dimabot-migration-teams-20261031/contracts/team2-api-data-authoring-completion-20261031.md",
+  "execution": "no execution authorised yet; root recovered ~8.5GiB disk and is leasing the first FS verification job",
+  "fileOwnership": "retained by team2-api-data for slices 1, 2a, 3, 4a, 4b, 6",
+  "centralPatch": "ready/team2-api-data-central-20261031.patch (sha256 af218702...) is the integration-ready merged central edit for slices 2a+3+4a",
+  "slice4a": "coordinator accepted slice 4a as authored on 2026-10-31 but requires a source-comparison oracle + private Mongo/Redis adapter tests before READY-for-validation; team2 retains ownership and will deliver them",
+  "slice6_tl1c4": "coordinator asked team2 to prioritise an owner/lane for the applyPaidOrderReward adapter (tl1-c4); assigned to the opencode DeepSeek lane on 2026-10-31"
+ },
+ "oracleFixtureMechanism": {
+  "purpose": "The repository's actual-source oracle pattern. Any slice that needs source-vs-native comparison should follow it instead of inventing a new harness.",
+  "oracleSide": "dimabot/tests/fixtures/<name>_reference.cjs - pins the source SHA-256, transpiles the REAL .ts with ts.transpileModule, runs it in a real Express app with the production body-parser order, mocks only the necessary seams, and exposes --write <abs-dir> / --check <abs-dir> modes writing <name>-reference.json.",
+  "routeTemplate": "dimabot/tests/fixtures/observability_route_reference.cjs (route oracle); dimabot/tests/fixtures/api_auth_reference.cjs (fixture JSON shape and consumption contract); dimabot/tests/fixtures/mongoose_set_on_insert_reference.cjs (disconnected mongoose mocking, setDefaultsOnInsert, pinned node 24.22.1 / mongoose 8.24.2 / bson 6.10.4).",
+  "nativeSide": "A support module exposing fixture() (reads DIMA_<NAME>_FIXTURE_DIR, which must be absolute and outside the workspace, plus DIMA_<NAME>_FIXTURE_SHA256 lowercase hex, verifies the digest, loads <dir>/<name>-reference.json), fixture_case(), fixture_case_names() and assert_case(fixture, name, status, body). See dimabot/tests/support/api_auth_support.rs.",
+  "testShape": "#[ignore = \"requires the external source oracle fixture\"] tests that pin the case-name list and assert each case's status and body through assert_case.",
+  "important": "The .cjs is AUTHORED by the team but RUN by the integration team in a later leased phase with the pinned isolated Node/TypeScript toolchain. Never run node in the authoring wave.",
+  "knownLimitation": "dimabot/tests/support/api_auth_support.rs Provider routes only /oauth2/validate and /helix/users, so it CANNOT serve a Helix streams board. A route/collector slice needing one must add its own task-owned loopback recorder in its own new support file; api_auth_support.rs is shared and must not be modified."
+ },
+ "centralPatch": {
+  "current": "ready/team2-api-data-central-20261031.v2.patch",
+  "sha256": "860cc177b6b56b311644f165acd73683a7a70cb28304ad4c9b456a8e9f164d89",
+  "supersedes": {
+   "file": "ready/team2-api-data-central-20261031.v1.patch",
+   "sha256": "af218702329fc4c1d330317f6fe3be822403a6e732f7c857aa23a8bf9559f5ab",
+   "covers": [
+    "2a",
+    "3",
+    "4a"
+   ],
+   "note": "retained for history; still applies cleanly on its own"
+  },
+  "covers": [
+   "team2-slice-2a-site",
+   "team2-slice-3-follow-ledger",
+   "team2-slice-4a-stream-timeline-data",
+   "team2-slice-6-paid-order-reward"
+  ],
+  "hardPrerequisite": "team1-billing-ai's referral-service feature plus the referral / referral_ledger / referral_code module registrations (published as position-agnostic snippets in migration-notes/team1-wave2-c-handoff.md). Until they land, the manifest references a feature that does not exist. Their snippets carry no line anchors, so they cannot conflict with the line-anchored hunks here.",
+  "verified": "git apply --check exits 0 for all four files; every hunk count correct; every anchor proven unique before editing; READ-ONLY validation, patch NOT applied, central files unmodified"
+ }
+}

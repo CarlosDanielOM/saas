@@ -32,6 +32,8 @@ mod scanner;
 mod source;
 #[path = "types.rs"]
 mod types;
+#[path = "string_value.rs"]
+mod string_value;
 
 pub use grammar::{
     GRAMMAR_VERSION, GrammarBuilder, PreparedGrammar, SyntaxDefinition, SyntaxHandler,
@@ -39,6 +41,7 @@ pub use grammar::{
 pub use lexer::unescape_literal;
 pub use scanner::unescape_rendered_text;
 pub use types::*;
+pub use string_value::{EvalError, JsString};
 
 use source::{Budget, Source, View};
 use std::{ops::Range, sync::Arc};

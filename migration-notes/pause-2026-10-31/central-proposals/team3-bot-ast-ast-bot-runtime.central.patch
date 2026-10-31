@@ -1,0 +1,52 @@
+--- a/dimabot/Cargo.toml
++++ b/dimabot/Cargo.toml
+@@ -9,6 +9,7 @@
+ path = "src/lib.rs"
+
+ [features]
++ast-bot-runtime = ["ast-evaluator", "ast-pure-functions", "ast-blocks", "ast-syntax", "commands-service", "command-utils", "keyword-store", "keywords", "twitch-functions", "twitch-client", "twitch-streamers", "twitch-tokens", "permissions", "js-date", "lossless-json", "redis-application-runtime", "logger-redis", "application-schemas", "timer-policy", "mongo", "redis", "http-client", "dep:tokio", "dep:serde", "dep:serde_json", "dep:uuid", "dep:sha2"]
+ temporary-role-announcements = ["twitch-functions"]
+ api-file-routes = ["api-admin", "dep:futures-util", "tokio/fs", "tokio/io-util"]
+ polar-batch-usage = ["polar-cache-usage", "polar-client"]
+--- a/dimabot/src/utils/mod.rs
++++ b/dimabot/src/utils/mod.rs
+@@ -352,8 +352,13 @@
+ #[cfg(feature = "tts-usage-tracking")]
+ pub mod tts_usage;
+
+ #[cfg(feature = "api-file-routes")]
+ pub mod fs;
+
+ #[cfg(feature = "temporary-role-announcements")]
+ pub mod temporary_roles_announcements;
++
++#[cfg(feature = "ast-bot-runtime")]
++#[path = "ast_parser/runtime.rs"]
++pub mod ast_runtime;
++#[cfg(feature = "ast-bot-runtime")]
++#[path = "ast_timer_runtime.rs"]
++pub mod ast_timer_runtime;
+--- a/dimabot/src/functions/chats/mod.rs
++++ b/dimabot/src/functions/chats/mod.rs
+@@ -1,5 +1,8 @@
+ #[path = "delete_message.chat.rs"]
+ pub mod delete_message;
+ // Context-free plain chat send shared by announcement helpers; the AST/context
+ // half of send_message.chat.ts remains separate work.
+ pub mod send_message_plain;
++
++#[path = "announcement.chat.rs"]
++pub mod announcement;
+--- a/dimabot/src/lib.rs
++++ b/dimabot/src/lib.rs
+@@ -146,6 +146,9 @@
+ #[cfg(feature = "api-file-routes")]
+ #[path = "server/routes/admin-tools.route.rs"]
+ pub mod admin_tools_route;
+ #[cfg(feature = "api-file-routes")]
+ #[path = "server/routes/file.route.rs"]
+ pub mod file_route;
++
++#[cfg(feature = "ast-bot-runtime")]
++#[path = "handlers/keywords.handler.rs"]
++pub mod keyword_ingress;

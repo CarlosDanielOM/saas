@@ -2,6 +2,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fmt, sync::Arc};
 
+/// Serde adapter for a JavaScript string stored as UTF-16 code units.
+///
+/// The array representation survives `serde_json::Value` without replacement.
+/// Existing UTF-8 AST JSON stays unchanged.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PersistedJsString(pub super::JsString);
+
+impl Serialize for PersistedJsString {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.0.units().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for PersistedJsString {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Vec::<u16>::deserialize(deserializer)
+            .map(super::JsString::from_units)
+            .map(Self)
+    }
+}
+
 /// Half-open offsets in JavaScript UTF16 code units, in the original source.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourceSpan {
@@ -79,6 +100,8 @@ pub enum AstNode {
     Root { children: Vec<AstNode> },
     #[serde(rename = "literal")]
     Literal { value: String },
+    #[serde(rename = "literalUtf16")]
+    LiteralUtf16 { value: PersistedJsString },
     #[serde(rename = "function")]
     Function { name: String, args: Vec<AstNode> },
     #[serde(rename = "commandRef")]
@@ -215,6 +238,8 @@ pub enum ArrayAccessor {
 pub enum TemplateSegment {
     #[serde(rename = "text")]
     Text { value: String },
+    #[serde(rename = "textUtf16")]
+    TextUtf16 { value: PersistedJsString },
     #[serde(rename = "expr")]
     Expr { node: AstNode },
 }

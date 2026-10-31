@@ -1,4 +1,5 @@
 use super::types::*;
+use crate::utils::ast_syntax::PersistedJsString;
 use regex::Regex;
 use serde_json::{Map, Value};
 use std::{collections::HashSet, sync::OnceLock};
@@ -128,6 +129,36 @@ fn string(
     }
     Ok(value)
 }
+/// Read the additive version-2 code-unit array. Only integers in `u16` range
+/// are accepted; a UTF-8 string or a lossy replacement is never inferred.
+fn persisted_string(
+    m: &mut Map<String, Value>,
+    field: &str,
+    label: &str,
+    max: usize,
+    id: &str,
+    p: &Origin,
+) -> Result<PersistedJsString, BlocksError> {
+    let value = m.remove(field).unwrap_or(Value::Null);
+    let value = serde_json::from_value::<PersistedJsString>(value).map_err(|_| {
+        error(
+            BlocksErrorCode::InvalidUtf16,
+            format!("{label} is not a valid UTF-16 code unit list."),
+            Some(id),
+            &p.child(field),
+        )
+    })?;
+    if value.0.len() > max {
+        return Err(error(
+            BlocksErrorCode::StringLimit,
+            format!("{label} is too long."),
+            Some(id),
+            &p.child(field),
+        ));
+    }
+    Ok(value)
+}
+
 pub(crate) struct Reader {
     pub nodes: usize,
     ids: Ids,
@@ -419,6 +450,22 @@ impl Reader {
             "literal" => Literal {
                 value: string(&mut m, "value", "Text", MAX_COMMAND_TEXT, true, &id, &p)?,
             },
+            "literalUtf16" => {
+                let value = persisted_string(
+                    &mut m,
+                    "value",
+                    "Text",
+                    MAX_COMMAND_TEXT,
+                    &id,
+                    &p,
+                )?;
+                // Keep one canonical editor/block form: units that already form
+                // UTF-8 text use the version-1 literal and its existing APIs.
+                match value.0.to_utf8() {
+                    Ok(text) => Literal { value: text },
+                    Err(_) => LiteralUtf16 { value },
+                }
+            }
             "raw" => {
                 if !at_root {
                     return Err(error(

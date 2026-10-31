@@ -1,5 +1,10 @@
 # dimabot Rust Agent Guide
 
+**Migration paused by the user on 2026-10-31 until further notice.** The work is
+preserved on `rust-migration`, including unverified drafts. Do not restart agents,
+integration, builds or migration changes without an explicit user instruction.
+See [the pause checkpoint](../migration-notes/RUST-MIGRATION-PAUSED.md).
+
 ## Migration completeness
 
 100% migration completion means every TypeScript file feature and accepted improvement, plus every required direct and transitive dependency, is implemented in Rust without relying on unmigrated TypeScript. Report local feature coverage separately from total completion, and name any blocking dependency. A trait, mock, or host boundary does not count when the required application-specific adapter is missing; required application services passed through callbacks or traits remain part of the dependency chain. Native Rust crates and standard-library replacements count; npm internals do not need porting. Equivalent Rust types may cover type-only TypeScript imports. Report deployment and caller adoption separately: dependency completeness neither authorizes live cutover nor requires deployment for 100%.

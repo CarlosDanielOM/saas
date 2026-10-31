@@ -1,0 +1,121 @@
+{
+  "source": [
+    "dimabot/src/utils/ast_parser/functions/channel.functions.ts startPollHandler",
+    "dimabot/src/widgets/service.ts launchPoll"
+  ],
+  "cases": [
+    {
+      "name": "widget english free vote",
+      "argument": "DBD: Choose a card (abc12345);Card 1/Card 2/Card 3/Card 4/Card 5;30;0",
+      "title": "DBD: Choose a card (abc12345)",
+      "options": ["Card 1", "Card 2", "Card 3", "Card 4", "Card 5"],
+      "duration": 30.0,
+      "points": 0
+    },
+    {
+      "name": "widget spanish channel points",
+      "argument": "DBD: Elige una carta (abc12345);Carta 1/Carta 2/Carta 3/Carta 4/Carta 5;45;500",
+      "title": "DBD: Elige una carta (abc12345)",
+      "options": ["Carta 1", "Carta 2", "Carta 3", "Carta 4", "Carta 5"],
+      "duration": 45.0,
+      "points": 500
+    },
+    {
+      "name": "three parts default to zero points",
+      "argument": "Question;A/B;60",
+      "title": "Question",
+      "options": ["A", "B"],
+      "duration": 60.0,
+      "points": 0
+    },
+    {
+      "name": "parts and options are trimmed and empty options dropped",
+      "argument": "  Q  ; A / /B ; 30 ; 5 ",
+      "title": "Q",
+      "options": ["A", "B"],
+      "duration": 30.0,
+      "points": 5
+    },
+    {
+      "name": "leading zeros are digits",
+      "argument": "Question;A/B;30;0007",
+      "title": "Question",
+      "options": ["A", "B"],
+      "duration": 30.0,
+      "points": 7
+    },
+    {
+      "name": "hex duration is a JavaScript Number",
+      "argument": "Question;A/B;0x10",
+      "title": "Question",
+      "options": ["A", "B"],
+      "duration": 16.0,
+      "points": 0
+    },
+    {
+      "name": "empty argument uses the usage text",
+      "argument": "   ",
+      "error": "usage"
+    },
+    {
+      "name": "two parts is a format error",
+      "argument": "Question;A/B",
+      "error": "format"
+    },
+    {
+      "name": "five parts is a format error",
+      "argument": "Question;A/B;30;10;extra",
+      "error": "format"
+    },
+    {
+      "name": "one option is a format error",
+      "argument": "Question;A;30",
+      "error": "format"
+    },
+    {
+      "name": "empty title is a format error",
+      "argument": ";A/B;30",
+      "error": "format"
+    },
+    {
+      "name": "zero duration is a format error",
+      "argument": "Question;A/B;0",
+      "error": "format"
+    },
+    {
+      "name": "negative duration is a format error",
+      "argument": "Question;A/B;-1",
+      "error": "format"
+    },
+    {
+      "name": "nonnumeric duration is a format error",
+      "argument": "Question;A/B;nope",
+      "error": "format"
+    },
+    {
+      "name": "trailing empty points is a points error",
+      "argument": "Question;A/B;30;",
+      "error": "points"
+    },
+    {
+      "name": "signed points is a points error",
+      "argument": "Question;A/B;30;-1",
+      "error": "points"
+    },
+    {
+      "name": "fractional points is a points error",
+      "argument": "Question;A/B;30;1.5",
+      "error": "points"
+    },
+    {
+      "name": "exponent points is a points error",
+      "argument": "Question;A/B;30;1e3",
+      "error": "points"
+    },
+    {
+      "name": "too many points is a points error",
+      "argument": "Question;A/B;30;1000001",
+      "error": "points"
+    }
+  ]
+}

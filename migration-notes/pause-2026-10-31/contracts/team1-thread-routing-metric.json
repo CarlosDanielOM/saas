@@ -1,0 +1,85 @@
+{
+ "contractId": "tl1-c2",
+ "version": 2,
+ "raisedBy": "team1-billing-ai",
+ "raisedAt": "2026-10-31T02:12:00Z",
+ "status": "accepted-single-writer-ownership-awaiting-rust-signature",
+ "scope": "Thread-routing metric emission for the AI conversation threading slice.",
+ "owner": {
+  "team": "team1-billing-ai",
+  "lane": "lane-c-personality-threading",
+  "paths": [
+   "dimabot/src/utils/ai/threading/thread_router.rs"
+  ],
+  "note": "The emitter for the thread-routing metric lives with the thread router because that is its only caller in the TypeScript source."
+ },
+ "otherParty": {
+  "team": "team2-api-data",
+  "paths": [
+   "dimabot/src/utils/observability/bot_runtime_metrics.ts"
+  ],
+  "note": "team2 owns the bot runtime metrics source file and therefore the rest of the metrics surface."
+ },
+ "namespace": {
+  "keyPrefixDefault": "metrics:bot",
+  "keyPrefixEnvVar": "BOT_METRICS_PREFIX",
+  "keys": [
+   "metrics:bot:threading:minute:{yyyyMMddHHmm}",
+   "metrics:bot:threading:channel:{channelID}:minute:{yyyyMMddHHmm}",
+   "metrics:bot:threading:cumulative"
+  ],
+  "minuteBucket": "UTC yyyyMMddHHmm, zero padded month/day/hour/minute",
+  "hashFields": [
+   "requests",
+   "candidateCountTotal",
+   "selectedScoreMilliTotal",
+   "promptTurnsTotal",
+   "latencyMsTotal",
+   "userEvictions",
+   "channelEvictions",
+   "created",
+   "reused",
+   "errors"
+  ],
+  "ttlSeconds": 86400,
+  "ttlSource": "SEMANTIC_METRICS_TTL_SECONDS in bot_runtime_metrics.ts",
+  "scaling": "selectedScore is scaled by 1000 before rounding; every other value is max(0, round(value))"
+ },
+ "behaviour": {
+  "delivery": "fire-and-forget; a metric failure must never change the thread routing outcome",
+  "source": "void recordThreadRoutingMetric({...}) in thread_router.ts"
+ },
+ "ask": {
+  "to": "team2-api-data",
+  "action": "When porting bot_runtime_metrics.ts to Rust, reuse the thread-routing emitter owned by team1 instead of re-implementing the metrics:bot:threading:* key namespace. Do not create a second writer for these keys.",
+  "method": "team2 may import crate::utils::ai_threading::thread_router's emitter, or team1 may expose the emitter as a standalone public function; the integration team picks one when applying the central patch."
+ },
+ "verification": {
+  "status": "unverified",
+  "note": "Authoring wave only. Runtime verification requires an integration execution lease. No Cargo, rustfmt, Node, Docker or network command has been run."
+ },
+ "integrationDecision": {
+  "owner": "team1-billing-ai",
+  "consumer": "team2-api-data",
+  "rule": "Reuse one concrete emitter; no duplicate namespace writer; no feature acceptance claimed",
+  "signature": "Team1 to publish stable Rust signature/types with ready handoff"
+ },
+ "publishedApi": {
+  "status": "published-stable",
+  "publishedAt": "2026-10-31T02:27:00Z",
+  "modulePath": "crate::utils::ai_threading::thread_router",
+  "errorTypePath": "crate::utils::ai_threading::thread_store::ThreadStoreError",
+  "items": [
+   "pub const DEFAULT_METRICS_PREFIX: &str = \"metrics:bot\";",
+   "pub const SEMANTIC_METRICS_TTL_SECONDS: u64 = 86_400;",
+   "pub struct ThreadRoutingMetric { pub channel_id: String, pub created: bool, pub reused: bool, pub failed: bool, pub candidate_count: i64, pub selected_score: f64, pub prompt_turns_used: i64, pub user_evictions: i64, pub channel_evictions: i64, pub latency_ms: i64 }",
+   "pub async fn record_thread_routing_metric(conn: &mut redis::aio::ConnectionManager, prefix: &str, m: &ThreadRoutingMetric) -> Result<(), ThreadStoreError>"
+  ],
+  "behaviour": {
+   "ttl": "all three keys expire with SEMANTIC_METRICS_TTL_SECONDS (86_400). The source uses SEMANTIC_METRICS_TTL_SECONDS for the metric keys and THREAD_TTL_SECONDS for the thread keys; the two are deliberately NOT coupled even though the numbers coincide today.",
+   "delivery": "fire-and-forget. The router calls record_metric, which clones the connection and spawns a task that discards the result (let _ = ...). A metric failure can never fail the routing call.",
+   "keyPrefix": "passed in per call; the router holds DEFAULT_METRICS_PREFIX unless a constructor argument overrides it. No module-scope environment read."
+  },
+  "consumerRule": "The observability team (owner of src/utils/observability/bot_runtime_metrics.ts) MUST call this emitter rather than write the metrics:bot:threading:* keys itself. Single writer."
+ }
+}

@@ -1,5 +1,66 @@
-use super::{Diagnostic, DiagnosticCode, HARD_NESTING_CEILING, Limits, ParseStats, SourceSpan};
+use super::{Diagnostic, DiagnosticCode, HARD_NESTING_CEILING, JsString, Limits, ParseStats, SourceSpan};
 use std::{ops::Range, sync::Arc};
+
+/// A code-unit view for the planned UTF-16 lexer. Maps every decoded boundary
+/// back to the original source so chained quote decoding retains diagnostics.
+/// It deliberately does not convert to UTF-8 or invent replacement scalars.
+#[derive(Clone, Debug)]
+pub(crate) struct Utf16View {
+    pub units: Arc<[u16]>,
+    map: Arc<[usize]>,
+}
+impl Utf16View {
+    pub fn original(input: &JsString, limits: Limits) -> Result<Self, Diagnostic> {
+        let len = input.len();
+        if len > limits.source_utf16 {
+            return Err(Diagnostic::new(DiagnosticCode::SourceLimit, "Source UTF16 limit exceeded", SourceSpan { start: 0, end: len }));
+        }
+        Ok(Self { units: Arc::from(input.units()), map: (0..=len).collect::<Vec<_>>().into() })
+    }
+    pub fn span(&self, range: Range<usize>) -> SourceSpan {
+        let last = self.map.len() - 1;
+        SourceSpan { start: self.map[range.start.min(last)], end: self.map[range.end.min(last)] }
+    }
+    pub fn decoded(&self, content: Range<usize>) -> Self {
+        let mut units = self.units[content.clone()].to_vec();
+        let mut map = self.map[content.start..=content.end].to_vec();
+        for (needle, replacement) in [(b'n', b'\n'), (b't', b'\t'), (b'"', b'"'), (b'\\', b'\\')] {
+            let mut out = Vec::with_capacity(units.len());
+            let mut next_map = Vec::with_capacity(map.len());
+            let mut pos = 0;
+            while pos < units.len() {
+                if units[pos] == u16::from(b'\\') && units.get(pos + 1) == Some(&u16::from(needle)) {
+                    out.push(u16::from(replacement));
+                    next_map.push(map[pos]);
+                    pos += 2;
+                } else {
+                    out.push(units[pos]);
+                    next_map.push(map[pos]);
+                    pos += 1;
+                }
+            }
+            next_map.push(map[units.len()]);
+            units = out;
+            map = next_map;
+        }
+        Self { units: units.into(), map: map.into() }
+    }
+}
+
+#[cfg(test)]
+mod utf16_view_tests {
+    use super::*;
+
+    #[test]
+    fn decoding_preserves_surrogates_and_original_boundaries() {
+        let source = JsString::from_units(vec![0xd800, 92, 110, 0xdc00, 92, 92]);
+        let view = Utf16View::original(&source, Limits::default()).unwrap();
+        let decoded = view.decoded(0..6);
+        assert_eq!(&*decoded.units, &[0xd800, 10, 0xdc00, 92]);
+        assert_eq!(decoded.span(1..2), SourceSpan { start: 1, end: 3 });
+        assert_eq!(decoded.span(3..4), SourceSpan { start: 4, end: 6 });
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct Source {

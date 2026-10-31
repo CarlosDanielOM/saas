@@ -1,0 +1,238 @@
+TEAM1 — team1-billing-ai — CONSOLIDATED CENTRAL PATCH
+================================================================================
+Owner of this file: team1 lead (MiniMax M3.1 Flash via MiniMax Code)
+State: AUTHORING ONLY. Nothing in team1 has been compiled, executed or tested.
+       The integration team applies this patch; team1 must not edit the
+       central files it touches.
+
+Repository: /root/saas-rust   Crate root: /root/saas-rust/dimabot   Branch: master
+
+HOW TO READ THIS FILE
+  SECTION 1 — READY-AUTHORING lanes (wave 1, wave 2-A, wave 2-C). These hunks
+               are complete as written and can be applied once integration
+               compiles them.
+  SECTION 2 — NOT YET APPLICABLE. Candidates from lanes still authoring
+               (lane B, wave 3-A, wave 3-C). Do NOT apply these yet; each is
+               superseded by that lane's own final report.
+  SECTION 3 — Integration notes that are easy to get wrong.
+
+APPLY ORDER MATTERS
+  `referral-service` enables `billing-service`, and `polar-billing-events`
+  enables `billing-service` + `ai-usage-retention`. Cargo resolves feature
+  order internally, but the `src/utils/mod.rs` module lines below must all be
+  present or the gated modules are simply absent (no compile error, which is
+  worse — the feature would silently build nothing).
+
+================================================================================
+SECTION 1 — READY-AUTHORING (apply after reviewing each lane handoff)
+================================================================================
+
+--- a/dimabot/Cargo.toml
++++ b/dimabot/Cargo.toml
+@@ [features] @@
++billing-service = ["polar-client", "ai-credit-projection", "credit-policy", "plan-cache", "js-date", "dep:sha2"]
++polar-billing-events = ["domain-events", "mongo", "redis", "polar-client", "credit-policy", "plan-cache", "ai-credit-projection", "billing-service", "ai-usage-retention", "unicode-collation", "dep:sha2", "dep:serde_json", "dep:uuid"]
++ai-threading = ["redis", "dep:serde", "dep:serde_json", "dep:uuid", "credit-policy", "js-strings", "js-regexp-unicode", "js-unicode17"]
++channel-ai-personality = ["application-schemas", "mongo", "js-date", "js-strings", "credit-policy"]
++referral-service = ["application-schemas", "mongo", "billing-service", "js-date", "dep:sha2"]
+@@ [features] @@
+
+  NOTE on `ai-threading`: wave 1 proposed it with `dep:regex`. Wave 2-C
+  SUPERSEDES that line — threading no longer uses `dep:regex`. It now uses the
+  repo's pinned Unicode helpers (`js-regexp-unicode`, `js-unicode17`) so the
+  Rust tokenisation matches the JavaScript source exactly instead of diverging
+  on Unicode tables. Use the wave 2-C line, not the wave 1 line.
+
+@@ [[test]] @@
++[[test]]
++name = "credit_packs"
++required-features = ["billing-service"]
++
++[[test]]
++name = "credit_gift_provider"
++required-features = ["billing-service"]
++
++[[test]]
++name = "billing"
++required-features = ["billing-service"]
++
++[[test]]
++name = "ai_credit_sources"
++required-features = ["billing-service"]
++
++[[test]]
++name = "billing_reference"
++required-features = ["billing-service"]
++
++[[test]]
++name = "billing_adapters"
++required-features = ["billing-service"]
++
++[[test]]
++name = "polar_entitlements"
++required-features = ["polar-billing-events"]
++
++[[test]]
++name = "polar_billing_events"
++required-features = ["polar-billing-events"]
++
++[[test]]
++name = "polar_webhook_signature"
++required-features = ["polar-billing-events"]
++
++[[test]]
++name = "polar_billing_mongo"
++required-features = ["polar-billing-events"]
++
++[[test]]
++name = "ai_threading"
++required-features = ["ai-threading"]
++
++[[test]]
++name = "ai_threading_redis"
++required-features = ["ai-threading"]
++
++[[test]]
++name = "channel_ai_personality_schema"
++required-features = ["channel-ai-personality"]
++
++[[test]]
++name = "channel_ai_personality_mongo"
++required-features = ["channel-ai-personality"]
++
++[[test]]
++name = "referral"
++required-features = ["referral-service"]
++
++[[test]]
++name = "referral_ledger"
++required-features = ["referral-service"]
++
++[[test]]
++name = "referral_mongo"
++required-features = ["referral-service"]
+@@ [[test]] @@
+
+--- a/dimabot/src/utils/mod.rs
++++ b/dimabot/src/utils/mod.rs
+@@ tail @@
++#[cfg(feature = "billing-service")]
++pub mod ai_credit_sources;
++#[cfg(feature = "billing-service")]
++pub mod billing;
++#[cfg(feature = "billing-service")]
++pub mod credit_gift_provider;
++#[cfg(feature = "billing-service")]
++pub mod credit_packs;
++#[cfg(feature = "referral-service")]
++pub mod referral;
++#[cfg(feature = "referral-service")]
++pub mod referral_ledger;
++#[cfg(feature = "ai-threading")]
++#[path = "ai/threading/mod.rs"]
++pub mod ai_threading;
+@@ tail @@
+
+--- a/dimabot/src/schemas/mod.rs
++++ b/dimabot/src/schemas/mod.rs
+@@ tail @@
++#[cfg(feature = "channel-ai-personality")]
++#[path = "channel_ai_personality.schema.rs"]
++pub mod channel_ai_personality;
++
++#[cfg(feature = "referral-service")]
++#[path = "referral_code.schema.rs"]
++pub mod referral_code;
+@@ tail @@
+
+--- a/dimabot/src/domain_events/mod.rs
++++ b/dimabot/src/domain_events/mod.rs
+@@ tail @@
++#[cfg(feature = "polar-billing-events")]
++#[path = "polar_billing/mod.rs"]
++pub mod polar_billing;
+@@ tail @@
+
+================================================================================
+SECTION 2 — NOT YET APPLICABLE (lanes still authoring)
+================================================================================
+
+--- lane B (Grok) — AI usage read model — IN FLIGHT, NOT YET APPLICABLE
+  feature:  ai-usage-request-time = [...]
+  [[test]]: ai_usage_period, ai_usage_queries, ai_usage_dashboard, ai_credit_display
+  utils/mod.rs: pub mod ai_usage_period; pub mod ai_usage_queries;
+                pub mod ai_usage_dashboard; pub mod ai_credit_display;
+  Wait for the lane's own final report. Do not guess the feature's dependency
+  list — lane B is resolving it against the real Cargo.toml feature graph.
+
+--- wave 3-A (Terra) — credit gift lifecycle — IN FLIGHT, NOT YET APPLICABLE
+  Expected: a credit-gifts feature, a `credit_gifts` [[test]] target, a
+  `pub mod credit_gifts;` line in utils/mod.rs, and a
+  `pub mod credit_gifts.worker;` line in src/workers/mod.rs.
+
+--- wave 3-C (Terra) — AI usage queue health + backfill queue +
+    free credit reset worker — IN FLIGHT, NOT YET APPLICABLE
+  Expected: a feature, `ai_usage_queue_health` / `ai_usage_backfill_queue` /
+  `free_credit_reset_worker` [[test]] targets, matching utils/mod.rs lines, and
+  a `pub mod free_credit_reset.worker;` line in src/workers/mod.rs.
+
+================================================================================
+SECTION 3 — INTEGRATION NOTES THAT ARE EASY TO GET WRONG
+================================================================================
+
+1. CRATE PATH. `dimabot/src/lib.rs` exposes `domain_events/mod.rs` as
+   `domain_event_contracts`. The real path for the wave 2-A module tree is
+   therefore `crate::domain_event_contracts::polar_billing::…` —
+   NOT `crate::domain_events::…`. Every team1 file and test already uses the
+   correct path; a rename in src/lib.rs would break all of them.
+
+2. `definitions()` STAYS AT 42 ENTRIES. Both new schema modules are
+   feature-gated `#[path]` declarations and are deliberately NOT appended to
+   the `definitions()` array. This is contract tl1-c3, agreed with the
+   integration team. Appending them would change a central registry that other
+   teams also depend on.
+
+3. GOLDEN CONSUMERS MUST FAIL, NEVER SKIP (contract tl1-c5). Every team1
+   oracle consumer hard-fails on a missing, unreadable, empty, or invalid
+   golden. There is no `Ok(())` and no skip path. A red result on a missing
+   golden is the CORRECT behaviour, not a test bug. Oracles run only in the
+   pinned Node 24.22.1 image (`sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82`)
+   via `validate.py`; host Node must not run them. Pins are unchanged.
+
+4. OPEN DEPENDENCY — tl1-c4. `applyPolarRewardDomainEvent` depends on
+   `applyPaidOrderReward` from `src/utils/paid_order_reward.ts`, which is
+   team2's file and is NOT natively ported. The filters and validation are
+   implemented; the branch has no concrete adapter and is NOT shippable.
+   This is deliberately left open — do not close it by inventing an adapter.
+
+5. OPEN DEPENDENCY — the PolarGiftAcceptor seam. `polar_billing::PolarGiftAcceptor`
+   has no concrete adapter until team1's wave 3-A lands
+   `src/utils/credit_gifts.rs` with an implementation. The gift branch of
+   `apply_credit_gift_domain_event` is not shippable until then.
+
+6. OPEN DEPENDENCY — `src/utils/ai_usage_backfill.rs`
+   (`syncAiUsageBackfillJob`). It needs `fetchAiUsageTransactions`, which
+   lives in lane B's `src/utils/ai_usage_period.rs`. Wave 3-C was explicitly
+   instructed NOT to author it, to avoid a second copy and a cross-lane Rust
+   dependency. It stays blocked until lane B lands that module.
+
+7. HTTP WEBHOOK ROUTE. The Polar webhook HTTP route and its raw-body
+   middleware are central (`src/lib.rs`). team1 delivered the pure signature
+   verifier and the exact response bodies; the route wiring is the
+   integration team's.
+
+8. DISK HEADROOM. `/dev/sda1` was at 5.8G free against a 5GiB floor at the
+   time of writing. team1 pruned nothing and owns no cache. team1's own
+   footprint is small (src ~14M, tests ~29M). Cleanup is integration-owned.
+
+================================================================================
+SOURCE HANDOFFS (authoritative detail per file)
+================================================================================
+  wave 1 lane A   migration-notes/team1-lane-a-handoff.md
+  wave 2-A       migration-notes/team1-wave2-a-handoff.md
+  wave 1 lane C   migration-notes/team1-lane-c-handoff.md
+  wave 2-C       migration-notes/team1-wave2-c-handoff.md
+  immutable records in ready/team1-lane-a-polar-billing.{json,md},
+    ready/team1-lane-c-personality-threading.{json,md},
+    ready/team1-wave2-a-polar-billing-events.json,
+    ready/team1-wave2-c-personality-referral.{json,md}

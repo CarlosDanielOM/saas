@@ -1,0 +1,27 @@
+{
+  "cases": [
+    { "name": "minimal poll", "kind": "poll", "placement": "scene", "fields": {}, "valid": true },
+    { "name": "explicit v1", "kind": "poll", "placement": "scene", "fields": { "configVersion": 1 }, "valid": true },
+    { "name": "legacy interaction design", "kind": "poll", "placement": "scene", "fields": { "interactionDesign": "compact" }, "valid": true },
+    { "name": "nested interaction design", "kind": "poll", "placement": "scene", "fields": { "config": { "interactionDesign": "card" } }, "valid": true },
+    { "name": "unknown legacy value", "kind": "poll", "placement": "scene", "fields": { "interactionDesign": "script" }, "valid": false },
+    { "name": "unregistered nested field", "kind": "poll", "placement": "scene", "fields": { "config": { "goalID": "private" } }, "valid": false },
+    { "name": "array config", "kind": "poll", "placement": "scene", "fields": { "config": [] }, "valid": false },
+    { "name": "null config", "kind": "poll", "placement": "scene", "fields": { "config": null }, "valid": false },
+    { "name": "string config", "kind": "poll", "placement": "scene", "fields": { "config": "card" }, "valid": false },
+    { "name": "future version", "kind": "poll", "placement": "scene", "fields": { "configVersion": 2 }, "valid": false },
+    { "name": "null version", "kind": "poll", "placement": "scene", "fields": { "configVersion": null }, "valid": false },
+    { "name": "fractional version", "kind": "poll", "placement": "scene", "fields": { "configVersion": 1.5 }, "valid": false },
+    { "name": "string version", "kind": "poll", "placement": "scene", "fields": { "configVersion": "1" }, "valid": false },
+    { "name": "legacy field on text", "kind": "poll", "placement": "scene", "fields": { "kind": "text", "interactionDesign": "card" }, "valid": false },
+    { "name": "unregistered kind", "kind": "poll", "placement": "scene", "fields": { "kind": "unregistered" }, "valid": false },
+    { "name": "poll at design", "kind": "poll", "placement": "design", "fields": {}, "valid": false },
+    { "name": "text saved at scene despite hidden palette", "kind": "text", "placement": "scene", "fields": {}, "valid": true },
+    { "name": "text at design", "kind": "text", "placement": "design", "fields": {}, "valid": true },
+    { "name": "animation at scene", "kind": "animation", "placement": "scene", "fields": {}, "valid": false },
+    { "name": "animation at design", "kind": "animation", "placement": "design", "fields": {}, "valid": true },
+    { "name": "empty nested config", "kind": "alert", "placement": "scene", "fields": { "config": {} }, "valid": true },
+    { "name": "nested field on tts", "kind": "tts", "placement": "scene", "fields": { "config": { "interactionDesign": "card" } }, "valid": false },
+    { "name": "unrelated fields are ignored", "kind": "image", "placement": "scene", "fields": { "mediaUrl": "https://example.test/x.png", "opacity": 0.5 }, "valid": true }
+  ]
+}

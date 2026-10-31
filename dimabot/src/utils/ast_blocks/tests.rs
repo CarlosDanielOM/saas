@@ -1,4 +1,7 @@
 use super::*;
+use crate::utils::ast_syntax::{
+    AstNode, JsString, PersistedJsString, SyntaxEngine, TemplateSegment,
+};
 use serde_json::{Value, json};
 
 fn lit(value: &str) -> Value {
@@ -622,4 +625,251 @@ fn output_limit_uses_the_actual_merged_literal_piece_and_utf16_offset() {
     let error = compile_blocks_owned(root(vec![function("say", vec![argument])])).unwrap_err();
     assert_eq!(error.block_id.as_deref(), Some("actual"));
     assert_eq!(error.path, "/children/0/args/0/parts/1/value");
+}
+
+fn lossless_literal(units: &[u16]) -> Value {
+    json!({"type":"literalUtf16","value":units})
+}
+
+#[test]
+fn version1_json_and_utf8_entrypoints_stay_unchanged() {
+    let tree = read_block_root_owned(root(vec![
+        json!({"id":"greet","type":"literal","value":"Hello "}),
+        function("user", vec![]),
+    ]))
+    .unwrap();
+    let stored = stored_blocks(tree);
+    assert_eq!(stored.v, BLOCKS_VERSION);
+    assert_eq!(stored.v, 1);
+    let value = serde_json::to_value(&stored).unwrap();
+    assert_eq!(value["v"], 1);
+    assert_eq!(value["root"]["type"], "root");
+    assert_eq!(value["root"]["children"][0]["type"], "literal");
+    assert!(!serde_json::to_string(&value).unwrap().contains("literalUtf16"));
+    let restored: StoredBlocks = serde_json::from_value(value).unwrap();
+    assert_eq!(restored.v, 1);
+    assert_eq!(
+        compile_blocks_owned(restored.root.to_value()).unwrap().text,
+        "Hello $(user)"
+    );
+    assert_eq!(
+        root_to_source(&restored.root).unwrap(),
+        "Hello $(user)"
+    );
+
+    let ast = AstNode::Literal {
+        value: "plain".into(),
+    };
+    let mut ids = id_maker();
+    let block = ast_to_block(&ast, &mut ids).unwrap();
+    assert!(matches!(&block.kind, BlockKind::Literal { value } if value == "plain"));
+    assert_eq!(block_to_ast(&block).unwrap(), ast);
+}
+
+#[test]
+fn lossless_literal_roundtrips_units_through_storage_source_and_ast() {
+    for units in [
+        vec![0x41, 0xd800, 0x42],
+        vec![0x41, 0xdc00, 0x42],
+        vec![0xd800, 0xdc00, 0xd800],
+        vec![0xdc00, 0xd800],
+    ] {
+        let input = root(vec![lossless_literal(&units)]);
+        let tree = read_block_root_owned(input.clone()).unwrap();
+        let BlockKind::LiteralUtf16 { value } = &tree.children[0].kind else {
+            panic!("lossless literal")
+        };
+        assert_eq!(value.0.units(), units.as_slice());
+        assert!(value.0.to_utf8().is_err());
+
+        let stored = stored_blocks_lossless(tree);
+        assert_eq!(stored.v, BLOCKS_LOSSLESS_VERSION);
+        let json = serde_json::to_value(&stored).unwrap();
+        assert_eq!(json["v"], 2);
+        assert_eq!(json["root"]["children"][0]["type"], "literalUtf16");
+        assert_eq!(json["root"]["children"][0]["value"], json!(&units));
+
+        let restored: StoredBlocks = serde_json::from_value(json).unwrap();
+        let read = read_block_root_owned(restored.root.to_value()).unwrap();
+        assert_eq!(
+            root_to_source_utf16(&read).unwrap().units(),
+            units.as_slice()
+        );
+        let ast = block_root_to_ast(&read).unwrap();
+        let AstNode::Root { children } = ast else {
+            panic!("root")
+        };
+        let AstNode::LiteralUtf16 { value } = &children[0] else {
+            panic!("literalUtf16")
+        };
+        assert_eq!(value.0.units(), units.as_slice());
+
+        let error = compile_blocks_owned(input).unwrap_err();
+        assert_eq!(error.code, BlocksErrorCode::UnpairedSurrogate);
+        assert_eq!(error.path, "/children/0/value");
+        assert_eq!(
+            root_to_source(&read).unwrap_err().code,
+            BlocksErrorCode::UnpairedSurrogate
+        );
+        assert_eq!(
+            top_level(&read.children[0]).unwrap_err().code,
+            BlocksErrorCode::UnpairedSurrogate
+        );
+    }
+}
+
+#[test]
+fn lossless_template_text_reverses_to_the_same_ast() {
+    for lone in [0xd800, 0xdc00] {
+        let function = AstNode::Function {
+            name: "say".into(),
+            args: vec![AstNode::Template {
+                segments: vec![
+                    TemplateSegment::Text {
+                        value: "Hi ".into(),
+                    },
+                    TemplateSegment::TextUtf16 {
+                        value: PersistedJsString(JsString::from_units(vec![
+                            0x41, lone, 0x42,
+                        ])),
+                    },
+                ],
+            }],
+        };
+        let mut ids = id_maker();
+        let block = ast_to_block(&function, &mut ids).unwrap();
+        let BlockKind::Function { args, .. } = &block.kind else {
+            panic!("function")
+        };
+        let BlockKind::Template { parts } = &args[0].kind else {
+            panic!("template")
+        };
+        assert!(matches!(&parts[0].kind, BlockKind::Literal { .. }));
+        assert!(matches!(&parts[1].kind, BlockKind::LiteralUtf16 { .. }));
+
+        let tree = normalize_root(BlockRoot {
+            id: "root".into(),
+            kind: RootTag::Root,
+            children: vec![block],
+        });
+        let stored = stored_blocks_lossless(tree);
+        let restored: StoredBlocks =
+            serde_json::from_value(serde_json::to_value(&stored).unwrap()).unwrap();
+        let read = read_block_root_owned(restored.root.to_value()).unwrap();
+        let source = root_to_source_utf16(&read).unwrap();
+        let mut expected: Vec<u16> = "$(say \"Hi ".encode_utf16().collect();
+        expected.extend([0x41, lone, 0x42]);
+        expected.extend("\")".encode_utf16());
+        assert_eq!(source.units(), expected.as_slice());
+        assert_eq!(
+            block_root_to_ast(&read).unwrap(),
+            AstNode::Root {
+                children: vec![function]
+            }
+        );
+    }
+}
+
+#[test]
+fn utf8_representable_units_keep_the_version1_block_and_ast_forms() {
+    let ast = AstNode::LiteralUtf16 {
+        value: PersistedJsString(JsString::from_units(vec![
+            0x41, 0xd83d, 0xde00,
+        ])),
+    };
+    let mut ids = id_maker();
+    let block = ast_to_block(&ast, &mut ids).unwrap();
+    assert!(matches!(&block.kind, BlockKind::Literal { value } if value == "A😀"));
+    assert_eq!(
+        block_to_ast(&block).unwrap(),
+        AstNode::Literal {
+            value: "A😀".into()
+        }
+    );
+    let read = read_block_root_owned(root(vec![lossless_literal(&[0x41, 0x42])])).unwrap();
+    assert!(matches!(&read.children[0].kind, BlockKind::Literal { value } if value == "AB"));
+}
+
+#[test]
+fn lossless_reader_enforces_exact_units_and_existing_limits() {
+    for value in [
+        json!([65, -1]),
+        json!([70000]),
+        json!(["A"]),
+        json!("AB"),
+        Value::Null,
+    ] {
+        let error = read_block_root_owned(root(vec![json!({
+            "id":"lossless",
+            "type":"literalUtf16",
+            "value":value,
+        })]))
+        .unwrap_err();
+        assert_eq!(error.code, BlocksErrorCode::InvalidUtf16);
+        assert_eq!(error.block_id.as_deref(), Some("lossless"));
+        assert_eq!(error.path, "/children/0/value");
+    }
+    let max = read_block_root_owned(root(vec![lossless_literal(&vec![
+        0xd800u16;
+        MAX_COMMAND_TEXT
+    ])]))
+    .unwrap();
+    assert!(matches!(&max.children[0].kind, BlockKind::LiteralUtf16 { .. }));
+    let error = read_block_root_owned(root(vec![lossless_literal(&vec![
+        0xd800u16;
+        MAX_COMMAND_TEXT + 1
+    ])]))
+    .unwrap_err();
+    assert_eq!(error.code, BlocksErrorCode::StringLimit);
+    assert_eq!(error.path, "/children/0/value");
+}
+
+#[test]
+fn source_rejected_identifiers_stay_explicitly_unrepresentable() {
+    let imported = import_command_text("$(1bad)").unwrap();
+    assert_eq!(imported.advanced_count, 1);
+    assert!(
+        matches!(&imported.root.children[0].kind, BlockKind::Raw { source } if source == "$(1bad)")
+    );
+    assert_eq!(
+        compile_blocks_owned(imported.root.to_value()).unwrap().text,
+        "$(1bad)"
+    );
+
+    let error = read_block_root_owned(root(vec![
+        json!({"id":"bad-function","type":"function","name":"1bad","args":[]}),
+    ]))
+    .unwrap_err();
+    assert_eq!(error.code, BlocksErrorCode::InvalidName);
+    assert_eq!(error.block_id.as_deref(), Some("bad-function"));
+    assert_eq!(error.path, "/children/0/name");
+
+    // The source grammar does not invent a typed name for this call; the
+    // block importer therefore keeps the original source as an advanced piece
+    // instead of claiming a structured function round trip.
+    let program = SyntaxEngine::default().parse("$(1bad)").unwrap();
+    let AstNode::Root { children } = program.root() else {
+        panic!("root")
+    };
+    assert!(matches!(&children[0], AstNode::Function { name, .. } if name.is_empty()));
+
+    let imported = import_command_text("%(1bad)").unwrap();
+    assert_eq!(imported.advanced_count, 1);
+    assert!(
+        matches!(&imported.root.children[0].kind, BlockKind::Raw { source } if source == "%(1bad)")
+    );
+    let error = read_block_root_owned(root(vec![get("1bad", "memory")])).unwrap_err();
+    assert_eq!(error.code, BlocksErrorCode::InvalidName);
+    assert_eq!(error.path, "/children/0/name");
+
+    let raw = BlockNode::new(
+        "raw",
+        BlockKind::Raw {
+            source: "$(user)".into(),
+        },
+    );
+    assert_eq!(
+        block_to_ast(&raw).unwrap_err().to_string(),
+        "advanced source pieces have no AST form"
+    );
 }

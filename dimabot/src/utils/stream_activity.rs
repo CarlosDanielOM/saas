@@ -5,6 +5,17 @@
 #[path = "stream_activity/projection.rs"]
 mod projection;
 
+#[cfg(feature = "stream-timeline-data")]
+#[path = "stream_activity/capture.rs"]
+pub mod capture;
+#[cfg(feature = "stream-timeline-data")]
+#[path = "stream_activity/read.rs"]
+pub mod read;
+#[cfg(feature = "stream-timeline-data")]
+pub use capture::{ActivityKind, CaptureInput, CaptureSession, StreamActivityCapture};
+#[cfg(feature = "stream-timeline-data")]
+pub use read::StreamActivityReader;
+
 use std::{
     collections::BTreeMap,
     error::Error as _,

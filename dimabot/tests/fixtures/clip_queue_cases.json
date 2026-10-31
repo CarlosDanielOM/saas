@@ -1,0 +1,601 @@
+{
+  "version": 1,
+  "source": "dimabot/src/handlers/clip_queue.handler.ts",
+  "channel": "ch",
+  "now_ms": 1000000,
+  "note": "Each case seeds the in-memory Redis double, runs the ordered steps, and compares the deterministic summary keys it lists. ops_contains and ops_order are checked separately and are not part of the summary comparison.",
+  "cases": [
+    {
+      "name": "empty_queue_starts_direct_download",
+      "steps": ["subscribe", "deliver"],
+      "queue": [],
+      "event": {
+        "clipID": "A",
+        "clipUrl": "https://clips/A",
+        "duration": 12,
+        "title": "T",
+        "streamer": "S",
+        "streamerLogin": "L",
+        "game": "Chess",
+        "timestamp": 1000
+      },
+      "expect": {
+        "subscribe_calls": ["ch"],
+        "subscribe_results": ["ok"],
+        "queue": {},
+        "data_keys": ["twitch:ch:clips:queue:data:A"],
+        "processing": true,
+        "downloads": ["https://clips/A"],
+        "download_count": 1,
+        "deleted_paths": ["ch-clip.mp4"],
+        "publishes": [
+          {
+            "channel": "ch",
+            "media": {
+              "type": "video",
+              "title": "T",
+              "volume": 1,
+              "duration": 12,
+              "clip": {
+                "streamer": "S",
+                "game": "Chess",
+                "description": ""
+              }
+            },
+            "file": "/tmp/dima-rust-clip-parity/ch-clip.mp4",
+            "mime": "video/mp4"
+          }
+        ],
+        "publish_count": 1,
+        "emits": [
+          {
+            "channel": "ch",
+            "payload": {
+              "clipID": "A",
+              "clipUrl": "https://clips/A",
+              "duration": 12,
+              "title": "T",
+              "game": "Chess",
+              "streamer": "S",
+              "streamerLogin": "L"
+            }
+          }
+        ],
+        "emit_count": 1,
+        "timer_delays_ms": [125000],
+        "timer_aborts": 0,
+        "waits": [999000.0],
+        "span_outcomes": ["ok"],
+        "zadd_calls": 1,
+        "ops_order": [
+          "zcard twitch:ch:clips:queue",
+          "exists twitch:ch:clip:processing",
+          "zrank twitch:ch:clips:queue A",
+          "zadd twitch:ch:clips:queue 1000 A",
+          "set twitch:ch:clip:processing true",
+          "zrem twitch:ch:clips:queue A",
+          "get twitch:ch:clips:timeouts:default"
+        ]
+      }
+    },
+    {
+      "name": "non_empty_queue_enqueues_and_processes_oldest",
+      "steps": ["subscribe", "deliver"],
+      "queue": [
+        { "clip_id": "A", "score": 100 },
+        { "clip_id": "B", "score": 200 }
+      ],
+      "data": {
+        "A": {
+          "clipID": "A",
+          "clipUrl": "https://clips/A",
+          "duration": 10,
+          "title": "A title",
+          "streamer": "A streamer",
+          "timestamp": 100
+        },
+        "B": { "clipID": "B", "clipUrl": "https://clips/B", "timestamp": 200 }
+      },
+      "event": {
+        "clipID": "C",
+        "clipUrl": "https://clips/C",
+        "duration": 30,
+        "timestamp": 300
+      },
+      "expect": {
+        "subscribe_calls": ["ch"],
+        "subscribe_results": ["ok"],
+        "queue": { "B": 200.0, "C": 300.0 },
+        "data_keys": [
+          "twitch:ch:clips:queue:data:A",
+          "twitch:ch:clips:queue:data:B",
+          "twitch:ch:clips:queue:data:C"
+        ],
+        "processing": true,
+        "downloads": ["https://clips/A"],
+        "publish_count": 1,
+        "emit_count": 1,
+        "timer_delays_ms": [125000],
+        "timer_aborts": 0,
+        "span_outcomes": ["ok"],
+        "zadd_calls": 1,
+        "ops_order": [
+          "zpopmin twitch:ch:clips:queue",
+          "get twitch:ch:clips:queue:data:A",
+          "set twitch:ch:clip:processing true"
+        ]
+      }
+    },
+    {
+      "name": "rank_positive_skips_enqueue_and_starts_next",
+      "steps": ["subscribe", "deliver"],
+      "queue": [
+        { "clip_id": "A", "score": 100 },
+        { "clip_id": "B", "score": 200 }
+      ],
+      "data": {
+        "A": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 100 },
+        "B": { "clipID": "B", "clipUrl": "https://clips/B", "timestamp": 200 }
+      },
+      "event": {
+        "clipID": "B",
+        "clipUrl": "https://clips/B-new",
+        "timestamp": 999
+      },
+      "expect": {
+        "queue": { "B": 200.0 },
+        "data_keys": [
+          "twitch:ch:clips:queue:data:A",
+          "twitch:ch:clips:queue:data:B"
+        ],
+        "processing": true,
+        "downloads": ["https://clips/A"],
+        "publish_count": 1,
+        "emit_count": 1,
+        "timer_delays_ms": [125000],
+        "zadd_calls": 0
+      }
+    },
+    {
+      "name": "rank_zero_is_falsy_and_re_adds_the_head",
+      "steps": ["subscribe", "deliver"],
+      "queue": [
+        { "clip_id": "A", "score": 100 },
+        { "clip_id": "B", "score": 200 }
+      ],
+      "data": {
+        "B": { "clipID": "B", "clipUrl": "https://clips/B", "timestamp": 200 }
+      },
+      "event": {
+        "clipID": "A",
+        "clipUrl": "https://clips/A-new",
+        "timestamp": 500
+      },
+      "expect": {
+        "queue": { "A": 500.0 },
+        "data_keys": [
+          "twitch:ch:clips:queue:data:A",
+          "twitch:ch:clips:queue:data:B"
+        ],
+        "processing": true,
+        "downloads": ["https://clips/B"],
+        "publish_count": 1,
+        "emit_count": 1,
+        "timer_delays_ms": [125000],
+        "zadd_calls": 1,
+        "ops_order": [
+          "zrank twitch:ch:clips:queue A",
+          "zadd twitch:ch:clips:queue 500 A"
+        ]
+      }
+    },
+    {
+      "name": "processing_flag_blocks_playback",
+      "steps": ["subscribe", "deliver"],
+      "queue": [],
+      "processing": true,
+      "event": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 1000 },
+      "expect": {
+        "queue": { "A": 1000.0 },
+        "data_keys": ["twitch:ch:clips:queue:data:A"],
+        "processing": true,
+        "downloads": [],
+        "publish_count": 0,
+        "emit_count": 0,
+        "timer_delays_ms": [],
+        "timer_aborts": 0,
+        "zadd_calls": 1
+      }
+    },
+    {
+      "name": "download_failure_cleans_up_and_advances",
+      "steps": ["subscribe", "deliver"],
+      "queue": [
+        { "clip_id": "A", "score": 100 },
+        { "clip_id": "B", "score": 200 }
+      ],
+      "download": "failure",
+      "data": {
+        "A": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 100 },
+        "B": { "clipID": "B", "clipUrl": "https://clips/B", "timestamp": 200 }
+      },
+      "event": { "clipID": "C", "clipUrl": "https://clips/C", "timestamp": 300 },
+      "expect": {
+        "queue": {},
+        "data_keys": [],
+        "processing": false,
+        "downloads": ["https://clips/A", "https://clips/B", "https://clips/C"],
+        "deleted_paths": ["ch-clip.mp4", "ch-clip.mp4", "ch-clip.mp4"],
+        "publish_count": 0,
+        "emit_count": 0,
+        "timer_delays_ms": [125000, 125000, 125000],
+        "timer_aborts": 3,
+        "span_outcomes": ["error", "error", "error"],
+        "zadd_calls": 1
+      }
+    },
+    {
+      "name": "no_sockets_ends_each_clip_and_advances",
+      "steps": ["subscribe", "deliver"],
+      "queue": [
+        { "clip_id": "A", "score": 100 },
+        { "clip_id": "B", "score": 200 }
+      ],
+      "sockets": 0,
+      "data": {
+        "A": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 100 },
+        "B": { "clipID": "B", "clipUrl": "https://clips/B", "timestamp": 200 }
+      },
+      "event": { "clipID": "C", "clipUrl": "https://clips/C", "timestamp": 300 },
+      "expect": {
+        "queue": {},
+        "data_keys": [],
+        "processing": false,
+        "downloads": ["https://clips/A", "https://clips/B", "https://clips/C"],
+        "publish_count": 3,
+        "emit_count": 3,
+        "timer_delays_ms": [125000, 125000, 125000],
+        "timer_aborts": 3,
+        "span_outcomes": ["ok", "ok", "ok"],
+        "zadd_calls": 1
+      }
+    },
+    {
+      "name": "emit_error_is_caught_and_advances",
+      "steps": ["subscribe", "deliver"],
+      "queue": [{ "clip_id": "A", "score": 100 }],
+      "emit_error": true,
+      "data": {
+        "A": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 100 }
+      },
+      "event": { "clipID": "B", "clipUrl": "https://clips/B", "timestamp": 200 },
+      "expect": {
+        "queue": {},
+        "data_keys": [],
+        "processing": false,
+        "downloads": ["https://clips/A", "https://clips/B"],
+        "publish_count": 2,
+        "emit_count": 0,
+        "timer_delays_ms": [125000, 125000],
+        "timer_aborts": 2,
+        "span_outcomes": ["ok", "ok"],
+        "log_functions": ["downloadAndSendToOBS", "downloadAndSendToOBS"],
+        "logs": [
+          {
+            "function": "downloadAndSendToOBS",
+            "message": "play-clip: synthetic emit failure"
+          },
+          {
+            "function": "downloadAndSendToOBS",
+            "message": "play-clip: synthetic emit failure"
+          }
+        ]
+      }
+    },
+    {
+      "name": "clip_ended_with_wrong_id_is_ignored",
+      "steps": ["subscribe", "deliver", "clip_ended"],
+      "queue": [],
+      "clip_ended_id": "OTHER",
+      "event": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 1000 },
+      "expect": {
+        "queue": {},
+        "data_keys": ["twitch:ch:clips:queue:data:A"],
+        "processing": true,
+        "downloads": ["https://clips/A"],
+        "timer_aborts": 0
+      }
+    },
+    {
+      "name": "clip_ended_without_id_is_ignored",
+      "steps": ["subscribe", "deliver", "clip_ended"],
+      "queue": [],
+      "clip_ended_id": null,
+      "event": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 1000 },
+      "expect": {
+        "queue": {},
+        "data_keys": ["twitch:ch:clips:queue:data:A"],
+        "processing": true,
+        "downloads": ["https://clips/A"],
+        "timer_aborts": 0
+      }
+    },
+    {
+      "name": "clip_ended_with_matching_id_cleans_up",
+      "steps": ["subscribe", "deliver", "clip_ended"],
+      "queue": [],
+      "clip_ended_id": "A",
+      "event": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 1000 },
+      "expect": {
+        "queue": {},
+        "data_keys": [],
+        "processing": false,
+        "downloads": ["https://clips/A"],
+        "timer_aborts": 1
+      }
+    },
+    {
+      "name": "timeout_setting_extends_the_safety_delay",
+      "steps": ["subscribe", "deliver"],
+      "queue": [],
+      "timeout_setting": "30",
+      "event": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 1000 },
+      "expect": {
+        "processing": true,
+        "downloads": ["https://clips/A"],
+        "timeout_setting": "30",
+        "timer_delays_ms": [95000],
+        "timer_aborts": 0
+      }
+    },
+    {
+      "name": "timeout_setting_uses_parse_int_radix_prefix",
+      "steps": ["subscribe", "deliver"],
+      "queue": [],
+      "timeout_setting": "0x10",
+      "event": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 1000 },
+      "expect": {
+        "processing": true,
+        "timer_delays_ms": [81000],
+        "timer_aborts": 0
+      }
+    },
+    {
+      "name": "invalid_timeout_setting_collapses_to_one_millisecond",
+      "steps": ["subscribe", "deliver"],
+      "queue": [],
+      "timeout_setting": "abc",
+      "event": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 1000 },
+      "expect": {
+        "processing": true,
+        "timer_delays_ms": [1],
+        "timer_aborts": 0
+      }
+    },
+    {
+      "name": "cleanup_old_queue_data_keeps_short_ttls_only",
+      "steps": ["cleanup_old_queue_data"],
+      "queue": [],
+      "ttl": {
+        "twitch:ch:clips:queue:data:noexp": -1,
+        "twitch:ch:clips:queue:data:long": 90000,
+        "twitch:ch:clips:queue:data:short": 100
+      },
+      "expect": {
+        "queue": {},
+        "data_keys": ["twitch:ch:clips:queue:data:short"],
+        "downloads": [],
+        "log_functions": ["cleanupOldQueueData", "cleanupOldQueueData"],
+        "logs": [
+          {
+            "function": "cleanupOldQueueData",
+            "message": "Deleted old queue data key: twitch:ch:clips:queue:data:long"
+          },
+          {
+            "function": "cleanupOldQueueData",
+            "message": "Deleted old queue data key: twitch:ch:clips:queue:data:noexp"
+          }
+        ],
+        "ops_order": [
+          "keys twitch:ch:clips:queue:data:*",
+          "ttl twitch:ch:clips:queue:data:long",
+          "del twitch:ch:clips:queue:data:long",
+          "ttl twitch:ch:clips:queue:data:noexp",
+          "del twitch:ch:clips:queue:data:noexp",
+          "ttl twitch:ch:clips:queue:data:short"
+        ]
+      }
+    },
+    {
+      "name": "startup_cleanup_deletes_literal_wildcard_key",
+      "steps": ["startup_cleanup"],
+      "queue": [],
+      "strings": {
+        "twitch:*:clip:processing": "true"
+      },
+      "ttl": {
+        "twitch:ch:clips:queue:data:noexp": -1,
+        "twitch:ch:clips:queue:data:short": 100
+      },
+      "expect": {
+        "wildcard_processing": false,
+        "data_keys": ["twitch:ch:clips:queue:data:short"],
+        "processing": false,
+        "log_functions": [
+          "startupCleanup",
+          "cleanupOldQueueData",
+          "startupCleanup"
+        ],
+        "logs": [
+          {
+            "function": "startupCleanup",
+            "message": "Running startup cleanup for clip queue..."
+          },
+          {
+            "function": "cleanupOldQueueData",
+            "message": "Deleted old queue data key: twitch:ch:clips:queue:data:noexp"
+          },
+          {
+            "function": "startupCleanup",
+            "message": "Startup cleanup completed"
+          }
+        ],
+        "ops_order": [
+          "del twitch:*:clip:processing",
+          "keys twitch:*:clips:queue:data:*"
+        ]
+      }
+    },
+    {
+      "name": "uninitialized_handler_logs_and_stops",
+      "steps": [
+        "subscribe",
+        "process_next",
+        "clip_ended",
+        "startup_cleanup"
+      ],
+      "store_initialized": false,
+      "queue": [],
+      "expect": {
+        "subscribe_calls": [],
+        "subscribe_results": [
+          "error: subscribeToChannel: ClipQueueHandler not initialized"
+        ],
+        "queue": {},
+        "data_keys": [],
+        "downloads": [],
+        "publish_count": 0,
+        "emit_count": 0,
+        "log_functions": [
+          "processNextClip",
+          "handleClipEnded",
+          "startupCleanup"
+        ]
+      }
+    },
+    {
+      "name": "subscribe_is_idempotent_per_channel",
+      "steps": ["subscribe", "subscribe"],
+      "queue": [],
+      "expect": {
+        "subscribe_calls": ["ch"],
+        "subscribe_results": ["ok", "ok"],
+        "downloads": []
+      }
+    },
+    {
+      "name": "failed_subscription_is_retried",
+      "steps": ["subscribe", "subscribe"],
+      "queue": [],
+      "fail_next_subscribe": true,
+      "expect": {
+        "subscribe_calls": ["ch", "ch"],
+        "subscribe_results": [
+          "error: subscribeToChannel: synthetic subscription failure",
+          "ok"
+        ],
+        "downloads": []
+      }
+    },
+    {
+      "name": "missing_queue_data_pops_without_a_lease",
+      "steps": ["subscribe", "deliver"],
+      "queue": [{ "clip_id": "A", "score": 100 }],
+      "event": { "clipID": "B", "clipUrl": "https://clips/B", "timestamp": 200 },
+      "expect": {
+        "queue": { "B": 200.0 },
+        "data_keys": ["twitch:ch:clips:queue:data:B"],
+        "processing": false,
+        "downloads": [],
+        "timer_delays_ms": [],
+        "zadd_calls": 1,
+        "log_functions": ["processNextClip"],
+        "logs": [
+          {
+            "function": "processNextClip",
+            "message": "Clip data not found for ID A in channel ch"
+          }
+        ],
+        "ops_order": [
+          "zpopmin twitch:ch:clips:queue",
+          "get twitch:ch:clips:queue:data:A"
+        ]
+      }
+    },
+    {
+      "name": "malformed_queue_data_pops_without_a_lease",
+      "steps": ["subscribe", "deliver"],
+      "queue": [{ "clip_id": "A", "score": 100 }],
+      "data": { "A": "not json" },
+      "event": { "clipID": "B", "clipUrl": "https://clips/B", "timestamp": 200 },
+      "expect": {
+        "queue": { "B": 200.0 },
+        "data_keys": [
+          "twitch:ch:clips:queue:data:A",
+          "twitch:ch:clips:queue:data:B"
+        ],
+        "processing": false,
+        "downloads": [],
+        "timer_delays_ms": [],
+        "zadd_calls": 1,
+        "log_functions": ["processNextClip"]
+      }
+    },
+    {
+      "name": "missing_timestamp_is_rejected_before_enqueue",
+      "steps": ["subscribe", "deliver"],
+      "queue": [],
+      "event": { "clipID": "A", "clipUrl": "https://clips/A" },
+      "expect": {
+        "queue": {},
+        "data_keys": [],
+        "processing": false,
+        "downloads": [],
+        "timer_delays_ms": [],
+        "zadd_calls": 0,
+        "log_functions": ["handleClipRequest"],
+        "logs": [
+          {
+            "function": "handleClipRequest",
+            "message": "handleClipRequest: clip timestamp is not a numeric sorted-set score"
+          }
+        ]
+      }
+    },
+    {
+      "name": "queue_wait_is_clamped_to_zero",
+      "steps": ["subscribe", "deliver"],
+      "queue": [],
+      "event": {
+        "clipID": "A",
+        "clipUrl": "https://clips/A",
+        "timestamp": 2000000
+      },
+      "expect": {
+        "processing": true,
+        "downloads": ["https://clips/A"],
+        "waits": [0.0],
+        "timer_delays_ms": [125000],
+        "timer_aborts": 0
+      }
+    },
+    {
+      "name": "duplicate_request_during_playback_requeues",
+      "steps": ["subscribe", "deliver_twice"],
+      "queue": [],
+      "event": { "clipID": "A", "clipUrl": "https://clips/A", "timestamp": 1000 },
+      "expect": {
+        "queue": { "A": 1000.0 },
+        "data_keys": ["twitch:ch:clips:queue:data:A"],
+        "processing": true,
+        "downloads": ["https://clips/A"],
+        "download_count": 1,
+        "publish_count": 1,
+        "emit_count": 1,
+        "timer_delays_ms": [125000],
+        "timer_aborts": 0,
+        "zadd_calls": 2
+      }
+    }
+  ]
+}

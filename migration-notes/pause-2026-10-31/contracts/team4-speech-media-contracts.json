@@ -1,0 +1,72 @@
+{
+  "team": "team4-speech-media",
+  "purpose": "Named cross-team dependencies raised by team4. Each entry names exactly ONE owner. team4 does not implement another owner's scope and does not treat a missing adapter as complete.",
+  "rootThreadId": "9cc467f1-f5c3-45a8-989a-e8e02361df4b",
+  "recordedBy": "team4 lead (MiniMax M3.1 Flash via MiniMax Code)",
+  "contracts": [
+    {
+      "id": "team4-overlay-token",
+      "owner": "team2-api-data",
+      "need": "Port dimabot/src/utils/overlay-token.ts to Rust: overlayTokenHash, storedOverlayToken, manageOverlayToken and readOverlayToken.",
+      "blocks": ["lane B widgets", "lane B roulette", "duel", "the pets runtime"],
+      "why": "The overlay widgets and roulette publish through an overlay token that only team2's module can mint and validate."
+    },
+    {
+      "id": "team4-pets-runtime-schemas",
+      "owner": "team2-api-data",
+      "need": "Port dimabot/src/schemas/pet_runtime.schema.ts, dimabot/src/schemas/pet_settings.schema.ts, dimabot/src/server/services/pet_settings.service.ts and dimabot/src/utils/domain_event_wakeups.ts to Rust.",
+      "blocks": ["the entire team4 pets runtime lane"],
+      "why": "team4 owns the pets tree but four of its dependencies have no Rust port, so the lane was deferred to wave 2 rather than authored against an invented API."
+    },
+    {
+      "id": "team4-pubsub-manager",
+      "owner": "team2-api-data",
+      "need": "Port dimabot/src/classes/pubsub_manager.class.ts to Rust (pubSubManager.publish).",
+      "blocks": ["the clearSpeechFiles publish step in the speech/TTS lane"],
+      "why": "The speech lane's clear-speech-files path publishes through the pub/sub manager."
+    },
+    {
+      "id": "team4-eventsub-remote-adapters",
+      "owner": "team2-api-data",
+      "need": "EventSub activation and unsubscription remote adapters used by the overlay live runtime.",
+      "blocks": ["lane D overlays runtime, the EventSub-driven parts"],
+      "why": "The overlay live runtime subscribes/unsubscribes on channel events through the existing remote adapters."
+    },
+    {
+      "id": "team4-credit-balance-read",
+      "owner": "team1-billing-ai",
+      "need": "Expose a credit balance / availability read to team4's voice preview path.",
+      "blocks": ["lane A speech core, the credit gate of the voice preview"],
+      "why": "dimabot/src/utils/tts_usage.rs exists and covers usage and pricing, but there is no balance read available to the preview service."
+    },
+    {
+      "id": "team4-ast-surrogate-parser-boundary",
+      "owner": "team3-bot-ast",
+      "need": "A shared parser-boundary change so a lone surrogate can enter the AST representation: SyntaxEngine::parse accepts &str at dimabot/src/utils/ast_parser/syntax.rs:89 and AstNode::Literal stores String at dimabot/src/utils/ast_parser/types.rs:81.",
+      "blocks": ["lane D overlays runtime, mixed unpaired-UTF-16 alert templates"],
+      "why": "The existing lossless string utilities (crate::utils::js_string) cannot place a lone surrogate into the current AST representation, so this is a shared-boundary change rather than a lane-local one."
+    },
+    {
+      "id": "team4-integration-asset-library-singleton",
+      "owner": "integration",
+      "need": "Overlay and pet writers must share the same AssetLibrary instance and owner-lock registry as uploads and deletes.",
+      "blocks": ["lane C media assets, lane D overlays recovery"],
+      "why": "The source's owner lock is an in-process Map, so it cannot coordinate independent TypeScript processes."
+    },
+    {
+      "id": "team4-integration-validation-lease",
+      "owner": "integration",
+      "need": "Lease the isolated fixture phase before running the guarded tests and the Node oracles. The lease must provide the shared helper's owner marker (DIMA_RUST_TEST_RESOURCE_OWNER), the keyword-mongo alias, the namespace, a sanitized Node environment and ffprobe.",
+      "blocks": ["every team4 runtime check"],
+      "why": "team4 has no execution lease in this wave, so nothing it authored has been compiled, run or tested."
+    },
+    {
+      "id": "team4-integration-node-oracle-runtime",
+      "owner": "integration",
+      "need": "The *_reference.cjs oracle pattern pins Node v24.22.1 / V8 13.6.233.17-node.58 / typescript 5.9.3 while the host node is v26.8.2. The pinned runtime exists in the isolated oracle container.",
+      "blocks": ["lane C media asset source-comparison oracle"],
+      "why": "team4's media oracle follows the same convention, so it must be run in the pinned container rather than on the host."
+    }
+  ],
+  "note": "Optimization and benchmark work is deferred. React Email is exempt from this team's scope."
+}

@@ -1,4 +1,5 @@
 use super::types::*;
+use crate::utils::ast_syntax::{JsString, PersistedJsString};
 
 /// Canonical JSON for a block or root, with every editor `id` removed and
 /// stable field order. Internal equality continues to compare native trees
@@ -38,39 +39,102 @@ pub fn structural_eq_root(left: &BlockRoot, right: &BlockRoot) -> bool {
 pub(super) fn merge(nodes: Vec<BlockNode>) -> Vec<BlockNode> {
     let mut out: Vec<BlockNode> = Vec::with_capacity(nodes.len());
     for mut node in nodes {
-        if let BlockKind::Literal { value } = &node.kind
-            && let Some(previous) = out.last_mut()
-            && let BlockKind::Literal {
-                value: previous_text,
-            } = &previous.kind
-        {
-            let offset = previous_text.len();
-            if previous.text_pieces.is_empty() {
-                previous.text_pieces = previous.pieces(offset);
-            }
-            let pieces = if node.text_pieces.is_empty() {
-                node.pieces(value.len())
-            } else {
-                std::mem::take(&mut node.text_pieces)
-            };
-            previous
-                .text_pieces
-                .extend(pieces.into_iter().map(|mut piece| {
-                    piece.start += offset;
-                    piece.end += offset;
-                    piece
-                }));
-            if let BlockKind::Literal {
-                value: previous_text,
-            } = &mut previous.kind
+        if matches!(&node.kind, BlockKind::Literal { .. }) {
+            if let Some(previous) = out.last_mut()
+                && let BlockKind::Literal {
+                    value: previous_text,
+                } = &previous.kind
             {
-                previous_text.push_str(value);
+                let offset = previous_text.len();
+                if previous.text_pieces.is_empty() {
+                    previous.text_pieces = previous.pieces(offset);
+                }
+                let pieces = if node.text_pieces.is_empty() {
+                    node.pieces(match &node.kind {
+                        BlockKind::Literal { value } => value.len(),
+                        _ => unreachable!("literal"),
+                    })
+                } else {
+                    std::mem::take(&mut node.text_pieces)
+                };
+                previous
+                    .text_pieces
+                    .extend(pieces.into_iter().map(|mut piece| {
+                        piece.start += offset;
+                        piece.end += offset;
+                        piece
+                    }));
+                if let BlockKind::Literal {
+                    value: previous_text,
+                } = &mut previous.kind
+                    && let BlockKind::Literal { value } = &node.kind
+                {
+                    previous_text.push_str(value);
+                }
+                continue;
             }
+            out.push(node);
+            continue;
+        }
+        if matches!(&node.kind, BlockKind::LiteralUtf16 { .. }) {
+            if let Some(previous) = out.last_mut()
+                && matches!(&previous.kind, BlockKind::LiteralUtf16 { .. })
+            {
+                let offset = match &previous.kind {
+                    BlockKind::LiteralUtf16 { value } => value.0.len(),
+                    _ => unreachable!("lossless literal"),
+                };
+                if previous.text_pieces.is_empty() {
+                    previous.text_pieces = previous.pieces(offset);
+                }
+                let value_len = match &node.kind {
+                    BlockKind::LiteralUtf16 { value } => value.0.len(),
+                    _ => unreachable!("lossless literal"),
+                };
+                let pieces = if node.text_pieces.is_empty() {
+                    node.pieces(value_len)
+                } else {
+                    std::mem::take(&mut node.text_pieces)
+                };
+                previous
+                    .text_pieces
+                    .extend(pieces.into_iter().map(|mut piece| {
+                        piece.start += offset;
+                        piece.end += offset;
+                        piece
+                    }));
+                let BlockKind::LiteralUtf16 { value } = &node.kind else {
+                    unreachable!("lossless literal")
+                };
+                let mut merged = match &mut previous.kind {
+                    BlockKind::LiteralUtf16 { value } => value.0.units().to_vec(),
+                    _ => unreachable!("lossless literal"),
+                };
+                merged.extend(value.0.units());
+                let merged = JsString::from_units(merged);
+                // Adjacent halves of a surrogate pair become valid UTF-8.
+                // Piece offsets cannot cross that scalar boundary, so use the
+                // merged node's own provenance for this rare case.
+                previous.kind = match merged.to_utf8() {
+                    Ok(value) => {
+                        previous.text_pieces.clear();
+                        BlockKind::Literal { value }
+                    }
+                    Err(_) => BlockKind::LiteralUtf16 {
+                        value: PersistedJsString(merged),
+                    },
+                };
+                continue;
+            }
+            out.push(node);
             continue;
         }
         out.push(node);
     }
-    out.retain(|n| !matches!(&n.kind, BlockKind::Literal {value} if value.is_empty()));
+    out.retain(|n| {
+        !matches!(&n.kind, BlockKind::Literal { value } if value.is_empty())
+            && !matches!(&n.kind, BlockKind::LiteralUtf16 { value } if value.0.is_empty())
+    });
     out
 }
 fn flatten(nodes: Vec<BlockNode>, out: &mut Vec<BlockNode>, templates: bool, normalize: bool) {
@@ -134,6 +198,15 @@ fn normalize_accessor(accessor: &mut Option<BlockAccessor>) {
 
 /// Consumes nodes and moves child strings; transient provenance follows surviving nodes.
 pub fn normalize_value(mut node: BlockNode) -> BlockNode {
+    // One canonical block form: units that already form UTF-8 text use the
+    // version-1 literal. Only genuinely unpaired units stay lossless.
+    if let BlockKind::LiteralUtf16 { value } = &node.kind
+        && let Ok(value) = value.0.to_utf8()
+    {
+        node.kind = BlockKind::Literal { value };
+        // Byte offsets replace unit offsets; keep the node-level provenance.
+        node.text_pieces.clear();
+    }
     if let BlockKind::Group { children } = node.kind {
         node.kind = BlockKind::Template { parts: children };
     }
@@ -146,7 +219,12 @@ pub fn normalize_value(mut node: BlockNode) -> BlockNode {
                 node.kind = BlockKind::Literal {
                     value: String::new(),
                 };
-            } else if merged.len() == 1 && matches!(merged[0].kind, BlockKind::Literal { .. }) {
+            } else if merged.len() == 1
+                && matches!(
+                    merged[0].kind,
+                    BlockKind::Literal { .. } | BlockKind::LiteralUtf16 { .. }
+                )
+            {
                 let only = merged.pop().expect("one item");
                 // Keep the container ID as in TS, but retain the actual literal's
                 // input origin for a later field error.

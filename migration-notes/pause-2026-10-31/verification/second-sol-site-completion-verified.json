@@ -1,0 +1,290 @@
+{
+  "event": "VERIFIED",
+  "status": "VERIFIED_BOUNDED_SITE_COMPLETION_PENDING_ROOT_ACCEPTANCE",
+  "lease": "integration-site-completion-v17",
+  "candidate": {
+    "state": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26",
+    "source": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/source",
+    "tree": "ea604853a6dee8961546d40349737ad6421c446871a3d27ef45fd6e42968f6f2",
+    "inputs": 1616,
+    "base": {
+      "source": "/root/.local/state/rust-full-migration-20261028-integration-site-analytics-v16/source",
+      "tree": "1d1edb4334a2a90a4e2301ff3dec7fdb7de84151afaeebb65d18c64f12848fae",
+      "inputs": 1616,
+      "acceptedCommit": "71dc3d86"
+    },
+    "onlyOwnedDeltas": [
+      "dimabot/src/schemas/event.schema.rs",
+      "dimabot/src/server/routes/site.route.rs",
+      "dimabot/src/utils/siteanalytics.rs",
+      "dimabot/tests/fixtures/site_analytics_reference.cjs",
+      "dimabot/tests/site_analytics_api.rs",
+      "dimabot/tests/support/site_analytics_support.rs",
+      "migration-notes/site-analytics-api-handoff.md"
+    ],
+    "unownedInputsPreserved": 1608,
+    "unchangedOwnedCatalog": true,
+    "centralUnchanged": true
+  },
+  "verification": {
+    "finalReceipts": [
+      "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/compiler-1793420390739230597-receipt.json",
+      "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/compiler-1793420515951306157-receipt.json",
+      "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/compiler-fixtures-1793420477702842474-receipt.json",
+      "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/node-fixtures-1793420380884742654-receipt.json"
+    ],
+    "commands": {
+      "node.sh": [
+        "set -eu",
+        "mkdir /artifacts/oracle",
+        "node tests/fixtures/site_analytics_reference.cjs --write /artifacts/oracle",
+        "node tests/fixtures/site_analytics_reference.cjs --check /artifacts/oracle",
+        "sha256sum /artifacts/oracle/site-analytics-reference.json > /artifacts/oracle-independent.sha256"
+      ],
+      "compile.sh": [
+        "set -eu",
+        "cargo fmt --all -- --check",
+        "cargo test --locked --no-default-features --features site-analytics-api --test site_analytics_api --jobs 1 -- --test-threads=1",
+        "export DIMA_SITE_ANALYTICS_FIXTURE_DIR=/artifacts/oracle",
+        "export DIMA_SITE_ANALYTICS_FIXTURE_SHA256=\"$(cat /artifacts/oracle.sha256)\"",
+        "cargo test --locked --no-default-features --features site-analytics-api --test site_analytics_api --jobs 1 source_mongoose_constructor_and_update_oracle -- --ignored --test-threads=1"
+      ],
+      "private.sh": [
+        "set -eu",
+        "export DIMA_SITE_ANALYTICS_FIXTURE_DIR=/artifacts/oracle",
+        "export DIMA_SITE_ANALYTICS_FIXTURE_SHA256=\"$(cat /artifacts/oracle.sha256)\"",
+        "export SITE_ANALYTICS_TEST_MONGO_URI=\"$DIMA_TEST_MONGO_URI\"",
+        "export SITE_ANALYTICS_TEST_MONGO_DATABASE=rust_site_analytics_fixture_secondsol_v26",
+        "export SITE_ANALYTICS_TEST_MONGO_ACK=disposable",
+        "export SITE_ANALYTICS_TEST_REDIS_URI=redis://keyword-redis:6379/0",
+        "export SITE_ANALYTICS_TEST_REDIS_ACK=disposable",
+        "export SITE_ANALYTICS_TEST_OWNER=second-sol-siteanalytics-v26",
+        "unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy",
+        "cargo test --locked --no-default-features --features site-analytics-api --test site_analytics_api --jobs 1 -- --ignored --test-threads=1"
+      ],
+      "quality.sh": [
+        "set -eu",
+        "cargo fmt --all -- --check",
+        "cargo clippy --locked --all-features --all-targets --jobs 1 -- -D warnings",
+        "cargo check --locked --no-default-features --all-targets --jobs 1"
+      ]
+    },
+    "scriptsSHA256": {
+      "node.sh": "3ed4e6afb073ac03fc2863aae5a0531e5144d12d81836c3b7df756fe59026576",
+      "compile.sh": "4fb40db989802ef5cc2e9ec40a00a9672e7b5b8fe63d367e23a7baa46c5057ed",
+      "private.sh": "f5433ee6952360b50f53fff789a0a541bd7c196d869c2421dc636aaf1fa29726",
+      "quality.sh": "5b669f6c4192e8512fba243ea307eecfd6ecef48006a6600a7b034ba5fb06530"
+    },
+    "rustVersion": "1.99.1 (58cf8f9c3 2026-10-13), x86_64-unknown-linux-musl",
+    "rustImage": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9",
+    "nodeImage": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82",
+    "oracleMetadata": {
+      "source": "src/server/routes/site.route.ts",
+      "sha256": "8a0854361b66f0759d885f8fe8aab12d075cf99faa36dc42de763d72d413c706",
+      "mongooseHelpers": {
+        "helpers/query/castUpdate.js": "b2b53126ed947f1fb2fe267fcb3814e40f12181454a7a6ee24f82c48687cef9b",
+        "cast.js": "9cd60ac458c289165d947126575feb54b38d7ddf61099a1a3b44b8beded8584c",
+        "schema/documentArray.js": "ff7afa43b7530036916462bac3d7e036c0c1b9536c6e22f971c1d186d57389e7",
+        "schema/number.js": "986ec7fe59c927ac04e48e15950e3cc6e042a4e9b8241dbc8a403d34730a169e"
+      },
+      "node": "24.22.1",
+      "typescript": "5.9.3",
+      "mongoose": "8.24.2",
+      "bson": "6.10.4",
+      "malformedBody": "Express default HTML; body omitted as environment-dependent"
+    },
+    "oracleFixture": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/oracle/site-analytics-reference.json",
+    "oracleSHA256": "17a8af3ba099a14974e19f6d14d8189da0e3849b4a5a41109798c61acdb9493e",
+    "independentSHA256File": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/oracle-independent.sha256",
+    "driverSHA256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+    "allHistoricalReceipts": [
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v17/artifacts/node-fixtures-1793419839456750540-receipt.json",
+        "sha256": "1fa23f47f59a27a503d798d60f04feecbee28a8d01e6750747d3dc39fb14679a",
+        "phase": "node-fixtures",
+        "success": false,
+        "sourceTree": "618c472cb32cff5db26d2e857846982e66cab7cba305e4b5e7ea9f83adc284e2",
+        "productionUnchanged": true,
+        "error": "node-fixtures failed; see /root/.local/state/rust-full-migration-20261028-integration-site-completion-v17/artifacts/node-fixtures-1793419839456750540.log"
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v18/artifacts/node-fixtures-1793419852807509916-receipt.json",
+        "sha256": "ed33fa97a2c6ab7fbb977859e6c87071948de6361d2e9bce291b509d702d9d56",
+        "phase": "node-fixtures",
+        "success": false,
+        "sourceTree": "618c472cb32cff5db26d2e857846982e66cab7cba305e4b5e7ea9f83adc284e2",
+        "productionUnchanged": true,
+        "error": "node-fixtures failed; see /root/.local/state/rust-full-migration-20261028-integration-site-completion-v18/artifacts/node-fixtures-1793419852807509916.log"
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v19/artifacts/node-fixtures-1793419869757539329-receipt.json",
+        "sha256": "ec8fc09d4c876bd2693db60e62d548e57aa278616d0381197c00db8d6e072887",
+        "phase": "node-fixtures",
+        "success": true,
+        "sourceTree": "d5b6a04186be1614d3b8c3e819e7ff178ec8bd5bc4cd6ecb3e0b502e31aa69e6",
+        "productionUnchanged": true,
+        "error": null
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v20/artifacts/format-1793420005985103079-receipt.json",
+        "sha256": "57e86f2e1be8a82e858c28250f1beb7c1d6737e4cfff55989197558cfe534a1a",
+        "phase": "format",
+        "success": true,
+        "sourceTree": "7315792278af41a3b2d786fb5100deb52e0332121432a95e1721b00c1b37bcc6",
+        "productionUnchanged": true,
+        "error": null
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v21/artifacts/compiler-1793420053130257783-receipt.json",
+        "sha256": "b47a0fd9388bc8bce41119b6e270cc1c10bf4bd2719795d22250ca73d4fd2b40",
+        "phase": "compiler",
+        "success": false,
+        "sourceTree": "18bd1f29aa7face681d1ae55670a895618b3862863ce4e70fec0e04833e63bec",
+        "productionUnchanged": true,
+        "error": "compiler failed; see /root/.local/state/rust-full-migration-20261028-integration-site-completion-v21/artifacts/compiler-1793420053130257783.log"
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v21/artifacts/node-fixtures-1793420043201748650-receipt.json",
+        "sha256": "ea0dab3ff37fdafcc092fb4ac86d59b0bd66dfe6bb1f173501b6fdf019438ddb",
+        "phase": "node-fixtures",
+        "success": true,
+        "sourceTree": "18bd1f29aa7face681d1ae55670a895618b3862863ce4e70fec0e04833e63bec",
+        "productionUnchanged": true,
+        "error": null
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v22/artifacts/format-1793420172321523240-receipt.json",
+        "sha256": "60d9978710d69a31a94c1fb42566e66c743ed765917aa3e1bf8fdc1acf150aed",
+        "phase": "format",
+        "success": true,
+        "sourceTree": "86573d3ecb90ecba4534031bb9c8e0510e2054587a2e946b35fd982816c5ae2c",
+        "productionUnchanged": true,
+        "error": null
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v23/artifacts/compiler-1793420204989364037-receipt.json",
+        "sha256": "d27e2fabf686989f730eb119c291e00539d621c70ea85da4996067f53854cef1",
+        "phase": "compiler",
+        "success": false,
+        "sourceTree": "70b43b971a96c6f279bc274888ae90ccd76a69d016342470f80443bb11ece77e",
+        "productionUnchanged": true,
+        "error": "compiler failed; see /root/.local/state/rust-full-migration-20261028-integration-site-completion-v23/artifacts/compiler-1793420204989364037.log"
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v23/artifacts/node-fixtures-1793420193642270020-receipt.json",
+        "sha256": "ca4a7a8e55a7ba632f8a8db39d9b0496769f5d3bb7817b46cf910975374a42a6",
+        "phase": "node-fixtures",
+        "success": true,
+        "sourceTree": "70b43b971a96c6f279bc274888ae90ccd76a69d016342470f80443bb11ece77e",
+        "productionUnchanged": true,
+        "error": null
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v24/artifacts/format-1793420316512996211-receipt.json",
+        "sha256": "2d3562d5ffe5eed3a4bdcd34fc3f78ec0a380b2d9f5a3b7be53fe568b88f73cb",
+        "phase": "format",
+        "success": true,
+        "sourceTree": "7e6f900972d0559eb88bd50f3c4886d6b71afd7d9a576431b4997bc70f60dee2",
+        "productionUnchanged": true,
+        "error": null
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v25/artifacts/format-1793420359752463453-receipt.json",
+        "sha256": "619388b7d626a9e3b0c83282f0d09bbbcd5ea86668c40efa96d168d26d09e49b",
+        "phase": "format",
+        "success": true,
+        "sourceTree": "b9cd4f08374ebbbf578d1e9df6c9bbdd5b858e033d3bd3563b146eafc8cad75a",
+        "productionUnchanged": true,
+        "error": null
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/compiler-1793420390739230597-receipt.json",
+        "sha256": "e5ba8577cdaf0ae76e37cc0cd1a22a167b87a6ede7b58f0b9367dd07dc4d7a9d",
+        "phase": "compiler",
+        "success": true,
+        "sourceTree": "ea604853a6dee8961546d40349737ad6421c446871a3d27ef45fd6e42968f6f2",
+        "productionUnchanged": true,
+        "error": null
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/compiler-1793420515951306157-receipt.json",
+        "sha256": "1c8ba42f843e6f528232688a86c92da3ce5cd82e1bcb50450067b401b641be58",
+        "phase": "compiler",
+        "success": true,
+        "sourceTree": "ea604853a6dee8961546d40349737ad6421c446871a3d27ef45fd6e42968f6f2",
+        "productionUnchanged": true,
+        "error": null
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/compiler-fixtures-1793420477702842474-receipt.json",
+        "sha256": "185c5239897273b26a292e6dfc3ed3f55cff0bad9d5a4cd914fbcd59d6532948",
+        "phase": "compiler-fixtures",
+        "success": true,
+        "sourceTree": "ea604853a6dee8961546d40349737ad6421c446871a3d27ef45fd6e42968f6f2",
+        "productionUnchanged": true,
+        "error": null
+      },
+      {
+        "path": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/node-fixtures-1793420380884742654-receipt.json",
+        "sha256": "9cc9700c34df9b5e370a7ecd1f51c16ede50ecb234b18887a0fd609c5349883e",
+        "phase": "node-fixtures",
+        "success": true,
+        "sourceTree": "ea604853a6dee8961546d40349737ad6421c446871a3d27ef45fd6e42968f6f2",
+        "productionUnchanged": true,
+        "error": null
+      }
+    ]
+  },
+  "uniqueFunctionsAndCases": {
+    "rustTestFunctionsExecuted": 16,
+    "normalRustTestFunctions": 13,
+    "privateIgnoredRustTestFunctionsExecuted": 3,
+    "siteHTTPMethods": 5,
+    "sourceConstructorEntryPoints": 1,
+    "sourceQueryCastEntryPoints": 1,
+    "originalHTTPProbes": 13,
+    "constructorProbes": 9,
+    "originalUpdateProbes": 6,
+    "totalUpdateCastProbes": 51,
+    "addedRealMongooseMongoHTTPProbes": 45,
+    "uniqueSourceNativeHTTPScenarios": 58,
+    "addedHTTPStatuses": {
+      "200": 36,
+      "400": 5,
+      "500": 4
+    },
+    "schedulerTestFunctions": 1,
+    "schedulerAssertions": 7,
+    "readyBacklog": "ordinary ready101 IDs; sequential per-pass100/1; no ready-work sleeps",
+    "note": "Repeated oracle replay in multiple gates is not counted as new cases or functions."
+  },
+  "outcome": {
+    "gap1": "Practical Event operator/predicate casts implemented using native schema casts; all51 cast probes and45 real source/native HTTP+Mongo operator cases pass. $pull has no insert defaults/IDs; source $pullAll materializes them. Unknown predicates remain under strictQuery=false; unknown update paths strip. Strict-empty read, validators/save hook bypass, numeric/$/$[]/Mixed paths and source failures replayed.",
+    "gap2": "Fixed future15s/hourly deadlines, immediate first live/future first persistence; Skip missed ticks, bounded sequential/nonoverlap, no extra full post-work delay, terminal orderly stop.",
+    "localCoverage": "bounded ordinary JSON Event/Site behavior; no percentage or universal ODM claim",
+    "totalMigrationComplete": false,
+    "blockingDependencyForUniversalParity": "unrestricted Mongoose query/expression/error-class and arbitrary malformed-operator semantics are not exhaustively implemented/proven; see retained boundaries",
+    "deployment": "none",
+    "callerAdoption": "none",
+    "commitPushRetirement": "none"
+  },
+  "retainedBoundaries": [
+    "No universal Mongoose ODM or JS prototype emulation; malformed operator structures and every arbitrary Mongo query/expression combination are not exhaustively proven.",
+    "Existing v16 i64/environment coercion, strict snapshot restore, per-service start flags, deadlines/uncertain-write outcomes, native sanitized errors/logging and supplied provider/composition boundaries remain.",
+    "Original13 source HTTP cases retain documented doubles; all45 added cases use actual Mongoose query/Mongo persistence and real source HTTP, replayed through native real HTTP/Mongo.",
+    "Operator replay preserves seed/caller string IDs and seeded timestamps; generated IDs/dates and date-only-input ISO formatting normalize. No exact JS overlapping concurrency claim.",
+    "No adversarial lost-acknowledgement/in-flight-write cancellation test or new concrete Logger Redis sink claim."
+  ],
+  "productionProof": {
+    "baseline": "/root/.local/state/rust-full-migration-20261028-validation-route-02/production-before.json",
+    "after": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/production-after.json",
+    "containers": 18,
+    "exactIdentitiesImagesStartMountConfigComposeUnchangedEveryPhase": true
+  },
+  "resourcesCleanupProof": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/resources-cleanup.json",
+  "copybackProof": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/copyback.json",
+  "preservationProof": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/preservation.json",
+  "ownedDeltaPatch": "/root/.local/state/rust-full-migration-20261028-integration-site-completion-v26/artifacts/owned-delta.patch",
+  "handoff": "migration-notes/site-analytics-api-handoff.md",
+  "next": "Root review/acceptance only; user quota override requires stop and wait; no follow-on launch."
+}

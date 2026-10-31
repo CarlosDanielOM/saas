@@ -1,0 +1,730 @@
+{
+  "team": "team3-bot-ast",
+  "branch": "master",
+  "checkout": "/root/saas-rust",
+  "updatedAt": "2026-10-31T03:35:00Z",
+  "wave": "authoring-only (no cargo/rustfmt/node/docker/network until integration leases a named verification job)",
+  "scope": "Native bot/AST application flow: bind the native AST evaluator to real Twitch/Dragonfly/MongoDB adapters and port the TypeScript chat -> special parser -> command execution -> AST delivery pipeline.",
+  "lead": "Codex GPT-6.1 Terra (team3 coordinator)",
+  "reservedByOthers": [
+    "dimabot/src/functions/chats/send_message_plain.rs",
+    "dimabot/src/functions/chats/mod.rs",
+    "dimabot/src/functions/chats/delete_message.chat.rs",
+    "dimabot/src/utils/temporary_roles_announcements.rs",
+    "dimabot/tests/temporary_roles_announcements.rs",
+    "dimabot/tests/fixtures/temporary_roles_announcements_reference.cjs",
+    "migration-notes/temporary-roles-announcements-handoff.md",
+    "dimabot/src/server/routes/file.route.ts",
+    "dimabot/src/server/routes/file.route.rs",
+    "dimabot/tests/file_routes.rs",
+    "dimabot/tests/fixtures/file_routes_reference.cjs",
+    "dimabot/src/utils/polar_usage.rs",
+    "dimabot/src/utils/polar_cache_usage.rs",
+    "dimabot/tests/polar_usage_modes.rs",
+    "dimabot/tests/fixtures/polar_usage_modes_reference.cjs"
+  ],
+  "centralPathsNotEdited": [
+    "dimabot/Cargo.toml",
+    "dimabot/src/lib.rs",
+    "dimabot/src/utils/mod.rs",
+    "dimabot/src/functions/mod.rs",
+    "dimabot/src/schemas/mod.rs",
+    "dimabot/src/schemas/schema.rs",
+    "dimabot/src/domain_events/mod.rs",
+    "dimabot/src/classes/command.class.rs",
+    "dimabot/src/classes/twitch_streamers.class.rs",
+    "dimabot/src/schemas/commands.schema.rs"
+  ],
+  "leadOwnedFiles": [
+    "dimabot/src/utils/ast_parser/runtime.rs"
+  ],
+  "lanes": [
+    {
+      "id": "A",
+      "name": "native-ast-chat-delivery",
+      "implementer": "DeepSeek V4.1 Flash",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "provider": "opencode",
+      "sourceOfTruth": [
+        "dimabot/src/functions/chats/send_message.chat.ts",
+        "dimabot/src/utils/ast_command_delivery.ts"
+      ],
+      "files": [
+        "dimabot/src/utils/ast_parser/runtime/chat.rs",
+        "dimabot/src/utils/ast_parser/runtime/delivery.rs",
+        "dimabot/src/utils/ast_parser/runtime/wiring.rs",
+        "dimabot/tests/ast_chat_delivery.rs"
+      ],
+      "mayRead": [
+        "dimabot/src/functions/chats/send_message_plain.rs",
+        "dimabot/src/utils/ast_parser/runtime.rs",
+        "dimabot/src/utils/ast_parser/evaluator.rs",
+        "dimabot/src/functions/mod.rs"
+      ],
+      "mustNotTouch": [
+        "dimabot/src/functions/chats/mod.rs",
+        "dimabot/src/functions/chats/send_message_plain.rs",
+        "dimabot/src/utils/ast_parser/runtime/host.rs",
+        "dimabot/src/utils/ast_parser/runtime/variables.rs",
+        "dimabot/src/utils/ast_parser/runtime/parser.rs",
+        "dimabot/src/utils/ast_parser/runtime/command.rs",
+        "dimabot/src/utils/ast_parser/runtime/effects.rs",
+        "dimabot/Cargo.toml",
+        "dimabot/src/utils/mod.rs"
+      ]
+    },
+    {
+      "id": "B",
+      "name": "native-ast-application-host",
+      "implementer": "Grok 4.7",
+      "model": "grok-4.7",
+      "provider": "grok",
+      "sourceOfTruth": [
+        "dimabot/src/utils/ast_parser/evaluator.ts",
+        "dimabot/src/handlers/special_parser.handler.ts"
+      ],
+      "files": [
+        "dimabot/src/utils/ast_parser/runtime/host.rs",
+        "dimabot/src/utils/ast_parser/runtime/variables.rs",
+        "dimabot/tests/ast_application_host.rs"
+      ],
+      "mayRead": [
+        "dimabot/src/utils/ast_parser/evaluator/host.rs",
+        "dimabot/src/utils/ast_parser/evaluator/registry.rs",
+        "dimabot/src/utils/ast_parser/runtime.rs",
+        "dimabot/src/schemas/ast_variables.schema.rs",
+        "dimabot/src/utils/redis_application_runtime.rs"
+      ],
+      "mustNotTouch": [
+        "dimabot/Cargo.toml",
+        "dimabot/src/schemas/ast_variables.schema.rs",
+        "dimabot/src/utils/ast_parser/evaluator.rs",
+        "dimabot/src/utils/ast_parser/evaluator/host.rs",
+        "dimabot/src/utils/ast_parser/runtime/chat.rs",
+        "dimabot/src/utils/ast_parser/runtime/command.rs",
+        "dimabot/src/utils/ast_parser/runtime/delivery.rs",
+        "dimabot/src/utils/ast_parser/runtime/effects.rs",
+        "dimabot/src/utils/ast_parser/runtime/keyword_state.rs",
+        "dimabot/src/utils/ast_parser/runtime/parser.rs",
+        "dimabot/src/utils/ast_timer_runtime.rs",
+        "dimabot/src/utils/mod.rs"
+      ],
+      "notes": "Scope split 02:08Z. The native timer runtime moved to lane B2 because runtime/host.rs is the critical path: Lane A wiring.rs and Lane C parser.rs both need ApplicationHost and ScopedAstHost. Lane B must route HostRequest::ScheduleTimer through a timer-scheduler seam, or declare it Unsupported by name."
+    },
+    {
+      "id": "C",
+      "name": "native-special-parser-command-execution",
+      "implementer": "GPT-6.1 Terra",
+      "model": "gpt-6.1-terra",
+      "provider": "codex",
+      "providerNote": "Relaunched from opencode/openai/gpt-6.1-terra after a 401 on that route; see contracts/team3-provider-routing-20261031.md. Lane C then ran one fix round on codex/gpt-6.1-terra (findings F1-F7: JsonValue accessors, permissions Value type, effect display-name fidelity, cooldown Number() coercion, executionName fallback, keyword adapter, test coverage).",
+      "sourceOfTruth": [
+        "dimabot/src/handlers/special_parser.handler.ts",
+        "dimabot/src/handlers/commands.handler.ts",
+        "dimabot/src/utils/ast_parser/effects.ts"
+      ],
+      "files": [
+        "dimabot/src/utils/ast_parser/runtime/parser.rs",
+        "dimabot/src/utils/ast_parser/runtime/command.rs",
+        "dimabot/src/utils/ast_parser/runtime/effects.rs",
+        "dimabot/tests/ast_command_execution.rs"
+      ],
+      "mayRead": [
+        "dimabot/src/classes/command.class.rs",
+        "dimabot/src/utils/permissions/index.rs",
+        "dimabot/src/utils/command_cooldown.rs",
+        "dimabot/src/utils/ast_parser/runtime.rs",
+        "dimabot/src/utils/ast_parser/evaluator.rs",
+        "dimabot/src/utils/ast_parser/evaluator/context.rs"
+      ],
+      "mustNotTouch": [
+        "dimabot/src/utils/ast_parser/runtime/chat.rs",
+        "dimabot/src/utils/ast_parser/runtime/delivery.rs",
+        "dimabot/src/utils/ast_parser/runtime/host.rs",
+        "dimabot/src/utils/ast_parser/runtime/variables.rs",
+        "dimabot/src/classes/command.class.rs",
+        "dimabot/src/utils/permissions/index.rs",
+        "dimabot/src/utils/command_cooldown.rs",
+        "dimabot/Cargo.toml",
+        "dimabot/src/utils/mod.rs"
+      ]
+    },
+    {
+      "id": "B2",
+      "name": "native-ast-timer-runtime",
+      "implementer": "DeepSeek V4.1 Flash",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "provider": "opencode",
+      "sourceOfTruth": [
+        "dimabot/src/utils/ast_timer_runtime.ts",
+        "dimabot/src/utils/ast_parser/timer.ts"
+      ],
+      "files": [
+        "dimabot/src/utils/ast_timer_runtime.rs",
+        "dimabot/tests/ast_timer_runtime.rs"
+      ],
+      "mustNotTouch": [
+        "dimabot/Cargo.toml",
+        "dimabot/src/utils/mod.rs",
+        "dimabot/src/utils/ast_parser/runtime.rs",
+        "dimabot/src/utils/ast_parser/runtime/host.rs",
+        "dimabot/src/utils/ast_parser/runtime/variables.rs",
+        "dimabot/src/utils/ast_parser/runtime/keyword_state.rs"
+      ],
+      "notes": "Owns the source wait inventory / backlog / pacing rules: the ast:timers:* keys, the 100-per-channel and 10000-global pending caps, the 64 KiB payload cap, TIMER_GRACE_MS of 10 minutes, MAX_TIMER_SECONDS 604800, MAX_TIMER_DEPTH 5, and the at-most-once claim (consume before execute)."
+    },
+    {
+      "id": "C2",
+      "name": "native-keyword-fresh-state-adapter",
+      "implementer": "Grok 4.7",
+      "model": "grok-4.7",
+      "provider": "grok",
+      "sourceOfTruth": [
+        "dimabot/src/handlers/commands.handler.ts"
+      ],
+      "files": [
+        "dimabot/src/utils/ast_parser/runtime/keyword_state.rs",
+        "dimabot/tests/ast_keyword_state.rs"
+      ],
+      "mustNotTouch": [
+        "dimabot/Cargo.toml",
+        "dimabot/src/utils/mod.rs",
+        "dimabot/src/utils/ast_parser/runtime.rs",
+        "dimabot/src/utils/ast_parser/runtime/command.rs",
+        "dimabot/src/utils/ast_parser/runtime/host.rs",
+        "dimabot/src/utils/ast_parser/runtime/variables.rs",
+        "dimabot/src/utils/keywords.rs",
+        "dimabot/src/utils/keywords/native.rs",
+        "dimabot/src/schemas/commands.schema.rs",
+        "dimabot/src/classes/command.class.rs"
+      ],
+      "notes": "Closes Lane C's named keyword gap: the fresh MongoDB read of keyword count and enabled taken AFTER the cooldown gate wins, plus the Mongo ObjectId representation question Lane C left open."
+    },
+    {
+      "id": "B3",
+      "name": "native-ast-function-catalog",
+      "implementer": "DeepSeek V4.1 Flash",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "provider": "opencode",
+      "sourceOfTruth": [
+        "dimabot/src/utils/ast_parser/functions/delay.functions.ts",
+        "dimabot/src/utils/ast_parser/functions/chat.functions.ts",
+        "dimabot/src/utils/ast_parser/functions/index.ts"
+      ],
+      "files": [
+        "dimabot/src/utils/ast_parser/runtime/functions.rs",
+        "dimabot/tests/ast_functions.rs"
+      ],
+      "mustNotTouch": [
+        "dimabot/Cargo.toml",
+        "dimabot/src/utils/mod.rs",
+        "dimabot/src/utils/ast_parser/runtime.rs",
+        "dimabot/src/utils/ast_parser/runtime/chat.rs",
+        "dimabot/src/utils/ast_parser/runtime/delivery.rs",
+        "dimabot/src/utils/ast_parser/runtime/command.rs",
+        "dimabot/src/utils/ast_parser/runtime/parser.rs",
+        "dimabot/src/utils/ast_parser/runtime/effects.rs",
+        "dimabot/src/utils/ast_parser/runtime/wiring.rs",
+        "dimabot/src/utils/ast_parser/runtime/host.rs",
+        "dimabot/src/utils/ast_parser/runtime/variables.rs",
+        "dimabot/src/utils/ast_parser/runtime/keyword_state.rs",
+        "dimabot/src/utils/ast_timer_runtime.rs",
+        "dimabot/src/utils/ast_parser/evaluator.rs",
+        "dimabot/src/utils/ast_parser/functions",
+        "dimabot/src/functions"
+      ],
+      "notes": "Implements the lead-owned AstFunctionCatalog seam in dimabot/src/utils/ast_parser/runtime.rs: the timer and delay handlers ported from delay.functions.ts, and chat.send from chat.functions.ts via the native chat::send_chat_message. The announce family is owned by the reserved announcements job and has no native adapter, so it must return Unsupported. Function metadata carries min_user_level, which the native VM enforces as permission_denied."
+    },
+    {
+      "id": "D",
+      "name": "native-announcement-adapter",
+      "implementer": "Grok 4.7",
+      "model": "grok-4.7",
+      "provider": "grok",
+      "sourceOfTruth": [
+        "dimabot/src/functions/chats/announcement.chat.ts"
+      ],
+      "files": [
+        "dimabot/src/functions/chats/announcement.chat.rs",
+        "dimabot/tests/announcement_chat.rs",
+        "dimabot/tests/fixtures/announcement_chat_reference.cjs"
+      ],
+      "mustNotTouch": [
+        "dimabot/src/functions/chats/mod.rs",
+        "dimabot/src/functions/chats/send_message_plain.rs",
+        "dimabot/src/utils/temporary_roles_announcements.rs",
+        "dimabot/Cargo.toml",
+        "dimabot/src/utils/mod.rs",
+        "dimabot/src/utils/ast_parser/runtime.rs"
+      ],
+      "notes": "Ports sendAnnouncement (POST chat/announcements, 204 = success, moderator_id = the bot). The module wiring is a central patch because src/functions/chats/mod.rs is RESERVED while Sol verifies it. Includes a loopback Twitch test marked #[ignore] and an actual-source .cjs oracle."
+    },
+    {
+      "id": "E",
+      "name": "fired-timer-execution-and-bootstrap",
+      "implementer": "DeepSeek V4.1 Flash",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "provider": "opencode",
+      "sourceOfTruth": [
+        "dimabot/src/utils/ast_timer_runtime.ts",
+        "dimabot/src/utils/ast_parser/timer.ts"
+      ],
+      "files": [
+        "dimabot/src/utils/ast_timer_runtime.rs",
+        "dimabot/src/utils/ast_parser/runtime/bootstrap.rs",
+        "dimabot/tests/ast_timer_execution.rs"
+      ],
+      "mustNotTouch": [
+        "dimabot/Cargo.toml",
+        "dimabot/src/utils/mod.rs",
+        "dimabot/src/utils/ast_parser/runtime.rs",
+        "dimabot/src/utils/ast_parser/runtime/chat.rs",
+        "dimabot/src/utils/ast_parser/runtime/command.rs",
+        "dimabot/src/utils/ast_parser/runtime/delivery.rs",
+        "dimabot/src/utils/ast_parser/runtime/effects.rs",
+        "dimabot/src/utils/ast_parser/runtime/functions.rs",
+        "dimabot/src/utils/ast_parser/runtime/host.rs",
+        "dimabot/src/utils/ast_parser/runtime/keyword_state.rs",
+        "dimabot/src/utils/ast_parser/runtime/parser.rs",
+        "dimabot/src/utils/ast_parser/runtime/variables.rs",
+        "dimabot/src/utils/ast_parser/runtime/wiring.rs"
+      ],
+      "notes": "executeAstTimerJob: rebuild the context from the saved snapshot, evaluate the stored AstNode body, deliver through the shared delivery path. Plus a concrete async factory that installs the catalog and the scheduler. The accepted Lua scripts, backlog caps, 10-minute grace and the at-most-once claim must remain unchanged in behaviour. Includes a private-Dragonfly test marked #[ignore].",
+      "status": "completed",
+      "deliveredFiles": [
+        "dimabot/src/utils/ast_timer_runtime.rs (extended: resume_timer_context + fired-timer docs)",
+        "dimabot/src/utils/ast_parser/runtime/bootstrap.rs (new)",
+        "dimabot/tests/ast_timer_execution.rs (new)",
+        "migration-notes/ast-bot-runtime-timer-execution.md (new)"
+      ],
+      "leadIntegrationFindings": [
+        "Lane E's own gap: the factory builds two AstTimerScheduler values over one namespace, so the delivery scheduler learns a new job only at its next reconcile. Verified precisely: reconcile() arms each pending entry with the job's TRUE dueAt, so a timer whose duration is >= RECONCILE_MS (2000 ms) fires at exactly its dueAt, identical to the source's in-process setTimeout arm. Only a timer SHORTER than RECONCILE_MS can fire up to one cadence late. It is never early, never past expiresAt (10 min grace), and at-most-once is unaffected because the claim consumes before execution.",
+        "The catalog's own armed map is never drained (no take_due on the catalog's scheduler). It is a harmless in-memory record, not a correctness issue, but it is a divergence from the source's single activeScheduler.",
+        "Lead decision: NOT refactored to a shared scheduler. The fix (one Arc<Mutex<AstTimerScheduler>> shared by the catalog and the delivery driver) touches the delivery path of a 55 KB timer runtime that cannot be compiled under the current authoring-only lease, and the bounded sub-2-second deviation does not justify an unverifiable structural change. Recorded as a named gap with the exact fix instead.",
+        "Lock-ordering note for whoever applies that fix: the driver must release the scheduler lock BEFORE executing a claimed job, otherwise a timer body that itself schedules a timer would deadlock on the same mutex."
+      ]
+    },
+    {
+      "id": "F",
+      "name": "keyword-ingress-and-by-id-body-handoff",
+      "implementer": "GPT-6.1 Terra",
+      "model": "gpt-6.1-terra",
+      "provider": "codex",
+      "sourceOfTruth": [
+        "dimabot/src/handlers/keywords.handler.ts",
+        "dimabot/src/handlers/commands.handler.ts"
+      ],
+      "files": [
+        "dimabot/src/handlers/keywords.handler.rs",
+        "dimabot/src/utils/ast_parser/runtime/command.rs",
+        "dimabot/tests/ast_keyword_ingress.rs",
+        "dimabot/tests/fixtures/keywords_handler_reference.cjs"
+      ],
+      "mustNotTouch": [
+        "dimabot/Cargo.toml",
+        "dimabot/src/utils/mod.rs",
+        "dimabot/src/utils/ast_parser/runtime.rs",
+        "dimabot/src/utils/ast_parser/runtime/chat.rs",
+        "dimabot/src/utils/ast_parser/runtime/delivery.rs",
+        "dimabot/src/utils/ast_parser/runtime/effects.rs",
+        "dimabot/src/utils/ast_parser/runtime/functions.rs",
+        "dimabot/src/utils/ast_parser/runtime/host.rs",
+        "dimabot/src/utils/ast_parser/runtime/keyword_state.rs",
+        "dimabot/src/utils/ast_parser/runtime/parser.rs",
+        "dimabot/src/utils/ast_parser/runtime/variables.rs",
+        "dimabot/src/utils/ast_parser/runtime/wiring.rs",
+        "dimabot/src/utils/ast_parser/runtime/bootstrap.rs",
+        "dimabot/src/utils/keywords.rs",
+        "dimabot/src/utils/keywords"
+      ],
+      "notes": "Ports handleKeywords against the real keyword cache (index match -> body by id -> execute with the by-id body -> deliver). Adds execute_command_with_body to runtime/command.rs so a pre-resolved keyword body reaches the same command logic. Includes #[ignore]d private-Mongo tests for the real variable fallback/tombstone/11000, the execution cooldown lock and the keyword counter write, plus a .cjs actual-source oracle.",
+      "status": "completed-partial",
+      "leadIntegrationFindings": [
+        "The by-id body handoff is real: handle_keywords resolves each matched body by id through the native keyword cache and hands it to execute_command_with_body without a second lookup by name.",
+        "The source's keyword cooldown floor is preserved: Math.max(configured, getMinimumCommandCooldown(plan_tier)) maps to minimum_command_cooldown(plan.as_deref()) - 1 (pro), 3 (premium), 5 (everything else, including a missing plan).",
+        "The keyword's fresh count/enabled read stays AFTER the cooldown gate, and the cached body is never used as mutable counter state."
+      ]
+    },
+    {
+      "id": "F2",
+      "name": "keyword-cooldown-lock-oracle-and-loopback-twitch",
+      "implementer": "GPT-6.1 Terra",
+      "model": "gpt-6.1-terra",
+      "provider": "codex",
+      "sourceOfTruth": [
+        "dimabot/src/handlers/keywords.handler.ts",
+        "dimabot/src/handlers/commands.handler.ts",
+        "dimabot/src/utils/command_cooldown.ts",
+        "dimabot/src/functions/chats/send_message_plain.rs"
+      ],
+      "files": [
+        "dimabot/src/utils/ast_parser/runtime/command.rs",
+        "dimabot/src/handlers/keywords.handler.rs",
+        "dimabot/tests/ast_keyword_ingress.rs",
+        "dimabot/tests/fixtures/keywords_handler_reference.cjs",
+        "dimabot/tests/ast_chat_delivery_loopback.rs",
+        "migration-notes/ast-bot-runtime-keyword-cooldown-oracle.md"
+      ],
+      "mustNotTouch": [
+        "dimabot/Cargo.toml",
+        "dimabot/src/utils/mod.rs",
+        "dimabot/src/utils/ast_parser/runtime.rs",
+        "dimabot/src/utils/ast_parser/runtime/chat.rs",
+        "dimabot/src/utils/ast_parser/runtime/delivery.rs",
+        "dimabot/src/utils/ast_parser/runtime/wiring.rs",
+        "dimabot/src/utils/ast_parser/runtime/host.rs",
+        "dimabot/src/utils/ast_parser/runtime/variables.rs",
+        "dimabot/src/utils/ast_parser/runtime/parser.rs",
+        "dimabot/src/utils/ast_parser/runtime/effects.rs",
+        "dimabot/src/utils/ast_parser/runtime/functions.rs",
+        "dimabot/src/utils/ast_parser/runtime/keyword_state.rs",
+        "dimabot/src/utils/ast_timer_runtime.rs",
+        "dimabot/src/utils/ast_parser/runtime/bootstrap.rs",
+        "dimabot/src/functions/chats/announcement.chat.rs",
+        "dimabot/src/functions/chats/mod.rs"
+      ],
+      "tasks": [
+        "Real Redis cooldown-lock contention and expiry test (ignored, private loopback Redis): exact source key format command:execution:cooldown:{channelID}:{executionName} via an extracted pub cooldown_key helper, SET NX PX contention, expiry after the PX window, plan-tier floor applied for keywords and not for normal commands.",
+        "True native-vs-source oracle comparison: the native test harness records the same three observation channels as the .cjs fixture (bodies requested, executions with channel/body/name/argument/authorization, delivered texts), serializes them into the fixture's JSON shape and compares them field by field against the generated oracle file instead of asserting hardcoded literals.",
+        "Malformed and wrong-typed body parity: the same new cases on both sides (non-boolean enabled, missing cmd, missing message, non-string message, unknown keywordSettings.matchMode). Schema-valid differences are bugs and are fixed; wrong-typed deviations are pinned and documented as schema-guarded deviations.",
+        "Loopback Twitch test for the AST chat delivery path: ephemeral 127.0.0.1 server, TwitchEndpoints::new pointed at it, asserting method, path, query, Authorization header and the JSON body, plus the Twitch error-response mapping."
+      ],
+      "status": "completed-partial (lead closed the comparison gap)",
+      "notes": "Closes the gaps lane F reported. No execution lease: nothing is compiled or run.",
+      "leadIntegrationFindings": [
+        "Lane F2 authored the Redis cooldown-lock test, the plan-floor assertions and the Twitch loopback test, and reported the native-vs-source comparison as incomplete, handing the missing seam to the lead.",
+        "The lead implemented the seam: CommandStore gained a default-implemented handoff(&CommandReference, &JsonValue), called as the first statement of execute_command_body - exactly where the TypeScript calls executeCustomCommand, the seam the source fixture replaces. The parser seam cannot supply it because it runs after the gates and does not expose the authorization; CommandReference does.",
+        "The comparison is now native-vs-source: native_observations() serializes the native ingress into the source fixture's document shape and the test compares bodies, executions and delivered field by field against the generated oracle, plus asserts both sides saw the same scenarios.",
+        "enabled is now judged by JavaScript truthiness (new js_truthy helper in runtime/command.rs), used by both the ingress gate and the command body's enabled gate. The source writes if (!keyword.enabled), so \"yes\" is truthy and the source still runs the command; the native previously skipped it. No change for a schema-valid boolean.",
+        "A missing cmd is a deliberate pinned divergence: the source calls normalizeKeyword(undefined) and throws out of handleKeywords; the native skips the malformed keyword and continues. The comparison asserts the source throws, the native does not, and both request the same bodies and deliver nothing.",
+        "A discriminating match-mode scenario was added on both sides: unknown_mode_anywhere uses an anywhere index and the message 'say hello there' with the body's mode still unknown, so a port that falls back to start now fails.",
+        "The Redis test drives SET NX PX directly rather than through NativeCommandStore::acquire; the key format and the plan-tier floor are asserted in-process. Neither the Redis test nor the Twitch loopback test has ever run: no execution lease."
+      ]
+    },
+    {
+      "id": "G",
+      "name": "ast-lossless-utf16-entry-and-literal-storage",
+      "implementer": "Codex GPT-6.1 Terra",
+      "model": null,
+      "provider": null,
+      "status": "partial-unverified; coordinated shared implementation assigned G2",
+      "queuedBecause": "Queued. Starting it would change the shared serialized AstNode::Literal type used by ~11 files, which cannot be compiled under the authoring-only lease, and the contract forbids closing it without team4's exact examples. The lower-risk contract lane was preferred for the free slot.",
+      "contract": "team3-overlay-template-utf16",
+      "contractOwner": "team3-bot-ast",
+      "contractRegistry": "/root/.local/state/dimabot-migration-teams-20261031/contracts/team3-ast-cross-team-20261031.md",
+      "sourceOfTruth": [
+        "dimabot/src/utils/ast_parser/syntax.rs",
+        "dimabot/src/utils/ast_parser/types.rs",
+        "dimabot/src/utils/ast_parser/evaluator/value.rs"
+      ],
+      "files": [
+        "dimabot/src/utils/ast_parser/syntax.rs",
+        "dimabot/src/utils/ast_parser/types.rs",
+        "dimabot/tests/ast_lossless_utf16.rs",
+        "migration-notes/ast-lossless-utf16-handoff.md"
+      ],
+      "mustNotTouch": [
+        "dimabot/src/utils/js_string.rs",
+        "dimabot/src/utils/lossless_json.rs",
+        "dimabot/src/utils/ast_parser/evaluator/value.rs",
+        "dimabot/Cargo.toml",
+        "dimabot/src/utils/mod.rs"
+      ],
+      "scope": [
+        "Additive lossless parse entry beside SyntaxEngine::parse(&str) that accepts the existing lossless crate::utils::ast_evaluator::JsString.",
+        "Lossless literal representation that round-trips through AstNode serde.",
+        "Source-parity tests plus persistence and VM interaction coverage.",
+        "Preserve the existing UTF-8 public API and accepted behaviour; do not change the protected js_*/lossless_json cores."
+      ],
+      "blockingInput": "Exact required examples requested from team4 on 2026-10-31. The contract may not be closed on guessed inputs.",
+      "publicPathCorrection": "The lossless string type is crate::utils::ast_evaluator::JsString (also crate::utils::ast_evaluator::value::JsString). The physical file is dimabot/src/utils/ast_parser/evaluator/value.rs, but the crate module is crate::utils::ast_evaluator (dimabot/src/utils/mod.rs:128-129, #[path = \"ast_parser/evaluator.rs\"] pub mod ast_evaluator;). crate::utils::ast_parser::evaluator::value::JsString DOES NOT EXIST and must not be imported.",
+      "closureSemantics": "Contract closure (authored adapter + authored source-parity tests) is tracked SEPARATELY from Root acceptance. Root acceptance additionally requires isolated passing execution, which team3 does not have in this wave.",
+      "taskId": "node:delegated-task:command%3Amcp%3A43da998d-644d-4ba4-9703-90a3d727c241%3Adelegate-task%3Aeb6d9888-4014-4c24-89d7-d2c12ce8eac0"
+    },
+    {
+      "id": "H",
+      "name": "canonical-remote-eventsub-adapters",
+      "implementer": "unassigned",
+      "model": null,
+      "provider": null,
+      "status": "authored-partial; parity completion assigned lane H2",
+      "queuedBecause": "Started when lane E completed and freed a worker slot. Lanes D, F2 and H run concurrently - the 3-worker limit is respected. Lane G stays queued: it changes the shared serialized AstNode type, which cannot be compiled under the authoring-only lease and whose closure needs team4's exact examples.",
+      "contract": "team3-overlay-eventsub-remote",
+      "contractOwner": "team3-bot-ast",
+      "contractRegistry": "/root/.local/state/dimabot-migration-teams-20261031/contracts/team3-ast-cross-team-20261031.md",
+      "sourceOfTruth": [
+        "dimabot/src/utils/eventsub.ts",
+        "dimabot/src/functions/users/get_scopes.users.ts",
+        "dimabot/src/overlays/interaction-subscriptions.ts"
+      ],
+      "files": [
+        "dimabot/src/utils/eventsub.rs (extend: get_eventsubs, subscribe_twitch_event, unsubscribe_twitch_event)",
+        "dimabot/src/functions/users/get_scopes.users.rs (new)",
+        "dimabot/src/functions/users/mod.rs (new)",
+        "dimabot/tests/ast_eventsub_remote.rs (new)",
+        "migration-notes/ast-bot-runtime-eventsub-remote.md (new)"
+      ],
+      "mustNotTouch": [
+        "dimabot/src/functions/mod.rs",
+        "dimabot/Cargo.toml",
+        "dimabot/src/utils/mod.rs"
+      ],
+      "scope": [
+        "Publish concrete native adapters for getEventsubs, subscribeTwitchEvent and unsubscribeTwitchEvent (app token + CLIENT_ID, TWITCH_EVENTSUB_SECRET, streamer lookup, existing-subscription lookup, eventsub collection upsert, DELETE with 204 and 404 both success).",
+        "Publish the getScopes read so team4 consumes one canonical adapter instead of a private overlay policy.",
+        "Extend the existing dimabot/src/utils/eventsub.rs rather than creating a parallel module."
+      ],
+      "blockingInput": "Exact call sites and consumed shapes requested from team4 on 2026-10-31.",
+      "closureSemantics": "Contract closure (authored adapter + authored source-parity tests) is tracked SEPARATELY from Root acceptance. Root acceptance additionally requires isolated passing execution, which team3 does not have in this wave.",
+      "centralPatchSnippet": "// dimabot/src/functions/mod.rs, next to `pub mod chats;`\npub mod users;",
+      "dependenciesVerified": [
+        "src/schemas/eventsub.schema.rs: collection(), repository(), IEventsub, ICondition, condition_view, from_document, to_document, document_id",
+        "src/utils/twitch.rs: TwitchClient::new(client_id, TwitchEndpoints, timeout), TwitchEndpoints::new (loopback-capable), TokenSource, build_headers, TwitchAuth::{App,Bot,Streamer}, AccessToken, TWITCH_BOT_ACCOUNT_ID",
+        "src/utils/tokens.rs: app_token() on the token storage",
+        "src/classes/twitch_streamers.class.rs: TwitchStreamers::account_by_id; TwitchStreamers::app_token() at src/utils/twitch.rs:528"
+      ]
+    },
+    {
+      "id": "H2",
+      "name": "eventsub-remote-parity-completion",
+      "implementer": "Grok 4.7",
+      "status": "authored-unverified; condition input and source parity gaps remain",
+      "files": [
+        "dimabot/src/utils/eventsub.rs",
+        "dimabot/src/functions/users/get_scopes.users.rs",
+        "dimabot/src/functions/users/mod.rs",
+        "dimabot/tests/ast_eventsub_remote.rs",
+        "migration-notes/ast-bot-runtime-eventsub-remote.md"
+      ],
+      "taskId": "node:delegated-task:command%3Amcp%3A43da998d-644d-4ba4-9703-90a3d727c241%3Adelegate-task%3A6c9e76cd-ac18-4aab-bb45-61aadb00ffb4"
+    },
+    {
+      "id": "E2",
+      "name": "shared-timer-scheduler-parity",
+      "implementer": "DeepSeek V4.1 Flash",
+      "status": "authored-unverified; shared scheduler and reconciliation race/retry follow-up complete; caller and context gaps remain",
+      "files": [
+        "dimabot/src/utils/ast_timer_runtime.rs",
+        "dimabot/src/utils/ast_parser/runtime/bootstrap.rs",
+        "dimabot/tests/ast_timer_execution.rs",
+        "migration-notes/ast-bot-runtime-timer-execution.md"
+      ],
+      "taskIds": [
+        "node:delegated-task:command%3Amcp%3A43da998d-644d-4ba4-9703-90a3d727c241%3Adelegate-task%3Ac23c3f39-0381-4159-8721-c3d6fe4a6dde",
+        "node:delegated-task:command%3Amcp%3A43da998d-644d-4ba4-9703-90a3d727c241%3Adelegate-task%3A27e3cdbf-ff82-4071-84db-6d9a542626e5"
+      ],
+      "notes": "Shared hub and snapshot epoch/retry tests authored; no execution. Bot caller, streamer context and derived context parity remain open. Central feature/module wiring belongs to integration. See migration-notes/ast-bot-runtime-timer-execution.md."
+    },
+    {
+      "id": "H3",
+      "name": "eventsub-remaining-source-parity",
+      "implementer": "Codex GPT-6.1 Terra",
+      "status": "authored-unverified; original-id filter and Mongoose oracle follow-up complete; isolated verification and consumer integration open",
+      "files": [
+        "dimabot/src/utils/eventsub.rs",
+        "dimabot/src/functions/users/get_scopes.users.rs",
+        "dimabot/src/functions/users/mod.rs",
+        "dimabot/tests/ast_eventsub_remote.rs",
+        "dimabot/tests/fixtures/eventsub_remote_reference.cjs",
+        "migration-notes/ast-bot-runtime-eventsub-remote.md"
+      ]
+    },
+    {
+      "id": "E3",
+      "name": "timer-resumed-context-adapter",
+      "implementer": "Codex GPT-6.1 Terra",
+      "status": "authored-unverified; malformed snapshot and diagnostics parity follow-up assigned",
+      "files": [
+        "dimabot/src/utils/ast_timer_runtime.rs",
+        "dimabot/src/utils/ast_parser/runtime/bootstrap.rs",
+        "dimabot/tests/ast_timer_execution.rs",
+        "dimabot/tests/fixtures/ast_timer_context_reference.cjs",
+        "migration-notes/ast-bot-runtime-timer-execution.md"
+      ]
+    },
+    {
+      "id": "E4",
+      "name": "timer-context-source-parity",
+      "implementer": "DeepSeek V4.1 Flash",
+      "status": "authored-unverified; normal source context completed; typed malformed values and caller adoption open",
+      "files": [
+        "dimabot/src/utils/ast_timer_runtime.rs",
+        "dimabot/src/utils/ast_parser/runtime/bootstrap.rs",
+        "dimabot/tests/ast_timer_execution.rs",
+        "dimabot/tests/fixtures/ast_timer_context_reference.cjs",
+        "migration-notes/ast-bot-runtime-timer-execution.md"
+      ]
+    },
+    {
+      "id": "G2",
+      "name": "lossless-ast-coordinated-parser-vm",
+      "implementer": "Codex GPT-6.1 Terra",
+      "status": "exact team4 cases received; source-backed coordinated implementation assigned G3",
+      "files": [
+        "dimabot/src/utils/ast_parser/syntax.rs",
+        "dimabot/src/utils/ast_parser/types.rs",
+        "dimabot/src/utils/ast_parser/source.rs",
+        "dimabot/src/utils/ast_parser/tokenizer.rs",
+        "dimabot/src/utils/ast_parser/parser.rs",
+        "dimabot/src/utils/ast_parser/scanner.rs",
+        "dimabot/src/utils/ast_parser/persistence.rs",
+        "dimabot/src/utils/ast_parser/evaluator.rs",
+        "dimabot/src/utils/ast_parser/evaluator/vm.rs",
+        "dimabot/tests/ast_lossless_utf16.rs",
+        "migration-notes/ast-lossless-utf16-handoff.md",
+        "dimabot/src/utils/ast_blocks/from_ast.rs"
+      ]
+    },
+    {
+      "id": "I",
+      "name": "native-create-clip-ast",
+      "implementer": "DeepSeek V4.1 Flash",
+      "status": "authored-partial unverified; central registration, semantics gaps and bot caller open; ownership retained",
+      "files": [
+        "dimabot/src/functions/clips/create.clip.rs",
+        "dimabot/src/functions/clips/mod.rs",
+        "dimabot/src/commands/create_clip.command.rs",
+        "dimabot/src/utils/ast_parser/runtime/functions.rs",
+        "dimabot/tests/ast_create_clip.rs",
+        "dimabot/tests/fixtures/ast_create_clip_reference.cjs",
+        "migration-notes/ast-create-clip-handoff.md"
+      ]
+    },
+    {
+      "id": "G3",
+      "name": "lossless-shared-ast-source-contract",
+      "implementer": "Codex GPT-6.1 Terra",
+      "status": "owner blockers resolved; coordinated implementation assigned G4",
+      "files": [
+        "dimabot/src/utils/ast_parser/syntax.rs",
+        "dimabot/src/utils/ast_parser/types.rs",
+        "dimabot/src/utils/ast_parser/source.rs",
+        "dimabot/src/utils/ast_parser/tokenizer.rs",
+        "dimabot/src/utils/ast_parser/parser.rs",
+        "dimabot/src/utils/ast_parser/scanner.rs",
+        "dimabot/src/utils/ast_parser/persistence.rs",
+        "dimabot/src/utils/ast_parser/evaluator.rs",
+        "dimabot/src/utils/ast_parser/evaluator/vm.rs",
+        "dimabot/src/utils/ast_blocks/from_ast.rs",
+        "dimabot/tests/ast_lossless_utf16.rs",
+        "migration-notes/ast-lossless-utf16-handoff.md",
+        "dimabot/src/utils/ast_parser/string_value.rs",
+        "dimabot/src/utils/ast_parser/evaluator/value.rs",
+        "dimabot/src/utils/ast_blocks/index.rs",
+        "dimabot/src/utils/ast_blocks/types.rs",
+        "dimabot/src/utils/ast_blocks/to_source.rs",
+        "dimabot/src/utils/ast_blocks/validate.rs",
+        "dimabot/src/utils/ast_blocks/normalize.rs",
+        "dimabot/src/utils/ast_blocks/import_plan.rs",
+        "dimabot/src/utils/ast_blocks/tests.rs"
+      ]
+    },
+    {
+      "id": "G4",
+      "name": "lossless-ast-shared-boundaries-v2",
+      "implementer": "Codex GPT-6.1 Terra",
+      "status": "partial-unverified; quota stop: no further rounds",
+      "files": [
+        "dimabot/src/utils/ast_parser/syntax.rs",
+        "dimabot/src/utils/ast_parser/types.rs",
+        "dimabot/src/utils/ast_parser/source.rs",
+        "dimabot/src/utils/ast_parser/tokenizer.rs",
+        "dimabot/src/utils/ast_parser/parser.rs",
+        "dimabot/src/utils/ast_parser/scanner.rs",
+        "dimabot/src/utils/ast_parser/persistence.rs",
+        "dimabot/src/utils/ast_parser/evaluator.rs",
+        "dimabot/src/utils/ast_parser/evaluator/vm.rs",
+        "dimabot/src/utils/ast_blocks/from_ast.rs",
+        "dimabot/tests/ast_lossless_utf16.rs",
+        "migration-notes/ast-lossless-utf16-handoff.md",
+        "dimabot/src/utils/ast_parser/string_value.rs",
+        "dimabot/src/utils/ast_parser/evaluator/value.rs",
+        "dimabot/src/utils/ast_blocks/index.rs",
+        "dimabot/src/utils/ast_blocks/types.rs",
+        "dimabot/src/utils/ast_blocks/to_source.rs",
+        "dimabot/src/utils/ast_blocks/validate.rs",
+        "dimabot/src/utils/ast_blocks/normalize.rs",
+        "dimabot/src/utils/ast_blocks/import_plan.rs",
+        "dimabot/src/utils/ast_blocks/tests.rs"
+      ]
+    }
+  ],
+  "crossLaneContracts": [
+    {
+      "from": "C",
+      "to": "A",
+      "contract": "Lane C exposes free functions super::parser::parse_special_commands(...) and super::command::execute_command(...) plus small owned wrapper types that implement the shared runtime::AstBodyParser / runtime::CommandRunner traits. Lane A's runtime/wiring.rs consumes only those traits and free functions. All shared types live in the lead-owned dimabot/src/utils/ast_parser/runtime.rs and must not be redefined by a lane."
+    },
+    {
+      "from": "B",
+      "to": "C",
+      "contract": "Lane B exposes runtime::host::ApplicationHost with ApplicationHost::new(cache: Arc<dyn AstCache>, variables: Arc<dyn AstVariableStore>), ApplicationHost::with_twitch(twitch: TwitchFunctions) and impl runtime::ScopedAstHost for ApplicationHost { fn set_scope(&mut self, scope: AstScope) }, plus runtime::variables::MongoAstVariableStore implementing runtime::AstVariableStore and a Dragonfly-backed runtime::AstCache implementation."
+    },
+    {
+      "from": "B",
+      "to": "A",
+      "contract": "Lane A's runtime/wiring.rs composes ApplicationHost with the Lane C parser and executor and the real TwitchFunctions to expose the end-to-end chat entry point."
+    },
+    {
+      "from": "team3-bot-ast",
+      "to": "team4-speech-media",
+      "contract": "Accepted contracts team3-overlay-template-utf16 (A) and team3-overlay-eventsub-remote (B) with team3-bot-ast as single owner; raised outgoing contracts team3-ast-tts-family-adapter (C), team3-ast-pet-family-adapter (D), team3-ast-overlay-family-adapter (E) and team3-ast-roulette-family-adapter (F) with team4-speech-media as owner. Full registry: /root/.local/state/dimabot-migration-teams-20261031/contracts/team3-ast-cross-team-20261031.md"
+    }
+  ],
+  "centralPatches": [
+    {
+      "file": "dimabot/Cargo.toml",
+      "kind": "feature",
+      "snippet": "ast-bot-runtime = [\"ast-evaluator\", \"ast-pure-functions\", \"ast-blocks\", \"ast-syntax\", \"commands-service\", \"twitch-functions\", \"twitch-client\", \"twitch-streamers\", \"twitch-tokens\", \"permissions\", \"redis-application-runtime\", \"logger-redis\", \"application-schemas\", \"timer-policy\", \"mongo\", \"redis\", \"http-client\", \"dep:tokio\", \"dep:serde\", \"dep:serde_json\", \"dep:uuid\", \"dep:sha2\"]",
+      "note": "Opt-in only. Does not enter `default` and does not change any deployed worker profile in ops/rust_build.sh. dep:sha2 is needed by the pet action-key hash; dep:uuid by the literal-placeholder variable prefix. Both crates are already optional dependencies in the graph."
+    },
+    {
+      "file": "dimabot/src/utils/mod.rs",
+      "kind": "module",
+      "snippet": "#[cfg(feature = \"ast-bot-runtime\")]\n#[path = \"ast_parser/runtime.rs\"]\npub mod ast_runtime;",
+      "note": "Place next to the existing ast_evaluator / ast_syntax / ast_blocks declarations."
+    }
+  ],
+  "notes": [
+    "The native AST evaluator context is Rc/RefCell-based and its host future is not Send: the whole runtime is single-threaded by construction, like the Node event loop it replaces. No Send bounds on runtime seams.",
+    "No commits, pushes, deployments, cargo/rustfmt/node/docker/network commands in this wave. The integration team owns the shared git index and all execution.",
+    "React Email remains exempt.",
+    "Lead-owned central seam dimabot/src/utils/ast_parser/runtime.rs declares the runtime submodules; no lane may edit it.",
+    "The AstFunctionCatalog trait takes the current AstScope because the source handlers read ctx.broadcasterId; the application host supplies it from its ScopedAstHost binding.",
+    "host::TimerScheduler is the single timer seam; the AST function catalog implements it. There is deliberately no second timer path.",
+    "Wave 2 status: AUTHORED PARTIAL per the integration coordinator. Priorities are the fired-timer execution half plus a concrete async bootstrap factory, the keyword ingress with the by-id body handoff, and the announce adapter with the source-required families that already have accepted native services. Unsupported required families stay explicit blockers and must not be described as a closed chat-to-AST application flow.",
+    "No execution lease exists in wave 2: every test authored here is inert until the integration team leases a named verification job.",
+    "2026-10-31: team4's contract team4-eventsub-remote-adapters was mislabelled as team2-owned; the manifest assigns src/utils/eventsub.ts and src/functions/users/get_scopes.users.ts to team3-bot-ast, so contract B's owner is team3 and is recorded as lane H.",
+    "2026-10-31: the announcement reservation is released and dimabot/src/functions/chats/mod.rs is Root-only central patch; team3 still submits the announcement module line as a central patch hunk rather than editing it.",
+    "2026-10-31: corrected the lossless-string public path to crate::utils::ast_evaluator::JsString (physical file ast_parser/evaluator/value.rs). crate::utils::ast_parser::evaluator::value::JsString does not exist.",
+    "2026-10-31 (lead): the announce AST family is now served by the native catalog, so the earlier handoff statement that only chat.send and delay have application adapters is superseded. The families still without an application-specific adapter are channel, clip, pin, trigger, defense, twitch, followage (team3's own scope) plus tts, pet, overlay and roulette (blocked on the contracts raised with team4). The chat -> AST application flow is still NOT a closed flow.",
+    "2026-10-31 (lead): lane H started on the slot lane E freed. Lanes D, F2 and H now run concurrently, which is the full 3-worker limit. Lane G (the lossless UTF-16 AST boundary) remains queued and is the only remaining contract lane.",
+    "2026-10-31 (lead): the native-vs-source keyword oracle comparison is now closed at the authoring level. The only remaining keyword-observability gap is the parser boundary for a non-string message, which the source fixture cannot observe because it replaces the command executor.",
+    "Root assigned team3 src/utils/ast_blocks/from_ast.rs solely for additive lossless AST conversion; preserve accepted UTF-8 behavior. Team4 owns overlay validator and exact examples. EventSub remote additions must preserve pure/minimal feature profiles. Root owns domain_events/runtime/wakeups.rs.",
+    "User quota stop: no new delegates or lanes; final handoff and wait. G7 block authoring returned, full lossless parser and verification remain open."
+  ],
+  "ownershipCorrections": [
+    {
+      "date": "2026-10-31",
+      "correction": "src/functions/chats/announcement.chat.ts is a team3-bot-ast manifest row and is NOT owned by the reserved temporary-role-announcements job (that job implements plain chat and temporary-role notices only, not sendAnnouncement).",
+      "action": "team3 claims and ports src/functions/chats/announcement.chat.rs in wave 2; the earlier handoff statement that the reserved job owned the announcement send was wrong and has been corrected.",
+      "affects": [
+        "dimabot/src/functions/chats/announcement.chat.ts",
+        "dimabot/src/functions/chats/announcement.chat.rs",
+        "dimabot/tests/announcement_chat.rs"
+      ]
+    }
+  ],
+  "leadIntegrationEdits": [
+    {
+      "date": "2026-10-31",
+      "wave": 2,
+      "files": [
+        "dimabot/src/utils/ast_parser/runtime/functions.rs",
+        "dimabot/tests/ast_functions.rs"
+      ],
+      "change": "Wired the announce / chat.announcement AST family into the native catalog. Added the AstAnnounceSend seam and TwitchAnnounceAdapter (over the native sendAnnouncement port), the announce field on BotAstFunctions, with_announce(), and the source-exact announceHandler semantics: String(arg ?? '') argument coercion, single-space join, trim, first-token colour parsing over {blue,green,orange,purple,primary} with default 'primary', the usage string for an empty message, the 500-character limit counted in UTF-16 code units, and the 'announce: <message>' projection on a Twitch failure. with_twitch / with_twitch_and_logger install the adapter automatically, so Lane E's production bootstrap serves the family with no further change.",
+      "knownBoundary": "The announce family currently needs UTF-8-representable text: a lone UTF-16 surrogate in an argument cannot round-trip through JsString::to_utf8 and is reported as an Evaluation error. This is the same boundary as the team3-overlay-template-utf16 contract (A)."
+    }
+  ]
+}

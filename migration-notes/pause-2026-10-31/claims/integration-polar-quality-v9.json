@@ -1,0 +1,13 @@
+{
+  "owner": "secondSol",
+  "lease": "integration-polar-quality-v9",
+  "paths": [
+    "dimabot/src/utils/polar_cache_usage.rs",
+    "dimabot/src/utils/polar_usage.rs",
+    "dimabot/tests/fixtures/polar_usage_modes_reference.cjs",
+    "dimabot/tests/polar_cache_usage.rs",
+    "dimabot/tests/polar_usage_modes.rs",
+    "migration-notes/polar-usage-modes-handoff.md"
+  ],
+  "scope": "quality only, unchanged exact v8 candidate, copyback six owned paths only after both gates pass"
+}

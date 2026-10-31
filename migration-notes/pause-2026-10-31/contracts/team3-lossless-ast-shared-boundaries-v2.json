@@ -1,0 +1,67 @@
+{
+  "id": "team3-lossless-ast-shared-boundaries-v2",
+  "date": "2026-10-31",
+  "status": "OWNERS-ASSIGNED-IMPLEMENTATION-AND-VERIFICATION-OPEN",
+  "owner": "team3-bot-ast",
+  "consumer": "team4-speech-media",
+  "centralIntegrationOwner": "integration-team",
+  "executionLeaseGranted": false,
+  "sourceEvidence": {
+    "syntaxFeature": "ast-syntax independent of ast-evaluator;ast-blocks depends on ast-syntax",
+    "stringDefinition": "dimabot/src/utils/ast_parser/evaluator/value.rs:JsString(Vec<u16>)",
+    "errorDefinition": "dimabot/src/utils/ast_parser/evaluator.rs:EvalError pure name/message value",
+    "blockModel": "dimabot/src/utils/ast_blocks/types.rs:String fields;version1 stored form",
+    "blockWriter": "dimabot/src/utils/ast_blocks/to_source.rs:UTF8 String buffer"
+  },
+  "sharedString": {
+    "owner": "team3-bot-ast",
+    "newCanonicalPhysicalPath": "dimabot/src/utils/ast_parser/string_value.rs",
+    "newCanonicalPublicPath": "crate::utils::ast_syntax::JsString",
+    "legacyPublicPathsPreserved": [
+      "crate::utils::ast_evaluator::JsString",
+      "crate::utils::ast_evaluator::value::JsString"
+    ],
+    "contract": "One canonical definition extracted from current evaluator JsString;register as syntax child and re-export. No evaluator dependency for syntax or blocks, no second AST string type. Preserve existing methods,units,lower/trim and public UTF8 boundary error behavior. The simple pure EvalError definition may be extracted alongside it and re-exported at its existing evaluator path to preserve to_utf8 Result type without a feature cycle. No protected js_*/lossless_json core changes.",
+    "existingOwnedPaths": [
+      "dimabot/src/utils/ast_parser/syntax.rs",
+      "dimabot/src/utils/ast_parser/types.rs",
+      "dimabot/src/utils/ast_parser/evaluator.rs",
+      "dimabot/src/utils/ast_parser/evaluator/value.rs"
+    ],
+    "centralPatch": "Only if genuinely needed,propose instead of editing Cargo/utilsmod;syntax child registration should avoid central changes."
+  },
+  "blocks": {
+    "owner": "team3-bot-ast",
+    "scope": "Additive common block model/storage/validation/normalization/import/source/reverse conversion required for shared lossless AST roundtrip;no editor UI changes or new parser",
+    "paths": [
+      "dimabot/src/utils/ast_blocks/index.rs",
+      "dimabot/src/utils/ast_blocks/types.rs",
+      "dimabot/src/utils/ast_blocks/from_ast.rs",
+      "dimabot/src/utils/ast_blocks/to_source.rs",
+      "dimabot/src/utils/ast_blocks/validate.rs",
+      "dimabot/src/utils/ast_blocks/normalize.rs",
+      "dimabot/src/utils/ast_blocks/import_plan.rs",
+      "dimabot/src/utils/ast_blocks/tests.rs"
+    ],
+    "contract": "Preserve existing UTF8 APIs,old JSON/version1 reading and behavior; additive unambiguous lossless storage and entry/output boundary. Roundtrip source units -> AST -> block storage -> AST/source -> evaluation/render;explicit error may describe an unsupported boundary but is not closure. No lossy replacement/sentinel workaround, no surrogate value hidden in ad-hoc names or ordinary raw strings. Typed identifiers must follow source grammar;do not impose blanket roundtrip success for identifiers source itself rejects."
+  },
+  "overlay": {
+    "owner": "team4-speech-media",
+    "path": "dimabot/src/overlays/ast.rs",
+    "contract": "Exact supplied cases and validator semantics;source limits,all-branch traversal and render cut preserved;consume published shared representation,not a private parser."
+  },
+  "closure": [
+    "Implement scanner/source/parse/persist/VM and block conversions;fixture-only is insufficient",
+    "Source examples now received:record exact units and expected source outcomes,including malformed diagnostics",
+    "Syntax-only,blocks-only,evaluator feature independence and old UTF8 JSON/API regression checks",
+    "Lossless source/AST/block serialization and VM rendered output checks",
+    "Actual Node/BSON persistence observation:compare what source actually stores;do not claim BSON String preserves lone UTF16 units if the driver replaces them",
+    "Isolated verification under a future named lease;no build,Node,formatter,containers or test execution now"
+  ],
+  "notAuthorized": [
+    "Changes to protected js_*/lossless_json cores",
+    "Editing Cargo.toml/src/utils/mod.rs or other Root central paths",
+    "Site completion lease use or concurrent heavy execution",
+    "Deployment,commits,push,retirement or completion scoring"
+  ]
+}

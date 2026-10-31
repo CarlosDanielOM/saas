@@ -1,0 +1,157 @@
+{
+  "team": "team1-billing-ai",
+  "purpose": "Refill backlog for team1 implementation lanes. Pre-scoped so a finished lane can be refilled immediately without re-exploration and without waiting on an unrelated lane.",
+  "preparedAt": "2026-10-31T02:18:00Z",
+  "baseline": {
+    "team1BaselineTsFiles": 137,
+    "wave1ClaimedTsFiles": 13,
+    "wave1ClaimedRustFiles": 21,
+    "remainingTsFiles": 124,
+    "remainingBytes": 978000,
+    "note": "7 baseline TS paths are already absent from the checkout because their Rust port exists (ai_usage_event, credit_gift.schema, credit_transaction.schema, tts_credit_fallback.util, app_attribution.util, and two test files)."
+  },
+  "refillCandidates": [
+    {
+      "id": "wave2-A",
+      "title": "Polar billing domain events + entitlement resolution",
+      "why": "Highest-value unclaimed slice in team1's billing domain. Reuses the wave-1 billing module and the already-ported polar_events normaliser and domain-event framework.",
+      "sourceFiles": [
+        "src/domain_events/polar_billing_events.ts",
+        "src/domain_events/polar_entitlements.ts",
+        "src/domain_events/credit_gift_events.ts",
+        "src/server/routes/webhooks/polarsh.webhook.ts"
+      ],
+      "proposedRustFiles": [
+        "src/domain_events/polar_billing_events.rs",
+        "src/domain_events/polar_entitlements.rs",
+        "src/domain_events/credit_gift_events.rs",
+        "src/server/routes/polarsh_webhook.route.rs",
+        "tests/polar_billing_events.rs",
+        "tests/polar_entitlements.rs"
+      ],
+      "reuse": [
+        "src/domain_events/polar_events.rs (already ported: normalizePolarDomainEvent, polarWebhookProducer)",
+        "src/domain_events/domain_event_contracts.rs",
+        "src/domain_events/domain_event_identity.rs",
+        "src/domain_events/domain_event_delivery_policy.rs",
+        "src/domain_events/runtime/producers.rs",
+        "src/schemas/users.schema.rs (plan_tier, polar_sh_customer_id, polar_credit_snapshot)",
+        "src/utils/ai_credit_projection.rs (AI_CREDITS_METER_ID, PlanTier)",
+        "wave-1 lane-a billing module"
+      ],
+      "centralPatch": [
+        "dimabot/Cargo.toml: new feature + [[test]] required-features entries",
+        "dimabot/src/domain_events/mod.rs: pub mod lines (CENTRAL - snippet only)",
+        "dimabot/src/lib.rs: route module wiring (CENTRAL - snippet only)"
+      ],
+      "risks": [
+        "src/domain_events/mod.rs is central",
+        "the webhook route needs the API auth / webhook signature contract, which the integration team owns"
+      ]
+    },
+    {
+      "id": "wave2-B",
+      "title": "AI usage queues: backfill enqueue + queue health + backfill orchestration",
+      "why": "Directly complements the wave-1 request-time read model. The wave-1 lane already had to implement the backfill enqueue contract inside ai_usage_queries; promoting it to a first-class module removes the duplication and completes the AI usage queue surface.",
+      "sourceFiles": [
+        "src/utils/ai_usage_backfill_queue.ts",
+        "src/utils/ai_usage_queue_health.ts",
+        "src/utils/ai_usage_backfill.ts",
+        "src/workers/ai_usage_backfill.worker.ts"
+      ],
+      "proposedRustFiles": [
+        "src/utils/ai_usage_backfill_queue.rs",
+        "src/utils/ai_usage_queue_health.rs",
+        "src/utils/ai_usage_backfill.rs",
+        "src/workers/ai_usage_backfill.worker.rs",
+        "tests/ai_usage_backfill_queue.rs",
+        "tests/ai_usage_queue_health.rs"
+      ],
+      "reuse": [
+        "src/utils/ai_usage_ledger_backfill.rs (already ported)",
+        "src/utils/ai_usage_lock.rs (already ported)",
+        "src/utils/ai_usage_ledger_persistence.rs",
+        "src/utils/ai_usage_receipt_parser.rs (RetentionTier)",
+        "src/utils/ai_usage_receipts/queue.rs (shared queue and ownership protocols)"
+      ],
+      "centralPatch": [
+        "dimabot/Cargo.toml: new feature + [[test]] required-features entries",
+        "dimabot/src/utils/mod.rs: pub mod lines (CENTRAL - snippet only)",
+        "dimabot/src/workers/mod.rs: worker registration (CENTRAL - snippet only)"
+      ],
+      "risks": [
+        "src/workers/mod.rs is central",
+        "the worker must not consume live queues during validation; the existing worker graph is what the integration team owns"
+      ]
+    },
+    {
+      "id": "wave2-C",
+      "title": "Credit gifts lifecycle + referral ledger + free credit reset",
+      "why": "A complete, self-contained team1 billing surface that is entirely unclaimed: gift checkout and fulfilment (Mongo + Polar), the referral code/ledger domain, and the monthly free-credit reset worker.",
+      "sourceFiles": [
+        "src/utils/credit_gifts.ts",
+        "src/utils/referral.ts",
+        "src/utils/referral_ledger.ts",
+        "src/utils/free_credit_reset.ts",
+        "src/schemas/referral_code.schema.ts",
+        "src/workers/free_credit_reset.worker.ts"
+      ],
+      "proposedRustFiles": [
+        "src/utils/credit_gifts.rs",
+        "src/utils/referral.rs",
+        "src/utils/referral_ledger.rs",
+        "src/utils/free_credit_reset.rs",
+        "src/schemas/referral_code.schema.rs",
+        "src/workers/free_credit_reset.worker.rs",
+        "tests/credit_gifts.rs",
+        "tests/referral.rs"
+      ],
+      "reuse": [
+        "src/schemas/credit_gift.schema.rs (already ported)",
+        "src/schemas/credit_transaction.schema.rs (already ported)",
+        "src/schemas/users.schema.rs (referrerId, referralCodeUsed, token_balance, applied_credit_transaction_ids)",
+        "src/utils/ai_credit_projection.rs (AI_CREDITS_METER_ID, PlanTier)",
+        "src/utils/ai_credit_reader.rs",
+        "wave-1 lane-a credit_gift_provider module (GIFT_PACK_PAIRS)"
+      ],
+      "centralPatch": [
+        "dimabot/Cargo.toml: new feature + [[test]] required-features entries",
+        "dimabot/src/utils/mod.rs: pub mod lines (CENTRAL - snippet only)",
+        "dimabot/src/schemas/mod.rs: pub mod + definitions() array bump (CENTRAL - snippet only)",
+        "dimabot/src/workers/mod.rs: worker registration (CENTRAL - snippet only)"
+      ],
+      "risks": [
+        "the gift fulfilment path mutates credit balances; validation must use disposable fixtures only",
+        "src/schemas/mod.rs definitions() array length must be bumped for referral_code"
+      ]
+    }
+  ],
+  "deferred": [
+    {
+      "id": "deferred-openrouter",
+      "title": "AI openrouter inference client",
+      "sourceFiles": ["src/utils/ai/openrouter/ai.ts"],
+      "sizeBytes": 41700,
+      "reason": "Depends on the AST tool surface (team3-bot-ast) and the memory subsystem (team1). Porting it before those land would duplicate or fork their policy. Revisit after wave 2."
+    },
+    {
+      "id": "deferred-memory",
+      "title": "AI memory subsystem",
+      "sourceFiles": ["src/utils/ai/memory/*"],
+      "sizeBytes": 190000,
+      "reason": "Large, Qdrant-backed, and overlaps the wave-1 personality schema on the channel AI memory model. Needs its own wave with its own Qdrant fixture contract."
+    },
+    {
+      "id": "deferred-clip-recs",
+      "title": "Clip recommendation runner",
+      "sourceFiles": ["src/utils/ai/clip_recommendations/*"],
+      "sizeBytes": 147000,
+      "reason": "Overlaps the deferred openrouter client and the media ownership surface (team4-speech-media)."
+    }
+  ],
+  "notes": [
+    "Every refill candidate is disjoint from the wave-1 lane file sets.",
+    "Refills stay inside team1-billing-ai ownership; no other team is touched.",
+    "No candidate may run Cargo, rustfmt, Node, Docker or any network command during the authoring wave."
+  ]
+}

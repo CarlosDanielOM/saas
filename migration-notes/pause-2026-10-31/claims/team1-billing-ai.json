@@ -1,0 +1,616 @@
+{
+  "team": "team1-billing-ai",
+  "thread": "mvs_0204256b786a448ba3c098b7bce0ab6d",
+  "root": "/root/saas-rust",
+  "branch": "master",
+  "claimedAt": "2026-10-31T02:05:00Z",
+  "note": "Baseline TS ownership from manifest.sourceOwners (team1-billing-ai, 135 rows). Rust paths listed are exactly the new files this team authors in wave 1. No central file is edited directly; central patches are submitted as snippets in the handoff.",
+  "sourceFiles": [
+    "src/domain_events/credit_gift_events.ts",
+    "src/domain_events/polar_billing_events.test.ts",
+    "src/domain_events/polar_billing_events.ts",
+    "src/domain_events/polar_entitlements.ts",
+    "src/domain_events/polar_events.test.ts",
+    "src/domain_events/polar_events.ts",
+    "src/handlers/tts_credit_fallback.test.ts",
+    "src/handlers/tts_queue_credits.test.ts",
+    "src/schemas/ai_usage_daily.schema.ts",
+    "src/schemas/ai_usage_dashboard.schema.ts",
+    "src/schemas/ai_usage_ledger_state.schema.ts",
+    "src/schemas/ai_usage_receipt.schema.ts",
+    "src/schemas/channel_ai_memory.schema.ts",
+    "src/schemas/channel_ai_personality.schema.ts",
+    "src/schemas/credit_gift.schema.ts",
+    "src/schemas/credit_transaction.schema.ts",
+    "src/schemas/referral_code.schema.ts",
+    "src/scripts/reconcile_polar_plan.script.ts",
+    "src/scripts/test_ai_memory_context.script.ts",
+    "src/server/routes/aiPersonality.route.ts",
+    "src/server/routes/billing.route.ts",
+    "src/server/routes/memories.route.ts",
+    "src/server/routes/referral.route.ts",
+    "src/server/routes/webhooks/polarsh.webhook.test.ts",
+    "src/server/routes/webhooks/polarsh.webhook.ts",
+    "src/utils/ai/ast_catalog/build_catalog.ts",
+    "src/utils/ai/ast_catalog/index.ts",
+    "src/utils/ai/ast_catalog/types.ts",
+    "src/utils/ai/chat_context.test.ts",
+    "src/utils/ai/chat_context.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendation_claims.test.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendation_claims.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendation_notifications.test.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendation_notifications.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendation_previews.test.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendation_previews.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendation_reconciliation.test.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendation_reconciliation.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendation_recovery.test.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendation_recovery.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendations_prompts.ts",
+    "src/utils/ai/clip_recommendations/clip_recommendations_queue.ts",
+    "src/utils/ai/clip_recommendations/openrouter_clip_recommendations.client.test.ts",
+    "src/utils/ai/clip_recommendations/openrouter_clip_recommendations.client.ts",
+    "src/utils/ai/clip_recommendations/vod_clip_recommendation_runner.test.ts",
+    "src/utils/ai/clip_recommendations/vod_clip_recommendation_runner.ts",
+    "src/utils/ai/clip_recommendations/vod_clip_recommender_policy.test.ts",
+    "src/utils/ai/clip_recommendations/vod_clip_recommender_policy.ts",
+    "src/utils/ai/constants.test.ts",
+    "src/utils/ai/constants.ts",
+    "src/utils/ai/emote_context.ai.ts",
+    "src/utils/ai/fetch.utils.ts",
+    "src/utils/ai/lfm2_embeddings/index.ts",
+    "src/utils/ai/lfm2_embeddings/lfm2_embeddings.client.ts",
+    "src/utils/ai/memory/index.ts",
+    "src/utils/ai/memory/memory.service.ts",
+    "src/utils/ai/memory/memory_extractor.ts",
+    "src/utils/ai/memory/memory_policy.ts",
+    "src/utils/ai/memory/memory_relevance.ts",
+    "src/utils/ai/memory/memory_time.test.ts",
+    "src/utils/ai/memory/memory_time.ts",
+    "src/utils/ai/memory/stream_memory_apply.ts",
+    "src/utils/ai/memory/stream_memory_queue.ts",
+    "src/utils/ai/memory/stream_memory_runner.ts",
+    "src/utils/ai/memory/stream_summary_context.ts",
+    "src/utils/ai/memory/stream_summary_decider.run.ts",
+    "src/utils/ai/memory/stream_summary_decider.simulate.ts",
+    "src/utils/ai/memory/stream_summary_decider.ts",
+    "src/utils/ai/memory/stream_summary_schema.specs.ts",
+    "src/utils/ai/memory/stream_summary_schema.ts",
+    "src/utils/ai/minimax/minimax_client.ts",
+    "src/utils/ai/openrouter/ai.tools_disabled.test.ts",
+    "src/utils/ai/openrouter/ai.ts",
+    "src/utils/ai/openrouter/app_attribution.util.ts",
+    "src/utils/ai/openrouter/attribution.test.ts",
+    "src/utils/ai/openrouter/command.ai.test.ts",
+    "src/utils/ai/openrouter/command.ai.ts",
+    "src/utils/ai/openrouter/embeddings.ai.ts",
+    "src/utils/ai/openrouter/index.ts",
+    "src/utils/ai/openrouter/messages.ai.ts",
+    "src/utils/ai/openrouter/miyuloot.ai.ts",
+    "src/utils/ai/prompts.ai.test.ts",
+    "src/utils/ai/prompts.ai.ts",
+    "src/utils/ai/sandbox/execute_sandbox.ai.ts",
+    "src/utils/ai/sandbox/index.ts",
+    "src/utils/ai/stream_context.ai.ts",
+    "src/utils/ai/threading/thread_limits.ts",
+    "src/utils/ai/threading/thread_router.ts",
+    "src/utils/ai/threading/thread_store.ts",
+    "src/utils/ai/threading/thread_types.ts",
+    "src/utils/ai/tools/ast_docs.tool.ts",
+    "src/utils/ai/tools/ast_parser.tool.test.ts",
+    "src/utils/ai/tools/ast_parser.tool.ts",
+    "src/utils/ai/tools/chat_summary.tool.ts",
+    "src/utils/ai/tools/code_execution.tool.ts",
+    "src/utils/ai/tools/create_memory.tool.ts",
+    "src/utils/ai/tools/index.ts",
+    "src/utils/ai/tools/recall_memory.tool.ts",
+    "src/utils/ai/tools/search.tool.ts",
+    "src/utils/ai/tools/stream_stats.tool.ts",
+    "src/utils/ai_credit_display.ts",
+    "src/utils/ai_credit_sources.test.ts",
+    "src/utils/ai_credit_sources.ts",
+    "src/utils/ai_credit_status.test.ts",
+    "src/utils/ai_native_credit_reports.test.ts",
+    "src/utils/ai_usage_backfill.ts",
+    "src/utils/ai_usage_backfill_queue.ts",
+    "src/utils/ai_usage_classification.ts",
+    "src/utils/ai_usage_dashboard.ts",
+    "src/utils/ai_usage_event.test.ts",
+    "src/utils/ai_usage_event.ts",
+    "src/utils/ai_usage_ledger.test.ts",
+    "src/utils/ai_usage_ledger.ts",
+    "src/utils/ai_usage_lock.ts",
+    "src/utils/ai_usage_queries.ts",
+    "src/utils/ai_usage_queue_health.ts",
+    "src/utils/ai_usage_receipts.test.ts",
+    "src/utils/ai_usage_receipts.ts",
+    "src/utils/billing.ts",
+    "src/utils/billing_plan_fence.test.ts",
+    "src/utils/credit_gift_provider.ts",
+    "src/utils/credit_gifts.ts",
+    "src/utils/credit_packs.test.ts",
+    "src/utils/credit_packs.ts",
+    "src/utils/free_credit_reset.test.ts",
+    "src/utils/free_credit_reset.ts",
+    "src/utils/polarsh.ts",
+    "src/utils/polarsh_accounting.test.ts",
+    "src/utils/referral.ts",
+    "src/utils/referral_ledger.ts",
+    "src/utils/referral_stats.test.ts",
+    "src/utils/tts/tts_credit_fallback.util.ts",
+    "src/utils/tts_usage.test.ts",
+    "src/utils/tts_usage.ts",
+    "src/workers/ai_usage_backfill.worker.ts",
+    "src/workers/credit_gifts.worker.ts",
+    "src/workers/free_credit_reset.worker.ts"
+  ],
+  "rustFiles": [
+    "migration-notes/team1-lane-a-handoff.md",
+    "migration-notes/team1-lane-b-handoff.md",
+    "migration-notes/team1-lane-c-handoff.md",
+    "migration-notes/team1-wave2-a-handoff.md",
+    "migration-notes/team1-wave2-c-handoff.md",
+    "src/domain_events/polar_billing/credits_projection.rs",
+    "src/domain_events/polar_billing/entitlements.rs",
+    "src/domain_events/polar_billing/mod.rs",
+    "src/domain_events/polar_billing/plan_projection.rs",
+    "src/domain_events/polar_billing/webhook_signature.rs",
+    "src/schemas/channel_ai_personality.schema.rs",
+    "src/schemas/referral_code.schema.rs",
+    "src/utils/ai/threading/mod.rs",
+    "src/utils/ai/threading/thread_limits.rs",
+    "src/utils/ai/threading/thread_router.rs",
+    "src/utils/ai/threading/thread_store.rs",
+    "src/utils/ai/threading/thread_types.rs",
+    "src/utils/ai_credit_display.rs",
+    "src/utils/ai_credit_sources.rs",
+    "src/utils/ai_usage_dashboard.rs",
+    "src/utils/ai_usage_period.rs",
+    "src/utils/ai_usage_queries.rs",
+    "src/utils/billing.rs",
+    "src/utils/credit_gift_provider.rs",
+    "src/utils/credit_packs.rs",
+    "src/utils/referral.rs",
+    "src/utils/referral_ledger.rs",
+    "tests/ai_credit_display.rs",
+    "tests/ai_credit_sources.rs",
+    "tests/ai_threading.rs",
+    "tests/ai_threading_redis.rs",
+    "tests/ai_usage_dashboard.rs",
+    "tests/ai_usage_period.rs",
+    "tests/ai_usage_queries.rs",
+    "tests/billing.rs",
+    "tests/channel_ai_personality_mongo.rs",
+    "tests/channel_ai_personality_schema.rs",
+    "tests/credit_gift_provider.rs",
+    "tests/credit_packs.rs",
+    "tests/fixtures/channel_ai_personality_mongo_reference.cjs",
+    "tests/fixtures/channel_ai_personality_reference.cjs",
+    "tests/fixtures/referral_reference.cjs",
+    "tests/polar_billing_events.rs",
+    "tests/polar_entitlements.rs",
+    "tests/polar_webhook_signature.rs",
+    "tests/referral.rs",
+    "tests/referral_ledger.rs",
+    "tests/referral_mongo.rs"
+  ],
+  "reservedPathsNotTouched": [
+    "src/utils/polarsh.rs",
+    "src/utils/polar_usage.rs",
+    "src/utils/polar_cache_usage.rs",
+    "tests/polar_usage_modes.rs",
+    "tests/fixtures/polar_usage_modes_reference.cjs",
+    "src/server/routes/file.route.rs",
+    "tests/file_routes.rs",
+    "tests/fixtures/file_routes_reference.cjs",
+    "src/utils/temporary_roles_announcements.rs",
+    "tests/temporary_roles_announcements.rs",
+    "tests/fixtures/temporary_roles_announcements_reference.cjs",
+    "src/utils/fs.rs",
+    "src/functions/chats/send_message_plain.rs"
+  ],
+  "centralPatchesRequested": {
+    "Cargo.toml": "new features billing-service / ai-usage-request-time / ai-threading / channel-ai-personality + [[test]] required-features entries for the 11 new test targets",
+    "src/utils/mod.rs": "pub mod lines for lane-a, lane-b and the ai/threading path module for lane-c",
+    "src/schemas/mod.rs": "pub mod channel_ai_personality + append to the definitions() array (length 42 -> 43)",
+    "src/lib.rs": "none requested in wave 1",
+    "src/domain_events/mod.rs": "none requested in wave 1",
+    "src/workers/mod.rs": "none requested in wave 1",
+    "consolidated": "ready/team1-billing-ai.central.patch - every team1 central hunk in one place (Cargo.toml features + 17 [[test]] targets, src/utils/mod.rs, src/schemas/mod.rs, src/domain_events/mod.rs); Section 1 ready, Section 2 not-yet-applicable (lane B, wave 3)"
+  },
+  "lanes": {
+    "lane-a-polar-billing": {
+      "owner": "delegate:opencode/opencode-go/deepseek-v4.1-flash",
+      "status": "RELEASED as READY (ready/team1-lane-a-polar-billing.json + .md)",
+      "source": [
+        "src/utils/credit_packs.ts",
+        "src/utils/credit_gift_provider.ts",
+        "src/utils/billing.ts",
+        "src/utils/ai_credit_sources.ts"
+      ],
+      "files": [
+        "src/utils/credit_packs.rs",
+        "src/utils/billing.rs",
+        "src/utils/credit_gift_provider.rs",
+        "src/utils/ai_credit_sources.rs",
+        "tests/credit_packs.rs",
+        "tests/billing.rs",
+        "tests/credit_gift_provider.rs",
+        "tests/ai_credit_sources.rs",
+        "migration-notes/team1-lane-a-handoff.md"
+      ],
+      "centralFeature": "billing-service"
+    },
+    "lane-b-ai-usage-reads": {
+      "owner": "delegate:grok/grok-4.7",
+      "status": "interrupted; existing files and claim retained",
+      "source": [
+        "src/utils/ai_usage_receipts.ts",
+        "src/utils/ai_usage_queries.ts",
+        "src/utils/ai_usage_dashboard.ts",
+        "src/utils/ai_credit_display.ts"
+      ],
+      "files": [
+        "src/utils/ai_usage_period.rs",
+        "src/utils/ai_usage_queries.rs",
+        "src/utils/ai_usage_dashboard.rs",
+        "src/utils/ai_credit_display.rs",
+        "tests/ai_usage_period.rs",
+        "tests/ai_usage_queries.rs",
+        "tests/ai_usage_dashboard.rs",
+        "tests/ai_credit_display.rs",
+        "migration-notes/team1-lane-b-handoff.md"
+      ],
+      "centralFeature": "ai-usage-request-time",
+      "bindingContract": "tl1-c5 applies: any golden consumer it authors must fail on a missing or empty golden, and it must not invoke host node",
+      "ownershipCollision": {
+        "detected": "2026-10-31, before the duplicate could land",
+        "problem": "Lane B implemented the ai_usage_backfill_queue.ts surface INSIDE src/utils/ai_usage_queries.rs (AI_USAGE_BACKFILL_QUEUE_KEY, AiUsageBackfillJob, desired_coverage_start, backfill_command, backfill_required, enqueue/dedupe logic) while wave 3-C was authoring src/utils/ai_usage_backfill_queue.rs with the same symbols.",
+        "resolution": "src/utils/ai_usage_backfill_queue.rs belongs to wave 3-C (conventional one-module-per-TS-module). Lane B was steered to remove the out-of-claim backfill code from ai_usage_queries.rs and to record the removed symbol names in its handoff. Two divergent implementations must never land."
+      },
+      "missingExport": "fetchAiUsageTransactions (TS ai_usage_receipts.ts) was not found in either flushed file. It belongs in src/utils/ai_usage_period.rs and is the named blocker for the ai_usage_backfill.rs orchestrator. Lane B was told to author it and publish its exact name and signature in its handoff."
+    },
+    "lane-c-personality-threading": {
+      "owner": "delegate:codex/gpt-6.1-terra",
+      "status": "RELEASED as READY (handoff v4, rebuilt after a team lead record-file error; the code was never affected)",
+      "source": [
+        "src/schemas/channel_ai_personality.schema.ts",
+        "src/utils/ai/threading/thread_router.ts",
+        "src/utils/ai/threading/thread_store.ts",
+        "src/utils/ai/threading/thread_limits.ts",
+        "src/utils/ai/threading/thread_types.ts"
+      ],
+      "files": [
+        "src/schemas/channel_ai_personality.schema.rs",
+        "src/utils/ai/threading/mod.rs",
+        "src/utils/ai/threading/thread_limits.rs",
+        "src/utils/ai/threading/thread_types.rs",
+        "src/utils/ai/threading/thread_store.rs",
+        "src/utils/ai/threading/thread_router.rs",
+        "tests/channel_ai_personality_schema.rs",
+        "tests/ai_threading.rs",
+        "migration-notes/team1-lane-c-handoff.md"
+      ],
+      "centralFeatures": [
+        "ai-threading",
+        "channel-ai-personality"
+      ],
+      "ownerHistory": [
+        {
+          "provider": "opencode",
+          "model": "openai/gpt-6.1-terra",
+          "outcome": "failed",
+          "error": "upstream 401 before any file was written",
+          "partialFiles": 0
+        }
+      ]
+    },
+    "wave2-a-polar-domain-events": {
+      "owner": "delegate:opencode/opencode-go/deepseek-v4.1-flash (continuation of lane-a)",
+      "status": "RELEASED as READY (ready/team1-wave2-a-polar-billing-events.json)",
+      "source": [
+        "src/domain_events/polar_entitlements.ts",
+        "src/domain_events/polar_billing_events.ts",
+        "src/server/routes/webhooks/polarsh.webhook.ts (signature-verification semantics only)"
+      ],
+      "files": [
+        "src/domain_events/polar_billing/mod.rs",
+        "src/domain_events/polar_billing/entitlements.rs",
+        "src/domain_events/polar_billing/plan_projection.rs",
+        "src/domain_events/polar_billing/credits_projection.rs",
+        "src/domain_events/polar_billing/webhook_signature.rs",
+        "tests/polar_entitlements.rs",
+        "tests/polar_billing_events.rs",
+        "tests/polar_webhook_signature.rs",
+        "migration-notes/team1-wave2-a-handoff.md"
+      ],
+      "centralFeature": "polar-billing-events",
+      "outOfScopeSeams": [
+        "applyPolarRewardDomainEvent - needs applyPaidOrderReward from src/utils/paid_order_reward.ts (team2-api-data, not natively ported) - contract tl1-c4",
+        "applyCreditGiftDomainEvent - needs acceptCreditGiftPaidOrder from src/utils/credit_gifts.ts (team1, later wave)",
+        "the axum webhook route - src/lib.rs is central and the integration team owns HTTP route wiring"
+      ]
+    },
+    "wave2-c-referral": {
+      "owner": "delegate:codex/gpt-6.1-terra (continuation of lane-c)",
+      "status": "RELEASED as READY (ready/team1-wave2-c-personality-referral.json + .md; handoff sha256 8105b624d6bbdf0ba285cb72987585d71855e4d2c26e744459023560848edd28)",
+      "source": [
+        "src/schemas/referral_code.schema.ts",
+        "src/utils/referral.ts",
+        "src/utils/referral_ledger.ts"
+      ],
+      "files": [
+        "migration-notes/team1-wave2-c-handoff.md",
+        "src/schemas/referral_code.schema.rs",
+        "src/utils/referral.rs",
+        "src/utils/referral_ledger.rs",
+        "tests/ai_threading_redis.rs",
+        "tests/channel_ai_personality_mongo.rs",
+        "tests/fixtures/channel_ai_personality_mongo_reference.cjs",
+        "tests/fixtures/channel_ai_personality_reference.cjs",
+        "tests/fixtures/referral_reference.cjs",
+        "tests/referral.rs",
+        "tests/referral_ledger.rs",
+        "tests/referral_mongo.rs"
+      ],
+      "centralFeature": "referral-service",
+      "alreadyPortedNotReimplemented": [
+        "src/utils/free_credit_reset.ts - already ported in dimabot/src/utils/credit_policy.rs (FreeCreditResetRecord, FreeCreditResetInput, FreeCreditResetDecision, build_free_credit_reset_external_id, decide_free_credit_reset)",
+        "src/utils/credit_packs.ts - already ported in credit_policy.rs",
+        "the three plan product ids - live in wave-1 dimabot/src/utils/billing.rs as PLAN_PRODUCT_ID_FREE/PREMIUM/PRO; referral.rs re-exports them rather than redeclaring, so referral-service enables billing-service"
+      ],
+      "deferredToLaterWave": [
+        "src/utils/credit_gifts.ts - the gift lifecycle (recipient search, checkout, paid-order acceptance, announcement, processing); it needs the wave-1 credit_gift_provider module and unblocks the applyCreditGiftDomainEvent seam in wave2-A"
+      ]
+    },
+    "wave3-a-credit-gifts": {
+      "owner": "delegate:codex/gpt-6.1-terra",
+      "status": "continuation completed partial; ownership retained, not ready",
+      "source": [
+        "src/utils/credit_gifts.ts",
+        "src/workers/credit_gifts.worker.ts"
+      ],
+      "files": [
+        "src/utils/credit_gifts.rs",
+        "src/workers/credit_gifts.worker.rs",
+        "tests/credit_gifts.rs",
+        "tests/fixtures/credit_gifts_reference.cjs",
+        "migration-notes/team1-wave3-a-handoff.md"
+      ],
+      "purpose": "delivers the concrete PolarGiftAcceptor adapter that closes the wave2-A gift branch",
+      "centralFeature": "credit-gifts (pending)",
+      "attemptHistory": [
+        {
+          "attempt": 1,
+          "taskId": "...a0c9e071-48e9-4813-9224-5116fb7014d3",
+          "outcome": "NO FILES WRITTEN",
+          "reason": "Terra read the execution restrictions as blocking and wrapped up after ~14s with a gap report",
+          "partialFiles": 0
+        },
+        {
+          "attempt": 2,
+          "taskId": "...0cf17dad-e789-4d06-a20c-65aa3ef8ff0d",
+          "outcome": "running",
+          "change": "brief reframed to state the deliverable is files on disk; scope narrowed; redis path corrected"
+        }
+      ],
+      "partialResult": {
+        "written": [
+          "src/utils/credit_gifts.rs",
+          "src/workers/credit_gifts.worker.rs",
+          "tests/credit_gifts.rs"
+        ],
+        "landed": [
+          "normalize_recipient",
+          "valid_recipient",
+          "gift_announcement",
+          "LEASE_MS"
+        ],
+        "stillMissing": [
+          "the concrete PolarGiftAcceptor adapter",
+          "accept_credit_gift_paid_order",
+          "create_credit_gift_checkout",
+          "process_credit_gift lease machine",
+          "refresh_recipient_credits",
+          "Mongo/Polar/Redis/billing/chat wiring",
+          "the real worker loop (the file is a fail-closed placeholder)",
+          "real tests",
+          "the handoff note"
+        ],
+        "resolution": "continuation turn on the same Terra thread; module split into src/utils/credit_gifts.rs + src/utils/credit_gifts/{lookup,checkout,delivery}.rs because Terra stalls on one very large file but completes small ones"
+      }
+    },
+    "wave3-c-queues-and-reset": {
+      "owner": "delegate:codex/gpt-6.1-terra",
+      "status": "author reports READY; final handoff, unreviewed and unverified; central wiring pending",
+      "source": [
+        "src/utils/ai_usage_queue_health.ts",
+        "src/utils/ai_usage_backfill_queue.ts"
+      ],
+      "files": [
+        "src/utils/ai_usage_queue_health.rs",
+        "src/utils/ai_usage_backfill_queue.rs",
+        "tests/ai_usage_queue_health.rs",
+        "tests/ai_usage_backfill_queue.rs",
+        "migration-notes/team1-wave3-c-handoff.md"
+      ],
+      "explicitlyExcluded": [
+        "src/utils/ai_usage_backfill.rs - syncAiUsageBackfillJob needs fetchAiUsageTransactions from lane B ai_usage_period.rs; authoring it would create a cross-lane Rust dependency"
+      ],
+      "centralFeature": "pending",
+      "attemptHistory": [
+        {
+          "attempt": 1,
+          "taskId": "...5a96066b-eb39-44c4-8ab6-b6e1dc6a41b7",
+          "outcome": "NO FILES WRITTEN",
+          "reason": "Terra read the execution restrictions as blocking and wrapped up with a gap report",
+          "partialFiles": 0
+        },
+        {
+          "attempt": 2,
+          "taskId": "...4c4164cd-0b04-4ed9-bdea-24333ca2267c",
+          "outcome": "running",
+          "change": "brief reframed to state the deliverable is files on disk; scope narrowed to the two Redis modules (the free_credit_reset worker moved to the next refill); safePart spec corrected"
+        }
+      ],
+      "partialResult": {
+        "written": [
+          "src/utils/ai_usage_queue_health.rs"
+        ],
+        "landed": [
+          "UsageQueue",
+          "USAGE_QUEUES (2 entries - matches the source)",
+          "claim_usage_job",
+          "complete_usage_job",
+          "fail_usage_job",
+          "retry_key"
+        ],
+        "stillMissing": [
+          "monitor_ai_usage_queues",
+          "src/utils/ai_usage_backfill_queue.rs",
+          "tests/ai_usage_queue_health.rs",
+          "tests/ai_usage_backfill_queue.rs",
+          "the handoff note"
+        ],
+        "resolution": "continuation turn on the same Terra thread"
+      },
+      "currentTaskId": "node:delegated-task:command%3Amcp%3A00ccddec-cff2-4ad8-956a-fdb23e1379b2%3Adelegate-task%3A8aa2e183-c579-4b0a-8a01-cf047dc24194"
+    },
+    "tl1-c4-reward-bridge": {
+      "owner": "team1-delegate-deepseek",
+      "status": "authored and handed off; isolated verification and central wiring pending",
+      "files": [
+        "src/domain_events/polar_billing/mod.rs",
+        "src/domain_events/polar_billing/reward_bridge.rs",
+        "tests/polar_reward_bridge.rs",
+        "migration-notes/team1-reward-bridge-handoff.md"
+      ],
+      "note": "Only reward bridge modifications to mod.rs; no central edits. Team2 paid_order_reward source read-only.",
+      "taskId": "node:delegated-task:command%3Amcp%3A00ccddec-cff2-4ad8-956a-fdb23e1379b2%3Adelegate-task%3A38b7fc7c-d138-4c47-8812-be70abc96e09"
+    }
+  },
+  "crossLaneContracts": [
+    {
+      "id": "tl1-c2",
+      "between": [
+        "lane-c-personality-threading",
+        "team2-api-data"
+      ],
+      "symbols": [
+        "thread-routing metric key namespace metrics:bot:threading:{minute|channel|cumulative}",
+        "minute bucket format yyyyMMddHHmm (UTC)"
+      ],
+      "note": "team2 owns src/utils/observability/bot_runtime_metrics.ts. lane-c emits the thread routing metric from src/utils/ai/threading/thread_router.rs using this exact namespace; team2 must reuse lane-c's emitter instead of duplicating the namespace. Contract event sent to root thread 9cc467f1-f5c3-45a8-989a-e8e02361df4b.",
+      "record": "contracts/team1-thread-routing-metric.json"
+    },
+    {
+      "id": "tl1-c4",
+      "between": [
+        "team1-billing-ai",
+        "team2-api-data"
+      ],
+      "symbols": [
+        "applyPaidOrderReward(ownerUserId, orderId, productId, cadence) from src/utils/paid_order_reward.ts"
+      ],
+      "note": "team2 owns src/utils/paid_order_reward.ts. team1's Polar reward domain-event consumer (applyPolarRewardDomainEvent) depends on it and is not natively ported. team1 leaves an injected-dependency seam in src/domain_events/polar_billing/plan_projection.rs rather than re-implementing reward granting. Contract event sent to root thread 9cc467f1-f5c3-45a8-989a-e8e02361df4b.",
+      "record": "contracts/team1-paid-order-reward-dependency.json"
+    },
+    {
+      "id": "tl1-c6",
+      "between": [
+        "lane-b-ai-usage-reads",
+        "wave3-c-queues-and-reset"
+      ],
+      "symbols": [
+        "src/utils/ai_usage_backfill_queue.rs",
+        "AI_USAGE_BACKFILL_QUEUE_KEY",
+        "AI_USAGE_BACKFILL_PROCESSING_KEY",
+        "AI_USAGE_BACKFILL_DEAD_KEY",
+        "AiUsageBackfillJob",
+        "desired_coverage_start",
+        "parse_ai_usage_backfill_job",
+        "enqueue_ai_usage_backfill"
+      ],
+      "note": "One owner per symbol. wave3-c owns src/utils/ai_usage_backfill_queue.rs. lane-b must not re-declare any of these inside ai_usage_queries.rs. Recorded because both workers had started implementing the same surface before the collision was caught.",
+      "record": "claims/team1-billing-ai.json (crossLaneContracts)"
+    }
+  ],
+  "notes": [
+    "Rust module names for TS files whose obvious paired path is already taken are documented here: src/utils/ai_usage_receipts.rs is the native receipt-consumer worker, so the request-time helpers of src/utils/ai_usage_receipts.ts are authored as src/utils/ai_usage_period.rs.",
+    "src/utils/ai_credit_sources.ts is authored by lane-a (same lane as credit_packs.rs and credit_gift_provider.rs) so there is no cross-lane Rust dependency between team1 lanes.",
+    "src/utils/ai/threading/mod.rs is new in this wave; the threading modules are declared through one #[path] entry in the central src/utils/mod.rs.",
+    "No central file is edited directly by this team; Cargo.toml / src/utils/mod.rs / src/schemas/mod.rs / src/domain_events/mod.rs / src/workers/mod.rs patches are delivered as snippets in the handoff.",
+    "Wave-1 lane files are disjoint from each other and from the wave-2 refill backlog recorded in claims/team1-wave2-refill-backlog.json.",
+    "2026-10-31: the ai-threading feature line from wave 1 included dep:regex; wave 2-C supersedes it with js-regexp-unicode + js-unicode17. Use the wave 2-C line.",
+    "2026-10-31: team1 central wiring consolidated into ready/team1-billing-ai.central.patch; team1 still edits no central file.",
+    "2026-10-31 spec correction (worker-reported, verified): the TypeScript safePart in src/utils/ai_usage_backfill_queue.ts is exactly `typeof value === 'string' ? value.trim() : ''`. It only trims; it does NOT make the value safe to embed in a Redis key. The port must reproduce the source behavior and report the concern rather than silently changing it.",
+    "2026-10-31 path correction: there is no dimabot/src/utils/redis.rs. The Redis helper module path is crate::utils::redis::get_redis_client, defined in dimabot/src/utils/databases/dragonfly.database.rs. Use it as super::redis::get_redis_client() the way dimabot/src/utils/billing.rs does.",
+    "2026-10-31: two codex/gpt-6.1-terra refill attempts (wave3-A, wave3-C) returned without writing any file, reading the authoring-only restrictions as blocking. Both were relaunched with the deliverable stated up front as files on disk and a narrower scope. No partial or corrupted files were left behind."
+  ],
+  "providerRouting": {
+    "lane-a-polar-billing": {
+      "providerInstanceId": "opencode",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "options": {
+        "variant": "high"
+      },
+      "runtimeMode": "full-access"
+    },
+    "lane-b-ai-usage-reads": {
+      "providerInstanceId": "grok",
+      "model": "grok-4.7",
+      "options": {
+        "reasoningEffort": "high"
+      },
+      "runtimeMode": "full-access"
+    },
+    "lane-c-personality-threading": {
+      "providerInstanceId": "codex",
+      "model": "gpt-6.1-terra",
+      "options": {
+        "reasoningEffort": "high"
+      },
+      "runtimeMode": "full-access"
+    },
+    "note": "The opencode provider's openai/gpt-6.1-terra route returned 401. Terra is reached through the codex provider instead; the implementer mix (DeepSeek V4.1 Flash / Grok 4.7 / GPT-6.1 Terra) is unchanged.",
+    "wave3-a-credit-gifts": {
+      "providerInstanceId": "codex",
+      "model": "gpt-6.1-terra",
+      "runtimeMode": "full-access"
+    },
+    "wave3-c-queues-and-reset": {
+      "providerInstanceId": "codex",
+      "model": "gpt-6.1-terra",
+      "runtimeMode": "full-access"
+    }
+  },
+  "bindingContracts": [
+    {
+      "id": "tl1-c2",
+      "summary": "team1 owns the metrics:bot:threading:* namespace; the observability team reuses the published public emitter",
+      "record": "contracts/team1-thread-routing-metric.json"
+    },
+    {
+      "id": "tl1-c3",
+      "summary": "a feature-gated schema module is declared with a cfg gate and stays out of the 42-entry definitions() array",
+      "record": "contracts/team1-gated-schema-registration.json"
+    },
+    {
+      "id": "tl1-c4",
+      "summary": "applyPaidOrderReward is team2's file; team1's Polar reward branch has no concrete adapter until team2 ports it - OPEN",
+      "record": "contracts/team1-paid-order-reward-dependency.json"
+    },
+    {
+      "id": "tl1-c5",
+      "summary": "a golden-consumer test must FAIL on a missing or empty golden, never skip; host Node must not run the oracles; pins unchanged",
+      "record": "contracts/team1-fixture-contract.json"
+    }
+  ],
+  "userRoutingSteering20261031": {
+    "grok": "User reports 32% weekly quota remaining; preserve existing assignments, avoid new assignments by default. This is not live catalog evidence or a model-quality finding.",
+    "preferred": "DeepSeek V4.1 Flash or Codex Terra by task fit; Sol for integration only; MiniMax disabled.",
+    "acceptedDependency": "Root reports Polar usage modes, grants and shared factory accepted as 6ff0c67c; documentation reconciliation pending.",
+    "execution": "Authoring only; heavy execution requires root lease."
+  },
+  "quotaStop": "All team work paused after completed queue task; no new launches until user resumes; ownership retained."
+}

@@ -1,0 +1,32 @@
+{
+ "contractId": "tl1-c5",
+ "version": 1,
+ "raisedBy": "integration-root",
+ "raisedAt": "2026-10-31T02:34:00Z",
+ "status": "binding",
+ "scope": "Fixture and golden-file contract for every source-comparison / replay test this team authors.",
+ "rules": {
+  "goldenConsumer": {
+   "must": "An EXPLICIT source replay / fixture test MUST FAIL when its golden file is missing, and MUST FAIL when the golden file is empty (zero bytes, or empty/invalid JSON payload).",
+   "mustNot": "It must never return Ok, never skip, and never appear green when the golden is missing or empty.",
+   "rationale": "A green suite that silently skipped the oracle is a false pass, which is worse than a failure.",
+   "ordinaryTests": "An ordinary test that does not depend on the oracle may run without a golden.",
+   "diagnostics": "The failure message must name the expected file path, the env var that supplies the golden directory, and the generation command."
+  },
+  "nodeRuntime": {
+   "must": "Oracle scripts keep their existing pins unchanged (process.version v24.22.1, the v8 version, and the TypeScript version).",
+   "where": "Oracles run ONLY inside the existing capped Node 24.22.1 image sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82 through validate.py.",
+   "hostNode": "The host Node must NOT run the oracles. Workers must not invoke host node at all - not to execute an oracle, and not even for a parse-only syntax check. Use a static bracket/quote balance scan instead.",
+   "modes": "Oracle scripts keep exactly the --write DIR and --check DIR modes, writing with the wx flag into an empty external directory."
+  }
+ },
+ "appliesTo": [
+  "lane-a-polar-billing",
+  "lane-b-ai-usage-reads",
+  "lane-c-personality-threading",
+  "wave2-a-polar-domain-events",
+  "wave2-c-referral",
+  "all future team1 waves"
+ ],
+ "supersedes": "The earlier team lead instruction that a golden consumer should SKIP cleanly when the golden file is absent. That instruction was wrong and was corrected to both lanes before READY."
+}

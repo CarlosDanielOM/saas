@@ -22,13 +22,18 @@ mod validate;
 #[path = "to_source.rs"]
 mod writer;
 
-pub use crate::utils::ast_syntax::SyntaxProfile;
-pub use from_ast::{UnsupportedSyntax, ast_to_block, id_maker, id_maker_with_prefix};
+pub use crate::utils::ast_syntax::{JsString, PersistedJsString, SyntaxProfile};
+pub use from_ast::{
+    UnsupportedSyntax, ast_to_block, block_root_to_ast, block_to_ast, id_maker,
+    id_maker_with_prefix,
+};
 pub use normalize::{
     block_shape, normalize_root, normalize_value, structural_eq, structural_eq_root,
 };
 pub use types::*;
-pub use writer::{escape_chat_text, literal, root_to_source, top_level};
+pub use writer::{
+    escape_chat_text, literal, root_to_source, root_to_source_utf16, top_level, top_level_utf16,
+};
 
 use crate::utils::ast_syntax::{
     AstNode, CompiledProgram, Diagnostic, DiagnosticCode, Limits, PreparedGrammar, SourceSegment,
@@ -205,6 +210,13 @@ impl BlocksEngine {
                             offset,
                         ));
                     }
+                }
+                BlockKind::LiteralUtf16 { .. } => {
+                    return Err(block.error(
+                        BlocksErrorCode::UnpairedSurrogate,
+                        "This command contains an unpaired UTF-16 surrogate and cannot be written as UTF-8 text.",
+                        Some("value"),
+                    ));
                 }
                 BlockKind::Raw { source } => {
                     if matches!(segment, SourceSegment::Text { .. }) || segment.raw_text() != source
@@ -390,6 +402,15 @@ pub fn import_command_text(text: &str) -> Result<ImportedText, BlocksError> {
 pub fn stored_blocks(root: BlockRoot) -> StoredBlocks {
     StoredBlocks {
         v: BLOCKS_VERSION,
+        root,
+    }
+}
+/// Version-2 envelope for a root that may contain `literalUtf16` blocks.
+/// Version-1 documents and their readers are unchanged; the envelope carries
+/// the exact code-unit array only in the new block kind.
+pub fn stored_blocks_lossless(root: BlockRoot) -> StoredBlocks {
+    StoredBlocks {
+        v: BLOCKS_LOSSLESS_VERSION,
         root,
     }
 }

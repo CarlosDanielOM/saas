@@ -95,6 +95,23 @@ impl<const DIRECT: bool> Materializer<'_, DIRECT> {
             Ok(())
         }
     }
+    fn js_string(
+        &self,
+        value: &crate::utils::ast_syntax::PersistedJsString,
+        limit: usize,
+        label: &str,
+        p: &Origin,
+    ) -> Result<(), BlocksError> {
+        if !DIRECT && value.0.len() > limit {
+            self.fail(
+                BlocksErrorCode::StringLimit,
+                &format!("{label} is too long."),
+                p,
+            )
+        } else {
+            Ok(())
+        }
+    }
     fn counter(&self, name: &str, p: &Origin) -> Result<(), BlocksError> {
         if DIRECT {
             return Ok(());
@@ -222,6 +239,17 @@ impl<const DIRECT: bool> Materializer<'_, DIRECT> {
                 self.string(value, MAX_COMMAND_TEXT, "Text", &Self::child(&p, "value"))?;
                 BlockKind::Literal {
                     value: value.clone(),
+                }
+            }
+            AstNode::LiteralUtf16 { value } => {
+                self.js_string(value, MAX_COMMAND_TEXT, "Text", &Self::child(&p, "value"))?;
+                // UTF-8-representable units keep the existing block conversion;
+                // only genuinely unpaired units need the additive representation.
+                match value.0.to_utf8() {
+                    Ok(text) => BlockKind::Literal { value: text },
+                    Err(_) => BlockKind::LiteralUtf16 {
+                        value: value.clone(),
+                    },
                 }
             }
             AstNode::Function { name, args } => {
@@ -411,6 +439,11 @@ impl<const DIRECT: bool> Materializer<'_, DIRECT> {
                             &AstNode::Literal {
                                 value: value.clone(),
                             },
+                            depth + 1,
+                            sp,
+                        )?,
+                        TemplateSegment::TextUtf16 { value } => self.node(
+                            &AstNode::LiteralUtf16 { value: value.clone() },
                             depth + 1,
                             sp,
                         )?,
@@ -655,8 +688,230 @@ pub(crate) fn mismatch<'a>(original: &'a BlockNode, other: &BlockNode) -> &'a Bl
 }
 pub(crate) fn value_field(n: &BlockNode) -> Option<&'static str> {
     match &n.kind {
-        BlockKind::Literal { .. } => Some("value"),
+        BlockKind::Literal { .. } | BlockKind::LiteralUtf16 { .. } => Some("value"),
         BlockKind::Raw { .. } => Some("source"),
         _ => None,
     }
+}
+
+fn reverse_storage(storage: BlockStorage) -> VariableStorage {
+    match storage {
+        BlockStorage::Memory => VariableStorage::Memory,
+        BlockStorage::Cache => VariableStorage::Cache,
+        BlockStorage::CacheUser => VariableStorage::CacheUser,
+        BlockStorage::Db => VariableStorage::Db,
+        BlockStorage::DbUser => VariableStorage::DbUser,
+    }
+}
+
+fn reverse_literal(value: &crate::utils::ast_syntax::PersistedJsString) -> AstNode {
+    match value.0.to_utf8() {
+        Ok(value) => AstNode::Literal { value },
+        Err(_) => AstNode::LiteralUtf16 {
+            value: value.clone(),
+        },
+    }
+}
+
+fn reverse_text(value: &crate::utils::ast_syntax::PersistedJsString) -> TemplateSegment {
+    match value.0.to_utf8() {
+        Ok(value) => TemplateSegment::Text { value },
+        Err(_) => TemplateSegment::TextUtf16 {
+            value: value.clone(),
+        },
+    }
+}
+
+fn reverse_nodes(nodes: &[BlockNode]) -> Result<Vec<AstNode>, UnsupportedSyntax> {
+    nodes.iter().map(block_to_ast).collect()
+}
+
+fn reverse_optional(
+    node: &Option<Box<BlockNode>>,
+) -> Result<Option<Box<AstNode>>, UnsupportedSyntax> {
+    node.as_deref()
+        .map(block_to_ast)
+        .transpose()
+        .map(|node| node.map(Box::new))
+}
+
+fn reverse_accessor(
+    accessor: &Option<BlockAccessor>,
+) -> Result<Option<ArrayAccessor>, UnsupportedSyntax> {
+    accessor
+        .as_ref()
+        .map(|accessor| {
+            Ok(match accessor {
+                BlockAccessor::Array => ArrayAccessor::Array,
+                BlockAccessor::Append => ArrayAccessor::Append,
+                BlockAccessor::Random => ArrayAccessor::Random,
+                BlockAccessor::Length => ArrayAccessor::Length,
+                BlockAccessor::Clear => ArrayAccessor::Clear,
+                BlockAccessor::Index { index } => ArrayAccessor::Index {
+                    index: Box::new(block_to_ast(index)?),
+                },
+                BlockAccessor::SetIndex { index } => ArrayAccessor::SetIndex {
+                    index: Box::new(block_to_ast(index)?),
+                },
+                BlockAccessor::Remove { index } => ArrayAccessor::Remove {
+                    index: Box::new(block_to_ast(index)?),
+                },
+            })
+        })
+        .transpose()
+}
+
+/// Convert one stored block back to the AST shape it represents. This is the
+/// reverse of `ast_to_block` for every block kind that has an AST form. It is a
+/// structural conversion, like `root_to_source`: callers validate storage with
+/// `read_block_root` first. Advanced source and transient groups have no AST
+/// node and return an explicit error rather than being guessed or reparsed.
+pub fn block_to_ast(node: &BlockNode) -> Result<AstNode, UnsupportedSyntax> {
+    use BlockKind::*;
+    Ok(match &node.kind {
+        Literal { value } => AstNode::Literal {
+            value: value.clone(),
+        },
+        LiteralUtf16 { value } => reverse_literal(value),
+        Raw { .. } => {
+            return Err(UnsupportedSyntax(
+                "advanced source pieces have no AST form".into(),
+            ));
+        }
+        Function { name, args } => AstNode::Function {
+            name: name.clone(),
+            args: reverse_nodes(args)?,
+        },
+        CommandRef { command_name, args } => AstNode::CommandRef {
+            command_name: command_name.clone(),
+            args: reverse_nodes(args)?,
+        },
+        GetVar {
+            name,
+            storage,
+            accessor,
+            user_selector,
+        } => AstNode::GetVar {
+            name: name.clone(),
+            storage: reverse_storage(*storage),
+            accessor: reverse_accessor(accessor)?,
+            user_selector: reverse_optional(user_selector)?,
+        },
+        Exists {
+            name,
+            storage,
+            accessor,
+            user_selector,
+        } => AstNode::Exists {
+            name: name.clone(),
+            storage: reverse_storage(*storage),
+            accessor: reverse_accessor(accessor)?,
+            user_selector: reverse_optional(user_selector)?,
+        },
+        DeleteVar {
+            name,
+            storage,
+            accessor,
+            user_selector,
+        } => AstNode::DeleteVar {
+            name: name.clone(),
+            storage: reverse_storage(*storage),
+            accessor: reverse_accessor(accessor)?,
+            user_selector: reverse_optional(user_selector)?,
+        },
+        SetVar {
+            name,
+            storage,
+            value,
+            accessor,
+            user_selector,
+        } => AstNode::SetVar {
+            name: name.clone(),
+            storage: reverse_storage(*storage),
+            value: Box::new(block_to_ast(value)?),
+            accessor: reverse_accessor(accessor)?,
+            user_selector: reverse_optional(user_selector)?,
+        },
+        Binary {
+            operator,
+            left,
+            right,
+        } => AstNode::Binary {
+            operator: operator.as_str().to_owned(),
+            left: Box::new(block_to_ast(left)?),
+            right: Box::new(block_to_ast(right)?),
+        },
+        Unary { operator, argument } => AstNode::Unary {
+            operator: operator.as_str().to_owned(),
+            argument: Box::new(block_to_ast(argument)?),
+        },
+        Ternary {
+            test,
+            consequent,
+            alternate,
+        } => AstNode::Ternary {
+            test: Box::new(block_to_ast(test)?),
+            consequent: Box::new(block_to_ast(consequent)?),
+            alternate: Box::new(block_to_ast(alternate)?),
+        },
+        Template { parts } => AstNode::Template {
+            segments: parts
+                .iter()
+                .map(|part| {
+                    Ok(match &part.kind {
+                        Literal { value } => TemplateSegment::Text {
+                            value: value.clone(),
+                        },
+                        LiteralUtf16 { value } => reverse_text(value),
+                        _ => TemplateSegment::Expr {
+                            node: block_to_ast(part)?,
+                        },
+                    })
+                })
+                .collect::<Result<_, UnsupportedSyntax>>()?,
+        },
+        ArrayLiteral { items, accessor } => AstNode::ArrayLiteral {
+            items: reverse_nodes(items)?,
+            accessor: reverse_accessor(accessor)?,
+        },
+        LoopVar { name } => AstNode::LoopVar { name: name.clone() },
+        LoopAssign {
+            name,
+            operator,
+            value,
+        } => AstNode::LoopAssign {
+            name: name.clone(),
+            operator: operator.as_str().to_owned(),
+            value: reverse_optional(value)?,
+        },
+        ForLoop {
+            loop_var,
+            mode,
+            init,
+            condition,
+            update,
+            iterable,
+            body,
+        } => AstNode::ForLoop {
+            loop_var: loop_var.clone(),
+            mode: mode.as_str().to_owned(),
+            init: reverse_optional(init)?,
+            condition: reverse_optional(condition)?,
+            update: reverse_optional(update)?,
+            iterable: reverse_optional(iterable)?,
+            body: reverse_nodes(body)?,
+        },
+        Group { .. } => {
+            return Err(UnsupportedSyntax(
+                "transient groups have no AST form".into(),
+            ));
+        }
+    })
+}
+
+/// Convert a normalized root back to the AST children it represents.
+pub fn block_root_to_ast(root: &BlockRoot) -> Result<AstNode, UnsupportedSyntax> {
+    Ok(AstNode::Root {
+        children: reverse_nodes(&root.children)?,
+    })
 }

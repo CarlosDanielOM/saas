@@ -1,0 +1,47 @@
+{
+  "contractId": "tl1-c4",
+  "version": 2,
+  "raisedBy": "team1-billing-ai",
+  "raisedAt": "2026-10-31T02:26:00Z",
+  "status": "authored-adapter-available-pending-consumer-bridge-and-isolated-verification",
+  "scope": "Paid-order reward application needed by the Polar reward domain-event consumer.",
+  "owner": {
+    "team": "team2-api-data",
+    "paths": [
+      "dimabot/src/utils/paid_order_reward.ts"
+    ],
+    "note": "team2-api-data owns this TypeScript source. It is not natively ported in the accepted base."
+  },
+  "consumer": {
+    "team": "team1-billing-ai",
+    "paths": [
+      "dimabot/src/domain_events/polar_billing/plan_projection.rs"
+    ],
+    "note": "team1 ports applyPolarRewardDomainEvent, which calls applyPaidOrderReward({ ownerUserId, orderId, productId, cadence }) after a confirmed paid Polar order."
+  },
+  "symbol": "applyPaidOrderReward({ ownerUserId: string; orderId: string; productId: string; cadence: string }): Promise<void>",
+  "seam": "team1 injects the reward application as a dependency rather than re-implementing reward granting. The consumer is complete and typed; only the concrete reward adapter is missing.",
+  "risk": "If team2 ports paid_order_reward.ts, the native symbol should be callable from team1's domain-event consumer. If team2 does not port it in this wave, team1's reward branch remains an unimplemented application-specific adapter and the Polar reward path is NOT complete.",
+  "ask": {
+    "to": "team2-api-data",
+    "action": "When porting src/utils/paid_order_reward.ts, expose the reward application so team1's Polar reward domain-event consumer can call it, or confirm that the integration team will own the adapter. Please do not create a second reward-granting implementation in team1."
+  },
+  "verification": {
+    "status": "unverified",
+    "note": "Authoring wave only. No Cargo, rustfmt, Node, Docker or network command has been run."
+  },
+  "delivery": {
+    "job": "team2-slice-6-paid-order-reward",
+    "owner": "team2-api-data",
+    "state": "authored-ready-concrete-adapter;referral-central-wiring-and-Polar-consumer-bridge-verification-open",
+    "handoff": "/root/.local/state/dimabot-migration-teams-20261031/ready/team2-api-data-slice-6-paid-order-reward.md",
+    "handoffSHA256": "7585412863206a416a2cd161d764b77153fc5fdc1770c862e1bc737c48166a3a",
+    "ownershipReleased": false
+  },
+  "nativeApi": {
+    "service": "crate::utils::paid_order_reward::PaidOrderRewardService::new(Database)",
+    "input": "PaidOrderRewardInput::from_cadence_str(owner,order,product,cadence)",
+    "apply": "apply_paid_order_reward(&ConcreteOrDyn,&input) -> Result<(),PaidOrderRewardError>"
+  },
+  "dependencyClosure": "Concrete adapter exists in authored source; consumer bridge,centralfeaturewiring and runtimeverificationstillrequired. No acceptedfeatureclosure."
+}
