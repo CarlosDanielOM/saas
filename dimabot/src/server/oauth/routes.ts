@@ -9,6 +9,7 @@ import { getPetConfiguration, PetSettingsError } from '../services/pet_settings.
 import { PetError, cancelPetRequest } from '../../pets/state.js';
 import { getPetRuntime } from '../../pets/runtime.js';
 import { selectOwnPetPlayback } from '../../pets/selection.js';
+import { submitTurn, getTurn, cancelTurn, cancelSpeech, claimAudio, speechEvent } from '../../desktop_ai/service.js';
 import { ACCESS_TTL_SECONDS, DESKTOP_CLIENT_ID, OAuthError, OAUTH_SCOPES } from './catalog.js';
 import { approveAuthorization, authenticateAccess, exchangeCode, getAuthorization, getClient,
     oauthIssuer, oauthWebsite, rateLimit, refreshAccess, revokeSession, revokeToken,
@@ -25,7 +26,7 @@ export function oauthBoundary(req: Request, res: Response, next: NextFunction) {
     if (origin) {
         res.set('Access-Control-Allow-Origin', origin);
         res.vary('Origin');
-        res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+        res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Dima-Audio-Ticket');
         res.set('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS');
     }
     if (req.method === 'OPTIONS') return res.sendStatus(204);
@@ -92,6 +93,7 @@ export function oauthMetadata(_req: Request, res: Response) {
         beta: { client_id: DESKTOP_CLIENT_ID, protocol_version: 1, access_token_lifetime: ACCESS_TTL_SECONDS,
             websocket_endpoint: `${issuer.replace(/^http/, 'ws')}/v1/desktop/ws`,
             socket_io: { path: '/socket.io/', namespace: '/desktop', protocol_version: 1 },
+            ai_capabilities_endpoint: `${issuer}/v1/me/ai/capabilities`, permission_profile_version: 2,
             planned_scopes: Object.entries(OAUTH_SCOPES).filter(([, scope]) => !scope.active).map(([name]) => name) } });
 }
 oauthRoute.get('/metadata', oauthMetadata);
@@ -180,6 +182,35 @@ oauthApiRoute.get('/me', asyncRoute(async (req, res) => {
     const account = user?.accounts.find(item => item.type === 'twitch' && item.id === identity.channel_id);
     if (!account) throw new OAuthError('invalid_token', 401);
     res.json({ user_id: identity.user_id, name: user!.name, channel: { platform: 'twitch', id: account.id, name: account.name } });
+}));
+oauthApiRoute.get('/me/ai/capabilities', asyncRoute(async (req, res) => {
+    const identity = await access(req, 'profile:read');
+    res.json({ version: 1, permission_profile_version: 2, available: true, supported_scopes: ['ai:interact', 'pet:interact'],
+        required_scopes: { bot: ['ai:interact'], pet: ['pet:interact'] }, granted_scopes: identity.scopes });
+}));
+oauthApiRoute.post('/me/ai/turns', asyncRoute(async (req, res) => {
+    const identity = await access(req);
+    res.status(202).json(await submitTurn(identity, req.body));
+}));
+oauthApiRoute.get('/me/ai/turns/by-request/:requestId', asyncRoute(async (req, res) => {
+    res.json(await getTurn(await access(req), String(req.params.requestId), true));
+}));
+oauthApiRoute.get('/me/ai/turns/:turnId', asyncRoute(async (req, res) => {
+    res.json(await getTurn(await access(req), String(req.params.turnId)));
+}));
+oauthApiRoute.post('/me/ai/turns/:turnId/cancel', asyncRoute(async (req, res) => {
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body) || Object.keys(req.body).length) throw new OAuthError('invalid_request');
+    res.json(await cancelTurn(await access(req), String(req.params.turnId)));
+}));
+oauthApiRoute.post('/me/ai/turns/:turnId/speech/cancel', asyncRoute(async (req, res) => {
+    res.json(await cancelSpeech(await access(req), String(req.params.turnId), req.body));
+}));
+oauthApiRoute.post('/me/ai/turns/:turnId/speech/events', asyncRoute(async (req, res) => {
+    res.json(await speechEvent(await access(req), String(req.params.turnId), req.body));
+}));
+oauthApiRoute.get('/me/ai/turns/:turnId/speech/audio', asyncRoute(async (req, res) => {
+    const audio = await claimAudio(await access(req), String(req.params.turnId), req.get('X-Dima-Audio-Ticket'));
+    res.set('Content-Type', audio.mimeType); res.sendFile(audio.path);
 }));
 oauthApiRoute.get('/me/credits', asyncRoute(async (req, res) => {
     const identity = await access(req, 'credits:read');

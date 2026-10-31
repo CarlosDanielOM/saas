@@ -13,6 +13,7 @@ import { authenticatePetCapability } from './tokens.js';
 import { petPeers, selectedVtsController, type PetPeer } from './peers.js';
 import { LEASE_TTL_MS, PetError, finishRequest, invalidatePet, notifyPet, runtimeFor } from './state.js';
 import { isSelectedPlayer, sendPetSnapshot, startPetRuntime } from './runtime.js';
+import { confirmRetiredSpeechActivity, hasSafeDesktopPetStop } from '../desktop_ai/activity.js';
 
 function known(error: unknown): error is PetError | OAuthError | PetSettingsError {
     return error instanceof PetError || error instanceof OAuthError || error instanceof PetSettingsError;
@@ -169,6 +170,17 @@ export async function registerPetSockets(io: SocketServer) {
             on('pet:playback', async value => {
                 if (!['started', 'progress', 'ended', 'stopped', 'error'].includes(String(value.phase)) ||
                     value.errorCode !== undefined && (typeof value.errorCode !== 'string' || value.errorCode.length > 64)) throw new PetError('invalid_playback');
+                const isStop = ['stopped', 'error'].includes(String(value.phase));
+                const playbackStopped = value.phase === 'ended' || isStop && (peer.kind === 'browser' ||
+                    peer.kind === 'desktop' && await hasSafeDesktopPetStop(peer.channelId, peer.sessionId));
+                // Older desktop players send stopped/error before stopping their
+                // local output. Only an upgraded same-session monitor carries
+                // the stop-before-feedback guarantee; otherwise retain the lease.
+                if (playbackStopped && typeof value.requestId === 'string' &&
+                    typeof value.leaseId === 'string' && Number.isSafeInteger(value.generation) && Number.isSafeInteger(value.seq) &&
+                    Number(value.seq) >= 0 && Number.isFinite(value.positionMs) && Number(value.positionMs) >= 0 && Number(value.positionMs) <= 60_000 &&
+                    await confirmRetiredSpeechActivity(peer.channelId, { kind: 'pet', ownerId: peer.ownerId, peerId: peer.id,
+                        leaseId: value.leaseId, requestId: value.requestId, generation: Number(value.generation) })) return {};
                 if (value.phase === 'progress' && Date.now() - peer.lastProgressAt < 200) return { dropped: true };
                 const request = await activeIdentity(peer, value);
                 peer.seq = Number(value.seq);
@@ -181,8 +193,15 @@ export async function registerPetSockets(io: SocketServer) {
                     return {}; // Progress never changes renderer/request state.
                 }
                 else if (['ended', 'stopped', 'error'].includes(String(value.phase))) {
+                    if (!playbackStopped) {
+                        const runtime = await PetRuntime.findById(peer.ownerId).lean();
+                        if (runtime?.activeRequestId === request._id && runtime.generation === request.generation && runtime.lease?.holderPeerId === peer.id)
+                            await invalidatePet(peer.ownerId, 'player_stopping', { requestId: request._id, generation: request.generation,
+                                leaseId: runtime.lease.leaseId, leaseExpiresAt: runtime.lease.expiresAt },
+                                { status: value.phase === 'error' ? 'failed' : 'cancelled', errorCode: value.phase === 'error' ? 'playback_error' : 'player_stopping' });
+                    }
                     await finishRequest(request._id, value.phase === 'ended' ? 'completed' : value.phase === 'stopped' ? 'cancelled' : 'failed',
-                        value.phase === 'error' ? 'playback_error' : undefined);
+                        value.phase === 'error' ? 'playback_error' : undefined, undefined, playbackStopped);
                 }
                 await notifyPet(peer.ownerId);
                 return {};

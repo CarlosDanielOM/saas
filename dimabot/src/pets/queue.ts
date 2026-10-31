@@ -16,7 +16,7 @@ function disabledReason(request: PetRequestRecord, configuration: Configuration)
     const { settings } = configuration;
     if (settings.sources?.independent === false) return 'pet_source_disabled';
     if (!settings.enabled || !settings.tts.enabled) return 'pet_unavailable';
-    if (!(request.origin.kind === 'chat-command' ? settings.behavior.respondToChat : settings.behavior.respondToEvents)) return 'trigger_disabled';
+    if (request.origin.kind !== 'oauth_desktop' && !(request.origin.kind === 'chat-command' ? settings.behavior.respondToChat : settings.behavior.respondToEvents)) return 'trigger_disabled';
     if (request.operation === 'talk' && request.text.length > settings.behavior.maxReplyLength) return 'text_too_long';
     return null;
 }
@@ -42,9 +42,16 @@ export async function claimQueued(request: PetRequestRecord, options: { lane: 'i
     const runtime = await runtimeFor(request.ownerId, request.channelId);
     const now = new Date();
     if (!runtime.lease || runtime.lease.expiresAt <= now) return strict ? drop(request, 'player_unavailable') : { kind: 'wait' };
+    if (request.origin.kind === 'oauth_desktop') {
+        const { petPeers } = await import('./peers.js');
+        const peer = petPeers.get(runtime.lease.holderPeerId);
+        if (configuration.settings.playback.target !== 'desktop' || configuration.settings.playback.desktopSessionId !== request.origin.sessionId ||
+            !peer || peer.kind !== 'desktop' || peer.sessionId !== request.origin.sessionId || !peer.socket.connected) return drop(request, 'output_unavailable');
+        try { await peer.revalidate(); } catch { return drop(request, 'output_unavailable'); }
+    }
     if (runtime.activeRequestId) return { kind: 'wait' };
     if (runtime.ttsReservation && runtime.ttsReservation.expiresAt > now) return { kind: 'wait', retryAt: runtime.ttsReservation.expiresAt.getTime() };
-    const cooldownMs = strict ? 0 : configuration.settings.behavior.cooldownSeconds * 1000;
+    const cooldownMs = strict || request.origin.kind === 'oauth_desktop' ? 0 : configuration.settings.behavior.cooldownSeconds * 1000;
     if (cooldownMs && runtime.lastAcceptedAt && runtime.lastAcceptedAt.getTime() + cooldownMs > now.getTime()) {
         return { kind: 'wait', retryAt: runtime.lastAcceptedAt.getTime() + cooldownMs };
     }

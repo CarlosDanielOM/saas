@@ -5,3 +5,13 @@ export function filterPetTalkText(text: string, provider: TtsProvider, filters: 
     const filtered = filterExpressiveTtsTags(text, { provider, enabledTags: filters.expressiveTags });
     return normalizeTtsMessage(filtered, { ...filters, emoteNames });
 }
+
+/** Refilter a previously normalized desktop response if the effective voice changed. */
+export function refilterDesktopPetText(text: string, provider: TtsProvider, filters: ChannelTtsSettingsData['filters'], emoteNames: string[]) {
+    // Preserve the existing link placeholder through the tag filter; literal
+    // private-use characters are removed first so they cannot collide with it.
+    const marker = '\uE000';
+    const result = filterPetTalkText(text.replace(/\uE000/g, '').replace(/\[link\]/g, marker), provider, filters, emoteNames);
+    const restored = result.text.replace(/\uE000/g, '[link]');
+    return { ...result, text: restored, error: !restored.trim() };
+}

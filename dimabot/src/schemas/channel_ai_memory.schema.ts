@@ -1,7 +1,7 @@
 import { Schema, model, Document, Types } from "mongoose";
 
 export type MemorySubjectScope = 'channel' | 'user';
-export type MemorySource = 'chat' | 'mod' | 'streamer' | 'system';
+export type MemorySource = 'chat' | 'mod' | 'streamer' | 'system' | 'oauth_desktop';
 export type MemoryType = 'preference' | 'running_joke' | 'known_user_fact' | 'channel_lore' | 'boundary';
 export type MemoryStatus = 'candidate' | 'pending_review' | 'confirmed' | 'rejected' | 'archived';
 export type MemoryRisk = 'low' | 'medium' | 'high';
@@ -66,7 +66,7 @@ const memorySubjectSchema = new Schema<IMemorySubject>({
 const memoryEvidenceSchema = new Schema<IMemoryEvidence>({
     source: {
         type: String,
-        enum: ['chat', 'mod', 'streamer', 'system'],
+        enum: ['chat', 'mod', 'streamer', 'system', 'oauth_desktop'],
         required: true,
         default: 'chat'
     },
@@ -80,7 +80,7 @@ const memoryEvidenceSchema = new Schema<IMemoryEvidence>({
 const memoryActorSchema = new Schema<IMemoryActor>({
     source: {
         type: String,
-        enum: ['chat', 'mod', 'streamer', 'system'],
+        enum: ['chat', 'mod', 'streamer', 'system', 'oauth_desktop'],
         required: true,
         default: 'system'
     },

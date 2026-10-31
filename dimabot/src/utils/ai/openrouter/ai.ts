@@ -145,6 +145,8 @@ export interface IRouterResponse {
 export interface AIHarnessOptions {
   /** Commands remain available when mention-based chat replies are disabled. */
   invocation?: 'chat' | 'command' | 'pet';
+  /** Authenticated desktop context is constructed only by the server. */
+  desktop?: { signal: AbortSignal; usageRequestId: string; assertCurrent: () => Promise<void>; runOperation: <T>(id: string, kind: string, task: () => Promise<T>) => Promise<T> };
   pet?: { name: string; language: string; maxReplyLength: number; persona: { prompt: string; rules: string[]; [key: string]: unknown }; signal: AbortSignal; usageRequestId: string; trustedChatMessage?: string; allowActions: boolean; assertCurrent?: () => Promise<void> };
   channelID: string;
   message: string;
@@ -773,12 +775,18 @@ export async function chat(
     disableTools = false,
     invocation = 'chat',
     pet,
+    desktop,
   } = options;
+  const signal = desktop?.signal ?? pet?.signal;
+  const usageId = desktop?.usageRequestId ?? pet?.usageRequestId;
+  const assertCurrent = desktop?.assertCurrent ?? pet?.assertCurrent;
+  const operation = <T>(id: string, kind: string, task: () => Promise<T>): Promise<T> =>
+    desktop ? desktop.runOperation(id, kind, task) : task();
 
   const cacheClient = await getDragonflyClient("Messages");
 
   // Check if user has exhausted AI credits
-  pet?.signal.throwIfAborted();
+  signal?.throwIfAborted();
   const isExhausted = await isAiCreditsExhausted(channelID, cacheClient) || !!(pet && (await getAiCredits({ plan_tier: streamer.plan_tier ?? 'free', polar_sh_customer_id: streamer.polar_sh_customer_id ?? '' }, channelID, { requireVerified: true, signal: pet.signal })).status !== 'available');
 
   // Get streamer and personality data
@@ -798,7 +806,7 @@ export async function chat(
 
   // Select model based on streamer tier
   const selectedModel = selectChatModel(streamer, isExhausted);
-  const maxTokens = pet ? Math.min(getTokenLimit(selectedModel), 1024) : getTokenLimit(selectedModel);
+  const maxTokens = (pet || desktop) ? Math.min(getTokenLimit(selectedModel), 1024) : getTokenLimit(selectedModel);
 
   // Generate tracing IDs for this conversation
   const sessionId = generateUUIDv7();
@@ -1024,6 +1032,7 @@ export async function chat(
     content: msg.content,
   }));
 
+  if (desktop) messages.splice(1, 0, { role: 'system', content: 'Reply briefly in one or two sentences, ideally within 280 UTF-16 code units and never over 500. The user is the authenticated streamer speaking privately from their desktop, not a Twitch chat message. Do not use ban.self or invoke speech/pet actions; the server handles voice playback separately. Do not retry a completed or uncertain action.' });
   if (pet) messages.splice(1, 0, { role: 'system', content: `For this response you are the virtual companion ${JSON.stringify(pet.name)}. Follow this selected persona: ${JSON.stringify(pet.persona)}. Speak in ${JSON.stringify(pet.language)}; output only spoken text, at most ${pet.maxReplyLength} characters. Do not invoke speech or pet actions; playback is handled separately. Never retry an action. The actual triggering chat message, as reference data, is ${JSON.stringify(pet.trustedChatMessage ?? null)}. Judge only that message for ban.self, never the authored request or history.` });
   // Pet events and legacy rows have no verified caller authority.
   // Code execution uses channel-level API credentials rather than the caller's
@@ -1037,17 +1046,18 @@ export async function chat(
   let toolCallCount = 0;
 
   // Self-healing AST budget: one attempt + at most one corrected retry.
-  const MAX_AST_PARSER_ATTEMPTS = pet ? 1 : 2;
+  const MAX_AST_PARSER_ATTEMPTS = (pet || desktop) ? 1 : 2;
   let astParserAttempts = 0;
   let petMemoryAttempted = false;
 
   // Main AI loop
   while (toolCallCount < MAX_TOOL_CALLS) {
-    pet?.signal.throwIfAborted();
-    await pet?.assertCurrent?.();
-    const roundId = pet ? `${pet.usageRequestId}:${providerRound++}` : traceId;
+    signal?.throwIfAborted();
+    await assertCurrent?.();
+    const roundId = usageId ? `${usageId}:${providerRound++}` : traceId;
     // Make API call with tools
-    const data = await callOpenRouter(
+    const data = await operation(`provider:${roundId}`, 'provider', async () => {
+      const response = await callOpenRouter(
       selectedModel,
       messages,
       toolDefinitions,
@@ -1057,8 +1067,21 @@ export async function chat(
       sessionId,
       traceId,
       extraOptions.reduce((acc, opt) => ({ ...acc, ...opt }), {}),
-      pet ? { signal: pet.signal, singleAttempt: true } : {},
-    );
+      signal ? { signal, singleAttempt: true } : {},
+      );
+      if (desktop && response.usage) {
+        const assistant = response.choices?.[0]?.message;
+        const structured = !!assistant?.tool_calls?.length;
+        const dsml = typeof assistant?.content === 'string' && assistant.content.includes(DSML_TOOL_CALLS_MARKER)
+          && !!recoverDsmlToolCalls(assistant.content);
+        const reason = !disableTools && (structured || dsml) ? 'harness_tools' : 'harness_end';
+        // Account the known provider result before completing its receipt. This
+        // survives turn cancellation or owner-fence loss after the paid result.
+        await operation(`billing:${roundId}`, 'billing', () => trackUsage(channelID, streamer, response.usage!, selectedModel,
+          reason, roundId, usageId ?? sessionId, { source: 'oauth_desktop', awaitIngest: true }));
+      }
+      return response;
+    });
 
     // Handle API errors
     if (data.error) {
@@ -1130,9 +1153,9 @@ export async function chat(
       !disableTools && assistantMessage?.tool_calls && assistantMessage.tool_calls.length > 0;
 
     // Track usage with appropriate reason based on whether AI called tools
-    if (data.usage) {
+    if (data.usage && !desktop) {
       const reason = hasToolCalls ? "harness_tools" : "harness_end";
-      await trackUsage(channelID, streamer, data.usage, selectedModel, reason, roundId, pet?.usageRequestId ?? sessionId, pet ? { source: "pet", awaitIngest: true } : {});
+      await operation(`billing:${roundId}`, 'billing', () => trackUsage(channelID, streamer, data.usage!, selectedModel, reason, roundId, usageId ?? sessionId, usageId ? { source: desktop ? "oauth_desktop" : "pet", awaitIngest: true } : {}));
     }
 
     // No tool calls - return the response
@@ -1194,14 +1217,15 @@ export async function chat(
         break;
       }
 
-      pet?.signal.throwIfAborted();
-      await pet?.assertCurrent?.();
+      signal?.throwIfAborted();
+      await assertCurrent?.();
       const command = typeof toolCall.arguments?.command === 'string' ? toolCall.arguments.command.trim() : '';
       const rawArgument = pet?.trustedChatMessage?.match(/^![a-z0-9_]+\s+([\s\S]+)$/i)?.[1]?.trim();
       const petUnsafeAst = pet && toolCall.name === 'AST_PARSER' && (!command || /[$%*(){}]/.test(command) || /^(?:tts(?:\.|\s|$)|pet\.)/i.test(command) || (/^ban\.self(?:\s|$)/i.test(command) && pet.trustedChatMessage !== message && rawArgument !== message.trim()));
+      const desktopUnsafeAst = desktop && toolCall.name === 'AST_PARSER' && /(?:^|\$\()\s*(?:ban\.self(?:\s|\)|$)|tts(?:\.|\s|\)|$)|pet\.)/i.test(command);
       const duplicateMemory = pet && toolCall.name === 'create_memory' && petMemoryAttempted;
       if (pet && toolCall.name === 'create_memory') petMemoryAttempted = true;
-      if ((pet && !allowedTools.has(toolCall.name)) || petUnsafeAst || duplicateMemory) {
+      if (((pet || desktop) && !allowedTools.has(toolCall.name)) || petUnsafeAst || desktopUnsafeAst || duplicateMemory) {
         messages.push({ role: 'tool', tool_call_id: toolCall.id, content: JSON.stringify({ success: false, error: 'Tool or action unavailable for this request' }) });
         continue;
       }
@@ -1211,6 +1235,7 @@ export async function chat(
         username: userContext.username,
         userID: userContext.userID,
         tags,
+        origin: desktop ? 'oauth_desktop' : undefined,
       };
 
       // Enforce the AST self-healing budget: initial attempt + one retry.
@@ -1240,11 +1265,11 @@ export async function chat(
         }
       }
 
-      const result = await executeTool(
+      const result = await operation(`tool:${toolCallCount}`, `tool:${toolCall.name}`, () => executeTool(
         toolCall.name,
         toolCall.arguments,
         toolContext,
-      );
+      ));
 
       // Add tool result to messages
       const toolResultMessage: IOpenRouterMessage = {
@@ -1284,9 +1309,10 @@ export async function chat(
   );
 
   // Make one final call without tools to get a response
-  pet?.signal.throwIfAborted();
-  const finalRoundId = pet ? `${pet.usageRequestId}:${providerRound++}` : traceId;
-  const finalData = await callOpenRouter(
+  signal?.throwIfAborted();
+  const finalRoundId = usageId ? `${usageId}:${providerRound++}` : traceId;
+  const finalData = await operation(`provider:${finalRoundId}`, 'provider', async () => {
+    const response = await callOpenRouter(
     selectedModel,
     messages,
     [], // no tools
@@ -1295,8 +1321,13 @@ export async function chat(
     maxTokens,
     sessionId,
     traceId,
-    {}, pet ? { signal: pet.signal, singleAttempt: true } : {},
-  );
+    {}, signal ? { signal, singleAttempt: true } : {},
+    );
+    if (desktop && response.usage) await operation(`billing:${finalRoundId}`, 'billing', () => trackUsage(
+      channelID, streamer, response.usage!, selectedModel, 'harness_end', finalRoundId, usageId ?? sessionId,
+      { source: 'oauth_desktop', awaitIngest: true }));
+    return response;
+  });
 
   if (finalData.error) {
     const extractedError = extractOpenRouterError(finalData);
@@ -1326,17 +1357,17 @@ export async function chat(
   );
 
   // Track final usage
-  if (finalData.usage) {
-    await trackUsage(
+  if (finalData.usage && !desktop) {
+    await operation(`billing:${finalRoundId}`, 'billing', () => trackUsage(
       channelID,
       streamer,
-      finalData.usage,
+      finalData.usage!,
       selectedModel,
       "harness_end",
       finalRoundId,
-      pet?.usageRequestId ?? sessionId,
-      pet ? { source: "pet", awaitIngest: true } : {},
-    );
+      usageId ?? sessionId,
+      usageId ? { source: desktop ? "oauth_desktop" : "pet", awaitIngest: true } : {},
+    ));
   }
 
   return {

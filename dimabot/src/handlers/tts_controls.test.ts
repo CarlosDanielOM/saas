@@ -4,6 +4,9 @@ import { mock, test } from 'node:test';
 const data = new Map<string, string>();
 const queues = new Map<string, string[]>();
 const events: { channel: string; event: string; payload: any }[] = [];
+const finishedActivities: string[] = [];
+const retiredSources = new Map<string, string>(), confirmedRetired: string[] = [];
+let legacyReady = true;
 let refreshes = 0;
 let synthesize: (input: any) => Promise<any> = async () => ({ error: false, outputPath: '/tmp/tts-controls.wav', publicPath: '/audio/test' });
 const synthesized: string[] = [];
@@ -31,8 +34,17 @@ const cache = {
   }
 };
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => cache } });
+mock.module('../desktop_ai/activity.js', { namedExports: {
+  prepareSpeechActivity: async (value: object) => ({ ...value, fence: 'test' }), startSpeechActivity: async () => true,
+  finishSpeechActivity: async (activity: { playbackId: string }) => { finishedActivities.push(activity.playbackId); }, extendSpeechActivity: async () => true,
+  retireMatchingSpeechActivity: async (channel: string, speech: string, _generation: number, _deadline: number, proof: { source: string }) => { retiredSources.set(`${channel}:${speech}`, proof.source); return true; },
+  confirmRetiredSpeechActivity: async (channel: string, proof: { source?: string }, speech: string) => {
+    const key = `${channel}:${speech}`; if (!retiredSources.has(key) || retiredSources.get(key) !== proof.source) return false;
+    retiredSources.delete(key); confirmedRetired.push(key); return true;
+  },
+} });
 mock.module('../server/websocket.js', { namedExports: { getIO: () => ({ of: (channel: string) => ({
-  sockets: new Map([['overlay', { connected: true, data: { ttsReady: true }, conn: { close: () => { refreshes++; } } }]]),
+  sockets: new Map(legacyReady ? [['overlay', { id: 'overlay', connected: true, data: { ttsReady: true }, emit: (event: string, payload: any) => events.push({ channel, event, payload }), conn: { close: () => { refreshes++; } } }]] : []),
   emit: (event: string, payload: any) => events.push({ channel, event, payload })
 }) }) } });
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: { getTwitchAccountById: async () => ({ plan_tier: 'free' }) } });
@@ -109,7 +121,7 @@ test('refresh resets speech sources and forwards Studio recovery; empty controls
 test('control during the Studio handoff never delivers stale audio after the reset', async () => {
   let release!: () => void;
   registerStudioBridge({ hasSource: () => false, trigger: async () => {},
-    media: () => new Promise<void>(done => { release = done; }),
+    media: async () => {}, readTts: () => new Promise<void>(done => { release = done; }),
     controlTts: async () => {} });
   seed('handoff', 'handoff-a');
   const processing = handler.processNext('handoff');
@@ -142,4 +154,39 @@ test('read-only status distinguishes preparing from playing, counts waiting spee
   await processing;
   assert.deepEqual(await handler.getStatus('status'), { connected: true, playing: true, preparing: false, queueLength: 3 });
   await handler.control('status', 'clear');
+});
+
+test('queue controls keep audible speech gated until a matching player stop is known', async () => {
+  seed('pending-stop', 'pending-stop-a');
+  await handler.processNext('pending-stop');
+  assert.ok(dispatched('pending-stop-a'));
+  await handler.control('pending-stop', 'skip');
+  assert.equal(finishedActivities.includes('pending-stop-a'), false, 'skip only requests remote stop');
+  seed('confirmed-stop', 'confirmed-stop-a');
+  await handler.processNext('confirmed-stop');
+  await handler.handleOverlayEnded('confirmed-stop', 'confirmed-stop-a', 'ended', 'legacy:overlay', true);
+  assert.equal(finishedActivities.includes('confirmed-stop-a'), true, 'elected player end releases its gate');
+});
+
+test('Studio skip before first playback report retains the exact owner for late confirmation', async () => {
+  legacyReady = false;
+  registerStudioBridge({ hasSource: () => true, hasLiveSource: () => true, media: async () => {}, trigger: async () => {},
+    readTts: async (_channel, input) => {
+      if (input.beforeEmit?.() === false) return 'cancelled';
+      input.onOwner?.('studio:elected-socket'); return 'emitted';
+    }, controlTts: async () => {}, endReadTts: async () => {} });
+  try {
+    seed('studio-proof', 'studio-proof-a');
+    await handler.processNext('studio-proof');
+    assert.equal((handler as any).readTtsOwners.get('studio-proof')?.source, 'studio:elected-socket');
+    await handler.handleOverlayEnded('studio-proof', 'studio-proof-a', 'ended', 'studio:other-socket', true);
+    assert.equal(data.get('twitch:studio-proof:tts:processing'), 'studio-proof-a', 'a non-owner cannot finish live audio');
+    await handler.control('studio-proof', 'skip');
+    const key = 'studio-proof:studio-proof-a';
+    assert.equal(retiredSources.get(key), 'studio:elected-socket');
+    await handler.handleOverlayEnded('studio-proof', 'studio-proof-a', 'ended', 'studio:other-socket', true);
+    assert.equal(confirmedRetired.includes(key), false, 'a non-owner cannot release the retired gate');
+    await handler.handleOverlayEnded('studio-proof', 'studio-proof-a', 'ended', 'studio:elected-socket', true);
+    assert.equal(confirmedRetired.includes(key), true, 'the original owner can release the retired gate');
+  } finally { legacyReady = true; await handler.cleanupChannel('studio-proof'); }
 });

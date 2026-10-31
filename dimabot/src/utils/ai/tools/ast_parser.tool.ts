@@ -22,6 +22,8 @@ export interface ASTParserToolResult {
     docs?: AstCatalogEntry;
     /** Present with docs: the model may correct the call and retry exactly once. */
     retryHint?: string;
+    /** A caught exception may follow a successful remote side effect. */
+    outcomeUnknown?: boolean;
 }
 
 export interface ASTParserToolContext {
@@ -30,6 +32,7 @@ export interface ASTParserToolContext {
     username?: string;
     userID?: string;
     tags?: Record<string, unknown>;
+    origin?: 'oauth_desktop';
 }
 
 export interface ASTParserArgs {
@@ -93,7 +96,7 @@ export async function execute(
         };
     }
 
-    if (typeof userlevel !== 'number' || userlevel < 1 || userlevel > 9) {
+    if (typeof userlevel !== 'number' || userlevel < 1 || userlevel > (context.origin === 'oauth_desktop' ? 10 : 9)) {
         return {
             success: false,
             error: 'Userlevel must be a number between 1 and 9'
@@ -108,7 +111,9 @@ export async function execute(
     const actualLevel = Number.isFinite(rawActualLevel)
         ? Math.max(1, Math.min(10, Math.trunc(rawActualLevel)))
         : 1;
-    const effectiveLevel = Math.min(userlevel, actualLevel);
+    // Desktop authority comes from the authenticated server-side context, not
+    // from the model's requested level. This is the owner's own message.
+    const effectiveLevel = context.origin === 'oauth_desktop' && actualLevel === 10 ? 10 : Math.min(userlevel, actualLevel);
 
     try {
         // Get streamer data for context
@@ -137,6 +142,7 @@ export async function execute(
             streamer: streamerData,
             authorization: {
                 origin: 'llm' as const,
+                ...(context.origin === 'oauth_desktop' ? { auditOrigin: 'oauth_desktop' as const } : {}),
                 identity: authorizationIdentity
             }
         };
@@ -198,6 +204,7 @@ export async function execute(
         return {
             success: false,
             error: error instanceof Error ? error.message : String(error),
+            ...(context.origin === 'oauth_desktop' ? { outcomeUnknown: true } : {}),
             ...buildFailureDocs(command)
         };
     }

@@ -76,7 +76,8 @@ let result = await call('/.well-known/oauth-authorization-server');
 assert.equal(result.status, 200);
 assert.deepEqual(result.body.code_challenge_methods_supported, ['S256']);
 assert.ok(result.body.scopes_supported.includes('credits:read'));
-assert.ok(!result.body.scopes_supported.includes('pet:interact'));
+assert.ok(result.body.scopes_supported.includes('pet:interact'));
+assert.ok(result.body.scopes_supported.includes('ai:interact'));
 assert.ok(result.body.scopes_supported.includes('pet:playback:select'));
 assert.deepEqual(result.body.beta.socket_io, { path: '/socket.io/', namespace: '/desktop', protocol_version: 1 });
 assert.match(result.headers.get('cache-control'), /no-store/);
@@ -97,7 +98,7 @@ for (const override of [
   { redirect_uri: 'https://evil.invalid/oauth/callback' }, { redirect_uri: 'http://localhost:42781/oauth/callback' },
   { redirect_uri: 'http://127.0.0.1:42781/other' }, { redirect_uri: 'http://127.0.0.1:42781/oauth/callback?redirect=evil' },
   { redirect_uri: 'http://127.0.0.1:42781/oauth/callback#fragment' }, { client_id: 'unknown' }, { scope: '*' },
-  { scope: 'pet:interact' }, { scope: 'profile:read  credits:read' }, { device_name: 'bad\nname' }
+  { scope: 'usage:read' }, { scope: 'profile:read  credits:read' }, { device_name: 'bad\nname' }
 ]) assert.equal((await begin(undefined, override)).status, 400, JSON.stringify(override));
 assert.equal((await begin(undefined, { redirect_uri: 'http://[::1]:42781/oauth/callback' })).status, 302);
 result = await call('/oauth/authorize?client_id=dima-desktop&client_id=other');

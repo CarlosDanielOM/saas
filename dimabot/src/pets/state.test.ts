@@ -2,12 +2,15 @@ import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 
 const owner = '111111111111111111111111';
-let request = { _id: 'request-a', ownerId: owner, generation: 7, status: 'ready' };
+let request: any = { _id: 'request-a', ownerId: owner, generation: 7, status: 'ready' };
 let runtime = { _id: owner, generation: 7, activeRequestId: 'request-a', lease: { leaseId: 'lease-a', holderPeerId: 'peer-a', expiresAt: new Date(Date.now() + 15_000) }, notBefore: new Date(0) };
 let interleave = false, readinessDeletes = 0;
 const runtimeUpdates: any[] = [];
 const terminal = ['completed', 'cancelled', 'failed', 'expired'];
 const query = <T>(read: () => T) => ({ lean: async () => read() });
+const activityFinished: string[] = [], activityRetired: any[] = [];
+mock.module('../desktop_ai/activity.js', { namedExports: { finishMatchingSpeechActivity: async (_channel: string, id: string) => { activityFinished.push(id); },
+    retireMatchingSpeechActivity: async (...args: any[]) => { activityRetired.push(args); } } });
 mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
     PET_TERMINAL: terminal,
     PetRequest: {
@@ -38,7 +41,7 @@ mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
 } });
 mock.module('./readiness.schema.js', { namedExports: { PetReadiness: { deleteOne: async () => { readinessDeletes++; } } } });
 mock.module('./wakeups.js', { namedExports: { PET_WAKE: 'pet:test', petWakeups: { notify: () => {} } } });
-const { cancelPetRequest, finishRequest } = await import('./state.js');
+const { cancelPetRequest, finishRequest, invalidatePet } = await import('./state.js');
 
 test('cancelling A loses its CAS after completion/replacement; B generation and lease remain untouched', async () => {
     interleave = true;
@@ -78,4 +81,21 @@ test('released players never see the internal queued status', async () => {
     const view = requestView({ _id: 'request-q', operation: 'talk', status: 'queued', version: 1 } as never);
     assert.equal(view!.status, 'accepted');
     assert.equal(requestView({ _id: 'request-r', operation: 'ask', status: 'playing', version: 3 } as never)!.status, 'playing');
+});
+
+test('an unconfirmed Pet stop keeps activity until the captured lease deadline; player confirmation releases it', async () => {
+    resetFinish(); activityFinished.length = 0; activityRetired.length = 0;
+    request = { ...request, channelId: '123', audio: { path: '/private/audio' }, operation: 'talk', origin: { kind: 'oauth_desktop' } };
+    const leaseExpiry = runtime.lease.expiresAt.getTime();
+    assert.equal(await invalidatePet(owner, 'cancelled', { requestId: 'request-a', generation: 7 }), true);
+    assert.deepEqual(activityFinished, [], 'server cancellation must not claim that the player stopped');
+    assert.equal(activityRetired.length, 1);
+    assert.equal(activityRetired[0][0], '123'); assert.equal(activityRetired[0][1], 'request-a');
+    assert.equal(activityRetired[0][3], leaseExpiry);
+    assert.deepEqual(activityRetired[0][4], { kind: 'pet', ownerId: owner, peerId: 'peer-a', leaseId: 'lease-a', requestId: 'request-a', generation: 7 });
+
+    resetFinish(); activityFinished.length = 0;
+    request = { ...request, channelId: '123', audio: { path: '/private/audio' } };
+    await finishRequest('request-a', 'completed', undefined, undefined, true);
+    assert.deepEqual(activityFinished, ['request-a'], 'the elected player terminal report proves silence');
 });

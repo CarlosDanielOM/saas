@@ -288,7 +288,9 @@ assert.equal(filteredRecord.outputText, 'Hello [link] world');
 assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).at(-1).body.text, filteredRecord.outputText);
 const filteredBilling = (await redis.lRange('pet:test:billing-events', 0, -1)).map(JSON.parse).find(item => item.external_id === `${filtered.requestId}:tts`);
 assert.equal(filteredBilling.metadata.characters, filteredRecord.outputText.length);
-await desktop.send('pet:playback', identityFor(filteredPlay, 0, 'error'));
+// This virtual player has actually finished. An error now requests a fenced
+// stop and cannot stand in for confirmed silence on a legacy desktop.
+await desktop.send('pet:playback', identityFor(filteredPlay, 0, 'ended'));
 const emptyCounts = { providers: await redis.lLen('pet:test:provider-calls'), billing: await redis.lLen('pet:test:billing-events') };
 const empty = await admitPetAction(action('Kappa [happy]'));
 const emptyRecord = await until(() => PetRequest.findOne({ _id: empty.requestId, status: 'failed', errorCode: 'no_speakable_text' }).lean(), 'empty filtered speech fails');
@@ -301,7 +303,7 @@ const unfilteredPlay = await desktop.event('pet:play', data => data.requestId ==
 const unfilteredText = (await PetRequest.findById(unfiltered.requestId).lean()).outputText;
 assert.equal(unfilteredText, 'Kappa example.com 123456789012');
 assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).at(-1).body.text, unfilteredText);
-await desktop.send('pet:playback', identityFor(unfilteredPlay, 0, 'error'));
+await desktop.send('pet:playback', identityFor(unfilteredPlay, 0, 'ended'));
 await upsertChannelTtsSettings(owner, {});
 // Redis is advisory even in a real producer process: a refused connection cannot delay Mongo admission.
 // pet.talk needs Redis for its TTS queue item; an independent pet.ask is Mongo-only.
@@ -311,7 +313,7 @@ assert.ok(outage.elapsedMs < 2000, 'Mongo acceptance must not wait for Redis con
 // Explicitly prompt the healthy API after proving producer acceptance (recovery also remains enabled).
 await notifyPet(ownerId);
 const outagePlay = await desktop.event('pet:play', data => data.requestId === outage.result.requestId);
-await desktop.send('pet:playback', identityFor(outagePlay, 0, 'error'));
+await desktop.send('pet:playback', identityFor(outagePlay, 0, 'ended'));
 // The next request resets request-scoped sequence, under the same lease.
 const next = await admitPetAction(action('Second speech'));
 const nextPlay = await desktop.event('pet:play', data => data.requestId === next.requestId);
@@ -467,7 +469,7 @@ const fallbackPlay = await desktop.event('pet:play', data => data.requestId === 
 assert.equal(fallbackPlay.audio.mimeType, 'audio/wav');
 assert.equal((await PetRequest.findById(fallback.requestId).lean()).outputText, 'Use [link] fallback');
 assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).at(-1).body.text, 'Use [link] fallback');
-await desktop.send('pet:playback', identityFor(fallbackPlay, 0, 'error'));
+await desktop.send('pet:playback', identityFor(fallbackPlay, 0, 'ended'));
 // Keep unavailable-credit Piper fallback for the admission-only crash fixture;
 // paid Fish in this provider fixture deliberately returns HTTP 503.
 // A crash between request insert and runtime CAS is resolved by an identical duplicate.
@@ -481,7 +483,7 @@ const partialDuplicate = await admitPetAction(partialInput);
 assert.equal(partialDuplicate.requestId, partialId);
 assert.equal((await PetRequest.findById(partialId).lean()).admitted, true);
 const partialPlay = await desktop.event('pet:play', data => data.requestId === partialId);
-await desktop.send('pet:playback', identityFor(partialPlay, 0, 'error'));
+await desktop.send('pet:playback', identityFor(partialPlay, 0, 'ended'));
 await credits();
 // Public capability and original asset ownership/deletion guards.
 const badAssets = { ...configuration.settings, appearance: { kind: 'png', idleAssetId: String(foreignAsset), talkingAssetId: String(assetId) } };

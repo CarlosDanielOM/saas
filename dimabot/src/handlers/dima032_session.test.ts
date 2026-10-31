@@ -69,6 +69,11 @@ const cache = {
   }
 };
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => cache } });
+mock.module('../desktop_ai/activity.js', { namedExports: {
+  prepareSpeechActivity: async (value: object) => ({ ...value, fence: 'test' }), startSpeechActivity: async () => true,
+  finishSpeechActivity: async () => {}, extendSpeechActivity: async () => true,
+  retireMatchingSpeechActivity: async () => true, confirmRetiredSpeechActivity: async () => false,
+} });
 mock.module('../server/websocket.js', { namedExports: { getIO: () => ({ _nsps: legacyNamespaces, of: (channel: string) => ({
   sockets: legacySockets,
   emit: (event: string, payload: any) => events.push({ channel, event, payload })
@@ -181,7 +186,8 @@ registerStudioBridge({ queueChannels: function* () {
   const entries=studioChannels.entries();
   for(let remaining=studioChannels.size;remaining>0;remaining--){const entry=entries.next();if(entry.done)return;yield entry.value[1]?entry.value[0]:undefined;}
 }, hasSource: channel => graceConnected && !blockedStudioChannels.has(channel), hasLiveSource: channel => studioConnected && !blockedStudioChannels.has(channel), media: async () => {}, trigger: async () => {}, controlTts: async (channel,action) => {if(beforeStudioControl)await beforeStudioControl(channel,action);}, endReadTts: async () => {const hook=beforeStudioEnd;beforeStudioEnd=undefined;if(hook)await hook();}, readTts: async (_channel, input) => {
-  publishAttempts++; if (!studioConnected) return 'unavailable'; if(input.beforeEmit?.()===false)return 'cancelled';onStudioPlayback?.(_channel,input.speechID);return 'emitted';
+  publishAttempts++; if (!studioConnected) return 'unavailable'; if(input.beforeEmit?.()===false)return 'cancelled';
+  if (!input.legacy && input.file) input.onOwner?.('studio:fixture'); onStudioPlayback?.(_channel,input.speechID);return 'emitted';
 } });
 function barrier() { let resolve!: () => void; const promise = new Promise<void>(done => { resolve = done; }); return { promise, resolve }; }
 // Observe the real scheduled callback, including a scan that correctly skips
@@ -424,7 +430,8 @@ for(const action of ['skip','clear'] as const) for(const setting of ['readTts','
   config.runtime.readTtsEnabled=false;config.revision++;runtime.generation++;await invalidateReadTts(owner,'settings_changed');
   seed('ordinary-after');await handler.processNext(channel);
   try {
-    assert.equal((handler as any).readTtsOwners.has(channel),false);
+    assert.equal((handler as any).readTtsOwners.get(channel)?.speechId,'ordinary-after', 'new ordinary audio owns a fresh correlated slot');
+    assert.equal((handler as any).readTtsOwners.get(channel)?.source,'legacy:legacy-a');
     handler.handleSpeechPlayback(channel,{speechID:'ordinary-after',phase:'playing',position:0.5},'legacy:legacy-a');
     assert.equal((handler as any).playbackPositions.get(`${channel}:ordinary-after`),0.5);
     await handler.handleOverlayEnded(channel,'ordinary-after','ended','legacy:legacy-a');
@@ -914,15 +921,11 @@ for(const source of ['studio-disabled','legacy-disabled','pet-off-on'] as const)
     assert.equal(internals.capacityWaiters.size,0);assert.equal(internals.readHeads.size,0);
     await handler.recoverQueuedTts();
     const emitted=()=>source==='pet-off-on'?internals.readHeads.get(channel)?.phase==='emitted':internals.dispatchedSpeechIds.has(channel);
-    if(source==='studio-disabled') {
-      // Ordinary Studio persists the handoff and retires the queue item itself.
-      await until(()=>usage===2&&!internals.processingChannels.has(channel));
-    } else {
-      await until(()=>usage===1&&emitted());
-      assert.deepEqual(synthesized,[`registry-${source}-A`]);
-      await handler.handleSpeechEnded(channel,`registry-${source}-A`);
-      await until(()=>usage===2&&emitted());
-    }
+    // Studio and legacy both keep the output slot until the elected player ends.
+    await until(()=>usage===1&&emitted());
+    assert.deepEqual(synthesized,[`registry-${source}-A`]);
+    await handler.handleSpeechEnded(channel,`registry-${source}-A`);
+    await until(()=>usage===2&&emitted());
     assert.deepEqual(synthesized,[`registry-${source}-A`,`registry-${source}-B`]);
     await handler.handleSpeechEnded(channel,`registry-${source}-B`);
     await handler.recoverQueuedTts();await new Promise<void>(done=>setImmediate(done));

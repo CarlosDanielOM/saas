@@ -28,6 +28,7 @@ import { reconcileLiveSessionsOnStartup, startStreamAnalyticsWorker } from '../u
 import { startSiteAnalytics, refreshSiteAnalyticsSnapshot } from '../utils/siteanalytics.js';
 import startSDKLogger from '../utils/opentelemetry_posthog.js';
 import { initializeOAuth } from './oauth/service.js';
+import { startDesktopAiRuntime } from '../desktop_ai/service.js';
 
 startTelemetry();
 instrumentFetch();
@@ -122,6 +123,7 @@ if (process.env.STREAM_ANALYTICS_INLINE === 'true') {
 
 const app = await server();
 const websocketServer = await websocket(app);
+await startDesktopAiRuntime();
 
 if (websocketServer) {
     websocketServer.listen(3000, () => {

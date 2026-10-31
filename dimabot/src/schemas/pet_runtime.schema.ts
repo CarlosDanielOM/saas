@@ -5,7 +5,7 @@ export type PetStatus = typeof PET_STATUSES[number];
 export const PET_TERMINAL: PetStatus[] = ['completed', 'cancelled', 'failed', 'expired'];
 export interface PetRequestRecord {
     _id: string; ownerId: string; channelId: string; operation: 'talk' | 'ask' | 'tts'; text: string;
-    origin: { kind: 'chat-command' | 'twitch-event' | 'tts-queue'; id: string; occurredAt: string };
+    origin: { kind: 'chat-command' | 'twitch-event' | 'tts-queue' | 'oauth_desktop'; id: string; occurredAt: string; sessionId?: string };
     actionKey: string; actor: { userId: string; displayName: string; chat?: { login: string; message: string; badges: { set_id: string; id: string; info: string }[] } }; payloadHash: string;
     admitted: boolean; startBefore?: Date; generation: number; settingsRevision: number; status: PetStatus; version: number;
     outputText?: string; errorCode?: string; phaseDeadline: Date;
@@ -17,7 +17,7 @@ export interface PetRequestRecord {
 }
 const request = new Schema<PetRequestRecord>({
     _id: String, ownerId: { type: String, required: true }, channelId: String, operation: String, text: String,
-    origin: { kind: String, id: String, occurredAt: String }, actionKey: String,
+    origin: { kind: String, id: String, occurredAt: String, sessionId: String }, actionKey: String,
     actor: { userId: String, displayName: String, chat: { login: String, message: String, badges: [{ set_id: String, id: String, info: String, _id: false }] } }, payloadHash: String,
     admitted: { type: Boolean, default: false }, startBefore: Date, generation: Number, settingsRevision: Number, status: { type: String, enum: PET_STATUSES }, version: Number,
     deliveryAttempted: Boolean, audioFetched: Boolean, playbackStarted: Boolean, lane: { type: String, enum: ['independent', 'tts'] }, ttsSpeechId: String, privateDir: String, outputText: String, errorCode: String, phaseDeadline: Date,

@@ -6,7 +6,7 @@ import { Adapter, SessionAwareAdapter } from 'socket.io-adapter';
  * Other namespaces retain the server's existing connection recovery policy.
  */
 export function petSocketAdapter(namespace: Namespace): Adapter {
-    return namespace.name === '/desktop' || namespace.name === '/pet'
+    return namespace.name === '/desktop' || namespace.name === '/desktop-ai' || namespace.name === '/pet'
         ? new Adapter(namespace)
         : new SessionAwareAdapter(namespace);
 }

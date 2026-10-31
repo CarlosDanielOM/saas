@@ -16,6 +16,7 @@ import { getLiveSessionMetrics } from "../utils/stream_analytics.js";
 import { registerPetSockets } from '../pets/socket.js';
 import { petSocketAdapter } from '../pets/socket_adapter.js';
 import { attachDesktopWebsocket } from './oauth/desktop-websocket.js';
+import { registerDesktopSpeechActivity } from '../desktop_ai/activity.js';
 
 const DASHBOARD_LIVE_STATUS_INTERVAL_MS = Math.max(1000, Number(process.env.DASHBOARD_LIVE_STATUS_INTERVAL_MS || 1000));
 
@@ -49,8 +50,9 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
             destroyUpgrade: false
         });
         attachDesktopWebsocket(server);
+        const stopDesktopSpeechActivity = registerDesktopSpeechActivity(io);
         const stopPetRuntime = await registerPetSockets(io);
-        server.once('close', () => { void stopPetRuntime().catch(() => {}); });
+        server.once('close', () => { stopDesktopSpeechActivity(); void stopPetRuntime().catch(() => {}); });
 
         registerVoicePreview(io);
         registerRouletteOverlay(io);
@@ -309,7 +311,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
                 ttsQueueHandler.handleSpeechPlayback(channelID, data, `legacy:${socket.id}`);
             });
             socket.on('speech-ended', async (data: { speechID?: string, reason?: string }) => {
-                await ttsQueueHandler.handleOverlayEnded(channelID, data?.speechID, data?.reason, `legacy:${socket.id}`);
+                await ttsQueueHandler.handleOverlayEnded(channelID, data?.speechID, data?.reason, `legacy:${socket.id}`, true);
             });
 
             // Handle disconnect with 5s delay

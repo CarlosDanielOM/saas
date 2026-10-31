@@ -43,7 +43,9 @@ test('one elected Studio owns media; cross-scene reused clientId stays caption-o
     const owner = await connect(publicA, clientA, 'socket-owner');
     const caption = await connect(publicA, clientB, 'socket-caption');
     const otherScene = await connect(publicB, clientA, 'socket-other-scene');
-    await publishStudioReadTts(channel, { speechID: 'speech-a', durationMs: 0, text: 'preserve captions', legacy: false, file: '/normal/original-long.wav', mime: 'audio/wav' });
+    const source: string[] = [];
+    await publishStudioReadTts(channel, { speechID: 'speech-a', durationMs: 0, text: 'preserve captions', legacy: false, file: '/normal/original-long.wav', mime: 'audio/wav', onOwner: value => source.push(value) });
+    assert.deepEqual(source, ['studio:socket-owner'], 'the exact elected owner is recorded before dispatch');
     const item = owner.events.find(event => event.event === 'overlay-event')!.data;
     assert.equal(item.tts.durationMs, 60000); assert.equal(item.tts.ownerClientId, clientA);
     const ownerEvent = await eventFor(publicA, item.id, clientA, owner.id); assert.ok(ownerEvent?.media?.url?.includes('socketId=socket-owner'));

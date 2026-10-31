@@ -24,7 +24,7 @@ test('pet namespaces emit two-argument events without recovery state; unrelated 
     const recoveryTimers = () => intervals.mock.calls.filter(call => call.arguments[1] === 60_000).length;
     const unrelated = io.of('/existing');
     assert.equal(recoveryTimers(), 2, 'only root and unrelated namespaces construct recovery adapters');
-    for (const name of ['/desktop', '/pet']) {
+    for (const name of ['/desktop', '/desktop-ai', '/pet']) {
         const namespace = io.of(name);
         assert.equal(namespace.adapter.constructor, Adapter);
         assert.equal(namespace.adapter instanceof SessionAwareAdapter, false);
@@ -69,7 +69,7 @@ test('pet namespaces emit two-argument events without recovery state; unrelated 
         const stopped = once(socket, 'disconnect'); client.ws.terminate(); await stopped;
         return socket;
     }
-    for (const name of ['/desktop', '/pet']) {
+    for (const name of ['/desktop', '/desktop-ai', '/pet']) {
         const namespace = io.of(name), first = await connect(namespace);
         await first.event('pet:snapshot');
         namespace.emit('pet:request', { v: 1 });

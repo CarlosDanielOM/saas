@@ -144,6 +144,11 @@ export async function publishStudioReadTts(channel: string, input: ReadTtsDelive
   const ownerClientId = owner ? String(owner.socket!.handshake.auth.clientId) : null;
   const epochs = Object.fromEntries(selected.map(peer => [peer.key, peer.socket!.id]));
   const current = () => !input.cancelled?.() && (!owner || !!owner.socket?.connected && owner.socket.id === epochs[owner.key]);
+  const beforeEmit = () => {
+    if (!current() || input.beforeEmit?.() === false) return false;
+    if (owner) input.onOwner?.(`studio:${epochs[owner.key]}`);
+    return true;
+  };
   if (!current()) return input.cancelled?.() ? 'cancelled' : 'unavailable';
   const retained = owner && input.file ? await retainFile(input.file) : {};
   const emitted = await deliver({ channel, speechID: input.speechID, ttsOwnerKey: owner?.key,
@@ -151,7 +156,7 @@ export async function publishStudioReadTts(channel: string, input: ReadTtsDelive
     event: { id: randomUUID(), kind: 'tts', platform: 'twitch', text: input.text,
       tts: { speechID: input.speechID, ownerClientId, durationMs: Math.max(1, Math.min(60_000, input.durationMs || 60_000)) },
       ...(owner ? { media: { type: 'audio' as const, title: input.text, volume: 1 } } : {}) },
-    ...retained, mime: input.mime, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), recipients: new Set(selected.map(peer => peer.key)) }, selected, current, input.beforeEmit);
+    ...retained, mime: input.mime, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), recipients: new Set(selected.map(peer => peer.key)) }, selected, current, beforeEmit);
   return emitted ? 'emitted' : input.cancelled?.() ? 'cancelled' : 'unavailable';
 }
 export async function endStudioReadTts(channel: string, speechID: string) {
@@ -173,7 +178,7 @@ async function reportTts(item: Pending, peer: Peer, raw: unknown, ended: boolean
   if (!ended && (!['loading', 'playing', 'progress', 'recovering'].includes(String(report.phase)) || typeof report.position !== 'number' || !Number.isFinite(report.position) || report.position < 0 || report.position > 3600)) return;
   if (ended) item.ttsTerminal = true; // Claim before first await; generic ACK cannot remove the correlation.
   const { ttsQueueHandler } = await import('../handlers/tts_queue.handler.js');
-  if (ended) await ttsQueueHandler.handleSpeechEnded(item.channel, item.speechID, typeof report.reason === 'string' ? report.reason.slice(0, 64) : 'ended');
+  if (ended) await ttsQueueHandler.handleOverlayEnded(item.channel, item.speechID, typeof report.reason === 'string' ? report.reason.slice(0, 64) : 'ended', `studio:${peer.socket!.id}`, report.reason === 'ended');
   else ttsQueueHandler.handleSpeechPlayback(item.channel, { speechID: item.speechID, phase: String(report.phase), position: Number(report.position) }, `studio:${peer.socket!.id}`);
 }
 /** Copy generated media BEFORE releasing its producer. Files live until every subscriber finishes. */
@@ -402,6 +407,14 @@ export function registerStudio(io: Server): void {
       if (peers.get(key) !== peer || !raw || typeof raw !== 'object') return;
       const item = pending.get(String((raw as Record<string, unknown>).eventId));
       if (item) void reportTts(item, peer, raw, ended).catch(() => { pollingFailed = true; });
+      else if (ended && (raw as Record<string, unknown>).reason === 'ended' && typeof (raw as Record<string, unknown>).speechID === 'string') {
+        // A reset may have discarded the original delivery before its actual
+        // stop report arrived. The activity ledger still requires the exact
+        // original socket and speech ID before it releases anything.
+        const speech = String((raw as Record<string, unknown>).speechID);
+        void import('../handlers/tts_queue.handler.js').then(({ ttsQueueHandler }) =>
+          ttsQueueHandler.handleOverlayEnded(peer.channel, speech, 'stopped', `studio:${socket.id}`, true)).catch(() => { pollingFailed = true; });
+      }
     });
     socket.on('overlay-ended', (id: unknown, ack?: () => void) => {
       if (peers.get(key) !== peer || typeof id !== 'string') return;

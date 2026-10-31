@@ -67,6 +67,8 @@ export interface ToolContext {
     username?: string;
     userID?: string;
     tags?: Record<string, any>;
+    /** Set by the server for authenticated desktop turns, never by the client. */
+    origin?: 'oauth_desktop';
 }
 
 /**

@@ -32,7 +32,9 @@ import { claimQueued, nextIndependentQueued } from './queue.js';
 import { registerPetLaneBridge, type PetLaneItem, type PetLaneStart } from './tts_lane.js';
 import { getChannelTtsSettings } from '../schemas/channel_tts_settings.schema.js';
 import { getTtsEmoteNames } from '../utils/tts/emote_names.util.js';
-import { filterPetTalkText } from './speech_text.js';
+import { filterPetTalkText, refilterDesktopPetText } from './speech_text.js';
+import { DesktopAiTurn } from '../desktop_ai/schema.js';
+import { prepareSpeechActivity, startSpeechActivity, finishSpeechActivity, type SpeechActivityHandle } from '../desktop_ai/activity.js';
 
 const tasks = new Map<string, { controller: AbortController; requestId: string; generation: number }>();
 const MAX_ACTIVE_PROVIDERS = 4;
@@ -94,6 +96,23 @@ async function current(request: PetRequestRecord) {
     if (configuration.settings.appearance.kind === 'vts' && !await selectedVtsController(request.ownerId, configuration.settings.playback.vtsSessionId)) throw new PetError('vts_unavailable', 409);
     const live = await PetRuntime.findOne({ _id: request.ownerId, generation: request.generation, activeRequestId: request._id, 'lease.expiresAt': { $gt: new Date() } }).lean();
     if (!live) throw new PetError('stale_request', 409);
+    // A desktop-origin request may only speak on the originating elected
+    // desktop. Do not transfer it to a browser or another installation.
+    const origin = request.origin as { kind: string; sessionId?: string };
+    if (origin.kind === 'oauth_desktop') {
+        const holder = live.lease && petPeers.get(live.lease.holderPeerId);
+        if (!origin.sessionId || configuration.settings.playback.target !== 'desktop' ||
+            configuration.settings.playback.desktopSessionId !== origin.sessionId || !holder ||
+            holder.kind !== 'desktop' || holder.sessionId !== origin.sessionId || !holder.socket.connected) throw new PetError('output_unavailable', 409);
+        await holder.revalidate();
+        const stillLive = await PetRuntime.exists({ _id: request.ownerId, generation: request.generation, activeRequestId: request._id,
+            'lease.holderPeerId': holder.id, 'lease.expiresAt': { $gt: new Date() } });
+        if (!stillLive || !holder.socket.connected) throw new PetError('output_unavailable', 409);
+        // Speech-only cancellation must fence Pet admission even before its
+        // request ID has been linked back onto the parent desktop turn.
+        if (!await DesktopAiTurn.exists({ _id: request.origin.id, ownerId: request.ownerId, channelId: request.channelId,
+            'speech.status': { $in: ['queued', 'preparing'] } })) throw new PetError('cancelled', 409);
+    }
     return { runtime: live, configuration };
 }
 async function phase(request: PetRequestRecord, status: 'generating' | 'synthesizing', outputText?: string) {
@@ -106,6 +125,8 @@ async function phase(request: PetRequestRecord, status: 'generating' | 'synthesi
 }
 async function generate(request: PetRequestRecord, signal: AbortSignal) {
     let directory: string | undefined;
+    let activity: SpeechActivityHandle | undefined;
+    let delivered = false;
     try {
         let { configuration } = await current(request);
         const owner = await Users.findById(request.ownerId).select('plan_tier polar_sh_customer_id').lean();
@@ -166,9 +187,18 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
             const emoteNames = settings.filters.skipEmotes ? await getTtsEmoteNames(request.channelId) : [];
             signal.throwIfAborted();
             await current(request);
-            const normalized = filterPetTalkText(text, tts.provider, settings.filters, emoteNames);
+            const desktop = request.origin.kind === 'oauth_desktop';
+            // Credits may have changed while queued. Use the actual effective
+            // provider and update the parent before generating audio.
+            const normalized = desktop ? refilterDesktopPetText(text, tts.provider, settings.filters, emoteNames)
+                : filterPetTalkText(text, tts.provider, settings.filters, emoteNames);
             if (normalized.error) throw new PetError('no_speakable_text');
             tts.text = normalized.text;
+            if (desktop) {
+                const changed = await DesktopAiTurn.updateOne({ _id: request.origin.id, ownerId: request.ownerId, channelId: request.channelId,
+                    'speech.status': { $in: ['queued', 'preparing'] } }, { $set: { replyText: tts.text }, $inc: { revision: 1 } });
+                if (!changed.matchedCount) throw new PetError('cancelled', 409);
+            }
         }
         signal.throwIfAborted();
         await current(request);
@@ -190,6 +220,11 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         const { stdout } = await promisify(execFile)('ffprobe', ['-v', 'error', '-protocol_whitelist', 'file', '-show_entries', 'format=duration', '-of', 'json', audioPath], { timeout: 5000, maxBuffer: 4096 });
         const durationMs = Math.ceil(Number(JSON.parse(stdout).format?.duration) * 1000);
         if (!Number.isFinite(durationMs) || durationMs <= 0 || durationMs > MAX_PET_DURATION_MS) throw new PetError('audio_duration');
+        const prepared = await prepareSpeechActivity({ channelId: request.channelId, playbackId: request._id,
+            outputGeneration: request.generation, source: 'pet', expiresAt: Date.now() + durationMs + 30_000, signal });
+        if (!prepared) throw new PetError('output_unavailable', 409);
+        activity = prepared;
+        signal.throwIfAborted();
         const { runtime } = await current(request);
         const peer = petPeers.get(runtime.lease!.holderPeerId);
         if (!peer || !peer.socket.connected) throw new PetError('player_unavailable');
@@ -203,15 +238,20 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         await notifyPet(request.ownerId);
         const ticket = await issueAudioTicket(peer, ready, runtime.lease!);
         await current(ready);
+        if (!await startSpeechActivity(activity)) throw new PetError('output_unavailable', 409);
+        signal.throwIfAborted();
+        await current(ready);
         // This is the only play emission. Snapshot/reconnect/recovery never replay it.
         const sent = emitPetReadyAndPlay(peer, request.generation, requestView(ready)!, { v: 1, requestId: request._id, generation: request.generation,
             leaseId: runtime.lease!.leaseId, startBefore: ready.startBefore!.getTime(),
             audio: { url: `${(process.env.PUBLIC_API_URL || 'https://api.domdimabot.com').replace(/\/+$/, '')}/pets/playback/${request._id}/audio?ticket=${ticket}`, mimeType: result.mimeType, durationMs } });
         if (!sent) throw new PetError('stale_request');
+        delivered = true;
         directory = undefined; // Terminal/recovery cleanup owns the private file now.
     } catch (error) {
         await finishRequest(request._id, signal.aborted ? 'cancelled' : 'failed', error instanceof PetError ? error.code : 'provider_unavailable');
     } finally {
+        if (activity && !delivered) await finishSpeechActivity(activity, 'delivery_failed').catch(() => {});
         if (directory) await rm(directory, { force: true, recursive: true });
     }
 }

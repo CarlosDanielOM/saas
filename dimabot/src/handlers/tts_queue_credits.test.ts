@@ -37,8 +37,13 @@ const cache = {
   zCard: async () => 0,
 };
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => cache } });
+mock.module('../desktop_ai/activity.js', { namedExports: {
+  prepareSpeechActivity: async (value: object) => ({ ...value, fence: 'test' }), startSpeechActivity: async () => true,
+  finishSpeechActivity: async () => {}, extendSpeechActivity: async () => true,
+  retireMatchingSpeechActivity: async () => true, confirmRetiredSpeechActivity: async () => false,
+} });
 mock.module('../server/websocket.js', { namedExports: { getIO: () => playbackAvailable
-  ? { of: () => ({ sockets: new Map([['test', { connected: true, data: { ttsReady: true } }]]), emit: (event: string, payload: { mode: string; audioUrl: string }) => emitted.push({ event, payload }) }) }
+  ? { of: () => ({ sockets: new Map([['test', { id: 'test', connected: true, data: { ttsReady: true }, emit: (event: string, payload: { mode: string; audioUrl: string }) => emitted.push({ event, payload }) }]]), emit: (event: string, payload: { mode: string; audioUrl: string }) => emitted.push({ event, payload }) }) }
   : null } });
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: {
   getTwitchAccountById: async () => {
@@ -234,21 +239,21 @@ test('playback progress extends the deadline, stalled heartbeats do not, and dup
   playbackAvailable = true;
   scriptedQueue = [{ value: 'first' }, { value: 'second' }];
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const before = emitted.length;
+  const before = emitted.filter(event => event.event === 'speech').length;
   try {
     await ttsQueueHandler.processNext('timing');
-    ttsQueueHandler.handleSpeechPlayback('timing', { speechID: 'first', phase: 'loading', position: 0 });
+    ttsQueueHandler.handleSpeechPlayback('timing', { speechID: 'first', phase: 'loading', position: 0 }, 'legacy:test');
     t.mock.timers.tick(59_000);
-    assert.equal(emitted.length, before + 1);
-    ttsQueueHandler.handleSpeechPlayback('timing', { speechID: 'first', phase: 'progress', position: 1 });
+    assert.equal(emitted.filter(event => event.event === 'speech').length, before + 1);
+    ttsQueueHandler.handleSpeechPlayback('timing', { speechID: 'first', phase: 'progress', position: 1 }, 'legacy:test');
     t.mock.timers.tick(2_000);
-    assert.equal(emitted.length, before + 1, 'playing past dispatch deadline does not advance queue');
-    ttsQueueHandler.handleSpeechPlayback('timing', { speechID: 'first', phase: 'progress', position: 1 });
+    assert.equal(emitted.filter(event => event.event === 'speech').length, before + 1, 'playing past dispatch deadline does not advance queue');
+    ttsQueueHandler.handleSpeechPlayback('timing', { speechID: 'first', phase: 'progress', position: 1 }, 'legacy:test');
     t.mock.timers.tick(58_000);
-    for (let i = 0; i < 30 && emitted.length === before + 1; i++) {
+    for (let i = 0; i < 30 && emitted.filter(event => event.event === 'speech').length === before + 1; i++) {
       await new Promise<void>((resolve) => setImmediate(resolve));
     }
-    assert.equal(emitted.length, before + 2, 'stalled heartbeat cannot extend deadline');
+    assert.equal(emitted.filter(event => event.event === 'speech').length, before + 2, 'stalled heartbeat cannot extend deadline');
     await Promise.all([
       ttsQueueHandler.handleSpeechEnded('timing', 'second'),
       ttsQueueHandler.handleSpeechEnded('timing', 'second'),

@@ -18,6 +18,7 @@ export interface CreateMemoryToolResult {
     message: string;
     memoryId?: string;
     error?: string;
+    outcomeUnknown?: boolean;
 }
 
 interface CreateMemoryArgs {
@@ -34,6 +35,7 @@ interface ToolContext {
     username?: string;
     userID?: string;
     tags?: Record<string, any>;
+    origin?: 'oauth_desktop';
 }
 
 export async function execute(
@@ -55,6 +57,7 @@ export async function execute(
         const triggeringUserID = triggeredByUserID || tags?.chatter_user_id || tags?.userID || '';
         const triggeringMessage = tags?.message || tags?.text || content;
         const timestamp = Math.floor(Date.now() / 1000);
+        const source = context.origin === 'oauth_desktop' ? 'oauth_desktop' : 'chat';
 
         const subjectResult = resolveChatMemorySubject({
             type,
@@ -88,7 +91,7 @@ export async function execute(
             summary,
             evidence: [
                 {
-                    source: 'chat',
+                    source,
                     username: triggeringUsername,
                     userID: triggeringUserID,
                     message: triggeringMessage,
@@ -96,7 +99,7 @@ export async function execute(
                 }
             ],
             createdBy: {
-                source: 'chat',
+                source,
                 username: triggeringUsername,
                 userID: triggeringUserID
             },
@@ -159,7 +162,8 @@ export async function execute(
             confirmed: false,
             pending: false,
             message: 'Failed to save memory',
-            error: err instanceof Error ? err.message : String(err)
+            error: err instanceof Error ? err.message : String(err),
+            ...(context.origin === 'oauth_desktop' ? { outcomeUnknown: true } : {})
         };
     }
 }

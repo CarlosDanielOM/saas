@@ -8,17 +8,19 @@ import { getChannelTtsSettings } from '../schemas/channel_tts_settings.schema.js
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { generateSpeechID } from '../utils/tts/generate_speech_id.util.js';
 import { PetError, notifyPet, runtimeFor } from './state.js';
+import { OAuthSession } from '../schemas/oauth_session.schema.js';
+import { petPeers } from './peers.js';
 
 /** Internal trusted effect only. Source identity must be derived by the command/event engine. */
 export interface AdmitPetActionInput {
     channelId: string; operation: 'talk' | 'ask'; text: string;
-    origin: { kind: 'chat-command' | 'twitch-event'; id: string; occurredAt: string };
+    origin: { kind: 'chat-command' | 'twitch-event' | 'oauth_desktop'; id: string; occurredAt: string; sessionId?: string };
     actionKey: string; actor: { userId: string; displayName: string; chat?: { login: string; message: string; badges: { set_id: string; id: string; info: string }[] } };
 }
 export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requestId: string; status: string }> {
     if (!input || !/^\d{1,30}$/.test(input.channelId) || !['talk', 'ask'].includes(input.operation) ||
         typeof input.text !== 'string' || !input.text.trim() || input.text.length > 2000 ||
-        !['chat-command', 'twitch-event'].includes(input.origin?.kind) ||
+        !['chat-command', 'twitch-event', 'oauth_desktop'].includes(input.origin?.kind) ||
         typeof input.origin.id !== 'string' || !input.origin.id.trim() || input.origin.id.length > 200 ||
         typeof input.origin.occurredAt !== 'string' || !Number.isFinite(Date.parse(input.origin.occurredAt)) ||
         typeof input.actionKey !== 'string' || !input.actionKey.trim() || input.actionKey.length > 200 ||
@@ -27,10 +29,14 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
     const user = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: input.channelId } } }).select('_id').lean();
     if (!user) throw new PetError('account_required', 403);
     const ownerId = String(user._id);
+    const desktop = input.origin.kind === 'oauth_desktop';
+    if (desktop && (input.operation !== 'talk' || input.actor.userId !== input.channelId || !input.origin.sessionId ||
+        !await OAuthSession.exists({ _id: input.origin.sessionId, user_id: user._id, channel_id: input.channelId, scopes: 'pet:interact',
+            revoked_at: null, expires_at: { $gt: new Date() }, idle_expires_at: { $gt: new Date() } }))) throw new PetError('invalid_origin', 403);
     const identity = { ownerId, 'origin.kind': input.origin.kind, 'origin.id': input.origin.id, actionKey: input.actionKey };
     const payloadHash = createHash('sha256').update(JSON.stringify({ operation: input.operation, text: input.text,
         actor: { userId: input.actor.userId, displayName: input.actor.displayName }, occurredAt: input.origin.occurredAt,
-        ...(input.actor.chat ? { chat: input.actor.chat } : {}) })).digest('hex');
+        ...(input.actor.chat ? { chat: input.actor.chat } : {}), ...(desktop ? { sessionId: input.origin.sessionId } : {}) })).digest('hex');
     await PetRequest.init();
     const outcome = (record: PetRequestRecord) => {
         if (record.errorCode === 'busy') throw new PetError('busy', 409);
@@ -70,7 +76,7 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
         const claimed = await PetRuntime.findOneAndUpdate({ _id: ownerId, activeRequestId: null, generation: record.generation,
             'ttsReservation.expiresAt': { $not: { $gt: now } },
             'lease.leaseId': runtime.lease.leaseId, 'lease.expiresAt': { $gt: now },
-            $or: [{ lastAcceptedAt: null }, { lastAcceptedAt: { $lte: new Date(now.getTime() - configuration.settings.behavior.cooldownSeconds * 1000) } }]
+            ...(!desktop ? { $or: [{ lastAcceptedAt: null }, { lastAcceptedAt: { $lte: new Date(now.getTime() - configuration.settings.behavior.cooldownSeconds * 1000) } }] } : {})
         }, { $set: { activeRequestId: record._id, lastAcceptedAt: now, admissionClaimId: claimId } }).lean();
         const claimFilter = { _id: ownerId, activeRequestId: record._id, generation: record.generation, admissionClaimId: claimId,
             'lease.leaseId': runtime.lease.leaseId };
@@ -111,11 +117,17 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
     const settings = configuration.settings;
     if (settings.sources?.independent === false) throw new PetError('pet_source_disabled', 403);
     if (!configuration.runtime.enabled || !settings.tts.enabled) throw new PetError(configuration.runtime.issues[0] ?? 'pet_unavailable', 409);
-    if (!(input.origin.kind === 'chat-command' ? settings.behavior.respondToChat : settings.behavior.respondToEvents)) throw new PetError('trigger_disabled', 403);
+    if (!desktop && !(input.origin.kind === 'chat-command' ? settings.behavior.respondToChat : settings.behavior.respondToEvents)) throw new PetError('trigger_disabled', 403);
     if (input.operation === 'talk' && input.text.length > settings.behavior.maxReplyLength) throw new PetError('text_too_long');
     const runtime = await runtimeFor(ownerId, input.channelId);
     // Like the TTS queue, a missing player rejects; a busy pet, pending TTS turn or cooldown waits in line.
     if (!runtime.lease || runtime.lease.expiresAt.getTime() <= Date.now()) throw new PetError('player_unavailable', 409);
+    if (desktop) {
+        const peer = petPeers.get(runtime.lease.holderPeerId);
+        if (settings.playback.target !== 'desktop' || settings.playback.desktopSessionId !== input.origin.sessionId ||
+            !peer || peer.kind !== 'desktop' || peer.sessionId !== input.origin.sessionId || !peer.socket.connected) throw new PetError('output_unavailable', 409);
+        await peer.revalidate();
+    }
     // pet.talk always keeps its place among normal TTS messages; pet.ask follows the owner's choice.
     const lane = input.operation === 'talk' || settings.behavior.askLane === 'tts' ? 'tts' : 'independent';
     const queueSize = lane === 'tts' ? (await getChannelTtsSettings(input.channelId)).queue.maxItems : settings.behavior.queueSize ?? PET_DEFAULT_QUEUE_SIZE;

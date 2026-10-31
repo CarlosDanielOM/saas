@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeExpressiveTtsTags } from '../utils/tts/expressive_tts_tags.util.js';
-import { filterPetTalkText } from './speech_text.js';
+import { filterPetTalkText, refilterDesktopPetText } from './speech_text.js';
 import { resolveTtsForCreditStatus } from '../utils/tts/tts_credit_fallback.util.js';
 
 const filters = { skipEmotes: true, stripLinks: true, normalizeWhitespace: true, maxLength: 30,
@@ -21,4 +21,14 @@ test('credit fallback uses its effective provider before replacing links', () =>
     const resolved = resolveTtsForCreditStatus({ mode: 'speak', provider: 'fish', text: raw, language: 'en', voice: 'test' }, 'unavailable');
     assert.equal(resolved.provider, 'piper');
     assert.equal(filterPetTalkText(raw, resolved.provider, filters, []).text, 'visit [link]');
+});
+
+
+test('desktop Pet preserves enabled Fish tags and changes them only when effective provider falls back', () => {
+    const raw = '[happy] visit example.com';
+    const fish = resolveTtsForCreditStatus({ mode: 'speak', provider: 'fish', text: raw, language: 'en', voice: 'test' }, 'available');
+    const initial = filterPetTalkText(fish.text, fish.provider, filters, []).text;
+    assert.equal(initial, '[happy] visit [link]');
+    assert.equal(refilterDesktopPetText(initial, 'fish', filters, []).text, initial);
+    assert.equal(refilterDesktopPetText(initial, 'piper', filters, []).text, 'visit [link]');
 });

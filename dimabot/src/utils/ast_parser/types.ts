@@ -172,6 +172,7 @@ export interface AstAuthorizationIdentity {
 
 export interface AstAuthorization {
     origin: 'chat' | 'llm' | 'authored';
+    auditOrigin?: 'oauth_desktop';
     identity?: AstAuthorizationIdentity;
 }
 

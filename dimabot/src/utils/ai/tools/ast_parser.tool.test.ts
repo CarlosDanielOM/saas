@@ -35,3 +35,14 @@ test('AST tool withholds the self-moderation target when the EventSub ID is abse
         assert.equal(executedContext?.userId, '');
     }
 });
+
+test('authenticated desktop executes with broadcaster level without inventing a Twitch chatter', async () => {
+    const result = await execute({ command: 'set.game Fortnite', userlevel: 7 }, {
+        channelID: '100', streamer: {}, username: 'Streamer', userID: '100', origin: 'oauth_desktop',
+        tags: { userLevel: 10, identity: { level: 10, tags: ['broadcaster'] } }
+    });
+    assert.equal(result.success, true);
+    assert.equal(executedContext?.userId, '');
+    assert.equal(executedContext?.userLevel, 10);
+    assert.equal(executedContext?.authorization.auditOrigin, 'oauth_desktop');
+});

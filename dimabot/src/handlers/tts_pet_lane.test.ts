@@ -42,8 +42,13 @@ const petItem = (channel: string, id: string, score: number, requestId: string) 
 let overlayConnected = true;
 const timeline: string[] = [];
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => cache } });
+mock.module('../desktop_ai/activity.js', { namedExports: {
+  prepareSpeechActivity: async (value: object) => ({ ...value, fence: 'test' }), startSpeechActivity: async () => true,
+  finishSpeechActivity: async () => {}, extendSpeechActivity: async () => true,
+  retireMatchingSpeechActivity: async () => true, confirmRetiredSpeechActivity: async () => false,
+} });
 mock.module('../server/websocket.js', { namedExports: { getIO: () => ({ of: () => ({
-  sockets: new Map(overlayConnected ? [['overlay', { connected: true, data: { ttsReady: true } }]] : []),
+  sockets: new Map(overlayConnected ? [['overlay', { id: 'overlay', connected: true, data: { ttsReady: true }, emit: (event: string, payload: { speechID: string }) => { if (event === 'speech') timeline.push(`tts:${payload.speechID}`); } }]] : []),
   emit: (event: string, payload: { speechID: string }) => { if (event === 'speech') timeline.push(`tts:${payload.speechID}`); },
 }) }) } });
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: { getTwitchAccountById: async () => ({ plan_tier: 'free' }) } });

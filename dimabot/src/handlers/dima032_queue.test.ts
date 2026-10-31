@@ -15,6 +15,7 @@ let publisher: ((input: any) => Promise<'emitted' | 'unavailable' | 'cancelled'>
 let readRoute: 'pet' | 'overlay' | null = 'pet';
 let lastInput: any;
 const readDeliveries: any[] = [], released: string[] = [];
+const retiredSources = new Map<string, string>(), confirmedRetired: string[] = [];
 const legacySockets = new Map<string, any>();
 for (const id of ['legacy-a', 'legacy-b']) legacySockets.set(id, { id, connected: true, data: { ttsReady: true }, conn: { close: () => {} }, emit: (event: string, payload: any) => events.push({ channel: id, event, payload }) });
 const cache = {
@@ -43,6 +44,13 @@ const cache = {
   }
 };
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => cache } });
+mock.module('../desktop_ai/activity.js', { namedExports: {
+  prepareSpeechActivity: async (value: object) => ({ ...value, fence: 'test' }), startSpeechActivity: async () => true,
+  finishSpeechActivity: async () => {}, extendSpeechActivity: async () => true,
+  retireMatchingSpeechActivity: async (channel: string, speech: string, _generation: number, _deadline: number, proof: { source: string }) => { retiredSources.set(`${channel}:${speech}`, proof.source); return true; },
+  confirmRetiredSpeechActivity: async (channel: string, proof: { source?: string }, speech: string) => { const key = `${channel}:${speech}`;
+    if (!retiredSources.has(key) || retiredSources.get(key) !== proof.source) return false; retiredSources.delete(key); confirmedRetired.push(key); return true; },
+} });
 mock.module('../server/websocket.js', { namedExports: { getIO: () => ({ of: (channel: string) => ({
   sockets: legacySockets,
   emit: (event: string, payload: any) => events.push({ channel, event, payload })
@@ -59,7 +67,9 @@ for (const provider of ['piper', 'fish', 'kokoro']) mock.module(`../server/servi
 const { ttsQueueHandler: handler } = await import('./tts_queue.handler.js');
 const { registerStudioBridge } = await import('../overlays/bridge.js');
 const studio: string[] = [];
-registerStudioBridge({ hasSource: () => graceConnected, hasLiveSource: () => studioConnected, media: async () => {}, trigger: async () => {}, controlTts: async (_channel, action) => { studio.push(action); }, readTts: async (_channel, input) => { readDeliveries.push(input); if (publisher) return publisher(input); return input.beforeEmit?.() === false ? 'cancelled' : 'emitted'; } });
+registerStudioBridge({ hasSource: () => graceConnected, hasLiveSource: () => studioConnected, media: async () => {}, trigger: async () => {}, controlTts: async (_channel, action) => { studio.push(action); }, readTts: async (_channel, input) => { readDeliveries.push(input);
+  const wrapped = { ...input, beforeEmit: () => { const accepted = input.beforeEmit?.() !== false; if (accepted && !input.legacy && input.file) input.onOwner?.('studio:fixture-owner'); return accepted; } };
+  if (publisher) return publisher(wrapped); return wrapped.beforeEmit() ? 'emitted' : 'cancelled'; } });
 const { registerReadTtsBridge } = await import('../pets/tts_bridge.js');
 registerReadTtsBridge({ configured: async () => readRoute !== null, owns: (channel, speech) => turns.has(channel) && (!speech || turns.get(channel) === speech), current: (channel, speech) => turns.get(channel) === speech, protect: async (_channel, _speech, hold) => { protections.push(hold); return true; }, reserve: async input => { if (readRoute) turns.set(input.channelId, input.speechId); onReserve?.(); return true; }, available: async () => readRoute === 'pet' && petReady, prepare: async input => { if (readRoute) turns.set(input.channelId,input.speechId); lastInput = input; return readRoute ? { audio: readRoute, durationMs: 500 } : null; }, release: async (channel, speech) => { released.push(speech); if (turns.get(channel) === speech) turns.delete(channel); }, report: async () => {}, terminal: async () => {}, invalidated: async () => {} });
 
@@ -105,7 +115,7 @@ test('Studio-only readTTS remains authoritative through actual owner report, whi
   seed('read-studio', 'studio-a'); await handler.processNext('read-studio');
   assert.equal(data.get('twitch:read-studio:tts:processing'), 'studio-a'); assert.equal(readDeliveries.at(-1).legacy, false);
   await handler.handleOverlayEnded('read-studio', 'studio-a', 'ended', 'legacy:legacy-a'); assert.equal(data.get('twitch:read-studio:tts:processing'), 'studio-a');
-  await handler.handleOverlayEnded('read-studio', 'studio-a', 'ended', 'studio:original-owner');
+  await handler.handleOverlayEnded('read-studio', 'studio-a', 'ended', 'studio:fixture-owner');
   for (const socket of legacySockets.values()) socket.data.ttsReady = true;
   readRoute = null; seed('read-default', 'default-a'); await handler.processNext('read-default');
   assert.equal((handler as any).currentTimeouts.get('read-default:default-a')._idleTimeout, 60000);
@@ -118,12 +128,26 @@ for (const action of ['skip', 'clear', 'refresh'] as const) test(`readTTS ${acti
 });
 
 function legacyReady(ready: boolean) { for (const socket of legacySockets.values()) socket.data.ttsReady = ready; }
+test('read-TTS Studio fallback preserves its elected socket for late stop confirmation', async () => {
+  readRoute = 'overlay'; legacyReady(false); studioConnected = true;
+  try {
+    seed('read-studio-proof', 'read-studio-proof-a'); await handler.processNext('read-studio-proof');
+    assert.equal((handler as any).readTtsOwners.get('read-studio-proof')?.source, 'studio:fixture-owner');
+    await handler.control('read-studio-proof', 'skip');
+    const key = 'read-studio-proof:read-studio-proof-a';
+    assert.equal(retiredSources.get(key), 'studio:fixture-owner');
+    await handler.handleOverlayEnded('read-studio-proof', 'read-studio-proof-a', 'ended', 'studio:other', true);
+    assert.equal(confirmedRetired.includes(key), false);
+    await handler.handleOverlayEnded('read-studio-proof', 'read-studio-proof-a', 'ended', 'studio:fixture-owner', true);
+    assert.equal(confirmedRetired.includes(key), true);
+  } finally { legacyReady(true); await handler.cleanupChannel('read-studio-proof'); }
+});
 test('Studio disconnected grace cannot synthesize waiting readTTS backlog; live reconnect resumes without new enqueue', async () => {
   readRoute = 'overlay'; legacyReady(false); studioConnected = false; graceConnected = true; petReady = false;
   const before = usage; seed('studio-backlog', 'backlog-a'); await handler.processNext('studio-backlog');
   assert.equal(usage, before); assert.deepEqual(queues.get('twitch:studio-backlog:tts:queue'), ['backlog-a']);
   studioConnected = true; await handler.resumeIfIdle('studio-backlog'); await until(() => readDeliveries.some(item => item.speechID === 'backlog-a'));
-  assert.equal(usage, before + 1); await handler.handleOverlayEnded('studio-backlog', 'backlog-a', 'ended', 'studio:live'); legacyReady(true);
+  assert.equal(usage, before + 1); await handler.handleOverlayEnded('studio-backlog', 'backlog-a', 'ended', 'studio:fixture-owner'); legacyReady(true);
 });
 test('output loss during synthesis retains same file, debit and queue until a live Studio can receive it once', async () => {
   readRoute = 'overlay'; legacyReady(false); studioConnected = true;
@@ -135,7 +159,7 @@ test('output loss during synthesis retains same file, debit and queue until a li
   assert.equal(readDeliveries.some(item => item.speechID === 'loss-a'), false);
   studioConnected = true; await handler.resumeIfIdle('synth-output-loss'); await processing; await until(() => readDeliveries.some(item => item.speechID === 'loss-a'));
   assert.equal(readDeliveries.filter(item => item.speechID === 'loss-a').length, 1); assert.equal(usage, before + 1);
-  await handler.handleOverlayEnded('synth-output-loss', 'loss-a', 'ended', 'studio:live'); synthesize = original; legacyReady(true);
+  await handler.handleOverlayEnded('synth-output-loss', 'loss-a', 'ended', 'studio:fixture-owner'); synthesize = original; legacyReady(true);
 });
 test('proved-unsent retained delivery retries same file after disconnect; no second synthesis or usage', async () => {
   readRoute = 'overlay'; legacyReady(false); studioConnected = true;
@@ -146,14 +170,14 @@ test('proved-unsent retained delivery retries same file after disconnect; no sec
   await new Promise(resolve => setTimeout(resolve, 120)); assert.equal(usage, before + 1);
   studioConnected = true; await handler.resumeIfIdle('retained-output-loss'); await processing; await until(() => readDeliveries.filter(item => item.speechID === 'retain-a').length === 2); const attempts = readDeliveries.filter(item => item.speechID === 'retain-a');
   assert.equal(attempts.length, 2); assert.equal(attempts[0].file, attempts[1].file); assert.equal(usage, before + 1);
-  await handler.handleOverlayEnded('retained-output-loss', 'retain-a', 'ended', 'studio:live'); publisher = undefined; legacyReady(true);
+  await handler.handleOverlayEnded('retained-output-loss', 'retain-a', 'ended', 'studio:fixture-owner'); publisher = undefined; legacyReady(true);
 });
 test('paused 300-second normal media uses 330-second watchdog and at least 510-second reservation proof', async () => {
   readRoute = 'overlay'; legacyReady(false); studioConnected = true; playbackTimeoutMs = 330000;
   seed('long-paused', 'long-a'); await handler.processNext('long-paused');
   assert.equal(lastInput.holdMs, 510000); assert.ok(protections.at(-1)! >= 510000);
   assert.equal((handler as any).currentTimeouts.get('long-paused:long-a')._idleTimeout, 330000);
-  await handler.handleOverlayEnded('long-paused', 'long-a', 'ended', 'studio:live'); playbackTimeoutMs = 60000; legacyReady(true);
+  await handler.handleOverlayEnded('long-paused', 'long-a', 'ended', 'studio:fixture-owner'); playbackTimeoutMs = 60000; legacyReady(true);
 });
 
 test('skip crossing requeue Redis write cannot resurrect the unheard current item or synthesize it', async () => {

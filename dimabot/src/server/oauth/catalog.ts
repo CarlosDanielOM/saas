@@ -3,11 +3,12 @@ export const OAUTH_SCOPES = {
     'profile:read': { active: true, key: 'profile' },
     'credits:read': { active: true, key: 'credits' },
     'desktop:connect': { active: true, key: 'connect' },
+    'ai:interact': { active: true, key: 'aiInteract' },
     'usage:read': { active: false, key: 'usage' },
     'pet:read': { active: true, key: 'petRead' },
     'pet:write': { active: false, key: 'petWrite' },
     'pet:receive': { active: true, key: 'petReceive' },
-    'pet:interact': { active: false, key: 'petInteract' },
+    'pet:interact': { active: true, key: 'petInteract' },
     'pet:control': { active: true, key: 'petControl' },
     'pet:playback:select': { active: true, key: 'petSelect' }
 } as const;
