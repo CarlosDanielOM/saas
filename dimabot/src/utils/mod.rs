@@ -252,6 +252,12 @@ pub mod twitch_streamers;
 #[path = "tokens.rs"]
 pub mod twitch_tokens;
 
+#[cfg(feature = "twitch-headers")]
+pub mod notifications;
+#[cfg(feature = "twitch-headers")]
+#[path = "header.rs"]
+pub mod twitch_headers;
+
 #[cfg(feature = "audio")]
 pub mod audio;
 #[cfg(feature = "http")]

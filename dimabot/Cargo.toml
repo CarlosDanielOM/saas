@@ -156,6 +156,8 @@ twitch-tokens = ["twitch-client", "credential-crypto", "mongo", "redis"]
 twitch-emotes = ["twitch-tokens", "tts-utilities", "js-date"]
 # Account directory composes existing opt-in protocols without changing workers.
 twitch-streamers = ["twitch-tokens", "plan-cache", "logger"]
+# Native header helpers plus the console developer-notification placeholder.
+twitch-headers = ["twitch-streamers"]
 twitch-streamers-posthog = ["twitch-streamers", "posthog"]
 # Standalone process supervision and telemetry; never widens worker profiles.
 cron-supervisor = ["dep:redis", "dep:serde", "dep:serde_json", "dep:tokio", "dep:uuid", "dep:libc", "dep:dotenvy", "tokio/process", "tokio/fs", "tokio/io-util"]
