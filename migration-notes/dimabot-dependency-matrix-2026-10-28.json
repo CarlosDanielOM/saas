@@ -22,9 +22,9 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-30 functional command and reward persistence batch",
+    "asOf": "2026-10-31 functional commands service integration",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 64,
+    "locallyCompleteMappings": 67,
     "partialRows": 25,
     "archivedSourceSnapshots": 60,
     "liveBaselineTypeScriptFiles": 746,
@@ -1576,19 +1576,49 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/classes/command.class.rs",
+        "dimabot/src/utils/command_cooldown.rs",
+        "dimabot/src/schemas/commands.schema.rs",
+        "dimabot/src/schemas/command_schema_values.rs",
+        "dimabot/tests/commands_service.rs",
+        "migration-notes/commands-service-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native Commands service implements all nine source operations for create/delete/get/reserved-get/exists/reserved-exists/update/count-update/availability-update, plus cache behavior and the existing CooldownStore policy.",
+        "Twenty of 27 actual-source cases replay against Mongo/Redis/Twitch adapters. Seven source fault cases remain source-only; native probes cover related failure classes but are not those exact seven cases.",
+        "Command execution, AST host integration, API route/bot bootstrap adoption, and broader billing/TTS/Polar closure remain open; the TypeScript source remains live."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/classes/command.class.ts: exports and direct import contract reviewed against the native service/schema/types"
+        ],
+        "runtimeStatus": "Local native mapping is verified; TypeScript source remains live. Command execution/API/bot callers and deployment have not been adopted."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/commands_service_reference.cjs",
+          "dimabot/tests/fixtures/commands_service_reference.json"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/commands_service.rs",
+          "dimabot/src/classes/command.class.rs",
+          "dimabot/src/utils/command_cooldown.rs",
+          "migration-notes/commands-service-handoff.md"
+        ],
+        "status": "The source oracle contains 27 cases; 20 replay against concrete Mongo/Redis/Twitch adapters. Seven fault cases remain source-only, with related error classes covered by separate native probes. Final compiler-fixtures receipt1793404465856516721 passed 6 command-model unit tests, 1 concrete fixture, 5 shared-core regressions, changed-file rustfmt checks, scoped strict Clippy, all-feature/all-target strict Clippy, and a minimal library check. The parent independently bound all1580inputs and7committedfiles to the tested tree; no workspace-wide format command is claimed."
       },
-      "exports": [],
+      "exports": [
+        {
+          "name": "default",
+          "nativeMapping": "utils::commands::Commands, constructed explicitly with shared native services; source singleton acquisition is represented by the application-owned service instance",
+          "evidence": [
+            "dimabot/src/classes/command.class.rs",
+            "dimabot/tests/commands_service.rs"
+          ]
+        }
+      ],
       "imports": [
         {
           "ordinal": 0,
@@ -1603,12 +1633,12 @@
           "baselineSourceTargets": [
             "src/interfaces/commands/command.response.interface.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only response interface import",
+          "runtimeOrTypeDependency": "Five response interfaces describe JSON response shapes only.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect barrel is required for the bounded service contract.",
+          "directDependencyReview": "Reviewed against the concrete Commands service, existing policy/helper, native schema, and typed response values.",
+          "transitiveDependencyReview": "Local command persistence and cooldown dependencies are covered; API/bot/AST caller workflows remain open.",
+          "rustReplacementOrGap": "Five native CommandCreate/Delete/Get/Update/ExistsResponse structs; type_name corresponds to source type in replay envelope assertions. Route serialization/adoption remains separate."
         },
         {
           "ordinal": 1,
@@ -1623,12 +1653,12 @@
           "baselineSourceTargets": [
             "src/schemas/commands.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime CommandsSchema plus type-only ICommands import",
+          "runtimeOrTypeDependency": "Native command persistence and schema casting; the class also declares the ICommands type.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect barrel is required for the bounded service contract.",
+          "directDependencyReview": "Reviewed against the concrete Commands service, existing policy/helper, native schema, and typed response values.",
+          "transitiveDependencyReview": "Local command persistence and cooldown dependencies are covered; API/bot/AST caller workflows remain open.",
+          "rustReplacementOrGap": "schemas::commands::CommandsRepository supplies the concrete model operations."
         },
         {
           "ordinal": 2,
@@ -1643,12 +1673,12 @@
           "baselineSourceTargets": [
             "src/utils/command_cooldown_write.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime cooldown helper import",
+          "runtimeOrTypeDependency": "Cooldown policy and coordinated command write operation.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect barrel is required for the bounded service contract.",
+          "directDependencyReview": "Reviewed against the concrete Commands service, existing policy/helper, native schema, and typed response values.",
+          "transitiveDependencyReview": "Local command persistence and cooldown dependencies are covered; API/bot/AST caller workflows remain open.",
+          "rustReplacementOrGap": "Existing native command_cooldown policy plus the concrete Commands CooldownStore implementation."
         },
         {
           "ordinal": 3,
@@ -1663,12 +1693,12 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named getDragonflyClient import",
+          "runtimeOrTypeDependency": "Lazy pooled Dragonfly connection.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect barrel is required for the bounded service contract.",
+          "directDependencyReview": "Reviewed against the concrete Commands service, existing policy/helper, native schema, and typed response values.",
+          "transitiveDependencyReview": "Local command persistence and cooldown dependencies are covered; API/bot/AST caller workflows remain open.",
+          "rustReplacementOrGap": "utils::redis::get_redis_client and redis::aio::ConnectionManager; source class sticky failed acquisition is retained in its instance cell."
         },
         {
           "ordinal": 4,
@@ -1683,15 +1713,15 @@
           "baselineSourceTargets": [
             "src/utils/logger.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named error import",
+          "runtimeOrTypeDependency": "Concrete error logging to cache and console.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect barrel is required for the bounded service contract.",
+          "directDependencyReview": "Reviewed against the concrete Commands service, existing policy/helper, native schema, and typed response values.",
+          "transitiveDependencyReview": "Local command persistence and cooldown dependencies are covered; API/bot/AST caller workflows remain open.",
+          "rustReplacementOrGap": "utils::logger::Logger with Destination::Both."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-command-service-cooldown-and-response-contract-verified;source-live;application-caller-adoption-open"
     },
     {
       "source": "src/classes/cooldown.class.ts",
@@ -25462,43 +25492,88 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/classes/command.class.rs",
+        "dimabot/src/schemas/commands.schema.rs",
+        "dimabot/src/schemas/command_schema_values.rs",
+        "dimabot/tests/commands_service.rs",
+        "migration-notes/commands-service-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "All five response interfaces map to native response structs; native type_name corresponds to source type in replay envelope assertions, and command payloads use lossless JSON/native persisted-schema values. API route adoption remains open.",
+        "`ICommands` is a type-only source import mapped to the existing native command schema; no runtime TypeScript dependency is required for this contract.",
+        "The mapped interface source remains live; integration/caller adoption and wider command execution remain open."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/interfaces/commands/command.response.interface.ts: exports and direct import contract reviewed against the native service/schema/types"
+        ],
+        "runtimeStatus": "Local native mapping is verified; TypeScript source remains live. Command execution/API/bot callers and deployment have not been adopted."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/commands_service_reference.cjs",
+          "dimabot/tests/fixtures/commands_service_reference.json"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/commands_service.rs",
+          "dimabot/src/classes/command.class.rs",
+          "dimabot/src/utils/command_cooldown.rs",
+          "migration-notes/commands-service-handoff.md"
+        ],
+        "status": "The source oracle contains 27 cases; 20 replay against concrete Mongo/Redis/Twitch adapters. Seven fault cases remain source-only, with related error classes covered by separate native probes. Final compiler-fixtures receipt1793404465856516721 passed 6 command-model unit tests, 1 concrete fixture, 5 shared-core regressions, changed-file rustfmt checks, scoped strict Clippy, all-feature/all-target strict Clippy, and a minimal library check. The parent independently bound all1580inputs and7committedfiles to the tested tree; no workspace-wide format command is claimed."
       },
       "exports": [
         {
           "name": "ICommandCreateResponse",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "utils::commands::CommandCreateResponse",
+          "evidence": [
+            "dimabot/src/classes/command.class.rs",
+            "dimabot/src/schemas/commands.schema.rs",
+            "dimabot/src/utils/command_cooldown.rs",
+            "dimabot/tests/commands_service.rs"
+          ]
         },
         {
           "name": "ICommandDeleteResponse",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "utils::commands::CommandDeleteResponse",
+          "evidence": [
+            "dimabot/src/classes/command.class.rs",
+            "dimabot/src/schemas/commands.schema.rs",
+            "dimabot/src/utils/command_cooldown.rs",
+            "dimabot/tests/commands_service.rs"
+          ]
         },
         {
           "name": "ICommandExistsResponse",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "utils::commands::CommandExistsResponse",
+          "evidence": [
+            "dimabot/src/classes/command.class.rs",
+            "dimabot/src/schemas/commands.schema.rs",
+            "dimabot/src/utils/command_cooldown.rs",
+            "dimabot/tests/commands_service.rs"
+          ]
         },
         {
           "name": "ICommandGetResponse",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "utils::commands::CommandGetResponse",
+          "evidence": [
+            "dimabot/src/classes/command.class.rs",
+            "dimabot/src/schemas/commands.schema.rs",
+            "dimabot/src/utils/command_cooldown.rs",
+            "dimabot/tests/commands_service.rs"
+          ]
         },
         {
           "name": "ICommandUpdateResponse",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "utils::commands::CommandUpdateResponse",
+          "evidence": [
+            "dimabot/src/classes/command.class.rs",
+            "dimabot/src/schemas/commands.schema.rs",
+            "dimabot/src/utils/command_cooldown.rs",
+            "dimabot/tests/commands_service.rs"
+          ]
         }
       ],
       "imports": [
@@ -25515,15 +25590,15 @@
           "baselineSourceTargets": [
             "src/schemas/commands.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only named ICommands import",
+          "runtimeOrTypeDependency": "Type-only command value contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect barrel is required for the bounded service contract.",
+          "directDependencyReview": "Reviewed against the concrete Commands service, existing policy/helper, native schema, and typed response values.",
+          "transitiveDependencyReview": "Local command persistence and cooldown dependencies are covered; API/bot/AST caller workflows remain open.",
+          "rustReplacementOrGap": "schemas::commands::ICommands and lossless serialized command values."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-command-service-cooldown-and-response-contract-verified;source-live;application-caller-adoption-open"
     },
     {
       "source": "src/interfaces/qdrant/collections.interface.ts",
@@ -25983,7 +26058,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -26003,7 +26078,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -26023,7 +26098,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -26036,7 +26111,7 @@
           "baselineSourceTargets": [],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -26106,7 +26181,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -26126,7 +26201,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -26146,7 +26221,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -26166,7 +26241,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -26186,7 +26261,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -26199,7 +26274,7 @@
           "baselineSourceTargets": [],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -26649,7 +26724,7 @@
           "baselineSourceTargets": [],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -26712,7 +26787,7 @@
           "baselineSourceTargets": [],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -37831,7 +37906,7 @@
           "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
           "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
           "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
-          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row\u2019s verified local contract; no required model-specific adapter remains."
         }
       ],
       "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
@@ -38055,7 +38130,7 @@
           "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
           "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
           "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
-          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row\u2019s verified local contract; no required model-specific adapter remains."
         }
       ],
       "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
@@ -38142,7 +38217,7 @@
           "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
           "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
           "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
-          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row\u2019s verified local contract; no required model-specific adapter remains."
         }
       ],
       "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
@@ -38277,7 +38352,7 @@
           "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
           "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
           "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
-          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row\u2019s verified local contract; no required model-specific adapter remains."
         }
       ],
       "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
@@ -39696,7 +39771,7 @@
           "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
           "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
           "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
-          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row\u2019s verified local contract; no required model-specific adapter remains."
         }
       ],
       "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
@@ -40040,7 +40115,7 @@
           "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
           "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
           "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
-          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row\u2019s verified local contract; no required model-specific adapter remains."
         }
       ],
       "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
@@ -40119,7 +40194,7 @@
           "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
           "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
           "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
-          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row\u2019s verified local contract; no required model-specific adapter remains."
         }
       ],
       "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
@@ -40198,7 +40273,7 @@
           "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
           "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
           "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
-          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row\u2019s verified local contract; no required model-specific adapter remains."
         }
       ],
       "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
@@ -40624,7 +40699,7 @@
           "defaultSideEffectBarrelDetails": "No separate project barrel dependency is recorded for this row.",
           "directDependencyReview": "Reviewed: concrete behavior used by the model is represented by the native schema descriptor and MongoDB Rust driver.",
           "transitiveDependencyReview": "Reviewed within the local schema/type contract; caller workflows are separately tracked and not claimed adopted.",
-          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row’s verified local contract; no required model-specific adapter remains."
+          "rustReplacementOrGap": "Native schema module, shared schema core and typed values cover this row\u2019s verified local contract; no required model-specific adapter remains."
         }
       ],
       "rowAssessment": "local-schema-type-and-dependency-closure-verified;source-retired;caller-adoption-open"
@@ -68057,7 +68132,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -68077,7 +68152,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -68097,7 +68172,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -68117,7 +68192,7 @@
           ],
           "importSyntaxKind": "source import form reviewed against native dependency",
           "runtimeOrTypeDependency": "The source dependency was reviewed and maps to existing native modules, types, or runtime facilities.",
-          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row’s verified local contract.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect/barrel dependency is required for this row\u2019s verified local contract.",
           "directDependencyReview": "Reviewed: native implementation composes the required local dependencies.",
           "transitiveDependencyReview": "Reviewed within the bounded functional source slice; wider route/bootstrap integration remains open.",
           "rustReplacementOrGap": "Concrete native implementation is available under the opt-in feature; caller adoption is separate."
@@ -80116,33 +80191,65 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/utils/command_cooldown.rs",
+        "dimabot/src/classes/command.class.rs",
+        "dimabot/src/schemas/command_schema_values.rs",
+        "dimabot/tests/commands_service.rs",
+        "migration-notes/commands-service-handoff.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native real CooldownStore composes existing cooldown policy with Twitch owner-plan lookup, Mongo existence checks using ObjectId handling, Redis SET NX EX 60, and owner-fenced release.",
+        "The extracted TypeScript helper was read from 2808aba8^ and independently pinned; it is not an archived source module. Twenty eligible source cases replay; seven source fault cases remain source-only.",
+        "Application route/default service adoption and broader caller closure remain open; the TypeScript helper remains live."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/command_cooldown_write.ts: exports and direct import contract reviewed against the native service/schema/types"
+        ],
+        "runtimeStatus": "Local native mapping is verified; TypeScript source remains live. Command execution/API/bot callers and deployment have not been adopted."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/commands_service_reference.cjs",
+          "dimabot/tests/fixtures/commands_service_reference.json"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/commands_service.rs",
+          "dimabot/src/classes/command.class.rs",
+          "dimabot/src/utils/command_cooldown.rs",
+          "migration-notes/commands-service-handoff.md"
+        ],
+        "status": "The source oracle contains 27 cases; 20 replay against concrete Mongo/Redis/Twitch adapters. Seven fault cases remain source-only, with related error classes covered by separate native probes. Final compiler-fixtures receipt1793404465856516721 passed 6 command-model unit tests, 1 concrete fixture, 5 shared-core regressions, changed-file rustfmt checks, scoped strict Clippy, all-feature/all-target strict Clippy, and a minimal library check. The parent independently bound all1580inputs and7committedfiles to the tested tree; no workspace-wide format command is claimed."
       },
       "exports": [
         {
           "name": "CommandCooldownError",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "utils::command_cooldown::CooldownError::Invalid; storage errors remain distinct",
+          "evidence": [
+            "dimabot/src/utils/command_cooldown.rs",
+            "dimabot/src/classes/command.class.rs",
+            "dimabot/tests/commands_service.rs"
+          ]
         },
         {
           "name": "validateKeywordCooldown",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "utils::command_cooldown::validate_keyword_cooldown with the concrete Commands CooldownStore",
+          "evidence": [
+            "dimabot/src/utils/command_cooldown.rs",
+            "dimabot/src/classes/command.class.rs",
+            "dimabot/tests/commands_service.rs"
+          ]
         },
         {
           "name": "writeCommandWithCooldown",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "utils::command_cooldown::write_command_with_cooldown with the concrete Commands CooldownStore",
+          "evidence": [
+            "dimabot/src/utils/command_cooldown.rs",
+            "dimabot/src/classes/command.class.rs",
+            "dimabot/tests/commands_service.rs"
+          ]
         }
       ],
       "imports": [
@@ -80159,12 +80266,12 @@
           "baselineSourceTargets": [
             "src/classes/twitch_streamers.class.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime TwitchStreamers directory import",
+          "runtimeOrTypeDependency": "Owner plan lookup required for tier cooldown policy.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect barrel is required for the bounded service contract.",
+          "directDependencyReview": "Reviewed against the concrete Commands service, existing policy/helper, native schema, and typed response values.",
+          "transitiveDependencyReview": "Local command persistence and cooldown dependencies are covered; API/bot/AST caller workflows remain open.",
+          "rustReplacementOrGap": "Existing native TwitchStreamers directory is used by the real CooldownStore."
         },
         {
           "ordinal": 1,
@@ -80179,12 +80286,12 @@
           "baselineSourceTargets": [
             "src/schemas/commands.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named CommandsSchema import",
+          "runtimeOrTypeDependency": "Native command persistence and schema casting; the class also declares the ICommands type.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect barrel is required for the bounded service contract.",
+          "directDependencyReview": "Reviewed against the concrete Commands service, existing policy/helper, native schema, and typed response values.",
+          "transitiveDependencyReview": "Local command persistence and cooldown dependencies are covered; API/bot/AST caller workflows remain open.",
+          "rustReplacementOrGap": "schemas::commands::CommandsRepository supplies the concrete model operations."
         },
         {
           "ordinal": 2,
@@ -80197,12 +80304,12 @@
             "src/utils/command_cooldown.d.ts"
           ],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime cooldown helper import",
+          "runtimeOrTypeDependency": "Cooldown policy and coordinated command write operation.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect barrel is required for the bounded service contract.",
+          "directDependencyReview": "Reviewed against the concrete Commands service, existing policy/helper, native schema, and typed response values.",
+          "transitiveDependencyReview": "Local command persistence and cooldown dependencies are covered; API/bot/AST caller workflows remain open.",
+          "rustReplacementOrGap": "utils::command_cooldown::minimum_command_cooldown; original helper bytes are pinned from Git, not claimed as an archive."
         },
         {
           "ordinal": 3,
@@ -80217,12 +80324,12 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named getDragonflyClient import",
+          "runtimeOrTypeDependency": "Lazy pooled Dragonfly connection.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect barrel is required for the bounded service contract.",
+          "directDependencyReview": "Reviewed against the concrete Commands service, existing policy/helper, native schema, and typed response values.",
+          "transitiveDependencyReview": "Local command persistence and cooldown dependencies are covered; API/bot/AST caller workflows remain open.",
+          "rustReplacementOrGap": "utils::redis::get_redis_client and redis::aio::ConnectionManager; source class sticky failed acquisition is retained in its instance cell."
         },
         {
           "ordinal": 4,
@@ -80230,15 +80337,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named randomUUID import",
+          "runtimeOrTypeDependency": "Unique lease ownership token.",
+          "defaultSideEffectBarrelDetails": "No unported side-effect barrel is required for the bounded service contract.",
+          "directDependencyReview": "Reviewed against the concrete Commands service, existing policy/helper, native schema, and typed response values.",
+          "transitiveDependencyReview": "Local command persistence and cooldown dependencies are covered; API/bot/AST caller workflows remain open.",
+          "rustReplacementOrGap": "Existing uuid::Uuid::new_v4 support in the shared cooldown policy."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-command-service-cooldown-and-response-contract-verified;source-live;application-caller-adoption-open"
     },
     {
       "source": "src/utils/credit_gift_provider.ts",
@@ -94898,7 +95005,7 @@
       "behaviorDifferencesOrAcceptedChanges": [
         "All six exports have local Rust payload/lifecycle counterparts and concrete SDK/lossless adapters. Verification covers 1,042 source wrapper records, 20 native HTTP transport tests and 18 installed-SDK lifecycle scenarios; see the dated migration note and evidence summary.",
         "Native lossless transport has explicit event preflight (256 KiB), depth (64), response-body (64 KiB) and queued-byte (16 MiB) bounds; redirects/proxies are disabled and shutdown is permanent. These behavior differences, UUIDv4 versus SDK UUIDv7 event metadata, and differing SDK/library metadata prevent a strict source-equivalence claim.",
-        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%–86.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
+        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%\u201386.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
       ],
       "callers": {
         "sourceEvidence": [
