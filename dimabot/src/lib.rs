@@ -142,3 +142,10 @@ mod tls_feature_tests {
         assert!(!config.crypto_provider().cipher_suites.is_empty());
     }
 }
+
+#[cfg(feature = "api-file-routes")]
+#[path = "server/routes/admin-tools.route.rs"]
+pub mod admin_tools_route;
+#[cfg(feature = "api-file-routes")]
+#[path = "server/routes/file.route.rs"]
+pub mod file_route;

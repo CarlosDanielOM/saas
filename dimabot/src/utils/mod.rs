@@ -351,3 +351,6 @@ pub mod commands;
 pub mod polar_usage;
 #[cfg(feature = "tts-usage-tracking")]
 pub mod tts_usage;
+
+#[cfg(feature = "api-file-routes")]
+pub mod fs;
