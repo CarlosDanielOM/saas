@@ -9089,7 +9089,7 @@
     "embedded": "Open this page directly in your browser to continue.",
     "request": "{{app}} on “{{device}}” is requesting permission to:",
     "ownAccount": "Access is limited to your own streamer account. You can revoke it at any time.",
-    "initiated": "Only approve if you started this connection from Dima Desktop. This beta does not enable pet playback or paid actions.",
+    "initiated": "Only approve if you started this connection from Dima Desktop. Review each requested permission before allowing access.",
     "deny": "Deny",
     "allow": "Allow connection",
     "working": "Connecting…",
@@ -9106,13 +9106,23 @@
       "pet:read": "Read your pet configuration",
       "profile:read": "View your Dima profile",
       "credits:read": "View your AI credit balance",
-      "desktop:connect": "Connect this desktop installation"
+      "desktop:connect": "Connect this desktop installation",
+      "ai:interact": "Talk with your bot as the streamer",
+      "pet:interact": "Talk with your pet as the streamer",
+      "pet:receive": "Receive pet speech and animation",
+      "pet:control": "Control pet playback",
+      "pet:playback:select": "Choose this computer for pet playback"
     },
     "descriptions": {
       "pet:read": "Your pet’s voice, personality, and response rules. Requires Premium or Pro. This permission cannot change settings, interact, play audio, or spend credits.",
       "profile:read": "Your display name and linked streamer identity. Your email and credentials are not shared.",
       "credits:read": "Your current balance and allowance. This permission cannot spend credits or make purchases.",
-      "desktop:connect": "Maintain an authenticated connection to DomDimaBot. Additional features require their own permissions."
+      "desktop:connect": "Maintain an authenticated connection to DomDimaBot. Additional features require their own permissions.",
+      "ai:interact": "Send messages as the streamer in your own channel. The bot can use your normal streamer-level tools, including moderation and channel changes, read and update shared memory under your existing settings, and spend AI and TTS credits on replies.",
+      "pet:interact": "Send messages as the streamer in your own channel, using your pet’s personality and voice. The pet can use your normal streamer-level tools, including moderation and channel changes, read and update shared memory under your existing settings, and spend AI and TTS credits on replies. Requires Premium or Pro.",
+      "pet:receive": "Receive speech and animation from your pet on this computer. Playback follows your selected output. This permission alone cannot submit AI messages or generate paid speech.",
+      "pet:control": "Cancel pet requests and stop pet playback. This permission alone cannot submit AI messages or generate paid speech.",
+      "pet:playback:select": "Select this computer to play your pet’s audio or control its animation. Changing the selected output moves those playback roles from the previous device."
     }
   },
   "dashboardInsights": {

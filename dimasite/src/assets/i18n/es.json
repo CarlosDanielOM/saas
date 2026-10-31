@@ -9089,7 +9089,7 @@
     "embedded": "Abre esta página directamente en tu navegador para continuar.",
     "request": "{{app}} en «{{device}}» solicita permiso para:",
     "ownAccount": "El acceso se limita a tu propia cuenta de streamer. Puedes revocarlo en cualquier momento.",
-    "initiated": "Aprueba solo si iniciaste esta conexión desde Dima Desktop. Esta beta no permite reproducir la mascota ni realizar acciones de pago.",
+    "initiated": "Aprueba solo si iniciaste esta conexión desde Dima Desktop. Revisa cada permiso solicitado antes de permitir el acceso.",
     "deny": "Denegar",
     "allow": "Permitir conexión",
     "working": "Conectando…",
@@ -9106,13 +9106,23 @@
       "pet:read": "Leer la configuración de tu mascota",
       "profile:read": "Ver tu perfil de Dima",
       "credits:read": "Ver tu saldo de créditos de IA",
-      "desktop:connect": "Conectar esta instalación de escritorio"
+      "desktop:connect": "Conectar esta instalación de escritorio",
+      "ai:interact": "Hablar con tu bot como streamer",
+      "pet:interact": "Hablar con tu mascota como streamer",
+      "pet:receive": "Recibir voz y animación de la mascota",
+      "pet:control": "Controlar la reproducción de la mascota",
+      "pet:playback:select": "Elegir este ordenador para reproducir la mascota"
     },
     "descriptions": {
       "pet:read": "La voz, personalidad y reglas de respuesta de tu mascota. Requiere Premium o Pro. Este permiso no permite cambiar ajustes, interactuar, reproducir audio ni gastar créditos.",
       "profile:read": "Tu nombre visible y tu identidad de streamer vinculada. No se comparten tu correo ni tus credenciales.",
       "credits:read": "Tu saldo y asignación actuales. Este permiso no permite gastar créditos ni realizar compras.",
-      "desktop:connect": "Mantener una conexión autenticada con DomDimaBot. Las funciones adicionales requieren sus propios permisos."
+      "desktop:connect": "Mantener una conexión autenticada con DomDimaBot. Las funciones adicionales requieren sus propios permisos.",
+      "ai:interact": "Enviar mensajes como streamer en tu propio canal. El bot puede usar tus herramientas habituales de streamer, incluidas la moderación y los cambios del canal, leer y actualizar la memoria compartida según tus ajustes actuales y gastar créditos de IA y TTS en las respuestas.",
+      "pet:interact": "Enviar mensajes como streamer en tu propio canal, con la personalidad y la voz de tu mascota. La mascota puede usar tus herramientas habituales de streamer, incluidas la moderación y los cambios del canal, leer y actualizar la memoria compartida según tus ajustes actuales y gastar créditos de IA y TTS en las respuestas. Requiere Premium o Pro.",
+      "pet:receive": "Recibir la voz y la animación de tu mascota en este ordenador. La reproducción respeta la salida que hayas elegido. Este permiso por sí solo no permite enviar mensajes a la IA ni generar voz de pago.",
+      "pet:control": "Cancelar solicitudes de la mascota y detener su reproducción. Este permiso por sí solo no permite enviar mensajes a la IA ni generar voz de pago.",
+      "pet:playback:select": "Seleccionar este ordenador para reproducir el audio de tu mascota o controlar su animación. Al cambiar la salida elegida, esas funciones de reproducción pasan del dispositivo anterior a este."
     }
   },
   "dashboardInsights": {

@@ -6,6 +6,8 @@ const { chromium } = createRequire(`${tools}/package.json`)('playwright');
 const base = process.env.SAAS_PREVIEW_URL;
 assert.ok(base);
 const requestID = 'A'.repeat(43);
+const scopes = ['profile:read', 'credits:read', 'desktop:connect', 'pet:read', 'pet:receive',
+  'pet:control', 'pet:playback:select', 'ai:interact', 'pet:interact'];
 const twitch = { id: '99003101', login: 'oauth_owner', display_name: 'OAuth Owner' };
 const appUser = { name: 'OAuth Owner', email: 'private@example.invalid', language: 'en', plan_tier: 'free',
   twitch_user_id: twitch.id, actived: true, chat_enabled: true, has_permissions: true, up_to_date_permissions: true, administrating: [] };
@@ -31,7 +33,7 @@ await page.route('**/*', async route => {
     if (route.request().method() === 'OPTIONS') return json({});
     if (path === `/oauth/requests/${requestID}`) return expired ? json({ error: 'invalid_request' }, 400) : json({
       client_id: 'dima-desktop', client_name: 'Dima Desktop Beta', device_name: 'Streaming PC',
-      scopes: ['profile:read', 'credits:read', 'desktop:connect'], redirect_uri: 'http://127.0.0.1:42781/oauth/callback' });
+      scopes, redirect_uri: 'http://127.0.0.1:42781/oauth/callback' });
     if (path === '/oauth/browser-session') return signedIn ? json({ name: 'oauth_owner', user_id: 'test-user', channel_id: twitch.id }) : json({ error: 'login_required' }, 401);
     if (path === `/oauth/requests/${requestID}/decision`) {
       assert.equal(route.request().headers()['authorization'], `Bearer ${session.token}`);
@@ -56,22 +58,55 @@ await page.route('**/*', async route => {
 });
 const consent = () => page.goto(`${base}/oauth/authorize?request=${requestID}`);
 const axePath = `${tools}/node_modules/axe-core/axe.min.js`;
-for (const theme of ['dark', 'light']) {
-  for (const width of [320, 390, 1280]) {
-    await page.setViewportSize({ width, height: 900 });
-    await consent();
-    await page.getByRole('button', { name: 'Allow connection', exact: true }).waitFor();
-    // Drive ThemeService through the real control so shared logos and page tokens agree.
-    const isDark = await page.locator('html').evaluate(node => node.classList.contains('dark'));
-    if (isDark !== (theme === 'dark')) await page.getByRole('button', { name: isDark ? 'Dark' : 'Light', exact: true }).click();
-    assert.ok(await page.getByText('Signed in as oauth_owner', { exact: true }).isVisible());
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${theme}/${width}: overflow`);
-    await page.addScriptTag({ path: axePath });
-    const violations = await page.evaluate(async () => (await axe.run(document.querySelector('app-oauth-page'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })).violations.map(item => `${item.id}: ${item.nodes.map(node => node.target.join(' ')).join(', ')}`));
-    assert.deepEqual(violations, [], `${theme}/${width}: accessibility`);
-    if (process.env.SAAS_SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/oauth-${theme}-${width}.png`, fullPage: true });
+async function assertPermissions(language) {
+  const permissions = page.locator('.permissions li');
+  assert.equal(await permissions.count(), scopes.length, `${language}: all requested permissions disclosed`);
+  assert.doesNotMatch(await page.locator('.permissions').innerText(), /oauth\.(?:scopes|descriptions)\.|ai:actions/,
+    `${language}: no missing translations or separate action gate`);
+  assert.doesNotMatch(await page.locator('app-oauth-page').innerText(),
+    /does not enable pet playback or paid actions|no permite reproducir la mascota ni realizar acciones de pago/,
+    `${language}: no obsolete beta disclaimer contradicts the interaction permissions`);
+  const labels = language === 'en'
+    ? ['Talk with your bot as the streamer', 'Talk with your pet as the streamer']
+    : ['Hablar con tu bot como streamer', 'Hablar con tu mascota como streamer'];
+  for (const label of labels) {
+    const disclosure = await permissions.filter({ has: page.getByText(label, { exact: true }) }).innerText();
+    for (const expression of language === 'en'
+      ? [/streamer-level tools/, /moderation and channel changes/, /read and update shared memory/,
+          /existing settings/, /spend AI and TTS credits/]
+      : [/herramientas habituales de streamer/, /moderación y los cambios del canal/,
+          /leer y actualizar la memoria compartida/, /ajustes actuales/, /gastar créditos de IA y TTS/]) {
+      assert.match(disclosure, expression, `${language}: ${label}`);
+    }
   }
 }
+async function checkLayouts(language) {
+  for (const theme of ['dark', 'light']) {
+    for (const width of [320, 390, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      await consent();
+      await page.getByRole('button', { name: 'Allow connection', exact: true }).waitFor();
+      // The fixture restores its English session on each navigation. Select Spanish
+      // through the actual control after that restoration has completed.
+      if (language === 'es') {
+        await page.getByRole('button', { name: 'Change language' }).click();
+        await page.getByRole('button', { name: 'Permitir conexión', exact: true }).waitFor();
+      }
+      // Drive ThemeService through the real control so shared logos and page tokens agree.
+      const isDark = await page.locator('html').evaluate(node => node.classList.contains('dark'));
+      const themeLabel = language === 'en' ? (isDark ? 'Dark' : 'Light') : (isDark ? 'Oscuro' : 'Claro');
+      if (isDark !== (theme === 'dark')) await page.getByRole('button', { name: themeLabel, exact: true }).click();
+      assert.ok(await page.getByText(language === 'en' ? 'Signed in as oauth_owner' : 'Sesión iniciada como oauth_owner', { exact: true }).isVisible());
+      await assertPermissions(language);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${language}/${theme}/${width}: overflow`);
+      await page.addScriptTag({ path: axePath });
+      const violations = await page.evaluate(async () => (await axe.run(document.querySelector('app-oauth-page'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })).violations.map(item => `${item.id}: ${item.nodes.map(node => node.target.join(' ')).join(', ')}`));
+      assert.deepEqual(violations, [], `${language}/${theme}/${width}: accessibility`);
+      if (process.env.SAAS_SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/oauth-${language}-${theme}-${width}.png`, fullPage: true });
+    }
+  }
+}
+await checkLayouts('en');
 await page.getByRole('button', { name: 'Allow connection', exact: true }).click();
 await page.waitForURL('**/oauth/callback?code=**');
 assert.deepEqual(decisions.pop(), { approve: true });
@@ -84,6 +119,7 @@ await consent();
 await page.getByRole('button', { name: 'Change language' }).click();
 await page.getByRole('button', { name: 'Permitir conexión', exact: true }).waitFor();
 assert.ok(await page.getByText('Ver tu saldo de créditos de IA', { exact: true }).isVisible());
+await checkLayouts('es');
 expired = true;
 await consent();
 await page.getByRole('alert').waitFor();
@@ -113,11 +149,14 @@ await page.getByRole('button', { name: 'Sign out', exact: true }).click();
 await page.getByRole('button', { name: 'Sign in with Twitch', exact: true }).waitFor();
 await page.evaluate(session => localStorage.setItem('dimasite.session.v1', JSON.stringify(session)), session);
 sessions = [
-  { _id: '1', grant_id: 'grant', device_name: 'Streaming PC', client_id: 'dima-desktop', scopes: ['profile:read'] },
+  { _id: '1', grant_id: 'grant', device_name: 'Streaming PC', client_id: 'dima-desktop', scopes },
   { _id: '2', grant_id: 'grant', device_name: 'Laptop', client_id: 'dima-desktop', scopes: ['profile:read'] }
 ];
 await page.goto(`${base}/oauth/connections`);
 await page.getByRole('heading', { name: 'Streaming PC', exact: true }).waitFor();
+const streamingConnection = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Streaming PC', exact: true }) });
+assert.equal(await streamingConnection.getByRole('listitem').count(), scopes.length);
+assert.doesNotMatch(await streamingConnection.innerText(), /oauth\.scopes\./);
 await page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Laptop', exact: true }) }).getByRole('button', { name: 'Disconnect this computer', exact: true }).click();
 await page.getByRole('heading', { name: 'Laptop', exact: true }).waitFor({ state: 'detached' });
 assert.equal(sessions.length, 1);
@@ -131,4 +170,4 @@ await page.frameLocator('iframe').getByRole('alert').waitFor();
 assert.equal(await page.frameLocator('iframe').getByRole('button', { name: 'Allow connection', exact: true }).count(), 0);
 assert.deepEqual(errors, []);
 await browser.close();
-console.log('PASS OAuth browser: dark/light mobile/desktop, axe, EN/ES, allow/deny, expired request, login resume, per-device/app revocation');
+console.log('PASS OAuth browser: nine scope disclosures with streamer actions/memory/spending, EN/ES dark/light mobile/desktop, axe, allow/deny, expired request, login resume, per-device/app revocation');
