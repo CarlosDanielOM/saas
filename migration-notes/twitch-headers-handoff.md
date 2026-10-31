@@ -1,0 +1,17 @@
+# Twitch headers and developer notifications — functional native slice (2026-10-31)
+
+**Status:** `twitch-headers` is a verified local native feature. The TypeScript sources remain live. Application composition-root wiring and caller adoption remain open; `NativeFunctionAuth` still contains equivalent header behavior. No source retirement, deployment, performance, or RSS claim is made.
+
+`utils::twitch_headers` provides `TwitchHeaders`, `TwitchHeader`, `TwitchHeaderResult`, `TwitchHeaderState`, `ClientIdSource` (`FixedClientId`, `EnvClientId`), and the four app/bot/streamer/moderator header helpers. It reuses `TwitchTokenStorage`, `TwitchStreamers`, `twitch::build_headers`, the existing logger, and the existing `TWITCH_BOT_ACCOUNT_ID`. `utils::notifications` provides severity formatting, an injectable console, stderr default, and `notify_developers`.
+
+The client-ID source binding preserves the source split: app/streamer state snapshots the module-load ID, while bot/streamer method calls reread the ID. App-token errors, bot account mirror publication/notification, strict streamer permission checking and token lookup, moderator bot identity, and redacted cache diagnostics are covered. Header objects are immutable native snapshots; arbitrary JavaScript prototypes and invalid casts are outside the contract.
+
+## Verification
+
+Commit `8232068dfb12e6fb1ceb7d62d4ab3eb389f3b665` adds the feature implementation and wiring. The earlier implementation snapshot tree `a730752152f7b4991619962151a942c1a2d4ca0a909d6c83a19d860b893bd14a` bound 1,584 inputs. The actual-source fixture has nine behavior cases plus a client-ID binding record, SHA-256 `cc6bfafa6f047314f11a47db10ac080a5e08fbbb1ff2322086e57dd806262880`. Original Node receipt `1793405066367195018` passed source write/check; scoped compiler receipt `1793405571778985276` passed seven unit tests, and compiler-fixtures receipt `1793405835679949035` separately passed one private-service fixture. All-feature/all-target checks and strict Clippy passed in compiler receipt `1793405661155851285`.
+
+Parent follow-up tree `11f212a8a6c2ab6002162d924eeb3e7db91c91e39041ab5f00bff1e2c57dd3c9` (1,584 inputs) passed `compiler-fixtures` receipt `1793406455198010876` in 29.127 seconds. This follow-up specifically verified a cold app-token call on a normal Tokio worker and six coalesced streamer acquisitions. Formatting checks and all-feature/all-target strict Clippy passed. The seven original unit tests were not rerun in this parent phase. The final test file SHA-256 is `4c6e6e4031fa55cc9cc5cd3e93f8b99ff6801d23fefa779b264ac0a2430f9a66`; the source fixture hash remains unchanged. Parent readback found 18 production records unchanged and removed this task’s owned resources. No push or deployment occurred.
+
+The console notifier emits one stderr line and ignores write errors; no Discord/network notification is implemented. Bearer values are redacted from `Debug`. The complete native integration remains opt-in until callers and the application composition root adopt it.
+
+The delegate relocated the main debug/Cargo cache to avoid another copy; the parent restored the canonical cache paths under the build lock, retaining release artifacts. The restoration audit is `/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/canonical-cache-restore-20261031.json`. Parent source/hash and cleanup readback is `/root/.local/state/rust-full-migration-20261028-headers-parent-01/artifacts/parent-verified.json`.

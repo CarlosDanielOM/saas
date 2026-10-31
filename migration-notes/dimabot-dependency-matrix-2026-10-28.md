@@ -231,6 +231,12 @@ Three still-live rows now map to the native Commands service, cooldown store/pol
 
 Exactly these three JSON rows changed; the other 803 rows and unrelated top-level data are unchanged. The rollup is **67 locally complete, 25 partial, 60 archived, and 746 live baseline TypeScript files** among 806 rows, including six excluded React Email templates in the live count. Total completion remains `null`. Sources remain live; no caller adoption, benchmark, or deployment is claimed. See the [commands service handoff](commands-service-handoff.md) and [task-specific routing note](../orchestrator-notes/2026-10-31-command-service-integration.md).
 
+## Twitch headers and notifications — 2026-10-31
+
+The still-live `src/utils/header.ts` and `src/utils/notifications.ts` rows now map to a verified local native feature reusing the existing Twitch token, streamer, header-builder, and logger implementations. The original actual-source run passed seven unit tests and one concrete private-service fixture. Parent follow-up passed a normal-worker cold app-token call and six coalesced streamer acquisitions, plus all-feature/all-target strict Clippy; the seven original unit tests were not rerun in that follow-up. Composition-root and caller adoption remain open. No TypeScript retirement, benchmark, or deployment is claimed.
+
+Exactly these two JSON rows changed; the other 804 rows and unrelated top-level data are unchanged. The rollup is **69 locally complete, 25 partial, 60 archived, and 746 live baseline TypeScript files** among 806 rows, including six excluded React Email templates in the live count. Total completion remains `null`. See the [Twitch headers handoff](twitch-headers-handoff.md).
+
 ## Functional ordinary application schema retirement — 2026-10-30
 
 Nine schema source rows are now locally complete and archived byte-for-byte: `temporary_moderator`, `vip`, `title_config`, `trigger_file`, `eventsub`, `site_analytics`, `follow_attack_log`, `follow_defense_action`, and `follow_hate_raid_source`. They map to six ordinary native models and four follow-defense models using the shared schema core and concrete MongoDB driver repositories. The source-bound checks passed 11 unique tests, five timezone replay invocations, private Mongo CRUD/index/projection/write-concern checks, formatting, scoped Clippy, minimal profile, and all-feature/all-target strict checks. The existing BitsStore source/private-Mongo fixture passed after retirement. No performance run or caller-adoption/cutover claim is included.
