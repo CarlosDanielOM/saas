@@ -1,0 +1,7 @@
+# Twitch headers integration — 2026-10-31
+
+DeepSeek V4.1 Flash via OpenCode at high/full-access completed the bounded Twitch header and notification implementation, including the source-compatible client-ID binding. The actual-source oracle covers nine behavior cases. The original accepted checks passed seven unit tests and one private-service fixture; the seven units were in scoped compiler receipt `1793405571778985276`, while `1793405835679949035` is the separate fixture receipt. Code is in commit `8232068dfb12e6fb1ceb7d62d4ab3eb389f3b665`; documentation commit `c80628fc7a6d15194d4683e03af1403ac13acaa8` records the initial handoff.
+
+The delegate fixed compile issues around borrow lifetimes, non-Clone `RwLock` handling, and a non-`Sync` recorder. Root then added a test-only normal Tokio worker app and six coalesced streamer acquisitions; parent receipt `1793406455198010876` passed on tree `11f212a8a6c2ab6002162d924eeb3e7db91c91e39041ab5f00bff1e2c57dd3c9`, including all-feature/all-target strict Clippy. The original seven unit tests were not rerun in that follow-up. A 32 MiB test aggregation limit was test-harness work, not a production-worker requirement. Cache movement and disk-guard recovery were resource coordination, not model-quality evidence.
+
+This single bounded result supports keeping DeepSeek eligible for scoped Rust implementation and integration. It does not establish a broad model ranking or any timing, cost, or runtime-performance claim. See the [Twitch headers handoff](../migration-notes/twitch-headers-handoff.md).
