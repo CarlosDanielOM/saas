@@ -22,9 +22,9 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-31 Polar batch usage and TTS tracking",
+    "asOf": "2026-10-31 validation route feature wiring",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 70,
+    "locallyCompleteMappings": 71,
     "partialRows": 24,
     "archivedSourceSnapshots": 60,
     "liveBaselineTypeScriptFiles": 746,
@@ -53410,23 +53410,49 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-direct-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/server/routes/validation.route.rs: ValidationRouteService, typed response bodies, router/mount APIs, raw Authorization and Redis command behavior",
+        "dimabot/Cargo.toml and dimabot/src/lib.rs: committed api-validation-route feature and validation_route module wiring",
+        "dimabot/src/middleware/auth.middleware.rs and dimabot/src/utils/redis.rs: reused concrete native authentication and Redis helpers",
+        "dimabot/tests/validation_route.rs and dimabot/tests/support/: source-replayed handler, middleware composition, and private Mongo/Dragonfly/Twitch fixtures",
+        "migration-notes/validation-route-handoff.md: source contract, verified receipts, and remaining route-mount boundary"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source router-relative POST /:channelID path, raw Authorization lookup (without Bearer stripping), command order/keys, four response shapes, content type, and denial payloads are preserved for the covered contract.",
+        "Node treats duplicate Authorization headers as a singleton and keeps the first line; the source oracle replays the effective value, and a separate raw-socket probe verifies the native reader follows the same Node rule.",
+        "In the mounted stack, auth middleware handles missing/empty credentials with 401 before the handler-level 400 Missing token branch.",
+        "Express 4 leaves async Redis failures unhandled without a completed response; native code returns a completed 500 and diagnostic log. Express framework headers and malformed-path error wording are not reproduced."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/server/server.ts: no current mount for validationRoute; route/caller adoption remains open."
+        ],
+        "runtimeStatus": "The api-validation-route feature and library module are committed and locally verified. Server mounting, caller adoption, TypeScript retirement, and deployment remain separate and open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Actual-source oracle: 19 cases, SHA-256 45aa768d465db8e27f1c61a72c2b3bad5b652b25d7eeb027b5b26116f5b04fd7; final source-bound Node receipt 1793408346782800362 separately verifies duplicate Authorization header behavior.",
+          "Parent-verified snapshot: 1,594 bound inputs, tree SHA-256 4c4aa7e90b113e97d42ff6803ae0b0409ad66e3b191a436d621c9e90ccb81e40; all five owned workspace files match the tested snapshot."
+        ],
+        "rustBehaviorEvidence": [
+          "compiler-1793408406515048528 passed formatting, feature-gated all-target checks/strict Clippy, and all-feature/all-target strict Clippy; four library unit tests passed.",
+          "compiler-fixtures-1793408583747869016 passed 20/20 integration tests. This includes 18 source HTTP replay comparisons plus the explicit acquisition boundary mapping all 19 oracle cases, and composed real AuthService with disposable MongoDB/Dragonfly and loopback Twitch-provider fixtures.",
+          "Existing API-auth regression tests were not rerun because their source was unchanged. Parent proof verified 18 production containers unchanged, owned resources removed, and Cargo.lock unchanged."
+        ],
+        "status": "Local route behavior and direct dependency closure verified in commit 60e8fd29bcc9928542412992e95e330ad1e23725. Feature wiring is committed; live TypeScript source remains unretired, and route mounting/caller adoption remain open."
       },
       "exports": [
         {
           "name": "validationRoute",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Committed api-validation-route feature exposing validation_route and ValidationRouteService; router-relative behavior and composed middleware dependencies verified. Application mount/caller adoption remain open.",
+          "evidence": [
+            "dimabot/src/server/routes/validation.route.rs",
+            "dimabot/Cargo.toml",
+            "dimabot/src/lib.rs",
+            "dimabot/tests/validation_route.rs",
+            "migration-notes/validation-route-handoff.md"
+          ]
         }
       ],
       "imports": [
@@ -53443,12 +53469,12 @@
           "baselineSourceTargets": [
             "src/middleware/auth.middleware.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Authentication middleware guarding the route.",
+          "defaultSideEffectBarrelDetails": "No additional barrel side effect claimed.",
+          "directDependencyReview": "Concrete native AuthService is exercised in composed integration tests.",
+          "transitiveDependencyReview": "Existing native auth dependencies are reused.",
+          "rustReplacementOrGap": "api-validation-route depends on the existing api-auth path; app server mounting remains open."
         },
         {
           "ordinal": 1,
@@ -53463,12 +53489,12 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import",
+          "runtimeOrTypeDependency": "Redis/Dragonfly cache acquisition for token and admin checks.",
+          "defaultSideEffectBarrelDetails": "No additional barrel side effect claimed.",
+          "directDependencyReview": "Existing native Redis connection helper/manager is used by the route service.",
+          "transitiveDependencyReview": "Private Dragonfly integration fixture passed.",
+          "rustReplacementOrGap": "Concrete native Redis dependency is verified; source per-request acquisition differs from owned-manager lifecycle as documented."
         },
         {
           "ordinal": 2,
@@ -53476,15 +53502,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime import with type-only Request and Response",
+          "runtimeOrTypeDependency": "Express router/response API plus type-only Request and Response parameters.",
+          "defaultSideEffectBarrelDetails": "No additional barrel side effect claimed.",
+          "directDependencyReview": "Axum router/response APIs implement the local route contract.",
+          "transitiveDependencyReview": "Loopback HTTP integration checks exercised request and response behavior.",
+          "rustReplacementOrGap": "Axum router/response APIs and native typed request/response types implement the local route contract. Express framework headers, malformed-path wording and Express 4 async failure behavior are documented boundaries."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-feature-and-direct-dependency-closure-verified;source-live;route-mount-and-caller-adoption-open"
     },
     {
       "source": "src/server/routes/webhooks/polarsh.webhook.test.ts",
