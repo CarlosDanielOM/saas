@@ -1,0 +1,9 @@
+# Polar batch and TTS integration — 2026-10-31
+
+Grok 4.7 at xhigh authored the concrete Polar batch draft and SDK fixture. Terra at xhigh integrated and verified batch ingestion with TTS tracking, reusing the existing durable queue, credit projection, receipt producer, and PostHog path. Root review required the runtime to preserve the SDK's OAT-only default endpoint and share a process-wide HTTP pool. Terra's dependency and source audits caught reqwest's default protocol retries, then drove SDK status/integer-count validation and a content-type gate before queue trimming.
+
+The accepted source commit is `3e99f5d03b000ce94bf6d21aabed81bb296b2b66` (tree `af1571e140266d70f46eadff6ec3867e19a4d4e4aa00cba855cebed4aa122b7f`). Final proof is `compiler-fixtures-1793407453850684030`, with source-bound Node run `1793407300128374595`: real Redis/HTTP fixtures, 14 TTS source cases, and the Polar SDK's three wire shapes, eight rejected inputs, and eleven response boundaries passed. Production remained unchanged. Immediate Polar ingestion, grants, public factory closure, and application telemetry composition remain open; see the [Polar](../migration-notes/polar-batch-usage-handoff.md) and [TTS](../migration-notes/tts-usage-tracking-handoff.md) handoffs.
+
+Several compile/lint fixes were needed. Editing a verification script while it was executing invalidated that run and corrupted its generated shell fragment; that rejected receipt is preserved. The final immutable script's SHA-256 was checked before and after execution. Freeze verification scripts before running them. This workflow correction is not an environment outage.
+
+One bounded result supports continued Grok drafting and Terra integration for complex service ports. Confidence is low; it does not change broad model rankings or support model cost, delivery-latency, or generated-code performance claims.
