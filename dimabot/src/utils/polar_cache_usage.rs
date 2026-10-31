@@ -563,49 +563,82 @@ impl PolarCacheUsage {
             .query_async::<i64>(cache)
             .await
             .map_err(|e| e.to_string())?;
+        self.project_accepted(options, event, true).await;
+        Ok(())
+    }
+
+    /// Local projection, optional receipt, then analytics. Receipt failures are
+    /// logged and do not fail the caller. Analytics failures are ignored.
+    /// `enqueue_receipt` is false when the source skips the receipt because the
+    /// channel is empty. This does not touch the provider queue.
+    pub(crate) async fn project_accepted(
+        &self,
+        options: &CacheUsageOptions,
+        event: &PreparedCacheEvent,
+        enqueue_receipt: bool,
+    ) {
         self.projection
             .record_ai_credit_usage(&options.channel_id, event.credits, Some(&event.external_id))
             .await;
-        let receipt = build_queued_ai_usage_receipt_json(
-            options.channel_id.clone(),
-            options.customer_id.clone(),
-            None,
-            &event.context,
-            event.credits,
-        );
-        if let Err(e) = self.producer.enqueue(receipt.as_ref()).await {
-            self.diagnostic(
-                &options.channel_id,
-                "projectAcceptedUsage",
-                &e.to_string(),
-                None,
+        if enqueue_receipt
+            && let Err(error) = enqueue_usage_receipt(
+                &self.producer,
+                options.channel_id.clone(),
+                options.customer_id.clone(),
+                &event.context,
+                event.credits,
             )
-            .await;
+            .await
+        {
+            self.diagnostic(&options.channel_id, "projectAcceptedUsage", &error, None)
+                .await;
         }
-        let tracking = match &self.posthog {
-            Some(p) => Some(p),
-            None => super::posthog_tracking::get_posthog_tracking().await.ok(),
-        };
-        if let Some(tracking) = tracking {
-            let mut fields = vec![
-                field("context", event.context.clone()),
-                field("credits", number(event.credits)),
-                field("reason", text(&options.reason)),
-            ];
-            for (key, value) in [
-                ("polarCostAmount", event.polar_cost_amount),
-                ("inputTokens", event.input_tokens),
-                ("outputTokens", event.output_tokens),
-                ("totalTokens", event.total_tokens),
-            ] {
-                if let Some(n) = value {
-                    fields.push(field(key, number(n)));
-                }
+        let mut fields = vec![
+            field("context", event.context.clone()),
+            field("credits", number(event.credits)),
+            field("reason", text(&options.reason)),
+        ];
+        for (key, value) in [
+            ("polarCostAmount", event.polar_cost_amount),
+            ("inputTokens", event.input_tokens),
+            ("outputTokens", event.output_tokens),
+            ("totalTokens", event.total_tokens),
+        ] {
+            if let Some(n) = value {
+                fields.push(field(key, number(n)));
             }
-            let _ = tracking.track_ai_usage_recorded(&JsonValue::Object(fields));
         }
-        Ok(())
+        track_recorded(self.posthog.as_ref(), &JsonValue::Object(fields)).await;
     }
+}
+
+pub(crate) async fn enqueue_usage_receipt(
+    producer: &AiUsageProducer,
+    channel_id: JsString,
+    customer_id: JsString,
+    context: &JsonValue,
+    credits: f64,
+) -> Result<(), String> {
+    let receipt =
+        build_queued_ai_usage_receipt_json(channel_id, customer_id, None, context, credits);
+    producer
+        .enqueue(receipt.as_ref())
+        .await
+        .map_err(|error| error.to_string())
+}
+
+/// Best-effort analytics. A missing handle uses the process PostHog client.
+/// Acquisition and capture failures match the source `try/catch` and return.
+pub(crate) async fn track_recorded(posthog: Option<&PosthogTracking>, payload: &JsonValue) {
+    let outcome = if let Some(tracking) = posthog {
+        tracking.track_ai_usage_recorded(payload)
+    } else {
+        match super::posthog_tracking::get_posthog_tracking().await {
+            Ok(tracking) => tracking.track_ai_usage_recorded(payload),
+            Err(_) => return,
+        }
+    };
+    let _ = outcome;
 }
 async fn diagnostic(
     logger: &Logger,

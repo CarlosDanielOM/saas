@@ -11,6 +11,9 @@ use dima_rust::utils::{
 };
 use std::time::Duration;
 
+#[path = "support/ai_usage_source.rs"]
+mod ai_usage_source;
+
 fn read_reference_fixture() -> JsonValue {
     use sha2::{Digest, Sha256};
     let path = std::env::var("POLAR_CACHE_USAGE_FIXTURE").expect("explicit pinned source fixture");
@@ -36,7 +39,9 @@ fn read_reference_fixture() -> JsonValue {
         assert_eq!(
             format!(
                 "{:x}",
-                Sha256::digest(std::fs::read(root.join(path)).unwrap())
+                Sha256::digest(
+                    std::fs::read(ai_usage_source::path(root, path.to_str().unwrap())).unwrap()
+                )
             ),
             pin.as_str().unwrap(),
             "{path:?}"
