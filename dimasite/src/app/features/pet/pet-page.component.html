@@ -104,11 +104,30 @@
             <div class="field-pair">
               <label class="field">{{ t('language') }}<select formControlName="language" (change)="ensureVoice()"><option value="en">English</option><option value="es">Español</option></select></label>
               <label class="field">{{ t('voice') }}<select formControlName="voice">
-                @if (customFishVoice()) { <option [value]="draft().tts.voice">{{ t('customVoice') }}</option> }
-                @for (voice of voices(); track voice.id) { <option [value]="voice.id">{{ voice.name }}</option> }
+                @if (customFishVoice()) { <option [value]="draft().tts.voice">{{ t('currentFishVoice') }}</option> }
+                @if (draft().tts.provider === 'fish') {
+                  <optgroup [label]="t('defaultVoices')">
+                    @for (voice of voices(); track voice.id) { <option [value]="voice.id">{{ voice.name }}</option> }
+                  </optgroup>
+                  @if (favoriteVoiceOptions().length) {
+                    <optgroup [label]="t('favoriteVoices')">
+                      @for (voice of favoriteVoiceOptions(); track voice.id) { <option [value]="voice.id">{{ voice.name }}</option> }
+                    </optgroup>
+                  }
+                } @else {
+                  @for (voice of voices(); track voice.id) { <option [value]="voice.id">{{ voice.name }}</option> }
+                }
               </select></label>
             </div>
             @if (draft().tts.provider === 'fish') {
+              <div class="fish-favorites-help">
+                @if (favoritesLoading()) { <p role="status">{{ t('favoritesLoading') }}</p> }
+                @else if (favoritesError()) {
+                  <p class="error" role="alert">{{ t('favoritesError') }}</p>
+                  <button type="button" class="lf-btn" (click)="loadFavorites()">{{ t('retry') }}</button>
+                } @else if (!fishFavorites().length) { <p>{{ t('favoritesEmpty') }}</p> }
+                <a class="text-link" [routerLink]="ttsPath()" fragment="fish-voice-favorites">{{ t('manageFavorites') }} <app-lf-icon name="forward" [size]="16" /></a>
+              </div>
               <details><summary>{{ t('customVoice') }}</summary><label class="field">{{ t('voiceId') }}<input formControlName="voice" maxlength="32" spellcheck="false" [attr.aria-describedby]="'voice-id-help'"></label><p id="voice-id-help">{{ t('voiceIdHint') }}</p></details>
             }
           </section>

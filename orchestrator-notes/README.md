@@ -55,6 +55,8 @@ Bounded billing recovery backend fix: [2026-10-29 observation](2026-10-29-billin
 
 Pet chat-context backend integration: [2026-10-31 observation](2026-10-31-pet-chat-context.md). Single-task, low-confidence support for Terra's existing provisional bounded-integration route; no tier change.
 
+Pet Fish favorites UI: [2026-10-31 observation](2026-10-31-pet-fish-favorites.md). Single-task, low-confidence support for Sol's existing GPT-led UI route; no tier or performance claim.
+
 Global Rust utility consolidation routing and verification are recorded in [2026-10-22-global-utils.md](2026-10-22-global-utils.md).
 
 User workflow feedback on future cron verification scope is recorded in [2026-10-22-worker-verification-scope.md](2026-10-22-worker-verification-scope.md). It does not change the model-routing tier.

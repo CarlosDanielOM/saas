@@ -3,11 +3,13 @@ import { DOCUMENT } from '@angular/common';
 import type { PetOverlayToken, PetOwnerRuntime } from './pet-runtime.model';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { catchError, distinctUntilChanged, firstValueFrom, map, of, switchMap } from 'rxjs';
+import { catchError, distinctUntilChanged, firstValueFrom, map, of, switchMap, timeout } from 'rxjs';
 import { PetAskLane, PetConfiguration, PetProvider, PetSettings } from '../../models/pet-settings.model';
+import type { FishVoiceFavorite } from '../../models/tts-settings.model';
 import { PetSettingsApiService } from '../../services/pet-settings-api.service';
+import { TtsSettingsApiService } from '../../services/tts-settings-api.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
@@ -27,6 +29,8 @@ export class PetPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(SessionAuthService);
   private readonly api = inject(PetSettingsApiService);
+  private readonly ttsApi = inject(TtsSettingsApiService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly language = inject(LanguageService);
   private readonly document = inject(DOCUMENT);
   private disposed = false;
@@ -36,6 +40,9 @@ export class PetPageComponent {
   readonly saving = signal(false);
   readonly error = signal('');
   readonly saved = signal(false);
+  readonly fishFavorites = signal<FishVoiceFavorite[]>([]);
+  readonly favoritesLoading = signal(false);
+  readonly favoritesError = signal(false);
   readonly recoveryUrl = this.fb.control('');
   readonly pickingAsset = signal<'idle' | 'talking' | null>(null);
   readonly runtime = signal<PetOwnerRuntime | null>(null);
@@ -91,6 +98,7 @@ export class PetPageComponent {
   ), { initialValue: null });
   readonly modulePath = computed(() => ['/', this.streamer(), 'modules']);
   readonly personalityPath = computed(() => ['/', this.streamer(), 'modules', 'ai-personality']);
+  readonly ttsPath = computed(() => ['/', this.streamer(), 'modules', 'tts']);
   readonly draft = computed<PetSettings>(() => {
     this.values();
     const value = this.form.getRawValue();
@@ -105,9 +113,20 @@ export class PetPageComponent {
         queueSize: Number(value.queueSize), askLane: value.askLane } };
   });
   readonly dirty = computed(() => !!this.config() && JSON.stringify(this.draft()) !== this.initialDraft());
-  readonly voices = computed(() => (this.config()?.voices ?? []).filter(voice => voice.provider === this.draft().tts.provider &&
+  readonly voices = computed<PetConfiguration['voices']>(() => (this.config()?.voices ?? []).filter(voice => voice.provider === this.draft().tts.provider &&
     (voice.language === this.draft().tts.language || voice.language === 'any')));
-  readonly customFishVoice = computed(() => this.draft().tts.provider === 'fish' && !this.voices().some(voice => voice.id === this.draft().tts.voice));
+  readonly favoriteVoiceOptions = computed<FishVoiceFavorite[]>(() => {
+    const seen = new Set(this.voices().map(voice => voice.id.toLowerCase()));
+    return this.fishFavorites().filter(favorite => {
+      const id = favorite.id.toLowerCase();
+      if (!/^[a-f0-9]{32}$/.test(id) || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  });
+  readonly customFishVoice = computed(() => this.draft().tts.provider === 'fish' && !!this.draft().tts.voice &&
+    !this.voices().some(voice => voice.id === this.draft().tts.voice) &&
+    !this.favoriteVoiceOptions().some(voice => voice.id === this.draft().tts.voice));
   readonly valid = computed(() => {
     const value = this.draft();
     return this.form.valid && (!value.sources.independent || (value.personality.source === 'custom' ? !!value.personality.prompt :
@@ -123,13 +142,43 @@ export class PetPageComponent {
   private tokenSequence = 0;
   private runtimeOwner = '';
   private tokenOwner = '';
+  private favoritesSequence = 0;
+  private favoritesOwner = '';
 
   constructor() {
-    effect(() => { const channelID = this.channelID(); if (channelID) untracked(() => { void this.load(channelID); void this.refreshRuntime(channelID); void this.loadToken(channelID); }); });
-    inject(DestroyRef).onDestroy(() => { this.disposed = true; this.loadSequence++; });
+    effect(() => {
+      const channelID = this.channelID();
+      untracked(() => {
+        if (channelID) {
+          void this.load(channelID); void this.refreshRuntime(channelID); void this.loadToken(channelID); void this.loadFavorites(channelID);
+        } else {
+          this.favoritesSequence++; this.favoritesOwner = '';
+          this.fishFavorites.set([]); this.favoritesLoading.set(false); this.favoritesError.set(false);
+        }
+      });
+    });
+    this.destroyRef.onDestroy(() => { this.disposed = true; this.loadSequence++; this.favoritesSequence++; });
   }
 
   t(key: string): string { return this.language.translate(`pet.${key}`); }
+
+  async loadFavorites(channelID = this.channelID()): Promise<void> {
+    if (!channelID || this.disposed || this.favoritesOwner === channelID && this.favoritesLoading()) return;
+    if (this.favoritesOwner !== channelID) this.fishFavorites.set([]);
+    this.favoritesOwner = channelID;
+    const sequence = ++this.favoritesSequence;
+    this.favoritesLoading.set(true); this.favoritesError.set(false);
+    try {
+      const favorites = await firstValueFrom(this.ttsApi.getFavorites(channelID).pipe(
+        timeout(10_000), takeUntilDestroyed(this.destroyRef)
+      ));
+      if (!this.disposed && sequence === this.favoritesSequence && channelID === this.channelID()) this.fishFavorites.set(favorites);
+    } catch {
+      if (!this.disposed && sequence === this.favoritesSequence && channelID === this.channelID()) this.favoritesError.set(true);
+    } finally {
+      if (!this.disposed && sequence === this.favoritesSequence && channelID === this.channelID()) this.favoritesLoading.set(false);
+    }
+  }
 
   async load(channelID = this.channelID()): Promise<void> {
     if (!channelID) return;
@@ -250,6 +299,8 @@ export class PetPageComponent {
   }
 
   ensureVoice(): void {
+    // Fish references work in either reply language, even when not in the favorites list.
+    if (this.form.controls.provider.value === 'fish' && /^[a-f0-9]{32}$/i.test(this.form.controls.voice.value.trim())) return;
     if (!this.voices().some(voice => voice.id === this.form.controls.voice.value)) {
       this.form.controls.voice.setValue(this.voices()[0]?.id ?? '');
     }
