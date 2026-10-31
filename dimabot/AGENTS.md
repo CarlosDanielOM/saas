@@ -67,11 +67,11 @@ The `dimabot-site` container belongs to `dimasite/docker-compose.yaml`. Use help
 
 ## Worker Guidelines
 
-See the expanded Cron Workers section in root `saas/AGENTS.md`. When adding a worker:
+See the expanded Cron Workers section and [Rust migration status](../AGENTS.md#rust-migration-status) in root `saas/AGENTS.md`. Choose TypeScript or Rust case by case first. When TypeScript is chosen, add a worker as follows:
 
-1. Create `src/workers/your-feature.worker.ts`
-2. Export `{ name, schedule, run }`
-3. Register in `cron.index.ts`
+1. Create `src/workers/your-feature.worker.ts`.
+2. Export `{ name, schedule, run }`.
+3. Register it in `cron.index.ts`.
 
 ## Event Pipeline
 

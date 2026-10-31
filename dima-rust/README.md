@@ -1,5 +1,7 @@
 # dima-rust
 
+**Migration status:** The Rust migration is paused until further notice; deployed Rust workers remain accepted and running, and Rust remains a long-term goal. See the root [Rust migration status](../AGENTS.md#rust-migration-status) for runtime selection and scope.
+
 `dima-rust` is a Rust library for incremental migrations of selected worker and server components. The current dual-supervisor cron release is `cron-be76d96c7a39` / image `sha256:f5ccef5ad569484a318da211718d5b903c061913944a9ac8345082fd0ef24c05`; Node PID 1 owns TypeScript workers and starts one Rust index for seven native workers in the same `dima-cron` container. Its build, eight exact-image supervisor checks, four production topology samples, telemetry readbacks, and cleanup passed. Rollback with `scripts/saas-ops rollback cron-be76d96c7a39` restores `cron-ea507552f33d` / image `sha256:46706ffeb3c55bfcaf67964675d3fc6404dc965a52b55009c787f1a8b1c328c5`. See [telemetry-counter-release.md](../migration-notes/telemetry-counter-release.md) for current release evidence and [dual-cron-supervisors.md](../migration-notes/dual-cron-supervisors.md) for lifecycle details.
 
 ## Opt-in plan-cache fence

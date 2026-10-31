@@ -2,6 +2,8 @@
 
 This directory indexes Rust worker migrations, their source reuse, remaining TypeScript ownership, validation evidence, and rollback limits. The current deployment status is summarized in the table; detailed release evidence lives in each migration record.
 
+**Migration status:** The ongoing Rust migration is paused until further notice; accepted deployed Rust workers continue running. Rust remains a long-term goal, while new work chooses TypeScript or Rust case by case based on cost, scope, and delivery needs. See the root [Rust migration status](../AGENTS.md#rust-migration-status).
+
 | Migration | Status | Canonical record | Technical reference |
 | --- | --- | --- | --- |
 | Stream activity | Accepted in pre-retirement run `cron-7b8a6c88303d`; its six-group exact-image suite and combined production watch passed. | [stream-activity.md](stream-activity.md) | [Projector, fixtures, and benchmarks](../dima-rust/STREAM_ACTIVITY.md) |
