@@ -1,8 +1,5 @@
-//! Partial native port of the counter operations in `siteanalytics.ts`.
-//!
-//! This module is deliberately not registered until the remaining collector
-//! and route work documented in `migration-notes/site-analytics-api-handoff.md`
-//! has been completed and reviewed. Construction does not contact a service.
+//! Native Site analytics collectors, snapshots, caches and scheduled refresh.
+//! Construction is I/O-free; startup and orderly shutdown are explicit.
 use mongodb::{
     Database,
     bson::{Document, doc},
@@ -121,6 +118,8 @@ pub struct SiteAnalyticsService {
     deadline: Duration,
     persistence_started: std::sync::Arc<std::sync::atomic::AtomicBool>,
     live_started: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    stop: tokio::sync::watch::Sender<bool>,
+    tasks: std::sync::Arc<std::sync::Mutex<Vec<tokio::task::JoinHandle<()>>>>,
 }
 
 impl SiteAnalyticsService {
@@ -137,6 +136,8 @@ impl SiteAnalyticsService {
             deadline: Duration::from_secs(12),
             persistence_started: Default::default(),
             live_started: Default::default(),
+            stop: tokio::sync::watch::channel(false).0,
+            tasks: Default::default(),
         }
     }
 
@@ -949,8 +950,14 @@ impl SiteAnalyticsService {
         self.start_site_analytics_persistence_worker();
         if !self.live_started.swap(true, Ordering::SeqCst) {
             let service = self.clone();
-            tokio::spawn(async move {
+            let mut stop = self.stop.subscribe();
+            let task = tokio::spawn(async move {
+                let mut ticks =
+                    analytics_interval(Duration::from_millis(LIVE_CHANNELS_REFRESH_MS), true);
                 loop {
+                    if !wait_for_analytics_tick(&mut ticks, &mut stop).await {
+                        break;
+                    }
                     if let Err(error) = service
                         .refresh_live_channels_board(&twitch, tokens.as_ref())
                         .await
@@ -959,9 +966,12 @@ impl SiteAnalyticsService {
                             .log_failure("refreshLiveChannelsBoard", &error)
                             .await;
                     }
-                    tokio::time::sleep(Duration::from_millis(LIVE_CHANNELS_REFRESH_MS)).await;
                 }
             });
+            self.tasks
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .push(task);
         }
         Ok(true)
     }
@@ -1044,9 +1054,14 @@ impl SiteAnalyticsService {
         use std::sync::atomic::Ordering;
         if !self.persistence_started.swap(true, Ordering::SeqCst) {
             let service = self.clone();
-            tokio::spawn(async move {
+            let mut stop = self.stop.subscribe();
+            let task = tokio::spawn(async move {
+                let mut ticks =
+                    analytics_interval(Duration::from_millis(PERSISTENCE_INTERVAL_MS), false);
                 loop {
-                    tokio::time::sleep(Duration::from_millis(PERSISTENCE_INTERVAL_MS)).await;
+                    if !wait_for_analytics_tick(&mut ticks, &mut stop).await {
+                        break;
+                    }
                     if let Err(error) = service.persist_site_analytics_snapshot().await {
                         service
                             .log_failure("persistSiteAnalyticsSnapshot", &error)
@@ -1054,6 +1069,45 @@ impl SiteAnalyticsService {
                     }
                 }
             });
+            self.tasks
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .push(task);
+        }
+    }
+}
+
+/// Fixed future deadlines. A late tick runs once immediately, then skips missed
+/// deadlines to the next future tick; work stays sequential and never overlaps.
+/// `immediate` preserves the first live refresh; persistence waits one hour.
+pub fn analytics_interval(period: Duration, immediate: bool) -> tokio::time::Interval {
+    let now = tokio::time::Instant::now();
+    let mut ticks = tokio::time::interval_at(if immediate { now } else { now + period }, period);
+    ticks.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    ticks
+}
+/// Shutdown wins over a simultaneously ready tick. In-flight units finish;
+/// no uncertain database write is cancelled or retried by stopping the worker.
+pub async fn wait_for_analytics_tick(
+    ticks: &mut tokio::time::Interval,
+    stop: &mut tokio::sync::watch::Receiver<bool>,
+) -> bool {
+    if *stop.borrow() {
+        return false;
+    }
+    tokio::select! { biased;
+        _ = stop.changed() => false,
+        _ = ticks.tick() => true,
+    }
+}
+impl SiteAnalyticsService {
+    /// Terminal orderly stop shared by clones. The owning application should
+    /// call this before closing the supplied Mongo/Redis/Twitch dependencies.
+    pub async fn stop_site_analytics(&self) {
+        self.stop.send_replace(true);
+        let tasks = std::mem::take(&mut *self.tasks.lock().unwrap_or_else(|e| e.into_inner()));
+        for task in tasks {
+            let _ = task.await;
         }
     }
 }

@@ -504,11 +504,8 @@ pub fn prepare_event_update(body: Value) -> Result<Document, crate::schemas::Val
             let mut entries_out = Document::new();
             for (path, value) in entries {
                 let bson = mongodb::bson::serialize_to_bson(&value).map_err(|_| invalid())?;
-                if matches!(key.as_str(), "$unset" | "$rename" | "$currentDate" | "$pop") {
-                    if crate::schemas::event::cast_update_value(&path, Bson::Null)?.is_some() {
-                        entries_out.insert(path, bson);
-                    }
-                } else if let Some(value) = crate::schemas::event::cast_update_value(&path, bson)? {
+                if let Some(value) = crate::schemas::event::cast_update_operand(&key, &path, bson)?
+                {
                     entries_out.insert(path, value);
                 }
             }

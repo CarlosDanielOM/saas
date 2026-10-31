@@ -107,6 +107,14 @@ const input = {name:'Fixture',type:'fixture.event',version:'1',condition:{broadc
 function normalized(value) {
     return JSON.parse(JSON.stringify(value), (_key, v) => typeof v === 'string' && /^[a-f\d]{24}$/i.test(v) ? '<object-id>' : typeof v === 'string' && /^\d{4}-.*T.*Z$/.test(v) ? '<date>' : v);
 }
+// Preserve every supplied ID/date; normalize only generated values. This
+// catches an accidental save hook or incorrect explicit date/ID cast.
+function operatorNormalized(value, input, seed) {
+    const known=new Set();
+    function collect(v) {if(typeof v==='string') known.add(v); else if(v && typeof v==='object') Object.values(v).forEach(collect);}
+    collect(input);collect(JSON.parse(JSON.stringify(seed)));
+    return JSON.parse(JSON.stringify(value),(_k,v)=>typeof v==='string' && !known.has(v) ? /^[a-f\d]{24}$/i.test(v) ? '<object-id>' : /^\d{4}-.*T.*Z$/.test(v) ? '<date>' : v : v);
+}
 const schemaSpecs = [
     ['empty-mixed', {...input,condition:{},config:[{id:'x',label:{EN:'E',ES:'S'},value:{},showIf:{controlId:'x',is:{}}}]}],
     ['defaults', {...input, version:undefined, plan_tier:undefined, config:undefined}],
@@ -129,6 +137,51 @@ const patchSpecs = [
     ['dotted',{'description.EN':' E ','tierLimits.free':'3'}],
     ['cast-error',{enabled:'invalid'}],
     ['null',{description:null}],
+    ['push-one',{$push:{config:{id:' added ',value:3}}}],
+    ['push-each',{$push:{config:{$each:[{id:' b ',value:false},{id:' a ',value:{x:1}}],$sort:{id:1},$slice:'2',$position:'0'}}}],
+    ['add-one',{$addToSet:{config:{id:' added ',value:3}}}],
+    ['add-each',{$addToSet:{config:{$each:[{id:' b ',value:false}]}}}],
+    ['push-array',{$push:{config:[{id:' b ',value:1},{id:' c ',value:2}]}}],
+    ['pull-id',{$pull:{config:{id:' message '}}}],
+    ['pull-in',{$pull:{config:{id:{$in:[' message ',3]}}}}],
+    ['pull-rel',{$pull:{config:{id:{$gte:3},canDisable:{$ne:'true'}}}}],
+    ['pull-logical',{$pull:{config:{$or:[{id:' a '},{canDisable:'false'}]}}}],
+    ['pull-all',{$pullAll:{config:[{id:' message '}]}}],
+    ['pull-mixed',{$pull:{'condition.list':{$in:['3',3]}}}],
+    ['numeric-path',{$set:{'config.0.label.EN':' New ','config.0.value.x':{y:[1,2]}}}],
+    ['positional',{$set:{'config.$.id':3}}],
+    ['all-positional',{$set:{'config.$[].label.EN':' All ','config.$[].showIf.controlId':3}}],
+    ['array-id',{$set:{'config.0._id':'507f1f77bcf86cd799439013'}}],
+    ['unknown-path',{$set:{'config.0.unknown':3,'tierLimits.unknown':3}}],
+    ['inc',{$inc:{'tierLimits.free':'3',__v:'2'}}],
+    ['mul',{$mul:{'tierLimits.free':'2'}}],
+    ['min-max',{$min:{'tierLimits.free':'2'},$max:{'tierLimits.pro':'9'}}],
+    ['bit',{$bit:{__v:{or:'2',and:'7'}}}],
+    ['bit-mixed',{$bit:{'condition.bits':{xor:'2'}}}],
+    ['unset',{$unset:{'config.0.label.EN':{x:1},unknown:1}}],
+    ['rename',{$rename:{name:3}}],
+    ['current-date',{$currentDate:{updatedAt:'false',createdAt:{$type:'date'}}}],
+    ['pop',{$pop:{config:'-1'}}],
+    ['id-version',{$set:{_id:FIXED_ID,__v:'4'}}],
+    ['nested-dotted',{$set:{description:{'EN':' New ',unknown:1},condition:{'a.b':'x'}}}],
+    ['no-validator-hook',{$set:{releaseStage:'invalid',name:'',updatedAt:'2024-02-03'}}],
+    ['inc-error',{$inc:{'tierLimits.free':'no'}}],
+    ['push-error',{$push:{config:{canDisable:'no'}}}],
+    ['rename-error',{$rename:{name:null}}],
+    ['pop-error',{$pop:{config:'no'}}],
+    ['pull-error',{$pull:{config:{canDisable:{$in:['no']}}}}],
+    ['nested-set',{$set:{tierLimits:{free:'3'},description:{EN:' E ',ES:' S '}}}],
+    ['setoninsert',{$setOnInsert:{config:[{id:' added ',value:1}]}}],
+    ['current-date-false',{$currentDate:{updatedAt:0}}],
+    ['numeric-label',{$set:{'config.0.label.EN':' N '}}],
+    ['mixed-nested',{$set:{'condition.nested.x':{y:[1,2]}}}],
+    ['mixed-config',{$set:{'config.0.value':{x:[1,2]}}}],
+    ['pull-unknown',{$pull:{config:{unknown:{$in:['x',3]}}}}],
+    ['pull-exists',{$pull:{config:{placeholder:{$exists:'false'}}}}],
+    ['pull-showif',{$pull:{config:{'showIf.controlId':{$in:[3,' x ']}}}}],
+    ['inc-null',{$inc:{__v:null}}],
+    ['id-change',{$set:{_id:'507f1f77bcf86cd799439099'}}],
+    ['id-invalid',{$set:{_id:'not-id'}}],
 ];
 const patchCases=patchSpecs.map(([name,input]) => {
     const query=RealEvent.findByIdAndUpdate(FIXED_ID,input,{new:true});
@@ -168,9 +221,29 @@ const close = server => new Promise(resolve => server.close(resolve));
             const json = response.headers.get('content-type')?.startsWith('application/json') ? JSON.parse(text) : null;
             cases.push({name, request:{method, path:route, body:body ?? null, rawBody:raw ?? null}, expected:{status:response.status, body:json}});
         }
+        // Real source query + Mongo persistence for every operator probe. Each starts
+        // from the same raw seed; no save hook runs, and predicates create no IDs.
+        assert.equal(process.env.DIMA_TEST_MONGO_URI, 'mongodb://keyword-mongo:27017');
+        await instance.connect(process.env.DIMA_TEST_MONGO_URI, {dbName:'rust_site_analytics_fixture_oracle_v17'});
+        assert.deepEqual(await instance.connection.db.listCollections().toArray(), []);
+        const oldUpdate = EventModel.findByIdAndUpdate;
+        EventModel.findByIdAndUpdate = (...args) => RealEvent.findByIdAndUpdate(...args);
+        const operatorCases=[];
+        try {
+            for (const [name, request] of patchSpecs.slice(6)) {
+                await RealEvent.collection.deleteMany({});
+                const seed = new RealEvent({...input,_id:FIXED_ID,__v:0}).toObject();
+                await RealEvent.collection.insertOne(seed);
+                const response=await fetch(`http://127.0.0.1:${port}/site/events/${FIXED_ID}`, {method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(request)});
+                const body=await response.json();
+                const persisted=await RealEvent.collection.findOne({_id:new instance.Types.ObjectId(FIXED_ID)});
+                operatorCases.push({name,input:request,seed:JSON.parse(JSON.stringify(seed)),expected:{status:response.status,contentType:response.headers.get('content-type').split(';')[0],body:operatorNormalized(body,request,seed),persisted:operatorNormalized(persisted,request,seed)}});
+            }
+        } finally {EventModel.findByIdAndUpdate=oldUpdate; await instance.connection.dropDatabase(); await instance.disconnect();}
+        const mongooseHelpers=Object.fromEntries(['helpers/query/castUpdate.js','cast.js','schema/documentArray.js','schema/number.js'].map(file=>[file,crypto.createHash('sha256').update(fs.readFileSync(path.join(path.dirname(local.resolve('mongoose')),'lib',file))).digest('hex')]));
         const rendered = JSON.stringify({metadata:{source:sourceFile, sha256:pinnedSourceSha256,
-            node:process.versions.node, typescript:ts.version, mongoose:mongoose.version, bson:bsonVersion,
-            malformedBody:'Express default HTML; body omitted as environment-dependent'}, cases, schemaCases, patchCases}, null, 2) + '\n';
+            mongooseHelpers, node:process.versions.node, typescript:ts.version, mongoose:mongoose.version, bson:bsonVersion,
+            malformedBody:'Express default HTML; body omitted as environment-dependent'}, cases, schemaCases, patchCases, operatorCases}, null, 2) + '\n';
         const target = path.join(directory, 'site-analytics-reference.json');
         if (mode === '--write') fs.writeFileSync(target, rendered, {flag:'wx'});
         else assert.equal(fs.readFileSync(target, 'utf8'), rendered);

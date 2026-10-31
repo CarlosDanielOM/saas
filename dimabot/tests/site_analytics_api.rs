@@ -1020,6 +1020,57 @@ async fn disposable_store_routes_and_collector() {
     );
     tokio::time::sleep(Duration::from_millis(30)).await;
     assert!(idle.requests().is_empty(), "idle startup has no Helix work");
+    collector.stop_site_analytics().await;
+    collector.stop_site_analytics().await; // terminal stop is idempotent
+    // Every operator case uses the actual HTTP adapter and private Mongo store,
+    // independently seeded, including failures and strict-empty reads.
+    let events = database.collection::<Document>("events");
+    for case in fixture["operatorCases"].as_array().unwrap() {
+        events.delete_many(doc! {}).await.unwrap();
+        let seed = site_analytics_support::seed_document(&case["seed"]);
+        events.insert_one(seed).await.unwrap();
+        let response = http
+            .patch(url("/events/507f1f77bcf86cd799439011"))
+            .json(&case["input"])
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(
+            response.status().as_u16() as u64,
+            case["expected"]["status"].as_u64().unwrap(),
+            "{} status",
+            case["name"]
+        );
+        assert_eq!(
+            response.headers()["content-type"]
+                .to_str()
+                .unwrap()
+                .split(';')
+                .next()
+                .unwrap(),
+            case["expected"]["contentType"].as_str().unwrap(),
+            "{} header",
+            case["name"]
+        );
+        let mut body: serde_json::Value = response.json().await.unwrap();
+        site_analytics_support::normalize_operator_value(&mut body, case);
+        assert_eq!(body, case["expected"]["body"], "{} HTTP body", case["name"]);
+        let stored=events.find_one(doc! {"_id":mongodb::bson::oid::ObjectId::parse_str("507f1f77bcf86cd799439011").unwrap()}).await.unwrap().unwrap();
+        let mut stored: serde_json::Value = serde_json::from_str(
+            &dima_rust::utils::bson_js_json::bson_js_json_string(&mongodb::bson::Bson::Document(
+                stored,
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+        site_analytics_support::normalize_operator_value(&mut stored, case);
+        assert_eq!(
+            stored, case["expected"]["persisted"],
+            "{} persisted readback",
+            case["name"]
+        );
+    }
+    events.delete_many(doc! {}).await.unwrap();
     let object_id = mongodb::bson::oid::ObjectId::parse_str(id).unwrap();
     database
         .collection::<Document>("events")
@@ -1112,7 +1163,10 @@ fn source_mongoose_constructor_and_update_oracle() {
             assert_eq!(actual, case["expected"], "schema {}", case["name"]);
         }
     }
-    assert_eq!(fixture["patchCases"].as_array().unwrap().len(), 6);
+    assert_eq!(
+        fixture["patchCases"].as_array().unwrap().len(),
+        site_analytics_support::PATCH_CASES.len()
+    );
     for case in fixture["patchCases"].as_array().unwrap() {
         let result = prepare_event_update(case["input"].clone());
         assert_eq!(
@@ -1129,4 +1183,62 @@ fn source_mongoose_constructor_and_update_oracle() {
             assert_eq!(actual, case["expected"], "patch {}", case["name"]);
         }
     }
+}
+
+#[tokio::test]
+async fn fixed_future_deadlines_skip_missed_ticks_and_stop_orderly() {
+    use dima_rust::utils::siteanalytics::{analytics_interval, wait_for_analytics_tick};
+    use std::time::Duration;
+    use tokio::time::{sleep, timeout};
+    let (stop, mut stopped) = tokio::sync::watch::channel(false);
+    let mut live = analytics_interval(Duration::from_millis(100), true);
+    assert!(
+        timeout(
+            Duration::from_millis(50),
+            wait_for_analytics_tick(&mut live, &mut stopped)
+        )
+        .await
+        .unwrap()
+    );
+    // Slow sequential refresh crosses two fixed deadlines. Due work starts
+    // immediately on completion; it does not incur another full 100ms delay.
+    sleep(Duration::from_millis(250)).await;
+    assert!(
+        timeout(
+            Duration::from_millis(30),
+            wait_for_analytics_tick(&mut live, &mut stopped)
+        )
+        .await
+        .unwrap()
+    );
+    assert!(
+        timeout(
+            Duration::from_millis(10),
+            wait_for_analytics_tick(&mut live, &mut stopped)
+        )
+        .await
+        .is_err(),
+        "no burst catchup"
+    );
+    let mut future = analytics_interval(Duration::from_millis(100), false);
+    assert!(
+        timeout(
+            Duration::from_millis(30),
+            wait_for_analytics_tick(&mut future, &mut stopped)
+        )
+        .await
+        .is_err(),
+        "first persistence is future due"
+    );
+    assert!(
+        timeout(
+            Duration::from_millis(120),
+            wait_for_analytics_tick(&mut future, &mut stopped)
+        )
+        .await
+        .unwrap()
+    );
+    stop.send_replace(true);
+    assert!(!wait_for_analytics_tick(&mut live, &mut stopped).await);
+    assert!(!wait_for_analytics_tick(&mut future, &mut stopped).await);
 }

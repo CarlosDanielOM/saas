@@ -96,6 +96,44 @@ pub fn fixture() -> Value {
         assert!(case["expected"]["status"].as_u64().is_some());
         assert!(case["expected"].get("body").is_some());
     }
+    assert_eq!(
+        fixture["schemaCases"]
+            .as_array()
+            .expect("schema cases")
+            .iter()
+            .map(|c| c["name"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec![
+            "empty-mixed",
+            "defaults",
+            "casting",
+            "generated-id-showif",
+            "missing-condition",
+            "missing-nested-description",
+            "missing-showif",
+            "invalid-enum",
+            "null-config"
+        ],
+        "exact constructor inventory"
+    );
+    for (key, expected) in [
+        ("patchCases", PATCH_CASES),
+        ("operatorCases", &PATCH_CASES[6..]),
+    ] {
+        let cases = fixture[key].as_array().expect("nonempty operator cases");
+        assert_eq!(
+            cases
+                .iter()
+                .map(|c| c["name"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            expected,
+            "exact ordered inventory {key}"
+        );
+        for case in cases {
+            assert!(case.get("input").is_some());
+            assert!(case.get("expected").is_some());
+        }
+    }
     fixture
 }
 pub fn fixture_case<'a>(fixture: &'a Value, name: &str) -> &'a Value {
@@ -214,4 +252,127 @@ impl TokenSource for FixedAppToken {
             }
         })
     }
+}
+
+pub const PATCH_CASES: &[&str] = &[
+    "trim-number-bool",
+    "no-validation",
+    "nested",
+    "dotted",
+    "cast-error",
+    "null",
+    "push-one",
+    "push-each",
+    "add-one",
+    "add-each",
+    "push-array",
+    "pull-id",
+    "pull-in",
+    "pull-rel",
+    "pull-logical",
+    "pull-all",
+    "pull-mixed",
+    "numeric-path",
+    "positional",
+    "all-positional",
+    "array-id",
+    "unknown-path",
+    "inc",
+    "mul",
+    "min-max",
+    "bit",
+    "bit-mixed",
+    "unset",
+    "rename",
+    "current-date",
+    "pop",
+    "id-version",
+    "nested-dotted",
+    "no-validator-hook",
+    "inc-error",
+    "push-error",
+    "rename-error",
+    "pop-error",
+    "pull-error",
+    "nested-set",
+    "setoninsert",
+    "current-date-false",
+    "numeric-label",
+    "mixed-nested",
+    "mixed-config",
+    "pull-unknown",
+    "pull-exists",
+    "pull-showif",
+    "inc-null",
+    "id-change",
+    "id-invalid",
+];
+
+pub fn seed_document(value: &Value) -> mongodb::bson::Document {
+    use mongodb::bson::{Bson, DateTime, oid::ObjectId};
+    fn convert(key: &str, value: &Value) -> Bson {
+        match value {
+            Value::Object(fields) => Bson::Document(
+                fields
+                    .iter()
+                    .map(|(k, v)| (k.clone(), convert(k, v)))
+                    .collect(),
+            ),
+            Value::Array(values) => Bson::Array(values.iter().map(|v| convert("", v)).collect()),
+            Value::String(s) if key == "_id" => Bson::ObjectId(ObjectId::parse_str(s).unwrap()),
+            Value::String(s) if key == "createdAt" || key == "updatedAt" => {
+                Bson::DateTime(DateTime::parse_rfc3339_str(s).unwrap())
+            }
+            other => mongodb::bson::serialize_to_bson(other).unwrap(),
+        }
+    }
+    convert("", value).as_document().unwrap().clone()
+}
+
+/// Keep caller/seed IDs and dates exact; normalize only generated values.
+pub fn normalize_operator_value(value: &mut Value, case: &Value) {
+    fn collect(v: &Value, known: &mut std::collections::HashSet<String>) {
+        match v {
+            Value::String(s) => {
+                known.insert(s.clone());
+            }
+            Value::Object(m) => {
+                for v in m.values() {
+                    collect(v, known);
+                }
+            }
+            Value::Array(a) => {
+                for v in a {
+                    collect(v, known);
+                }
+            }
+            _ => {}
+        }
+    }
+    fn normalize(v: &mut Value, known: &std::collections::HashSet<String>) {
+        match v {
+            Value::String(s) if !known.contains(s) => {
+                if s.len() == 24 && s.bytes().all(|b| b.is_ascii_hexdigit()) {
+                    *s = "<object-id>".into();
+                } else if s.len() >= 20 && s.as_bytes().get(10) == Some(&b'T') && s.ends_with('Z') {
+                    *s = "<date>".into();
+                }
+            }
+            Value::Object(m) => {
+                for v in m.values_mut() {
+                    normalize(v, known);
+                }
+            }
+            Value::Array(a) => {
+                for v in a {
+                    normalize(v, known);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut known = std::collections::HashSet::new();
+    collect(&case["seed"], &mut known);
+    collect(&case["input"], &mut known);
+    normalize(value, &known);
 }
