@@ -16,6 +16,8 @@
  * the API base (for previews against a test API).
  */
 import { Icon } from '@astrojs/starlight/components';
+import DocsMascot from './DocsMascot.astro';
+import MascotFigure from './MascotFigure.astro';
 
 const { entry } = Astro.locals.starlightRoute;
 const spanish = entry.id === 'es' || entry.id.startsWith('es/');
@@ -28,6 +30,9 @@ const t = spanish
       title: 'Asistente de la documentación',
       newChat: 'Nueva conversación',
       close: 'Cerrar',
+      guide: 'Muéstrame esta página',
+      pauseMotion: 'Pausar animaciones de la mascota',
+      resumeMotion: 'Reanudar animaciones de la mascota',
       intro: 'Pregunta con tus propias palabras. Las respuestas salen de esta documentación, con enlaces a la página correcta.',
       tryLabel: 'Prueba con',
       suggestions: [
@@ -46,6 +51,7 @@ const t = spanish
         you: 'Tú',
         reading: 'Leyendo la documentación…',
         thinking: 'Pensando…',
+        speaking: 'Respondiendo…',
         searching: 'Revisando la lista de funciones…',
         testing: 'Probando el comando…',
         seconds: 's',
@@ -78,6 +84,9 @@ const t = spanish
       title: 'Docs assistant',
       newChat: 'New chat',
       close: 'Close',
+      guide: 'Show me this page',
+      pauseMotion: 'Pause pet animations',
+      resumeMotion: 'Resume pet animations',
       intro: 'Ask in your own words. Answers come from these docs, with links to the right page.',
       tryLabel: 'Try asking',
       suggestions: [
@@ -96,6 +105,7 @@ const t = spanish
         you: 'You',
         reading: 'Reading the docs…',
         thinking: 'Thinking…',
+        speaking: 'Replying…',
         searching: 'Checking the function list…',
         testing: 'Testing the command…',
         seconds: 's',
@@ -130,20 +140,21 @@ const t = spanish
   data-page-title={entry.data.title}
   data-api={api}
   data-ui={JSON.stringify(t.ui)}
+  data-mascot-state="idle"
+  data-mascot-paused="false"
 >
-  <button class="da-launcher" type="button" data-docs-assistant-open aria-haspopup="dialog" aria-controls="docs-assistant-panel">
-    <Icon name="comment-alt" size="1.25rem" />
-    <span class="da-launcher__label">{t.launcher}</span>
-    <span class="da-launcher__short">{t.launcherShort}</span>
-  </button>
+  <DocsMascot spanish={spanish} />
 
   <dialog id="docs-assistant-panel" class="da-panel" aria-labelledby="da-title">
     <div class="da-panel__inner">
       <header class="da-head">
-        <span class="da-head__icon"><Icon name="comment-alt" size="1.1rem" /></span>
+        <span class="da-head__mascot" aria-hidden="true"><MascotFigure idPrefix="assistant-header" compact /></span>
         <div class="da-head__text">
           <p id="da-title" class="da-title">{t.title}</p>
         </div>
+        <button class="da-icon-btn" type="button" data-docs-mascot-guide aria-label={t.guide} title={t.guide}>
+          <Icon name="right-arrow" size="1.15rem" />
+        </button>
         <button class="da-icon-btn" type="button" data-docs-assistant-new hidden aria-label={t.newChat} title={t.newChat}>
           <Icon name="pencil" size="1.15rem" />
         </button>
@@ -155,6 +166,7 @@ const t = spanish
       <div class="da-body" data-docs-assistant-mount>
         <div class="da-welcome" data-docs-assistant-welcome>
           <p class="da-intro">{t.intro}</p>
+          <button type="button" class="da-pill da-pill--primary" data-docs-mascot-guide>{t.guide}</button>
           <p class="da-label">{t.tryLabel}</p>
           <ul class="da-suggestions">
             {t.suggestions.map(([question, query]) => (
@@ -178,6 +190,10 @@ const t = spanish
           <span class="da-send__stop" aria-hidden="true"></span>
         </button>
       </form>
+      <div class="da-pet-controls">
+        <button type="button" class="da-motion da-pill" data-docs-mascot-motion
+          data-label-pause={t.pauseMotion} data-label-resume={t.resumeMotion} aria-pressed="false">{t.pauseMotion}</button>
+      </div>
       <p class="da-disclaimer">{t.disclaimer}</p>
       <p class="sr-only" aria-live="polite" data-docs-assistant-announce></p>
     </div>
@@ -186,6 +202,7 @@ const t = spanish
 
 <script>
   import { docsLink, renderMarkdown } from '../lib/assistant-markdown.mjs';
+  import { createPageGuide, resolveGuideTarget } from '../lib/docs-mascot-guide.mjs';
 
   type Source = { title: string; url: string };
   type Turn = {
@@ -197,6 +214,7 @@ const t = spanish
     error?: string;
     stopped?: boolean;
   };
+  type MascotState = 'idle' | 'thinking' | 'reading' | 'speaking' | 'happy' | 'error';
 
   // Words that make a natural question but hurt keyword search.
   const STOP = new Set(
@@ -251,8 +269,18 @@ const t = spanish
     controller: AbortController | null = null;
     storageKey = '';
     api = '';
+    events: AbortController | null = null;
+    pageGuide: ReturnType<typeof createPageGuide> | null = null;
+    mascotState: MascotState = 'idle';
+    mascotLabel = '';
+    motionPaused = false;
+    announceTimer: ReturnType<typeof setTimeout> | undefined;
+    publicApi: { open: (question?: string) => void; close: () => void } | null = null;
 
     connectedCallback() {
+      this.events?.abort();
+      this.events = new AbortController();
+      const { signal } = this.events;
       this.dialog = this.querySelector('dialog')!;
       this.input = this.querySelector<HTMLTextAreaElement>('#da-input')!;
       this.thread = this.querySelector<HTMLOListElement>('[data-docs-assistant-thread]')!;
@@ -262,50 +290,139 @@ const t = spanish
       // Local previews/checks only: localStorage 'docs-assistant:api' points at a test API.
       const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
       this.api = (local && localStorage.getItem('docs-assistant:api')) || this.dataset.api || '';
+      this.pageGuide = createPageGuide(document);
+      try { this.motionPaused = localStorage.getItem('docs-mascot:motion') === 'paused'; } catch {}
+      this.applyMotionPreference(this.motionPaused);
 
-      this.querySelector('[data-docs-assistant-close]')!.addEventListener('click', () => this.close());
-      this.querySelector('[data-docs-assistant-new]')!.addEventListener('click', () => this.reset());
+      this.querySelector('[data-docs-assistant-close]')!.addEventListener('click', () => this.close(), { signal });
+      this.querySelector('[data-docs-assistant-new]')!.addEventListener('click', () => this.reset(), { signal });
+      // Native Escape also closes a dialog; keep the launcher state in sync.
+      this.dialog.addEventListener('close', () => {
+        this.emitMascotState();
+        // The launcher is hidden while modal. Native focus restoration happens
+        // before it is visible again, so restore it after an ordinary close.
+        if (!this.pageGuide?.active && !document.querySelector('dialog[open]')) {
+          document.querySelector<HTMLButtonElement>('docs-mascot .da-launcher')?.focus({ preventScroll: true });
+        }
+      }, { signal });
       // Click on the backdrop closes the panel.
       this.dialog.addEventListener('click', (event) => {
         if (event.target === this.dialog) this.close();
-      });
+      }, { signal });
       this.querySelector('[data-docs-assistant-form]')!.addEventListener('submit', (event) => {
         event.preventDefault();
         if (this.controller) return this.controller.abort();
         const question = this.input.value.trim();
         if (question) this.ask(question);
-      });
+      }, { signal });
       this.input.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
           event.preventDefault();
           this.querySelector<HTMLFormElement>('[data-docs-assistant-form]')!.requestSubmit();
         }
-      });
-      this.input.addEventListener('input', () => this.grow());
+      }, { signal });
+      this.input.addEventListener('input', () => this.grow(), { signal });
       this.querySelectorAll<HTMLButtonElement>('.da-suggestion').forEach((button) =>
-        button.addEventListener('click', () => this.ask(button.dataset.question!, button.dataset.query)),
+        button.addEventListener('click', () => this.ask(button.dataset.question!, button.dataset.query), { signal }),
       );
 
       // Page-wide hooks so any page or future component can use the assistant/search.
       document.addEventListener('click', (event) => {
-        const target = (event.target as Element).closest<HTMLElement>('[data-docs-assistant-open], [data-docs-search]');
+        if (!(event.target instanceof Element)) return;
+        const guide = event.target.closest('[data-docs-mascot-guide]');
+        if (guide && this.contains(guide)) {
+          event.preventDefault();
+          this.startGuide();
+          return;
+        }
+        // Only ordinary clicks on this assistant's citations become guidance.
+        // Modifier-clicks and links to other pages keep their native navigation.
+        const anchor = event.target.closest<HTMLAnchorElement>('a[href]');
+        if (anchor && this.contains(anchor) && (anchor.closest('.da-answer') || anchor.classList.contains('da-source'))
+          && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+          const destination = resolveGuideTarget(anchor.getAttribute('href') || '', location.href, document);
+          if (destination) {
+            event.preventDefault();
+            this.close();
+            history.pushState(history.state, '', new URL(anchor.href, location.href).hash);
+            this.pageGuide?.start(destination);
+            return;
+          }
+        }
+        const target = event.target.closest<HTMLElement>('[data-docs-assistant-open], [data-docs-search]');
         if (!target) return;
         event.preventDefault();
         if (target.hasAttribute('data-docs-assistant-open')) this.open();
         else openSearch(target.dataset.docsSearch);
-      });
+      }, { signal });
+      document.addEventListener('docs-mascot:next', () => this.pageGuide?.next(), { signal });
+      document.addEventListener('docs-mascot:end', () => this.pageGuide?.stop(), { signal });
+      document.addEventListener('docs-mascot:motion', (event) => {
+        const paused = (event as CustomEvent<{ paused: boolean }>).detail?.paused;
+        if (typeof paused === 'boolean') this.applyMotionPreference(paused);
+      }, { signal });
+      this.querySelector('[data-docs-mascot-motion]')!.addEventListener('click', () => {
+        const paused = !this.motionPaused;
+        this.applyMotionPreference(paused);
+        try { localStorage.setItem('docs-mascot:motion', paused ? 'paused' : 'on'); } catch {}
+        document.dispatchEvent(new CustomEvent('docs-mascot:motion', { detail: { paused } }));
+      }, { signal });
+      window.addEventListener('popstate', () => this.pageGuide?.stop(), { signal });
 
-      (window as any).DocsAssistant = { open: (question?: string) => this.open(question), close: () => this.close() };
+      this.publicApi = { open: (question?: string) => this.open(question), close: () => this.close() };
+      (window as any).DocsAssistant = this.publicApi;
 
       try {
         const saved = JSON.parse(sessionStorage.getItem(this.storageKey) || '[]');
         if (Array.isArray(saved)) this.turns = saved.filter((turn) => turn && typeof turn.content === 'string');
       } catch {}
       this.renderAll();
+      this.setMascotState('idle');
+      document.dispatchEvent(new CustomEvent('docs-mascot:motion', { detail: { paused: this.motionPaused } }));
+    }
+
+    disconnectedCallback() {
+      this.events?.abort();
+      this.events = null;
+      this.controller?.abort();
+      this.pageGuide?.stop();
+      this.pageGuide = null;
+      clearTimeout(this.announceTimer);
+      if ((window as any).DocsAssistant === this.publicApi) delete (window as any).DocsAssistant;
+    }
+
+    emitMascotState() {
+      if (!this.isConnected) return;
+      document.dispatchEvent(new CustomEvent('docs-mascot:state', {
+        detail: { state: this.mascotState, label: this.mascotLabel, expanded: this.dialog.open },
+      }));
+    }
+
+    applyMotionPreference(paused: boolean) {
+      this.motionPaused = paused;
+      this.dataset.mascotPaused = String(paused);
+      const button = this.querySelector<HTMLButtonElement>('[data-docs-mascot-motion]');
+      if (!button) return;
+      button.setAttribute('aria-pressed', String(paused));
+      button.textContent = (paused ? button.dataset.labelResume : button.dataset.labelPause) || '';
+    }
+
+    setMascotState(state: MascotState, label = '') {
+      this.mascotState = state;
+      this.mascotLabel = label;
+      this.dataset.mascotState = state;
+      this.emitMascotState();
+    }
+
+    startGuide() {
+      this.close();
+      this.pageGuide?.start();
     }
 
     open(question?: string) {
+      this.pageGuide?.stop();
       if (!this.dialog.open) this.dialog.showModal();
+      this.emitMascotState();
       if (question) {
         this.input.value = question;
         this.grow();
@@ -317,6 +434,7 @@ const t = spanish
 
     close() {
       this.dialog.close();
+      this.emitMascotState();
     }
 
     grow() {
@@ -332,6 +450,8 @@ const t = spanish
 
     reset() {
       this.controller?.abort();
+      this.pageGuide?.stop();
+      this.setMascotState('idle');
       this.turns = [];
       this.save();
       this.renderAll();
@@ -521,14 +641,16 @@ const t = spanish
         if (stick) this.scrollToEnd(true);
       };
 
-      this.controller = new AbortController();
+      const controller = new AbortController();
+      this.controller = controller;
       this.setBusy(true);
+      this.setMascotState('thinking', this.ui.thinking);
       try {
         const response = await fetch(`${this.api}/docs-assistant/ask`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
           body: JSON.stringify({ messages, page }),
-          signal: this.controller.signal,
+          signal: controller.signal,
         });
         if (!response.ok || !response.body) {
           const payload = await response.json().catch(() => null);
@@ -553,16 +675,21 @@ const t = spanish
             else if (event === 'status') {
               // Lookups and command tests can take a while: say which one is happening.
               const phase = data.phase === 'searching' ? this.ui.searching : data.phase === 'testing' ? this.ui.testing : this.ui.thinking;
-              if (!bot.content || data.phase !== 'thinking') label.textContent = phase;
+              if (!bot.content || data.phase !== 'thinking') {
+                label.textContent = phase;
+                this.setMascotState(data.phase === 'searching' || data.phase === 'testing' ? 'reading' : 'thinking', phase);
+              }
             } else if (event === 'reset') {
               // Text so far was a preamble to a lookup or test: clear it and show progress again.
               bot.content = '';
               answer.innerHTML = '';
               if (!status.isConnected) item.prepend(status);
+              this.setMascotState('reading', label.textContent || this.ui.reading);
             }
             else if (event === 'text') {
               if (!bot.content) status.remove();
               bot.content += data.delta;
+              this.setMascotState('speaking', this.ui.speaking);
               if (!frame) frame = requestAnimationFrame(paint);
             } else if (event === 'done') {
               bot.id = data.id;
@@ -573,18 +700,27 @@ const t = spanish
         }
         if (!done) throw new Error(bot.content ? 'unavailable' : 'network');
         if (!bot.content) throw new Error('unavailable');
+        this.setMascotState('happy', this.ui.ready);
         this.announce(this.ui.ready);
       } catch (error) {
-        if (this.controller?.signal.aborted) bot.stopped = true;
+        if (controller.signal.aborted) {
+          bot.stopped = true;
+          this.setMascotState('idle');
+        }
         else bot.error = error instanceof TypeError ? 'network' : (error as Error).message || 'unavailable';
-        if (bot.error) this.announce(this.ui.errors[bot.error] || this.ui.errors.unavailable);
+        if (bot.error) {
+          const message = this.ui.errors[bot.error] || this.ui.errors.unavailable;
+          this.setMascotState('error', message);
+          this.announce(message);
+        }
       } finally {
         clearInterval(tick);
         if (frame) cancelAnimationFrame(frame);
         this.controller = null;
         this.setBusy(false);
         // A stopped answer with no text is just dropped.
-        if (bot.stopped && !bot.content) this.turns.splice(this.turns.indexOf(user), 2);
+        const turnIndex = this.turns.indexOf(user);
+        if (bot.stopped && !bot.content && turnIndex >= 0) this.turns.splice(turnIndex, 2);
         this.save();
         const stick = this.nearBottom();
         this.renderAll();
@@ -595,9 +731,10 @@ const t = spanish
     announce(message: string) {
       const live = this.querySelector<HTMLElement>('[data-docs-assistant-announce]')!;
       live.textContent = '';
-      setTimeout(() => (live.textContent = message), 50);
+      clearTimeout(this.announceTimer);
+      this.announceTimer = setTimeout(() => { if (this.isConnected) live.textContent = message; }, 50);
     }
   }
 
-  customElements.define('docs-assistant', DocsAssistantElement);
+  if (!customElements.get('docs-assistant')) customElements.define('docs-assistant', DocsAssistantElement);
 </script>

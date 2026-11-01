@@ -1216,54 +1216,14 @@ html[data-has-hero] .page {
   margin-top: 0.3rem;
 }
 
-/* Keep the last lines clear of the floating assistant button */
+/* Keep the final lines clear of the docked documentation companion. */
 .main-frame {
-  padding-bottom: 5.5rem;
+  padding-bottom: 10rem;
 }
 
 /* ============================================================================
    Docs assistant (chat panel: bottom sheet on phones, side panel on desktop)
    ============================================================================ */
-
-.da-launcher {
-  position: fixed;
-  z-index: calc(var(--sl-z-index-navbar) - 1);
-  inset-inline-end: max(1rem, env(safe-area-inset-right));
-  bottom: max(1rem, env(safe-area-inset-bottom));
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 3.25rem;
-  padding: 0 1.15rem;
-  border: 1px solid color-mix(in srgb, white 18%, transparent);
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
-  font-size: 0.95rem;
-  font-weight: 700;
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 40%, transparent), var(--shadow);
-  cursor: pointer;
-  transition: transform 180ms var(--ease), background 180ms var(--ease);
-}
-
-.da-launcher:hover {
-  transform: translateY(-2px);
-  background: var(--accent-strong);
-}
-
-[data-theme='dark'] .da-launcher:hover {
-  background: color-mix(in srgb, var(--accent) 85%, white);
-}
-
-.da-launcher__label {
-  display: none;
-}
-
-/* Mobile menu open: the full-screen sidebar owns the screen */
-body:has(starlight-menu-button[aria-expanded='true']) .da-launcher {
-  display: none;
-}
 
 .da-panel {
   width: 100%;
@@ -1763,7 +1723,7 @@ body:has(starlight-menu-button[aria-expanded='true']) .da-launcher {
 
 .da-pill--primary {
   border-color: transparent;
-  background: var(--accent);
+  background: #7c3aed;
   color: #fff;
 }
 
@@ -1848,19 +1808,6 @@ body:has(starlight-menu-button[aria-expanded='true']) .da-launcher {
 }
 
 @media (min-width: 50rem) {
-  .da-launcher__label {
-    display: inline;
-  }
-
-  .da-launcher__short {
-    display: none;
-  }
-
-  .da-launcher {
-    inset-inline-end: 1.5rem;
-    bottom: 1.5rem;
-  }
-
   .da-panel {
     width: 30rem;
     height: min(46rem, calc(100dvh - 3rem));

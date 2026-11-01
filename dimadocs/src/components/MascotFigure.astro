@@ -1,0 +1,33 @@
+---
+/** Articulated parts are the original traced contours, including their cut-outs. */
+import source from '../assets/mascot.svg?raw';
+import '../styles/docs-mascot.css';
+
+interface Props { idPrefix: string; compact?: boolean }
+const { idPrefix, compact = false } = Astro.props;
+const id = idPrefix.replace(/[^a-zA-Z0-9_-]/g, '-');
+const compound = source.match(/<path\s+d="([^"]+)"/)?.[1] || '';
+const parts = compound.match(/M[^M]+/g) || [];
+if (parts.length !== 17) throw new Error('Mascot source contours changed; review its articulated parts.');
+const join = (...indices: number[]) => indices.map((index) => parts[index]).join(' ');
+const head = join(0, 1, 2, 3, 4, 5, 8, 9);
+---
+
+<svg class:list={['dm-figure', { 'dm-figure--compact': compact }]} viewBox="0 0 944 1024" fill-rule="evenodd" aria-hidden="true" focusable="false">
+  <defs>
+    <path id={`${id}-head`} d={head} />
+    <clipPath id={`${id}-hat-clip`}><rect x="0" y="0" width="944" height="161" /></clipPath>
+    <clipPath id={`${id}-face-clip`}><rect x="0" y="161" width="944" height="380" /></clipPath>
+  </defs>
+  <g class="dm-figure__float">
+    <path class="dm-figure__body" d={join(11, 12)} />
+    <path class="dm-figure__arm dm-figure__arm--left" d={join(13, 16)} />
+    <path class="dm-figure__arm dm-figure__arm--right" d={join(14, 15)} />
+    <g class="dm-figure__head">
+      <g clip-path={`url(#${id}-face-clip)`}><use href={`#${id}-head`} /></g>
+      <g class="dm-figure__hat"><g clip-path={`url(#${id}-hat-clip)`}><use href={`#${id}-head`} /></g></g>
+      <path class="dm-figure__eyes" d={join(6, 7)} />
+      <path class="dm-figure__moustache" d={join(10)} />
+    </g>
+  </g>
+</svg>

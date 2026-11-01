@@ -63,6 +63,8 @@ Pet chat-context backend integration: [2026-10-31 observation](2026-10-31-pet-ch
 
 Pet Fish favorites UI: [2026-10-31 observation](2026-10-31-pet-fish-favorites.md). Single-task, low-confidence support for Sol's existing GPT-led UI route; no tier or performance claim.
 
+Living docs mascot: two bounded Sol-high implementation tasks and a Sol-high lead completed the UI release; Luna high reconciled source-backed docs. Exact-candidate browser, visual, and export checks passed and the deployed public smoke passed. [Release evidence](../migration-notes/docs-mascot-2026-11-01.md). Task-specific routing only; no tier or performance claim.
+
 Desktop AI turns: [2026-10-31 observation](2026-10-31-desktop-ai.md). Low-confidence, task-specific support for the assigned Sol, Terra, and Luna routes; server acceptance is complete, while desktop app integration and verification remain in progress. No tier or performance claim.
 
 Global Rust utility consolidation routing and verification are recorded in [2026-10-22-global-utils.md](2026-10-22-global-utils.md).

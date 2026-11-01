@@ -103,7 +103,7 @@ for (const [lang, prefix, askLabel, guideTitle] of [['en', '', 'Ask the docs', '
       const launcher = page.locator('.da-launcher');
       const box = await launcher.boundingBox();
       assert.ok(box && box.height >= 44, 'launcher touch target');
-      if (width >= 800) assert.equal((await launcher.innerText()).trim(), askLabel);
+      assert.equal(await launcher.getAttribute('aria-label'), askLabel);
       await launcher.click();
       const panel = page.locator('#docs-assistant-panel[open]');
       await panel.waitFor();

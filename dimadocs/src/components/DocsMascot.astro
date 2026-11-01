@@ -1,0 +1,31 @@
+---
+import MascotFigure from './MascotFigure.astro';
+interface Props { spanish?: boolean }
+const { spanish = false } = Astro.props;
+const labels = spanish ? {
+  ask: 'Preguntar', fullAsk: 'Pregunta a la documentación', next: 'Siguiente', done: 'Terminar', section: 'Sección',
+} : {
+  ask: 'Ask', fullAsk: 'Ask the docs', next: 'Next', done: 'Done', section: 'Section',
+};
+---
+
+<docs-mascot class="dm" data-mode="dock" data-state="idle" data-labels={JSON.stringify(labels)}>
+  <button class="da-launcher dm-trigger" type="button" data-docs-assistant-open aria-label={labels.fullAsk} aria-haspopup="dialog" aria-controls="docs-assistant-panel" aria-expanded="false">
+    <span class="dm-bubble" aria-hidden="true"><span data-mascot-bubble>{labels.ask}</span><span class="dm-bubble__dots"><i></i><i></i><i></i></span></span>
+    <span class="dm-art"><MascotFigure idPrefix="docs-mascot-launcher" /></span>
+  </button>
+  <div class="dm-tour" hidden>
+    <div class="dm-tour__copy" role="status" aria-live="polite" aria-atomic="true">
+      <p class="dm-tour__counter" data-mascot-counter></p>
+      <p class="dm-tour__title" data-mascot-guide-label></p>
+    </div>
+    <div class="dm-tour__actions">
+      <button class="dm-next" type="button" data-mascot-next>{labels.next}<span aria-hidden="true"> →</span></button>
+      <button class="dm-done" type="button" data-mascot-done>{labels.done}</button>
+    </div>
+  </div>
+</docs-mascot>
+
+<script>
+  import '../lib/docs-mascot.mjs';
+</script>
