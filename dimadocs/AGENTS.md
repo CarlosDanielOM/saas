@@ -61,21 +61,15 @@ Docs share the **Live First (OC3c)** design language with `dimasite/`.
 - Homepage (`index.mdx`, `es/index.mdx`): search-first hero (`DocsHomeSearch.astro`), 3-step start, topic tiles mirroring the sidebar groups. Keep both languages in sync. The wrapper has `.not-content` so Starlight's markdown spacing doesn't leak in.
 - Interactive-only components (`DocsHomeSearch`, `Icon`) are dropped by the text exporter in `src/lib/markdown.mjs`; register any new one there.
 
-## Docs assistant (chatbot placeholder)
+## Docs assistant ("Ask the docs")
 
-`DocsAssistant.astro` (mounted on every page by `DocsPageFrame.astro`) renders the "Ask the docs" launcher and panel: bottom sheet on phones, side panel on desktop. Until a chatbot exists, questions open the docs search with the question's keywords.
+`DocsAssistant.astro` (mounted on every page by `DocsPageFrame.astro`) is a chat panel: bottom sheet on phones, side panel on desktop. Questions stream from the API's public `POST https://api.domdimabot.com/docs-assistant/ask` (dimabot `src/server/routes/docs-assistant.route.ts`), which answers with MiniMax-M3.1-Flash from this site's own `llms-full.txt` export. A docs deploy reaches the assistant within about 5 minutes; there is nothing else to update.
 
-To plug in a chatbot, load a script that handles the ask event — no markup changes needed:
-
-```js
-document.addEventListener('docs-assistant:ask', (event) => {
-  event.preventDefault(); // skip the search fallback
-  const { question, page, mount } = event.detail; // page = { title, url, lang }; mount = panel body element
-  // render the conversation into `mount`
-});
-```
-
-Also available: `window.DocsAssistant.open(question?)` / `.close()`, `[data-docs-assistant-open]` on any element, and `[data-docs-search="query"]` to open search pre-filled. Remove the "Coming soon" labels (assistant + homepage) when it ships. `ops/checks/docs-redesign-browser.mjs` covers the fallback and the hook contract.
+- Answers render through `src/lib/assistant-markdown.mjs` (escape-first Markdown; docs links become same-site paths). Tests: `tests/assistant-markdown.test.mjs`.
+- Each answer shows "Pages used" chips, copy buttons on code, and 👍/👎 feedback. Errors offer Retry and the docs search. The conversation is kept per language in `sessionStorage`, so following a cited page keeps it.
+- The model links pages inline using the "Source:" URLs in the export, so keep every page's frontmatter title/description accurate; that's what the assistant cites.
+- Local previews: on `localhost`/`127.0.0.1` only, `localStorage['docs-assistant:api']` points the panel at a test API (production ignores it). `ops/checks/docs-redesign-browser.mjs` uses this with a fake API.
+- Replacing the built-in chat is still possible: a `docs-assistant:ask` listener that calls `event.preventDefault()` takes over (`event.detail` = `{ question, page: { title, url, lang }, mount }`). Also available: `window.DocsAssistant.open(question?)` / `.close()`, `[data-docs-assistant-open]`, and `[data-docs-search="query"]`.
 
 ## Production Verification & Deployment
 

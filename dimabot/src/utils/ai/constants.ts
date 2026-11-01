@@ -73,10 +73,16 @@ export const CODING_MODELS = {
   exhausted: "z-ai/glm-4.5-air",
 } as const;
 
-export const MINIMAX_MODEL = "MiniMax-M2.7-highspeed";
+// MiniMax (Anthropic-compatible API). M3.1-Flash is the only model we use:
+// 1M context, always thinks, effort low|medium|high|xhigh|max.
+export const MINIMAX_MODEL = "MiniMax-M3.1-Flash";
 export const MINIMAX_BASE_URL = "https://api.minimax.io/anthropic";
-export const MINIMAX_COST_PER_M_INPUT = 0.6;
-export const MINIMAX_COST_PER_M_OUTPUT = 2.4;
+// USD per 1M tokens (Standard tier). Cache reads are MiniMax's automatic prefix cache.
+export const MINIMAX_COST_PER_M_INPUT = 0.15;
+export const MINIMAX_COST_PER_M_OUTPUT = 0.6;
+export const MINIMAX_COST_PER_M_CACHE_READ = 0.015;
+// The model's own ceiling (the API rejects anything above it). Thinking counts toward it.
+export const MINIMAX_MAX_OUTPUT_TOKENS = 524288;
 
 export const DEFAULT_TIMEOUT_MS = 8000;
 

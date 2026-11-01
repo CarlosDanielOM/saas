@@ -1,6 +1,6 @@
 // Behavior check for the docs redesign: homepage search hero, docs assistant
-// placeholder (search fallback + chatbot hook), page leads, sidebar badges,
-// mobile/desktop layout in both themes and languages, plus the llms exports.
+// (chat against a local fake API, error → search fallback, chatbot hook), page leads,
+// sidebar badges, mobile/desktop layout in both themes and languages, plus the llms exports.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -14,12 +14,47 @@ const home = await (await fetch(base + '/index.txt')).text();
 assert.match(home, /Find the guide you need/);
 assert.doesNotMatch(home, /DocsHomeSearch|Coming soon|data-docs/, 'interactive homepage parts stay out of text export');
 
+// Fake docs assistant API (same wire format as dimabot's /docs-assistant). No model calls.
+import http from 'node:http';
+const assistantCalls = [];
+const fakeApi = http.createServer((req, res) => {
+  res.setHeader('access-control-allow-origin', req.headers.origin || '*');
+  res.setHeader('access-control-allow-headers', 'content-type');
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+  let raw = '';
+  req.on('data', (chunk) => { raw += chunk; });
+  req.on('end', () => {
+    const body = JSON.parse(raw || '{}');
+    assistantCalls.push({ path: req.url, body });
+    if (req.url === '/docs-assistant/feedback') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end('{"error":false,"data":{"recorded":true}}'); }
+    const question = body.messages.at(-1).content;
+    if (/overlay/i.test(question)) { // follow-up question → simulated busy assistant
+      res.writeHead(503, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify({ error: true, status: 503, data: { code: 'busy' } }));
+    }
+    const es = body.page.lang === 'es';
+    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    send('start', { id: '00000000-0000-4000-8000-00000000000' + assistantCalls.length % 10 });
+    send('status', { phase: 'thinking' });
+    const url = `https://docs.domdimabot.com/${es ? 'es/' : ''}tts/`;
+    for (const delta of [`${es ? 'Abre' : 'Open'} **Modules → Text to speech**.\n\n`, '```text\n!s Hello chat!\n```\n\n', `[${es ? 'Texto a voz' : 'Text to Speech'}](${url})`]) send('text', { delta });
+    send('done', { id: 'x', sources: [{ title: es ? 'Texto a voz' : 'Text to Speech', url }] });
+    res.end();
+  });
+});
+await new Promise((resolve) => fakeApi.listen(0, '127.0.0.1', resolve));
+const fakeApiUrl = `http://127.0.0.1:${fakeApi.address().port}`;
+
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 const errors = [];
 
 async function open(path, { width = 1280, theme = 'dark' } = {}) {
   const context = await browser.newContext({ viewport: { width, height: width < 640 ? 844 : 900 }, reducedMotion: 'reduce' });
-  await context.addInitScript((t) => localStorage.setItem('starlight-theme', t), theme);
+  await context.addInitScript(([t, api]) => {
+    localStorage.setItem('starlight-theme', t);
+    localStorage.setItem('docs-assistant:api', api); // local-only override → fake API
+  }, [theme, fakeApiUrl]);
   const page = await context.newPage();
   page.on('pageerror', (e) => errors.push(`${path} ${width} ${theme}: ${e.message}`));
   await page.goto(base + path, { waitUntil: 'networkidle' });
@@ -59,13 +94,43 @@ for (const [lang, prefix, askLabel, guideTitle] of [['en', '', 'Ask the docs', '
       await panel.waitFor();
       const pbox = await panel.boundingBox();
       if (width < 800) assert.ok(Math.abs(pbox.width - width) <= 2, 'bottom sheet spans the phone width');
-      else assert.ok(pbox.width <= 440, 'desktop side panel');
+      else assert.ok(pbox.width <= 500, 'desktop side panel');
+      assert.equal(await page.locator('.da-soon, .lf-search__soon').count(), 0, 'no "Coming soon" labels');
 
-      // Without a chatbot, a suggestion falls back to search.
+      // A suggestion asks the assistant: streamed answer, same-site source chip, copy button, feedback.
+      const suggestion = await page.locator('.da-suggestion').first().getAttribute('data-question');
       await page.locator('.da-suggestion').first().click();
+      await page.locator('.da-sources').waitFor();
+      assert.equal(await page.locator('.da-msg--user .da-bubble').innerText(), suggestion);
+      assert.equal(await page.locator('.da-source').getAttribute('href'), `${prefix}/tts/`);
+      assert.equal(await page.locator('.da-answer a').getAttribute('href'), `${prefix}/tts/`);
+      assert.equal(await page.locator('.da-answer pre .da-copy').count(), 1);
+      assert.equal(await page.locator('.da-answer strong').first().innerText(), 'Modules → Text to speech');
+      const asked = assistantCalls.filter((call) => call.path === '/docs-assistant/ask').at(-1).body;
+      assert.equal(asked.page.lang, lang);
+      assert.deepEqual(asked.messages, [{ role: 'user', content: suggestion }]);
+      await page.locator('.da-feedback__btn').first().click();
+      await page.locator('.da-feedback__thanks').waitFor();
+      const overflow = await page.evaluate(() => document.querySelector('.da-body').scrollWidth - document.querySelector('.da-body').clientWidth);
+      assert.ok(overflow <= 0, `assistant panel overflows by ${overflow}px`);
+      if (shots) await page.screenshot({ path: `${shots}/docs-assistant-${lang}-${width}-${theme}.png` });
+
+      // Follow-up sends the earlier exchange; an error offers Retry and the docs search (with results).
+      await page.fill('#da-input', lang === 'es' ? '¿Overlay en OBS?' : 'Overlay in OBS?');
+      await page.press('#da-input', 'Enter');
+      await page.locator('.da-error').waitFor();
+      const followUp = assistantCalls.filter((call) => call.path === '/docs-assistant/ask').at(-1).body;
+      assert.deepEqual(followUp.messages.map((message) => message.role), ['user', 'assistant', 'user']);
+      assert.equal(await page.locator('.da-error .da-pill').count(), 2);
+      await page.locator('.da-error .da-pill').nth(1).click();
       await searchResults(page);
-      assert.equal(await page.locator('#docs-assistant-panel[open]').count(), 0, 'assistant closes for the fallback');
+      assert.equal(await page.locator('#docs-assistant-panel[open]').count(), 0, 'assistant closes for the search fallback');
       await page.keyboard.press('Escape');
+
+      // New chat clears the conversation.
+      await page.evaluate(() => window.DocsAssistant.open());
+      await page.click('[data-docs-assistant-new]');
+      assert.equal(await page.locator('.da-msg').count(), 0);
 
       // Chatbot hook: a listener that handles the question keeps the panel and skips search.
       await page.evaluate(() => document.addEventListener('docs-assistant:ask', (e) => {
@@ -99,5 +164,7 @@ for (const [lang, prefix, askLabel, guideTitle] of [['en', '', 'Ask the docs', '
 }
 
 await browser.close();
-assert.deepEqual(errors, []);
+fakeApi.close();
+assert.ok(assistantCalls.some((call) => call.path === '/docs-assistant/feedback'), 'feedback sent');
+assert.deepEqual(errors.filter((error) => !/503 \(Service Unavailable\)/.test(error)), []);
 console.log('docs redesign browser check passed');

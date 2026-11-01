@@ -44,6 +44,7 @@ import { getSiteAnalyticsSnapshot } from "../utils/siteanalytics.js";
 import { getReservedCommandsPayload } from "./services/command_defaults.service.js";
 import { oauthRoute, oauthApiRoute, oauthMetadata } from './oauth/routes.js';
 import { petRoute } from './routes/pet.route.js';
+import { docsAssistantRoute } from './routes/docs-assistant.route.js';
 
 const __dirname = getDirname(import.meta.url);
 
@@ -58,6 +59,8 @@ export const server = async (): Promise<Express.Application> => {
         app.use('/overlay-studio', express.json({ limit: '5mb' }));
         // Block commands send their block tree (up to ~10k characters of command text).
         app.use('/commands', express.json({ limit: '1mb' }));
+        // Public docs assistant: own CORS allowlist and body limit, ahead of the global parsers/CORS.
+        app.use('/docs-assistant', docsAssistantRoute);
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
         // OAuth has its own origin policy; keep it ahead of legacy permissive CORS.

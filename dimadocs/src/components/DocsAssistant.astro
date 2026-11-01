@@ -1,71 +1,132 @@
 ---
 /**
- * Docs assistant placeholder.
+ * Docs assistant: "Ask the docs" launcher + chat panel (bottom sheet on phones, side
+ * panel on desktop). Answers stream from the API (`POST /docs-assistant/ask`), which
+ * reads these same docs and answers with MiniMax. Errors offer Retry and the docs search.
  *
- * Today: a launcher + panel that explains the assistant is coming and sends the
- * visitor's question to the built-in docs search instead.
- *
- * Wiring a real chatbot later (no markup changes needed):
+ * Hooks (unchanged):
  *   document.addEventListener('docs-assistant:ask', (event) => {
- *     event.preventDefault();               // skip the search fallback
- *     const { question, page } = event.detail; // page = { title, url, lang }
- *     // render the conversation into event.detail.mount
+ *     event.preventDefault();               // replace the built-in assistant
+ *     const { question, page, mount } = event.detail; // page = { title, url, lang }
  *   });
- * Also available: window.DocsAssistant.open(question?) / .close().
- * Any element with [data-docs-assistant-open] opens the panel; any element with
- * [data-docs-search="query"] opens the docs search with that query.
+ *   window.DocsAssistant.open(question?) / .close()
+ *   [data-docs-assistant-open] opens the panel; [data-docs-search="query"] opens search.
+ * The conversation is kept per language in sessionStorage, so following a cited page
+ * keeps it. On localhost/127.0.0.1 only, localStorage 'docs-assistant:api' overrides
+ * the API base (for previews against a test API).
  */
 import { Icon } from '@astrojs/starlight/components';
 
 const { entry } = Astro.locals.starlightRoute;
 const spanish = entry.id === 'es' || entry.id.startsWith('es/');
+const api = (import.meta.env.PUBLIC_DOCS_ASSISTANT_API || 'https://api.domdimabot.com').replace(/\/+$/, '');
 
 const t = spanish
   ? {
       launcher: 'Pregunta a la documentación',
       launcherShort: 'Preguntar',
       title: 'Asistente de la documentación',
-      soon: 'Próximamente',
+      newChat: 'Nueva conversación',
       close: 'Cerrar',
-      intro:
-        'Pronto podrás hacer preguntas con tus propias palabras, como «¿Cómo hago que el bot lea el chat en voz alta?», y recibir una respuesta con enlaces a la página correcta.',
-      fallback: 'Mientras tanto, tu pregunta abre el buscador de la documentación.',
+      intro: 'Pregunta con tus propias palabras. Las respuestas salen de esta documentación, con enlaces a la página correcta.',
       tryLabel: 'Prueba con',
       suggestions: [
-        ['¿Cómo configuro texto a voz?', 'texto a voz'],
+        ['¿Cómo hago que el bot lea el chat en voz alta?', 'texto a voz'],
         ['¿Cómo creo un comando personalizado?', 'comando personalizado'],
         ['¿Cómo freno los follows de bots?', 'defensa de follows'],
         ['¿Qué incluyen Premium y Pro?', 'planes'],
       ],
       inputLabel: 'Tu pregunta',
       placeholder: 'Escribe tu pregunta…',
-      send: 'Buscar',
+      send: 'Enviar',
+      stop: 'Detener',
       context: 'Página actual:',
+      disclaimer: 'La IA puede equivocarse. Revisa la página enlazada.',
+      ui: {
+        you: 'Tú',
+        reading: 'Leyendo la documentación…',
+        thinking: 'Pensando…',
+        seconds: 's',
+        sources: 'Páginas usadas',
+        helpfulQ: '¿Te ayudó?',
+        helpful: 'Sí, me ayudó',
+        unhelpful: 'No me ayudó',
+        thanks: '¡Gracias por avisarnos!',
+        copy: 'Copiar',
+        copied: 'Copiado',
+        stopped: 'Respuesta detenida.',
+        retry: 'Reintentar',
+        search: 'Buscar en la documentación',
+        ready: 'Respuesta lista.',
+        errors: {
+          rate_limited: 'Vas muy rápido. Espera un momento y vuelve a intentarlo.',
+          daily_limit: 'Llegaste al límite de preguntas de hoy. Mientras tanto, usa el buscador.',
+          daily_total: 'El asistente descansa hasta mañana. Mientras tanto, usa el buscador.',
+          busy: 'El asistente está ocupado ahora mismo. Inténtalo de nuevo en unos segundos.',
+          timeout: 'La respuesta tardó demasiado. Inténtalo de nuevo.',
+          invalid_request: 'La conversación es demasiado larga. Empieza una nueva.',
+          network: 'No pudimos conectar con el asistente. Revisa tu conexión.',
+          unavailable: 'El asistente no está disponible ahora mismo.',
+        },
+      },
     }
   : {
       launcher: 'Ask the docs',
       launcherShort: 'Ask',
       title: 'Docs assistant',
-      soon: 'Coming soon',
+      newChat: 'New chat',
       close: 'Close',
-      intro:
-        'Soon you’ll be able to ask questions in your own words, like “How do I make the bot read chat aloud?”, and get an answer with links to the right page.',
-      fallback: 'Until then, your question opens the docs search.',
+      intro: 'Ask in your own words. Answers come from these docs, with links to the right page.',
       tryLabel: 'Try asking',
       suggestions: [
-        ['How do I set up text to speech?', 'text to speech'],
+        ['How do I make the bot read chat aloud?', 'text to speech'],
         ['How do I make a custom command?', 'custom command'],
         ['How do I stop follow bots?', 'follow defense'],
         ['What do Premium and Pro include?', 'plans'],
       ],
       inputLabel: 'Your question',
       placeholder: 'Ask a question…',
-      send: 'Search',
+      send: 'Send',
+      stop: 'Stop',
       context: 'Current page:',
+      disclaimer: 'AI can make mistakes. Check the linked page.',
+      ui: {
+        you: 'You',
+        reading: 'Reading the docs…',
+        thinking: 'Thinking…',
+        seconds: 's',
+        sources: 'Pages used',
+        helpfulQ: 'Did this help?',
+        helpful: 'Yes, this helped',
+        unhelpful: 'No, this didn’t help',
+        thanks: 'Thanks for letting us know!',
+        copy: 'Copy',
+        copied: 'Copied',
+        stopped: 'Answer stopped.',
+        retry: 'Try again',
+        search: 'Search the docs',
+        ready: 'Answer ready.',
+        errors: {
+          rate_limited: 'You’re asking quickly. Wait a moment, then try again.',
+          daily_limit: 'You’ve reached today’s question limit. The docs search still works.',
+          daily_total: 'The assistant is resting until tomorrow. The docs search still works.',
+          busy: 'The assistant is busy right now. Try again in a few seconds.',
+          timeout: 'That answer took too long. Try again.',
+          invalid_request: 'This conversation is too long. Start a new chat.',
+          network: 'Couldn’t reach the assistant. Check your connection.',
+          unavailable: 'The assistant isn’t available right now.',
+        },
+      },
     };
 ---
 
-<docs-assistant class="print:hidden" data-lang={spanish ? 'es' : 'en'} data-page-title={entry.data.title}>
+<docs-assistant
+  class="print:hidden"
+  data-lang={spanish ? 'es' : 'en'}
+  data-page-title={entry.data.title}
+  data-api={api}
+  data-ui={JSON.stringify(t.ui)}
+>
   <button class="da-launcher" type="button" data-docs-assistant-open aria-haspopup="dialog" aria-controls="docs-assistant-panel">
     <Icon name="comment-alt" size="1.25rem" />
     <span class="da-launcher__label">{t.launcher}</span>
@@ -78,47 +139,68 @@ const t = spanish
         <span class="da-head__icon"><Icon name="comment-alt" size="1.1rem" /></span>
         <div class="da-head__text">
           <p id="da-title" class="da-title">{t.title}</p>
-          <span class="da-soon">{t.soon}</span>
         </div>
-        <button class="da-close" type="button" data-docs-assistant-close aria-label={t.close}>
+        <button class="da-icon-btn" type="button" data-docs-assistant-new hidden aria-label={t.newChat} title={t.newChat}>
+          <Icon name="pencil" size="1.15rem" />
+        </button>
+        <button class="da-icon-btn" type="button" data-docs-assistant-close aria-label={t.close}>
           <Icon name="close" size="1.25rem" />
         </button>
       </header>
 
       <div class="da-body" data-docs-assistant-mount>
-        <p class="da-intro">{t.intro}</p>
-        <p class="da-fallback">{t.fallback}</p>
-        <p class="da-label">{t.tryLabel}</p>
-        <ul class="da-suggestions">
-          {t.suggestions.map(([question, query]) => (
-            <li>
-              <button type="button" class="da-suggestion" data-question={question} data-query={query}>
-                {question}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div class="da-welcome" data-docs-assistant-welcome>
+          <p class="da-intro">{t.intro}</p>
+          <p class="da-label">{t.tryLabel}</p>
+          <ul class="da-suggestions">
+            {t.suggestions.map(([question, query]) => (
+              <li>
+                <button type="button" class="da-suggestion" data-question={question} data-query={query}>
+                  {question}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p class="da-context">{t.context} <strong>{entry.data.title}</strong></p>
+        </div>
+        <ol class="da-thread" data-docs-assistant-thread hidden></ol>
       </div>
 
       <form class="da-composer" data-docs-assistant-form>
         <label class="sr-only" for="da-input">{t.inputLabel}</label>
-        <input id="da-input" name="question" type="text" autocomplete="off" enterkeyhint="search" placeholder={t.placeholder} />
-        <button type="submit" class="da-send" aria-label={t.send}>
-          <Icon name="right-arrow" size="1.2rem" />
+        <textarea id="da-input" name="question" rows="1" maxlength="2000" autocomplete="off" enterkeyhint="send" placeholder={t.placeholder}></textarea>
+        <button type="submit" class="da-send" aria-label={t.send} data-label-send={t.send} data-label-stop={t.stop}>
+          <span class="da-send__go"><Icon name="right-arrow" size="1.2rem" /></span>
+          <span class="da-send__stop" aria-hidden="true"></span>
         </button>
       </form>
-      <p class="da-context">{t.context} <strong>{entry.data.title}</strong></p>
+      <p class="da-disclaimer">{t.disclaimer}</p>
+      <p class="sr-only" aria-live="polite" data-docs-assistant-announce></p>
     </div>
   </dialog>
 </docs-assistant>
 
 <script>
+  import { docsLink, renderMarkdown } from '../lib/assistant-markdown.mjs';
+
+  type Source = { title: string; url: string };
+  type Turn = {
+    role: 'user' | 'assistant';
+    content: string;
+    id?: string;
+    sources?: Source[];
+    feedback?: 'helpful' | 'unhelpful';
+    error?: string;
+    stopped?: boolean;
+  };
+
   // Words that make a natural question but hurt keyword search.
   const STOP = new Set(
     ('how do i can you the a an to my me is are what which where when why does with for of in on it ' +
       'cómo como qué que cuál cual dónde donde cuándo cuando por para el la los las un una mi mis es son de del en con se hago puedo')
       .split(' '),
   );
+  const HISTORY_TURNS = 10; // earlier turns sent with each question (5 exchanges)
 
   const toQuery = (question: string) => {
     const words = question.toLowerCase().replace(/[¿?¡!.,;:"“”«»]/g, ' ').split(/\s+/).filter(Boolean);
@@ -147,23 +229,55 @@ const t = spanish
     }
   }
 
+  const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = '') => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  };
+  const md = (text: string) => renderMarkdown(text, { link: (url: string) => docsLink(url) });
+
   class DocsAssistantElement extends HTMLElement {
     dialog!: HTMLDialogElement;
+    input!: HTMLTextAreaElement;
+    thread!: HTMLOListElement;
+    body!: HTMLElement;
+    ui: any;
+    turns: Turn[] = [];
+    controller: AbortController | null = null;
+    storageKey = '';
+    api = '';
 
     connectedCallback() {
       this.dialog = this.querySelector('dialog')!;
-      const input = this.querySelector<HTMLInputElement>('#da-input')!;
+      this.input = this.querySelector<HTMLTextAreaElement>('#da-input')!;
+      this.thread = this.querySelector<HTMLOListElement>('[data-docs-assistant-thread]')!;
+      this.body = this.querySelector<HTMLElement>('.da-body')!;
+      this.ui = JSON.parse(this.dataset.ui || '{}');
+      this.storageKey = `docs-assistant:v1:${this.dataset.lang}`;
+      // Local previews/checks only: localStorage 'docs-assistant:api' points at a test API.
+      const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+      this.api = (local && localStorage.getItem('docs-assistant:api')) || this.dataset.api || '';
 
       this.querySelector('[data-docs-assistant-close]')!.addEventListener('click', () => this.close());
+      this.querySelector('[data-docs-assistant-new]')!.addEventListener('click', () => this.reset());
       // Click on the backdrop closes the panel.
       this.dialog.addEventListener('click', (event) => {
         if (event.target === this.dialog) this.close();
       });
       this.querySelector('[data-docs-assistant-form]')!.addEventListener('submit', (event) => {
         event.preventDefault();
-        const question = input.value.trim();
+        if (this.controller) return this.controller.abort();
+        const question = this.input.value.trim();
         if (question) this.ask(question);
       });
+      this.input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+          event.preventDefault();
+          this.querySelector<HTMLFormElement>('[data-docs-assistant-form]')!.requestSubmit();
+        }
+      });
+      this.input.addEventListener('input', () => this.grow());
       this.querySelectorAll<HTMLButtonElement>('.da-suggestion').forEach((button) =>
         button.addEventListener('click', () => this.ask(button.dataset.question!, button.dataset.query)),
       );
@@ -178,21 +292,179 @@ const t = spanish
       });
 
       (window as any).DocsAssistant = { open: (question?: string) => this.open(question), close: () => this.close() };
+
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(this.storageKey) || '[]');
+        if (Array.isArray(saved)) this.turns = saved.filter((turn) => turn && typeof turn.content === 'string');
+      } catch {}
+      this.renderAll();
     }
 
     open(question?: string) {
       if (!this.dialog.open) this.dialog.showModal();
-      const input = this.querySelector<HTMLInputElement>('#da-input')!;
-      if (question) input.value = question;
-      // Don't pop the phone keyboard over the intro text.
-      if (window.matchMedia('(min-width: 50rem)').matches) input.focus();
+      if (question) {
+        this.input.value = question;
+        this.grow();
+      }
+      this.scrollToEnd(true);
+      // Don't pop the phone keyboard over the conversation.
+      if (window.matchMedia('(min-width: 50rem)').matches) this.input.focus();
     }
 
     close() {
       this.dialog.close();
     }
 
-    ask(question: string, query?: string) {
+    grow() {
+      this.input.style.height = 'auto';
+      this.input.style.height = `${Math.min(this.input.scrollHeight, 160)}px`;
+    }
+
+    save() {
+      try {
+        sessionStorage.setItem(this.storageKey, JSON.stringify(this.turns.filter((turn) => turn.role === 'user' || turn.content || turn.error)));
+      } catch {}
+    }
+
+    reset() {
+      this.controller?.abort();
+      this.turns = [];
+      this.save();
+      this.renderAll();
+      this.input.value = '';
+      this.grow();
+      this.input.focus();
+    }
+
+    nearBottom() {
+      return this.body.scrollHeight - this.body.scrollTop - this.body.clientHeight < 80;
+    }
+
+    scrollToEnd(force = false) {
+      if (force || this.nearBottom()) this.body.scrollTop = this.body.scrollHeight;
+    }
+
+    setBusy(busy: boolean) {
+      const send = this.querySelector<HTMLButtonElement>('.da-send')!;
+      send.classList.toggle('is-stop', busy);
+      send.setAttribute('aria-label', busy ? send.dataset.labelStop! : send.dataset.labelSend!);
+    }
+
+    renderAll() {
+      const has = this.turns.length > 0;
+      this.querySelector<HTMLElement>('[data-docs-assistant-welcome]')!.hidden = has;
+      this.querySelector<HTMLElement>('[data-docs-assistant-new]')!.hidden = !has;
+      this.thread.hidden = !has;
+      this.thread.replaceChildren(...this.turns.map((turn, index) => this.renderTurn(turn, index)));
+    }
+
+    renderTurn(turn: Turn, index: number): HTMLLIElement {
+      const item = el('li', `da-msg da-msg--${turn.role === 'user' ? 'user' : 'bot'}`);
+      if (turn.role === 'user') {
+        item.append(el('span', 'sr-only', `${this.ui.you}: `), el('p', 'da-bubble', turn.content));
+        return item;
+      }
+      const answer = el('div', 'da-answer');
+      if (turn.content) answer.innerHTML = md(turn.content);
+      item.append(answer);
+      if (turn.stopped) item.append(el('p', 'da-note', this.ui.stopped));
+      if (turn.error) item.append(this.renderError(turn.error, index));
+      else if (turn.content && !turn.stopped) {
+        this.addCopyButtons(answer);
+        if (turn.sources?.length) item.append(this.renderSources(turn.sources));
+        if (turn.id) item.append(this.renderFeedback(turn));
+      }
+      return item;
+    }
+
+    renderSources(sources: Source[]) {
+      const box = el('div', 'da-sources');
+      box.append(el('p', 'da-sources__label', this.ui.sources));
+      const list = el('ul', 'da-sources__list');
+      for (const source of sources) {
+        const link = docsLink(source.url);
+        if (!link) continue;
+        const anchor = el('a', 'da-source', source.title);
+        anchor.href = link.href;
+        const li = el('li');
+        li.append(anchor);
+        list.append(li);
+      }
+      box.append(list);
+      return box;
+    }
+
+    renderFeedback(turn: Turn) {
+      const box = el('div', 'da-feedback');
+      if (turn.feedback) {
+        box.append(el('p', 'da-feedback__thanks', this.ui.thanks));
+        return box;
+      }
+      box.append(el('span', 'da-feedback__q', this.ui.helpfulQ));
+      for (const [helpful, label, icon] of [[true, this.ui.helpful, '👍'], [false, this.ui.unhelpful, '👎']] as const) {
+        const button = el('button', 'da-feedback__btn', icon);
+        button.type = 'button';
+        button.setAttribute('aria-label', label);
+        button.title = label;
+        button.addEventListener('click', () => {
+          turn.feedback = helpful ? 'helpful' : 'unhelpful';
+          this.save();
+          box.replaceChildren(el('p', 'da-feedback__thanks', this.ui.thanks));
+          fetch(`${this.api}/docs-assistant/feedback`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ id: turn.id, helpful }),
+            keepalive: true,
+          }).catch(() => {});
+        });
+        box.append(button);
+      }
+      return box;
+    }
+
+    renderError(code: string, index: number) {
+      const box = el('div', 'da-error');
+      box.setAttribute('role', 'alert');
+      box.append(el('p', 'da-error__text', this.ui.errors[code] || this.ui.errors.unavailable));
+      const actions = el('div', 'da-error__actions');
+      const question = this.turns[index - 1]?.content || '';
+      if (!['daily_limit', 'daily_total', 'invalid_request'].includes(code)) {
+        const retry = el('button', 'da-pill da-pill--primary', this.ui.retry);
+        retry.type = 'button';
+        retry.addEventListener('click', () => {
+          this.turns.splice(index - 1, 2);
+          this.ask(question);
+        });
+        actions.append(retry);
+      }
+      const search = el('button', 'da-pill', this.ui.search);
+      search.type = 'button';
+      search.addEventListener('click', () => {
+        this.close();
+        openSearch(toQuery(question));
+      });
+      actions.append(search);
+      box.append(actions);
+      return box;
+    }
+
+    addCopyButtons(answer: HTMLElement) {
+      answer.querySelectorAll('pre').forEach((pre) => {
+        const button = el('button', 'da-copy', this.ui.copy);
+        button.type = 'button';
+        button.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(pre.querySelector('code')?.textContent || '');
+            button.textContent = this.ui.copied;
+            setTimeout(() => (button.textContent = this.ui.copy), 1500);
+          } catch {}
+        });
+        pre.append(button);
+      });
+    }
+
+    // `query` is accepted for older callers (suggestions used to open search with it).
+    ask(question: string, _query?: string) {
       const detail = {
         question,
         mount: this.querySelector('[data-docs-assistant-mount]'),
@@ -200,8 +472,117 @@ const t = spanish
       };
       const handled = !this.dispatchEvent(new CustomEvent('docs-assistant:ask', { detail, bubbles: true, cancelable: true }));
       if (handled) return;
-      this.close();
-      openSearch(query ?? toQuery(question));
+      if (this.controller) return;
+      this.input.value = '';
+      this.grow();
+      this.converse(question, detail.page);
+    }
+
+    async converse(question: string, page: { title?: string; url: string; lang?: string }) {
+      // Send only completed exchanges (failed/stopped answers are left out).
+      const history: Turn[] = [];
+      for (let i = 0; i + 1 < this.turns.length; i += 2) {
+        const [user, bot] = [this.turns[i], this.turns[i + 1]];
+        if (user.role === 'user' && bot.role === 'assistant' && bot.content && !bot.error) history.push(user, bot);
+      }
+      const messages = [...history.slice(-HISTORY_TURNS), { role: 'user', content: question }]
+        .map(({ role, content }) => ({ role, content }));
+
+      const user: Turn = { role: 'user', content: question };
+      const bot: Turn = { role: 'assistant', content: '' };
+      this.turns.push(user, bot);
+      this.renderAll();
+      const item = this.thread.lastElementChild as HTMLLIElement;
+      const answer = item.querySelector<HTMLElement>('.da-answer')!;
+      answer.setAttribute('aria-busy', 'true');
+      const status = el('p', 'da-status');
+      status.setAttribute('role', 'status');
+      const label = el('span', 'da-status__text', this.ui.reading);
+      const timer = el('span', 'da-status__time');
+      status.append(el('span', 'da-dots'), label, timer);
+      item.prepend(status);
+      this.scrollToEnd(true);
+
+      const started = Date.now();
+      const tick = setInterval(() => {
+        const seconds = Math.round((Date.now() - started) / 1000);
+        if (seconds >= 4) timer.textContent = ` · ${seconds}${this.ui.seconds}`;
+      }, 1000);
+
+      let frame = 0;
+      const paint = () => {
+        frame = 0;
+        const stick = this.nearBottom();
+        answer.innerHTML = md(bot.content);
+        if (stick) this.scrollToEnd(true);
+      };
+
+      this.controller = new AbortController();
+      this.setBusy(true);
+      try {
+        const response = await fetch(`${this.api}/docs-assistant/ask`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
+          body: JSON.stringify({ messages, page }),
+          signal: this.controller.signal,
+        });
+        if (!response.ok || !response.body) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.data?.code || 'unavailable');
+        }
+        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+        let buffer = '';
+        let done = false;
+        while (!done) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          buffer += chunk.value;
+          let split;
+          while ((split = buffer.indexOf('\n\n')) >= 0) {
+            const block = buffer.slice(0, split);
+            buffer = buffer.slice(split + 2);
+            const event = /^event: (.+)$/m.exec(block)?.[1];
+            const raw = /^data: (.*)$/m.exec(block)?.[1];
+            if (!event || raw == null) continue; // keep-alive ping
+            const data = JSON.parse(raw);
+            if (event === 'start') bot.id = data.id;
+            else if (event === 'status' && !bot.content) label.textContent = this.ui.thinking;
+            else if (event === 'text') {
+              if (!bot.content) status.remove();
+              bot.content += data.delta;
+              if (!frame) frame = requestAnimationFrame(paint);
+            } else if (event === 'done') {
+              bot.id = data.id;
+              bot.sources = data.sources;
+              done = true;
+            } else if (event === 'error') throw new Error(data.code || 'unavailable');
+          }
+        }
+        if (!done) throw new Error(bot.content ? 'unavailable' : 'network');
+        if (!bot.content) throw new Error('unavailable');
+        this.announce(this.ui.ready);
+      } catch (error) {
+        if (this.controller?.signal.aborted) bot.stopped = true;
+        else bot.error = error instanceof TypeError ? 'network' : (error as Error).message || 'unavailable';
+        if (bot.error) this.announce(this.ui.errors[bot.error] || this.ui.errors.unavailable);
+      } finally {
+        clearInterval(tick);
+        if (frame) cancelAnimationFrame(frame);
+        this.controller = null;
+        this.setBusy(false);
+        // A stopped answer with no text is just dropped.
+        if (bot.stopped && !bot.content) this.turns.splice(this.turns.indexOf(user), 2);
+        this.save();
+        const stick = this.nearBottom();
+        this.renderAll();
+        if (stick) this.scrollToEnd(true);
+      }
+    }
+
+    announce(message: string) {
+      const live = this.querySelector<HTMLElement>('[data-docs-assistant-announce]')!;
+      live.textContent = '';
+      setTimeout(() => (live.textContent = message), 50);
     }
   }
 

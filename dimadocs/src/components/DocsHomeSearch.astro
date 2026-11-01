@@ -14,7 +14,6 @@ const t = spanish
   ? {
       search: 'Busca en la documentación…',
       askLong: 'Pregunta a la documentación',
-      soon: 'Próximamente',
       popular: 'Búsquedas populares',
       chips: [
         ['Texto a voz', 'texto a voz'],
@@ -27,7 +26,6 @@ const t = spanish
   : {
       search: 'Search the docs…',
       askLong: 'Ask the docs',
-      soon: 'Coming soon',
       popular: 'Popular searches',
       chips: [
         ['Text to speech', 'text to speech'],
@@ -46,10 +44,9 @@ const t = spanish
       <span class="lf-search__placeholder">{t.search}</span>
       <kbd class="lf-search__kbd" aria-hidden="true">Ctrl K</kbd>
     </button>
-    <button type="button" class="lf-search__ask" data-docs-assistant-open aria-haspopup="dialog" aria-controls="docs-assistant-panel" aria-label={`${t.askLong} (${t.soon})`}>
+    <button type="button" class="lf-search__ask" data-docs-assistant-open aria-haspopup="dialog" aria-controls="docs-assistant-panel" aria-label={t.askLong}>
       <Icon name="comment-alt" size="1.15rem" />
       <span class="lf-search__ask-long">{t.askLong}</span>
-      <span class="lf-search__soon">{t.soon}</span>
     </button>
   </div>
   <div class="lf-search__popular">

@@ -1,0 +1,122 @@
+// Isolated providers for the docs assistant check. No production credentials or outbound calls.
+// - docs.test serves a small docs export (en + es).
+// - minimax.test fakes MiniMax's Anthropic-compatible streaming API; the question picks a scenario.
+// Every request is appended to /tmp/saas-fixtures/calls.jsonl for the check to inspect.
+import fs from 'node:fs';
+
+const realFetch = globalThis.fetch;
+const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
+const record = (value) => fs.appendFileSync('/tmp/saas-fixtures/calls.jsonl', `${JSON.stringify(value)}\n`);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const page = (title, description, path, body, lang) => `# ${title}
+
+${description}
+
+Source: https://docs.domdimabot.com/${path}
+Language: ${lang}
+Documentation index: https://docs.domdimabot.com/llms.txt
+
+${body}`;
+
+const DOCS = {
+  '/llms-full.txt': `# DomDimaBot — en
+
+${page('Text to Speech', 'Make the bot read chat aloud.', 'tts/', 'Open **Modules → Text to speech** and turn on **Enable channel TTS**. See [plans](https://docs.domdimabot.com/plans/index.txt).', 'en')}
+
+---
+
+${page('Plans & credits', 'What each plan includes.', 'plans/', 'FIXTURE_EN_PLANS Premium costs $6/month.', 'en')}
+`,
+  '/es/llms-full.txt': `# DomDimaBot — es
+
+${page('Texto a voz', 'Haz que el bot lea el chat.', 'es/tts/', 'FIXTURE_ES_TTS Abre **Módulos → Texto a voz**.', 'es')}
+`,
+};
+
+function sse(events, { hold, signal } = {}) {
+  const encoder = new TextEncoder();
+  return new Response(new ReadableStream({
+    async start(controller) {
+      // Like a real connection: cancelling the request errors the body.
+      signal?.addEventListener('abort', () => { try { controller.error(new DOMException('aborted', 'AbortError')); } catch {} }, { once: true });
+      try {
+        for (const item of events) {
+          if (typeof item === 'number') { await sleep(item); continue; }
+          if (signal?.aborted) return;
+          controller.enqueue(encoder.encode(`event: ${item.type}\ndata: ${JSON.stringify(item)}\n\n`));
+        }
+        if (hold) {
+          await new Promise((resolve) => signal?.addEventListener('abort', resolve, { once: true }));
+          return;
+        }
+        controller.close();
+      } catch {}
+    },
+  }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+}
+
+const start = { type: 'message_start', message: { id: 'msg_fixture', type: 'message', role: 'assistant', model: 'MiniMax-M3.1-Flash', content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 0, output_tokens: 0 } } };
+const thinking = (text) => [
+  { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '', signature: '' } },
+  { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: text } },
+  { type: 'content_block_stop', index: 0 },
+];
+const text = (parts) => [
+  { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } },
+  ...parts.map((part) => ({ type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: part } })),
+  { type: 'content_block_stop', index: 1 },
+];
+const finish = [
+  { type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { input_tokens: 1200, output_tokens: 300, cache_read_input_tokens: 800, output_tokens_details: { thinking_tokens: 40 } } },
+  { type: 'message_stop' },
+];
+
+function minimax(body, signal) {
+  const question = String(body.messages.at(-1).content);
+  if (signal) signal.addEventListener('abort', () => record({ provider: 'minimax', aborted: true, question }), { once: true });
+  if (question.includes('FAIL_OVERLOADED')) return json({ type: 'error', error: { type: 'overloaded_error', message: 'busy' } }, 529);
+  if (question.includes('HANG')) return sse([start, ...thinking('…')], { hold: true, signal });
+  if (question.includes('SLOW')) {
+    const ticks = Array.from({ length: 17 }, () => [1000, { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: '.' } }]).flat();
+    return sse([start, { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '', signature: '' } }, ...ticks,
+      { type: 'content_block_stop', index: 0 }, ...text(['Slow but done.']), ...finish], { signal });
+  }
+  return sse([start, ...thinking('Looking at the TTS page.'), ...text([
+    'Turn on **Enable channel TTS** in **Modules → Text to speech**.\n\n',
+    'See [Text to Speech](https://docs.domdimabot.com/tts/index.txt), [Plans](https://docs.domdimabot.com/plans/) ',
+    'and [made up](https://docs.domdimabot.com/not-a-page/).',
+  ]), ...finish], { signal });
+}
+
+globalThis.fetch = async (input, init = {}) => {
+  const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
+  if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') return realFetch(input, init);
+  const raw = init.body ?? (input instanceof Request ? await input.clone().text() : '');
+  if (url.hostname === 'docs.test') {
+    record({ provider: 'docs', path: url.pathname });
+    return DOCS[url.pathname] ? new Response(DOCS[url.pathname], { headers: { 'content-type': 'text/plain' } }) : new Response('missing', { status: 404 });
+  }
+  if (url.hostname === 'minimax.test') {
+    const body = JSON.parse(String(raw || '{}'));
+    const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+    record({ provider: 'minimax', path: url.pathname, apiKey: headers.get('x-api-key'), body });
+    return minimax(body, init.signal || (input instanceof Request ? input.signal : undefined));
+  }
+  if (url.hostname === 'embeddings.test') {
+    const body = JSON.parse(String(raw || '{}'));
+    const inputs = Array.isArray(body.input) ? body.input : [body.input];
+    return json({ data: inputs.map((_, index) => ({ embedding: Array(1024).fill(0.01), index, object: 'embedding' })), model: 'fixture' });
+  }
+  if (url.hostname === 'qdrant.test') {
+    if (url.pathname === '/') return json({ version: '1.18.0' });
+    const result = url.pathname.endsWith('/exists') ? { exists: true } : url.pathname.endsWith('/query') ? { points: [] }
+      : url.pathname.endsWith('/count') ? { count: 0 } : url.pathname.endsWith('/search') ? [] : { collections: [] };
+    return json({ status: 'ok', time: 0, result });
+  }
+  if (url.hostname === 'api.twitch.tv') return json({ data: [] });
+  if (url.hostname === 'id.twitch.tv') return json({ access_token: 'dummy-token', expires_in: 36000, token_type: 'bearer' });
+  if (url.hostname === 'us.i.posthog.com') return json({ status: 1 });
+  record({ provider: 'blocked', url: url.origin + url.pathname });
+  throw new Error(`External request blocked in docs assistant test: ${url.origin}${url.pathname}`);
+};
