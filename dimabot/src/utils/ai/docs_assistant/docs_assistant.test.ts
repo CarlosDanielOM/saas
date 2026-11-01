@@ -73,6 +73,11 @@ test('the system prompt is identical for every question (cache-friendly); the pa
     assert.equal(JSON.stringify(one), JSON.stringify(two));
     assert.match(one[1].text, /Source: https:\/\/docs\.domdimabot\.com\/tts\//);
     assert.match(one[0].text, /Reply in the language of the user's latest message/);
+    assert.match(one[0].text, /https:\/\/discord\.gg\/HdubYrkPXt/, 'help channel for account issues');
+    assert.match(one[0].text, /runs with its own \*\*Who can use it\*\* setting/, 'streamer-authored permission model');
+    assert.match(one[0].text, /Building something new out of documented pieces is not inventing/);
+    assert.match(one[1].text, /^# DomDimaBot documentation \(English, complete\)/);
+    assert.doesNotMatch(one[0].text, /\d{4}-\d{2}-\d{2}/, 'no dates: keep the prefix byte-stable');
 
     const messages = buildMessages(parseDocsAssistantRequest({
         messages: [{ role: 'user', content: 'first' }, { role: 'assistant', content: 'answer' }, { role: 'user', content: 'what is this page?' }],
