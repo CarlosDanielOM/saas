@@ -347,6 +347,24 @@ nav.sidebar .sidebar-content {
   font-weight: 700;
 }
 
+/* Guide screenshots keep their shape on phones and open at full size on tap. */
+.sl-markdown-content a:has(> img[src^="/guides/"]) {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 0.75rem;
+  outline-offset: 4px;
+}
+
+.sl-markdown-content img[src^="/guides/"] {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--tile);
+}
+
 /* Inline code */
 .sl-markdown-content :not(pre, a) > code {
   font-family: var(--font-mono);

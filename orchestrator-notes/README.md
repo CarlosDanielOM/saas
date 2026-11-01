@@ -53,6 +53,8 @@ The user-provided ascending tier above remains the baseline and working tier; th
 
 Documentation source audit: [2026-11-01 evidence](../migration-notes/docs-source-audit-2026-11-01.md). Explicit T3 Luna/Terra selection at high replaced a native Luna assignment that defaulted to Sol. Source rechecks corrected two concrete audit errors before release. This is task-specific workflow evidence, with no model-tier or performance conclusion.
 
+Visual guides: [2026-11-01 release evidence](../migration-notes/docs-visual-guides-2026-11-01.md). Three bounded Luna-high tasks and a Sol-high lead completed screenshot refresh and docs release checks; keep this route specific to the task, with no broad model-ranking or performance conclusion.
+
 Pet playback reliability: [DIMA-036 evidence and routing note](../migration-notes/dima036-playback-reliability.md). Implementation and focused checks are recorded; browser delivery and Windows/OBS acceptance remain pending. This is task-specific routing evidence, with no superiority or performance claim.
 
 Bounded billing recovery backend fix: [2026-10-29 observation](2026-10-29-billing-recovery.md). Supports Terra's existing provisional bounded-coding route only; no tier change.
