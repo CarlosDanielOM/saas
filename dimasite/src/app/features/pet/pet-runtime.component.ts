@@ -10,6 +10,19 @@ import type { PetAck, PetLease, PetPlay, PetRequestView, PetSnapshot } from './p
 
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const integer = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) >= 0;
+const transientAck = (error: Error | null, ack: unknown): boolean => {
+  if (error) return true;
+  if (!record(ack) || ack['ok'] !== false || !record(ack['error'])) return false;
+  const code = ack['error']['code'];
+  return code === 'rate_limited' || code === 'temporarily_unavailable';
+};
+const retryDelay = (ack: PetAck<unknown> | undefined): number | null => {
+  const delay = ack && !ack.ok ? ack.error?.retryAfterMs : undefined;
+  if (delay === undefined) return 1000;
+  // Refuse unusable timer values rather than overflow to a tight retry loop or
+  // shorten a server-requested wait. Reconnect remains an explicit recovery.
+  return typeof delay === 'number' && Number.isFinite(delay) && delay > 0 && delay <= 2_147_483_647 ? Math.max(1000, delay) : null;
+};
 const identifier = (value: unknown): value is string => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value);
 const statuses: readonly string[] = ['accepted', 'generating', 'synthesizing', 'ready', 'playing', 'completed', 'cancelled', 'failed', 'expired'];
 function requestView(value: unknown): value is PetRequestView {
@@ -63,6 +76,7 @@ export class PetRuntimeComponent {
     auth: { v: 1, capability: this.capability }, autoConnect: false, reconnectionAttempts: 8, reconnectionDelay: 1000, reconnectionDelayMax: 30_000, randomizationFactor: .5 });
   private lease: PetLease | null = null;
   private leaseDeadline = 0;
+  private leaseRetryAt = 0;
   private leaseExpiry?: ReturnType<typeof setTimeout>;
   private renewal?: ReturnType<typeof setTimeout>;
   private acquireRetry?: ReturnType<typeof setTimeout>;
@@ -204,7 +218,7 @@ export class PetRuntimeComponent {
 
   private acquireLease(): void {
     const state = this.state();
-    if (!state || this.disposed || !this.socket.connected || state.playback.target !== 'browser' || !this.audioReady || !this.readyAccepted || this.readyInFlight || this.lease || this.acquiring ||
+    if (!state || this.disposed || performance.now() < this.leaseRetryAt || !this.socket.connected || state.playback.target !== 'browser' || !this.audioReady || !this.readyAccepted || this.readyInFlight || this.lease || this.acquiring ||
       state.lease && state.lease.holderPeerId !== state.peerId) return;
     this.acquiring = true;
     const connection = this.connection, generation = state.generation, sentAt = performance.now(), attempt = ++this.leaseAttempt;
@@ -212,43 +226,62 @@ export class PetRuntimeComponent {
       if (connection !== this.connection || this.disposed || generation !== this.state()?.generation || attempt !== this.leaseAttempt) return;
       this.acquiring = false;
       if (!error && this.acceptLease(ack, sentAt)) return;
-      const retryAfter = ack && !ack.ok ? ack.error?.retryAfterMs ?? (ack.error?.code === 'lease_unavailable' ? 5000 : undefined) : undefined;
-      if (typeof retryAfter === 'number' && Number.isFinite(retryAfter) && retryAfter > 0) {
-        clearTimeout(this.acquireRetry);
-        this.acquireRetry = setTimeout(() => this.acquireLease(), Math.max(1000, Math.min(30_000, retryAfter)));
+      if (transientAck(error, ack) || ack && !ack.ok && ack.error?.code === 'lease_unavailable') {
+        const delay = retryDelay(ack); this.retryAcquisition(delay === null ? null : Math.max(5000, delay));
       }
     });
   }
-  private acceptLease(ack: PetAck<PetLease>, sentAt: number): boolean {
+  private retryAcquisition(delay: number | null): void {
+    const state = this.state();
+    if (this.disposed || !this.socket.connected || !this.audioReady || !this.readyAccepted || state?.playback.target !== 'browser') return;
+    clearTimeout(this.acquireRetry);
+    this.leaseRetryAt = delay === null ? Infinity : performance.now() + delay;
+    if (delay !== null) this.acquireRetry = setTimeout(() => this.acquireLease(), delay);
+  }
+  private expireLease(): void {
+    // Expiry always stops old audio. Re-election only makes later requests available.
+    const delay = Number.isFinite(this.leaseRetryAt) ? Math.max(1000, this.leaseRetryAt - performance.now()) : null;
+    this.releaseLease(); this.retryAcquisition(delay);
+  }
+  private acceptLease(ack: PetAck<PetLease>, sentAt: number, expected?: PetLease): boolean {
     if (!record(ack) || ack['ok'] !== true || !record(ack['data'])) return false;
     const lease = ack['data'];
-    if (!identifier(lease['leaseId']) || lease['generation'] !== this.state()?.generation || !integer(lease['ttlMs']) || lease['ttlMs'] < 1000 || lease['ttlMs'] > 15_000 ||
+    if (expected && (lease['leaseId'] !== expected.leaseId || lease['generation'] !== expected.generation) ||
+      !identifier(lease['leaseId']) || lease['generation'] !== this.state()?.generation || !integer(lease['ttlMs']) || lease['ttlMs'] < 1000 || lease['ttlMs'] > 15_000 ||
       !integer(lease['expiresAt']) || !integer(lease['serverTime']) || lease['expiresAt'] <= lease['serverTime'] || this.state()?.playback.target !== 'browser') return false;
     const ttl = Math.min(lease['ttlMs'], lease['expiresAt'] - lease['serverTime']) - 500;
     const remaining = sentAt + ttl - performance.now();
     if (remaining <= 0) return false;
-    this.lease = lease as unknown as PetLease;
+    this.lease = lease as unknown as PetLease; this.leaseRetryAt = 0;
     this.clock = { serverTime: lease['serverTime'], receivedAt: performance.now() };
     // Use a monotonic local deadline. Never let a late renewal revive an expired local lease.
     this.leaseDeadline = sentAt + ttl;
     clearTimeout(this.leaseExpiry); clearTimeout(this.renewal);
-    this.leaseExpiry = setTimeout(() => this.releaseLease(), remaining);
+    this.leaseExpiry = setTimeout(() => this.expireLease(), remaining);
     this.renewal = setTimeout(() => this.renewLease(), Math.min(5000, Math.floor(remaining / 2)));
     return true;
   }
   private renewLease(): void {
     const lease = this.lease, connection = this.connection, sentAt = performance.now();
-    if (!lease || performance.now() >= this.leaseDeadline) { this.releaseLease(); return; }
+    if (!lease) return;
+    if (performance.now() >= this.leaseDeadline) { this.expireLease(); return; }
     this.socket.timeout(4000).emit('pet:lease', { v: 1, action: 'renew', leaseId: lease.leaseId, generation: lease.generation }, (error: Error | null, ack: PetAck<PetLease>) => {
       if (this.disposed || connection !== this.connection || this.lease !== lease) return;
-      if (performance.now() >= this.leaseDeadline || error || !this.acceptLease(ack, sentAt)) this.releaseLease();
+      if (performance.now() >= this.leaseDeadline) { this.expireLease(); return; }
+      if (transientAck(error, ack)) {
+        // ACK loss is not revocation. Keep the last confirmed deadline unchanged;
+        // the independent expiry timer still stops speech if renewal never recovers.
+        clearTimeout(this.renewal);
+        const delay = retryDelay(ack); this.leaseRetryAt = delay === null ? Infinity : performance.now() + delay;
+        if (delay !== null) this.renewal = setTimeout(() => this.renewLease(), delay);
+      } else if (!this.acceptLease(ack, sentAt, lease)) this.releaseLease();
     });
   }
   private releaseLease(): void {
     clearTimeout(this.leaseExpiry); clearTimeout(this.renewal); clearTimeout(this.acquireRetry);
     this.acquiring = false; this.leaseAttempt++;
     this.stopPlayback(false);
-    this.lease = null; this.leaseDeadline = 0;
+    this.lease = null; this.leaseDeadline = 0; this.leaseRetryAt = 0;
   }
   private owns(message: PetPlay): boolean {
     return this.audioReady && !!this.lease && this.socket.connected && this.state()?.playback.target === 'browser' && message.leaseId === this.lease.leaseId &&
@@ -296,7 +329,11 @@ export class PetRuntimeComponent {
     this.socket.timeout(4000).emit('pet:playback', frame, (error: Error | null, ack: unknown) => {
       if (this.disposed || this.active !== active) return;
       if (progress) this.progressInFlight = false;
-      if (error || !record(ack) || ack['ok'] !== true) { this.releaseLease(); this.status.set('rendererAudioError'); }
+      if (error || !record(ack) || ack['ok'] !== true) {
+        // Dropped progress telemetry does not revoke a live playback lease.
+        if (progress && this.owns(active) && transientAck(error, ack)) return;
+        this.releaseLease(); this.status.set('rendererAudioError');
+      }
     });
   }
   private stopPlayback(report: boolean): void {
