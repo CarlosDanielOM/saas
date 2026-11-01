@@ -72,7 +72,30 @@ const finish = [
   { type: 'message_stop' },
 ];
 
+// Tool scenario: first turn asks for a catalog search and a command test together; after the
+// tool results come back, the answer quotes what the tools returned.
+function toolTurn(body, signal) {
+  const last = body.messages.at(-1);
+  if (Array.isArray(last.content) && last.content.some((block) => block.type === 'tool_result')) {
+    const results = last.content.filter((block) => block.type === 'tool_result').map((block) => block.content).join(' ');
+    const found = /"name":"tts\.skip"/.test(results) ? 'found tts.skip' : 'no tts.skip';
+    const tested = /"reply":"Skipped\."/.test(results) && /tts\.skip\(\)/.test(results) ? 'test ok' : 'test missing';
+    return sse([start, ...thinking('Both tools answered.'), ...text([`Use \`$(tts.skip) Skipped.\` (${found}, ${tested}).`]), ...finish], { signal });
+  }
+  return sse([start, ...thinking('Look it up and test it.'),
+    { type: 'content_block_start', index: 1, content_block: { type: 'tool_use', id: 'toolu_search', name: 'search_ast_functions', input: {} } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '{"query":"tts.skip"}' } },
+    { type: 'content_block_stop', index: 1 },
+    { type: 'content_block_start', index: 2, content_block: { type: 'tool_use', id: 'toolu_test', name: 'test_command', input: {} } },
+    { type: 'content_block_delta', index: 2, delta: { type: 'input_json_delta', partial_json: '{"body":"$(tts.skip) Skipped.","runs":[{"user":"Sam","role":"mod"}]}' } },
+    { type: 'content_block_stop', index: 2 },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use', stop_sequence: null }, usage: { input_tokens: 1200, output_tokens: 50 } },
+    { type: 'message_stop' },
+  ], { signal });
+}
+
 function minimax(body, signal) {
+  if (String(body.messages[0].content).includes('TOOLS_SKIP')) return toolTurn(body, signal);
   const question = String(body.messages.at(-1).content);
   if (signal) signal.addEventListener('abort', () => record({ provider: 'minimax', aborted: true, question }), { once: true });
   if (question.includes('FAIL_OVERLOADED')) return json({ type: 'error', error: { type: 'overloaded_error', message: 'busy' } }, 529);

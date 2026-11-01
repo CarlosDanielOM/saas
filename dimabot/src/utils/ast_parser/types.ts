@@ -199,8 +199,29 @@ export interface AstMessage {
     commandReferences?: CommandReferenceRequest[];
 }
 
+/**
+ * Test runs only (e.g. the docs assistant's command tester). When set, nothing reaches
+ * Twitch, the database or the cache: cache variables use `cache`, and every function
+ * call goes through `callFunction` first. Never set for real command execution.
+ */
+export interface AstSimulation {
+    /** In-memory stand-in for the Dragonfly calls cache variables make. */
+    cache: AstSimulationCache;
+    /** Return `{ value }` to use instead of running the function, or undefined to run it for real. */
+    callFunction(name: string, args: unknown[], context: ExecutionContext): Promise<{ value: unknown } | undefined>;
+}
+
+export interface AstSimulationCache {
+    get(key: string): Promise<string | null>;
+    set(key: string, value: string): Promise<unknown>;
+    expire(key: string, seconds: number): Promise<unknown>;
+    exists(key: string): Promise<number>;
+    del(key: string): Promise<number>;
+}
+
 export interface ExecutionContext {
     effectContext?: AstEffectContext;
+    simulation?: AstSimulation;
     variables: Map<string, unknown>;
     arrays: Map<string, string[]>;
     broadcasterId: string;

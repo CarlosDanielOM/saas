@@ -13,6 +13,7 @@ import { warn } from '../../logger.js';
 import { minimaxChatStream, type MiniMaxChatResult, type MiniMaxEffort, type MiniMaxStreamHandlers } from '../minimax/minimax_client.js';
 import { getDocsCorpus, toPageUrl, type DocsCorpus, type DocsLanguage, type DocsPage } from './docs_source.js';
 import { DOCS_ASSISTANT_INSTRUCTIONS, docsBlockHeader } from './docs_assistant.prompt.js';
+import { searchAstFunctionsTool, testCommandTool, warmDocsAssistantTools } from './docs_assistant.tools.js';
 
 export const DOCS_ASSISTANT_EFFORT: MiniMaxEffort = 'xhigh';
 
@@ -114,6 +115,7 @@ export async function answerDocsQuestion(
     handlers: MiniMaxStreamHandlers & { onStart?: (id: string) => void },
     signal?: AbortSignal,
 ): Promise<DocsAnswer> {
+    warmDocsAssistantTools();
     const corpus = await getDocsCorpus(request.page.lang);
     const id = randomUUID();
     handlers.onStart?.(id);
@@ -122,6 +124,9 @@ export async function answerDocsQuestion(
         system: buildSystem(corpus),
         messages: buildMessages(request),
         effort: DOCS_ASSISTANT_EFFORT,
+        tools: [searchAstFunctionsTool, testCommandTool],
+        // Room for lookups, a test, a fix and a re-test, then the answer.
+        maxToolRounds: 6,
         signal,
     }, handlers);
     const other = await getDocsCorpus(request.page.lang === 'es' ? 'en' : 'es').catch(() => null);
@@ -161,6 +166,7 @@ export async function recordAnswer(request: DocsAssistantRequest, answer: DocsAn
         const key = statsKey();
         await redis.multi()
             .hIncrBy(key, 'answered', 1)
+            .hIncrBy(key, 'tool_calls', usage.toolCalls.length)
             .hIncrBy(key, 'input_tokens', usage.inputTokens)
             .hIncrBy(key, 'cache_read_tokens', usage.cacheReadTokens)
             .hIncrBy(key, 'output_tokens', usage.outputTokens)
@@ -179,6 +185,8 @@ export async function recordAnswer(request: DocsAssistantRequest, answer: DocsAn
                 output_tokens: String(usage.outputTokens),
                 cost_usd: usage.cost.toFixed(6),
                 stop_reason: usage.stopReason ?? '',
+                rounds: String(usage.rounds),
+                tool_calls: JSON.stringify(usage.toolCalls),
             })
             .expire(answerKey(answer.id), ANSWER_TTL_SECONDS)
             .lPush('docs_assistant:recent', answer.id)

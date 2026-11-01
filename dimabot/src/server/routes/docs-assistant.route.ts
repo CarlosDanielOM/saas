@@ -4,7 +4,10 @@
  * POST /docs-assistant/ask       → Server-Sent Events stream:
  *   event: start   {id}
  *   event: status  {phase: 'thinking'}       (once, when the model starts thinking)
+ *   event: status  {phase: 'searching', query} (each function-catalog lookup)
+ *   event: status  {phase: 'testing'}         (each command test run)
  *   event: text    {delta}
+ *   event: reset   {}                        (drop text so far: it was a preamble to a lookup)
  *   event: done    {id, sources: [{title, url}], stopReason}
  *   event: error   {code}
  *   Errors before the stream starts are JSON: {error, message, status, data: {code, retryAfter?}}.
@@ -109,6 +112,10 @@ docsAssistantRoute.post('/ask', async (req: Request, res: Response) => {
             onStart: (id) => send('start', { id }),
             onThinking: () => { if (!thinking) { thinking = true; send('status', { phase: 'thinking' }); } },
             onText: (delta) => send('text', { delta }),
+            onToolCall: (name, input) => send('status', name === 'test_command'
+                ? { phase: 'testing' }
+                : { phase: 'searching', query: String((input as { query?: unknown })?.query ?? '').slice(0, 120) }),
+            onDiscardText: () => send('reset', {}),
         }, controller.signal);
         send('done', { id: answer.id, sources: answer.sources, stopReason: answer.usage.stopReason });
         await recordAnswer(request, answer);

@@ -3,7 +3,7 @@ import { registerAvailabilityFunctions } from './availability.functions.js';
 import { registerRouletteFunctions } from './roulette.functions.js';
 import { registerUserFunctions } from './user.functions.js';
 import { registerRandomFunctions } from './random.functions.js';
-import { registerModerationFunctions } from './moderation.functions.js';
+import { registerModerationFunctions, startRestoreModeratorWorker } from './moderation.functions.js';
 import { registerTwitchFunctions } from './twitch.functions.js';
 import { registerCountFunctions } from './count.functions.js';
 import { registerChannelFunctions } from './channel.functions.js';
@@ -21,8 +21,17 @@ import { registerPetFunctions } from './pet.functions.js';
 
 let registered = false;
 
-export function registerAllFunctions(): void {
-    if (registered) return;
+/**
+ * Registers every AST function. By default this also starts the moderator-restore loop
+ * (as the bot needs); pass `{ startWorkers: false }` to only register (e.g. command tests
+ * in the API, which must not run bot background work).
+ */
+export function registerAllFunctions(options: { startWorkers?: boolean } = {}): void {
+    const startWorkers = options.startWorkers !== false;
+    if (registered) {
+        if (startWorkers) startRestoreModeratorWorker();
+        return;
+    }
     registered = true;
     
     registerOverlayFunctions();
@@ -30,7 +39,7 @@ export function registerAllFunctions(): void {
     registerRouletteFunctions();
     registerUserFunctions();
     registerRandomFunctions();
-    registerModerationFunctions();
+    registerModerationFunctions({ startWorker: startWorkers });
     registerTwitchFunctions();
     registerCountFunctions();
     registerChannelFunctions();

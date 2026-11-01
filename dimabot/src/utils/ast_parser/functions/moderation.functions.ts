@@ -181,7 +181,8 @@ async function processRestoreModeratorJobs(): Promise<void> {
     }
 }
 
-function startRestoreModeratorWorker(): void {
+/** Starts the restore-moderator loop once per process. Exported so registration can opt out of it. */
+export function startRestoreModeratorWorker(): void {
     if (restoreWorkerStarted) return;
     restoreWorkerStarted = true;
 
@@ -662,8 +663,9 @@ const warnHandler: FunctionHandler = async (args, ctx) => {
     return result.error ? `warn: ${result.message}` : '';
 };
 
-export function registerModerationFunctions(): void {
-    startRestoreModeratorWorker();
+export function registerModerationFunctions(options: { startWorker?: boolean } = {}): void {
+    // Command tests (simulation) register functions without starting background work.
+    if (options.startWorker !== false) startRestoreModeratorWorker();
     registerFunction('warn', warnHandler, {
         description: 'Issues an official Twitch warning to a user with a required reason (1-500 characters).',
         syntax: 'warn username reason', category: 'moderation', examples: ['warn someuser Please stop posting spoilers'],

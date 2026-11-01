@@ -38,9 +38,24 @@ const fakeApi = http.createServer((req, res) => {
     send('start', { id: '00000000-0000-4000-8000-00000000000' + assistantCalls.length % 10 });
     send('status', { phase: 'thinking' });
     const url = `https://docs.domdimabot.com/${es ? 'es/' : ''}tts/`;
+    // Tool phases with pauses so the panel's progress label can be observed, then a preamble
+    // that the server retracts (reset) before the real answer.
+    const steps = [
+      () => send('status', { phase: 'searching', query: 'tts' }),
+      () => send('status', { phase: 'testing' }),
+      () => { send('text', { delta: 'PREAMBLE that must disappear. ' }); send('reset', {}); },
+    ];
+    let step = 0;
+    const next = () => {
+      if (step < steps.length) { steps[step++](); return setTimeout(next, 400); }
+      finish();
+    };
+    const finish = () => {
     for (const delta of [`${es ? 'Abre' : 'Open'} **Modules → Text to speech**.\n\n`, '```text\n!cc -ul=everyone mivoz %(**voz $(user)) Voz guardada: &p1 — a long line that must scroll sideways on phones\n```\n\n', `[${es ? 'Texto a voz' : 'Text to Speech'}](${url})`]) send('text', { delta });
     send('done', { id: 'x', sources: [{ title: es ? 'Texto a voz' : 'Text to Speech', url }] });
     res.end();
+    };
+    next();
   });
 });
 await new Promise((resolve) => fakeApi.listen(0, '127.0.0.1', resolve));
@@ -100,7 +115,11 @@ for (const [lang, prefix, askLabel, guideTitle] of [['en', '', 'Ask the docs', '
       // A suggestion asks the assistant: streamed answer, same-site source chip, copy button, feedback.
       const suggestion = await page.locator('.da-suggestion').first().getAttribute('data-question');
       await page.locator('.da-suggestion').first().click();
+      // Progress labels for catalog lookups and command tests, in this page's language.
+      await page.waitForFunction((text) => document.querySelector('.da-status__text')?.textContent === text, lang === 'es' ? 'Revisando la lista de funciones…' : 'Checking the function list…');
+      await page.waitForFunction((text) => document.querySelector('.da-status__text')?.textContent === text, lang === 'es' ? 'Probando el comando…' : 'Testing the command…');
       await page.locator('.da-sources').waitFor();
+      assert.doesNotMatch(await page.locator('.da-answer').innerText(), /PREAMBLE/, 'a retracted preamble never stays in the answer');
       assert.equal(await page.locator('.da-msg--user .da-bubble').innerText(), suggestion);
       assert.equal(await page.locator('.da-source').getAttribute('href'), `${prefix}/tts/`);
       assert.equal(await page.locator('.da-answer a').getAttribute('href'), `${prefix}/tts/`);

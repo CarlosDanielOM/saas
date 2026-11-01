@@ -8,6 +8,8 @@
  * - No artificial output cap: `max_tokens` defaults to the model's own ceiling.
  * - The SDK retries connection errors, 429 and 5xx before the stream starts. Once text
  *   has started, nothing is retried (it would duplicate output).
+ * - Optional tools: the client runs the model's tool calls and continues (thinking blocks
+ *   passed back unchanged, as MiniMax requires) until a final answer.
  * - The API key is read from MINI_TOKEN_PLAN_API_KEY at call time and never logged.
  */
 import Anthropic from '@anthropic-ai/sdk';
@@ -57,6 +59,16 @@ export interface MiniMaxChatParams {
     idleTimeoutMs?: number;
     /** Short label for logs, e.g. 'docs-assistant'. */
     feature?: string;
+    /** Tools the model may call. The client runs them and continues until a final answer. */
+    tools?: MiniMaxTool[];
+    /** Most model rounds when tools are given (default 5). The last round has tools turned off. */
+    maxToolRounds?: number;
+}
+
+export interface MiniMaxTool {
+    definition: Anthropic.Tool;
+    /** Returns anything JSON-serializable; thrown errors go back to the model as tool errors. */
+    run: (input: unknown, signal: AbortSignal) => Promise<unknown>;
 }
 
 export interface MiniMaxChatResult {
@@ -70,13 +82,27 @@ export interface MiniMaxChatResult {
     stopReason?: string;
     durationMs: number;
     model: string;
+    /** Model rounds (1 without tool calls). */
+    rounds: number;
+    toolCalls: Array<{ name: string; input: unknown }>;
 }
 
 export interface MiniMaxStreamHandlers {
     onText?: (delta: string) => void;
     /** Called for each thinking delta; useful to show "thinking…" progress. */
     onThinking?: (delta: string) => void;
+    /** A tool is about to run. */
+    onToolCall?: (name: string, input: unknown) => void;
+    /** Text already sent this round was a preamble to a tool call: callers should clear it. */
+    onDiscardText?: () => void;
 }
+
+/**
+ * With tools, each round's text is held back until it reaches this length, so a short
+ * "let me check…" written before a tool call never reaches the user. Longer text streams.
+ */
+const TOOL_ROUND_TEXT_HOLD = 240;
+const FINAL_ROUND_NUDGE = 'You have no more tool calls. Answer the user now, using what you already found.';
 
 let client: Anthropic | null = null;
 let clientKey: string | null = null;
@@ -152,66 +178,138 @@ export async function minimaxChatStream(params: MiniMaxChatParams, handlers: Min
         model: MINIMAX_MODEL, effort: params.effort, messageCount: messages.length,
     }, { destination: 'console' });
 
-    const usage: Usage = {};
-    const mergeUsage = (next?: Usage | null) => {
-        if (!next) return;
-        for (const key of ['input_tokens', 'output_tokens', 'cache_read_input_tokens'] as const) {
-            const value = next[key];
-            if (typeof value === 'number' && value > 0) usage[key] = value;
-        }
-        if (next.output_tokens_details?.thinking_tokens) usage.output_tokens_details = next.output_tokens_details;
-    };
+    const totals = { input: 0, output: 0, cacheRead: 0, thinking: 0 };
+    const tools = params.tools ?? [];
+    const maxRounds = tools.length ? Math.max(1, params.maxToolRounds ?? 5) : 1;
+    const conversation: Anthropic.MessageParam[] = [...messages];
+    const toolCalls: MiniMaxChatResult['toolCalls'] = [];
 
     try {
-        touch();
-        const body = {
-            model: MINIMAX_MODEL,
-            messages,
-            system: params.system,
-            max_tokens: params.maxTokens ?? MINIMAX_MAX_OUTPUT_TOKENS,
-            ...(params.effort ? { output_config: { effort: params.effort } } : {}),
-        } as unknown as Anthropic.MessageStreamParams; // SDK types don't list 'xhigh' yet.
-
-        const stream = anthropic.messages.stream(body, { signal: controller.signal });
-        stream.on('streamEvent', (event) => {
-            touch();
-            if (event.type === 'message_start') mergeUsage(event.message.usage as Usage);
-            else if (event.type === 'message_delta') mergeUsage(event.usage as Usage);
-            else if (event.type === 'content_block_delta') {
-                if (event.delta.type === 'text_delta') handlers.onText?.(event.delta.text);
-                else if (event.delta.type === 'thinking_delta') handlers.onThinking?.(event.delta.thinking);
+        let message: Anthropic.Message;
+        let content = '';
+        let round = 0;
+        let dropTools = false;
+        for (;;) {
+            round++;
+            const lastRound = round >= maxRounds;
+            // MiniMax may ignore tool_choice "none", so also say it in words on the final round.
+            const previous = conversation.at(-1);
+            if (lastRound && round > 1 && previous?.role === 'user' && Array.isArray(previous.content)
+                && !previous.content.some((block) => block.type === 'text')) {
+                previous.content.push({ type: 'text', text: FINAL_ROUND_NUDGE });
             }
-        });
-        // Settle as soon as we abort (cancel or idle), without waiting for the transport to notice.
-        const abortedEarly = new Promise<never>((_, reject) => {
-            const stop = () => reject(new Anthropic.APIUserAbortError());
-            if (controller.signal.aborted) stop();
-            else controller.signal.addEventListener('abort', stop, { once: true });
-        });
-        const message = await Promise.race([stream.finalMessage(), abortedEarly]);
+            const usage: Usage = {};
+            const mergeUsage = (next?: Usage | null) => {
+                if (!next) return;
+                for (const key of ['input_tokens', 'output_tokens', 'cache_read_input_tokens'] as const) {
+                    const value = next[key];
+                    if (typeof value === 'number' && value > 0) usage[key] = value;
+                }
+                if (next.output_tokens_details?.thinking_tokens) usage.output_tokens_details = next.output_tokens_details;
+            };
+            // Without tools, text streams straight through. With tools, hold short preambles back.
+            let held = '';
+            let flushed = !tools.length;
+            const emit = (delta: string) => {
+                if (flushed) return handlers.onText?.(delta);
+                held += delta;
+                if (held.length >= TOOL_ROUND_TEXT_HOLD) {
+                    flushed = true;
+                    handlers.onText?.(held);
+                    held = '';
+                }
+            };
 
-        const content = message.content
-            .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-            .map((block) => block.text)
-            .join('');
-        const inputTokens = usage.input_tokens ?? 0;
-        const outputTokens = usage.output_tokens ?? 0;
-        const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
+            touch();
+            const body = {
+                model: MINIMAX_MODEL,
+                messages: conversation,
+                system: params.system,
+                max_tokens: params.maxTokens ?? MINIMAX_MAX_OUTPUT_TOKENS,
+                ...(params.effort ? { output_config: { effort: params.effort } } : {}),
+                ...(tools.length && !dropTools ? {
+                    tools: tools.map((tool) => tool.definition),
+                    tool_choice: lastRound ? { type: 'none' } : { type: 'auto' },
+                } : {}),
+            } as unknown as Anthropic.MessageStreamParams; // SDK types don't list 'xhigh' yet.
+
+            const stream = anthropic.messages.stream(body, { signal: controller.signal });
+            stream.on('streamEvent', (event) => {
+                touch();
+                if (event.type === 'message_start') mergeUsage(event.message.usage as Usage);
+                else if (event.type === 'message_delta') mergeUsage(event.usage as Usage);
+                else if (event.type === 'content_block_delta') {
+                    if (event.delta.type === 'text_delta') emit(event.delta.text);
+                    else if (event.delta.type === 'thinking_delta') handlers.onThinking?.(event.delta.thinking);
+                }
+            });
+            // Settle as soon as we abort (cancel or idle), without waiting for the transport to notice.
+            const abortedEarly = new Promise<never>((_, reject) => {
+                const stop = () => reject(new Anthropic.APIUserAbortError());
+                if (controller.signal.aborted) stop();
+                else controller.signal.addEventListener('abort', stop, { once: true });
+            });
+            message = await Promise.race([stream.finalMessage(), abortedEarly]);
+            totals.input += usage.input_tokens ?? 0;
+            totals.output += usage.output_tokens ?? 0;
+            totals.cacheRead += usage.cache_read_input_tokens ?? 0;
+            totals.thinking += usage.output_tokens_details?.thinking_tokens ?? 0;
+
+            const roundText = message.content
+                .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+                .map((block) => block.text)
+                .join('');
+            const uses = message.content.filter((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use');
+            if (message.stop_reason !== 'tool_use' || uses.length === 0 || lastRound) {
+                if (tools.length && !roundText.trim()) {
+                    // Still reaching for tools on the final round: retry once with no tools offered.
+                    if (!dropTools) { dropTools = true; continue; }
+                    throw new MiniMaxError('upstream', 'The model returned no answer after its tool calls');
+                }
+                if (held) handlers.onText?.(held);
+                content = roundText;
+                break;
+            }
+
+            // Tool round: drop any preamble the user already saw, run the tools, continue.
+            if (flushed) handlers.onDiscardText?.();
+            // MiniMax needs the assistant turn back unchanged, thinking blocks and signatures included.
+            conversation.push({ role: 'assistant', content: message.content as unknown as Anthropic.ContentBlockParam[] });
+            const results: Anthropic.ToolResultBlockParam[] = [];
+            for (const use of uses) {
+                handlers.onToolCall?.(use.name, use.input);
+                toolCalls.push({ name: use.name, input: use.input });
+                const tool = tools.find((candidate) => candidate.definition.name === use.name);
+                try {
+                    if (!tool) throw new Error(`Unknown tool: ${use.name}`);
+                    const output = await tool.run(use.input, controller.signal);
+                    results.push({ type: 'tool_result', tool_use_id: use.id, content: JSON.stringify(output) });
+                } catch (err) {
+                    if (controller.signal.aborted) throw err;
+                    results.push({ type: 'tool_result', tool_use_id: use.id, is_error: true, content: err instanceof Error ? err.message : String(err) });
+                }
+            }
+            conversation.push({ role: 'user', content: results });
+        }
+
         const result: MiniMaxChatResult = {
             content,
-            inputTokens,
-            outputTokens,
-            cacheReadTokens,
-            thinkingTokens: usage.output_tokens_details?.thinking_tokens ?? 0,
-            cost: calculateMiniMaxCost(inputTokens, outputTokens, cacheReadTokens),
+            inputTokens: totals.input,
+            outputTokens: totals.output,
+            cacheReadTokens: totals.cacheRead,
+            thinkingTokens: totals.thinking,
+            cost: calculateMiniMaxCost(totals.input, totals.output, totals.cacheRead),
             stopReason: message.stop_reason ?? undefined,
             durationMs: Date.now() - started,
             model: MINIMAX_MODEL,
+            rounds: round,
+            toolCalls,
         };
         debug({
             function: 'minimax.chatStream', message: '[MiniMax] Done', feature, channelID: params.channelID,
-            durationMs: result.durationMs, inputTokens, outputTokens, cacheReadTokens,
-            thinkingTokens: result.thinkingTokens, cost: result.cost.toFixed(6), stopReason: result.stopReason,
+            durationMs: result.durationMs, rounds: round, toolCalls: toolCalls.map((call) => call.name),
+            inputTokens: totals.input, outputTokens: totals.output, cacheReadTokens: totals.cacheRead,
+            thinkingTokens: totals.thinking, cost: result.cost.toFixed(6), stopReason: result.stopReason,
         }, { destination: 'console' });
         return result;
     } catch (err) {

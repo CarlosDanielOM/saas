@@ -66,6 +66,7 @@ Docs share the **Live First (OC3c)** design language with `dimasite/`.
 `DocsAssistant.astro` (mounted on every page by `DocsPageFrame.astro`) is a chat panel: bottom sheet on phones, side panel on desktop. Questions stream from the API's public `POST https://api.domdimabot.com/docs-assistant/ask` (dimabot `src/server/routes/docs-assistant.route.ts`), which answers with MiniMax-M3.1-Flash from this site's own `llms-full.txt` export. A docs deploy reaches the assistant within about 5 minutes; there is nothing else to update.
 
 - Answers render through `src/lib/assistant-markdown.mjs` (escape-first Markdown; docs links become same-site paths). Tests: `tests/assistant-markdown.test.mjs`.
+- While the assistant looks up functions or tests a command, the panel shows "Checking the function list…" / "Testing the command…" (`status` events with `phase`); a `reset` event clears a preamble the server retracted.
 - Each answer shows "Pages used" chips, copy buttons on code, and 👍/👎 feedback. Errors offer Retry and the docs search. The conversation is kept per language in `sessionStorage`, so following a cited page keeps it.
 - The model links pages inline using the "Source:" URLs in the export, so keep every page's frontmatter title/description accurate; that's what the assistant cites.
 - Local previews: on `localhost`/`127.0.0.1` only, `localStorage['docs-assistant:api']` points the panel at a test API (production ignores it). `ops/checks/docs-redesign-browser.mjs` uses this with a fake API.

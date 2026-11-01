@@ -18,6 +18,41 @@ const message = (usage: Record<string, unknown>) => ({
     stop_reason: null, stop_sequence: null, usage,
 });
 
+const toolUse = (preamble: string) => [
+    ['message_start', { type: 'message_start', message: message({ input_tokens: 0, output_tokens: 0 }) }],
+    ['content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '', signature: '' } }],
+    ['content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Need a lookup.' } }],
+    ['content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'signature_delta', signature: 'sig-1' } }],
+    ['content_block_stop', { type: 'content_block_stop', index: 0 }],
+    ['content_block_start', { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } }],
+    ['content_block_delta', { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: preamble } }],
+    ['content_block_stop', { type: 'content_block_stop', index: 1 }],
+    ['content_block_start', { type: 'content_block_start', index: 2, content_block: { type: 'tool_use', id: 'toolu_1', name: 'lookup', input: {} } }],
+    ['content_block_delta', { type: 'content_block_delta', index: 2, delta: { type: 'input_json_delta', partial_json: '{"query":"skip tts"}' } }],
+    ['content_block_stop', { type: 'content_block_stop', index: 2 }],
+    ['message_delta', { type: 'message_delta', delta: { stop_reason: 'tool_use', stop_sequence: null }, usage: { input_tokens: 100, output_tokens: 10 } }],
+    ['message_stop', { type: 'message_stop' }],
+] as Array<[string, unknown]>;
+
+function toolScenario(res: http.ServerResponse, body: any, first: string) {
+    const afterTool = Array.isArray(body.messages.at(-1).content);
+    const forcedFinal = body.tool_choice?.type === 'none';
+    if (first === 'TOOLS always' && !forcedFinal) return sse(res, toolUse(''));
+    // Ignores tool_choice "none" and keeps calling tools while tools are offered.
+    if (first === 'TOOLS stubborn' && body.tools) return sse(res, toolUse(''));
+    if (afterTool || forcedFinal) {
+        return sse(res, [
+            ['message_start', { type: 'message_start', message: message({ input_tokens: 0, output_tokens: 0 }) }],
+            ['content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }],
+            ['content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Use $(tts.skip).' } }],
+            ['content_block_stop', { type: 'content_block_stop', index: 0 }],
+            ['message_delta', { type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { input_tokens: 200, output_tokens: 20 } }],
+            ['message_stop', { type: 'message_stop' }],
+        ]);
+    }
+    return sse(res, toolUse(first === 'TOOLS long' ? 'x'.repeat(300) : 'Let me check.'));
+}
+
 before(async () => {
     server = http.createServer((req, res) => {
         let raw = '';
@@ -25,6 +60,8 @@ before(async () => {
         req.on('end', () => {
             const body = JSON.parse(raw);
             requests.push({ body, headers: req.headers });
+            const first = String(body.messages[0].content);
+            if (first.startsWith('TOOLS')) return toolScenario(res, body, first);
             const text = String(body.messages.at(-1).content);
             if (text === 'bad') {
                 res.writeHead(400, { 'content-type': 'application/json' });
@@ -140,6 +177,92 @@ test('cancellation settles at once even if the connection never notices', async 
         globalThis.fetch = realFetch;
         process.env.MINI_TOKEN_PLAN_API_KEY = key;
     }
+});
+
+const lookup = (outputs: unknown[] = [{ matches: ['tts.skip'] }]) => {
+    const inputs: unknown[] = [];
+    return {
+        inputs,
+        tool: {
+            definition: { name: 'lookup', description: 'find', input_schema: { type: 'object' as const, properties: { query: { type: 'string' } } } },
+            run: async (input: unknown) => { inputs.push(input); const next = outputs.shift(); if (next instanceof Error) throw next; return next; },
+        },
+    };
+};
+
+test('tools: runs the call, sends thinking back unchanged, and keeps a short preamble out of the answer', async () => {
+    requests.length = 0;
+    const { tool, inputs } = lookup();
+    const seen: string[] = [];
+    const calls: unknown[] = [];
+    let discarded = 0;
+    const result = await minimaxChatStream({ ...ask('TOOLS short'), tools: [tool] }, {
+        onText: (delta) => seen.push(delta), onToolCall: (name, input) => calls.push([name, input]), onDiscardText: () => discarded++,
+    });
+    assert.deepEqual(inputs, [{ query: 'skip tts' }]);
+    assert.deepEqual(calls, [['lookup', { query: 'skip tts' }]]);
+    assert.deepEqual(seen, ['Use $(tts.skip).'], '"Let me check." never reaches the user');
+    assert.equal(discarded, 0);
+    assert.equal(result.content, 'Use $(tts.skip).');
+    assert.equal(result.rounds, 2);
+    assert.deepEqual(result.toolCalls, [{ name: 'lookup', input: { query: 'skip tts' } }]);
+    assert.equal(result.inputTokens, 300);
+    assert.equal(result.outputTokens, 30);
+
+    const [one, two] = requests.map((r) => r.body);
+    assert.equal(one.tools[0].name, 'lookup');
+    assert.deepEqual(one.tool_choice, { type: 'auto' });
+    const replayed = two.messages[1];
+    assert.equal(replayed.role, 'assistant');
+    assert.deepEqual(replayed.content.map((b: any) => b.type), ['thinking', 'text', 'tool_use']);
+    assert.equal(replayed.content[0].signature, 'sig-1', 'thinking signature passed back');
+    assert.deepEqual(two.messages[2].content, [{ type: 'tool_result', tool_use_id: 'toolu_1', content: JSON.stringify({ matches: ['tts.skip'] }) }]);
+});
+
+test('tools: a long preamble that already streamed is cleared', async () => {
+    const { tool } = lookup();
+    let discarded = 0;
+    const seen: string[] = [];
+    await minimaxChatStream({ ...ask('TOOLS long'), tools: [tool] }, { onText: (d) => seen.push(d), onDiscardText: () => discarded++ });
+    assert.equal(discarded, 1);
+    assert.equal(seen.at(-1), 'Use $(tts.skip).');
+});
+
+test('tools: a failing tool is reported to the model as an error, not thrown', async () => {
+    requests.length = 0;
+    const { tool } = lookup([new Error('catalog offline')]);
+    const result = await minimaxChat({ ...ask('TOOLS short'), tools: [tool] });
+    assert.equal(result.content, 'Use $(tts.skip).');
+    assert.deepEqual(requests[1].body.messages[2].content, [{ type: 'tool_result', tool_use_id: 'toolu_1', is_error: true, content: 'catalog offline' }]);
+});
+
+test('tools: the last round turns tools off so there is always an answer', async () => {
+    requests.length = 0;
+    const { tool } = lookup([{}, {}, {}]);
+    const result = await minimaxChat({ ...ask('TOOLS always'), tools: [tool], maxToolRounds: 3 });
+    assert.equal(result.rounds, 3);
+    assert.equal(result.toolCalls.length, 2);
+    assert.deepEqual(requests.map((r) => r.body.tool_choice?.type), ['auto', 'auto', 'none']);
+    assert.equal(result.content, 'Use $(tts.skip).');
+});
+
+test('tools: a model that ignores tool_choice "none" is nudged, then asked again with no tools', async () => {
+    requests.length = 0;
+    const { tool } = lookup([{}, {}, {}]);
+    const result = await minimaxChat({ ...ask('TOOLS stubborn'), tools: [tool], maxToolRounds: 3 });
+    assert.equal(result.content, 'Use $(tts.skip).');
+    assert.deepEqual(requests.map((r) => r.body.tool_choice?.type ?? 'no tools'), ['auto', 'auto', 'none', 'no tools']);
+    const last = requests.at(-1).body.messages.at(-1).content;
+    assert.equal(last.at(-1).type, 'text', 'final-round nudge added once, after the tool results');
+    assert.match(last.at(-1).text, /Answer the user now/);
+    assert.equal(last.filter((b: any) => b.type === 'text').length, 1);
+});
+
+test('no tools: single round, text streams straight through', async () => {
+    requests.length = 0;
+    const result = await minimaxChat(ask('hi'));
+    assert.equal(result.rounds, 1);
+    assert.equal(requests[0].body.tools, undefined);
 });
 
 test('a missing key fails clearly before any request', async () => {

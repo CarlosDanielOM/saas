@@ -3,6 +3,8 @@ import type { AstCatalog, AstCatalogEntry } from './types.js';
 import { buildEntryEmbeddingText } from './build_catalog.js';
 import { generateEmbedding, generateEmbeddings, LFM2_EMBEDDING_DIM } from '../lfm2_embeddings/index.js';
 import { debug, error } from '../../logger.js';
+import { createHash } from 'node:crypto';
+import { getDragonflyClient } from '../../databases/dragonfly.database.js';
 
 const catalog = catalogJson as unknown as AstCatalog;
 
@@ -33,7 +35,11 @@ let vectors: Float32Array[] | null = null;
 let vectorBuildPromise: Promise<boolean> | null = null;
 let lastFailedAttempt = 0;
 const RETRY_INTERVAL_MS = 30_000;
-const BATCH_SIZE = 32;
+// Small batches: the shared embeddings service idles near 2 GiB of its 3 GiB limit, and
+// 32 long catalog entries at once added ~480 MiB (an OOM restart on 2026-11-01). 8 adds ~140 MiB.
+const BATCH_SIZE = 8;
+// Built vectors are cached in Dragonfly so restarts (bot or API) don't re-embed the catalog.
+const VECTOR_CACHE_TTL_SECONDS = 30 * 86_400;
 
 function cosine(a: Float32Array, b: Float32Array): number {
     let dot = 0;
@@ -43,8 +49,43 @@ function cosine(a: Float32Array, b: Float32Array): number {
     return dot;
 }
 
+function vectorCacheKey(texts: string[]): string {
+    const digest = createHash('sha256').update(JSON.stringify([catalog.model, LFM2_EMBEDDING_DIM, texts])).digest('hex').slice(0, 24);
+    return `ast_catalog:vectors:v1:${digest}`;
+}
+
+async function loadCachedVectors(key: string): Promise<Float32Array[] | null> {
+    try {
+        const raw = await (await getDragonflyClient('ast-catalog')).get(key);
+        if (!raw) return null;
+        const bytes = Buffer.from(raw, 'base64');
+        const all = new Float32Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 4));
+        if (all.length !== entries.length * LFM2_EMBEDDING_DIM) return null;
+        return entries.map((_, index) => all.slice(index * LFM2_EMBEDDING_DIM, (index + 1) * LFM2_EMBEDDING_DIM));
+    } catch {
+        return null;
+    }
+}
+
+async function saveCachedVectors(key: string, built: Float32Array[]): Promise<void> {
+    try {
+        const all = new Float32Array(built.length * LFM2_EMBEDDING_DIM);
+        built.forEach((vector, index) => all.set(vector, index * LFM2_EMBEDDING_DIM));
+        const value = Buffer.from(all.buffer).toString('base64');
+        await (await getDragonflyClient('ast-catalog')).set(key, value, { EX: VECTOR_CACHE_TTL_SECONDS });
+    } catch {
+        // The cache is an optimization; the in-memory index still works.
+    }
+}
+
 async function buildVectors(): Promise<boolean> {
     const texts = entries.map((entry) => buildEntryEmbeddingText(entry));
+    const cacheKey = vectorCacheKey(texts);
+    const cached = await loadCachedVectors(cacheKey);
+    if (cached) {
+        vectors = cached;
+        return true;
+    }
     const collected: number[][] = [];
 
     for (let i = 0; i < texts.length; i += BATCH_SIZE) {
@@ -57,6 +98,7 @@ async function buildVectors(): Promise<boolean> {
     }
 
     vectors = collected.map((embedding) => Float32Array.from(embedding));
+    await saveCachedVectors(cacheKey, vectors);
     return true;
 }
 

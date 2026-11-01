@@ -17,11 +17,16 @@ let ipCounter = 0;
 const freshIp = () => `198.51.100.${++ipCounter}`;
 
 // 1. Unit suites (fake MiniMax server, docs parsing/validation/sources) in the exact image.
-const units = spawnSync(process.execPath, ['--test', '--test-force-exit', 'dist/utils/ai/minimax/minimax_client.test.js', 'dist/utils/ai/docs_assistant/docs_assistant.test.js'],
+const astSuites = fs.readdirSync('/app/dist/utils/ast_parser', { recursive: true })
+  .filter((file) => String(file).endsWith('.test.js')).map((file) => `dist/utils/ast_parser/${file}`);
+const units = spawnSync(process.execPath, ['--test', '--experimental-test-module-mocks', '--test-force-exit',
+  'dist/utils/ai/minimax/minimax_client.test.js', 'dist/utils/ai/docs_assistant/docs_assistant.test.js',
+  'dist/utils/ai/ast_catalog/index.test.js', ...astSuites],
   { cwd: '/app', encoding: 'utf8', env: { ...process.env, NODE_OPTIONS: '' } });
 assert.equal(units.status, 0, units.stdout + units.stderr);
-assert.match(units.stdout, /(# pass|ℹ pass) 15\b/);
-console.log('unit suites: 15 passed');
+assert.match(units.stdout, /(# pass|ℹ pass) \d+\b/);
+assert.doesNotMatch(units.stdout, /(# fail|ℹ fail) [1-9]/);
+console.log('unit suites passed');
 
 async function ask(body, { ip = freshIp(), origin = DOCS_ORIGIN, signal } = {}) {
   const response = await fetch(`${API}/docs-assistant/ask`, {
@@ -193,6 +198,24 @@ await Promise.all(pending);
 await pause(500);
 assert.equal((await ask(question('after the rush'))).response.status, 200, 'slots are released');
 console.log('concurrency cap and release: ok');
+
+// 13b. Tools: one turn asks for a catalog search and a command test; the route reports both,
+// the tool results go back to the model, and the test ran safely (action recorded, not performed).
+const toolCall = await ask(question('TOOLS_SKIP how do I skip the current TTS message?'));
+const statuses = toolCall.events.filter((event) => event.event === 'status').map((event) => event.data);
+assert.deepEqual(statuses.slice(1), [{ phase: 'searching', query: 'tts.skip' }, { phase: 'testing' }]);
+assert.equal(toolCall.events.at(-1).event, 'done');
+const toolAnswer = toolCall.events.filter((event) => event.event === 'text').map((event) => event.data.delta).join('');
+assert.match(toolAnswer, /found tts\.skip, test ok/);
+const toolRequests = minimaxCalls().filter((call) => String(call.body.messages[0].content).includes('TOOLS_SKIP'));
+assert.equal(toolRequests.length, 2);
+assert.deepEqual(toolRequests[0].body.tools.map((tool) => tool.name), ['search_ast_functions', 'test_command']);
+assert.equal(toolRequests[1].body.messages[1].content[0].type, 'thinking', 'thinking passed back unchanged');
+assert.equal(calls().filter((call) => call.provider === 'twitch' || /helix/.test(call.url ?? '')).length, 0, 'the command test reached no Twitch API');
+const toolRecord = await redis.hGetAll(`docs_assistant:answer:${toolCall.events.at(-1).data.id}`);
+assert.equal(toolRecord.rounds, '2');
+assert.deepEqual(JSON.parse(toolRecord.tool_calls).map((call) => call.name), ['search_ast_functions', 'test_command']);
+console.log('tool loop (search + safe command test): ok');
 
 // 14. Daily total.
 await redis.hSet(`docs_assistant:stats:${day}`, 'asked', '5000');

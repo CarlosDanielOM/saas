@@ -17,7 +17,9 @@ streamed event order, sources, the exact MiniMax request (M3.1-Flash, `xhigh`, m
 ceiling `max_tokens`, byte-stable system prompt, page note), Spanish docs, the usage
 record and feedback, input validation, the CORS allowlist, upstream failure, keep-alive
 pings during long thinking, client disconnect aborting upstream, per-IP and daily
-limits, and the simultaneous-answer cap.
+limits, the simultaneous-answer cap, and the tool loop (a catalog search plus a safe command
+test in one turn, results returned to the model, no Twitch calls). The unit step also runs the
+whole AST engine suite, the command tester, and the catalog warm-up/cache tests.
 
 The check does not judge answer quality. That needs real MiniMax calls (about $0.008
 per question): run the candidate image with only `docsAssistantRoute` mounted, a

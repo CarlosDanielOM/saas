@@ -105,7 +105,7 @@ function extractNumericFields(eventData: Record<string, unknown>): IExtractedNum
     };
 }
 
-function resolveArgumentPlaceholders(template: string, argument: string, literal = false): IPlaceholderResolution {
+export function resolveArgumentPlaceholders(template: string, argument: string, literal = false): IPlaceholderResolution {
     const input = String(template || '');
 
     if (!input.includes('&p') && !input.includes('&t')) {

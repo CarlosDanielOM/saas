@@ -4,6 +4,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { clearDocsCache, getDocsCorpus, parseCorpus, toPageUrl } from './docs_source.js';
 import { buildMessages, buildSystem, DocsAssistantInputError, extractSources, parseDocsAssistantRequest } from './docs_assistant.js';
+import { searchAstFunctionsTool } from './docs_assistant.tools.js';
 
 const EXPORT = `# DomDimaBot — en
 
@@ -132,4 +133,33 @@ test('loads each language from the docs export, caches it, and keeps the last go
     clearDocsCache();
     await assert.rejects(getDocsCorpus('en'), /500/, 'no copy at all: the error surfaces');
     failing = false;
+});
+
+test('function search tool: authoring surface, every level, compact entries', async () => {
+    const definition = searchAstFunctionsTool.definition;
+    assert.equal(definition.name, 'search_ast_functions');
+    assert.deepEqual(definition.input_schema.required, ['query']);
+    const byName = await searchAstFunctionsTool.run({ query: 'tts.skip' }, new AbortController().signal) as any;
+    assert.equal(byName.matches[0].name, 'tts.skip', 'exact name lookup');
+    assert.deepEqual(Object.keys(byName.matches[0]).sort(), ['aliases', 'category', 'description', 'destructive', 'examples', 'name', 'plan', 'syntax']);
+    const ban = await searchAstFunctionsTool.run({ query: 'ban' }, new AbortController().signal) as any;
+    assert.equal(ban.matches[0].name, 'ban', 'level-7 functions are visible to command authors');
+    const intent = await searchAstFunctionsTool.run({ query: 'skip tts message', limit: 3 }, new AbortController().signal) as any;
+    assert.ok(intent.matches.length >= 1 && intent.matches.length <= 3);
+    await assert.rejects(searchAstFunctionsTool.run({ query: '' }, new AbortController().signal), /query is required/);
+});
+
+test('test_command tool: compact results from the safe engine run; bad input becomes a tool error', async () => {
+    const { testCommandTool } = await import('./docs_assistant.tools.js');
+    assert.equal(testCommandTool.definition.name, 'test_command');
+    assert.deepEqual(testCommandTool.definition.input_schema.required, ['body']);
+    const roulette = await testCommandTool.run({
+        body: '%(roll $(random 6)) *(%(roll) == 0 ? $(ban $(user) 60) : "") *(%(roll) == 0 ? "${$(user)} died!" : "${$(user)} survived!")',
+        runs: [{ user: 'Sam' }], repeat: 40,
+    }, new AbortController().signal) as any;
+    assert.ok(roulette.outcomes.some((o: any) => o.actions.includes('ban(Sam, 60)')), 'the timeout is recorded on a losing roll');
+    assert.match(roulette.note, /recorded, not performed/);
+    const broken = await testCommandTool.run({ body: '*( &p1 == "" ? "EMPTY" : "GOT &p1" )' }, new AbortController().signal) as any;
+    assert.ok(broken.runs[0].problems.length > 0);
+    await assert.rejects(testCommandTool.run({ body: '!cc hi Hello' }, new AbortController().signal), /only the response body/);
 });

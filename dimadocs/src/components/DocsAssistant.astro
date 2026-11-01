@@ -46,6 +46,8 @@ const t = spanish
         you: 'Tú',
         reading: 'Leyendo la documentación…',
         thinking: 'Pensando…',
+        searching: 'Revisando la lista de funciones…',
+        testing: 'Probando el comando…',
         seconds: 's',
         sources: 'Páginas usadas',
         helpfulQ: '¿Te ayudó?',
@@ -94,6 +96,8 @@ const t = spanish
         you: 'You',
         reading: 'Reading the docs…',
         thinking: 'Thinking…',
+        searching: 'Checking the function list…',
+        testing: 'Testing the command…',
         seconds: 's',
         sources: 'Pages used',
         helpfulQ: 'Did this help?',
@@ -546,7 +550,16 @@ const t = spanish
             if (!event || raw == null) continue; // keep-alive ping
             const data = JSON.parse(raw);
             if (event === 'start') bot.id = data.id;
-            else if (event === 'status' && !bot.content) label.textContent = this.ui.thinking;
+            else if (event === 'status') {
+              // Lookups and command tests can take a while: say which one is happening.
+              const phase = data.phase === 'searching' ? this.ui.searching : data.phase === 'testing' ? this.ui.testing : this.ui.thinking;
+              if (!bot.content || data.phase !== 'thinking') label.textContent = phase;
+            } else if (event === 'reset') {
+              // Text so far was a preamble to a lookup or test: clear it and show progress again.
+              bot.content = '';
+              answer.innerHTML = '';
+              if (!status.isConnected) item.prepend(status);
+            }
             else if (event === 'text') {
               if (!bot.content) status.remove();
               bot.content += data.delta;

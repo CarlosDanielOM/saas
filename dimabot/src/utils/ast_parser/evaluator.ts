@@ -155,6 +155,11 @@ function resolveArrayIndex(value: unknown, length: number): number {
 
 type DragonflyClient = Awaited<ReturnType<typeof getDragonflyClient>>;
 
+/** Cache-variable storage: Dragonfly, or the in-memory store during a test run. */
+async function cacheFor(context: ExecutionContext): Promise<DragonflyClient> {
+    return context.simulation ? context.simulation.cache as unknown as DragonflyClient : getDragonflyClient();
+}
+
 // Iterates the user identity keys for a channel variable, stopping on a hit.
 async function walkCacheKeys(
     name: string,
@@ -163,7 +168,7 @@ async function walkCacheKeys(
     targetUserLogin: string | undefined,
     fn: (key: string, redis: DragonflyClient) => Promise<boolean | void>
 ): Promise<boolean> {
-    const redis = await getDragonflyClient();
+    const redis = await cacheFor(context);
     const strippedName = stripVarPrefix(name, storage);
     const userScopeCandidates = storage === 'cacheUser'
         ? getCacheUserScopeCandidates(context, targetUserLogin)
@@ -473,7 +478,7 @@ async function saveValueToStorage(
 
         case 'cache':
         case 'cacheUser': {
-            const redis = await getDragonflyClient();
+            const redis = await cacheFor(context);
             if (storage === 'cacheUser') {
                 const userScopeCandidates = getCacheUserScopeCandidates(context, targetUserLogin);
                 for (const userScope of userScopeCandidates) {
@@ -847,6 +852,10 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
             const funcNode = node as FunctionNode;
             // Timer bodies are programs to execute later, never eager arguments.
             if (funcNode.name === 'timer') {
+                if (context.simulation) {
+                    const simulated = await context.simulation.callFunction('timer', [], context);
+                    return { value: simulated?.value ?? '', context };
+                }
                 const { evaluateTimer } = await import('./timer.js');
                 return evaluateTimer(funcNode, context);
             }
@@ -877,6 +886,11 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
                     value: buildPermissionDeniedMessage(funcNode.name, requiredLevel, actualLevel),
                     context: currentContext
                 };
+            }
+
+            if (currentContext.simulation) {
+                const simulated = await currentContext.simulation.callFunction(funcNode.name, args, currentContext);
+                if (simulated) return { value: simulated.value, context: currentContext };
             }
 
             const result = await handler(args, currentContext);
