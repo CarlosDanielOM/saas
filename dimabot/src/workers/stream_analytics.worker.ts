@@ -48,12 +48,14 @@ async function bootstrap(): Promise<void> {
         { getDragonflyClient },
         { getMongoDBConnection },
         { collectLiveViewerSnapshots, reconcileLiveSessionsOnStartup },
+        { recoverStreamOperationsReconciliations },
         { error: logError, info: logInfo, warn: logWarn }
     ] = await Promise.all([
         import('../classes/twitch_streamers.class.js'),
         import('../utils/databases/dragonfly.database.js'),
         import('../utils/databases/mongodb.database.js'),
         import('../utils/stream_analytics.js'),
+        import('../domain_events/stream_operations_events.js'),
         import('../utils/logger.js')
     ]);
 
@@ -94,6 +96,15 @@ async function bootstrap(): Promise<void> {
             message: 'Running stream analytics snapshot tick',
             reason
         }, { destination: 'console' });
+        // Authorization restoration reconciles current Twitch state separately
+        // from historical stream-transition deliveries.
+        try {
+            await recoverStreamOperationsReconciliations();
+        } catch (error) {
+            await logError({ worker: 'stream_analytics', operation: 'authorization_reconciliation',
+                error: error instanceof Error ? error.message : String(error)
+            }, { destination: 'console' });
+        }
         await collectLiveViewerSnapshots();
     }
 

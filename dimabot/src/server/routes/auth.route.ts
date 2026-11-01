@@ -434,6 +434,10 @@ async function seedTwitchTokenCache(channelID: string, accessToken: string, refr
     await cache.hSet(`accounts:twitch:${channelID}:data`, 'expires_at', String(expiresAt));
     await cache.hSet(`accounts:twitch:${channelID}:data`, 'has_permissions', 'true');
     await cache.hSet(`accounts:twitch:${channelID}:data`, 'up_to_date_permissions', 'true');
+    // Persist current-state reconciliation after the new credentials are usable.
+    // The cron recovery path retries this request without replaying old streams.
+    const { enqueueStreamOperationsReconciliation } = await import('../../domain_events/stream_operations_events.js');
+    await enqueueStreamOperationsReconciliation(channelID);
 }
 
 async function cleanupLegacyBitsSubscriptions(channelID: string): Promise<void> {

@@ -18,6 +18,9 @@ import { DomainEventPrerequisiteMissingError } from '../domain_events/domain_eve
 
 const DEFAULT_DASHBOARD_DAYS = 30;
 const OFFLINE_CHECK_THRESHOLD = 2;
+// Snapshot polling and EventSub can observe the same shutdown a few seconds apart.
+// A minute is intentionally narrow; longer gaps require explicit investigation.
+export const SNAPSHOT_OFFLINE_MATCH_WINDOW_MS = 60_000;
 const SNAPSHOT_RETENTION_DAYS = 90;
 const LEDGER_EVENT_KEY_HISTORY_LIMIT = 10_000;
 const RETENTION_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -100,6 +103,8 @@ interface RecordStreamOfflineInput {
     channelID: string;
     endedAt?: string | Date;
     eventKey?: string;
+    /** Restricted to an explicitly investigated legacy snapshot orphan. */
+    repairSessionID?: string;
 }
 
 function toDate(value?: string | Date): Date {
@@ -452,7 +457,7 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
 
         const existingStream = await StreamSessionSchema.findOne({
             channelID, stream_id: streamID
-        }).select('status ended_at started_at consecutive_offline_checks offline_summary_enqueued_at offline_clips_completed_at').lean();
+        }).select('status ended_at started_at closure_source consecutive_offline_checks offline_summary_enqueued_at offline_clips_completed_at').lean();
 
         // Check for existing live session with retry
         const existingLive = await executeWithRetry(
@@ -478,6 +483,7 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
             // Offline receipts and newer/different sessions rule out a safe reopening.
             const recoverSnapshot = Boolean(input.eventKey && input.streamID &&
                 existingStream.status === 'orphaned' &&
+                (!existingStream.closure_source || existingStream.closure_source === 'snapshot') &&
                 existingStream.consecutive_offline_checks >= OFFLINE_CHECK_THRESHOLD &&
                 !existingStream.offline_summary_enqueued_at && !existingStream.offline_clips_completed_at &&
                 !existingLive && !newerSession);
@@ -489,6 +495,7 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
                         ended_at: existingStream.ended_at,
                         ...(recoverSnapshot ? {
                             consecutive_offline_checks: { $gte: OFFLINE_CHECK_THRESHOLD },
+                            closure_source: existingStream.closure_source || null,
                             offline_summary_enqueued_at: null,
                             offline_clips_completed_at: null
                         } : {}),
@@ -497,7 +504,7 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
                         ...(recoverSnapshot ? { $set: {
                             channel, status: 'live', ended_at: null,
                             last_seen_live_at: new Date(), consecutive_offline_checks: 0
-                        } } : {}),
+                        }, $unset: { closure_source: 1 } } : {}),
                         $addToSet: { applied_domain_event_keys: input.eventKey }
                     }, { writeConcern: { w: 1, j: true } });
                     if (result.matchedCount === 0) {
@@ -545,6 +552,7 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
                     started_at: startedAt,
                     ended_at: existingStartedAt,
                     status: 'orphaned',
+                    closure_source: 'superseded',
                     channel,
                     peak_viewers: 0,
                     average_viewers: 0,
@@ -585,6 +593,7 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
                         $set: {
                             ended_at: startedAt,
                             status: 'orphaned',
+                            closure_source: 'superseded',
                             duration_minutes: getDurationMinutes(existingLive.started_at, startedAt)
                         }
                     }
@@ -630,7 +639,8 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
                 ended_at: null,
                 last_seen_live_at: new Date(),
                 consecutive_offline_checks: 0
-            }
+            },
+            $unset: { closure_source: 1 }
         };
         if (input.eventKey) {
             sessionUpdate.$addToSet = { applied_domain_event_keys: input.eventKey };
@@ -715,8 +725,16 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
                 channelID,
                 started_at: { $lte: endedAt },
                 $or: [
-                    { ended_at: null },
-                    { ended_at: { $gte: endedAt } }
+                    { status: 'live', ended_at: null },
+                    { status: 'orphaned', closure_source: 'snapshot', ended_at: {
+                        $gte: new Date(endedAt.getTime() - SNAPSHOT_OFFLINE_MATCH_WINDOW_MS),
+                        $lte: new Date(endedAt.getTime() + SNAPSHOT_OFFLINE_MATCH_WINDOW_MS)
+                    } },
+                    ...(input.repairSessionID ? [{ _id: input.repairSessionID, status: 'orphaned',
+                        closure_source: null, consecutive_offline_checks: { $gte: OFFLINE_CHECK_THRESHOLD }, ended_at: {
+                            $gte: new Date(endedAt.getTime() - SNAPSHOT_OFFLINE_MATCH_WINDOW_MS),
+                            $lte: new Date(endedAt.getTime() + SNAPSHOT_OFFLINE_MATCH_WINDOW_MS)
+                        } }] : [])
                 ]
             }).sort({ started_at: -1 }).lean(),
             'findActiveSession',
@@ -729,6 +747,25 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
             return;
         }
 
+        if (!appliedSession) {
+            if (input.repairSessionID && String(activeSession._id) !== input.repairSessionID) {
+                throw new DomainEventPrerequisiteMissingError(`ambiguous-stream-session:${channelID}`);
+            }
+            // A later session at or before the event makes an identity-free offline
+            // notification ambiguous, regardless of that later session's status.
+            const newer = await StreamSessionSchema.findOne({ channelID,
+                _id: { $ne: activeSession._id },
+                started_at: { $gte: activeSession.started_at, $lte: endedAt }
+            }).select('_id').lean();
+            const otherClosed = await StreamSessionSchema.findOne({ channelID,
+                _id: { $ne: activeSession._id }, status: { $ne: 'live' },
+                started_at: { $lte: endedAt }, ended_at: {
+                    $gte: new Date(endedAt.getTime() - SNAPSHOT_OFFLINE_MATCH_WINDOW_MS)
+                }
+            }).select('_id').lean();
+            if (newer || otherClosed) throw new DomainEventPrerequisiteMissingError(`ambiguous-stream-session:${channelID}`);
+        }
+
         console.log('recordStreamOfflineEvent: Marking session as offline', {
             channelID,
             sessionID: String(activeSession._id),
@@ -739,6 +776,7 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
             $set: {
                 ended_at: endedAt,
                 status: 'offline',
+                closure_source: 'eventsub',
                 duration_minutes: getDurationMinutes(activeSession.started_at, endedAt),
                 consecutive_offline_checks: 0
             }
@@ -751,6 +789,9 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
                 () => StreamSessionSchema.updateOne(
                     {
                         _id: activeSession._id,
+                        status: activeSession.status,
+                        ended_at: activeSession.ended_at,
+                        closure_source: activeSession.closure_source || null,
                         ...(input.eventKey ? { applied_domain_event_keys: { $ne: input.eventKey } } : {})
                     },
                     offlineUpdate,
@@ -760,9 +801,9 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
                 channelID,
                 input.eventKey ? 0 : MAX_SESSION_CREATE_RETRIES
             );
-            if (input.eventKey && offlineResult.modifiedCount === 0 && !await StreamSessionSchema.exists({
+            if (offlineResult.modifiedCount === 0 && (!input.eventKey || !await StreamSessionSchema.exists({
                 _id: activeSession._id, applied_domain_event_keys: input.eventKey
-            })) {
+            }))) {
                 throw new DomainEventPrerequisiteMissingError(`stream-session:${channelID}:${endedAt.toISOString()}`);
             }
         }
@@ -1333,7 +1374,7 @@ export async function collectLiveViewerSnapshots(): Promise<void> {
                 const peakViewers = Math.max(Number(session.peak_viewers || 0), viewers);
 
                 await StreamSessionSchema.updateOne(
-                    { _id: session._id },
+                    { _id: session._id, status: 'live', ended_at: null, stream_id: session.stream_id },
                     {
                         $set: {
                             stream_id: liveStream.id || session.stream_id,
@@ -1351,24 +1392,27 @@ export async function collectLiveViewerSnapshots(): Promise<void> {
             }
 
             const updatedSession = await StreamSessionSchema.findOneAndUpdate(
-                { _id: session._id },
+                { _id: session._id, status: 'live', ended_at: null, stream_id: session.stream_id },
                 { $inc: { consecutive_offline_checks: 1 } },
                 { new: true }
             );
 
             if (updatedSession && updatedSession.consecutive_offline_checks >= OFFLINE_CHECK_THRESHOLD) {
                 const now = new Date();
-                await StreamSessionSchema.updateOne(
-                    { _id: updatedSession._id },
+                const closed = await StreamSessionSchema.updateOne(
+                    { _id: updatedSession._id, status: 'live', ended_at: null,
+                        stream_id: session.stream_id, consecutive_offline_checks: updatedSession.consecutive_offline_checks },
                     {
                         $set: {
                             ended_at: now,
                             status: 'orphaned',
+                            closure_source: 'snapshot',
                             duration_minutes: getDurationMinutes(updatedSession.started_at, now)
                         }
                     }
                 );
 
+                if (!closed.modifiedCount) continue;
                 await enqueuePostStreamSummaryJob({
                     channelID: session.channelID,
                     sessionID: String(updatedSession._id),

@@ -14,7 +14,8 @@ interface HelixRetryOptions {
     context?: Record<string, unknown>;
     retryDelaysMs?: number[];
     executeRequest: () => Promise<Response>;
-    onUnauthorized: (attempt: number) => Promise<void>;
+    onUnauthorized: (attempt: number) => Promise<void | boolean>;
+    stopOnRefreshError?: boolean;
     requestUrl?: string;
     requestMethod?: string;
     requestHeaders?: Record<string, string>;
@@ -27,6 +28,7 @@ async function executeHelixRequestWith401Retry(options: HelixRetryOptions): Prom
 
     let response = await options.executeRequest();
 
+    let retriesAttempted = 0;
     for (let retryIndex = 0; response.status === 401 && retryIndex < retryDelays.length; retryIndex += 1) {
         const delayMs = retryDelays[retryIndex];
         const attempt = retryIndex + 1;
@@ -42,7 +44,7 @@ async function executeHelixRequestWith401Retry(options: HelixRetryOptions): Prom
         }, { destination: 'both' });
 
         try {
-            await options.onUnauthorized(attempt);
+            if (await options.onUnauthorized(attempt) === false) break;
         } catch (refreshError) {
             await logError({
                 worker: options.worker,
@@ -53,10 +55,12 @@ async function executeHelixRequestWith401Retry(options: HelixRetryOptions): Prom
                 stack: refreshError instanceof Error ? refreshError.stack : undefined,
                 ...options.context
             }, { destination: 'both' });
+            if (options.stopOnRefreshError) break;
         }
 
         await sleep(delayMs);
         response = await options.executeRequest();
+        retriesAttempted += 1;
     }
 
     if (response.status === 401) {
@@ -64,7 +68,7 @@ async function executeHelixRequestWith401Retry(options: HelixRetryOptions): Prom
             worker: options.worker,
             operation: options.operation,
             message: 'Twitch 401 persisted after retries. Continuing workflow.',
-            retriesAttempted: retryDelays.length,
+            retriesAttempted,
             ...options.context
         }, { destination: 'both' });
 
@@ -209,10 +213,12 @@ interface HelixStreamerRetryResult {
     response?: Response;
     message?: string;
     status?: number;
+    refreshUnavailable?: boolean;
 }
 
 export async function executeHelixStreamerRequestWith401Retry(options: HelixStreamerRetryOptions): Promise<HelixStreamerRetryResult> {
     let headerResult = await getTwitchStreamerHeaderById(options.channelID);
+    let refreshUnavailable = false;
 
     if (headerResult.error || !headerResult.header) {
         return {
@@ -231,10 +237,17 @@ export async function executeHelixStreamerRequestWith401Retry(options: HelixStre
         },
         retryDelaysMs: options.retryDelaysMs,
         executeRequest: async () => options.executeRequest(headerResult.header as unknown as Record<string, string>),
+        stopOnRefreshError: true,
         onUnauthorized: async () => {
-            const refreshedHeader = await getTwitchStreamerHeaderById(options.channelID);
-            if (!refreshedHeader.error && refreshedHeader.header) {
+            // If refresh throws or returns no different credential, the 401
+            // cannot establish whether authorization was revoked.
+            refreshUnavailable = true;
+            const rejectedAuthorization = headerResult.header!.Authorization;
+            const rejectedToken = rejectedAuthorization.replace(/^Bearer\s+/i, '');
+            const refreshedHeader = await getTwitchStreamerHeaderById(options.channelID, rejectedToken);
+            if (!refreshedHeader.error && refreshedHeader.header && refreshedHeader.header.Authorization !== rejectedAuthorization) {
                 headerResult = refreshedHeader;
+                refreshUnavailable = false;
                 return;
             }
             await logWarn({
@@ -245,12 +258,16 @@ export async function executeHelixStreamerRequestWith401Retry(options: HelixStre
                 refreshMessage: refreshedHeader.message,
                 ...options.context
             }, { destination: 'both' });
+            return false;
         },
         requestUrl: options.requestUrl,
         requestMethod: options.requestMethod,
         requestHeaders: headerResult.header as unknown as Record<string, string>
     });
 
+    if (refreshUnavailable) {
+        return { error: true, response, status: 503, refreshUnavailable: true, message: 'Unable to refresh Twitch streamer token' };
+    }
     return { error: false, response };
 }
 

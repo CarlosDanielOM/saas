@@ -59,7 +59,7 @@ export const getTwitchBotHeader = async (): Promise<TwitchHeaderResult> => {
     };
 };
 
-export const getTwitchStreamerHeaderById = async (streamerId: string): Promise<TwitchHeaderResult> => {
+export const getTwitchStreamerHeaderById = async (streamerId: string, rejectedAccessToken?: string): Promise<TwitchHeaderResult> => {
     const streamer = await TwitchStreamers.getTwitchAccountById(streamerId);
     if (!streamer) {
         await debug({ function: 'getTwitchStreamerHeaderById', streamerId, error: 'Streamer not found' }, { destination: 'cache' });
@@ -77,7 +77,7 @@ export const getTwitchStreamerHeaderById = async (streamerId: string): Promise<T
         };
     }
 
-    const accessToken = await TwitchStreamers.getAccountTokenById(streamerId, 'twitch');
+    const accessToken = await TwitchStreamers.getAccountTokenById(streamerId, 'twitch', rejectedAccessToken);
     
     if (!accessToken) {
         await debug({ function: 'getTwitchStreamerHeaderById', streamerId, error: 'Failed to get access token (refresh may have failed)' }, { destination: 'cache' });

@@ -1,6 +1,5 @@
-import TwitchStreamers from '../../classes/twitch_streamers.class.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
-import { getTwitchStreamerHeaderById } from '../../utils/header.js';
+import { executeHelixStreamerRequestWith401Retry } from '../../utils/twitch_helix_retry.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 import { error as logError } from '../../utils/logger.js';
 import { refreshEditorCache } from '../../utils/permissions/roles.js';
@@ -10,6 +9,8 @@ interface GetEditorsResponse {
     error: boolean;
     message?: string;
     editors?: Editor[];
+    type?: 'auth_required' | 'transient';
+    status?: number;
 }
 
 export async function getChannelEditors(channelID: string, cache: boolean = false): Promise<GetEditorsResponse> {
@@ -17,39 +18,23 @@ export async function getChannelEditors(channelID: string, cache: boolean = fals
 
     try {
         const cacheClient = await getDragonflyClient('getChannelEditors');
-        await TwitchStreamers.getTwitchAccountById(channelID);
-
-        const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
-
-        if (streamerHeaderResult.error || !streamerHeaderResult.header) {
+        const params = new URLSearchParams({ broadcaster_id: channelID });
+        const url = getTwitchHelixUrl('channels/editors', params.toString());
+        const request = await executeHelixStreamerRequestWith401Retry({
+            channelID, operation: 'get_channel_editors', requestUrl: url, requestMethod: 'GET',
+            executeRequest: (headers) => fetch(url, { headers, signal: AbortSignal.timeout(10000) })
+        });
+        if (request.error || !request.response) {
+            return { error: true, type: 'transient', status: request.status, message: request.message || 'Twitch editor lookup unavailable' };
+        }
+        const response = request.response;
+        const data = await response.json();
+        if (!response.ok || data.error) {
             return {
-                error: true,
-                message: streamerHeaderResult.message
+                error: true, type: response.status === 401 || response.status === 403 ? 'auth_required' : 'transient',
+                status: response.status, message: data.message || `Twitch editor lookup failed (${response.status})`
             };
         }
-
-        const streamerHeader = streamerHeaderResult.header;
-
-        const params = new URLSearchParams({
-            broadcaster_id: channelID
-        });
-
-        const response = await fetch(getTwitchHelixUrl('channels/editors', params.toString()), {
-            headers: {
-                'Client-Id': streamerHeader['Client-Id'],
-                'Authorization': streamerHeader.Authorization,
-                'Content-Type': streamerHeader['Content-Type']
-            }
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-            return {
-                error: true,
-                message: data.message
-            };
-         }
 
          editorList = normalizeEditors(data.data);
 
@@ -78,7 +63,8 @@ export async function getChannelEditors(channelID: string, cache: boolean = fals
 
         return {
             error: true,
-            message: 'Internal server error'
+            message: 'Internal server error',
+            type: 'transient'
         };
     }
 }

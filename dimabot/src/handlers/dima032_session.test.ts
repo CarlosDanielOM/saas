@@ -345,7 +345,7 @@ test('actual stream-operations consumer clears the API parked head via cross-pro
     const { applyStreamOperationsDomainEvent }=await import('../domain_events/stream_operations_events.js');
     const noop=async()=>{};
     await applyStreamOperationsDomainEvent({type:'stream.ended',source:'twitch-eventsub',channelID:channel,payload:{event:{}}} as any, {
-      hasNewerLifecycleEvent:async()=>false, unloadChannelTimersFromCache:noop,resetRedemptionCost:async()=>({}),resetSumimetro:noop,clearChannelCache:noop,clearSpeechFiles,clearHistory:noop,getChannelEditors:async()=>({}),loadChannelAdminsIntoCache:noop,
+      hasNewerLifecycleEvent:async()=>false, readProgress:async()=>({}),writeProgress:noop,getAuthSkipReason:async()=>null,unloadChannelTimersFromCache:noop,resetRedemptionCost:async()=>({}),resetSumimetro:noop,clearChannelCache:noop,clearSpeechFiles,clearHistory:noop,getChannelEditors:async()=>({}),loadChannelAdminsIntoCache:noop,
     } as any);
     assert.equal((handler as any).readHeads.has(channel),false); assert.equal(runtime.ttsReservation,null);
     assert.equal((handler as any).fileCleanupTimeouts.has(`${channel}:stream-head`),true);

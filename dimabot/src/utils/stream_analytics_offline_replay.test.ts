@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test, { mock, type TestContext } from 'node:test';
 import { Types } from 'mongoose';
 import { StreamSessionSchema } from '../schemas/stream_session.schema.js';
+import { StreamViewerSnapshotSchema } from '../schemas/stream_viewer_snapshot.schema.js';
 import { ClipRecommendationConfigSchema } from '../schemas/clip_recommendation_config.schema.js';
 import UsersSchema from '../schemas/users.schema.js';
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
@@ -17,7 +18,7 @@ mock.module('./databases/dragonfly.database.js', { namedExports: { getDragonflyC
 let enqueue: (step: 'summary' | 'clips', input: any) => Promise<any>;
 mock.module('./ai/memory/stream_memory_queue.js', { namedExports: { enqueueStreamMemorySummaryJob: (input: any) => enqueue('summary', input) } });
 mock.module('./ai/clip_recommendations/clip_recommendations_queue.js', { namedExports: { enqueueClipRecommendationJob: (input: any) => enqueue('clips', input) } });
-const { recordStreamOnlineEvent, recordStreamOfflineEvent, recordStreamBitsEvent, recordStreamFollowEvent, recordStreamSubEvent } = await import('./stream_analytics.js');
+const { recordStreamOnlineEvent, recordStreamOfflineEvent, recordStreamBitsEvent, recordStreamFollowEvent, recordStreamSubEvent, collectLiveViewerSnapshots } = await import('./stream_analytics.js');
 const { drainDomainEvents } = await import('./domain_event_consumer.js');
 
 function query<T>(value: T) {
@@ -53,6 +54,7 @@ function setup(t: TestContext) {
         if (value === null) return actual == null;
         if (value instanceof Date) return actual instanceof Date && actual.getTime() === value.getTime();
         if (value instanceof Types.ObjectId) return String(actual) === String(value);
+        if (actual instanceof Types.ObjectId && typeof value === 'string') return String(actual) === value;
         return Array.isArray(actual) ? actual.includes(value) : actual === value;
     });
     t.mock.method(StreamSessionSchema, 'findOne', ((filter: any) => {
@@ -158,6 +160,127 @@ test('late durable online repairs a snapshot orphan so a different offline event
     assert.deepEqual(h.state.calls, ['summary', 'clips']);
     assert.ok(h.session.offline_summary_enqueued_at);
     assert.ok(h.session.offline_clips_completed_at);
+});
+
+test('offline finalizes a uniquely identified recent snapshot closure without losing metrics or receipts', async t => {
+    const h = setup(t);
+    Object.assign(h.session, { status: 'orphaned', ended_at: new Date('2026-09-05T13:59:57Z'),
+        closure_source: 'snapshot', consecutive_offline_checks: 2, bits: 42, offline_summary_enqueued_at: new Date() });
+    await h.run();
+    assert.equal(h.session.status, 'offline');
+    assert.equal(h.session.closure_source, 'eventsub');
+    assert.equal(h.session.bits, 42);
+    assert.deepEqual(h.state.calls, ['clips']);
+});
+
+test('offline does not guess a superseded or genuinely offline session', async t => {
+    for (const [status, closure_source] of [['orphaned', 'superseded'], ['offline', 'eventsub']]) {
+        await t.test(`${status}/${closure_source}`, async t => {
+            const h = setup(t);
+            Object.assign(h.session, { status, closure_source, ended_at: new Date('2026-09-05T14:00:01Z') });
+            await assert.rejects(h.run(), { name: 'DomainEventPrerequisiteMissingError' });
+            assert.deepEqual(h.state.calls, []);
+        });
+    }
+});
+
+test('a snapshot closure cannot overwrite an offline transition racing the offline write', async t => {
+    const h = setup(t);
+    Object.assign(h.session, { status: 'orphaned', ended_at: new Date('2026-09-05T13:59:57Z'),
+        closure_source: 'snapshot', consecutive_offline_checks: 2 });
+    h.state.beforeUpdate = () => { h.session.status = 'offline'; h.session.closure_source = 'eventsub'; };
+    await assert.rejects(h.run(), { name: 'DomainEventPrerequisiteMissingError' });
+    assert.deepEqual(h.state.calls, []);
+});
+
+test('a snapshot closure outside the narrow window defers', async t => {
+    const h = setup(t);
+    Object.assign(h.session, { status: 'orphaned', ended_at: new Date('2026-09-05T13:58:59Z'),
+        closure_source: 'snapshot', consecutive_offline_checks: 2 });
+    await assert.rejects(h.run(), { name: 'DomainEventPrerequisiteMissingError' });
+    assert.deepEqual(h.state.calls, []);
+});
+
+test('a recent snapshot and a newer live session are ambiguous, even when the newer is selected first', async t => {
+    const h = setup(t);
+    Object.assign(h.session, { status: 'orphaned', ended_at: new Date('2026-09-05T13:59:57Z'),
+        closure_source: 'snapshot', consecutive_offline_checks: 2 });
+    h.state.otherSessions.push({ ...h.session, _id: new Types.ObjectId(), stream_id: 'newer',
+        started_at: new Date('2026-09-05T13:59:59Z'), status: 'live', ended_at: null,
+        closure_source: undefined, applied_domain_event_keys: [] });
+    await assert.rejects(h.run(), { name: 'DomainEventPrerequisiteMissingError' });
+    assert.deepEqual(h.state.calls, []);
+    assert.equal(h.session.status, 'orphaned');
+    assert.equal(h.state.otherSessions[0].status, 'live');
+});
+
+test('an offline event near a superseded session cannot be assumed to belong to the newer live stream', async t => {
+    const h = setup(t);
+    Object.assign(h.session, { status: 'orphaned', ended_at: new Date('2026-09-05T13:59:58Z'),
+        closure_source: 'superseded', consecutive_offline_checks: 0 });
+    h.state.otherSessions.push({ ...h.session, _id: new Types.ObjectId(), stream_id: 'newer',
+        started_at: new Date('2026-09-05T13:59:58Z'), status: 'live', ended_at: null,
+        closure_source: undefined, applied_domain_event_keys: [] });
+    await assert.rejects(h.run(), { name: 'DomainEventPrerequisiteMissingError' });
+    assert.deepEqual(h.state.calls, []);
+    assert.equal(h.state.otherSessions[0].status, 'live');
+});
+
+test('snapshot finalization recovers a lost mutation response without duplicate jobs', async t => {
+    const h = setup(t);
+    Object.assign(h.session, { status: 'orphaned', ended_at: new Date('2026-09-05T13:59:57Z'),
+        closure_source: 'snapshot', consecutive_offline_checks: 2 });
+    h.state.updateLost = true;
+    await assert.rejects(h.run(), /Session update response lost/);
+    await h.run();
+    await h.run();
+    assert.equal(h.state.updateCount, 1);
+    assert.deepEqual(h.state.calls, ['summary', 'clips']);
+});
+
+test('a legacy orphan requires the explicitly selected repair session', async t => {
+    const h = setup(t);
+    Object.assign(h.session, { status: 'orphaned', ended_at: new Date('2026-09-05T13:59:57Z'),
+        consecutive_offline_checks: 2 });
+    await assert.rejects(h.run(), { name: 'DomainEventPrerequisiteMissingError' });
+    await assert.rejects(recordStreamOfflineEvent({ channelID: 'channel', endedAt: '2026-09-05T14:00:00Z',
+        eventKey: 'offline:event', repairSessionID: String(new Types.ObjectId()) }), { name: 'DomainEventPrerequisiteMissingError' });
+    await recordStreamOfflineEvent({ channelID: 'channel', endedAt: '2026-09-05T14:00:00Z',
+        eventKey: 'offline:event', repairSessionID: String(h.session._id) });
+    assert.equal(h.session.status, 'offline');
+    assert.deepEqual(h.state.calls, ['summary', 'clips']);
+});
+
+test('explicit superseded source is never reopened based on legacy offline checks', async t => {
+    const h = setup(t);
+    Object.assign(h.session, { status: 'orphaned', ended_at: new Date('2026-09-05T12:10:00Z'),
+        closure_source: 'superseded', consecutive_offline_checks: 2 });
+    await h.online();
+    assert.equal(h.session.status, 'orphaned');
+});
+
+test('snapshot closure cannot overwrite a concurrent EventSub closure or enqueue a second summary', async t => {
+    const h = setup(t);
+    t.mock.method(StreamSessionSchema, 'find', (() => query([{ ...h.session }])) as never);
+    t.mock.method(StreamViewerSnapshotSchema, 'deleteMany', (async () => ({ deletedCount: 0 })) as never);
+    t.mock.method(StreamSessionSchema, 'findOneAndUpdate', (async (filter: any) => {
+        assert.equal(filter.status, 'live');
+        assert.equal(filter.ended_at, null);
+        const result = { ...h.session, consecutive_offline_checks: 2 };
+        h.session.status = 'offline';
+        h.session.closure_source = 'eventsub';
+        h.session.ended_at = new Date('2026-09-05T14:00:00Z');
+        return result;
+    }) as never);
+    t.mock.method(StreamSessionSchema, 'updateOne', (async (filter: any) => {
+        assert.equal(filter.status, 'live');
+        assert.equal(filter.ended_at, null);
+        return { matchedCount: 0, modifiedCount: 0 };
+    }) as never);
+    await collectLiveViewerSnapshots();
+    assert.equal(h.session.status, 'offline');
+    assert.equal(h.session.closure_source, 'eventsub');
+    assert.deepEqual(h.state.calls, []);
 });
 
 test('late online receipts a genuinely offline no-op without changing metrics or lifecycle', async t => {

@@ -223,7 +223,7 @@ export class TwitchStreamers {
         }
     }
 
-    private async waitForRefreshedToken(cache: DragonflyClient, dataKey: string, lockKey: string): Promise<string | null> {
+    private async waitForRefreshedToken(cache: DragonflyClient, dataKey: string, lockKey: string, rejectedAccessToken?: string): Promise<string | null> {
         const deadline = Date.now() + REFRESH_WAIT_TIMEOUT_MS;
 
         while (Date.now() < deadline) {
@@ -231,7 +231,7 @@ export class TwitchStreamers {
 
             const token = await cache.hGet(dataKey, 'access_token');
             const expiresAt = await cache.hGet(dataKey, 'expires_at');
-            if (this.isAccessTokenUsable(token, expiresAt, 60)) {
+            if (token !== rejectedAccessToken && this.isAccessTokenUsable(token, expiresAt, 60)) {
                 return token!;
             }
 
@@ -283,7 +283,7 @@ export class TwitchStreamers {
         return refreshResult.token;
     }
 
-    async getAccountTokenById(id: string, account_type: 'twitch' | 'kick'): Promise<string | null> {
+    async getAccountTokenById(id: string, account_type: 'twitch' | 'kick', rejectedAccessToken?: string): Promise<string | null> {
         const caller = getTokenCaller();
         try {
             const cache = await this.cache;
@@ -307,7 +307,7 @@ export class TwitchStreamers {
                 secondsUntilExpiry
             }, { channelId: id, destination: 'cache' });
 
-            if (token && this.isAccessTokenUsable(token, expiresAt)) {
+            if (token && token !== rejectedAccessToken && this.isAccessTokenUsable(token, expiresAt)) {
                 await debug({
                     function: 'TwitchStreamers.getAccountTokenById',
                     id,
@@ -327,6 +327,7 @@ export class TwitchStreamers {
                 action: 'token_needs_refresh',
                 reason: !token
                     ? 'no_cached_token'
+                    : token === rejectedAccessToken ? 'rejected_by_twitch'
                     : Number.isFinite(parsedExpiry) ? 'near_or_expired' : 'missing_or_invalid_expires_at',
                 secondsUntilExpiry,
                 skewSeconds: TOKEN_EXPIRY_SKEW_SECONDS
@@ -344,7 +345,7 @@ export class TwitchStreamers {
             let lockValue = await this.acquireRefreshLock(cache, lockKey);
 
             if (!lockValue) {
-                const winnerToken = await this.waitForRefreshedToken(cache, dataKey, lockKey);
+                const winnerToken = await this.waitForRefreshedToken(cache, dataKey, lockKey, rejectedAccessToken);
                 if (winnerToken) {
                     await debug({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, caller, action: 'returned_token_from_concurrent_refresh' }, { channelId: id, destination: 'cache' });
                     return winnerToken;
@@ -364,12 +365,13 @@ export class TwitchStreamers {
                 // Double-check under the lock: the previous holder may have just refreshed.
                 token = await cache.hGet(dataKey, 'access_token');
                 expiresAt = await cache.hGet(dataKey, 'expires_at');
-                if (this.isAccessTokenUsable(token, expiresAt)) {
+                if (token !== rejectedAccessToken && this.isAccessTokenUsable(token, expiresAt)) {
                     await debug({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, caller, action: 'returned_token_refreshed_before_lock' }, { channelId: id, destination: 'cache' });
                     return token!;
                 }
 
-                return await this.performTwitchTokenRefresh(id, account_type, caller);
+                const refreshed = await this.performTwitchTokenRefresh(id, account_type, caller);
+                return refreshed === rejectedAccessToken ? null : refreshed;
             } finally {
                 await this.releaseRefreshLock(cache, lockKey, lockValue);
             }
