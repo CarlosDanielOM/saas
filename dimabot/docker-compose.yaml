@@ -99,12 +99,12 @@ services:
       - databases
     volumes:
       - lfm2-embeddings-data:/data
-    # CPU-only. The Q8_0 model is ~380MB. 3GB gives headroom for the
+    # CPU-only. The Q8_0 model is ~380MB. 4GB gives headroom for the
     # Python runtime + sentence-transformers caches.
     deploy:
       resources:
         limits:
-          memory: 3G
+          memory: 4G
           cpus: '6'
         reservations:
           memory: 1G

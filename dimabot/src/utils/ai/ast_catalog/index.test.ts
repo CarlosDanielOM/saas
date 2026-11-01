@@ -28,12 +28,12 @@ mock.module('../../databases/dragonfly.database.js', {
 // A query string gives each test a fresh module instance (like a new process).
 const freshCatalog = (tag: string) => import(`./index.js?${tag}`) as Promise<typeof import('./index.js')>;
 
-test('builds the catalog index in batches of at most 8 and caches it in Dragonfly', async () => {
+test('builds the catalog index in batches of 32 and caches it in Dragonfly', async () => {
     const catalog = await freshCatalog('first');
     assert.equal(await catalog.ensureAstCatalogVectors(), true);
     const total = catalog.getAstCatalog().entries.length;
     assert.equal(batches.reduce((a, b) => a + b, 0), total);
-    assert.ok(Math.max(...batches) <= 8, `largest batch ${Math.max(...batches)}`);
+    assert.deepEqual(batches, Array.from({ length: Math.ceil(total / 32) }, (_, i) => Math.min(32, total - i * 32)));
     const [key] = [...store.keys()];
     assert.match(key, /^ast_catalog:vectors:v1:[0-9a-f]{24}$/);
     assert.equal(ttl, 30 * 86_400);

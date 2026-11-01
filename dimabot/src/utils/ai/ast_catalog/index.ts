@@ -35,9 +35,8 @@ let vectors: Float32Array[] | null = null;
 let vectorBuildPromise: Promise<boolean> | null = null;
 let lastFailedAttempt = 0;
 const RETRY_INTERVAL_MS = 30_000;
-// Small batches: the shared embeddings service idles near 2 GiB of its 3 GiB limit, and
-// 32 long catalog entries at once added ~480 MiB (an OOM restart on 2026-11-01). 8 adds ~140 MiB.
-const BATCH_SIZE = 8;
+// The shared embeddings service has a 4 GiB memory limit for 32-entry batches.
+const BATCH_SIZE = 32;
 // Built vectors are cached in Dragonfly so restarts (bot or API) don't re-embed the catalog.
 const VECTOR_CACHE_TTL_SECONDS = 30 * 86_400;
 
