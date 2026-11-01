@@ -74,7 +74,7 @@ Un timer se ejecuta como máximo una vez, y expira si llega con más de 10 minut
 
 ## Resultados de predicciones
 
-Usa dos comandos, para que un moderador elija al ganador después de ver las opciones. Los dos comandos deben tener acceso de **Moderadores**.
+Usa dos comandos, para que un moderador elija al ganador después de ver las opciones. Para este ejemplo, configura los dos comandos con acceso de **Moderadores**.
 
 **Comando 1, `!predicciones`**: muestra la pregunta y las opciones numeradas.
 
@@ -109,7 +109,7 @@ Ten en cuenta estos límites:
 
 - Se pueden anidar hasta **cinco** niveles de llamadas, y una sola ejecución puede hacer como máximo **50** llamadas.
 - Un comando no puede llamarse a sí mismo, ni directamente ni a través de otro comando.
-- El comando llamado **no verifica su propia configuración de acceso** cuando lo llama un comando que tú escribiste. Solo aplica el acceso del comando que hace la llamada. Por eso, llama a un comando solo para moderadores únicamente desde un comando que también esté limitado a moderadores.
+- El comando llamado **no verifica su propia configuración de acceso** cuando lo llama un comando que tú escribiste. Solo aplica el acceso del comando que hace la llamada. Elige con cuidado el acceso del comando que hace la llamada, ya que determina quién puede activar el comando llamado.
 - Cada comando llamado publica su propia respuesta, después de la respuesta principal.
 
 Consulta [Ejecución, errores y límites](/es/commands/advanced/execution/) para más detalles.

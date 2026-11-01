@@ -74,7 +74,7 @@ A timer runs at most once, and it expires if it's more than 10 minutes late. See
 
 ## Prediction results
 
-Use two commands, so a moderator picks the winner after seeing the choices. Both commands should be set to **Moderators** access.
+Use two commands, so a moderator picks the winner after seeing the choices. For this example, set both commands to **Moderators** access.
 
 **Command 1, `!predictions`**: shows the question and the numbered choices.
 
@@ -109,7 +109,7 @@ Keep these limits in mind:
 
 - At most **five** levels of calls can be nested, and a single run can make at most **50** calls.
 - A command can't call itself, directly or through another command.
-- The called command **doesn't check its own access setting** when a command you wrote calls it. Only the calling command's access applies. So only call a moderator-only command from a command that is also limited to moderators.
+- The called command **doesn't check its own access setting** when a command you wrote calls it. Only the calling command's access applies. Choose the calling command’s access carefully, since it determines who can trigger the called command.
 - Each called command posts its own reply, after the main reply.
 
 See [Execution, Errors & Limits](/commands/advanced/execution/#command-reference-limits) for the details.

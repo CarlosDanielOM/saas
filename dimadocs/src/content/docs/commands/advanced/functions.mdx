@@ -21,8 +21,8 @@ Most action functions return nothing on success. When they fail, they return a s
 
 ## Who can use each function
 
-- **Your own commands** run with the command's access setting. A function inside a command adds no second check. If a command is open to everyone, `$(ban ...)` inside it works for everyone, so keep action commands restricted to moderators.
-- **AI chat requests** are different. When a viewer asks the bot's AI assistant to do something, the function's minimum level in the **Access** column applies. Moderator is level 7 and Editor is level 8.
+- **Your own commands** run with the command's access setting. A function inside a command adds no second check. For example, if you allow everyone to use a command containing `$(ban ...)`, viewers can trigger that action. Choose the command access deliberately for the action you want to expose.
+- **AI chat requests through the bot personality** are different. When a viewer asks the bot's AI assistant to do something, the function's minimum level in the **Access** column applies. Moderator is level 7 and Editor is level 8.
 - **Plans:** Temporary VIP and moderator days need **Premium or Pro**. Roulette needs **Premium or Pro**. Saving to database variables (`%(*name ...)`, `%(**name ...)`) needs **Premium or Pro**.
 
 ## User functions
@@ -72,6 +72,8 @@ These read live data from your channel. Anyone can use them.
 
 ## Moderation functions
 
+The roles below apply only when the bot personality calls these functions through AI chat. In a custom command, you choose who can trigger them, including viewers without moderator status.
+
 | Function | What it does | Arguments | Access (AI chat) |
 |----------|--------------|-----------|------------------|
 | `$(vip)` or `$(add.vip)` | Gives VIP. Add days to make it temporary | `username [days]` | Moderator |
@@ -92,7 +94,7 @@ Temporary VIP and moderator days go from `1` to `365` and need **Premium or Pro*
 `$(emoteonly)` with seconds keeps the auto-off timer in the bot's memory. If the bot restarts before the time is up, emote-only stays on until someone turns it off.
 
 <Aside type="caution">
-`$(bot.mode attack)` can permanently ban tracked followers from an active follow wave. Use it only in moderator-only commands such as `!defmode`. See [Follow Defense](/follow-defense/) for details.
+`$(bot.mode attack)` can permanently ban tracked followers from an active follow wave. For a command such as `!defmode`, consider limiting access to trusted moderators. See [Follow Defense](/follow-defense/) for details.
 </Aside>
 
 ## Channel functions
@@ -137,7 +139,7 @@ Run `get.prediction` before `end.prediction` to check the question and the numbe
 
 ## Availability functions
 
-Moderators can turn one of the channel's custom commands or Twitch Channel Points rewards on or off.
+These functions turn one of the channel's custom commands or Twitch Channel Points rewards on or off. They require moderator access when called by AI chat; custom commands use their own access setting.
 
 | Function | What it does | Example |
 |----------|--------------|---------|
@@ -166,7 +168,7 @@ These controls need **Premium or Pro**. Identify a roulette by its alias or ID. 
 | `$(roulette.start [roulette_id])` | Starts a draw and records one winner | `$(roulette.start giveaways)` |
 | `$(roulette.result [roulette_id])` | Returns the label of the most recent winner, or blank if there is none | `$(roulette.result giveaways)` |
 
-`roulette.result` is open to everyone. The other roulette functions need moderator access in AI chat.
+In AI chat, `roulette.result` is open to everyone; the other roulette functions need moderator access.
 
 You can attach an AST action to a roulette item in the roulette editor. It runs when that item wins. It can use `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)`, and `%(roulette_item)`. Winner actions run with Pro limits, whatever the channel's plan. Restrict who can start a draw if the winner actions change channel state.
 
@@ -238,7 +240,7 @@ Speech needs **TTS** turned on for the channel. If it's off, the function return
 | `$(tts.speak message)` or `$(tts.piper message)` | Always Piper, the built-in voice, no matter the channel's default | `$(tts.speak Hello)` |
 | `$(tts.kokoro voice_name text)` | A Kokoro preset voice, like `af_heart` | `$(tts.kokoro af_heart Hello chat!)` |
 | `$(tts.clone name message)` or `$(tts.fish name message)` | A Fish Audio voice, by name or voice ID | `$(tts.clone gojo Hello chat!)` |
-| `$(set.voice voice_name)` | Moderator action. Sets the channel's default Fish voice and switches the provider to Fish. Accepts one of the four built-in voices (`gojo`, `rias_gremory`, `toji_fushiguro`, `carlos_bodoque`) or a saved favorite. Posts `TTS voice changed to …` in chat | `$(set.voice gojo)` |
+| `$(set.voice voice_name)` | Sets the channel's default Fish voice and switches the provider to Fish. Accepts one of the four built-in voices (`gojo`, `rias_gremory`, `toji_fushiguro`, `carlos_bodoque`) or a saved favorite. Posts `TTS voice changed to …` in chat. Requires moderator access in AI chat | `$(set.voice gojo)` |
 
 Details that affect what viewers hear:
 

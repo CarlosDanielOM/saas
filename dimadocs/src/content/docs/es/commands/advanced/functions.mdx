@@ -21,8 +21,8 @@ La mayoría de las funciones de acción no devuelven nada cuando todo sale bien.
 
 ## Quién puede usar cada función
 
-- **Tus comandos personalizados** usan la configuración de acceso del comando. Una función dentro no agrega una segunda verificación. Si un comando está abierto a todos, `$(ban ...)` dentro de él funciona para todos, así que deja los comandos de acción solo para moderadores.
-- **Las solicitudes al chat de IA** son distintas. Cuando un espectador le pide al asistente de IA del bot que haga algo, aplica el nivel mínimo de la columna **Acceso**. Moderador es el nivel 7 y Editor es el nivel 8.
+- **Tus comandos personalizados** usan la configuración de acceso del comando. Una función dentro no agrega una segunda verificación. Por ejemplo, si permites que todos usen un comando que contiene `$(ban ...)`, los espectadores pueden activar esa acción. Elige el acceso del comando según la acción que quieras poner a disposición.
+- **Las solicitudes al chat de IA mediante la personalidad del bot** son distintas. Cuando un espectador le pide al asistente de IA del bot que haga algo, aplica el nivel mínimo de la columna **Acceso**. Moderador es el nivel 7 y Editor es el nivel 8.
 - **Planes:** los días temporales de VIP y moderador requieren **Premium o Pro**. La ruleta requiere **Premium o Pro**. Guardar en variables de base de datos (`%(*nombre ...)`, `%(**nombre ...)`) requiere **Premium o Pro**.
 
 ## Funciones de usuario
@@ -72,6 +72,8 @@ Estas leen datos en vivo de tu canal. Todos pueden usarlas.
 
 ## Funciones de moderación
 
+Los roles de la tabla solo se aplican cuando la personalidad del bot llama a estas funciones mediante el chat de IA. En un comando personalizado, tú eliges quién puede activarlas, incluidos los espectadores que no son moderadores.
+
 | Función | Qué hace | Argumentos | Acceso (chat de IA) |
 |---------|----------|------------|---------------------|
 | `$(vip)` o `$(add.vip)` | Da VIP. Agrega días para que sea temporal | `username [days]` | Moderador |
@@ -92,7 +94,7 @@ Los días temporales de VIP y moderador van de `1` a `365` y requieren **Premium
 `$(emoteonly)` con segundos guarda el temporizador de apagado en la memoria del bot. Si el bot se reinicia antes de que termine el tiempo, el modo solo emotes se queda activado hasta que alguien lo apague.
 
 <Aside type="caution">
-`$(bot.mode attack)` puede banear permanentemente a followers rastreados de una ola activa de follows. Úsalo solo en comandos restringidos a moderadores, como `!defmode`. Consulta [Defensa de Follows](/es/follow-defense/) para más detalles.
+`$(bot.mode attack)` puede banear permanentemente a followers rastreados de una ola activa de follows. Para un comando como `!defmode`, considera limitar el acceso a moderadores de confianza. Consulta [Defensa de Follows](/es/follow-defense/) para más detalles.
 </Aside>
 
 ## Funciones de canal
@@ -137,7 +139,7 @@ Usa `get.prediction` antes de `end.prediction` para revisar la pregunta y el ord
 
 ## Funciones de disponibilidad
 
-Los moderadores pueden activar o desactivar uno de los comandos personalizados del canal o una recompensa de puntos de canal de Twitch.
+Estas funciones activan o desactivan un comando personalizado del canal o una recompensa de puntos de canal de Twitch. Requieren acceso de moderador cuando las llama el chat de IA; los comandos personalizados usan su propia configuración de acceso.
 
 | Función | Qué hace | Ejemplo |
 |---------|----------|---------|
@@ -166,7 +168,7 @@ Estos controles requieren **Premium o Pro**. Identifica la ruleta por su alias o
 | `$(roulette.start [roulette_id])` | Inicia un sorteo y registra un ganador | `$(roulette.start giveaways)` |
 | `$(roulette.result [roulette_id])` | Devuelve la etiqueta del ganador más reciente, o vacío si todavía no hay uno | `$(roulette.result giveaways)` |
 
-`roulette.result` lo puede usar cualquiera. Las demás funciones de ruleta requieren acceso de moderador en el chat de IA.
+En el chat de IA, cualquiera puede usar `roulette.result`; las demás funciones de ruleta requieren acceso de moderador.
 
 Puedes asociar una acción AST a un elemento de la ruleta en el editor de ruletas. Se ejecuta cuando ese elemento gana. Puede usar `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)` y `%(roulette_item)`. Las acciones de ganador se ejecutan con los límites de Pro, sin importar el plan del canal. Limita quién puede iniciar un sorteo si las acciones cambian el estado del canal.
 
@@ -238,7 +240,7 @@ Para hablar, el **TTS** debe estar activado en el canal. Si está desactivado, l
 | `$(tts.speak mensaje)` o `$(tts.piper mensaje)` | Siempre Piper, la voz integrada, sin importar el valor por defecto del canal | `$(tts.speak Hola)` |
 | `$(tts.kokoro nombre_voz texto)` | Una voz preestablecida de Kokoro, como `af_heart` | `$(tts.kokoro af_heart ¡Hola chat!)` |
 | `$(tts.clone nombre mensaje)` o `$(tts.fish nombre mensaje)` | Una voz de Fish Audio, por nombre o ID de voz | `$(tts.clone gojo ¡Hola chat!)` |
-| `$(set.voice nombre_voz)` | Acción de moderador. Fija la voz Fish por defecto del canal y cambia el proveedor a Fish. Acepta una de las cuatro voces integradas (`gojo`, `rias_gremory`, `toji_fushiguro`, `carlos_bodoque`) o un favorito guardado. Publica `TTS voice changed to …` en el chat | `$(set.voice gojo)` |
+| `$(set.voice nombre_voz)` | Fija la voz Fish por defecto del canal y cambia el proveedor a Fish. Acepta una de las cuatro voces integradas (`gojo`, `rias_gremory`, `toji_fushiguro`, `carlos_bodoque`) o un favorito guardado. Publica `TTS voice changed to …` en el chat. Requiere acceso de moderador en el chat de IA | `$(set.voice gojo)` |
 
 Detalles que afectan lo que escuchan los espectadores:
 
