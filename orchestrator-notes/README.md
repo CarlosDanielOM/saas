@@ -51,6 +51,8 @@ The user-provided ascending tier above remains the baseline and working tier; th
 
 ## Routing observations
 
+Pet playback reliability: [DIMA-036 evidence and routing note](../migration-notes/dima036-playback-reliability.md). Implementation and focused checks are recorded; browser delivery and Windows/OBS acceptance remain pending. This is task-specific routing evidence, with no superiority or performance claim.
+
 Bounded billing recovery backend fix: [2026-10-29 observation](2026-10-29-billing-recovery.md). Supports Terra's existing provisional bounded-coding route only; no tier change.
 
 Pet chat-context backend integration: [2026-10-31 observation](2026-10-31-pet-chat-context.md). Single-task, low-confidence support for Terra's existing provisional bounded-integration route; no tier change.
