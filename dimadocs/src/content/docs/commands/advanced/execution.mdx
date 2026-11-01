@@ -22,11 +22,11 @@ Read this page when a command shows an error, does nothing, or runs in an order 
 
 ## Who the command runs as
 
-The context includes the channel, the user, the plan, and, for event commands, the event data. Event functions like `$(cheer.amount)` only have values when the matching event starts the command.
+The context includes the channel, the user, the plan, and, for event commands, the event data. Event functions like `$(cheer.amount)` read the data available in the context.
 
 Permissions depend on what started the command:
 
-- **Your custom commands, rewards, and events** run with the access setting you chose for them. The bot doesn't check each function again, so a function inside a command that everyone can use runs for everyone.
+- **Your custom commands, rewards, and events** run with the access setting you chose for them. The bot does not recheck function role metadata; some functions also enforce their own context restrictions. Choose who can trigger the command accordingly.
 - **AI chat requests** check each function's minimum level. A viewer who asks the AI to ban someone, for example, gets a permission error unless they are a moderator. The AI also checks the access setting of any custom command it calls.
 - **Command references (`#(...)`)** from your own commands skip the called command's access setting. The outer command's access is the only check. If a command is open to everyone and it calls a moderator-only command, that moderator-only command still runs. Keep the access settings of every command in the chain in mind.
 
@@ -41,9 +41,9 @@ Permissions depend on what started the command:
 | `[Loop error: invalid loop syntax]` | A loop's `for` line is malformed | Check the loop syntax on [AST Syntax & Data](/commands/advanced/syntax/) |
 | `[Loop error: invalid range loop syntax]` | A range loop is missing a part | Use three parts: start, condition, and step |
 | `[Loop error: missing loop body]` or `[Loop error: unclosed loop body]` | The loop has no `{ ... }` block, or the block isn't closed | Add the braces |
-| `delay: must be between 0 and 60 seconds` | `$(delay)` got a number over 60 | Use `$(timer ...)` for longer waits |
+| `delay: must be between 0 and 60 seconds` | `$(delay)` got a number outside 0–60 | Use a value from 0 to 60; for longer waits, use `$(timer ...)` |
 | `timer: usage: …` | `$(timer)` is missing its seconds or body | Add both: `$(timer seconds "body")` |
-| `timer: could not schedule timer` | The timer couldn't be saved, usually because the channel already has 100 timers waiting | Wait for some to run, then try again |
+| `timer: could not schedule timer` | The timer couldn't be saved, for example because a pending-timer limit was reached or cache storage failed | Wait for some to run, then try again |
 
 ## Limits by plan
 
@@ -52,8 +52,8 @@ Permissions depend on what started the command:
 | Loop nesting depth | 2 | 3 | 4 |
 | Loop iterations | 25 | 50 | 100 |
 | Saving to database variables (`%(*name ...)`, `%(**name ...)`) | Not saved | Yes | Yes |
-| Temporary VIP and moderator days | No | Yes | Yes |
-| Roulette functions | No | Yes | Yes |
+| Temporary VIP and moderator days in AST functions | Days ignored; role remains | Yes | Yes |
+| Roulette functions | Yes | Yes | Yes |
 
 On Free, database writes are skipped without an error message. The command still runs, but the value isn't kept. Reads still work.
 
@@ -72,11 +72,11 @@ A `#(commandName args)` call runs another custom command after the current reply
 
 - `$(delay N)` pauses the command for up to **60** seconds. It holds up the rest of the command while it waits.
 - `$(timer seconds body)` runs its body later, from **1** to **604800** seconds (seven days). It returns right away.
-- Each timer saves its command and context in the bot's cache, so it still runs after a restart.
-- If the bot was offline when a timer came due, it still runs if it's less than **10 minutes** late. After that, it expires.
-- A timer runs **at most once**.
+- Each timer saves its body and context in the bot's cache, so it can survive a restart.
+- If the bot was offline when a timer came due, it can run if it's less than **10 minutes** late. At that limit, it expires.
+- A timer runs **at most once**. A crash after it is claimed can lose its action; execution is not guaranteed.
 - Timers can be nested up to **five** levels deep.
-- A channel can have up to **100** timers waiting at the same time.
+- A channel can have up to **100** timers waiting at the same time. There is also a shared limit of **10,000** pending timers and a **64 KiB** limit per saved job.
 
 ## Debugging checklist
 
@@ -123,7 +123,7 @@ To add one, read the value and write back the result:
 
 ### 5. Check the event that starts the command
 
-Functions like `$(cheer.amount)` and `$(reward.input)` only have values when the matching event starts the command. In a normal chat test they're blank or `0`. That's expected.
+Functions like `$(cheer.amount)` and `$(reward.input)` depend on the data supplied in the context. In a normal chat test they may be blank, `unknown`, or `0`. That's expected.
 
 <Aside type="note">
 If an event function looks empty during chat testing, the function usually isn't broken. The test just doesn't include that event's data.
@@ -145,11 +145,11 @@ A `#` or `##` variable expires 24 hours after its last write. An expired value r
 
 ### Timer bodies run later
 
-`$(timer ...)` saves its body. The message and actions inside it don't run while the command is running. The timer returns right away, and the message is posted and the actions run when the time comes. If it's more than 10 minutes late, it expires without running.
+`$(timer ...)` saves its body. The message and actions inside it don't run while the command is running. The timer returns right away, and the message is posted and the actions run when the time comes. At 10 minutes late, it expires without running.
 
 ### Command references are sent separately
 
-The main reply is posted first. Then each `#(...)` command runs in order and posts its own reply. If the main reply fails to post, the referenced commands are skipped. A reply from a referenced command isn't read as AST again.
+The main reply is posted first. Then sibling `#(...)` commands run in order and post their own replies. Each command's nested references finish before the next sibling. If the main reply fails to post, the referenced commands are skipped. A reply from a referenced command isn't read as AST again.
 
 ### Loops are often unnecessary
 

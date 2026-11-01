@@ -15,7 +15,7 @@ DomDimaBot tiene tres planes: Gratis, Premium y Pro. El plan del propietario del
 | Premium | $6/mes | 200 000 |
 | Pro | $15/mes | 800 000 |
 
-Los créditos no se acumulan al mes siguiente. Tu saldo y la fecha de reinicio aparecen en **Uso de créditos** del panel. Las funciones de IA, como el chat con IA, el procesamiento de memoria y las herramientas de voz o clips, usan los créditos del canal. El consumo varía según la función y su configuración. Para añadir créditos sin cambiar de plan, usa **Comprar créditos de IA** en el menú de perfil.
+La asignación de créditos de los planes de pago sigue el periodo de facturación activo. Las recargas mensuales Gratis restauran los créditos usados en el periodo anterior, hasta 25 000; la asignación no utilizada no añade créditos extra. Los paquetes de créditos comprados sí se acumulan; las recargas para planes de pago vencen al final del periodo de facturación aplicable. Tu saldo y la fecha de reinicio aparecen en **Uso de créditos** del panel. Las funciones de IA, como el chat con IA, el procesamiento de memoria y las herramientas de voz o clips, usan los créditos del canal. El consumo varía según la función y su configuración. Para añadir créditos sin cambiar de plan, usa **Comprar créditos de IA** en el menú de perfil.
 
 Consulta [Asistentes de IA](/es/ai-assistants/), [Texto a voz](/es/tts/) y [Personalidad de IA](/es/ai-personality/) para ver las funciones que usan créditos.
 
@@ -24,28 +24,28 @@ Consulta [Asistentes de IA](/es/ai-assistants/), [Texto a voz](/es/tts/) y [Pers
 | Límite | Gratis | Premium | Pro |
 |---|---|---|---|
 | Enfriamiento de comando más corto que puedes configurar | 5 segundos | 3 segundos | 1 segundo |
-| Almacenamiento privado de medios | Ninguno | 250 MB | 1 GB |
+| Almacenamiento privado de la Biblioteca de medios | Ninguno | 250 MB | 1 GB |
 | Archivo más grande por carga | 5 MB | 25 MB | 100 MB |
-| Ancho de banda | 10 GB | 1 TB | Ilimitado según el uso razonable |
-| Retención de analíticas de transmisiones | 30 días | 180 días | 365 días |
-| Retención de memoria del chat | 15 días | 45 días | 120 días |
+| Disponibilidad de la Cronología del stream | 90 días | 90 días | 90 días |
+| Retención de instantáneas de espectadores | 90 días | 90 días | 90 días |
 
-- Un enfriamiento de `0` (sin enfriamiento) siempre se permite. Cualquier otro valor debe ser al menos el mínimo de tu plan.
+- Un comando editable por canal puede tener un enfriamiento de `0`. En los demás casos, usa al menos el mínimo de tu plan. Los comandos reservados no pueden cambiarse a `0`, pero los valores predeterminados sin enfriamiento, como `!vanish`, conservan ese ajuste.
 - Los medios públicos no usan almacenamiento privado. Solo los archivos privados cuentan para el límite de almacenamiento.
 - Los proveedores de texto a voz están disponibles en todos los planes. La voz con IA consume créditos.
-- Las capturas de espectadores de las analíticas se eliminan a los 90 días en todos los planes. Las cifras de retención de arriba vienen de la comparación de precios y no son una garantía para todos los tipos de registro. Consulta [Analíticas](/es/analytics/) y [Memorias](/es/memories/).
+- La comparación pública de Precios muestra actualmente otras cifras de retención. Para la Cronología y las instantáneas de espectadores, usa los límites de 90 días de arriba. Las memorias guardadas no tienen un calendario de eliminación garantizado según el plan. Consulta [Analíticas](/es/analytics/) y [Memorias](/es/memories/).
 
 ## Acceso a módulos
 
-La mayoría de los módulos están disponibles en Gratis. La tabla de abajo muestra los módulos con un plan mínimo más alto. La [guía de módulos](/es/modules/) enumera todos.
+La mayoría de los módulos están disponibles en Gratis. La tabla de abajo muestra algunos módulos y sus requisitos de acceso. La [guía de módulos](/es/modules/) tiene el catálogo completo.
 
 | Módulo | Plan mínimo | Estado |
 |---|---|---|
 | Analíticas y Registro de seguidores | Premium (Pro también cumple) | Estable |
 | Widgets | Premium (Pro también cumple) | Alpha |
-| Ruleta | Premium (Pro también cumple) | Alpha |
+| Mascota | Premium (Pro también cumple) | Alpha. Solo el propietario del canal puede abrirla. |
+| Ruleta | Gratis | Alpha |
 | Estudio de overlays | Gratis | Alpha. Solo el propietario del canal puede abrirlo. |
 
 Un plan desbloquea un módulo, pero no concede todos los roles del panel ni los permisos de Twitch que una función necesita. Consulta [Panel de control](/es/dashboard/) si falta un módulo que esperabas ver.
 
-Para la oferta vigente, revisa **Precios** en el sitio público. Los precios y las ofertas pueden cambiar.
+Para la oferta vigente, revisa **Precios** en el sitio público. Los precios mostrados pueden diferir de las ofertas del checkout; revisa el checkout antes de pagar.

@@ -44,7 +44,7 @@ Chat protection checks each chatter's first message in your channel for the beha
 - **Exempt roles** are skipped. Moderators, editors, and channel admins are exempt by default. You can also exempt VIPs, subscribers, and founders.
 - The broadcaster and the bot account are always skipped.
 - If you clear every category under **What to detect**, chat protection pauses. **Rule filter** does not turn chat protection off.
-- Chat protection runs separately from your rules. The AI review is limited to 30 messages per minute per channel. Messages above that limit are not reviewed.
+- Chat protection runs separately from your rules. AI reviews are limited to 30 messages per minute per channel and 300 per minute across all channels. Messages above either limit are not reviewed.
 
 ## Rules
 
@@ -105,7 +105,7 @@ Custom AST commands can call `$(permit)` to bypass the moderation filters, inclu
 
 **Recent Actions** lists what the bot did in the last 30 days: the time, user, rule, action, offense number, and result (**Applied** or **Failed**). It shows 10 rows per page.
 
-**Decisions** shows the matches and AI verdicts from the last 30 days. The bot keeps these records for 180 days to improve moderation.
+**Decisions** shows moderation matches and verdicts from the last 30 days. The bot retains these records for up to 180 days.
 
 A **Failed** result means Twitch rejected the action, or the bot lacks the moderation permissions it needs in your channel. Check that the bot can moderate your channel, then review the failure before you rely on a rule.
 

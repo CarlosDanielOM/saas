@@ -1,11 +1,11 @@
 ---
 title: DimaFX Twitch Extension
-description: Set up the DimaFX Twitch Extension shop so viewers can pay with Bits to play sounds, videos, or messages on stream, now or saved for later.
+description: Set up the DimaFX Twitch Extension shop so viewers can pay with Bits to play sounds, videos, images, or messages on stream, now or saved for later.
 sidebar:
   order: 8
 ---
 
-DimaFX is a shop inside your Twitch Extension. Viewers spend Bits to play a sound, a video, or a text-to-speech message on your stream. You choose the items and prices. Viewers can play an item right away or save it for later. The DimaFX module is available on the Free plan. You need DimaFX edit access: be the channel owner or an admin with that permission.
+DimaFX is a shop inside your Twitch Extension. Viewers spend Bits to play a sound, a video, an image or GIF, or a text-to-speech message on your stream. You choose the items and prices. Viewers can play an item right away or save it for later. The DimaFX module is available on the Free plan. You need DimaFX edit access: be the channel owner or an admin with that permission.
 
 Purchases play only while the **DimaFX OBS browser source** is open. Trigger and Overlay Studio sources do not count.
 
@@ -16,7 +16,7 @@ Purchases play only while the **DimaFX OBS browser source** is open. Trigger and
    - **Media**: pick a file from your media or the public library. Press ▶ to check it first.
    - **Name** and **Description viewers see**.
    - **Price**: **Free**, or 5, 10, 25, 50, or 100 Bits. The server accepts only these prices.
-   - **Volume** and **Show for (seconds)**.
+   - **Volume** and, for images and GIFs, **Show for (seconds)**.
    - **On sale in the extension**: turn it on so viewers can buy it.
    - **More options**: **Extension tab** is set from the media type. You can change it here. **Position** sets the order. Lower numbers show first.
 3. Select **Add to shop**.
@@ -33,7 +33,7 @@ A TTS item speaks a message instead of playing a file. Under **What it does**, c
 - **Fixed message**: you write the text once, and every purchase says the same thing.
 - **Viewer writes the message**: viewers type their own text when they buy. The text can be up to 280 characters, and links are removed. The message plays right away and cannot be saved for later.
 
-Choose a **Language** (English or Spanish) and a **Voice**. The default is the channel's TTS voice from [Text to Speech](/tts/).
+Choose a **Language** (English or Spanish) and a **Voice**. DimaFX uses Piper. By default it uses the channel's Piper voice for that language from [Text to Speech](/tts/), even if another engine is selected there.
 
 ## Delete an item
 
@@ -70,7 +70,7 @@ Items play **one at a time, in purchase order**. If several purchases come in to
 
 A purchase is declined if the DimaFX overlay is not connected, or if the queue is full. An identified viewer gets the Bits back as credits. An anonymous viewer gets no credits, so ask viewers to share their Twitch ID before they buy.
 
-Twitch can send the same transaction more than once. DomDimaBot checks it, so a repeated transaction never plays or charges twice.
+Twitch can send the same transaction more than once. DomDimaBot recognizes the repeated transaction and does not fulfill it twice.
 
 ## Troubleshooting
 

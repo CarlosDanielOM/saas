@@ -44,7 +44,7 @@ La protección del chat revisa el primer mensaje de cada persona en tu canal par
 - **Roles exentos** se omiten. Los moderadores, editores y administradores del canal están exentos por defecto. También puedes eximir a VIPs, suscriptores y fundadores.
 - La persona propietaria del canal y la cuenta del bot siempre se omiten.
 - Si desmarcas todas las categorías en **Qué detectar**, la protección del chat se pausa. **Filtro de reglas** no desactiva la protección del chat.
-- La protección del chat funciona aparte de tus reglas. Las revisiones con IA están limitadas a 30 mensajes por minuto por canal. Los mensajes que pasen de ese límite no se revisan.
+- La protección del chat funciona aparte de tus reglas. Las revisiones con IA están limitadas a 30 mensajes por minuto por canal y 300 por minuto entre todos los canales. Los mensajes que superen cualquiera de esos límites no se revisan.
 
 ## Reglas
 
@@ -105,7 +105,7 @@ Los comandos personalizados de AST pueden llamar a `$(permit)` para omitir los f
 
 **Acciones recientes** muestra lo que hizo el bot en los últimos 30 días: la hora, el usuario, la regla, la acción, el número de infracción y el resultado (**Aplicada** o **Fallida**). Muestra 10 filas por página.
 
-**Decisiones** muestra las coincidencias y los veredictos de la IA de los últimos 30 días. El bot conserva estos registros durante 180 días para mejorar la moderación.
+**Decisiones** muestra coincidencias y veredictos de moderación de los últimos 30 días. El bot conserva estos registros hasta 180 días.
 
 Un resultado **Fallida** significa que Twitch rechazó la acción o que el bot no tiene los permisos de moderación necesarios en tu canal. Comprueba que el bot pueda moderar tu canal y revisa el fallo antes de confiar en una regla.
 

@@ -14,7 +14,7 @@ El **Overlay de clips** reproduce un clip de Twitch en tu stream. Agrega su URL 
 3. Ajusta la **Duración del clip** de 1 a 30 segundos. El valor predeterminado es 30.
 4. Pulsa **Copiar** junto a **URL de la Fuente de navegador**. En OBS, agrega una **Fuente de navegador** con esa URL. Usa un ancho de 800. Para el alto, usa 450 con Third, Cinema, Pill, HUD y Slash, y 225 con los demás.
 5. Mantén el overlay abierto. Si abres la URL en una pestaña normal del navegador, también se conecta.
-6. Pulsa **Probar en esta página**. La página muestra una vista previa en vivo y envía un clip de ejemplo. Si el overlay todavía no está abierto, la página te pide abrir primero la URL.
+6. Pulsa **Probar en esta página**. La página abre una vista previa integrada del overlay y reproduce un clip disponible de tu canal. Si el overlay todavía no está conectado, la página te pide abrir primero la URL de la Fuente de navegador. Para probar, debe haber un clip disponible en tu canal.
 
 El diseño y la duración forman parte de la URL. Si cambias cualquiera de los dos, copia la nueva URL en OBS. La página recuerda tus elecciones de cada canal solo en este navegador, así que vuelve a elegirlas si usas otra computadora.
 
@@ -37,10 +37,10 @@ Twitch solo crea clips mientras el canal está en vivo. Puedes cambiar quién pu
 
 ## Cómo llegan los clips al overlay
 
-- **`!promo <usuario>`** (moderadores y superiores por defecto) publica un mensaje en el chat y reproduce un clip de ese streamer en el overlay.
+- **`!promo <usuario>`** (moderadores y superiores por defecto) muestra un clip de ese streamer en el overlay cuando hay uno disponible.
 - **`!so <usuario>`** (moderadores y superiores por defecto) envía el shoutout y muestra uno de los clips de ese streamer cuando hay uno disponible.
 
-Los clips se reproducen uno a la vez. Si ya hay un clip reproduciéndose, el siguiente espera en la cola.
+Los clips se procesan uno a la vez; si ya hay uno reproduciéndose, el siguiente espera en la cola. El overlay debe estar conectado al solicitar el clip: una solicitud sin conexión se omite y no se guarda para después. Los errores de descarga o los tiempos de espera de reproducción también pueden impedir que se reproduzca.
 
 ## Solución de problemas
 

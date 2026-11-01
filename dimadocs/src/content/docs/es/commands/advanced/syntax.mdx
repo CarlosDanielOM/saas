@@ -248,7 +248,7 @@ Dos números se comparan como números. Los demás valores se comparan como text
 | `%` | Resto | `*(%(count) % 10)` |
 
 - Dividir o sacar el resto entre `0` da `0`. No muestra error.
-- Un texto que no es número cuenta como `0`.
+- La aritmética lee un número al comienzo del texto (por ejemplo, `5abc` cuenta como `5`); el texto sin un número inicial cuenta como `0`. Las comparaciones exigen que el valor completo sea numérico.
 - Los resultados se redondean a 6 decimales.
 
 ### Operadores unarios
@@ -376,7 +376,7 @@ Las palabras que siguen al nombre del comando se convierten en su argumento. La 
 - Los comandos pueden llamar a otros comandos hasta 5 niveles de profundidad.
 - Un comando no puede aparecer dos veces en la misma cadena. Los ciclos se bloquean.
 - Se pueden ejecutar hasta 50 referencias por mensaje.
-- Primero se envía tu mensaje. Después se ejecutan los comandos referenciados en el orden en que los escribiste.
+- Primero se envía tu mensaje. Las referencias del mismo nivel se ejecutan en el orden escrito; las referencias anidadas de cada una terminan antes de pasar a la siguiente.
 - Cada comando referenciado envía su propia respuesta. Esa respuesta no se vuelve a interpretar.
 - Un comando referenciado que no puede ejecutarse se omite, por ejemplo porque está en cooldown o desactivado.
 
@@ -391,8 +391,8 @@ $(timer 300 "¡Se acabaron los cinco minutos!" $(trigger.send airhorn))
 - El delay debe estar entre `1` y `604800` segundos (siete días).
 - Los timers funcionan solo en canales de Twitch.
 - Cada llamada crea un timer independiente. Un timer se ejecuta como máximo una vez.
-- Un timer sobrevive a un reinicio del bot. Si el bot está desconectado cuando vence, todavía puede ejecutarse dentro de una ventana de gracia de 10 minutos. Después expira.
+- Un timer guardado puede sobrevivir a un reinicio del bot. Si el bot está desconectado cuando vence, todavía puede ejecutarse dentro de una ventana de gracia de 10 minutos; al llegar a ese límite expira. Si hay un fallo después de reclamarlo, la acción puede perderse, así que su ejecución no está garantizada.
 - Se pueden anidar timers hasta cinco niveles.
-- Un canal puede tener como máximo 100 timers pendientes. Si se supera, el mensaje muestra `timer: could not schedule timer`.
+- Un canal puede tener como máximo 100 timers pendientes. La programación también puede fallar por el límite compartido de 10.000 timers, un trabajo guardado mayor de 64 KiB o un fallo de caché; el mensaje muestra `timer: could not schedule timer`.
 
 Los errores de un timer aparecen como texto que empieza con `timer:`, como `timer: seconds must be between 1 and 604800`.

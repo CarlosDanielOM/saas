@@ -38,8 +38,9 @@ Follow the hybrid styling policy defined in root `AGENTS.md`: shared admin primi
 
 ## Access Control
 
-- Only users on the admin whitelist (`src/app/config/admin-whitelist.ts`) may access.
-- All routes under the admin area should be protected by `admin-auth.guard`.
+- Administrative routes are protected by `admin-auth.guard` and the Twitch user ID whitelist in `src/app/config/admin-whitelist.ts`.
+- `/observability` uses the separate `analytics-auth.guard`. It requires a valid session and asks the analytics API to authorize the user through its owner or explicit grant; it is not restricted by the admin whitelist.
+- Keep route guards aligned with the server-side checks. A client route guard is not a substitute for backend authorization.
 
 ## Production Verification & Deployment
 

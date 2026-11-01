@@ -46,7 +46,7 @@ const sidebar = [
       page('media-library', 'Media library', 'Biblioteca de medios'),
       page('tts', 'Text to speech', 'Texto a voz'),
       page('overlay-studio', 'Overlay Studio', 'Estudio de overlays', { badge: alpha }),
-      page('roulette', 'Roulette', 'Ruleta', { badge: { text: { en: 'Alpha · Premium', es: 'Alfa · Premium' }, variant: 'caution' } }),
+      page('roulette', 'Roulette', 'Ruleta', { badge: { text: { en: 'Alpha · Free', es: 'Alfa · Gratis' }, variant: 'caution' } }),
       page('dimafx', 'DimaFX extension', 'Extensión DimaFX'),
     ],
   },
@@ -101,7 +101,7 @@ export default defineConfig({
     starlight({
       title: 'DomDimaBot Docs',
       description:
-        'Guides for DomDimaBot — Twitch commands, rewards, TTS, triggers, AI personality, stream protection, Premium Alpha Roulette, and Free Alpha Overlay Studio.',
+        'Guides for DomDimaBot — Twitch commands, rewards, TTS, triggers, AI personality, stream protection, Free Alpha Roulette, and Free Alpha Overlay Studio.',
       defaultLocale: 'root',
       locales: {
         root: {

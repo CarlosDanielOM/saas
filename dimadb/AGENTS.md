@@ -16,7 +16,7 @@
 
 - Container listens on port 80 inside Docker networks only.
 - Persist users/connections on `./data` (`DATA_DIR=/data`).
-- API is same-origin. Mutating/authenticated routes require `X-Dimadb: 1`.
+- API is same-origin. Every `/api` request except `GET /api/health` requires `X-Dimadb: 1`; endpoint-specific session and setup/login checks still apply.
 - Frontend is built inside the image; deploy only after the isolated verification below.
 
 ## Production Verification & Deployment

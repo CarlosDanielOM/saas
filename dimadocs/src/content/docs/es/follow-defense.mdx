@@ -30,10 +30,10 @@ Para ver Follow Defense necesitas el permiso `moderation:view`. Para cambiar la 
 |---|---|---|---|
 | **Normal** | No hay ninguna ráfaga activa | Nada. | No |
 | **Silencio** | 10 follows en 5 segundos | Pausa las alertas de follow y registra la oleada. | No |
-| **Protección** | 100 follows dentro de la misma ventana de 5 segundos | Pausa las alertas de follow y registra a cada seguidor. Fuera de una raid, envía un aviso en el chat. Puede escalar a Ataque. | No |
-| **Ataque** | El umbral de ataque dentro de la ventana, o un moderador lo activa | Banea a todos los registrados en la oleada y a cada nuevo follow mientras Ataque esté activo. | Sí, permanente |
+| **Protección** | 100 follows en la ventana de 5 segundos, o la oleada registrada llega a 100 | Pausa las alertas de follow y registra a cada seguidor. Fuera de una raid, envía un aviso en el chat. Puede escalar a Ataque. | No |
+| **Ataque** | Se alcanza el umbral de ataque o lo activa un moderador | Banea a todos los registrados en la oleada y a cada nuevo follow mientras Ataque esté activo. | Sí, permanente |
 
-Cada modo se mantiene activo 60 segundos después del último follow que cuenta. Las nuevas ráfagas reinician el temporizador. Cada modo se evalúa por separado y gana el más alto que se cumpla: Ataque gana a Protección, y Protección gana a Silencio.
+De forma predeterminada, cada modo se mantiene activo 60 segundos después de que una ráfaga de follows renueva la oleada. Puedes cambiar esta duración compartida en la configuración. A medida que crece una oleada activa, su conteo de follows registrados puede alcanzar el umbral de Protección o Ataque aunque no hayan llegado todos dentro de una misma ventana de 5 segundos. Cada modo se evalúa por separado y gana el más alto que se cumpla: Ataque gana a Protección, y Protección gana a Silencio.
 
 <Aside type="caution">
 Los baneos de Ataque son baneos permanentes de Twitch, no timeouts. Fuera de una raid, solo Ataque banea seguidores. Protección y Silencio nunca banean. Una ráfaga es una señal de actividad inusual, no una prueba de que todos los seguidores sean abusivos. Ajusta los umbrales a tu canal y revisa la oleada registrada antes de confiar en el modo Ataque automático.
@@ -62,12 +62,12 @@ Una ráfaga por sí sola no demuestra intención maliciosa. El historial de ataq
 
 ## Raids
 
-Una raid se rastrea durante 5 minutos. Las raids con menos espectadores que el mínimo configurado para tu canal se ignoran.
+Una sesión de raid empieza a registrar los follows asociados durante 5 minutos; cada follow registrado puede ampliar ese periodo otros 5 minutos. Las sesiones permanecen disponibles en el panel hasta 72 horas. El mínimo de espectadores se aplica a los anuncios de raid; no decide si Follow Defense registra una sesión.
 
 Durante una raid:
 
-- Las ráfagas normales no activan el modo Ataque, y los follows de la raid no se banean automáticamente.
-- Los follows se registran, así que puedes revisarlos en el panel de sesiones de raid y banearlos desde allí.
+- Los follows de una raid no activan Ataque automático ni se banean por defecto. Si desactivas **Cambiar de modo Ataque a Protección con una nueva raid**, un Ataque que ya estaba activo continúa y puede banear los follows de la nueva raid.
+- Los follows quedan registrados en el panel de sesiones de raid. En Free puedes revisar las sesiones y los seguidores. Banear una sesión completa del historial requiere Premium o Pro; banear a un seguidor histórico individual requiere Pro. En Free también puedes activar Ataque mientras la protección en vivo está activa.
 - Protección todavía puede activarse.
 
 **Cambiar de modo Ataque a Protección con una nueva raid** viene activado por defecto. Una nueva raid cambia un Ataque activo a Protección. Si lo desactivas, un Ataque activo continúa en la nueva raid y sus follows pueden ser baneados.

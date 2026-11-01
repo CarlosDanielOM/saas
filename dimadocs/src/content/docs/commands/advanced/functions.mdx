@@ -1,13 +1,13 @@
 ---
 title: AST Functions Reference
-description: "Every $(...) function for custom commands: users, text, Twitch data, moderation, channel actions, polls, predictions, roulette, TTS, triggers, counters, clips, and EventSub values, with arguments, access, and plan rules."
+description: "$(...) functions for custom commands: users, text, Twitch data, moderation, channel actions, polls, predictions, roulette, TTS, triggers, counters, clips, and EventSub values, with arguments, access, and plan rules."
 sidebar:
   order: 2
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
 
-Functions are the `$(...)` pieces inside a custom command's reply. Use them to read information (the current user, the stream title, the follower count), change something on your channel (the title, a raid, a poll), or control a command's flow (a delay, a loop exit). This page lists each one, what it returns, and who can use it.
+Functions are the `$(...)` pieces inside a custom command's reply. Use them to read information (the current user, the stream title, the follower count), change something on your channel (the title, a raid, a poll), or control a command's flow (a delay, a loop exit). This reference covers common functions, their results, and who can use them.
 
 <Steps>
 1. Open **Commands** in the navbar and create a command, or edit one you already have.
@@ -21,9 +21,9 @@ Most action functions return nothing on success. When they fail, they return a s
 
 ## Who can use each function
 
-- **Your own commands** run with the command's access setting. A function inside a command adds no second check. For example, if you allow everyone to use a command containing `$(ban ...)`, viewers can trigger that action. Choose the command access deliberately for the action you want to expose.
+- **Your own commands** run with the command's access setting. Function role metadata normally adds no second check; some functions also enforce context restrictions. For example, if you allow everyone to use a command containing `$(ban ...)`, viewers can trigger that action. Choose the command access deliberately for the action you want to expose.
 - **AI chat requests through the bot personality** are different. When a viewer asks the bot's AI assistant to do something, the function's minimum level in the **Access** column applies. Moderator is level 7 and Editor is level 8.
-- **Plans:** Temporary VIP and moderator days need **Premium or Pro**. Roulette needs **Premium or Pro**. Saving to database variables (`%(*name ...)`, `%(**name ...)`) needs **Premium or Pro**.
+- **Plans:** Temporary VIP and moderator days need **Premium or Pro**. Roulette is available on Free. Saving to database variables (`%(*name ...)`, `%(**name ...)`) needs **Premium or Pro**.
 
 ## User functions
 
@@ -31,7 +31,7 @@ Most action functions return nothing on success. When they fail, they return a s
 |----------|-------------|---------|
 | `$(user)` | Username of the person who ran the command | `$(user)` |
 | `$(touser)` | The text typed after the command, or the caller if nothing was typed. Keeps an `@` if one was typed | `!hug @ronchi` → `@ronchi` |
-| `$(randomuser)` | A random name from the chat list. Returns the caller if the list is empty | `$(randomuser)` |
+| `$(randomuser)` | A random name from the chat list. Returns the caller if the list is empty, or an error message if the lookup fails | `$(randomuser)` |
 
 ## Random functions
 
@@ -64,7 +64,7 @@ These read live data from your channel. Anyone can use them.
 | `$(twitch.live)` | `true` when the channel is live, `false` when offline or unknown. Use it in a condition | `$(twitch.live)` |
 | `$(twitch.title)` | Current stream title, or `No title set` | `$(twitch.title)` |
 | `$(twitch.game)` | Current category, or `No game set` | `$(twitch.game)` |
-| `$(twitch.viewers)` | Current viewer count | `$(twitch.viewers)` |
+| `$(twitch.viewers)` | Chatters count, or the provided event viewer count when available | `$(twitch.viewers)` |
 | `$(twitch.subs)` | Subscriber count | `$(twitch.subs)` |
 | `$(twitch.follows)` | Follower count | `$(twitch.follows)` |
 | `$(twitch.channel)` | Channel display name | `$(twitch.channel)` |
@@ -89,7 +89,7 @@ The roles below apply only when the bot personality calls these functions throug
 | `$(bot.mode attack)` | Starts Follow Defense attack mode | none | Moderator |
 | `$(bot.mode status)` | Shows the current Follow Defense mode and time left | none | Moderator |
 
-Temporary VIP and moderator days go from `1` to `365` and need **Premium or Pro**. `$(permit)` takes `1` to `600` seconds. `$(ban.mod)` needs a seconds value.
+Temporary VIP and moderator days go from `1` to `365` and need **Premium or Pro**. On Free, the role is granted but the days are ignored, so it remains until removed. On paid plans, the role is also granted before the days are validated; an invalid value can leave it in place. `$(permit)` takes `1` to `600` seconds. `$(ban.mod)` needs a seconds value.
 
 `$(emoteonly)` with seconds keeps the auto-off timer in the bot's memory. If the bot restarts before the time is up, emote-only stays on until someone turns it off.
 
@@ -104,7 +104,7 @@ Temporary VIP and moderator days go from `1` to `365` and need **Premium or Pro*
 | `$(raid channel)` | Starts a raid to a channel login. Returns `User not found` if the login doesn't exist | `$(raid targetchannel)` |
 | `$(unraid)` | Cancels the raid and posts `Raid cancelled!` in chat | `$(unraid)` |
 | `$(set.title new_title)` | Changes the stream title and posts `Title updated to: …` in chat | `$(set.title Playing Valorant!)` |
-| `$(set.game game_name)` | Searches Twitch categories and picks the closest match, then posts `Game updated to: …` in chat | `$(set.game Valorant)` |
+| `$(set.game game_name)` | Uses an exact category-name match when available, otherwise Twitch's first search result, then posts `Game updated to: …` in chat | `$(set.game Valorant)` |
 | `$(ad)` or `$(ad.time)` | Length of the ad break in seconds. Returns `0` outside an ad-break event | `$(ad)` |
 | `$(ai prompt)` | AI-generated reply to the prompt | `$(ai tell a joke)` |
 
@@ -155,7 +155,7 @@ These functions turn one of the channel's custom commands or Twitch Channel Poin
 
 ## Roulette functions
 
-These controls need **Premium or Pro**. Identify a roulette by its alias or ID. If you leave it out, the active roulette is used. Except for `roulette.result` and `roulette.add`, these functions return no chat text. `roulette.add` returns the new item ID, which you can save in a variable.
+These controls are available on Free, Premium, and Pro. Identify a roulette by its alias or ID. Only `roulette.start` and `roulette.result` accept an omitted roulette and use the active one; `show` and `hide` operate on the active overlay. On success, except for `roulette.result` and `roulette.add`, these functions return no chat text; failures return an error. `roulette.add` returns the new item ID, which you can save in a variable.
 
 | Function | What it does | Example |
 |----------|--------------|---------|
@@ -170,7 +170,7 @@ These controls need **Premium or Pro**. Identify a roulette by its alias or ID. 
 
 In AI chat, `roulette.result` is open to everyone; the other roulette functions need moderator access.
 
-You can attach an AST action to a roulette item in the roulette editor. It runs when that item wins. It can use `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)`, and `%(roulette_item)`. Winner actions run with Pro limits, whatever the channel's plan. Restrict who can start a draw if the winner actions change channel state.
+You can attach an AST action to a roulette item in the roulette editor. It runs when that item wins. It can use `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)`, and `%(roulette_item)`. Winner actions use the channel owner's plan limits. Restrict who can start a draw if the winner actions change channel state.
 
 ## Counter functions
 
@@ -190,17 +190,17 @@ Counters are saved per command.
 
 | Function | What it does | Example |
 |----------|--------------|---------|
-| `$(create.clip [title])` | Creates a clip of the current moment and returns its link. Returns blank if the clip fails. Optional title | `$(create.clip Epic win)` |
+| `$(create.clip [seconds] [title])` | Creates a clip and returns its link, or blank on failure. A first number from 5 to 60 sets seconds; other first words start the title. Without function arguments, uses the chat command arguments; requires moderator access in AI chat | `$(create.clip Epic win)` |
 
 ## Followage functions
 
 | Function | What it does | Example |
 |----------|--------------|---------|
-| `$(followage [username])` | How long a user has followed, like `2 months, 3 days, 5 hours`. Returns blank if the user doesn't follow or can't be found. Defaults to the caller | `$(followage ronchi)` |
+| `$(followage [username])` | How long a user has followed, like `2 months, 3 days, 5 hours`. Returns blank if the user doesn't follow or can't be found. With no function argument, uses the chat command argument if present, otherwise the caller | `$(followage ronchi)` |
 
 ## EventSub functions
 
-These return data only when the command runs from the matching Twitch event. In a normal chat test they return blank or `0`, and that is expected.
+These use Twitch event data. Without the relevant data, text fields may return blank or `unknown` and numeric fields return `0`; some fields can also be present in other event contexts.
 
 | Function | Event | Returns |
 |----------|-------|---------|
@@ -244,9 +244,19 @@ Speech needs **TTS** turned on for the channel. If it's off, the function return
 
 Details that affect what viewers hear:
 
-- **Spoken text:** functions speak the text exactly as written. Unlike the chat `!tts` command, they don't add "name says:" in front.
+- **Spoken text:** functions use the supplied text, subject to TTS filters and limits. The default `!s` template explicitly adds the caller and `dice:`; you can edit that template.
 - **Length:** long text is cut to the channel's maximum TTS length.
 - **Credits:** Kokoro costs 1 credit per 15 characters and Fish uses AI credits too. `$(tts.speak)` costs 1 credit per 50 characters and keeps working after credits run out. When Fish or Kokoro credits run out, the bot switches to Piper on Free and to Kokoro on Premium and Pro.
+
+## TTS status and controls
+
+These functions require a Twitch channel. `$(tts.status)` reports connection, playback state, and waiting count; `$(tts.connected)` returns a boolean (also `false` on lookup failure); `$(tts.queue.length)` returns the number waiting, or `-1` on lookup failure.
+
+`$(tts.skip)` stops the current item and advances; `$(tts.clear)` stops playback and clears waiting items; `$(tts.refresh)` reconnects playback, discarding interrupted speech but retaining waiting items. An offline OBS source must be reopened manually. These three controls require moderator access in AI chat.
+
+## Pet functions
+
+`$(pet.talk text)` speaks the text with the pet voice; `$(pet.ask prompt)` asks the pet personality for a spoken reply. They require a configured pet and Premium or Pro, and work in authored Twitch command or event actions, not AI requests or scheduled timer bodies. Text is limited to 2,000 characters.
 
 ## Trigger functions
 
@@ -280,7 +290,7 @@ Add `.twitch` or `.kick` to the name to affect only one platform, for example `$
 | `$(timer seconds "message" $(action))` | Saves a message and actions to run later, from `1` to `604800` seconds. The command continues right away. See [Execution, Errors & Limits](/commands/advanced/execution/) | `$(timer 300 "Five minutes are up!")` |
 | `$(break)` | Leaves a loop early | `$(break)` |
 | `$(continue)` | Skips to the next loop step | `$(continue)` |
-| `$(chat.send message)` | Posts a message as the bot | `$(chat.send Hello everyone!)` |
+| `$(chat.send message)` | Posts the first argument as the bot; quote multiword messages | `$(chat.send "Hello everyone!")` |
 | `$(announce [color] message)` | Posts a Twitch announcement. Colors are `blue`, `green`, `orange`, `purple`, or `primary` (the default). The message is 1–500 characters. Moderator access in AI chat | `$(announce purple Five minutes left!)` |
 
 ## Quick examples
@@ -294,7 +304,7 @@ Add `.twitch` or `.kick` to the name to affect only one platform, for example `$
 | `$(followage ronchi)` | `$(user) has followed for $(followage ronchi)` | `ronchi has followed for 2 months, 3 days, 5 hours` |
 | `$(create.clip)` | `Clip: $(create.clip)` | `Clip: https://clips.twitch.tv/...` |
 | `$(trigger.send airhorn)` | `$(trigger.send airhorn)` | The trigger plays |
-| `$(chat.send Hello everyone!)` | `$(chat.send Hello everyone!)` | Message posted |
+| `$(chat.send "Hello everyone!")` | `$(chat.send "Hello everyone!")` | Message posted |
 
 <Aside type="tip">
 If a function changes channel state or moderates users, pair it with the right access setting on the command. Test the text first, then add the action. For how commands run and the limits they follow, see [Execution, Errors & Limits](/commands/advanced/execution/).

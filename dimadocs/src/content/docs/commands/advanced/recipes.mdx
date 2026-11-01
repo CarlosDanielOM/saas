@@ -7,7 +7,7 @@ sidebar:
 
 import { Aside } from '@astrojs/starlight/components';
 
-These recipes are starting points. Each one is a complete custom command reply, or a pair of commands where noted. Test any recipe that changes channel state in a command only you can use before you open it to others. Syntax details are on [AST Syntax & Data](/commands/advanced/syntax/), and every function is listed on [AST Functions Reference](/commands/advanced/functions/).
+These recipes are starting points. Each one is a complete custom command reply, or a pair of commands where noted. Test any recipe that changes channel state in a command only you can use before you open it to others. Syntax details are on [AST Syntax & Data](/commands/advanced/syntax/), and common functions are listed on [AST Functions Reference](/commands/advanced/functions/).
 
 ## Counters
 
@@ -53,7 +53,7 @@ With an empty second branch, nothing is posted when the condition is false.
 
 ### Pause a command for a set time
 
-This turns `!spoilers` off for five minutes, then turns it back on:
+This turns `!spoilers` off for five minutes, then restores its previous state:
 
 ```bash
 $(disable.command spoilers 300)
@@ -64,13 +64,13 @@ The duration is in seconds, from `1` to `604800`. The command returns to the sta
 
 ### Send a message and an action later
 
-The timer returns right away. Its message and action run after five minutes, even if the bot restarts in between:
+The timer returns right away. Its message and action are scheduled for five minutes later and can survive a bot restart:
 
 ```bash
 $(timer 300 "Five minutes are up!" $(trigger.send airhorn))
 ```
 
-A timer runs at most once, and it expires if it's more than 10 minutes late. See [Execution, Errors & Limits](/commands/advanced/execution/#delay-and-timer-limits).
+A timer runs at most once, and it expires at 10 minutes late. Execution is not guaranteed if a failure occurs after the timer is claimed. See [Execution, Errors & Limits](/commands/advanced/execution/#delay-and-timer-limits).
 
 ## Prediction results
 

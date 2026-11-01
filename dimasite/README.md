@@ -1,6 +1,6 @@
 # Dimasite
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.4.
+Public website and streamer dashboard for DomDimaBot. The application uses Angular 21; project-specific patterns and the production hosting workflow are documented in [`AGENTS.md`](AGENTS.md).
 
 ## Development server
 
@@ -11,6 +11,8 @@ ng serve
 ```
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+
+The development server uses the development configuration by default. Check the environment and API proxy settings before using flows that write data.
 
 ## Code scaffolding
 
@@ -26,15 +28,19 @@ For a complete list of available schematics (such as `components`, `directives`,
 ng generate --help
 ```
 
-## Building
+## Building and deployment
 
-To build the project run:
+Production output is served from a live bind mount on this host. Do not run an in-place production build here. Use the repository helper to build an isolated candidate, verify the changed behavior, and publish that candidate:
 
 ```bash
-ng build
+scripts/saas-ops build site
+# Use the generated run ID:
+scripts/saas-ops verify site-<run-id> --check <behavior-script>
+scripts/saas-ops deploy site-<run-id>
+scripts/saas-ops cleanup site-<run-id>
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+See [`../ops/README.md`](../ops/README.md) and [`AGENTS.md`](AGENTS.md#production-build--deployment) for preview, verification, rollback, and output details.
 
 ## Running unit tests
 
@@ -44,15 +50,9 @@ To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use th
 ng test
 ```
 
-## Running end-to-end tests
+## End-to-end checks
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+This project does not define an Angular CLI e2e target. Use the behavior checks documented in the repository operations guide for supported release validation.
 
 ## Additional Resources
 

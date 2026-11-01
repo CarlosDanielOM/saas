@@ -52,7 +52,7 @@ Type `!cc`, then the name (without `!`), then the reply:
 | `9` | `admin` | Admins and above |
 | `10` | `broadcaster` | Only you (`streamer` also works) |
 
-`-ul=7` and `-ul=mod` mean the same thing.
+`-ul=7` and `-ul=mod` mean the same thing. Put options before the command name; names such as `mod` are lowercase. Chat-created replies can be up to 450 characters.
 
 Chat replies you may see:
 
@@ -75,12 +75,14 @@ Chat replies you may see:
 
 ## Edit, turn off, or delete a command
 
-- **Edit the reply:** `!ec <name> <new reply>`.
+- **Edit a text reply:** `!ec <name> <new reply>`. Edit replies built with blocks on the dashboard.
 - **Change only the cooldown or access:** `!ec -cd=<seconds> <name>` or `!ec -ul=<level> <name>`. Leave out the reply to keep it. Put options before the name.
-- **Delete:** `!dc <name>`. Built-in commands can't be deleted.
+- **Delete:** `!dc <name>`. Reserved built-in commands cannot be deleted; editable default templates can be deleted.
 - **Turn on or off:** `!enable <name>` or `!disable <name>`. The name works with or without `!`.
 
 You can only edit or delete a command if your access level is at least the level the command requires. Commands that use tags or account rules can only be managed by moderators in chat, and `-ul=` can't be used on them. Change their rules on the dashboard.
+
+The dashboard also offers a **Blocks** editor for custom replies. You can try it on Free; saving block changes requires Premium or Pro. If your plan changes to Free, existing blocks remain read-only.
 
 ## Cooldowns and access
 
@@ -104,7 +106,7 @@ Keywords always wait at least your plan's minimum cooldown. They don't appear in
 Repeating messages post on a timer while your channel is live. Moderators can manage them with `!cct`, `!ect`, and `!dct`, or with `!timer create`, `!timer edit`, `!timer delete`, and `!timer list`. `!timers` works the same way.
 
 ```text
-!cct socials 15 Check out the channel links!
+!cct socials 20 Check out the channel links!
 !ect socials 30 Updated links are in the panels.
 !dct socials
 !timer list
@@ -116,9 +118,9 @@ Repeating messages post on a timer while your channel is live. Moderators can ma
 | Premium | Multiples of `5` from `5` to `180` minutes | `15` |
 | Pro | Any whole number of minutes from `1` to `180` | `50` |
 
-- **Name:** up to `30` characters: letters, numbers, and underscores.
+- **Name:** up to `30` characters: letters, numbers, and underscores. Names are stored in lowercase and matched without regard to case.
 - **Message:** up to `350` characters. Timer messages can use `$(...)` functions.
-- **Interval:** a number of minutes, or add `m` or `h` (for example `15m` or `1h`).
+- **Interval:** a number of minutes, or add `m` or `h` (for example `15m` or `1h`). When editing, a first word that looks like an interval is treated as the interval, not the start of the message.
 - **Plan change:** if an interval is no longer allowed after a plan change, the timer keeps running. Choose an allowed interval before you edit it again.
 
 ## Write a reply
@@ -225,7 +227,7 @@ If a trigger named `airhorn` exists, it plays when the command runs.
 !cc creator Check out my links here: #(discord)
 ```
 
-This runs the `discord` command inside `creator`.
+This runs `discord` after the `creator` reply and sends its response separately.
 
 </TabItem>
 </Tabs>

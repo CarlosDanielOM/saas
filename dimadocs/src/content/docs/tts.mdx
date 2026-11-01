@@ -114,7 +114,7 @@ Use these in custom commands, timers, and channel point rewards. See [Advanced c
 | `$(tts.kokoro <voice> <message>)` | Speaks with a Kokoro preset voice, such as `ef_dora`. |
 | `$(tts.clone <voice> <message>)` | Speaks with a Fish Audio voice. The first argument is a built-in key, a favorite's nickname, or a Fish voice ID. |
 | `$(tts.fish <voice> <message>)` | Same as `$(tts.clone ...)`. |
-| `$(set.voice <voice>)` | Changes the channel's default Fish voice and makes Fish the default engine. Accepts a built-in key, a favorite's nickname, or a favorite's display name. The bot then posts "TTS voice changed to …" in chat. Requires moderator level. |
+| `$(set.voice <voice>)` | Changes the channel's default Fish voice and makes Fish the default engine. Accepts a built-in key, a favorite's nickname, or a favorite's display name. The bot then posts "TTS voice changed to …" in chat. In AI personality chat it requires moderator access. In a streamer-authored command, the streamer chooses who can trigger it; set access carefully because this changes the channel setting. |
 
 ```text
 $(tts Hello chat!)
@@ -126,6 +126,8 @@ $(set.voice my_favorite)
 ```
 
 Functions that read viewer text, such as `&t`, work best in channel point rewards that have **Viewer must type something** turned on. See [Channel Rewards](/rewards/).
+
+For `$(tts.status)`, `$(tts.connected)`, `$(tts.queue.length)`, and the skip, clear, and refresh controls, see [TTS status and controls](/commands/advanced/functions/#tts-status-and-controls).
 
 ### Queue and overlay behavior
 
@@ -143,10 +145,10 @@ Set these in **Modules → Text to Speech → Message limits**:
 | **Maximum characters per message** | 280 | 30–500 | Longer messages are cut to this length. |
 | **Maximum messages waiting** | 5 | 1–20 | The queue size, including the message that is playing. |
 | **Skip emotes** | On | | Removes emote names before reading. |
-| **Links become [link]** | On | | Removes links. Nothing is read in their place. |
+| **Links become [link]** | On | | Replaces links with `[link]` before speech. |
 | **Tidy extra spaces** | On | | Collapses repeated spaces. |
 
-The filters apply to chat messages and to AST speech. Filters run before the length limit, so a cut-off message never reads half a tag.
+The filters apply to chat messages and to AST speech. Tags are filtered before the length limit is applied.
 
 ## Voice tags (Fish Audio only)
 
@@ -210,7 +212,7 @@ Credits per message:
 
 If credits run out or a voice cannot be generated, TTS switches to a fallback voice so speech keeps working:
 
-- **Credits run out, Fish Audio requested:** Free plans switch to Piper. Premium and Pro plans switch to Kokoro.
+- **Credits run out, Fish Audio or Kokoro requested:** Free plans switch to Piper. Premium and Pro plans use Kokoro.
 - **Fish Audio or Kokoro fails to generate audio:** the message is read with Piper.
 - **Credit status cannot be checked:** the message is read with Piper.
 

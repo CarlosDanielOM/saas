@@ -12,7 +12,7 @@ Built-in commands are ready-made tools that come with DomDimaBot. Viewers and mo
 
 - **On the dashboard:** open **Commands**, find the **Built-in** section, and use the **On for chat** switch. Open a command to change **Who can use it**.
 - **In chat:** moderators can use `!enable <name>` and `!disable <name>`. The name works with or without `!`.
-- **Built-in commands can't be deleted.**
+- **Reserved built-in commands cannot be deleted.** Editable default templates, such as `!s` and `!followage`, can be edited or deleted.
 - **Cooldowns:** most built-in commands wait 10 seconds between uses. The wait is shared by the whole channel. `!s` and `!vanish` have no wait.
 
 New channels start with `!s` on for everyone and `!clearchat` off. Existing channels keep their saved settings.
@@ -24,7 +24,7 @@ In the tables below, **Everyone** means anyone in chat, **Mods and above** inclu
 | Command | Usage | Who can use it | What it does |
 |---|---|---|---|
 | `!commands` | `!commands` | Everyone | Lists the commands the viewer can use. Keywords and repeating messages are not included. |
-| `!followage` | `!followage [user]` | Everyone | Shows how long the viewer, or the user you name, has followed the channel, in years, months, days, and hours. |
+| `!followage` | `!followage` | Everyone | The default reply shows how long the viewer has followed the channel, in years, months, days, and hours. Its editable template does not use a supplied username. |
 
 ## Fun and games
 
@@ -51,10 +51,10 @@ In the tables below, **Everyone** means anyone in chat, **Mods and above** inclu
 |---|---|---|---|
 | `!clip` | `!clip [seconds] [title]` | Everyone | Creates a clip and posts its link. A first number from 5 to 60 sets the length. Any other first word starts the title. Numbers outside 5–60 use 30 seconds. |
 | `!so` | `!so <user>` | Mods and above | Posts a shoutout announcement with the channel link and last game. Sends Twitch's own shoutout, and shows one of their clips when available. The same person gets a Twitch shoutout at most once every 2 minutes. |
-| `!promo` | `!promo <user>` | Mods and above | Posts a chat message with the channel's name, game, title, and link. Use it when mobile viewers should see the shoutout. |
+| `!promo` | `!promo <user>` | Mods and above | Shows a clip from the named channel when one is available. |
 | `!anuncio` | `!anuncio <message>` | Mods and above | Posts a Twitch announcement. The message can be up to 300 characters. |
-| `!game` | `!game <name>` | Mods and above | Changes the stream category. If no category matches the name exactly, the bot uses the top search result. Without permission, or with no name, it replies with the current category. |
-| `!title` | `!title <title>` | Mods and above | Changes the stream title. Without permission, or with no title, it replies with the current title. |
+| `!game` | `!game <name>` | Mods and above | Changes the stream category. If no category matches the name exactly, the bot uses the top search result. With no name, it replies with the current category. The command's access setting is checked first. |
+| `!title` | `!title <title>` | Mods and above | Changes the stream title. With no title, it replies with the current title. The command's access setting is checked first. |
 | `!onlyemotes` | `!onlyemotes [seconds]` | Mods and above | Turns emote-only chat on or off. Each use switches the mode. Add seconds to turn it on for that long. |
 | `!clearchat` | `!clearchat` | Mods and above (off by default) | Clears the chat. |
 
@@ -76,7 +76,7 @@ In the tables below, **Everyone** means anyone in chat, **Mods and above** inclu
 |---|---|---|---|
 | `!mod` | `!mod <user>` | Editors and above | Adds a moderator. |
 | `!unmod` | `!unmod <user>` | Editors and above | Removes a moderator. |
-| `!vip` | `!vip <user> [days]` | Editors and above | Adds a VIP. With days (`1`–`365`), the VIP status ends after that many days. Without days, it stays until removed. |
+| `!vip` | `!vip <user> [days]` | Editors and above | Adds a VIP. With days (`1`–`365`), the bot schedules removal after that many days. The VIP is added before the duration is validated, so an invalid duration can still leave the user as VIP. Without days, it stays until removed. |
 | `!unvip` | `!unvip <user>` | Editors and above | Removes a VIP. |
 
 ## Manage commands from chat
@@ -98,7 +98,7 @@ In the tables below, **Everyone** means anyone in chat, **Mods and above** inclu
 ### Ruletarusa
 
 - Each pull has a 1-in-3 chance of firing.
-- A loss gives a timeout of 10 seconds. Each following loss adds 10 seconds: 20, then 30, and so on. The count resets 10 minutes after the first loss.
+- A loss normally gives a timeout of 10 seconds. Each following loss adds 10 seconds: 20, then 30, and so on. One channel has a 300-second minimum. The count resets 10 minutes after the first loss.
 - Editors and the channel owner can't play.
 - A moderator who loses is removed as a moderator during the timeout and added back afterward.
 

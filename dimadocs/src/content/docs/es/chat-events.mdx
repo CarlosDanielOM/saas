@@ -11,7 +11,7 @@ Eventos del chat hace que el bot publique un mensaje en tu chat cuando pasa algo
 
 ## Configurar un evento
 
-1. Abre **Módulos → Eventos del chat**. La página muestra cuántos eventos están activos (por ejemplo, "2 de 9 activos") y los agrupa en **Momentos de la comunidad** y **Tu stream**.
+1. Abre **Módulos → Eventos del chat**. La página muestra cuántos eventos están activos y los agrupa en **Momentos de la comunidad** y **Tu stream**.
 2. Abre una tarjeta y completa los campos de **Configuración**. Los campos cambian según el evento; la tabla **Qué puede hacer cada evento** más abajo los detalla.
 3. Pulsa **Guardar Cambios**.
 4. Activa el evento con su interruptor. Si el canal todavía no tiene una suscripción para ese evento, el panel la crea en Twitch.
@@ -35,7 +35,8 @@ Escribe estas variables en el mensaje de un evento. Cuando ocurre el evento, el 
 | Follow | `$(user)` | |
 | Inicio de stream | `$(twitch.channel)`, `$(twitch.game)` | |
 | Fin de stream | `$(twitch.channel)` | |
-| Raid | `$(raid.channel)`, `$(raid.login)`, `$(raid.viewers)` | Mínimo de espectadores. Los raids por debajo se omiten. Casilla para clips. |
+| Raid entrante | `$(raid.channel)`, `$(raid.login)`, `$(raid.viewers)` | Mínimo de espectadores para anuncios. Los raids más pequeños se omiten. Casilla para clips. |
+| Raid saliente | `$(raid.channel)`, `$(raid.login)`, `$(raid.viewers)` | Registra los canales a los que haces raid para tu panel. El mensaje es opcional; si está vacío, el raid se registra en silencio. |
 | Pausa publicitaria | `$(ad.time)` (segundos) | Mensaje final con su propia casilla para activarlo o desactivarlo |
 | Suscripción | `$(user)`, `$(sub.tier)` | |
 | Suscripción regalada | `$(user)`, `$(sub.tier)`, `$(gifted.user)` | |
@@ -46,6 +47,8 @@ Escribe estas variables en el mensaje de un evento. Cuando ocurre el evento, el 
 | Notificaciones del chat | `$(user)`, `$(twitch.streak)`, `$(twitch.modiversary)` | Rachas de visualización y aniversarios de moderación, cada uno con su casilla y su mensaje |
 
 Usa el marcador que muestra cada control. Si un control no indica una variable, no asumas que el evento la admite.
+
+Los raids entrantes y salientes tienen tarjetas y ajustes separados. El registro de raids salientes no ejecuta anuncios, clips ni shoutouts de raids entrantes. Consulta [Follow Defense](/es/follow-defense/) para la protección de follows durante raids entrantes.
 
 ## Reglas de Bits
 

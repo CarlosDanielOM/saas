@@ -11,7 +11,7 @@ Chat Events makes the bot post a message in your chat when something happens on 
 
 ## Set up an event
 
-1. Open **Modules → Chat Events**. The page shows how many events are on (for example, "2 of 9 on") and groups them into **Community moments** and **Your stream**.
+1. Open **Modules → Chat Events**. The page shows how many events are on and groups them into **Community moments** and **Your stream**.
 2. Open a card and fill in its **Configuration** fields. The fields depend on the event; the **What each event can do** table below lists them.
 3. Select **Save Changes**.
 4. Turn the event on with its toggle. If the channel has no subscription for that event yet, the dashboard creates one with Twitch.
@@ -35,7 +35,8 @@ Put these variables in an event's message. The bot replaces each one with the re
 | Follow | `$(user)` | |
 | Stream online | `$(twitch.channel)`, `$(twitch.game)` | |
 | Stream offline | `$(twitch.channel)` | |
-| Raid | `$(raid.channel)`, `$(raid.login)`, `$(raid.viewers)` | Minimum viewers. Raids below it are skipped. Clip switch. |
+| Incoming raid | `$(raid.channel)`, `$(raid.login)`, `$(raid.viewers)` | Minimum viewers for announcements. Smaller raids are skipped. Clip switch. |
+| Outgoing raid | `$(raid.channel)`, `$(raid.login)`, `$(raid.viewers)` | Tracks channels you raid for your dashboard. The message is optional; an empty message still tracks the raid. |
 | Ad break | `$(ad.time)` (seconds) | Ending message with its own on/off switch |
 | Subscription | `$(user)`, `$(sub.tier)` | |
 | Gifted subscription | `$(user)`, `$(sub.tier)`, `$(gifted.user)` | |
@@ -46,6 +47,8 @@ Put these variables in an event's message. The bot replaces each one with the re
 | Chat Notifications | `$(user)`, `$(twitch.streak)`, `$(twitch.modiversary)` | Watch streaks and moderator anniversaries, each with its own switch and message |
 
 Use the placeholder shown by each control. If a control doesn't list a variable, don't assume the event supports it.
+
+Incoming and outgoing raids have separate cards and settings. Outgoing raid tracking does not run incoming raid announcements, clips, or shoutouts. See [Follow Defense](/follow-defense/) for follow protection during incoming raids.
 
 ## Bits rules
 

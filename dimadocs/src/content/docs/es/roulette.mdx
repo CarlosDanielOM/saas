@@ -3,11 +3,11 @@ title: Roulette Alpha
 description: Crea sorteos ponderados de rueda, carrete, cartas y último en pie, conecta la superposición de OBS y automatiza Roulette con AST.
 ---
 
-Roulette Alpha ofrece al propietario del canal una biblioteca de premios guardados, una vista previa del sorteo y una fuente de navegador de OBS de solo lectura. El panel y las acciones de Roulette requieren **Pro**. Durante la fase Alpha, el propietario y los administradores con acceso total pueden administrar sus roulettes.
+Roulette Alpha ofrece al propietario del canal una biblioteca de premios guardados, una vista previa del sorteo y una fuente de navegador de OBS de solo lectura. Roulette está disponible en **Gratis**, Premium y Pro. Durante la fase Alpha, el propietario y los administradores con acceso total pueden administrar sus roulettes.
 
 ## Abrir Roulette
 
-1. Inicia sesión con la cuenta de Twitch propietaria del canal.
+1. Inicia sesión como propietario del canal o administrador con acceso total.
 2. Abre el panel del canal y selecciona **Módulos → Roulette**.
 3. Elige **Nueva ruleta**, escribe un nombre y elige un estilo. El **ID para comandos** (alias) se rellena a partir del nombre, como `giveaways`; puedes editarlo.
 
@@ -53,7 +53,7 @@ La vista previa del panel puede ejecutar un sorteo sin OBS. OBS es necesario par
 
 ## Automatizar Roulette con AST
 
-Las funciones Roulette están disponibles en comandos y otros contextos AST. Requieren acceso Pro para el canal. Estos ejemplos usan el alias `giveaways`:
+Las funciones Roulette están disponibles en comandos y otros contextos AST. Están disponibles en Gratis, Premium y Pro. Estos ejemplos usan el alias `giveaways`:
 
 ```text
 $(roulette.add giveaways "VIP por un día" 3 10)
@@ -67,8 +67,7 @@ Por ejemplo, un script del premio ganador puede usar `$(timer 300 $(user), puede
 
 ## Límites y solución de problemas
 
-- **Roulette no está disponible:** confirma que el canal tenga Pro y que hayas iniciado sesión como su propietario. El panel, las funciones AST y la superposición comprueban el acceso.
+- **Roulette no está disponible:** confirma que hayas iniciado sesión como propietario o administrador con acceso total y que el enlace del overlay esté vigente.
 - **No se inicia el sorteo:** añade al menos un elemento, revisa el límite de copias del diseño y espera a que termine cualquier sorteo activo.
 - **OBS no muestra Roulette:** abre la URL generada en OBS, confirma que la superposición esté visible y genera un token nuevo si se rotó el enlace.
 - **No se ejecutó una acción ganadora:** la acción se ejecuta al terminar el sorteo. El sistema hace como máximo un intento; una interrupción del proceso después de reclamar la acción puede impedir que termine.
-- **Se quitó Pro:** las roulettes guardadas permanecen y los sorteos ya iniciados se completan, pero se requiere Pro para acceder al panel, AST y la superposición.

@@ -16,7 +16,7 @@ Viewing this page needs the `ai:view` permission. Saving changes needs `ai:manag
 <Steps>
 
 1. Open **Modules → AI Personality** in your channel dashboard.
-2. Under **On or off**, keep **AI chat on** enabled. The bot replies when someone mentions it and runs `$(ai)` commands.
+2. Under **On or off**, turn on **AI chat** to enable replies to direct mentions. This switch does not control `$(ai)` commands, which use a separate command invocation path.
 3. In **Personalities**, edit the one you want. Write how the bot should talk in **How the bot talks**. This text guides every reply.
 4. Select **Use in chat** on that personality. The bot talks as one personality at a time.
 5. Add **Rules it always follows** and **Regulars the bot knows** if you need them.
@@ -62,12 +62,12 @@ The bot can learn from chat and from your stream summaries. You control what it 
 
 | Control | Default | What it allows |
 |---|---|---|
-| **Learn from chat** | On | When off, the bot only knows what you write on this page. No new memories are proposed or saved. |
+| **Learn from chat** | On | Controls chat-based memory learning and whether proposed stream-summary memory actions are applied. When off, summaries may still generate a recap and proposed changes, but the worker skips applying those changes. |
 | **Viewer likes and dislikes** | On | Remembers preferences, such as favorite games. |
 | **Running jokes** | On | Remembers recurring bits and shared references. |
 | **Sensitive details** | Off | Allows personal details viewers share. Medium and high care-level memories need this on. |
 
-The three kinds above are unavailable while **Learn from chat** is off.
+The three kinds above are unavailable to memory learning while **Learn from chat** is off. Stream summaries use their own switches to decide whether to generate a recap, but this same learning control gates whether proposed memory actions are applied. See [Stream Summaries](/stream-summaries/).
 
 ### Automatic upkeep
 

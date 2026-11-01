@@ -30,10 +30,10 @@ Viewing Follow Defense needs the `moderation:view` permission. Changing settings
 |---|---|---|---|
 | **Normal** | No burst is active | Nothing. | No |
 | **Silent** | 10 follows within 5 seconds | Pauses follow alerts and tracks the wave. | No |
-| **Protection** | 100 follows within the same 5-second window | Pauses follow alerts and tracks every follower. Outside a raid, posts a warning in chat. Can escalate to Attack. | No |
-| **Attack** | The attack threshold within the window, or a moderator starts it | Bans everyone tracked in the wave, and each new follow while Attack is active. | Yes, permanent |
+| **Protection** | 100 follows in the 5-second window, or the tracked wave grows to 100 | Pauses follow alerts and tracks every follower. Outside a raid, posts a warning in chat. Can escalate to Attack. | No |
+| **Attack** | The attack threshold is reached, or a moderator starts it | Bans everyone tracked in the wave, and each new follow while Attack is active. | Yes, permanent |
 
-Each mode stays on for 60 seconds after the last qualifying follow. New bursts restart the timer. Each mode is checked on its own, and the highest qualifying mode wins: Attack beats Protection, and Protection beats Silent.
+By default, each mode stays on for 60 seconds after the wave is refreshed by a burst of follows. You can change this shared duration in the settings. As an active wave grows, its tracked follow count can reach the Protection or Attack threshold even when those follows did not all arrive in one 5-second window. Each mode is checked on its own, and the highest qualifying mode wins: Attack beats Protection, and Protection beats Silent.
 
 <Aside type="caution">
 Bans from Attack are permanent Twitch bans, not timeouts. Outside a raid, only Attack bans followers. Protection and Silent never ban. A burst is a signal of unusual activity, not proof that every follower is abusive. Tune the thresholds to your channel, and review the tracked wave before you rely on automatic Attack.
@@ -62,12 +62,12 @@ A burst alone does not prove malicious intent. Attack history records the mode, 
 
 ## Raids
 
-A raid is tracked for 5 minutes. Raids smaller than the minimum viewer count set for your channel are ignored.
+A raid session starts capturing associated follows for 5 minutes; each captured follow can extend that window by another 5 minutes. Sessions remain available in the dashboard for up to 72 hours. The minimum viewer setting applies to raid announcements; it does not decide whether Follow Defense records a raid session.
 
 During a raid:
 
-- Ordinary bursts do not start Attack, and raid follows are not banned automatically.
-- Follows are tracked, so you can review them in the raid session panel and ban them there.
+- Raid follows do not start an automatic Attack and are not banned by default. If **Reset attack on new raid** is off, an already active Attack carries over and can ban follows from the new raid.
+- Follows are tracked in the raid session panel. Free channels can review sessions and followers. Banning a whole session from history requires Premium or Pro; banning one historical follower requires Pro. Free channels can still activate Attack while live protection is active.
 - Protection can still start.
 
 **Reset attack on new raid** is on by default. A new raid changes an active Attack to Protection. If you turn it off, an active Attack carries into the new raid, and that raid's follows can be banned.

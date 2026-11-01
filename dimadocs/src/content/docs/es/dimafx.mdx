@@ -1,11 +1,11 @@
 ---
 title: Extensión de Twitch DimaFX
-description: Configura la tienda de la extensión de Twitch DimaFX para que los espectadores paguen con Bits y reproduzcan sonidos, videos o mensajes en el stream, al momento o para después.
+description: Configura la tienda de la extensión de Twitch DimaFX para que los espectadores paguen con Bits y reproduzcan sonidos, videos, imágenes o mensajes en el stream, al momento o para después.
 sidebar:
   order: 8
 ---
 
-DimaFX es una tienda dentro de tu extensión de Twitch. Los espectadores gastan Bits para reproducir un sonido, un video o un mensaje de texto a voz en tu stream. Tú eliges los artículos y los precios. Los espectadores pueden reproducir un artículo al momento o guardarlo para después. El módulo DimaFX está disponible en el plan Free. Necesitas permiso para editar DimaFX: ser el propietario del canal o un administrador con ese permiso.
+DimaFX es una tienda dentro de tu extensión de Twitch. Los espectadores gastan Bits para reproducir un sonido, un video, una imagen o GIF, o un mensaje de texto a voz en tu stream. Tú eliges los artículos y los precios. Los espectadores pueden reproducir un artículo al momento o guardarlo para después. El módulo DimaFX está disponible en el plan Free. Necesitas permiso para editar DimaFX: ser el propietario del canal o un administrador con ese permiso.
 
 Las compras solo se reproducen mientras la **Fuente de navegador DimaFX para OBS** esté abierta. Las fuentes de Triggers y de Overlay Studio no cuentan.
 
@@ -16,7 +16,7 @@ Las compras solo se reproducen mientras la **Fuente de navegador DimaFX para OBS
    - **Archivo**: elige un archivo de tus medios o de la biblioteca pública. Pulsa ▶ para revisarlo antes.
    - **Nombre** y **Descripción para los espectadores**.
    - **Precio**: **Gratis**, o 5, 10, 25, 50 o 100 Bits. El servidor solo acepta estos precios.
-   - **Volumen** y **Mostrar durante (segundos)**.
+   - **Volumen** y, para imágenes y GIF, **Mostrar durante (segundos)**.
    - **A la venta en la extensión**: actívalo para que los espectadores puedan comprarlo.
    - **Más opciones**: **Pestaña de la extensión** se define según el tipo de archivo, pero puedes cambiarla aquí. **Posición** define el orden. Los números más bajos aparecen primero.
 3. Selecciona **Agregar a la tienda**.
@@ -33,7 +33,7 @@ Un artículo TTS dice un mensaje en lugar de reproducir un archivo. En **Qué ha
 - **Mensaje fijo**: escribes el texto una vez, y cada compra dice lo mismo.
 - **El espectador escribe el mensaje**: los espectadores escriben su propio texto al comprar. El texto puede tener hasta 280 caracteres, y los enlaces se eliminan. El mensaje se reproduce de inmediato y no se puede guardar para después.
 
-Elige un **Idioma** (inglés o español) y una **Voz**. Por defecto se usa la voz TTS del canal de [Texto a voz](/es/tts/).
+Elige un **Idioma** (inglés o español) y una **Voz**. DimaFX usa Piper. Por defecto usa la voz Piper del canal para ese idioma de [Texto a voz](/es/tts/), aunque allí esté seleccionado otro motor.
 
 ## Elimina un artículo
 
@@ -70,7 +70,7 @@ Los artículos se reproducen **uno a la vez, en orden de compra**. Si llegan var
 
 La compra se rechaza si la fuente de DimaFX no está conectada o si la cola está llena. Un espectador identificado recibe sus Bits como créditos. Un espectador anónimo no recibe créditos, así que pide a tus espectadores que compartan su ID de Twitch antes de comprar.
 
-Twitch puede enviar la misma transacción más de una vez. DomDimaBot la verifica, así que una transacción repetida nunca se reproduce ni se cobra dos veces.
+Twitch puede enviar la misma transacción más de una vez. DomDimaBot reconoce la transacción repetida y no la procesa dos veces.
 
 ## Solución de problemas
 

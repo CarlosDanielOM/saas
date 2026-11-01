@@ -114,7 +114,7 @@ Los mensajes del chat pasan por los [filtros de mensajes](#filtros-y-límites-de
 | `$(tts.kokoro <voz> <mensaje>)` | Habla con una voz predefinida de Kokoro, como `ef_dora`. |
 | `$(tts.clone <voz> <mensaje>)` | Habla con una voz de Fish Audio. El primer argumento es una clave integrada, el apodo de una favorita o el ID de una voz de Fish. |
 | `$(tts.fish <voz> <mensaje>)` | Igual que `$(tts.clone ...)`. |
-| `$(set.voice <voz>)` | Cambia la voz predeterminada de Fish del canal y convierte a Fish en el motor predeterminado. Acepta una clave integrada, el apodo de una favorita o su nombre visible. Después, el bot publica "TTS voice changed to …" en el chat. Requiere nivel de moderador. |
+| `$(set.voice <voz>)` | Cambia la voz predeterminada de Fish del canal y convierte a Fish en el motor predeterminado. Acepta una clave integrada, el apodo de una favorita o su nombre visible. Después, el bot publica "TTS voice changed to …" en el chat. En el chat de personalidad de IA requiere acceso de moderador. En un comando creado por el streamer, este elige quién puede ejecutarlo; configura el acceso con cuidado porque cambia el ajuste del canal. |
 
 ```text
 $(tts Hola chat!)
@@ -126,6 +126,8 @@ $(set.voice mi_favorita)
 ```
 
 Las funciones que leen texto del espectador, como `&t`, funcionan mejor en recompensas de puntos del canal con **El espectador debe escribir algo** activado. Consulta [Recompensas del canal](/es/rewards/).
+
+Para `$(tts.status)`, `$(tts.connected)`, `$(tts.queue.length)` y los controles para omitir, vaciar y reconectar, consulta [Estado y controles de TTS](/es/commands/advanced/functions/#estado-y-controles-de-tts).
 
 ### Comportamiento de la cola y de la superposición
 
@@ -143,10 +145,10 @@ Configúralos en **Módulos → Texto a voz → Límites de mensajes**:
 | **Máximo de caracteres por mensaje** | 280 | 30–500 | Los mensajes más largos se cortan a este largo. |
 | **Máximo de mensajes en espera** | 5 | 1–20 | El tamaño de la cola, incluido el mensaje que se reproduce. |
 | **Omitir emotes** | Activado | | Quita los nombres de los emotes antes de leer. |
-| **Enlaces como [link]** | Activado | | Quita los enlaces. No se lee nada en su lugar. |
+| **Enlaces como [link]** | Activado | | Sustituye los enlaces por `[link]` antes de la lectura. |
 | **Quitar espacios extra** | Activado | | Une los espacios repetidos. |
 
-Los filtros se aplican a los mensajes del chat y a la voz de AST. Se aplican antes del límite de longitud, así que un mensaje cortado nunca deja a medias una etiqueta.
+Los filtros se aplican a los mensajes del chat y a la voz de AST. Las etiquetas se filtran antes de aplicar el límite de longitud.
 
 ## Etiquetas de voz (solo Fish Audio)
 
@@ -210,7 +212,7 @@ Créditos por mensaje:
 
 Si se acaban los créditos o no se puede generar una voz, TTS cambia a una voz de respaldo para que la lectura siga funcionando:
 
-- **Se acaban los créditos y se pidió Fish Audio:** los planes Free cambian a Piper. Los planes Premium y Pro cambian a Kokoro.
+- **Se acaban los créditos y se pidió Fish Audio o Kokoro:** los planes Free cambian a Piper. Los planes Premium y Pro usan Kokoro.
 - **Fish Audio o Kokoro no logran generar el audio:** el mensaje se lee con Piper.
 - **No se puede verificar el estado de los créditos:** el mensaje se lee con Piper.
 

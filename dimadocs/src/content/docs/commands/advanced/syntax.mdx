@@ -248,7 +248,7 @@ Two numbers compare as numbers. Other values compare as text. Results are `true`
 | `%` | Remainder | `*(%(count) % 10)` |
 
 - Dividing or taking a remainder by `0` gives `0`. It does not show an error.
-- Text that is not a number counts as `0`.
+- Arithmetic reads a leading number from text (for example, `5abc` counts as `5`); text with no leading number counts as `0`. Comparisons use a stricter whole-value numeric check.
 - Results are rounded to 6 decimal places.
 
 ### Unary operators
@@ -376,7 +376,7 @@ The words after the command name become its argument. The reference prints nothi
 - Commands can call other commands up to 5 levels deep.
 - A command cannot appear twice in the same chain. Cycles are blocked.
 - Up to 50 references can run for one message.
-- Your message is sent first. Then the referenced commands run in the order you wrote them.
+- Your message is sent first. Sibling references run in the order you wrote them; each one's nested references finish before the next sibling runs.
 - Each referenced command sends its own reply. Its reply is not parsed again.
 - A referenced command that cannot run is skipped, for example because it is on cooldown or disabled.
 
@@ -391,8 +391,8 @@ $(timer 300 "Five minutes are up!" $(trigger.send airhorn))
 - The delay must be from `1` to `604800` seconds (seven days).
 - Timers work only in Twitch channels.
 - Each call creates a separate timer. A timer runs at most once.
-- A timer survives a bot restart. If the bot is offline when a timer is due, it can still run within a 10-minute grace period. After that it expires.
+- A saved timer can survive a bot restart. If the bot is offline when it is due, it can still run within a 10-minute grace period; at or after that limit it expires. A crash after the timer is claimed can lose its action, so execution is not guaranteed.
 - Timers can be nested up to five levels.
-- A channel can have at most 100 pending timers. Past that, the message shows `timer: could not schedule timer`.
+- A channel can have at most 100 pending timers. Scheduling can also fail at the shared 10,000-timer limit, if the saved job exceeds 64 KiB, or if cache storage fails; the message shows `timer: could not schedule timer`.
 
 Errors from a timer appear as text starting with `timer:`, such as `timer: seconds must be between 1 and 604800`.

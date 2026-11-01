@@ -90,7 +90,7 @@ Use the preview under **Try it** to check layout and sample alerts without sendi
 
 ## Queues and playback
 
-- **Wait for each other** is a setting for each event type. Selected events share one queue and play one at a time. Other events play right away.
+- **Wait for each other** is a setting for each event type. Selected events share one queue and play one at a time. Other events can play concurrently, but alerts using the same alert layer wait for that layer to become free.
 - A connected source gets new events while it stays connected.
 - A refresh or a brief disconnect recovers pending playback within about 2 minutes. If a source stays offline longer than that, its pending playback is dropped, and events from that time are not played when it returns.
 - Each source keeps up to 200 pending events for 30 minutes. A channel keeps up to 512 MB of generated media. Older events are removed first.

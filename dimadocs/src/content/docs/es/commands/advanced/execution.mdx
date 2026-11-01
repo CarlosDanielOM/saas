@@ -22,11 +22,11 @@ Lee esta página cuando un comando muestre un error, no haga nada o se ejecute e
 
 ## Quién ejecuta el comando
 
-El contexto incluye el canal, el usuario, el plan y, en los comandos de eventos, los datos del evento. Las funciones de evento como `$(cheer.amount)` solo tienen valor cuando el evento correspondiente inicia el comando.
+El contexto incluye el canal, el usuario, el plan y, en los comandos de eventos, los datos del evento. Las funciones de evento como `$(cheer.amount)` leen los datos disponibles en el contexto.
 
 Los permisos dependen de lo que inició el comando:
 
-- **Tus comandos personalizados, recompensas y eventos** usan la configuración de acceso que elegiste para ellos. El bot no vuelve a verificar cada función, así que una función dentro de un comando abierto a todos funciona para todos.
+- **Tus comandos personalizados, recompensas y eventos** usan la configuración de acceso que elegiste para ellos. El bot no vuelve a verificar los niveles de rol de las funciones; algunas también imponen restricciones de contexto. Elige con cuidado quién puede ejecutar el comando.
 - **Las solicitudes al chat de IA** verifican el nivel mínimo de cada función. Si un espectador le pide a la IA que banee a alguien, por ejemplo, recibe un error de permisos a menos que sea moderador. La IA también verifica la configuración de acceso de cualquier comando personalizado que llame.
 - **Las referencias a comandos (`#(...)`)** desde tus propios comandos no verifican la configuración de acceso del comando llamado. Solo cuenta el acceso del comando que hace la llamada. Si un comando está abierto a todos y llama a uno solo para moderadores, ese comando de moderadores se ejecuta igual. Ten en cuenta la configuración de acceso de cada comando de la cadena.
 
@@ -41,9 +41,9 @@ Los permisos dependen de lo que inició el comando:
 | `[Loop error: invalid loop syntax]` | La línea `for` de un bucle está mal escrita | Revisa la sintaxis de bucles en [Sintaxis y datos AST](/es/commands/advanced/syntax/) |
 | `[Loop error: invalid range loop syntax]` | A un bucle por rango le falta una parte | Usa tres partes: inicio, condición y paso |
 | `[Loop error: missing loop body]` o `[Loop error: unclosed loop body]` | El bucle no tiene bloque `{ ... }`, o el bloque no está cerrado | Agrega las llaves |
-| `delay: must be between 0 and 60 seconds` | `$(delay)` recibió un número mayor que 60 | Usa `$(timer ...)` para esperas más largas |
+| `delay: must be between 0 and 60 seconds` | `$(delay)` recibió un número fuera de 0–60 | Usa un valor entre 0 y 60; para esperas más largas, usa `$(timer ...)` |
 | `timer: usage: …` | A `$(timer)` le falta el número de segundos o el cuerpo | Agrega ambos: `$(timer segundos "cuerpo")` |
-| `timer: could not schedule timer` | No se pudo guardar el timer, normalmente porque el canal ya tiene 100 timers en espera | Espera a que se ejecuten algunos y vuelve a intentar |
+| `timer: could not schedule timer` | No se pudo guardar el timer, por ejemplo por un límite de timers pendientes o un fallo de caché | Espera a que se ejecuten algunos y vuelve a intentar |
 
 ## Límites por plan
 
@@ -52,8 +52,8 @@ Los permisos dependen de lo que inició el comando:
 | Profundidad de bucles anidados | 2 | 3 | 4 |
 | Iteraciones de bucle | 25 | 50 | 100 |
 | Guardar en variables de base de datos (`%(*nombre ...)`, `%(**nombre ...)`) | No se guarda | Sí | Sí |
-| Días temporales de VIP y moderador | No | Sí | Sí |
-| Funciones de ruleta | No | Sí | Sí |
+| Días temporales de VIP y moderador en funciones AST | Se ignoran los días; el rol permanece | Sí | Sí |
+| Funciones de ruleta | Sí | Sí | Sí |
 
 En el plan Gratis, las escrituras en variables de base de datos se omiten sin mensaje de error. El comando sigue ejecutándose, pero el valor no se guarda. Las lecturas siguen funcionando.
 
@@ -72,11 +72,11 @@ Una llamada `#(nombreComando argumentos)` ejecuta otro comando personalizado des
 
 - `$(delay N)` pausa el comando hasta **60** segundos. Mientras espera, retiene el resto del comando.
 - `$(timer segundos cuerpo)` ejecuta su cuerpo más tarde, de **1** a **604800** segundos (siete días). Devuelve el control de inmediato.
-- Cada timer guarda su comando y su contexto en la caché del bot, así que sigue funcionando después de un reinicio.
-- Si el bot estaba apagado cuando llegó la hora de un timer, se ejecuta si tiene menos de **10 minutos** de retraso. Después de eso, expira.
-- Un timer se ejecuta **como máximo una vez**.
+- Cada timer guarda su contenido y su contexto en la caché del bot, así que puede sobrevivir a un reinicio.
+- Si el bot estaba apagado cuando llegó la hora de un timer, puede ejecutarse si tiene menos de **10 minutos** de retraso. Al llegar a ese límite, expira.
+- Un timer se ejecuta **como máximo una vez**. Un fallo después de reclamarlo puede hacer que se pierda la acción; su ejecución no está garantizada.
 - Los timers se pueden anidar hasta **cinco** niveles.
-- Un canal puede tener hasta **100** timers en espera al mismo tiempo.
+- Un canal puede tener hasta **100** timers en espera al mismo tiempo. También hay un límite compartido de **10.000** timers pendientes y de **64 KiB** por trabajo guardado.
 
 ## Lista de revisión para depurar
 
@@ -123,7 +123,7 @@ Para sumar, lee el valor y guarda el resultado:
 
 ### 5. Revisa el evento que inicia el comando
 
-Funciones como `$(cheer.amount)` y `$(reward.input)` solo tienen valor cuando el evento correspondiente inicia el comando. En una prueba normal en el chat están vacías o valen `0`. Eso es lo esperado.
+Funciones como `$(cheer.amount)` y `$(reward.input)` dependen de los datos del contexto. En una prueba normal pueden devolver vacío, `unknown` o `0`. Eso es lo esperado.
 
 <Aside type="note">
 Si una función de evento parece vacía durante una prueba en el chat, normalmente la función no está rota. La prueba simplemente no incluye los datos de ese evento.
@@ -145,11 +145,11 @@ Una variable `#` o `##` vence 24 horas después de su última escritura. Un valo
 
 ### El cuerpo de un timer se ejecuta después
 
-`$(timer ...)` guarda su cuerpo. El mensaje y las acciones que contiene no se ejecutan mientras corre el comando. El timer devuelve el control de inmediato, y cuando llega la hora se publica el mensaje y se ejecutan las acciones. Si llega con más de 10 minutos de retraso, expira sin ejecutarse.
+`$(timer ...)` guarda su cuerpo. El mensaje y las acciones que contiene no se ejecutan mientras corre el comando. El timer devuelve el control de inmediato, y cuando llega la hora se publica el mensaje y se ejecutan las acciones. Al llegar a 10 minutos de retraso, expira sin ejecutarse.
 
 ### Las referencias a comandos se envían por separado
 
-La respuesta principal se publica primero. Luego cada comando `#(...)` se ejecuta en orden y publica su propia respuesta. Si la respuesta principal no se puede publicar, los comandos referenciados se omiten. La respuesta de un comando referenciado no se vuelve a leer como AST.
+La respuesta principal se publica primero. Luego las referencias `#(...)` del mismo nivel se ejecutan en orden y publican sus respuestas. Las referencias anidadas de cada comando terminan antes de pasar al siguiente. Si la respuesta principal no se puede publicar, los comandos referenciados se omiten. La respuesta de un comando referenciado no se vuelve a leer como AST.
 
 ### Los bucles muchas veces no hacen falta
 

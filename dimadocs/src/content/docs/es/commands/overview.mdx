@@ -52,7 +52,7 @@ Escribe `!cc`, luego el nombre (sin `!`) y después la respuesta:
 | `9` | `admin` | Admins o más |
 | `10` | `broadcaster` | Solo tú (`streamer` también funciona) |
 
-`-ul=7` y `-ul=mod` significan lo mismo.
+`-ul=7` y `-ul=mod` significan lo mismo. Pon las opciones antes del nombre; los nombres como `mod` van en minúsculas. Las respuestas creadas en chat pueden tener hasta 450 caracteres.
 
 Mensajes del chat que puedes ver (el bot los muestra en inglés):
 
@@ -75,12 +75,14 @@ Mensajes del chat que puedes ver (el bot los muestra en inglés):
 
 ## Editar, desactivar o eliminar un comando
 
-- **Editar la respuesta:** `!ec <nombre> <nueva respuesta>`.
+- **Editar una respuesta de texto:** `!ec <nombre> <nueva respuesta>`. Edita las respuestas creadas con bloques desde el dashboard.
 - **Cambiar solo el tiempo de espera o el acceso:** `!ec -cd=<segundos> <nombre>` o `!ec -ul=<nivel> <nombre>`. Deja fuera la respuesta para conservarla. Pon las opciones antes del nombre.
-- **Eliminar:** `!dc <nombre>`. Los comandos integrados no se pueden eliminar.
+- **Eliminar:** `!dc <nombre>`. Los comandos integrados reservados no se pueden eliminar; las plantillas predeterminadas editables sí.
 - **Activar o desactivar:** `!enable <nombre>` o `!disable <nombre>`. El nombre funciona con o sin `!`.
 
 Solo puedes editar o eliminar un comando si tu nivel de acceso es igual o superior al que requiere. Los comandos con reglas de etiquetas o de cuentas solo pueden gestionarlos los moderadores desde el chat, y ahí no se puede usar `-ul=`. Cambia esas reglas desde el dashboard.
+
+El dashboard también ofrece un editor de **Bloques** para respuestas personalizadas. Puedes probarlo en Gratis; guardar cambios de bloques requiere Premium o Pro. Si cambias al plan Gratis, los bloques existentes quedan en modo de lectura.
 
 ## Tiempos de espera y acceso
 
@@ -104,7 +106,7 @@ Las palabras clave siempre esperan al menos el mínimo de tu plan. No aparecen e
 Los mensajes que se repiten se publican con un temporizador mientras tu canal está en vivo. Los moderadores pueden gestionarlos con `!cct`, `!ect` y `!dct`, o con `!timer create`, `!timer edit`, `!timer delete` y `!timer list`. `!timers` funciona igual.
 
 ```text
-!cct redes 15 ¡Mira los enlaces del canal!
+!cct redes 20 ¡Mira los enlaces del canal!
 !ect redes 30 Los enlaces actualizados están en los paneles.
 !dct redes
 !timer list
@@ -116,9 +118,9 @@ Los mensajes que se repiten se publican con un temporizador mientras tu canal es
 | Premium | Múltiplos de `5` desde `5` hasta `180` minutos | `15` |
 | Pro | Cualquier número entero de minutos desde `1` hasta `180` | `50` |
 
-- **Nombre:** hasta `30` caracteres: letras, números y guiones bajos.
+- **Nombre:** hasta `30` caracteres: letras, números y guiones bajos. Se guarda en minúsculas y se busca sin distinguir mayúsculas.
 - **Mensaje:** hasta `350` caracteres. Los mensajes pueden usar funciones `$(...)`.
-- **Intervalo:** un número de minutos, o agrega `m` o `h` (por ejemplo `15m` o `1h`).
+- **Intervalo:** un número de minutos, o agrega `m` o `h` (por ejemplo `15m` o `1h`). Al editar, una primera palabra con formato de intervalo se interpreta como intervalo, no como comienzo del mensaje.
 - **Cambio de plan:** si un intervalo deja de estar permitido, el temporizador sigue funcionando. Elige un intervalo permitido antes de editarlo de nuevo.
 
 ## Escribir una respuesta
@@ -225,7 +227,7 @@ Si existe un trigger llamado `airhorn`, se reproduce cuando se ejecuta el comand
 !cc creador Mira mis enlaces aquí: #(discord)
 ```
 
-Esto ejecuta el comando `discord` dentro de `creador`.
+Esto ejecuta `discord` después de la respuesta de `creador` y envía su respuesta por separado.
 
 </TabItem>
 </Tabs>

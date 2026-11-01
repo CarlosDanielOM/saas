@@ -90,7 +90,7 @@ Usa la vista previa de **Pruébalo** para revisar el diseño y las alertas de ej
 
 ## Colas y reproducción
 
-- **Esperar entre sí** es una opción para cada tipo de evento. Los eventos seleccionados comparten una cola y se reproducen uno a la vez. Los demás se reproducen al momento.
+- **Esperar entre sí** es una opción para cada tipo de evento. Los eventos seleccionados comparten una cola y se reproducen uno a la vez. Los demás pueden reproducirse a la vez, pero las alertas que usan la misma capa de alerta esperan a que quede libre.
 - Una fuente conectada recibe los eventos nuevos mientras sigue conectada.
 - Una recarga o una desconexión breve recupera la reproducción pendiente en unos 2 minutos. Si una fuente sigue desconectada más tiempo, su reproducción pendiente se descarta, y los eventos de ese periodo no se reproducen cuando vuelve.
 - Cada fuente conserva hasta 200 eventos pendientes durante 30 minutos. Cada canal conserva hasta 512 MB de medios generados. Primero se eliminan los eventos más antiguos.

@@ -7,7 +7,7 @@ sidebar:
 
 import { Aside } from '@astrojs/starlight/components';
 
-Estas recetas son puntos de partida. Cada una es una respuesta completa de un comando personalizado, o un par de comandos cuando se indica. Prueba las recetas que cambian el estado del canal en un comando que solo tú puedas usar antes de abrirlo a otros. La sintaxis está en [Sintaxis y datos AST](/es/commands/advanced/syntax/), y todas las funciones están en la [Referencia de funciones AST](/es/commands/advanced/functions/).
+Estas recetas son puntos de partida. Cada una es una respuesta completa de un comando personalizado, o un par de comandos cuando se indica. Prueba las recetas que cambian el estado del canal en un comando que solo tú puedas usar antes de abrirlo a otros. La sintaxis está en [Sintaxis y datos AST](/es/commands/advanced/syntax/), y las funciones habituales están en la [Referencia de funciones AST](/es/commands/advanced/functions/).
 
 ## Contadores
 
@@ -53,7 +53,7 @@ Con una segunda rama vacía, no se publica nada cuando la condición es falsa.
 
 ### Pausar un comando por un tiempo
 
-Esto desactiva `!spoilers` durante cinco minutos y luego lo vuelve a activar:
+Esto desactiva `!spoilers` durante cinco minutos y luego restaura su estado anterior:
 
 ```bash
 $(disable.command spoilers 300)
@@ -64,13 +64,13 @@ La duración está en segundos, de `1` a `604800`. El comando vuelve al estado q
 
 ### Enviar un mensaje y una acción más tarde
 
-El timer devuelve el control de inmediato. Su mensaje y su acción se ejecutan después de cinco minutos, incluso si el bot se reinicia en medio:
+El timer devuelve el control de inmediato. Su mensaje y su acción quedan programados para cinco minutos después y pueden sobrevivir a un reinicio del bot:
 
 ```bash
 $(timer 300 "¡Se acabaron los cinco minutos!" $(trigger.send airhorn))
 ```
 
-Un timer se ejecuta como máximo una vez, y expira si llega con más de 10 minutos de retraso. Consulta [Ejecución, errores y límites](/es/commands/advanced/execution/).
+Un timer se ejecuta como máximo una vez, y expira al llegar a 10 minutos de retraso. La ejecución no está garantizada si ocurre un fallo después de reclamarlo. Consulta [Ejecución, errores y límites](/es/commands/advanced/execution/).
 
 ## Resultados de predicciones
 

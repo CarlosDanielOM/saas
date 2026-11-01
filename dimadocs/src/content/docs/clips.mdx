@@ -14,7 +14,7 @@ The **Clip overlay** plays a Twitch clip on your stream. Add its URL to OBS once
 3. Set **Clip duration** from 1 to 30 seconds. The default is 30.
 4. Select **Copy** next to **Browser Source URL**. In OBS, add a **Browser Source** with that URL. Use a width of 800. For a height, use 450 for Third, Cinema, Pill, HUD, and Slash, and 225 for the others.
 5. Keep the overlay open. Opening the URL in a normal browser tab also connects it.
-6. Select **Test on this page**. The page shows a live preview and sends a sample clip. If the overlay isn't open yet, the page asks you to open the URL first.
+6. Select **Test this design**. The page opens an embedded overlay preview and plays an available clip from your channel. If the overlay isn't connected yet, the page asks you to open the Browser Source URL first. Testing requires a clip to be available on your channel.
 
 The design and duration are part of the URL. If you change either one, copy the new URL into OBS. The page remembers your choices for each channel in this browser only, so set them again on another computer.
 
@@ -37,10 +37,10 @@ Twitch only creates clips while the channel is live. You can change who can use 
 
 ## How clips reach the overlay
 
-- **`!promo <user>`** (moderators and above by default) posts a chat message and plays a clip of that streamer in the overlay.
+- **`!promo <user>`** (moderators and above by default) shows a clip of that streamer in the overlay when one is available.
 - **`!so <user>`** (moderators and above by default) sends the shoutout and shows one of that streamer's clips when one is available.
 
-Clips play one at a time. If a clip is already playing, the next one waits in the queue.
+Clips are processed one at a time; a clip requested while another is playing waits in the queue. The overlay must be connected when a clip is requested: a request made while disconnected is skipped rather than saved for later. Download failures or playback timeouts can also prevent a clip from playing.
 
 ## Troubleshooting
 

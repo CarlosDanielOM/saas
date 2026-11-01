@@ -16,7 +16,7 @@ Para ver esta página necesitas el permiso `ai:view`. Para guardar cambios neces
 <Steps>
 
 1. Abre **Módulos → Personalidad IA** en el panel de tu canal.
-2. En **Activar o desactivar**, deja **Chat IA activado**. El bot responde cuando alguien lo menciona y ejecuta los comandos `$(ai)`.
+2. En **Activar o desactivar**, activa **Chat IA** para permitir respuestas a menciones directas. Este interruptor no controla los comandos `$(ai)`, que usan una ruta de invocación independiente.
 3. En **Personalidades**, edita la que quieras. Escribe cómo debe hablar el bot en **Cómo habla el bot**. Este texto guía cada respuesta.
 4. Selecciona **Usar en el chat** en esa personalidad. El bot habla como una personalidad a la vez.
 5. Añade **Reglas que siempre sigue** y **Habituales que conoce el bot** si los necesitas.
@@ -62,12 +62,12 @@ El bot puede aprender del chat y de tus resúmenes de directos. Tú decides qué
 
 | Control | Predeterminado | Qué permite |
 |---|---|---|
-| **Aprender del chat** | Activado | Si está desactivado, el bot solo sabe lo que escribes en esta página. No se proponen ni guardan memorias nuevas. |
+| **Aprender del chat** | Activado | Controla el aprendizaje de recuerdos a partir del chat y si se aplican las acciones de memoria propuestas por los resúmenes. Si se desactiva, aún se puede generar el resumen y proponer cambios, pero el worker no los aplica. |
 | **Gustos de los espectadores** | Activado | Recuerda preferencias, como juegos favoritos. |
 | **Bromas recurrentes** | Activado | Recuerda chistes que se repiten y referencias compartidas. |
 | **Datos sensibles** | Desactivado | Permite datos personales que comparten los espectadores. Las memorias de riesgo medio y alto necesitan este control activado. |
 
-Los tres tipos de arriba no están disponibles mientras **Aprender del chat** esté desactivado.
+Los tres tipos anteriores no están disponibles para el aprendizaje de memorias si **Aprender del chat** está desactivado. Los resúmenes de stream usan sus propios interruptores para decidir si se genera una recapitulación, pero este mismo control de aprendizaje determina si se aplican las acciones de memoria propuestas. Consulta [Resúmenes de Directo](/es/stream-summaries/).
 
 ### Mantenimiento automático
 

@@ -12,7 +12,7 @@ Los comandos integrados son herramientas listas que vienen con DomDimaBot. Los e
 
 - **En el dashboard:** abre **Comandos**, busca la sección **Incluidos** y usa el interruptor **Activo en el chat**. Abre un comando para cambiar **Quién puede usarlo**.
 - **En el chat:** los moderadores pueden usar `!enable <nombre>` y `!disable <nombre>`. El nombre funciona con o sin `!`.
-- **Los comandos integrados no se pueden eliminar.**
+- **Los comandos integrados reservados no se pueden eliminar.** Las plantillas predeterminadas editables, como `!s` y `!followage`, sí se pueden editar o eliminar.
 - **Tiempos de espera:** la mayoría de los comandos integrados esperan 10 segundos entre usos. La espera es compartida por todo el canal. `!s` y `!vanish` no tienen espera.
 
 Los canales nuevos empiezan con `!s` activo para todos y `!clearchat` desactivado. Los canales existentes conservan su configuración guardada.
@@ -24,7 +24,7 @@ En las tablas siguientes, **Cualquiera** significa cualquier persona en el chat,
 | Comando | Uso | Quién puede usarlo | Qué hace |
 |---|---|---|---|
 | `!commands` | `!commands` | Cualquiera | Muestra los comandos que la persona puede usar. No incluye palabras clave ni mensajes que se repiten. |
-| `!followage` | `!followage [usuario]` | Cualquiera | Muestra cuánto tiempo lleva siguiendo el canal quien escribe, o el usuario que indiques, en años, meses, días y horas. |
+| `!followage` | `!followage` | Cualquiera | La respuesta predeterminada muestra cuánto tiempo lleva siguiendo el canal quien escribe, en años, meses, días y horas. Su plantilla editable no usa el nombre indicado como argumento. |
 
 ## Diversión y juegos
 
@@ -51,10 +51,10 @@ En las tablas siguientes, **Cualquiera** significa cualquier persona en el chat,
 |---|---|---|---|
 | `!clip` | `!clip [segundos] [título]` | Cualquiera | Crea un clip y publica su enlace. Si la primera palabra es un número del 5 al 60, define la duración. Cualquier otra primera palabra inicia el título. Los números fuera de 5–60 usan 30 segundos. |
 | `!so` | `!so <usuario>` | Moderadores o más | Publica un anuncio de shoutout con el enlace del canal y el último juego. Envía el shoutout nativo de Twitch y muestra uno de sus clips si hay. La misma persona recibe un shoutout nativo de Twitch como máximo una vez cada 2 minutos. |
-| `!promo` | `!promo <usuario>` | Moderadores o más | Publica un mensaje de chat con el nombre del canal, el juego, el título y el enlace. Úsalo cuando quieras que los espectadores en el móvil vean el shoutout. |
+| `!promo` | `!promo <usuario>` | Moderadores o más | Muestra un clip del canal indicado cuando hay uno disponible. |
 | `!anuncio` | `!anuncio <mensaje>` | Moderadores o más | Publica un anuncio de Twitch. El mensaje puede tener hasta 300 caracteres. |
-| `!game` | `!game <nombre>` | Moderadores o más | Cambia la categoría del stream. Si ninguna categoría coincide exactamente con el nombre, el bot usa el primer resultado de búsqueda. Sin permiso, o sin nombre, responde con la categoría actual. |
-| `!title` | `!title <título>` | Moderadores o más | Cambia el título del stream. Sin permiso, o sin título, responde con el título actual. |
+| `!game` | `!game <nombre>` | Moderadores o más | Cambia la categoría del stream. Si ninguna categoría coincide exactamente con el nombre, el bot usa el primer resultado de búsqueda. Sin nombre, responde con la categoría actual. Primero se comprueba el acceso al comando. |
+| `!title` | `!title <título>` | Moderadores o más | Cambia el título del stream. Sin título, responde con el título actual. Primero se comprueba el acceso al comando. |
 | `!onlyemotes` | `!onlyemotes [segundos]` | Moderadores o más | Activa o desactiva el chat solo con emotes. Cada uso cambia el modo. Agrega segundos para activarlo durante ese tiempo. |
 | `!clearchat` | `!clearchat` | Moderadores o más (desactivado por defecto) | Limpia el chat. |
 
@@ -76,7 +76,7 @@ En las tablas siguientes, **Cualquiera** significa cualquier persona en el chat,
 |---|---|---|---|
 | `!mod` | `!mod <usuario>` | Editores o más | Agrega un moderador. |
 | `!unmod` | `!unmod <usuario>` | Editores o más | Quita un moderador. |
-| `!vip` | `!vip <usuario> [días]` | Editores o más | Agrega un VIP. Con días (`1`–`365`), el estado VIP termina después de esa cantidad de días. Sin días, dura hasta que lo quites. |
+| `!vip` | `!vip <usuario> [días]` | Editores o más | Agrega un VIP. Con días (`1`–`365`), el bot programa la retirada después de ese plazo. El VIP se añade antes de validar la duración, por lo que una duración inválida puede dejar al usuario como VIP. Sin días, dura hasta que lo quites. |
 | `!unvip` | `!unvip <usuario>` | Editores o más | Quita un VIP. |
 
 ## Gestionar comandos desde el chat
@@ -98,7 +98,7 @@ En las tablas siguientes, **Cualquiera** significa cualquier persona en el chat,
 ### Ruleta rusa
 
 - Cada jalón tiene 1 posibilidad en 3 de disparar.
-- La primera pérdida da un timeout de 10 segundos. Cada pérdida siguiente suma 10 segundos: 20, luego 30, y así sucesivamente. El conteo se reinicia 10 minutos después de la primera pérdida.
+- La primera pérdida normalmente da un timeout de 10 segundos. Cada pérdida siguiente suma 10 segundos: 20, luego 30, y así sucesivamente. Un canal tiene un mínimo de 300 segundos. El conteo se reinicia 10 minutos después de la primera pérdida.
 - Los editores y el dueño del canal no pueden jugar.
 - Un moderador que pierde deja de ser moderador durante el timeout y luego vuelve a serlo.
 

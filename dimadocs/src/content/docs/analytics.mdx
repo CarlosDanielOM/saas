@@ -5,11 +5,11 @@ sidebar:
   order: 8
 ---
 
-The **Analytics** hub groups your channel's audience tools in one place. It has one working tool today, **Follow Ledger**, which lists everyone who follows your channel. The hub and Follow Ledger need a **Premium** or **Pro** plan.
+The **Analytics** hub groups your channel's audience tools in one place. It includes **Follow Ledger**, which lists followers from the latest sync, and **Stream Timeline**, which shows a stream’s audience and activity over time. The Analytics card in Modules is listed as **Premium**; Follow Ledger is locked on Free. The hub itself needs the **Analytics** view permission, and Stream Timeline is available on Free from the hub or dashboard.
 
 **Who can open it:** the channel owner, or an admin with the **Analytics** view permission.
 
-The hub is marked **Beta**. It also lists planned tools, such as chat activity and stream retention. Those are not available yet.
+The hub is marked **Beta**.
 
 ## Open Follow Ledger
 
@@ -20,7 +20,7 @@ On a Free channel, the card and page show a locked notice. Owners see an **Upgra
 
 ## What Follow Ledger shows
 
-- **Current followers:** the total of people who follow your channel right now.
+- **Current followers:** the number of people listed as following your channel in the latest sync.
 - **Mutual followers:** people you also follow back.
 - **Following you only:** people who follow you but whom you don't follow back.
 
@@ -30,25 +30,29 @@ Select a total to filter the list. Then:
 - **Sort** by follow date, **Newest** or **Oldest**.
 - Each row shows the follow date and how long ago it happened.
 
-Only current followers appear. People who have unfollowed are stored, but the dashboard doesn't show them.
+The default list shows current followers. Unfollows are marked as ended and hidden from this view; the page doesn't publish how long ended records are kept.
 
 ## How often it updates
 
-- The bot syncs your follower list from Twitch **once a day, at midnight UTC**.
-- The **Refresh** button reloads the saved list. It doesn't fetch new data from Twitch, so a new follower may not appear until the next daily sync.
+- The worker schedules a daily sync for **midnight UTC** and processes channels in sequence, so individual channels may finish later.
+- The **Refresh** button reloads the saved list. It doesn't fetch new data from Twitch, so a new follower may not appear until a later sync.
+
+## Stream Timeline
+
+Open **Stream Timeline** from the Analytics hub, or from the dashboard while the channel is live. It shows available viewer, chat and event data for a selected stream. The owner can add private notes. Comparing streams requires Premium or Pro; individual command and emote breakdowns require Pro. Credit details require Pro and billing access. Data depends on what was collected.
 
 ## Stream history on your dashboard
 
-Your main dashboard shows **Last 30 Days Stream History**, with average viewers, new followers, and Bits for the last 30 days. This summary always covers 30 days, whatever your plan.
+Your main dashboard shows a daily summary for the last 30 days, including stream hours, viewers, follows, subs, Bits, and tips. This summary always covers 30 days, whatever your plan.
 
 ## Data retention
 
-The [Plans](/plans/) page lists stream analytics retention of **30 days on Free, 180 days on Premium, and 365 days on Pro**. Today the system deletes stored viewer snapshots older than **90 days** for every plan, so don't count on the longer periods for viewer data.
+Stream Timeline data is available for **90 days on every plan**, and stored viewer snapshots older than 90 days are deleted for every plan. The public Pricing comparison currently shows different retention figures; use this 90-day period for timeline and viewer data. See [Plans](/plans/).
 
 Follow Ledger doesn't publish a retention period.
 
 ## Troubleshooting
 
-- **The hub or Follow Ledger is locked:** the channel needs Premium or Pro.
+- **The Follow Ledger card is locked:** the page shows Premium or Pro as the required plan. You also need the **Analytics** view permission to open the hub and page.
 - **You can't open the page:** you need to be the channel owner or have the **Analytics** view permission. Your plan doesn't replace this access.
 - **Follow Ledger shows an error:** select **Refresh** and try again. If it keeps failing, check that the channel's Twitch authorization is current.

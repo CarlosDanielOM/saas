@@ -3,11 +3,11 @@ title: Roulette Alpha
 description: Create weighted wheel, reel, card, and last-one-standing draws, connect the OBS overlay, and automate roulette with AST.
 ---
 
-Roulette Alpha gives a channel owner a saved prize library, a live draw preview, and a read-only OBS browser source. The dashboard and roulette actions require **Pro**. During Alpha, the channel owner and full-access channel admins can manage the channel's roulettes.
+Roulette Alpha gives a channel owner a saved prize library, a live draw preview, and a read-only OBS browser source. Roulette is available on **Free**, Premium, and Pro. During Alpha, the channel owner and full-access channel admins can manage the channel's roulettes.
 
 ## Open Roulette
 
-1. Sign in as the Twitch account that owns the channel.
+1. Sign in as the channel owner or a full-access channel admin.
 2. Open the channel dashboard and choose **Modules → Roulette**.
 3. Choose **New roulette**, enter a name, and pick a style. The **Command ID** (alias) fills in from the name, such as `giveaways`; you can edit it.
 
@@ -53,7 +53,7 @@ The dashboard preview can run a draw without OBS. OBS is needed to show the draw
 
 ## Automate Roulette with AST
 
-Roulette functions are available in commands and other AST contexts. They require the channel's Pro access. The starter examples use the alias `giveaways`:
+Roulette functions are available in commands and other AST contexts. They are available on Free, Premium, and Pro. The starter examples use the alias `giveaways`:
 
 ```text
 $(roulette.add giveaways "VIP for a day" 3 10)
@@ -67,8 +67,7 @@ For a winning-item script, for example, `$(timer 300 $(user), you can speak agai
 
 ## Limits and troubleshooting
 
-- **Roulette is unavailable:** confirm the channel has Pro and that you are signed in as its owner. Access is checked by the dashboard, AST functions, and the overlay.
+- **Roulette is unavailable:** confirm that you are signed in as the owner or a full-access channel admin and that the overlay link is current.
 - **A draw will not start:** add at least one item, check the display's copy limit, and wait for any active draw to finish.
 - **OBS shows no roulette:** open the generated URL in OBS, confirm the overlay is visible, and generate a fresh token if the link was rotated.
 - **A winner action did not run:** the action runs after the draw completes. The system makes at most one execution attempt; a process interruption after the action is claimed can prevent it from finishing.
-- **Pro is removed:** saved roulettes remain, and an already-started draw still completes, but new dashboard, AST, and overlay access requires Pro.
