@@ -1472,7 +1472,7 @@ body:has(starlight-menu-button[aria-expanded='true']) .da-launcher {
 .da-answer p,
 .da-answer ul,
 .da-answer ol,
-.da-answer pre,
+.da-answer .da-code,
 .da-answer blockquote,
 .da-answer .da-md-table {
   margin: 0 0 0.75rem;
@@ -1489,7 +1489,7 @@ body:has(starlight-menu-button[aria-expanded='true']) .da-launcher {
 
 .da-answer li > ul,
 .da-answer li > ol,
-.da-answer li > pre,
+.da-answer li > .da-code,
 .da-answer li > p {
   margin: 0.35rem 0 0;
 }
@@ -1524,30 +1524,50 @@ body:has(starlight-menu-button[aria-expanded='true']) .da-launcher {
   font-size: 0.85em;
 }
 
-.da-answer pre {
-  position: relative;
-  padding: 0.75rem 0.9rem;
+.da-code {
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--bg) 70%, var(--tile));
+}
+
+/* Header strip above the code: language on the left, Copy on the right. It never scrolls. */
+.da-code__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0.25rem 0.35rem 0.25rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--btn) 55%, transparent);
+}
+
+.da-code__lang {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.da-answer .da-code pre {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .da-answer pre code {
   display: block;
   padding: 0;
-  padding-inline-end: 3.5rem;
   background: none;
   font-size: 0.85rem;
   white-space: pre;
 }
 
 .da-copy {
-  position: absolute;
-  top: 0.4rem;
-  inset-inline-end: 0.4rem;
+  flex: none;
   min-height: 2rem;
-  padding: 0 0.6rem;
+  padding: 0 0.75rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   background: var(--tile);

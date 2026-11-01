@@ -38,7 +38,7 @@ const fakeApi = http.createServer((req, res) => {
     send('start', { id: '00000000-0000-4000-8000-00000000000' + assistantCalls.length % 10 });
     send('status', { phase: 'thinking' });
     const url = `https://docs.domdimabot.com/${es ? 'es/' : ''}tts/`;
-    for (const delta of [`${es ? 'Abre' : 'Open'} **Modules → Text to speech**.\n\n`, '```text\n!s Hello chat!\n```\n\n', `[${es ? 'Texto a voz' : 'Text to Speech'}](${url})`]) send('text', { delta });
+    for (const delta of [`${es ? 'Abre' : 'Open'} **Modules → Text to speech**.\n\n`, '```text\n!cc -ul=everyone mivoz %(**voz $(user)) Voz guardada: &p1 — a long line that must scroll sideways on phones\n```\n\n', `[${es ? 'Texto a voz' : 'Text to Speech'}](${url})`]) send('text', { delta });
     send('done', { id: 'x', sources: [{ title: es ? 'Texto a voz' : 'Text to Speech', url }] });
     res.end();
   });
@@ -104,7 +104,19 @@ for (const [lang, prefix, askLabel, guideTitle] of [['en', '', 'Ask the docs', '
       assert.equal(await page.locator('.da-msg--user .da-bubble').innerText(), suggestion);
       assert.equal(await page.locator('.da-source').getAttribute('href'), `${prefix}/tts/`);
       assert.equal(await page.locator('.da-answer a').getAttribute('href'), `${prefix}/tts/`);
-      assert.equal(await page.locator('.da-answer pre .da-copy').count(), 1);
+      assert.equal(await page.locator('.da-answer .da-code__bar .da-copy').count(), 1);
+      // Copy sits in the bar above the code: never over the code, and it doesn't move when the code scrolls.
+      const pre = page.locator('.da-answer .da-code pre');
+      const copy = page.locator('.da-answer .da-copy');
+      const before = await copy.boundingBox();
+      const preBox = await pre.boundingBox();
+      assert.ok(before.y + before.height <= preBox.y + 1, 'Copy button does not overlap the code');
+      if (width < 800) {
+        assert.ok(await pre.evaluate((el) => el.scrollWidth > el.clientWidth), 'long line scrolls on phones');
+        await pre.evaluate((el) => { el.scrollLeft = 200; });
+        const after = await copy.boundingBox();
+        assert.equal(Math.round(after.x), Math.round(before.x), 'Copy button stays put while code scrolls');
+      }
       assert.equal(await page.locator('.da-answer strong').first().innerText(), 'Modules → Text to speech');
       const asked = assistantCalls.filter((call) => call.path === '/docs-assistant/ask').at(-1).body;
       assert.equal(asked.page.lang, lang);

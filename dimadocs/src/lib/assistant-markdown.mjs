@@ -134,7 +134,10 @@ function renderBlocks(lines, options) {
       while (i < lines.length && !close.test(lines[i])) code.push(lines[i++].replace(new RegExp(`^\\s{0,${pad}}`), ''));
       i++; // closing fence (or end of a still-streaming answer)
       const lang = fence[2] ? ` data-lang="${escapeHtml(fence[2])}"` : '';
-      out.push(`<pre${lang}><code>${escapeHtml(code.join('\n'))}</code></pre>`);
+      // A header bar above the scrolling <pre> holds the language and (in the UI) a Copy button,
+      // so the button never covers code or slides when the code scrolls sideways.
+      const label = fence[2] && !/^(text|txt|plain|plaintext)$/i.test(fence[2]) ? escapeHtml(fence[2]) : '';
+      out.push(`<div class="da-code"><div class="da-code__bar"><span class="da-code__lang">${label}</span></div><pre${lang}><code>${escapeHtml(code.join('\n'))}</code></pre></div>`);
       continue;
     }
 

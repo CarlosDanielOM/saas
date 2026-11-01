@@ -449,17 +449,17 @@ const t = spanish
     }
 
     addCopyButtons(answer: HTMLElement) {
-      answer.querySelectorAll('pre').forEach((pre) => {
+      answer.querySelectorAll<HTMLElement>('.da-code').forEach((box) => {
         const button = el('button', 'da-copy', this.ui.copy);
         button.type = 'button';
         button.addEventListener('click', async () => {
           try {
-            await navigator.clipboard.writeText(pre.querySelector('code')?.textContent || '');
+            await navigator.clipboard.writeText(box.querySelector('code')?.textContent || '');
             button.textContent = this.ui.copied;
             setTimeout(() => (button.textContent = this.ui.copy), 1500);
           } catch {}
         });
-        pre.append(button);
+        box.querySelector('.da-code__bar')!.append(button);
       });
     }
 

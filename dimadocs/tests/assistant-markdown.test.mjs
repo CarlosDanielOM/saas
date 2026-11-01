@@ -62,7 +62,8 @@ test('headings, quotes, rules, italics, and line breaks inside paragraphs', () =
 test('code spans and fences keep their content literally', () => {
   assert.match(md('Use `$(ban &p1 600)` or `*not bold*`'), /<code>\$\(ban &amp;p1 600\)<\/code> or <code>\*not bold\*<\/code>/);
   const fence = md('```\n!cc -cd=10 hello **Hi** $(user)\n<b>\n```');
-  assert.equal(fence, '<pre><code>!cc -cd=10 hello **Hi** $(user)\n&lt;b&gt;</code></pre>');
+  assert.equal(fence, '<div class="da-code"><div class="da-code__bar"><span class="da-code__lang"></span></div><pre><code>!cc -cd=10 hello **Hi** $(user)\n&lt;b&gt;</code></pre></div>');
+  assert.match(md('```js\nx\n```'), /<span class="da-code__lang">js<\/span>/, 'real languages are labelled; text is not');
 });
 
 test('half-streamed input renders without throwing', () => {
