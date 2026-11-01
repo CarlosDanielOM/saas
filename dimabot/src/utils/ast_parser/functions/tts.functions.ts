@@ -1,5 +1,6 @@
 import { formatTtsStatus } from '../../tts/tts_status.js';
 import { queueDefaultTts } from '../../../utils/tts/queue_default_tts.util.js';
+import { emoteNamesFromEventData } from '../../../utils/tts/normalize_tts_message.util.js';
 import { registerFunction, type FunctionHandler } from '../evaluator.js';
 import { trackTts } from '../../../utils/posthog_events.js';
 
@@ -61,7 +62,6 @@ async function queueTts(
     ctx: Parameters<FunctionHandler>[1],
     cloneName?: string
 ): Promise<QueueTtsResult> {
-    const fragments = (ctx.eventData?.message as { fragments?: { type?: string; text?: string }[] } | undefined)?.fragments;
     const result = await queueDefaultTts({
         channelID: ctx.broadcasterId,
         rawMessage: message,
@@ -72,8 +72,7 @@ async function queueTts(
         userLogin: ctx.userLogin,
         userName: ctx.userDisplayName,
         userLevel: ctx.userLevel,
-        emoteNames: fragments?.filter(fragment => fragment.type === 'emote' && typeof fragment.text === 'string')
-            .map(fragment => fragment.text!)
+        emoteNames: emoteNamesFromEventData(ctx.eventData)
     });
 
     return {

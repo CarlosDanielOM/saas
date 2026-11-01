@@ -1,5 +1,6 @@
 import { registerFunction, type FunctionHandler } from '../evaluator.js';
 import { nextPetAction } from '../effects.js';
+import { emoteNamesFromEventData } from '../../tts/normalize_tts_message.util.js';
 
 function petHandler(operation: 'talk' | 'ask'): FunctionHandler {
     return async (args, ctx) => {
@@ -13,7 +14,9 @@ function petHandler(operation: 'talk' | 'ask'): FunctionHandler {
         try {
             // Admission persists + wakes the API only. Never import/start the provider runtime here.
             const { admitPetAction } = await import('../../../pets/admission.js');
-            await admitPetAction({ channelId: ctx.broadcasterId, operation, text, ...identity });
+            // Like $(tts), keep the emotes Twitch tagged in the chat message; the channel catalog misses other channels' emotes.
+            const emoteNames = operation === 'talk' ? emoteNamesFromEventData(ctx.eventData) : undefined;
+            await admitPetAction({ channelId: ctx.broadcasterId, operation, text, ...identity, ...(emoteNames?.length ? { emoteNames } : {}) });
             return '';
         } catch (error) {
             const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';

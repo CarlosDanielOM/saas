@@ -98,6 +98,20 @@ test('configured viewer commands admit talk/ask once and preserve ordinary chat 
         { category: 'pet', planTier: 'premium', surfaces: ['authoring'] });
 });
 
+test('pet.talk carries emotes Twitch tagged in the chat message; pet.ask does not', async () => {
+    const chat = { ...event, message: { text: 'hi pookyDerp Kappa', fragments: [{ type: 'text', text: 'hi ' },
+        { type: 'emote', text: 'pookyDerp' }, { type: 'text', text: ' ' }, { type: 'emote', text: 'Kappa' }] } };
+    for (const operation of ['talk', 'ask'] as const) {
+        define(operation, `$(pet.${operation} &t)`);
+        const result = await commandHandler(channelID, chat, operation, 'hi pookyDerp Kappa', chatAuth, undefined, ingress());
+        assert.equal(result.error, false);
+    }
+    assert.deepEqual(admissions.map(input => [input.operation, input.emoteNames]), [['talk', ['pookyDerp', 'Kappa']], ['ask', undefined]]);
+    define('plain', '$(pet.talk &t)');
+    await command('plain', 'no emotes here');
+    assert.equal(admissions.at(-1)!.emoteNames, undefined);
+});
+
 test('command permission, invalid policy and disabled gates run before admission despite spoofed badges', async () => {
     for (const extras of [{ userLevel: 7 }, { permissionExpression: { role: 'mod' } }, { permissionExpression: {} }, { enabled: false }]) {
         define('denied', '$(pet.talk never)', extras);

@@ -108,6 +108,15 @@ export function buildSpokenUserMessage(
     return `${cleanedUserName} dice: ${message}`;
 }
 
+/** Emote names Twitch tagged in a chat message, including other channels' emotes the chatter owns. */
+export function emoteNamesFromEventData(eventData: unknown): string[] | undefined {
+    const fragments = (eventData as { message?: { fragments?: unknown } } | undefined)?.message?.fragments;
+    if (!Array.isArray(fragments)) return undefined;
+    return fragments
+        .filter((fragment): fragment is { text: string } => fragment?.type === 'emote' && typeof fragment.text === 'string')
+        .map(fragment => fragment.text);
+}
+
 export function extractEmoteNames(message: string, emotes?: Record<string, string[]>): string[] {
     if (!message || !emotes) {
         return [];

@@ -16,6 +16,13 @@ export interface AdmitPetActionInput {
     channelId: string; operation: 'talk' | 'ask'; text: string;
     origin: { kind: 'chat-command' | 'twitch-event' | 'oauth_desktop'; id: string; occurredAt: string; sessionId?: string };
     actionKey: string; actor: { userId: string; displayName: string; chat?: { login: string; message: string; badges: { set_id: string; id: string; info: string }[] } };
+    /** Emotes Twitch tagged in the triggering chat message, so pet.talk can skip them like $(tts). */
+    emoteNames?: string[];
+}
+function cleanEmoteNames(names: unknown): string[] | undefined {
+    if (!Array.isArray(names)) return undefined;
+    const clean = [...new Set(names.filter((name): name is string => typeof name === 'string' && !!name.trim() && name.length <= 100))].slice(0, 200);
+    return clean.length ? clean : undefined;
 }
 export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requestId: string; status: string }> {
     if (!input || !/^\d{1,30}$/.test(input.channelId) || !['talk', 'ask'].includes(input.operation) ||
@@ -138,7 +145,8 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
     const ttsSpeechId = lane === 'tts' ? `PET${generateSpeechID(13)}` : undefined;
     try {
         // Only the API runtime starts queued rows (FIFO) in the single active slot.
-        await PetRequest.create({ _id: requestId, ...input, ownerId, payloadHash, status: 'queued', version: 1, lane, ...(ttsSpeechId ? { ttsSpeechId } : {}),
+        const emoteNames = input.operation === 'talk' ? cleanEmoteNames(input.emoteNames) : undefined;
+        await PetRequest.create({ _id: requestId, ...input, emoteNames, ownerId, payloadHash, status: 'queued', version: 1, lane, ...(ttsSpeechId ? { ttsSpeechId } : {}),
             admitted: false, generation: runtime.generation, settingsRevision: configuration.revision,
             phaseDeadline: new Date(now.getTime() + PET_QUEUE_WAIT_MS), createdAt: now, expiresAt: new Date(now.getTime() + 7 * 86400_000) });
     } catch (error) {

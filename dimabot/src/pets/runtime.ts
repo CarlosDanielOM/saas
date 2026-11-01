@@ -184,7 +184,8 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         const tts = resolveTtsForCreditStatus({ mode: 'speak' as const, text, ...configuration.settings.tts }, creditStatus, streamer.plan_tier);
         if (request.operation === 'talk') {
             const settings = await getChannelTtsSettings(request.channelId);
-            const emoteNames = settings.filters.skipEmotes ? await getTtsEmoteNames(request.channelId) : [];
+            const emoteNames = settings.filters.skipEmotes
+                ? [...new Set([...await getTtsEmoteNames(request.channelId), ...(request.emoteNames ?? [])])] : [];
             signal.throwIfAborted();
             await current(request);
             const desktop = request.origin.kind === 'oauth_desktop';

@@ -291,6 +291,15 @@ assert.equal(filteredBilling.metadata.characters, filteredRecord.outputText.leng
 // This virtual player has actually finished. An error now requests a fenced
 // stop and cannot stand in for confirmed silence on a legacy desktop.
 await desktop.send('pet:playback', identityFor(filteredPlay, 0, 'ended'));
+// Emotes from other channels are not in this channel's catalog; chat-tagged names still skip them, like $(tts).
+const taggedInput = { ...action('hola pookyDerp evilto8PAM Pog'), emoteNames: ['pookyDerp', 'evilto8PAM', 7] };
+const tagged = await admitPetAction(taggedInput);
+const taggedPlay = await desktop.event('pet:play', data => data.requestId === tagged.requestId);
+const taggedRecord = await PetRequest.findById(tagged.requestId).lean();
+assert.deepEqual(taggedRecord.emoteNames, ['pookyDerp', 'evilto8PAM'], 'only valid tagged emote names persist');
+assert.equal(taggedRecord.outputText, 'hola');
+assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).at(-1).body.text, 'hola');
+await desktop.send('pet:playback', identityFor(taggedPlay, 0, 'ended'));
 const emptyCounts = { providers: await redis.lLen('pet:test:provider-calls'), billing: await redis.lLen('pet:test:billing-events') };
 const empty = await admitPetAction(action('Kappa [happy]'));
 const emptyRecord = await until(() => PetRequest.findOne({ _id: empty.requestId, status: 'failed', errorCode: 'no_speakable_text' }).lean(), 'empty filtered speech fails');

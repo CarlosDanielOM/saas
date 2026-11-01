@@ -9,6 +9,8 @@ export interface PetRequestRecord {
     actionKey: string; actor: { userId: string; displayName: string; chat?: { login: string; message: string; badges: { set_id: string; id: string; info: string }[] } }; payloadHash: string;
     admitted: boolean; startBefore?: Date; generation: number; settingsRevision: number; status: PetStatus; version: number;
     outputText?: string; errorCode?: string; phaseDeadline: Date;
+    /** pet.talk: emotes Twitch tagged in the chat message (skipped when the channel ignores emotes). */
+    emoteNames?: string[];
     deliveryAttempted?: boolean; audioFetched?: boolean; playbackStarted?: boolean;
     /** 'tts' requests wait in the normal TTS queue as item `ttsSpeechId`; others use the pet's own queue. */
     lane?: 'independent' | 'tts'; ttsSpeechId?: string;
@@ -21,6 +23,7 @@ const request = new Schema<PetRequestRecord>({
     actor: { userId: String, displayName: String, chat: { login: String, message: String, badges: [{ set_id: String, id: String, info: String, _id: false }] } }, payloadHash: String,
     admitted: { type: Boolean, default: false }, startBefore: Date, generation: Number, settingsRevision: Number, status: { type: String, enum: PET_STATUSES }, version: Number,
     deliveryAttempted: Boolean, audioFetched: Boolean, playbackStarted: Boolean, lane: { type: String, enum: ['independent', 'tts'] }, ttsSpeechId: String, privateDir: String, outputText: String, errorCode: String, phaseDeadline: Date,
+    emoteNames: { type: [String], default: undefined },
     audio: { type: new Schema({ path: String, mimeType: String, durationMs: Number }, { _id: false }), default: null },
     createdAt: Date, expiresAt: Date
 }, { versionKey: false, collection: 'pet_requests' });

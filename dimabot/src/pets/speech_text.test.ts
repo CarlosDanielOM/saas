@@ -32,3 +32,10 @@ test('desktop Pet preserves enabled Fish tags and changes them only when effecti
     assert.equal(refilterDesktopPetText(initial, 'fish', filters, []).text, initial);
     assert.equal(refilterDesktopPetText(initial, 'piper', filters, []).text, 'visit [link]');
 });
+test('pet talk skips emotes from other channels that the chat message tagged', () => {
+    const catalog = ['Kappa', 'moonpla2Yay'];
+    const tagged = ['pookyDerp', 'evilto8PAM'];
+    const text = 'dame esas patas pookyDerp evilto8PAM evilto8PAM moonpla2Yay';
+    assert.equal(filterPetTalkText(text, 'piper', { ...filters, maxLength: 500 }, catalog).text, 'dame esas patas pookyDerp evilto8PAM evilto8PAM');
+    assert.equal(filterPetTalkText(text, 'piper', { ...filters, maxLength: 500 }, [...catalog, ...tagged]).text, 'dame esas patas');
+});
