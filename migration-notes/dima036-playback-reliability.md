@@ -1,6 +1,6 @@
 # DIMA-036 — Pet playback reliability evidence
 
-Status as of 2026-11-01: browser pet playback fixes are deployed and verified in production. Desktop source fixes are committed, while desktop release and Windows/OBS hardware acceptance remain in progress. This work concerns pet speech on the Windows desktop app and OBS browser source. It does not concern normal Speech Overlay TTS.
+Status as of 2026-11-01: browser pet playback fixes are deployed and verified in production. Desktop source fixes and managed Linux debug activation are complete; Windows build/installer and physical Windows/OBS acceptance remain in progress. This work concerns pet speech on the Windows desktop app and OBS browser source. It does not concern normal Speech Overlay TTS.
 
 ## Browser source change
 
@@ -17,7 +17,7 @@ The final browser source snapshot (`c17f339d…`) matched the frozen candidate s
 - Final browser component/follow-clock focused suite: 23 passed, including two malformed-ACK regressions reproduced RED then fixed; final scoped-pet TypeScript check passed.
 - The full all-spec TypeScript check remains blocked by pre-existing roulette `node:test` type errors; this is not evidence of a DIMA-036 regression.
 - The development preview's five-case actual-WAV Chromium fixture passed and the preview was cleaned up. After the final guard correction, the 23 focused tests and scoped TypeScript check passed again. Font/HMR harness corrections affected only the preview harness. The final exact-candidate browser check below covers the corrected source.
-- Desktop integration suite: `bash scripts/cargo-limited.sh test --bin dima_app -j 1` passed 258 tests; seven opt-in tests were ignored. Desktop `fmt` and Clippy passed. Commits `3a20da5` and `dd798b9` contain the desktop audio/discovery and pet lifecycle/telemetry changes. The Windows GNU check was blocked because `x86_64-w64-mingw32-gcc` is unavailable. No Windows installer was released; physical Windows and OBS acceptance remain unverified. A managed desktop update is still running and is not recorded as delivered.
+- Desktop integration suite: `bash scripts/cargo-limited.sh test --bin dima_app -j 1` passed 258 tests; seven opt-in tests were ignored. Desktop `fmt` and Clippy passed. Commits `3a20da5` and `dd798b9` contain the desktop audio/discovery and pet lifecycle/telemetry changes. The managed Linux debug activation completed successfully: deployment `5c10ad8c…`, binary SHA-256 `750147646d94e1424ba70cfd7b605fe01361666a0506fd5f86be16bdd5979be5`, clean source `12ced0e`, and pinned native bundle unchanged from baseline (`c52dcaf…`); it remained active after 30.027 seconds idle. Runtime and resource details are recorded in `/root/projects/dima_app/tracking/notes/DIMA-036-playback-reliability.md`. The Windows GNU check was blocked because `x86_64-w64-mingw32-gcc` is unavailable. No Windows installer was released; Windows CI and physical Windows/OBS acceptance remain outstanding.
 - Linux/headless and mocked browser evidence do not establish Windows device behavior or physical OBS playback. Historical `player_unavailable` events remain unexplained; reproduced client defects do not prove the cause of those reports.
 
 ## Browser production delivery
