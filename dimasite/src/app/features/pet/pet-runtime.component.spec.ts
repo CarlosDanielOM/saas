@@ -54,6 +54,7 @@ describe('browser pet lease recovery', () => {
   let component: PetRuntimeComponent;
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance', 'Date'] });
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     fake.listeners.clear(); fake.messages.length = 0; vi.clearAllMocks();
     fake.socket.connected = true; fake.prepare.mockReturnValue(true); fake.socket.timeout.mockReturnValue(fake.socket);
     injector = Injector.create({ providers: [
@@ -66,7 +67,34 @@ describe('browser pet lease recovery', () => {
     deliver('connect', undefined); deliver('pet:snapshot', snapshot());
     take('pet:ready').callback(null, { ok: true, data: {} });
   });
-  afterEach(() => { injector.destroy(); vi.useRealTimers(); });
+  afterEach(() => { injector.destroy(); vi.restoreAllMocks(); vi.useRealTimers(); });
+
+  it.each(['transport close', 'io server disconnect'])('automatically reconnects after %s and reestablishes readiness', reason => {
+    fake.socket.connected = false;
+    deliver('disconnect', reason);
+    const calls = fake.socket.connect.mock.calls.length;
+    vi.advanceTimersByTime(999); expect(fake.socket.connect).toHaveBeenCalledTimes(calls);
+    vi.advanceTimersByTime(1); expect(fake.socket.connect).toHaveBeenCalledTimes(calls + 1);
+    fake.socket.connected = true; deliver('connect', undefined); deliver('pet:snapshot', snapshot({ peerId: 'browser-two' }));
+    take('pet:ready').callback(null, { ok: true, data: {} });
+    expect(component.status()).toBe('rendererReady');
+    vi.advanceTimersByTime(30_000); expect(fake.socket.connect).toHaveBeenCalledTimes(calls + 1);
+  });
+
+  it('keeps retrying rejected handshakes with capped backoff and stops on destroy', () => {
+    fake.socket.connected = false;
+    const calls = fake.socket.connect.mock.calls.length;
+    for (const delay of [1000, 2000, 4000, 8000, 16000, 30000, 30000, 30000, 30000, 30000]) {
+      deliver('connect_error', new Error('unauthorized'));
+      vi.advanceTimersByTime(delay - 1);
+      const before = fake.socket.connect.mock.calls.length;
+      vi.advanceTimersByTime(1); expect(fake.socket.connect).toHaveBeenCalledTimes(before + 1);
+    }
+    expect(fake.socket.connect).toHaveBeenCalledTimes(calls + 10);
+    deliver('connect_error', new Error('unauthorized'));
+    injector.destroy(); injector = Injector.create({ providers: [] }); vi.advanceTimersByTime(60_000);
+    expect(fake.socket.connect).toHaveBeenCalledTimes(calls + 10);
+  });
 
   it('retries an unconfirmed acquire without loading or replaying speech', () => {
     take('pet:lease', 'acquire').callback(new Error('ACK lost'));

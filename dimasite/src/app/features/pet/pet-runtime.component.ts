@@ -54,7 +54,6 @@ function play(value: unknown): value is PetPlay {
     }
     <span class="sr-only" role="status">{{ t(status()) }}</span>
     @if (status() === 'rendererAutoplay') { <button type="button" (click)="enableAudio()">{{ t('enableAudio') }}</button> }
-    @if (status() === 'rendererOffline') { <button type="button" (click)="reconnect()">{{ t('retry') }}</button> }
   </main>`,
   styles: `:host { display:block; position:fixed; inset:0; background:transparent; color:#fff; font-family:'Plus Jakarta Sans',sans-serif } .pet-canvas { position:relative; width:100%; height:100%; overflow:hidden } .pet-image { position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:contain; visibility:hidden; pointer-events:none } .pet-image.visible { visibility:visible } .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 } button { position:absolute; bottom:1rem; left:1rem; max-width:calc(100% - 2rem); min-height:44px; border:1px solid #c4b5fd; border-radius:.75rem; padding:.7rem 1rem; background:#171a21; color:#fff; font:inherit; cursor:pointer } button:focus-visible { outline:3px solid #c4b5fd; outline-offset:3px }`
 })
@@ -73,7 +72,9 @@ export class PetRuntimeComponent {
   private followTimer?: ReturnType<typeof setTimeout>;
   private readonly player = new PetBrowserPlayer(report => this.onPlayback(report), (id, positionMs, value) => this.onMouth(id, positionMs, value), speaking => { if (!this.follow.live) this.talking.set(speaking); });
   private readonly socket: Socket = io(`${this.base}/pet`, { path: '/socket.io/', transports: ['websocket'],
-    auth: { v: 1, capability: this.capability }, autoConnect: false, reconnectionAttempts: 8, reconnectionDelay: 1000, reconnectionDelayMax: 30_000, randomizationFactor: .5 });
+    auth: { v: 1, capability: this.capability }, autoConnect: false, reconnection: false });
+  private reconnectTimer?: ReturnType<typeof setTimeout>;
+  private reconnectAttempts = 0;
   private lease: PetLease | null = null;
   private leaseDeadline = 0;
   private leaseRetryAt = 0;
@@ -118,22 +119,31 @@ export class PetRuntimeComponent {
         if (value['requestId'] === this.state()?.active?.requestId) this.talking.set(false);
       }
     });
-    this.socket.on('connect', () => { this.stopFollow(); this.connection++; this.resetReady(); this.versions.clear(); this.state.set(null); this.status.set(this.audioReady ? 'rendererConnecting' : 'rendererAutoplay'); });
-    this.socket.on('disconnect', reason => {
+    this.socket.on('connect', () => { clearTimeout(this.reconnectTimer); this.reconnectTimer = undefined; this.stopFollow(); this.connection++; this.resetReady(); this.versions.clear(); this.state.set(null); this.status.set(this.audioReady ? 'rendererConnecting' : 'rendererAutoplay'); });
+    this.socket.on('disconnect', () => {
       this.stopFollow(); this.connection++; this.resetReady(); this.releaseLease(); this.state.set(null); this.status.set('rendererOffline');
-      if (reason === 'io server disconnect') this.socket.disconnect();
+      this.scheduleReconnect();
     });
-    this.socket.on('connect_error', () => { this.stopFollow(); this.connection++; this.resetReady(); this.releaseLease(); this.status.set('rendererOffline'); });
+    this.socket.on('connect_error', () => { this.stopFollow(); this.connection++; this.resetReady(); this.releaseLease(); this.status.set('rendererOffline'); this.scheduleReconnect(); });
     if (/^[a-zA-Z0-9_-]{43}$/.test(this.capability)) this.socket.connect();
     else this.status.set('rendererUnavailable');
     inject(DestroyRef).onDestroy(() => {
-      this.disposed = true; this.stopFollow(); this.connection++; this.releaseLease(); this.player.destroy(); this.socket.disconnect();
+      this.disposed = true; clearTimeout(this.reconnectTimer); this.stopFollow(); this.connection++; this.releaseLease(); this.player.destroy(); this.socket.disconnect();
       doc.body.style.background = oldBody; doc.documentElement.style.background = oldRoot; referrer.remove();
     });
   }
 
   t(key: string): string { return this.language.translate(`pet.${key}`); }
-  reconnect(): void { if (!this.disposed) this.socket.connect(); }
+  private scheduleReconnect(): void {
+    if (this.disposed || this.reconnectTimer) return;
+    // A server namespace disconnect and an authentication rejection are not
+    // retried by Socket.IO. One capped backoff handles those and transport loss.
+    const delay = Math.min(1000 * 2 ** Math.min(this.reconnectAttempts++, 5) * (0.75 + Math.random() * 0.5), 30_000);
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = undefined;
+      if (!this.disposed && !this.socket.connected) this.socket.connect();
+    }, delay);
+  }
   private tickFollow(): void {
     clearTimeout(this.followTimer); this.followTimer = undefined;
     const sample = this.follow.sample(); this.talking.set(sample.talking);
@@ -185,6 +195,7 @@ export class PetRuntimeComponent {
 
   private acceptSnapshot(input: unknown): void {
     if (!snapshot(input) || this.disposed || !this.socket.connected) return;
+    clearTimeout(this.reconnectTimer); this.reconnectTimer = undefined; this.reconnectAttempts = 0;
     let value: PetSnapshot = input;
     const previous = this.state();
     if (previous && (value.generation === previous.generation && value.serverTime < previous.serverTime || value.generation < previous.generation || value.generation === previous.generation && value.settingsRevision < previous.settingsRevision)) return;

@@ -133,7 +133,7 @@ try {
     await context.close();
   }
   {
-    const { context, page, state, send, snapshot, speak } = await open({ target: 'desktop' });
+    const { context, page, state, send, snapshot, speak } = await open({ target: 'desktop', width: 1280 });
     assert.equal(state.leases.length, 0, 'PNG with desktop audio never acquires browser audio');
     const view = { requestId: 'desktop-speech', operation: 'talk', status: 'playing', version: 3 };
     send('pet:request', { v: 1, generation: 1, request: view });
@@ -175,9 +175,13 @@ try {
   {
     const { context, page, state, speak } = await open();
     await speak('disconnect'); await until(() => phases(state, 'disconnect').includes('started'));
+    const readyCount = state.readies.length, acquireCount = state.leases.filter(l => l.action === 'acquire').length;
     state.socket.send('41/pet,');
     await page.waitForTimeout(150); assert.equal(await isTalking(page), false, 'disconnect stops local media');
     const count = state.mouths.length; await page.waitForTimeout(200); assert.equal(state.mouths.length, count);
+    assert.equal(await page.getByRole('button', { name: 'Retry', exact: true }).count(), 0, 'offline state does not appear on stream');
+    await until(() => state.readies.length > readyCount && state.leases.filter(l => l.action === 'acquire').length > acquireCount, 'server disconnect recovers readiness and lease', 30000);
+    await speak('after-disconnect'); await until(() => phases(state, 'after-disconnect').includes('started'), 'speech resumes after reconnect');
     await context.close();
   }
   {
