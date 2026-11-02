@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test, { mock } from 'node:test';
 import { spawnSync } from 'node:child_process';
+import { TEST_LUA } from './follow_defense_state.test-helper.js';
 
 let marker = false;
 let pushes = 0;
@@ -88,16 +89,11 @@ test('automatic session-job acceptance survives response loss, worker dedupe cle
     assert.equal(pushes, 2, 'manual jobs retain their existing short-lived dedupe behavior');
 });
 
-test('the actual Lua script rolls back failed pushes and protects accepted session jobs (mocked Redis)', t => {
-    const version = spawnSync('lua', ['-v'], { encoding: 'utf8' });
-    if ((version.error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT') {
-        t.skip('Optional standalone Lua interpreter is not installed');
-        return;
-    }
+test('the actual Lua script rolls back failed pushes and protects accepted session jobs (mocked Redis)', () => {
     const script = calls.at(-1)!.script;
-    const result = spawnSync('lua', ['-'], { encoding: 'utf8', input: `
+    const input = `
 local values, pushes, failPush, failAcceptance = {}, 0, false, false
-redis = {}
+local redis = {}
 function redis.call(command, key, value, nx, ex, ttl)
     if command == 'EXISTS' then return values[key] and 1 or 0 end
     if command == 'DEL' then values[key] = nil; return 1 end
@@ -123,8 +119,10 @@ function redis.pcall(...)
     return {err = result}
 end
 function redis.error_reply(message) return {err = message} end
-KEYS, ARGV = {'dedupe', 'queue', 'acceptance'}, {'120', 'job'}
-local enqueue = assert(load([==[${script}]==]))
+local KEYS, ARGV = {'dedupe', 'queue', 'acceptance'}, {'120', 'job'}
+local function enqueue()
+${script}
+end
 failPush = true
 assert(enqueue().err:match('WRONGTYPE'))
 assert(not values.dedupe and not values.acceptance and pushes == 0)
@@ -138,6 +136,9 @@ assert(enqueue() == 0 and pushes == 1)
 KEYS[3] = nil
 assert(enqueue() == 1 and pushes == 2)
 assert(enqueue() == 0 and pushes == 2)
-` });
+return 'lua assertions passed'
+`;
+    const result = spawnSync(process.execPath, [TEST_LUA], { input, encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr || String(result.error));
+    assert.equal(result.stdout.trim(), 'lua assertions passed', result.stderr);
 });

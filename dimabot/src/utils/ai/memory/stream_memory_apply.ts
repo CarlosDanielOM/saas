@@ -154,6 +154,7 @@ export interface IApplyStreamMemoryActionsParams {
     actions: IMemoryAction[];
     source?: string;
     isNewChannel?: boolean;
+    assertActive?: () => Promise<void>;
 }
 
 export interface IApplyStreamMemoryActionsResult {
@@ -173,6 +174,7 @@ export async function applyStreamMemoryActions(params: IApplyStreamMemoryActions
         .slice(0, Math.max(1, config.maxActionsPerRun));
     let deleteCount = 0;
     for (const action of actions) {
+        await params.assertActive?.();
         const confidence = normalizeConfidence(action.confidence);
         const targetMemoryId = normalizeText(action.targetMemoryId);
         try {

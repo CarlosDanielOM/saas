@@ -97,6 +97,7 @@ test('a producer can preserve ownership already resolved at its trusted transpor
 test('existing consumer IDs and Twitch-only scope remain explicit in the registry', () => {
     const twitchConsumers = DOMAIN_EVENT_CONSUMERS.filter(({ topics }) => topics.includes('channel'));
     assert.deepEqual(twitchConsumers.map(({ consumer }) => consumer), [
+        'raid-history-v1', 'stream-timeline-v1',
         'channel-goals-v1',
         'widget-actions-v1', 'overlay-interactions-v1',
         'follow-defense-v1',
@@ -104,7 +105,7 @@ test('existing consumer IDs and Twitch-only scope remain explicit in the registr
     ]);
     for (const definition of twitchConsumers) {
         assert.deepEqual(definition.schemaVersions, [1]);
-        assert.deepEqual(definition.eventFilter?.source, ['follow-defense-v1', 'overlay-interactions-v1', 'channel-goals-v1'].includes(definition.consumer)
+        assert.deepEqual(definition.eventFilter?.source, ['raid-history-v1', 'stream-timeline-v1', 'follow-defense-v1', 'overlay-interactions-v1', 'channel-goals-v1'].includes(definition.consumer)
             ? 'twitch-eventsub' : { $in: ['twitch-eventsub', 'twitch-eventsub-test'] });
     }
 });

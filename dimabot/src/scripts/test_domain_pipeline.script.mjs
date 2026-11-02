@@ -47,7 +47,7 @@ if (args.some(arg => !/^--test-reporter=(spec|dot|tap|junit|lcov)$/.test(arg))) 
     console.error('Usage: node test_domain_pipeline.script.mjs [--test-reporter=spec|dot|tap|junit|lcov]');
     process.exitCode = 2;
 } else {
-    console.error(`Domain pipeline: ${SAFE_SUITES.length} service-free test files. Standalone Lua is optional; its test skips if unavailable.`);
+    console.error(`Domain pipeline: ${SAFE_SUITES.length} service-free test files. Lua checks require the lockfile's test dependencies (npm ci).`);
     const child = spawn(process.execPath, [
         '--experimental-test-module-mocks', '--import', 'tsx', '--test',
         ...(args.length ? args : ['--test-reporter=spec']), ...SAFE_SUITES

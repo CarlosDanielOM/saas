@@ -130,6 +130,21 @@ export async function enqueueCronJob(input: EnqueueCronJobInput): Promise<Enqueu
     const dedupeSeconds = Math.max(60, Number(input.dedupeSeconds || DEFAULT_DEDUPE_SECONDS));
     const queueKey = normalizeValue(input.queueKey) || CRON_JOBS_QUEUE_KEY;
 
+    if ((queueKey === 'cron:stream-memory:queue' &&
+        ['stream-memory-summary', 'memory-maintenance-weekly', 'memory-maintenance-monthly'].includes(normalizedJob)) ||
+        (queueKey === 'cron:clip-recommendations:queue' && normalizedJob === 'clip-recommendation-analysis')) {
+        if (dedupeToken) job.dedupeKey = getCronJobDedupeKey(dedupeToken);
+        const { durableAutomaticAcceptanceKey, prepareDurableCronJob, publishDurableCronJob } = await import('./durable_cron_jobs.js');
+        const acceptanceKey = durableAutomaticAcceptanceKey(job);
+        // A pre-upgrade marker lacks a recoverable payload. Preserve it as an
+        // unknown legacy acceptance unless an actual old payload is consumed.
+        const legacyAccepted = acceptanceKey ? Boolean(await (await getDragonflyClient('CronJobsQueue')).exists(acceptanceKey)) : false;
+        const prepared = await prepareDurableCronJob(job, queueKey, { dedupeSeconds, acceptanceKey, legacyAccepted });
+        if (prepared.status === 'queued') await publishDurableCronJob(prepared.job, queueKey);
+        return { enqueued: prepared.created && prepared.status === 'queued', job: prepared.job,
+            message: prepared.created && prepared.status === 'queued' ? 'Cron job durably accepted' : 'Cron job already accepted' };
+    }
+
     const client = await getDragonflyClient('CronJobsQueue');
 
     if (dedupeToken) {

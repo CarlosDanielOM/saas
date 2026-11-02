@@ -48,9 +48,10 @@ npm run cleanup:orphaned-clip-recommendations -- --execute
 From `dimabot/`, without database or provider connections:
 
 ```bash
+npm ci
 npm run build
 node --experimental-test-module-mocks --import tsx --test 'src/utils/ai/clip_recommendations/*.test.ts'
 npx tsx src/workers/vod_clip_recommender.worker.ts --dry-run
 ```
 
-Queue-script tests execute the actual Lua with mocked Redis commands when a standalone Lua interpreter is installed. This is not a live Dragonfly integration test. Production verification of queue recovery, billing deduplication, email delivery, and S3 deletion remains separate.
+Queue-script tests execute the actual Redis Lua 5.1 scripts through the pinned `lua-redis-wasm@1.5.0` dev dependency (Node.js 22 or newer; install with `npm ci --include=dev`). No system Lua interpreter is required. Redis commands are mocked, so this is not a live Dragonfly integration test. Production verification of queue recovery, billing deduplication, email delivery, and S3 deletion remains separate.

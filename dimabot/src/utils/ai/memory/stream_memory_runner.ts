@@ -148,6 +148,7 @@ export interface IRunStreamMemoryWorkflowInput {
     sessionID?: string;
     streamID?: string;
     source: 'stream_offline' | 'weekly_maintenance' | 'monthly_maintenance' | 'manual';
+    assertActive?: () => Promise<void>;
 }
 
 export interface IRunStreamMemoryWorkflowResult {
@@ -155,6 +156,7 @@ export interface IRunStreamMemoryWorkflowResult {
     message?: string;
     status: 'applied' | 'skipped' | 'noop' | 'failed';
     summaryID?: string;
+    uncertain?: boolean;
 }
 
 export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInput): Promise<IRunStreamMemoryWorkflowResult> {
@@ -318,6 +320,7 @@ export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInp
                 thresholdMessages: config.summaryMinChatMessages
             }, { channelId: channelID, destination: 'both' });
 
+            await input.assertActive?.();
             const noOpSummary = await saveSummaryRecord({
                 channelID,
                 channelName,
@@ -366,6 +369,7 @@ export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInp
             modelSelection: getBackgroundSummaryModel(planTier)
         }, { channelId: channelID, destination: 'both' });
 
+        await input.assertActive?.();
         const decisionResult = await generateStreamSummaryDecision(context, input.source);
         const decisionOutput = decisionResult.output as ISummaryOutput | undefined;
         const actionsCount = decisionOutput?.actions?.length || 0;
@@ -411,6 +415,7 @@ export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInp
                 decisionMessage: decisionResult.message
             }, { channelId: channelID, destination: 'both' });
 
+            await input.assertActive?.();
             const failedSummary = await saveSummaryRecord({
                 channelID,
                 channelName,
@@ -437,7 +442,8 @@ export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInp
                 error: true,
                 message: decisionResult.message || 'Failed to generate stream summary decision',
                 status: 'failed',
-                summaryID: failedSummary?._id
+                summaryID: failedSummary?._id,
+                uncertain: true
             };
         }
 
@@ -458,13 +464,15 @@ export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInp
         }, { channelId: channelID, destination: 'both' });
 
         const proposedActions = Array.isArray(decisionOutput.actions) ? decisionOutput.actions : [];
+        await input.assertActive?.();
         const applyResult: IApplyStreamMemoryActionsResult = config.enabled
             ? await applyStreamMemoryActions({
                 channelID,
                 channelName,
                 actions: proposedActions,
                 source: input.source,
-                isNewChannel
+                isNewChannel,
+                assertActive: input.assertActive
             })
             : {
                 results: proposedActions.map((action) => ({
@@ -512,6 +520,7 @@ export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInp
             status
         }, { channelId: channelID, destination: 'both' });
 
+        await input.assertActive?.();
         const summaryDoc = await saveSummaryRecord({
             channelID,
             channelName,
@@ -555,27 +564,10 @@ export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInp
                 )
             }, { channelId: channelID, destination: 'both' });
 
-            void sendStreamSummaryEmail({
-                channelID,
-                channelName,
-                context,
-                summary: decisionOutput.summary,
-                appliedActions: applyResult.results
-            }).then(() => {
-                logInfo({
-                    message: '[STREAM SUMMARY WORKFLOW] Email sent successfully',
-                    step: 'EMAIL_SENT',
-                    channelID,
-                    emailRecipient: channelName
-                }, { channelId: channelID, destination: 'both' });
-            }).catch((emailError) => {
-                logError({
-                    message: '[STREAM SUMMARY WORKFLOW] Failed to send stream summary email',
-                    step: 'EMAIL_FAILED',
-                    channelID,
-                    error: emailError instanceof Error ? emailError.message : String(emailError),
-                    errorStack: emailError instanceof Error ? emailError.stack : undefined
-                }, { channelId: channelID, destination: 'both' });
+            await input.assertActive?.();
+            await sendStreamSummaryEmail({
+                channelID, channelName, context, summary: decisionOutput.summary,
+                appliedActions: applyResult.results, assertActive: input.assertActive
             });
         } else {
             await logInfo({
@@ -633,6 +625,7 @@ export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInp
         };
     }
     catch (error) {
+        if (input.assertActive) throw error;
         await logError({
             message: '[STREAM SUMMARY WORKFLOW] ========================================== WORKFLOW FAILED',
             step: 'WORKFLOW_ERROR',
@@ -661,6 +654,7 @@ interface SendStreamSummaryEmailParams {
         highlights: string[];
     };
     appliedActions: IApplyStreamMemoryActionsResult['results'];
+    assertActive?: () => Promise<void>;
 }
 
 async function sendStreamSummaryEmail(params: SendStreamSummaryEmailParams): Promise<void> {
@@ -824,7 +818,8 @@ async function sendStreamSummaryEmail(params: SendStreamSummaryEmailParams): Pro
     }, { channelId: params.channelID, destination: 'both' });
 
     try {
-        await sendEmail({
+        await params.assertActive?.();
+        const emailResult = await sendEmail({
             to: email,
             subject: getStreamSummaryEmailSubject(streamDate, language),
             from: "DomDimaBot <summaries@notifications.domdimabot.com>",
@@ -849,6 +844,8 @@ async function sendStreamSummaryEmail(params: SendStreamSummaryEmailParams): Pro
                 language
             })
         });
+
+        if (emailResult.error) throw new Error(emailResult.message || 'Failed to send stream summary email');
 
         await logInfo({
             message: '[STREAM SUMMARY EMAIL] ========================================== EMAIL SENT SUCCESSFULLY',

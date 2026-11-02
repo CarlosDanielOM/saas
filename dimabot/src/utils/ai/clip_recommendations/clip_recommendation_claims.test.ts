@@ -1,21 +1,17 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { TEST_LUA } from '../../follow_defense_state.test-helper.js';
 import { CLIP_CLAIM_SCRIPTS } from './clip_recommendation_claims.js';
 
 for (const [action, script] of Object.entries(CLIP_CLAIM_SCRIPTS)) {
-    test(`${action} executes its Lua ownership and failure guards with mocked Redis`, (t) => {
-        const interpreter = spawnSync('lua', ['-v'], { encoding: 'utf8' });
-        if ((interpreter.error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT') {
-            t.skip('Optional standalone Lua interpreter is not installed');
-            return;
-        }
-        const result = spawnSync('lua', ['-'], { encoding: 'utf8', input: `
+    test(`${action} executes its Lua ownership and failure guards with mocked Redis`, () => {
+        const result = spawnSync(process.execPath, [TEST_LUA], { encoding: 'utf8', input: `
 local owner, processing, destination, dedupe, failPush = 'owner', {'claim'}, {}, true, false
 local action = '${action}'
-KEYS = action == 'acknowledge' and {'lock', 'processing', 'dedupe'} or {'lock', 'processing', 'destination', 'dedupe'}
-ARGV = {'stale-owner', 'claim', 'replacement'}
-redis = {}
+local KEYS = action == 'acknowledge' and {'lock', 'processing', 'dedupe'} or {'lock', 'processing', 'destination', 'dedupe'}
+local ARGV = {'stale-owner', 'claim', 'replacement'}
+local redis = {}
 function redis.call(command, key, a, b)
     if command == 'GET' then assert(key == 'lock'); return owner end
     if command == 'LPOS' then
@@ -52,7 +48,9 @@ function redis.pcall(...)
     return {err = result}
 end
 function redis.error_reply(message) return {err = message} end
-local transition = assert(load([==[${script}]==]))
+local function transition()
+${script}
+end
 assert(transition() == -1)
 assert(#processing == 1 and #destination == 0 and dedupe)
 owner = false
@@ -84,7 +82,9 @@ end
 local again = transition()
 assert(again == 0 or again == false)
 assert(#destination == (action == 'acknowledge' and 0 or 1))
+return 'lua assertions passed'
 ` });
         assert.equal(result.status, 0, result.stderr || String(result.error));
+        assert.equal(result.stdout.trim(), 'lua assertions passed');
     });
 }

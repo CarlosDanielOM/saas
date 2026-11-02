@@ -14,6 +14,7 @@ const LOCK_TTL_SECONDS = Math.max(120, Number(process.env.STREAM_MEMORY_WORKER_L
 const LOCK_RETRY_MS = Math.max(2000, Number(process.env.STREAM_MEMORY_WORKER_LOCK_RETRY_MS || 10000));
 const CHANNEL_LOCK_PREFIX = String(process.env.STREAM_MEMORY_CHANNEL_LOCK_PREFIX || 'cron:stream-memory:running');
 const CHANNEL_LOCK_SECONDS = Math.max(60, Number(process.env.STREAM_MEMORY_CHANNEL_LOCK_SECONDS || 1200));
+const MEMORY_PROCESSING_KEY = 'cron:stream-memory:processing';
 const QUEUE_BLOCK_TIMEOUT_SECONDS = Math.max(1, Number(process.env.STREAM_MEMORY_QUEUE_BLOCK_TIMEOUT_SECONDS || 5));
 const RUN_ON_START = process.env.STREAM_MEMORY_RUN_ON_START !== 'false';
 const RUN_ONCE = process.argv.includes('--once');
@@ -145,6 +146,7 @@ async function main(): Promise<void> {
         getWeeklyMaintenancePeriodToken
     } = await import('../utils/ai/memory/stream_memory_queue.js');
     const { runStreamMemoryWorkflow } = await import('../utils/ai/memory/stream_memory_runner.js');
+    const { claimDurableCronJob, completeDurableCronJob, retryDurableCronJob, deadDurableCronJob, uncertainDurableCronJob, renewDurableCronJobClaim, assertDurableCronJobClaim, recoverDurableCronJobs } = await import('../utils/durable_cron_jobs.js');
     const { recordStreamMemoryActionMetric, recordStreamMemoryJobMetric } = await import('../utils/observability/bot_runtime_metrics.js');
 
     async function acquireWorkerLock(lockOwnerId: string): Promise<boolean> {
@@ -174,10 +176,10 @@ async function main(): Promise<void> {
         }
     }
 
-    async function acquireChannelLock(channelID: string): Promise<boolean> {
+    async function acquireChannelLock(channelID: string, owner: string): Promise<boolean> {
         const cache = await getDragonflyClient('StreamMemoryWorker');
         const lockKey = getChannelLockKey(channelID);
-        const lockValue = JSON.stringify({ pid: process.pid, at: new Date().toISOString() });
+        const lockValue = owner;
         const result = await cache.set(lockKey, lockValue, {
             NX: true,
             EX: CHANNEL_LOCK_SECONDS
@@ -185,9 +187,11 @@ async function main(): Promise<void> {
         return result === 'OK';
     }
 
-    async function releaseChannelLock(channelID: string): Promise<void> {
+    async function releaseChannelLock(channelID: string, owner: string): Promise<void> {
         const cache = await getDragonflyClient('StreamMemoryWorker');
-        await cache.del(getChannelLockKey(channelID));
+        await cache.eval("if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0", {
+            keys: [getChannelLockKey(channelID)], arguments: [owner]
+        });
     }
 
     async function requeueJob(job: ReturnType<typeof parseCronQueueJob>): Promise<void> {
@@ -267,114 +271,87 @@ async function main(): Promise<void> {
         };
     }
 
-    async function processJob(job: NonNullable<ReturnType<typeof parseCronQueueJob>>): Promise<void> {
+    async function processJob(physicalJob: NonNullable<ReturnType<typeof parseCronQueueJob>>, owner: string): Promise<boolean> {
+        // Claim first: this also adopts legacy Redis-only jobs before any effects.
+        const claimed = await claimDurableCronJob(physicalJob, STREAM_MEMORY_QUEUE_KEY, owner);
+        if (claimed.status !== 'claimed') return true;
+        const { claim, job } = claimed;
         const channelID = normalizeValue(job.channelID || job.accountID || job.data?.channelID);
-        const nowUnix = Math.floor(Date.now() / 1000);
-        const notBeforeUnix = Number(job.data?.notBeforeUnix || 0);
-        if (!channelID) {
-            await logWarn({
-                worker: 'stream_memory',
-                message: 'Discarding stream memory job without channel ID',
-                job
-            }, { destination: 'console' });
-            return;
-        }
-        if (notBeforeUnix > nowUnix) {
-            await requeueJob(job);
-            await sleep(REQUEUE_DELAY_MS);
-            return;
-        }
-        const lockAvailable = await acquireChannelLock(channelID);
-        if (!lockAvailable) {
-            await requeueJob(job);
-            await sleep(REQUEUE_DELAY_MS);
-            return;
-        }
-        const startedAt = Date.now();
-        let failed = false;
-        let source: 'stream_offline' | 'weekly_maintenance' | 'monthly_maintenance' = 'stream_offline';
-        try {
-            if (job.job === STREAM_MEMORY_SUMMARY_JOB) {
-                source = 'stream_offline';
-            } else if (job.job === STREAM_MEMORY_WEEKLY_JOB) {
-                source = 'weekly_maintenance';
-            } else {
-                source = 'monthly_maintenance';
-            }
-            const result = await runStreamMemoryWorkflow({
-                channelID,
-                sessionID: normalizeValue(job.data?.sessionID),
-                streamID: normalizeValue(job.data?.streamID),
-                source
-            });
-            failed = result.error;
-            await recordStreamMemoryJobMetric({
-                channelID,
-                jobType: job.job,
-                source,
-                status: result.status,
-                failed: result.error,
-                latencyMs: Date.now() - startedAt
-            });
-            if (!result.error) {
-                await logInfo({
-                    worker: 'stream_memory',
-                    message: 'Processed stream memory job',
-                    job,
-                    result
-                }, { channelId: channelID, destination: 'console' });
-                return;
-            }
-            const attempt = getJobAttempt(job);
-            if (attempt < JOB_MAX_ATTEMPTS) {
-                const retryJob = withNextAttempt(job);
-                await requeueJob(retryJob);
-                await logWarn({
-                    worker: 'stream_memory',
-                    message: 'Requeued failed stream memory job for retry',
-                    attempt,
-                    maxAttempts: JOB_MAX_ATTEMPTS,
-                    job,
-                    result
-                }, { channelId: channelID, destination: 'console' });
-                await sleep(REQUEUE_DELAY_MS);
-                return;
-            }
-            await logWarn({
-                worker: 'stream_memory',
-                message: 'Max retries reached for stream memory job; moving to dead letter',
-                attempt,
-                maxAttempts: JOB_MAX_ATTEMPTS,
-                job,
-                result
-            }, { channelId: channelID, destination: 'console' });
+        const assertActive = async () => {
+            if (!await assertDurableCronJobClaim(claim)) throw new Error('Stream memory Mongo claim lost');
+        };
+        let leaseLost = false;
+        let channelLocked = false;
+        const channelLockOwner = `${owner}:${claim.token}`;
+        const refreshChannelLock = async () => {
+            if (!channelLocked) return true;
             const cache = await getDragonflyClient('StreamMemoryWorker');
-            await cache.rPush(STREAM_MEMORY_DEAD_LETTER_KEY, serializeCronQueueJob(job));
-        } catch (error) {
-            failed = true;
-            await logError({
-                worker: 'stream_memory',
-                message: 'Unexpected error while processing stream memory job',
-                job,
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined
-            }, { channelId: channelID, destination: 'console' });
-        } finally {
-            await releaseChannelLock(channelID);
-            await clearCronJobDedupeByKey(job.dedupeKey);
-            if (failed) {
-                await recordStreamMemoryActionMetric({
-                    channelID,
-                    action: 'job_failed',
-                    source,
-                    count: 1
-                });
+            const value = await cache.eval("if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('EXPIRE', KEYS[1], ARGV[2]) end return 0", {
+                keys: [getChannelLockKey(channelID)], arguments: [channelLockOwner, String(CHANNEL_LOCK_SECONDS)]
+            });
+            return Number(value) === 1;
+        };
+        const heartbeat = setInterval(() => {
+            void Promise.all([renewDurableCronJobClaim(claim), refreshChannelLock()]).then(results => { if (results.some(ok => !ok)) leaseLost = true; }).catch(() => { leaseLost = true; });
+        }, 60_000);
+        heartbeat.unref?.();
+        const checkActive = async () => {
+            if (leaseLost) throw new Error('Stream memory Mongo claim renewal failed');
+            await assertActive();
+            if (!await refreshChannelLock()) throw new Error('Stream memory channel lock lost');
+        };
+        let transitionAttempted = false;
+        const transition = async (operation: () => Promise<boolean>) => {
+            transitionAttempted = true;
+            if (!await operation()) throw new Error('Stream memory claim transition lost');
+        };
+        try {
+            if (!channelID) { await transition(() => deadDurableCronJob(claim, 'Missing channel ID')); return true; }
+            const notBeforeUnix = Number(job.data?.notBeforeUnix || 0);
+            if (notBeforeUnix > Date.now() / 1000) {
+                await transition(() => retryDurableCronJob(claim, job, new Date(notBeforeUnix * 1000)));
+                return true;
             }
+            channelLocked = await acquireChannelLock(channelID, channelLockOwner);
+            if (!channelLocked) {
+                await transition(() => retryDurableCronJob(claim, job, new Date(Date.now() + REQUEUE_DELAY_MS)));
+                return true;
+            }
+            const source = job.job === STREAM_MEMORY_SUMMARY_JOB ? 'stream_offline' : job.job === STREAM_MEMORY_WEEKLY_JOB ? 'weekly_maintenance' : 'monthly_maintenance';
+            const startedAt = Date.now();
+            await checkActive();
+            const result = await runStreamMemoryWorkflow({
+                channelID, sessionID: normalizeValue(job.data?.sessionID), streamID: normalizeValue(job.data?.streamID),
+                source, assertActive: checkActive
+            });
+            await checkActive();
+            if (!result.error) await transition(() => completeDurableCronJob(claim));
+            else if (result.uncertain) await transition(() => uncertainDurableCronJob(claim, result.message || 'Workflow result uncertain'));
+            else if (getJobAttempt(job) < JOB_MAX_ATTEMPTS) await transition(() => retryDurableCronJob(claim, withNextAttempt(job)!, new Date(Date.now() + REQUEUE_DELAY_MS)));
+            else {
+                await transition(() => deadDurableCronJob(claim, result.message || 'Memory workflow failed'));
+                // Mongo is authoritative; this preserves the legacy operator view best-effort.
+                try { const cache = await getDragonflyClient('StreamMemoryWorker'); await cache.rPush(STREAM_MEMORY_DEAD_LETTER_KEY, serializeCronQueueJob(job)); }
+                catch (error) { console.error('Memory dead-letter mirror failed', error); }
+            }
+            await recordStreamMemoryJobMetric({ channelID, jobType: job.job, source, status: result.status, failed: result.error, latencyMs: Date.now() - startedAt });
+            return true;
+        } catch (error) {
+            // Once work starts, an exception may follow an accepted AI, memory or
+            // email effect. Never automatically rerun an unreceipted operation.
+            const recorded = !transitionAttempted && await uncertainDurableCronJob(claim, error instanceof Error ? error.message : String(error)).catch(() => false);
+            await logError({ worker: 'stream_memory', message: 'Job outcome uncertain', jobID: job.id,
+                error: error instanceof Error ? error.message : String(error) }, { channelId: channelID || undefined, destination: 'console' });
+            return recorded;
+        } finally {
+            clearInterval(heartbeat);
+            if (channelLocked) await releaseChannelLock(channelID, channelLockOwner);
         }
     }
 
     async function startQueueConsumerLoop(lockOwnerId: string): Promise<void> {
         const cache = await getDragonflyClient('StreamMemoryWorker');
+        let nextRecoveryAt = 0;
         while (!shutdownRequested) {
             const lockIsValid = await refreshWorkerLock(lockOwnerId);
             if (!lockIsValid) {
@@ -385,22 +362,28 @@ async function main(): Promise<void> {
                 break;
             }
             try {
-                const result = await cache.blPop(STREAM_MEMORY_QUEUE_KEY, QUEUE_BLOCK_TIMEOUT_SECONDS);
-                if (!result) {
-                    continue;
+                if (Date.now() >= nextRecoveryAt) {
+                    // Recover only between jobs while this worker owns the Redis lock.
+                    let moved = 0;
+                    while (moved < 100 && await cache.rPopLPush(MEMORY_PROCESSING_KEY, STREAM_MEMORY_QUEUE_KEY)) moved++;
+                    const recovery = await recoverDurableCronJobs(STREAM_MEMORY_QUEUE_KEY, { limit: 100 });
+                    nextRecoveryAt = moved === 100 || recovery.examined === 100 || recovery.uncertain === 100 ? 0 : Date.now() + 30_000;
                 }
-                const payload = parseCronQueueJob(result.element);
+                const raw = await cache.sendCommand(['BLMOVE', STREAM_MEMORY_QUEUE_KEY, MEMORY_PROCESSING_KEY, 'LEFT', 'RIGHT', String(QUEUE_BLOCK_TIMEOUT_SECONDS)]) as string | null;
+                if (!raw) continue;
+                const payload = parseCronQueueJob(raw);
                 if (!payload) {
                     await logWarn({
                         worker: 'stream_memory',
                         message: 'Discarding invalid stream memory payload',
-                        raw: result.element
+                        raw
                     }, { destination: 'console' });
+                    await cache.lRem(MEMORY_PROCESSING_KEY, 1, raw);
                     continue;
                 }
                 if (![STREAM_MEMORY_SUMMARY_JOB, STREAM_MEMORY_WEEKLY_JOB, STREAM_MEMORY_MONTHLY_JOB].includes(payload.job)) {
                     await cache.rPush(STREAM_MEMORY_DEAD_LETTER_KEY, serializeCronQueueJob(payload));
-                    await clearCronJobDedupeByKey(payload.dedupeKey);
+                    await cache.lRem(MEMORY_PROCESSING_KEY, 1, raw);
                     await logWarn({
                         worker: 'stream_memory',
                         message: 'Unsupported stream memory job moved to dead-letter queue',
@@ -409,7 +392,15 @@ async function main(): Promise<void> {
                     }, { destination: 'console' });
                     continue;
                 }
-                await processJob(payload);
+                try {
+                    if (await processJob(payload, lockOwnerId)) await cache.lRem(MEMORY_PROCESSING_KEY, 1, raw);
+                } catch (error) {
+                    // Adoption failed before effects. Preserve a legacy payload for retry.
+                    await cache.eval("if redis.call('GET', KEYS[1]) ~= ARGV[1] then return -1 end if redis.call('LREM', KEYS[2], 1, ARGV[2]) > 0 then return redis.call('LPUSH', KEYS[3], ARGV[2]) end return 0", {
+                        keys: [LOCK_KEY, MEMORY_PROCESSING_KEY, STREAM_MEMORY_QUEUE_KEY], arguments: [lockOwnerId, raw]
+                    });
+                    throw error;
+                }
             } catch (error) {
                 await logError({
                     worker: 'stream_memory',

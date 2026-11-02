@@ -1,4 +1,13 @@
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
+
+// Redis Lua 5.1 WASM is installed from the lockfile; production Redis behavior
+// is also tested separately against a disposable Dragonfly instance.
+const adjacentLuaRunner = new URL('../scripts/run_test_lua.script.mjs', import.meta.url);
+export const TEST_LUA = fileURLToPath(existsSync(adjacentLuaRunner)
+    ? adjacentLuaRunner
+    : new URL('../../src/scripts/run_test_lua.script.mjs', import.meta.url));
 
 function lua(value: unknown): string {
     if (value === null || value === undefined) return 'nil';
@@ -35,11 +44,11 @@ local function encode(value)
     for key, item in pairs(value) do table.insert(parts, encode(key) .. ':' .. encode(item)) end
     return '{' .. table.concat(parts, ',') .. '}'
 end
-cjson = {
+local cjson = {
     decode = function(raw) if decoded[raw] == nil then error('Invalid JSON') end return decoded[raw] end,
     encode = encode
 }
-redis = {
+local redis = {
     error_reply = function(message) error(message) end,
     call = function(command, key, a, b)
         if command == 'TIME' then return {${Math.floor(now / 1000)}, ${(now % 1000) * 1000}} end
@@ -64,20 +73,20 @@ redis = {
         error('Unexpected Redis command: ' .. command)
     end
 }
-KEYS = {${options.keys.map(lua).join(',')}}
-ARGV = {${options.arguments.map(lua).join(',')}}
+local KEYS = {${options.keys.map(lua).join(',')}}
+local ARGV = {${options.arguments.map(lua).join(',')}}
 local ok, result = pcall(function()
 ${script}
 end)
-io.write('{"values":' .. encode(values) .. ',"sorted":' .. encode(sorted))
-if ok then io.write(',"result":[' .. encode(result[1]) .. ',' .. encode(result[2]) .. ']')
-else io.write(',"error":' .. encode(result)) end
-io.write('}')
+local output = '{"values":' .. encode(values) .. ',"sorted":' .. encode(sorted)
+if ok then output = output .. ',"result":[' .. encode(result[1]) .. ',' .. encode(result[2]) .. ']'
+else output = output .. ',"error":' .. encode(result) end
+return output .. '}'
 `;
-    const process = spawnSync('lua', ['-'], { input, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 });
-    if (process.error) throw process.error;
-    if (process.status !== 0) throw new Error(process.stderr);
-    const output = JSON.parse(process.stdout) as {
+    const child = spawnSync(process.execPath, [TEST_LUA], { input, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 });
+    if (child.error) throw child.error;
+    if (child.status !== 0 || !child.stdout) throw new Error(child.stderr || 'Lua produced no result');
+    const output = JSON.parse(child.stdout) as {
         values: Record<string, string>; sorted: Record<string, Record<string, number>>;
         result: [number, string]; error?: string;
     };

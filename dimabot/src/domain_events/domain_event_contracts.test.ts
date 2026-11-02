@@ -93,7 +93,7 @@ test('all shipped Twitch fixture types and legacy bits aliases satisfy schema 1 
         const fixture = generateTestPayload(['channel.cheer', 'channel.bit.use'].includes(type) ? 'channel.bits.use' : type, 'channel');
         fixture.subscription.type = type;
         const input = normalizeTwitchEventsubDomainEvent({
-            messageId: type, subscription: { ...fixture.subscription }, event: { ...fixture.event }, source: 'twitch-eventsub-test'
+            messageId: type, messageTimestamp: timestamp, subscription: { ...fixture.subscription }, event: { ...fixture.event }, source: 'twitch-eventsub-test'
         })!;
         const before = structuredClone(input);
         assert.doesNotThrow(() => validateDomainEventContract(input), type);
@@ -199,12 +199,15 @@ test('raid conditions accept an empty unused direction without changing the prov
         { from_broadcaster_user_id: 'raider' },
         { from_broadcaster_user_id: 'raider', to_broadcaster_user_id: '' }
     ]) {
-        const input = twitch('channel.raid', { to_broadcaster_user_id: 'channel', from_broadcaster_user_id: 'raider', viewers: 5 });
-        (input.payload.subscription as Record<string, unknown>).condition = condition;
+        const input = normalizeTwitchEventsubDomainEvent({ messageId: 'receipt',
+            subscription: { type: 'channel.raid', version: '1', condition },
+            event: { to_broadcaster_user_id: 'channel', from_broadcaster_user_id: 'raider', viewers: 5 } })!;
         const before = structuredClone(input);
         validateDomainEventContract(input, 'ingest');
         assert.equal(getTwitchEventsubPayload(input), input.payload);
-        assert.equal(input.channelID, 'channel');
+        const outgoing = condition.from_broadcaster_user_id === 'raider';
+        assert.equal(input.channelID, outgoing ? 'raider' : 'channel');
+        assert.equal(input.type, outgoing ? 'channel.raid.sent' : 'channel.raid.received');
         assert.deepEqual(input, before);
     }
 });

@@ -1,0 +1,7 @@
+# 2026-11-02 downstream queue durability routing
+
+This bounded multi-file queue recovery task used GPT-6.1 Terra xhigh for the durable queue core, Terra high for worker integration and exact-candidate fixtures, GPT-6 Luna high for source-backed documentation, and GPT-6.1 Sol high for lead review and integration. Both cron candidate `cron-d958d1c45871` and API candidate `api-86105fb2fcbf` passed their exact-candidate MongoDB/Dragonfly checks. The final cron candidate also passed the offline-event/lifecycle handoff and concurrency checks. Cron then API were deployed; production readbacks, scoped HTTP checks, and cleanup completed. See the [release note](../migration-notes/downstream-queue-durability.md) for scope and verified evidence.
+
+Lead review found a delayed legacy-alias guard gap after dedupe expiry and requested a correction before the accepted cron candidate was built. The fixtures also caught a provider-returned email error case. An earlier Fengari clock fixture failed at a 32-bit timestamp boundary; the test harness moved to pinned `lua-redis-wasm@1.5.0`, running actual Redis Lua 5.1 semantics in WASM. These are concrete integration and fixture corrections, not evidence for a general model ranking.
+
+This is one task-specific routing observation with verified candidate and production acceptance. It supports Terra for the assigned core and worker integration scopes, Luna for source-backed release documentation, and Sol for lead review/integration. It does not establish a broad tier reorder, comparative model quality, or a throughput/TPS claim.

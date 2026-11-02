@@ -75,6 +75,11 @@ async function main(): Promise<void> {
     const { fetchLatestVodForChannel, runVodClipRecommendationWorkflow } = await import('../utils/ai/clip_recommendations/vod_clip_recommendation_runner.js');
     const { getClipJobFailureDisposition, getClipWorkflowFailureDisposition, shouldStopAfterHeartbeatFailure } = await import('../utils/ai/clip_recommendations/vod_clip_recommender_policy.js');
     const { reconcileClipRecommendations } = await import('../utils/ai/clip_recommendations/clip_recommendation_reconciliation.js');
+    const { claimDurableCronJob, completeDurableCronJob, retryDurableCronJob, deadDurableCronJob, uncertainDurableCronJob, renewDurableCronJobClaim, assertDurableCronJobClaim, recoverDurableCronJobs } = await import('../utils/durable_cron_jobs.js');
+    type Claim = import('../utils/durable_cron_jobs.js').DurableCronJobClaim;
+    let activeClaim: Claim | null = null;
+    let durableLeaseLost = false;
+    let durableTransitionAttempted = false;
 
     function requireOwnership(result: unknown): void {
         if (result !== -1) return;
@@ -85,6 +90,7 @@ async function main(): Promise<void> {
 
     async function assertActive(): Promise<void> {
         if (lockLost || !await refreshWorkerLock(lockOwnerId)) requireOwnership(-1);
+        if (activeClaim && (durableLeaseLost || !await assertDurableCronJobClaim(activeClaim))) throw new Error('Clip Mongo claim lost');
     }
 
     async function acquireWorkerLock(lockOwnerId: string): Promise<boolean> {
@@ -107,32 +113,47 @@ async function main(): Promise<void> {
         await cache.eval(RELEASE_LOCK_SCRIPT, { keys: [LOCK_KEY], arguments: [lockOwnerId] });
     }
 
-    async function acknowledgeClaim(rawPayload: string, dedupeKey?: string): Promise<void> {
+    async function acknowledgePhysical(rawPayload: string): Promise<void> {
         const cache = await getDragonflyClient('ClipRecommendationsWorker');
         const result = await cache.eval(CLIP_CLAIM_SCRIPTS.acknowledge, {
-            keys: dedupeKey
-                ? [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, dedupeKey]
-                : [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY],
-            arguments: [lockOwnerId, rawPayload]
+            keys: [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY], arguments: [lockOwnerId, rawPayload]
         });
         requireOwnership(result);
+    }
+
+    async function acknowledgeClaim(rawPayload: string, _dedupeKey?: string): Promise<void> {
+        durableTransitionAttempted = true;
+        if (!activeClaim || !await completeDurableCronJob(activeClaim)) throw new Error('Clip claim completion lost');
+        activeClaim = null;
+        await acknowledgePhysical(rawPayload);
     }
 
     async function requeueClaim(rawPayload: string, replacementPayload = rawPayload): Promise<void> {
-        const cache = await getDragonflyClient('ClipRecommendationsWorker');
-        const result = await cache.eval(CLIP_CLAIM_SCRIPTS.requeue, {
-            keys: [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_QUEUE_KEY],
-            arguments: [lockOwnerId, rawPayload, replacementPayload]
-        });
-        requireOwnership(result);
+        const job = parseCronQueueJob(replacementPayload);
+        if (!activeClaim || !job) throw new Error('Missing durable clip claim or retry payload');
+        const notBefore = Number(job.data?.notBeforeUnix || 0) * 1000;
+        const due = new Date(Math.max(Date.now() + REQUEUE_DELAY_MS, notBefore));
+        durableTransitionAttempted = true;
+        if (!await retryDurableCronJob(activeClaim, job, due)) throw new Error('Clip claim retry lost');
+        activeClaim = null;
+        await acknowledgePhysical(rawPayload);
     }
 
-    async function deadLetterClaim(rawPayload: string, deadLetterPayload: string, dedupeKey?: string): Promise<void> {
+    async function deadLetterClaim(rawPayload: string, deadLetterPayload: string, _dedupeKey?: string): Promise<void> {
+        if (activeClaim) {
+            durableTransitionAttempted = true;
+            if (!await deadDurableCronJob(activeClaim, 'Clip job failed or expired')) throw new Error('Clip claim dead-letter transition lost');
+            activeClaim = null;
+            // Mongo is authoritative; retain the Redis operator view best-effort.
+            try { const cache = await getDragonflyClient('ClipRecommendationsWorker'); await cache.rPush(CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY, deadLetterPayload); }
+            catch (error) { console.error('Clip dead-letter mirror failed', error); }
+            await acknowledgePhysical(rawPayload);
+            return;
+        }
+        // Malformed/unsupported legacy payloads have no durable business intent.
         const cache = await getDragonflyClient('ClipRecommendationsWorker');
         const result = await cache.eval(CLIP_CLAIM_SCRIPTS.deadLetter, {
-            keys: dedupeKey
-                ? [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY, dedupeKey]
-                : [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY],
+            keys: [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY],
             arguments: [lockOwnerId, rawPayload, deadLetterPayload]
         });
         requireOwnership(result);
@@ -141,7 +162,7 @@ async function main(): Promise<void> {
     async function recoverInterruptedClaims(): Promise<number> {
         const cache = await getDragonflyClient('ClipRecommendationsWorker');
         let recovered = 0;
-        while (true) {
+        while (recovered < 100) {
             const result = await cache.eval(CLIP_CLAIM_SCRIPTS.recover, {
                 keys: [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_QUEUE_KEY],
                 arguments: [lockOwnerId]
@@ -193,8 +214,7 @@ async function main(): Promise<void> {
         }
 
         if (notBeforeUnix > nowUnix) {
-            await requeueClaim(rawPayload);
-            await sleep(REQUEUE_DELAY_MS);
+            await requeueClaim(rawPayload, serializeCronQueueJob(job));
             return;
         }
 
@@ -202,6 +222,7 @@ async function main(): Promise<void> {
         let vodID = normalizeValue(job.data?.vodID);
         let vodDurationMinutes = Number(job.data?.vodDurationMinutes || 0);
         if (vodUrl === `twitch-latest:${channelID}`) {
+            await assertActive();
             const vod = await fetchLatestVodForChannel(channelID);
             if (!vod) {
                 const disposition = getClipJobFailureDisposition(job, JOB_MAX_ATTEMPTS);
@@ -265,7 +286,13 @@ async function main(): Promise<void> {
 
     async function startQueueConsumerLoop(): Promise<void> {
         const cache = await getDragonflyClient('ClipRecommendationsWorker');
+        let nextRecoveryAt = 0;
         while (!shutdownRequested) {
+            if (Date.now() >= nextRecoveryAt) {
+                const recoveredClaims = await recoverInterruptedClaims();
+                const recovery = await recoverDurableCronJobs(CLIP_RECOMMENDATIONS_QUEUE_KEY, { limit: 100 });
+                nextRecoveryAt = recoveredClaims === 100 || recovery.examined === 100 || recovery.uncertain === 100 ? 0 : Date.now() + 30_000;
+            }
             const rawPayload = await cache.sendCommand([
                 'BLMOVE',
                 CLIP_RECOMMENDATIONS_QUEUE_KEY,
@@ -278,10 +305,7 @@ async function main(): Promise<void> {
                 if (RUN_ONCE) break;
                 continue;
             }
-            if (shutdownRequested) {
-                await requeueClaim(rawPayload);
-                break;
-            }
+            if (shutdownRequested) break;
 
             const payload = parseCronQueueJob(rawPayload);
             if (!payload || payload.job !== CLIP_RECOMMENDATION_ANALYSIS_JOB) {
@@ -294,30 +318,52 @@ async function main(): Promise<void> {
                 continue;
             }
 
+            let canonicalJob = payload;
+            let didClaim = false;
             try {
-                await processJob(rawPayload, payload);
+                const claimed = await claimDurableCronJob(payload, CLIP_RECOMMENDATIONS_QUEUE_KEY, lockOwnerId);
+                if (claimed.status !== 'claimed') {
+                    await acknowledgePhysical(rawPayload);
+                    if (RUN_ONCE) break;
+                    continue;
+                }
+                activeClaim = claimed.claim;
+                didClaim = true;
+                canonicalJob = claimed.job;
+                durableLeaseLost = false;
+                durableTransitionAttempted = false;
+                const renewal = setInterval(() => {
+                    const renewing = activeClaim;
+                    if (!renewing) return;
+                    void renewDurableCronJobClaim(renewing).then(ok => { if (!ok && activeClaim === renewing) durableLeaseLost = true; }).catch(() => { if (activeClaim === renewing) durableLeaseLost = true; });
+                }, 60_000);
+                renewal.unref?.();
+                try { await processJob(rawPayload, claimed.job); }
+                finally { clearInterval(renewal); }
+
                 if (RUN_ONCE) break;
             } catch (error) {
-                const disposition = getClipJobFailureDisposition(payload, JOB_MAX_ATTEMPTS);
-                if (disposition.action === 'requeue') {
-                    await requeueClaim(rawPayload, serializeCronQueueJob(disposition.job));
-                    await logError({
-                        worker: 'clip_recommendations',
-                        message: 'Queue job crashed and was returned to the queue',
-                        attempt: disposition.attempt,
-                        error: error instanceof Error ? error.message : String(error),
-                        stack: error instanceof Error ? error.stack : undefined
-                    }, { destination: 'console' });
-                } else {
-                    await deadLetterClaim(rawPayload, serializeCronQueueJob(payload), payload.dedupeKey);
-                    await logError({
-                        worker: 'clip_recommendations',
-                        message: 'Queue job crashed after exhausting retries and was moved to dead letter',
-                        attempt: disposition.attempt,
-                        error: error instanceof Error ? error.message : String(error),
-                        stack: error instanceof Error ? error.stack : undefined
-                    }, { destination: 'console' });
+                if (!activeClaim && !didClaim && !lockLost) {
+                    const result = await cache.eval(CLIP_CLAIM_SCRIPTS.requeue, {
+                        keys: [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_QUEUE_KEY],
+                        arguments: [lockOwnerId, rawPayload, rawPayload]
+                    });
+                    requireOwnership(result);
+                    await sleep(1000);
                 }
+                if (!activeClaim || lockLost || durableLeaseLost || durableTransitionAttempted) {
+                    await logError({ worker: 'clip_recommendations', message: 'Claim or acknowledgement lost; retaining transport payload', error: error instanceof Error ? error.message : String(error) }, { destination: 'console' });
+                    if (lockLost || durableLeaseLost || durableTransitionAttempted) { shutdownRequested = true; break; }
+                    continue;
+                }
+                // An unexpected exception can follow an accepted external effect.
+                // Keep the ambiguity visible instead of blindly replaying it.
+                const message = error instanceof Error ? error.message : String(error);
+                if (!await uncertainDurableCronJob(activeClaim, message)) throw new Error('Clip uncertain transition lost');
+                activeClaim = null;
+                await acknowledgePhysical(rawPayload);
+                await logError({ worker: 'clip_recommendations', message: 'Clip job outcome uncertain',
+                    jobID: canonicalJob.id, error: message }, { destination: 'console' });
                 if (RUN_ONCE) break;
             }
         }
