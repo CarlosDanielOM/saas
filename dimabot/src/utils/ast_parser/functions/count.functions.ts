@@ -28,10 +28,10 @@ const bitsHandler: FunctionHandler = async (_args, ctx) => {
 
 export function registerCountFunctions(): void {
     registerFunction('count', countHandler, {
-        description: 'Persistent per-command counter: adds the increment to the stored count and returns the new value.',
+        description: 'Persistent per-command counter: adds the increment and returns the total. With no inline increment, a signed chat argument such as -3 is supported; inline signed numbers are not.',
         syntax: 'count [increment]',
         category: 'counters',
-        examples: ['count', 'count 5', 'count +3'],
+        examples: ['count', 'count 5'],
         keywords: ['counter', 'contador', 'increment', 'times used', 'veces usado'],
         surfaces: ['authoring']
     });

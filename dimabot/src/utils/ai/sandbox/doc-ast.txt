@@ -106,10 +106,9 @@
 # --- counters ---
 # $(bits) - Returns the bits amount of the current cheer event context (0 outside cheer events).
 #   Example: $(bits)
-# $(count [increment]) - Persistent per-command counter: adds the increment to the stored count and returns the new value.
+# $(count [increment]) - Persistent per-command counter: adds the increment and returns the total. With no inline increment, a signed chat argument such as -3 is supported; inline signed numbers are not.
 #   Example: $(count)
 #   Example: $(count 5)
-#   Example: $(count +3)
 # $(scount) - Simple counter: increments the per-command count by 1 and returns the new value.
 #   Example: $(scount)
 #

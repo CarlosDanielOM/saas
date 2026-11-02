@@ -183,8 +183,8 @@ Los contadores se guardan por comando.
 | `$(scount)` | Suma `1` y devuelve el total | `$(scount)` |
 | `$(bits)` | Bits de un evento de cheer. Devuelve `0` fuera de un cheer | `$(bits)` |
 
-- `$(count)` sin número suma el texto escrito después del comando. Por ejemplo, `!usos 5` suma `5`.
-- Por ahora solo funcionan los números enteros positivos. Un número negativo, como `$(count -3)`, se toma como `0` y el total no cambia. Un `+` al inicio tiene el mismo problema.
+- Si no se indica un número dentro de la función, `$(count)` usa el argumento del chat. Por ejemplo, si el total es `10`, un cuerpo de comando con `Usos: $(count)` lo reduce a `7` cuando alguien escribe `!usos -3`.
+- Esto es distinto de un valor con signo dentro de la función: `$(count -3)` se interpreta como `0`, y el analizador no admite valores inline con `+`/`-`. Usa `$(count)` para aplicar un argumento del chat con signo; no uses un valor inline negativo como decremento fijo.
 
 ## Funciones de clip
 

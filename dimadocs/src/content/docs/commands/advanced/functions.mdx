@@ -183,8 +183,8 @@ Counters are saved per command.
 | `$(scount)` | Adds `1` and returns the total | `$(scount)` |
 | `$(bits)` | Bits in a cheer event. Returns `0` outside a cheer | `$(bits)` |
 
-- `$(count)` with no number adds the text typed after the command. For example, `!uses 5` adds `5`.
-- Only positive whole numbers work right now. A negative number, such as `$(count -3)`, is read as `0` and the total doesn't change. A leading `+` has the same problem.
+- With no inline number, `$(count)` uses the chat argument. For example, if the total is `10`, a command body containing `Uses: $(count)` reduces it to `7` when someone runs `!uses -3`.
+- This is different from a signed inline value: `$(count -3)` is read as `0`, and inline `+`/`-` values are not supported. Use `$(count)` to apply a signed chat argument; don't use a negative inline value as a fixed decrement.
 
 ## Clip functions
 
