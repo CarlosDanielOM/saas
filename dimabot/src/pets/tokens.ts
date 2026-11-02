@@ -1,3 +1,4 @@
+import { petDiagnostic } from './diagnostics.js';
 import { randomBytes } from 'node:crypto';
 import { PetRuntime, PetRequest, type PetRequestRecord } from '../schemas/pet_runtime.schema.js';
 import { getPetConfiguration } from '../server/services/pet_settings.service.js';
@@ -38,24 +39,33 @@ export async function issueAudioTicket(peer: PetPeer, request: PetRequestRecord,
     return ticket;
 }
 export async function authorizePetAudio(requestId: string, ticket: unknown) {
-    if (typeof ticket !== 'string' || !/^[\w-]{43}$/.test(ticket)) throw new PetError('invalid_ticket', 401);
-    const raw = await (await getDragonflyClient('pet-audio')).get(`pet:audio:${overlayTokenHash(ticket)}`);
-    if (!raw) throw new PetError('invalid_ticket', 401);
-    const record = JSON.parse(raw) as { ownerId: string; peerId: string; requestId: string; generation: number; leaseId: string;
-        tokenHash: string | null; sessionId: string | null; expiresAt: number };
-    const peer = petPeers.get(record.peerId);
-    if (!peer || !peer.socket.connected || peer.ownerId !== record.ownerId || (peer.sessionId ?? null) !== record.sessionId ||
-        record.requestId !== requestId || record.expiresAt <= Date.now()) throw new PetError('stale_ticket', 403);
-    await peer.revalidate();
-    const runtime = await PetRuntime.findById(record.ownerId).lean();
-    if (!runtime || runtime.generation !== record.generation || runtime.activeRequestId !== requestId ||
-        runtime.lease?.leaseId !== record.leaseId || runtime.lease.holderPeerId !== peer.id || runtime.lease.expiresAt.getTime() <= Date.now() ||
-        record.tokenHash && record.tokenHash !== runtime.tokenHash) throw new PetError('stale_ticket', 403);
-    const request = await PetRequest.findById(requestId).lean();
-    if (!request?.audio || !['ready', 'playing'].includes(request.status)) throw new PetError('audio_unavailable', 404);
-    if (request.operation === 'tts') {
-        const fetched = await PetRequest.updateOne({ _id: requestId, status: { $in: ['ready', 'playing'] } }, { $set: { audioFetched: true } });
-        if (!fetched.matchedCount) throw new PetError('stale_ticket', 403);
+    let diagnosticChannel = 'global';
+    let diagnosticPeer: 'desktop' | 'browser' | undefined;
+    try {
+        if (typeof ticket !== 'string' || !/^[\w-]{43}$/.test(ticket)) throw new PetError('invalid_ticket', 401);
+        const raw = await (await getDragonflyClient('pet-audio')).get(`pet:audio:${overlayTokenHash(ticket)}`);
+        if (!raw) throw new PetError('invalid_ticket', 401);
+        const record = JSON.parse(raw) as { ownerId: string; peerId: string; requestId: string; generation: number; leaseId: string;
+            tokenHash: string | null; sessionId: string | null; expiresAt: number };
+        const peer = petPeers.get(record.peerId);
+        if (peer) { diagnosticChannel = peer.channelId; diagnosticPeer = peer.kind; }
+        if (!peer || !peer.socket.connected || peer.ownerId !== record.ownerId || (peer.sessionId ?? null) !== record.sessionId ||
+            record.requestId !== requestId || record.expiresAt <= Date.now()) throw new PetError('stale_ticket', 403);
+        await peer.revalidate();
+        const runtime = await PetRuntime.findById(record.ownerId).lean();
+        if (!runtime || runtime.generation !== record.generation || runtime.activeRequestId !== requestId ||
+            runtime.lease?.leaseId !== record.leaseId || runtime.lease.holderPeerId !== peer.id || runtime.lease.expiresAt.getTime() <= Date.now() ||
+            record.tokenHash && record.tokenHash !== runtime.tokenHash) throw new PetError('stale_ticket', 403);
+        const request = await PetRequest.findById(requestId).lean();
+        if (!request?.audio || !['ready', 'playing'].includes(request.status)) throw new PetError('audio_unavailable', 404);
+        if (request.operation === 'tts') {
+            const fetched = await PetRequest.updateOne({ _id: requestId, status: { $in: ['ready', 'playing'] } }, { $set: { audioFetched: true } });
+            if (!fetched.matchedCount) throw new PetError('stale_ticket', 403);
+        }
+        petDiagnostic(request.channelId, 'audio_fetch', { requestId, generation: request.generation, operation: request.operation, peerKind: peer.kind, accepted: true, startRemainingMs: request.startBefore ? request.startBefore.getTime() - Date.now() : undefined });
+        return request.audio;
+    } catch (error) {
+        petDiagnostic(diagnosticChannel, 'audio_fetch', { requestId, peerKind: diagnosticPeer, accepted: false, reason: error instanceof PetError ? error.code : 'temporarily_unavailable' });
+        throw error;
     }
-    return request.audio;
 }

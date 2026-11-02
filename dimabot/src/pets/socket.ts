@@ -1,3 +1,4 @@
+import { petDiagnostic } from './diagnostics.js';
 import { scheduleReadTtsResume } from './tts_bridge.js';
 import { randomUUID } from 'node:crypto';
 import type { Server as SocketServer, Socket } from 'socket.io';
@@ -117,10 +118,18 @@ export async function registerPetSockets(io: SocketServer) {
                     const now = Date.now();
                     if (now - windowStart >= 1000) { windowStart = now; messageCount = 0; }
                     const terminal = event === 'pet:playback' && ['ended', 'stopped', 'error'].includes(String(data.phase));
-                    if ((!telemetry && !terminal && ++messageCount > 30) || pending.length >= (terminal ? 16 : 15)) return ack({ ok: false, error: { code: 'rate_limited', retryAfterMs: 1000 } });
+                    if ((!telemetry && !terminal && ++messageCount > 30) || pending.length >= (terminal ? 16 : 15)) {
+                        if (event === 'pet:playback' && !telemetry) petDiagnostic(peer.channelId, 'playback_rejected', { requestId: data.requestId, generation: data.generation, peerKind: peer.kind, phase: data.phase, reason: 'rate_limited' });
+                        return ack({ ok: false, error: { code: 'rate_limited', retryAfterMs: 1000 } });
+                    }
                     pending.push(async () => {
-                        try { await peer.revalidate(); ack({ ok: true, data: await handler(data) }); }
+                        const handlerAt = Date.now();
+                        try {
+                            await peer.revalidate(); const result = await handler(data); ack({ ok: true, data: result });
+                            if (event === 'pet:playback' && !telemetry) petDiagnostic(peer.channelId, 'playback_report', { requestId: data.requestId, generation: data.generation, peerKind: peer.kind, phase: data.phase, reason: data.errorCode, positionMs: data.positionMs, queueDelayMs: handlerAt - now, handlerMs: Date.now() - handlerAt });
+                        }
                         catch (error) {
+                            if (event === 'pet:playback' && !telemetry) petDiagnostic(peer.channelId, 'playback_rejected', { requestId: data.requestId, generation: data.generation, peerKind: peer.kind, phase: data.phase, reason: known(error) ? error.code : 'temporarily_unavailable', queueDelayMs: handlerAt - now, handlerMs: Date.now() - handlerAt });
                             ack({ ok: false, error: { code: known(error) ? error.code : 'temporarily_unavailable' } });
                             if (!known(error) || error.status === 401 || error.status === 403) socket.disconnect(true);
                         }

@@ -1,3 +1,4 @@
+import { petDiagnostic } from './diagnostics.js';
 import { PetRequest, PetRuntime, PET_TERMINAL, type PetRequestRecord } from '../schemas/pet_runtime.schema.js';
 import { petWakeups } from './wakeups.js';
 import { readTtsTerminal, invalidateReadTts } from './tts_bridge.js';
@@ -32,6 +33,7 @@ export async function finishRequest(id: string, status: 'completed' | 'cancelled
         $set: { status, ...(errorCode ? { errorCode } : {}) }, $inc: { version: 1 }
     }, { new: true }).lean();
     if (request) {
+        petDiagnostic(request.channelId, 'terminal', { requestId: request._id, generation: request.generation, operation: request.operation, status, reason: errorCode ?? status, playbackStarted: request.playbackStarted === true, startRemainingMs: request.startBefore ? request.startBefore.getTime() - Date.now() : undefined });
         // A server-side terminal only requests player stop. Once audio has been
         // prepared it may already be audible, even if the player's started ACK
         // was lost. Retain the durable activity until its conservative deadline

@@ -275,6 +275,33 @@ assert.equal(firstBilling.length, 1, 'completed replay performs no duplicate ing
 assert.equal(firstBilling[0].external_id, `${requestId}:tts`);
 assert.equal(firstBilling[0].metadata.request_id, `${requestId}:tts`);
 assert.equal(firstBilling[0].metadata.usage_source, 'pet');
+// Exact-image diagnostics: accepted delivery/fetch/start/terminal and rejected ACK/fetch are observable without payloads.
+assert.equal((await desktop.send('pet:playback', identityFor(play, 99, 'started'))).ok, false);
+const diagnosticRows = await until(async () => {
+  const keys = await redis.keys(`logger:twitch:${owner}:info:*`);
+  const rows = (await Promise.all(keys.map(key => redis.get(key)))).filter(Boolean).map(JSON.parse)
+    .map(entry => entry.data).filter(data => data.component === 'pet_playback' && data.requestId === requestId);
+  return ['ready', 'play_delivery', 'audio_fetch', 'playback_report', 'terminal', 'playback_rejected'].every(event => rows.some(row => row.event === event)) && rows.some(row => row.event === 'audio_fetch' && row.accepted === false) ? rows : null;
+}, 'request-scoped diagnostic lifecycle');
+await until(async () => {
+  const keys = await redis.keys('logger:twitch:global:info:*');
+  const rows = (await Promise.all(keys.map(key => redis.get(key)))).filter(Boolean).map(JSON.parse);
+  return rows.some(entry => entry.data?.component === 'pet_playback' && entry.data.requestId === requestId && entry.data.event === 'audio_fetch' && entry.data.accepted === false && entry.data.reason === 'invalid_ticket');
+}, 'missing ticket fetch produces safe global diagnostic');
+const deliveryDiagnostic = diagnosticRows.find(row => row.event === 'play_delivery');
+assert.equal(deliveryDiagnostic.delivered, true);
+assert.equal(deliveryDiagnostic.peerKind, 'desktop');
+assert(Number.isFinite(deliveryDiagnostic.emitDelayMs));
+assert(Number.isFinite(deliveryDiagnostic.startRemainingMs));
+assert(diagnosticRows.some(row => row.event === 'audio_fetch' && row.accepted === true));
+assert(diagnosticRows.some(row => row.event === 'audio_fetch' && row.accepted === false));
+assert(diagnosticRows.some(row => row.event === 'playback_report' && row.phase === 'started'));
+assert(diagnosticRows.some(row => row.event === 'terminal' && row.playbackStarted === true));
+for (const row of diagnosticRows) {
+  for (const key of ['text', 'outputText', 'url', 'ticket', 'token', 'accessToken', 'audio']) assert.equal(Object.hasOwn(row, key), false);
+}
+console.log('PASS pet diagnostics: delivery timing, audio fetch outcomes, accepted start/terminal and rejected feedback correlated without private payloads');
+
 // Pet speech uses the channel filters even when ordinary channel TTS is disabled.
 await redis.set('twitch:global:tts:emotes', JSON.stringify(['Kappa']));
 await redis.set(`twitch:${owner}:emote-catalog:v1`, JSON.stringify({ emotes: [{ id: 'native1', name: 'Pog' }], checkedAt: new Date().toISOString(), retryAt: Date.now() + 3600000 }));

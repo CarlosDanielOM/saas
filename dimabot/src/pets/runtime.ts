@@ -1,3 +1,4 @@
+import { petDiagnostic } from './diagnostics.js';
 import { startReadTts, reconcileReadTtsStartup } from './read_tts.js';
 import { observeReadTtsRuntime, readTtsOwners } from './tts_bridge.js';
 import { randomUUID } from 'node:crypto';
@@ -235,6 +236,8 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
             $set: { status: 'ready', startBefore: new Date(Date.now() + 5000), phaseDeadline: new Date(Date.now() + durationMs + 10_000), audio: { path: audioPath, mimeType: result.mimeType, durationMs } }, $inc: { version: 1 }
         }, { new: true }).lean();
         if (!ready) throw new PetError('stale_request');
+        const readyAt = ready.startBefore!.getTime() - 5000;
+        petDiagnostic(request.channelId, 'ready', { requestId: request._id, generation: request.generation, operation: request.operation, peerKind: peer.kind, readyAt, durationMs });
         await current(ready);
         await notifyPet(request.ownerId);
         const ticket = await issueAudioTicket(peer, ready, runtime.lease!);
@@ -246,6 +249,8 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         const sent = emitPetReadyAndPlay(peer, request.generation, requestView(ready)!, { v: 1, requestId: request._id, generation: request.generation,
             leaseId: runtime.lease!.leaseId, startBefore: ready.startBefore!.getTime(),
             audio: { url: `${(process.env.PUBLIC_API_URL || 'https://api.domdimabot.com').replace(/\/+$/, '')}/pets/playback/${request._id}/audio?ticket=${ticket}`, mimeType: result.mimeType, durationMs } });
+        const emittedAt = Date.now();
+        petDiagnostic(request.channelId, 'play_delivery', { requestId: request._id, generation: request.generation, operation: request.operation, peerKind: peer.kind, delivered: sent, readyAt, emittedAt, emitDelayMs: emittedAt - readyAt, startRemainingMs: ready.startBefore!.getTime() - emittedAt });
         if (!sent) throw new PetError('stale_request');
         delivered = true;
         directory = undefined; // Terminal/recovery cleanup owns the private file now.
