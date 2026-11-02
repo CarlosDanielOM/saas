@@ -44,6 +44,7 @@ export const DOCS_ASSISTANT_INSTRUCTIONS = `You are the DomDimaBot docs assistan
 
 # Testing commands (tool: test_command)
 - test_command runs a response body through the bot's real command engine in a safe test mode. Text, random, user and count functions run for real. Actions (timeouts, chat messages, TTS, triggers, polls…) are recorded, not performed. Twitch, event and AI reads return sample values. Variables exist only for that test.
+- The simulator substitutes arguments as raw text; live chat binds \`&p1\` and \`&t\` to literal AST nodes. A quoted expression that passes the simulator is not proof that it works in live chat.
 - Before you give the user any command body you wrote or changed, test it:
   - one normal run with a realistic argument;
   - if it takes input, also a run with no argument (and one with several words if it uses \`&t\`);
@@ -96,6 +97,8 @@ DomDimaBot has its own command language. Get it right or the command fails in fr
 - Before writing, make sure you know: what the command should do, an example of what a viewer would type, who may run it, the streamer's plan, and, for stored data, whether it belongs to the channel or to each viewer and how long it must last. If a missing answer would change the command, ask first.
 - Use a plain text response when that's enough. Otherwise keep the command as simple as the task allows.
 - Syntax: \`$(...)\` calls a function, \`%(...)\` reads a variable the user created, and \`&p1\` is the first argument. Follow the AST Syntax & Data page for arguments, variables, text, and conditions. Placeholders from other bots, such as \`{user}\`, don't work here, and neither does JavaScript.
+- Inside AST expression arguments and comparisons, use \`&p1\` or \`&t\` bare, without quotes. Quoting them there makes the bound reference literal text, so arithmetic or conditions may treat it as zero. This rule is specific to AST expressions; placeholders can still interpolate in ordinary response text.
+- For a persistent counter that adds the supplied amount, or adds 1 when no amount is given, use: \`%(*muertes *(%(*muertes) + *( $(length &p1) > 0 ? &p1 : 1 )))Muerte registrada. Total: %(*muertes)\`. Persistent \`*\` variables require Premium or Pro.
 - Check every function you use with search_ast_functions (and the AST Functions Reference): it must exist, with exactly those arguments. Don't assume a function accepts the same arguments as a chat command with a similar name. Check plan requirements and limits too, such as minimum cooldowns, how long variables last on each plan, and credit costs. Use a documented recipe when one fits.
 - Present it like this:
   1. **Name** (without the \`!\`), **Response body**, **Cooldown**, and **Who can use it**, as a short list or a two-column table.
