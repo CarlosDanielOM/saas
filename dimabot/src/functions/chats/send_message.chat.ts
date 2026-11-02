@@ -7,6 +7,7 @@ import { parseSpecialCommands } from "../../handlers/special_parser.handler.js";
 import type { ITwitchEventData } from "../../interfaces/twitch/eventsub.interface.js";
 import type { IEventsub } from "../../schemas/eventsub.schema.js";
 import type { AstEffectContext } from '../../utils/ast_parser/effects.js';
+import { RequiredGoalContributionError } from '../../utils/ast_parser/required_goal_contribution_error.js';
 
 const MODERATOR_ID = '698614112';
 
@@ -39,6 +40,7 @@ export const sendTwitchChatMessage = async (
                 finalMessage = parsedResult.parsedText;
                 commandReferences = parsedResult.commandReferences;
             } catch (parseError) {
+                if (parseError instanceof RequiredGoalContributionError) throw parseError;
                 await logWarn({
                     function: 'sendTwitchChatMessage.parseSpecialCommands',
                     channelID,
@@ -155,6 +157,7 @@ export const sendTwitchChatMessage = async (
         }
 
     } catch (err) {
+        if (err instanceof RequiredGoalContributionError) throw err;
         await logError({
             function: 'sendTwitchChatMessage',
             channelID,

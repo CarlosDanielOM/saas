@@ -17,6 +17,7 @@ import { registerChatFunctions } from './chat.functions.js';
 import { registerDefenseFunctions } from './defense.functions.js';
 import { registerPinFunctions } from './pin.functions.js';
 import { registerStringFunctions } from './string.functions.js';
+import { registerGoalFunctions } from './goals.functions.js';
 import { registerPetFunctions } from './pet.functions.js';
 
 let registered = false;
@@ -48,6 +49,7 @@ export function registerAllFunctions(options: { startWorkers?: boolean } = {}): 
     registerEventsubFunctions();
     registerTtsFunctions();
     registerPetFunctions();
+    registerGoalFunctions();
     registerTriggerFunctions();
     registerDelayFunctions();
     registerChatFunctions();

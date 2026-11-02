@@ -10,6 +10,7 @@ interface EffectState {
     actor: AdmitPetActionInput['actor'];
     path: string[];
     next: number;
+    goalNext: number;
 }
 const authorities = new WeakMap<AstEffectContext, EffectState>();
 function mint(state: EffectState): AstEffectContext {
@@ -29,21 +30,21 @@ export function createTwitchEffectContext(input: Pick<AdmitPetActionInput, 'chan
     const chat = input.origin.kind === 'chat-command' && input.actor.chat;
     const safeChat = chat && /^[a-z0-9_]{1,25}$/i.test(chat.login) && typeof chat.message === 'string' && chat.message.length > 0 && chat.message.length <= 2000 && Array.isArray(chat.badges) && chat.badges.length <= 50
         ? { login: chat.login, message: chat.message, badges: chat.badges.map(b => ({ set_id: String(b.set_id || '').slice(0, 80), id: String(b.id || '').slice(0, 80), info: String(b.info || '').slice(0, 80) })) } : undefined;
-    return mint({ channelId: input.channelId, origin: { ...input.origin }, actor: { userId: input.actor.userId, displayName: input.actor.displayName, ...(safeChat ? { chat: safeChat } : {}) }, path: [], next: 0 });
+    return mint({ channelId: input.channelId, origin: { ...input.origin }, actor: { userId: input.actor.userId, displayName: input.actor.displayName, ...(safeChat ? { chat: safeChat } : {}) }, path: [], next: 0, goalNext: 0 });
 }
 
 /** Config IDs come from stored command/EventSub configuration, never tag arguments. */
 export function scopeAstEffectContext(effect: AstEffectContext | undefined, channelId: string, configId: string): AstEffectContext | undefined {
     const state = effect && authorities.get(effect);
     if (!state || state.channelId !== channelId || !configId) return;
-    return mint({ ...state, path: [...state.path, configId], next: 0 });
+    return mint({ ...state, path: [...state.path, configId], next: 0, goalNext: 0 });
 }
 
 /** Reserve a branch while evaluating the reference, before deferred delivery. */
 export function forkAstEffectContext(effect: AstEffectContext | undefined): AstEffectContext | undefined {
     const state = effect && authorities.get(effect);
     if (!state || !state.path.length) return;
-    return mint({ ...state, path: [...state.path, `reference:${state.next++}`], next: 0 });
+    return mint({ ...state, path: [...state.path, `reference:${state.next++}`], next: 0, goalNext: 0 });
 }
 
 export function nextPetAction(effect: AstEffectContext | undefined, channelId: string): Pick<AdmitPetActionInput, 'origin' | 'actor' | 'actionKey'> | undefined {
@@ -51,4 +52,14 @@ export function nextPetAction(effect: AstEffectContext | undefined, channelId: s
     if (!state || state.channelId !== channelId || !state.path.length || !Number.isSafeInteger(state.next)) return;
     const actionKey = `pet:v1:${createHash('sha256').update(JSON.stringify([state.path, state.next++])).digest('hex')}`;
     return { origin: { ...state.origin }, actor: { ...state.actor }, actionKey };
+}
+
+/** Reserve a goal invocation without altering the existing pet action counter. */
+export function nextGoalContribution(effect: AstEffectContext | undefined, channelId: string): {
+    origin: EffectState['origin']; actor: EffectState['actor']; actionKey: string; eventsubConfig: boolean;
+} | undefined {
+    const state = effect && authorities.get(effect);
+    if (!state || state.channelId !== channelId || !state.path.length || !Number.isSafeInteger(state.goalNext)) return;
+    const actionKey = `goal:v1:${createHash('sha256').update(JSON.stringify([state.path, state.goalNext++])).digest('hex')}`;
+    return { origin: { ...state.origin }, actor: { ...state.actor }, actionKey, eventsubConfig: state.path[0].startsWith('eventsub:') };
 }

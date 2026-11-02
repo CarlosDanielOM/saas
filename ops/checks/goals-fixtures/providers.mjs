@@ -43,7 +43,7 @@ if(process.env.SAAS_GOALS_TARGET==='api')add('utils/qdrant/start_up.qdrant','exp
 globalThis.__interactionSpawn=(...args)=>/\/(domain_events|goals)\.worker\.js$/.test(String(args[1][0]))?spawn(...args):null;
 registerHooks({
  resolve(specifier,context,nextResolve){
-  if(specifier==='node:child_process'&&context.parentURL?.endsWith('/workers/cron.index.js')){
+  if(specifier==='node:child_process'&&(context.parentURL?.endsWith('/workers/cron.index.js')||context.parentURL?.endsWith('/workers/cron_native_bridge.js'))){
    const source=`import {EventEmitter} from 'node:events';export const spawn=(...args)=>{const actual=globalThis.__interactionSpawn(...args);if(actual)return actual;const child=new EventEmitter();child.pid=0;child.kill=()=>true;return child;};`;
    return {url:`data:text/javascript,${encodeURIComponent(source)}`,shortCircuit:true};
   }

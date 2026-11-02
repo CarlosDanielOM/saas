@@ -1,6 +1,9 @@
-export type GoalMetric = 'follows' | 'subs' | 'bits';
+import { goalCurrency, type GoalCurrency } from './currency.js';
+import { goalTimeZone } from './monthly.js';
+
+export type GoalMetric = 'follows' | 'subs' | 'bits' | 'currency';
 // Keep `total` as the persisted since-creation mode for existing goals.
-export type GoalMode = 'total' | 'current' | 'fixed' | 'rolling';
+export type GoalMode = 'total' | 'current' | 'fixed' | 'rolling' | 'monthly';
 export type GoalPlan = 'free' | 'premium' | 'pro';
 export interface GoalAction { type: 'message' | 'ast'; text: string }
 export interface GoalActions { completion?: GoalAction; failure?: GoalAction }
@@ -9,6 +12,7 @@ export interface GoalOutcome {
   sequence: number;
   at: number;
   actionStatus: 'none' | 'running' | 'finished' | 'error' | 'unknown';
+  actionSuppressed?: 'historical_catchup';
 }
 export interface Goal {
   id: string;
@@ -21,12 +25,14 @@ export interface Goal {
   actions?: GoalActions;
   endsAt?: number;
   windowSeconds?: number;
+  currency?: GoalCurrency;
+  timeZone?: string;
 }
 export class GoalError extends Error {
   constructor(readonly code: string, message: string, readonly status = 400) { super(message); }
 }
 export const goalLimit = (plan: GoalPlan): number => ({ free: 2, premium: 3, pro: 4 })[plan];
-export const goalMetrics = (plan: GoalPlan): GoalMetric[] => plan === 'free' ? ['follows', 'subs'] : ['follows', 'subs', 'bits'];
+export const goalMetrics = (plan: GoalPlan): GoalMetric[] => plan === 'free' ? ['follows', 'subs'] : ['follows', 'subs', 'bits', 'currency'];
 export function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new GoalError('invalid', 'Expected an object');
   return value as Record<string, unknown>;
@@ -45,11 +51,15 @@ function timestamp(value: unknown): number {
 }
 export function newGoal(value: unknown, plan: GoalPlan, id: string, now: number): Goal {
   const input = object(value), metric = input.metric as GoalMetric, mode = input.mode as GoalMode;
-  if (!['follows', 'subs', 'bits'].includes(metric)) throw new GoalError('invalid', 'Unknown metric');
-  if (!goalMetrics(plan).includes(metric)) throw new GoalError('plan_required', 'Bits goals require Premium', 403);
-  if (!['total', 'current', 'fixed', 'rolling'].includes(mode)) throw new GoalError('invalid', 'Unknown counting mode');
-  if (mode === 'current' && metric === 'bits') throw new GoalError('invalid', 'Current total is only available for follows and subscriptions');
+  if (!['follows', 'subs', 'bits', 'currency'].includes(metric)) throw new GoalError('invalid', 'Unknown metric');
+  if (!goalMetrics(plan).includes(metric)) throw new GoalError('plan_required', 'Bits and currency goals require Premium', 403);
+  if (!['total', 'current', 'fixed', 'rolling', 'monthly'].includes(mode)) throw new GoalError('invalid', 'Unknown counting mode');
+  if (mode === 'current' && (metric === 'bits' || metric === 'currency')) throw new GoalError('invalid', 'Current total is only available for follows and subscriptions');
   const goal: Goal = { id, name: goalLabel(input.name), metric, mode, target: goalInteger(input.target), createdAt: now, startsAt: now };
+  if (metric === 'currency') goal.currency = goalCurrency(input.currency);
+  else if (input.currency !== undefined) throw new GoalError('invalid', 'Currency settings require a currency goal');
+  if (mode === 'monthly') goal.timeZone = goalTimeZone(input.timeZone);
+  else if (input.timeZone !== undefined) throw new GoalError('invalid', 'Time zone requires a monthly goal');
   if (mode === 'fixed') {
     goal.startsAt = timestamp(input.startsAt);
     goal.endsAt = timestamp(input.endsAt);
@@ -74,7 +84,7 @@ export function goalActions(value: unknown, mode: GoalMode): GoalActions {
   if (Object.keys(input).some(key => !['completion', 'failure'].includes(key))) throw new GoalError('invalid', 'Unknown goal action');
   for (const key of ['completion', 'failure'] as const) {
     if (input[key] === undefined) continue;
-    if (key === 'failure' && mode !== 'fixed' && mode !== 'rolling') throw new GoalError('invalid', 'Failure actions require a fixed or rolling goal');
+    if (key === 'failure' && mode !== 'fixed' && mode !== 'rolling' && mode !== 'monthly') throw new GoalError('invalid', 'Failure actions require a fixed, rolling or monthly goal');
     const action = object(input[key]);
     if (Object.keys(action).some(key => !['type', 'text'].includes(key)) || (action.type !== 'message' && action.type !== 'ast')) throw new GoalError('invalid', 'Choose a message or AST action');
     const max = action.type === 'message' ? 500 : 4000;

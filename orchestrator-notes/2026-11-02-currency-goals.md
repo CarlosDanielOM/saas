@@ -1,0 +1,5 @@
+# 2026-11-02 currency goals routing
+
+This bounded goals task routed custom producer/AST/fixtures to GPT-6.1 Terra high, currency and monthly core work to Terra xhigh, UI work to GPT-6.1 Sol high, and source-backed docs to GPT-6 Luna high. The cron, API, and bot exact candidate checks passed; the site production bundle passed the seven-context browser check. All four targets were deployed and the scoped production checks passed. Helper cleanup is complete; receipts and rollback artifacts were retained. See the [currency-goals release note](../migration-notes/currency-goals.md) for run identities and evidence.
+
+Lead review corrected an over-broad authorization-scope proposal before integration. Runtime verification then caught Mongoose minimizing empty event metadata at two envelope boundaries; the fix was covered with a regression that fails before and passes after. Keep lead review and exact runtime integration in this task route. This is one bounded task, not evidence for a tier reorder, comparative model ranking, or throughput claim.

@@ -1,12 +1,14 @@
 import type { DomainEventOwnerResolver, DomainEventProducer, JournalDomainEventInput, JournalDomainEventResult } from './domain_event.types.js';
 import { twitchEventsubProducer } from './twitch_eventsub_events.js';
+import { customGoalProducer } from './goal_custom_events.js';
 import { polarWebhookProducer } from './polar_events.js';
 import { journalDomainEvent } from '../utils/domain_events.js';
 import { DomainEventContractError, validateDomainEventContract } from './domain_event_contracts.js';
 
 export const DOMAIN_EVENT_PRODUCERS = {
     twitch: twitchEventsubProducer,
-    polar: polarWebhookProducer
+    polar: polarWebhookProducer,
+    goalsCustom: customGoalProducer
 } as const;
 
 export async function ingestDomainEvent<Input>(

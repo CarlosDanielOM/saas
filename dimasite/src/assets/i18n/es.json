@@ -8688,13 +8688,15 @@
     "metrics": {
       "follows": "Seguidores",
       "subs": "Suscripciones",
-      "bits": "Bits"
+      "bits": "Bits",
+      "currency": "Moneda"
     },
     "modes": {
       "total": "Desde la creación",
       "fixed": "Período fijo",
       "rolling": "Ventana móvil",
-      "current": "Total actual"
+      "current": "Total actual",
+      "monthly": "Repetir cada mes natural"
     },
     "status": {
       "scheduled": "Programada",
@@ -8707,8 +8709,8 @@
     "delete": "Eliminar",
     "editNamed": "Editar {{name}}",
     "deleteNamed": "Eliminar {{name}}",
-    "counting": "Las metas de total actual usan los seguidores/suscriptores activos del panel. Los otros modos cuentan eventos nuevos desde la creación, incluidos regalos y resuscripciones compartidas. El progreso móvil puede bajar al salir eventos de la ventana. Se actualiza cada 5 segundos.",
-    "planHint": "Gratis: 2 metas de seguidores/suscripciones · Premium: 3 metas + Bits · Pro: 4 metas. Las metas existentes conservan su progreso al cambiar de plan.",
+    "counting": "Las metas de total actual usan los seguidores y suscriptores activos del panel. Los demás modos cuentan eventos nuevos desde su creación, incluidos regalos y resuscripciones compartidas. Las mensuales se reinician cada mes natural; las móviles pueden bajar al salir eventos de la ventana. Se actualiza cada 5 segundos.",
+    "planHint": "Gratis: 2 metas de follows o subs · Premium: 3 metas + Bits y moneda · Pro: 4 metas. Las metas existentes conservan su progreso al cambiar de plan.",
     "newTitle": "Crear una meta",
     "editTitle": "Editar meta",
     "deleteTitle": "Eliminar meta",
@@ -8724,7 +8726,8 @@
       "total": "Cuenta eventos nuevos desde ahora, sin fecha límite.",
       "fixed": "Cuenta eventos entre estas fechas. Se usa tu zona horaria local; no se añaden eventos pasados.",
       "rolling": "Cuenta eventos en la ventana más reciente, desde que creas la meta. Hasta 90 días.",
-      "current": "Usa el total de seguidores o suscriptores activos del panel, incluidos los anteriores a esta meta. El progreso puede bajar si dejan de seguirte o terminan sus suscripciones."
+      "current": "Usa el total de seguidores o suscriptores activos del panel, incluidos los anteriores a esta meta. El progreso puede bajar si dejan de seguirte o terminan sus suscripciones.",
+      "monthly": "Reinicia el progreso el primer día de cada mes en la zona horaria indicada. El primer mes solo cuenta eventos posteriores a la creación de la meta."
     },
     "start": "Empieza",
     "end": "Termina",
@@ -8735,14 +8738,14 @@
     "days": "Días",
     "periodError": "Elige un inicio actual o futuro y un final posterior al inicio.",
     "windowError": "Elige una ventana entre 1 minuto y 90 días.",
-    "editHint": "Edita el nombre, el objetivo o las acciones. Crea otra meta para cambiar la métrica o el período.",
+    "editHint": "Edita el nombre, el objetivo o las acciones. Crea otra meta para cambiar la métrica, los valores monetarios, los artículos o la configuración temporal.",
     "cancel": "Cancelar",
     "save": "Guardar meta",
     "saving": "Guardando…",
     "errors": {
       "conflict": "Las metas cambiaron en otra sesión. Revisa la lista actualizada y vuelve a guardar.",
       "limit": "Has alcanzado el límite de metas de tu plan. Elimina una para crear otra.",
-      "plan_required": "Las metas de Bits requieren Premium o Pro.",
+      "plan_required": "Las metas de Bits y moneda requieren Premium o Pro.",
       "permission_required": "Solo el propietario o un administrador con acceso completo puede gestionar metas.",
       "invalid": "Revisa los campos y el período e inténtalo de nuevo.",
       "save": "No se pudo guardar. Tus datos se han conservado. Inténtalo de nuevo."
@@ -8775,7 +8778,42 @@
       "finished": "Intento finalizado",
       "error": "Error de envío · sin reintento",
       "unknown": "Resultado desconocido · sin reintento"
-    }
+    },
+    "progressValue": "{{current}} de {{target}}",
+    "monthlyReset": "Se reinicia el {{date}} ({{zone}})",
+    "currencyPremium": "Moneda · Premium",
+    "currencyTargetHint": "Importe en {{currency}}. Admite hasta dos decimales.",
+    "currencyTargetError": "Introduce un importe entre 0,01 y 10.000.000,00 con un máximo de dos decimales.",
+    "currencySettings": "¿Qué cuenta para este importe?",
+    "currencyCode": "Moneda",
+    "currencyEstimateHint": "Estos valores estiman el progreso. No verifican pagos ni convierten entre monedas.",
+    "ratesHint": "Define cuánto aporta cada Bit o suscripción. Introduce 0 en las fuentes que no quieras contar.",
+    "bitValue": "Valor por Bit",
+    "subscriptionValue": "Valor por suscripción",
+    "customItems": "Artículos personalizados",
+    "addCustomItem": "Añadir artículo",
+    "customItemsHint": "Define artículos con nombre para comandos e integraciones. Cada aportación cuenta en todas las metas monetarias activas configuradas con ese nombre.",
+    "customItemNumber": "Artículo {{number}}",
+    "removeCustomItem": "Quitar",
+    "removeCustomItemNumber": "Quitar el artículo {{number}}",
+    "itemKey": "Nombre del artículo para el comando",
+    "itemKeyHint": "Usa un nombre único de hasta 48 letras minúsculas, números o guiones bajos.",
+    "itemLabel": "Nombre visible (opcional)",
+    "itemPrice": "Precio por artículo",
+    "itemFee": "Comisión (%)",
+    "customItemError": "Usa un nombre único, un precio entre 0,01 y 10.000.000,00 y una comisión del 0 al 100 %. Los importes y las comisiones admiten hasta dos decimales.",
+    "customItemPreviewPending": "Introduce un nombre, precio y comisión válidos para ver la aportación.",
+    "customItemPreview": "Este ejemplo aporta {{amount}} tras descontar la comisión configurada.",
+    "feeRoundingHint": "La comisión se aplica al total de cada aportación y se redondea una sola vez al céntimo más cercano.",
+    "currencyError": "Introduce importes válidos de hasta dos decimales y activa al menos una fuente. Usa 0 en el valor de Bits o suscripciones que no quieras contar.",
+    "sourceSummary": "Qué cuenta",
+    "bitRateSummary": "{{amount}} por Bit",
+    "subRateSummary": "{{amount}} por suscripción",
+    "itemRateSummary": "{{gross}} menos un {{fee}} % de comisión = {{net}} por un artículo",
+    "timeZone": "Zona horaria del reinicio mensual",
+    "timeZoneHint": "Usa un nombre como Europe/Madrid o America/New_York. El valor inicial es la zona horaria de tu navegador.",
+    "timeZoneError": "Introduce una zona horaria válida, como Europe/Madrid, America/New_York o UTC.",
+    "monthlyActionsHint": "La acción de éxito se ejecuta una vez por mes natural al alcanzar la meta. La de fracaso se ejecuta si el mes termina sin alcanzarla. Cada mes inicia un periodo nuevo."
   },
   "streamTimeline": {
     "title": "Cronología del directo",

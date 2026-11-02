@@ -8688,13 +8688,15 @@
     "metrics": {
       "follows": "Follows",
       "subs": "Subscriptions",
-      "bits": "Bits"
+      "bits": "Bits",
+      "currency": "Currency"
     },
     "modes": {
       "total": "Since creation",
       "fixed": "Fixed period",
       "rolling": "Rolling window",
-      "current": "Current total"
+      "current": "Current total",
+      "monthly": "Repeat every calendar month"
     },
     "status": {
       "scheduled": "Scheduled",
@@ -8707,8 +8709,8 @@
     "delete": "Delete",
     "editNamed": "Edit {{name}}",
     "deleteNamed": "Delete {{name}}",
-    "counting": "Current-total goals use your dashboard’s active follower/subscriber totals. Other modes count new events from creation, including gifts and shared resubscriptions. Rolling progress can fall as events leave the window. Updates every 5 seconds.",
-    "planHint": "Free: 2 follow/sub goals · Premium: 3 goals + Bits · Pro: 4 goals. Existing goals keep their progress after a plan change.",
+    "counting": "Current-total goals use your dashboard’s active follower/subscriber totals. Other modes count new events after creation, including gifts and shared resubscriptions. Monthly goals reset each calendar month; rolling progress can fall as events leave the window. Updates every 5 seconds.",
+    "planHint": "Free: 2 follow/sub goals · Premium: 3 goals + Bits and currency · Pro: 4 goals. Existing goals keep their progress after a plan change.",
     "newTitle": "Create a goal",
     "editTitle": "Edit goal",
     "deleteTitle": "Delete goal",
@@ -8724,7 +8726,8 @@
       "total": "Count new events from now, with no deadline.",
       "fixed": "Count events between these dates. Times use your local timezone; past events are not added.",
       "rolling": "Count events in the most recent window, starting when you create the goal. Up to 90 days.",
-      "current": "Use the current active follower or subscriber total shown on your dashboard, including people counted before this goal. Progress can decrease after unfollows or subscriptions end."
+      "current": "Use the current active follower or subscriber total shown on your dashboard, including people counted before this goal. Progress can decrease after unfollows or subscriptions end.",
+      "monthly": "Reset progress on the first day of each month in the timezone below. The first month counts only events after this goal is created."
     },
     "start": "Starts at",
     "end": "Ends at",
@@ -8735,14 +8738,14 @@
     "days": "Days",
     "periodError": "Choose a current or future start and an end after the start.",
     "windowError": "Choose a window between 1 minute and 90 days.",
-    "editHint": "Edit the name, target or actions. Create another goal to change its metric or time window.",
+    "editHint": "Edit the name, target or actions. Create another goal to change its metric, currency values, custom items or time settings.",
     "cancel": "Cancel",
     "save": "Save goal",
     "saving": "Saving…",
     "errors": {
       "conflict": "Goals changed elsewhere. Review the refreshed list, then save again.",
       "limit": "Your plan’s goal limit has been reached. Delete a goal to make room.",
-      "plan_required": "Bits goals require Premium or Pro.",
+      "plan_required": "Bits and currency goals require Premium or Pro.",
       "permission_required": "Only the owner or a full-access channel admin can manage goals.",
       "invalid": "Check the goal fields and time period, then try again.",
       "save": "Could not save. Your input has been kept. Try again."
@@ -8775,7 +8778,42 @@
       "finished": "Attempt finished",
       "error": "Delivery failed · not retried",
       "unknown": "Result unknown · not retried"
-    }
+    },
+    "progressValue": "{{current}} of {{target}}",
+    "monthlyReset": "Resets {{date}} ({{zone}})",
+    "currencyPremium": "Currency · Premium",
+    "currencyTargetHint": "Amount in {{currency}}. Use up to two decimal places.",
+    "currencyTargetError": "Enter an amount from 0.01 to 10,000,000.00 with no more than two decimal places.",
+    "currencySettings": "What counts toward this amount?",
+    "currencyCode": "Currency",
+    "currencyEstimateHint": "These values estimate goal progress. They do not verify payouts or convert between currencies.",
+    "ratesHint": "Set the value added by each Bit or subscription. Enter 0 for a source you do not want to count.",
+    "bitValue": "Value per Bit",
+    "subscriptionValue": "Value per subscription",
+    "customItems": "Custom items",
+    "addCustomItem": "Add item",
+    "customItemsHint": "Define named items for commands and integrations. An addition counts toward every active currency goal configured with that item name.",
+    "customItemNumber": "Item {{number}}",
+    "removeCustomItem": "Remove",
+    "removeCustomItemNumber": "Remove item {{number}}",
+    "itemKey": "Command item name",
+    "itemKeyHint": "Use a unique name of up to 48 lowercase letters, numbers or underscores.",
+    "itemLabel": "Display name (optional)",
+    "itemPrice": "Price per item",
+    "itemFee": "Fee (%)",
+    "customItemError": "Use a unique item name, a price from 0.01 to 10,000,000.00, and a fee from 0 to 100%. Amounts and fees allow up to two decimals.",
+    "customItemPreviewPending": "Enter a valid item name, price and fee to preview the addition.",
+    "customItemPreview": "This example adds {{amount}} after the configured fee.",
+    "feeRoundingHint": "Fees apply to the total of each addition, rounded once to the nearest cent.",
+    "currencyError": "Enter valid amounts with up to two decimals and enable at least one source. Set unused Bit or subscription values to 0.",
+    "sourceSummary": "What counts",
+    "bitRateSummary": "{{amount}} per Bit",
+    "subRateSummary": "{{amount}} per subscription",
+    "itemRateSummary": "{{gross}} less {{fee}}% fee = {{net}} for one item",
+    "timeZone": "Monthly reset timezone",
+    "timeZoneHint": "Use a timezone name such as Europe/Madrid or America/New_York. It starts with your browser timezone.",
+    "timeZoneError": "Enter a valid timezone name, such as Europe/Madrid, America/New_York or UTC.",
+    "monthlyActionsHint": "Completion runs once per calendar month when the target is reached. Failure runs when a month closes below target. The next month starts a fresh period."
   },
   "streamTimeline": {
     "title": "Stream timeline",

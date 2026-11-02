@@ -28,6 +28,11 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
         handler: async event => (await import('../goals/service.js')).applyGoalEvent(event)
     },
     {
+        consumer: 'goal-custom-contributions-v1', topics: ['domain'], schemaVersions: [1], adminReplay: true,
+        eventFilter: { source: 'goals-custom', type: 'goal.item.added' },
+        handler: async event => (await import('../goals/service.js')).applyCustomGoalEvent(event)
+    },
+    {
         consumer: 'widget-actions-v1', topics: ['channel'], schemaVersions: [1], adminReplay: false,
         maxEventAgeMs: WIDGET_EVENT_MAX_AGE_MS,
         eventFilter: { source: twitchSources, channelID: { $exists: true } },

@@ -17,8 +17,24 @@
         <p class="detail">{{ t('metrics.' + goal.metric) }} · {{ t('modes.' + goal.mode) }}</p>
         @if (goal.mode === 'fixed') { <p class="detail">{{ goal.startsAt | date:'short' }} – {{ goal.endsAt | date:'short' }}</p> }
         @if (goal.mode === 'rolling') { <p class="detail">{{ t('window', { hours: (goal.windowSeconds! / 3600 | number:'1.0-2')! }) }}</p> }
-        <div class="numbers"><strong>{{ goal.current | number }} <span>/ {{ goal.target | number }}</span></strong><span>{{ goal.percent | number:'1.0-0' }}%</span></div>
-        <div class="progress" role="progressbar" [attr.aria-label]="goal.name" [attr.aria-valuenow]="goal.current" [attr.aria-valuemin]="0" [attr.aria-valuemax]="goal.current > goal.target ? goal.current : goal.target" [attr.aria-valuetext]="goal.current + ' / ' + goal.target"><span [style.width.%]="goal.percent"></span></div>
+        @if (goal.mode === 'monthly' && goal.period) {
+          <p class="detail">{{ periodLabel(goal) }} · {{ t('monthlyReset', { date: resetLabel(goal), zone: goal.timeZone ?? 'UTC' }) }}</p>
+        }
+        <div class="numbers"><strong>{{ formatAmount(goal, goal.current) }} <span>/ {{ formatAmount(goal, goal.target) }}</span></strong><span>{{ goal.percent | number:'1.0-0' }}%</span></div>
+        <div class="progress" role="progressbar" [attr.aria-label]="goal.name" [attr.aria-valuenow]="progressValue(goal, goal.current)" [attr.aria-valuemin]="0" [attr.aria-valuemax]="progressValue(goal, goal.current > goal.target ? goal.current : goal.target)" [attr.aria-valuetext]="progressText(goal)"><span [style.width.%]="goal.percent"></span></div>
+        @if (goal.currency; as currency) {
+          <details class="currency-breakdown">
+            <summary>{{ t('sourceSummary') }}</summary>
+            <ul>
+              @if (currency.bitValue > 0) { <li>{{ t('bitRateSummary', { amount: formatMoney(currency.bitValue, currency.code) }) }}</li> }
+              @if (currency.subscriptionValue > 0) { <li>{{ t('subRateSummary', { amount: formatMoney(currency.subscriptionValue, currency.code) }) }}</li> }
+              @for (item of currency.items; track item.key) {
+                <li>{{ item.label || item.key }}: {{ t('itemRateSummary', { gross: formatMoney(item.unitAmount, currency.code), fee: itemFee(item), net: itemNet(item, currency.code) }) }}<code>{{ customItemCommand(item.key) }}</code></li>
+              }
+            </ul>
+            <p class="note">{{ t('currencyEstimateHint') }}</p>
+          </details>
+        }
         @if (goal.outcome && goal.outcome.actionStatus !== 'none') {
           <p class="detail" [class.error]="goal.outcome.actionStatus === 'error' || goal.outcome.actionStatus === 'unknown'">{{ t('outcomes.' + goal.outcome.phase) }} · {{ t('actionStatus.' + goal.outcome.actionStatus) }}</p>
         }
@@ -47,14 +63,49 @@
           <select id="goal-metric" formControlName="metric">
             <option value="follows">{{ t('metrics.follows') }}</option><option value="subs">{{ t('metrics.subs') }}</option>
             <option value="bits" [disabled]="!data()?.metrics?.includes('bits')">{{ t(data()?.metrics?.includes('bits') ? 'metrics.bits' : 'bitsPremium') }}</option>
+            <option value="currency" [disabled]="!data()?.metrics?.includes('currency')">{{ t(data()?.metrics?.includes('currency') ? 'metrics.currency' : 'currencyPremium') }}</option>
           </select>
         }
         <label for="goal-target">{{ t('target') }}</label>
-        <input id="goal-target" type="number" min="1" max="1000000000" step="1" formControlName="target" [attr.aria-invalid]="attempted() && form.controls.target.invalid" aria-describedby="goal-target-error" />
-        <p id="goal-target-error" class="error">@if (attempted() && form.controls.target.invalid) { {{ t('targetError') }} }</p>
+        <input id="goal-target" type="text" maxlength="16" [attr.inputmode]="metric() === 'currency' ? 'decimal' : 'numeric'" formControlName="target" [attr.aria-invalid]="attempted() && invalidTarget()" aria-describedby="goal-target-error goal-target-hint" />
+        <p id="goal-target-hint" class="note">@if (metric() === 'currency') { {{ t('currencyTargetHint', { currency: form.controls.currencyCode.value }) }} }</p>
+        <p id="goal-target-error" class="error">@if (attempted() && invalidTarget()) { {{ t(metric() === 'currency' ? 'currencyTargetError' : 'targetError') }} }</p>
+        @if (metric() === 'currency' && !editing()) {
+          <fieldset class="currency-settings">
+            <legend>{{ t('currencySettings') }}</legend>
+            <p class="note">{{ t('currencyEstimateHint') }}</p>
+            <label for="goal-currency">{{ t('currencyCode') }}</label>
+            <select id="goal-currency" formControlName="currencyCode">@for (code of currencyCodes; track code) { <option [value]="code">{{ code }}</option> }</select>
+            <p class="note">{{ t('ratesHint') }}</p>
+            <div class="rate-fields">
+              <div><label for="goal-bit-value">{{ t('bitValue') }}</label><input id="goal-bit-value" type="text" inputmode="decimal" formControlName="bitValue" [attr.aria-invalid]="attempted() && invalidCurrency()" aria-describedby="goal-currency-error" /></div>
+              <div><label for="goal-sub-value">{{ t('subscriptionValue') }}</label><input id="goal-sub-value" type="text" inputmode="decimal" formControlName="subscriptionValue" [attr.aria-invalid]="attempted() && invalidCurrency()" aria-describedby="goal-currency-error" /></div>
+            </div>
+            <div class="custom-head"><h3>{{ t('customItems') }}</h3><button type="button" (click)="addItem()" [disabled]="items.length >= 20">{{ t('addCustomItem') }}</button></div>
+            <p class="note">{{ t('customItemsHint') }}</p>
+            <div formArrayName="items" class="custom-items">
+              @for (item of items.controls; track item; let i = $index) {
+                <div class="custom-item" [formGroupName]="i">
+                  <div class="custom-head"><h4>{{ t('customItemNumber', { number: i + 1 }) }}</h4><button type="button" (click)="removeItem(i)" [attr.aria-label]="t('removeCustomItemNumber', { number: i + 1 })">{{ t('removeCustomItem') }}</button></div>
+                  <label [for]="'goal-item-key-' + i">{{ t('itemKey') }}</label><input [id]="'goal-item-key-' + i" formControlName="key" maxlength="48" placeholder="streamloots_chest" autocomplete="off" [attr.aria-invalid]="attempted() && invalidItem(i)" [attr.aria-describedby]="'goal-item-key-hint-' + i + ' goal-item-error-' + i" />
+                  <p class="note" [id]="'goal-item-key-hint-' + i">{{ t('itemKeyHint') }}</p>
+                  <label [for]="'goal-item-label-' + i">{{ t('itemLabel') }}</label><input [id]="'goal-item-label-' + i" formControlName="label" maxlength="80" />
+                  <div class="rate-fields">
+                    <div><label [for]="'goal-item-price-' + i">{{ t('itemPrice') }}</label><input [id]="'goal-item-price-' + i" type="text" inputmode="decimal" formControlName="unitAmount" [attr.aria-invalid]="attempted() && invalidItem(i)" [attr.aria-describedby]="'goal-item-error-' + i" /></div>
+                    <div><label [for]="'goal-item-fee-' + i">{{ t('itemFee') }}</label><input [id]="'goal-item-fee-' + i" type="text" inputmode="decimal" formControlName="feePercent" [attr.aria-invalid]="attempted() && invalidItem(i)" [attr.aria-describedby]="'goal-item-error-' + i" /></div>
+                  </div>
+                  <p class="error" [id]="'goal-item-error-' + i">@if (attempted() && invalidItem(i)) { {{ t('customItemError') }} }</p>
+                  <div class="item-preview"><code>{{ itemCommand(i) }}</code><p>{{ itemPreview(i) }}</p></div>
+                </div>
+              }
+            </div>
+            <p class="note">{{ t('feeRoundingHint') }}</p>
+            <p id="goal-currency-error" class="error">@if (attempted() && invalidCurrency()) { {{ t('currencyError') }} }</p>
+          </fieldset>
+        }
         @if (!editing()) {
           <label for="goal-mode">{{ t('mode') }}</label>
-          <select id="goal-mode" formControlName="mode"><option value="total">{{ t('modes.total') }}</option>@if (metric() !== 'bits') { <option value="current">{{ t('modes.current') }}</option> }<option value="fixed">{{ t('modes.fixed') }}</option><option value="rolling">{{ t('modes.rolling') }}</option></select>
+          <select id="goal-mode" formControlName="mode"><option value="total">{{ t('modes.total') }}</option>@if (metric() !== 'bits' && metric() !== 'currency') { <option value="current">{{ t('modes.current') }}</option> }<option value="fixed">{{ t('modes.fixed') }}</option><option value="monthly">{{ t('modes.monthly') }}</option><option value="rolling">{{ t('modes.rolling') }}</option></select>
           <p class="note">{{ t('modeHints.' + mode()) }}</p>
           @if (mode() === 'fixed') {
             <label for="goal-start">{{ t('start') }}</label><input id="goal-start" type="datetime-local" formControlName="startsAt" [attr.aria-invalid]="attempted() && invalidTime()" aria-describedby="goal-time-error" />
@@ -64,13 +115,17 @@
             <label for="goal-window">{{ t('duration') }}</label>
             <div class="duration"><input id="goal-window" type="number" min="1" step="1" formControlName="windowAmount" [attr.aria-invalid]="attempted() && invalidTime()" aria-describedby="goal-time-error" /><select formControlName="windowUnit" [attr.aria-label]="t('unit')"><option [ngValue]="60">{{ t('minutes') }}</option><option [ngValue]="3600">{{ t('hours') }}</option><option [ngValue]="86400">{{ t('days') }}</option></select></div>
           }
-          <p id="goal-time-error" class="error">@if (attempted() && invalidTime()) { {{ t(mode() === 'fixed' ? 'periodError' : 'windowError') }} }</p>
+          @if (mode() === 'monthly') {
+            <label for="goal-time-zone">{{ t('timeZone') }}</label><input id="goal-time-zone" formControlName="timeZone" maxlength="64" autocomplete="off" placeholder="America/New_York" [attr.aria-invalid]="attempted() && invalidTimeZone()" aria-describedby="goal-zone-hint goal-time-error" />
+            <p id="goal-zone-hint" class="note">{{ t('timeZoneHint') }}</p>
+          }
+          <p id="goal-time-error" class="error">@if (attempted() && invalidTime()) { {{ t(mode() === 'fixed' ? 'periodError' : mode() === 'monthly' ? 'timeZoneError' : 'windowError') }} }</p>
         } @else { <p class="note">{{ t('editHint') }}</p> }
         <div class="outcome-settings">
           <h3>{{ t('actionTitle') }}</h3>
-          <p class="note">{{ t(mode() === 'rolling' ? 'rollingActionsHint' : mode() === 'fixed' ? 'fixedActionsHint' : 'completionHint') }}</p>
+          <p class="note">{{ t(mode() === 'rolling' ? 'rollingActionsHint' : mode() === 'fixed' ? 'fixedActionsHint' : mode() === 'monthly' ? 'monthlyActionsHint' : 'completionHint') }}</p>
           @for (kind of actionKinds; track kind) {
-            @if (kind === 'completion' || mode() === 'fixed' || mode() === 'rolling') {
+            @if (kind === 'completion' || supportsFailure()) {
               <label [for]="'goal-' + kind + '-type'">{{ t('actionLabels.' + kind) }}</label>
               <select [id]="'goal-' + kind + '-type'" [formControlName]="kind + 'Type'">
                 <option value="none">{{ t('actionTypes.none') }}</option><option value="message">{{ t('actionTypes.message') }}</option><option value="ast">{{ t('actionTypes.ast') }}</option>

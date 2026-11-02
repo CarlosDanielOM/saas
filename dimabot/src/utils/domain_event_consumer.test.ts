@@ -231,6 +231,20 @@ function policyHarness(t: TestContext, age = 0) {
     };
 }
 
+test('empty metadata omitted by Mongo serialization is restored at the consumer boundary', async t => {
+    const h = policyHarness(t);
+    h.event.set('metadata', undefined);
+    assert.equal(h.event.metadata, undefined);
+    let handled = false;
+    const result = await h.drain({ handler: async event => {
+        assert.deepEqual(event.metadata, {});
+        handled = true;
+    } });
+    assert.equal(result.succeeded, 1);
+    assert.equal(result.retried, 0);
+    assert(handled);
+});
+
 for (const consumer of ['chat-announcements-v1', 'account-health-notifications-v1', 'follow-defense-v1']) {
     test(`${consumer} skips old history without effects, failure budget, or successful completion`, async t => {
         const h = policyHarness(t, 49 * 60 * 60_000);

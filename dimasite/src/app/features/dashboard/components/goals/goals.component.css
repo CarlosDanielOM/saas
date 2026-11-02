@@ -38,3 +38,26 @@ footer { position:sticky; bottom:0; display:flex; justify-content:flex-end; gap:
 
 textarea { resize:vertical; }
 .outcome-settings { margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--line,rgba(15,17,21,.08)); }
+.currency-settings { min-width:0; margin:1.25rem 0 0; padding:1rem; border:1px solid var(--line,rgba(15,17,21,.08)); border-radius:.85rem; }
+.currency-settings legend { padding:0 .35rem; font-size:.95rem; font-weight:800; }
+.currency-settings > .note:first-of-type { margin-top:0; }
+.rate-fields { display:grid; gap:.25rem; }
+.rate-fields > div { min-width:0; }
+.custom-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem; margin-top:1.25rem; }
+.custom-head h3,.custom-head h4 { margin:0; font-size:.9rem; font-weight:800; }
+.custom-head button { min-height:44px; }
+.custom-items { min-width:0; }
+.custom-item { min-width:0; padding-top:.5rem; margin-top:1rem; border-top:1px solid var(--line,rgba(15,17,21,.08)); }
+.custom-item .custom-head { margin-top:0; }
+.item-preview { margin-top:.8rem; padding:.75rem; border-radius:.6rem; background:var(--bg,#f4f5f8); font-size:.8rem; }
+.item-preview code { display:block; max-width:100%; white-space:normal; overflow-wrap:anywhere; user-select:all; font-size:.78rem; }
+.item-preview p { margin-top:.35rem; color:var(--muted,#596273); }
+.currency-breakdown { margin-top:.65rem; font-size:.8rem; }
+.currency-breakdown summary { width:fit-content; min-height:44px; display:flex; align-items:center; gap:.4rem; cursor:pointer; color:var(--muted,#596273); }
+.currency-breakdown summary::before { content:'+'; font-weight:800; }
+.currency-breakdown[open] summary::before { content:'−'; }
+.currency-breakdown summary:focus-visible { outline:2px solid var(--accent,#7c3aed); outline-offset:3px; border-radius:.25rem; }
+.currency-breakdown ul { margin:.2rem 0 0; padding-left:1.15rem; line-height:1.6; overflow-wrap:anywhere; }
+.currency-breakdown .note { margin-top:.4rem; }
+.currency-breakdown code { display:block; margin:.25rem 0 .6rem; white-space:normal; overflow-wrap:anywhere; user-select:all; font-size:.78rem; }
+@media(min-width:400px) { .rate-fields { grid-template-columns:1fr 1fr; gap:.75rem; } }

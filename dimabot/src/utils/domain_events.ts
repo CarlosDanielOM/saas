@@ -55,7 +55,7 @@ function toEnvelope(event: IDomainEvent): DomainEventEnvelope {
         occurredAt: event.occurredAt,
         journaledAt: event.journaledAt,
         payload: event.payload,
-        metadata: event.metadata,
+        metadata: event.metadata ?? {},
         expiresAt: event.expiresAt
     };
 }

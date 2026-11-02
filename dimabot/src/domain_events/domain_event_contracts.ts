@@ -171,6 +171,15 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
     if (input.metadata !== undefined) record(input.metadata, 'metadata');
     checkJson({ payload: input.payload, metadata: input.metadata ?? {} });
     const metadata = input.metadata ?? {};
+    if (input.source === 'goals-custom') {
+        requireContract(input.type === 'goal.item.added' && input.topic === 'domain' && (input.schemaVersion ?? 1) === 1, 'invalid goals-custom envelope');
+        text(input.channelID, 'channelID');
+        requireContract(input.subject?.provider === 'goals-custom' && input.subject.kind === 'streaming-account' && input.subject.id === input.channelID, 'invalid goals-custom subject');
+        requireContract(typeof input.payload.itemKey === 'string' && /^[a-z0-9_]{1,48}$/.test(input.payload.itemKey), 'invalid goal itemKey');
+        requireContract(typeof input.payload.quantity === 'number' && Number.isSafeInteger(input.payload.quantity) && input.payload.quantity >= 1 && input.payload.quantity <= 1_000_000_000, 'invalid goal quantity');
+        requireContract(Object.keys(input.payload).length === 2, 'invalid goals-custom payload');
+        return;
+    }
     const twitch = input.source === 'twitch-eventsub' || input.source === 'twitch-eventsub-test';
     const polar = input.source === 'polar-webhook';
     if (!twitch && !polar) return;
