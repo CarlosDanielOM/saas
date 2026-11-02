@@ -1,0 +1,14 @@
+:host { display: block; min-width: 0; }
+.pet-diagnostics { min-width: 0; }
+.pet-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.pet-heading h2 { flex: 1; min-width: 9rem; }
+.pet-heading button { min-height: 44px; }
+.pet-observed { margin: .75rem 0; }
+.pet-diagnostics .lf-dl dd, .pet-diagnostics code { overflow-wrap: anywhere; min-width: 0; }
+.pet-diagnostics .lf-status { margin-bottom: .5rem; }
+.pet-diagnostics .lf-note { margin-top: .5rem; }
+.pet-diagnostics .lf-hint { margin-top: .65rem; }
+.pet-failures-title { font-size: .95rem; margin: 1.25rem 0 .5rem; }
+.pet-failures .lf-row { padding-inline: 0; }
+.pet-failures code { font-size: .8rem; }
+.pet-diagnostics .lf-more { margin-top: 1rem; }

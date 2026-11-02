@@ -204,6 +204,12 @@ await context.route("**/*", async (route) => {
   });
   const p = url.pathname;
   const m = req.method();
+  if (p.endsWith('/pet-diagnostics')) return json(route, { data: {
+    observedAt: new Date().toISOString(), configured: false, enabled: false, appearance: null, playbackTarget: null,
+    vts: { selectedSessionId: null, session: null, connected: false, reportedReady: false, ready: false,
+      projection: { status: 'missing', lastValidatedAt: null, expiresAt: null } },
+    audio: { selectedSessionId: null, session: null, connected: false, reportedReady: false, ready: false }, failures: []
+  } });
   if (p === "/config/site/analytics")
     return json(
       route,
@@ -539,7 +545,7 @@ try {
     "38",
   );
   assert.match(await page.locator(".connection").textContent(), /Live updates/);
-  assert.equal(await page.locator(".bottom-nav a").count(), 4);
+  assert.equal(await page.locator(".bottom-nav a").count(), 5);
   await page.getByRole("link", { name: /pixelpilot/ }).first().waitFor();
   const healthQuery = new URLSearchParams(
     requests.find((r) => r.path === "/admin-site/users").query,
@@ -961,11 +967,15 @@ try {
     viewport: { width: 320, height: 700 },
     reducedMotion: "reduce",
   });
-  await anonymous.route("**/*", (route) =>
-    new URL(route.request().url()).origin === new URL(base).origin
-      ? route.continue()
-      : route.abort(),
-  );
+  await anonymous.route("**/*", (route) => {
+    const url = new URL(route.request().url());
+    if (url.origin === new URL(base).origin) return route.continue();
+    // Non-admins now pass through the separate analytics-access guard.
+    if (url.hostname === 'api.domdimabot.com' && url.pathname === '/observability/api/session') {
+      return json(route, { error: true }, 403);
+    }
+    return route.abort();
+  });
   const guardPage = await anonymous.newPage();
   await guardPage.goto(`${base}/dashboard`);
   await guardPage.getByRole("heading", { name: "Welcome back." }).waitFor();

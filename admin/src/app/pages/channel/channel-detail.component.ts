@@ -21,6 +21,7 @@ import { ToastService } from '../../shared/toast/toast.service';
 import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { AvatarComponent } from '../../shared/avatar/avatar.component';
+import { PetDiagnosticsComponent } from './pet-diagnostics.component';
 
 /** The grant endpoint rejects anything above this (MAX_AI_CREDIT_GRANT). */
 const MAX_GRANT = 5_000_000;
@@ -37,7 +38,7 @@ interface HealthIssue {
   templateUrl: './channel-detail.component.html',
   styleUrls: ['./channel-page.component.css', './channel-detail.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, SkeletonComponent, ConfirmModalComponent, IconComponent, AvatarComponent],
+  imports: [RouterLink, SkeletonComponent, ConfirmModalComponent, IconComponent, AvatarComponent, PetDiagnosticsComponent],
 })
 export class ChannelDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);

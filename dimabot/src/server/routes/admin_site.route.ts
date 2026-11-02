@@ -31,6 +31,7 @@ import { getAiUsageRetentionDays } from '../../utils/ai_usage_ledger.js';
 import { getAiUsageDashboard } from '../../utils/ai_usage_dashboard.js';
 import { queryAiUsageTransactions, usageLedgerStatus } from '../../utils/ai_usage_queries.js';
 import { cacheCreditPackBillingContext } from '../../utils/billing.js';
+import { getAdminPetDiagnostics } from '../services/admin_pet_diagnostics.service.js';
 
 interface AuthRequest extends Request {
     user?: {
@@ -437,6 +438,21 @@ router.get('/users', authMiddleware as any, async (req: AuthRequest, res: Respon
             message: 'Internal server error',
             status: 500
         });
+    }
+});
+
+router.get('/users/:channelID/pet-diagnostics', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    if (!ensureSuperAdmin(req, res)) return;
+    const channelID = String(req.params.channelID);
+    if (!/^\d{1,30}$/.test(channelID)) return res.status(400).json({ error: true, message: 'Invalid channel ID', status: 400 });
+    try {
+        const owner = await UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('_id').lean();
+        if (!owner) return res.status(404).json({ error: true, message: 'Channel not found', status: 404 });
+        const data = await getAdminPetDiagnostics(String(owner._id), channelID);
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({ error: false, status: 200, data });
+    } catch {
+        return res.status(500).json({ error: true, message: 'Pet diagnostics are unavailable', status: 500 });
     }
 });
 

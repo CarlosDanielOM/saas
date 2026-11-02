@@ -1,0 +1,61 @@
+<section class="lf-tile pet-diagnostics" aria-labelledby="pet-title" [attr.aria-busy]="loading()">
+  <div class="pet-heading">
+    <h2 class="lf-h2" id="pet-title"><app-icon name="pulse" />Pet & desktop connection</h2>
+    <button type="button" class="lf-btn lf-btn--sm" (click)="refresh()" [disabled]="loading()">{{ loading() ? 'Checking…' : error() ? 'Retry' : 'Refresh' }}</button>
+  </div>
+  @if (error()) {
+    <p class="lf-error" role="alert">Connection diagnostics could not be loaded. {{ data() ? 'Showing the previous snapshot; it may be stale.' : 'Use Retry to check again.' }}</p>
+  }
+  @if (data(); as d) {
+    <div class="lf-status" [class.lf-status--ok]="!error() && d.enabled && d.vts.ready" [class.lf-status--warn]="error() || d.enabled && d.appearance === 'vts' && !d.vts.ready">
+      <div class="lf-status__body">
+        <p class="lf-status__title">{{ summary() }}</p>
+        @if (d.enabled && d.appearance === 'vts' && !d.vts.ready) {
+          <p class="lf-note">Open VTube Studio with its plugin API enabled, connect it in Dima, and select this computer in Pet settings.</p>
+          <code>vts_unavailable</code>
+        }
+      </div>
+    </div>
+    <p class="lf-hint pet-observed">{{ error() ? 'Previous snapshot' : 'Checked' }}: {{ date(d.observedAt) }}. Refresh to see changes.</p>
+    @if (d.configured) {
+      <dl class="lf-dl">
+        <div><dt>Appearance</dt><dd>{{ d.appearance === 'vts' ? 'VTube Studio' : 'Images (PNG)' }}</dd></div>
+        <div><dt>Audio output</dt><dd>{{ d.playbackTarget === 'desktop' ? 'Desktop computer' : 'Browser / OBS' }}</dd></div>
+        @if (d.appearance === 'vts') {
+          <div><dt>VTS computer</dt><dd>{{ d.vts.session?.name || (d.vts.selectedSessionId ? 'Saved computer unavailable' : 'None selected') }}</dd></div>
+          <div><dt>Session authorization</dt><dd>{{ authorization(d.vts) }}</dd></div>
+          <div><dt>Dima connection</dt><dd>{{ d.vts.connected ? 'Connected' : 'Disconnected' }}</dd></div>
+          <div><dt>VTS reported by app</dt><dd>{{ !d.vts.connected ? 'No connected app' : d.vts.reportedReady ? 'Ready' : 'Not ready' }}</dd></div>
+          <div><dt>Server readiness</dt><dd>{{ d.vts.ready ? 'Ready' : d.vts.projection.status === 'stale' ? 'Stale or no longer matches settings' : d.vts.projection.status === 'missing' ? 'No readiness record' : 'Not confirmed' }}</dd></div>
+        }
+        @if (d.playbackTarget === 'desktop') {
+          <div><dt>Audio computer</dt><dd>{{ d.audio.session?.name || (d.audio.selectedSessionId ? 'Saved computer unavailable' : 'None selected') }}</dd></div>
+          <div><dt>Audio session</dt><dd>{{ authorization(d.audio) }}</dd></div>
+          <div><dt>Desktop audio</dt><dd>{{ !d.audio.connected ? 'Disconnected' : d.audio.ready ? 'Ready' : 'Not ready' }}</dd></div>
+        }
+      </dl>
+      <p class="lf-hint">A valid saved session does not prove the app is connected or that its current access token is valid. Readiness is observed by the server.</p>
+      <details class="lf-more">
+        <summary>Connection details</summary>
+        <dl class="lf-dl">
+          <div><dt>VTS session ID</dt><dd><code>{{ d.vts.selectedSessionId || 'None selected' }}</code></dd></div>
+          <div><dt>Audio session ID</dt><dd><code>{{ d.audio.selectedSessionId || 'None selected' }}</code></dd></div>
+          <div><dt>Session last used</dt><dd>{{ date(d.vts.session?.lastUsedAt) }}</dd></div>
+          <div><dt>Session expires</dt><dd>{{ date(d.vts.session?.expiresAt) }}</dd></div>
+          <div><dt>Idle expiry</dt><dd>{{ date(d.vts.session?.idleExpiresAt) }}</dd></div>
+          <div><dt>Readiness validated</dt><dd>{{ date(d.vts.projection.lastValidatedAt) }}</dd></div>
+          <div><dt>Readiness expires</dt><dd>{{ date(d.vts.projection.expiresAt) }}</dd></div>
+        </dl>
+      </details>
+    }
+    <h3 class="pet-failures-title">Recent playback failures</h3>
+    @if (d.failures.length) {
+      <ul class="lf-rows pet-failures">
+        @for (failure of d.failures; track failure.requestId) {
+          <li class="lf-row"><div class="lf-row__main"><code>{{ failure.errorCode }}</code><span class="lf-row__meta">{{ failure.status }} · {{ date(failure.createdAt) }}</span></div></li>
+        }
+      </ul>
+      <p class="lf-hint">Latest {{ d.failures.length }} retained failures (up to 10). Requests are normally retained for seven days; earlier attempts may not have reached playback.</p>
+    } @else { <p class="lf-note">No retained playback failures. Rejected attempts may not create a playback record.</p> }
+  } @else if (loading()) { <p class="lf-note" role="status">Checking pet and desktop connections…</p> }
+</section>
