@@ -496,13 +496,21 @@ function batch(parent: T.Group): void {
 
 /**
  * Freeze the rig's current pose into one geometry (relative to its anchor). Ghosts use a
- * single draw; the split victim keeps one material group per source mesh.
+ * single draw; the split victim batches opaque pieces by material, retaining source draw
+ * order for its transparent fade without duplicating any vertex attributes.
  */
-export function bakeRig(rig: ClaudeRig, groups: boolean, cloth = true): { geometry: T.BufferGeometry; materials: T.Material[]; origin: T.Vector3 } {
+export interface BakedRig {
+  geometry: T.BufferGeometry; materials: T.Material[]; origin: T.Vector3;
+  sourceGroups: T.BufferGeometry['groups'];
+}
+
+export function bakeRig(rig: ClaudeRig, groups: boolean, cloth = true): BakedRig {
   rig.anchor.updateMatrixWorld(true);
   // World orientation (mirroring included), relative to the fighter's feet.
   const origin = new T.Vector3().setFromMatrixPosition(rig.anchor.matrixWorld);
   const inverse = new T.Matrix4().makeTranslation(-origin.x, -origin.y, -origin.z), geometries: T.BufferGeometry[] = [], mats: T.Material[] = [];
+  const batches = new Map<T.Material, T.BufferGeometry[]>();
+  const sourceMaterials: T.Material[] = [];
   rig.root.traverse(object => {
     if (!(object instanceof T.Mesh) || !object.visible || object === rig.aura || Array.isArray(object.material)) return;
     if (!cloth && rig.cloths.some(c => c.mesh === object)) return;
@@ -510,9 +518,29 @@ export function bakeRig(rig: ClaudeRig, groups: boolean, cloth = true): { geomet
     const g = object.geometry.index ? object.geometry.toNonIndexed() : object.geometry.clone();
     for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
     if (!g.attributes['uv']) g.setAttribute('uv', new T.Float32BufferAttribute(new Float32Array(g.attributes['position'].count * 2), 2));
-    g.applyMatrix4(new T.Matrix4().multiplyMatrices(inverse, object.matrixWorld)); geometries.push(g); mats.push(object.material);
+    g.applyMatrix4(new T.Matrix4().multiplyMatrices(inverse, object.matrixWorld)); geometries.push(g);
+    if (groups) {
+      sourceMaterials.push(object.material);
+      const batch = batches.get(object.material);
+      if (batch) batch.push(g); else { batches.set(object.material, [g]); mats.push(object.material); }
+    } else mats.push(object.material);
   });
-  const geometry = mergeGeometries(geometries, groups) ?? new T.BufferGeometry();
+  // A frozen fighter has many separate armour pieces sharing the same material. Keep every
+  // triangle and texture coordinate, but draw each material once instead of once per piece.
+  const geometry = mergeGeometries(groups ? [...batches.values()].flat() : geometries, false) ?? new T.BufferGeometry();
+  const sourceGroups: T.BufferGeometry['groups'] = [];
+  if (groups && geometry.hasAttribute('position')) {
+    let start = 0;
+    const sourceStarts = new Map<T.BufferGeometry, number>();
+    for (const [index, material] of mats.entries()) {
+      let count = 0;
+      for (const g of batches.get(material)!) { sourceStarts.set(g, start + count); count += g.getAttribute('position').count; }
+      geometry.addGroup(start, count, index); start += count;
+    }
+    // Blending is order-dependent. These ranges visit the unchanged source pieces in their
+    // original order, even though their vertices now live together by material in the buffer.
+    for (const [index, g] of geometries.entries()) sourceGroups.push({ start: sourceStarts.get(g)!, count: g.getAttribute('position').count, materialIndex: mats.indexOf(sourceMaterials[index]) });
+  }
   for (const g of geometries) g.dispose();
-  return { geometry, materials: mats, origin };
+  return { geometry, materials: mats, origin, sourceGroups };
 }

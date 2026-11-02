@@ -114,7 +114,11 @@ export class DuelClaude3dScene {
   private readonly look = new T.Vector3();
   private timer: ReturnType<typeof setTimeout> | undefined;
   private previousBattle: DuelBattle | null = null;
-  private halvesFor: DuelBattle | null = null;
+  private preparationCount = 0;
+  private halvesBakeCount = 0;
+  private shadersFor: DuelBattle | null = null;
+  private shadersTransparent = false;
+  private shaderPreparationCount = 0;
   private dirty = true;
   private dead = false;
   private frameCount = 0;
@@ -272,6 +276,7 @@ export class DuelClaude3dScene {
       const delta = Math.min(.1, (frameStart - this.lastTick) / 1000);
       if (!snapshot.paused && !reduced) this.worldTime += delta;
       this.update(snapshot, reduced ? 0 : this.worldTime, reduced);
+      this.prepareShaders(snapshot);
       this.renderer.info.reset();
       this.composer.render();
       this.frameCount++; this.statsFrames++;
@@ -291,6 +296,7 @@ export class DuelClaude3dScene {
   };
 
   private rebuild(battle: DuelBattle): void {
+    const preparationStart = performance.now();
     for (const side of SIDES) {
       const old = this.rigs[side]; if (old) { this.stages[side].remove(old.anchor); disposeObject(old.anchor); }
       const rig = buildRig(battle.fighters[side], side, battle.enraged === side, this.assets);
@@ -304,7 +310,20 @@ export class DuelClaude3dScene {
       const rig = this.rigs[ultimate.attacker]!;
       for (const pose of strikePoses('ronin')) { this.apply(rig, pose); ghosts.push(bakeRig(rig, false).geometry); }
     }
-    this.ultimates.setGhosts(ghosts); this.ultimates.setHalves(null); this.halvesFor = null;
+    this.ultimates.setGhosts(ghosts); this.ultimates.setHalves(null);
+    if (ultimate && battle.fighters[ultimate.attacker] === 'ronin') {
+      const victim = otherSide(ultimate.attacker), rig = this.rigs[victim]!;
+      // The victim is frozen before the first slash. Prepare its full-detail snapshot before
+      // playback, instead of cloning geometry and materials in the middle of the ultimate.
+      // Secondary motion used to depend on whichever frame crossed 1.5 s; sample that beat
+      // deterministically, then retain the existing 2.6 s skeleton pose for the split.
+      const time = ultimate.at + 1500;
+      const context: MotionContext = { battle, time, started: true, world: time / 1000, health: healthAt(battle, time, true) };
+      const pose = fighterPose(victim, context); this.apply(rig, pose);
+      this.updateRigDetails(rig, victim, pose, context, time / 1000);
+      this.apply(rig, fighterPose(victim, { ...context, time: ultimate.at + 2600 }));
+      this.ultimates.setHalves(bakeRig(rig, true, false)); this.halvesBakeCount++;
+    }
     // Divine Judgment bakes the knight's colossal avatar (sword raised, then pointed at the victim).
     const avatar: T.BufferGeometry[] = [];
     if (ultimate && battle.fighters[ultimate.attacker] === 'knight') {
@@ -314,6 +333,34 @@ export class DuelClaude3dScene {
     this.ultimates.setAvatar(avatar);
     keepAlpha(this.scene);
     this.previousBattle = battle;
+    this.canvas.dataset['preparationCount'] = String(++this.preparationCount);
+    this.canvas.dataset['halvesBakeCount'] = String(this.halvesBakeCount);
+    this.canvas.dataset['preparationMs'] = (performance.now() - preparationStart).toFixed(2);
+    this.canvas.dataset['halvesGroups'] = String(this.ultimates.halves[0]?.geometry.groups.length ?? 0);
+    this.canvas.dataset['halvesMaterialCount'] = String((this.ultimates.halves[0]?.material as T.Material[] | undefined)?.length ?? 0);
+  }
+
+  /** Issue hidden effect programs before combat, using the same HDR/fog variant as the real draw.
+   * compile() also traverses invisible meshes, so it needs no temporary scene/visibility changes.
+   * Keep preparation synchronous: no promise may outlive a battle's materials or this renderer.
+   * Three's compile path does not prepare local-clipping variants; those still compile on use.
+   */
+  private prepareShaders(state: DuelSceneState): void {
+    if (this.shadersFor === state.battle && this.shadersTransparent === state.transparent) return;
+    this.shadersFor = state.battle; this.shadersTransparent = state.transparent;
+    const previousTarget = this.renderer.getRenderTarget(), started = performance.now();
+    try {
+      this.renderer.setRenderTarget(this.composer.renderTarget1);
+      this.renderer.compile(this.scene, this.camera);
+      this.canvas.dataset['shaderPrep'] = 'compiled';
+    } catch {
+      // Preparation is optional; leave the normal render path available on unsupported drivers.
+      this.canvas.dataset['shaderPrep'] = 'deferred';
+    } finally {
+      this.renderer.setRenderTarget(previousTarget);
+      this.canvas.dataset['shaderPreparationCount'] = String(++this.shaderPreparationCount);
+      this.canvas.dataset['shaderPreparationMs'] = (performance.now() - started).toFixed(2);
+    }
   }
 
   /** Pose → skeleton, with two-bone IK keeping feet planted on their targets. */
@@ -343,6 +390,25 @@ export class DuelClaude3dScene {
   /** World-space position of a fighter's anchor for a given pose (stages mirror the right side). */
   private anchorWorld(side: DuelSide, pose: Pose, out: T.Vector3): T.Vector3 { return out.set((side === 'left' ? 1 : -1) * (BASE + pose.r[0]), pose.r[1], pose.r[2]); }
 
+  /** Secondary mesh motion is shared by live fighters and their prepared ultimate snapshots. */
+  private updateRigDetails(rig: ClaudeRig, side: DuelSide, pose: Pose, ctx: MotionContext, clock: number): void {
+    const before = fighterPose(side, { ...ctx, time: Math.max(0, ctx.time - 40), world: ctx.world - .04 });
+    const velocity = this.anchorWorld(side, pose, new T.Vector3()).sub(this.anchorWorld(side, before, this.v)).multiplyScalar(ctx.started ? 25 : 0);
+    rig.anchor.updateMatrixWorld(true);
+    for (const cloth of rig.cloths) {
+      this.m3.setFromMatrix4(cloth.mesh.parent!.matrixWorld).invert();
+      cloth.update(clock + (side === 'left' ? 0 : 1.3), velocity.clone().applyMatrix3(this.m3), pose.wind);
+    }
+    if (rig.skirt) {
+      this.m3.setFromMatrix4(rig.j.hp.matrixWorld).invert(); const drag = velocity.clone().applyMatrix3(this.m3);
+      for (const skirt of [rig.skirt, rig.skirtBand]) skirt?.update(clock, rig.legs.R[0].rotation.x, rig.legs.L[0].rotation.x, drag, pose.wind);
+    }
+    for (const runes of rig.runes) runes.offset.x = -clock * .04;
+    if (rig.book) { rig.book.position.set(.62 + Math.sin(clock * .9) * .05, 1.45 + Math.sin(clock * 1.7) * .07, .2); rig.book.rotation.set(-.5 + Math.sin(clock * 1.3) * .08, clock * .35, .25); }
+    rig.orbs.forEach((orb, i) => { const a = clock * 2.2 + i * 2.094; orb.position.set(Math.cos(a) * .22, Math.sin(a) * .22, 1.4 + Math.sin(clock * 3 + i) * .05); });
+    (rig.aura.material as T.ShaderMaterial).uniforms['uTime'].value = clock;
+  }
+
   private update(state: DuelSceneState, world: number, reduced: boolean): void {
     if (this.previousBattle !== state.battle) this.rebuild(state.battle);
     const battle = state.battle, transparent = state.transparent;
@@ -355,32 +421,12 @@ export class DuelClaude3dScene {
     // Fighters, cloth and IK.
     for (const side of SIDES) {
       const rig = this.rigs[side]!, pose = fighterPose(side, ctx); poses[side] = pose; this.apply(rig, pose);
-      const before = fighterPose(side, { ...ctx, time: Math.max(0, time - 40), world: world - .04 });
-      const velocity = this.anchorWorld(side, pose, new T.Vector3()).sub(this.anchorWorld(side, before, this.v)).multiplyScalar(state.started ? 25 : 0);
-      rig.anchor.updateMatrixWorld(true);
-      for (const cloth of rig.cloths) {
-        this.m3.setFromMatrix4(cloth.mesh.parent!.matrixWorld).invert();
-        cloth.update(clock + (side === 'left' ? 0 : 1.3), velocity.clone().applyMatrix3(this.m3), pose.wind);
-      }
-      if (rig.skirt) {
-        this.m3.setFromMatrix4(rig.j.hp.matrixWorld).invert(); const drag = velocity.clone().applyMatrix3(this.m3);
-        for (const skirt of [rig.skirt, rig.skirtBand]) skirt?.update(clock, rig.legs.R[0].rotation.x, rig.legs.L[0].rotation.x, drag, pose.wind);
-      }
-      for (const runes of rig.runes) runes.offset.x = -clock * .04;
-      if (rig.book) { rig.book.position.set(.62 + Math.sin(clock * .9) * .05, 1.45 + Math.sin(clock * 1.7) * .07, .2); rig.book.rotation.set(-.5 + Math.sin(clock * 1.3) * .08, clock * .35, .25); }
-      rig.orbs.forEach((orb, i) => { const a = clock * 2.2 + i * 2.094; orb.position.set(Math.cos(a) * .22, Math.sin(a) * .22, 1.4 + Math.sin(clock * 3 + i) * .05); });
-      (rig.aura.material as T.ShaderMaterial).uniforms['uTime'].value = clock;
+      this.updateRigDetails(rig, side, pose, ctx, clock);
       const hips = rig.j.hp.getWorldPosition(this.v), lift = clamp(hips.y - .9, 0, 3), shadow = this.contact[side];
       shadow.visible = !pose.hidden; shadow.position.set(hips.x, .02, hips.z); shadow.scale.setScalar(1 + lift * .35 + pose.tilt * .5);
       (shadow.material as T.MeshBasicMaterial).opacity = .62 * (1 - clamp(lift / 2.2, 0, .85));
     }
     this.probe.visible = this.canvas.dataset['nanProbe'] === '1';
-    // Split halves need the frozen victim pose: bake it once per battle.
-    if (ultimate && battle.fighters[ultimate.attacker] === 'ronin' && time - ultimate.at > 1500 && this.halvesFor !== battle) {
-      const victim = otherSide(ultimate.attacker), rig = this.rigs[victim]!;
-      this.apply(rig, fighterPose(victim, { ...ctx, time: ultimate.at + 2600 })); rig.anchor.updateMatrixWorld(true);
-      this.ultimates.setHalves(bakeRig(rig, true, false)); this.halvesFor = battle; this.apply(rig, poses[victim]);
-    }
     // Effects.
     const positions = Object.fromEntries(SIDES.map(side => [side, this.anchorWorld(side, { ...poses[side], r: [0, 0, 0] }, new T.Vector3())])) as Record<DuelSide, T.Vector3>;
     const tipAt = (side: DuelSide) => (at: number) => {

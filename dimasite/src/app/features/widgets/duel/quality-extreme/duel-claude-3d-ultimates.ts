@@ -1,7 +1,7 @@
 import * as T from 'three';
 import type { DuelCharacter } from '../duel-battle';
 import { ClaudeAssets, GLSL_NOISE, Particles, Streaks, additive, beamMaterial, hash, ringMaterial, shaftMaterial, shellMaterial, sprite } from './duel-claude-3d-assets';
-import { bladeGeometry } from './duel-claude-3d-rig';
+import { bladeGeometry, type BakedRig } from './duel-claude-3d-rig';
 
 const clamp = T.MathUtils.clamp, smooth = (x: number) => { const p = clamp(x, 0, 1); return p * p * (3 - 2 * p); };
 const easeIn = (x: number) => clamp(x, 0, 1) ** 3, easeOut = (x: number) => 1 - (1 - clamp(x, 0, 1)) ** 3;
@@ -179,6 +179,7 @@ export class UltimateEffects {
     for (const geometry of geometries) { const ghost = new T.Mesh(geometry, this.ghostMaterial); ghost.frustumCulled = false; this.ghosts.push(ghost); this.crimson.add(ghost); }
   }
   private readonly halfOrigin = new T.Vector3();
+  private halfDrawOrder: { geometry: T.BufferGeometry; batched: T.BufferGeometry['groups']; fading: T.BufferGeometry['groups'] } | null = null;
 /** The spectral avatar: the knight baked in two poses, drawn as translucent gold light. */
   setAvatar(geometries: T.BufferGeometry[]): void {
     for (const mesh of this.avatar) { this.judgment.remove(mesh); mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); }
@@ -195,15 +196,17 @@ export class UltimateEffects {
     }
   }
 
-  setHalves(baked: { geometry: T.BufferGeometry; materials: T.Material[]; origin: T.Vector3 } | null): void {
+  setHalves(baked: BakedRig | null): void {
     for (const half of this.halves) { this.root.remove(half); for (const m of half.material as T.Material[]) m.dispose(); }
     if (this.halves[0]) this.halves[0].geometry.dispose();
     this.halves.length = 0;
+    this.halfDrawOrder = null;
     if (!baked) return;
     this.halfOrigin.copy(baked.origin);
+    this.halfDrawOrder = { geometry: baked.geometry, batched: baked.geometry.groups, fading: baked.sourceGroups };
     for (let i = 0; i < 2; i++) {
       const materials = baked.materials.map(material => { const m = material.clone(); m.userData['glow'] = material instanceof T.MeshStandardMaterial && material.emissiveIntensity > 1; m.clippingPlanes = [this.planes[i]]; m.side = T.DoubleSide; m.transparent = true; return m; });
-      const half = new T.Mesh(baked.geometry, materials); half.frustumCulled = false; this.halves.push(half); this.root.add(half);
+      const half = new T.Mesh(baked.geometry, materials); half.frustumCulled = false; half.visible = false; this.halves.push(half); this.root.add(half);
     }
   }
 
@@ -452,9 +455,13 @@ export class UltimateEffects {
       this.planes[0].setFromNormalAndCoplanarPoint(normal, origin.clone().add(offsets[0]));
       this.planes[1].setFromNormalAndCoplanarPoint(normal.clone().negate(), origin.clone().add(offsets[1]));
       const glow = Math.exp(-k * 3);
+      const opacity = 1 - smooth((k - 1) / .6);
+      // Opaque pieces can share a draw. During the fade, preserve the original piece order
+      // exactly: transparent double-sided surfaces depend on it. Both arrays are prepared.
+      if (this.halfDrawOrder) this.halfDrawOrder.geometry.groups = opacity === 1 ? this.halfDrawOrder.batched : this.halfDrawOrder.fading;
       this.halves.forEach((half, i) => {
         half.visible = k < 1.7; half.position.copy(this.halfOrigin).add(offsets[i]);
-        for (const m of half.material as T.MeshStandardMaterial[]) { m.opacity = 1 - smooth((k - 1) / .6); if (m.emissive && !m.userData['glow']) m.emissive.setRGB(glow, glow * .08, glow * .15); }
+        for (const m of half.material as T.MeshStandardMaterial[]) { m.opacity = opacity; if (m.emissive && !m.userData['glow']) m.emissive.setRGB(glow, glow * .08, glow * .15); }
       });
       this.burst.set(0, origin, k, { life: 1, speed: 9, gravity: -6, spread: 1, size: 12, a: '#ffd6de', b: '#ff2d55', opacity: .7 });
       this.streakBurst.set(origin, k, { life: .9, speed: 16, gravity: -6, spread: .95, width: .022, trail: .05, a: '#fff0f3', b: '#ff2d55' });
