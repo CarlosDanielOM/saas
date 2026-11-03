@@ -5,7 +5,7 @@ export interface PetPeer {
     validatedAt: number; authorizationExpiresAt: number; snapshotSerial?: number; retiredRequestIds?: Set<string>; activeVersionSeen?: number;
     id: string; ownerId: string; channelId: string; kind: 'desktop' | 'browser'; sessionId?: string;
     label: string; socket: Socket; audioReady: boolean; renderReady: boolean; vtsReady: boolean;
-    capability?: string; generationSeen?: number; activeSeen?: string; tokenHash?: string; scopes: string[]; revalidate: () => Promise<void>;
+    accessToken?: string; capability?: string; generationSeen?: number; activeSeen?: string; tokenHash?: string; scopes: string[]; revalidate: () => Promise<void>;
     sequenceRequestId?: string; seq: number; mouthSeq: number; lastMouthAt: number; lastProgressAt: number; busy: boolean;
 }
 export const petPeers = new Map<string, PetPeer>();

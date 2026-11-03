@@ -1,6 +1,6 @@
 import { info as logInfo } from '../utils/logger.js';
 
-export type PetDiagnosticEvent = 'ready' | 'play_delivery' | 'audio_fetch' | 'playback_report' | 'playback_rejected' | 'terminal';
+export type PetDiagnosticEvent = 'ready' | 'play_delivery' | 'audio_fetch' | 'playback_report' | 'playback_rejected' | 'terminal' | 'invalidated' | 'reauth';
 interface Fields {
     requestId?: unknown; generation?: unknown; operation?: unknown; peerKind?: unknown;
     phase?: unknown; reason?: unknown; status?: unknown; delivered?: unknown; accepted?: unknown; playbackStarted?: unknown;
@@ -8,6 +8,8 @@ interface Fields {
     durationMs?: unknown; positionMs?: unknown; queueDelayMs?: unknown; handlerMs?: unknown;
 }
 const reasons = new Set(['stale_playback', 'invalid_playback', 'invalid_message', 'rate_limited', 'temporarily_unavailable',
+    'ok', 'player_unready', 'player_stopping', 'plan_required', 'access_denied',
+    'settings_changed', 'personality_changed', 'overlay_rotated', 'api_restarted', 'request_missing',
     'invalid_ticket', 'stale_ticket', 'audio_unavailable', 'invalid_token', 'insufficient_scope', 'request_expired', 'provider_outcome_unknown', 'player_disconnected',
     'audio_output_unavailable', 'audio_download_failed', 'audio_media_failed', 'audio_authorization_expired', 'audio_output_failed', 'autoplay_blocked', 'lease_expired', 'vts_unavailable', 'player_unavailable', 'playback_error', 'cancelled', 'completed', 'failed', 'expired']);
 const choices: Record<string, readonly string[]> = {

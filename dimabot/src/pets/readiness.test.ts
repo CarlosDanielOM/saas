@@ -34,3 +34,9 @@ test('older disconnect clear cannot delete newer overlapping-socket readiness; e
     await initializePetReadiness();
     assert.equal(row, null, 'API restart clears prior process readiness without reviving it');
 });
+
+test('readiness refresh outside the API is a no-op', async () => {
+    stopPetReadiness(); const before = writes.length;
+    await refreshPetReadiness(owner);
+    assert.equal(writes.length, before);
+});

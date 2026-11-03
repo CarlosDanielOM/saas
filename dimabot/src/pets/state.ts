@@ -54,6 +54,7 @@ export async function invalidatePet(ownerId: string, reason: string, expected?: 
         notBefore: { $max: ['$notBefore', { $ifNull: ['$lease.expiresAt', new Date(0)] }] }
     } }]).lean();
     if (!previous) return false;
+    petDiagnostic(previous.channelId, 'invalidated', { requestId: previous.activeRequestId, generation: previous.generation + 1, reason });
     // The CAS above removes the lease, so its captured expiry is the latest
     // deadline that the old player can hold. Record the proof before sending
     // stop notifications, allowing an in-flight terminal report to release it.
@@ -70,6 +71,9 @@ export async function invalidatePet(ownerId: string, reason: string, expected?: 
     }
     await invalidateReadTts(ownerId, reason);
     await PetReadiness.deleteOne({ _id: ownerId, generation: { $lte: previous.generation } });
+    // Generation changes do not disconnect the VTS controller. Re-prove readiness
+    // now instead of leaving producers without a projection until the 5s tick.
+    await (await import('./readiness.js')).refreshPetReadiness(ownerId);
     if (previous.activeRequestId) await finishRequest(previous.activeRequestId, terminal?.status ?? 'cancelled', terminal?.errorCode ?? reason);
     await notifyPet(ownerId);
     return true;

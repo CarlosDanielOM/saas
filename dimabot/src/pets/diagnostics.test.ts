@@ -34,3 +34,13 @@ test('public failed-fetch diagnostics have a global rate cap', async () => {
     await tick(); await tick(); assert.equal(count,5);
     write('589813891','ready',{requestId:id}); await tick(); assert.equal(count,6, 'public requests cannot consume channel lifecycle allowance');
 });
+
+test('invalidation and reauth diagnostics keep allowlisted outcomes and exclude credentials', () => {
+    for (const reason of ['player_disconnected', 'vts_unavailable', 'player_unready', 'lease_expired', 'player_stopping', 'cancelled']) {
+        assert.equal(petDiagnosticData('invalidated', { reason, generation: 8 }).reason, reason);
+    }
+    for (const reason of ['ok', 'invalid_token', 'insufficient_scope', 'invalid_message', 'rate_limited']) {
+        const data = petDiagnosticData('reauth', { reason, peerKind: 'desktop', accessToken: 'private-token' } as any);
+        assert.equal(data.reason, reason); assert.doesNotMatch(JSON.stringify(data), /private-token|accessToken/);
+    }
+});

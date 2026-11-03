@@ -64,18 +64,20 @@ export async function registerPetSockets(io: SocketServer) {
                 await getPetConfiguration(ownerId, channelId);
                 const peer: PetPeer = { validatedAt: 0, authorizationExpiresAt: 0, id: randomUUID(), socket, ownerId, channelId, kind,
                     sessionId: identity?.session_id, label, tokenHash,
+                    accessToken: kind === 'desktop' ? String(auth.accessToken) : undefined,
                     capability: kind === 'browser' ? String(auth.capability) : undefined,
                     scopes: identity?.scopes ?? [], audioReady: false, renderReady: false, vtsReady: false,
                     seq: -1, mouthSeq: -1, lastMouthAt: 0, lastProgressAt: 0, busy: false,
                     revalidate: async () => {
                         if (kind === 'desktop') {
-                            const current = await authenticateAccess(auth.accessToken);
+                            const accessToken = peer.accessToken!;
+                            const current = await authenticateAccess(accessToken);
                             if (current.session_id !== identity!.session_id || current.user_id !== ownerId ||
                                 !['desktop:connect', 'pet:read', 'pet:receive'].every(scope => current.scopes.includes(scope))) throw new PetError('invalid_token', 401);
                             peer.scopes = current.scopes;
                             await requirePetPlan(ownerId, channelId);
                             const validatedAt = Date.now();
-                            const ttl = await (await getDragonflyClient('pet-auth')).pTTL(`oauth:access:${hash(String(auth.accessToken))}`);
+                            const ttl = await (await getDragonflyClient('pet-auth')).pTTL(`oauth:access:${hash(accessToken)}`);
                             const session = await OAuthSession.findById(current.session_id).select('expires_at idle_expires_at').lean();
                             if (ttl <= 0 || !session) throw new PetError('invalid_token', 401);
                             peer.validatedAt = validatedAt;
@@ -97,7 +99,7 @@ export async function registerPetSockets(io: SocketServer) {
             // Recheck after asynchronous handshake to bound simultaneous connects.
             if ([...petPeers.values()].filter(item => item.sessionId && item.sessionId === peer.sessionId).length >= 2) return void socket.disconnect(true);
             petPeers.set(peer.id, peer);
-            if (kind === 'desktop') socket.emit('desktop:hello', { v: 1, sessionId: peer.sessionId, channelId: peer.channelId, scopes: peer.scopes });
+            if (kind === 'desktop') socket.emit('desktop:hello', { v: 1, sessionId: peer.sessionId, channelId: peer.channelId, scopes: peer.scopes, features: ['reauth'] });
             void sendPetSnapshot(peer).catch(() => socket.disconnect(true));
             let windowStart = Date.now(), messageCount = 0;
             const pending: Array<() => Promise<void>> = [];
@@ -111,7 +113,10 @@ export async function registerPetSockets(io: SocketServer) {
                 socket.on(event, (raw: unknown, acknowledge: unknown) => {
                     const ack = typeof acknowledge === 'function' ? acknowledge as (response: unknown) => void : () => {};
                     let data: Record<string, unknown>;
-                    try { data = input(raw, keys); } catch { return ack({ ok: false, error: { code: 'invalid_message' } }); }
+                    try { data = input(raw, keys); } catch {
+                        if (event === 'desktop:reauth') petDiagnostic(peer.channelId, 'reauth', { peerKind: peer.kind, reason: 'invalid_message' });
+                        return ack({ ok: false, error: { code: 'invalid_message' } });
+                    }
                     const telemetry = event === 'pet:mouth' || event === 'pet:playback' && data.phase === 'progress';
                     // Samples/progress are lossy; never queue a stream of obsolete samples.
                     if (telemetry && (peer.busy || pending.length)) return ack({ ok: true, data: { dropped: true } });
@@ -119,16 +124,21 @@ export async function registerPetSockets(io: SocketServer) {
                     if (now - windowStart >= 1000) { windowStart = now; messageCount = 0; }
                     const terminal = event === 'pet:playback' && ['ended', 'stopped', 'error'].includes(String(data.phase));
                     if ((!telemetry && !terminal && ++messageCount > 30) || pending.length >= (terminal ? 16 : 15)) {
+                        if (event === 'desktop:reauth') petDiagnostic(peer.channelId, 'reauth', { peerKind: peer.kind, reason: 'rate_limited' });
                         if (event === 'pet:playback' && !telemetry) petDiagnostic(peer.channelId, 'playback_rejected', { requestId: data.requestId, generation: data.generation, peerKind: peer.kind, phase: data.phase, reason: 'rate_limited' });
                         return ack({ ok: false, error: { code: 'rate_limited', retryAfterMs: 1000 } });
                     }
                     pending.push(async () => {
                         const handlerAt = Date.now();
                         try {
-                            await peer.revalidate(); const result = await handler(data); ack({ ok: true, data: result });
+                            // The replacement authenticates itself; an expiring old token must not block the swap.
+                            if (event !== 'desktop:reauth') await peer.revalidate();
+                            const result = await handler(data); ack({ ok: true, data: result });
+                            if (event === 'desktop:reauth') petDiagnostic(peer.channelId, 'reauth', { peerKind: peer.kind, reason: 'ok' });
                             if (event === 'pet:playback' && !telemetry) petDiagnostic(peer.channelId, 'playback_report', { requestId: data.requestId, generation: data.generation, peerKind: peer.kind, phase: data.phase, reason: data.errorCode, positionMs: data.positionMs, queueDelayMs: handlerAt - now, handlerMs: Date.now() - handlerAt });
                         }
                         catch (error) {
+                            if (event === 'desktop:reauth') petDiagnostic(peer.channelId, 'reauth', { peerKind: peer.kind, reason: known(error) ? error.code : 'temporarily_unavailable' });
                             if (event === 'pet:playback' && !telemetry) petDiagnostic(peer.channelId, 'playback_rejected', { requestId: data.requestId, generation: data.generation, peerKind: peer.kind, phase: data.phase, reason: known(error) ? error.code : 'temporarily_unavailable', queueDelayMs: handlerAt - now, handlerMs: Date.now() - handlerAt });
                             ack({ ok: false, error: { code: known(error) ? error.code : 'temporarily_unavailable' } });
                             if (!known(error) || error.status === 401 || error.status === 403) socket.disconnect(true);
@@ -137,6 +147,16 @@ export async function registerPetSockets(io: SocketServer) {
                     void drain();
                 });
             };
+            if (kind === 'desktop') on('desktop:reauth', async value => {
+                if (typeof value.accessToken !== 'string') throw new PetError('invalid_message');
+                const current = await authenticateAccess(value.accessToken);
+                if (current.session_id !== peer.sessionId || current.user_id !== peer.ownerId) throw new PetError('invalid_token', 401);
+                if (!['desktop:connect', 'pet:read', 'pet:receive'].every(scope => current.scopes.includes(scope))) throw new PetError('insufficient_scope', 403);
+                peer.accessToken = value.accessToken;
+                peer.scopes = current.scopes;
+                await peer.revalidate();
+                return {};
+            }, ['v', 'accessToken']);
             on('pet:ready', async value => {
                 if (['audioReady', 'renderReady', 'vtsReady'].some(key => typeof value[key] !== 'boolean')) throw new PetError('invalid_message');
                 if (peer.audioReady === value.audioReady && peer.renderReady === value.renderReady && peer.vtsReady === value.vtsReady) return {};

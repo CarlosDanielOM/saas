@@ -5,10 +5,13 @@ const owner = '111111111111111111111111';
 let request: any = { _id: 'request-a', ownerId: owner, generation: 7, status: 'ready' };
 let runtime = { _id: owner, generation: 7, activeRequestId: 'request-a', lease: { leaseId: 'lease-a', holderPeerId: 'peer-a', expiresAt: new Date(Date.now() + 15_000) }, notBefore: new Date(0) };
 let interleave = false, readinessDeletes = 0;
+const readinessRefreshes: string[] = [];
 const runtimeUpdates: any[] = [];
 const terminal = ['completed', 'cancelled', 'failed', 'expired'];
 const query = <T>(read: () => T) => ({ lean: async () => read() });
 const activityFinished: string[] = [], activityRetired: any[] = [];
+const diagnostics: any[] = [];
+mock.module('./diagnostics.js', { namedExports: { petDiagnostic: (...args: any[]) => { diagnostics.push(args); } } });
 mock.module('../desktop_ai/activity.js', { namedExports: { finishMatchingSpeechActivity: async (_channel: string, id: string) => { activityFinished.push(id); },
     retireMatchingSpeechActivity: async (...args: any[]) => { activityRetired.push(args); } } });
 mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
@@ -40,6 +43,9 @@ mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
     }
 } });
 mock.module('./readiness.schema.js', { namedExports: { PetReadiness: { deleteOne: async () => { readinessDeletes++; } } } });
+mock.module('./readiness.js', { namedExports: { refreshPetReadiness: async (ownerId: string) => {
+    assert.ok(readinessDeletes > 0, 'clear stale generation before refreshing'); readinessRefreshes.push(ownerId);
+} } });
 mock.module('./wakeups.js', { namedExports: { PET_WAKE: 'pet:test', petWakeups: { notify: () => {} } } });
 const { cancelPetRequest, finishRequest, invalidatePet } = await import('./state.js');
 
@@ -98,4 +104,12 @@ test('an unconfirmed Pet stop keeps activity until the captured lease deadline; 
     request = { ...request, channelId: '123', audio: { path: '/private/audio' } };
     await finishRequest('request-a', 'completed', undefined, undefined, true);
     assert.deepEqual(activityFinished, ['request-a'], 'the elected player terminal report proves silence');
+});
+
+test('invalidation immediately republishes readiness for the new generation before returning', async () => {
+    resetFinish(); readinessRefreshes.length = 0;
+    assert.equal(await invalidatePet(owner, 'player_unready', { requestId: 'request-a', generation: 7 }), true);
+    assert.deepEqual(readinessRefreshes, [owner]);
+    assert.equal(runtime.generation, 8);
+    assert.ok(diagnostics.some(([, event, data]) => event === 'invalidated' && data.generation === 8 && data.reason === 'player_unready'));
 });
