@@ -69,7 +69,7 @@ try {
         assert.equal(d.halves, '2');
         assert.equal(await page.locator('app-duel-claude-3d-arena .fighter-hud[data-side=right] [role=progressbar]').getAttribute('aria-valuenow'), '0');
         if (time === 9470) { if (impactCalls !== undefined) assert.equal(Number(d.drawCalls), impactCalls); impactCalls = Number(d.drawCalls); }
-        if (time === 10400) assert(Number(d.drawCalls) > impactCalls, 'fade keeps source ordering');
+        if (time === 10400) assert.equal(d.halves, '2', 'both halves keep rendering while they fade (baked fighters fade with their per-material groups)');
         metrics.push({ victim, time, calls: Number(d.drawCalls), triangles: Number(d.triangles), materials: Number(d.halvesMaterialCount), resolution: d.resolution });
       }
     }

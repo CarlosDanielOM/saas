@@ -1,80 +1,23 @@
 import * as T from 'three';
 
 /**
- * Procedural textures and shader materials for the Claude 3D arena. Everything is drawn
- * at runtime (no downloads) and owned by the scene, which disposes it on teardown.
+ * Procedural effect textures and shader materials for the 3D arena (models and the arena set
+ * are baked Blender assets). Textures are drawn at runtime and owned by the scene, which
+ * disposes them on teardown.
  */
 export interface ClaudeAssets {
-  noise: T.DataTexture; straw: T.DataTexture; stone: T.CanvasTexture; stoneBump: T.CanvasTexture;
   radial: T.CanvasTexture; glyph: T.CanvasTexture; sigil: T.CanvasTexture; feather: T.CanvasTexture;
-  petal: T.CanvasTexture; crack: T.CanvasTexture; streak: T.CanvasTexture;
-  engrave: T.CanvasTexture; weave: T.CanvasTexture; runeBand: T.CanvasTexture; mon: T.CanvasTexture;
+  petal: T.CanvasTexture; crack: T.CanvasTexture; streak: T.CanvasTexture; runeBand: T.CanvasTexture;
   dispose(): void;
 }
 
 const hash = (n: number) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
-
-function fbmTexture(size: number, stretchX = 1, stretchY = 1): T.DataTexture {
-  const data = new Uint8Array(size * size * 4);
-  const lattice = (x: number, y: number, period: number) => hash(((x % period) + period) % period * 57 + (((y % period) + period) % period) * 131 + period * 7.13);
-  const value = (x: number, y: number, period: number) => {
-    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
-    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-    const a = lattice(xi, yi, period), b = lattice(xi + 1, yi, period), c = lattice(xi, yi + 1, period), d = lattice(xi + 1, yi + 1, period);
-    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
-  };
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    let n = 0, amp = .55, freq = 4;
-    for (let o = 0; o < 5; o++) { n += value(x / size * freq * stretchX, y / size * freq * stretchY, freq * Math.max(stretchX, stretchY)) * amp; amp *= .5; freq *= 2; }
-    const v = Math.max(0, Math.min(255, Math.round(n * 255)));
-    data.set([v, v, v, 255], (y * size + x) * 4);
-  }
-  const texture = new T.DataTexture(data, size, size);
-  texture.wrapS = texture.wrapT = T.RepeatWrapping; texture.needsUpdate = true;
-  texture.generateMipmaps = true; texture.minFilter = T.LinearMipmapLinearFilter; texture.magFilter = T.LinearFilter;
-  return texture;
-}
 
 function canvas(size: number, draw: (g: CanvasRenderingContext2D, s: number) => void, height = size): T.CanvasTexture {
   const element = document.createElement('canvas'); element.width = size; element.height = height;
   const g = element.getContext('2d')!; draw(g, size);
   const texture = new T.CanvasTexture(element); texture.colorSpace = T.SRGBColorSpace; texture.anisotropy = 4;
   return texture;
-}
-
-/** Radial flagstones for the arena floor: rings of cut stone, chipped edges and grout. */
-function flagstones(bump: boolean): T.CanvasTexture {
-  return canvas(1024, (g, s) => {
-    const c = s / 2;
-    g.fillStyle = bump ? '#202020' : '#141a29'; g.fillRect(0, 0, s, s);
-    const rings = [0, 70, 150, 225, 300, 372, 440, 512];
-    for (let r = 0; r < rings.length - 1; r++) {
-      const inner = rings[r], outer = rings[r + 1], count = r === 0 ? 1 : 8 + r * 6;
-      for (let i = 0; i < count; i++) {
-        const a0 = i / count * Math.PI * 2 + r * .37, a1 = (i + 1) / count * Math.PI * 2 + r * .37, gap = 2.6 / Math.max(outer, 1);
-        const shade = hash(r * 31 + i * 7.7);
-        g.beginPath();
-        if (r === 0) g.arc(c, c, outer - 3, 0, Math.PI * 2);
-        else { g.arc(c, c, outer - 3, a0 + gap, a1 - gap); g.arc(c, c, inner + 3, a1 - gap * outer / inner, a0 + gap * outer / inner, true); }
-        g.closePath();
-        if (bump) g.fillStyle = `rgb(${150 + shade * 80},${150 + shade * 80},${150 + shade * 80})`;
-        else { const l = 13 + shade * 9; g.fillStyle = `hsl(${228 + shade * 14},${18 + shade * 10}%,${l}%)`; }
-        g.fill();
-      }
-    }
-    // Hairline cracks and wear.
-    g.lineWidth = 1.2;
-    for (let i = 0; i < 90; i++) {
-      let x = hash(i * 3.1) * s, y = hash(i * 5.7) * s;
-      g.strokeStyle = bump ? '#3a3a3a' : '#0a0e18'; g.beginPath(); g.moveTo(x, y);
-      for (let k = 0; k < 6; k++) { x += (hash(i * 9 + k) - .5) * 40; y += (hash(i * 13 + k) - .5) * 40; g.lineTo(x, y); }
-      g.stroke();
-    }
-    if (!bump) for (let i = 0; i < 2600; i++) {
-      g.fillStyle = `rgba(${hash(i) > .5 ? '190,180,255' : '10,12,24'},${hash(i * 2.3) * .08})`;
-      g.fillRect(hash(i * 1.7) * s, hash(i * 4.1) * s, 2, 2);
-    }
-  });
 }
 
 /** Soft, gamma-friendly glow sprite. */
@@ -156,40 +99,6 @@ function crack(): T.CanvasTexture {
   });
 }
 
-/** Filigree scrollwork for engraved armour (bump only). */
-function engrave(): T.CanvasTexture {
-  const texture = canvas(512, (g, s) => {
-    g.fillStyle = '#808080'; g.fillRect(0, 0, s, s); g.lineCap = 'round';
-    for (let tile = 0; tile < 4; tile++) {
-      const ox = (tile % 2) * s / 2, oy = Math.floor(tile / 2) * s / 2;
-      for (let k = 0; k < 2; k++) {
-        const cx = ox + s / 4 + (k ? 60 : -60), cy = oy + s / 4 + (k ? -40 : 40), dir = k ? -1 : 1;
-        g.strokeStyle = '#d8d8d8'; g.lineWidth = 5; g.beginPath();
-        for (let a = 0; a < 9.5; a += .1) { const r = 6 + a * 7, x = cx + Math.cos(a * dir) * r, y = cy + Math.sin(a * dir) * r; a ? g.lineTo(x, y) : g.moveTo(x, y); }
-        g.stroke(); g.strokeStyle = '#3a3a3a'; g.lineWidth = 2; g.stroke();
-        for (let l = 0; l < 6; l++) {
-          const a = l * 1.4 + 1, r = 8 + a * 7, x = cx + Math.cos(a * dir) * r, y = cy + Math.sin(a * dir) * r;
-          g.fillStyle = '#d0d0d0'; g.beginPath(); g.ellipse(x, y, 11, 4, a * dir + .8, 0, Math.PI * 2); g.fill();
-        }
-      }
-    }
-    g.strokeStyle = '#b8b8b8'; g.lineWidth = 6; for (const y of [3, s / 2 - 3, s / 2 + 3, s - 3]) { g.beginPath(); g.moveTo(0, y); g.lineTo(s, y); g.stroke(); }
-  });
-  texture.colorSpace = T.NoColorSpace; texture.wrapS = texture.wrapT = T.RepeatWrapping; return texture;
-}
-
-/** Fine twill weave for cloth (bump only). */
-function weave(): T.CanvasTexture {
-  const texture = canvas(256, (g, s) => {
-    g.fillStyle = '#7a7a7a'; g.fillRect(0, 0, s, s);
-    for (let y = 0; y < s; y += 4) for (let x = 0; x < s; x += 4) {
-      const v = 110 + ((x / 4 + y / 4) % 4 < 2 ? 70 : 0) + hash(x * 3 + y * 7) * 30;
-      g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(x, y, 4, 3);
-    }
-  });
-  texture.colorSpace = T.NoColorSpace; texture.wrapS = texture.wrapT = T.RepeatWrapping; texture.repeat.set(6, 6); return texture;
-}
-
 /** A scrolling band of glyphs for glowing hems. */
 function runeBand(): T.CanvasTexture {
   const texture = canvas(1024, (g, s) => {
@@ -209,18 +118,6 @@ function runeBand(): T.CanvasTexture {
   texture.wrapS = T.RepeatWrapping; return texture;
 }
 
-/** Family crest for the ronin's haori: a crescent over three tomoe-like commas. */
-function mon(): T.CanvasTexture {
-  return canvas(256, (g, s) => {
-    const c = s / 2; g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineWidth = 10;
-    g.beginPath(); g.arc(c, c, 112, 0, Math.PI * 2); g.stroke();
-    for (let i = 0; i < 3; i++) {
-      g.save(); g.translate(c, c); g.rotate(i * Math.PI * 2 / 3); g.beginPath(); g.arc(0, -40, 26, 0, Math.PI * 2); g.fill();
-      g.beginPath(); g.moveTo(26, -40); g.quadraticCurveTo(40, 10, -10, 30); g.quadraticCurveTo(14, -6, -26, -40); g.fill(); g.restore();
-    }
-  });
-}
-
 /** Horizontal light streak (lens flare bar / slash glint). */
 function streak(): T.CanvasTexture {
   return canvas(512, (g, s) => {
@@ -234,13 +131,10 @@ function streak(): T.CanvasTexture {
 }
 
 export function createAssets(): ClaudeAssets {
-  const noise = fbmTexture(256), straw = fbmTexture(256, 18, 1);
-  const stone = flagstones(false), stoneBump = flagstones(true);
-  stoneBump.colorSpace = T.NoColorSpace;
   const assets: ClaudeAssets = {
-    noise, straw, stone, stoneBump, radial: radial(), glyph: glyphCircle(3, 6), sigil: glyphCircle(11, 5),
-    feather: feather(), petal: petal(), crack: crack(), streak: streak(), engrave: engrave(), weave: weave(), runeBand: runeBand(), mon: mon(),
-    dispose: () => { for (const texture of [noise, straw, stone, stoneBump, assets.radial, assets.glyph, assets.sigil, assets.feather, assets.petal, assets.crack, assets.streak, assets.engrave, assets.weave, assets.runeBand, assets.mon]) texture.dispose(); },
+    radial: radial(), glyph: glyphCircle(3, 6), sigil: glyphCircle(11, 5),
+    feather: feather(), petal: petal(), crack: crack(), streak: streak(), runeBand: runeBand(),
+    dispose: () => { for (const texture of [assets.radial, assets.glyph, assets.sigil, assets.feather, assets.petal, assets.crack, assets.streak, assets.runeBand]) texture.dispose(); },
   };
   return assets;
 }
@@ -284,24 +178,37 @@ export function skyMaterial(): T.ShaderMaterial {
   });
 }
 
-/** The original rune floor, rebuilt with glyph ticks, a pulse and ultimate charge. */
+/**
+ * The rune floor's light over the baked flagstones: a sweeping wave, the hit pulse and the
+ * ultimate charge. The inlaid runes themselves are geometry (see runeGlyphMaterial).
+ */
 export function runeFloorMaterial(): T.ShaderMaterial {
   return new T.ShaderMaterial({
     transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false,
     uniforms: { uTime: { value: 0 }, uColor: { value: new T.Color('#7b63e6') }, uPower: { value: 0 }, uPulse: { value: -1 } },
     vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
     fragmentShader: `varying vec2 vUv;uniform float uTime;uniform vec3 uColor;uniform float uPower;uniform float uPulse;${NOISE_GLSL}
-    void main(){vec2 p=(vUv-.5)*2.;float r=length(p);float a=atan(p.y,p.x);
-      float ring=exp(-abs(r-.9)*320.)+exp(-abs(r-.84)*260.)*.35+exp(-abs(r-.6)*220.)*.25+exp(-abs(r-.3)*260.)*.18;
-      float ticks=step(.93,cos(a*72.))*smoothstep(.85,.86,r)*(1.-smoothstep(.885,.89,r));
-      float glyph=step(.55,h21(vec2(floor(a*18./3.14159),3.)))*step(.5,h21(floor(vec2(a*120.,r*80.))))*smoothstep(.6,.62,r)*(1.-smoothstep(.82,.84,r))*.35;
-      float spokes=pow(max(0.,cos(a*4.)),400.)*smoothstep(.3,.32,r)*(1.-smoothstep(.6,.62,r));
-      float lines=pow(max(0.,cos(p.x*24.)),60.)+pow(max(0.,cos(p.y*24.)),60.);
+    void main(){vec2 p=(vUv-.5)*2.;float r=length(p);
       float wave=exp(-abs(r-fract(uTime*.11)*1.2)*60.)*.15;
       float pulse=uPulse>=0.?exp(-abs(r-uPulse*1.4)*24.)*(1.-uPulse):0.;
       float shimmer=.75+.25*fbm(p*4.+uTime*.2);
-      float alpha=(ring*.6+ticks*.6+glyph+spokes*.25+lines*.035+wave+pulse*1.4)*shimmer*smoothstep(1.,.93,r);
+      float alpha=(wave+pulse*1.4+uPower*.04)*shimmer*smoothstep(1.,.93,r);
       gl_FragColor=vec4(uColor*(1.+uPower*2.5)*alpha,1.);}`,
+  });
+}
+
+/** The baked rune inlays: lit by the floor's color, shimmer, wave, pulse and ultimate charge. */
+export function runeGlyphMaterial(floor: T.ShaderMaterial): T.ShaderMaterial {
+  return new T.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    uniforms: floor.uniforms,
+    vertexShader: 'varying vec2 vP;void main(){vec4 w=modelMatrix*vec4(position,1.);vP=w.xz/4.65;gl_Position=projectionMatrix*viewMatrix*w;}',
+    fragmentShader: `varying vec2 vP;uniform float uTime;uniform vec3 uColor;uniform float uPower;uniform float uPulse;${NOISE_GLSL}
+    void main(){float r=length(vP);
+      float wave=exp(-abs(r-fract(uTime*.11)*1.2)*60.);
+      float pulse=uPulse>=0.?exp(-abs(r-uPulse*1.4)*24.)*(1.-uPulse):0.;
+      float shimmer=.75+.25*fbm(vP*4.+uTime*.2);
+      gl_FragColor=vec4(uColor*(1.+uPower*2.5)*(2.4*shimmer+wave*1.5+pulse*3.),1.);}`,
   });
 }
 

@@ -7,8 +7,10 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { DuelBattle, DuelSide, COMBO_HEAL, otherSide } from '../duel-battle';
-import { ClaudeAssets, Particles, coronaMaterial, createAssets, keepAlpha, flameMaterial, mistMaterial, runeFloorMaterial, shaftMaterial, skyMaterial } from './duel-claude-3d-assets';
-import { ARM_JOINTS, ClaudeRig, Cloth, HIP_HEIGHT, SHIN, THIGH, bakeRig, buildRig } from './duel-claude-3d-rig';
+import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
+import { ClaudeAssets, Particles, coronaMaterial, createAssets, keepAlpha, flameMaterial, mistMaterial, runeFloorMaterial, runeGlyphMaterial, shaftMaterial, skyMaterial } from './duel-claude-3d-assets';
+import { ARM_JOINTS, ClaudeRig, HIP_HEIGHT, SHIN, THIGH, bakeRig, buildRig, disposeRig, syncToggles } from './duel-claude-3d-rig';
+import { type FighterAsset, type FighterSkin, type Palette, arenaAsset, fighterAsset, fighterSkin } from './duel-claude-3d-library';
 import { MotionContext, Pose, activeTurn, attackPhase, fighterPose, strikePoses, ultimatePoses } from './duel-claude-3d-motion';
 import { CombatEffects } from './duel-claude-3d-effects';
 import { UltimateEffects } from './duel-claude-3d-ultimates';
@@ -32,15 +34,15 @@ const SanitizeShader = {
     void main(){vec4 c=texture2D(tDiffuse,vUv);gl_FragColor=vec4(safe(c.r),safe(c.g),safe(c.b),min(safe(c.a),1.));}`,
 };
 
-/** Polished flagstones: the mirrored scene, broken up by the stone relief and faded at the rim. */
+/** Polished flagstones: the mirrored scene, broken up by the baked stone relief (grout stays matte) and faded at the rim. */
 const MirrorShader = {
   name: 'ClaudeArenaMirror',
   uniforms: { color: { value: null }, tDiffuse: { value: null }, textureMatrix: { value: null }, uStone: { value: null }, uStrength: { value: .42 } },
   vertexShader: 'uniform mat4 textureMatrix;varying vec4 vMirror;varying vec2 vUv;void main(){vMirror=textureMatrix*vec4(position,1.);vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
   fragmentShader: `uniform sampler2D tDiffuse;uniform sampler2D uStone;uniform float uStrength;varying vec4 vMirror;varying vec2 vUv;
-    void main(){float g=texture2D(uStone,vUv).r;vec4 m=vMirror;m.xy+=(g-.55)*.035*m.w;vec3 r=texture2DProj(tDiffuse,m).rgb;
+    void main(){vec2 suv=vec2(vUv.x,1.-vUv.y)*(9.28/9.5)+(1.-9.28/9.5)*.5;float g=texture2D(uStone,suv).r;vec4 m=vMirror;m.xy+=(g-.55)*.035*m.w;vec3 r=texture2DProj(tDiffuse,m).rgb;
       r=(any(isnan(r))||any(isinf(r)))?vec3(0.):min(r,vec3(24.));
-      float edge=smoothstep(1.,.86,length(vUv-.5)*2.);float polish=.3+.7*smoothstep(.3,.7,g);
+      float edge=smoothstep(1.,.86,length(vUv-.5)*2.);float polish=.3+.7*smoothstep(.55,.85,g);
       gl_FragColor=vec4(r*uStrength*edge*polish,1.);}`,
 };
 
@@ -74,7 +76,13 @@ const GradeShader = {
       gl_FragColor=vec4(col,1.);}`,
 };
 
-/** This renderer is reachable only from the development mock's Claude 3D slot. */
+/** Emission scale for the baked arena (matches the fighters'). */
+const ARENA_EMISSIVE = .55;
+
+/**
+ * The extreme duel: baked Blender fighters and arena (loaded once per page, see
+ * duel-claude-3d-library) with live effects, cloth, choreography and post-processing.
+ */
 export class DuelClaude3dScene {
   private readonly renderer: T.WebGLRenderer;
   private readonly scene = new T.Scene();
@@ -94,10 +102,13 @@ export class DuelClaude3dScene {
   private readonly floor: T.ShaderMaterial;
   private readonly corona: T.ShaderMaterial;
   private readonly animated: T.ShaderMaterial[] = [];
-  private readonly banners: Cloth[] = [];
   private readonly flames: { light: T.PointLight; base: number }[] = [];
-  private readonly shards: T.Mesh[] = [];
+  private readonly sway = { uTime: { value: 0 }, uWind: { value: .25 } };
+  private readonly drift = { uTime: { value: 0 } };
   private readonly gate = new T.Group();
+  private arenaAttached = false;
+  private readonly loaded = new Map<string, unknown>();
+  private readonly loading = new Set<string>();
   private readonly hemi = new T.HemisphereLight('#94a3d6', '#1a1730', .75);
   private readonly key = new T.DirectionalLight('#e3e8ff', 2.6);
   private readonly rims: T.SpotLight[] = [];
@@ -165,71 +176,25 @@ export class DuelClaude3dScene {
     keepAlpha(this.scene); this.resize(); this.tick();
   }
 
-  /** The original arena — rune platform, broken moon gate, pillars — rebuilt in higher detail. */
+  /** Live arena FX: sky, corona, rune light, flames, mist, shafts, motes and the mirror floor. The baked set joins in attachArena. */
   private buildEnvironment(): void {
-    const env = this.environment, a = this.assets;
-    const stone = new T.MeshStandardMaterial({ color: '#1a2135', roughness: .72, metalness: .25, bumpMap: a.noise, bumpScale: 2.2 });
-    const metal = new T.MeshPhysicalMaterial({ color: '#2c3350', roughness: .32, metalness: .9, bumpMap: a.noise, bumpScale: .8, clearcoat: .4 });
-    const gold = new T.MeshPhysicalMaterial({ color: '#d7ad66', roughness: .28, metalness: 1, clearcoat: .5 });
-    const glowViolet = new T.MeshBasicMaterial({ color: '#a990ff', toneMapped: false }), glowGold = new T.MeshBasicMaterial({ color: '#e8c58b', toneMapped: false });
+    const env = this.environment;
     const sky = new T.Mesh(new T.SphereGeometry(60, 48, 24), this.sky); sky.frustumCulled = false; env.add(sky);
-    // Platform: flagstone top, beveled tiers, gilded rim and glyph ticks.
-    const topMaterial = new T.MeshStandardMaterial({ map: a.stone, bumpMap: a.stoneBump, bumpScale: 3, roughness: .62, metalness: .18 });
-    const top = new T.Mesh(new T.CircleGeometry(4.66, 128), topMaterial); top.rotation.x = -Math.PI / 2; top.receiveShadow = true; env.add(top);
-    const tiers = new T.Mesh(new T.LatheGeometry([[4.66, 0], [4.74, -.03], [4.8, -.1], [4.82, -.42], [5.08, -.46], [5.16, -.52], [5.18, -.72], [4.4, -.86]].map(([r, y]) => new T.Vector2(r, y)), 128), stone);
-    tiers.receiveShadow = true; env.add(tiers);
     const floor = new T.Mesh(new T.PlaneGeometry(9.3, 9.3), this.floor); floor.rotation.x = -Math.PI / 2; floor.position.y = .012; env.add(floor);
-    for (const [r, y, m, w] of [[4.7, .005, glowGold, .012], [4.81, -.25, gold, .03], [5.17, -.6, glowViolet, .012]] as const) {
-      const ring = new T.Mesh(new T.TorusGeometry(r, w, 6, 160), m); ring.rotation.x = -Math.PI / 2; ring.position.y = y; env.add(ring);
-    }
-    const ticks = new T.InstancedMesh(new T.BoxGeometry(.03, .02, .16), glowGold, 120), d = new T.Object3D();
-    for (let i = 0; i < 120; i++) { const t = i / 120 * Math.PI * 2; d.position.set(Math.cos(t) * 4.95, -.455, Math.sin(t) * 4.95); d.rotation.y = -t; d.scale.set(1, 1, i % 5 ? 1 : 2); d.updateMatrix(); ticks.setMatrixAt(i, d.matrix); }
-    env.add(ticks);
-    // Broken moon gate: beveled arc segments, gold inlay, eclipse and live corona.
+    // The broken moon gate turns slowly around its center; the eclipse corona burns behind it.
     this.gate.position.set(0, 3.7, -4.6); env.add(this.gate);
-    for (let i = 0; i < 12; i++) {
-      const t0 = i / 12 * Math.PI * 2 + .04, t1 = (i + 1) / 12 * Math.PI * 2 - .04, shape = new T.Shape();
-      shape.absarc(0, 0, 2.62, t0, t1, false); shape.absarc(0, 0, 2.2, t1, t0, true);
-      const seg = new T.Mesh(new T.ExtrudeGeometry(shape, { depth: .26, bevelEnabled: true, bevelThickness: .04, bevelSize: .04, bevelSegments: 2, curveSegments: 10 }), metal);
-      const broken = i === 4 || i === 9 ? 1 : 0, mid = (t0 + t1) / 2;
-      seg.position.set(Math.cos(mid) * broken * .35, Math.sin(mid) * broken * .35, -.13 + broken * .2); seg.rotation.z = broken * .08; seg.castShadow = true; this.gate.add(seg);
-      const inlay = new T.Mesh(new T.TorusGeometry(2.41, .012, 4, 24, t1 - t0 - .06), glowGold); inlay.rotation.z = t0 + .03; inlay.position.set(seg.position.x, seg.position.y, .17 + broken * .2); this.gate.add(inlay);
-    }
-    const eclipse = new T.Mesh(new T.CircleGeometry(2.1, 96), new T.MeshBasicMaterial({ color: '#05060e' })); eclipse.position.z = -.2; this.gate.add(eclipse);
-    const corona = new T.Mesh(new T.PlaneGeometry(9, 9), this.corona); corona.position.z = -.35; corona.scale.setScalar(1); this.gate.add(corona);
+    const corona = new T.Mesh(new T.PlaneGeometry(9, 9), this.corona); corona.position.z = -.35; this.gate.add(corona);
     (corona.material as T.ShaderMaterial).uniforms['uIntensity'].value = 1;
-    // Pillars with capitals, glowing veins and side-colored banners.
-    for (const side of [-1, 1]) for (let i = 0; i < 3; i++) {
-      const h = 3.6 + i * .7, x = side * (5.3 + i * 1.05), z = -3.2 - i * 1.1, pillar = new T.Group(); pillar.position.set(x, -.5, z); pillar.rotation.z = side * -.05 * i; env.add(pillar);
-      const shaft = new T.Mesh(new T.CylinderGeometry(.26, .34, h, 6), stone); shaft.position.y = h / 2; shaft.castShadow = true; pillar.add(shaft);
-      const cap = new T.Mesh(new T.LatheGeometry([[.3, 0], [.46, .12], [.5, .2], [.38, .28]].map(([r, y]) => new T.Vector2(r, y)), 6), metal); cap.position.y = h; pillar.add(cap);
-      const base = new T.Mesh(new T.LatheGeometry([[.5, 0], [.5, .14], [.38, .24]].map(([r, y]) => new T.Vector2(r, y)), 6), metal); pillar.add(base);
-      const vein = new T.Mesh(new T.BoxGeometry(.035, h * .7, .035), side < 0 ? glowViolet : glowGold); vein.position.set(0, h * .5, .3); pillar.add(vein);
-      if (i < 2) {
-        const banner = new Cloth(new T.MeshPhysicalMaterial({ color: side < 0 ? '#3a2a7c' : '#7d3d1d', roughness: .8, sheen: 1, sheenColor: new T.Color(side < 0 ? '#9a85ff' : '#ffb26b'), side: T.DoubleSide }), .62, 2.0, 4, 12, { rest: .02, flutter: .6, seed: i * 2 + side });
-        banner.mesh.position.set(0, h - .1, .4); pillar.add(banner.mesh); this.banners.push(banner);
-        const rod = new T.Mesh(new T.CylinderGeometry(.025, .025, .8, 8), gold); rod.rotation.z = Math.PI / 2; rod.position.set(0, h - .08, .4); pillar.add(rod);
-        const crest = new T.Mesh(new T.CircleGeometry(.15, 6), side < 0 ? glowViolet : glowGold); crest.position.set(0, h - .75, .44); pillar.add(crest);
-      }
-    }
-    // Braziers with painted flames and flickering light.
+    // Brazier flames and flickering light.
     for (const side of [-1, 1]) {
       const brazier = new T.Group(); brazier.position.set(side * 4.15, 0, -1.6); env.add(brazier);
-      const bowl = new T.Mesh(new T.LatheGeometry([[.06, 0], [.08, .55], [.1, .62], [.34, .78], [.38, .88], [.33, .9]].map(([r, y]) => new T.Vector2(r, y)), 24), metal); bowl.castShadow = true; brazier.add(bowl);
-      const coals = new T.Mesh(new T.CircleGeometry(.32, 24), new T.MeshBasicMaterial({ color: '#ff8a3c', toneMapped: false })); coals.rotation.x = -Math.PI / 2; coals.position.y = .86; brazier.add(coals);
       for (let k = 0; k < 2; k++) {
         const material = flameMaterial(side < 0 ? '#b08cff' : '#ff9a3c'); material.uniforms['uSeed'].value = k * 3 + side; this.animated.push(material);
         const flame = new T.Mesh(new T.PlaneGeometry(.75, 1.25), material); flame.position.y = 1.45; flame.rotation.y = k * Math.PI / 2 + .4; brazier.add(flame);
       }
       const light = new T.PointLight(side < 0 ? '#a98aff' : '#ffa04d', 9, 7, 1.8); light.position.y = 1.5; brazier.add(light); this.flames.push({ light, base: 9 });
     }
-    // Floating shards, mist sheets and light shafts.
-    for (let i = 0; i < 18; i++) {
-      // Only behind the stage: shards in front would drift through the close-up cameras.
-      const t = Math.PI * (1.04 + (i / 17) * .92) + Math.sin(i * 7.1) * .05, r = 5.8 + (i % 4) * .8;
-      const shard = new T.Mesh(new T.OctahedronGeometry(.16 + (i % 3) * .09, 0), stone); shard.position.set(Math.cos(t) * r, .3 + (i % 5) * .35, Math.sin(t) * r - 1); shard.rotation.set(t, t * .3, t * .2); shard.castShadow = true;
-      env.add(shard); this.shards.push(shard);
-    }
+    // Mist sheets and light shafts.
     for (const [z, w, o] of [[-2.6, 14, .3], [3.6, 16, .18]] as const) {
       const mist = mistMaterial(); mist.uniforms['uOpacity'].value = o; this.animated.push(mist);
       const sheet = new T.Mesh(new T.PlaneGeometry(w, 2.4), mist); sheet.position.set(0, .5, z); env.add(sheet);
@@ -239,17 +204,48 @@ export class DuelClaude3dScene {
       const shaft = new T.Mesh(new T.ConeGeometry(1.4 + i * .3, 8, 24, 1, true), material); shaft.position.set((i - 1) * 2.2, 3.4, -2.6); shaft.rotation.z = (i - 1) * -.28; env.add(shaft);
     }
     this.ambient.points.visible = true; env.add(this.ambient.points);
-    // Polished floor: a half-resolution mirror of the scene, added over the stone.
+    // Polished floor: a half-resolution mirror of the scene over the flagstones (relief set in attachArena).
     this.mirror = new Reflector(new T.CircleGeometry(4.64, 128), { textureWidth: 512, textureHeight: 288, clipBias: .003, multisample: 0, shader: MirrorShader });
-    const mirror = this.mirror.material as T.ShaderMaterial; mirror.transparent = true; mirror.depthWrite = false; mirror.blending = T.AdditiveBlending; mirror.uniforms['uStone'].value = a.stoneBump;
-    this.mirror.rotation.x = -Math.PI / 2; this.mirror.position.y = .016; env.add(this.mirror);
+    const mirror = this.mirror.material as T.ShaderMaterial; mirror.transparent = true; mirror.depthWrite = false; mirror.blending = T.AdditiveBlending; mirror.uniforms['uStrength'].value = .26;
+    this.mirror.rotation.x = -Math.PI / 2; this.mirror.position.y = .016; this.mirror.visible = false; env.add(this.mirror);
     // Soft contact shadows keep the fighters planted.
     for (const side of SIDES) {
-      const shadow = new T.Mesh(new T.PlaneGeometry(1.7, 1.7), new T.MeshBasicMaterial({ color: '#000000', map: a.radial, transparent: true, depthWrite: false, opacity: .6 }));
+      const shadow = new T.Mesh(new T.PlaneGeometry(1.7, 1.7), new T.MeshBasicMaterial({ color: '#000000', map: this.assets.radial, transparent: true, depthWrite: false, opacity: .6 }));
       shadow.rotation.x = -Math.PI / 2; shadow.renderOrder = 1; this.contact[side] = shadow; env.add(shadow);
     }
     // Test-only NaN source (enabled by a data attribute) proving the sanitize pass keeps the frame intact.
     this.probe.position.set(0, 1.6, 1); this.probe.visible = false; this.scene.add(this.probe);
+  }
+
+  /**
+   * The baked set: flagstones, platform, rune inlays, moon gate, pillars, banners, braziers and
+   * shards. Banners sway and shards drift in their vertex shaders; the gate turns as one piece.
+   */
+  private attachArena(gltf: GLTF): void {
+    const arena = gltf.scene.clone(), meshes: T.Mesh[] = [];
+    arena.traverse(object => { if ((object as T.Mesh).isMesh) meshes.push(object as T.Mesh); });
+    let set: T.MeshStandardMaterial | null = null;
+    const setMaterial = (source: T.MeshStandardMaterial) => {
+      if (!set) { set = source.clone(); set.emissiveIntensity *= ARENA_EMISSIVE; }
+      return set;
+    };
+    this.environment.add(arena); this.environment.updateMatrixWorld(true);
+    for (const mesh of meshes) {
+      const name = mesh.name, source = mesh.material as T.MeshStandardMaterial;
+      mesh.castShadow = !/floor|runes/i.test(name); mesh.receiveShadow = !/runes/i.test(name);
+      if (/runes/i.test(name)) { mesh.material = runeGlyphMaterial(this.floor); continue; }
+      if (/floor/i.test(name)) { (this.mirror.material as T.ShaderMaterial).uniforms['uStone'].value = source.aoMap; this.mirror.visible = true; continue; }
+      mesh.material = setMaterial(source);
+      if (/gate/i.test(name)) this.gate.attach(mesh);
+      if (/bannercloth/i.test(name)) animate(mesh, this.sway, true, `attribute float _sway;attribute float _seed;uniform float uTime;uniform float uWind;`, '',
+        `float s=pow(_sway,1.4);transformed.z+=s*(sin(uTime*2.1-_sway*4.5+_seed)*(.05+uWind*.1)+uWind*.08);transformed.x+=s*sin(uTime*1.4-_sway*3.+_seed*1.7)*.035;`);
+      // Each shard spins about its own center and bobs (the depth pass has no normals, hence the helper).
+      if (/shards/i.test(name)) animate(mesh, this.drift, false, `attribute float _cx;attribute float _cy;attribute float _cz;attribute float _si;uniform float uTime;
+        mat2 shardSpin(){float a=uTime*.2+_si;return mat2(cos(a),-sin(a),sin(a),cos(a));}`,
+        `objectNormal.xz=shardSpin()*objectNormal.xz;`,
+        `vec3 dC=vec3(_cx,_cy,_cz);transformed-=dC;transformed.xz=shardSpin()*transformed.xz;transformed+=dC+vec3(0.,sin(uTime*.8+_si)*.12,0.);`);
+    }
+    keepAlpha(arena); this.arenaAttached = true; this.shadersFor = null; this.dirty = true;
   }
 
   private readonly motionChanged = () => { this.dirty = true; };
@@ -272,7 +268,9 @@ export class DuelClaude3dScene {
     const frameStart = performance.now(), snapshot = this.state(), reduced = this.motion.matches;
     const flags = `${snapshot.started}|${snapshot.paused}|${snapshot.transparent}`;
     const changed = this.lastTime !== snapshot.elapsed || this.previousBattle !== snapshot.battle || flags !== this.lastFlags;
-    if (!document.hidden && (this.dirty || changed || !snapshot.paused && !reduced)) {
+    // Nothing is drawn until this battle's models (and, when visible, the arena) are in.
+    const ready = this.ready(snapshot); this.canvas.dataset['assets'] = ready ? 'ready' : 'loading';
+    if (ready && !document.hidden && (this.dirty || changed || !snapshot.paused && !reduced)) {
       const delta = Math.min(.1, (frameStart - this.lastTick) / 1000);
       if (!snapshot.paused && !reduced) this.worldTime += delta;
       this.update(snapshot, reduced ? 0 : this.worldTime, reduced);
@@ -295,12 +293,35 @@ export class DuelClaude3dScene {
     this.timer = setTimeout(this.tick, Math.max(1, Math.ceil(FRAME_MS - (performance.now() - frameStart))));
   };
 
+  /** Starts a download once; the value is kept for this scene when it arrives. A failure swaps arenas. */
+  private need<V>(key: string, load: () => Promise<V>): V | undefined {
+    if (this.loaded.has(key)) return this.loaded.get(key) as V;
+    if (!this.loading.has(key)) {
+      this.loading.add(key);
+      load().then(value => { if (!this.dead) { this.loaded.set(key, value); this.dirty = true; } }, () => {
+        if (this.dead) return; this.canvas.dataset['assets'] = 'failed'; this.failure(); this.dispose();
+      }).finally(() => this.loading.delete(key));
+    }
+    return undefined;
+  }
+
+  private ready(state: DuelSceneState): boolean {
+    let ready = true;
+    for (const side of SIDES) {
+      const character = state.battle.fighters[side], palette = paletteOf(state.battle, side);
+      if (!this.need(`model:${character}`, () => fighterAsset(character))) ready = false;
+      if (!this.need(`skin:${character}_${palette}`, () => fighterSkin(character, palette))) ready = false;
+    }
+    if (!state.transparent && !this.arenaAttached) { const gltf = this.need('arena', arenaAsset); if (gltf) this.attachArena(gltf); else ready = false; }
+    return ready;
+  }
+
   private rebuild(battle: DuelBattle): void {
     const preparationStart = performance.now();
     for (const side of SIDES) {
-      const old = this.rigs[side]; if (old) { this.stages[side].remove(old.anchor); disposeObject(old.anchor); }
-      const rig = buildRig(battle.fighters[side], side, battle.enraged === side, this.assets);
-      for (const material of rig.materials) material.userData['base'] = material.emissiveIntensity;
+      const old = this.rigs[side]; if (old) disposeRig(old);
+      const character = battle.fighters[side], palette = paletteOf(battle, side);
+      const rig = buildRig(character, side, battle.enraged === side, this.loaded.get(`model:${character}`) as FighterAsset, this.loaded.get(`skin:${character}_${palette}`) as FighterSkin, this.assets);
       this.rigs[side] = rig; this.stages[side].add(rig.anchor);
     }
     // The Blood Moon bakes the ronin's afterimages once per battle.
@@ -322,7 +343,7 @@ export class DuelClaude3dScene {
       const pose = fighterPose(victim, context); this.apply(rig, pose);
       this.updateRigDetails(rig, victim, pose, context, time / 1000);
       this.apply(rig, fighterPose(victim, { ...context, time: ultimate.at + 2600 }));
-      this.ultimates.setHalves(bakeRig(rig, true, false)); this.halvesBakeCount++;
+      this.ultimates.setHalves(bakeRig(rig, true)); this.halvesBakeCount++;
     }
     // Divine Judgment bakes the knight's colossal avatar (sword raised, then pointed at the victim).
     const avatar: T.BufferGeometry[] = [];
@@ -381,10 +402,9 @@ export class DuelClaude3dScene {
     }
     rig.weapon.visible = !(rig.sheathed && pose.sheathed); if (rig.sheathed) rig.sheathed.visible = pose.sheathed;
     if (rig.gourdHand && rig.gourdBelt) { rig.gourdHand.visible = pose.gourd; rig.gourdBelt.visible = !pose.gourd; }
-    for (const material of rig.materials) {
-      if (rig.glow.includes(material)) material.emissiveIntensity = (material.userData['base'] as number) * pose.glow;
-      else material.emissive.set(pose.flashColor).multiplyScalar(pose.flash * .22);
-    }
+    syncToggles(rig);
+    for (const material of rig.glow) material.emissiveIntensity = (material.userData['base'] as number) * pose.glow;
+    rig.flash.set(pose.flashColor).multiplyScalar(pose.flash * .22);
   }
 
   /** World-space position of a fighter's anchor for a given pose (stages mirror the right side). */
@@ -396,12 +416,8 @@ export class DuelClaude3dScene {
     const velocity = this.anchorWorld(side, pose, new T.Vector3()).sub(this.anchorWorld(side, before, this.v)).multiplyScalar(ctx.started ? 25 : 0);
     rig.anchor.updateMatrixWorld(true);
     for (const cloth of rig.cloths) {
-      this.m3.setFromMatrix4(cloth.mesh.parent!.matrixWorld).invert();
+      this.m3.setFromMatrix4(cloth.parent.matrixWorld).invert();
       cloth.update(clock + (side === 'left' ? 0 : 1.3), velocity.clone().applyMatrix3(this.m3), pose.wind);
-    }
-    if (rig.skirt) {
-      this.m3.setFromMatrix4(rig.j.hp.matrixWorld).invert(); const drag = velocity.clone().applyMatrix3(this.m3);
-      for (const skirt of [rig.skirt, rig.skirtBand]) skirt?.update(clock, rig.legs.R[0].rotation.x, rig.legs.L[0].rotation.x, drag, pose.wind);
     }
     for (const runes of rig.runes) runes.offset.x = -clock * .04;
     if (rig.book) { rig.book.position.set(.62 + Math.sin(clock * .9) * .05, 1.45 + Math.sin(clock * 1.7) * .07, .2); rig.book.rotation.set(-.5 + Math.sin(clock * 1.3) * .08, clock * .35, .25); }
@@ -485,9 +501,8 @@ export class DuelClaude3dScene {
     const pulseAt = turn && !ultimate && turn.move !== 'heal' && time >= turn.hitAt ? (time - turn.hitAt) / 700 : -1; this.floor.uniforms['uPulse'].value = pulseAt > 1 ? -1 : pulseAt;
     this.corona.uniforms['uTime'].value = world; (this.corona.uniforms['uColor'].value as T.Color).set('#c7a6ff').lerp(new T.Color('#ff2a48'), look.bloodMoon);
     for (const material of this.animated) material.uniforms['uTime'].value = world;
-    this.banners.forEach((banner, i) => banner.update(world + i, new T.Vector3(.3, 0, -.6), .25 + Math.sin(world * .6 + i) * .1));
+    this.sway.uTime.value = world; this.sway.uWind.value = .25 + Math.sin(world * .6) * .1; this.drift.uTime.value = world;
     this.flames.forEach((flame, i) => { flame.light.intensity = flame.base * (1 - dark * .6) * (.85 + Math.sin(world * 13 + i * 3) * .08 + Math.sin(world * 7.3 + i) * .07); });
-    this.shards.forEach((shard, i) => { shard.rotation.y = world * .2 + i; shard.position.y = .3 + (i % 5) * .35 + Math.sin(world * .8 + i) * .12; });
     this.gate.rotation.z = Math.sin(world * .1) * .04;
     this.ambient.set(4, { x: 0, y: -.2, z: -.5 }, world, { life: 9, speed: 4.5, radius: 6, size: 5, a: '#cbbcff', b: '#ffcf9a', opacity: .55 * (1 - dark * .5) });
     this.hemi.intensity = .75 * (1 - dark * .65); this.key.intensity = 2.6 * (1 - dark * .55); this.gateLight.intensity = 12 * (1 - dark * .4) + look.bloodMoon * 30;
@@ -547,12 +562,40 @@ export class DuelClaude3dScene {
   dispose(): void {
     if (this.dead) return; this.dead = true; clearTimeout(this.timer);
     this.observer.disconnect(); this.motion.removeEventListener('change', this.motionChanged); this.canvas.removeEventListener('webglcontextlost', this.contextLost);
+    for (const side of SIDES) { const rig = this.rigs[side]; if (rig) disposeRig(rig); }
     this.ultimates.setGhosts([]); this.ultimates.setAvatar([]); this.ultimates.setHalves(null); this.mirror.dispose();
     this.envMap.dispose(); disposeObject(this.scene); this.assets.dispose();
     for (const pass of this.composer.passes) pass.dispose(); this.composer.dispose();
     this.key.shadow.dispose(); for (const rim of this.rims) rim.shadow.dispose();
     this.renderer.dispose(); this.renderer.forceContextLoss();
   }
+}
+
+function paletteOf(battle: DuelBattle, side: DuelSide): Palette { return battle.enraged === side ? 'E' : side === 'left' ? 'L' : 'R'; }
+
+/**
+ * Vertex animation for a baked arena piece (also applied to its shadow). The piece's node
+ * transform is baked into its geometry first, so the shader works in arena coordinates.
+ */
+function animate(mesh: T.Mesh, uniforms: Record<string, T.IUniform>, doubleSided: boolean, head: string, normal: string, vertex: string): void {
+  mesh.updateMatrix();
+  const geometry = mesh.geometry.clone();
+  for (const name of ['position', 'normal']) {
+    const attribute = geometry.getAttribute(name) as T.BufferAttribute, data = new Float32Array(attribute.count * 3);
+    for (let i = 0; i < attribute.count; i++) { data[i * 3] = attribute.getX(i); data[i * 3 + 1] = attribute.getY(i); data[i * 3 + 2] = attribute.getZ(i); }
+    geometry.setAttribute(name, new T.BufferAttribute(data, 3));
+  }
+  geometry.applyMatrix4(mesh.matrix); mesh.geometry = geometry; mesh.matrix.identity(); mesh.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
+  const inject = (shader: T.WebGLProgramParametersWithUniforms) => {
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = head + '\n' + shader.vertexShader
+      .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n' + normal)
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n' + vertex);
+  };
+  const material = (mesh.material as T.MeshStandardMaterial).clone(); if (doubleSided) material.side = T.DoubleSide;
+  material.onBeforeCompile = inject; material.customProgramCacheKey = () => 'duel-arena-' + mesh.name; mesh.material = material;
+  const depth = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking });
+  depth.onBeforeCompile = inject; depth.customProgramCacheKey = () => 'duel-arena-depth-' + mesh.name; mesh.customDepthMaterial = depth;
 }
 
 export function healthAt(battle: DuelBattle, time: number, started: boolean): Record<DuelSide, number> {

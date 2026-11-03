@@ -64,7 +64,9 @@ try {
       assert.equal(frame.ultimate, character);
       assert.equal(frame.preparationCount, preparation, 'scrubbing and attacks reuse prepared geometry');
       assert.equal(Number(frame.halvesBakeCount), bakes, 'no split baking during ultimate playback');
-      if (character === 'ronin' && time === 10400) assert(Number(frame.drawCalls) > impactCalls, 'transparent fade retains the original draw order');
+      // Baked fighters split into one group per material and fade with those same groups in the
+      // same order, so draw counts no longer reveal the fade path: both halves must still render.
+      if (character === 'ronin' && time === 10400) assert.equal(frame.halves, '2', 'both halves keep rendering while they fade');
       if (time === 9470) {
         if (impactCalls !== undefined) assert.equal(Number(frame.drawCalls), impactCalls, 'backward seeking restores opaque batching');
         impactCalls = Number(frame.drawCalls);

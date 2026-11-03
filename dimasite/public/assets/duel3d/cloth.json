@@ -1,0 +1,300 @@
+{
+ "knight": [
+  {
+   "rest": 0.04,
+   "taper": 0.0,
+   "facing": -1,
+   "flutter": 0.5,
+   "stiff": 1.0,
+   "seed": 1.98,
+   "width": 0.26,
+   "length": 0.5,
+   "parent": "hp",
+   "parent_axis": "up",
+   "chains": [
+    {
+     "bones": [
+      "cl0_0_0",
+      "cl0_0_1",
+      "cl0_0_2"
+     ],
+     "u": 0.0
+    }
+   ]
+  },
+  {
+   "rest": 0.04,
+   "taper": 0.0,
+   "facing": 1,
+   "flutter": 0.5,
+   "stiff": 1.0,
+   "seed": -1.8,
+   "width": 0.26,
+   "length": 0.5,
+   "parent": "hp",
+   "parent_axis": "up",
+   "chains": [
+    {
+     "bones": [
+      "cl1_0_0",
+      "cl1_0_1",
+      "cl1_0_2"
+     ],
+     "u": 0.0
+    }
+   ]
+  },
+  {
+   "rest": 0.16,
+   "taper": -0.35,
+   "facing": 1,
+   "flutter": 1,
+   "stiff": 1.0,
+   "seed": 0.0,
+   "width": 0.62,
+   "length": 1.22,
+   "parent": "ch",
+   "parent_axis": "up",
+   "chains": [
+    {
+     "bones": [
+      "cl2_0_0",
+      "cl2_0_1",
+      "cl2_0_2",
+      "cl2_0_3",
+      "cl2_0_4",
+      "cl2_0_5"
+     ],
+     "u": -0.3125
+    },
+    {
+     "bones": [
+      "cl2_1_0",
+      "cl2_1_1",
+      "cl2_1_2",
+      "cl2_1_3",
+      "cl2_1_4",
+      "cl2_1_5"
+     ],
+     "u": 0.0
+    },
+    {
+     "bones": [
+      "cl2_2_0",
+      "cl2_2_1",
+      "cl2_2_2",
+      "cl2_2_3",
+      "cl2_2_4",
+      "cl2_2_5"
+     ],
+     "u": 0.3125
+    }
+   ]
+  }
+ ],
+ "ronin": [
+  {
+   "rest": -0.05,
+   "taper": 0.0,
+   "facing": -1,
+   "flutter": 0.9,
+   "stiff": 1.0,
+   "seed": 4.0,
+   "width": 0.05,
+   "length": 0.32,
+   "parent": "hp",
+   "parent_axis": "up",
+   "chains": [
+    {
+     "bones": [
+      "cl0_0_0",
+      "cl0_0_1",
+      "cl0_0_2"
+     ],
+     "u": 0.0
+    }
+   ]
+  },
+  {
+   "rest": -0.05,
+   "taper": 0.0,
+   "facing": -1,
+   "flutter": 0.9,
+   "stiff": 1.0,
+   "seed": 6.0,
+   "width": 0.05,
+   "length": 0.32,
+   "parent": "hp",
+   "parent_axis": "up",
+   "chains": [
+    {
+     "bones": [
+      "cl1_0_0",
+      "cl1_0_1",
+      "cl1_0_2"
+     ],
+     "u": 0.0
+    }
+   ]
+  },
+  {
+   "rest": 0.7,
+   "taper": 0.25,
+   "facing": 1,
+   "flutter": 1.4,
+   "stiff": 0.7,
+   "seed": 0.0,
+   "width": 0.13,
+   "length": 1.45,
+   "parent": "nk",
+   "parent_axis": "up",
+   "chains": [
+    {
+     "bones": [
+      "cl2_0_0",
+      "cl2_0_1",
+      "cl2_0_2",
+      "cl2_0_3",
+      "cl2_0_4",
+      "cl2_0_5",
+      "cl2_0_6"
+     ],
+     "u": 0.0
+    }
+   ]
+  },
+  {
+   "rest": 0.5,
+   "taper": 0.0,
+   "facing": 1,
+   "flutter": 0.6,
+   "stiff": 1.0,
+   "seed": 0.0,
+   "width": 0.22,
+   "length": 0.34,
+   "parent": "sR",
+   "parent_axis": "down",
+   "chains": [
+    {
+     "bones": [
+      "cl3_0_0",
+      "cl3_0_1",
+      "cl3_0_2"
+     ],
+     "u": 0.0
+    }
+   ]
+  },
+  {
+   "rest": 0.5,
+   "taper": 0.0,
+   "facing": 1,
+   "flutter": 0.6,
+   "stiff": 1.0,
+   "seed": 0.0,
+   "width": 0.22,
+   "length": 0.34,
+   "parent": "sL",
+   "parent_axis": "down",
+   "chains": [
+    {
+     "bones": [
+      "cl4_0_0",
+      "cl4_0_1",
+      "cl4_0_2"
+     ],
+     "u": 0.0
+    }
+   ]
+  }
+ ],
+ "mage": [
+  {
+   "rest": -0.08,
+   "taper": 0.0,
+   "facing": -1,
+   "flutter": 0.7,
+   "stiff": 1.0,
+   "seed": -3.3,
+   "width": 0.075,
+   "length": 0.75,
+   "parent": "ch",
+   "parent_axis": "up",
+   "chains": [
+    {
+     "bones": [
+      "cl0_0_0",
+      "cl0_0_1",
+      "cl0_0_2",
+      "cl0_0_3"
+     ],
+     "u": 0.0
+    }
+   ]
+  },
+  {
+   "rest": -0.08,
+   "taper": 0.0,
+   "facing": -1,
+   "flutter": 0.7,
+   "stiff": 1.0,
+   "seed": 3.3,
+   "width": 0.075,
+   "length": 0.75,
+   "parent": "ch",
+   "parent_axis": "up",
+   "chains": [
+    {
+     "bones": [
+      "cl1_0_0",
+      "cl1_0_1",
+      "cl1_0_2",
+      "cl1_0_3"
+     ],
+     "u": 0.0
+    }
+   ]
+  },
+  {
+   "rest": 0.12,
+   "taper": 0.2,
+   "facing": 1,
+   "flutter": 0.8,
+   "stiff": 1.0,
+   "seed": 0.0,
+   "width": 0.5,
+   "length": 0.8,
+   "parent": "ch",
+   "parent_axis": "up",
+   "chains": [
+    {
+     "bones": [
+      "cl2_0_0",
+      "cl2_0_1",
+      "cl2_0_2",
+      "cl2_0_3"
+     ],
+     "u": -0.33333333333333337
+    },
+    {
+     "bones": [
+      "cl2_1_0",
+      "cl2_1_1",
+      "cl2_1_2",
+      "cl2_1_3"
+     ],
+     "u": 0.0
+    },
+    {
+     "bones": [
+      "cl2_2_0",
+      "cl2_2_1",
+      "cl2_2_2",
+      "cl2_2_3"
+     ],
+     "u": 0.33333333333333337
+    }
+   ]
+  }
+ ]
+}

@@ -30,7 +30,9 @@ export class DuelOverlayComponent {
     const previous=[doc.body.style.background,doc.documentElement.style.background];doc.body.style.background='transparent';doc.documentElement.style.background='transparent';
     const channel=route.paramMap.get('channelID')??'',token=route.fragment??'';
     const socket=/^[0-9]{1,30}$/.test(channel)&&/^[\w-]{43}$/.test(token)?io(`${inject(LinksService).getApiUrl()}/overlays/duel/${channel}`,{auth:{token},transports:['websocket'],reconnection:true}):null;
-    socket?.on('duel-state',(state:DuelState)=>{this.offset=state.serverTime-Date.now();this.state.set(state);this.now.set(Date.now());socket.emit('duel-ready',{version:1});});
+    // Extreme tier: fetch the 3D fighters while the source idles, so the first duel starts with them ready.
+    let preloaded=false;const preload=(state:DuelState)=>{if(preloaded||state.settings.quality!=='extreme')return;preloaded=true;import('./quality-extreme/duel-claude-3d-library').then(m=>m.preloadDuel3d(),()=>undefined);};
+    socket?.on('duel-state',(state:DuelState)=>{this.offset=state.serverTime-Date.now();this.state.set(state);this.now.set(Date.now());socket.emit('duel-ready',{version:1});preload(state);});
     const clear=()=>this.state.set(null);socket?.on('disconnect',clear);socket?.on('connect_error',clear);socket?.on('duel-error',clear);
     const timer=setInterval(()=>this.now.set(Date.now()),40),heartbeat=setInterval(()=>{if(socket?.connected&&this.state())socket.emit('duel-ready',{version:1});},2000);
     destroy.onDestroy(()=>{clearInterval(timer);clearInterval(heartbeat);socket?.disconnect();doc.body.style.background=previous[0];doc.documentElement.style.background=previous[1];});

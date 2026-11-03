@@ -205,7 +205,12 @@ export class UltimateEffects {
     this.halfOrigin.copy(baked.origin);
     this.halfDrawOrder = { geometry: baked.geometry, batched: baked.geometry.groups, fading: baked.sourceGroups };
     for (let i = 0; i < 2; i++) {
-      const materials = baked.materials.map(material => { const m = material.clone(); m.userData['glow'] = material instanceof T.MeshStandardMaterial && material.emissiveIntensity > 1; m.clippingPlanes = [this.planes[i]]; m.side = T.DoubleSide; m.transparent = true; return m; });
+      const materials = baked.materials.map(material => {
+        const m = material.clone(); m.userData['glow'] = material instanceof T.MeshStandardMaterial && material.emissiveIntensity > 1 && !material.userData['body'];
+        // A baked body carries its glow in an emission map: the cut heats the whole body instead.
+        if (m instanceof T.MeshStandardMaterial && material.userData['body']) { m.emissiveMap = null; m.emissive.setRGB(0, 0, 0); m.emissiveIntensity = 1; }
+        m.clippingPlanes = [this.planes[i]]; m.side = T.DoubleSide; m.transparent = true; return m;
+      });
       const half = new T.Mesh(baked.geometry, materials); half.frustumCulled = false; half.visible = false; this.halves.push(half); this.root.add(half);
     }
   }
