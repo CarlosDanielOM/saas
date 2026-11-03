@@ -26,6 +26,7 @@ const clamp = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const smooth = (x: number) => EASE.io(clamp(x));
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 const mix3 = (a: V3, b: V3, t: number): V3 => [mix(a[0], b[0], t), mix(a[1], b[1], t), mix(a[2], b[2], t)];
+const pulse = (x: number) => (x <= 0 || x >= 1) ? 0 : Math.sin(x * Math.PI);
 
 const STANCE: Record<DuelCharacter, Key> = {
   knight: { p: 0, h: [0, -.05, 0], hp: [0, .15, 0], sp: [.04, 0, 0], ch: [.06, -.15, 0], nk: [0, 0, 0], hd: [-.04, 0, 0], sR: [-.45, 0, -.25], eR: [-1.0, 0, 0], wR: [.55, 0, 0], sL: [-.7, 0, .2], eL: [-1.1, 0, 0], wL: [1.75, 0, 0], fR: [-.18, .08, -.26], fL: [.16, .08, .28] },
@@ -215,6 +216,30 @@ function blend(target: Pose, other: Pose, w: number): void {
 
 export const HITSTOP = { normal: 70, heavy: 95, special: 120, heal: 0, ultimate: 160 } as const;
 
+/**
+ * Overlapping action (ms): the hips lead, the chest follows, head and hands trail behind, so a
+ * swing whips through the body instead of moving as one block. Every joint converges on the
+ * exact contact frame, so hits, trails and timing are unchanged.
+ */
+const LAG: Partial<Record<ArmJoint, number>> = { hp: -25, ch: 20, nk: 35, hd: 55, sR: 15, eR: 35, wR: 55, sL: 25, eL: 45, wL: 65 };
+
+function overlap(pose: Pose, clip: Key[], turn: DuelTurn, time: number, stance: Key): void {
+  const near = smooth(Math.abs(time - turn.hitAt) / 150), scratch = emptyPose(stance);
+  if (near <= 0) return;
+  for (const [name, ms] of Object.entries(LAG) as [ArmJoint, number][]) {
+    sample(clip, attackPhase(turn, time - ms * near), stance, scratch);
+    pose.j[name] = scratch.j[name];
+  }
+}
+
+/** After contact the body settles with a little overshoot (chest, head and the weapon hand). */
+function settle(pose: Pose, turn: DuelTurn, time: number): void {
+  const stop = HITSTOP[turn.move as 'normal' | 'heavy' | 'special'] ?? 0, k = time - turn.hitAt - stop * (turn.crit ? 1.5 : 1);
+  if (k <= 0) return;
+  const osc = Math.exp(-k / 170) * Math.sin(k / 55) * (turn.move === 'special' ? 1.3 : turn.move === 'heavy' ? 1.1 : .8);
+  pose.j.ch[1] += osc * .1; pose.j.hd[0] += osc * .06; pose.j.wR[0] += osc * .14; pose.h[1] -= Math.abs(osc) * .015;
+}
+
 /** Attack phase with hit-stop: contact freezes for a few frames, then recovery resumes. */
 export function attackPhase(turn: DuelTurn, time: number): number {
   const age = time - turn.at, windup = turn.hitAt - turn.at;
@@ -266,6 +291,7 @@ export function fighterPose(side: DuelSide, ctx: MotionContext): Pose {
     if (turn.attacker === side) {
       const clip = turn.move === 'ultimate' ? ULTIMATE[character] : CLIPS[character][turn.move];
       sample(clip, attackPhase(turn, time), stance, pose);
+      if (turn.move !== 'ultimate' && turn.move !== 'heal') { overlap(pose, clip, turn, time, stance); settle(pose, turn, time); }
       if (turn.move === 'ultimate' && character === 'mage') pose.r[1] += Math.sin(t * 3) * .04;
     } else if (ended && side === loser) {
       // The knockout below owns the loser's final moments.
@@ -328,6 +354,10 @@ function react(pose: Pose, character: DuelCharacter, turn: DuelTurn, age: number
   pose.j.ch = mix3(pose.j.ch, [-.45 * strength, .25, .12], jolt); pose.j.hd = mix3(pose.j.hd, [-.55 * strength, -.2, .25], jolt);
   pose.j.sR = mix3(pose.j.sR, [-.9, 0, -.8], jolt * .7); pose.j.sL = mix3(pose.j.sL, [-.7, 0, .9], jolt * .7);
   pose.fR[2] -= shove * .1; pose.flash = Math.max(0, 1 - hitAge / 110) * .8; pose.flashColor = turn.crit ? '#ffd27a' : '#ffffff'; pose.wind = shove * .8;
+  // A stagger step back and a twist away from the blow; crits lift and rock the whole body.
+  pose.fL[2] -= shove * .2 * strength; pose.fL[0] += shove * .04; pose.fL[1] += pulse(hitAge / 260) * .06 * strength;
+  pose.yaw -= jolt * (turn.move === 'heavy' ? .32 : turn.move === 'special' ? .4 : .18) * (turn.crit ? 1.3 : 1);
+  if (turn.crit) { pose.h[1] += pulse(hitAge / 320) * .06; pose.tilt += pulse(hitAge / 480) * .12; }
 }
 
 function knockout(pose: Pose, character: DuelCharacter, hitAge: number): void {
@@ -361,7 +391,8 @@ function victimOfUltimate(pose: Pose, attacker: DuelCharacter, age: number, wind
     pose.j.sR = mix3(pose.j.sR, [-2.4, 0, -.9], smooth(pull * 3)); pose.j.sL = mix3(pose.j.sL, [-2.2, 0, .9], smooth(pull * 3));
     pose.fR = mix3(pose.fR, [-.2, .3, -.2], smooth(pull * 3)); pose.fL = mix3(pose.fL, [.2, .2, .1], smooth(pull * 3));
     pose.flash = pull * .4; pose.flashColor = '#c9a6ff'; pose.wind = 1.2 * smooth(pull * 4);
-    if (age > windup - .06) pose.hidden = true;
+    // The last half second, the body is matter streaming into the singularity (the dissolve).
+    if (age > windup - .5) pose.hidden = true;
   } else {
     // Time stops: the victim freezes mid-stagger while the cuts gather.
     const freeze = smooth((age - 1.25) / .25);

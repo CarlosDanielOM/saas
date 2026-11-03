@@ -1,3 +1,4 @@
+import { isDevMode } from '@angular/core';
 import * as T from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -13,6 +14,7 @@ import { ARM_JOINTS, ClaudeRig, HIP_HEIGHT, SHIN, THIGH, bakeRig, buildRig, disp
 import { type FighterAsset, type FighterSkin, type Palette, arenaAsset, fighterAsset, fighterSkin } from './duel-claude-3d-library';
 import { MotionContext, Pose, activeTurn, attackPhase, fighterPose, strikePoses, ultimatePoses } from './duel-claude-3d-motion';
 import { CombatEffects } from './duel-claude-3d-effects';
+import { PrepQueue, type PrepJob } from './duel-claude-3d-prep';
 import { UltimateEffects } from './duel-claude-3d-ultimates';
 
 export interface DuelSceneState { battle: DuelBattle; elapsed: number; started: boolean; paused: boolean; transparent: boolean }
@@ -20,6 +22,10 @@ export interface DuelSceneStats { fps: number; calls: number; triangles: number 
 const clamp = T.MathUtils.clamp, smooth = (x: number) => { const p = clamp(x, 0, 1); return p * p * (3 - 2 * p); };
 const pulse = (x: number) => (x <= 0 || x >= 1) ? 0 : Math.sin(x * Math.PI);
 const FPS = 30, FRAME_MS = 1000 / FPS, BASE = -2.35, FACING = 1.0, SIDES: DuelSide[] = ['left', 'right'];
+/** Main-thread time per frame given to battle preparation (bakes, fracture) between frames. */
+const PREP_BUDGET_MS = 6;
+/** Layer for off-screen warm-up draws (every light is on it too, so programs match the real draw). */
+const WARM_LAYER = 7;
 
 /**
  * Runs before bloom. A single NaN or infinite pixel (an extreme specular highlight
@@ -130,6 +136,11 @@ export class DuelClaude3dScene {
   private shadersFor: DuelBattle | null = null;
   private shadersTransparent = false;
   private shaderPreparationCount = 0;
+  /** A new battle's programs are compiling in parallel; its first frame waits for them. */
+  private warming = false;
+  private ultimateTurn: DuelBattle['turns'][number] | null = null;
+  private readonly prep = new PrepQueue(() => this.prepared());
+  private readonly warmTarget = new T.WebGLRenderTarget(1, 1, { type: T.HalfFloatType });
   private dirty = true;
   private dead = false;
   private frameCount = 0;
@@ -148,6 +159,8 @@ export class DuelClaude3dScene {
     this.renderer.setPixelRatio(1); this.renderer.localClippingEnabled = true;
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = T.PCFShadowMap;
     this.renderer.toneMapping = T.ACESFilmicToneMapping; this.renderer.toneMappingExposure = .92; this.renderer.info.autoReset = false;
+    // Shader diagnostics query link status on first use, which waits for the driver.
+    this.renderer.debug.checkShaderErrors = isDevMode();
     this.assets = createAssets();
     const room = new RoomEnvironment(), pmrem = new T.PMREMGenerator(this.renderer);
     this.envMap = pmrem.fromScene(room, .04); this.scene.environment = this.envMap.texture; this.scene.environmentIntensity = .38; room.dispose(); pmrem.dispose();
@@ -173,7 +186,33 @@ export class DuelClaude3dScene {
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas.parentElement!);
     this.motion.addEventListener('change', this.motionChanged); canvas.addEventListener('webglcontextlost', this.contextLost);
     canvas.dataset['fpsCap'] = String(FPS); canvas.dataset['renderer'] = 'claude';
+    canvas.dataset['preparationCount'] = '0'; canvas.dataset['halvesBakeCount'] = '0';
+    this.scene.traverse(object => { if ((object as T.Light).isLight) object.layers.enable(WARM_LAYER); });
     keepAlpha(this.scene); this.resize(); this.tick();
+  }
+
+  /**
+   * Draw objects once into a 1×1 target with the real scene state (lights, fog, HDR target),
+   * so their geometry, textures and programs are on the GPU before they first appear.
+   */
+  private warmDraw(roots: (T.Object3D | null | undefined)[]): void {
+    const saved: [T.Object3D, boolean, boolean][] = [], keep = (object: T.Object3D) => saved.push([object, object.visible, object.frustumCulled]);
+    for (const root of roots) {
+      if (!root) continue;
+      root.traverseAncestors(a => { keep(a); a.visible = true; });
+      root.traverse(object => { keep(object); object.visible = true; object.frustumCulled = false; object.layers.enable(WARM_LAYER); });
+    }
+    if (!saved.length) return;
+    // Shadow maps render too (the next real frame redraws them): their textures must exist for the draw.
+    const mask = this.camera.layers.mask, target = this.renderer.getRenderTarget();
+    try {
+      this.camera.layers.set(WARM_LAYER); this.renderer.setRenderTarget(this.warmTarget);
+      this.renderer.render(this.scene, this.camera);
+    } catch { /* Warming is optional; the real draw still works. */ } finally {
+      this.camera.layers.mask = mask; this.renderer.setRenderTarget(target);
+      // Nothing on screen changed: the next real frame re-applies poses and redraws shadow maps.
+      for (const [object, visible, culled] of saved) { object.visible = visible; object.frustumCulled = culled; if (!(object as T.Light).isLight) object.layers.disable(WARM_LAYER); }
+    }
   }
 
   /** Live arena FX: sky, corona, rune light, flames, mist, shafts, motes and the mirror floor. The baked set joins in attachArena. */
@@ -270,11 +309,14 @@ export class DuelClaude3dScene {
     const changed = this.lastTime !== snapshot.elapsed || this.previousBattle !== snapshot.battle || flags !== this.lastFlags;
     // Nothing is drawn until this battle's models (and, when visible, the arena) are in.
     const ready = this.ready(snapshot); this.canvas.dataset['assets'] = ready ? 'ready' : 'loading';
-    if (ready && !document.hidden && (this.dirty || changed || !snapshot.paused && !reduced)) {
+    if (ready && this.previousBattle !== snapshot.battle) this.rebuild(snapshot);
+    if (ready && !this.warming) this.prepareShaders(snapshot);
+    // The finisher needs all of its preparation: if it is about to start, finish it now.
+    if (ready && !this.prep.idle && this.ultimateTurn && snapshot.started && snapshot.elapsed >= this.ultimateTurn.at - 250) this.prep.flush();
+    if (ready && !this.warming && !document.hidden && (this.dirty || changed || !snapshot.paused && !reduced)) {
       const delta = Math.min(.1, (frameStart - this.lastTick) / 1000);
       if (!snapshot.paused && !reduced) this.worldTime += delta;
       this.update(snapshot, reduced ? 0 : this.worldTime, reduced);
-      this.prepareShaders(snapshot);
       this.renderer.info.reset();
       this.composer.render();
       this.frameCount++; this.statsFrames++;
@@ -289,6 +331,9 @@ export class DuelClaude3dScene {
       this.lastTime = snapshot.elapsed; this.lastFlags = flags; this.dirty = false;
     }
     this.lastTick = frameStart;
+    // Spare frame time goes to preparing this battle (poses are re-applied on the next frame).
+    if (ready) this.prep.step(PREP_BUDGET_MS);
+    this.canvas.dataset['prepPending'] = String(this.prep.pending);
     // Bound drawing to 30 FPS without catch-up bursts; paused scenes only redraw when dirty.
     this.timer = setTimeout(this.tick, Math.max(1, Math.ceil(FRAME_MS - (performance.now() - frameStart))));
   };
@@ -316,72 +361,129 @@ export class DuelClaude3dScene {
     return ready;
   }
 
-  private rebuild(battle: DuelBattle): void {
-    const preparationStart = performance.now();
+  /**
+   * A new battle: the fighters are built at once; everything else is queued. Its first frame
+   * waits for the scene's programs (compiled in parallel, no stall); then the finisher's
+   * snapshots are baked one per frame and compiled long before the ultimate plays.
+   */
+  private rebuild(state: DuelSceneState): void {
+    const battle = state.battle, preparationStart = performance.now();
     for (const side of SIDES) {
       const old = this.rigs[side]; if (old) disposeRig(old);
       const character = battle.fighters[side], palette = paletteOf(battle, side);
       const rig = buildRig(character, side, battle.enraged === side, this.loaded.get(`model:${character}`) as FighterAsset, this.loaded.get(`skin:${character}_${palette}`) as FighterSkin, this.assets);
       this.rigs[side] = rig; this.stages[side].add(rig.anchor);
     }
-    // The Blood Moon bakes the ronin's afterimages once per battle.
-    const ultimate = battle.turns.find(turn => turn.move === 'ultimate');
-    const ghosts: T.BufferGeometry[] = [];
-    if (ultimate && battle.fighters[ultimate.attacker] === 'ronin') {
-      const rig = this.rigs[ultimate.attacker]!;
-      for (const pose of strikePoses('ronin')) { this.apply(rig, pose); ghosts.push(bakeRig(rig, false).geometry); }
-    }
-    this.ultimates.setGhosts(ghosts); this.ultimates.setHalves(null);
-    if (ultimate && battle.fighters[ultimate.attacker] === 'ronin') {
-      const victim = otherSide(ultimate.attacker), rig = this.rigs[victim]!;
-      // The victim is frozen before the first slash. Prepare its full-detail snapshot before
-      // playback, instead of cloning geometry and materials in the middle of the ultimate.
-      // Secondary motion used to depend on whichever frame crossed 1.5 s; sample that beat
-      // deterministically, then retain the existing 2.6 s skeleton pose for the split.
-      const time = ultimate.at + 1500;
-      const context: MotionContext = { battle, time, started: true, world: time / 1000, health: healthAt(battle, time, true) };
-      const pose = fighterPose(victim, context); this.apply(rig, pose);
-      this.updateRigDetails(rig, victim, pose, context, time / 1000);
-      this.apply(rig, fighterPose(victim, { ...context, time: ultimate.at + 2600 }));
-      this.ultimates.setHalves(bakeRig(rig, true)); this.halvesBakeCount++;
-    }
-    // Divine Judgment bakes the knight's colossal avatar (sword raised, then pointed at the victim).
-    const avatar: T.BufferGeometry[] = [];
-    if (ultimate && battle.fighters[ultimate.attacker] === 'knight') {
-      const rig = this.rigs[ultimate.attacker]!;
-      for (const pose of ultimatePoses('knight', [.82, 1])) { this.apply(rig, pose); avatar.push(bakeRig(rig, false).geometry); }
-    }
-    this.ultimates.setAvatar(avatar);
+    this.ultimates.setGhosts([]); this.ultimates.setHalves(null); this.ultimates.setAvatar([]); this.ultimates.setDissolve(null);
     keepAlpha(this.scene);
-    this.previousBattle = battle;
-    this.canvas.dataset['preparationCount'] = String(++this.preparationCount);
-    this.canvas.dataset['halvesBakeCount'] = String(this.halvesBakeCount);
+    this.previousBattle = battle; this.shadersFor = null; this.warming = true;
+    const ultimate = this.ultimateTurn = battle.turns.find(turn => turn.move === 'ultimate') ?? null;
+    const jobs: PrepJob[] = [
+      { name: 'compile scene', run: () => this.compileFor(state, true), now: () => { this.compileFor(state, false); } },
+      // The first frame of the battle waits only for this: fighters on the GPU, programs linked.
+      // Textures one per frame (a 2048² upload with mipmaps is a frame's worth), then each fighter.
+      ...[...new Set(SIDES.flatMap(side => this.rigs[side]!.meshes.flatMap(mesh => textures(mesh.material as T.Material))))]
+        .map(texture => ({ name: 'upload texture', run: () => this.renderer.initTexture(texture) })),
+      { name: 'warm left fighter', run: () => this.warmDraw([this.rigs.left?.anchor]) },
+      { name: 'warm right fighter', run: () => { this.warmDraw([this.rigs.right?.anchor]); this.warming = false; this.dirty = true; } },
+      // One object per job: without parallel shader compiling, each first draw waits for its program.
+      ...this.combat.root.children.map(object => ({ name: 'warm combat effect', run: () => this.warmDraw([object]) })),
+    ];
+    if (ultimate) {
+      const attacker = ultimate.attacker, victim = otherSide(attacker), character = battle.fighters[attacker];
+      const at = (time: number): MotionContext => ({ battle, time, started: true, world: time / 1000, health: healthAt(battle, time, true) });
+      const bakeAt = (side: DuelSide, time: number, details = false) => {
+        const rig = this.rigs[side]!, ctx = at(time), pose = fighterPose(side, ctx); this.apply(rig, pose);
+        if (details) this.updateRigDetails(rig, side, pose, ctx, time / 1000);
+        return rig;
+      };
+      if (character === 'ronin') {
+        // The Blood Moon's afterimages, one bake per frame.
+        const ghosts: T.BufferGeometry[] = [], rig = this.rigs[attacker]!;
+        for (const [i, pose] of strikePoses('ronin').entries()) jobs.push({ name: `ghost ${i}`, run: () => { this.apply(rig, pose); ghosts.push(bakeRig(rig, false).geometry); } });
+        jobs.push({ name: 'ghosts', run: () => this.ultimates.setGhosts(ghosts) });
+        // The victim is frozen before the first slash: sample its secondary motion at 1.5 s,
+        // keep the 2.6 s skeleton pose, then fracture the snapshot along the slashes.
+        let frozen: ReturnType<typeof bakeRig> | null = null;
+        jobs.push({ name: 'freeze victim', run: () => {
+          const rig = bakeAt(victim, ultimate.at + 1500, true); this.apply(rig, fighterPose(victim, at(ultimate.at + 2600))); frozen = bakeRig(rig, true);
+        } });
+        jobs.push({ name: 'shatter', run: () => {
+          this.ultimates.setHalves(frozen, this.anchorWorld(victim, { ...fighterPose(victim, at(ultimate.at)), r: [0, 0, 0] }, new T.Vector3()), attacker === 'left' ? 1 : -1);
+          frozen = null; this.halvesBakeCount++;
+        } });
+      }
+      if (character === 'knight') {
+        // Divine Judgment's colossal avatar (sword raised, then pointed at the victim).
+        const avatar: T.BufferGeometry[] = [], rig = this.rigs[attacker]!;
+        for (const [i, pose] of ultimatePoses('knight', [.82, 1]).entries()) jobs.push({ name: `avatar ${i}`, run: () => { this.apply(rig, pose); avatar.push(bakeRig(rig, false).geometry); } });
+        jobs.push({ name: 'avatar', run: () => this.ultimates.setAvatar(avatar) });
+      }
+      if (character === 'knight' || character === 'mage') {
+        // The victim as it vanishes, for the dissolve (ash in the light / matter into the hole).
+        jobs.push({ name: 'dissolve', run: () => {
+          const rig = bakeAt(victim, ultimate.hitAt + (character === 'knight' ? 100 : -520));
+          this.ultimates.setDissolve(bakeRig(rig, false), rig.glow[0]?.map ?? null);
+        } });
+      }
+      jobs.push({ name: 'compile finisher', run: () => { keepAlpha(this.scene); return this.compileFor(state, true); }, now: () => { keepAlpha(this.scene); this.compileFor(state, false); } });
+      // Upload the finisher piece by piece (each draw is one frame's work), effects first.
+      // Resolved when the job runs: the snapshots above exist by then.
+      jobs.push({ name: 'queue finisher warm-up', run: () => {
+        this.prep.add(this.ultimates.warmGroups(character).flat().map(object => ({ name: `warm ${object.name || object.type}`, run: () => this.warmDraw([object]) })));
+      } });
+    }
+    this.prep.reset(jobs);
+    this.prep.step(PREP_BUDGET_MS);
     this.canvas.dataset['preparationMs'] = (performance.now() - preparationStart).toFixed(2);
-    this.canvas.dataset['halvesGroups'] = String(this.ultimates.halves[0]?.geometry.groups.length ?? 0);
-    this.canvas.dataset['halvesMaterialCount'] = String((this.ultimates.halves[0]?.material as T.Material[] | undefined)?.length ?? 0);
   }
 
-  /** Issue hidden effect programs before combat, using the same HDR/fog variant as the real draw.
-   * compile() also traverses invisible meshes, so it needs no temporary scene/visibility changes.
-   * Keep preparation synchronous: no promise may outlive a battle's materials or this renderer.
-   * Three's compile path does not prepare local-clipping variants; those still compile on use.
+  /** Every queued job for this battle is done: its finisher can play without a stall. */
+  private prepared(): void {
+    if (this.warming) { this.warming = false; this.dirty = true; }
+    this.canvas.dataset['preparationCount'] = String(++this.preparationCount);
+    this.canvas.dataset['halvesBakeCount'] = String(this.halvesBakeCount);
+    this.canvas.dataset['halvesGroups'] = String(this.ultimates.halves[0]?.geometry.groups.length ?? 0);
+    this.canvas.dataset['halvesMaterialCount'] = String((this.ultimates.halves[0]?.material as T.Material[] | undefined)?.length ?? 0);
+    this.canvas.dataset['dissolve'] = this.ultimates.dissolve ? '1' : '0';
+    this.canvas.dataset['prepSlowest'] = `${this.prep.slowest.name} ${this.prep.slowest.ms.toFixed(1)}`;
+  }
+
+  /**
+   * Issue every program the scene may draw (hidden effects included) with the same HDR/fog
+   * variant as the real draw. Parallel (KHR_parallel_shader_compile) when available, so the
+   * page keeps drawing; the returned promise settles once the programs are ready.
+   * Shatter cuts are shader code, not clipping planes, so compile() covers them as well.
    */
-  private prepareShaders(state: DuelSceneState): void {
-    if (this.shadersFor === state.battle && this.shadersTransparent === state.transparent) return;
+  private compileFor(state: DuelSceneState, parallel: boolean): Promise<unknown> | undefined {
     this.shadersFor = state.battle; this.shadersTransparent = state.transparent;
-    const previousTarget = this.renderer.getRenderTarget(), started = performance.now();
+    const previousTarget = this.renderer.getRenderTarget(), started = performance.now(), count = ++this.shaderPreparationCount;
+    let pending: Promise<unknown> | undefined;
     try {
       this.renderer.setRenderTarget(this.composer.renderTarget1);
-      this.renderer.compile(this.scene, this.camera);
-      this.canvas.dataset['shaderPrep'] = 'compiled';
+      // Without parallel compiling, linking happens at first use anyway (the warm-up draws).
+      if (parallel && typeof this.renderer.compileAsync === 'function' && this.renderer.extensions?.has('KHR_parallel_shader_compile')) {
+        this.canvas.dataset['shaderPrep'] = 'compiling';
+        pending = this.renderer.compileAsync(this.scene, this.camera).then(() => {
+          if (this.dead || count !== this.shaderPreparationCount) return;
+          this.canvas.dataset['shaderPrep'] = 'compiled'; this.canvas.dataset['shaderPreparationMs'] = (performance.now() - started).toFixed(2);
+        });
+      } else { this.renderer.compile(this.scene, this.camera); this.canvas.dataset['shaderPrep'] = 'compiled'; }
     } catch {
       // Preparation is optional; leave the normal render path available on unsupported drivers.
-      this.canvas.dataset['shaderPrep'] = 'deferred';
+      this.canvas.dataset['shaderPrep'] = 'deferred'; pending = undefined;
     } finally {
       this.renderer.setRenderTarget(previousTarget);
-      this.canvas.dataset['shaderPreparationCount'] = String(++this.shaderPreparationCount);
-      this.canvas.dataset['shaderPreparationMs'] = (performance.now() - started).toFixed(2);
+      this.canvas.dataset['shaderPreparationCount'] = String(this.shaderPreparationCount);
+      if (!pending) this.canvas.dataset['shaderPreparationMs'] = (performance.now() - started).toFixed(2);
     }
+    return pending;
+  }
+
+  /** Background toggled (OBS transparency, the lab switch): compile that variant in parallel. */
+  private prepareShaders(state: DuelSceneState): void {
+    if (this.shadersFor === state.battle && this.shadersTransparent === state.transparent) return;
+    void this.compileFor(state, true);
   }
 
   /** Pose → skeleton, with two-bone IK keeping feet planted on their targets. */
@@ -426,7 +528,6 @@ export class DuelClaude3dScene {
   }
 
   private update(state: DuelSceneState, world: number, reduced: boolean): void {
-    if (this.previousBattle !== state.battle) this.rebuild(state.battle);
     const battle = state.battle, transparent = state.transparent;
     this.environment.visible = !transparent; this.scene.fog = transparent ? null : this.fog; this.renderer.setClearColor('#0a0d1c', transparent ? 0 : 1);
     const time = state.started ? state.elapsed : 0, clock = state.started ? time / 1000 : world;
@@ -477,6 +578,9 @@ export class DuelClaude3dScene {
       const defender = positions[otherSide(turn.attacker)], length = (turn.move === 'heal' ? 1500 : 0) || (turn.hitAt - turn.at) + 700;
       const w = pulse((time - turn.at) / length) * (turn.move === 'special' ? 1 : turn.move === 'heal' ? .5 : .6), focus = turn.move === 'heal' ? positions[turn.attacker] : defender;
       pos.x += focus.x * .2 * w; this.look.x += focus.x * .3 * w; pos.z -= (turn.move === 'special' ? 1.6 : 1) * w; pos.y -= .3 * w;
+      // Contact punches the lens in and rolls it toward the blow.
+      const hitAge = time - turn.hitAt, kick = turn.move !== 'heal' && hitAge >= 0 && turn.damage > 0 ? Math.exp(-hitAge / 110) * (turn.move === 'special' ? 1 : turn.move === 'heavy' ? .7 : .4) * (turn.crit ? 1.4 : 1) : 0;
+      fov -= kick * 3.5; roll += kick * .028 * (turn.attacker === 'left' ? 1 : -1);
     }
     if (state.started && !ultimate && last.move !== 'ultimate' && time >= last.hitAt && !reduced) {
       // Knockout: a slow push on the falling fighter before the hero shot.
@@ -493,6 +597,7 @@ export class DuelClaude3dScene {
     pos.x += Math.sin(time * .093) * shake; pos.y += Math.cos(time * .121) * shake * .8;
     this.camera.position.copy(pos); this.camera.fov = fov; this.camera.updateProjectionMatrix(); this.camera.lookAt(this.look); this.camera.rotateZ(roll);
     for (const particles of [...this.combat.particles, ...this.ultimates.particles, this.ambient]) particles.setScale(this.height, fov);
+    this.ultimates.setScale(this.height, fov);
     // Atmosphere, light and grade.
     const dark = look.dark, sky = this.sky.uniforms;
     sky['uTime'].value = world; sky['uDark'].value = dark; sky['uRed'].value = look.ink; sky['uTintAmount'].value = look.tintAmount; (sky['uTint'].value as T.Color).copy(look.tint);
@@ -562,13 +667,18 @@ export class DuelClaude3dScene {
   dispose(): void {
     if (this.dead) return; this.dead = true; clearTimeout(this.timer);
     this.observer.disconnect(); this.motion.removeEventListener('change', this.motionChanged); this.canvas.removeEventListener('webglcontextlost', this.contextLost);
+    this.prep.reset([]);
     for (const side of SIDES) { const rig = this.rigs[side]; if (rig) disposeRig(rig); }
-    this.ultimates.setGhosts([]); this.ultimates.setAvatar([]); this.ultimates.setHalves(null); this.mirror.dispose();
-    this.envMap.dispose(); disposeObject(this.scene); this.assets.dispose();
+    this.ultimates.setGhosts([]); this.ultimates.setAvatar([]); this.ultimates.setHalves(null); this.ultimates.setDissolve(null); this.mirror.dispose();
+    this.envMap.dispose(); this.warmTarget.dispose(); disposeObject(this.scene); this.assets.dispose();
     for (const pass of this.composer.passes) pass.dispose(); this.composer.dispose();
     this.key.shadow.dispose(); for (const rim of this.rims) rim.shadow.dispose();
     this.renderer.dispose(); this.renderer.forceContextLoss();
   }
+}
+
+function textures(material: T.Material): T.Texture[] {
+  return Object.values(material).filter((value): value is T.Texture => value instanceof T.Texture);
 }
 
 function paletteOf(battle: DuelBattle, side: DuelSide): Palette { return battle.enraged === side ? 'E' : side === 'left' ? 'L' : 'R'; }

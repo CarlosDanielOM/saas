@@ -2,6 +2,7 @@ import * as T from 'three';
 import type { DuelCharacter } from '../duel-battle';
 import { ClaudeAssets, GLSL_NOISE, Particles, Streaks, additive, beamMaterial, hash, ringMaterial, shaftMaterial, shellMaterial, sprite } from './duel-claude-3d-assets';
 import { bladeGeometry, type BakedRig } from './duel-claude-3d-rig';
+import { Dissolve, FRACTURE_PLANES, SLASHES, type Fracture, type ShatterUniforms, fracture, pieceMotion, shatterMaterial, shatterUniforms, slashPlane, slashTransform } from './duel-claude-3d-remains';
 
 const clamp = T.MathUtils.clamp, smooth = (x: number) => { const p = clamp(x, 0, 1); return p * p * (3 - 2 * p); };
 const easeIn = (x: number) => clamp(x, 0, 1) ** 3, easeOut = (x: number) => 1 - (1 - clamp(x, 0, 1)) ** 3;
@@ -22,7 +23,7 @@ export interface UltimateContext {
   tip: T.Vector3; chest: T.Vector3; portrait: boolean;
 }
 
-const GHOST_COUNT = 6, CUT_COUNT = 15;
+const GHOST_COUNT = 6, CUT_COUNT = SLASHES;
 
 export class UltimateEffects {
   readonly root = new T.Group();
@@ -63,7 +64,9 @@ export class UltimateEffects {
   private readonly avatarWings: T.InstancedMesh;
   readonly ghostMaterial: T.ShaderMaterial;
   readonly halves: T.Mesh[] = [];
-  readonly planes = [new T.Plane(), new T.Plane()];
+  private shatter: { uniforms: ShatterUniforms; fracture: Fracture; slice: T.Vector3; normal: T.Vector3 } | null = null;
+  /** The knight's or mage's victim as dissolving points. */
+  dissolve: Dissolve | null = null;
   // Shared
   private readonly shock: T.Mesh;
   private readonly flare: T.Sprite;
@@ -196,28 +199,65 @@ export class UltimateEffects {
     }
   }
 
-  setHalves(baked: BakedRig | null): void {
+  /**
+   * The Blood Moon victim: two halves of one frozen snapshot, split by the main cut (dir: the
+   * attacker's heading, to: the victim's feet), each falling apart along the drawn slashes.
+   */
+  setHalves(baked: BakedRig | null, to = new T.Vector3(), dir = 1): void {
     for (const half of this.halves) { this.root.remove(half); for (const m of half.material as T.Material[]) m.dispose(); }
     if (this.halves[0]) this.halves[0].geometry.dispose();
     this.halves.length = 0;
-    this.halfDrawOrder = null;
+    this.halfDrawOrder = null; this.shatter = null;
     if (!baked) return;
     this.halfOrigin.copy(baked.origin);
-    this.halfDrawOrder = { geometry: baked.geometry, batched: baked.geometry.groups, fading: baked.sourceGroups };
+    // Everything below is in the snapshot's space (relative to the victim's anchor).
+    const offset = to.clone().sub(baked.origin);
+    const planes = Array.from({ length: FRACTURE_PLANES }, (_, i) => slashPlane(i, offset));
+    const split = fracture(baked.geometry, planes); baked.geometry.dispose();
+    const geometry = split.geometry, normal = new T.Vector3(dir * .55, 1, .25).normalize(), slice = offset.clone().add(new T.Vector3(0, 1.25, 0));
+    const uniforms = shatterUniforms(); split.fracture.centers.forEach((c, i) => uniforms.uPieceCenter.value[i].copy(c));
+    this.shatter = { uniforms, fracture: split.fracture, slice, normal };
+    const groups = geometry.groups.map(g => ({ ...g }));
+    this.halfDrawOrder = { geometry, batched: groups, fading: baked.sourceGroups.length ? baked.sourceGroups : groups };
     for (let i = 0; i < 2; i++) {
+      const n = i ? normal.clone().negate() : normal, cut = new T.Vector4(n.x, n.y, n.z, -n.dot(slice));
       const materials = baked.materials.map(material => {
         const m = material.clone(); m.userData['glow'] = material instanceof T.MeshStandardMaterial && material.emissiveIntensity > 1 && !material.userData['body'];
         // A baked body carries its glow in an emission map: the cut heats the whole body instead.
         if (m instanceof T.MeshStandardMaterial && material.userData['body']) { m.emissiveMap = null; m.emissive.setRGB(0, 0, 0); m.emissiveIntensity = 1; }
-        m.clippingPlanes = [this.planes[i]]; m.side = T.DoubleSide; m.transparent = true; return m;
+        m.side = T.DoubleSide; m.transparent = true; shatterMaterial(m, cut, uniforms); return m;
       });
-      const half = new T.Mesh(baked.geometry, materials); half.frustumCulled = false; half.visible = false; this.halves.push(half); this.root.add(half);
+      const half = new T.Mesh(geometry, materials); half.frustumCulled = false; half.visible = false; this.halves.push(half); this.root.add(half);
     }
+  }
+
+  /** The knight's / mage's victim, frozen when it vanishes, as dissolving points. */
+  setDissolve(baked: BakedRig | null, map: T.Texture | null = null): void {
+    if (this.dissolve) { this.root.remove(this.dissolve.points); this.dissolve.dispose(); this.dissolve = null; }
+    if (!baked) return;
+    this.dissolve = new Dissolve(baked.geometry, map, baked.origin); baked.geometry.dispose();
+    this.root.add(this.dissolve.points);
+  }
+
+  /** The finisher in chunks small enough to upload in one frame each (see the scene's warm-up). */
+  warmGroups(character: DuelCharacter): T.Object3D[][] {
+    const shared = [this.shock, this.flare, this.streak, this.streakBurst.mesh, ...this.particles.map(p => p.points)];
+    const own: Record<DuelCharacter, T.Object3D[][]> = {
+      knight: [[...this.judgment.children]],
+      mage: [[...this.singularity.children, ...this.circles, this.nova, this.rubble]],
+      ronin: [[this.moon, this.moonHalo, this.petals, ...this.cuts], this.ghosts.slice(0, 2), this.ghosts.slice(2, 4), this.ghosts.slice(4), this.halves],
+    };
+    return [shared, ...own[character], this.dissolve ? [this.dissolve.points] : []];
+  }
+
+  setScale(height: number, fov: number): void {
+    if (this.dissolve) this.dissolve.material.uniforms['uScale'].value = height / (2 * Math.tan(fov * Math.PI / 360));
   }
 
   hide(): void {
     this.judgment.visible = this.singularity.visible = this.crimson.visible = false;
     for (const child of [...this.root.children, ...this.judgment.children, ...this.crimson.children]) if (child !== this.judgment && child !== this.singularity && child !== this.crimson && !(child instanceof T.Light)) child.visible = false;
+    if (this.dissolve) this.dissolve.points.visible = false;
     this.light.intensity = 0;
     const l = this.look; l.shot = null; l.lensWorld = null; l.ripple = null; l.rippleAge = l.rippleStrength = 0; l.lens = l.ink = l.impact = l.flash = l.dark = l.tintAmount = l.aberration = l.shake = l.floorPower = l.bloodMoon = l.exposure = 0;
   }
@@ -270,6 +310,13 @@ export class UltimateEffects {
     const a = list[i], b = list[i + 1], k = smooth((age - a.t) / (b.t - a.t));
     const lerp = (x: [number, number, number], y: [number, number, number]) => new T.Vector3(x[0] + (y[0] - x[0]) * k, x[1] + (y[1] - x[1]) * k, x[2] + (y[2] - x[2]) * k);
     const shot = { pos: lerp(a.pos, b.pos), look: lerp(a.look, b.look), fov: a.fov + (b.fov - a.fov) * k, roll: (a.roll ?? 0) + ((b.roll ?? 0) - (a.roll ?? 0)) * k };
+    // Divine Judgment: a dolly zoom as the blade falls (the lens narrows while the camera pulls
+    // back, so the victim holds its size while the arena stretches away behind them).
+    if (character === 'knight') {
+      const d = smooth((age - 2.45) / .3) * (1 - smooth((age - 2.95) / .5)), fov = shot.fov * (1 - .38 * d);
+      const scale = Math.tan(shot.fov * Math.PI / 360) / Math.tan(fov * Math.PI / 360);
+      shot.pos.sub(shot.look).multiplyScalar(scale).add(shot.look); shot.fov = fov;
+    }
     // Narrow (portrait) frames back off so both fighters and the effect stay framed.
     if (ctx.portrait) { shot.pos.sub(shot.look).multiplyScalar(1.3).add(shot.look); shot.fov += 6; }
     return shot;
@@ -360,7 +407,8 @@ export class UltimateEffects {
     } else {
       this.light.position.set(to.x, 6, to.z + 1); this.light.color.copy(gold); this.light.intensity = open * 25 + bind * 10;
     }
-    void dir;
+    // Inside the pillar of light the victim burns away into rising golden ash.
+    this.showDissolve(hit - .12, 0, 1, gold, null);
   }
 
   private blackHole(ctx: UltimateContext, hit: number): void {
@@ -407,6 +455,14 @@ export class UltimateEffects {
       this.shockwave(new T.Vector3(to.x, 0, to.z), k, violet, 13);
       this.light.position.copy(center); this.light.color.set('#d8c2ff'); this.light.intensity = Math.exp(-k * 2.2) * 70;
     } else { this.light.position.copy(center); this.light.color.copy(violet); this.light.intensity = size * 18; }
+    // The victim comes apart into streams of matter spiralling into the singularity.
+    const start = windup - .5; if (hit < 0) this.showDissolve(age - start, 1, 2.6, violet, center);
+  }
+
+  private showDissolve(age: number, mode: number, speed: number, glow: T.Color, center: T.Vector3 | null): void {
+    const d = this.dissolve; if (!d || age < 0 || age > 2.2) return;
+    const u = d.material.uniforms; d.points.visible = true; u['uAge'].value = age * speed; u['uMode'].value = mode; (u['uGlow'].value as T.Color).copy(glow);
+    if (center) (u['uCenter'].value as T.Vector3).copy(center).sub(d.points.position);
   }
 
   private bloodMoon(ctx: UltimateContext, hit: number): void {
@@ -448,19 +504,23 @@ export class UltimateEffects {
     this.cuts.forEach((cut, i) => {
       const appear = 1.42 + Math.floor(i / 2.5) * .13, k = smooth((age - appear) / .06), white = hit >= 0 ? Math.exp(-hit * 6) : 0;
       cut.visible = k > 0 && (hit < .55);
-      cut.position.set(to.x + (hash(i) - .5) * .5, .7 + hash(i * 3) * 1.4, to.z + .35 + (hash(i * 5) - .5) * .4);
-      cut.rotation.set((hash(i * 7) - .5) * .5, (hash(i * 9) - .5) * .8, hash(i * 11) * Math.PI);
+      const slash = slashTransform(i); cut.position.copy(slash.position).add(to); cut.rotation.copy(slash.rotation);
       cut.scale.set(3.4 * (.6 + .4 * k) * (1 + white * .4), (.035 + hash(i) * .03) * (1 + white * 3), 1);
       const m = cut.material as T.ShaderMaterial; m.uniforms['uOpacity'].value = k * (hit >= 0 ? 1 - smooth(hit / .55) : .85 + Math.sin(world * 30 + i) * .15); m.uniforms['uWhite'].value = white;
     });
-    // The victim falls apart along the first cut: each half keeps its side of a moving plane.
-    if (hit >= 0 && this.halves.length === 2) {
-      const k = hit, normal = new T.Vector3(dir * .55, 1, .25).normalize(), origin = new T.Vector3(to.x, 1.25, to.z), slide = easeOut(k / .5) * .55, fall = Math.max(0, k - .2);
+    // The victim splits along the first cut, then falls apart along every slash (seams glowing).
+    if (hit >= 0 && this.halves.length === 2 && this.shatter) {
+      const k = hit, { normal, uniforms, fracture: f } = this.shatter, origin = new T.Vector3(to.x, 1.25, to.z), slide = easeOut(k / .5) * .55, fall = Math.max(0, k - .2);
       const offsets = [normal.clone().multiplyScalar(slide).add(new T.Vector3(dir * fall * .9, -fall * fall * 1.1, 0)), normal.clone().multiplyScalar(-slide * .4)];
-      this.planes[0].setFromNormalAndCoplanarPoint(normal, origin.clone().add(offsets[0]));
-      this.planes[1].setFromNormalAndCoplanarPoint(normal.clone().negate(), origin.clone().add(offsets[1]));
       const glow = Math.exp(-k * 3);
       const opacity = 1 - smooth((k - 1) / .6);
+      // Pieces break loose a beat after the split; the floor stops them (in snapshot space).
+      const floor = .04 - this.halfOrigin.y, quat = new T.Quaternion();
+      for (let i = 0; i < f.pieces; i++) {
+        pieceMotion(i, f.centers[i], f.center, k - .42, floor - Math.min(0, offsets[0].y, offsets[1].y), uniforms.uPieceOffset.value[i], quat);
+        uniforms.uPieceQuat.value[i].set(quat.x, quat.y, quat.z, quat.w);
+      }
+      uniforms.uSeam.value = (1.6 * Math.exp(-k * 5) + .7) * (1 - smooth((k - .9) / .6));
       // Opaque pieces can share a draw. During the fade, preserve the original piece order
       // exactly: transparent double-sided surfaces depend on it. Both arrays are prepared.
       if (this.halfDrawOrder) this.halfDrawOrder.geometry.groups = opacity === 1 ? this.halfDrawOrder.batched : this.halfDrawOrder.fading;

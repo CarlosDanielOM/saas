@@ -14,3 +14,7 @@ Implementation is in `dimasite/src/app/features/widgets/duel/quality-extreme/due
 ## Routing observation
 
 GPT-6.1 Sol at high via Codex/T3 led; a bounded implementation task used the same model and effort. Lead review caught a small fade-pixel difference, and the original transparent piece order was restored. The exact candidate then passed pixel parity and behavior checks. Single task, low confidence: supports the existing Sol route for this 3D rendering scope only; no tier reorder or performance attribution.
+
+## Update — baked models and progressive preparation (later 2026-11-02)
+
+The residual ronin freeze was the local-clipping shader variant noted above: it still compiled on the impact frame (about 60 ms on a Linux/Vulkan RTX 2060; slower on Windows/D3D). The split victim now cuts in its own shader code, so the per-battle compile covers it. Preparation is a queue spread across frames (`duel-claude-3d-prep.ts`): parallel compile when `KHR_parallel_shader_compile` exists, one bake per frame, then an off-screen 1×1 warm-up draw per object, so geometry, textures and programs are on the GPU before the finisher. If an ultimate starts before the queue finishes, the queue flushes synchronously. Measured on a production build (Linux, Chrome, RTX 2060, no parallel compile), all three ultimates played with no main-thread task over 50 ms once preparation had its time; the battle-start stall dropped from 170–300 ms to under 50 ms. Windows/OBS playback is still unmeasured. The pixel-parity baseline above no longer applies (new models, shatter and dissolve).

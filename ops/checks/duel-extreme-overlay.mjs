@@ -56,7 +56,8 @@ try {
     await page.evaluate(now => { window.__duelFixtureNow = now; }, epoch);
     state.run = { id: 'ronin-vs-' + victim, challenger: 'alice', opponent: 'bob', winner: 'left', fighters: { left: 'ronin', right: victim }, enraged: victim === 'mage' ? 'right' : null, turns, mode: 'overlay', startedAt: epoch, endsAt: epoch + 11000, completedAt: null, maxHp: 100, record: { left: 4, right: 2 } };
     publish();
-    await page.waitForFunction(([c, f]) => { const d = document.querySelector(c)?.dataset; return d?.fighters === f && d.shaderPrep === 'compiled' && Number(d.elapsed) < 1000; }, [canvas, 'ronin,' + victim], poll);
+    // Preparation is spread across frames (bakes, compile, warm-up draws); playback waits for the queue to drain.
+    await page.waitForFunction(([c, f]) => { const d = document.querySelector(c)?.dataset; return d?.fighters === f && d.shaderPrep === 'compiled' && d.prepPending === '0' && Number(d.elapsed) < 1000; }, [canvas, 'ronin,' + victim], poll);
     const prepared = await data();
     assert.equal(prepared.halvesGroups, prepared.halvesMaterialCount);
     let impactCalls;

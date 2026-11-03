@@ -89,6 +89,8 @@ export class CombatEffects {
   private readonly aegis: T.Mesh;
   private readonly glyphs: T.Mesh[];
   private readonly feathers: T.InstancedMesh;
+  private readonly crack: T.Mesh;
+  private readonly debris: T.InstancedMesh;
   private readonly light = new T.PointLight('#ffffff', 0, 9, 2);
   private readonly scratch = new T.Vector3();
   private readonly dummy = new T.Object3D();
@@ -123,7 +125,10 @@ export class CombatEffects {
     for (const g of this.glyphs) g.rotation.x = -Math.PI / 2;
     this.feathers = new T.InstancedMesh(new T.PlaneGeometry(.12, .48), additive('#fff1cf', assets.feather, .9), 14);
     this.feathers.frustumCulled = false;
-    r.add(this.trail.mesh, this.streakSparks.mesh, this.flare, ...this.streaks, this.shock, this.ground, ...this.bolts.map(b => b.group), this.pillar, this.sigil, this.column, this.crescent, this.ward, this.aegis, ...this.glyphs, this.feathers, this.light);
+    this.crack = new T.Mesh(new T.PlaneGeometry(1, 1), additive('#ffffff', assets.crack)); this.crack.rotation.x = -Math.PI / 2;
+    this.debris = new T.InstancedMesh(new T.DodecahedronGeometry(.07, 0), new T.MeshStandardMaterial({ color: '#2a3047', roughness: .6, metalness: .3, emissive: '#ffffff', emissiveIntensity: .5, flatShading: true }), 18);
+    this.debris.frustumCulled = false;
+    r.add(this.trail.mesh, this.streakSparks.mesh, this.flare, ...this.streaks, this.shock, this.ground, ...this.bolts.map(b => b.group), this.pillar, this.sigil, this.column, this.crescent, this.ward, this.aegis, ...this.glyphs, this.feathers, this.crack, this.debris, this.light);
     this.hide();
   }
 
@@ -249,6 +254,8 @@ export class CombatEffects {
         this.embers.set(0, new T.Vector3(to.x, 1.4, to.z), Math.max(0, hit), { life: .9, speed: 8, gravity: -8, spread: 1, size: 16, a: '#ffffff', b: ctx.defenderAccent });
       }
       this.impact(chest, hit, hitColor, size, feet);
+      // Heavy blows, specials and crits crack the floor and kick up stone.
+      if (attacker !== 'mage' && (turn.move !== 'normal' || ctx.crit || ctx.lethal)) this.rubble(feet, hit, hitColor, size, dir);
     }
 
     // Combo heal on the blocker.
@@ -257,6 +264,20 @@ export class CombatEffects {
       if (k > 0 && k < 1.2) this.motes.set(2, new T.Vector3(to.x, .2, to.z), k, { life: 1, speed: 2.2, radius: .7, size: 16, a: '#b8ffe0', b: '#3dffa8' });
     }
     if (length - age < 0) this.hide();
+  }
+
+  private rubble(at: T.Vector3, k: number, color: T.Color, size: number, dir: number): void {
+    if (k < 0 || k > 1.4) return;
+    this.crack.visible = true; this.crack.position.set(at.x, .03, at.z); this.crack.scale.setScalar((.8 + (1 - Math.exp(-k * 14)) * 1.4) * size);
+    const m = this.crack.material as T.MeshBasicMaterial; m.color.copy(color).lerp(new T.Color('#ffffff'), .3); m.opacity = (1 - smooth((k - .5) / .9)) * .9;
+    this.debris.visible = true; (this.debris.material as T.MeshStandardMaterial).emissive.copy(color);
+    for (let i = 0; i < 18; i++) {
+      const a = hash(i * 3.1) * Math.PI * 2, speed = (1.2 + hash(i * 5.3) * 2.2) * size, up = 2.2 + hash(i * 7.7) * 2.6, t = Math.min(k, 1.2);
+      const x = Math.cos(a) * speed * t * .55 + dir * t * .6, z = Math.sin(a) * speed * t * .4, y = Math.max(.03, up * t - 5.5 * t * t);
+      this.dummy.position.set(at.x + x, y, at.z + z); this.dummy.rotation.set(t * 9 + i, t * 6, i); this.dummy.scale.setScalar((.5 + hash(i * 9.1)) * size * (1 - smooth((k - .9) / .5)));
+      this.dummy.updateMatrix(); this.debris.setMatrixAt(i, this.dummy.matrix);
+    }
+    this.debris.instanceMatrix.needsUpdate = true;
   }
 
   private heal(ctx: CombatContext, age: number, hit: number, windup: number, world: number): void {

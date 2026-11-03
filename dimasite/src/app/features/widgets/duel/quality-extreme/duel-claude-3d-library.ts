@@ -59,9 +59,13 @@ export async function fighterAsset(character: DuelCharacter): Promise<FighterAss
 
 export function arenaAsset(): Promise<GLTF> { return model('duel_arena'); }
 
+/** Decoded off the main thread when the browser can (as GLTFLoader does), so drawing never waits on it. */
 function texture(url: string): Promise<T.Texture> {
-  return new T.TextureLoader().loadAsync(url).then(texture => {
-    texture.flipY = false; texture.colorSpace = T.SRGBColorSpace; texture.anisotropy = 8; return texture;
+  const load: Promise<T.Texture> = typeof createImageBitmap === 'function'
+    ? new T.ImageBitmapLoader().loadAsync(url).then(bitmap => new T.Texture(bitmap))
+    : new T.TextureLoader().loadAsync(url);
+  return load.then(texture => {
+    texture.flipY = false; texture.colorSpace = T.SRGBColorSpace; texture.anisotropy = 8; texture.needsUpdate = true; return texture;
   });
 }
 
