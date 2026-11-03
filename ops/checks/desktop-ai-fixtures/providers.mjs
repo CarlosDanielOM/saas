@@ -32,7 +32,7 @@ globalThis.fetch = async (input, options = {}) => {
       : command && !body.messages.some(item => item.role === 'tool')
       ? { role: 'assistant', tool_calls: [{ id: 'desktop-action', type: 'function', function: {
         name: 'AST_PARSER', arguments: JSON.stringify({ command, userlevel: 9 }) } }] }
-      : { role: 'assistant', content: mode === 'long' ? 'A very long explanation. '.repeat(100) : 'I’m doing well. Ready when you are!' };
+      : { role: 'assistant', content: mode === 'moods' ? '[whisper] [anger] I’m doing well. Ready when you are!' : mode === 'long' ? 'A very long explanation. '.repeat(100) : 'I’m doing well. Ready when you are!' };
     return Response.json({ choices: [{ message, finish_reason: message.tool_calls ? 'tool_calls' : 'stop' }],
       usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20, cost_details: {
         upstream_inference_prompt_cost: 0.00001, upstream_inference_completions_cost: 0.00001 } } });

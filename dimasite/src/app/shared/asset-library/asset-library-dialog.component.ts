@@ -19,6 +19,7 @@ export class AssetLibraryDialogComponent {
   readonly owner = input.required<string>();
   readonly kind = input<'image' | 'video' | 'audio' | 'all'>('all');
   readonly selectable = input(true);
+  readonly purpose = input<'pet-mood' | undefined>();
   readonly selected = output<DesignAsset>();
   readonly closed = output<void>();
   readonly language = inject(LanguageService);
@@ -52,10 +53,10 @@ export class AssetLibraryDialogComponent {
   readonly visible = computed(() => this.filtered().slice(0, this.pageSize()));
   readonly showSearch = computed(() => this.pool().length > SEARCH_THRESHOLD || this.query().length > 0);
   readonly showFilters = computed(() => this.kind() === 'all' && [this.counts().image, this.counts().video, this.counts().audio].filter(n => n > 0).length > 1);
-  readonly full = computed(() => !!this.library() && this.library()!.usedBytes >= this.library()!.quotaBytes);
+  readonly full = computed(() => this.purpose() === 'pet-mood' ? !!this.library() && (this.library()?.storedMoodImages ?? this.pool().length) >= (this.library()?.moodImageLimit ?? 0) : !!this.library() && this.library()!.usedBytes >= this.library()!.quotaBytes);
   readonly usage = computed(() => Math.min(100, (this.library()?.usedBytes ?? 0) / (this.library()?.quotaBytes || 1) * 100));
   readonly freeBytes = computed(() => Math.max(0, (this.library()?.quotaBytes ?? 0) - (this.library()?.usedBytes ?? 0)));
-  readonly nearlyFull = computed(() => !this.full() && this.usage() >= 80);
+  readonly nearlyFull = computed(() => this.purpose() !== 'pet-mood' && !this.full() && this.usage() >= 80);
   readonly canUse = computed(() => {
     const asset = this.chosen();
     return !!asset && !this.busy() && (this.kind() === 'all' || asset.kind === this.kind());
@@ -67,14 +68,14 @@ export class AssetLibraryDialogComponent {
       this.returnFocus = document.activeElement as HTMLElement; this.dialog().nativeElement.showModal();
       media = window.matchMedia('(min-width: 900px)'); syncWide(); media.addEventListener('change', syncWide);
     });
-    effect(() => { const owner = this.owner(); void this.load(owner); });
+    effect(() => { const owner = this.owner(); this.purpose(); void this.load(owner); });
     inject(DestroyRef).onDestroy(() => { this.disposed = true; this.generation++; media?.removeEventListener('change', syncWide); this.returnFocus?.focus(); });
   }
   t(key: string, params?: Record<string, string | number>) { this.language.currentLanguage(); return this.language.translate(`assetLibrary.${key}`, params); }
   private async load(owner = this.owner()) {
     const generation = ++this.generation;
     this.loading.set(true); this.error.set(''); this.chosen.set(null); this.confirming.set(false); this.library.set(null);
-    try { const result = await this.api.list(owner); if (generation === this.generation && !this.disposed) this.library.set(result); }
+    try { const result = await this.api.list(owner, this.purpose()); if (generation === this.generation && !this.disposed) this.library.set(result); }
     catch { if (generation === this.generation && !this.disposed) this.error.set('loadFailed'); }
     finally { if (generation === this.generation && !this.disposed) this.loading.set(false); }
   }
@@ -96,7 +97,7 @@ export class AssetLibraryDialogComponent {
   dimensions(asset: DesignAsset) { if (asset.kind === 'audio') return asset.duration ? `${Math.round(asset.duration)} s` : ''; return asset.width && asset.height ? `${asset.width} × ${asset.height}` : ''; }
   private report(error: unknown) {
     const code = (error as { error?: { code?: string } })?.error?.code;
-    this.error.set(({ quota_exceeded: 'quotaExceeded', file_size: 'fileSize', unsupported_type: 'unsupported', invalid_media: 'unsupported', in_use: 'inUse', upload_busy: 'uploadBusy' } as Record<string, string>)[code ?? ''] ?? 'operationFailed');
+    this.error.set(({ quota_exceeded: 'quotaExceeded', file_size: 'fileSize', unsupported_type: 'unsupported', invalid_media: 'unsupported', mood_image_limit: 'moodImageLimit', in_use: 'inUse', upload_busy: 'uploadBusy' } as Record<string, string>)[code ?? ''] ?? 'operationFailed');
   }
   upload(event: Event) {
     const input = event.target as HTMLInputElement, file = input.files?.[0]; input.value = '';
@@ -120,9 +121,9 @@ export class AssetLibraryDialogComponent {
     this.error.set('');
     if (file.type && !/^(image\/(png|jpeg|gif|webp)|video\/(mp4|webm)|audio\/(mpeg|mp3|wav|x-wav|wave|ogg))$/.test(file.type)) { this.error.set('unsupported'); return; }
     if (!file.size || file.size > library.maxFileBytes) { this.error.set('fileSize'); return; }
-    if (file.size + library.usedBytes > library.quotaBytes) { this.error.set('quotaExceeded'); return; }
+    if (this.purpose() !== 'pet-mood' && file.size + library.usedBytes > library.quotaBytes) { this.error.set('quotaExceeded'); return; }
     this.busy.set(true); this.uploading.set(file.name);
-    try { const asset = await this.api.upload(this.owner(), file); await this.load(); if (!this.disposed) { this.query.set(''); this.filter.set('all'); this.chosen.set(asset); } }
+    try { const asset = await this.api.upload(this.owner(), file, this.purpose()); await this.load(); if (!this.disposed) { this.query.set(''); this.filter.set('all'); this.chosen.set(asset); } }
     catch (e) { if (!this.disposed) this.report(e); }
     finally { if (!this.disposed) { this.busy.set(false); this.uploading.set(''); } }
   }

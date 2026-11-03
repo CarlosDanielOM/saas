@@ -1,6 +1,8 @@
 import { Schema, model, Types } from 'mongoose';
+import type { PetMoods } from '../pets/moods.js';
 
 export interface PetSettings {
+    moods?: PetMoods;
     appearance: { kind: 'png' | 'vts'; idleAssetId: string | null; talkingAssetId: string | null };
     playback: { target: 'browser' | 'desktop'; desktopSessionId: string | null; vtsSessionId: string | null };
     sources: { independent: boolean; readTts: boolean };
@@ -21,6 +23,7 @@ export interface PetSettingsRecord {
 }
 
 const settingsSchema = new Schema<PetSettings>({
+    moods: { type: Schema.Types.Mixed, default: undefined },
     appearance: { kind: { type: String, enum: ['png', 'vts'] }, idleAssetId: { type: String, default: null }, talkingAssetId: { type: String, default: null } },
     playback: { target: { type: String, enum: ['browser', 'desktop'] }, desktopSessionId: { type: String, default: null }, vtsSessionId: { type: String, default: null } },
     sources: { independent: { type: Boolean, default: true }, readTts: { type: Boolean, default: false } },

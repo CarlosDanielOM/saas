@@ -1,8 +1,10 @@
+import type { PetMoods } from './pet-moods.model';
 export type PetProvider = 'piper' | 'kokoro' | 'fish';
 /** Where $(pet.ask) waits: the shared TTS queue, or the pet's own queue. $(pet.talk) always uses the TTS queue. */
 export type PetAskLane = 'independent' | 'tts';
 
 export interface PetSettings {
+  moods?: PetMoods;
   enabled: boolean;
   sources: { independent: boolean; readTts: boolean };
   ttsAudio: 'pet' | 'overlay';
@@ -17,6 +19,7 @@ export interface PetSettings {
 
 export interface PetConfiguration {
   schemaVersion: 3;
+  moodImageLimit?: number;
   revision: number;
   updatedAt: string | null;
   settings: PetSettings;

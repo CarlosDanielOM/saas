@@ -1,3 +1,4 @@
+import type { PetMood, PetMoodAssets, PetMoodConfiguration } from '../../models/pet-moods.model';
 import type { PetSettings } from '../../models/pet-settings.model';
 
 export interface PetRequestView {
@@ -6,6 +7,7 @@ export interface PetRequestView {
   status: 'accepted' | 'generating' | 'synthesizing' | 'ready' | 'playing' | 'completed' | 'cancelled' | 'failed' | 'expired';
   version: number;
   text?: string;
+  mood?: PetMood;
   errorCode?: string;
 }
 export interface PetDesktopSession { sessionId: string; label: string; audioReady: boolean; vtsReady: boolean }
@@ -19,7 +21,8 @@ export interface PetSnapshot {
   settingsRevision: number;
   appearance: PetSettings['appearance'];
   playback: PetSettings['playback'];
-  assets: { idleUrl: string | null; talkingUrl: string | null };
+  assets: { idleUrl: string | null; talkingUrl: string | null; moods?: PetMoodAssets };
+  moods?: PetMoodConfiguration;
   active: PetRequestView | null;
   lease: { leaseId: string; holderPeerId: string; expiresAt: number } | null;
 }

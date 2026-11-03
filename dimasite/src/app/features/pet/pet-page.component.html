@@ -50,6 +50,47 @@
             } @else { <p>{{ t('vtsHint') }}</p> }
           </section>
 
+          <section class="lf-tile moods-tile" aria-labelledby="moods-title">
+            <div class="section-head"><span class="section-icon"><app-lf-icon name="smile" /></span><div><h2 id="moods-title">{{ t('moodsTitle') }}</h2><p>{{ t('moodsHint') }}</p></div></div>
+            @if (moodsAvailable()) {
+              <label class="toggle row-toggle source-switch"><span>{{ t('moodsEnabled') }}</span><span class="switch-control"><input type="checkbox" role="switch" formControlName="moodsEnabled" aria-describedby="moods-help"><span class="switch-track" aria-hidden="true"></span></span></label>
+              <p id="moods-help">{{ t('moodsFallback') }}</p>
+              <label class="field">{{ t('moodHold') }}<input type="number" min="0" max="10000" step="1" formControlName="moodHoldMs" aria-describedby="mood-hold-help"></label>
+              <p id="mood-hold-help">{{ t('moodHoldHint') }}</p>
+              <div class="mood-toolbar"><strong>{{ t('moodSlots') }}: {{ moodImageCount() }} / {{ moodImageLimit() }}</strong><button type="button" class="lf-btn" [disabled]="saving()" (click)="resetMoodEmotions()">{{ t('moodsReset') }}</button></div>
+              <p>{{ t('moodAllowance') }}</p>
+              @if (moodImageCount() > moodImageLimit()) { <p class="credit-note" role="status">{{ t('moodDowngrade') }}</p> }
+              @for (mood of moodNames; track mood) {
+                <details class="mood-row" [attr.data-mood]="mood">
+                  <summary>{{ t('mood.' + mood) }} <span class="mood-count">{{ moodDraft().emotions[mood].length }} {{ t('moodTags') }}</span></summary>
+                  <div class="mood-content">
+                    <div class="mood-tags" [attr.aria-label]="t('mood.' + mood)">
+                      @for (tag of moodDraft().emotions[mood]; track tag) {
+                        <button type="button" class="mood-tag" [disabled]="saving()" [attr.aria-label]="t('moodRemoveTag') + ' ' + tag" (click)="removeMoodEmotion(mood, tag)"><span>{{ tag }}</span><span aria-hidden="true">×</span></button>
+                      }
+                      @empty { <p>{{ t('moodNoTags') }}</p> }
+                    </div>
+                    <label class="field">{{ t('moodAddTag') }}<select [disabled]="saving() || !unassignedEmotions().length" (change)="addMoodEmotion(mood, $event)"><option value="">{{ t('moodSelectTag') }}</option>@for (tag of unassignedEmotions(); track tag) { <option [value]="tag">{{ tag }}</option> }</select></label>
+                    <div class="appearance-pair">
+                      @for (state of appearanceStates; track state) {
+                        <div class="image-choice">
+                          <h3>{{ t(state) }}</h3>
+                          @if (moodImageInactive(mood, state)) { <p class="mood-inactive">{{ t('moodInactive') }}</p> }
+                          <div class="image-preview">@if (moodAssetId(mood, state); as asset) { <app-asset-preview [assetId]="asset" [owner]="channelID()!" kind="image" [name]="t('mood.' + mood) + ' ' + t(state)" /> } @else { <span>{{ t('moodNormalImage') }}</span> }</div>
+                          <button type="button" class="lf-btn" [disabled]="saving()" [attr.aria-label]="t('mood.' + mood) + ' ' + t(state) + ': ' + t('chooseImage')" (click)="pickingMoodAsset.set({ mood, state })">{{ t(moodAssetId(mood, state) ? 'changeImage' : 'chooseImage') }}</button>
+                          @if (moodAssetId(mood, state)) { <button type="button" class="text-button" [disabled]="saving()" [attr.aria-label]="t('mood.' + mood) + ' ' + t(state) + ': ' + t('removeImage')" (click)="removeMoodAsset(mood, state)">{{ t('removeImage') }}</button> }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </details>
+              }
+            } @else {
+              <label class="toggle row-toggle"><span>{{ t('moodsEnabled') }}</span><input type="checkbox" role="switch" disabled [checked]="false" aria-describedby="moods-upgrade"></label>
+              <p id="moods-upgrade">{{ t('moodsUpgrade') }}</p><a class="text-link" routerLink="/pricing">{{ t('moodsViewPlans') }}</a>
+            }
+          </section>
+
           <section class="lf-tile output-tile" aria-labelledby="output-title">
             <div class="section-head"><span class="section-icon"><app-lf-icon name="monitor" /></span><div><h2 id="output-title">{{ t('outputTitle') }}</h2><p>{{ t('outputHint') }}</p></div></div>
             <label class="field">{{ t('audioOutput') }}<select formControlName="playbackTarget"><option value="browser">{{ t('browserOutput') }}</option><option value="desktop">{{ t('desktopOutput') }}</option></select></label>
@@ -176,4 +217,8 @@
 
 @if (pickingAsset() && channelID()) {
   <app-asset-library-dialog [owner]="channelID()!" kind="image" (selected)="chooseAsset($event)" (closed)="pickingAsset.set(null)" />
+}
+
+@if (pickingMoodAsset() && channelID()) {
+  <app-asset-library-dialog [owner]="channelID()!" kind="image" purpose="pet-mood" (selected)="chooseMoodAsset($event)" (closed)="pickingMoodAsset.set(null)" />
 }

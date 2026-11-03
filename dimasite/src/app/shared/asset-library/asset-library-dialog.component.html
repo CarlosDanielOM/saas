@@ -20,6 +20,12 @@
   </header>
 
   @if (library(); as data) {
+    @if (purpose() === 'pet-mood') {
+      <section class="quota" [attr.aria-label]="t('moodImages')">
+        <strong>{{ t('moodUsage', { used: data.storedMoodImages ?? pool().length, total: data.moodImageLimit ?? 0 }) }}</strong>
+        <p>{{ t('moodAllowance') }}</p>
+      </section>
+    } @else {
     <section class="quota" [class.quota--warn]="nearlyFull()" [class.quota--full]="full()" [attr.data-plan]="data.planTier" [attr.aria-label]="t('storage')">
       <div class="quota__row">
         <strong class="quota__answer">{{ full() ? t('fullAnswer') : t('freeAnswer', { free: size(freeBytes()) }) }}</strong>
@@ -31,6 +37,7 @@
         <span>{{ data.planTier === 'pro' ? t('planPro') : t('allowances') }}</span>
       </div>
     </section>
+    }
 
     <div class="tools">
       @if (showFilters()) {
@@ -56,7 +63,7 @@
       </button>
     </div>
 
-    @if (full()) { <p class="warning" role="status">{{ t('quotaExceeded') }}</p> }
+    @if (full()) { <p class="warning" role="status">{{ t(purpose() === 'pet-mood' ? 'moodImageLimit' : 'quotaExceeded') }}</p> }
     @else if (nearlyFull()) { <p class="notice" role="status">{{ t('nearlyFull') }}</p> }
   }
 

@@ -19,9 +19,11 @@ const { OAuthSession } = await import('/app/dist/schemas/oauth_session.schema.js
 const { ChannelAIPersonalitySchema } = await import('/app/dist/schemas/channel_ai_personality.schema.js');
 const { PetReadiness } = await import('/app/dist/pets/readiness.schema.js');
 const { admitPetAction } = await import('/app/dist/pets/admission.js');
+const { defaultPetMoods } = await import('/app/dist/pets/moods.js');
 const { invalidatePet, notifyPet, runtimeFor } = await import('/app/dist/pets/state.js');
 const { AI_CREDITS_CACHE_SCHEMA_VERSION } = await import('/app/dist/utils/billing.js');
 const owner = '99003101', other = '99003102', base = 'http://127.0.0.1:3000';
+const failFirstMoods = process.env.DIMA046_MOOD_FAILURES === 'first';
 const inserted = await mongo.connection.db.collection('users').insertMany([
   { name: 'Pet owner', plan_tier: 'premium', polar_sh_customer_id: 'pet-test-customer', accounts: [{ type: 'twitch', id: owner, name: 'pet_owner' }] },
   { name: 'Other owner', plan_tier: 'pro', accounts: [{ type: 'twitch', id: other, name: 'pet_other' }] }
@@ -123,6 +125,17 @@ const save = async change => {
   assert.equal(result.status, 200, JSON.stringify(result.body)); configuration = result.body.data; return configuration;
 };
 await save(settings => ({ ...settings, appearance: { kind: 'png', idleAssetId: String(assetId), talkingAssetId: String(assetId) }, enabled: true, behavior: { ...settings.behavior, cooldownSeconds: 0 } }));
+// Decoration corruption cannot disable the configured pet or reject its parent save.
+await PetSettingsSchema.updateOne({ userId: ownerId }, { $set: { 'settings.moods': { enabled: true, holdMs: -1, emotions: null } } });
+configuration = (await call(settingsPath, { token: 'pet-owner-token' })).body.data;
+assert.deepEqual(configuration.settings.moods, defaultPetMoods());
+assert.equal(configuration.runtime.enabled, true, 'corrupt decoration does not disable the pet');
+await save(settings => ({ ...settings, name: 'Resilient pet', moods: { enabled: true, holdMs: 'invalid' } }));
+assert.equal(configuration.settings.name, 'Resilient pet');
+assert.deepEqual(configuration.settings.moods, defaultPetMoods(), 'invalid submitted mood data defaults off while the parent saves');
+await save(settings => ({ ...settings, moods: { ...defaultPetMoods(), enabled: true } }));
+assert.equal(configuration.moods.enabled, true, 'the next valid settings save works normally');
+await save(settings => ({ ...settings, name: 'Dima', moods: defaultPetMoods() }));
 const desktopToken = await mint(), secondToken = await mint(), foreignToken = await mint('oauth-beta-browser-other');
 const narrow = await mint('oauth-beta-browser-owner', 'desktop:connect pet:read');
 assert.ok((await connect('/desktop', { v: 1, accessToken: narrow.access_token }, true)).message.includes('insufficient_scope'));
@@ -151,7 +164,8 @@ assert.equal(runtime.sessions.find(session => session.sessionId === desktopToken
 assert.ok(!runtime.sessions.some(session => session.sessionId === foreignToken.session_id));
 let foreignSettings = structuredClone(configuration.settings);
 foreignSettings.playback = { target: 'desktop', desktopSessionId: foreignToken.session_id, vtsSessionId: null };
-assert.equal((await call(settingsPath, { method: 'PUT', token: 'pet-owner-token', body: { revision: configuration.revision, settings: foreignSettings } })).status, 409);
+const foreignSave = await call(settingsPath, { method: 'PUT', token: 'pet-owner-token', body: { revision: configuration.revision, settings: foreignSettings } });
+assert.equal(foreignSave.status, 409, JSON.stringify({ body: foreignSave.body, sessionId: foreignToken.session_id, moods: foreignSettings.moods }));
 const select = (token, roles, revision = configuration.revision) => call('/v1/me/pet/playback', { method: 'PUT', token,
   body: { commandId: randomUUID(), revision, roles } });
 let result = await select(desktopToken.access_token, ['audio', 'vts']); assert.equal(result.status, 200); configuration = result.body;
@@ -239,6 +253,7 @@ assert.equal(concurrent[0].requestId, concurrent[1].requestId);
 const requestId = concurrent[0].requestId;
 await assert.rejects(admitPetAction({ ...input, text: 'changed' }), /idempotency_conflict/);
 const play = await desktop.event('pet:play', data => data.requestId === requestId);
+assert.equal(Object.hasOwn(desktop.events.find(item => item.event === 'pet:request' && item.data.request.requestId === requestId && item.data.request.status === 'ready').data.request, 'mood'), false, 'default-off requests have no mood field');
 const playIndex = desktop.events.findIndex(item => item.event === 'pet:play' && item.data.requestId === requestId);
 assert.equal(desktop.events[playIndex - 1]?.event, 'pet:request', 'selected socket receives ready immediately before the sole play');
 assert.equal(desktop.events[playIndex - 1]?.data.request.status, 'ready');
@@ -302,6 +317,22 @@ for (const row of diagnosticRows) {
 }
 console.log('PASS pet diagnostics: delivery timing, audio fetch outcomes, accepted start/terminal and rejected feedback correlated without private payloads');
 
+// DIMA-046: raw cues survive independently of the provider's tag filter.
+assert.equal(configuration.settings.moods.enabled, false);
+assert.equal(configuration.settings.moods.holdMs, 2000);
+await save(settings => ({ ...settings, moods: { ...defaultPetMoods(), enabled: true } }));
+const legacySettings = structuredClone(configuration.settings); delete legacySettings.moods;
+const legacySave = await call(settingsPath, { method: 'PUT', token: 'pet-owner-token', body: { revision: configuration.revision, settings: legacySettings } });
+assert.equal(legacySave.status, 200, JSON.stringify(legacySave.body));
+configuration = legacySave.body.data;
+assert.equal(configuration.settings.moods.enabled, true, 'an older client omitting moods preserves the saved switch');
+assert.deepEqual(configuration.settings.moods.images, {}, 'Mongo-minimized images normalize to an object on every read');
+const desktopMoods = await call('/v1/me/pet', { token: desktopToken.access_token });
+assert.equal(desktopMoods.status, 200);
+assert.deepEqual(desktopMoods.body.moods, { available: true, enabled: true, holdMs: 2000, emotions: defaultPetMoods().emotions });
+await PetRuntime.updateOne({ _id: ownerId }, { $set: { notBefore: new Date(0) } });
+await acquire(desktop);
+
 // Pet speech uses the channel filters even when ordinary channel TTS is disabled.
 await redis.set('twitch:global:tts:emotes', JSON.stringify(['Kappa']));
 await redis.set(`twitch:${owner}:emote-catalog:v1`, JSON.stringify({ emotes: [{ id: 'native1', name: 'Pog' }], checkedAt: new Date().toISOString(), retryAt: Date.now() + 3600000 }));
@@ -312,12 +343,20 @@ const filteredPlay = await desktop.event('pet:play', data => data.requestId === 
 const filteredRecord = await PetRequest.findById(filtered.requestId).lean();
 assert.equal(filteredRecord.text, filteredInput.text, 'stored idempotency input remains raw');
 assert.equal(filteredRecord.outputText, 'Hello [link] world');
+const firstMood = failFirstMoods ? 'neutral' : 'happy';
+assert.equal(filteredRecord.mood, firstMood);
+assert.equal(desktop.events.find(item => item.event === 'pet:request' && item.data.request.requestId === filtered.requestId && item.data.request.status === 'ready').data.request.mood, firstMood);
 assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).at(-1).body.text, filteredRecord.outputText);
 const filteredBilling = (await redis.lRange('pet:test:billing-events', 0, -1)).map(JSON.parse).find(item => item.external_id === `${filtered.requestId}:tts`);
 assert.equal(filteredBilling.metadata.characters, filteredRecord.outputText.length);
 // This virtual player has actually finished. An error now requests a fenced
 // stop and cannot stand in for confirmed silence on a legacy desktop.
-await desktop.send('pet:playback', identityFor(filteredPlay, 0, 'ended'));
+const filteredAudioUrl = new URL(filteredPlay.audio.url);
+assert.equal((await fetch(base + filteredAudioUrl.pathname + filteredAudioUrl.search)).status, 200, 'mood extraction failure cannot block private audio delivery');
+assert.equal((await desktop.send('pet:playback', identityFor(filteredPlay, 0, 'started'))).ok, true);
+assert.equal((await desktop.send('pet:playback', identityFor(filteredPlay, 1, 'ended'))).ok, true);
+assert.equal((await PetRequest.findById(filtered.requestId).lean()).status, 'completed', 'speech completes even when optional extraction throws');
+assert.equal((await PetRequest.findById(filtered.requestId).lean()).mood, firstMood, 'terminal transition never changes the chosen mood');
 // Emotes from other channels are not in this channel's catalog; chat-tagged names still skip them, like $(tts).
 const taggedInput = { ...action('hola pookyDerp evilto8PAM Pog'), emoteNames: ['pookyDerp', 'evilto8PAM', 7] };
 const tagged = await admitPetAction(taggedInput);
@@ -325,6 +364,7 @@ const taggedPlay = await desktop.event('pet:play', data => data.requestId === ta
 const taggedRecord = await PetRequest.findById(tagged.requestId).lean();
 assert.deepEqual(taggedRecord.emoteNames, ['pookyDerp', 'evilto8PAM'], 'only valid tagged emote names persist');
 assert.equal(taggedRecord.outputText, 'hola');
+assert.equal(taggedRecord.mood, 'neutral', 'neutral is explicit with moods enabled and no cue');
 assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).at(-1).body.text, 'hola');
 await desktop.send('pet:playback', identityFor(taggedPlay, 0, 'ended'));
 const emptyCounts = { providers: await redis.lLen('pet:test:provider-calls'), billing: await redis.lLen('pet:test:billing-events') };
@@ -349,6 +389,9 @@ assert.ok(outage.elapsedMs < 2000, 'Mongo acceptance must not wait for Redis con
 // Explicitly prompt the healthy API after proving producer acceptance (recovery also remains enabled).
 await notifyPet(ownerId);
 const outagePlay = await desktop.event('pet:play', data => data.requestId === outage.result.requestId);
+const firstAskBody = (await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).filter(item => item.kind === 'llm').at(-1).body;
+assert.equal(JSON.stringify(firstAskBody.messages).includes('Begin your reply with exactly one emotion tag'), !failFirstMoods,
+  'an instruction exception omits decoration while the first AI request still reaches playback');
 await desktop.send('pet:playback', identityFor(outagePlay, 0, 'ended'));
 // The next request resets request-scoped sequence, under the same lease.
 const next = await admitPetAction(action('Second speech'));
@@ -433,10 +476,12 @@ for (const marker of ['NORMAL_BOT_PERSONA_ONLY', 'FOREIGN_CHANNEL_MUST_NOT_APPEA
   assert.ok(!askMessages.includes(marker), `pet persona and context policy preserved: ${marker}`);
 }
 assert.ok(askMessages.includes('friendly, playful virtual companion'), 'pet custom persona remains selected');
+assert.equal(askMessages.includes('Begin your reply with exactly one emotion tag'), true, 'the next valid AI mood instruction self-heals');
+assert.equal((await PetRequest.findById(ask.requestId).lean()).mood, 'happy', 'generated raw reply selects mood before filtering');
 assert.ok((await redis.lRange('pet:test:context-queries', 0, -1)).map(JSON.parse).every(query =>
   query.body.filter.must.some(filter => filter.key === 'channel_id' && filter.match.value === owner)), 'all vector retrieval is channel scoped');
-assert.equal(calls.filter(item => item.kind === 'tts').at(-1).body.text, 'Kappa [happy] example.com $(counter must-not-evaluate)');
-assert.equal((await PetRequest.findById(ask.requestId).lean()).outputText, 'Kappa [happy] example.com $(counter must-not-evaluate)');
+assert.equal(calls.filter(item => item.kind === 'tts').at(-1).body.text, 'Kappa example.com $(counter must-not-evaluate)', 'mood prefix obeys Piper cue policy without enabling emote/link filters on ask');
+assert.equal((await PetRequest.findById(ask.requestId).lean()).outputText, 'Kappa example.com $(counter must-not-evaluate)');
 assert.equal((await desktop.send('pet:playback', identityFor(askPlay, 0))).ok, true);
 assert.equal((await desktop.send('pet:playback', identityFor(askPlay, 1, 'ended'))).ok, true);
 const queued = (await redis.lRange('pet:test:billing-events', 0, -1)).map(JSON.parse);
@@ -536,6 +581,60 @@ assert.equal((await fetch(`${base}/pets/public/${tokenState.token}/assets/${fore
 const publicBody = (await call(`/pets/public/${tokenState.token}`)).body.data;
 assert.ok(!JSON.stringify(publicBody).includes('personality'));
 assert.ok(!('sessions' in publicBody.runtime));
+
+// Private mood uploads have their own bounded allowance, even when media is full.
+const users = mongo.connection.db.collection('users'), libraries = mongo.connection.db.collection('asset_libraries');
+await users.updateOne({ _id: inserted.insertedIds[0] }, { $set: { plan_tier: 'pro' } });
+await libraries.updateOne({ _id: owner }, { $set: { usedBytes: 5_000_000_000 } });
+async function uploadMood() {
+  const form = new FormData(); form.append('file', new Blob([gif], { type: 'image/gif' }), 'mood.gif');
+  const response = await fetch(base + `/asset-library/${owner}?purpose=pet-mood`, {
+    method: 'POST', headers: { Authorization: 'Bearer pet-owner-token' }, body: form });
+  return { status: response.status, body: await response.json() };
+}
+const moodAssets = [];
+for (let i = 0; i < 16; i++) {
+  const uploaded = await uploadMood(); assert.equal(uploaded.status, 200, JSON.stringify(uploaded.body)); moodAssets.push(uploaded.body.data.id);
+}
+assert.equal((await uploadMood()).status, 413, '17th Pro mood image rejected even when unconfigured');
+assert.equal((await libraries.findOne({ _id: owner })).usedBytes, 5_000_000_000, 'mood bytes never charge the media quota');
+assert.equal((await call(`/asset-library/${owner}`, { token: 'pet-owner-token' })).body.data.assets.some(asset => moodAssets.includes(asset.id)), false, 'exempt assets cannot enter ordinary media consumers');
+const moodNames = Object.keys(defaultPetMoods().emotions);
+const fullImages = Object.fromEntries(moodNames.map((name, i) => [name, { idleAssetId: moodAssets[i * 2], talkingAssetId: moodAssets[i * 2 + 1] }]));
+await save(settings => ({ ...settings, moods: { ...settings.moods, images: fullImages } }));
+const urls = async () => (await call(`/pets/public/${tokenState.token}`)).body.data.assets.moods;
+assert.equal(Object.values(await urls()).flatMap(value => Object.values(value)).filter(Boolean).length, 16);
+assert.equal((await fetch(`${base}/pets/public/${tokenState.token}/assets/${moodAssets[0]}`)).status, 200);
+await users.updateOne({ _id: inserted.insertedIds[0] }, { $set: { plan_tier: 'premium' } });
+const limitedUrls = await urls();
+assert.equal(Object.values(limitedUrls).flatMap(value => Object.values(value)).filter(Boolean).length, 8);
+assert.equal((await fetch(`${base}/pets/public/${tokenState.token}/assets/${moodAssets[8]}`)).status, 404, 'inactive ninth slot is private');
+assert.equal((await uploadMood()).status, 413, 'downgraded users cannot upload past their retained allowance');
+await save(settings => ({ ...settings, moods: { ...settings.moods, images: {
+  ...settings.moods.images, happy: { ...settings.moods.images.happy, idleAssetId: moodAssets[14] },
+  thinking: { ...settings.moods.images.thinking, idleAssetId: moodAssets[0] }
+} } }));
+assert.ok((await urls()).happy.idleUrl.endsWith(moodAssets[14]), 'moving a saved image to an active slot enables it');
+await save(settings => ({ ...settings, moods: { ...settings.moods, enabled: false } }));
+assert.equal(await urls(), undefined, 'disabled moods omit public image fields');
+assert.equal((await fetch(`${base}/pets/public/${tokenState.token}/assets/${moodAssets[14]}`)).status, 404);
+await save(settings => ({ ...settings, moods: { ...settings.moods, enabled: true } }));
+const keptMoods = structuredClone(configuration.settings.moods);
+const moodPreview = await call(`/asset-library/${owner}/${moodAssets[14]}/access`, { token: 'pet-owner-token' });
+assert.equal(moodPreview.status, 200);
+await users.updateOne({ _id: inserted.insertedIds[0] }, { $set: { plan_tier: 'free' } });
+assert.equal((await call('/v1/me/pet', { token: desktopToken.access_token })).status, 403, 'existing whole-pet entitlement blocks free responses');
+assert.equal((await call(`/pets/public/${tokenState.token}`)).status, 403, 'a free capability returns no mood data');
+assert.equal((await call(`/asset-library/${owner}?purpose=pet-mood`, { token: 'pet-owner-token' })).status, 403, 'Free cannot read retained mood-image metadata');
+assert.equal((await call(`/asset-library/${owner}/${moodAssets[14]}/access`, { token: 'pet-owner-token' })).status, 403, 'Free cannot mint a mood preview ticket');
+assert.equal((await fetch(base + moodPreview.body.data.path)).status, 403, 'an older mood preview ticket rechecks plan availability');
+assert.equal((await call(`/asset-library/${owner}`, { token: 'pet-owner-token' })).status, 200, 'ordinary media remains available');
+assert.deepEqual((await PetSettingsSchema.findOne({ userId: ownerId }).lean()).settings.moods, keptMoods, 'downgrade retains settings and images');
+await users.updateOne({ _id: inserted.insertedIds[0] }, { $set: { plan_tier: 'pro' } });
+assert.equal(Object.values(await urls()).flatMap(value => Object.values(value)).filter(Boolean).length, 16, 're-upgrade restores all image slots');
+assert.equal((await fetch(base + moodPreview.body.data.path)).status, 200, 're-upgrade restores the retained private preview');
+await libraries.updateOne({ _id: owner }, { $set: { usedBytes: gif.length } });
+console.log('PASS DIMA-046: raw talk/ask moods, immutable ready value, neutral/off wire, OAuth config, independent upload allowance, private active image slots, Premium downgrade editing and Pro restoration');
 const browser = await connect('/pet', { v: 1, capability: tokenState.token });
 await connect('/pet', { v: 1, capability: tokenState.token, pid: browser.joinedInfo.pid, offset: 'stale' }, true);
 const duplicateBrowser = await connect('/pet', { v: 1, capability: tokenState.token });

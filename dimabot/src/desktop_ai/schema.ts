@@ -5,7 +5,7 @@ export interface DesktopTurn {
     _id: string; requestId: string; ownerId: string; clientId: string; channelId: string; sessionId: string;
     origin: 'oauth_desktop'; target: 'bot' | 'pet'; source: 'asr' | 'typed'; silent: boolean; text: string; fingerprint: string;
     conversationId: string; status: TurnStatus; revision: number; createdAt: Date; expiresAt: Date;
-    executionFence?: string; runDeadline?: Date; replyText?: string; errorCode?: string; petRequestId?: string;
+    executionFence?: string; runDeadline?: Date; replyText?: string; moodText?: string; errorCode?: string; petRequestId?: string;
     speech?: { playbackId: string; outputGeneration: number; status: string; destination: string; animatePet: boolean;
         ticketHash?: string; ticketExpiresAt?: Date; startBefore?: Date; startClaimed?: boolean; playbackDeadline?: Date; stopConfirmed?: boolean; errorCode?: string; privateDir?: string; path?: string; mimeType?: string; durationMs?: number };
     operations: { id: string; kind: string; status: 'pending' | 'completed' | 'failed'; outcome?: string }[];
@@ -20,7 +20,7 @@ const turn = new Schema<DesktopTurn>({
     silent: { type: Boolean, required: true }, text: { type: String, required: true }, fingerprint: { type: String, required: true },
     conversationId: { type: String, required: true }, status: { type: String, required: true }, revision: { type: Number, required: true },
     createdAt: { type: Date, required: true }, expiresAt: { type: Date, required: true }, executionFence: String, runDeadline: Date,
-    replyText: String, errorCode: String, petRequestId: String, speech: { type: speechSchema, default: undefined },
+    replyText: String, moodText: String, errorCode: String, petRequestId: String, speech: { type: speechSchema, default: undefined },
     operations: { type: [operationSchema], default: [] }
 }, { versionKey: false, collection: 'desktop_ai_turns' });
 turn.index({ ownerId: 1, clientId: 1, requestId: 1 }, { unique: true });

@@ -12,11 +12,13 @@ import { finishRequest, invalidatePet, notifyPet, requestView, runtimeFor } from
 import { issueAudioTicket } from './tokens.js';
 import { registerReadTtsBridge, type ReadTtsInput, type ReadTtsRoute, type ReadTtsTurnInput } from './tts_bridge.js';
 import { inspectTtsAudio, ttsEnvelope } from './tts_envelope.js';
+import { resolvePetMood, type Mood } from './moods.js';
+import { safelyResolveMood } from './mood_decoration.js';
 
 interface Turn {
     config: Awaited<ReturnType<typeof getPetConfiguration>>; input: ReadTtsInput; ownerId: string; token: string; generation: number; revision: number;
     protectedUntil: number; holdMs: number; ownershipLost?: boolean; detached?: boolean; reporting?: boolean; requestId?: string; requestGeneration?: number; privateDir?: string; delivered: boolean; envelope?: Awaited<ReturnType<typeof ttsEnvelope>>;
-    followPeers: Set<string>; positionMs: number; serverTime: number; following: boolean;
+    followPeers: Set<string>; positionMs: number; serverTime: number; following: boolean; mood?: Mood;
 }
 const turns = new Map<string, Turn>();
 // One tracked normal-queue head per channel; parking releases Turn, not this identity.
@@ -280,6 +282,7 @@ async function prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null> {
     if (!turn || turn.input.speechId !== input.speechId) return null;
     turn.input = input;
     const { ownerId, token, config } = turn;
+    if (turn.mood === undefined && config.moods?.enabled) turn.mood = safelyResolveMood(() => resolvePetMood(input.moodText ?? input.text, config.settings.moods), input.channelId);
     const cancelled = () => input.cancelled() || turns.get(input.channelId) !== turn;
     let directory: string | undefined;
     try {
@@ -321,6 +324,7 @@ async function prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null> {
                 const request = await PetRequest.create({ _id: id, ownerId, channelId: input.channelId, operation: 'tts', text: input.text,
                     outputText: input.text, origin: { kind: 'tts-queue', id: input.speechId, occurredAt: now.toISOString() }, actionKey: `tts:${input.attemptId ?? token}`, actor: { userId: '', displayName: '' }, payloadHash: input.speechId,
                     admitted: true, generation: turn.generation, settingsRevision: turn.revision, status: 'ready', version: 1,
+                    ...(turn.mood ? { mood: turn.mood } : {}),
                     startBefore: new Date(Date.now() + 5000), phaseDeadline: new Date(Date.now() + durationMs + 10_000),
                     privateDir: directory, audio: { path: audioPath, mimeType: input.mime, durationMs }, createdAt: now, expiresAt: new Date(Date.now() + 7 * 86400_000) });
                 turn.requestId = id; turn.requestGeneration = turn.generation; turn.privateDir = directory;
@@ -336,7 +340,7 @@ async function prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null> {
                         if (cancelled() || turn.detached || latest?.revision !== turn.revision || latest.runtime.generation !== turn.generation || latest.runtime.activeRequestId !== id || latest.runtime.lease?.leaseId !== elected.runtime.lease!.leaseId || latest.peer !== elected.peer) throw new Error('pre_delivery_rejected');
                         const attempted = await PetRequest.updateOne({ _id: id, status: 'ready', generation: turn.generation }, { $set: { deliveryAttempted: true } });
                         if (!attempted.modifiedCount || turn.detached || cancelled() || turn.protectedUntil <= Date.now() || request.startBefore!.getTime() <= Date.now()) throw new Error('pre_delivery_rejected');
-                        const sent = emitPetReadyAndPlay(elected.peer, turn.generation, requestView(request.toObject())!, { v: 1, requestId: id, generation: turn.generation,
+                        const sent = emitPetReadyAndPlay(elected.peer, turn.generation, requestView(request.toObject(), !!config.moods?.enabled)!, { v: 1, requestId: id, generation: turn.generation,
                             leaseId: elected.runtime.lease!.leaseId, startBefore: request.startBefore!.getTime(), audio: {
                                 url: `${(process.env.PUBLIC_API_URL || 'https://api.domdimabot.com').replace(/\/+$/, '')}/pets/playback/${id}/audio?ticket=${ticket}`, mimeType: input.mime, durationMs } }, () => {
                                     if (cancelled() || !beforeEmit()) return false;
@@ -390,7 +394,7 @@ async function report(channel: string, speech: string, phase: string, position: 
         if (turns.get(channel) !== turn) return;
         const initial = !turn.followPeers.has(peer.id);
         peer.socket.emit('pet:follow', { v: 1, followId: speech, generation: turn.generation,
-            ...(initial ? { envelope: turn.envelope } : {}), positionMs, serverTime: turn.serverTime });
+            ...(initial ? { envelope: turn.envelope } : {}), ...(config.moods?.enabled && turn.mood ? { mood: turn.mood } : {}), positionMs, serverTime: turn.serverTime });
         turn.followPeers.add(peer.id); turn.following = true;
     }
 }

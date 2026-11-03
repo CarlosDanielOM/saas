@@ -5,6 +5,8 @@ import { readTtsTerminal, invalidateReadTts } from './tts_bridge.js';
 import { petLaneTerminal } from './tts_lane.js';
 import { PetReadiness } from './readiness.schema.js';
 import { finishMatchingSpeechActivity, retireMatchingSpeechActivity } from '../desktop_ai/activity.js';
+import { MOOD_NAMES } from './moods.js';
+import { warnPetMood } from './mood_warnings.js';
 
 export { PET_WAKE } from './wakeups.js';
 export const LEASE_TTL_MS = 15_000;
@@ -21,12 +23,21 @@ export async function notifyPet(ownerId: string): Promise<void> {
     // Scheduling only: Redis connection/publication can never delay the Mongo ACK.
     petWakeups.notify(ownerId);
 }
-export function requestView(request: PetRequestRecord | null) {
+export function requestView(request: PetRequestRecord | null, moodsEnabled = false) {
     if (!request) return null;
+    let mood: string | undefined;
+    if (moodsEnabled) try {
+        const value = request.mood;
+        if (value !== undefined) {
+            if (value === 'neutral' || MOOD_NAMES.includes(value as typeof MOOD_NAMES[number])) mood = value;
+            else { warnPetMood('stored_invalid', request.channelId); mood = 'neutral'; }
+        }
+    } catch { warnPetMood('stored_invalid', request.channelId); mood = 'neutral'; }
     // Released desktop/browser players only know the original statuses. A request is
     // briefly linked as active before its queued -> accepted update lands.
     return { requestId: request._id, operation: request.operation, status: request.status === 'queued' ? 'accepted' as const : request.status, version: request.version,
-        ...(request.outputText ? { text: request.outputText } : {}), ...(request.errorCode ? { errorCode: request.errorCode } : {}) };
+        ...(request.outputText ? { text: request.outputText } : {}), ...(request.errorCode ? { errorCode: request.errorCode } : {}),
+        ...(mood ? { mood } : {}) };
 }
 export async function finishRequest(id: string, status: 'completed' | 'cancelled' | 'failed' | 'expired', errorCode?: string, expected?: { ownerId: string; generation: number }, playbackStopped = false) {
     const request = await PetRequest.findOneAndUpdate({ _id: id, ...expected, status: { $nin: PET_TERMINAL } }, {

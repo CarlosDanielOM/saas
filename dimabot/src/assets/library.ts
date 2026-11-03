@@ -7,6 +7,8 @@ import { promisify } from 'node:util';
 import mongoose, { Schema, model } from 'mongoose';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import Users from '../schemas/users.schema.js';
+import { PetSettingsSchema } from '../schemas/pet_settings.schema.js';
+import { moodImageLimit, moodImageSlots, savedPetMoods } from '../pets/moods.js';
 
 export const ASSET_QUOTAS = { free: 100_000_000, premium: 500_000_000, pro: 5_000_000_000 } as const;
 export const MAX_ASSET_BYTES = 50_000_000;
@@ -17,10 +19,10 @@ export class AssetError extends Error {
 export interface Asset {
   id: string; name: string; kind: 'image' | 'video' | 'audio'; mime: string;
   bytes: number; width: number; height: number; duration?: number; createdAt: string;
-  state: 'uploading' | 'ready' | 'deleting';
+  state: 'uploading' | 'ready' | 'deleting'; purpose?: 'pet-mood';
 }
 interface Library { _id: string; usedBytes: number; assets: Asset[] }
-const assetSchema = new Schema<Asset>({ id: String, name: String, kind: String, mime: String, bytes: Number, width: Number, height: Number, duration: Number, createdAt: String, state: String }, { _id: false });
+const assetSchema = new Schema<Asset>({ id: String, name: String, kind: String, mime: String, bytes: Number, width: Number, height: Number, duration: Number, createdAt: String, state: String, purpose: String }, { _id: false });
 const schema = new Schema<Library>({ _id: String, usedBytes: { type: Number, default: 0 }, assets: { type: [assetSchema], default: [] } }, { versionKey: false, collection: 'asset_libraries' });
 export const Libraries = model<Library>('AssetLibrary', schema);
 
@@ -46,10 +48,13 @@ export async function assetQuota(owner: string) {
   const tier = user.plan_tier === 'pro' || user.plan_tier === 'premium' ? user.plan_tier : 'free';
   return { planTier: tier, quotaBytes: ASSET_QUOTAS[tier], maxFileBytes: MAX_ASSET_BYTES };
 }
-export async function findAsset(owner: string, id: string): Promise<Asset> {
+export async function requireMoodAssetPlan(owner: string, asset: Asset): Promise<void> {
+  if (asset.purpose === 'pet-mood' && (await assetQuota(owner)).planTier === 'free') throw new AssetError('plan_required', 403);
+}
+export async function findAsset(owner: string, id: string, includeMood = false): Promise<Asset> {
   await getMongoDBConnection('asset-library');
   const library = await Libraries.findById(owner).lean();
-  const asset = library?.assets.find(a => a.id === id && a.state === 'ready');
+  const asset = library?.assets.find(a => a.id === id && a.state === 'ready' && (includeMood || a.purpose !== 'pet-mood'));
   if (!asset) throw new AssetError('not_found', 404);
   return asset;
 }
@@ -59,7 +64,7 @@ async function removeBytes(owner: string, asset: Asset) {
   // Delete chunks even if an interrupted upload never created its files record.
   await mongoose.connection.db!.collection('private_assets.chunks').deleteMany({ files_id: id });
   await mongoose.connection.db!.collection('private_assets.files').deleteOne({ _id: id });
-  await Libraries.updateOne({ _id: owner, 'assets.id': asset.id }, { $pull: { assets: { id: asset.id } }, $inc: { usedBytes: -asset.bytes } });
+  await Libraries.updateOne({ _id: owner, 'assets.id': asset.id }, { $pull: { assets: { id: asset.id } }, $inc: { usedBytes: asset.purpose === 'pet-mood' ? 0 : -asset.bytes } });
 }
 async function recover(owner: string) {
   const library = await Libraries.findById(owner).lean();
@@ -67,12 +72,18 @@ async function recover(owner: string) {
     if (asset.state === 'deleting' || asset.state === 'uploading' && Date.parse(asset.createdAt) < Date.now() - 60 * 60_000) await removeBytes(owner, asset);
   }
 }
-export async function listAssets(owner: string) {
+async function configuredMoodImages(owner: string): Promise<number> {
+  const user = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: owner } } }).select('_id').lean();
+  const record = user && await PetSettingsSchema.findOne({ userId: user._id }).select('settings.moods').lean();
+  return moodImageSlots(savedPetMoods(record?.settings?.moods)).length;
+}
+export async function listAssets(owner: string, purpose?: 'pet-mood') {
   const quota = await assetQuota(owner);
+  if (purpose === 'pet-mood' && quota.planTier === 'free') throw new AssetError('plan_required', 403);
   return withAssetLibrary(owner, async () => {
     await recover(owner);
     const library = await Libraries.findById(owner).lean();
-    return { ...quota, usedBytes: library?.usedBytes ?? 0, assets: (library?.assets ?? []).filter(a => a.state === 'ready').reverse() };
+    return { ...quota, usedBytes: library?.usedBytes ?? 0, ...(purpose ? { configuredMoodImages: await configuredMoodImages(owner), storedMoodImages: (library?.assets ?? []).filter(a => a.purpose === 'pet-mood').length, moodImageLimit: moodImageLimit(quota.planTier) } : {}), assets: (library?.assets ?? []).filter(a => a.state === 'ready' && (purpose === 'pet-mood' ? a.purpose === 'pet-mood' : a.purpose !== 'pet-mood')).reverse() };
   });
 }
 async function inspectFile(path: string): Promise<Pick<Asset, 'mime' | 'kind' | 'width' | 'height' | 'duration'>> {
@@ -107,16 +118,22 @@ async function inspectFile(path: string): Promise<Pick<Asset, 'mime' | 'kind' | 
     return { mime, kind: mime.startsWith('image/') ? 'image' : 'video', width: stream.width, height: stream.height };
   } catch { throw new AssetError('invalid_media', 415); }
 }
-export async function uploadAsset(owner: string, file: { path: string; originalname: string; size: number }) {
+export async function uploadAsset(owner: string, file: { path: string; originalname: string; size: number }, purpose?: 'pet-mood') {
   if (!file.size || file.size > MAX_ASSET_BYTES) throw new AssetError('file_size', 413);
   const media = await inspectFile(file.path);
   return withAssetLibrary(owner, async () => {
-    const { quotaBytes } = await assetQuota(owner);
+    const { quotaBytes, planTier } = await assetQuota(owner);
+    if (purpose === 'pet-mood' && planTier === 'free') throw new AssetError('plan_required', 403);
+    if (purpose === 'pet-mood') {
+      if (await configuredMoodImages(owner) > moodImageLimit(planTier)) throw new AssetError('mood_image_limit', 413);
+    }
+    if (purpose === 'pet-mood' && media.kind !== 'image') throw new AssetError('unsupported_type', 415);
     await Libraries.updateOne({ _id: owner }, { $setOnInsert: { usedBytes: 0, assets: [] } }, { upsert: true });
     await recover(owner);
-    const asset: Asset = { id: new mongoose.mongo.ObjectId().toHexString(), name: file.originalname.replace(/[\x00-\x1f\x7f/\\]/g, '_').slice(0, 120) || randomUUID(), bytes: file.size, ...media, createdAt: new Date().toISOString(), state: 'uploading' };
-    const reserved = await Libraries.updateOne({ _id: owner, usedBytes: { $lte: quotaBytes - asset.bytes }, [`assets.${MAX_ASSETS - 1}`]: { $exists: false } }, { $inc: { usedBytes: asset.bytes }, $push: { assets: asset } });
-    if (!reserved.modifiedCount) throw new AssetError('quota_exceeded', 413);
+    const asset: Asset = { id: new mongoose.mongo.ObjectId().toHexString(), name: file.originalname.replace(/[\x00-\x1f\x7f/\\]/g, '_').slice(0, 120) || randomUUID(), bytes: file.size, ...media, createdAt: new Date().toISOString(), state: 'uploading', ...(purpose ? { purpose } : {}) };
+    const countFilter = { $expr: { $lt: [{ $size: { $filter: { input: { $ifNull: ['$assets', []] }, as: 'item', cond: purpose ? { $eq: ['$$item.purpose', 'pet-mood'] } : { $ne: [{ $ifNull: ['$$item.purpose', ''] }, 'pet-mood'] } } } }, purpose ? moodImageLimit(planTier) : MAX_ASSETS] } };
+    const reserved = await Libraries.updateOne({ _id: owner, ...countFilter, ...(purpose ? {} : { usedBytes: { $lte: quotaBytes - asset.bytes } }) }, { $inc: { usedBytes: purpose ? 0 : asset.bytes }, $push: { assets: asset } });
+    if (!reserved.modifiedCount) throw new AssetError(purpose ? 'mood_image_limit' : 'quota_exceeded', 413);
     try {
       const b = await bucket();
       const upload = b.openUploadStreamWithId(new mongoose.mongo.ObjectId(asset.id), asset.name, { metadata: { owner, mime: asset.mime } });
@@ -128,14 +145,14 @@ export async function uploadAsset(owner: string, file: { path: string; originaln
 }
 export async function deleteAsset(owner: string, id: string) {
   return withAssetLibrary(owner, async () => {
-    const asset = await findAsset(owner, id);
+    const asset = await findAsset(owner, id, true);
     for (const inUse of consumers.values()) if (await inUse(owner, id)) throw new AssetError('in_use', 409);
     await Libraries.updateOne({ _id: owner, 'assets.id': id }, { $set: { 'assets.$.state': 'deleting' } });
     await removeBytes(owner, asset);
   });
 }
-export async function readAsset(owner: string, id: string, start?: number, end?: number) {
-  const asset = await findAsset(owner, id);
+export async function readAsset(owner: string, id: string, start?: number, end?: number, includeMood = false) {
+  const asset = await findAsset(owner, id, includeMood);
   const b = await bucket();
   return { asset, stream: b.openDownloadStream(new mongoose.mongo.ObjectId(id), { start, end }) };
 }

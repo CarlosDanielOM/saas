@@ -1,0 +1,21 @@
+# DIMA-046 pet moods routing observation — 2026-11-03
+
+## Scope and route
+
+This was a cross-project UI, backend integration, and source-backed contract-docs task with a do-not-deploy constraint. Task routing used GPT-6.1 Sol for UI/UX, GPT-6.1 Terra for implementation, and GPT-6 Luna for documentation. The lead review caught concrete issues around mood-image quotas, PNG readiness, terminal hold behavior after a generation change, and Free-tier access. Those corrections were addressed in the task. This is evidence about routing for this task, not a broad comparison of model capability.
+
+## Verification state
+
+- Hardened API candidate `api-836798d7077c` passed its TypeScript build and compiled regressions (400 tests across 43 serial files). The full Pet runtime suite passed normally; desktop AI passed 19 groups. A Pet runtime fault variant deliberately threw on the first mood extraction and instruction; speech still played/completed and the next valid request worked. This is task-specific API resilience evidence.
+- Site focused Pet Vitest passed 82 tests across five files. Candidate `site-ae93b4fff1bc` built under Node 24/4 CPUs/3 GiB JS heap in 45.159 seconds, with the existing initial-bundle and CommonJS warnings. Its mood mock, 320/390/1280 browser checks in dark/light and Spanish, Axe (zero findings), and Chromium mood-image/playback behavior passed. Existing `pet-runtime-browser` passed; `pet-configuration-browser` passed after its favorites fixture returned `[]`, with one dev-only owner-switch race assertion skipped in the production bundle.
+- API desktop fault injection passed all 19 groups. `pet-lease-recovery.mjs` passed lost-ACK/renewal/progress/rate-limit/expiry/reacquisition/rejection cases. The scoped five-file Pet spec typecheck and both app builds passed.
+- The full-repository spec typecheck has unrelated baseline errors: roulette `card-highlight.spec.ts` lacks `node:test`/`node:assert` types, while adding Node types exposes a preexisting `Timeout` versus `number` conflict in `overlay-asset-cache.ts`. Do not claim the full-repo spec typecheck passed.
+- The prior UI configuration check's Custom Fish lookup failure was traced to a fixture: `/speech/favorites` returned `{}` where the code expects an array. The fixture now returns `[]` and the rerun passed.
+- The final ordinary API Pet runtime rerun passed with the new normal-instruction assertion. The extraction/instruction fault variant also passed, including the next-valid-request recovery.
+- The development preview compiled, but HTML requests stalled. Node 26 site helper run `site-92dafbe6d866` failed at prerender. Node 24 retry `site-d0aad12f8ffd` was interrupted at the manager request, so the attempts do not establish a Node-version issue.
+- Diagnostics found esbuild threads blocked in `mem_cgroup_handle_over_high` while additional agent scopes and desktop Cargo shared `dima-dev.slice`. The lead identified this as a resource-routing mistake; it is not evidence of model or Node failure. All task scopes were stopped.
+- The manager returned the lane. SaaS builds now use the SaaS-owned `saas-ops` path and limits outside the desktop slice. Helper cleanup completed; no task test containers or networks remain.
+
+## Routing implication
+
+The 82 focused site tests, exact site candidate browser evidence, and hardened API checks are useful task-specific evidence for the assigned Sol UI/Terra implementation route; the lead's corrections show why integration review remains valuable. Luna's contract documentation is source-backed. Candidate verification and helper cleanup are complete; this is not a deployed release. Keep the existing user-provided model tier unchanged. Make no broad model-quality or speed conclusion from this task or the earlier resource-routed helper attempts. No deployment or production changes were made or requested; real desktop VTS/OBS acceptance remains out of scope.

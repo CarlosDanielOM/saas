@@ -47,7 +47,7 @@ mock.module('./readiness.js', { namedExports: { refreshPetReadiness: async (owne
     assert.ok(readinessDeletes > 0, 'clear stale generation before refreshing'); readinessRefreshes.push(ownerId);
 } } });
 mock.module('./wakeups.js', { namedExports: { PET_WAKE: 'pet:test', petWakeups: { notify: () => {} } } });
-const { cancelPetRequest, finishRequest, invalidatePet } = await import('./state.js');
+const { cancelPetRequest, finishRequest, invalidatePet, requestView } = await import('./state.js');
 
 test('cancelling A loses its CAS after completion/replacement; B generation and lease remain untouched', async () => {
     interleave = true;
@@ -87,6 +87,14 @@ test('released players never see the internal queued status', async () => {
     const view = requestView({ _id: 'request-q', operation: 'talk', status: 'queued', version: 1 } as never);
     assert.equal(view!.status, 'accepted');
     assert.equal(requestView({ _id: 'request-r', operation: 'ask', status: 'playing', version: 3 } as never)!.status, 'playing');
+});
+test('request mood is optional and gated at every status, including terminal', () => {
+    const row = { _id: 'mood', operation: 'talk', status: 'ready', version: 4, mood: 'happy' } as const;
+    assert.equal(requestView(row as never, true)?.mood, 'happy');
+    assert.equal('mood' in requestView(row as never, false)!, false);
+    assert.equal(requestView({ ...row, status: 'completed', version: 6 } as never, true)?.mood, 'happy');
+    assert.equal(requestView({ ...row, mood: { invalid: true } } as never, true)?.mood, 'neutral');
+    assert.equal(requestView({ ...row, get mood(): never { throw new Error('broken'); } } as never, true)?.mood, 'neutral');
 });
 
 test('an unconfirmed Pet stop keeps activity until the captured lease deadline; player confirmation releases it', async () => {

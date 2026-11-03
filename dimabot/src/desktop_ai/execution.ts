@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { moodInstruction } from '../pets/moods.js';
+import { safelyBuildMoodInstruction } from '../pets/mood_decoration.js';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -85,7 +87,8 @@ export async function executeDesktopTurn(turn: DesktopTurn, signal: AbortSignal)
             runOperation: (id, kind, task) => operation(turn._id, id, kind, task) },
         ...(persona ? { pet: { name: persona.settings.name, language: persona.settings.tts.language,
             maxReplyLength: Math.min(280, persona.settings.behavior.maxReplyLength), persona: persona.runtime.personality,
-            signal, usageRequestId: `${turn._id}:llm`, allowActions: true, assertCurrent } } : {}) });
+            signal, usageRequestId: `${turn._id}:llm`, allowActions: true, assertCurrent,
+            ...(persona.moods?.enabled ? { moodInstruction: safelyBuildMoodInstruction(() => moodInstruction(persona.settings.moods), turn.channelId) } : {}) } } : {}) });
     if (result.error || typeof result.message !== 'string' || !result.message.trim()) throw new OAuthError('generation_failed', 503);
     let text = truncateReply(result.message, persona ? Math.min(280, persona.settings.behavior.maxReplyLength) : 280);
     if (!text) throw new OAuthError('generation_failed', 503);
@@ -106,7 +109,7 @@ export async function executeDesktopTurn(turn: DesktopTurn, signal: AbortSignal)
     }
     await assertCurrent();
     const saved = await DesktopAiTurn.findOneAndUpdate({ _id: turn._id, status: 'running' },
-        { $set: { replyText: text }, $inc: { revision: 1 } }, { new: true }).lean();
+        { $set: { replyText: text, ...(persona?.moods?.enabled ? { moodText: result.message } : {}) }, $inc: { revision: 1 } }, { new: true }).lean();
     if (!saved) return;
     if (saved.speech && saved.speech.status !== 'cancelled') {
         if (persona) await speakPet(saved, username);
@@ -120,7 +123,7 @@ export async function speakPet(turn: DesktopTurn, username: string) {
         if (!await claimSpeechPreparing(turn._id)) return;
         const result = await operation(turn._id, 'pet_talk', 'speech', async () => {
             if (!await speechStillPreparing(turn._id)) return { prevented: true as const };
-            return admitPetAction({ channelId: turn.channelId, operation: 'talk', text: turn.replyText!,
+            return admitPetAction({ channelId: turn.channelId, operation: 'talk', text: turn.replyText!, moodText: turn.moodText,
             origin: { kind: 'oauth_desktop', id: turn._id, occurredAt: turn.createdAt.toISOString(), sessionId: turn.sessionId }, actionKey: 'desktop-turn',
             actor: { userId: turn.channelId, displayName: username } });
         });

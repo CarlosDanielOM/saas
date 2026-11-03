@@ -85,13 +85,16 @@ Path `/socket.io/`; static namespaces `/desktop` (auth `{v:1,accessToken}`) and 
 All `serverTime`, `expiresAt` and `startBefore` wire values are **numeric epoch milliseconds**. Lease duration values/positions are numeric milliseconds. Desktop hello is `{v:1,sessionId,channelId,scopes,features:['reauth']}`. Existing hello fields are unchanged; clients ignore unknown fields.
 
 ```ts
-RequestView = { requestId, operation: 'talk'|'ask'|'tts', status, version, text?, errorCode? }
+type Mood8 = 'happy'|'excited'|'sad'|'angry'|'surprised'|'scared'|'embarrassed'|'thinking'
+type Mood = 'neutral'|Mood8
+RequestView = { requestId, operation: 'talk'|'ask'|'tts', status, version, text?, errorCode?, mood?: Mood }
 // 'tts' is Read-TTS's normal-queue handoff; it reuses synthesized normal audio, not a pet-provider synthesis request.
-// text is optional resolved output text.
+// text is optional resolved output text. mood is sent only when the channel is Premium/Pro and moods are enabled.
 // status: accepted|generating|synthesizing|ready|playing|completed|cancelled|failed|expired
 pet:snapshot = { v:1,serverTime,peerId,generation,settingsRevision,appearance,playback,
   sources:{independent:boolean,readTts:boolean},ttsAudio:'pet'|'overlay',
-  assets:{idleUrl:string|null,talkingUrl:string|null},active:RequestView|null,
+  moods?:{available:boolean,enabled:boolean,holdMs?:number,emotions?:Record<Mood8,string[]>},
+  assets:{idleUrl:string|null,talkingUrl:string|null,moods?:Partial<Record<Mood8,{idleUrl:string|null,talkingUrl:string|null}>>},active:RequestView|null,
   lease:{leaseId,holderPeerId,expiresAt}|null }
 pet:request = {v:1,generation,request:RequestView}
 pet:play = {v:1,requestId,generation,leaseId,startBefore,
@@ -268,7 +271,7 @@ Path A copies the already synthesized normal-TTS file into private `dima-pet-*` 
 Path B decodes at most 60 seconds of mono 8 kHz float PCM using ffmpeg (5-second timeout, bounded stdout), then computes RMS in 40 ms windows, scaled by four and clamped to 0..1, at most 1,500 values. Envelopes remain in memory. Envelope failure or files beyond pet limits retain the normal overlay file/audio path and omit animation. No follow acquires a lease, issues a ticket, exposes audio or creates usage. Follow goes to the selected authenticated VTS controller and ready public PNG peers. Initial envelope is required; later updates may omit it:
 
 ```ts
-pet:follow = {v:1,followId,generation,envelope?:{stepMs:40,values:number[]},positionMs,serverTime}
+pet:follow = {v:1,followId,generation,envelope?:{stepMs:40,values:number[]},positionMs,serverTime,mood?:Mood}
 pet:follow-end = {v:1,followId,generation}
 ```
 
@@ -321,3 +324,23 @@ R10 capacity-waiter lifecycle (accepted source): the existing Set retains at mos
 R11 accepted-backlog discovery (accepted source): Redis normal-queue membership remains authoritative for accepted ungenerated work, including concurrent admissions beyond the local head/claim and waiter bounds. Actual capacity/terminal release and the existing guarded 15-second recovery trigger a bounded discovery pass. Three retained iterators rotate across existing pet peers, Studio peers and legacy speech namespaces, advancing at most 64 registry entries and probing at most eight distinct idle channel queues per pass. Offline and duplicate entries count toward the scan budget; each iterator sweep is limited to its starting registry size so additions cannot extend it indefinitely. No whole-registry copy or offset scan is used. Discovery does not filter by current read-TTS settings: disabled read-TTS can resume accepted normal overlay work. All hints reenter the real queue, which revalidates output readiness, controls, session identity and capacity before synthesis/billing. Empty/offline probes do not schedule another pass; existing readiness/reconnect and recovery repair missed hints. No new timer, durable index, expiry or loss policy is added. Generated or possibly emitted items have already left Redis queue membership and are never reconstructed from payload keys or replayed after restart.
 
 `src/utils/tts/tts_session.test.ts` includes an opt-in actual-Lua regression for the manager's disposable Dragonfly candidate dependency. With `DIMA032_TEST_REDIS_URL=redis://redis:6379`, execute the compiled `dist/utils/tts/tts_session.test.js` using `node --test` inside the isolated candidate check. It allows only the helper's private `redis` alias or loopback, rejects credentials, uses a random fixture-owned channel namespace and deletes only that namespace. It verifies a nonempty default-off pop, empty queue, minimum change between peek/CAS, reset with processing/orphan payloads, delayed cleanup after a post-boundary reused-ID enqueue, and a reset between peek/CAS. Ordinary source runs explicitly skip this actual-Lua test when the URL is absent. Mocked storage tests and TypeScript checks do not establish Dragonfly runtime acceptance.
+
+## DIMA-046 pet moods (implemented candidate; not deployed or accepted)
+
+`RequestView.mood` is additive and optional. It is included in pet requests/snapshots only while the channel is Premium or Pro and `settings.moods.enabled` is true; it includes `neutral` explicitly so a client can clear an earlier expression. The eight configurable moods are `happy`, `excited`, `sad`, `angry`, `surprised`, `scared`, `embarrassed`, and `thinking`; `neutral` is the fallback and has no settings mapping. Unknown client mood values should be treated as neutral. Moods are fixed once per request and attached no later than `ready`.
+
+For `ask` and desktop Pet conversations, the AI is instructed to prefix a reply with one configured emotion tag. Owner-approved clarification: if all eight emotion lists are empty, omit this impossible instruction and resolve the reply to `neutral`. `talk` uses its supplied text; Read-TTS uses the original message text. The server selects the first known expressive emotion or sound tag before provider filtering, after existing aliases are normalized. Delivery/effect tags such as `whisper` and `pause` are skipped. A known tag absent from the configured lists, or no known tag, resolves to `neutral`. Existing TTS filtering and provider behavior do not change. Configuration defaults are disabled, a 2,000 ms hold, and the existing default tag lists; valid hold values are integer milliseconds from 0 through 10,000. See [PET_CONFIGURATION.md](PET_CONFIGURATION.md#dima-046-pet-moods-candidate-contract).
+
+For entitled Premium/Pro snapshots, `pet:snapshot.moods` contains `{available:true,enabled,holdMs,emotions}` even when moods are disabled; unavailable configuration is the minimal `{available:false,enabled:false}` shape. Browser snapshots may include `assets.moods` only when moods are enabled, mapping active configured image slots to private capability URLs. Image fields are optional and absent image URLs are `null`; ordinary idle/talking images remain the fallback. With Premium, the first eight configured image slots are active. Slot order is mood order `happy`, `excited`, `sad`, `angry`, `surprised`, `scared`, `embarrassed`, `thinking`, then `idleAssetId` before `talkingAssetId` within each mood. Pro activates up to sixteen. A downgrade retains all saved settings and images; over-limit slots stay stored but inactive until the tier allows them again.
+
+Clients show the selected mood when Pet playback actually starts (`playing` for request playback); for PNG, keep the ordinary image visible while the optional mood image loads, then use it if available. On a terminal request, retain the last shown mood for `holdMs` and then return to neutral; a new playing request replaces it immediately. A missing or broken mood image falls back to the ordinary state image, does not change renderer/audio readiness, and is retried once on the next request; no idle image retry timer runs. Desktop VTS expression/hotkey mappings are local to the desktop model and are not fields in the server pet configuration.
+
+Read-TTS overlay audio (`ttsAudio:'overlay'`, Path B) has no `PetRequest` and no `pet:request` mood. Instead, each existing `pet:follow` may carry the same optional `mood` while enabled and entitled. This is an additive field for desktop controllers consuming the existing follow event; Path A Read-TTS (`ttsAudio:'pet'`) uses the normal `RequestView.mood` field. Existing envelope/follow timing and audio ownership are unchanged.
+
+This section describes the implemented source candidate only. It has not been deployed or accepted; production, desktop VTS, browser/OBS, and real model checks remain outstanding.
+
+### Pet decoration resilience
+
+Mood data is optional decoration and must never become a failure or wait in the parent Pet request, desktop speech, billing, normal Read-TTS, socket/session, settings-page, or browser playback path. Keep strict validation for core settings and playback protocol fields. If submitted mood settings alone are malformed, sanitize them to the default disabled configuration and emit only a bounded warning; invalid stored mood settings likewise default to disabled values. Empty emotion lists are valid. Extraction failures resolve to neutral, instruction-building failures omit the optional instruction, malformed wire mood metadata is ignored/defaulted, and clients normalize unknown mood names to neutral. These optional fields remain additive under protocol v1, including the already-approved `pet:follow.mood`; no new event or version is introduced.
+
+Mood image handling is best effort. On save, remove invalid/new foreign image references or restore the previous mapping for that slot; if an over-quota image edit is submitted, retain the previous image mapping while still saving valid core settings. An already-saved reference that no longer resolves does not prevent other Pet settings from being saved. Asset URL/image-selection errors omit mood images and use ordinary assets. Invalid mood data or image diagnostics are bounded and contain no raw message text, mood payloads, asset IDs, or provider/error detail. For `ask`, prefetch the optional TTS cue settings without awaiting or retrying that lookup; if the result is late or fails, preserve the existing text. None of these paths may fail, delay, cancel, or disconnect the parent Pet request/speech, billing, Read-TTS, session, settings page, or browser. A later valid request continues through the ordinary path.

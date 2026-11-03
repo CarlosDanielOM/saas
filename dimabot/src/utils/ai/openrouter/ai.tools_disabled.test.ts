@@ -306,6 +306,16 @@ test('pet rejects speech, nested, unoffered and repeated actions', async () => {
     assert.equal((executeTool.mock.calls[0].arguments[1] as any).command, 'ban viewer 600');
 });
 
+test('pet mood instruction reaches the provider and raw cues survive the chat response', async () => {
+    const fetchMock = mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: '[happy] Hello' } }] }), { status: 200 }));
+    const result = await chat({ ...options, invocation: 'pet', disableTools: true,
+        pet: { name: 'Pip', language: 'en', maxReplyLength: 100, persona: { prompt: 'Hi', rules: [] }, signal: new AbortController().signal,
+            usageRequestId: 'r', allowActions: false, moodInstruction: 'Begin with [happy].' } });
+    const body = JSON.parse(String(fetchMock.mock.calls[0].arguments[1]?.body));
+    assert.ok(body.messages.some((message: any) => message.content === 'Begin with [happy].'));
+    assert.equal(result.message, '[happy] Hello');
+});
+
 test('aborted pet request does not reach provider or tools', async () => {
     const controller = new AbortController(); controller.abort();
     const fetchMock = mock.method(globalThis, 'fetch', async () => assert.fail('provider called'));

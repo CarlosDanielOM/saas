@@ -478,7 +478,7 @@ assert.equal((await call(`${turns}/${afterTtsStop.turn_id}/speech/cancel`, token
 ttsObserver.ws.close(); legacySpeech.ws.close(); legacyOther.ws.close(); groups++;
 
 // Configure a real private Pet asset and select the initiating desktop as audio owner.
-const { PetRuntime } = await import('/app/dist/schemas/pet_runtime.schema.js');
+const { PetRuntime, PetRequest } = await import('/app/dist/schemas/pet_runtime.schema.js');
 const assetId = new ObjectId();
 const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
 const upload = new GridFSBucket(db, { bucketName: 'private_assets' }).openUploadStreamWithId(assetId, 'pet.gif', { metadata: { owner, mime: 'image/gif' } });
@@ -489,7 +489,7 @@ await db.collection('asset_libraries').insertOne({ _id: owner, usedBytes: gif.le
 const settingsPath = `/pets/${owner}/settings`;
 let petConfig = await call(settingsPath, 'pet-owner-token');
 assert.equal(petConfig.status, 200); petConfig = petConfig.body.data;
-const settings = { ...petConfig.settings, enabled: true,
+const settings = { ...petConfig.settings, enabled: true, moods: { ...petConfig.settings.moods, enabled: true },
   appearance: { kind: 'png', idleAssetId: String(assetId), talkingAssetId: String(assetId) },
   behavior: { ...petConfig.settings.behavior, cooldownSeconds: 3600, respondToChat: false, respondToEvents: false } };
 r = await call(settingsPath, 'pet-owner-token', 'PUT', { revision: petConfig.revision, settings });
@@ -510,6 +510,7 @@ const renewal = setInterval(() => {
 await PetRuntime.updateOne({ _id: ownerId }, { $set: { lastAcceptedAt: new Date() } });
 const petCallsBefore = await redis.lLen('desktop:test:llm');
 const petAudioBefore = (await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).filter(item => item.kind === 'tts').length;
+await redis.set('desktop:test:mode', 'moods');
 const pet = await submit(payload({ target: 'pet', silent: false, text: 'Hey Dima, how are you?' }));
 assert.equal(pet.status, 202);
 const petReady = await until(async () => {
@@ -520,6 +521,12 @@ const petReady = await until(async () => {
 assert.equal(petReady.speech.transport, 'pet_socket'); assert.equal(petReady.speech.animate_pet, true);
 assert.equal(petReady.speech.audio_url, undefined);
 const petPlay = await desktop.event('pet:play', item => item.requestId === petReady.pet_request_id, 25_000);
+await redis.del('desktop:test:mode');
+const firstMood = process.env.DIMA046_MOOD_FAILURES === 'first' ? 'neutral' : 'angry';
+assert.equal((await PetRequest.findById(petReady.pet_request_id).lean()).mood, firstMood, 'desktop mood extraction failure cannot prevent actual Pet playback');
+assert.equal(petReady.reply_text.includes('[anger]'), false, 'existing provider filtering still strips raw cues');
+assert.equal(desktop.events.find(item => item.event === 'pet:request' && item.data.request.requestId === petReady.pet_request_id && item.data.request.status === 'ready').data.request.mood, firstMood);
+assert.equal(JSON.stringify(JSON.parse((await redis.lRange('desktop:test:llm', -1, -1))[0]).messages).includes('Begin your reply with exactly one emotion tag'), process.env.DIMA046_MOOD_FAILURES !== 'first', 'desktop instruction failure omits only decoration');
 assert.equal(await redis.lLen('desktop:test:llm'), petCallsBefore + 1, 'Pet uses one shared AI answer');
 const petCalls = (await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).filter(item => item.kind === 'tts');
 assert.equal(petCalls.length, petAudioBefore + 1); assert.equal(petCalls.at(-1).body.text, petReady.reply_text);

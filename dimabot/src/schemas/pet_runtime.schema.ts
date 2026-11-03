@@ -1,4 +1,5 @@
 import { Schema, model } from 'mongoose';
+import type { Mood } from '../pets/moods.js';
 
 export const PET_STATUSES = ['queued', 'accepted', 'generating', 'synthesizing', 'ready', 'playing', 'completed', 'cancelled', 'failed', 'expired'] as const;
 export type PetStatus = typeof PET_STATUSES[number];
@@ -8,7 +9,7 @@ export interface PetRequestRecord {
     origin: { kind: 'chat-command' | 'twitch-event' | 'tts-queue' | 'oauth_desktop'; id: string; occurredAt: string; sessionId?: string };
     actionKey: string; actor: { userId: string; displayName: string; chat?: { login: string; message: string; badges: { set_id: string; id: string; info: string }[] } }; payloadHash: string;
     admitted: boolean; startBefore?: Date; generation: number; settingsRevision: number; status: PetStatus; version: number;
-    outputText?: string; errorCode?: string; phaseDeadline: Date;
+    outputText?: string; errorCode?: string; phaseDeadline: Date; mood?: Mood; moodText?: string;
     /** pet.talk: emotes Twitch tagged in the chat message (skipped when the channel ignores emotes). */
     emoteNames?: string[];
     deliveryAttempted?: boolean; audioFetched?: boolean; playbackStarted?: boolean;
@@ -23,7 +24,7 @@ const request = new Schema<PetRequestRecord>({
     actor: { userId: String, displayName: String, chat: { login: String, message: String, badges: [{ set_id: String, id: String, info: String, _id: false }] } }, payloadHash: String,
     admitted: { type: Boolean, default: false }, startBefore: Date, generation: Number, settingsRevision: Number, status: { type: String, enum: PET_STATUSES }, version: Number,
     deliveryAttempted: Boolean, audioFetched: Boolean, playbackStarted: Boolean, lane: { type: String, enum: ['independent', 'tts'] }, ttsSpeechId: String, privateDir: String, outputText: String, errorCode: String, phaseDeadline: Date,
-    emoteNames: { type: [String], default: undefined },
+    emoteNames: { type: [String], default: undefined }, mood: String, moodText: String,
     audio: { type: new Schema({ path: String, mimeType: String, durationMs: Number }, { _id: false }), default: null },
     createdAt: Date, expiresAt: Date
 }, { versionKey: false, collection: 'pet_requests' });

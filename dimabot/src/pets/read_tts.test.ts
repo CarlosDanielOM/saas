@@ -3,10 +3,12 @@ import { mock, test, after } from 'node:test';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { defaultPetMoods, resolvePetMood } from './moods.js';
 import { registerReadTtsBridge, prepareReadTts as prepareOnly, observeReadTtsRuntime, releaseReadTts, reportReadTts, readTtsTerminal, invalidateReadTts, readTtsAvailable, reserveReadTts, resumeReadTts, scheduleReadTtsResume, protectReadTtsTurn, readTtsTurnCurrent, readTtsOwners } from './tts_bridge.js';
 const owner = '012345678901234567890123', channel = '123456';
 let runtime: any, config: any, rows: Map<string, any>, events: any[], endings: string[];
 let ticketFails = false, attemptedFails = false;
+let moodExtractionFails = false;
 let afterPrivateCreate: (() => Promise<void>) | undefined, afterPrivateLink: (() => Promise<void>) | undefined, afterAttempted: (() => Promise<void>) | undefined;
 let afterRuntimeRead: (() => Promise<void>) | undefined;
 let afterConfigurationRead: (() => Promise<void>) | undefined;
@@ -33,6 +35,10 @@ function apply(row: any, update: any) { for (const [key, value] of Object.entrie
     target[parts.at(-1)!] = structuredClone(value);
 } for (const [key, value] of Object.entries(update.$max ?? {})) { if (!get(row, key) || get(row, key) < (value as Date)) apply(row, { $set: { [key]: value } }); } }
 const query = (read: () => any) => ({ lean: async () => structuredClone(await read()) });
+mock.module('./moods.js', { namedExports: { resolvePetMood: (...args: Parameters<typeof resolvePetMood>) => {
+    if (moodExtractionFails) throw new Error('injected mood failure');
+    return resolvePetMood(...args);
+} } });
 mock.module('../schemas/users.schema.js', { defaultExport: { findOne: () => ({ select: () => query(() => ({ _id: owner })) }) } });
 mock.module('../server/services/pet_settings.service.js', { namedExports: { getPetConfiguration: async () => { const snapshot = structuredClone(config); const barrier = afterConfigurationRead; afterConfigurationRead = undefined; if (barrier) await barrier(); return snapshot; } } });
 mock.module('./peers.js', { namedExports: { petPeers: peers, selectedVtsController: async () => null } });
@@ -65,7 +71,7 @@ mock.module('./state.js', { namedExports: { runtimeFor: async () => structuredCl
         runtime.generation++; if (runtime.activeRequestId) await finish(runtime.activeRequestId, 'cancelled');
         runtime.lease = null; runtime.activeRequestId = null; return true;
     },
-    requestView: (row: any) => ({ requestId: row._id, operation: row.operation, status: row.status, version: row.version, text: row.outputText }) } });
+    requestView: (row: any, enabled: boolean) => ({ requestId: row._id, operation: row.operation, status: row.status, version: row.version, text: row.outputText, ...(enabled && row.mood ? { mood: row.mood } : {}) }) } });
 mock.module('../handlers/tts_queue.handler.js', { namedExports: { ttsQueueHandler: { resumeIfIdle: async (channel: string) => { resumed.push(channel); } } } });
 const { startReadTts, reconcileReadTtsStartup } = await import('./read_tts.js');
 let close = startReadTts();
@@ -75,16 +81,57 @@ async function reset() {
         lease: { leaseId: 'lease', holderPeerId: peer.id, expiresAt: new Date(Date.now() + 15000) } };
     config = { revision: 1, settings: { enabled: true, sources: { independent: false, readTts: true }, ttsAudio: 'pet',
         tts: { enabled: false }, personality: { source: 'profile', profileId: 'missing' }, appearance: { kind: 'png' }, playback: { target: 'browser' } }, runtime: { enabled: false, readTtsEnabled: true } };
-    rows = new Map(); events = []; endings = []; afterRuntimeRead = afterClaim = afterConfigurationRead = afterPrivateCreate = afterPrivateLink = afterAttempted = undefined; resumed.length = 0; ticketFails = attemptedFails = false; peer.socket.connected = peer.audioReady = peer.renderReady = true;
+    rows = new Map(); events = []; endings = []; afterRuntimeRead = afterClaim = afterConfigurationRead = afterPrivateCreate = afterPrivateLink = afterAttempted = undefined; resumed.length = 0; ticketFails = attemptedFails = moodExtractionFails = false; peer.socket.connected = peer.audioReady = peer.renderReady = true;
 }
 function input(speechId = 'speech') { return { channelId: channel, speechId, file, mime: 'audio/wav', text: 'Existing normal TTS', cancelled: () => false,
     ended: async (reason: string) => { endings.push(reason); await releaseReadTts(channel, speechId); } }; }
 // Most legacy adapter cases exercise a complete handoff. New cases below inspect preparation separately.
-async function prepareReadTts(value: ReturnType<typeof input> & { holdMs?: number }) {
+async function prepareReadTts(value: ReturnType<typeof input> & { holdMs?: number; moodText?: string }) {
     const route = await prepareOnly(value);
     if (route?.audio === 'pet' && route.emit && !await route.emit(() => true)) return route.fallback?.();
     return route;
 }
+test('raw TTS mood survives provider filtering in private playback and remains fixed', async () => {
+    await reset(); config.moods = { enabled: true }; config.settings.moods = defaultPetMoods();
+    await prepareReadTts({ ...input(), text: 'Hello', moodText: '[whisper] [anger] Hello' });
+    const row: any = [...rows.values()][0];
+    assert.equal(row.mood, 'angry');
+    assert.equal(events.find(event => event.event === 'pet:request')?.data?.request?.mood, 'angry');
+    config.settings.moods.emotions.angry = [];
+    assert.equal(row.mood, 'angry');
+    await releaseReadTts(channel, 'speech');
+});
+test('mood extraction failure still delivers the existing private audio once', async () => {
+    await reset(); config.moods = { enabled: true }; config.settings.moods = defaultPetMoods(); moodExtractionFails = true;
+    const route = await prepareReadTts({ ...input(), moodText: '[happy] Hello' });
+    assert.equal(route?.audio, 'pet');
+    const row: any = [...rows.values()][0];
+    assert.equal(row.mood, 'neutral');
+    assert.equal(events.filter(event => event.event === 'pet:play').length, 1);
+    assert.equal(events.find(event => event.event === 'pet:request')?.data.request.mood, 'neutral');
+    await finish(row._id, 'completed');
+    assert.deepEqual(endings, ['pet:completed']); assert.equal(runtime.ttsReservation, null);
+});
+test('mood extraction failure still follows overlay audio', async () => {
+    await reset(); config.settings.ttsAudio = 'overlay'; config.moods = { enabled: true }; config.settings.moods = defaultPetMoods(); moodExtractionFails = true;
+    const route = await prepareOnly({ ...input(), moodText: '[happy] Hello' });
+    assert.equal(route?.audio, 'overlay'); await reportReadTts(channel, 'speech', 'playing', 0.1);
+    assert.equal(events.find(event => event.event === 'pet:follow')?.data.mood, 'neutral');
+    await releaseReadTts(channel, 'speech'); assert.equal(runtime.ttsReservation, null);
+});
+test('overlay follow carries a fixed raw mood only while enabled', async () => {
+    await reset(); config.settings.ttsAudio = 'overlay'; config.moods = { enabled: true }; config.settings.moods = defaultPetMoods();
+    assert.equal((await prepareOnly({ ...input(), text: 'Hello', moodText: '[happy] Hello' }))?.audio, 'overlay');
+    await reportReadTts(channel, 'speech', 'playing', 0.1);
+    config.settings.moods.emotions.happy = [];
+    await reportReadTts(channel, 'speech', 'progress', 0.2);
+    assert.deepEqual(events.filter(event => event.event === 'pet:follow').map(event => event.data.mood), ['happy', 'happy']);
+    await releaseReadTts(channel, 'speech');
+    await reset(); config.settings.ttsAudio = 'overlay'; config.moods = { enabled: false }; config.settings.moods = defaultPetMoods();
+    await prepareOnly({ ...input(), moodText: '[happy] Hello' }); await reportReadTts(channel, 'speech', 'playing', 0.1);
+    assert.equal('mood' in events.find(event => event.event === 'pet:follow')!.data, false);
+    await releaseReadTts(channel, 'speech');
+});
 after(async () => { await close(); registerReadTtsBridge(); await rm(fileDir, { recursive: true, force: true }); });
 test('readTTS-only PNG works without desktop, independent voice/personality, and emits one private play', async () => {
     await reset(); assert.equal(await readTtsAvailable(channel), true);

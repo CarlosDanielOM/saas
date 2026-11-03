@@ -1,8 +1,10 @@
+import type { PetMood } from '../../models/pet-moods.model';
 /** Audio-free, monotonic image clock shared by all PNG follow packets. */
 export interface PetFollow {
   v: 1;
   followId: string;
   generation: number;
+  mood?: PetMood;
   envelope?: { stepMs: number; values: number[] };
   positionMs: number;
   serverTime: number;

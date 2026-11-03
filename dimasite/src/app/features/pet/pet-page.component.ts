@@ -7,6 +7,8 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, distinctUntilChanged, firstValueFrom, map, of, switchMap, timeout } from 'rxjs';
 import { PetAskLane, PetConfiguration, PetProvider, PetSettings } from '../../models/pet-settings.model';
+import { PET_MOODS, defaultPetMoods, normalizePetMoodsSettings, type PetMood8, type PetMoods } from '../../models/pet-moods.model';
+import { EXPRESSIVE_TTS_TAG_GROUPS } from '../../models/tts-settings.model';
 import type { FishVoiceFavorite } from '../../models/tts-settings.model';
 import { PetSettingsApiService } from '../../services/pet-settings-api.service';
 import { TtsSettingsApiService } from '../../services/tts-settings-api.service';
@@ -45,6 +47,17 @@ export class PetPageComponent {
   readonly favoritesError = signal(false);
   readonly recoveryUrl = this.fb.control('');
   readonly pickingAsset = signal<'idle' | 'talking' | null>(null);
+  readonly pickingMoodAsset = signal<{ mood: PetMood8; state: 'idle' | 'talking' } | null>(null);
+  readonly moodNames = PET_MOODS;
+  readonly moodDraft = signal<PetMoods>(defaultPetMoods());
+  readonly moodTier = computed(() => this.auth.getPlanTierForStreamer(this.streamer()));
+  readonly moodsAvailable = computed(() => this.moodTier() === 'premium' || this.moodTier() === 'pro');
+  readonly moodImageLimit = computed(() => this.moodTier() === 'pro' ? 16 : this.moodTier() === 'premium' ? 8 : 0);
+  readonly moodImageCount = computed(() => Object.values(this.moodDraft().images).reduce((n, image) => n + Number(!!image.idleAssetId) + Number(!!image.talkingAssetId), 0));
+  readonly unassignedEmotions = computed(() => {
+    const assigned = new Set(Object.values(this.moodDraft().emotions).flat());
+    return [...EXPRESSIVE_TTS_TAG_GROUPS.emotions, ...EXPRESSIVE_TTS_TAG_GROUPS.sounds].filter(tag => !assigned.has(tag));
+  });
   readonly runtime = signal<PetOwnerRuntime | null>(null);
   readonly runtimeLoading = signal(false);
   readonly runtimeError = signal(false);
@@ -65,6 +78,8 @@ export class PetPageComponent {
   readonly providers: PetProvider[] = ['piper', 'kokoro', 'fish'];
   readonly form = this.fb.group({
     enabled: false,
+    moodsEnabled: false,
+    moodHoldMs: [2000, [Validators.required, Validators.min(0), Validators.max(10000), Validators.pattern(/^\d+$/)]],
     independent: true,
     readTts: false,
     ttsAudio: this.fb.control<'pet' | 'overlay'>('pet'),
@@ -102,7 +117,7 @@ export class PetPageComponent {
   readonly draft = computed<PetSettings>(() => {
     this.values();
     const value = this.form.getRawValue();
-    return { enabled: value.enabled, sources: { independent: value.independent, readTts: value.readTts }, ttsAudio: value.ttsAudio, name: value.name.trim(),
+    return { moods: normalizePetMoodsSettings({ ...this.moodDraft(), enabled: value.moodsEnabled, holdMs: value.moodHoldMs }), enabled: value.enabled, sources: { independent: value.independent, readTts: value.readTts }, ttsAudio: value.ttsAudio, name: value.name.trim(),
       appearance: { kind: value.appearanceKind, idleAssetId: value.idleAssetId, talkingAssetId: value.talkingAssetId },
       playback: { target: value.playbackTarget, desktopSessionId: value.desktopSessionId, vtsSessionId: value.vtsSessionId },
       tts: { enabled: value.speechEnabled, provider: value.provider, language: value.language, voice: value.voice.trim() },
@@ -129,7 +144,9 @@ export class PetPageComponent {
     !this.favoriteVoiceOptions().some(voice => voice.id === this.draft().tts.voice));
   readonly valid = computed(() => {
     const value = this.draft();
-    return this.form.valid && (!value.sources.independent || (value.personality.source === 'custom' ? !!value.personality.prompt :
+    // Optional decoration errors must never block otherwise-valid pet settings.
+    const coreValid = Object.entries(this.form.controls).every(([name, control]) => name === 'moodHoldMs' || control.valid);
+    return coreValid && (!value.sources.independent || (value.personality.source === 'custom' ? !!value.personality.prompt :
       !!this.config()?.profiles.some(profile => profile.id === value.personality.profileId))) &&
       (!value.enabled || (value.appearance.kind !== 'png' || !!value.appearance.idleAssetId && !!value.appearance.talkingAssetId) &&
         (value.playback.target !== 'desktop' || !!value.playback.desktopSessionId) &&
@@ -196,7 +213,9 @@ export class PetPageComponent {
   reset(): void {
     const settings = this.config()?.settings;
     if (!settings) return;
-    this.form.reset({ enabled: settings.enabled, name: settings.name,
+    const moods = normalizePetMoodsSettings(settings.moods);
+    this.moodDraft.set(moods);
+    this.form.reset({ enabled: settings.enabled, name: settings.name, moodsEnabled: moods.enabled, moodHoldMs: moods.holdMs,
       independent: settings.sources?.independent ?? true, readTts: settings.sources?.readTts ?? false, ttsAudio: settings.ttsAudio ?? 'pet',
       appearanceKind: settings.appearance?.kind ?? 'png', idleAssetId: settings.appearance?.idleAssetId ?? null, talkingAssetId: settings.appearance?.talkingAssetId ?? null,
       playbackTarget: settings.playback?.target ?? 'browser', desktopSessionId: settings.playback?.desktopSessionId ?? null, vtsSessionId: settings.playback?.vtsSessionId ?? null,
@@ -280,6 +299,54 @@ export class PetPageComponent {
 
   assetId(state: 'idle' | 'talking'): string | null {
     return state === 'idle' ? this.draft().appearance.idleAssetId : this.draft().appearance.talkingAssetId;
+  }
+
+  resetMoodEmotions(): void {
+    if (!this.saving()) this.moodDraft.update(moods => ({ ...moods, emotions: defaultPetMoods().emotions }));
+  }
+
+  addMoodEmotion(mood: PetMood8, event: Event): void {
+    const select = event.target as HTMLSelectElement, tag = select.value;
+    if (!this.saving() && this.unassignedEmotions().includes(tag as typeof EXPRESSIVE_TTS_TAG_GROUPS.emotions[number])) {
+      this.moodDraft.update(moods => ({ ...moods, emotions: { ...moods.emotions, [mood]: [...moods.emotions[mood], tag] } }));
+    }
+    select.value = '';
+  }
+
+  removeMoodEmotion(mood: PetMood8, tag: string): void {
+    if (!this.saving()) this.moodDraft.update(moods => ({ ...moods, emotions: { ...moods.emotions, [mood]: moods.emotions[mood].filter(item => item !== tag) } }));
+  }
+
+  moodAssetId(mood: PetMood8, state: 'idle' | 'talking'): string | null {
+    return this.moodDraft().images[mood]?.[state === 'idle' ? 'idleAssetId' : 'talkingAssetId'] ?? null;
+  }
+
+  moodImageInactive(mood: PetMood8, state: 'idle' | 'talking'): boolean {
+    if (!this.moodAssetId(mood, state)) return false;
+    let slot = 0;
+    for (const name of PET_MOODS) for (const imageState of this.appearanceStates) {
+      if (this.moodAssetId(name, imageState)) slot++;
+      if (name === mood && imageState === state) return slot > this.moodImageLimit();
+    }
+    return false;
+  }
+
+  chooseMoodAsset(asset: DesignAsset): void {
+    const selection = this.pickingMoodAsset();
+    if (!selection || this.saving() || asset.kind !== 'image' || !this.moodsAvailable()) return;
+    this.moodDraft.update(moods => ({ ...moods, images: { ...moods.images, [selection.mood]: {
+      ...moods.images[selection.mood], [selection.state === 'idle' ? 'idleAssetId' : 'talkingAssetId']: asset.id
+    } } }));
+    this.pickingMoodAsset.set(null);
+  }
+
+  removeMoodAsset(mood: PetMood8, state: 'idle' | 'talking'): void {
+    if (this.saving()) return;
+    this.moodDraft.update(moods => {
+      const image = { ...moods.images[mood] };
+      delete image[state === 'idle' ? 'idleAssetId' : 'talkingAssetId'];
+      return { ...moods, images: { ...moods.images, [mood]: image } };
+    });
   }
 
   chooseAsset(asset: DesignAsset): void {

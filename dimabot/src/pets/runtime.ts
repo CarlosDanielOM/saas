@@ -36,31 +36,50 @@ import { getTtsEmoteNames } from '../utils/tts/emote_names.util.js';
 import { filterPetTalkText, refilterDesktopPetText } from './speech_text.js';
 import { DesktopAiTurn } from '../desktop_ai/schema.js';
 import { prepareSpeechActivity, startSpeechActivity, finishSpeechActivity, type SpeechActivityHandle } from '../desktop_ai/activity.js';
+import { activeMoodImages, moodInstruction, resolvePetMood, MOOD_NAMES, type PetMoods } from './moods.js';
+import { prefetchMoodCueSettings, safelyBuildMoodInstruction, safelyFilterMoodCues, safelyResolveMood } from './mood_decoration.js';
+import { warnPetMood } from './mood_warnings.js';
+import { filterExpressiveTtsTags } from '../utils/tts/expressive_tts_tags.util.js';
 
 const tasks = new Map<string, { controller: AbortController; requestId: string; generation: number }>();
 const MAX_ACTIVE_PROVIDERS = 4;
 export const MAX_PET_AUDIO_BYTES = 8_000_000;
 export const MAX_PET_DURATION_MS = 60_000;
 export async function getPetRuntime(ownerId: string, channelId: string) {
-    await getPetConfiguration(ownerId, channelId);
+    const configuration = await getPetConfiguration(ownerId, channelId);
     const runtime = await runtimeFor(ownerId, channelId);
     const request = runtime.activeRequestId ? await PetRequest.findById(runtime.activeRequestId).lean() : null;
-    return { v: 1 as const, generation: runtime.generation, active: requestView(request), sessions: await desktopCandidates(ownerId) };
+    return { v: 1 as const, generation: runtime.generation, active: requestView(request, configuration.moods.enabled), sessions: await desktopCandidates(ownerId) };
 }
 export async function snapshotFor(peer: PetPeer) {
     const configuration = await getPetConfiguration(peer.ownerId, peer.channelId);
     const runtime = await runtimeFor(peer.ownerId, peer.channelId);
     const request = runtime.activeRequestId ? await PetRequest.findById(runtime.activeRequestId).lean() : null;
+    let moodImages: PetMoods['images'] | undefined;
+    let moods: typeof configuration.moods = { available: false, enabled: false };
+    try {
+        const value = structuredClone(configuration.moods);
+        if (typeof value?.available !== 'boolean' || typeof value.enabled !== 'boolean' || !value.available && value.enabled ||
+            value.available && (!Number.isInteger(value.holdMs) || value.holdMs < 0 || value.holdMs > 10_000 ||
+                !value.emotions || MOOD_NAMES.some(name => !Array.isArray(value.emotions[name]) || value.emotions[name].some(tag => typeof tag !== 'string')))) throw new Error('invalid mood config');
+        moods = value;
+    } catch { warnPetMood('snapshot_config', peer.channelId); }
+    try { if (moods.enabled) moodImages = activeMoodImages(configuration.settings.moods, configuration.planTier); }
+    catch { warnPetMood('image_selection', peer.channelId); }
     return { v: 1, serverTime: Date.now(), peerId: peer.id, generation: runtime.generation,
         settingsRevision: configuration.revision, appearance: configuration.settings.appearance,
-        playback: configuration.settings.playback, sources: configuration.settings.sources, ttsAudio: configuration.settings.ttsAudio,
-        assets: peer.kind === 'browser' ? assetUrls(peer.capability!, configuration.settings.appearance) : { idleUrl: null, talkingUrl: null },
-        active: requestView(request), lease: runtime.lease ? { ...runtime.lease, expiresAt: runtime.lease.expiresAt.getTime() } : null };
+        playback: configuration.settings.playback, sources: configuration.settings.sources, ttsAudio: configuration.settings.ttsAudio, moods,
+        assets: peer.kind === 'browser' ? assetUrls(peer.capability!, configuration.settings.appearance, moodImages, peer.channelId) : { idleUrl: null, talkingUrl: null },
+        active: requestView(request, moods.enabled), lease: runtime.lease ? { ...runtime.lease, expiresAt: runtime.lease.expiresAt.getTime() } : null };
 }
-export function assetUrls(capability: string, appearance: { idleAssetId: string | null; talkingAssetId: string | null }) {
+export function assetUrls(capability: string, appearance: { idleAssetId: string | null; talkingAssetId: string | null }, moods?: PetMoods['images'], channelId?: string) {
     const base = `${(process.env.PUBLIC_API_URL || 'https://api.domdimabot.com').replace(/\/+$/, '')}/pets/public/${capability}/assets/`;
-    return { idleUrl: appearance.idleAssetId ? base + appearance.idleAssetId : null,
+    const result = { idleUrl: appearance.idleAssetId ? base + appearance.idleAssetId : null,
         talkingUrl: appearance.talkingAssetId ? base + appearance.talkingAssetId : null };
+    try {
+        return { ...result, ...(moods ? { moods: Object.fromEntries(Object.entries(moods).map(([name, image]) => [name, {
+            idleUrl: image.idleAssetId ? base + image.idleAssetId : null, talkingUrl: image.talkingAssetId ? base + image.talkingAssetId : null }])) } : {}) };
+    } catch { warnPetMood('asset_urls', channelId); return result; }
 }
 export async function isSelectedPlayer(peer: PetPeer) {
     await refreshPetReadiness(peer.ownerId);
@@ -76,7 +95,7 @@ export async function sendPetSnapshot(peer: PetPeer) {
     await peer.revalidate();
     const snapshot = await snapshotFor(peer);
     const terminal = previousId && previousId !== snapshot.active?.requestId ? await PetRequest.findOne({ _id: previousId, ownerId: peer.ownerId }).lean() : null;
-    emitPetSnapshot(peer, serial, snapshot, terminal ? { generation: terminal.generation, request: requestView(terminal)! } : undefined);
+    emitPetSnapshot(peer, serial, snapshot, terminal ? { generation: terminal.generation, request: requestView(terminal, snapshot.moods.enabled)! } : undefined);
 }
 async function broadcast(ownerId: string) {
     const runtime = await PetRuntime.findById(ownerId).lean();
@@ -134,6 +153,9 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         if (!owner) throw new PetError('account_required');
         const streamer = { user_id: request.channelId, plan_tier: owner.plan_tier, polar_sh_customer_id: owner.polar_sh_customer_id };
         let text = request.text;
+        let moodText = request.moodText ?? text;
+        const moodCueSettings = request.operation === 'ask' && configuration.moods.enabled
+            ? prefetchMoodCueSettings(() => getChannelTtsSettings(request.channelId), request.channelId) : undefined;
         if (request.operation === 'ask') {
             request = await phase(request, 'generating');
             await current(request);
@@ -172,8 +194,10 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
                 pet: { name: configuration.settings.name, language: configuration.settings.tts.language,
                     maxReplyLength: configuration.settings.behavior.maxReplyLength, persona, signal, usageRequestId: `${request._id}:llm`,
                     trustedChatMessage: trusted ? provenance!.message : undefined, allowActions: trusted,
+                    ...(configuration.moods.enabled ? { moodInstruction: safelyBuildMoodInstruction(() => moodInstruction(configuration.settings.moods), request.channelId) } : {}),
                     assertCurrent: async () => { await current(request); } } });
             if (result.error || typeof result.message !== 'string' || !result.message.trim()) throw new PetError('generation_failed');
+            moodText = result.message;
             text = result.message.trim().slice(0, configuration.settings.behavior.maxReplyLength);
         }
         signal.throwIfAborted();
@@ -201,6 +225,13 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
                     'speech.status': { $in: ['queued', 'preparing'] } }, { $set: { replyText: tts.text }, $inc: { revision: 1 } });
                 if (!changed.matchedCount) throw new PetError('cancelled', 409);
             }
+        } else if (configuration.moods.enabled) {
+            // Never wait for the optional Fish settings lookup. Non-Fish voices
+            // strip cues without settings; a late Fish lookup preserves ask text.
+            const settings = moodCueSettings?.();
+            if (tts.provider !== 'fish' || settings) tts.text = safelyFilterMoodCues(tts.text,
+                () => filterExpressiveTtsTags(tts.text, { provider: tts.provider, enabledTags: settings?.filters.expressiveTags }), request.channelId);
+            else warnPetMood('cue_lookup', request.channelId);
         }
         signal.throwIfAborted();
         await current(request);
@@ -233,7 +264,7 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         await peer.revalidate();
         if (!await isSelectedPlayer(peer)) throw new PetError('player_unavailable');
         const ready = await PetRequest.findOneAndUpdate({ _id: request._id, status: 'synthesizing', version: request.version }, {
-            $set: { status: 'ready', startBefore: new Date(Date.now() + 5000), phaseDeadline: new Date(Date.now() + durationMs + 10_000), audio: { path: audioPath, mimeType: result.mimeType, durationMs } }, $inc: { version: 1 }
+            $set: { status: 'ready', ...(configuration.moods.enabled ? { mood: safelyResolveMood(() => resolvePetMood(moodText, configuration.settings.moods), request.channelId) } : {}), startBefore: new Date(Date.now() + 5000), phaseDeadline: new Date(Date.now() + durationMs + 10_000), audio: { path: audioPath, mimeType: result.mimeType, durationMs } }, $inc: { version: 1 }
         }, { new: true }).lean();
         if (!ready) throw new PetError('stale_request');
         const readyAt = ready.startBefore!.getTime() - 5000;
@@ -246,7 +277,7 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         signal.throwIfAborted();
         await current(ready);
         // This is the only play emission. Snapshot/reconnect/recovery never replay it.
-        const sent = emitPetReadyAndPlay(peer, request.generation, requestView(ready)!, { v: 1, requestId: request._id, generation: request.generation,
+        const sent = emitPetReadyAndPlay(peer, request.generation, requestView(ready, configuration.moods.enabled)!, { v: 1, requestId: request._id, generation: request.generation,
             leaseId: runtime.lease!.leaseId, startBefore: ready.startBefore!.getTime(),
             audio: { url: `${(process.env.PUBLIC_API_URL || 'https://api.domdimabot.com').replace(/\/+$/, '')}/pets/playback/${request._id}/audio?ticket=${ticket}`, mimeType: result.mimeType, durationMs } });
         const emittedAt = Date.now();

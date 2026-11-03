@@ -935,7 +935,7 @@ class TtsQueueHandler {
       if (!current()) return;
       this.dispatchedSpeechIds.set(channel, speech);
       const holdMs = Math.max(240_000, input.timeoutMs + 180_000);
-      let route = await prepareReadTts({ channelId: channel, speechId: speech, file: input.file, mime: input.mime, text: input.text,
+      let route = await prepareReadTts({ channelId: channel, speechId: speech, file: input.file, mime: input.mime, text: input.text, moodText: head.item.meta?.originalText ?? head.item.text,
         holdMs, retainHead: true, attemptId: `${epoch}`, analysis: head.analysis, signal: head.cancellation.signal, cancelled: () => !current(), ended: reason => this.handleSpeechEnded(channel, speech, reason, reason === 'pet:completed') });
       if (!current()) return;
       if (!route || route.audio === 'waiting' || route.audio === 'cancelled') { await this.parkHead(channel, head); return; }

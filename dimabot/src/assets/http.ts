@@ -1,9 +1,10 @@
 import type { Request, Response } from 'express';
 import { pipeline } from 'node:stream/promises';
-import { AssetError, findAsset, readAsset } from './library.js';
+import { AssetError, findAsset, readAsset, requireMoodAssetPlan } from './library.js';
 
-export async function serveAsset(req: Request, res: Response, owner: string, id: string, revalidate = false) {
-  const asset = await findAsset(owner, id);
+export async function serveAsset(req: Request, res: Response, owner: string, id: string, revalidate = false, includeMood = false) {
+  const asset = await findAsset(owner, id, includeMood);
+  await requireMoodAssetPlan(owner, asset);
   res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
@@ -28,7 +29,7 @@ export async function serveAsset(req: Request, res: Response, owner: string, id:
   }
   res.setHeader('Content-Length', end - start + 1);
   if (req.method === 'HEAD') return res.end();
-  const { stream } = await readAsset(owner, id, start, end + 1);
+  const { stream } = await readAsset(owner, id, start, end + 1, includeMood);
   try { await pipeline(stream, res); }
   catch (error) { if (!res.destroyed) throw error; }
 }

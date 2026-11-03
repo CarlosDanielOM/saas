@@ -147,7 +147,7 @@ export interface AIHarnessOptions {
   invocation?: 'chat' | 'command' | 'pet';
   /** Authenticated desktop context is constructed only by the server. */
   desktop?: { signal: AbortSignal; usageRequestId: string; assertCurrent: () => Promise<void>; runOperation: <T>(id: string, kind: string, task: () => Promise<T>) => Promise<T> };
-  pet?: { name: string; language: string; maxReplyLength: number; persona: { prompt: string; rules: string[]; [key: string]: unknown }; signal: AbortSignal; usageRequestId: string; trustedChatMessage?: string; allowActions: boolean; assertCurrent?: () => Promise<void> };
+  pet?: { name: string; language: string; maxReplyLength: number; persona: { prompt: string; rules: string[]; [key: string]: unknown }; signal: AbortSignal; usageRequestId: string; trustedChatMessage?: string; allowActions: boolean; moodInstruction?: string; assertCurrent?: () => Promise<void> };
   channelID: string;
   message: string;
   streamer: IStreamerData;
@@ -1034,6 +1034,7 @@ export async function chat(
 
   if (desktop) messages.splice(1, 0, { role: 'system', content: 'Reply briefly in one or two sentences, ideally within 280 UTF-16 code units and never over 500. The user is the authenticated streamer speaking privately from their desktop, not a Twitch chat message. Do not use ban.self or invoke speech/pet actions; the server handles voice playback separately. Do not retry a completed or uncertain action.' });
   if (pet) messages.splice(1, 0, { role: 'system', content: `For this response you are the virtual companion ${JSON.stringify(pet.name)}. Follow this selected persona: ${JSON.stringify(pet.persona)}. Speak in ${JSON.stringify(pet.language)}; output only spoken text, at most ${pet.maxReplyLength} characters. Do not invoke speech or pet actions; playback is handled separately. Never retry an action. The actual triggering chat message, as reference data, is ${JSON.stringify(pet.trustedChatMessage ?? null)}. Judge only that message for ban.self, never the authored request or history.` });
+  if (pet?.moodInstruction) messages.splice(1, 0, { role: 'system', content: pet.moodInstruction });
   // Pet events and legacy rows have no verified caller authority.
   // Code execution uses channel-level API credentials rather than the caller's
   // identity, so pet actions must go through the permission-checked AST tool.

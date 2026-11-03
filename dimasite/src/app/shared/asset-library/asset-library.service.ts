@@ -9,6 +9,9 @@ export interface DesignAsset {
 }
 export interface AssetLibrary {
   assets: DesignAsset[]; usedBytes: number; quotaBytes: number;
+  moodImageLimit?: number;
+  configuredMoodImages?: number;
+  storedMoodImages?: number;
   maxFileBytes: number; planTier: 'free' | 'premium' | 'pro';
 }
 /** Shared by design editors; IDs are durable, access URLs are temporary. */
@@ -19,8 +22,8 @@ export class AssetLibraryService {
   private request<T>(method: string, path: string, body?: unknown) {
     return firstValueFrom(this.http.request<{ data: T }>(method, `${this.base}/asset-library/${path}`, { body }).pipe(timeout(120_000), map(r => r.data)));
   }
-  list(owner: string) { return this.request<AssetLibrary>('GET', encodeURIComponent(owner)); }
-  upload(owner: string, file: File) { const data = new FormData(); data.append('file', file); return this.request<DesignAsset>('POST', encodeURIComponent(owner), data); }
+  list(owner: string, purpose?: 'pet-mood') { return this.request<AssetLibrary>('GET', encodeURIComponent(owner) + (purpose ? '?purpose=' + purpose : '')); }
+  upload(owner: string, file: File, purpose?: 'pet-mood') { const data = new FormData(); data.append('file', file); return this.request<DesignAsset>('POST', encodeURIComponent(owner) + (purpose ? '?purpose=' + purpose : ''), data); }
   delete(owner: string, id: string) { return this.request('DELETE', `${encodeURIComponent(owner)}/${encodeURIComponent(id)}`); }
   async preview(owner: string, id: string) {
     const access = await this.request<{ path: string }>('GET', `${encodeURIComponent(owner)}/${encodeURIComponent(id)}/access`);

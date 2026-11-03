@@ -9,12 +9,17 @@ import type { Readable, Writable } from 'node:stream';
 import jwt from 'jsonwebtoken';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
-import { AssetError, MAX_ASSET_BYTES, assetQuota, deleteAsset, findAsset, listAssets, uploadAsset } from '../../assets/library.js';
+import { AssetError, MAX_ASSET_BYTES, assetQuota, deleteAsset, findAsset, listAssets, uploadAsset, requireMoodAssetPlan } from '../../assets/library.js';
 import { serveAsset } from '../../assets/http.js';
 
 export const assetLibraryRoute = express.Router();
 const wrap = (fn: (req: AuthRequest, res: Response) => Promise<unknown>) => (req: AuthRequest, res: Response, next: NextFunction) => { void fn(req, res).catch(next); };
 const param = (req: Request, name: string) => String(req.params[name] ?? '');
+const purpose = (req: Request): 'pet-mood' | undefined => {
+  if (req.query.purpose === undefined) return undefined;
+  if (req.query.purpose !== 'pet-mood') throw new AssetError('invalid_purpose');
+  return 'pet-mood';
+};
 const ok = (res: Response, data: unknown) => res.json({ error: false, status: 200, message: 'OK', data });
 const secret = () => { if (!process.env.SECRET_KEY) throw new AssetError('unavailable', 503); return process.env.SECRET_KEY; };
 assetLibraryRoute.use((_req, res, next) => { res.setHeader('Cache-Control', 'private, no-store'); res.setHeader('Referrer-Policy', 'no-referrer'); next(); });
@@ -25,16 +30,17 @@ assetLibraryRoute.get('/content/:id', wrap(async (req, res) => {
     if (typeof claims === 'string' || claims.sub !== param(req, 'id') || typeof claims.owner !== 'string') throw new Error('Wrong scope');
     owner = claims.owner;
   } catch { throw new AssetError('unauthorized', 401); }
-  return serveAsset(req, res, owner, param(req, 'id'));
+  return serveAsset(req, res, owner, param(req, 'id'), false, true);
 }));
 assetLibraryRoute.use(authMiddleware);
 assetLibraryRoute.use('/:channelID', (req: AuthRequest, _res, next) => {
   if (req.user?.id !== param(req, 'channelID')) return next(new AssetError('owner_required', 403));
   void assetQuota(param(req, 'channelID')).then(() => next(), next);
 });
-assetLibraryRoute.get('/:channelID', wrap(async (req, res) => ok(res, await listAssets(param(req, 'channelID')))));
+assetLibraryRoute.get('/:channelID', wrap(async (req, res) => ok(res, await listAssets(param(req, 'channelID'), purpose(req)))));
 assetLibraryRoute.get('/:channelID/:id/access', wrap(async (req, res) => {
-  const asset = await findAsset(param(req, 'channelID'), param(req, 'id'));
+  const asset = await findAsset(param(req, 'channelID'), param(req, 'id'), true);
+  await requireMoodAssetPlan(param(req, 'channelID'), asset);
   const ticket = jwt.sign({ owner: param(req, 'channelID') }, secret(), { algorithm: 'HS256', audience: 'asset-preview', subject: asset.id, expiresIn: '15m' });
   return ok(res, { path: `/asset-library/content/${asset.id}?ticket=${encodeURIComponent(ticket)}` });
 }));
@@ -66,7 +72,7 @@ assetLibraryRoute.post('/:channelID', wrap(async (req, res) => {
       upload(req, res, error => { req.off('aborted', aborted); error ? reject(error) : resolve(); });
     });
     if (!req.file) throw new AssetError('file_required');
-    return ok(res, await uploadAsset(owner, req.file));
+    return ok(res, await uploadAsset(owner, req.file, purpose(req)));
   } finally {
     clearTimeout(deadline);
     for (const stream of streams) stream.destroy();

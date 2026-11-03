@@ -54,6 +54,12 @@ async function open({ theme = 'dark', width = 1280, language = 'en', tier = 'pre
     }
     if (url.origin !== 'https://api.domdimabot.com') return route.abort();
     const ok = data => route.fulfill({ json: { error: false, status: 200, data } });
+    // The pet page reuses the TTS favorites list. An empty list is an array;
+    // the generic object envelope below is not a valid favorites response.
+    if (url.pathname === `/speech/favorites/${user.id}`) {
+      assert.equal(request.method(), 'GET', 'configuration only reads existing Fish favorites');
+      return ok([]);
+    }
     if (url.pathname.match(/^\/pets\/[^/]+\/runtime$/)) {
       state.runtimeReads++;
       const owner = url.pathname.split('/')[2];

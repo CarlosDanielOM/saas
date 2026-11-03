@@ -12,6 +12,8 @@ import { getPetRuntime, assetUrls, MAX_PET_AUDIO_BYTES } from '../../pets/runtim
 import { PetRequest } from '../../schemas/pet_runtime.schema.js';
 import { AssetError } from '../../assets/library.js';
 import { serveAsset } from '../../assets/http.js';
+import { activeMoodImages, MOOD_NAMES } from '../../pets/moods.js';
+import { warnPetMood } from '../../pets/mood_warnings.js';
 
 export const petRoute = express.Router();
 petRoute.use((_req, res, next) => { res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' }); next(); });
@@ -26,15 +28,24 @@ function route(fn: (req: Request, res: Response) => Promise<unknown>) {
 petRoute.get('/public/:capability', route(async (req, res) => {
     const { runtime, configuration } = await authenticatePetCapability(req.params.capability);
     const active = runtime.activeRequestId ? await PetRequest.findById(runtime.activeRequestId).lean() : null;
+    let moodEnabled = false;
+    let images: ReturnType<typeof activeMoodImages> | undefined;
+    try {
+        moodEnabled = configuration.moods.available && configuration.moods.enabled;
+        if (moodEnabled) images = activeMoodImages(configuration.settings.moods, configuration.planTier);
+    } catch { warnPetMood('image_selection', runtime.channelId); }
     res.json({ error: false, data: { appearance: configuration.settings.appearance, playback: { target: configuration.settings.playback.target },
-        runtime: { v: 1, generation: runtime.generation, active: requestView(active) },
-        assets: assetUrls(String(req.params.capability), configuration.settings.appearance) } });
+        runtime: { v: 1, generation: runtime.generation, active: requestView(active, moodEnabled) },
+        assets: assetUrls(String(req.params.capability), configuration.settings.appearance, images, runtime.channelId) } });
 }));
 petRoute.get('/public/:capability/assets/:assetId', route(async (req, res) => {
     const { runtime, configuration } = await authenticatePetCapability(req.params.capability);
     const assetId = String(req.params.assetId), appearance = configuration.settings.appearance;
-    if (assetId !== appearance.idleAssetId && assetId !== appearance.talkingAssetId) throw new PetError('asset_not_found', 404);
-    return serveAsset(req, res, runtime.channelId, assetId);
+    let isMood = false;
+    try { isMood = configuration.moods.available && configuration.moods.enabled && MOOD_NAMES.some(mood => Object.values(activeMoodImages(configuration.settings.moods, configuration.planTier)[mood] ?? {}).includes(assetId)); }
+    catch { warnPetMood('image_selection', runtime.channelId); }
+    if (assetId !== appearance.idleAssetId && assetId !== appearance.talkingAssetId && !isMood) throw new PetError('asset_not_found', 404);
+    return serveAsset(req, res, runtime.channelId, assetId, false, isMood);
 }));
 petRoute.get('/playback/:requestId/audio', route(async (req, res) => {
     if (Object.keys(req.query).some(key => key !== 'ticket')) throw new PetError('invalid_ticket');

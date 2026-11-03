@@ -3,6 +3,7 @@ import { test, mock } from 'node:test';
 let claim = false, preparing = false, synthCalls = 0, petCalls = 0, billingCalls = 0;
 let provider: (input: any) => Promise<any> = async () => ({ error: true });
 let storedTurn: any = null; const matching: any[] = [];
+let admitted: any;
 const model = { exists: async () => true, findById: () => ({ lean: async () => structuredClone(storedTurn) }),
     updateOne: async () => ({ modifiedCount: 1 }), findOneAndUpdate: () => ({ lean: async () => null }) };
 const modules: [string, Record<string, unknown>, unknown?][] = [
@@ -19,7 +20,7 @@ const modules: [string, Record<string, unknown>, unknown?][] = [
     ['../classes/chat_history.js', {}, {}],
     ['../utils/ai/threading/thread_limits.js', { getThreadLimitsForTier: () => ({ promptTurns: 2 }) }],
     ['../utils/permissions/index.js', { createBroadcasterIdentity: () => ({}), serializeUserIdentity: () => ({}) }],
-    ['../pets/admission.js', { admitPetAction: async () => { petCalls++; return { requestId: 'pet', status: 'queued' }; } }],
+    ['../pets/admission.js', { admitPetAction: async (input: any) => { petCalls++; admitted = input; return { requestId: 'pet', status: 'queued' }; } }],
     ['../pets/speech_text.js', { filterPetTalkText: () => ({}) }],
     ['../utils/tts/emote_names.util.js', { getTtsEmoteNames: async () => [] }],
     ['../utils/databases/dragonfly.database.js', { getDragonflyClient: async () => ({}) }],
@@ -29,7 +30,7 @@ const modules: [string, Record<string, unknown>, unknown?][] = [
     ['../server/services/tts/piper_tts.service.js', { piperTtsService: { synthesize: async (input: any) => { synthCalls++; return provider(input); } } }],
     ['../server/services/tts/kokoro_tts.service.js', { kokoroTtsService: {} }],
     ['../server/services/tts/fish_tts.service.js', { fishTtsService: {} }],
-    ['../pets/state.js', { PetError: class PetError extends Error { code = 'pet_error'; } }],
+    ['../pets/state.js', { PetError: class PetError extends Error { code = 'pet_error'; }, cancelPetRequest: async () => {} }],
     ['./activity.js', { prepareSpeechActivity: async () => null, startSpeechActivity: async () => true,
         finishSpeechActivity: async () => {}, finishMatchingSpeechActivity: async (...args: unknown[]) => { matching.push(args); } }]
 ];
@@ -48,6 +49,11 @@ test('persisted cancellation after claim fences both Pet admission and Bot synth
     claim = true; preparing = false; petCalls = synthCalls = 0;
     await speakPet(turn, 'Owner'); await speakBot(turn, streamer, new AbortController().signal);
     assert.equal(petCalls, 0); assert.equal(synthCalls, 0);
+});
+test('desktop admission preserves raw generated cues separately from filtered speech', async () => {
+    claim = preparing = true; admitted = undefined;
+    await speakPet({ ...turn, replyText: 'Hello', moodText: '[happy] Hello' }, 'Owner');
+    assert.equal(admitted.text, 'Hello'); assert.equal(admitted.moodText, '[happy] Hello');
 });
 test('a paid successful Bot provider result is billed even when speech is cancelled while it resolves', async () => {
     claim = preparing = true; synthCalls = billingCalls = 0;

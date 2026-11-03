@@ -149,6 +149,10 @@ Older surfaces may still use `:root` / `.dark` tokens (`--surface`, `--text`, `-
 - Prefer inline templates for small components.
 - When using external templates/styles, use paths relative to the component `.ts` file.
 
+## Pet mood decoration resilience
+
+Pet moods/images are optional decoration. Invalid mood-only settings or wire metadata must normalize to disabled defaults or neutral with a bounded warning; keep core settings validation strict while allowing an otherwise valid core save. Mood errors must not break page rendering, socket/session state, renderer readiness, or audio playback. Keep ordinary PNG idle/talking images visible while mood images load; on mood-image failure, use the ordinary image and retry once on the next request. Do not add idle mood-image retry timers. Unknown mood values resolve to neutral; the optional `RequestView.mood` and approved `pet:follow.mood` fields remain additive within protocol v1. Follow the server-side contract in [`../dimabot/PET_RUNTIME.md`](../dimabot/PET_RUNTIME.md#pet-decoration-resilience).
+
 Overlay Studio widgets use a shared generated contract and module registry. See [`../dimabot/OVERLAY_WIDGET_MODULES.md`](../dimabot/OVERLAY_WIDGET_MODULES.md) before adding or changing a module.
 
 ---

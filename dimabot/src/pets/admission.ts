@@ -18,6 +18,8 @@ export interface AdmitPetActionInput {
     actionKey: string; actor: { userId: string; displayName: string; chat?: { login: string; message: string; badges: { set_id: string; id: string; info: string }[] } };
     /** Emotes Twitch tagged in the triggering chat message, so pet.talk can skip them like $(tts). */
     emoteNames?: string[];
+    /** Private generated text used only to choose a desktop pet mood. */
+    moodText?: string;
 }
 function cleanEmoteNames(names: unknown): string[] | undefined {
     if (!Array.isArray(names)) return undefined;

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import type { BrowserPetPlaybackReport } from './pet-browser-player';
+import { defaultPetMoods } from '../../models/pet-moods.model';
 import { PetRuntimeComponent } from './pet-runtime.component';
 
 const fake = vi.hoisted(() => {
@@ -240,4 +241,183 @@ describe('browser pet lease recovery', () => {
     take('pet:lease', 'renew').callback(null, lease({ leaseId: 'different-owner' }));
     expect(fake.reset).toHaveBeenCalledTimes(resets + 1);
   });
+
+  const image = (name: string) => `https://api.example.test/pets/public/${'a'.repeat(43)}/assets/${name}`;
+  function moodsSnapshot(active: Record<string, unknown> | null = null) {
+    deliver('pet:snapshot', snapshot({ moods: { available: true, enabled: true, holdMs: 2000, emotions: defaultPetMoods().emotions },
+      assets: { idleUrl: image('normal-idle'), talkingUrl: image('normal-talking'), moods: {
+        happy: { idleUrl: image('happy-idle'), talkingUrl: null }, sad: { idleUrl: null, talkingUrl: image('sad-talking') }
+      } }, active }));
+  }
+  const request = (id: string, status: string, version: number, mood: unknown = 'happy') =>
+    deliver('pet:request', { v: 1, generation: 1, request: { requestId: id, operation: 'talk', status, version, mood } });
+
+  it.each(['completed', 'cancelled', 'failed', 'expired'])('applies a request mood only on actual playback, with per-state fallbacks and a %s hold', terminal => {
+    moodsSnapshot({ requestId: 'speech-one', operation: 'talk', status: 'ready', version: 1, mood: 'happy' });
+    expect(component.mood()).toBe('neutral'); expect(component.idleUrl()).toBe(image('normal-idle'));
+    take('pet:lease', 'acquire').callback(null, lease()); prepareSpeech();
+    expect(component.mood()).toBe('neutral');
+    fake.report?.({ id: 'speech-one', state: 'started', positionMs: 0 });
+    take('pet:playback').callback(null, { ok: true, data: {} });
+    expect(component.mood()).toBe('happy'); expect(component.idleUrl()).toBe(image('normal-idle'));
+    component.moodImageLoaded(image('happy-idle'), component.moodAttempt());
+    expect(component.idleUrl()).toBe(image('happy-idle'));
+    expect(component.talkingUrl()).toBe(image('normal-talking'));
+    request('speech-one', terminal, 2);
+    vi.advanceTimersByTime(1999); expect(component.mood()).toBe('happy');
+    vi.advanceTimersByTime(1); expect(component.mood()).toBe('neutral');
+    expect(component.idleUrl()).toBe(image('normal-idle'));
+  });
+
+  it('switches immediately when a new playback starts during the previous hold', () => {
+    moodsSnapshot({ requestId: 'speech-one', operation: 'talk', status: 'ready', version: 1, mood: 'happy' });
+    take('pet:lease', 'acquire').callback(null, lease()); prepareSpeech();
+    fake.report?.({ id: 'speech-one', state: 'started', positionMs: 0 });
+    take('pet:playback').callback(null, { ok: true, data: {} });
+    fake.report?.({ id: 'speech-one', state: 'ended', positionMs: 100 });
+    request('speech-one', 'completed', 2); vi.advanceTimersByTime(1000);
+    request('speech-two', 'ready', 1, 'sad');
+    deliver('pet:play', { v: 1, generation: 1, requestId: 'speech-two', leaseId: 'lease-one', startBefore: serverTime + performance.now() + 10_000,
+      audio: { url: 'https://api.example.test/pets/playback/speech-two/audio?ticket=fixture', mimeType: 'audio/wav', durationMs: 1000 } });
+    fake.report?.({ id: 'speech-two', state: 'started', positionMs: 0 });
+    expect(component.mood()).toBe('sad'); expect(component.idleUrl()).toBe(image('normal-idle'));
+    expect(component.talkingUrl()).toBe(image('normal-talking'));
+    component.moodImageLoaded(image('sad-talking'), component.moodAttempt());
+    expect(component.talkingUrl()).toBe(image('sad-talking'));
+    vi.advanceTimersByTime(1000); expect(component.mood()).toBe('sad');
+  });
+
+  it('keeps the terminal hold when cancellation advances the runtime generation', () => {
+    moodsSnapshot({ requestId: 'speech-one', operation: 'talk', status: 'ready', version: 1, mood: 'happy' });
+    take('pet:lease', 'acquire').callback(null, lease()); prepareSpeech();
+    fake.report?.({ id: 'speech-one', state: 'started', positionMs: 0 });
+    take('pet:playback').callback(null, { ok: true, data: {} });
+    request('speech-one', 'cancelled', 2);
+    deliver('pet:snapshot', { ...component.state()!, generation: 2, serverTime: serverTime + 1, active: null, lease: null });
+    vi.advanceTimersByTime(1999); expect(component.mood()).toBe('happy');
+    vi.advanceTimersByTime(1); expect(component.mood()).toBe('neutral');
+  });
+
+  it('treats unknown request moods as neutral and ignores disabled mood assets', () => {
+    moodsSnapshot({ requestId: 'speech-one', operation: 'talk', status: 'ready', version: 1, mood: 'future-custom' });
+    take('pet:lease', 'acquire').callback(null, lease()); prepareSpeech();
+    fake.report?.({ id: 'speech-one', state: 'started', positionMs: 0 });
+    expect(component.mood()).toBe('neutral'); expect(component.idleUrl()).toBe(image('normal-idle'));
+  });
+
+  it('uses overlay-follow moods without restarting them on progress, then holds after follow-end', () => {
+    moodsSnapshot();
+    const png = snapshot({ appearance: { kind: 'png' }, moods: { available: true, enabled: true, holdMs: 2000, emotions: defaultPetMoods().emotions },
+      assets: { idleUrl: image('normal-idle'), talkingUrl: image('normal-talking'), moods: { happy: { idleUrl: image('happy-idle'), talkingUrl: null } } } });
+    deliver('pet:snapshot', png);
+    const follow = { v: 1, followId: 'overlay-one', generation: 1, mood: 'happy', positionMs: 0, serverTime,
+      envelope: { stepMs: 40, values: Array(100).fill(1) } };
+    deliver('pet:follow', follow); expect(component.mood()).toBe('happy');
+    deliver('pet:follow', { ...follow, positionMs: 40, serverTime: serverTime + 40, mood: 'sad', envelope: undefined });
+    expect(component.mood()).toBe('happy');
+    deliver('pet:follow-end', { v: 1, followId: 'overlay-one', generation: 1 });
+    vi.advanceTimersByTime(1999); expect(component.mood()).toBe('happy');
+    vi.advanceTimersByTime(1); expect(component.mood()).toBe('neutral');
+  });
+
+
+  it.each([{ available: false, enabled: false }, { available: true, enabled: false, holdMs: 2000, emotions: defaultPetMoods().emotions }])('ignores mood data when config is unavailable or disabled: %o', moods => {
+    deliver('pet:snapshot', snapshot({ moods,
+      active: { requestId: 'speech-one', operation: 'talk', status: 'ready', version: 1, mood: 'happy' },
+      assets: { idleUrl: image('normal-idle'), talkingUrl: image('normal-talking'), moods: { happy: { idleUrl: image('happy-idle'), talkingUrl: null } } }
+    }));
+    take('pet:lease', 'acquire').callback(null, lease()); prepareSpeech();
+    fake.report?.({ id: 'speech-one', state: 'started', positionMs: 0 });
+    expect(component.mood()).toBe('neutral'); expect(component.idleUrl()).toBe(image('normal-idle'));
+  });
+
+
+  it('keeps PNG readiness and its lease while optional mood images load one at a time', () => {
+    take('pet:lease', 'acquire').callback(null, lease());
+    const png = snapshot({ appearance: { kind: 'png' },
+      moods: { available: true, enabled: true, holdMs: 2000, emotions: defaultPetMoods().emotions },
+      assets: { idleUrl: image('normal-idle'), talkingUrl: image('normal-talking'),
+        moods: { happy: { idleUrl: image('happy-idle'), talkingUrl: image('happy-talking') } } },
+      active: { requestId: 'speech-one', operation: 'talk', status: 'ready', version: 1, mood: 'happy' },
+      lease: { leaseId: 'lease-one', holderPeerId: 'browser-one', expiresAt: serverTime + 15_000 }
+    });
+    deliver('pet:snapshot', png);
+    const notLoaded = take('pet:ready'); expect(notLoaded.payload['renderReady']).toBe(false);
+    notLoaded.callback(null, { ok: true, data: {} });
+    component.imageLoaded('idle', image('normal-idle'));
+    component.imageLoaded('talking', image('normal-talking'));
+    const baseline = take('pet:ready'); expect(baseline.payload['renderReady']).toBe(true);
+    baseline.callback(null, { ok: true, data: {} });
+    prepareSpeech();
+    fake.report?.({ id: 'speech-one', state: 'started', positionMs: 0 });
+    take('pet:playback').callback(null, { ok: true, data: {} });
+    const resets = fake.reset.mock.calls.length;
+    expect(component.idleUrl()).toBe(image('normal-idle'));
+    expect(component.talkingUrl()).toBe(image('normal-talking'));
+    component.moodImageLoaded(image('happy-idle'), component.moodAttempt());
+    component.imageLoaded('idle', image('happy-idle'));
+    expect(fake.messages.filter(message => message.name === 'pet:ready' && message.payload['renderReady'] === false)).toEqual([]);
+    deliver('pet:snapshot', { ...png, serverTime: serverTime + 1, active: { requestId: 'speech-one', operation: 'talk', status: 'playing', version: 2, mood: 'happy' } });
+    expect(fake.messages.filter(message => message.name === 'pet:ready' && message.payload['renderReady'] === false)).toEqual([]);
+    component.moodImageLoaded(image('happy-talking'), component.moodAttempt());
+    component.imageLoaded('talking', image('happy-talking'));
+    component.imageFailed('idle', image('happy-idle'));
+    expect(component.idleUrl()).toBe(image('normal-idle'));
+    expect(component.talkingUrl()).toBe(image('happy-talking'));
+    expect(component.status()).toBe('rendererReady');
+    component.imageFailed('talking', image('happy-talking'));
+    expect(component.talkingUrl()).toBe(image('normal-talking'));
+    expect(component.status()).toBe('rendererReady');
+    expect(fake.messages.filter(message => message.name === 'pet:ready' && message.payload['renderReady'] === false)).toEqual([]);
+    expect(fake.reset).toHaveBeenCalledTimes(resets);
+    vi.advanceTimersByTime(100); fake.mouth?.('speech-one', 1000, .5);
+    expect(fake.socket.volatile.emit).toHaveBeenCalledWith('pet:mouth', expect.objectContaining({ requestId: 'speech-one', leaseId: 'lease-one' }));
+    component.imageFailed('idle', image('normal-idle'));
+    expect(take('pet:ready').payload['renderReady']).toBe(false);
+  });
+
+
+  it('retries a failed optional image only when a later actual request starts', () => {
+    moodsSnapshot({ requestId: 'speech-one', operation: 'talk', status: 'ready', version: 1, mood: 'happy' });
+    take('pet:lease', 'acquire').callback(null, lease()); prepareSpeech();
+    fake.report?.({ id: 'speech-one', state: 'started', positionMs: 0 });
+    take('pet:playback').callback(null, { ok: true, data: {} });
+    const oldAttempt = component.moodAttempt();
+    expect(component.idleUrl()).toBe(image('normal-idle'));
+    component.moodImageFailed(image('happy-idle'), oldAttempt);
+    expect(component.idleUrl()).toBe(image('normal-idle'));
+    expect(component.moodPreloadIdleUrl()).toBe('');
+    request('speech-one', 'playing', 2, 'happy');
+    expect(component.moodAttempt()).toBe(oldAttempt);
+    fake.report?.({ id: 'speech-one', state: 'ended', positionMs: 100 });
+    request('speech-one', 'completed', 3, 'happy');
+    request('speech-two', 'ready', 1, 'happy');
+    deliver('pet:play', { v: 1, generation: 1, requestId: 'speech-two', leaseId: 'lease-one', startBefore: serverTime + 10_000,
+      audio: { url: 'https://api.example.test/pets/playback/speech-two/audio?ticket=fixture', mimeType: 'audio/wav', durationMs: 1000 } });
+    fake.report?.({ id: 'speech-two', state: 'started', positionMs: 0 });
+    expect(component.moodAttempt()).toBe(oldAttempt + 1);
+    expect(component.moodPreloadIdleUrl()).toBe(image('happy-idle'));
+    expect(component.idleUrl()).toBe(image('normal-idle'));
+    component.moodImageLoaded(image('happy-idle'), oldAttempt); // Stale callbacks cannot replace this attempt.
+    expect(component.idleUrl()).toBe(image('normal-idle'));
+    component.moodImageLoaded(image('happy-idle'), component.moodAttempt());
+    expect(component.idleUrl()).toBe(image('happy-idle'));
+  });
+
+  it.each([null, false, [], 'bad', { available: true, enabled: true, holdMs: 'bad', emotions: {} }])('ignores malformed optional wire configuration without throwing: %o', moods => {
+    expect(() => deliver('pet:snapshot', snapshot({ moods, assets: { idleUrl: null, talkingUrl: null, moods: 'bad' } }))).not.toThrow();
+    expect(component.mood()).toBe('neutral');
+    expect(component.state()?.moods).toEqual({ available: false, enabled: false });
+  });
+
+  it('isolates throwing optional metadata and request mood accessors', () => {
+    const throwing = snapshot();
+    Object.defineProperty(throwing, 'moods', { get: () => { throw new Error('legacy mood'); } });
+    expect(() => deliver('pet:snapshot', throwing)).not.toThrow();
+    const entry = { requestId: 'getter-request', operation: 'talk', status: 'ready', version: 1 };
+    Object.defineProperty(entry, 'mood', { get: () => { throw new Error('bad request mood'); } });
+    expect(() => deliver('pet:request', { v: 1, generation: 1, request: entry })).not.toThrow();
+    expect(component.state()?.active?.mood).toBe('neutral');
+  });
+
 });
