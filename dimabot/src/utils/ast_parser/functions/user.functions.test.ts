@@ -24,11 +24,13 @@ mock.module('../../../utils/posthog_events.js', {
 
 const { registerUserFunctions } = await import('./user.functions.js');
 const { registerTtsFunctions } = await import('./tts.functions.js');
+const { registerEventsubFunctions } = await import('./eventsub.functions.js');
 const { parse } = await import('../parser.js');
 const { createExecutionContext, evaluate, getFunctionMetadata } = await import('../evaluator.js');
 
 registerUserFunctions();
 registerTtsFunctions();
+registerEventsubFunctions();
 
 interface RenderOptions {
     displayName?: string;
@@ -63,6 +65,14 @@ async function renderAsChatter(source: string, chatterName: string, chatterLogin
 test('$(user) without arguments returns the raw chatter name', async () => {
     assert.equal(await renderAsChatter('$(user)', 'cdom201'), 'cdom201');
     assert.equal(await renderAsChatter('$(user)', 'the_mighty_$kill201'), 'the_mighty_$kill201');
+});
+
+test('a ban event template renders the affected user and timeout duration', async () => {
+    const result = await render('Se Fusilaron a $(user) por $(ban.time) segundos. Por pellejo!', {
+        displayName: 'CDOM201',
+        eventData: { user_name: 'CDOM201', is_permanent: false, banned_at: '2026-11-04T12:00:00Z', ends_at: '2026-11-04T12:05:00Z' }
+    });
+    assert.equal(result, 'Se Fusilaron a CDOM201 por 300 segundos . Por pellejo!');
 });
 
 test('$(user ignore symbols numbers) strips symbols and numbers', async () => {

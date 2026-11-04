@@ -47,3 +47,26 @@ test('twitch.modiversary reads moderator months without using subscription month
     }
     assert.deepEqual(getFunctionMetadata('twitch.modiversary')?.surfaces, ['authoring']);
 });
+
+test('ban.time renders the original timeout duration from EventSub timestamps', async () => {
+    const eventData = {
+        is_permanent: false,
+        banned_at: '2026-11-04T12:00:00.123456789Z',
+        ends_at: '2026-11-04T12:05:00.123456789Z'
+    };
+    assert.equal(await render('Se Fusilaron a CDOM201 por $(ban.time) segundos. Por pellejo!', eventData),
+        'Se Fusilaron a CDOM201 por 300 segundos . Por pellejo!');
+    assert.equal(await render('*($(ban.time) / 60)', eventData), '5');
+});
+
+test('ban.time returns zero for permanent, missing, malformed or inverted timestamps', async () => {
+    const valid = { is_permanent: false, banned_at: '2026-11-04T12:00:00Z', ends_at: '2026-11-04T12:05:00Z' };
+    for (const eventData of [undefined, {}, { ...valid, is_permanent: true }, { ...valid, is_permanent: undefined },
+        { ...valid, banned_at: null }, { ...valid, ends_at: null }, { ...valid, banned_at: 'invalid' },
+        { ...valid, ends_at: 'invalid' }, { ...valid, ends_at: '2026-11-04T11:59:00Z' }]) {
+        assert.equal(await render('$(ban.time)', eventData), '0');
+    }
+    const metadata = getFunctionMetadata('ban.time');
+    assert.equal(metadata?.category, 'event-data');
+    assert.deepEqual(metadata?.surfaces, ['authoring']);
+});

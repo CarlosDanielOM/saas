@@ -139,6 +139,18 @@ const modiversaryHandler: FunctionHandler = async (_args, ctx) => {
     return typeof months === 'number' && Number.isSafeInteger(months) && months >= 0 ? String(months) : '0';
 };
 
+const banTimeHandler: FunctionHandler = async (_args, ctx) => {
+    const eventData = getEventData(ctx);
+    if (eventData.is_permanent !== false) return '0';
+    const start = getStringField(eventData, ['banned_at']);
+    const end = getStringField(eventData, ['ends_at']);
+    if (!start || !end) return '0';
+    const milliseconds = Date.parse(end) - Date.parse(start);
+    if (!Number.isFinite(milliseconds) || milliseconds <= 0) return '0';
+    const seconds = Math.round(milliseconds / 1000);
+    return Number.isSafeInteger(seconds) ? String(seconds) : '0';
+};
+
 const giftedUserHandler: FunctionHandler = async (_args, ctx) => {
     const eventData = getEventData(ctx);
     const giftedUser = getStringField(eventData, [
@@ -186,6 +198,14 @@ const rewardInputHandler: FunctionHandler = async (_args, ctx) => {
 };
 
 export function registerEventsubFunctions(): void {
+    registerFunction('ban.time', banTimeHandler, {
+        description: 'Timeout duration in seconds from a temporary ban event (banned_at and ends_at). Returns 0 for permanent bans or missing or invalid timestamps.',
+        syntax: 'ban.time',
+        category: 'event-data',
+        examples: ['ban.time'],
+        keywords: ['ban', 'timeout', 'duration', 'seconds', 'duracion', 'segundos'],
+        surfaces: ['authoring']
+    });
     registerFunction('twitch.modiversary', modiversaryHandler, {
         description: 'Number of months the viewer has been a moderator, from modiversary.months. Returns 0 when no valid moderator anniversary is present.',
         syntax: 'twitch.modiversary',

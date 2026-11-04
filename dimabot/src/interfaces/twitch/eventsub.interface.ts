@@ -215,6 +215,7 @@ export interface IBanEvent {
     moderator_user_name: string;
     moderator_user_login: string;
     reason: string;
+    banned_at: string;
     ends_at: string | null;
     is_permanent: boolean;
 }

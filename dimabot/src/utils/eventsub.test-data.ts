@@ -292,6 +292,7 @@ function buildEventData(
         moderator_user_name: "TestModBot",
         moderator_user_login: "testmodbot",
         reason: "Test ban reason",
+        banned_at: new Date().toISOString(),
         ends_at: null,
         is_permanent: true,
         ...base,

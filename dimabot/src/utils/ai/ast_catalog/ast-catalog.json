@@ -1,9 +1,9 @@
 {
-  "version": "db8696626c74",
-  "generatedAt": "2026-10-23T20:12:22.093Z",
+  "version": "f8adf03dcd78",
+  "generatedAt": "2026-11-04T05:52:28.837Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 115,
+  "functionCount": 117,
   "entries": [
     {
       "name": "overlay.skip",
@@ -1614,6 +1614,29 @@
       ]
     },
     {
+      "name": "ban.time",
+      "description": "Timeout duration in seconds from a temporary ban event (banned_at and ends_at). Returns 0 for permanent bans or missing or invalid timestamps.",
+      "syntax": "ban.time",
+      "category": "event-data",
+      "examples": [
+        "ban.time"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "ban",
+        "timeout",
+        "duration",
+        "seconds",
+        "duracion",
+        "segundos"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
       "name": "twitch.modiversary",
       "description": "Number of months the viewer has been a moderator, from modiversary.months. Returns 0 when no valid moderator anniversary is present.",
       "syntax": "twitch.modiversary",
@@ -2167,7 +2190,7 @@
     },
     {
       "name": "pet.talk",
-      "description": "Speaks supplied text through the pet speech queue without an LLM. Requires a configured command or Twitch event action.",
+      "description": "Speaks supplied text with the pet voice, without an LLM. Waits its turn in the TTS queue, in order with normal TTS messages. Requires a configured command or Twitch event action.",
       "syntax": "pet.talk text",
       "category": "pet",
       "examples": [
@@ -2189,7 +2212,7 @@
     },
     {
       "name": "pet.ask",
-      "description": "Asks the pet personality for a reply, then speaks it through the pet speech queue. Requires a configured command or Twitch event action.",
+      "description": "Asks the pet personality for a reply, then speaks it. Waits in the TTS queue or the pet queue, as set on the Pet page. Requires a configured command or Twitch event action.",
       "syntax": "pet.ask prompt",
       "category": "pet",
       "examples": [
@@ -2208,6 +2231,27 @@
         "authoring"
       ],
       "planTier": "premium"
+    },
+    {
+      "name": "goal.add",
+      "description": "Record an item on a configured currency goal. This does not charge a customer or verify a sale.",
+      "syntax": "goal.add item_name quantity [receipt_id]",
+      "category": "goals",
+      "examples": [
+        "goal.add sticker 3"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "goal",
+        "currency",
+        "contribution",
+        "meta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
     },
     {
       "name": "trigger.send",
