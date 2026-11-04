@@ -21,6 +21,7 @@ import { deleteChannelDimafxData, type IDeleteChannelDimafxResult } from './dima
 import { decrementSiteAnalytics } from './siteanalytics.js';
 import { deleteChannelMemoryEmbeddingsByChannel } from './qdrant/functions/memory/sync_memory.qdrant.js';
 import { revokeUserOAuth } from '../server/oauth/service.js';
+import { revokePolarSubscriptionsForAccount } from './polar_account_cancellation.js';
 
 export interface IDeleteAccountOptions {
     channelID: string;
@@ -30,6 +31,7 @@ export interface IDeleteAccountOptions {
 }
 
 export interface IDeleteAccountResult extends IDeleteChannelDimafxResult {
+    polarSubscriptionsRevoked: number;
     commandsDeleted: number;
     commandVariablesDeleted: number;
     eventsubsDeleted: number;
@@ -60,6 +62,10 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         throw new Error('channelID and userID are required for account deletion');
     }
 
+    // End billing first: if Polar can't confirm, nothing is deleted and the user can retry,
+    // instead of being charged for an account that no longer exists.
+    const polarSubscriptionsRevoked = await revokePolarSubscriptionsForAccount(userID);
+
     // Revoke before deletion; cached access tokens must fail immediately afterward.
     await revokeUserOAuth(userID);
 
@@ -67,6 +73,7 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         channelID,
         channelName,
         userID,
+        polarSubscriptionsRevoked,
         timestamp: new Date().toISOString()
     });
 
@@ -191,6 +198,7 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
     }
 
     const result: IDeleteAccountResult = {
+        polarSubscriptionsRevoked,
         commandsDeleted: commandsDelete.deletedCount ?? 0,
         commandVariablesDeleted: commandVariablesDelete.deletedCount ?? 0,
         eventsubsDeleted: unsubscribedEventsubs + (eventsubsDelete.deletedCount ?? 0),

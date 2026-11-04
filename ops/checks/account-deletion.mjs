@@ -1,6 +1,10 @@
 /**
- * API check: deleting an account removes the channel's DimaFX data, and DimaFX logs expire
- * after 365 days without losing unresolved paid work.
+ * API check: account deletion (DELETE /auth/account) and DimaFX log retention.
+ *
+ * - Polar: every billable subscription (by stored customer ID and by our user ID as external
+ *   customer ID, across pages) is revoked BEFORE any data is deleted; ended subscriptions and
+ *   other customers are untouched; if Polar fails, the request fails and nothing is deleted;
+ *   a subscription already ended by a concurrent cancel does not block deletion.
  *
  * - The API creates both TTL indexes (also when the old non-unique twitchTransactionID index
  *   that production still has is present).
@@ -9,8 +13,8 @@
  * - DELETE /auth/account removes the channel's shop items, viewer wallets, purchase log and
  *   playback records; other channels' DimaFX data is untouched; unauthenticated calls get 401.
  *
- * Run with --dependency mongo --dependency redis --fixtures ops/checks/account-dimafx-fixtures
- * --test-env ops/checks/account-dimafx-fixtures/test-env.json.
+ * Run with --dependency mongo --dependency redis --fixtures <copy of ops/checks/account-deletion-fixtures>
+ * --test-env ops/checks/account-deletion-fixtures/test-env.json.
  */
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -41,7 +45,7 @@ function assertTtlIndex(index, label) {
   assert.equal(index.partialFilterExpression, undefined, `${label}: applies to every state`);
 }
 
-const conn = await mongoose.createConnection(`${BASE}/saas_ops_account_dimafx_test`).asPromise();
+const conn = await mongoose.createConnection(`${BASE}/saas_ops_account_deletion_test`).asPromise();
 const db = conn.db;
 await conn.client.db('admin').command({ setParameter: 1, ttlMonitorSleepSecs: 1 });
 
@@ -160,6 +164,7 @@ const body = await response.json();
 assert.equal(response.status, 200, JSON.stringify(body));
 assert.equal(body.error, false);
 assert.equal(body.data.usersDeleted, 1);
+assert.equal(body.data.polarSubscriptionsRevoked, 0, 'no Polar subscriptions for this account');
 assert.equal(body.data.dimafxItemsDeleted, 2);
 assert.equal(body.data.dimafxWalletsDeleted, 2);
 assert.equal(body.data.dimafxTransactionsDeleted, 3);
@@ -168,6 +173,66 @@ assert.deepEqual(await counts(owner), { items: 0, wallets: 0, transactions: 0, p
 assert.deepEqual(await counts(other), { items: 1, wallets: 2, transactions: 2, playbacks: 1 }, 'other channels untouched');
 assert.equal(await db.collection('users').countDocuments({ 'accounts.id': owner }), 0, 'account deleted');
 console.log('PASS DELETE /auth/account removed the channel\'s DimaFX items, wallets, purchase log and playbacks; other channels untouched; 401 without auth');
+
+// 4. Polar subscriptions are revoked before anything is deleted.
+const fs = await import('node:fs');
+const STATE = '/tmp/saas-fixtures/polar-state.json';
+const CALLS = '/tmp/saas-fixtures/polar-calls.jsonl';
+const payer = '99003201';
+const payerToken = 'account-polar-payer-token';
+const payerUserId = new mongoose.Types.ObjectId();
+await redis.hSet(`token:${payerToken}`, { id: payer, login: 'acct_polar_payer', display_name: 'acct_polar_payer' });
+await db.collection('users').insertOne({
+  _id: payerUserId, polar_sh_customer_id: 'cus_payer', plan_tier: 'pro',
+  accounts: [{ type: 'twitch', id: payer, name: 'acct_polar_payer', actived: true }]
+});
+await db.collection('channelextensionitems').insertOne(item(payer));
+const sub = (id, status, extra) => ({ id, status, ...extra });
+const byCustomer = { customer_id: 'cus_payer' };
+const byExternal = { external_customer_id: String(payerUserId) };
+const writeState = state => fs.writeFileSync(STATE, JSON.stringify({ ownerUserId: String(payerUserId), ownerChannelId: payer, ...state }));
+const subscriptions = () => [
+  sub('sub_active', 'active', byCustomer),
+  sub('sub_old_1', 'canceled', byCustomer),
+  sub('sub_old_2', 'incomplete_expired', byCustomer),
+  sub('sub_past_due', 'past_due', byCustomer), // on page 2 of the customer listing
+  sub('sub_trial', 'trialing', byExternal),
+  sub('sub_race', 'unpaid', { ...byExternal, conflictOnRevoke: true }),
+  sub('sub_someone_else', 'active', { customer_id: 'cus_other', external_customer_id: 'someone-else' })
+];
+const deletePayer = async () => {
+  const res = await fetch('http://127.0.0.1:3000/auth/account', { method: 'DELETE', headers: { Authorization: `Bearer ${payerToken}` } });
+  return { status: res.status, body: await res.json() };
+};
+const revokeCalls = () => (fs.existsSync(CALLS) ? fs.readFileSync(CALLS, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)) : []);
+const status = id => JSON.parse(fs.readFileSync(STATE, 'utf8')).subscriptions.find(s => s.id === id).status;
+
+// 4a. Polar fails: request fails, nothing deleted, subscription still active.
+writeState({ failRevoke: true, subscriptions: subscriptions() });
+let r = await deletePayer();
+assert.equal(r.status, 500, 'deletion fails when Polar cannot revoke');
+assert.equal(status('sub_active'), 'active');
+assert.equal(await db.collection('users').countDocuments({ _id: payerUserId }), 1, 'account kept when Polar fails');
+assert.equal(await db.collection('channelextensionitems').countDocuments({ channelID: payer }), 1, 'data kept when Polar fails');
+console.log('PASS Polar failure: deletion refused with 500, account, data and subscription untouched');
+
+// 4b. Success: revoke all billable subscriptions first, then delete.
+fs.rmSync(CALLS, { force: true });
+writeState({ subscriptions: subscriptions() });
+r = await deletePayer();
+assert.equal(r.status, 200, JSON.stringify(r.body));
+assert.equal(r.body.data.polarSubscriptionsRevoked, 4);
+const calls = revokeCalls();
+assert.deepEqual(calls.map(c => c.revoke).sort(), ['sub_active', 'sub_past_due', 'sub_race', 'sub_trial']);
+for (const call of calls) {
+  assert.equal(call.usersAtRevoke, 1, `${call.revoke} revoked while the account still existed`);
+  assert.equal(call.dimafxItemsAtRevoke, 1, `${call.revoke} revoked before any data was deleted`);
+}
+for (const id of ['sub_active', 'sub_past_due', 'sub_trial', 'sub_race']) assert.equal(status(id), 'canceled', `${id} ended`);
+assert.equal(status('sub_someone_else'), 'active', 'other customers untouched');
+assert.equal(await db.collection('users').countDocuments({ _id: payerUserId }), 0, 'account deleted');
+assert.equal(await db.collection('channelextensionitems').countDocuments({ channelID: payer }), 0, 'data deleted');
+console.log('PASS Polar: 4 billable subscriptions (customer ID + external ID, page 2, concurrent cancel) revoked before any deletion; ended and other customers untouched');
 
 await redis.quit();
 await conn.close();

@@ -475,7 +475,7 @@ function getPolarToken(): string {
     return token;
 }
 
-async function polarRequest<T>(path: string, init: RequestInit): Promise<T> {
+export async function polarRequest<T>(path: string, init: RequestInit): Promise<T> {
     const token = getPolarToken();
     const baseUrl = getPolarBaseUrl();
 
