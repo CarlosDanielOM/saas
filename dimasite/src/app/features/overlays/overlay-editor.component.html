@@ -1,4 +1,3 @@
-@for (sound of previewSounds(); track sound.key) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="sound.key" [transport]="timeline()" [owner]="channel" (failed)="notice.set('soundFailed')" (playbackBlocked)="notice.set('soundBlocked')" /> }
 <div class="lf editor" [class.lf--design]="!!designDraft()">
 <main class="lf-main">
 @if (!owner()) {
@@ -43,6 +42,7 @@
   </section>
 }
 <fieldset class="editor-fields" [disabled]="busy() || loading()" [attr.aria-label]="t('studio')">
+<div class="editor-fields__content">
   @if (designDraft(); as design) {
     <!-- Alert design mode: the same editor, scoped to one reusable alert. -->
     <header class="lf-head">
@@ -157,62 +157,26 @@
                 [style.width.%]="(canvasWidth() - 2 * randomMargin()) / canvasWidth() * 100" [style.height.%]="(canvasHeight() - 2 * randomMargin()) / canvasHeight() * 100"></div>
             }
             @if (!widgets().length) { <p class="stage__empty">{{ t('stageEmpty') }}</p> }
+            <app-overlay-scene-renderer [scene]="renderScene()" [jobs]="renderJobs()" [owner]="channel" [streamer]="streamer" [placement]="widgetPlacement()" [preview]="true" [previewFixtures]="widgetPreviews()"
+              [texts]="renderTexts()" [staticPlaybackKey]="designPlaybackKey()" [staticDuration]="editingLayout()?.duration ?? 5" [transport]="timeline()" [designSound]="designDraft() ? editingLayout()?.sound : undefined" [staticAssets]="designPreparedAssets()"
+              (started)="rendererStarted($event)" (ended)="rendererEnded($event)" (failed)="rendererEnded($event,true)" (issue)="notice.set($event === 'autoplay' ? 'soundBlocked' : 'testPlaybackError')" />
             @for (widget of widgets(); track widget.id; let layerIndex = $index) {
               @if (widget.visible) {
                 @let placement = previewPlacement(widget);
-                <div class="widget" role="group" tabindex="0" [attr.data-kind]="widget.kind" [attr.data-delivery]="widgetModule(widget)?.definition?.delivery" [class.selected]="selectedId() === widget.id" [class.is-preview]="isPlaying(widget)" [class.is-locked]="widget.locked"
-                  [style.left.%]="placement.x / canvasWidth() * 100" [style.top.%]="placement.y / canvasHeight() * 100" [style.width.%]="placement.width / canvasWidth() * 100" [style.height.%]="placement.height / canvasHeight() * 100" [style.z-index]="layerIndex"
-                  (pointerdown)="startPointer($event, widget, 'move')" (click)="select(widget.id)" (keydown)="onWidgetKeydown($event, widget)" [attr.aria-label]="widgetName(widget) + ' ' + t('canvasItem')">
-                  <div class="widget__content" [class.widget__content--alert]="widget.kind === 'alert'">
-                    @if (widgetModule(widget)?.renderer) {
-                      <app-overlay-widget-host [widget]="widget" [placement]="widgetPlacement()" [preview]="true" [previewFixture]="widgetPreviews()[widget.id] ?? ''" />
-                    } @else if (widgetModule(widget)) { @switch (widget.kind) {
-                      @case ('alert') {
-                        @if (designFor(widget); as design) {
-                          <div class="alert-render">
-                            @for (layer of alertLayout(widget); track layer.id) {
-                              @if (layer.visible) { <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
-                                <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text, widget)" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" />
-                              </div> }
-                            }
-                          </div>
-                          <span class="alert-event-label">{{ t(eventFor(widget) + 'Name') }}</span>
-                        }
-                      }
-                      @case ('text') { <app-overlay-layer class="text-preview" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" [text]="renderText(widget.text, widget)" /> }
-                      @case ('image') { <app-overlay-layer [owner]="channel" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
-                      @case ('video') { <app-overlay-layer [owner]="channel" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
-                      @case ('shape') { <app-overlay-layer [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
-                      @case ('animation') { <app-overlay-layer [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
-                      @case ('tts') {
-                        <span class="widget__icon"><lucide-icon [name]="icons.Volume2" [size]="18" aria-hidden="true" /></span>
-                        <div><small>{{ t('ttsPreviewLabel') }}</small><strong>{{ t(widget.showTtsText === true ? 'ttsPreviewText' : 'ttsAudioOnly') }}</strong></div>
-                        <span class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-                      }
-                      @case ('trigger') {
-                        <span class="widget__icon"><lucide-icon [name]="icons.Zap" [size]="18" aria-hidden="true" /></span>
-                        <div><small>{{ t('triggerPreviewLabel') }}</small><strong>{{ t('triggerPreviewText') }}</strong></div>
-                      }
-                      @case ('clip') {
-                        @if (!mediaEvents(widget).length) { <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [streamer]="streamer" /> }
-                      }
-                    } }
-                  </div>
-                  @for (event of mediaEvents(widget); track event.id) {
-                    @if (event.media; as media) {
-                      @if (event.kind === 'clip') {
-                        <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [media]="media" [muted]="mediaMuted(event, widget.id)"
-                          (started)="mediaStarted(event.id, widget.id, $event)" (ended)="mediaFinished(event.id, widget.id)" (failed)="mediaFinished(event.id, widget.id, true)" />
-                      } @else {
-                      <app-overlay-media [media]="media" [muted]="mediaMuted(event, widget.id)" [showTitle]="event.kind !== 'tts' || widget.showTtsText === true" [showAudioLabel]="event.kind !== 'tts' || widget.showTtsText === true" [playLabel]="t('tapToPlay')"
-                        (started)="mediaStarted(event.id, widget.id, $event)" (ended)="mediaFinished(event.id, widget.id)" (failed)="mediaFinished(event.id, widget.id, true)" />
-                      }
-                    }
+                <div class="widget widget--selection" role="group" tabindex="0" [attr.data-kind]="widget.kind" [attr.data-widget-id]="widget.id" [attr.data-delivery]="widgetModule(widget)?.definition?.delivery" [class.selected]="selectedId() === widget.id" [class.is-preview]="isPlaying(widget)" [class.is-locked]="widget.locked"
+                  [style.left.%]="placement.x / canvasWidth() * 100" [style.top.%]="placement.y / canvasHeight() * 100" [style.width.%]="placement.width / canvasWidth() * 100" [style.height.%]="placement.height / canvasHeight() * 100" [style.z-index]="layerIndex + 1"
+                  (pointerdown)="startPointer($event,widget,'move')" (click)="select(widget.id)" (keydown)="onWidgetKeydown($event,widget)" [attr.aria-label]="widgetName(widget) + ' ' + t('canvasItem')">
+                  @if (!isPlaying(widget) && (widget.kind === 'tts' || widget.kind === 'trigger')) {
+                    <div class="widget__content widget__placeholder">
+                      <span class="widget__icon"><lucide-icon [name]="widget.kind === 'tts' ? icons.Volume2 : icons.Zap" [size]="18" aria-hidden="true" /></span>
+                      <div><small>{{ t(widget.kind === 'tts' ? 'ttsPreviewLabel' : 'triggerPreviewLabel') }}</small><strong>{{ t(widget.kind === 'tts' ? (widget.showTtsText === true ? 'ttsPreviewText' : 'ttsAudioOnly') : 'triggerPreviewText') }}</strong></div>
+                    </div>
                   }
-                  @if (selectedId() === widget.id && !widget.locked) { <button type="button" class="resize-handle" (pointerdown)="startPointer($event, widget, 'resize')" [attr.aria-label]="t('resize')"></button> }
+                  @if (selectedId() === widget.id && !widget.locked) { <button type="button" class="resize-handle" (pointerdown)="startPointer($event,widget,'resize')" [attr.aria-label]="t('resize')"></button> }
                 </div>
               }
             }
+
           </div>
         </div>
       </div>
@@ -537,6 +501,7 @@
       }
     </div>
   </div>
+</div>
 </fieldset>
   }
 }

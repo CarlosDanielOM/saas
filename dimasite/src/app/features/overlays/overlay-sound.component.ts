@@ -35,7 +35,7 @@ export class OverlaySoundComponent {
   constructor() {
     afterRenderEffect(cleanup => {
       const sound = this.sound(), duration = this.duration(), owner = this.owner(), publicId = this.publicId(), prepared = this.preparedSource(); this.playbackKey();
-      if (untracked(this.transport)) { this.timelineAudio(sound, duration, owner, publicId, cleanup); return; }
+      if (untracked(this.transport)) { this.timelineAudio(sound, duration, owner, publicId, prepared, cleanup); return; }
       const audio = this.audio().nativeElement, began = performance.now();
       let disposed = false, playing = false, done = false, timer: ReturnType<typeof setTimeout> | undefined;
       this.blocked.set(false); audio.loop = false; audio.volume = 0;
@@ -75,7 +75,7 @@ export class OverlaySoundComponent {
     });
     afterRenderEffect(() => { this.transport(); this.syncTimeline?.(); });
   }
-  private timelineAudio(sound: AlertSound, duration: number, owner: string, publicId: string, cleanup: (fn: () => void) => void): void {
+  private timelineAudio(sound: AlertSound, duration: number, owner: string, publicId: string, prepared: string, cleanup: (fn: () => void) => void): void {
     const audio = this.audio().nativeElement;
     let disposed = false, broken = false, ready = false, playing = false, blocked = false, seek = -1, attempt = 0;
     this.blocked.set(false); audio.volume = 0; audio.loop = false;
@@ -103,7 +103,7 @@ export class OverlaySoundComponent {
     audio.onloadedmetadata = () => { ready = Number.isFinite(audio.duration) && audio.duration > 0; if (ready) sync(); else fail(); };
     audio.onerror = fail;
     cleanup(() => { document.removeEventListener('visibilitychange', visibility); disposed = true; attempt++; this.syncTimeline = undefined; this.playAgain = null; audio.onloadedmetadata = null; audio.onerror = null; audio.pause(); audio.removeAttribute('src'); audio.load(); });
-    const source = publicId ? Promise.resolve(`${this.base}/overlay-studio/public/${encodeURIComponent(publicId)}/assets/${sound.assetId}`) : this.library.preview(owner, sound.assetId);
+    const source = prepared ? Promise.resolve(prepared) : publicId ? Promise.resolve(`${this.base}/overlay-studio/public/${encodeURIComponent(publicId)}/assets/${sound.assetId}`) : this.library.preview(owner, sound.assetId);
     void source.then(url => { if (!disposed) { audio.src = url; audio.load(); } }).catch(fail);
   }
 }

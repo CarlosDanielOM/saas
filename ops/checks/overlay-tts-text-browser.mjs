@@ -114,9 +114,9 @@ try {
   await toggle.uncheck();
   assert.equal(state.scenes[0].published.widgets[0].showTtsText, true, 'draft does not change published text setting');
   await editor.locator('.test-btn').filter({ hasText: 'Text to speech' }).click();
-  await editor.locator('.widget[data-kind="tts"] video').waitFor();
-  assert.equal(await editor.locator('.widget[data-kind="tts"] .audio-label,.widget[data-kind="tts"] .media-title').count(), 0);
-  await until(async () => !await editor.locator('.widget[data-kind="tts"] video').count(), 'preview completes');
+  await editor.locator('app-overlay-scene-renderer .placement[data-kind="tts"] video').waitFor();
+  assert.equal(await editor.locator('app-overlay-scene-renderer .placement[data-kind="tts"] .audio-label,app-overlay-scene-renderer .placement[data-kind="tts"] .media-title').count(), 0);
+  await until(async () => !await editor.locator('app-overlay-scene-renderer .placement[data-kind="tts"] video').count(), 'preview completes');
   await editor.getByRole('button', { name: 'Save draft', exact: true }).click(); await editor.getByRole('button', { name: 'Saved', exact: true }).waitFor();
   await editor.reload(); await editor.locator('.stage').waitFor(); await editor.locator('.layers').getByRole('button', { name: 'Text to speech', exact: true }).click();
   assert.equal(await toggle.isChecked(), false, 'off survives reload');

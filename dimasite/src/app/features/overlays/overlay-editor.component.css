@@ -75,14 +75,16 @@ button:disabled { opacity: 0.5; cursor: default; }
 .lf-main > *, .lf-panels > *, .lf-col > * { min-width: 0; }
 
 .editor-fields {
-  display: grid;
-  gap: 1rem;
+  display: block;
   min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
+/* A native fieldset with display:grid can skip layout of an absolutely
+   positioned descendant in Chromium. Keep semantics here and grid on a div. */
+.editor-fields__content { display:grid; gap:1rem; min-width:0 }
 .editor-fields:disabled { opacity: 0.75; }
 
 .lf-tile {
@@ -872,7 +874,7 @@ app-overlay-queue { order: 3; }
   .lf-switch__track, .lf-switch__track::after, .lf-more > summary::before, .publish-settings > summary::after { transition: none; }
 }
 
-/* ---- Canvas rendering: matches the published OBS renderer; keep in sync. ---- */
+/* Editor canvas grid, selection controls and idle source labels. Scene artwork is shared with OBS. */
 .stage { position:relative; width:100%; height:100%; background:radial-gradient(circle at 50% 50%,rgba(64,79,111,.22),transparent 50%),linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px),var(--stage); background-size:auto,5% 8.89%,5% 8.89%,auto; border-radius:10px; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08) }
 .stage__crosshair { position:absolute; left:50%; top:50%; width:14px; height:14px; border:1px solid rgba(255,255,255,.12); border-radius:50%; transform:translate(-50%,-50%) }
 .stage__label { position:absolute; left:16px; top:13px; color:rgba(255,255,255,.42); text-transform:uppercase; font-size:8px; font-weight:900; letter-spacing:.13em }
@@ -960,3 +962,10 @@ app-overlay-queue { order: 3; }
 .random-bounds { position: absolute; border: 1px dashed #c4b5fd; background: rgba(124, 58, 237, .06); pointer-events: none; }
 
 .widget[data-delivery="state"] .widget__content { padding:0; display:block; }
+
+/* Editor chrome overlays the canonical scene without changing its content box. */
+.widget.widget--selection { padding:0; border:0; border-radius:0; background:transparent; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25) }
+.widget--selection .widget__placeholder { background:rgba(33,38,55,.88); border-radius:8px }
+.widget--selection[data-kind="trigger"] .widget__placeholder { background:linear-gradient(135deg,rgba(66,42,23,.94),rgba(33,38,55,.9)) }
+.widget--selection.is-preview { pointer-events:none }
+.widget--selection.is-preview .resize-handle { pointer-events:auto }

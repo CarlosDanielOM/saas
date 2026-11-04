@@ -1,10 +1,10 @@
-import { OverlayWidgetHostComponent } from './overlay-widget-host.component';
+import { OverlaySceneRendererComponent } from './overlay-scene-renderer.component';
+import { placementStartSeconds, placementMediaSeconds, alertPlacementIds, type OverlayPlacementReport } from './overlay-playback';
 import type { InteractionSnapshot } from './overlay-interaction.model';
 import type { WidgetStates, WidgetStateSnapshot } from './overlay-widget-contract.generated';
-import { acceptWidgetStates, stateForWidget, WidgetStateTransport, type WidgetStateMessage } from './overlay-widget-state';
+import { acceptWidgetStates, WidgetStateTransport, type WidgetStateMessage } from './overlay-widget-state';
 import { widgetModuleFor } from './overlay-widget-registry';
 import { OverlayAssetCache, type PreparedAsset } from './overlay-asset-cache';
-import { OverlaySoundComponent } from './overlay-sound.component';
 import type { QueueState, QueueCommand, OverlayPlatform } from './overlay-queue.model';
 import { Component, ChangeDetectionStrategy, DestroyRef, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -13,12 +13,8 @@ import { DOCUMENT } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { io } from 'socket.io-client';
 import { OverlayApi, Snapshot } from './overlay-api.service';
-import { OverlayClipComponent } from './overlay-clip.component';
-import { OverlayMediaComponent, TestMedia, type OverlaySpeechPlayback } from './overlay-media.component';
-import { OverlayLayerComponent } from './overlay-layer.component';
-import { LanguageService } from '../../services/language.service';
-import { ALERT_EVENTS, matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
-import { clipPlaybackLimit } from './overlay-clip-motion';
+import type { TestMedia, OverlaySpeechPlayback } from './overlay-media.component';
+import { matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
 import { placeTrigger } from './overlay-trigger-placement';
 interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; tts?: { speechID: string; ownerClientId: string | null; durationMs: number }; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
 interface Retry { attempts: number; timer?: ReturnType<typeof setTimeout> }
@@ -27,40 +23,13 @@ const retryDelay = (attempt: number) => Math.min(1000 * 2 ** Math.min(attempt, 5
 const retryable = (error: unknown) => error instanceof TimeoutError || error instanceof HttpErrorResponse && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
 interface Playing { assets: Map<string, PreparedAsset>; event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
 @Component({
-  selector: 'app-overlay-runtime', imports: [OverlayWidgetHostComponent, OverlaySoundComponent, OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-overlay-runtime', imports: [OverlaySceneRendererComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@if (snapshot(); as scene) {
-    <div class="canvas" [style.width.px]="scene.width" [style.height.px]="scene.height" [style.transform]="fit(scene)">
-      @for (w of scene.widgets; track w.id) { @if (w.visible && delivery(w) === 'static') {
-        <div class="placement art" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-layer [publicId]="publicId" [layer]="w" (failed)="reportIssue('media')" /></div>
-      } }
-      @for (w of scene.widgets; track w.id) { @if (w.visible && delivery(w) === 'state') {
-        <div class="placement interaction" [attr.data-interaction]="w.kind" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-widget-host [widget]="w" [state]="widgetState(w)" [clockOffset]="clockOffset()" /></div>
-      } }
-      @for (job of playing(); track job.event.id) {
-        @for (sound of soundsFor(job); track sound.id) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="job.event.id" [publicId]="publicId" [preparedSource]="job.assets.get(sound.config.assetId)?.url || ''" (failed)="reportIssue('media')" (playbackBlocked)="reportIssue('autoplay')" (started)="soundStarted()" /> }
-        @for (w of job.widgets; track w.id) {
-          <div class="placement" [attr.data-event]="job.event.kind" [attr.data-platform]="job.event.platform ?? 'twitch'" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="job.snapshot.widgets.findIndex(indexOfId(w.id))">
-            @if (mediaFor(job, w.id); as media) {
-              @if (job.event.kind === 'clip') {
-                <app-overlay-clip [design]="w.clipDesign ?? 'classic'" [media]="media" [muted]="job.widgets[0].id !== w.id"
-                  (started)="started(job.event.id, w.id, $event)" (playbackBlocked)="reportIssue('autoplay')" (ended)="finishPlacement(job.event.id,w.id)" (failed)="failedPlacement(job.event.id,w.id)" />
-              } @else {
-              <app-overlay-media [media]="media" [muted]="job.widgets[0].id !== w.id" [reportSpeech]="!!job.event.tts && job.widgets[0].id === w.id" (speechPlayback)="speechPlayback(job, w.id, $event)" [showTitle]="job.event.kind !== 'tts'" [showAudioLabel]="job.event.kind !== 'tts'" [playLabel]="playLabel()" (started)="started(job.event.id, w.id, $event)" (playbackBlocked)="reportIssue('autoplay')" (ended)="finishPlacement(job.event.id,w.id,'ended')" (failed)="failedPlacement(job.event.id,w.id)" />
-              }
-            } @else if (!job.event.tts) {
-              @if (job.event.layouts?.[w.designId || '']; as layout) {
-                @for (part of layout.widgets; track part.id) { @if(part.visible) {
-                  <div class="placement art" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [publicId]="publicId" [layer]="part" [preparedSource]="job.assets.get(part.assetId || '')?.url || ''" [playbackKey]="job.event.id" [duration]="layout.duration" (failed)="reportIssue('media')" /></div>
-                } }
-              }
-            }
-            @if (job.event.kind === 'tts' && w.showTtsText === true) { <div class="speech-text">{{ job.event.text }}</div> }
-          </div>
-        }
-      }
-    </div>
+    <app-overlay-scene-renderer [scene]="scene" [jobs]="playing()" [publicId]="publicId" [audioOwner]="rendererClientId()" [viewport]="viewport()" [states]="widgetStates()" [clockOffset]="clockOffset()"
+      (started)="renderedStarted($event)" (ended)="renderedEnded($event)" (failed)="renderedEnded($event,true)"
+      (issue)="reportIssue($event)" (soundStarted)="soundStarted()" (speechPlayback)="renderedSpeech($event)" />
   }`,
-  styles: `:host { display:block; margin:0; padding:0; background:transparent } .canvas { position:relative; overflow:hidden; transform-origin:top left; font-family:'Plus Jakarta Sans',sans-serif } .placement { position:absolute; overflow:hidden } .placement.art { overflow:visible } app-overlay-sound { position:relative; z-index:1000 } app-overlay-media { background:transparent } .speech-text { position:absolute; inset:0; display:grid; place-content:center; color:white; background:#171a21cc; font-size:28px; padding:12px; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:none }`
+  styles: `:host { position:relative; display:block; width:100vw; height:100vh; margin:0; padding:0; background:transparent; overflow:hidden }`
 })
 export class OverlayRuntimeComponent {
   readonly snapshot = signal<Snapshot | null>(null);
@@ -68,7 +37,6 @@ export class OverlayRuntimeComponent {
   readonly clockOffset = signal(0);
   private readonly stateTransport = new WidgetStateTransport();
   delivery(widget: OverlayWidget) { return widgetModuleFor(widget, 'scene')?.definition.delivery; }
-  widgetState(widget: OverlayWidget): unknown { return stateForWidget(widget, this.widgetStates()); }
   private acceptState(data: WidgetStateMessage): void {
     const accepted = this.stateTransport.accept(data);
     if (accepted) this.acceptStateSnapshot(accepted.widgetStates, accepted.serverTime, accepted.failedSources);
@@ -85,7 +53,6 @@ export class OverlayRuntimeComponent {
   readonly playing = signal<Playing[]>([]);
   private readonly api = inject(OverlayApi);
   private readonly assetCache = new OverlayAssetCache();
-  private readonly language = inject(LanguageService);
   readonly publicId = inject(ActivatedRoute).snapshot.paramMap.get('publicId') || '';
   private readonly receiptKey = 'overlay-playback:' + this.publicId;
   private readonly receipts = this.readReceipts();
@@ -190,22 +157,20 @@ export class OverlayRuntimeComponent {
   }
   reportIssue(issue: 'snapshot' | 'event' | 'media' | 'autoplay'): void { this.issue = issue; this.reportHealth(); }
   failedPlacement(id: string, widget: string): void { this.reportIssue('media'); this.finishPlacement(id, widget, 'error'); }
-  mediaFor(job: Playing, widget: string): TestMedia | undefined {
-    return !job.event.tts || job.event.tts.ownerClientId === this.clientId && job.widgets[0]?.id === widget ? job.event.media : undefined;
-  }
   speechPlayback(job: Playing, widget: string, report: OverlaySpeechPlayback): void {
     if (this.socket.connected && job.event.tts?.ownerClientId === this.clientId && job.widgets[0]?.id === widget) {
       this.socket.emit('overlay-speech-playback', { eventId: job.event.id, speechID: job.event.tts.speechID, ...report });
     }
   }
-  playLabel() { return this.language.translate('overlayStudio.tapToPlay'); }
-  indexOfId(id: string) { return (w: OverlayWidget) => w.id === id; }
-  designWidth(job: Playing, w: OverlayWidget) { return job.snapshot.designs.find(d => d.id === w.designId)?.width || 800; }
-  designHeight(job: Playing, w: OverlayWidget) { return job.snapshot.designs.find(d => d.id === w.designId)?.height || 240; }
-  /** A browser source sized differently from the canvas shows the whole canvas instead of cropping it. */
-  fit(scene: Snapshot): string | null {
-    const { width, height } = this.viewport(), scale = Math.min(width / scene.width, height / scene.height);
-    return width && height && Number.isFinite(scale) && Math.abs(scale - 1) > .001 ? `scale(${scale})` : null;
+  rendererClientId(): string { return this.clientId; }
+  renderedStarted(event: OverlayPlacementReport): void { if (typeof event.id === 'string') this.started(event.id,event.widgetId,event.duration); }
+  renderedEnded(event: OverlayPlacementReport,failed = false): void {
+    if (typeof event.id !== 'string') return;
+    if (failed) this.failedPlacement(event.id,event.widgetId); else this.finishPlacement(event.id,event.widgetId,'ended');
+  }
+  renderedSpeech(event: OverlayPlacementReport & { report: OverlaySpeechPlayback }): void {
+    const job = this.playing().find(item => item.event.id === event.id);
+    if (job) this.speechPlayback(job,event.widgetId,event.report);
   }
   private snapshotRecovered(): void {
     if (this.revision < this.targetRevision) return;
@@ -288,10 +253,7 @@ export class OverlayRuntimeComponent {
     this.reportPlayback();
   }
   /** Alerts of any category queue per alert widget, even when their category does not wait for others. */
-  private alertBoxes(event: Event): string[] {
-    if (!ALERT_EVENTS.includes(event.kind as AlertEvent)) return [];
-    return (this.snapshot()?.widgets ?? []).filter(w => w.visible && this.delivery(w) === 'event' && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => w.id);
-  }
+  private alertBoxes(event: Event): string[] { return alertPlacementIds(this.snapshot()?.widgets ?? [],event.kind); }
   private async start(event: Event) {
     const generation = this.generation, connectionEpoch = this.connectionEpoch;
     try {
@@ -330,7 +292,7 @@ export class OverlayRuntimeComponent {
       const job: Playing = { assets, event: full, snapshot, widgets, pending: new Set(widgets.map(w => w.id)), timers: new Map() };
       this.playing.update(all => [...all, job]); this.reportPlayback();
       for (const w of widgets) {
-        const seconds = full.tts && !full.media ? full.tts.durationMs / 1000 : full.media ? 30 : full.layouts?.[w.designId || '']?.duration || 5;
+        const seconds = placementStartSeconds(full,w);
         job.timers.set(w.id, setTimeout(() => this.finishPlacement(event.id, w.id), seconds * 1000));
       }
     } catch (error) {
@@ -367,15 +329,8 @@ export class OverlayRuntimeComponent {
     if (this.issue === 'media' || this.issue === 'autoplay') { this.issue = null; this.reportHealth(); }
     clearTimeout(job.timers.get(widget));
     // Read-TTS durationMs bounds captions only. Normal TTS fallback may exceed 60s.
-    const seconds = job.event.kind === 'clip' ? clipPlaybackLimit(job.event.media, duration) + 4
-      : job.event.media?.type === 'image' ? 5 : job.event.media?.duration ?? (Number.isFinite(duration) && duration! > 0 ? duration! + 15 : 300);
+    const seconds = placementMediaSeconds(job.event,duration);
     job.timers.set(widget, setTimeout(() => this.finishPlacement(id, widget), seconds * 1000));
-  }
-  soundsFor(job: Playing) {
-    if (job.event.tts) return [];
-    return [...new Set(job.widgets.filter(w => w.kind === 'alert').map(w => w.designId!))].flatMap(id => {
-      const layout = job.event.layouts?.[id]; return layout?.sound ? [{ id, config: layout.sound, duration: layout.duration }] : [];
-    });
   }
   soundStarted(): void { if (this.issue === 'media' || this.issue === 'autoplay') { this.issue = null; this.reportHealth(); } }
   finishPlacement(id: string, widget: string, reason = 'timeout') {
@@ -383,6 +338,7 @@ export class OverlayRuntimeComponent {
     if (job.event.tts && job.widgets[0]?.id === widget && job.event.tts.ownerClientId === this.clientId) { this.finish(id, reason); return; }
     job.pending.delete(widget); clearTimeout(job.timers.get(widget));
     if (!job.pending.size) this.finish(id, reason);
+    else this.playing.update(jobs => [...jobs]);
   }
   private finish(id: string, reason = 'cancelled') {
     if (this.completed.has(id)) return;

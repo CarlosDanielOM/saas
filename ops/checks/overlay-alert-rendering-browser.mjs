@@ -49,9 +49,9 @@ try {
   await page.getByRole('button',{name:'Edit design',exact:true}).click();
   await page.locator('.event-disabled').getByText('Follows is not enabled for this design in “My overlay”. Editing the design does not enable the event.',{exact:true}).waitFor();
   await page.waitForFunction(()=>document.querySelector('.stage img')?.naturalWidth>0);
-  await page.waitForFunction(()=>document.querySelector('.text-preview')?.textContent==='Luna nos ha seguido, bienvenido!');
+  await page.waitForFunction(()=>document.querySelector('app-overlay-scene-renderer .placement[data-widget-id][data-kind=text] app-overlay-layer')?.textContent==='Luna nos ha seguido, bienvenido!');
   const metrics=async locator=>locator.evaluate(e=>{const span=e.querySelector('span'),r=span.getBoundingClientRect(),host=e.getBoundingClientRect();return {color:getComputedStyle(span).color,font:parseFloat(getComputedStyle(span).fontSize),scale:r.height/span.offsetHeight,hostWidth:host.width,textHeight:r.height,hostHeight:host.height};});
-  const editorMetrics=await metrics(page.locator('.text-preview'));
+  const editorMetrics=await metrics(page.locator('app-overlay-scene-renderer .placement[data-widget-id][data-kind=text] app-overlay-layer'));
   assert.equal(editorMetrics.font,40);assert.equal(editorMetrics.color,'rgb(255, 255, 255)');
   assert(Math.abs(editorMetrics.scale-editorMetrics.hostWidth/230)<.02,'text must scale with its design box');
   assert(editorMetrics.textHeight<=editorMetrics.hostHeight+1,'the follower text fits without clipping');
@@ -72,7 +72,7 @@ try {
     await page.setViewportSize({width,height:1000});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`overflow at ${width}`);
     await page.waitForTimeout(100);
-    const m=await metrics(page.locator('.text-preview'));assert(Math.abs(m.scale-m.hostWidth/230)<.02);
+    const m=await metrics(page.locator('app-overlay-scene-renderer .placement[data-widget-id][data-kind=text] app-overlay-layer'));assert(Math.abs(m.scale-m.hostWidth/230)<.02);
   }
   if(process.env.SAAS_SCREENSHOT_DIR){await mkdir(process.env.SAAS_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:process.env.SAAS_SCREENSHOT_DIR+'/alerts-desktop.png',fullPage:true});await page.setViewportSize({width:375,height:1000});await page.screenshot({path:process.env.SAAS_SCREENSHOT_DIR+'/alerts-mobile.png',fullPage:true});}
   await page.addScriptTag({path:'/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js'});

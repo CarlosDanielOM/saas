@@ -47,9 +47,17 @@ function bootstrap(config) {
   const button = (name, root = document) => [...root.querySelectorAll('button')].find(e => e.textContent.trim() === name);
   const click = async element => { assert(element, 'Missing button'); element.click(); await new Promise(r => setTimeout(r, 150)); };
   const top = (selector, expected) => {
-    const node = document.querySelector(selector), rect = node.getBoundingClientRect();
-    const target = document.elementFromPoint(rect.left + 40, rect.top + 70)?.closest(selector.startsWith('.widget') ? '.widget' : '.canvas > .placement');
-    const actual = selector.startsWith('.widget') ? target?.dataset.kind : target?.dataset.event;
+    const editor = selector.startsWith('.widget');
+    const node = document.querySelector(editor ? selector.replace('.widget', 'app-overlay-scene-renderer .placement') : selector), rect = node.getBoundingClientRect();
+    // Inspect the actual painted scene beneath editor interaction controls.
+    const controls = [...document.querySelectorAll('.widget--selection')];
+    const placements = [...document.querySelectorAll('app-overlay-scene-renderer .placement')];
+    const restore = [...controls, ...placements].map(element => [element, element.style.pointerEvents]);
+    controls.forEach(element => element.style.pointerEvents = 'none');
+    placements.forEach(element => element.style.pointerEvents = 'auto');
+    const target = document.elementFromPoint(rect.left + rect.width * .4, rect.top + rect.height * .5)?.closest('.canvas > .placement');
+    const actual = editor ? target?.dataset.kind : target?.dataset.event;
+    restore.forEach(([element, value]) => element.style.pointerEvents = value);
     assert(actual === expected, `Paint order: expected ${expected}, got ${actual}`);
   };
   window.fixture = {
@@ -67,6 +75,9 @@ function bootstrap(config) {
           top('[data-event="trigger"]', 'sub'); passed.push('alert above later trigger video');
           const player = document.querySelector('video'); await player.play(); player.pause();
           const changed = structuredClone(snapshot); changed.widgets.reverse();
+          // Keep the old event frozen while testing a new, independent alert box.
+          // Reusing its ID would correctly queue behind the active event.
+          changed.widgets.find(widget => widget.kind === 'alert').id = 'reordered-alert-box';
           await originalFetch('/__snapshot', { method: 'POST', body: JSON.stringify(changed) });
           this.emit('overlay-state', { revision: 1, snapshot: changed });
           this.emit('overlay-event', { id: 'video-reordered', kind: 'trigger' });
@@ -79,8 +90,8 @@ function bootstrap(config) {
           await wait(() => document.querySelector('.stage'), 'Editor missing');
           document.querySelector('.stage').scrollIntoView({ block: 'center' });
           await click(button('Trigger alerts', document.querySelector('.event-tester__actions')));
-          await wait(() => document.querySelector('.widget[data-kind="trigger"] video')?.readyState >= 2, 'Preview video missing');
-          const video = document.querySelector('.widget video'); await video.play(); video.pause();
+          await wait(() => document.querySelector('app-overlay-scene-renderer .placement[data-kind="trigger"] video')?.readyState >= 2, 'Preview video missing');
+          const video = document.querySelector('app-overlay-scene-renderer .placement video'); await video.play(); video.pause();
           await new Promise(r => setTimeout(r, 3300)); // Let preview-pulse finish: it can temporarily create a stacking context.
           top('.widget[data-kind="trigger"]', 'alert'); passed.push('video stays below alert after preview animation');
           const trigger = document.querySelector('.widget[data-kind="trigger"]'); trigger.click();

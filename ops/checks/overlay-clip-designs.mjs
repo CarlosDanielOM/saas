@@ -23,8 +23,8 @@ async function session(context, tier = 'pro') {
 async function until(predicate, message) { for (let i = 0; i < 240; i++) { if (await predicate()) return; await new Promise(r => setTimeout(r, 25)); } throw new Error(message); }
 try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } }); await session(context);
-  let legacySocket; const editorEnded = [];
-  await context.routeWebSocket('**/*', ws => { if (!ws.url().includes('/socket.io/')) return ws.close(); legacySocket = ws; ws.send('0{"sid":"fixture","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}'); ws.onMessage(message => { const m = String(message); if (m.startsWith('40/clip/')) ws.send(`40/clip/${user.id},{"sid":"fixture"}`); if (m.includes('clip-ended')) editorEnded.push(m); }); });
+  const legacySockets = []; let previewRequests = 0;
+  await context.routeWebSocket('**/*', ws => { if (ws.url().includes('/socket.io/')) legacySockets.push(ws.url()); ws.close(); });
   await context.route('**/*', async route => {
     const req = route.request(), url = new URL(req.url());
     if (url.pathname.startsWith('/video/clip/')) return route.fulfill({ contentType: 'video/mp4', body: mp4 });
@@ -34,7 +34,7 @@ try {
     if (url.pathname === '/auth/session') data = { twitch: user, app };
     else if (url.pathname.endsWith('/access') || url.pathname.startsWith('/auth/access/')) data = { allowed: true, role: 'owner', planTier: 'pro' };
     else if (url.pathname.endsWith('/preview')) data = req.postDataJSON().texts.map(t => t.replaceAll('$(user)', 'Luna'));
-    else if (url.pathname === '/clip/test') { legacySocket.send(`42/clip/${user.id},${JSON.stringify(['play-clip', { clipID: 'fixture-clip', streamerLogin: 'fixture', title: 'Fixture title', duration: 30, ...metadata }])}`); }
+    else if (url.pathname === `/overlay-studio/${user.id}/test`) { previewRequests++; assert.equal(req.postDataJSON().destination, 'preview'); data = {media:{type:'video',url:api+'/video/clip/'+user.id,title:'Fixture title',duration:30,volume:1,clip:metadata}}; }
     else if (url.pathname.endsWith('/connections')) data = { checkedAt: Date.now(), pollingFailed: false, scenes: [] };
     else if (url.pathname === `/overlay-studio/${user.id}`) { if (req.method() === 'PUT') { state = structuredClone(req.postDataJSON()); state.revision++; } data = state; }
     else if (url.pathname.includes('/scenes/')) { const s = state.scenes[0]; s.revision++; s.published = structuredClone({ width: s.width, height: s.height, widgets: s.widgets, waitFor: s.waitFor, designs: state.designs }); state.revision++; data = state; }
@@ -48,8 +48,8 @@ try {
   assert.deepEqual(await select.locator('option').evaluateAll(options => options.map(o => [o.value, o.disabled])), variants.map(v => [v, false]));
   const geometry = [];
   for (const variant of variants) {
-    await select.selectOption(variant); await page.waitForFunction(v => document.querySelector('.widget app-overlay-clip .clip-design').dataset.variant === v, variant);
-    const composition = await page.locator('.widget app-overlay-clip').evaluate(element => {
+    await select.selectOption(variant); await page.waitForFunction(v => document.querySelector('app-overlay-scene-renderer .placement app-overlay-clip .clip-design').dataset.variant === v, variant);
+    const composition = await page.locator('app-overlay-scene-renderer .placement app-overlay-clip').evaluate(element => {
       const canvas = element.querySelector('.clip-design'), video = element.querySelector('.skin__video'), meta = element.querySelector('.skin__meta');
       const c = canvas.getBoundingClientRect(), v = video.getBoundingClientRect(), m = meta.getBoundingClientRect();
       return { aspect: c.width / c.height, videoWidth: v.width / c.width, metaWidth: m.width / c.width, metaTop: (m.top - c.top) / c.height, videoMask: getComputedStyle(video).clipPath };
@@ -63,12 +63,12 @@ try {
     if (variant === 'slash') {
       assert.equal(composition.videoMask, 'none', 'the decorative Slash mask must not cut the video');
       assert.ok(composition.videoWidth > .99, 'Slash overlays its mesh on the full video');
-      const meta = await page.locator('.widget app-overlay-clip .skin__meta').evaluate(e => ({ background: getComputedStyle(e).backgroundImage, mask: getComputedStyle(e).clipPath }));
+      const meta = await page.locator('app-overlay-scene-renderer .placement app-overlay-clip .skin__meta').evaluate(e => ({ background: getComputedStyle(e).backgroundImage, mask: getComputedStyle(e).clipPath }));
       assert.match(meta.background, /repeating-linear-gradient/, 'Slash has a mesh');
       assert.match(meta.background, /rgba\([^)]*, 0\)/, 'Slash fades from transparent');
       assert.match(meta.mask, /polygon/, 'Slash decor has a diagonal edge');
     }
-    geometry.push(await page.locator('.widget app-overlay-clip').evaluate(element => {
+    geometry.push(await page.locator('app-overlay-scene-renderer .placement app-overlay-clip').evaluate(element => {
       const frame = element.getBoundingClientRect();
       const video = element.querySelector('.skin__video');
       const meta = element.querySelector('.skin__meta');
@@ -81,7 +81,7 @@ try {
   for (const entry of geometry) { const [width, height] = entry.split(':').map(Number); assert.ok(Math.abs(width / height - 16 / 9) < 0.03, `every design must give the clip a 16:9 slot, got ${width}x${height}`); }
   await select.selectOption('pill');
   await page.waitForFunction(() => Object.keys(localStorage).some(k => k.startsWith('domdimabot-overlay-draft:') && JSON.parse(localStorage.getItem(k)).scenes[0].widgets[0].clipDesign === 'pill'));
-  page.once('dialog', d => d.accept()); await page.reload(); await page.getByRole('button', { name: 'Restore local draft', exact: true }).click(); await select.waitFor(); await page.waitForFunction(() => document.querySelector('[aria-label="Clip design"]').value === 'pill').catch(async e=>{console.log('Restored variant', await page.locator('.widget .clip-design').getAttribute('data-variant'));throw e;}); assert.equal(await select.inputValue(), 'pill');
+  page.once('dialog', d => d.accept()); await page.reload(); await page.getByRole('button', { name: 'Restore local draft', exact: true }).click(); await select.waitFor(); await page.waitForFunction(() => document.querySelector('[aria-label="Clip design"]').value === 'pill').catch(async e=>{console.log('Restored variant', await page.locator('app-overlay-scene-renderer .placement .clip-design').getAttribute('data-variant'));throw e;}); assert.equal(await select.inputValue(), 'pill');
   const save = async () => { await page.locator('app-overlay-editor .lf-save-bar').getByRole('button', { name: 'Save draft', exact: true }).click(); await page.locator('app-overlay-editor .lf-save-bar').getByRole('button', { name: 'Saved', exact: true }).waitFor(); };
   await save(); assert.equal(state.scenes[0].widgets[0].clipDesign, 'pill');
   const publish = async () => { const response = page.waitForResponse(r => r.url().endsWith('/publish')); await page.locator('.publish-button').click(); await response; await page.waitForFunction(() => !document.querySelector('.editor-fields').disabled); await page.getByText('Published. Connected browser sources are updating.', { exact: true }).waitFor(); };
@@ -90,25 +90,27 @@ try {
   await page.locator('.properties').getByRole('button', { name: 'Duplicate', exact: true }).click(); await select.selectOption('slash'); await save(); await publish();
   assert.deepEqual(state.scenes[0].published.widgets.map(w => w.clipDesign), ['hud', 'slash']);
   await page.locator('.event-tester__actions').getByRole('button', { name: 'Clips', exact: true }).click();
-  await page.waitForFunction(() => document.querySelectorAll('.widget app-overlay-clip video').length === 2);
-  assert.equal(await page.locator('.widget app-overlay-clip').count(), 2, 'each playing widget has one renderer; sample metadata must be removed');
-  assert.deepEqual(await page.locator('.widget app-overlay-clip video').evaluateAll(videos => videos.map(v => v.muted)), [false, true]);
-  assert.equal(await page.locator('.widget app-overlay-clip .skin__name').getByText('Fixture streamer', { exact: true }).count(), 2);
-  await until(() => editorEnded.length === 1, 'editor clip test must release the producer once after both players finish');
-  assert.equal(await page.locator('.widget app-overlay-clip').count(), 2, 'sample cards return after completion');
+  await page.waitForFunction(() => document.querySelectorAll('app-overlay-scene-renderer .placement app-overlay-clip video').length === 2);
+  assert.equal(await page.locator('app-overlay-scene-renderer .placement app-overlay-clip').count(), 2, 'each playing widget has one renderer; sample metadata must be removed');
+  assert.deepEqual(await page.locator('app-overlay-scene-renderer .placement app-overlay-clip video').evaluateAll(videos => videos.map(v => v.muted)), [false, true]);
+  assert.equal(await page.locator('app-overlay-scene-renderer .placement app-overlay-clip .skin__name').getByText('Fixture streamer', { exact: true }).count(), 2);
+  await until(async () => await page.locator('app-overlay-scene-renderer .placement app-overlay-clip video').count() === 0, 'prepared preview completes after both players finish');
+  assert.equal(previewRequests, 1); assert.deepEqual(legacySockets, [], 'preview never joins the live clip producer');
+  assert.equal(await page.locator('app-overlay-scene-renderer .placement app-overlay-clip').count(), 2, 'sample cards return after completion');
   await select.selectOption('orbit');
   await page.locator('.event-tester__actions').getByRole('button', { name: 'Clips', exact: true }).click();
-  await page.waitForFunction(() => document.querySelectorAll('.widget app-overlay-clip video').length === 2);
-  await page.waitForFunction(() => [...document.querySelectorAll('.widget app-overlay-clip video')].every(v => v.readyState >= 2 && !v.paused));
-  await page.locator('.widget app-overlay-clip video').evaluateAll(videos => videos.forEach(v => v.pause()));
-  assert.equal(await page.locator('.widget app-overlay-clip').count(), 2, 'Orbit has one text layer per placement during playback');
-  assert.equal(await page.locator('.widget [data-variant="orbit"] .skin__name').textContent(), 'Fixture streamer');
-  await page.waitForFunction(() => [...document.querySelectorAll('.widget app-overlay-clip .clip-design')].every(e => e.classList.contains('is-in') && e.getAnimations({ subtree: true }).every(a => a.playState === 'finished')));
+  await page.waitForFunction(() => document.querySelectorAll('app-overlay-scene-renderer .placement app-overlay-clip video').length === 2);
+  await page.waitForFunction(() => [...document.querySelectorAll('app-overlay-scene-renderer .placement app-overlay-clip video')].every(v => v.readyState >= 2 && !v.paused));
+  await page.locator('app-overlay-scene-renderer .placement app-overlay-clip video').evaluateAll(videos => videos.forEach(v => v.pause()));
+  assert.equal(await page.locator('app-overlay-scene-renderer .placement app-overlay-clip').count(), 2, 'Orbit has one text layer per placement during playback');
+  assert.equal(await page.locator('app-overlay-scene-renderer .placement [data-variant="orbit"] .skin__name').textContent(), 'Fixture streamer');
+  await page.waitForFunction(() => [...document.querySelectorAll('app-overlay-scene-renderer .placement app-overlay-clip .clip-design')].every(e => e.classList.contains('is-in') && e.getAnimations({ subtree: true }).every(a => a.playState === 'finished')));
   if (shots) await page.locator('.widget[data-kind="clip"]').last().screenshot({ path: `${shots}/editor-orbit-playing.png` });
-  await page.locator('.widget app-overlay-clip video').evaluateAll(videos => videos.forEach(v => v.dispatchEvent(new Event('ended'))));
-  await page.locator('.widget .clip-design.is-out').first().waitFor();
-  assert.equal(editorEnded.length, 1, 'Studio holds its producer until the exit is finished');
-  await until(() => editorEnded.length === 2, 'Orbit completion restores its sample card');
+  await page.locator('app-overlay-scene-renderer .placement app-overlay-clip video').evaluateAll(videos => videos.forEach(v => v.dispatchEvent(new Event('ended'))));
+  await page.locator('app-overlay-scene-renderer .placement .clip-design.is-out').first().waitFor();
+  assert.equal(await page.locator('app-overlay-scene-renderer .placement app-overlay-clip video').count(), 2, 'preview remains mounted until the exit finishes');
+  await until(async () => await page.locator('app-overlay-scene-renderer .placement app-overlay-clip video').count() === 0, 'Orbit completion restores its sample card');
+  assert.equal(previewRequests, 2); assert.deepEqual(legacySockets, []);
   await select.selectOption('slash');
   await page.locator('.widget[data-kind="clip"]').last().click();
   for (const width of [320, 375, 768, 1440]) { await page.setViewportSize({ width, height: 1000 }); await select.waitFor(); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `overflow ${width}`); if (shots && [375, 1440].includes(width)) { await mkdir(shots, { recursive: true }); await page.locator('.properties').screenshot({ path: `${shots}/clip-selector-${width}.png` }); } }
@@ -122,13 +124,13 @@ try {
   for (const tier of ['free', 'premium', 'pro']) {
     const c = await browser.newContext(); await session(c, tier); await c.routeWebSocket('**/*', ws => ws.close());
     await c.route('**/*', route => { const url = new URL(route.request().url()); if (url.origin === new URL(base).origin) return route.continue(); if (url.origin !== api) return route.abort(); const data = url.pathname === '/auth/session' ? { twitch: user, app: { ...app, plan_tier: tier } } : { allowed: true, role: 'owner', planTier: tier }; return route.fulfill({ json: { error: false, data } }); });
-    const p = await c.newPage(); await p.goto(base + '/fixture/modules/clips'); await p.locator('.lf-slide').first().waitFor();
-    assert.equal(await p.locator('.lf-slide').count(), 8);
-    assert.equal(await p.locator('.lf-slide__actions a').count(), tier === 'free' ? 2 : 8);
-    assert.equal(await p.locator('app-clip-design-mock .clip-design').count(), 8);
+    const p = await c.newPage(); await p.goto(base + '/fixture/modules/clips'); await p.locator('.lf-gallery .lf-card').first().waitFor();
+    assert.equal(await p.locator('.lf-gallery .lf-card').count(), 8);
+    assert.equal(await p.locator('.lf-gallery .lf-card:not(.lf-card--locked)').count(), tier === 'free' ? 2 : 8);
+    assert.equal(await p.locator('.lf-gallery app-clip-design-mock .clip-design').count(), 8);
     for (const width of [320, 1440]) {
       await p.setViewportSize({ width, height: 1000 });
-      const canvases = await p.locator('app-clip-design-mock .clip-design').evaluateAll(elements => elements.map(e => ({ variant: e.dataset.variant, width: e.offsetWidth, height: e.offsetHeight })));
+      const canvases = await p.locator('.lf-gallery app-clip-design-mock .clip-design').evaluateAll(elements => elements.map(e => ({ variant: e.dataset.variant, width: e.offsetWidth, height: e.offsetHeight })));
       assert.deepEqual(canvases, variants.map(variant => ({ variant, width: 800, height: ['third', 'cinema', 'pill', 'hud', 'slash'].includes(variant) ? 450 : 225 })), 'catalog canvases must not flex-shrink before scaling');
     }
     await c.close();

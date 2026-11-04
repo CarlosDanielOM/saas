@@ -45,7 +45,7 @@ const frozen=structuredClone(state.scenes[0].published);
 await page.locator('.layers').getByRole('button',{name:'Alerts',exact:true}).click();await click('Edit design');
 await page.locator('.design-event-tabs').getByRole('button',{name:'Bits',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.design-event-tabs .active')?.textContent==='Bits');
 await page.getByLabel('Text template',{exact:true}).fill('$(user) sent $(cheer.amount) bits').catch(async e=>{console.log(await page.locator('app-overlay-editor').innerText(),errors);throw e;});
-await page.waitForFunction(()=>document.querySelector('.text-preview')?.textContent==='Luna sent 100 bits');
+await page.waitForFunction(()=>document.querySelector('app-overlay-scene-renderer .placement[data-widget-id][data-kind=text] app-overlay-layer')?.textContent==='Luna sent 100 bits');
 assert(templates.some(r=>r.texts.includes('$(user) sent $(cheer.amount) bits')&&r.kind==='bits'));
 await click('Save design');await page.getByRole('button',{name:'Saved',exact:true}).waitFor();
 await page.waitForFunction(()=>!document.querySelector('.editor-fields')?.disabled);
@@ -64,7 +64,9 @@ app.plan_tier='free';await page.reload();await page.locator('app-overlay-editor 
 await context.close();
 console.log('PASS editor: authenticated owner access on Pro and Free, Alpha label, durable save API, conflict preservation, canvas dimensions, server AST preview, linked design reuse, immutable publish, URL confirmation, assets, mobile and axe.');
 // Public source renderer: transparent, isolated FIFO, parallel categories, live publish, failures and native media.
-const runtime=await browser.newContext({viewport:{width:1920,height:1080}});let socket;const ended=[];let snapshot=structuredClone(frozen);snapshot.widgets[3].events=['bits','follow'];snapshot.waitFor=['bits','tts'];
+const runtime=await browser.newContext({viewport:{width:1920,height:1080}});let socket;const ended=[];let snapshot=structuredClone(frozen);snapshot.widgets[3].events=['bits'];snapshot.waitFor=['bits','tts'];
+// Parallel categories need separate alert boxes; a shared box serializes every category.
+snapshot.widgets.push({...snapshot.widgets[3],id:'parallel-alert',y:700,events:['follow']});
 const runtimeEvents=new Map();let currentRevision=1;
 const wav=Buffer.alloc(44+16000);wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(16000,40);
 await runtime.routeWebSocket('**/*',ws=>{if(!ws.url().includes('/socket.io/')){ws.close();return;}socket=ws;ws.send('0{"sid":"fixture","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}');ws.onMessage(message=>{const m=String(message);if(m.startsWith('40/overlay-studio/')){ws.send(`40/overlay-studio/${publicId},{"sid":"fixture"}`);send('overlay-state',{revision:currentRevision,snapshot});}if(m.includes('overlay-ended'))ended.push(JSON.parse(m.slice(m.indexOf(',')+1))[1]);});});

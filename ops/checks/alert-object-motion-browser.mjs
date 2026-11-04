@@ -80,9 +80,15 @@ try {
       await page.evaluate(()=>window.presetMotion=document.getAnimations().filter(a=>a.id.startsWith('alert-object')));
       await controls.locator('button').last().click();
       await until(()=>page.evaluate(()=>window.presetMotion.every(a=>a.playState==='idle')),'new replay '+preset);
-      const object=page.locator('.stage .widget[data-kind="text"] app-overlay-layer');
+      const object=page.locator('.stage app-overlay-scene-renderer .placement[data-kind="text"] app-overlay-layer');
       await until(async()=>await object.evaluate(e=>e.getAnimations({subtree:true}).filter(a=>a.id.startsWith('alert-object')).length)===(preset==='none'?1:2),'preset '+preset);
-      const endOpacity=await object.evaluate(e=>{for(const animation of e.getAnimations({subtree:true})){animation.pause();animation.currentTime=animation.effect.getComputedTiming().endTime;}return getComputedStyle(e.querySelectorAll('.motion-shell')[1]).opacity;});
+      // Replays deliberately remount the canonical scene after preparation.
+      // Resolve and sample the latest node atomically instead of retaining an old handle.
+      let endOpacity;
+      await until(async()=>{
+        endOpacity=await page.evaluate(expected=>{const e=document.querySelector('.stage app-overlay-scene-renderer .placement[data-kind="text"] app-overlay-layer'),animations=e?.getAnimations({subtree:true}).filter(a=>a.id.startsWith('alert-object')) ?? [];if(animations.length!==expected)return null;for(const animation of animations){animation.pause();animation.currentTime=animation.effect.getComputedTiming().endTime;}return getComputedStyle(e.querySelectorAll('.motion-shell')[1]).opacity;},preset==='none'?1:2);
+        return preset==='none'?endOpacity!==null:endOpacity==='0';
+      },'completed exit '+preset);
       if(preset!=='none')assert.equal(endOpacity,'0','completed exit '+preset);
     }
   }
@@ -94,13 +100,14 @@ try {
   await controls.locator('input').nth(1).fill('0.8');await controls.locator('input').nth(1).press('Tab');
   await controls.locator('input').nth(2).fill('1.5');await controls.locator('input').nth(2).press('Tab');
   await controls.locator('button').last().click();
-  const layer=page.locator('.stage .widget[data-kind="text"] app-overlay-layer');
+  const layer=page.locator('.stage app-overlay-scene-renderer .placement[data-kind="text"] app-overlay-layer');
   await until(async()=>await layer.evaluate(e=>e.getAnimations({subtree:true}).filter(a=>a.id.startsWith('alert-object')).length)===3,'three motion phases');
-  const config=await layer.evaluate(e=>e.getAnimations({subtree:true}).map(a=>({id:a.id,timing:a.effect.getTiming(),frames:a.effect.getKeyframes()})));
+  let config;
+  await until(async()=>{config=await page.evaluate(()=>document.querySelector('.stage app-overlay-scene-renderer .placement[data-kind="text"] app-overlay-layer')?.getAnimations({subtree:true}).map(a=>({id:a.id,timing:a.effect.getTiming(),frames:a.effect.getKeyframes()})) ?? []);return config.some(a=>a.id==='alert-object-enter' && a.timing.delay===600 && a.timing.duration===800) && config.some(a=>a.id==='alert-object-loop' && a.timing.duration===1500) && config.some(a=>a.id==='alert-object-exit');},'latest prepared animation program');
   assert.equal(config.find(a=>a.id==='alert-object-enter').timing.delay,600);assert.equal(config.find(a=>a.id==='alert-object-enter').timing.duration,800);
   assert.equal(config.find(a=>a.id==='alert-object-loop').timing.duration,1500);
   assert(config.find(a=>a.id==='alert-object-exit').frames.some(f=>f.transform.includes('rotateY')));
-  assert.equal(await layer.evaluate(e=>{const a=e.getAnimations({subtree:true}).find(a=>a.id==='alert-object-enter');a.pause();a.currentTime=100;return getComputedStyle(a.effect.target).opacity;}),'0','object remains hidden during its own delay');
+  await until(()=>page.evaluate(()=>{const a=document.querySelector('.stage app-overlay-scene-renderer .placement[data-kind="text"] app-overlay-layer')?.getAnimations({subtree:true}).find(a=>a.id==='alert-object-enter');if(!a)return false;a.pause();a.currentTime=100;return getComputedStyle(a.effect.target).opacity==='0';}),'object remains hidden during its own delay');
   await page.evaluate(()=>window.previousMotion=document.getAnimations().filter(a=>a.id.startsWith('alert-object')));
   await controls.locator('button').last().click();
   await until(()=>page.evaluate(()=>window.previousMotion.every(a=>a.playState==='idle')),'replay cancels previous animations');

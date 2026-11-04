@@ -79,16 +79,16 @@ try {
   await margin.fill('48'); await margin.blur();
   // Preview chooses once and survives inspector edits during the active playback.
   await page.locator('.test-btn').filter({ hasText: 'Trigger alerts' }).click();
-  await page.locator('.widget[data-kind="trigger"] img').waitFor();
+  await page.locator('app-overlay-scene-renderer .placement[data-kind="trigger"] img').waitFor();
   const preview = await editorGeometry(page);
   bounded({ left: preview.left * 19.2, top: preview.top * 10.8, width: preview.width * 19.2, height: preview.height * 10.8 }, state.scenes[0], 48);
   await margin.fill('100'); await margin.blur(); assert.deepEqual(await editorGeometry(page), preview);
-  await until(async () => !await page.locator('.widget[data-kind="trigger"] img').count(), 'Preview ends normally');
+  await until(async () => !await page.locator('app-overlay-scene-renderer .placement[data-kind="trigger"] img').count(), 'Preview ends normally');
   const draftPosition = await editorGeometry(page); assert.equal(draftPosition.left, 75 / 1920 * 100);
   await margin.fill('48'); await margin.blur();
   await page.locator('.test-btn').filter({ hasText: 'Trigger alerts' }).click();
-  await page.locator('.widget[data-kind="trigger"] img').waitFor(); assert.notDeepEqual(await editorGeometry(page), preview);
-  await until(async () => !await page.locator('.widget[data-kind="trigger"] img').count(), 'Second preview ends');
+  await page.locator('app-overlay-scene-renderer .placement[data-kind="trigger"] img').waitFor(); assert.notDeepEqual(await editorGeometry(page), preview);
+  await until(async () => !await page.locator('app-overlay-scene-renderer .placement[data-kind="trigger"] img').count(), 'Second preview ends');
   await page.locator('.exact').evaluate(node => { node.open = true; });
   await page.getByLabel('W', { exact: true }).fill('3000'); await page.getByLabel('W', { exact: true }).blur();
   assert(await page.getByText(/This size or margin does not fit/).isVisible());

@@ -89,7 +89,7 @@ try {
   await appearance.getByRole('combobox',{name:es?'Grosor':'Weight',exact:true}).selectOption('700');
   await appearance.getByLabel(es?'Cursiva':'Italic',{exact:true}).check();
   await appearance.getByRole('combobox',{name:es?'Alineación del texto':'Text alignment',exact:true}).selectOption('left');
-  let text=page.locator('.stage .widget[data-kind=text] .layer-content span');
+  let text=page.locator('.stage app-overlay-scene-renderer .placement[data-kind=text] .layer-content span');
   await until(()=>text.evaluate(e=>getComputedStyle(e).fontWeight==='700' && getComputedStyle(e).fontStyle==='italic' && getComputedStyle(e).textAlign==='left' && getComputedStyle(e).fontFamily.includes('Georgia')),'text style');
   await appearance.locator('summary').first().click();
   await appearance.getByLabel(es?'Sombra':'Shadow',{exact:true}).check();

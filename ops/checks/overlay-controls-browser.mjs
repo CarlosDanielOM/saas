@@ -83,8 +83,11 @@ try {
  emit('loading');await until(()=>deferred.has('loading'));command('skip','twitch');await until(()=>ended.includes('loading'));deferred.get('loading')();await source.waitForTimeout(120);assert.equal(await source.getByText('loading',{exact:true}).count(),0);
  emit('after-loading');await until(()=>report.active.includes('after-loading'));assert.equal(await source.getByText('after-loading',{exact:true}).count(),1);
  // Parallel events also respect platform pause and independent skip.
- command('skip','all');await until(()=>report.active.length===0);snapshot.waitFor=[];send('overlay-state',{revision:2,snapshot,controls:queueState,commands:[]});
- control('pause','twitch');emit('parallel-tw');emit('parallel-ki','kick');await until(()=>report.active.includes('parallel-ki')&&report.queued.includes('parallel-tw'));
+ command('skip','all');await until(()=>report.active.length===0);snapshot.waitFor=[];
+ // Distinct boxes can run in parallel; the same box stays reserved across platforms.
+ snapshot.widgets=[{...widget,events:['follow']},{...widget,id:'parallel-sub',y:300,events:['sub']}];
+ send('overlay-state',{revision:2,snapshot,controls:queueState,commands:[]});
+ control('pause','twitch');emit('parallel-tw');emit('parallel-ki','kick','sub');await until(()=>report.active.includes('parallel-ki')&&report.queued.includes('parallel-tw'));
  control('resume','twitch');await until(()=>report.active.length===2);command('skip','twitch');await until(()=>ended.includes('parallel-tw'));assert.ok(report.active.includes('parallel-ki'));
  console.log('PASS browser runtime: scoped pause/resume/skip/clear, platform labels, all-pause overrides, eligible-platform progress, parallel events, replay/dedupe, clear preserves active and late payload cancellation.');
  await until(async()=>!/[{][{]?count/.test(await panel.textContent()), 'queue counts must be interpolated');

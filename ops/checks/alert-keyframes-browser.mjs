@@ -143,9 +143,9 @@ try {
     page.once('dialog',d=>d.accept());await page.reload();await page.getByRole('button',{name:'Restore local draft',exact:true}).click();
     await editor.locator('summary').click();await until(()=>editor.locator('[data-field=value]').inputValue().then(v=>v==='60'),'recovered frame');
     await editor.locator('.frame').nth(1).click();
-    await until(()=>page.locator('.stage .widget[data-kind=text] app-overlay-layer').evaluate(e=>e.getAnimations({subtree:true}).filter(a=>a.id.startsWith('alert-keyframe')).every(a=>a.playState==='paused')),'timeline pauses keyframes');
+    await until(()=>page.locator('.stage app-overlay-scene-renderer .placement[data-kind=text] app-overlay-layer').evaluate(e=>e.getAnimations({subtree:true}).filter(a=>a.id.startsWith('alert-keyframe')).every(a=>a.playState==='paused')),'timeline pauses keyframes');
     const clock=Number(await page.locator('app-overlay-timeline .scrubber input').inputValue());
-    const times=await page.locator('.stage .widget[data-kind=text] app-overlay-layer').evaluate(e=>e.getAnimations({subtree:true}).filter(a=>a.id.startsWith('alert-keyframe')).map(a=>a.currentTime));assert(times.length>0);assert(times.every(t=>Math.abs(t-clock*1000)<=5.01),'timeline and keyframes share playhead within the slider’s 10 ms step');
+    const times=await page.locator('.stage app-overlay-scene-renderer .placement[data-kind=text] app-overlay-layer').evaluate(e=>e.getAnimations({subtree:true}).filter(a=>a.id.startsWith('alert-keyframe')).map(a=>a.currentTime));assert(times.length>0);assert(times.every(t=>Math.abs(t-clock*1000)<=5.01),'timeline and keyframes share playhead within the slider’s 10 ms step');
     await save();
   }
   await context.close();

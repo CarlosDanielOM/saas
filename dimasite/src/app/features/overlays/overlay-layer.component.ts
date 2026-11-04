@@ -7,7 +7,7 @@ import { LinksService } from '../../services/links.service';
 @Component({
   selector: 'app-overlay-layer', imports: [AssetPreviewComponent, OverlayKeyframePhaseComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-overlay-image]': "layer().kind === 'image' && (layer().assetId || layer().mediaUrl) ? '' : null" },
-  template: `<div #entrance class="motion-shell"><app-overlay-keyframe-phase phase="enter" [keyframes]="layer().keyframes" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div #exit class="motion-shell"><app-overlay-keyframe-phase phase="exit" [keyframes]="layer().keyframes" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div #loop class="motion-shell"><app-overlay-keyframe-phase phase="loop" [keyframes]="layer().keyframes" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div class="layer-content" [style.width.px]="layer().width" [style.height.px]="layer().height" [style.transform]="scale()" [style.opacity]="layer().opacity ?? 1" [style.filter]="shadow()">@switch (layer().kind) {
+  template: `<div #entrance class="motion-shell"><app-overlay-keyframe-phase phase="enter" [keyframes]="animationKeyframes()" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div #exit class="motion-shell"><app-overlay-keyframe-phase phase="exit" [keyframes]="animationKeyframes()" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div #loop class="motion-shell"><app-overlay-keyframe-phase phase="loop" [keyframes]="animationKeyframes()" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div class="layer-content" [style.width.px]="layer().width" [style.height.px]="layer().height" [style.transform]="scale()" [style.opacity]="layer().opacity ?? 1" [style.filter]="shadow()">@switch (layer().kind) {
     @case ('text') { <span #textElement [style.color]="layer().color || '#ffffff'" [style.font-family]="font()" [style.font-weight]="layer().fontWeight ?? 400" [style.font-style]="layer().italic ? 'italic' : 'normal'" [style.text-align]="layer().textAlign ?? 'center'">{{ text() ?? layer().text }}</span> }
     @case ('shape') { <div class="shape" [style.background]="layer().color ?? '#7c3aed'" [style.border-color]="layer().borderColor ?? '#ffffff'" [style.border-width.px]="layer().borderWidth ?? 0" [style.border-radius]="layer().shape === 'ellipse' ? '50%' : (layer().radius ?? 0) + 'px'"></div> }
     @case ('image') { @if (preparedSource(); as source) { <img [src]="source" alt="" loading="eager" (error)="failed.emit()" /> } @else if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" [eager]="!!publicId() || !!owner()" (failed)="failed.emit()" /> } @else if (layer().mediaUrl) { <img [src]="layer().mediaUrl" alt="" (error)="failed.emit()" /> } }
@@ -19,7 +19,11 @@ import { LinksService } from '../../services/links.service';
 export class OverlayLayerComponent {
   readonly layer = input.required<OverlayWidget>();
   readonly text = input<string>();
-  readonly resolvedMotion = computed(() => this.layer().motion ?? defaultMotion(this.layer().kind));
+  // Geometry/text updates must not restart an existing animation. Compare only
+  // the animation program, rather than subscribing its player to the whole layer.
+  readonly resolvedMotion = computed(() => this.layer().motion ?? defaultMotion(this.layer().kind), {equal:(a,b) => JSON.stringify(a) === JSON.stringify(b)});
+  readonly animationKeyframes = computed(() => this.layer().keyframes, {equal:(a,b) => JSON.stringify(a) === JSON.stringify(b)});
+  private readonly animationMotion = computed(() => this.layer().motion ?? (this.layer().keyframes ? defaultMotion(this.layer().kind) : undefined), {equal:(a,b) => JSON.stringify(a) === JSON.stringify(b)});
   readonly font = computed(() => ({sans: "'Plus Jakarta Sans', sans-serif", serif: 'Georgia, serif', mono: "'Courier New', monospace"})[this.layer().fontFamily ?? 'sans']);
   readonly shadow = computed(() => { const s = this.layer().shadow; return s ? `drop-shadow(${s.x}px ${s.y}px ${s.blur}px ${s.color})` : 'none'; });
   readonly playbackKey = input<string | number>(0);
@@ -54,14 +58,14 @@ export class OverlayLayerComponent {
     const host = inject(ElementRef<HTMLElement>).nativeElement;
     const destroy = inject(DestroyRef);
     afterRenderEffect(cleanup => {
-      const key = this.playbackKey(), motion = this.layer().motion ?? (this.layer().keyframes ? this.resolvedMotion() : undefined) ?? (untracked(this.seekTime) !== null ? defaultMotion() : undefined), duration = this.duration();
+      const key = this.playbackKey(), motion = this.animationMotion() ?? (untracked(this.seekTime) !== null ? defaultMotion() : undefined), keyframes = this.animationKeyframes(), duration = this.duration();
       const entrance = this.entrance()?.nativeElement, exit = this.exit()?.nativeElement, loop = this.loop()?.nativeElement;
       if (!key || !motion || !entrance || !exit || !loop) return;
       const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-      let player = playObjectMotion({ entrance, exit, loop }, motion, duration, preference.matches, this.layer().keyframes);
+      let player = playObjectMotion({ entrance, exit, loop }, motion, duration, preference.matches, keyframes);
       this.motionPlayer = player;
       const seek = () => { const time = untracked(this.seekTime); if (time !== null) player.seek(time); }; seek();
-      const changed = () => { const time = untracked(this.seekTime), elapsed = time ?? player.time(); player.cancel(); player = playObjectMotion({ entrance, exit, loop }, motion, duration, preference.matches, this.layer().keyframes); this.motionPlayer = player; player.seek(elapsed, time !== null); };
+      const changed = () => { const time = untracked(this.seekTime), elapsed = time ?? player.time(); player.cancel(); player = playObjectMotion({ entrance, exit, loop }, motion, duration, preference.matches, keyframes); this.motionPlayer = player; player.seek(elapsed, time !== null); };
       preference.addEventListener('change', changed);
       cleanup(() => { player.cancel(); this.motionPlayer = undefined; preference.removeEventListener('change', changed); });
     });

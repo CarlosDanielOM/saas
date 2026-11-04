@@ -86,7 +86,7 @@ try {
   const {context,page,ctx}=await fixture(options),es=options.lang==='es';
   await page.locator('.design-row__actions button').first().click();
   const timeline=page.locator('app-overlay-timeline');await timeline.waitFor();
-  const scrub=timeline.locator('input[type=range]'),text=page.locator('.stage .widget[data-kind=text] app-overlay-layer'),audio=page.locator('app-overlay-sound audio');
+  const scrub=timeline.locator('input[type=range]'),text=page.locator('.stage app-overlay-scene-renderer .placement[data-kind=text] app-overlay-layer'),audio=page.locator('app-overlay-sound audio');
   await scrub.fill('0.5');await until(()=>text.evaluate(e=>e.getAnimations({subtree:true}).some(a=>a.currentTime===500)),'scrub seeks real animation');
   assert.equal(await text.locator('.motion-shell').first().evaluate(e=>getComputedStyle(e).opacity),'0','object hidden before entrance');
   await audio.waitFor({state:'attached'});await until(()=>audio.evaluate(a=>a.readyState>0),'audio ready');assert.equal(await audio.evaluate(a=>a.paused),true,'scrub is silent');

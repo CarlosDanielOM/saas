@@ -113,11 +113,11 @@ try {
   await editor.locator('.palette-item[data-kind="poll"]').click();
   await editor.getByLabel('Preset design', { exact: true }).selectOption('compact');
   await editor.getByLabel('Preview state', { exact: true }).selectOption('tie');
-  await editor.locator('.widget[data-kind="poll"] .panel.compact').waitFor();
+  await editor.locator('app-overlay-scene-renderer .placement[data-kind="poll"] .panel.compact').waitFor();
   await editor.locator('.palette-item[data-kind="prediction"]').click();
   await editor.getByLabel('Preset design', { exact: true }).selectOption('compact');
   await editor.getByLabel('Preview state', { exact: true }).selectOption('locked');
-  await editor.locator('.widget[data-kind="prediction"] [data-phase="locked"]').waitFor();
+  await editor.locator('app-overlay-scene-renderer .placement[data-kind="prediction"] [data-phase="locked"]').waitFor();
   const backups = () => editor.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('domdimabot-overlay-draft:')).map(k => JSON.parse(localStorage.getItem(k))));
   await editor.waitForFunction(() => Object.keys(localStorage).some(k => k.startsWith('domdimabot-overlay-draft:') && JSON.parse(localStorage.getItem(k)).scenes[0].widgets.length === 2));
   const draft = (await backups())[0];
@@ -126,8 +126,8 @@ try {
   assert.equal(writes, 0, 'fixture remains unsaved before reload');
   editor.once('dialog', dialog => dialog.accept()); await editor.reload();
   await editor.getByRole('button', { name: 'Restore local draft', exact: true }).click();
-  await editor.locator('.widget[data-kind="poll"] .panel.compact').waitFor();
-  await editor.locator('.widget[data-kind="prediction"] .panel.compact').waitFor();
+  await editor.locator('app-overlay-scene-renderer .placement[data-kind="poll"] .panel.compact').waitFor();
+  await editor.locator('app-overlay-scene-renderer .placement[data-kind="prediction"] .panel.compact').waitFor();
   await editor.getByRole('button', { name: 'Save draft', exact: true }).click();
   await editor.getByRole('button', { name: 'Saved', exact: true }).waitFor();
   assert.equal(writes, 1);
@@ -143,7 +143,7 @@ try {
       await editor.locator('.widget[data-kind="prediction"]').dispatchEvent('click');
       assert.equal(await editor.getByLabel('Preset design', { exact: true }).inputValue(), 'compact');
       await editor.getByLabel('Preview state', { exact: true }).selectOption('locked');
-      await editor.locator('.widget[data-kind="prediction"] [data-phase="locked"]').waitFor();
+      await editor.locator('app-overlay-scene-renderer .placement[data-kind="prediction"] [data-phase="locked"]').waitFor();
       await screenshot(editor, `${theme}-${width}`);
     }
   }

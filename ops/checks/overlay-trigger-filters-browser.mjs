@@ -65,16 +65,16 @@ try {
   await selectWidget(1); assert(await page.getByRole('checkbox', { name: /Confetti/ }).isChecked());
   await page.getByLabel('Search triggers', { exact: true }).fill('horn'); assert.equal(await page.locator('.trigger-choice').count(), 1); await page.getByLabel('Search triggers', { exact: true }).fill('missing'); await page.getByText('No triggers match your search.', { exact: true }).waitFor(); await page.getByLabel('Search triggers', { exact: true }).fill('');
   const test = page.locator('.event-tester__actions').getByRole('button', { name: 'Trigger alerts', exact: true });
-  await test.click(); await page.waitForFunction(() => document.querySelectorAll('.widget video').length === 2);
-  assert.deepEqual(await page.locator('.widget').evaluateAll(widgets => widgets.map(w => !!w.querySelector('video'))), [true, false, true, false]);
-  assert.deepEqual(await page.locator('.widget video').evaluateAll(v => v.map(video => [video.muted, video.volume])), [[false, .5], [true, 0]]);
-  await until(async () => !(await page.locator('.widget video').count()), 'native preview completion'); assert.equal(sends, 0);
+  await test.click(); await page.waitForFunction(() => document.querySelectorAll('app-overlay-scene-renderer .placement video').length === 2);
+  assert.deepEqual(await page.locator('.widget').evaluateAll(widgets => widgets.map(w => !!document.querySelector('app-overlay-scene-renderer [data-widget-id="' + w.dataset.widgetId + '"] video'))), [true, false, true, false]);
+  assert.deepEqual(await page.locator('app-overlay-scene-renderer .placement video').evaluateAll(v => v.map(video => [video.muted, video.volume])), [[false, .5], [true, 0]]);
+  await until(async () => !(await page.locator('app-overlay-scene-renderer .placement video').count()), 'native preview completion'); assert.equal(sends, 0);
   // With every widget filtered, the preview selects an eligible trigger instead of a random excluded one.
   for (const index of [0, 2]) { await selectWidget(index); await mode.selectOption('selected'); await page.getByLabel('Airhorn', { exact: true }).uncheck(); await page.getByRole('checkbox', { name: /Confetti/ }).check(); }
-  await test.click(); await page.waitForFunction(() => document.querySelectorAll('.widget video').length === 3);
-  assert(await page.locator('.widget video').first().getAttribute('src').then(url => url.endsWith('/b.mp4'))); await until(async () => !(await page.locator('.widget video').count()), 'eligible preview completion');
+  await test.click(); await page.waitForFunction(() => document.querySelectorAll('app-overlay-scene-renderer .placement video').length === 3);
+  assert(await page.locator('app-overlay-scene-renderer .placement video').first().getAttribute('src').then(url => url.endsWith('/b.mp4'))); await until(async () => !(await page.locator('app-overlay-scene-renderer .placement video').count()), 'eligible preview completion');
   for (const index of [0, 1, 2]) { await selectWidget(index); await page.getByRole('checkbox', { name: /Confetti/ }).uncheck(); }
-  await test.click(); await page.getByText('No configured triggers match these widgets. Choose triggers in Properties to test them.', { exact: true }).waitFor(); assert.equal(await page.locator('.widget video').count(), 0); await until(() => test.isEnabled(), 'empty selection releases preview queue');
+  await test.click(); await page.getByText('No configured triggers match these widgets. Choose triggers in Properties to test them.', { exact: true }).waitFor(); assert.equal(await page.locator('app-overlay-scene-renderer .placement video').count(), 0); await until(() => test.isEnabled(), 'empty selection releases preview queue');
   // Failed catalog loads preserve a stored selection, retry works, and deleted IDs stay explicit.
   await save(); state.scenes[0].widgets[0].triggerIds = [triggerA, deleted]; catalogMode = 'error'; await page.reload(); await selectWidget(0);
   await page.getByText('Could not load your triggers. Your selection is preserved.', { exact: true }).waitFor(); assert.equal(await mode.inputValue(), 'selected');

@@ -51,6 +51,8 @@ The user-provided ascending tier above remains the baseline and working tier; th
 
 ## Routing observations
 
+2026-11-04 — Overlay Studio shared editor/OBS renderer: Sol led implementation/integration, Terra authored an independent parity check, and Luna documented source/evidence. The final site candidate passed parity plus 30 other scoped browser checks and was deployed after integration fixes for fieldset sizing and async playback preparation. [Task-specific routing evidence](2026-11-04-overlay-shared-renderer.md); no tier change or performance claim.
+
 2026-11-04 — Overlay Studio cross-tab request storm: Sol reproduced/implemented the frontend fix, Terra protected API readiness reads, and Luna documented the evidence. Both releases passed exact-candidate checks and were deployed; the live-served frontend also passed the cross-tab regression. [Task routing note](2026-11-04-overlay-cross-tab.md). Task-specific evidence only; no tier reorder or performance claim.
 
 DIMA-052 audio curves and capability-gated delivery: [2026-11-04 task note](2026-11-04-mouth-smile.md).
