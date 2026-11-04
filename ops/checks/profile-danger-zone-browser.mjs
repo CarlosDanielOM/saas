@@ -38,7 +38,7 @@ const TEXT = {
     resetTitle: 'Reset your account?', deleteTitle: 'Delete your account forever?',
     resetConfirm: 'Reset my account', deleteConfirm: 'Delete my account', typeLabel: 'Type test to confirm',
     mismatch: /Type your Twitch name exactly/, resetError: /couldn't finish the reset/, deleteError: /couldn't delete your account/,
-    kept: 'Default commands, back to their original settings', dimafx: /Your DimaFX shop is deleted/, plan: /doesn't cancel your Premium plan/,
+    kept: 'Default commands, back to their original settings', dimafx: /Your DimaFX shop is deleted/, plan: /Your Premium plan ends with your account\.[\s\S]*won't be charged again/,
     resetDone: 'Account reset', deleteDone: 'Account deleted'
   },
   es: {
@@ -46,7 +46,7 @@ const TEXT = {
     resetTitle: '¿Restablecer tu cuenta?', deleteTitle: '¿Eliminar tu cuenta para siempre?',
     resetConfirm: 'Restablecer mi cuenta', deleteConfirm: 'Eliminar mi cuenta', typeLabel: 'Escribe test para confirmar',
     mismatch: /Escribe tu nombre de Twitch/, resetError: /No pudimos terminar el restablecimiento/, deleteError: /No pudimos eliminar tu cuenta/,
-    kept: 'Los comandos predeterminados, con su configuración original', dimafx: /Se borra tu tienda DimaFX/, plan: /no cancela tu plan Premium/,
+    kept: 'Los comandos predeterminados, con su configuración original', dimafx: /Se borra tu tienda DimaFX/, plan: /Tu plan Premium termina con tu cuenta\.[\s\S]*no se te volverá a cobrar/,
     resetDone: 'Cuenta restablecida', deleteDone: 'Cuenta eliminada'
   }
 };
@@ -221,7 +221,7 @@ try {
     } else {
       await warn.waitFor();
       assert.match(await warn.innerText(), L.plan);
-      await warn.getByRole('button').waitFor();
+      assert.equal(await warn.getByRole('button').count(), 0, 'no billing step needed before deleting');
     }
     for (const theme of ['dark', 'light']) {
       await setTheme(page, theme);

@@ -282,12 +282,6 @@
                   <strong>{{ t('profile.danger.delete.planTitle', { tier: planTierLabel() }) }}</strong>
                   {{ t('profile.danger.delete.planCopy') }}
                 </p>
-                <button type="button" class="lf-btn lf-btn--compact" [disabled]="portalOpening() || dangerBusy()" (click)="openBillingPortal()">
-                  {{ portalOpening() ? t('profile.subscription.manageOpening') : t('profile.subscription.manageCta') }}
-                </button>
-                @if (portalError()) {
-                  <p class="lf-note lf-note--error" role="alert">{{ t('profile.subscription.manageError') }}</p>
-                }
               </div>
             }
           }

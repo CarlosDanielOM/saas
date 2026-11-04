@@ -871,10 +871,6 @@
   color: var(--warn);
 }
 
-.lf-billing-warn .lf-btn {
-  justify-self: start;
-}
-
 .lf-confirm {
   display: grid;
   gap: 0.4rem;
