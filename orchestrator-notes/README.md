@@ -59,6 +59,8 @@ Visual guides: [2026-11-01 release evidence](../migration-notes/docs-visual-guid
 
 Pet playback reliability: [DIMA-036 evidence and routing note](../migration-notes/dima036-playback-reliability.md). Implementation and focused checks are recorded; browser delivery and Windows/OBS acceptance remain pending. This is task-specific routing evidence, with no superiority or performance claim.
 
+DIMA-050 desktop turn status hints: [2026-11-04 task observation](2026-11-04-desktop-turn-status.md). Final run `api-ab6e37aa7052` passed 22 exact-image groups and 354 compiled tests/34 suites and was deployed; cleanup completed with rollback retained. Task-specific routing evidence only, with no tier or runtime-performance conclusion.
+
 Bounded billing recovery backend fix: [2026-10-29 observation](2026-10-29-billing-recovery.md). Supports Terra's existing provisional bounded-coding route only; no tier change.
 
 Pet chat-context backend integration: [2026-10-31 observation](2026-10-31-pet-chat-context.md). Single-task, low-confidence support for Terra's existing provisional bounded-integration route; no tier change.
