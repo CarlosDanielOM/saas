@@ -1,5 +1,6 @@
 import { Schema, model } from 'mongoose';
 import type { DimafxQueueItem } from '../handlers/dimafx_queue.handler.js';
+import { DIMAFX_LOG_RETENTION_SECONDS } from './dimafx_retention.js';
 
 export interface IDimafxPlayback {
   /** Bits purchases use bits-<ledger ID>, including on request retries. */
@@ -24,6 +25,10 @@ const schema = new Schema<IDimafxPlayback>({
   failure: String,
 }, { timestamps: true });
 schema.index({ channelID: 1, state: 1, createdAt: 1 });
-// No TTL: unresolved paid work and completed idempotency receipts must survive
-// disconnects and a crash between enqueueing and finalizing the purchase ledger.
+// Unresolved paid work (queued, playing, refunding) never expires: it must survive disconnects
+// and crashes. Finished records keep acting as idempotency receipts, then expire as logs.
+schema.index(
+  { createdAt: 1 },
+  { expireAfterSeconds: DIMAFX_LOG_RETENTION_SECONDS, partialFilterExpression: { state: { $in: ['completed', 'refunded'] } } }
+);
 export const DimafxPlaybackSchema = model<IDimafxPlayback>('DimafxPlayback', schema);

@@ -17,6 +17,7 @@ import { TriggerSchema } from '../schemas/trigger.schema.js';
 import UsersSchema from '../schemas/users.schema.js';
 import { unsubscribeTwitchEvent } from './eventsub.js';
 import { cleanupChannelMediaOwnership } from './media_cleanup.js';
+import { deleteChannelDimafxData, type IDeleteChannelDimafxResult } from './dimafx_data.js';
 import { decrementSiteAnalytics } from './siteanalytics.js';
 import { deleteChannelMemoryEmbeddingsByChannel } from './qdrant/functions/memory/sync_memory.qdrant.js';
 import { revokeUserOAuth } from '../server/oauth/service.js';
@@ -28,7 +29,7 @@ export interface IDeleteAccountOptions {
     authorizedAccountsCount: number;
 }
 
-export interface IDeleteAccountResult {
+export interface IDeleteAccountResult extends IDeleteChannelDimafxResult {
     commandsDeleted: number;
     commandVariablesDeleted: number;
     eventsubsDeleted: number;
@@ -142,7 +143,8 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         commandTimersDelete,
         personalitiesDelete,
         memoriesDelete,
-        streamSummariesDelete
+        streamSummariesDelete,
+        dimafxDelete
     ] = await Promise.all([
         cleanupChannelMediaOwnership({ channelID, userID }),
         TriggerFileSchema.deleteMany({ channelID }),
@@ -153,13 +155,15 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         CommandTimerSchema.deleteMany({ channelID }),
         ChannelAIPersonalitySchema.deleteMany({ channelID }),
         ChannelAIMemorySchema.deleteMany({ channelID }),
-        ChannelStreamSummarySchema.deleteMany({ channelID })
+        ChannelStreamSummarySchema.deleteMany({ channelID }),
+        deleteChannelDimafxData(channelID)
     ]);
 
     console.log('[ACCOUNT_DELETION] Phase 2 complete - additional deletions', {
         channelID,
         triggerFilesDeleted: triggerFilesDelete.deletedCount ?? 0,
-        personalitiesDeleted: personalitiesDelete.deletedCount ?? 0
+        personalitiesDeleted: personalitiesDelete.deletedCount ?? 0,
+        ...dimafxDelete
     });
 
     const [adminsAsAdminDelete, userDelete] = await Promise.all([
@@ -207,7 +211,8 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         mediaLibraryItemsRemoved: mediaCleanup.libraryItemsRemoved,
         privateAssetsDeleted: mediaCleanup.privateAssetsDeleted,
         publicAssetsTransferred: mediaCleanup.publicAssetsTransferred,
-        mediaAssetCountsUpdated: mediaCleanup.assetCountsUpdated
+        mediaAssetCountsUpdated: mediaCleanup.assetCountsUpdated,
+        ...dimafxDelete
     };
 
     console.log('[ACCOUNT_DELETION] Deletion complete', {
