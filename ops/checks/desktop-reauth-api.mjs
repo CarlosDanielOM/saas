@@ -126,7 +126,18 @@ const desktopToken = await mint(), secondToken = await mint(), foreignToken = aw
 const narrow = await mint('oauth-beta-browser-owner', 'desktop:connect pet:read');
 assert.ok((await connect('/desktop', { v: 1, accessToken: narrow.access_token }, true)).message.includes('insufficient_scope'));
 const desktop = await connect('/desktop', { v: 1, accessToken: desktopToken.access_token });
-assert.deepEqual((await desktop.event('desktop:hello')).features, ['reauth']);
+assert.deepEqual((await desktop.event('desktop:hello')).features, ['reauth', 'moods']);
+assert.deepEqual(await desktop.send('desktop:features', { v: 1, features: ['future-feature'] }), { ok: true, data: {} });
+for (const value of [null, {}, { v: 2, features: ['moods'] }, { v: 1, features: 'moods' },
+  { v: 1, features: Array(17).fill('moods') }, { v: 1, features: ['x'.repeat(33)] },
+  { v: 1, features: [1] }, { v: 1, features: ['moods'], extra: true }]) {
+  assert.deepEqual(await desktop.send('desktop:features', value), { ok: false, error: { code: 'invalid_message' } });
+  assert.equal(desktop.disconnected, false, 'malformed feature declarations never disconnect');
+}
+for (const features of [[], ['moods', 'future-feature'], ['moods', 'moods']]) {
+  assert.deepEqual(await desktop.send('desktop:features', { v: 1, features }), { ok: true, data: {} });
+}
+console.log('PASS desktop mood negotiation: advertised support, bounded strict declarations, unknown features ignored, idempotent ACKs, malformed ACK errors without disconnect');
 const ready = { v: 1, audioReady: true, renderReady: true, vtsReady: true };
 assert.equal((await desktop.send('pet:ready', ready)).ok, true);
 const selected = await call('/v1/me/pet/playback', { method: 'PUT', token: desktopToken.access_token,
@@ -166,6 +177,7 @@ assert.equal((await desktop.send('pet:lease', { v: 1, action: 'renew', leaseId: 
   'ordinary handlers use the replacement after the old token has expired');
 assert.equal((await desktop.send('pet:ready', ready)).ok, true);
 const projection = await PetReadiness.findById(ownerId).lean();
+assert.deepEqual(await desktop.send('desktop:features', { v: 1, features: ['moods'] }), { ok: true, data: {} }, 'feature declarations still use the reauthenticated socket');
 assert.equal(projection.peerId, beforeProjection.peerId); assert.equal(projection.generation, beforeProjection.generation);
 console.log('PASS live socket reauth: feature, peer, lease, active playback, generation, VTS proof and new-token revalidation');
 

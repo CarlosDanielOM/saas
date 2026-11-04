@@ -394,7 +394,7 @@ async function report(channel: string, speech: string, phase: string, position: 
         if (turns.get(channel) !== turn) return;
         const initial = !turn.followPeers.has(peer.id);
         peer.socket.emit('pet:follow', { v: 1, followId: speech, generation: turn.generation,
-            ...(initial ? { envelope: turn.envelope } : {}), ...(config.moods?.enabled && turn.mood ? { mood: turn.mood } : {}), positionMs, serverTime: turn.serverTime });
+            ...(initial ? { envelope: turn.envelope } : {}), ...(config.moods?.enabled && turn.mood && (peer.kind === 'browser' || peer.moodSupport === true) ? { mood: turn.mood } : {}), positionMs, serverTime: turn.serverTime });
         turn.followPeers.add(peer.id); turn.following = true;
     }
 }

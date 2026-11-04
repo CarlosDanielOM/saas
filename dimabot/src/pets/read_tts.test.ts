@@ -7,6 +7,7 @@ import { defaultPetMoods, resolvePetMood } from './moods.js';
 import { registerReadTtsBridge, prepareReadTts as prepareOnly, observeReadTtsRuntime, releaseReadTts, reportReadTts, readTtsTerminal, invalidateReadTts, readTtsAvailable, reserveReadTts, resumeReadTts, scheduleReadTtsResume, protectReadTtsTurn, readTtsTurnCurrent, readTtsOwners } from './tts_bridge.js';
 const owner = '012345678901234567890123', channel = '123456';
 let runtime: any, config: any, rows: Map<string, any>, events: any[], endings: string[];
+let controller: any = null;
 let ticketFails = false, attemptedFails = false;
 let moodExtractionFails = false;
 let afterPrivateCreate: (() => Promise<void>) | undefined, afterPrivateLink: (() => Promise<void>) | undefined, afterAttempted: (() => Promise<void>) | undefined;
@@ -41,7 +42,7 @@ mock.module('./moods.js', { namedExports: { resolvePetMood: (...args: Parameters
 } } });
 mock.module('../schemas/users.schema.js', { defaultExport: { findOne: () => ({ select: () => query(() => ({ _id: owner })) }) } });
 mock.module('../server/services/pet_settings.service.js', { namedExports: { getPetConfiguration: async () => { const snapshot = structuredClone(config); const barrier = afterConfigurationRead; afterConfigurationRead = undefined; if (barrier) await barrier(); return snapshot; } } });
-mock.module('./peers.js', { namedExports: { petPeers: peers, selectedVtsController: async () => null } });
+mock.module('./peers.js', { namedExports: { petPeers: peers, selectedVtsController: async () => controller } });
 mock.module('./tokens.js', { namedExports: { issueAudioTicket: async () => { if (ticketFails) throw new Error('ticket rejected before delivery'); return 'private-ticket'; } } });
 mock.module('./tts_envelope.js', { namedExports: { inspectTtsAudio: async () => 500, ttsEnvelope: async () => ({ stepMs: 40, values: [0, 0.7, 0.2] }) } });
 mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
@@ -81,7 +82,7 @@ async function reset() {
         lease: { leaseId: 'lease', holderPeerId: peer.id, expiresAt: new Date(Date.now() + 15000) } };
     config = { revision: 1, settings: { enabled: true, sources: { independent: false, readTts: true }, ttsAudio: 'pet',
         tts: { enabled: false }, personality: { source: 'profile', profileId: 'missing' }, appearance: { kind: 'png' }, playback: { target: 'browser' } }, runtime: { enabled: false, readTtsEnabled: true } };
-    rows = new Map(); events = []; endings = []; afterRuntimeRead = afterClaim = afterConfigurationRead = afterPrivateCreate = afterPrivateLink = afterAttempted = undefined; resumed.length = 0; ticketFails = attemptedFails = moodExtractionFails = false; peer.socket.connected = peer.audioReady = peer.renderReady = true;
+    rows = new Map(); events = []; endings = []; afterRuntimeRead = afterClaim = afterConfigurationRead = afterPrivateCreate = afterPrivateLink = afterAttempted = undefined; resumed.length = 0; ticketFails = attemptedFails = moodExtractionFails = false; controller = null; peer.kind = 'browser'; delete peer.moodSupport; peer.socket.connected = peer.audioReady = peer.renderReady = true;
 }
 function input(speechId = 'speech') { return { channelId: channel, speechId, file, mime: 'audio/wav', text: 'Existing normal TTS', cancelled: () => false,
     ended: async (reason: string) => { endings.push(reason); await releaseReadTts(channel, speechId); } }; }
@@ -131,6 +132,18 @@ test('overlay follow carries a fixed raw mood only while enabled', async () => {
     await prepareOnly({ ...input(), moodText: '[happy] Hello' }); await reportReadTts(channel, 'speech', 'playing', 0.1);
     assert.equal('mood' in events.find(event => event.event === 'pet:follow')!.data, false);
     await releaseReadTts(channel, 'speech');
+});
+for (const declared of [false, true]) test(`desktop overlay follow ${declared ? 'includes' : 'omits'} mood when ${declared ? 'declared' : 'undeclared'}`, async () => {
+    await reset(); peer.kind = 'desktop'; peer.moodSupport = declared; controller = peer;
+    config.settings.appearance = { kind: 'vts' }; config.settings.playback.vtsSessionId = 'desktop';
+    config.settings.ttsAudio = 'overlay'; config.moods = { enabled: true }; config.settings.moods = defaultPetMoods();
+    assert.equal((await prepareOnly({ ...input(), moodText: '[happy] Hello' }))?.audio, 'overlay');
+    await reportReadTts(channel, 'speech', 'playing', 0.1);
+    const follow = events.find(event => event.event === 'pet:follow')!.data;
+    assert.equal('mood' in follow, declared);
+    if (declared) assert.equal(follow.mood, 'happy');
+    await releaseReadTts(channel, 'speech');
+    assert.deepEqual(events.find(event => event.event === 'pet:follow-end')?.data, { v: 1, followId: 'speech', generation: 4 });
 });
 after(async () => { await close(); registerReadTtsBridge(); await rm(fileDir, { recursive: true, force: true }); });
 test('readTTS-only PNG works without desktop, independent voice/personality, and emits one private play', async () => {

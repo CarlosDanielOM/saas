@@ -99,7 +99,7 @@ export async function registerPetSockets(io: SocketServer) {
             // Recheck after asynchronous handshake to bound simultaneous connects.
             if ([...petPeers.values()].filter(item => item.sessionId && item.sessionId === peer.sessionId).length >= 2) return void socket.disconnect(true);
             petPeers.set(peer.id, peer);
-            if (kind === 'desktop') socket.emit('desktop:hello', { v: 1, sessionId: peer.sessionId, channelId: peer.channelId, scopes: peer.scopes, features: ['reauth'] });
+            if (kind === 'desktop') socket.emit('desktop:hello', { v: 1, sessionId: peer.sessionId, channelId: peer.channelId, scopes: peer.scopes, features: ['reauth', 'moods'] });
             void sendPetSnapshot(peer).catch(() => socket.disconnect(true));
             let windowStart = Date.now(), messageCount = 0;
             const pending: Array<() => Promise<void>> = [];
@@ -147,6 +147,12 @@ export async function registerPetSockets(io: SocketServer) {
                     void drain();
                 });
             };
+            if (kind === 'desktop') on('desktop:features', async value => {
+                if (!Array.isArray(value.features) || value.features.length > 16 ||
+                    value.features.some(feature => typeof feature !== 'string' || feature.length < 1 || feature.length > 32)) throw new PetError('invalid_message');
+                peer.moodSupport = value.features.includes('moods');
+                return {};
+            }, ['v', 'features']);
             if (kind === 'desktop') on('desktop:reauth', async value => {
                 if (typeof value.accessToken !== 'string') throw new PetError('invalid_message');
                 const current = await authenticateAccess(value.accessToken);

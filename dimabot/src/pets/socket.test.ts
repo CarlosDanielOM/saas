@@ -80,7 +80,7 @@ async function fixture(context: { after: (fn: () => unknown) => void }, kind = '
 
 test('reauth advertises support and preserves peer, lease, active request, readiness and generation after old-token expiry', async t => {
     const c = await fixture(t), before = structuredClone(runtime), peerId = c.peer.id;
-    assert.deepEqual(c.emitted[0], ['desktop:hello', { v: 1, sessionId: identity.session_id, channelId: '123', scopes, features: ['reauth'] }]);
+    assert.deepEqual(c.emitted[0], ['desktop:hello', { v: 1, sessionId: identity.session_id, channelId: '123', scopes, features: ['reauth', 'moods'] }]);
     await c.peer.revalidate(); const oldExpiry = c.peer.authorizationExpiresAt;
     tokens.delete('old'); authenticated.length = 0;
     assert.deepEqual(await c.send('desktop:reauth', { v: 1, accessToken: 'new' }), { ok: true, data: {} });
@@ -146,5 +146,36 @@ test('reauth shares the ordered control queue and rate limit', async t => {
     assert.ok(limited > 0);
 });
 test('reauth is never registered on the browser namespace', async t => {
-    const c = await fixture(t, '/pet'); assert.equal(c.handlers.has('desktop:reauth'), false);
+    const c = await fixture(t, '/pet'); assert.equal(c.handlers.has('desktop:reauth'), false); assert.equal(c.handlers.has('desktop:features'), false);
+});
+test('desktop feature declaration validates, ignores unknowns and remains local to each socket', async t => {
+    const c = await fixture(t);
+    assert.equal(c.peer.moodSupport, undefined);
+    for (const value of [null, [], {}, { v: 2, features: [] }, { v: 1 }, { v: 1, features: 'moods' },
+        { v: 1, features: [''] }, { v: 1, features: [4] }, { v: 1, features: ['x'.repeat(33)] },
+        { v: 1, features: Array(17).fill('x') }, { v: 1, features: [], extra: true }]) {
+        assert.deepEqual(await c.send('desktop:features', value), { ok: false, error: { code: 'invalid_message' } });
+        assert.equal(c.socket.connected, true);
+    }
+    assert.deepEqual(await c.send('desktop:features', { v: 1, features: ['moods', 'future'] }), { ok: true, data: {} });
+    assert.equal(c.peer.moodSupport, true);
+    assert.deepEqual(await c.send('desktop:features', { v: 1, features: ['moods', 'future'] }), { ok: true, data: {} });
+    assert.equal(c.peer.moodSupport, true);
+    assert.deepEqual(await c.send('desktop:reauth', { v: 1, accessToken: 'new' }), { ok: true, data: {} });
+    assert.equal(c.peer.moodSupport, true);
+    const fresh = await fixture(t); assert.equal(fresh.peer.moodSupport, undefined);
+    assert.equal(c.peer.moodSupport, true);
+    assert.deepEqual(await fresh.send('desktop:features', { v: 1, features: ['unknown'] }), { ok: true, data: {} });
+    assert.equal(fresh.peer.moodSupport, false); assert.equal(c.peer.moodSupport, true);
+});
+test('desktop feature declarations use the ordered queue, authentication and rate limit', async t => {
+    const c = await fixture(t), blocked = Promise.withResolvers<void>(); gate = blocked.promise;
+    const first = c.send('desktop:reauth', { v: 1, accessToken: 'new' });
+    const next = c.send('desktop:features', { v: 1, features: ['moods'] });
+    assert.equal(c.peer.moodSupport, undefined); tokens.delete('old'); blocked.resolve();
+    assert.equal((await first).ok, true); assert.equal((await next).ok, true); assert.equal(c.peer.moodSupport, true);
+    gate = undefined;
+    let limited = 0;
+    for (let i = 0; i < 35; i++) if ((await c.send('desktop:features', { v: 1, features: ['moods'] })).error?.code === 'rate_limited') limited++;
+    assert.ok(limited > 0);
 });
