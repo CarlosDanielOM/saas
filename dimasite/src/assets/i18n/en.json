@@ -2636,6 +2636,7 @@
         "goneTitle": "What happens",
         "goneBot": "The bot loses access to your channel and stops listening to Twitch events",
         "goneData": "Commands, timers, triggers, redemptions, uploaded media, AI personality and memories, clip designs and stream summaries are deleted",
+      "goneDimafx": "Your DimaFX shop is deleted: items, viewers' saved items and credits, purchase history and play records",
         "goneTeam": "Your team loses access, and you're removed from teams you help on",
         "goneCredits": "Your remaining AI credits are lost",
         "planTitle": "This doesn't cancel your {{tier}} plan.",

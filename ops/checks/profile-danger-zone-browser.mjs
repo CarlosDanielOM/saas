@@ -38,7 +38,7 @@ const TEXT = {
     resetTitle: 'Reset your account?', deleteTitle: 'Delete your account forever?',
     resetConfirm: 'Reset my account', deleteConfirm: 'Delete my account', typeLabel: 'Type test to confirm',
     mismatch: /Type your Twitch name exactly/, resetError: /couldn't finish the reset/, deleteError: /couldn't delete your account/,
-    kept: 'Default commands, back to their original settings', plan: /doesn't cancel your Premium plan/,
+    kept: 'Default commands, back to their original settings', dimafx: /Your DimaFX shop is deleted/, plan: /doesn't cancel your Premium plan/,
     resetDone: 'Account reset', deleteDone: 'Account deleted'
   },
   es: {
@@ -46,7 +46,7 @@ const TEXT = {
     resetTitle: '¿Restablecer tu cuenta?', deleteTitle: '¿Eliminar tu cuenta para siempre?',
     resetConfirm: 'Restablecer mi cuenta', deleteConfirm: 'Eliminar mi cuenta', typeLabel: 'Escribe test para confirmar',
     mismatch: /Escribe tu nombre de Twitch/, resetError: /No pudimos terminar el restablecimiento/, deleteError: /No pudimos eliminar tu cuenta/,
-    kept: 'Los comandos predeterminados, con su configuración original', plan: /no cancela tu plan Premium/,
+    kept: 'Los comandos predeterminados, con su configuración original', dimafx: /Se borra tu tienda DimaFX/, plan: /no cancela tu plan Premium/,
     resetDone: 'Cuenta restablecida', deleteDone: 'Cuenta eliminada'
   }
 };
@@ -213,6 +213,8 @@ try {
     await deleteBtn.click();
     await dialog.waitFor();
     assert.equal(await dialog.getByRole('heading', { level: 2 }).innerText(), L.deleteTitle);
+    await dialog.getByText(L.dimafx).waitFor();
+    assert.equal(await page.getByText(L.dimafx).count(), 1, 'DimaFX line only in the delete dialog');
     const warn = dialog.locator('.lf-billing-warn');
     if (tier === 'free') {
       assert.equal(await warn.count(), 0, 'free plan has no billing warning');

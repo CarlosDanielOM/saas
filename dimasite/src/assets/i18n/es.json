@@ -2636,6 +2636,7 @@
         "goneTitle": "Qué pasa",
         "goneBot": "El bot pierde el acceso a tu canal y deja de escuchar los eventos de Twitch",
         "goneData": "Se borran comandos, temporizadores, triggers, canjes, archivos subidos, personalidad y memorias de IA, diseños de clips y resúmenes de directos",
+      "goneDimafx": "Se borra tu tienda DimaFX: artículos, artículos guardados y créditos de tus espectadores, historial de compras y registros de reproducción",
         "goneTeam": "Tu equipo pierde el acceso y sales de los equipos en los que ayudas",
         "goneCredits": "Pierdes los créditos de IA que te queden",
         "planTitle": "Esto no cancela tu plan {{tier}}.",
