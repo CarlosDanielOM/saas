@@ -25,10 +25,7 @@ const schema = new Schema<IDimafxPlayback>({
   failure: String,
 }, { timestamps: true });
 schema.index({ channelID: 1, state: 1, createdAt: 1 });
-// Unresolved paid work (queued, playing, refunding) never expires: it must survive disconnects
-// and crashes. Finished records keep acting as idempotency receipts, then expire as logs.
-schema.index(
-  { createdAt: 1 },
-  { expireAfterSeconds: DIMAFX_LOG_RETENTION_SECONDS, partialFilterExpression: { state: { $in: ['completed', 'refunded'] } } }
-);
+// Records survive disconnects and crashes as playback/idempotency receipts, and every record
+// expires 365 days after creation (privacy retention), whatever its state.
+schema.index({ createdAt: 1 }, { expireAfterSeconds: DIMAFX_LOG_RETENTION_SECONDS });
 export const DimafxPlaybackSchema = model<IDimafxPlayback>('DimafxPlayback', schema);

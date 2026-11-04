@@ -55,16 +55,8 @@ extensionWalletTransactionSchema.index(
     { unique: true, partialFilterExpression: { twitchTransactionID: { $type: 'string' } } }
 );
 extensionWalletTransactionSchema.index({ channelID: 1, userID: 1, createdAt: -1 });
-// Privacy retention. Bits purchases still pending, processing or refund_pending are left out of
-// this index so paid work is never lost; they expire once resolved. A missing fulfillment means
-// a legacy (fulfilled) purchase or a non-Bits entry, so it expires normally.
-extensionWalletTransactionSchema.index(
-    { createdAt: 1 },
-    {
-        expireAfterSeconds: DIMAFX_LOG_RETENTION_SECONDS,
-        partialFilterExpression: { 'metadata.fulfillment': { $in: [null, 'fulfilled', 'refunded'] } }
-    }
-);
+// Privacy retention: every entry expires 365 days after creation, whatever its state.
+extensionWalletTransactionSchema.index({ createdAt: 1 }, { expireAfterSeconds: DIMAFX_LOG_RETENTION_SECONDS });
 
 export type ExtensionWalletTransactionDocument = HydratedDocument<IExtensionWalletTransaction>;
 

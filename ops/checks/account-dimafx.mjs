@@ -4,8 +4,8 @@
  *
  * - The API creates both TTL indexes (also when the old non-unique twitchTransactionID index
  *   that production still has is present).
- * - TTL: finished purchase/playback records older than 365 days expire; pending, processing and
- *   refund_pending Bits purchases and queued/playing/refunding playbacks stay until resolved.
+ * - TTL: every purchase/playback record older than 365 days expires, in any state (including
+ *   unresolved ones); records younger than 365 days stay.
  * - DELETE /auth/account removes the channel's shop items, viewer wallets, purchase log and
  *   playback records; other channels' DimaFX data is untouched; unauthenticated calls get 401.
  *
@@ -22,8 +22,6 @@ const { createClient } = require('redis');
 const BASE = 'mongodb://mongo:27017';
 const TTL_SECONDS = 365 * 24 * 60 * 60;
 const DAY = 24 * 60 * 60 * 1000;
-const TX_FILTER = { 'metadata.fulfillment': { $in: [null, 'fulfilled', 'refunded'] } };
-const PLAYBACK_FILTER = { state: { $in: ['completed', 'refunded'] } };
 
 async function until(fn, message, timeout = 30000) {
   const start = Date.now();
@@ -37,10 +35,10 @@ async function until(fn, message, timeout = 30000) {
 const ttlIndex = async (database, collection) =>
   (await database.collection(collection).indexes().catch(() => [])).find(index => index.name === 'createdAt_1');
 
-function assertTtlIndex(index, filter, label) {
+function assertTtlIndex(index, label) {
   assert.ok(index, `${label}: TTL index exists`);
   assert.equal(index.expireAfterSeconds, TTL_SECONDS, `${label}: expires after 365 days`);
-  assert.deepEqual(index.partialFilterExpression, filter, `${label}: keeps unresolved paid work`);
+  assert.equal(index.partialFilterExpression, undefined, `${label}: applies to every state`);
 }
 
 const conn = await mongoose.createConnection(`${BASE}/saas_ops_account_dimafx_test`).asPromise();
@@ -50,8 +48,8 @@ await conn.client.db('admin').command({ setParameter: 1, ttlMonitorSleepSecs: 1 
 // 1. The running API created both TTL indexes on startup.
 await until(async () => (await ttlIndex(db, 'extensionwallettransactions')) && (await ttlIndex(db, 'dimafxplaybacks')),
   'API created both DimaFX TTL indexes');
-assertTtlIndex(await ttlIndex(db, 'extensionwallettransactions'), TX_FILTER, 'purchase log');
-assertTtlIndex(await ttlIndex(db, 'dimafxplaybacks'), PLAYBACK_FILTER, 'playback log');
+assertTtlIndex(await ttlIndex(db, 'extensionwallettransactions'), 'purchase log');
+assertTtlIndex(await ttlIndex(db, 'dimafxplaybacks'), 'playback log');
 console.log('PASS API created 365-day TTL indexes for the DimaFX purchase and playback logs');
 
 // 1b. Production still has a legacy non-unique twitchTransactionID_1 index that conflicts with the
@@ -62,7 +60,7 @@ const { ExtensionWalletTransactionSchema } = await import('/app/dist/schemas/ext
 const LegacyModel = legacy.model('ExtensionWalletTransaction', ExtensionWalletTransactionSchema.schema);
 const initError = await LegacyModel.init().then(() => null, error => error);
 console.log(`  legacy index conflict reproduced: ${initError ? initError.codeName || initError.message : 'no error'}`);
-assertTtlIndex(await ttlIndex(legacy.db, 'extensionwallettransactions'), TX_FILTER, 'purchase log with legacy index');
+assertTtlIndex(await ttlIndex(legacy.db, 'extensionwallettransactions'), 'purchase log with legacy index');
 console.log('PASS TTL index is created even with the production legacy twitchTransactionID index');
 await legacy.close();
 
@@ -93,19 +91,10 @@ await db.collection('dimafxplaybacks').insertMany([
 
 const txNames = async () => (await db.collection('extensionwallettransactions').find({ channelID: 'ttl-channel' }).toArray()).map(d => d.name).sort();
 const pbIds = async () => (await db.collection('dimafxplaybacks').find({ channelID: 'ttl-channel' }).toArray()).map(d => d._id).sort();
-const keptTx = ['pending', 'processing', 'recent-fulfilled', 'refund-pending'];
-const keptPb = ['pb-playing', 'pb-queued', 'pb-recent', 'pb-refunding'];
-await until(async () => (await txNames()).length === keptTx.length && (await pbIds()).length === keptPb.length, 'TTL monitor removed expired DimaFX logs');
-assert.deepEqual(await txNames(), keptTx);
-assert.deepEqual(await pbIds(), keptPb);
-console.log('PASS finished logs older than 365 days expired (incl. legacy rows); unresolved paid work and recent logs stayed');
-
-await db.collection('extensionwallettransactions').updateOne({ name: 'pending' }, { $set: { 'metadata.fulfillment': 'fulfilled' } });
-await db.collection('dimafxplaybacks').updateOne({ _id: 'pb-queued' }, { $set: { state: 'completed' } });
-await until(async () => !(await txNames()).includes('pending') && !(await pbIds()).includes('pb-queued'), 'resolved old work expired');
-assert.deepEqual(await txNames(), ['processing', 'recent-fulfilled', 'refund-pending']);
-assert.deepEqual(await pbIds(), ['pb-playing', 'pb-recent', 'pb-refunding']);
-console.log('PASS old work expires once it is resolved');
+await until(async () => (await txNames()).length === 1 && (await pbIds()).length === 1, 'TTL monitor removed expired DimaFX logs');
+assert.deepEqual(await txNames(), ['recent-fulfilled']);
+assert.deepEqual(await pbIds(), ['pb-recent']);
+console.log('PASS every log older than 365 days expired in any state (incl. pending/queued and legacy rows); recent logs stayed');
 
 // 3. Account deletion removes the channel's DimaFX data and nothing else.
 const redis = createClient({ url: 'redis://redis:6379' });
