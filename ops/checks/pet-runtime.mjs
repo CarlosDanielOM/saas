@@ -149,6 +149,7 @@ const restoredSite = await connect('/site/analytics/registered-channels', { pid:
 assert.equal(restoredSite.joinedInfo.sid, site.joinedInfo.sid, 'existing namespace restores its session');
 const desktop = await connect('/desktop', { v: 1, accessToken: desktopToken.access_token });
 assert.equal((await desktop.event('desktop:hello')).sessionId, desktopToken.session_id);
+assert.ok((await desktop.event('desktop:hello')).features.includes('mouth-smile'), 'DIMA-052 hello advertises the additive capability');
 await connect('/desktop', { v: 1, accessToken: desktopToken.access_token, pid: desktop.joinedInfo.pid, offset: 'stale' }, true);
 const overlap = await connect('/desktop', { v: 1, accessToken: desktopToken.access_token });
 await connect('/desktop', { v: 1, accessToken: desktopToken.access_token }, true);
@@ -278,6 +279,32 @@ const burst = await Promise.all([desktop.send('pet:mouth', mouth), desktop.send(
 assert.ok(burst.every(ack => ack.ok));
 const injected = desktop.events.filter(item => item.event === 'pet:mouth').length + overlap.events.filter(item => item.event === 'pet:mouth').length;
 assert.equal(injected, 1, 'one selected VTS peer, even during same-session overlap');
+const mouthController = [desktop, overlap].find(client => client.events.some(item => item.event === 'pet:mouth'));
+const assertMouthRelay = async (producer, controller, sample, expected) => {
+  // The existing lossy telemetry limit is 40 ms; each assertion needs an admitted sample.
+  await pause(45);
+  const marks = new Map(connectedClients.map(client => [client, client.mark()]));
+  assert.deepEqual(await producer.send('pet:mouth', sample), { ok: true, data: {} });
+  const relayed = () => [...marks].flatMap(([client, mark]) => client.events.slice(mark)
+    .filter(item => item.event === 'pet:mouth').map(item => ({ client, data: item.data })));
+  await until(() => relayed().length, 'elected-controller mouth relay');
+  assert.equal(relayed().length, 1, 'a mouth sample reaches only the elected VTS socket');
+  assert.equal(relayed()[0].client, controller);
+  assert.deepEqual(relayed()[0].data, expected, 'legacy frames retain exactly their prior keys');
+};
+assert.deepEqual(await mouthController.send('desktop:features', { v: 1, features: ['mouth-smile'] }), { ok: true, data: {} });
+await assertMouthRelay(desktop, mouthController, { ...mouth, seq: 1, smile: .75 }, { ...mouth, seq: 1, smile: .75 });
+assert.deepEqual(await mouthController.send('desktop:features', { v: 1, features: ['moods'] }), { ok: true, data: {} });
+await assertMouthRelay(desktop, mouthController, { ...mouth, seq: 2, smile: .75 }, { ...mouth, seq: 2 });
+assert.deepEqual(await mouthController.send('desktop:features', { v: 1, features: ['mouth-smile', 'future'] }), { ok: true, data: {} });
+let mouthSequence = 3;
+for (const smile of [null, '.5', -.01, 1.01]) {
+  const sample = { ...mouth, seq: mouthSequence++ };
+  await assertMouthRelay(desktop, mouthController, { ...sample, smile }, sample);
+}
+const cachedMouth = { ...mouth, seq: mouthSequence++ };
+await assertMouthRelay(desktop, mouthController, cachedMouth, cachedMouth);
+console.log('PASS DIMA-052 mouth: hello/subset negotiation, elected modern controller, exact legacy keys, invalid smile dropped and cached-client compatibility');
 overlap.ws.close();
 assert.equal((await desktop.send('pet:playback', identityFor(play, 2, 'ended'))).ok, true);
 await until(() => desktop.latestSnapshot()?.active === null && second.latestSnapshot()?.active === null, 'terminal wake reaches every renderer');
@@ -655,6 +682,22 @@ await browser.send('pet:playback', identityFor(browserPlay, 1, 'ended'));
 await save(settings => ({ ...settings, appearance: { ...settings.appearance, kind: 'vts' }, playback: { ...settings.playback, vtsSessionId: desktopToken.session_id } }));
 await PetRuntime.updateOne({ _id: ownerId }, { $set: { notBefore: new Date(0) } });
 await acquire(browser);
+assert.deepEqual(await desktop.send('desktop:features', { v: 1, features: ['mouth-smile'] }), { ok: true, data: {} });
+const browserVtsRequest = await admitPetAction(action('Browser audio with two mouth values'));
+const browserVtsPlay = await browser.event('pet:play', data => data.requestId === browserVtsRequest.requestId);
+assert.equal((await browser.send('pet:playback', identityFor(browserVtsPlay, 0))).ok, true);
+await desktop.event('pet:request', data => data.request.requestId === browserVtsRequest.requestId && data.request.status === 'playing');
+const browserMouth = { ...identityFor(browserVtsPlay, 0), value: .6 }; delete browserMouth.phase;
+await assertMouthRelay(browser, desktop, { ...browserMouth, smile: .3 }, { ...browserMouth, smile: .3 });
+await assertMouthRelay(browser, desktop, { ...browserMouth, seq: 1, smile: null }, { ...browserMouth, seq: 1 });
+await assertMouthRelay(browser, desktop, { ...browserMouth, seq: 2 }, { ...browserMouth, seq: 2 });
+assert.deepEqual(await desktop.send('desktop:features', { v: 1, features: ['moods'] }), { ok: true, data: {} });
+await assertMouthRelay(browser, desktop, { ...browserMouth, seq: 3, smile: .3 }, { ...browserMouth, seq: 3 });
+assert.equal((await browser.send('pet:playback', identityFor(browserVtsPlay, 1, 'ended'))).ok, true);
+await until(() => browser.latestSnapshot()?.active === null, 'browser VTS mouth fixture completes before loss regression');
+await PetRuntime.updateOne({ _id: ownerId }, { $set: { notBefore: new Date(0) } });
+await acquire(browser);
+console.log('PASS DIMA-052 browser producer: two-value relay, invalid/missing smile tolerance and legacy controller stripping');
 await redis.set('pet:test:provider-mode', 'hold');
 const losingVts = await admitPetAction(action('Lose VTS during generation'));
 await until(() => PetRequest.findOne({ _id: losingVts.requestId, status: 'synthesizing' }).lean(), 'VTS-dependent provider phase');

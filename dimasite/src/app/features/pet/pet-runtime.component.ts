@@ -101,7 +101,7 @@ export class PetRuntimeComponent {
   private readonly follow = new PetFollowClock();
   private followMoodId: string | null = null;
   private followTimer?: ReturnType<typeof setTimeout>;
-  private readonly player = new PetBrowserPlayer(report => this.onPlayback(report), (id, positionMs, value) => this.onMouth(id, positionMs, value), speaking => { if (!this.follow.live) this.talking.set(speaking); });
+  private readonly player = new PetBrowserPlayer(report => this.onPlayback(report), (id, positionMs, value, smile) => this.onMouth(id, positionMs, value, smile), speaking => { if (!this.follow.live) this.talking.set(speaking); });
   private readonly socket: Socket = io(`${this.base}/pet`, { path: '/socket.io/', transports: ['websocket'],
     auth: { v: 1, capability: this.capability }, autoConnect: false, reconnection: false });
   private reconnectTimer?: ReturnType<typeof setTimeout>;
@@ -406,7 +406,7 @@ export class PetRuntimeComponent {
     // Translate the server's start deadline from its latest snapshot without trusting the PC's clock.
     const startBefore = Date.now() + Math.min(15_000, value.startBefore - this.serverNow());
     this.active = value; this.sequence = 0; this.lastProgress = 0; this.lastMouth = 0;
-    if (!this.player.prepare({ id: value.requestId, url, startBefore, maxDurationMs: value.audio.durationMs })) this.active = null;
+    if (!this.player.prepare({ id: value.requestId, url, startBefore, maxDurationMs: value.audio.durationMs, animateMouth: this.state()?.appearance.kind === 'vts' })) this.active = null;
   }
   private onPlayback(report: BrowserPetPlaybackReport): void {
     const active = this.active;
@@ -422,12 +422,12 @@ export class PetRuntimeComponent {
       this.audioReady = false; this.releaseLease(); this.ready();
     }
   }
-  private onMouth(id: string, positionMs: number, value: number): void {
+  private onMouth(id: string, positionMs: number, value: number, smile: number): void {
     const active = this.active, now = performance.now();
     if (!active || active.requestId !== id || !this.owns(active)) { this.stopPlayback(false); return; }
     if (now - this.lastMouth < 90) return;
     this.lastMouth = now;
-    this.socket.volatile.emit('pet:mouth', { v: 1, requestId: id, leaseId: active.leaseId, generation: active.generation, seq: ++this.sequence, positionMs, value });
+    this.socket.volatile.emit('pet:mouth', { v: 1, requestId: id, leaseId: active.leaseId, generation: active.generation, seq: ++this.sequence, positionMs, value, smile });
     if (now - this.lastProgress >= 1000 && !this.progressInFlight) {
       this.lastProgress = now;
       this.emitPlayback(active, { v: 1, requestId: id, leaseId: active.leaseId, generation: active.generation, seq: ++this.sequence, phase: 'progress', positionMs }, true);

@@ -24,6 +24,12 @@ function input(value: unknown, keys: string[]): Record<string, unknown> {
         Object.keys(value).some(key => !keys.includes(key)) || (value as { v?: unknown }).v !== 1) throw new PetError('invalid_message');
     return value as Record<string, unknown>;
 }
+/** Smile is optional decoration: malformed data cannot discard a valid mouth sample. */
+function mouthInput(value: unknown): unknown {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+    const { smile, ...mouth } = value as Record<string, unknown>;
+    return typeof smile === 'number' && Number.isFinite(smile) && smile >= 0 && smile <= 1 ? { ...mouth, smile } : mouth;
+}
 async function activeIdentity(peer: PetPeer, value: Record<string, unknown>, mouth = false) {
     const runtime = await PetRuntime.findById(peer.ownerId).lean();
     if (!runtime || runtime.activeRequestId !== value.requestId || runtime.generation !== value.generation ||
@@ -99,7 +105,7 @@ export async function registerPetSockets(io: SocketServer) {
             // Recheck after asynchronous handshake to bound simultaneous connects.
             if ([...petPeers.values()].filter(item => item.sessionId && item.sessionId === peer.sessionId).length >= 2) return void socket.disconnect(true);
             petPeers.set(peer.id, peer);
-            if (kind === 'desktop') socket.emit('desktop:hello', { v: 1, sessionId: peer.sessionId, channelId: peer.channelId, scopes: peer.scopes, features: ['reauth', 'moods'] });
+            if (kind === 'desktop') socket.emit('desktop:hello', { v: 1, sessionId: peer.sessionId, channelId: peer.channelId, scopes: peer.scopes, features: ['reauth', 'moods', 'mouth-smile'] });
             void sendPetSnapshot(peer).catch(() => socket.disconnect(true));
             let windowStart = Date.now(), messageCount = 0;
             const pending: Array<() => Promise<void>> = [];
@@ -113,7 +119,7 @@ export async function registerPetSockets(io: SocketServer) {
                 socket.on(event, (raw: unknown, acknowledge: unknown) => {
                     const ack = typeof acknowledge === 'function' ? acknowledge as (response: unknown) => void : () => {};
                     let data: Record<string, unknown>;
-                    try { data = input(raw, keys); } catch {
+                    try { data = input(event === 'pet:mouth' ? mouthInput(raw) : raw, keys); } catch {
                         if (event === 'desktop:reauth') petDiagnostic(peer.channelId, 'reauth', { peerKind: peer.kind, reason: 'invalid_message' });
                         return ack({ ok: false, error: { code: 'invalid_message' } });
                     }
@@ -151,6 +157,7 @@ export async function registerPetSockets(io: SocketServer) {
                 if (!Array.isArray(value.features) || value.features.length > 16 ||
                     value.features.some(feature => typeof feature !== 'string' || feature.length < 1 || feature.length > 32)) throw new PetError('invalid_message');
                 peer.moodSupport = value.features.includes('moods');
+                peer.mouthSmileSupport = value.features.includes('mouth-smile');
                 return {};
             }, ['v', 'features']);
             if (kind === 'desktop') on('desktop:reauth', async value => {
@@ -249,9 +256,13 @@ export async function registerPetSockets(io: SocketServer) {
                 peer.lastMouthAt = Date.now(); peer.mouthSeq = Number(value.seq);
                 const { settings } = await getPetConfiguration(peer.ownerId, peer.channelId);
                 const controller = settings.appearance.kind === 'vts' ? await selectedVtsController(peer.ownerId, settings.playback.vtsSessionId) : null;
-                if (controller) { await controller.revalidate(); controller.socket.emit('pet:mouth', value); }
+                if (controller) {
+                    await controller.revalidate();
+                    const { smile, ...mouth } = value;
+                    controller.socket.emit('pet:mouth', { ...mouth, ...(controller.mouthSmileSupport === true && smile !== undefined ? { smile } : {}) });
+                }
                 return {};
-            }, ['v', 'requestId', 'leaseId', 'generation', 'seq', 'positionMs', 'value']);
+            }, ['v', 'requestId', 'leaseId', 'generation', 'seq', 'positionMs', 'value', 'smile']);
             socket.once('disconnect', () => {
                 petPeers.delete(peer.id);
                 void (async () => {

@@ -6,7 +6,7 @@ assert.equal(process.env.DRAGONFLY_PORT, '6379', 'require the disposable depende
 const dependencyRedis = new URL(`redis://${process.env.DRAGONFLY_HOST}:${process.env.DRAGONFLY_PORT}`);
 assert.equal(dependencyRedis.hostname, 'redis'); assert.equal(dependencyRedis.port, '6379');
 assert.equal(dependencyRedis.username, ''); assert.equal(dependencyRedis.password, '');
-const suites = ['pets/read_tts', 'pets/tts_envelope', 'pets/admission', 'pets/state', 'pets/delivery', 'pets/readiness',
+const suites = ['pets/read_tts', 'pets/tts_envelope', 'pets/mouth_curves', 'pets/mouth_analysis', 'pets/socket', 'pets/admission', 'pets/state', 'pets/delivery', 'pets/readiness',
     'handlers/dima032_queue', 'handlers/dima032_session', 'handlers/tts_controls', 'handlers/tts_queue_credits',
     'handlers/tts_credit_fallback', 'overlays/dima032_delivery', 'pets/wakeups', 'domain_events/stream_operations_events', 'utils/ast_parser/pet_triggers', 'utils/tts/tts_session'];
 const result = spawnSync(process.execPath, ['--experimental-test-module-mocks', '--test', '--test-force-exit', '--test-concurrency=1',

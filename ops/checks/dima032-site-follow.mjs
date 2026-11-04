@@ -1,4 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+// saas-ops copies this check into its private run directory before execution.
+const fixtureDirectory = '/root/saas/dimabot/src/pets/fixtures';
+const mouthWav = await readFile(`${fixtureDirectory}/mock-reply.wav`);
+const mouthReference = JSON.parse(await readFile(`${fixtureDirectory}/mouth-curves-mock-reply.json`, 'utf8'));
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL; assert(base);
 const api = 'https://api.domdimabot.com', capability = 'a'.repeat(43);
@@ -14,11 +19,16 @@ function wav(seconds) {
 }
 const browser = await chromium.launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 const errors = [];
-async function open({ kind = 'png', target = 'browser', leaseTtl = 15000, holdAcquire = false, holdRenew = false, rejectPhase = '', rejectReady = false, badAudio = false, language = 'en', width = 390 } = {}) {
+async function open({ kind = 'png', target = 'browser', leaseTtl = 15000, holdAcquire = false, holdRenew = false, rejectPhase = '', rejectReady = false, badAudio = false, language = 'en', width = 390, mouthFixture = false, dark = true } = {}) {
   const state = { socket: null, reports: [], mouths: [], readies: [], leases: [], audioReads: [], auth: [], pendingAcquire: null, ttl: leaseTtl, generation: 1 };
   const context = await browser.newContext({ viewport: { width, height: 844 }, reducedMotion: 'reduce' });
   await context.addInitScript(language => {
     localStorage.setItem('userLanguage', language);
+    const Context = window.AudioContext;
+    window.AudioContext = class extends Context {
+      constructor(options) { super({ ...options, sampleRate: 22050 }); }
+      decodeAudioData(...args) { window.__petDecodeCount = (window.__petDecodeCount || 0) + 1; return super.decodeAudioData(...args); }
+    };
     const play = HTMLMediaElement.prototype.play;
     HTMLMediaElement.prototype.play = function () {
       window.__petPlayCount = (window.__petPlayCount || 0) + 1;
@@ -68,13 +78,14 @@ async function open({ kind = 'png', target = 'browser', leaseTtl = 15000, holdAc
     if (url.pathname.startsWith(`/pets/public/${capability}/assets/`)) return route.fulfill({ body: png, contentType: 'image/png', headers: { 'access-control-allow-origin': '*' } });
     if (/^\/pets\/playback\/[^/]+\/audio$/.test(url.pathname)) {
       state.audioReads.push(url.pathname);
-      return route.fulfill({ body: badAudio ? Buffer.from('invalid-audio') : wav(4), contentType: 'audio/wav', headers: { 'access-control-allow-origin': '*' } });
+      return route.fulfill({ body: badAudio ? Buffer.from('invalid-audio') : mouthFixture ? mouthWav : wav(4), contentType: 'audio/wav', headers: { 'access-control-allow-origin': '*' } });
     }
     return route.abort();
   });
   const page = await context.newPage(); page.setDefaultTimeout(10000);
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(base + '/pet/' + capability); await page.locator('app-pet-runtime').waitFor();
+  await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
   await until(() => state.readies.length > 0);
   if (!rejectReady) await until(() => state.readies.some(r => r.renderReady));
   if (target === 'browser' && !rejectReady) await until(() => state.leases.some(l => l.action === 'acquire'));
@@ -126,6 +137,8 @@ try {
     await page.waitForTimeout(80); assert.equal(await isTalking(page), true, 'invalid end cannot stop live follow');
     send('pet:follow-end', { v: 1, followId: 'follow-one', generation: 1 }); await idle();
     send('pet:follow', frame({ positionMs: 2000 })); await page.waitForTimeout(80); assert.equal(await isTalking(page), false, 'retired identity cannot resume');
+    send('pet:follow', frame({ followId: 'follow-quiet-syllable', envelope: { stepMs: 40, values: Array(1500).fill(.0001) } })); await talk();
+    send('pet:follow-end', { v: 1, followId: 'follow-quiet-syllable', generation: 1 }); await idle();
     send('pet:follow', frame({ followId: 'follow-settings' })); await talk();
     send('pet:snapshot', snapshot({ settingsRevision: 2 })); await idle();
     send('pet:follow', frame({ followId: 'follow-settings', positionMs: 500 })); await page.waitForTimeout(80); assert.equal(await isTalking(page), false);
@@ -166,7 +179,8 @@ try {
     await speak('speech-2'); await until(() => phases(state, 'speech-2').includes('started'));
     await until(() => phases(state, 'speech-2').includes('ended'));
     assert.equal(state.reports.filter(r => r.phase === 'started').length, 2, 'two consecutive requests both play');
-    assert(state.mouths.some(m => m.value > 0), 'actual decoded PCM drives mouth level');
+    assert(state.mouths.every(m => m.value === 0 && m.smile === .5), 'PNG progress telemetry needs no spectral analysis');
+    assert.equal(await page.evaluate(() => window.__petDecodeCount || 0), 0, 'PNG playback does not decode a second audio copy');
     for (const id of ['speech-1', 'speech-2']) {
       const telemetry = [...state.reports, ...state.mouths].filter(m => m.requestId === id).sort((a, b) => a.seq - b.seq);
       assert.deepEqual(telemetry.map(m => m.seq), telemetry.map((_, i) => i + 1), 'monotonic request-scoped shared sequence');
@@ -206,9 +220,35 @@ try {
     await context.close();
   }
   {
-    const { context, page, state, speak } = await open({ kind: 'vts' });
+    const { context, page, state, speak, send } = await open({ kind: 'vts', mouthFixture: true });
     assert.equal(await page.locator('.pet-image').count(), 0, 'VTS browser source is audio only');
-    await speak('vts-audio'); await until(() => phases(state, 'vts-audio').includes('started'));
+    await speak('vts-audio', { audio: { url: `${api}/pets/playback/vts-audio/audio?ticket=fixture-only`, mimeType: 'audio/wav', durationMs: 9000 } });
+    await until(() => phases(state, 'vts-audio').includes('ended'), 'reference VTS playback ends', 12000);
+    assert.equal(state.audioReads.length, 1, 'analysis and playback share one ticket download');
+    assert.equal(await page.evaluate(() => window.__petDecodeCount), 1, 'one decode per VTS clip');
+    assert(state.mouths.some(m => m.value > .5));
+    assert(state.mouths.some(m => m.smile < .3) && state.mouths.some(m => m.smile > .7), 'vowel brightness drives both smile directions');
+    assert(state.mouths.length <= 90, 'precomputed curves retain bounded 10 Hz telemetry');
+    for (const mouth of state.mouths) {
+      const bin = Math.floor(mouth.positionMs * mouthReference.sampleRate / (1000 * mouthReference.binFrames));
+      assert(Math.abs(mouth.value - (mouthReference.open[bin] ?? 0)) <= .001, `reference open at ${mouth.positionMs} ms`);
+      assert(Math.abs(mouth.smile - (mouthReference.smile[bin] ?? .5)) <= .001, `reference smile at ${mouth.positionMs} ms`);
+    }
+    await speak('vts-next', { audio: { url: `${api}/pets/playback/vts-next/audio?ticket=fixture-only`, mimeType: 'audio/wav', durationMs: 9000 } });
+    await until(() => phases(state, 'vts-next').includes('started'));
+    assert.equal(await page.evaluate(() => window.__petDecodeCount), 2);
+    assert.equal(state.audioReads.length, 2);
+    send('pet:stop', { v: 1, requestId: 'vts-next', generation: 1, reason: 'cancelled' });
+    await until(() => phases(state, 'vts-next').includes('stopped'));
+    const count = state.mouths.length; await page.waitForTimeout(250); assert.equal(state.mouths.length, count, 'stopped analysis never leaks telemetry');
+    await context.close();
+  }
+  for (const dark of [true, false]) for (const width of [320, 390, 1280]) {
+    const { context, page, state, speak } = await open({ dark, width });
+    await page.evaluate(() => { window.__petBlockAudio = true; });
+    await speak(`responsive-${dark}-${width}`); await until(() => state.readies.some(ready => ready.audioReady === false));
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `public renderer overflow ${width}/${dark}`);
+    await page.screenshot({ path: `/tmp/dima052-site-${dark ? 'dark' : 'light'}-${width}.png` });
     await context.close();
   }
   for (const rejectPhase of ['started', 'progress']) {
@@ -279,5 +319,5 @@ try {
     await context.close();
   }
   assert.deepEqual(errors, [], 'no renderer runtime errors');
-  console.log('PASS DIMA-032 no-desktop Path A/B, bounded follow envelope, stall/resume, required-generation end, settings/independent/stop/generation/disconnect retirement; plus pet renderer: transparent public source, original scoped image URLs, readiness dedup, audio election, two consecutive real WAV playbacks, actual mouth RMS bounded at 10 Hz and idle cleanup, duplicate/stale request and snapshot/expiry/rejected ack/stale acquire guards, handover/disconnect reset, desktop talking relay, VTS audio-only, media/autoplay failure, Spanish keyboard recovery, axe.');
+  console.log('PASS DIMA-032/DIMA-052: no-desktop Path A/B, legacy follow bounds and quiet-syllable PNG gate, stall/end/retirement regressions, real-WAV native open/smile fixture parity, single download/decode per VTS clip, neutral PNG telemetry without decoding, 10 Hz bound and idle cleanup, playback ownership/expiry/rejection fences, cancellation/autoplay recovery, 320/390/1280px dark/light screenshots and overflow, Spanish keyboard recovery and axe.');
 } finally { await browser.close(); }

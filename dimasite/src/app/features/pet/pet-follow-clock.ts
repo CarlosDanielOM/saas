@@ -71,7 +71,9 @@ export class PetFollowClock {
     if (!current) return { talking: false, ticking: false };
     const elapsed = Math.max(0, this.now() - current.receivedAt), position = current.positionMs + elapsed;
     if (elapsed > 1000 || position >= current.envelope.values.length * current.envelope.stepMs) return { talking: false, ticking: false };
-    return { talking: current.envelope.values[Math.floor(position / current.envelope.stepMs)] > .08, ticking: true };
+    // dima-mouth-v1 already closes below ref−18 dB. An extra openness
+    // threshold would hide quieter speaking bins in a two-image PNG pet.
+    return { talking: current.envelope.values[Math.floor(position / current.envelope.stepMs)] > 0, ticking: true };
   }
   get live(): boolean { return this.current !== null; }
 }

@@ -10,6 +10,7 @@ let runtime: any, config: any, rows: Map<string, any>, events: any[], endings: s
 let controller: any = null;
 let ticketFails = false, attemptedFails = false;
 let moodExtractionFails = false;
+let envelopeCalls = 0;
 let afterPrivateCreate: (() => Promise<void>) | undefined, afterPrivateLink: (() => Promise<void>) | undefined, afterAttempted: (() => Promise<void>) | undefined;
 let afterRuntimeRead: (() => Promise<void>) | undefined;
 let afterConfigurationRead: (() => Promise<void>) | undefined;
@@ -44,7 +45,7 @@ mock.module('../schemas/users.schema.js', { defaultExport: { findOne: () => ({ s
 mock.module('../server/services/pet_settings.service.js', { namedExports: { getPetConfiguration: async () => { const snapshot = structuredClone(config); const barrier = afterConfigurationRead; afterConfigurationRead = undefined; if (barrier) await barrier(); return snapshot; } } });
 mock.module('./peers.js', { namedExports: { petPeers: peers, selectedVtsController: async () => controller } });
 mock.module('./tokens.js', { namedExports: { issueAudioTicket: async () => { if (ticketFails) throw new Error('ticket rejected before delivery'); return 'private-ticket'; } } });
-mock.module('./tts_envelope.js', { namedExports: { inspectTtsAudio: async () => 500, ttsEnvelope: async () => ({ stepMs: 40, values: [0, 0.7, 0.2] }) } });
+mock.module('./tts_envelope.js', { namedExports: { inspectTtsAudio: async () => 500, ttsEnvelope: async () => { envelopeCalls++; return { native: { stepMs: 1000 / 30, values: [0, .7, .2], smile: [.5, .8, .3] }, legacy: { stepMs: 40, values: [0, .7, .2] } }; } } });
 mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
     PET_TERMINAL: ['completed','cancelled','failed','expired'],
     PetRuntime: {
@@ -82,10 +83,44 @@ async function reset() {
         lease: { leaseId: 'lease', holderPeerId: peer.id, expiresAt: new Date(Date.now() + 15000) } };
     config = { revision: 1, settings: { enabled: true, sources: { independent: false, readTts: true }, ttsAudio: 'pet',
         tts: { enabled: false }, personality: { source: 'profile', profileId: 'missing' }, appearance: { kind: 'png' }, playback: { target: 'browser' } }, runtime: { enabled: false, readTtsEnabled: true } };
-    rows = new Map(); events = []; endings = []; afterRuntimeRead = afterClaim = afterConfigurationRead = afterPrivateCreate = afterPrivateLink = afterAttempted = undefined; resumed.length = 0; ticketFails = attemptedFails = moodExtractionFails = false; controller = null; peer.kind = 'browser'; delete peer.moodSupport; peer.socket.connected = peer.audioReady = peer.renderReady = true;
+    rows = new Map(); events = []; endings = []; afterRuntimeRead = afterClaim = afterConfigurationRead = afterPrivateCreate = afterPrivateLink = afterAttempted = undefined; resumed.length = 0; envelopeCalls = 0; ticketFails = attemptedFails = moodExtractionFails = false; controller = null; peer.kind = 'browser'; delete peer.moodSupport; delete peer.mouthSmileSupport; peer.socket.connected = peer.audioReady = peer.renderReady = true;
 }
 function input(speechId = 'speech') { return { channelId: channel, speechId, file, mime: 'audio/wav', text: 'Existing normal TTS', cancelled: () => false,
     ended: async (reason: string) => { endings.push(reason); await releaseReadTts(channel, speechId); } }; }
+for (const unavailable of ['png-offline', 'png-unready', 'vts-offline', 'disabled']) test(`overlay skips mouth analysis for ${unavailable}`, async () => {
+    await reset(); config.settings.ttsAudio = 'overlay';
+    if (unavailable === 'png-offline') peer.socket.connected = false;
+    if (unavailable === 'png-unready') peer.renderReady = false;
+    if (unavailable === 'vts-offline') config.settings.appearance.kind = 'vts';
+    if (unavailable === 'disabled') config.runtime.readTtsEnabled = false;
+    assert.equal((await prepareOnly(input()))?.audio, 'overlay'); assert.equal(envelopeCalls, 0);
+    await reportReadTts(channel, 'speech', 'playing', 0.1);
+    assert.equal(events.some(event => event.event === 'pet:follow'), false);
+    await releaseReadTts(channel, 'speech');
+});
+for (const declared of [false, true]) test(`desktop overlay ${declared ? 'uses native smile timing' : 'retains legacy 40ms envelope'}`, async () => {
+    await reset(); peer.kind = 'desktop'; peer.mouthSmileSupport = declared; controller = peer;
+    config.settings.appearance = { kind: 'vts' }; config.settings.playback.vtsSessionId = 'desktop'; config.settings.ttsAudio = 'overlay';
+    assert.equal((await prepareOnly(input()))?.audio, 'overlay'); assert.equal(envelopeCalls, 1);
+    await reportReadTts(channel, 'speech', 'playing', .01); await reportReadTts(channel, 'speech', 'progress', .05);
+    const follows = events.filter(event => event.event === 'pet:follow'); assert.equal(follows.length, 2);
+    assert.deepEqual(follows[0].data.envelope, declared ? { stepMs: 1000 / 30, values: [0, .7, .2], smile: [.5, .8, .3] } : { stepMs: 40, values: [0, .7, .2] });
+    assert.equal('envelope' in follows[1].data, false); assert.equal(envelopeCalls, 1);
+    await releaseReadTts(channel, 'speech');
+});
+test('PNG follow never receives smile or native timing even with a stray capability flag', async () => {
+    await reset(); peer.mouthSmileSupport = true; config.settings.ttsAudio = 'overlay';
+    await prepareOnly(input()); await reportReadTts(channel, 'speech', 'playing', .01);
+    assert.deepEqual(events.find(event => event.event === 'pet:follow').data.envelope, { stepMs: 40, values: [0, .7, .2] });
+    await releaseReadTts(channel, 'speech');
+});
+test('repreparing the same clip reuses its cached native and legacy curves', async () => {
+    await reset(); config.settings.ttsAudio = 'overlay';
+    const request = { ...input(), analysis: {} };
+    assert.equal((await prepareOnly(request))?.audio, 'overlay'); assert.equal(envelopeCalls, 1);
+    assert.equal((await prepareOnly(request))?.audio, 'overlay'); assert.equal(envelopeCalls, 1);
+    await releaseReadTts(channel, 'speech');
+});
 // Most legacy adapter cases exercise a complete handoff. New cases below inspect preparation separately.
 async function prepareReadTts(value: ReturnType<typeof input> & { holdMs?: number; moodText?: string }) {
     const route = await prepareOnly(value);

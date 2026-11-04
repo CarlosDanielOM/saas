@@ -1,9 +1,13 @@
+import { computeMouthCurves, sampleMouthCurves, type MouthCurves } from './mouth-curves';
+
 /** Browser media lifecycle. Transport and server-owned queue/assignment stay outside this class. */
 export interface BrowserPetSpeech {
   id: string;
   url: string;
   startBefore: number;
   maxDurationMs: number;
+  /** PNG rendering follows playback state and does not need audio analysis. */
+  animateMouth?: boolean;
 }
 export type BrowserPetPlaybackState = 'ready' | 'started' | 'ended' | 'error';
 export interface BrowserPetPlaybackReport {
@@ -17,9 +21,13 @@ interface ActiveSpeech {
   ready: boolean;
   starting: boolean;
   started: boolean;
+  curves: MouthCurves | null;
+  download: AbortController;
+  objectUrl?: string;
   cleanup: () => void;
 }
 const MAX_DURATION_MS = 60_000;
+const MAX_AUDIO_BYTES = 8_000_000;
 
 export class PetBrowserPlayer {
   private readonly audio: HTMLAudioElement;
@@ -27,14 +35,12 @@ export class PetBrowserPlayer {
   private timer?: ReturnType<typeof setTimeout>;
   private mouthTimer?: ReturnType<typeof setInterval>;
   private context: AudioContext | null = null;
-  private analyser: AnalyserNode | null = null;
-  private samples: Uint8Array<ArrayBuffer> | null = null;
   private readonly seen = new Set<string>();
   private disposed = false;
   private contextTransition: Promise<void> = Promise.resolve();
 
   constructor(private readonly report: (event: BrowserPetPlaybackReport) => void,
-    private readonly mouth: (id: string, positionMs: number, value: number) => void,
+    private readonly mouth: (id: string, positionMs: number, value: number, smile: number) => void,
     private readonly speaking: (value: boolean) => void) {
     this.audio = new Audio();
     this.audio.preload = 'auto';
@@ -66,17 +72,63 @@ export class PetBrowserPlayer {
     this.audio.addEventListener('ended', onEnded);
     this.audio.addEventListener('waiting', onWaiting);
     this.audio.addEventListener('playing', onPlaying);
-    this.active = { speech, ready: false, starting: false, started: false, cleanup: () => {
+    this.active = { speech, ready: false, starting: false, started: false, curves: null, download: new AbortController(), cleanup: () => {
       this.audio.removeEventListener('canplay', onReady);
       this.audio.removeEventListener('error', onError);
       this.audio.removeEventListener('ended', onEnded);
       this.audio.removeEventListener('waiting', onWaiting);
       this.audio.removeEventListener('playing', onPlaying);
     } };
-    this.audio.src = speech.url;
-    this.audio.load();
     this.timer = setTimeout(() => this.fail(speech.startBefore <= Date.now() ? 'expired' : 'timeout'), Math.min(10_000, speech.startBefore - Date.now()));
+    if (speech.animateMouth === false) {
+      this.audio.src = speech.url;
+      this.audio.load();
+    } else void this.loadAnalyzedClip(this.active);
     return true;
+  }
+
+  private async loadAnalyzedClip(active: ActiveSpeech): Promise<void> {
+    try {
+      // Fetch the ticket once. The media element plays these same bytes rather
+      // than requesting a second copy for analysis or playback.
+      const response = await fetch(active.speech.url, { signal: active.download.signal, credentials: 'omit', redirect: 'error' });
+      if (this.active !== active) return;
+      if (!response.ok || Number(response.headers.get('content-length')) > MAX_AUDIO_BYTES || !response.body) throw new Error('invalid_audio');
+      const reader = response.body.getReader(), chunks: Uint8Array[] = [];
+      let length = 0;
+      try {
+        while (true) {
+          const next = await reader.read();
+          if (this.active !== active) { await reader.cancel(); return; }
+          if (next.done) break;
+          length += next.value.byteLength;
+          if (length > MAX_AUDIO_BYTES) { await reader.cancel(); throw new Error('audio_too_large'); }
+          chunks.push(next.value);
+        }
+      } finally { reader.releaseLock(); }
+      if (this.active !== active) return;
+      if (!length) throw new Error('empty_audio');
+      const bytes = new Uint8Array(length);
+      let offset = 0;
+      for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+      const audio = new Blob([bytes], { type: response.headers.get('content-type') ?? 'application/octet-stream' });
+      active.objectUrl = URL.createObjectURL(audio);
+      this.audio.src = active.objectUrl;
+      this.audio.load();
+      try {
+        this.prepareAnalysis();
+        const decoded = await this.context!.decodeAudioData(bytes.buffer.slice(0));
+        if (this.active !== active) return;
+        if (decoded.duration <= MAX_DURATION_MS / 1000 && decoded.numberOfChannels <= 8) {
+          active.curves = computeMouthCurves(Array.from({ length: decoded.numberOfChannels }, (_, channel) => decoded.getChannelData(channel)), decoded.sampleRate);
+        }
+      } catch {
+        // Optional animation never prevents otherwise playable media. A neutral
+        // curve still carries the existing progress telemetry while it plays.
+      }
+    } catch {
+      if (this.active === active) this.fail('media_error');
+    }
   }
 
   /** Only an explicit server play command can start a prepared, unexpired item. */
@@ -125,21 +177,15 @@ export class PetBrowserPlayer {
     // One reusable media source per element; close it only when the renderer is destroyed.
     this.context = new AudioContext();
     const source = this.context.createMediaElementSource(this.audio);
-    this.analyser = this.context.createAnalyser();
-    this.analyser.fftSize = 256;
-    this.samples = new Uint8Array(this.analyser.fftSize);
-    source.connect(this.analyser);
-    this.analyser.connect(this.context.destination);
+    source.connect(this.context.destination);
   }
 
   private sampleMouth(): void {
     const active = this.active;
-    if (!active?.started || this.audio.paused || this.audio.ended || !this.analyser || !this.samples) return;
-    this.analyser.getByteTimeDomainData(this.samples);
-    let sum = 0;
-    for (const sample of this.samples) sum += ((sample - 128) / 128) ** 2;
-    const value = Math.min(1, Math.sqrt(sum / this.samples.length) * 4);
-    this.mouth(active.speech.id, this.position(), Math.round(value * 1000) / 1000);
+    if (!active?.started || this.audio.paused || this.audio.ended) return;
+    const positionMs = this.position();
+    const { value, smile } = active.curves ? sampleMouthCurves(active.curves, positionMs) : { value: 0, smile: 0.5 };
+    this.mouth(active.speech.id, positionMs, Math.round(value * 10_000) / 10_000, Math.round(smile * 10_000) / 10_000);
   }
 
   private position(): number { return Math.min(MAX_DURATION_MS, Math.max(0, Math.round((this.audio.currentTime || 0) * 1000))); }
@@ -166,9 +212,11 @@ export class PetBrowserPlayer {
     this.active = null;
     clearTimeout(this.timer); clearInterval(this.mouthTimer);
     previous?.cleanup();
+    previous?.download.abort();
     this.audio.pause();
     this.audio.removeAttribute('src');
     this.audio.load();
+    if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
     this.speaking(false);
     const context = this.context;
     if (context) this.contextTransition = this.contextTransition.then(() => context.state === 'running' ? context.suspend() : undefined).catch(() => {});
@@ -177,6 +225,6 @@ export class PetBrowserPlayer {
     this.disposed = true;
     this.reset();
     if (this.context) void this.context.close().catch(() => {});
-    this.context = null; this.analyser = null; this.samples = null;
+    this.context = null;
   }
 }

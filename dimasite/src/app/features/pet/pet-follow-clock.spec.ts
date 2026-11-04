@@ -3,6 +3,14 @@ import { PetFollowClock } from './pet-follow-clock';
 const packet = (extra = {}) => ({ v: 1, followId: 'speech-one', generation: 1, positionMs: 0, serverTime: 100,
   envelope: { stepMs: 40, values: Array.from({ length: 100 }, (_, i) => i % 2) }, ...extra });
 describe('PNG follow clock', () => {
+  it('uses the new curve speech gate without hiding quiet positive opening bins', () => {
+    let now = 0; const clock = new PetFollowClock(() => now);
+    expect(clock.accept(packet({ envelope: { stepMs: 40, values: [0, .0001, .04, 0] } }), 1)).toBe(true);
+    expect(clock.sample().talking).toBe(false);
+    now = 40; expect(clock.sample().talking).toBe(true);
+    now = 80; expect(clock.sample().talking).toBe(true);
+    now = 120; expect(clock.sample().talking).toBe(false);
+  });
   it('samples locally, stalls without advancing reports, then resumes the same live identity', () => {
     let now = 0; const clock = new PetFollowClock(() => now);
     expect(clock.accept(packet(), 1)).toBe(true);

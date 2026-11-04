@@ -97,6 +97,20 @@ async function player(ownerId: string, channelId: string) {
         peer.kind !== 'desktop' || peer.sessionId !== settings.playback.desktopSessionId) return null;
     return { runtime, peer, revision };
 }
+async function followRecipients(config: Turn['config'], ownerId: string) {
+    const controller = config.settings.appearance.kind === 'vts' ? await selectedVtsController(ownerId, config.settings.playback.vtsSessionId) : null;
+    return [...petPeers.values()].filter(peer => peer.ownerId === ownerId && peer.socket.connected &&
+        (peer === controller || config.settings.appearance.kind === 'png' && peer.kind === 'browser' && peer.renderReady));
+}
+async function prepareFollowEnvelope(turn: Turn, input: ReadTtsInput) {
+    const analysis = input.analysis ??= {};
+    // Default-off, detached and offline pets must not spawn a decoder or filter PCM.
+    if (!analysis.enveloped && !turn.detached && turn.config.runtime.readTtsEnabled && (await followRecipients(turn.config, turn.ownerId)).length) {
+        try { analysis.envelope = await ttsEnvelope(input.file, input.signal); } catch {}
+        analysis.enveloped = true;
+    }
+    turn.envelope = analysis.envelope;
+}
 async function endFollow(turn: Turn) {
     if (!turn.following) return;
     turn.following = false;
@@ -309,8 +323,7 @@ async function prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null> {
         }
         const durationMs = analysis.durationMs || 0;
         const overlay = async (): Promise<ReadTtsRoute> => {
-            if (!analysis.enveloped) { try { analysis.envelope = await ttsEnvelope(input.file); } catch {} analysis.enveloped = true; }
-            turn.envelope = analysis.envelope;
+            await prepareFollowEnvelope(turn, input);
             return cancelled() ? cancelledRoute : { audio: 'overlay', durationMs: durationMs || 60_000 };
         };
         if (cancelled()) return cancelledRoute;
@@ -365,7 +378,7 @@ async function prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null> {
         if (turn.requestId) await finishRequest(turn.requestId, 'failed', 'pre_delivery_rejected');
         turn.requestId = undefined;
         if (cancelled()) return cancelledRoute;
-        try { turn.envelope = await ttsEnvelope(input.file); } catch {}
+        await prepareFollowEnvelope(turn, input);
         return { audio: 'overlay', durationMs: 60_000 }; // Same file; never synthesize or debit here.
     } finally { if (directory) await rm(directory, { recursive: true, force: true }); }
 }
@@ -384,9 +397,7 @@ async function report(channel: string, speech: string, phase: string, position: 
     if (turns.get(channel) !== turn || !current || current.generation !== turn.generation || current.activeRequestId || current.ttsReservation?.token !== turn.token || config.revision !== turn.revision || !config.runtime.readTtsEnabled) {
         await endFollow(turn); return;
     }
-    const controller = config.settings.appearance.kind === 'vts' ? await selectedVtsController(turn.ownerId, config.settings.playback.vtsSessionId) : null;
-    const selected = [...petPeers.values()].filter(peer => peer.ownerId === turn.ownerId && peer.socket.connected &&
-        (peer === controller || config.settings.appearance.kind === 'png' && peer.kind === 'browser' && peer.renderReady));
+    const selected = await followRecipients(config, turn.ownerId);
     if (turns.get(channel) !== turn || positionMs <= turn.positionMs) return;
     turn.positionMs = positionMs; turn.serverTime = Math.max(Date.now(), turn.serverTime + 1);
     for (const peer of selected) {
@@ -394,7 +405,7 @@ async function report(channel: string, speech: string, phase: string, position: 
         if (turns.get(channel) !== turn) return;
         const initial = !turn.followPeers.has(peer.id);
         peer.socket.emit('pet:follow', { v: 1, followId: speech, generation: turn.generation,
-            ...(initial ? { envelope: turn.envelope } : {}), ...(config.moods?.enabled && turn.mood && (peer.kind === 'browser' || peer.moodSupport === true) ? { mood: turn.mood } : {}), positionMs, serverTime: turn.serverTime });
+            ...(initial ? { envelope: peer.kind === 'desktop' && peer.mouthSmileSupport === true ? turn.envelope.native : turn.envelope.legacy } : {}), ...(config.moods?.enabled && turn.mood && (peer.kind === 'browser' || peer.moodSupport === true) ? { mood: turn.mood } : {}), positionMs, serverTime: turn.serverTime });
         turn.followPeers.add(peer.id); turn.following = true;
     }
 }

@@ -21,14 +21,14 @@ const fake = vi.hoisted(() => {
     volatile: { emit: vi.fn() },
   };
   socket.timeout.mockReturnValue(socket);
-  return { listeners, messages, socket, mouth: undefined as ((id: string, positionMs: number, value: number) => void) | undefined, report: undefined as ((report: BrowserPetPlaybackReport) => void) | undefined,
+  return { listeners, messages, socket, mouth: undefined as ((id: string, positionMs: number, value: number, smile: number) => void) | undefined, report: undefined as ((report: BrowserPetPlaybackReport) => void) | undefined,
     prepare: vi.fn(() => true), start: vi.fn(), reset: vi.fn(), destroy: vi.fn(), unlock: vi.fn() };
 });
 vi.mock('socket.io-client', () => ({ io: () => fake.socket }));
 vi.mock('./pet-browser-player', () => ({
   PetBrowserPlayer: class {
     prepare = fake.prepare; start = fake.start; reset = fake.reset; destroy = fake.destroy; unlock = fake.unlock;
-    constructor(report: (report: BrowserPetPlaybackReport) => void, mouth: (id: string, positionMs: number, value: number) => void) { fake.report = report; fake.mouth = mouth; }
+    constructor(report: (report: BrowserPetPlaybackReport) => void, mouth: (id: string, positionMs: number, value: number, smile: number) => void) { fake.report = report; fake.mouth = mouth; }
   },
 }));
 
@@ -95,6 +95,19 @@ describe('browser pet lease recovery', () => {
     deliver('connect_error', new Error('unauthorized'));
     injector.destroy(); injector = Injector.create({ providers: [] }); vi.advanceTimersByTime(60_000);
     expect(fake.socket.connect).toHaveBeenCalledTimes(calls + 10);
+  });
+
+  it('emits both mouth curves only for the owned active browser playback', () => {
+    take('pet:lease', 'acquire').callback(null, lease()); prepareSpeech();
+    expect(fake.prepare).toHaveBeenCalledWith(expect.objectContaining({ animateMouth: true }));
+    vi.advanceTimersByTime(100); fake.mouth?.('speech-one', 700, 0.42, 0.81);
+    expect(fake.socket.volatile.emit).toHaveBeenCalledWith('pet:mouth', expect.objectContaining({
+      requestId: 'speech-one', leaseId: 'lease-one', value: 0.42, smile: 0.81, positionMs: 700,
+    }));
+    const calls = fake.socket.volatile.emit.mock.calls.length;
+    deliver('disconnect', 'transport close');
+    fake.mouth?.('speech-one', 800, 0.7, 0.2);
+    expect(fake.socket.volatile.emit).toHaveBeenCalledTimes(calls);
   });
 
   it('retries an unconfirmed acquire without loading or replaying speech', () => {
@@ -211,13 +224,13 @@ describe('browser pet lease recovery', () => {
     take('pet:lease', 'acquire').callback(null, lease()); prepareSpeech();
     fake.report?.({ id: 'speech-one', state: 'started', positionMs: 0 });
     take('pet:playback').callback(null, { ok: true, data: {} });
-    vi.advanceTimersByTime(1000); fake.mouth?.('speech-one', 1000, 0.5);
+    vi.advanceTimersByTime(1000); fake.mouth?.('speech-one', 1000, 0.5, 0.7);
     const progress = take('pet:playback'); expect(progress.payload['phase']).toBe('progress');
     const resets = fake.reset.mock.calls.length;
     if (failure === 'timeout') progress.callback(new Error('ACK lost'));
     else progress.callback(null, { ok: false, error: { code: failure } });
     expect(fake.reset).toHaveBeenCalledTimes(resets);
-    vi.advanceTimersByTime(1000); fake.mouth?.('speech-one', 2000, 0.5);
+    vi.advanceTimersByTime(1000); fake.mouth?.('speech-one', 2000, 0.5, 0.3);
     expect(take('pet:playback').payload['phase']).toBe('progress');
     expect(fake.prepare).toHaveBeenCalledTimes(1);
   });
@@ -227,7 +240,7 @@ describe('browser pet lease recovery', () => {
     if (phase === 'progress') {
       fake.report?.({ id: 'speech-one', state: 'started', positionMs: 0 });
       take('pet:playback').callback(null, { ok: true, data: {} });
-      vi.advanceTimersByTime(1000); fake.mouth?.('speech-one', 1000, 0.5);
+      vi.advanceTimersByTime(1000); fake.mouth?.('speech-one', 1000, 0.5, 0.7);
     } else vi.advanceTimersByTime(5000);
     const message = take(phase === 'renew' ? 'pet:lease' : 'pet:playback');
     const resets = fake.reset.mock.calls.length;
@@ -370,7 +383,7 @@ describe('browser pet lease recovery', () => {
     expect(component.status()).toBe('rendererReady');
     expect(fake.messages.filter(message => message.name === 'pet:ready' && message.payload['renderReady'] === false)).toEqual([]);
     expect(fake.reset).toHaveBeenCalledTimes(resets);
-    vi.advanceTimersByTime(100); fake.mouth?.('speech-one', 1000, .5);
+    vi.advanceTimersByTime(100); fake.mouth?.('speech-one', 1000, .5, .7);
     expect(fake.socket.volatile.emit).toHaveBeenCalledWith('pet:mouth', expect.objectContaining({ requestId: 'speech-one', leaseId: 'lease-one' }));
     component.imageFailed('idle', image('normal-idle'));
     expect(take('pet:ready').payload['renderReady']).toBe(false);
