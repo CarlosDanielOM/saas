@@ -2597,6 +2597,55 @@
         "title": "All modules",
         "hint": "Commands, triggers, TTS, moderation and more"
       }
+    },
+    "danger": {
+      "title": "Danger zone",
+      "hint": "These change your own account (@{{login}}) and can't be undone.",
+      "cancel": "Cancel",
+      "typeLabel": "Type {{login}} to confirm",
+      "typeMismatch": "Type your Twitch name exactly as shown: {{login}}",
+      "publicMediaNote": "Media you shared to the public library stays there for other streamers.",
+      "reset": {
+        "name": "Factory reset",
+        "summary": "Start over with a clean account. The bot stays in your channel with its Twitch events and default commands.",
+        "open": "Reset account",
+        "title": "Reset your account?",
+        "intro": "@{{login}} goes back to a fresh start. You stay signed in and the bot stays in your channel. This can't be undone.",
+        "goneTitle": "Deleted",
+        "goneCommands": "Your commands and the values they saved (counters, variables)",
+        "goneRedemptions": "Channel point redemptions set up in DomDimaBot",
+        "goneTriggers": "Triggers and the media you uploaded",
+        "goneTeam": "Team members you added (they lose access)",
+        "keptTitle": "Kept",
+        "keptBot": "The bot's permissions on your Twitch channel",
+        "keptEvents": "Twitch events (follows, subs, cheers, raids…), reconnected automatically",
+        "keptDefaults": "Default commands, back to their original settings",
+        "keptPlan": "Your plan, billing and AI credits",
+        "confirm": "Reset my account",
+        "working": "Resetting…",
+        "error": "We couldn't finish the reset. Some items may already be cleared. Try again in a moment.",
+        "doneTitle": "Account reset",
+        "doneCopy": "Your commands, triggers and team were cleared. Default commands are back."
+      },
+      "delete": {
+        "name": "Delete account",
+        "summary": "Permanently delete your DomDimaBot account and everything in it. The bot leaves your channel.",
+        "open": "Delete account",
+        "title": "Delete your account forever?",
+        "intro": "This deletes the DomDimaBot account for @{{login}} and signs you out. It can't be undone.",
+        "goneTitle": "What happens",
+        "goneBot": "The bot loses access to your channel and stops listening to Twitch events",
+        "goneData": "Commands, timers, triggers, redemptions, uploaded media, AI personality and memories, clip designs and stream summaries are deleted",
+        "goneTeam": "Your team loses access, and you're removed from teams you help on",
+        "goneCredits": "Your remaining AI credits are lost",
+        "planTitle": "This doesn't cancel your {{tier}} plan.",
+        "planCopy": "Cancel it in billing first so you aren't charged again.",
+        "confirm": "Delete my account",
+        "working": "Deleting…",
+        "error": "We couldn't delete your account. Try again in a moment; if it keeps failing, contact support.",
+        "doneTitle": "Account deleted",
+        "doneCopy": "Your DomDimaBot account and its data were removed."
+      }
     }
   },
   "referrals": {

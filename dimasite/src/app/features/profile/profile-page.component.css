@@ -46,9 +46,13 @@
   --shadow: 0 22px 55px rgba(0, 0, 0, 0.35);
 }
 
-.lf {
+.lf,
+.lf-modal-overlay {
   color: var(--fg);
   font-family: var(--font);
+}
+
+.lf {
   min-height: calc(100dvh - 4rem);
   width: 100%;
   background: radial-gradient(circle at 8% 3%, var(--accent-soft), transparent 24rem);
@@ -57,7 +61,10 @@
 
 .lf *,
 .lf *::before,
-.lf *::after {
+.lf *::after,
+.lf-modal-overlay *,
+.lf-modal-overlay *::before,
+.lf-modal-overlay *::after {
   box-sizing: border-box;
 }
 
@@ -627,6 +634,307 @@
   color: var(--muted);
   font-size: 0.8rem;
   line-height: 1.35;
+}
+
+/* Danger zone */
+
+.lf-danger {
+  display: grid;
+  gap: 0.9rem;
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+
+.lf-card-head__icon--danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.lf-danger__rows {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lf-danger__row {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.lf-danger__row:last-child {
+  padding-bottom: 0;
+}
+
+.lf-danger__copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.lf-danger__copy strong {
+  font-size: 0.95rem;
+}
+
+.lf-danger__copy span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.lf-danger__row .lf-btn {
+  justify-self: stretch;
+}
+
+.lf-btn--danger {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
+}
+
+.lf-btn--danger:hover:not(:disabled) {
+  background: #991b1b;
+  border-color: #991b1b;
+}
+
+.lf-btn--danger-outline {
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.lf-btn--danger-outline:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+
+/* Danger dialog */
+
+.lf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: end center;
+  background: rgba(10, 10, 14, 0.6);
+  backdrop-filter: blur(6px);
+}
+
+.lf-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 92dvh;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line));
+  border-radius: 1.25rem 1.25rem 0 0;
+  background: var(--tile);
+  box-shadow: var(--shadow);
+  outline: none;
+}
+
+.lf-modal__form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.lf-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 1rem 1.1rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.lf-modal__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.lf-modal__close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--fg);
+  background: var(--btn);
+  cursor: pointer;
+}
+
+.lf-modal__close:focus-visible,
+.lf-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.lf-modal__body {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 1rem;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+.lf-modal__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.8rem 1.1rem calc(0.9rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+}
+
+.lf-modal__footer .lf-btn {
+  flex: 1 1 auto;
+}
+
+.lf-copy--strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.lf-impact {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.lf-impact__group {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.95rem;
+}
+
+.lf-impact__group--gone {
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+  background: var(--danger-soft);
+}
+
+.lf-impact__group--kept {
+  border-color: color-mix(in srgb, var(--ok) 30%, transparent);
+  background: var(--ok-soft);
+}
+
+.lf-impact__title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.lf-impact__group--gone .lf-impact__title { color: var(--danger); }
+.lf-impact__group--kept .lf-impact__title { color: var(--ok); }
+
+.lf-impact ul {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  list-style: disc;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.lf-billing-warn {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-radius: 0.95rem;
+  background: var(--warn-soft);
+}
+
+.lf-billing-warn p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.lf-billing-warn strong {
+  color: var(--warn);
+}
+
+.lf-billing-warn .lf-btn {
+  justify-self: start;
+}
+
+.lf-confirm {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.lf-confirm .lf-label {
+  color: var(--fg);
+}
+
+.lf-input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--btn-border);
+  border-radius: 0.8rem;
+  color: var(--fg);
+  background: var(--input-bg);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.lf-input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.lf-field-error {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.8rem;
+  color: var(--danger);
+  background: var(--danger-soft);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+@media (min-width: 640px) {
+  .lf-danger__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .lf-danger__row .lf-btn {
+    justify-self: end;
+  }
+
+  .lf-modal-overlay {
+    place-items: center;
+    padding: 1.5rem;
+  }
+
+  .lf-modal {
+    width: min(100%, 34rem);
+    max-height: min(52rem, 90dvh);
+    border-radius: 1.35rem;
+  }
+
+  .lf-modal__footer .lf-btn {
+    flex: 0 0 auto;
+  }
 }
 
 @media (min-width: 640px) {

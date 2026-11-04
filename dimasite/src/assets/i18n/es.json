@@ -2597,6 +2597,55 @@
         "title": "Todos los módulos",
         "hint": "Comandos, triggers, TTS, moderación y más"
       }
+    },
+    "danger": {
+      "title": "Zona de peligro",
+      "hint": "Esto cambia tu propia cuenta (@{{login}}) y no se puede deshacer.",
+      "cancel": "Cancelar",
+      "typeLabel": "Escribe {{login}} para confirmar",
+      "typeMismatch": "Escribe tu nombre de Twitch tal como aparece: {{login}}",
+      "publicMediaNote": "Los archivos que compartiste en la biblioteca pública se quedan ahí para otros streamers.",
+      "reset": {
+        "name": "Restablecer de fábrica",
+        "summary": "Empieza de cero con una cuenta limpia. El bot sigue en tu canal con sus eventos de Twitch y comandos predeterminados.",
+        "open": "Restablecer cuenta",
+        "title": "¿Restablecer tu cuenta?",
+        "intro": "@{{login}} vuelve a empezar de cero. Sigues con tu sesión iniciada y el bot sigue en tu canal. No se puede deshacer.",
+        "goneTitle": "Se borra",
+        "goneCommands": "Tus comandos y los valores que guardaron (contadores, variables)",
+        "goneRedemptions": "Los canjes de puntos de canal configurados en DomDimaBot",
+        "goneTriggers": "Los triggers y los archivos que subiste",
+        "goneTeam": "Los miembros de equipo que añadiste (pierden el acceso)",
+        "keptTitle": "Se mantiene",
+        "keptBot": "Los permisos del bot en tu canal de Twitch",
+        "keptEvents": "Los eventos de Twitch (follows, subs, cheers, raids…), que se reconectan solos",
+        "keptDefaults": "Los comandos predeterminados, con su configuración original",
+        "keptPlan": "Tu plan, tus pagos y tus créditos de IA",
+        "confirm": "Restablecer mi cuenta",
+        "working": "Restableciendo…",
+        "error": "No pudimos terminar el restablecimiento. Puede que algunas cosas ya se hayan borrado. Inténtalo de nuevo en un momento.",
+        "doneTitle": "Cuenta restablecida",
+        "doneCopy": "Se borraron tus comandos, triggers y equipo. Los comandos predeterminados están de vuelta."
+      },
+      "delete": {
+        "name": "Eliminar cuenta",
+        "summary": "Elimina para siempre tu cuenta de DomDimaBot y todo lo que contiene. El bot sale de tu canal.",
+        "open": "Eliminar cuenta",
+        "title": "¿Eliminar tu cuenta para siempre?",
+        "intro": "Esto elimina la cuenta de DomDimaBot de @{{login}} y cierra tu sesión. No se puede deshacer.",
+        "goneTitle": "Qué pasa",
+        "goneBot": "El bot pierde el acceso a tu canal y deja de escuchar los eventos de Twitch",
+        "goneData": "Se borran comandos, temporizadores, triggers, canjes, archivos subidos, personalidad y memorias de IA, diseños de clips y resúmenes de directos",
+        "goneTeam": "Tu equipo pierde el acceso y sales de los equipos en los que ayudas",
+        "goneCredits": "Pierdes los créditos de IA que te queden",
+        "planTitle": "Esto no cancela tu plan {{tier}}.",
+        "planCopy": "Cancélalo primero en pagos para que no se te vuelva a cobrar.",
+        "confirm": "Eliminar mi cuenta",
+        "working": "Eliminando…",
+        "error": "No pudimos eliminar tu cuenta. Inténtalo de nuevo en un momento; si sigue fallando, contacta con soporte.",
+        "doneTitle": "Cuenta eliminada",
+        "doneCopy": "Se eliminaron tu cuenta de DomDimaBot y sus datos."
+      }
     }
   },
   "referrals": {

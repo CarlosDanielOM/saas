@@ -171,6 +171,159 @@
           </nav>
         </aside>
       </div>
+
+      <section class="lf-tile lf-danger" aria-labelledby="profile-danger-title">
+        <div class="lf-card-head">
+          <span class="lf-card-head__icon lf-card-head__icon--danger" aria-hidden="true"><app-lf-icon name="alert"></app-lf-icon></span>
+          <div class="lf-card-head__copy">
+            <h2 class="lf-h2" id="profile-danger-title">{{ t('profile.danger.title') }}</h2>
+            <p class="lf-note">{{ t('profile.danger.hint', { login: login() }) }}</p>
+          </div>
+        </div>
+
+        <ul class="lf-danger__rows">
+          <li class="lf-danger__row">
+            <span class="lf-danger__copy">
+              <strong id="danger-reset-name">{{ t('profile.danger.reset.name') }}</strong>
+              <span>{{ t('profile.danger.reset.summary') }}</span>
+            </span>
+            <button
+              type="button"
+              class="lf-btn lf-btn--danger-outline"
+              aria-describedby="danger-reset-name"
+              (click)="openDanger('reset', $event)"
+            >
+              <app-lf-icon name="refresh" [size]="16"></app-lf-icon> {{ t('profile.danger.reset.open') }}
+            </button>
+          </li>
+          <li class="lf-danger__row">
+            <span class="lf-danger__copy">
+              <strong id="danger-delete-name">{{ t('profile.danger.delete.name') }}</strong>
+              <span>{{ t('profile.danger.delete.summary') }}</span>
+            </span>
+            <button
+              type="button"
+              class="lf-btn lf-btn--danger"
+              aria-describedby="danger-delete-name"
+              (click)="openDanger('delete', $event)"
+            >
+              <app-lf-icon name="trash" [size]="16"></app-lf-icon> {{ t('profile.danger.delete.open') }}
+            </button>
+          </li>
+        </ul>
+      </section>
     }
   </main>
 </div>
+
+@if (dangerAction(); as action) {
+  <div class="lf-modal-overlay" (click)="closeDanger()">
+    <section
+      #dangerDialog
+      class="lf-modal"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="danger-dialog-title"
+      aria-describedby="danger-dialog-desc"
+      tabindex="-1"
+      [attr.aria-busy]="dangerBusy()"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="danger-dialog-title">{{ t('profile.danger.' + action + '.title') }}</h2>
+        <button type="button" class="lf-modal__close" (click)="closeDanger()" [disabled]="dangerBusy()" [attr.aria-label]="t('common.close')">
+          <app-lf-icon name="close" [size]="18"></app-lf-icon>
+        </button>
+      </header>
+
+      <form class="lf-modal__form" novalidate (submit)="$event.preventDefault(); confirmDanger()">
+        <div class="lf-modal__body">
+          <p class="lf-copy lf-copy--strong" id="danger-dialog-desc">{{ t('profile.danger.' + action + '.intro', { login: login() }) }}</p>
+
+          @if (action === 'reset') {
+            <div class="lf-impact">
+              <div class="lf-impact__group lf-impact__group--gone">
+                <h3 class="lf-impact__title"><app-lf-icon name="trash" [size]="14"></app-lf-icon> {{ t('profile.danger.reset.goneTitle') }}</h3>
+                <ul>
+                  <li>{{ t('profile.danger.reset.goneCommands') }}</li>
+                  <li>{{ t('profile.danger.reset.goneRedemptions') }}</li>
+                  <li>{{ t('profile.danger.reset.goneTriggers') }}</li>
+                  <li>{{ t('profile.danger.reset.goneTeam') }}</li>
+                </ul>
+              </div>
+              <div class="lf-impact__group lf-impact__group--kept">
+                <h3 class="lf-impact__title"><app-lf-icon name="check" [size]="14"></app-lf-icon> {{ t('profile.danger.reset.keptTitle') }}</h3>
+                <ul>
+                  <li>{{ t('profile.danger.reset.keptBot') }}</li>
+                  <li>{{ t('profile.danger.reset.keptEvents') }}</li>
+                  <li>{{ t('profile.danger.reset.keptDefaults') }}</li>
+                  <li>{{ t('profile.danger.reset.keptPlan') }}</li>
+                </ul>
+              </div>
+            </div>
+            <p class="lf-note">{{ t('profile.danger.publicMediaNote') }}</p>
+          } @else {
+            <div class="lf-impact">
+              <div class="lf-impact__group lf-impact__group--gone">
+                <h3 class="lf-impact__title"><app-lf-icon name="trash" [size]="14"></app-lf-icon> {{ t('profile.danger.delete.goneTitle') }}</h3>
+                <ul>
+                  <li>{{ t('profile.danger.delete.goneBot') }}</li>
+                  <li>{{ t('profile.danger.delete.goneData') }}</li>
+                  <li>{{ t('profile.danger.delete.goneTeam') }}</li>
+                  <li>{{ t('profile.danger.delete.goneCredits') }}</li>
+                </ul>
+              </div>
+            </div>
+            <p class="lf-note">{{ t('profile.danger.publicMediaNote') }}</p>
+            @if (canManageSubscription()) {
+              <div class="lf-billing-warn" role="note">
+                <p>
+                  <strong>{{ t('profile.danger.delete.planTitle', { tier: planTierLabel() }) }}</strong>
+                  {{ t('profile.danger.delete.planCopy') }}
+                </p>
+                <button type="button" class="lf-btn lf-btn--compact" [disabled]="portalOpening() || dangerBusy()" (click)="openBillingPortal()">
+                  {{ portalOpening() ? t('profile.subscription.manageOpening') : t('profile.subscription.manageCta') }}
+                </button>
+                @if (portalError()) {
+                  <p class="lf-note lf-note--error" role="alert">{{ t('profile.subscription.manageError') }}</p>
+                }
+              </div>
+            }
+          }
+
+          <div class="lf-confirm">
+            <label class="lf-label" for="danger-confirm-input">{{ t('profile.danger.typeLabel', { login: login() }) }}</label>
+            <input
+              id="danger-confirm-input"
+              class="lf-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              [value]="dangerConfirmText()"
+              [placeholder]="login()"
+              [disabled]="dangerBusy()"
+              [attr.aria-invalid]="dangerSubmitAttempted() && !dangerConfirmMatches()"
+              [attr.aria-describedby]="dangerSubmitAttempted() && !dangerConfirmMatches() ? 'danger-confirm-error' : null"
+              (input)="onDangerInput($event)"
+            />
+            @if (dangerSubmitAttempted() && !dangerConfirmMatches()) {
+              <p class="lf-field-error" id="danger-confirm-error">{{ t('profile.danger.typeMismatch', { login: login() }) }}</p>
+            }
+          </div>
+
+          @if (dangerError()) {
+            <p class="lf-field-error" role="alert">{{ t('profile.danger.' + action + '.error') }}</p>
+          }
+        </div>
+
+        <footer class="lf-modal__footer">
+          <button type="button" class="lf-btn" (click)="closeDanger()" [disabled]="dangerBusy()">{{ t('profile.danger.cancel') }}</button>
+          <button type="submit" class="lf-btn lf-btn--danger" [disabled]="dangerBusy()">
+            {{ dangerBusy() ? t('profile.danger.' + action + '.working') : t('profile.danger.' + action + '.confirm') }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
