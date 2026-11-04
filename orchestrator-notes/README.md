@@ -51,6 +51,8 @@ The user-provided ascending tier above remains the baseline and working tier; th
 
 ## Routing observations
 
+DIMA-052 audio curves and capability-gated delivery: [2026-11-04 task note](2026-11-04-mouth-smile.md).
+
 Currency-goal implementation and integration routing: [2026-11-02 task note](2026-11-02-currency-goals.md).
 
 Documentation source audit: [2026-11-01 evidence](../migration-notes/docs-source-audit-2026-11-01.md). Explicit T3 Luna/Terra selection at high replaced a native Luna assignment that defaulted to Sol. Source rechecks corrected two concrete audit errors before release. This is task-specific workflow evidence, with no model-tier or performance conclusion.
