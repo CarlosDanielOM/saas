@@ -11,7 +11,7 @@ globalThis.fetch=async(input,options={})=>{
  if(url.hostname==='127.0.0.1')return originalFetch(input,options);
  if(url.hostname==='qdrant.test')return json({version:'1.18.0',status:'ok',time:0,result:url.pathname.endsWith('/exists')?{exists:true}:{collections:[]}});
  if(url.hostname==='api.twitch.tv') {
-  if(url.pathname==='/helix/authorization/users') return json({data:[{user_id:url.searchParams.get('user_id'),scopes:read('scopes',['channel:read:polls','channel:read:predictions'])}]});
+  if(url.pathname==='/helix/authorization/users') { fs.appendFileSync(`${directory}/read-calls.jsonl`,JSON.stringify({endpoint:'scopes',user:url.searchParams.get('user_id')})+'\n'); return json({data:[{user_id:url.searchParams.get('user_id'),scopes:read('scopes',['channel:read:polls','channel:read:predictions'])}]}); }
   if(url.pathname==='/helix/eventsub/subscriptions'){
    let remote=read('remote',[]);
    if(options.method==='DELETE'){remote=remote.filter(item=>item.id!==url.searchParams.get('id'));write('remote',remote);return new Response(null,{status:204});}
@@ -22,6 +22,9 @@ globalThis.fetch=async(input,options={})=>{
     const subscription={...body,id:crypto.randomUUID(),status:read('pending',false)?'webhook_callback_verification_pending':'enabled',cost:0,created_at:new Date().toISOString()};
     remote.push(subscription);write('remote',remote);return json({data:[subscription]},202);
    }
+   fs.appendFileSync(`${directory}/read-calls.jsonl`,JSON.stringify({endpoint:'eventsub',user:url.searchParams.get('user_id')})+'\n');
+   if(read('list-failure',false))return json({error:'mock_failure'},429);
+   const user=url.searchParams.get('user_id'); if(user)remote=remote.filter(item=>Object.values(item.condition||{}).includes(user));
    return json({data:remote,pagination:{},total:remote.length});
   }
   if(url.pathname==='/helix/polls'||url.pathname==='/helix/predictions')return json({data:read(url.pathname.endsWith('/polls')?'poll-recovery':'prediction-recovery',[])});

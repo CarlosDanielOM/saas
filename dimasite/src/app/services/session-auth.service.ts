@@ -117,8 +117,14 @@ export class SessionAuthService {
       return;
     }
 
-    this.session.set(this.readSession());
-    this.lastViewedStreamer.set(this.readLastViewedStreamer());
+    // A channel preference is not an authentication update. Recreating the session
+    // here used to restart every request effect in other open channel tabs.
+    if (event.key === null || event.key === this.storageKey) {
+      this.session.set(this.readSession());
+    }
+    if (event.key === null || event.key === this.lastViewedStreamerKey) {
+      this.lastViewedStreamer.set(this.readLastViewedStreamer());
+    }
   };
 
   readonly session = signal<StoredSession | null>(this.readSession());

@@ -7661,7 +7661,7 @@
     "liveOptions": "Plataforma y comando de chat",
     "dismiss": "Cerrar",
     "remove": "Quitar",
-    "statusLive": "Todo está en directo en OBS",
+    "statusLive": "Todos los cambios publicados",
     "statusNotLive": "Guardado · aún no está en OBS",
     "statusDesignSaved": "Diseño guardado",
     "conflictRecoveryTitle": "Tus cambios locales están a salvo",

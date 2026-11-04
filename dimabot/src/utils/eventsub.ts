@@ -449,7 +449,7 @@ export async function subscribeTwitchEvent(
     return toEventsubResponse((newEventSub || eventsubPayload) as Partial<IEventsub> & { _id?: unknown });
 }
 
-export async function getEventsubs(): Promise<any> {
+export async function getEventsubs(userId?: string): Promise<any> {
     const appToken = await getAppToken('twitch');
     if (!appToken || !process.env.CLIENT_ID) {
         return {
@@ -477,6 +477,7 @@ export async function getEventsubs(): Promise<any> {
             return { error: 'EventSub pagination exceeded safety limit', status: 502 };
         }
         const params = new URLSearchParams({ first: '100' });
+        if (userId) params.set('user_id', userId);
         if (cursor) params.set('after', cursor);
         const response = await fetch(getTwitchHelixUrl('eventsub/subscriptions', params.toString()), {
             headers: headers as unknown as Record<string, string>

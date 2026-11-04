@@ -1,3 +1,4 @@
+import { ReadinessCache } from './readiness-cache.js';
 import { getScopes } from '../functions/users/get_scopes.users.js';
 import { getEventsubs, subscribeTwitchEvent, unsubscribeTwitchEvent } from '../utils/eventsub.js';
 import Eventsub from '../schemas/eventsub.schema.js';
@@ -17,7 +18,7 @@ function matches(remote: Remote, channel: string, type: string): boolean {
     && remote.transport?.method === 'webhook' && remote.transport.callback === callback;
 }
 async function inspect(channel: string) {
-  const [remote, grants] = await Promise.all([getEventsubs(), getScopes(channel)]);
+  const [remote, grants] = await Promise.all([getEventsubs(channel), getScopes(channel)]);
   if (remote?.error || !Array.isArray(remote?.data) || grants.error || !Array.isArray(grants.data)) throw new OverlayError('Unable to check Twitch events. Try again.', 502);
   const scopes: string[] = grants.data.find((item: { user_id?: string }) => item.user_id === channel)?.scopes ?? [];
   return { remote: remote.data as Remote[], scopes };
@@ -35,14 +36,18 @@ function readiness(channel: string, remote: Remote[], scopes: string[]): Interac
   };
   return { poll: status('poll'), prediction: status('prediction') };
 }
-export async function interactionReadiness(channel: string): Promise<InteractionReadinessSnapshot> {
-  const { remote, scopes } = await inspect(channel); return readiness(channel, remote, scopes);
+const readinessCache = new ReadinessCache<InteractionReadinessSnapshot>(15_000, 10_000, 500);
+export function interactionReadiness(channel: string): Promise<InteractionReadinessSnapshot> {
+  return readinessCache.read(channel, async () => {
+    const { remote, scopes } = await inspect(channel); return readiness(channel, remote, scopes);
+  });
 }
 const activations = new Map<string, Promise<InteractionReadinessSnapshot>>();
 /** Explicit owner action; no cron reconciliation or announcement settings are changed. */
 export function activateInteraction(channel: string, kind: InteractionKind): Promise<InteractionReadinessSnapshot> {
   if (kind !== 'poll' && kind !== 'prediction') throw new OverlayError('Invalid Twitch widget');
   const key = `${channel}:${kind}`, active = activations.get(key); if (active) return active;
+  readinessCache.invalidate(channel);
   const promise = (async () => {
     let { remote, scopes } = await inspect(channel);
     if (readiness(channel, remote, scopes)[kind].state === 'permission') throw new OverlayError('Reconnect Twitch to grant poll and prediction permissions.', 403);
@@ -70,6 +75,6 @@ export function activateInteraction(channel: string, kind: InteractionKind): Pro
     return readiness(channel, remote, scopes);
   })();
   activations.set(key, promise);
-  void promise.finally(() => activations.delete(key)).catch(() => {});
+  void promise.finally(() => { activations.delete(key); readinessCache.invalidate(channel); }).catch(() => {});
   return promise;
 }

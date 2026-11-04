@@ -229,7 +229,9 @@ export class AuthenticatedLayoutComponent {
         return;
       }
 
-      this.sessionAuth.setLastViewedStreamer(streamer);
+      // Other tabs may remember a different channel. Do not react to their
+      // preference changes by continually writing this tab's channel back.
+      untracked(() => this.sessionAuth.setLastViewedStreamer(streamer));
     });
 
     effect(() => {

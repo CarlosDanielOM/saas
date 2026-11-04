@@ -17,13 +17,19 @@ import { createServer } from 'node:http';
 import { Server } from '/app/node_modules/socket.io/dist/index.js';
 const target=process.env.SAAS_INTERACTION_TARGET,channel='990702',other='990703',dir='/tmp/saas-fixtures';
 const write=(name,value)=>fs.writeFileSync(`${dir}/${name}.json`,JSON.stringify(value));
+const reads=()=>fs.existsSync(`${dir}/read-calls.jsonl`)?fs.readFileSync(`${dir}/read-calls.jsonl`,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse):[];
 const calls=()=>fs.existsSync(`${dir}/calls.jsonl`)?fs.readFileSync(`${dir}/calls.jsonl`,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse):[];
 async function until(check,label){for(let i=0;i<160;i++){if(await check())return;await new Promise(r=>setTimeout(r,150));}throw new Error('Timed out: '+label);}
 await getMongoDBConnection('interaction-check');const redis=await getDragonflyClient('interaction-check');
 await Promise.all([DomainEventSchema.init(),DomainEventDeliverySchema.init(),Interaction.init(),Eventsub.init()]);
 for(const id of [channel,other]){await Users.collection.insertOne({name:'Fixture',accounts:[{type:'twitch',id,name:'interactionfixture',actived:true,has_permissions:true,chat_enabled:false}]});await redis.hSet(`accounts:twitch:${id}:data`,{id,name:'interactionfixture',actived:'true',has_permissions:'true',chat_enabled:'false',access_token:'dummy-streamer-token',expires_at:String(Math.floor(Date.now()/1000)+3600)});await redis.hSet('token:fixture-'+id,{id,login:'interactionfixture',display_name:'Fixture'});}
 await redis.set('app:twitch:token','app-token');write('remote',[]);
-const status=await interactionReadiness(channel);assert.equal(status.poll.state,'missing');assert.equal(status.prediction.state,'missing');
+const [status,...duplicates]=await Promise.all(Array.from({length:30},()=>interactionReadiness(channel)));assert.equal(status.poll.state,'missing');assert.equal(status.prediction.state,'missing');assert(duplicates.every(item=>item.poll.state==='missing'));
+assert.deepEqual(reads().filter(c=>c.user===channel).map(c=>c.endpoint).sort(),['eventsub','scopes'],'concurrent reads share one scoped inspection');
+await interactionReadiness(channel);assert.equal(reads().filter(c=>c.user===channel).length,2,'success is cached');
+write('list-failure',true);await assert.rejects(()=>interactionReadiness(other),e=>e.status===502);const failedReads=reads().filter(c=>c.user===other).length;await assert.rejects(()=>interactionReadiness(other),e=>e.status===502);assert.equal(reads().filter(c=>c.user===other).length,failedReads,'failures are cooled down');
+write('list-failure',false);assert.equal((await activateInteraction(other,'poll')).poll.state,'ready','explicit activation bypasses cached failure');assert.equal((await interactionReadiness(other)).poll.state,'ready','activation invalidates the failed read');
+fs.writeFileSync(`${dir}/calls.jsonl`,'');write('remote',[]);
 await Promise.all([activateInteraction(channel,'poll'),activateInteraction(channel,'poll')]);assert.equal(calls().length,3,'concurrent activation is idempotent');
 await activateInteraction(channel,'prediction');assert.equal(calls().length,7);assert(calls().every(c=>c.authorization==='Bearer app-token'));
 await activateInteraction(channel,'poll');assert.equal(calls().length,7);
@@ -85,6 +91,6 @@ if(target==='api'){
  for(const ws of sockets)ws.close();await new Promise(r=>io.close(r));console.log('PASS OBS transport: public snapshot, live totals, reconnect, fresh controller recovery and published widget scoping.');
 }
 if(webhookServer)await new Promise(r=>webhookServer.close(r));
-const tests=spawnSync('node',['--test','--experimental-test-module-mocks','dist/overlays/interaction-model.test.js','dist/domain_events/twitch_eventsub_events.test.js','dist/utils/eventsub_config.test.js','dist/utils/eventsub_reconciliation.test.js'],{encoding:'utf8',timeout:60000,env:{...process.env,NODE_OPTIONS:''}});process.stdout.write(tests.stdout||'');process.stderr.write(tests.stderr||'');assert.equal(tests.status,0);
+const tests=spawnSync('node',['--test','--experimental-test-module-mocks','dist/overlays/readiness-cache.test.js','dist/overlays/interaction-model.test.js','dist/domain_events/twitch_eventsub_events.test.js','dist/utils/eventsub_config.test.js','dist/utils/eventsub_reconciliation.test.js'],{encoding:'utf8',timeout:60000,env:{...process.env,NODE_OPTIONS:''}});process.stdout.write(tests.stdout||'');process.stderr.write(tests.stderr||'');assert.equal(tests.status,0);
 console.log('PASS isolation: EVENTSUB_RECONCILIATION_ENABLED='+process.env.EVENTSUB_RECONCILIATION_ENABLED);
 process.exit(0);

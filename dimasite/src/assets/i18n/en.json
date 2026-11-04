@@ -7661,7 +7661,7 @@
     "liveOptions": "Platform & chat command",
     "dismiss": "Dismiss",
     "remove": "Remove",
-    "statusLive": "Everything is live in OBS",
+    "statusLive": "All changes published",
     "statusNotLive": "Saved · not live in OBS yet",
     "statusDesignSaved": "Design saved",
     "conflictRecoveryTitle": "Your local edits are safe",
