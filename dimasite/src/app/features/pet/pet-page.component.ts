@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import type { PetOverlayToken, PetOwnerRuntime } from './pet-runtime.model';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -20,9 +20,13 @@ import { AssetPreviewComponent } from '../../shared/asset-library/asset-preview.
 import { DesignAsset } from '../../shared/asset-library/asset-library.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
+type PetSection = 'pet-setup' | 'pet-look' | 'pet-moods' | 'pet-speech' | 'pet-voice' | 'pet-personality' | 'pet-behavior';
+export interface PetStep { key: 'obs' | 'look' | 'speech' | 'on'; done: boolean; target: PetSection }
+export interface PetProblem { key: string; target: PetSection }
+
 @Component({
   selector: 'app-pet-page',
-  imports: [ReactiveFormsModule, RouterLink, LfIconComponent, AssetLibraryDialogComponent, AssetPreviewComponent],
+  imports: [ReactiveFormsModule, RouterLink, NgTemplateOutlet, LfIconComponent, AssetLibraryDialogComponent, AssetPreviewComponent],
   templateUrl: './pet-page.component.html',
   styleUrl: './pet-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -114,6 +118,14 @@ export class PetPageComponent {
   readonly modulePath = computed(() => ['/', this.streamer(), 'modules']);
   readonly personalityPath = computed(() => ['/', this.streamer(), 'modules', 'ai-personality']);
   readonly ttsPath = computed(() => ['/', this.streamer(), 'modules', 'tts']);
+  readonly commandsPath = computed(() => ['/', this.streamer(), 'commands']);
+  readonly eventsPath = computed(() => ['/', this.streamer(), 'modules', 'chat-events']);
+  readonly petFunctions = [
+    { code: '$(pet.talk Hello chat!)', hint: 'fnTalk' },
+    { code: '$(pet.ask Tell chat a fun fact)', hint: 'fnAsk' }
+  ] as const;
+  readonly copiedFn = signal('');
+  private copiedFnTimer: ReturnType<typeof setTimeout> | undefined;
   readonly draft = computed<PetSettings>(() => {
     this.values();
     const value = this.form.getRawValue();
@@ -142,17 +154,76 @@ export class PetPageComponent {
   readonly customFishVoice = computed(() => this.draft().tts.provider === 'fish' && !!this.draft().tts.voice &&
     !this.voices().some(voice => voice.id === this.draft().tts.voice) &&
     !this.favoriteVoiceOptions().some(voice => voice.id === this.draft().tts.voice));
-  readonly valid = computed(() => {
-    const value = this.draft();
-    // Optional decoration errors must never block otherwise-valid pet settings.
-    const coreValid = Object.entries(this.form.controls).every(([name, control]) => name === 'moodHoldMs' || control.valid);
-    return coreValid && (!value.sources.independent || (value.personality.source === 'custom' ? !!value.personality.prompt :
-      !!this.config()?.profiles.some(profile => profile.id === value.personality.profileId))) &&
-      (!value.enabled || (value.appearance.kind !== 'png' || !!value.appearance.idleAssetId && !!value.appearance.talkingAssetId) &&
-        (value.playback.target !== 'desktop' || !!value.playback.desktopSessionId) &&
-        (value.appearance.kind !== 'vts' || !!value.playback.vtsSessionId)) &&
-      value.rules.length <= 20 && value.rules.every(rule => rule.length <= 300) &&
-      (!value.sources.independent || (value.tts.provider === 'fish' ? /^[a-f0-9]{32}$/i.test(value.tts.voice) : this.voices().some(voice => voice.id === value.tts.voice)));
+  readonly profileValid = computed(() => !this.draft().sources.independent || this.draft().personality.source !== 'profile' ||
+    !!this.config()?.profiles.some(profile => profile.id === this.draft().personality.profileId));
+  readonly rulesValid = computed(() => {
+    this.values();
+    const rules = this.draft().rules;
+    return this.form.controls.rules.valid && rules.length <= 20 && rules.every(rule => rule.length <= 300);
+  });
+  /** Everything that blocks saving, in page order, each pointing at the card that fixes it. */
+  readonly problems = computed<PetProblem[]>(() => {
+    this.values();
+    const value = this.draft(), controls = this.form.controls, list: PetProblem[] = [];
+    const independent = value.sources.independent, voice = value.tts.voice;
+    if (controls.name.invalid) list.push({ key: 'name', target: 'pet-look' });
+    if (value.enabled && value.appearance.kind === 'png' && !(value.appearance.idleAssetId && value.appearance.talkingAssetId)) list.push({ key: 'images', target: 'pet-look' });
+    if (value.enabled && value.appearance.kind === 'vts' && !value.playback.vtsSessionId) list.push({ key: 'vtsComputer', target: 'pet-look' });
+    if (value.enabled && value.playback.target === 'desktop' && !value.playback.desktopSessionId) list.push({ key: 'audioComputer', target: 'pet-setup' });
+    if (controls.voice.invalid || independent && (value.tts.provider === 'fish' ? !/^[a-f0-9]{32}$/i.test(voice) : !this.voices().some(item => item.id === voice))) {
+      list.push({ key: 'voice', target: independent ? 'pet-voice' : 'pet-speech' });
+    }
+    if (controls.prompt.invalid || independent && value.personality.source === 'custom' && !value.personality.prompt) list.push({ key: 'prompt', target: 'pet-personality' });
+    if (!this.profileValid()) list.push({ key: 'profile', target: 'pet-personality' });
+    if (!this.rulesValid()) list.push({ key: 'rules', target: 'pet-personality' });
+    if (controls.cooldownSeconds.invalid) list.push({ key: 'cooldown', target: 'pet-behavior' });
+    if (controls.queueSize.invalid) list.push({ key: 'queueSize', target: 'pet-behavior' });
+    if (controls.maxReplyLength.invalid) list.push({ key: 'maxLength', target: 'pet-behavior' });
+    return list;
+  });
+  // Optional mood errors (hold time) never block otherwise-valid pet settings.
+  readonly valid = computed(() => !this.problems().length);
+  /** "Is my pet ready for stream?" — the four things it needs, from the current draft. */
+  readonly steps = computed<PetStep[]>(() => {
+    const value = this.draft(), token = this.token();
+    return [
+      { key: 'obs', done: !!token?.exists && (value.playback.target !== 'desktop' || !!value.playback.desktopSessionId), target: 'pet-setup' },
+      { key: 'look', done: value.appearance.kind === 'png' ? !!(value.appearance.idleAssetId && value.appearance.talkingAssetId) : !!value.playback.vtsSessionId, target: 'pet-look' },
+      { key: 'speech', done: value.sources.readTts || value.sources.independent, target: 'pet-speech' },
+      { key: 'on', done: value.enabled, target: 'pet-setup' }
+    ];
+  });
+  readonly stepsLeft = computed(() => this.steps().filter(step => !step.done).length);
+  readonly petName = computed(() => this.draft().name || this.t('title'));
+  readonly statusTitle = computed(() => {
+    const left = this.stepsLeft(), name = this.petName();
+    if (!left) return this.tp('statusReady', { name });
+    if (left === 1 && !this.draft().enabled) return this.tp('statusOff', { name });
+    return this.tp(left === 1 ? 'statusLeftOne' : 'statusLeft', { name, count: left });
+  });
+  readonly statusHint = computed(() => {
+    const { readTts, independent } = this.draft().sources;
+    if (this.stepsLeft()) return this.t('statusLeftHint');
+    return this.t(readTts && independent ? 'statusReadyBoth' : readTts ? 'statusReadyTts' : 'statusReadyOwn');
+  });
+  /** Problems the server found in the saved settings that the checklist can't see. */
+  readonly savedIssues = computed(() => {
+    const config = this.config();
+    if (!config) return [];
+    const saved = config.settings;
+    return config.runtime.issues.filter(issue =>
+      issue === 'appearance_unavailable' ? saved.appearance?.kind !== 'vts' && !!saved.appearance?.idleAssetId && !!saved.appearance?.talkingAssetId :
+      issue === 'vts_unavailable' ? !!saved.playback?.vtsSessionId : false);
+  });
+  readonly limitsSummary = computed(() => {
+    const behavior = this.draft().behavior;
+    return this.tp('limitsSummary', { lane: this.t(behavior.askLane === 'tts' ? 'laneShortTts' : 'laneShortOwn'), queue: behavior.queueSize, pause: behavior.cooldownSeconds });
+  });
+  readonly voiceSummary = computed(() => {
+    const tts = this.draft().tts;
+    if (!tts.enabled) return this.t('voiceMuted');
+    const voice = this.voices().find(item => item.id === tts.voice)?.name ?? this.fishFavorites().find(item => item.id === tts.voice)?.name;
+    return voice ? `${this.t(tts.provider)} · ${voice}` : this.t(tts.provider);
   });
   private loadSequence = 0;
   private runtimeSequence = 0;
@@ -174,10 +245,39 @@ export class PetPageComponent {
         }
       });
     });
-    this.destroyRef.onDestroy(() => { this.disposed = true; this.loadSequence++; this.favoritesSequence++; });
+    this.destroyRef.onDestroy(() => { clearTimeout(this.copiedFnTimer); this.disposed = true; this.loadSequence++; this.favoritesSequence++; });
   }
 
   t(key: string): string { return this.language.translate(`pet.${key}`); }
+  tp(key: string, params: Record<string, string | number>): string { return this.language.translate(`pet.${key}`, params); }
+
+  /** Scroll to the card that fixes something and focus its first control. */
+  goTo(target: PetSection): void {
+    const section = this.document.getElementById(target) ?? this.document.getElementById('pet-speech');
+    if (!section) return;
+    const reduce = this.document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    section.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    // Open a folded group that hides the field to fix.
+    section.querySelectorAll('details').forEach(details => { if (details.querySelector('[aria-invalid="true"]')) details.open = true; });
+    const field = section.querySelector<HTMLElement>('[aria-invalid="true"]') ?? section.querySelector<HTMLElement>('.image-choice--missing button') ??
+      section.querySelector<HTMLElement>('input:not([type=hidden]):not(:disabled), select, textarea, button');
+    field?.focus({ preventScroll: true });
+  }
+
+  async copyFunction(code: string): Promise<void> {
+    try {
+      const clipboard = this.document.defaultView?.navigator.clipboard;
+      if (!clipboard) throw new Error('clipboard_unavailable');
+      await clipboard.writeText(code);
+      this.copiedFn.set(code);
+      clearTimeout(this.copiedFnTimer);
+      this.copiedFnTimer = setTimeout(() => this.copiedFn.set(''), 2500);
+    } catch { this.copiedFn.set(''); }
+  }
+
+  moodImagesFor(mood: PetMood8): number {
+    return Number(!!this.moodAssetId(mood, 'idle')) + Number(!!this.moodAssetId(mood, 'talking'));
+  }
 
   async loadFavorites(channelID = this.channelID()): Promise<void> {
     if (!channelID || this.disposed || this.favoritesOwner === channelID && this.favoritesLoading()) return;
@@ -189,7 +289,7 @@ export class PetPageComponent {
       const favorites = await firstValueFrom(this.ttsApi.getFavorites(channelID).pipe(
         timeout(10_000), takeUntilDestroyed(this.destroyRef)
       ));
-      if (!this.disposed && sequence === this.favoritesSequence && channelID === this.channelID()) this.fishFavorites.set(favorites);
+      if (!this.disposed && sequence === this.favoritesSequence && channelID === this.channelID()) this.fishFavorites.set(Array.isArray(favorites) ? favorites : []);
     } catch {
       if (!this.disposed && sequence === this.favoritesSequence && channelID === this.channelID()) this.favoritesError.set(true);
     } finally {

@@ -1,219 +1,462 @@
 <div class="lf">
   <main class="lf-main">
+    <form [formGroup]="form" (ngSubmit)="save()" class="pet-form">
     <header class="lf-head">
-      <a class="back" [routerLink]="modulePath()"><app-lf-icon name="back" [size]="16" />{{ t('back') }}</a>
-      <div class="title-row"><div><span class="eyebrow">{{ t('app') }}</span><h1>{{ t('title') }}</h1></div><span class="badge">{{ t('beta') }}</span></div>
-      <p>{{ t('description') }}</p>
+      <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back" [size]="16" />{{ t('back') }}</a>
+      <div class="lf-head__row">
+        <div class="lf-head__copy">
+          <h1 class="lf-title">{{ t('title') }}</h1>
+          <p class="lf-copy">{{ t('description') }}</p>
+        </div>
+        @if (config()) {
+          <label class="pet-power" [class.pet-power--on]="draft().enabled">
+            <span class="pet-power__text">{{ t(draft().enabled ? 'powerOn' : 'powerOff') }}</span>
+            <span class="lf-switch">
+              <input type="checkbox" role="switch" formControlName="enabled" [attr.aria-label]="t('enabled')">
+              <span class="lf-switch__track" aria-hidden="true"></span>
+            </span>
+          </label>
+        }
+      </div>
+      <div class="lf-head__chips">
+        <span class="lf-chip lf-chip--gold">{{ t('beta') }}</span>
+        @if (config()) {
+          <span class="lf-chip" [class.lf-chip--ok]="config()!.runtime.playbackAvailable">
+            <span class="lf-dot" aria-hidden="true"></span>{{ t(config()!.runtime.playbackAvailable ? 'playerOpen' : 'playerClosed') }}
+          </span>
+          <span class="lf-chip lf-chip--accent"><app-lf-icon [name]="draft().appearance.kind === 'png' ? 'image' : 'monitor'" [size]="13" />{{ t(draft().appearance.kind === 'png' ? 'chipImages' : 'chipLive2d') }}</span>
+          @if (draft().sources.independent) {
+            <span class="lf-chip lf-chip--accent"><app-lf-icon name="mic" [size]="13" />{{ voiceSummary() }}</span>
+          }
+        }
+      </div>
     </header>
 
     @if (loading()) {
-      <section class="lf-tile state" role="status">{{ t('loading') }}</section>
+      <section class="lf-tile lf-empty" role="status">{{ t('loading') }}</section>
     } @else if (!config()) {
-      <section class="lf-tile state" role="alert"><p>{{ t('loadError') }}</p><button class="lf-btn" (click)="load()">{{ t('retry') }}</button></section>
+      <section class="lf-tile lf-empty" role="alert"><p>{{ t('loadError') }}</p><button type="button" class="lf-btn" (click)="load()">{{ t('retry') }}</button></section>
     } @else {
-      <form [formGroup]="form" (ngSubmit)="save()">
-        <section class="lf-tile overview">
-          <div class="pet-mark" aria-hidden="true"><app-lf-icon name="smile" [size]="30" /></div>
-          <div class="overview-copy"><h2>{{ draft().name || t('title') }}</h2><p>{{ t(draft().enabled ? 'ready' : 'paused') }}</p></div>
-          <label class="toggle"><input type="checkbox" formControlName="enabled"><span>{{ t('enabled') }}</span></label>
-          <p class="notice">{{ t('appNotice') }}</p>
+        <!-- Answer first: is my pet ready, and what's left? -->
+        <section class="lf-tile pet-status" [class.pet-status--ready]="!stepsLeft()" aria-labelledby="pet-status-title">
+          <div class="pet-status__head">
+            <span class="pet-status__icon" aria-hidden="true"><app-lf-icon [name]="stepsLeft() ? 'wrench' : 'check'" [size]="20" /></span>
+            <div>
+              <h2 class="lf-h2" id="pet-status-title">{{ statusTitle() }}</h2>
+              <p class="lf-note">{{ statusHint() }}</p>
+            </div>
+          </div>
+          <ol class="pet-steps">
+            @for (step of steps(); track step.key; let i = $index) {
+              <li class="pet-step" [class.pet-step--done]="step.done">
+                <span class="pet-step__mark" aria-hidden="true">@if (step.done) { <app-lf-icon name="check" [size]="14" /> } @else { {{ i + 1 }} }</span>
+                <span class="pet-step__label">{{ t('step.' + step.key) }}<span class="sr-only"> · {{ t(step.done ? 'stepDone' : 'stepTodo') }}</span></span>
+                @if (!step.done) {
+                  @if (step.key === 'on') {
+                    <button type="button" class="lf-btn lf-btn--compact lf-btn--primary" (click)="form.controls.enabled.setValue(true)">{{ t('turnOn') }}</button>
+                  } @else {
+                    <button type="button" class="lf-btn lf-btn--compact" [attr.aria-label]="t('step.' + step.key) + ': ' + t('goThere')" (click)="goTo(step.target)">{{ t('goThere') }}</button>
+                  }
+                }
+              </li>
+            }
+          </ol>
+          @for (issue of savedIssues(); track issue) { <p class="lf-note lf-note--warn" role="status"><app-lf-icon name="alert" [size]="14" />{{ t('issue.' + issue) }}</p> }
         </section>
 
-        <div class="lf-bento">
-          <section class="lf-tile sources-tile" aria-labelledby="sources-title">
-            <div class="section-head"><span class="section-icon"><app-lf-icon name="audio" /></span><div><h2 id="sources-title">{{ t('sourcesTitle') }}</h2><p>{{ t('sourcesHint') }}</p></div></div>
-            <div><label class="toggle row-toggle source-switch"><span>{{ t('readTts') }}</span><span class="switch-control"><input type="checkbox" role="switch" formControlName="readTts" aria-describedby="read-tts-help"><span class="switch-track" aria-hidden="true"></span></span></label><p id="read-tts-help">{{ t('readTtsHint') }}</p></div>
-            @if (draft().sources.readTts) {
-              <label class="field">{{ t('ttsAudio') }}<select formControlName="ttsAudio"><option value="pet">{{ t('ttsAudioPet') }}</option><option value="overlay">{{ t('ttsAudioOverlay') }}</option></select></label>
-              <p>{{ t(draft().ttsAudio === 'pet' ? 'ttsAudioPetHint' : 'ttsAudioOverlayHint') }}</p>
-            }
-            <div><label class="toggle row-toggle source-switch"><span>{{ t('independent') }}</span><span class="switch-control"><input type="checkbox" role="switch" formControlName="independent" aria-describedby="independent-help"><span class="switch-track" aria-hidden="true"></span></span></label><p id="independent-help">{{ t('independentHint') }}</p></div>
-          </section>
-          <section class="lf-tile appearance-tile" aria-labelledby="appearance-title">
-            <div class="section-head"><span class="section-icon"><app-lf-icon name="image" /></span><div><h2 id="appearance-title">{{ t('appearanceTitle') }}</h2><p>{{ t('appearanceHint') }}</p></div></div>
-            <label class="field">{{ t('appearanceKind') }}<select formControlName="appearanceKind"><option value="png">{{ t('png') }}</option><option value="vts">{{ t('vts') }}</option></select></label>
-            @if (draft().appearance.kind === 'png') {
-              <div class="appearance-pair">
-                @for (state of appearanceStates; track state) {
-                  <div class="image-choice">
-                    <h3>{{ t(state) }}</h3>
-                    <div class="image-preview">
-                      @if (assetId(state); as asset) { <app-asset-preview [assetId]="asset" [owner]="channelID()!" kind="image" [name]="t(state)" /> }
-                      @else { <span>{{ t('noImage') }}</span> }
-                    </div>
-                    <button type="button" class="lf-btn" [disabled]="saving()" [attr.aria-label]="t(state === 'idle' ? 'chooseIdle' : 'chooseTalking')" (click)="pickingAsset.set(state)">{{ t(assetId(state) ? 'changeImage' : 'chooseImage') }}</button>
-                    @if (assetId(state)) { <button type="button" class="text-button" [disabled]="saving()" [attr.aria-label]="t(state === 'idle' ? 'removeIdle' : 'removeTalking')" (click)="removeAsset(state)">{{ t('removeImage') }}</button> }
-                  </div>
-                }
+        <!-- One-time setup: where the pet runs -->
+        <section class="lf-tile pet-setup" id="pet-setup" [class.pet-setup--warn]="!token()?.exists && !tokenLoading()" aria-labelledby="pet-setup-title">
+          <div class="lf-card-head">
+            <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="monitor" /></span>
+            <div>
+              <h2 class="lf-h2" id="pet-setup-title">{{ t('overlayTitle') }}</h2>
+              <p class="lf-note">{{ t('overlayHint') }}</p>
+            </div>
+          </div>
+          <div class="overlay-controls ph-no-capture">
+            @if (tokenLoading()) { <p class="lf-note" role="status">{{ t('loading') }}</p> }
+            @else if (overlayUrl()) {
+              <div class="pet-url">
+                <label class="lf-field pet-url__field"><span class="sr-only">{{ t('overlayUrl') }}</span><input class="lf-input pet-url__input overlay-url" type="text" [value]="overlayUrl()" readonly autocomplete="off" [attr.aria-label]="t('overlayUrl')"></label>
+                <button type="button" class="lf-btn lf-btn--primary" (click)="copyOverlayUrl()"><app-lf-icon name="copy" [size]="16" />{{ t(copied() ? 'copied' : 'copyUrl') }}</button>
               </div>
-              <p>{{ t('imageHint') }}</p>
-            } @else { <p>{{ t('vtsHint') }}</p> }
-          </section>
-
-          <section class="lf-tile moods-tile" aria-labelledby="moods-title">
-            <div class="section-head"><span class="section-icon"><app-lf-icon name="smile" /></span><div><h2 id="moods-title">{{ t('moodsTitle') }}</h2><p>{{ t('moodsHint') }}</p></div></div>
-            @if (moodsAvailable()) {
-              <label class="toggle row-toggle source-switch"><span>{{ t('moodsEnabled') }}</span><span class="switch-control"><input type="checkbox" role="switch" formControlName="moodsEnabled" aria-describedby="moods-help"><span class="switch-track" aria-hidden="true"></span></span></label>
-              <p id="moods-help">{{ t('moodsFallback') }}</p>
-              <label class="field">{{ t('moodHold') }}<input type="number" min="0" max="10000" step="1" formControlName="moodHoldMs" aria-describedby="mood-hold-help"></label>
-              <p id="mood-hold-help">{{ t('moodHoldHint') }}</p>
-              <div class="mood-toolbar"><strong>{{ t('moodSlots') }}: {{ moodImageCount() }} / {{ moodImageLimit() }}</strong><button type="button" class="lf-btn" [disabled]="saving()" (click)="resetMoodEmotions()">{{ t('moodsReset') }}</button></div>
-              <p>{{ t('moodAllowance') }}</p>
-              @if (moodImageCount() > moodImageLimit()) { <p class="credit-note" role="status">{{ t('moodDowngrade') }}</p> }
-              @for (mood of moodNames; track mood) {
-                <details class="mood-row" [attr.data-mood]="mood">
-                  <summary>{{ t('mood.' + mood) }} <span class="mood-count">{{ moodDraft().emotions[mood].length }} {{ t('moodTags') }}</span></summary>
-                  <div class="mood-content">
-                    <div class="mood-tags" [attr.aria-label]="t('mood.' + mood)">
-                      @for (tag of moodDraft().emotions[mood]; track tag) {
-                        <button type="button" class="mood-tag" [disabled]="saving()" [attr.aria-label]="t('moodRemoveTag') + ' ' + tag" (click)="removeMoodEmotion(mood, tag)"><span>{{ tag }}</span><span aria-hidden="true">×</span></button>
-                      }
-                      @empty { <p>{{ t('moodNoTags') }}</p> }
+            } @else if (token()?.exists) {
+              <p class="lf-note">{{ t('overlayRecoverHint') }}</p>
+              <div class="pet-url">
+                <label class="lf-field pet-url__field">{{ t('overlayExistingUrl') }}<input class="lf-input" type="text" [formControl]="recoveryUrl" maxlength="2048" autocomplete="off" spellcheck="false"></label>
+                <button type="button" class="lf-btn" (click)="recoverOverlayUrl()">{{ t('overlayRecover') }}</button>
+              </div>
+            } @else if (token()) {
+              <button type="button" class="lf-btn lf-btn--primary pet-create" (click)="issueToken()"><app-lf-icon name="plus" [size]="16" />{{ t('createUrl') }}</button>
+            } @else { <button type="button" class="lf-btn" (click)="loadToken()">{{ t('retry') }}</button> }
+            @if (copied()) { <p class="sr-only" role="status">{{ t('copied') }}</p> }
+            @if (tokenError()) { <p class="lf-note lf-note--error" role="alert">{{ t(tokenError()) }}</p><button type="button" class="lf-btn lf-btn--compact" [disabled]="tokenLoading()" (click)="loadToken()">{{ t('reloadUrl') }}</button> }
+            @if (token()?.exists && !tokenLoading()) {
+              <details class="lf-more">
+                <summary>{{ t('urlMore') }}</summary>
+                <div class="lf-more__body">
+                  <p class="lf-note">{{ t('overlayPrivate') }}</p>
+                  @if (!confirmingRotation()) {
+                    <button type="button" class="lf-btn lf-btn--compact" (click)="confirmingRotation.set(true)">{{ t('regenerateUrl') }}</button>
+                  } @else {
+                    <div class="pet-confirm" role="alertdialog" aria-labelledby="pet-rotate-warning">
+                      <p id="pet-rotate-warning">{{ t('regenerateWarning') }}</p>
+                      <div class="pet-actions"><button type="button" class="lf-btn lf-btn--compact" [disabled]="tokenLoading()" (click)="confirmingRotation.set(false)">{{ t('cancel') }}</button><button type="button" class="lf-btn lf-btn--compact lf-btn--danger" [disabled]="tokenLoading()" (click)="issueToken(true)">{{ t('confirmRegenerate') }}</button></div>
                     </div>
-                    <label class="field">{{ t('moodAddTag') }}<select [disabled]="saving() || !unassignedEmotions().length" (change)="addMoodEmotion(mood, $event)"><option value="">{{ t('moodSelectTag') }}</option>@for (tag of unassignedEmotions(); track tag) { <option [value]="tag">{{ tag }}</option> }</select></label>
-                    <div class="appearance-pair">
-                      @for (state of appearanceStates; track state) {
-                        <div class="image-choice">
-                          <h3>{{ t(state) }}</h3>
-                          @if (moodImageInactive(mood, state)) { <p class="mood-inactive">{{ t('moodInactive') }}</p> }
-                          <div class="image-preview">@if (moodAssetId(mood, state); as asset) { <app-asset-preview [assetId]="asset" [owner]="channelID()!" kind="image" [name]="t('mood.' + mood) + ' ' + t(state)" /> } @else { <span>{{ t('moodNormalImage') }}</span> }</div>
-                          <button type="button" class="lf-btn" [disabled]="saving()" [attr.aria-label]="t('mood.' + mood) + ' ' + t(state) + ': ' + t('chooseImage')" (click)="pickingMoodAsset.set({ mood, state })">{{ t(moodAssetId(mood, state) ? 'changeImage' : 'chooseImage') }}</button>
-                          @if (moodAssetId(mood, state)) { <button type="button" class="text-button" [disabled]="saving()" [attr.aria-label]="t('mood.' + mood) + ' ' + t(state) + ': ' + t('removeImage')" (click)="removeMoodAsset(mood, state)">{{ t('removeImage') }}</button> }
-                        </div>
-                      }
-                    </div>
-                  </div>
-                </details>
-              }
-            } @else {
-              <label class="toggle row-toggle"><span>{{ t('moodsEnabled') }}</span><input type="checkbox" role="switch" disabled [checked]="false" aria-describedby="moods-upgrade"></label>
-              <p id="moods-upgrade">{{ t('moodsUpgrade') }}</p><a class="text-link" routerLink="/pricing">{{ t('moodsViewPlans') }}</a>
+                  }
+                </div>
+              </details>
             }
-          </section>
+          </div>
 
-          <section class="lf-tile output-tile" aria-labelledby="output-title">
-            <div class="section-head"><span class="section-icon"><app-lf-icon name="monitor" /></span><div><h2 id="output-title">{{ t('outputTitle') }}</h2><p>{{ t('outputHint') }}</p></div></div>
-            <label class="field">{{ t('audioOutput') }}<select formControlName="playbackTarget"><option value="browser">{{ t('browserOutput') }}</option><option value="desktop">{{ t('desktopOutput') }}</option></select></label>
-            @if (draft().playback.target === 'desktop') {
-              <label class="field">{{ t('audioComputer') }}<select formControlName="desktopSessionId"><option [ngValue]="null">{{ t('selectComputer') }}</option>
+          <fieldset class="pet-seg-field">
+            <legend class="lf-label">{{ t('audioOutput') }}</legend>
+            <div class="lf-seg">
+              <label class="lf-seg__opt"><input type="radio" formControlName="playbackTarget" value="browser"><span>{{ t('browserOutput') }}</span></label>
+              <label class="lf-seg__opt"><input type="radio" formControlName="playbackTarget" value="desktop"><span>{{ t('desktopOutput') }}</span></label>
+            </div>
+            <p class="lf-note">{{ t(draft().playback.target === 'desktop' ? 'deviceHint' : 'browserOutputHint') }}</p>
+          </fieldset>
+          @if (draft().playback.target === 'desktop') {
+            <div class="pet-computer">
+              <label class="lf-field">{{ t('audioComputer') }}<select class="lf-input" formControlName="desktopSessionId" [attr.aria-invalid]="draft().enabled && !draft().playback.desktopSessionId">
+                <option [ngValue]="null">{{ t('selectComputer') }}</option>
                 @if (audioSessionMissing()) { <option [value]="draft().playback.desktopSessionId">{{ t('savedComputerUnavailable') }}</option> }
                 @for (session of desktopSessions(); track session.sessionId) { <option [value]="session.sessionId">{{ session.label }}{{ session.audioReady ? '' : ' · ' + t('notReady') }}</option> }
-              </select></label><p>{{ t('deviceHint') }}</p>
-            }
-            @if (draft().appearance.kind === 'vts') {
-              <label class="field">{{ t('vtsComputer') }}<select formControlName="vtsSessionId"><option [ngValue]="null">{{ t('selectComputer') }}</option>
-                @if (vtsSessionMissing()) { <option [value]="draft().playback.vtsSessionId">{{ t('savedComputerUnavailable') }}</option> }
-                @for (session of desktopSessions(); track session.sessionId) { <option [value]="session.sessionId">{{ session.label }}{{ session.vtsReady ? '' : ' · ' + t('notReady') }}</option> }
-              </select></label><p>{{ t('vtsOutputHint') }}</p>
-            }
-            @if (draft().playback.target === 'desktop' || draft().appearance.kind === 'vts') {
-              @if (runtimeError()) { <p class="error" role="alert">{{ t('runtimeError') }}</p> }
-              @else if (!runtimeLoading() && !desktopSessions().length) { <p>{{ t('noComputers') }}</p> }
-              <button type="button" class="lf-btn" [disabled]="runtimeLoading()" (click)="refreshRuntime()"><app-lf-icon name="refresh" [size]="16" />{{ t(runtimeLoading() ? 'refreshing' : 'refreshComputers') }}</button>
-            }
-            <div class="overlay-controls ph-no-capture"><h3>{{ t('overlayTitle') }}</h3>
-              <p>{{ t('overlayHint') }}</p>
-              @if (tokenLoading()) { <p role="status">{{ t('loading') }}</p> }
-              @else if (overlayUrl()) {
-                <label class="field">{{ t('overlayUrl') }}<input class="overlay-url" type="text" [value]="overlayUrl()" readonly autocomplete="off"></label>
-                <div class="output-actions"><button type="button" class="lf-btn" (click)="copyOverlayUrl()"><app-lf-icon name="copy" [size]="16" />{{ t(copied() ? 'copied' : 'copyUrl') }}</button></div>
-              } @else if (token()?.exists) {
-                <p>{{ t('overlayRecoverHint') }}</p>
-                <label class="field">{{ t('overlayExistingUrl') }}<input type="text" [formControl]="recoveryUrl" maxlength="2048" autocomplete="off" spellcheck="false"></label>
-                <button type="button" class="lf-btn" (click)="recoverOverlayUrl()">{{ t('overlayRecover') }}</button>
-              } @else if (token()) { <button type="button" class="lf-btn" (click)="issueToken()">{{ t('createUrl') }}</button> }
-              @else { <button type="button" class="lf-btn" (click)="loadToken()">{{ t('retry') }}</button> }
-              @if (token()?.exists && !tokenLoading()) { <button type="button" class="text-button" (click)="confirmingRotation.set(true)">{{ t('regenerateUrl') }}</button> }
-              @if (confirmingRotation()) {
-                <div class="rotation-confirm"><p>{{ t('regenerateWarning') }}</p><div class="output-actions"><button type="button" class="lf-btn" [disabled]="tokenLoading()" (click)="confirmingRotation.set(false)">{{ t('cancel') }}</button><button type="button" class="lf-btn primary" [disabled]="tokenLoading()" (click)="issueToken(true)">{{ t('confirmRegenerate') }}</button></div></div>
-              }
-              @if (tokenError()) { <p class="error" role="alert">{{ t(tokenError()) }}</p><button type="button" class="lf-btn" [disabled]="tokenLoading()" (click)="loadToken()">{{ t('reloadUrl') }}</button> }
-              @if (copied()) { <p role="status">{{ t('copied') }}</p> }
-            </div>
-          </section>
-
-          <section class="lf-tile voice-tile" aria-labelledby="voice-title">
-            <div class="section-head"><span class="section-icon"><app-lf-icon name="audio" /></span><div><h2 id="voice-title">{{ t('voiceTitle') }}</h2><p>{{ t('voiceHint') }}</p></div></div>
-            <label class="field">{{ t('name') }}<input formControlName="name" maxlength="40" autocomplete="off"></label>
-            <label class="toggle row-toggle"><span>{{ t('speechEnabled') }}</span><input type="checkbox" formControlName="speechEnabled"></label>
-            <fieldset class="providers"><legend>{{ t('provider') }}</legend><div class="choices">
-              @for (provider of providers; track provider) {
-                <button type="button" class="choice" [class.selected]="draft().tts.provider === provider" [attr.aria-pressed]="draft().tts.provider === provider" [disabled]="saving()" (click)="chooseProvider(provider)"><strong>{{ t(provider) }}</strong><small>{{ t(provider + 'Hint') }}</small></button>
-              }
-            </div></fieldset>
-            @if (draft().tts.provider !== 'piper') { <p class="credit-note">{{ t('credits') }}</p> }
-            <div class="field-pair">
-              <label class="field">{{ t('language') }}<select formControlName="language" (change)="ensureVoice()"><option value="en">English</option><option value="es">Español</option></select></label>
-              <label class="field">{{ t('voice') }}<select formControlName="voice">
-                @if (customFishVoice()) { <option [value]="draft().tts.voice">{{ t('currentFishVoice') }}</option> }
-                @if (draft().tts.provider === 'fish') {
-                  <optgroup [label]="t('defaultVoices')">
-                    @for (voice of voices(); track voice.id) { <option [value]="voice.id">{{ voice.name }}</option> }
-                  </optgroup>
-                  @if (favoriteVoiceOptions().length) {
-                    <optgroup [label]="t('favoriteVoices')">
-                      @for (voice of favoriteVoiceOptions(); track voice.id) { <option [value]="voice.id">{{ voice.name }}</option> }
-                    </optgroup>
-                  }
-                } @else {
-                  @for (voice of voices(); track voice.id) { <option [value]="voice.id">{{ voice.name }}</option> }
-                }
               </select></label>
+              <ng-container [ngTemplateOutlet]="computersState" />
             </div>
-            @if (draft().tts.provider === 'fish') {
-              <div class="fish-favorites-help">
-                @if (favoritesLoading()) { <p role="status">{{ t('favoritesLoading') }}</p> }
-                @else if (favoritesError()) {
-                  <p class="error" role="alert">{{ t('favoritesError') }}</p>
-                  <button type="button" class="lf-btn" (click)="loadFavorites()">{{ t('retry') }}</button>
-                } @else if (!fishFavorites().length) { <p>{{ t('favoritesEmpty') }}</p> }
-                <a class="text-link" [routerLink]="ttsPath()" fragment="fish-voice-favorites">{{ t('manageFavorites') }} <app-lf-icon name="forward" [size]="16" /></a>
+          }
+        </section>
+
+        <div class="lf-panels">
+          <div class="lf-col lf-col--main">
+            <!-- 1. Name and look -->
+            <section class="lf-tile lf-card" id="pet-look" aria-labelledby="pet-look-title">
+              <div class="lf-card-head">
+                <span class="lf-step__num" aria-hidden="true">1</span>
+                <div><h2 class="lf-h2" id="pet-look-title">{{ t('appearanceTitle') }}</h2><p class="lf-note">{{ t('appearanceHint') }}</p></div>
               </div>
-              <details><summary>{{ t('customVoice') }}</summary><label class="field">{{ t('voiceId') }}<input formControlName="voice" maxlength="32" spellcheck="false" [attr.aria-describedby]="'voice-id-help'"></label><p id="voice-id-help">{{ t('voiceIdHint') }}</p></details>
-            }
-          </section>
+              <label class="lf-field">{{ t('name') }}<input class="lf-input" formControlName="name" maxlength="40" autocomplete="off" [attr.aria-invalid]="form.controls.name.invalid"></label>
+              <fieldset class="lf-engines">
+                <legend class="lf-label">{{ t('appearanceKind') }}</legend>
+                <label class="lf-engine" [class.lf-engine--on]="draft().appearance.kind === 'png'">
+                  <input type="radio" formControlName="appearanceKind" value="png">
+                  <span class="lf-engine__body"><span class="lf-engine__name">{{ t('png') }} <span class="lf-chip lf-chip--xs lf-chip--ok">{{ t('pngTag') }}</span></span><span class="lf-engine__copy">{{ t('pngCopy') }}</span></span>
+                </label>
+                <label class="lf-engine" [class.lf-engine--on]="draft().appearance.kind === 'vts'">
+                  <input type="radio" formControlName="appearanceKind" value="vts">
+                  <span class="lf-engine__body"><span class="lf-engine__name">{{ t('vts') }} <span class="lf-chip lf-chip--xs lf-chip--accent">{{ t('vtsTag') }}</span></span><span class="lf-engine__copy">{{ t('vtsCopy') }}</span></span>
+                </label>
+              </fieldset>
+              @if (draft().appearance.kind === 'png') {
+                <div class="appearance-pair">
+                  @for (state of appearanceStates; track state) {
+                    <div class="image-choice" [class.image-choice--missing]="draft().enabled && !assetId(state)">
+                      <div class="image-preview">
+                        @if (assetId(state); as asset) { <app-asset-preview [assetId]="asset" [owner]="channelID()!" kind="image" [name]="t(state)" /> }
+                        @else { <span class="image-preview__empty"><app-lf-icon name="image" [size]="22" />{{ t('noImage') }}</span> }
+                      </div>
+                      <h3 class="lf-h3">{{ t(state) }}</h3>
+                      <div class="image-choice__actions">
+                        <button type="button" class="lf-btn lf-btn--compact" [disabled]="saving()" [attr.aria-label]="t(state === 'idle' ? 'chooseIdle' : 'chooseTalking')" (click)="pickingAsset.set(state)">{{ t(assetId(state) ? 'changeImage' : 'chooseImage') }}</button>
+                        @if (assetId(state)) { <button type="button" class="lf-icon-btn" [disabled]="saving()" [attr.aria-label]="t(state === 'idle' ? 'removeIdle' : 'removeTalking')" (click)="removeAsset(state)"><app-lf-icon name="trash" [size]="16" /></button> }
+                      </div>
+                    </div>
+                  }
+                </div>
+                <p class="lf-note">{{ t('imageHint') }}</p>
+              } @else {
+                <p class="lf-note">{{ t('vtsHint') }}</p>
+                <label class="lf-field">{{ t('vtsComputer') }}<select class="lf-input" formControlName="vtsSessionId" [attr.aria-invalid]="draft().enabled && !draft().playback.vtsSessionId">
+                  <option [ngValue]="null">{{ t('selectComputer') }}</option>
+                  @if (vtsSessionMissing()) { <option [value]="draft().playback.vtsSessionId">{{ t('savedComputerUnavailable') }}</option> }
+                  @for (session of desktopSessions(); track session.sessionId) { <option [value]="session.sessionId">{{ session.label }}{{ session.vtsReady ? '' : ' · ' + t('notReady') }}</option> }
+                </select></label>
+                <ng-container [ngTemplateOutlet]="computersState" />
+              }
+            </section>
 
-          <section class="lf-tile personality-tile" aria-labelledby="personality-title">
-            <div class="section-head"><span class="section-icon"><app-lf-icon name="smile" /></span><div><h2 id="personality-title">{{ t('personalityTitle') }}</h2><p>{{ t('personalityHint') }}</p></div></div>
-            <label class="field">{{ t('personalitySource') }}<select formControlName="personalitySource"><option value="custom">{{ t('customPersonality') }}</option><option value="profile">{{ t('savedProfile') }}</option></select></label>
-            @if (draft().personality.source === 'profile') {
-              <label class="field">{{ t('profile') }}<select formControlName="profileId"><option value="">{{ t('selectProfile') }}</option>@for (profile of config()!.profiles; track profile.id) { <option [value]="profile.id">{{ profile.name }}</option> }</select></label>
-              @if (!config()!.profiles.length) { <p>{{ t('noProfiles') }}</p> }
-              <p>{{ t('profileHint') }}</p><a class="text-link" [routerLink]="personalityPath()">{{ t('manageProfiles') }} <app-lf-icon name="forward" [size]="16" /></a>
+            <!-- Moods (Premium / Pro) -->
+            <section class="lf-tile lf-card moods-tile" id="pet-moods" aria-labelledby="moods-title">
+              <div class="lf-toggle-row">
+                <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="smile" /></span>
+                <div class="lf-toggle-row__copy"><h2 class="lf-h2" id="moods-title">{{ t('moodsTitle') }}</h2><p class="lf-note">{{ t('moodsHint') }}</p></div>
+                @if (moodsAvailable()) {
+                  <label class="lf-switch"><input type="checkbox" role="switch" formControlName="moodsEnabled" [attr.aria-label]="t('moodsEnabled')"><span class="lf-switch__track" aria-hidden="true"></span></label>
+                } @else {
+                  <label class="lf-switch"><input type="checkbox" role="switch" disabled [checked]="false" [attr.aria-label]="t('moodsEnabled')" aria-describedby="moods-upgrade"><span class="lf-switch__track" aria-hidden="true"></span></label>
+                }
+              </div>
+              @if (moodsAvailable()) {
+                <div class="mood-toolbar">
+                  <span class="lf-chip" [class.lf-chip--warn]="moodImageCount() > moodImageLimit()"><app-lf-icon name="image" [size]="13" />{{ t('moodSlots') }}: {{ moodImageCount() }} / {{ moodImageLimit() }}</span>
+                  <label class="lf-field mood-hold">{{ t('moodHold') }}<input class="lf-input" type="number" min="0" max="10000" step="100" inputmode="numeric" formControlName="moodHoldMs" aria-describedby="mood-hold-help" [attr.aria-invalid]="form.controls.moodHoldMs.invalid"></label>
+                </div>
+                <p class="lf-note" [class.lf-note--error]="form.controls.moodHoldMs.invalid" id="mood-hold-help">{{ t(form.controls.moodHoldMs.invalid ? 'moodHoldInvalid' : 'moodHoldHint') }}</p>
+                @if (moodImageCount() > moodImageLimit()) { <p class="lf-note lf-note--warn" role="status">{{ t('moodDowngrade') }}</p> }
+                <div class="mood-list">
+                  @for (mood of moodNames; track mood) {
+                    <details class="mood-row" [attr.data-mood]="mood">
+                      <summary>
+                        <span class="mood-thumb" aria-hidden="true">
+                          @if (moodAssetId(mood, 'idle'); as asset) { <app-asset-preview [assetId]="asset" [owner]="channelID()!" kind="image" [name]="''" /> }
+                          @else { <app-lf-icon name="smile" [size]="18" /> }
+                        </span>
+                        <span class="mood-row__text"><span class="mood-row__name">{{ t('mood.' + mood) }}</span>
+                          <span class="mood-count"><span>{{ moodDraft().emotions[mood].length }} {{ t('moodTags') }}</span><span><app-lf-icon name="image" [size]="11" /> {{ moodImagesFor(mood) }}/2</span></span></span>
+                        <app-lf-icon class="mood-row__chev" name="chevron-down" [size]="16" />
+                      </summary>
+                      <div class="mood-content">
+                        <div class="appearance-pair">
+                          @for (state of appearanceStates; track state) {
+                            <div class="image-choice">
+                              <div class="image-preview image-preview--small">@if (moodAssetId(mood, state); as asset) { <app-asset-preview [assetId]="asset" [owner]="channelID()!" kind="image" [name]="t('mood.' + mood) + ' ' + t(state)" /> } @else { <span class="image-preview__empty">{{ t('moodNormalImage') }}</span> }</div>
+                              <h3 class="lf-h3">{{ t(state) }}</h3>
+                              @if (moodImageInactive(mood, state)) { <p class="lf-note lf-note--warn mood-inactive">{{ t('moodInactive') }}</p> }
+                              <div class="image-choice__actions">
+                                <button type="button" class="lf-btn lf-btn--compact" [disabled]="saving()" [attr.aria-label]="t('mood.' + mood) + ' ' + t(state) + ': ' + t('chooseImage')" (click)="pickingMoodAsset.set({ mood, state })">{{ t(moodAssetId(mood, state) ? 'changeImage' : 'chooseImage') }}</button>
+                                @if (moodAssetId(mood, state)) { <button type="button" class="lf-icon-btn" [disabled]="saving()" [attr.aria-label]="t('mood.' + mood) + ' ' + t(state) + ': ' + t('removeImage')" (click)="removeMoodAsset(mood, state)"><app-lf-icon name="trash" [size]="16" /></button> }
+                              </div>
+                            </div>
+                          }
+                        </div>
+                        <div class="mood-tags-block">
+                          <p class="lf-label">{{ t('moodTagsLabel') }}</p>
+                          <div class="mood-tags" role="group" [attr.aria-label]="t('mood.' + mood)">
+                            @for (tag of moodDraft().emotions[mood]; track tag) {
+                              <button type="button" class="mood-tag" [disabled]="saving()" [attr.aria-label]="t('moodRemoveTag') + ' ' + tag" (click)="removeMoodEmotion(mood, tag)"><span>{{ tag }}</span><span aria-hidden="true">×</span></button>
+                            }
+                            @empty { <p class="lf-note">{{ t('moodNoTags') }}</p> }
+                          </div>
+                          <label class="lf-field mood-add">{{ t('moodAddTag') }}<select class="lf-input" [disabled]="saving() || !unassignedEmotions().length" (change)="addMoodEmotion(mood, $event)"><option value="">{{ t('moodSelectTag') }}</option>@for (tag of unassignedEmotions(); track tag) { <option [value]="tag">{{ tag }}</option> }</select></label>
+                        </div>
+                      </div>
+                    </details>
+                  }
+                </div>
+                <div class="mood-foot">
+                  <p class="lf-note">{{ t('moodAllowance') }}</p>
+                  <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" [disabled]="saving()" (click)="resetMoodEmotions()">{{ t('moodsReset') }}</button>
+                </div>
+                @if (moodTier() === 'premium' && moodImageCount() >= moodImageLimit()) {
+                  <p class="pet-upsell"><span>{{ t('moodsProUpsell') }}</span><a class="lf-link" routerLink="/pricing">{{ t('moodsViewPlans') }} <app-lf-icon name="forward" [size]="14" /></a></p>
+                }
+              } @else {
+                <p class="lf-note" id="moods-upgrade">{{ t('moodsUpgrade') }}</p><a class="lf-link" routerLink="/pricing">{{ t('moodsViewPlans') }} <app-lf-icon name="forward" [size]="14" /></a>
+              }
+            </section>
+
+            <!-- 2. What it says -->
+            <section class="lf-tile lf-card" id="pet-speech" aria-labelledby="pet-speech-title">
+              <div class="lf-card-head">
+                <span class="lf-step__num" aria-hidden="true">2</span>
+                <div><h2 class="lf-h2" id="pet-speech-title">{{ t('sourcesTitle') }}</h2><p class="lf-note">{{ t('sourcesHint') }}</p></div>
+              </div>
+              <div class="pet-source">
+                <div class="lf-toggle-row lf-toggle-row--plain">
+                  <div class="lf-toggle-row__copy"><h3 class="lf-h3" id="read-tts-label">{{ t('readTts') }}</h3><p class="lf-note" id="read-tts-help">{{ t('readTtsHint') }}</p></div>
+                  <label class="lf-switch"><input type="checkbox" role="switch" formControlName="readTts" aria-labelledby="read-tts-label" aria-describedby="read-tts-help"><span class="lf-switch__track" aria-hidden="true"></span></label>
+                </div>
+                @if (draft().sources.readTts) {
+                  <fieldset class="pet-seg-field pet-source__extra">
+                    <legend class="lf-label">{{ t('ttsAudio') }}</legend>
+                    <div class="lf-seg">
+                      <label class="lf-seg__opt"><input type="radio" formControlName="ttsAudio" value="pet"><span>{{ t('ttsAudioPet') }}</span></label>
+                      <label class="lf-seg__opt"><input type="radio" formControlName="ttsAudio" value="overlay"><span>{{ t('ttsAudioOverlay') }}</span></label>
+                    </div>
+                    <p class="lf-note">{{ t(draft().ttsAudio === 'pet' ? 'ttsAudioPetHint' : 'ttsAudioOverlayHint') }}</p>
+                  </fieldset>
+                }
+              </div>
+              <div class="pet-source">
+                <div class="lf-toggle-row lf-toggle-row--plain">
+                  <div class="lf-toggle-row__copy"><h3 class="lf-h3" id="independent-label">{{ t('independent') }}</h3><p class="lf-note" id="independent-help">{{ t('independentHint') }}</p></div>
+                  <label class="lf-switch"><input type="checkbox" role="switch" formControlName="independent" aria-labelledby="independent-label" aria-describedby="independent-help"><span class="lf-switch__track" aria-hidden="true"></span></label>
+                </div>
+              </div>
+            </section>
+
+            @if (draft().sources.independent) {
+              <!-- 3. Voice -->
+              <section class="lf-tile lf-card voice-tile" id="pet-voice" aria-labelledby="pet-voice-title">
+                <div class="lf-toggle-row">
+                  <span class="lf-step__num" aria-hidden="true">3</span>
+                  <div class="lf-toggle-row__copy"><h2 class="lf-h2" id="pet-voice-title">{{ t('voiceTitle') }}</h2><p class="lf-note">{{ t(draft().tts.enabled ? 'voiceHint' : 'voiceMutedHint') }}</p></div>
+                  <label class="lf-switch"><input type="checkbox" role="switch" formControlName="speechEnabled" [attr.aria-label]="t('speechEnabled')"><span class="lf-switch__track" aria-hidden="true"></span></label>
+                </div>
+                <fieldset class="lf-engines pet-providers" [disabled]="saving()">
+                  <legend class="lf-label">{{ t('provider') }}</legend>
+                  @for (provider of providers; track provider) {
+                    <label class="lf-engine" [class.lf-engine--on]="draft().tts.provider === provider">
+                      <input type="radio" name="pet-provider" [value]="provider" [checked]="draft().tts.provider === provider" (change)="chooseProvider(provider)">
+                      <span class="lf-engine__body">
+                        <span class="lf-engine__name">{{ t(provider) }} <span class="lf-chip lf-chip--xs" [class.lf-chip--ok]="provider === 'piper'" [class.lf-chip--gold]="provider !== 'piper'">{{ t(provider === 'piper' ? 'freeTag' : 'creditsTag') }}</span></span>
+                        <span class="lf-engine__copy pet-provider__copy">{{ t(provider + 'Hint') }}</span>
+                      </span>
+                    </label>
+                  }
+                </fieldset>
+                @if (draft().tts.provider !== 'piper') { <p class="lf-note lf-note--gold"><app-lf-icon name="zap" [size]="14" />{{ t('credits') }}</p> }
+                <div class="lf-form-grid lf-form-grid--2">
+                  <label class="lf-field">{{ t('language') }}<select class="lf-input" formControlName="language" (change)="ensureVoice()"><option value="en">English</option><option value="es">Español</option></select></label>
+                  <label class="lf-field">{{ t('voice') }}<select class="lf-input" formControlName="voice">
+                    @if (customFishVoice()) { <option [value]="draft().tts.voice">{{ t('currentFishVoice') }}</option> }
+                    @if (draft().tts.provider === 'fish') {
+                      <optgroup [label]="t('defaultVoices')">
+                        @for (voice of voices(); track voice.id) { <option [value]="voice.id">{{ voice.name }}</option> }
+                      </optgroup>
+                      @if (favoriteVoiceOptions().length) {
+                        <optgroup [label]="t('favoriteVoices')">
+                          @for (voice of favoriteVoiceOptions(); track voice.id) { <option [value]="voice.id">{{ voice.name }}</option> }
+                        </optgroup>
+                      }
+                    } @else {
+                      @for (voice of voices(); track voice.id) { <option [value]="voice.id">{{ voice.name }}</option> }
+                    }
+                  </select></label>
+                </div>
+                @if (draft().tts.provider === 'fish') {
+                  <div class="fish-favorites-help">
+                    @if (favoritesLoading()) { <p class="lf-note" role="status">{{ t('favoritesLoading') }}</p> }
+                    @else if (favoritesError()) {
+                      <p class="lf-note lf-note--error" role="alert">{{ t('favoritesError') }}</p>
+                      <button type="button" class="lf-btn lf-btn--compact" (click)="loadFavorites()">{{ t('retry') }}</button>
+                    } @else if (!fishFavorites().length) { <p class="lf-note">{{ t('favoritesEmpty') }}</p> }
+                    <a class="lf-link" [routerLink]="ttsPath()" fragment="fish-voice-favorites">{{ t('manageFavorites') }} <app-lf-icon name="forward" [size]="14" /></a>
+                  </div>
+                  <details class="lf-more"><summary>{{ t('customVoice') }}</summary><div class="lf-more__body"><label class="lf-field">{{ t('voiceId') }}<input class="lf-input" formControlName="voice" maxlength="32" spellcheck="false" aria-describedby="voice-id-help"></label><p class="lf-note" id="voice-id-help">{{ t('voiceIdHint') }}</p></div></details>
+                }
+              </section>
+
+              <!-- 4. Personality -->
+              <section class="lf-tile lf-card" id="pet-personality" aria-labelledby="pet-personality-title">
+                <div class="lf-card-head">
+                  <span class="lf-step__num" aria-hidden="true">4</span>
+                  <div><h2 class="lf-h2" id="pet-personality-title">{{ t('personalityTitle') }}</h2><p class="lf-note">{{ t('personalityHint') }}</p></div>
+                </div>
+                <fieldset class="pet-seg-field">
+                  <legend class="lf-label">{{ t('personalitySource') }}</legend>
+                  <div class="lf-seg">
+                    <label class="lf-seg__opt"><input type="radio" formControlName="personalitySource" value="custom"><span>{{ t('customPersonality') }}</span></label>
+                    <label class="lf-seg__opt"><input type="radio" formControlName="personalitySource" value="profile"><span>{{ t('savedProfile') }}</span></label>
+                  </div>
+                </fieldset>
+                @if (draft().personality.source === 'profile') {
+                  <label class="lf-field">{{ t('profile') }}<select class="lf-input" formControlName="profileId" [attr.aria-invalid]="!profileValid()"><option value="">{{ t('selectProfile') }}</option>@for (profile of config()!.profiles; track profile.id) { <option [value]="profile.id">{{ profile.name }}</option> }</select></label>
+                  @if (!config()!.profiles.length) { <p class="lf-note lf-note--warn">{{ t('noProfiles') }}</p> }
+                  <p class="lf-note">{{ t('profileHint') }}</p><a class="lf-link" [routerLink]="personalityPath()">{{ t('manageProfiles') }} <app-lf-icon name="forward" [size]="14" /></a>
+                } @else {
+                  <label class="lf-field">{{ t('prompt') }}<textarea class="lf-input" formControlName="prompt" rows="4" maxlength="4000" aria-describedby="prompt-help" [attr.placeholder]="t('promptPlaceholder')" [attr.aria-invalid]="!draft().personality.prompt"></textarea></label>
+                  <p class="lf-note" id="prompt-help">{{ t('promptHint') }} <span class="pet-count">{{ form.controls.prompt.value.length }}/4000</span></p>
+                }
+                @if (config()!.runtime.issues.includes('personality_unavailable')) { <p class="lf-note lf-note--error" role="alert">{{ t('profileMissing') }}</p> }
+                <label class="lf-field">{{ t('rules') }}<textarea class="lf-input" formControlName="rules" rows="3" [attr.placeholder]="t('rulesPlaceholder')" aria-describedby="rules-help" [attr.aria-invalid]="!rulesValid()"></textarea></label>
+                <p class="lf-note" id="rules-help" [class.lf-note--error]="!rulesValid()">{{ t('rulesLimit') }} <span class="pet-count">{{ draft().rules.length }}/20</span></p>
+              </section>
+
+              <!-- 5. When it joins in -->
+              <section class="lf-tile lf-card" id="pet-behavior" aria-labelledby="pet-behavior-title">
+                <div class="lf-card-head">
+                  <span class="lf-step__num" aria-hidden="true">5</span>
+                  <div><h2 class="lf-h2" id="pet-behavior-title">{{ t('behaviorTitle') }}</h2><p class="lf-note">{{ t('behaviorHint') }}</p></div>
+                </div>
+                <div class="pet-checks">
+                  <label class="pet-check"><input type="checkbox" formControlName="respondToChat"><span class="pet-check__box" aria-hidden="true"><app-lf-icon name="check" [size]="14" /></span><span><strong>{{ t('respondToChat') }}</strong><small>{{ t('respondToChatHint') }}</small></span></label>
+                  <label class="pet-check"><input type="checkbox" formControlName="respondToEvents"><span class="pet-check__box" aria-hidden="true"><app-lf-icon name="check" [size]="14" /></span><span><strong>{{ t('respondToEvents') }}</strong><small>{{ t('respondToEventsHint') }}</small></span></label>
+                </div>
+                <details class="lf-more pet-limits">
+                  <summary><span class="pet-limits__text"><span>{{ t('limitsTitle') }}</span><span class="pet-limits__sum">{{ limitsSummary() }}</span></span></summary>
+                  <div class="lf-more__body pet-limits__body">
+                    <fieldset class="lf-engines">
+                      <legend class="lf-label">{{ t('askLane') }}</legend>
+                      <label class="lf-engine" [class.lf-engine--on]="draft().behavior.askLane === 'independent'">
+                        <input type="radio" formControlName="askLane" value="independent">
+                        <span class="lf-engine__body"><span class="lf-engine__name">{{ t('askLaneIndependent') }}</span><span class="lf-engine__copy">{{ t('askLaneIndependentHint') }}</span></span>
+                      </label>
+                      <label class="lf-engine" [class.lf-engine--on]="draft().behavior.askLane === 'tts'">
+                        <input type="radio" formControlName="askLane" value="tts">
+                        <span class="lf-engine__body"><span class="lf-engine__name">{{ t('askLaneTts') }}</span><span class="lf-engine__copy">{{ t('askLaneTtsHint') }}</span></span>
+                      </label>
+                    </fieldset>
+                    <div class="pet-numbers">
+                      <label class="lf-field">{{ t('cooldown') }}<input class="lf-input" type="number" min="0" max="3600" step="1" inputmode="numeric" formControlName="cooldownSeconds" aria-describedby="cooldown-help" [attr.aria-invalid]="form.controls.cooldownSeconds.invalid"><small id="cooldown-help" [class.pet-bad]="form.controls.cooldownSeconds.invalid">{{ t('cooldownRange') }}</small></label>
+                      <label class="lf-field">{{ t('queueSize') }}<input class="lf-input" type="number" min="1" max="10" step="1" inputmode="numeric" formControlName="queueSize" aria-describedby="queue-help" [attr.aria-invalid]="form.controls.queueSize.invalid"><small id="queue-help" [class.pet-bad]="form.controls.queueSize.invalid">{{ t('queueRange') }}</small></label>
+                      <label class="lf-field">{{ t('maxLength') }}<input class="lf-input" type="number" min="30" max="500" step="1" inputmode="numeric" formControlName="maxReplyLength" aria-describedby="max-help" [attr.aria-invalid]="form.controls.maxReplyLength.invalid"><small id="max-help" [class.pet-bad]="form.controls.maxReplyLength.invalid">{{ t('maxLengthRange') }}</small></label>
+                    </div>
+                    <p class="lf-note">{{ t('queueHint') }}</p>
+                  </div>
+                </details>
+              </section>
             } @else {
-              <label class="field">{{ t('prompt') }}<textarea formControlName="prompt" rows="7" maxlength="4000" [attr.aria-describedby]="'prompt-help'"></textarea></label><p id="prompt-help">{{ t('promptHint') }}</p>
+              <section class="lf-tile pet-off" aria-labelledby="pet-off-title">
+                <h2 class="lf-h3" id="pet-off-title"><app-lf-icon name="mic" [size]="16" />{{ t('independentOffTitle') }}</h2>
+                <p class="lf-note">{{ t('independentOffHint') }}</p>
+                <button type="button" class="lf-btn lf-btn--compact" (click)="form.controls.independent.setValue(true)">{{ t('independentTurnOn') }}</button>
+              </section>
             }
-            @if (config()!.runtime.issues.includes('personality_unavailable')) { <p class="error" role="alert">{{ t('profileMissing') }}</p> }
-          </section>
-
-          <section class="lf-tile rules-tile" aria-labelledby="rules-title">
-            <div class="section-head"><span class="section-icon"><app-lf-icon name="shield" /></span><div><h2 id="rules-title">{{ t('rulesTitle') }}</h2><p>{{ t('rulesHint') }}</p></div></div>
-            <label class="field">{{ t('rules') }}<textarea formControlName="rules" rows="5" [attr.placeholder]="t('rulesPlaceholder')" [attr.aria-describedby]="'rules-help'"></textarea></label><p id="rules-help">{{ t('rulesLimit') }}</p>
-          </section>
-
-          <section class="lf-tile behavior-tile" aria-labelledby="behavior-title">
-            <div class="section-head"><span class="section-icon"><app-lf-icon name="settings" /></span><div><h2 id="behavior-title">{{ t('behaviorTitle') }}</h2><p>{{ t('behaviorHint') }}</p></div></div>
-            <label class="toggle row-toggle"><span>{{ t('respondToChat') }}</span><input type="checkbox" formControlName="respondToChat"></label>
-            <label class="toggle row-toggle"><span>{{ t('respondToEvents') }}</span><input type="checkbox" formControlName="respondToEvents"></label>
-            <div class="field-pair"><label class="field">{{ t('cooldown') }}<input type="number" min="0" max="3600" step="1" formControlName="cooldownSeconds"></label><label class="field">{{ t('maxLength') }}<input type="number" min="30" max="500" step="1" formControlName="maxReplyLength"></label></div>
-            <label class="field">{{ t('askLane') }}<select formControlName="askLane" [attr.aria-label]="t('askLane')" aria-describedby="ask-lane-help"><option value="tts">{{ t('askLaneTts') }}</option><option value="independent">{{ t('askLaneIndependent') }}</option></select></label>
-            <p id="ask-lane-help">{{ t(draft().behavior.askLane === 'tts' ? 'askLaneTtsHint' : 'askLaneIndependentHint') }}</p>
-            <label class="field">{{ t('queueSize') }}<input type="number" min="1" max="10" step="1" formControlName="queueSize" aria-describedby="queue-help"></label>
-            <p id="queue-help">{{ t('queueHint') }}</p>
-          </section>
-        </div>
-
-        <div class="lf-save-bar" [class.is-active]="dirty() || saving() || error()">
-          <div aria-live="polite"><strong>{{ t(saving() ? 'saving' : dirty() ? 'unsaved' : saved() ? 'saved' : 'upToDate') }}</strong>
-            @if (error()) { <p class="error" role="alert">{{ t(error()) }}</p> }
-            @if (dirty() && !valid()) { <p class="error">{{ t('invalid') }}</p> }
           </div>
-          <div class="save-actions"><button type="button" class="lf-btn" [disabled]="!dirty() || saving()" (click)="reset()">{{ t('discard') }}</button><button type="submit" class="lf-btn primary" [disabled]="!dirty() || !valid() || saving()">{{ t('save') }}</button></div>
+
+          <!-- How to use it -->
+          <aside class="lf-col lf-col--side" [attr.aria-label]="t('sideLabel')">
+            <section class="lf-tile lf-card" aria-labelledby="pet-use-title">
+              <div class="lf-card-head">
+                <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="terminal" /></span>
+                <div><h2 class="lf-h2" id="pet-use-title">{{ t('useTitle') }}</h2><p class="lf-note">{{ t('useHint') }}</p></div>
+              </div>
+              <ul class="pet-fns">
+                @for (fn of petFunctions; track fn.code) {
+                  <li class="pet-fn">
+                    <div class="pet-fn__top"><code>{{ fn.code }}</code><button type="button" class="lf-icon-btn" [attr.aria-label]="t('copyFn') + ' ' + fn.code" (click)="copyFunction(fn.code)"><app-lf-icon [name]="copiedFn() === fn.code ? 'check' : 'copy'" [size]="15" /></button></div>
+                    <p class="lf-note">{{ t(fn.hint) }}</p>
+                  </li>
+                }
+              </ul>
+              @if (copiedFn()) { <p class="sr-only" role="status">{{ t('fnCopied') }}</p> }
+              @if (!draft().sources.independent) { <p class="lf-note lf-note--warn">{{ t('fnNeedsIndependent') }}</p> }
+              <div class="pet-links">
+                <a class="lf-link" [routerLink]="commandsPath()">{{ t('openCommands') }} <app-lf-icon name="forward" [size]="14" /></a>
+                <a class="lf-link" [routerLink]="eventsPath()">{{ t('openEvents') }} <app-lf-icon name="forward" [size]="14" /></a>
+              </div>
+            </section>
+
+            <section class="lf-tile lf-card" aria-labelledby="pet-good-title">
+              <h2 class="lf-h3" id="pet-good-title"><app-lf-icon name="bulb" [size]="16" />{{ t('goodToKnow') }}</h2>
+              <ul class="pet-facts">
+                <li>{{ t('factImages') }}</li>
+                <li>{{ t('factLive2d') }}</li>
+                <li>{{ t('factCredits') }}</li>
+                <li>{{ t('factTurns') }}</li>
+              </ul>
+            </section>
+          </aside>
         </div>
-      </form>
+
+        <div class="lf-save-bar" [class.lf-save-bar--dirty]="dirty()" [class.lf-save-bar--error]="!!error() || (dirty() && !valid())">
+          <div class="lf-save-bar__status" aria-live="polite">
+            <strong>{{ t(saving() ? 'saving' : dirty() ? 'unsaved' : saved() ? 'saved' : 'upToDate') }}</strong>
+            @if (error()) { <span class="pet-bad" role="alert">{{ t(error()) }}</span> }
+            @if (dirty() && !valid()) {
+              <span class="pet-problems"><span class="pet-bad">{{ t('invalid') }}</span>
+                @for (problem of problems(); track problem.key) { <button type="button" class="pet-problem" (click)="goTo(problem.target)">{{ t('problem.' + problem.key) }}</button> }
+              </span>
+            }
+          </div>
+          <div class="save-actions">
+            @if (dirty()) { <button type="button" class="lf-btn lf-btn--ghost" [disabled]="saving()" (click)="reset()">{{ t('discard') }}</button> }
+            <button type="submit" class="lf-btn lf-btn--primary" [disabled]="!dirty() || !valid() || saving()">{{ t('save') }}</button>
+          </div>
+        </div>
     }
+    </form>
   </main>
 </div>
+
+<ng-template #computersState>
+  @if (runtimeError()) { <p class="lf-note lf-note--error" role="alert">{{ t('runtimeError') }}</p> }
+  @else if (!runtimeLoading() && !desktopSessions().length) { <p class="lf-note lf-note--warn">{{ t('noComputers') }}</p> }
+  <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost pet-refresh" [disabled]="runtimeLoading()" (click)="refreshRuntime()"><app-lf-icon name="refresh" [size]="14" />{{ t(runtimeLoading() ? 'refreshing' : 'refreshComputers') }}</button>
+</ng-template>
 
 @if (pickingAsset() && channelID()) {
   <app-asset-library-dialog [owner]="channelID()!" kind="image" (selected)="chooseAsset($event)" (closed)="pickingAsset.set(null)" />

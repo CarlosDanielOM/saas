@@ -104,6 +104,10 @@ async function open({ theme = 'dark', width = 1280, language = 'en', tier = 'pre
   return { context, page, state };
 }
 const save = page => page.getByRole('button', { name: 'Save changes', exact: true });
+// Rare settings live in folded groups; open them before editing.
+const openDetails = async (page, summary) => { const details = page.locator('details', { has: page.locator('summary', { hasText: summary }) }).first(); if (!await details.evaluate(d => d.open)) await details.locator('summary').click(); };
+const openLimits = page => openDetails(page, 'Queue and limits');
+const openUrlMore = page => openDetails(page, 'URL leaked or not working?');
 const saveState = (page, disabled) => page.waitForFunction(expected => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Save changes' && button.disabled === expected), disabled);
 async function axe(page, label) {
   await page.addScriptTag({ path: axePath });
@@ -130,21 +134,23 @@ try {
     await dialog.waitFor({ state: 'detached' });
     assert(state.uploads[0].includes(gif), 'original animation bytes preserved in multipart upload');
     assert.equal(await opener.evaluate(button => document.activeElement === button), true, 'picker restores keyboard focus');
-    await page.getByRole('combobox', { name: 'Pet audio output', exact: true }).selectOption('desktop');
+    await page.getByRole('radio', { name: 'A computer with Dima App', exact: true }).check();
     await page.getByRole('combobox', { name: 'Computer for pet audio', exact: true }).selectOption('d'.repeat(24));
     await save(page).click(); await page.getByText('Pet configuration saved', { exact: true }).waitFor();
     assert.equal(state.writes.at(-1).settings.appearance.talkingAssetId, animated.id);
     assert.equal(state.writes.at(-1).settings.playback.desktopSessionId, 'd'.repeat(24));
     assert(!JSON.stringify(state.writes).includes('/pet-fixture/'), 'settings persist IDs, never temporary media URLs');
-    await page.getByRole('combobox', { name: 'Pet appearance', exact: true }).selectOption('vts');
-    await page.getByRole('combobox', { name: 'Pet audio output', exact: true }).selectOption('browser');
+    await page.getByRole('radio', { name: /^Live2D model/ }).check();
+    await page.getByRole('radio', { name: 'OBS browser source', exact: true }).check();
     await page.getByRole('combobox', { name: 'Computer running VTube Studio', exact: true }).selectOption('d'.repeat(24));
     await save(page).click(); await page.getByText('Pet configuration saved', { exact: true }).waitFor();
     assert.deepEqual(state.writes.at(-1).settings.playback, { target: 'browser', desktopSessionId: 'd'.repeat(24), vtsSessionId: 'd'.repeat(24) }, 'browser audio and VTS selection remain independent');
+    await openUrlMore(page);
     await page.getByRole('button', { name: 'Replace URL', exact: true }).click();
     assert.equal(state.rotations.length, 0, 'first tap only explains rotation');
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.equal(state.rotations.length, 0);
+    await openUrlMore(page);
     await page.getByRole('button', { name: 'Replace URL', exact: true }).click();
     await page.getByRole('button', { name: 'Replace and disconnect old sources', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('.overlay-url')?.value.includes('/pet/' + 'b'.repeat(43)));
@@ -213,21 +219,22 @@ try {
     await page.getByText('No unsaved changes', { exact: true }).waitFor();
     await saveState(page, true);
     await page.getByRole('textbox', { name: 'Pet name' }).fill('Luna');
-    await page.getByRole('checkbox', { name: 'Enable pet responses' }).check();
-    await page.getByRole('button', { name: /Kokoro/ }).click();
+    await page.getByRole('switch', { name: 'Enable pet responses' }).check();
+    await page.getByRole('radio', { name: /Kokoro/ }).check();
     await page.waitForFunction(() => document.querySelector('select[formcontrolname=voice]')?.value === 'ef_dora');
     await page.getByRole('combobox', { name: 'Reply language' }).selectOption('en');
     await page.waitForFunction(() => document.querySelector('select[formcontrolname=voice]')?.value === 'af_heart');
-    await page.getByRole('combobox', { name: 'Personality source' }).selectOption('profile');
+    await page.getByRole('radio', { name: 'Use an AI profile', exact: true }).check();
     await saveState(page, true);
     await page.getByRole('combobox', { name: 'AI personality profile', exact: true }).selectOption('p2');
     await page.getByRole('textbox', { name: 'Extra pet rules' }).fill('No spoilers\nBe kind');
-    await page.getByRole('spinbutton', { name: 'Seconds between pet-queue replies' }).fill('35');
+    await openLimits(page);
+    await page.getByRole('spinbutton', { name: 'Pause between replies (seconds)' }).fill('35');
     // Pet queue settings: older saved settings show the defaults, then both controls save.
-    const askLane = page.getByRole('combobox', { name: 'Where $(pet.ask) replies wait' }), queueSize = page.getByRole('spinbutton', { name: 'Pet queue size' });
-    assert.equal(await askLane.inputValue(), 'independent'); assert.equal(await queueSize.inputValue(), '5');
+    const ownLane = page.getByRole('radio', { name: /^In the pet's own queue/ }), ttsLane = page.getByRole('radio', { name: /^In the TTS queue/ }), queueSize = page.getByRole('spinbutton', { name: 'Pet queue size' });
+    assert.equal(await ownLane.isChecked(), true); assert.equal(await queueSize.inputValue(), '5');
     await page.getByText("AI replies wait in the pet's own queue", { exact: false }).waitFor();
-    await askLane.selectOption('tts'); await page.getByText('AI replies keep their place among TTS messages', { exact: false }).waitFor();
+    await ttsLane.check(); await page.getByText('AI replies keep their place among TTS messages', { exact: false }).waitFor();
     await queueSize.fill('3');
     await save(page).click();
     await page.getByText('Pet configuration saved', { exact: true }).waitFor();
@@ -245,11 +252,12 @@ try {
     await page.getByRole('button', { name: 'Discard', exact: true }).click();
     assert.equal(await page.getByRole('textbox', { name: 'Pet name' }).inputValue(), 'Luna');
     // Provider changes, custom voices, and field validation.
-    await page.getByRole('button', { name: /Fish Audio/ }).click();
+    await page.getByRole('radio', { name: /Fish Audio/ }).check();
     await page.getByText('Custom Fish voice', { exact: true }).click();
     const custom = page.getByRole('textbox', { name: 'Public voice reference ID' });
     await custom.fill('bad'); await saveState(page, true);
     await custom.fill('0123456789abcdef0123456789abcdef');
+    await openLimits(page);
     await page.getByRole('spinbutton', { name: 'Maximum reply characters' }).fill('501');
     await saveState(page, true);
     await page.getByRole('spinbutton', { name: 'Maximum reply characters' }).fill('300');
@@ -276,7 +284,7 @@ try {
   }
   {
     const { page, context } = await open({ noProfiles: true });
-    await page.getByRole('combobox', { name: 'Personality source' }).selectOption('profile');
+    await page.getByRole('radio', { name: 'Use an AI profile', exact: true }).check();
     await page.getByText(/Create an AI personality profile first/).waitFor();
     await saveState(page, true); await context.close();
   }
@@ -300,7 +308,7 @@ try {
     const { page, context } = await open({ language: 'es', width: 390 });
     await page.getByRole('heading', { name: 'Mascota', exact: true }).waitFor();
     await page.getByRole('textbox', { name: 'Nombre de la mascota' }).waitFor();
-    await page.getByRole('button', { name: /Kokoro/ }).click();
+    await page.getByRole('radio', { name: /Kokoro/ }).check();
     await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Guardar cambios' && !button.disabled));
     await axe(page, 'Spanish'); await context.close();
   }

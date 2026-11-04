@@ -93,10 +93,10 @@ try {
     assert.equal(await voiceSelect(page).inputValue(), favoriteId);
     await page.locator('select[formcontrolname=language]').selectOption('en');
     assert.equal(await voiceSelect(page).inputValue(), favoriteId, 'reply language does not reset a Fish favorite');
-    await page.getByRole('button', { name: /Piper/ }).click();
+    await page.getByRole('radio', { name: /Piper/ }).check();
     await page.waitForFunction(() => document.querySelector('select[formcontrolname=voice]')?.value === 'en_US-ryan-medium');
     assert.equal(await voiceSelect(page).inputValue(), 'en_US-ryan-medium');
-    await page.getByRole('button', { name: /Fish Audio/ }).click();
+    await page.getByRole('radio', { name: /Fish Audio/ }).check();
     await page.waitForFunction(() => /^[a-f\d]{32}$/i.test(document.querySelector('select[formcontrolname=voice]')?.value || ''));
     assert.ok((await voiceSelect(page).inputValue()).match(/^[a-f\d]{32}$/i));
     assert.equal(state.favoriteReads, 2, 'one favorites read per page, no form-driven refetches');
