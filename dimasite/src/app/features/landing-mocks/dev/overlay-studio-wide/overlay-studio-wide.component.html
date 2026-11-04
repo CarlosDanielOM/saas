@@ -1,0 +1,685 @@
+@let sc = scene();
+@let s = scale();
+<div class="osw" [class.osw--panels-off]="!panels()" [attr.data-mtab]="mobileTab()">
+
+  <!-- Top bar: back, overlay name + switcher, OBS status, draft state, Publish live -->
+  <header class="top">
+    <a class="icon-btn top__back" routerLink="/mocks/dev" [attr.aria-label]="c.t('top.back')" [title]="c.t('top.back')"><lucide-icon [img]="i.ArrowLeft" [size]="18" aria-hidden="true" /></a>
+    <div class="top__scene">
+      <input class="top__name" [value]="sceneName(sc)" maxlength="60" (change)="renameScene($event)" (keydown.enter)="$any($event.target).blur()" [attr.aria-label]="c.t('top.name')" />
+      <button type="button" class="icon-btn icon-btn--sm" [attr.aria-expanded]="pop() === 'scenes'" [attr.aria-label]="c.t('top.switch')" [title]="c.t('top.switch')" (click)="togglePop('scenes', $event)"><lucide-icon [img]="i.ChevronDown" [size]="16" aria-hidden="true" /></button>
+      @if (pop() === 'scenes') {
+        <div class="pop pop--scenes" role="dialog" [attr.aria-label]="c.t('top.overlays')">
+          <p class="pop__kicker">{{ c.t('top.overlays') }}</p>
+          <ul class="menu">
+            @for (item of scenes(); track item.id) {
+              <li>
+                <button type="button" class="menu__item" [class.is-on]="item.id === sc.id" [attr.aria-current]="item.id === sc.id ? 'true' : null" [attr.data-autofocus]="item.id === sc.id ? '' : null" (click)="switchScene(item.id)">
+                  <span class="menu__text"><strong>{{ sceneName(item) }}</strong><small>{{ c.t('top.layers', { count: item.layers.length }) }} · {{ item.width }} × {{ item.height }}</small></span>
+                  @if (item.id === sc.id) { <lucide-icon [img]="i.Check" [size]="16" aria-hidden="true" /> }
+                </button>
+              </li>
+            }
+          </ul>
+          <button type="button" class="menu__item menu__item--add" (click)="newScene()"><lucide-icon [img]="i.Plus" [size]="16" aria-hidden="true" />{{ c.t('top.newOverlay') }}</button>
+        </div>
+      }
+    </div>
+
+    <div class="top__meta">
+      <div class="top__obs">
+        <button type="button" class="status" [attr.data-tone]="statusTone()" [attr.aria-expanded]="pop() === 'obs'" (click)="togglePop('obs', $event)">
+          <span class="status__dot" aria-hidden="true"></span>
+          <span class="status__text">{{ statusText() }}</span>
+          <span class="status__link"><lucide-icon [img]="i.Link2" [size]="15" aria-hidden="true" />{{ obsConnected() ? c.t('top.obsLink') : c.t('status.setup') }}</span>
+        </button>
+        @if (pop() === 'obs') {
+          <div class="pop pop--obs" role="dialog" aria-labelledby="osw-obs-title">
+            <h2 class="pop__title" id="osw-obs-title">{{ c.t('obs.title') }}</h2>
+            <p class="pop__lead" [attr.data-tone]="obsConnected() ? 'ok' : 'warn'">{{ c.t(obsConnected() ? 'obs.on' : 'obs.off') }}</p>
+            @if (!obsConnected()) {
+              <ol class="steps">
+                <li>{{ c.t('obs.step1') }}</li>
+                <li>{{ c.t('obs.step2') }}</li>
+                <li>{{ c.t('obs.step3', { w: sc.width, h: sc.height }) }}</li>
+              </ol>
+            }
+            <label class="field"><span class="field__label">{{ c.t('obs.link') }}</span><input class="input input--mono" readonly [value]="overlayUrl()" (focus)="$any($event.target).select()" /></label>
+            <div class="btn-row">
+              <button type="button" class="btn btn--primary btn--sm" data-autofocus (click)="copyUrl()"><lucide-icon [img]="i.Copy" [size]="15" aria-hidden="true" />{{ c.t('obs.copy') }}</button>
+              <button type="button" class="btn btn--sm" (click)="flash(c.t('mock.note'))"><lucide-icon [img]="i.ExternalLink" [size]="15" aria-hidden="true" />{{ c.t('obs.open') }}</button>
+            </div>
+            <details class="more">
+              <summary>{{ c.t('obs.leaked') }}</summary>
+              <p class="note">{{ c.t('obs.leakedHint') }}</p>
+              <button type="button" class="btn btn--sm btn--danger" [class.is-armed]="confirm() === 'new-link'" (click)="newLink()">{{ c.t(confirm() === 'new-link' ? 'obs.confirmNewLink' : 'obs.newLink') }}</button>
+            </details>
+          </div>
+        }
+      </div>
+      <span class="top__save" aria-live="polite"><span class="top__save-dot" [class.is-busy]="saving()" aria-hidden="true"></span>{{ c.t(saving() ? 'top.saving' : 'top.saved') }}</span>
+      <div class="top__tools">
+        <button type="button" class="chip-btn" [attr.aria-expanded]="pop() === 'mock'" (click)="togglePop('mock', $event)"><lucide-icon [img]="i.FlaskConical" [size]="14" aria-hidden="true" />{{ c.t('mock.chip') }}</button>
+        @if (pop() === 'mock') {
+          <div class="pop pop--mock" role="dialog" [attr.aria-label]="c.t('mock.controls')">
+            <p class="pop__kicker">{{ c.t('mock.controls') }}</p>
+            <div class="mock-row"><span id="osw-mock-obs">{{ c.t('mock.obs') }}</span>
+              <div class="seg seg--sm" role="group" aria-labelledby="osw-mock-obs">
+                <button type="button" data-autofocus [attr.aria-pressed]="obsConnected()" (click)="obsConnected.set(true)">{{ c.t('mock.obsOn') }}</button>
+                <button type="button" [attr.aria-pressed]="!obsConnected()" (click)="obsConnected.set(false)">{{ c.t('mock.obsOff') }}</button>
+              </div>
+            </div>
+            <div class="mock-row"><span id="osw-mock-theme">{{ c.t('mock.theme') }}</span>
+              <div class="seg seg--sm" role="group" aria-labelledby="osw-mock-theme">
+                <button type="button" [attr.aria-pressed]="dark()" (click)="setTheme(true)">{{ c.t('mock.dark') }}</button>
+                <button type="button" [attr.aria-pressed]="!dark()" (click)="setTheme(false)">{{ c.t('mock.light') }}</button>
+              </div>
+            </div>
+            <div class="mock-row"><span id="osw-mock-lang">{{ c.t('mock.language') }}</span>
+              <div class="seg seg--sm" role="group" aria-labelledby="osw-mock-lang">
+                <button type="button" [attr.aria-pressed]="language.currentLanguage() === 'en'" (click)="language.setLanguage('en')">English</button>
+                <button type="button" [attr.aria-pressed]="language.currentLanguage() === 'es'" (click)="language.setLanguage('es')">Español</button>
+              </div>
+            </div>
+            <p class="note">{{ c.t('mock.note') }}</p>
+          </div>
+        }
+        <button type="button" class="icon-btn" [attr.aria-expanded]="pop() === 'help'" [attr.aria-label]="c.t('top.help')" [title]="c.t('top.help')" (click)="togglePop('help', $event)"><lucide-icon [img]="i.CircleHelp" [size]="18" aria-hidden="true" /></button>
+        @if (pop() === 'help') {
+          <div class="pop pop--help" role="dialog" aria-labelledby="osw-help-title">
+            <h2 class="pop__title" id="osw-help-title">{{ c.t('help.title') }}</h2>
+            <dl class="keys">
+              <div><dt><kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd></dt><dd>{{ c.t('help.nudge') }}</dd></div>
+              <div><dt><kbd>Del</kbd></dt><dd>{{ c.t('help.delete') }}</dd></div>
+              <div><dt><kbd>Ctrl</kbd><kbd>D</kbd></dt><dd>{{ c.t('help.duplicate') }}</dd></div>
+              <div><dt><kbd>Ctrl</kbd><kbd>Z</kbd></dt><dd>{{ c.t('help.undo') }}</dd></div>
+              <div><dt><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd></dt><dd>{{ c.t('help.redo') }}</dd></div>
+              <div><dt><kbd>+</kbd><kbd>−</kbd></dt><dd>{{ c.t('help.zoom') }}</dd></div>
+              <div><dt><kbd>0</kbd></dt><dd>{{ c.t('help.fit') }}</dd></div>
+              <div><dt><kbd>Esc</kbd></dt><dd>{{ c.t('help.deselect') }}</dd></div>
+            </dl>
+            <button type="button" class="btn btn--sm" data-autofocus (click)="closePop()">{{ c.t('toast.close') }}</button>
+          </div>
+        }
+      </div>
+    </div>
+
+    <button type="button" class="btn btn--primary top__publish" [class.is-done]="!unpublished()" [attr.aria-disabled]="!unpublished()" (click)="publish()">
+      @if (unpublished()) { <span class="top__publish-long">{{ c.t('top.publish') }}</span><span class="top__publish-short">{{ c.t('top.publishShort') }}</span> } @else { <lucide-icon [img]="i.Check" [size]="16" aria-hidden="true" />{{ c.t('top.published') }} }
+    </button>
+  </header>
+
+  @if (pop() && (pop() !== 'test' || compact())) { <div class="pop-backdrop" aria-hidden="true" (click)="closePop()"></div> }
+
+  <div class="body">
+    <!-- Left: add + layers, or alert designs -->
+    <aside class="left" [attr.aria-label]="c.t('left.panel')">
+      <div class="tabs" role="group" [attr.aria-label]="c.t('left.panel')">
+        <button type="button" class="tabs__btn" [attr.aria-pressed]="leftTab() === 'layers'" (click)="leftTab.set('layers')"><lucide-icon [img]="i.Layers3" [size]="15" aria-hidden="true" />{{ c.t('left.layers') }}<span class="count">{{ layers().length }}</span></button>
+        <button type="button" class="tabs__btn" [attr.aria-pressed]="leftTab() === 'designs'" (click)="leftTab.set('designs')"><lucide-icon [img]="i.Bell" [size]="15" aria-hidden="true" />{{ c.t('left.designs') }}</button>
+      </div>
+
+      <section class="pane pane--add" [class.d-on]="leftTab() === 'layers'" [class.m-on]="mobileTab() === 'add'" aria-labelledby="osw-add-title">
+        <button type="button" class="pane__toggle" [attr.aria-expanded]="addOpen()" (click)="addOpen.set(!addOpen())">
+          <h2 class="pane__title" id="osw-add-title">{{ c.t('left.addTitle') }}</h2>
+          <lucide-icon class="pane__chev" [img]="i.ChevronDown" [size]="16" aria-hidden="true" />
+        </button>
+        <div class="add" [class.is-closed]="!addOpen()">
+          <p class="note add__hint">{{ c.t('left.addHint') }}</p>
+          @for (group of palette; track group.group) {
+            <h3 class="group-title">{{ c.t('groups.' + group.group) }}</h3>
+            <div class="add-grid">
+              @for (kind of group.kinds; track kind) {
+                <button type="button" class="add-tile" draggable="true" [attr.data-kind]="kind" [title]="c.t('kindHints.' + kind)" (dragstart)="onPaletteDrag($event, kind)" (click)="add(kind)">
+                  <span class="kind-ico" [attr.data-kind]="kind"><lucide-icon [img]="kindIcon[kind]" [size]="16" aria-hidden="true" /></span>
+                  <span class="add-tile__text"><span class="add-tile__name">{{ c.t('kinds.' + kind) }}</span><span class="add-tile__hint">{{ c.t('kindHints.' + kind) }}</span></span>
+                  <lucide-icon class="add-tile__plus" [img]="i.Plus" [size]="15" aria-hidden="true" />
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
+      <section class="pane pane--layers" [class.d-on]="leftTab() === 'layers'" [class.m-on]="mobileTab() === 'layers'" aria-labelledby="osw-layers-title">
+        <div class="pane__bar">
+          <h2 class="pane__title" id="osw-layers-title">{{ c.t('left.layers') }} <span class="count">{{ layers().length }}</span></h2>
+          <span class="note">{{ c.t('left.layersHint') }}</span>
+        </div>
+        <ul class="layer-list">
+          @for (l of layersTopFirst(); track l.id) {
+            <li class="layer-row" [class.is-sel]="l.id === selectedId()" [class.is-hidden]="!l.visible" draggable="true"
+              (dragstart)="onRowDragStart($event, l.id)" (dragover)="onRowDragOver($event)" (drop)="onRowDrop($event, l.id)">
+              <button type="button" class="layer-row__main" [attr.aria-current]="l.id === selectedId() ? 'true' : null" (click)="select(l.id)">
+                <span class="layer-row__grip" aria-hidden="true"></span>
+                <span class="kind-ico kind-ico--sm" [attr.data-kind]="l.kind"><lucide-icon [img]="kindIcon[l.kind]" [size]="14" aria-hidden="true" /></span>
+                <span class="layer-row__name">{{ name(l) }}</span>
+                @if (!l.visible) { <span class="tag">{{ c.t('left.hidden') }}</span> }
+              </button>
+              <button type="button" class="icon-btn icon-btn--row" [class.is-off]="!l.visible" [attr.aria-label]="c.t(l.visible ? 'left.hide' : 'left.show', { name: name(l) })" [title]="c.t(l.visible ? 'left.hide' : 'left.show', { name: name(l) })" (click)="toggleVisible(l.id)"><lucide-icon [img]="l.visible ? i.Eye : i.EyeOff" [size]="16" aria-hidden="true" /></button>
+              <button type="button" class="icon-btn icon-btn--row" [class.is-on]="l.locked" [attr.aria-label]="c.t(l.locked ? 'left.unlock' : 'left.lock', { name: name(l) })" [title]="c.t(l.locked ? 'left.unlock' : 'left.lock', { name: name(l) })" (click)="toggleLock(l.id)"><lucide-icon [img]="l.locked ? i.LockKeyhole : i.LockOpen" [size]="16" aria-hidden="true" /></button>
+              @if (compact() && l.id === selectedId()) {
+                <button type="button" class="btn btn--sm layer-row__edit" [attr.aria-label]="c.t('left.edit', { name: name(l) })" (click)="mobileTab.set('edit')">{{ c.t('mobile.edit') }}</button>
+              }
+            </li>
+          } @empty {
+            <li class="empty">{{ c.t('left.empty') }}</li>
+          }
+        </ul>
+      </section>
+
+      <section class="pane pane--designs" [class.d-on]="leftTab() === 'designs'" [class.m-on]="mobileTab() === 'designs'" aria-labelledby="osw-designs-title">
+        <div class="pane__bar pane__bar--row">
+          <h2 class="pane__title" id="osw-designs-title">{{ c.t('left.designs') }}</h2>
+          <button type="button" class="btn btn--sm" (click)="newDesign()"><lucide-icon [img]="i.Plus" [size]="15" aria-hidden="true" />{{ c.t('designs.new') }}</button>
+        </div>
+        <p class="note">{{ c.t('designs.hint') }}</p>
+        <ul class="design-list">
+          @for (d of designs(); track d.id) {
+            <li class="design-row">
+              <div class="design-thumb" [attr.data-look]="d.look" aria-hidden="true">
+                <span class="design-thumb__art"><lucide-icon [img]="i.Sparkles" [size]="14" /></span>
+                <span class="design-thumb__text">{{ c.t('render.sample', { user: sampleUser() || 'Luna' }) }}</span>
+              </div>
+              <div class="design-row__text"><strong>{{ designName(d) }}</strong><small>{{ usageText(d.id) }}</small></div>
+              <button type="button" class="btn btn--sm" [attr.aria-label]="c.t('designs.editAria', { name: designName(d) })" (click)="flash(c.t('designs.editToast'))">{{ c.t('designs.edit') }}</button>
+            </li>
+          }
+        </ul>
+      </section>
+    </aside>
+
+    <!-- Center: the canvas and its floating tool bar -->
+    <main class="center">
+      <div class="canvas-area">
+      <div class="ws" #ws [attr.data-bg]="bg()" (click)="onWorkspaceClick($event)">
+        <div class="ws__inner">
+          <div class="frame" [style.width.px]="sc.width * s" [style.height.px]="sc.height * s">
+            <span class="frame__size">{{ sc.width }} × {{ sc.height }}</span>
+            <div class="stage" #stage [attr.data-bg]="bg()" [class.is-dropping]="dropping()"
+              [style.width.px]="sc.width" [style.height.px]="sc.height" [style.transform]="'scale(' + s + ')'" [style.--s]="s"
+              (dragover)="onStageDragOver($event)" (dragleave)="dropping.set(false)" (drop)="onStageDrop($event)">
+              @if (bg() === 'game') {
+                <div class="game" aria-hidden="true"><span class="game__sun"></span><span class="game__hill game__hill--back"></span><span class="game__hill"></span><span class="game__hud"><i></i><i></i></span><span class="game__map"></span></div>
+              }
+              @for (l of layers(); track l.id; let index = $index) {
+                @if (l.visible || l.id === selectedId()) {
+                  @let r = rectOf(l);
+                  @let play = plays()[l.id];
+                  <div class="ly" role="button" tabindex="0" [attr.data-kind]="l.kind" [class.is-sel]="l.id === selectedId()" [class.is-ghost]="!l.visible" [class.is-locked]="l.locked" [class.is-playing]="!!play"
+                    [attr.aria-pressed]="l.id === selectedId()" [attr.aria-label]="layerLabel(l)"
+                    [style.left.px]="r.x" [style.top.px]="r.y" [style.width.px]="r.w" [style.height.px]="r.h" [style.z-index]="index + 1"
+                    (pointerdown)="onLayerDown($event, l)" (click)="$event.stopPropagation()" (keydown.enter)="select(l.id, true)" (keydown.space)="$event.preventDefault(); select(l.id, true)">
+                    @for (k of [replays()[l.id] ?? 0]; track k) {
+                      <div class="ly__body" [class.is-styled]="isStyled(l)" [class.anim-in]="k > 0" [attr.data-enter]="l.enter"
+                        [style.opacity]="isStyled(l) ? l.opacity / 100 : null" [style.border-radius.px]="isStyled(l) ? l.radius : null"
+                        [style.border]="isStyled(l) && l.borderWidth ? l.borderWidth + 'px solid ' + l.borderColor : null" [class.has-shadow]="isStyled(l) && l.shadow">
+                        <div class="ly__loop" [attr.data-loop]="isStyled(l) ? l.loop : 'none'">
+                          @switch (l.kind) {
+                            @case ('alert') {
+                              @for (pk of [play?.key ?? 0]; track pk) {
+                                <div class="al" [attr.data-look]="designLook(l)" [class.is-live]="!!play">
+                                  <span class="al__art"><lucide-icon [img]="play?.kind === 'raid' ? i.Zap : i.Sparkles" [size]="60" aria-hidden="true" /></span>
+                                  <span class="al__text">{{ alertText(l) }}</span>
+                                  @if (!play) { <span class="al__tag">{{ c.t('render.sampleTag') }}</span> }
+                                </div>
+                              }
+                            }
+                            @case ('trigger') {
+                              @if (play?.trigger; as trig) {
+                                @for (pk of [play!.key]; track pk) {
+                                  <div class="tg tg--live">
+                                    <span class="tg__burst" aria-hidden="true"><lucide-icon [img]="i.Zap" [size]="120" /></span>
+                                    <span class="tg__name">{{ c.t('render.triggerPlaying', { name: c.t('trigger.' + trig) }) }}</span>
+                                    <span class="wave wave--big" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                                  </div>
+                                }
+                              } @else {
+                                <div class="tg">
+                                  <span class="card-ico"><lucide-icon [img]="i.Zap" [size]="40" aria-hidden="true" /></span>
+                                  <span class="card-copy"><small>{{ c.t('render.triggerLabel') }}</small><strong>{{ c.t('render.triggerIdle') }}</strong></span>
+                                </div>
+                              }
+                            }
+                            @case ('tts') {
+                              <div class="tts" [class.is-live]="play?.kind === 'tts'" [class.has-text]="l.showText">
+                                <span class="card-ico"><lucide-icon [img]="i.Volume2" [size]="40" aria-hidden="true" /></span>
+                                <span class="card-copy">
+                                  <small>{{ c.t('render.ttsLabel') }}</small>
+                                  <strong>{{ play?.kind === 'tts' && l.showText ? c.t('render.ttsSpeaking') : c.t(l.showText ? 'render.ttsText' : 'render.ttsAudio') }}</strong>
+                                </span>
+                                <span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                              </div>
+                            }
+                            @case ('clip') {
+                              <app-overlay-clip [design]="l.clipLook ?? 'classic'" streamer="cdom201" />
+                              @if (play?.kind === 'clip') { <div class="clip-live"><span class="clip-live__pill"><lucide-icon [img]="i.Play" [size]="28" aria-hidden="true" />{{ c.t('render.clipPlaying') }}</span><span class="clip-live__bar"><i></i></span></div> }
+                            }
+                            @case ('poll') {
+                              @if (interactionWidget(l); as widget) { <app-overlay-widget-host [widget]="widget" [preview]="true" [previewFixture]="stageFixture(l)" /> }
+                            }
+                            @case ('prediction') {
+                              @if (interactionWidget(l); as widget) { <app-overlay-widget-host [widget]="widget" [preview]="true" [previewFixture]="stageFixture(l)" /> }
+                            }
+                            @case ('image') {
+                              @if (l.media) { <img class="media" [src]="l.media" alt="" draggable="false" [style.object-fit]="l.fit" /> }
+                            }
+                            @case ('video') {
+                              <div class="video-empty"><lucide-icon [img]="i.Play" [size]="56" aria-hidden="true" /><span>{{ c.t('render.videoEmpty') }}</span></div>
+                            }
+                            @case ('shape') {
+                              <div class="shape" [style.background]="l.fill" [style.border-radius]="l.shape === 'ellipse' ? '50%' : null"></div>
+                            }
+                            @case ('text') {
+                              <div class="txt" [style.font-size.px]="l.fontSize" [style.color]="l.color" [style.text-align]="l.align" [class.has-shadow]="l.shadow">{{ textOf(l) }}</div>
+                            }
+                          }
+                        </div>
+                      </div>
+                    }
+                    @if (!l.visible) { <span class="ly__hidden">{{ c.t('render.hidden') }}</span> }
+                  </div>
+                }
+              }
+              @if (randomBounds(); as b) {
+                <div class="bounds" aria-hidden="true" [style.left.px]="b.x" [style.top.px]="b.y" [style.width.px]="b.w" [style.height.px]="b.h"></div>
+              }
+            </div>
+
+            <!-- Screen-space helpers: grid, alignment guides, the selection box with resize corners -->
+            <div class="hud" aria-hidden="true">
+              @if (grid()) {
+                <div class="hud__grid" [style.background-size]="60 * s + 'px ' + 60 * s + 'px'"></div>
+                <div class="hud__safe"></div>
+                <div class="hud__cross"></div>
+              }
+              @for (g of guides().v; track $index) { <div class="guide guide--v" [style.left.px]="g * s"></div> }
+              @for (g of guides().h; track $index) { <div class="guide guide--h" [style.top.px]="g * s"></div> }
+              @if (selected(); as l) {
+                <div class="sel" [class.is-locked]="l.locked" [style.left.px]="l.x * s" [style.top.px]="l.y * s" [style.width.px]="l.w * s" [style.height.px]="l.h * s">
+                  <span class="sel__tag" [class.is-below]="l.y * s < 30">@if (l.locked) { <lucide-icon [img]="i.LockKeyhole" [size]="12" /> }{{ name(l) }} · {{ l.w }} × {{ l.h }}</span>
+                  @if (!l.locked) {
+                    @for (h of handles; track h) { <span class="sel__h" [attr.data-h]="h" (pointerdown)="onHandleDown($event, h)"></span> }
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toolbar" role="toolbar" [attr.aria-label]="c.t('tools.bar')">
+        <button type="button" class="tb tb--test" [attr.aria-expanded]="pop() === 'test'" (click)="togglePop('test', $event)"><lucide-icon [img]="i.Bell" [size]="17" aria-hidden="true" /><span>{{ c.t('tools.test') }}</span></button>
+        <span class="tb-sep" aria-hidden="true"></span>
+        <button type="button" class="tb" [disabled]="!canUndo()" [attr.aria-label]="c.t('tools.undo')" [title]="c.t('tools.undo') + ' (Ctrl+Z)'" (click)="undo()"><lucide-icon [img]="i.Undo2" [size]="17" aria-hidden="true" /></button>
+        <button type="button" class="tb" [disabled]="!canRedo()" [attr.aria-label]="c.t('tools.redo')" [title]="c.t('tools.redo') + ' (Ctrl+Shift+Z)'" (click)="redo()"><lucide-icon [img]="i.Redo2" [size]="17" aria-hidden="true" /></button>
+        <span class="tb-sep" aria-hidden="true"></span>
+        <button type="button" class="tb" [attr.aria-label]="c.t('tools.zoomOut')" [title]="c.t('tools.zoomOut')" (click)="zoomOut()"><lucide-icon [img]="i.ZoomOut" [size]="17" aria-hidden="true" /></button>
+        <button type="button" class="tb tb--pct" [attr.aria-label]="c.t('tools.zoom', { pct: percent() }) + ' · ' + c.t('tools.fitLong')" [title]="c.t('tools.fitLong')" (click)="fit()">{{ percent() }}%</button>
+        <button type="button" class="tb" [attr.aria-label]="c.t('tools.zoomIn')" [title]="c.t('tools.zoomIn')" (click)="zoomIn()"><lucide-icon [img]="i.ZoomIn" [size]="17" aria-hidden="true" /></button>
+        <button type="button" class="tb" [attr.aria-pressed]="zoomMode() === 'fit'" [attr.aria-label]="c.t('tools.fitLong')" [title]="c.t('tools.fitLong')" (click)="fit()"><lucide-icon [img]="i.Scan" [size]="17" aria-hidden="true" /><span class="tb__label">{{ c.t('tools.fit') }}</span></button>
+        <span class="tb-sep" aria-hidden="true"></span>
+        <button type="button" class="tb" [attr.aria-pressed]="grid()" [attr.aria-label]="c.t('tools.grid')" [title]="c.t('tools.grid')" (click)="grid.set(!grid())"><lucide-icon [img]="i.Grid3x3" [size]="17" aria-hidden="true" /><span class="tb__label">{{ c.t('tools.grid') }}</span></button>
+        <button type="button" class="tb" [attr.aria-pressed]="snap()" [attr.aria-label]="c.t('tools.snap')" [title]="c.t('tools.snap')" (click)="snap.set(!snap())"><lucide-icon [img]="i.Magnet" [size]="17" aria-hidden="true" /><span class="tb__label">{{ c.t('tools.snap') }}</span></button>
+        <button type="button" class="tb tb--bg" [attr.data-bg]="bg()" [attr.aria-label]="bgLabel()" [title]="bgLabel()" (click)="cycleBg()"><span class="tb__swatch" aria-hidden="true"></span><span class="tb__label">{{ c.t('tools.' + bg()) }}</span></button>
+        <button type="button" class="tb" [attr.aria-pressed]="sound()" [attr.aria-label]="c.t('tools.sound')" [title]="c.t('tools.sound')" (click)="sound.set(!sound())"><lucide-icon [img]="sound() ? i.Volume2 : i.VolumeX" [size]="17" aria-hidden="true" /></button>
+        <span class="tb-sep tb-desk" aria-hidden="true"></span>
+        <button type="button" class="tb tb-desk" [attr.aria-pressed]="panels()" [attr.aria-label]="c.t('tools.panels')" [title]="c.t('tools.panels')" (click)="panels.set(!panels())"><lucide-icon [img]="i.PanelsTopLeft" [size]="17" aria-hidden="true" /></button>
+      </div>
+      <p class="ws-hint">{{ c.t(compact() ? 'tools.hintTouch' : 'tools.hint') }}</p>
+
+      <div class="toast-slot" role="status" aria-live="polite">
+        @if (toast(); as t) {
+          <div class="toast">
+            <span>{{ t.text }}</span>
+            @if (t.action) { <button type="button" class="toast__action" (click)="runToast()">{{ t.action.label }}</button> }
+            <button type="button" class="icon-btn icon-btn--sm toast__close" [attr.aria-label]="c.t('toast.dismiss')" (click)="toast.set(null)"><lucide-icon [img]="i.X" [size]="15" aria-hidden="true" /></button>
+          </div>
+        }
+      </div>
+      </div>
+      @if (pop() === 'test') {
+        <div class="pop pop--test" role="dialog" aria-labelledby="osw-test-title">
+          <div class="pop__head">
+            <div class="pop__headline"><h2 class="pop__title" id="osw-test-title">{{ c.t('test.title') }}</h2><p class="note">{{ c.t('test.hint') }}</p></div>
+            <button type="button" class="icon-btn icon-btn--sm" [attr.aria-label]="c.t('toast.close')" (click)="closePop()"><lucide-icon [img]="i.X" [size]="16" aria-hidden="true" /></button>
+          </div>
+          <div class="test-grid">
+            @for (kind of testKinds; track kind; let first = $first) {
+              <button type="button" class="test-btn" [attr.data-kind]="kind" [attr.data-autofocus]="first ? '' : null" (click)="fire(kind)"><lucide-icon [img]="i.Play" [size]="13" aria-hidden="true" />{{ c.t('test.' + kind) }}</button>
+            }
+          </div>
+          <details class="more" [open]="sections()['sample']" (toggle)="setSection('sample', $event)">
+            <summary>{{ c.t('test.sample') }}</summary>
+            <div class="sample-grid">
+              <label class="field"><span class="field__label">{{ c.t('test.user') }}</span><input class="input" [value]="sampleUser()" maxlength="25" (input)="sampleUser.set(val($event))" /></label>
+              <label class="field"><span class="field__label">{{ c.t('test.amount') }}</span><input class="input" inputmode="numeric" [value]="sampleAmount()" maxlength="7" (input)="sampleAmount.set(val($event))" /></label>
+              <label class="field"><span class="field__label">{{ c.t('test.tier') }}</span>
+                <select class="input" [attr.aria-label]="c.t('test.tier')" [value]="sampleTier()" (change)="sampleTier.set(val($event))">
+                  <option value="1000" [selected]="sampleTier() === '1000'">{{ c.t('test.tier1') }}</option>
+                  <option value="2000" [selected]="sampleTier() === '2000'">{{ c.t('test.tier2') }}</option>
+                  <option value="3000" [selected]="sampleTier() === '3000'">{{ c.t('test.tier3') }}</option>
+                </select>
+              </label>
+            </div>
+          </details>
+          <label class="switch-row">
+            <span class="switch-row__text"><strong>{{ c.t('test.obs') }}</strong><small [class.warn-text]="sendToObs() && obsConnected()">{{ c.t(obsConnected() ? 'test.obsHint' : 'test.obsOff') }}</small></span>
+            <span class="switch"><input type="checkbox" role="switch" [checked]="sendToObs()" [disabled]="!obsConnected()" (change)="sendToObs.set(checked($event))" /><span class="switch__track" aria-hidden="true"></span></span>
+          </label>
+        </div>
+      }
+    </main>
+
+    <!-- Right: the selected layer, or the overlay's own settings -->
+    <aside class="right" [attr.aria-label]="selected() ? c.t('insp.panel') : c.t('overlay.panel')">
+      <section class="pane pane--edit" [class.d-on]="!!selected()" [class.m-on]="mobileTab() === 'edit'">
+        @if (selected(); as l) {
+          <div class="insp-head">
+            <span class="kind-ico kind-ico--lg" [attr.data-kind]="l.kind"><lucide-icon [img]="kindIcon[l.kind]" [size]="18" aria-hidden="true" /></span>
+            <div class="insp-head__text"><h2>{{ c.t('kinds.' + l.kind) }}</h2><small>{{ c.t('kindHints.' + l.kind) }}</small></div>
+            <button type="button" class="icon-btn" [class.is-off]="!l.visible" [attr.aria-pressed]="l.visible" [attr.aria-label]="c.t('insp.show')" [title]="c.t('insp.show')" (click)="toggleVisible(l.id)"><lucide-icon [img]="l.visible ? i.Eye : i.EyeOff" [size]="17" aria-hidden="true" /></button>
+            <button type="button" class="icon-btn" [class.is-on]="l.locked" [attr.aria-pressed]="l.locked" [attr.aria-label]="c.t('insp.lock')" [title]="c.t('insp.lock')" (click)="toggleLock(l.id)"><lucide-icon [img]="l.locked ? i.LockKeyhole : i.LockOpen" [size]="17" aria-hidden="true" /></button>
+            <button type="button" class="icon-btn insp-head__close" [attr.aria-label]="c.t('insp.close')" [title]="c.t('insp.close')" (click)="select(null)"><lucide-icon [img]="i.X" [size]="17" aria-hidden="true" /></button>
+          </div>
+          <label class="field"><span class="field__label">{{ c.t('insp.name') }}</span><input class="input" [value]="name(l)" maxlength="80" (input)="patch({ name: val($event), nameKey: undefined }, 'name')" /></label>
+
+          <details class="acc" [open]="sections()['settings']" (toggle)="setSection('settings', $event)">
+            <summary><lucide-icon [img]="i.Settings2" [size]="16" aria-hidden="true" />{{ c.t('insp.settings') }}</summary>
+            <div class="acc__body">
+              @switch (l.kind) {
+                @case ('alert') {
+                  <div class="field">
+                    <label class="field__label" for="osw-design">{{ c.t('alert.design') }}</label>
+                    <div class="field-row">
+                      <select class="input" id="osw-design" (change)="patch({ designId: val($event) })">
+                        @for (d of designs(); track d.id) { <option [value]="d.id" [selected]="d.id === l.designId">{{ designName(d) }}</option> }
+                      </select>
+                      <button type="button" class="btn btn--sm" (click)="flash(c.t('designs.editToast'))">{{ c.t('alert.editDesign') }}</button>
+                    </div>
+                  </div>
+                  <fieldset class="field">
+                    <legend class="field__label">{{ c.t('alert.playsFor') }}</legend>
+                    <div class="pills">
+                      @for (e of alertEvents; track e) { <label class="pill"><input type="checkbox" [checked]="l.events?.includes(e)" (change)="toggleEvent(e)" /><span>{{ c.t('events.' + e) }}</span></label> }
+                    </div>
+                    @if (!l.events?.length) { <p class="note note--warn" role="status">{{ c.t('alert.noneOn') }}</p> } @else { <p class="note">{{ c.t('alert.hint') }}</p> }
+                  </fieldset>
+                }
+                @case ('trigger') {
+                  <div class="field">
+                    <span class="field__label" id="osw-trig-which">{{ c.t('trigger.which') }}</span>
+                    <div class="seg" role="group" aria-labelledby="osw-trig-which">
+                      <button type="button" [attr.aria-pressed]="l.triggerMode !== 'some'" (click)="patch({ triggerMode: 'all' })">{{ c.t('trigger.all') }}</button>
+                      <button type="button" [attr.aria-pressed]="l.triggerMode === 'some'" (click)="patch({ triggerMode: 'some' })">{{ c.t('trigger.some') }}</button>
+                    </div>
+                    @if (l.triggerMode === 'some') {
+                      <div class="pills">
+                        @for (t of triggers; track t) { <label class="pill"><input type="checkbox" [checked]="l.triggerIds?.includes(t)" (change)="toggleTrigger(t)" /><span>{{ c.t('trigger.' + t) }}</span></label> }
+                      </div>
+                      @if (!l.triggerIds?.length) { <p class="note note--warn" role="status">{{ c.t('trigger.pickNone') }}</p> }
+                    }
+                  </div>
+                  <div class="field">
+                    <span class="field__label" id="osw-trig-where">{{ c.t('trigger.where') }}</span>
+                    <div class="seg" role="group" aria-labelledby="osw-trig-where">
+                      <button type="button" [attr.aria-pressed]="l.placement !== 'random'" (click)="patch({ placement: 'fixed' })">{{ c.t('trigger.fixed') }}</button>
+                      <button type="button" [attr.aria-pressed]="l.placement === 'random'" (click)="patch({ placement: 'random' })">{{ c.t('trigger.random') }}</button>
+                    </div>
+                    <p class="note">{{ c.t(l.placement === 'random' ? 'trigger.randomHint' : 'trigger.fixedHint') }}</p>
+                  </div>
+                  @if (l.placement === 'random') {
+                    <label class="field"><span class="field__label">{{ c.t('trigger.margin') }} · {{ l.margin }} px</span>
+                      <input class="range" type="range" min="0" max="300" step="10" [value]="l.margin" [style.--pct]="(l.margin ?? 0) / 300" (input)="patch({ margin: +val($event) }, 'margin')" />
+                    </label>
+                  }
+                }
+                @case ('tts') {
+                  <label class="switch-row">
+                    <span class="switch-row__text"><strong>{{ c.t('tts.showText') }}</strong><small>{{ c.t('tts.hint') }}</small></span>
+                    <span class="switch"><input type="checkbox" role="switch" [checked]="l.showText" (change)="patch({ showText: checked($event) })" /><span class="switch__track" aria-hidden="true"></span></span>
+                  </label>
+                }
+                @case ('clip') {
+                  <div class="field">
+                    <span class="field__label" id="osw-clip-look">{{ c.t('clip.look') }}</span>
+                    <div class="looks" role="group" aria-labelledby="osw-clip-look">
+                      @for (look of clipLooks; track look) {
+                        @let locked = !freeLooks.includes(look);
+                        <button type="button" class="look" [class.is-locked]="locked" [attr.aria-pressed]="l.clipLook === look" (click)="pickClipLook(look)">
+                          <span>{{ c.t('clip.' + look) }}</span>
+                          @if (locked) { <span class="tag tag--gold"><lucide-icon [img]="i.Crown" [size]="11" aria-hidden="true" />{{ c.t('clip.premium') }}</span> }
+                        </button>
+                      }
+                    </div>
+                    @if (lockedLook(); as look) {
+                      <div class="upsell" role="status">
+                        <p>{{ c.t('clip.locked', { name: c.t('clip.' + look) }) }}</p>
+                        <button type="button" class="btn btn--sm btn--gold" (click)="flash(c.t('clip.upgradeToast'))">{{ c.t('clip.upgrade') }}</button>
+                      </div>
+                    }
+                  </div>
+                }
+                @case ('poll') { <ng-container *ngTemplateOutlet="interactSettings; context: { $implicit: l }" /> }
+                @case ('prediction') { <ng-container *ngTemplateOutlet="interactSettings; context: { $implicit: l }" /> }
+                @case ('image') {
+                  <div class="media-pick">
+                    <img class="media-pick__thumb" [src]="l.media" alt="" />
+                    <div class="media-pick__text"><span class="field__label">{{ c.t('media.file') }}</span><strong>mark-on-dark.png</strong></div>
+                  </div>
+                  <button type="button" class="btn btn--sm" (click)="flash(c.t('media.chooseToast'))">{{ c.t('media.choose') }}</button>
+                  <ng-container *ngTemplateOutlet="fitSetting; context: { $implicit: l }" />
+                }
+                @case ('video') {
+                  <div class="media-pick media-pick--empty">
+                    <span class="media-pick__thumb" aria-hidden="true"><lucide-icon [img]="i.Play" [size]="18" /></span>
+                    <div class="media-pick__text"><span class="field__label">{{ c.t('media.file') }}</span><strong>{{ c.t('media.none') }}</strong></div>
+                  </div>
+                  <button type="button" class="btn btn--sm btn--primary" (click)="flash(c.t('media.chooseToast'))">{{ c.t('media.choose') }}</button>
+                  <ng-container *ngTemplateOutlet="fitSetting; context: { $implicit: l }" />
+                  <label class="switch-row"><span class="switch-row__text"><strong>{{ c.t('media.loop') }}</strong></span><span class="switch"><input type="checkbox" role="switch" [checked]="l.loopVideo" (change)="patch({ loopVideo: checked($event) })" /><span class="switch__track" aria-hidden="true"></span></span></label>
+                  <label class="switch-row"><span class="switch-row__text"><strong>{{ c.t('media.sound') }}</strong></span><span class="switch"><input type="checkbox" role="switch" [checked]="l.sound" (change)="patch({ sound: checked($event) })" /><span class="switch__track" aria-hidden="true"></span></span></label>
+                }
+                @case ('shape') {
+                  <div class="field">
+                    <span class="field__label" id="osw-shape">{{ c.t('shape.shape') }}</span>
+                    <div class="seg" role="group" aria-labelledby="osw-shape">
+                      <button type="button" [attr.aria-pressed]="l.shape !== 'ellipse'" (click)="patch({ shape: 'rectangle' })">{{ c.t('shape.rectangle') }}</button>
+                      <button type="button" [attr.aria-pressed]="l.shape === 'ellipse'" (click)="patch({ shape: 'ellipse' })">{{ c.t('shape.ellipse') }}</button>
+                    </div>
+                  </div>
+                  <label class="field field--color"><span class="field__label">{{ c.t('shape.fill') }}</span><input type="color" [value]="l.fill" (input)="patch({ fill: val($event) }, 'fill')" /></label>
+                }
+                @case ('text') {
+                  <label class="field"><span class="field__label">{{ c.t('text.text') }}</span><textarea class="input" rows="2" [value]="rawText(l)" [placeholder]="c.t('text.placeholder')" (input)="patch({ text: val($event), textKey: undefined }, 'text')"></textarea></label>
+                  <div class="token-row"><span class="note">{{ c.t('text.tokens') }}</span>@for (tk of tokens; track tk) { <button type="button" class="token" (click)="insertToken(tk)">{{ tk }}</button> }</div>
+                  <label class="field"><span class="field__label">{{ c.t('text.size') }} · {{ l.fontSize }} px</span>
+                    <input class="range" type="range" min="16" max="200" step="2" [value]="l.fontSize" [style.--pct]="((l.fontSize ?? 64) - 16) / 184" (input)="patch({ fontSize: +val($event) }, 'font')" />
+                  </label>
+                  <div class="field-pair">
+                    <label class="field field--color"><span class="field__label">{{ c.t('text.color') }}</span><input type="color" [value]="l.color" (input)="patch({ color: val($event) }, 'color')" /></label>
+                    <div class="field">
+                      <span class="field__label" id="osw-align">{{ c.t('text.align') }}</span>
+                      <div class="seg seg--sm" role="group" aria-labelledby="osw-align">
+                        @for (a of ['left', 'center', 'right']; track a) { <button type="button" [attr.aria-pressed]="l.align === a" (click)="patch({ align: $any(a) })">{{ c.t('text.' + a) }}</button> }
+                      </div>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </details>
+
+          <details class="acc" [open]="sections()['position'] || compact()" (toggle)="setSection('position', $event)">
+            <summary><lucide-icon [img]="i.Scan" [size]="16" aria-hidden="true" />{{ c.t('insp.position') }}</summary>
+            <div class="acc__body">
+              <div class="mover" role="group" [attr.aria-label]="c.t('pos.move')">
+                <div class="mover__pad">
+                  <button type="button" class="pad pad--up" [disabled]="l.locked" [attr.aria-label]="c.t('pos.up')" (click)="nudge(0, -1)"><lucide-icon [img]="i.ArrowUp" [size]="18" aria-hidden="true" /></button>
+                  <button type="button" class="pad pad--left" [disabled]="l.locked" [attr.aria-label]="c.t('pos.left')" (click)="nudge(-1, 0)"><lucide-icon [img]="i.ArrowLeft" [size]="18" aria-hidden="true" /></button>
+                  <button type="button" class="pad pad--right" [disabled]="l.locked" [attr.aria-label]="c.t('pos.right')" (click)="nudge(1, 0)"><lucide-icon [img]="i.ArrowRight" [size]="18" aria-hidden="true" /></button>
+                  <button type="button" class="pad pad--down" [disabled]="l.locked" [attr.aria-label]="c.t('pos.down')" (click)="nudge(0, 1)"><lucide-icon [img]="i.ArrowDown" [size]="18" aria-hidden="true" /></button>
+                </div>
+                <div class="mover__side">
+                  <span class="field__label">{{ l.locked ? c.t('pos.lockedHint') : c.t('pos.step', { n: nudgeStep() }) }}</span>
+                  <div class="seg seg--sm" role="group" [attr.aria-label]="c.t('pos.move')">
+                    @for (st of steps; track st) { <button type="button" [attr.aria-pressed]="nudgeStep() === st" (click)="nudgeStep.set(st)">{{ st }} px</button> }
+                  </div>
+                </div>
+              </div>
+              <div class="num-grid">
+                <label><span>{{ c.t('pos.x') }}</span><input class="input" type="number" inputmode="numeric" [value]="l.x" [disabled]="l.locked" (input)="setDimension('x', $event)" /></label>
+                <label><span>{{ c.t('pos.y') }}</span><input class="input" type="number" inputmode="numeric" [value]="l.y" [disabled]="l.locked" (input)="setDimension('y', $event)" /></label>
+                <label><span>{{ c.t('pos.w') }}</span><input class="input" type="number" inputmode="numeric" min="20" [value]="l.w" [disabled]="l.locked" (input)="setDimension('w', $event)" /></label>
+                <label><span>{{ c.t('pos.h') }}</span><input class="input" type="number" inputmode="numeric" min="20" [value]="l.h" [disabled]="l.locked" (input)="setDimension('h', $event)" /></label>
+              </div>
+              <p class="note">{{ c.t('pos.pixels', { w: sc.width, h: sc.height }) }}</p>
+              @if (isOutside(l)) { <p class="note note--warn" role="status">{{ c.t('pos.outside') }}</p> }
+              <div class="field">
+                <span class="field__label" id="osw-align-edges">{{ c.t('pos.align') }}</span>
+                <div class="icon-row" role="group" aria-labelledby="osw-align-edges">
+                  <button type="button" class="icon-btn icon-btn--box" [disabled]="l.locked" [attr.aria-label]="c.t('pos.alignLeft')" [title]="c.t('pos.alignLeft')" (click)="align('left')"><lucide-icon [img]="i.AlignStartVertical" [size]="17" aria-hidden="true" /></button>
+                  <button type="button" class="icon-btn icon-btn--box" [disabled]="l.locked" [attr.aria-label]="c.t('pos.alignCenterX')" [title]="c.t('pos.alignCenterX')" (click)="align('cx')"><lucide-icon [img]="i.AlignCenterVertical" [size]="17" aria-hidden="true" /></button>
+                  <button type="button" class="icon-btn icon-btn--box" [disabled]="l.locked" [attr.aria-label]="c.t('pos.alignRight')" [title]="c.t('pos.alignRight')" (click)="align('right')"><lucide-icon [img]="i.AlignEndVertical" [size]="17" aria-hidden="true" /></button>
+                  <button type="button" class="icon-btn icon-btn--box" [disabled]="l.locked" [attr.aria-label]="c.t('pos.alignTop')" [title]="c.t('pos.alignTop')" (click)="align('top')"><lucide-icon [img]="i.AlignStartHorizontal" [size]="17" aria-hidden="true" /></button>
+                  <button type="button" class="icon-btn icon-btn--box" [disabled]="l.locked" [attr.aria-label]="c.t('pos.alignCenterY')" [title]="c.t('pos.alignCenterY')" (click)="align('cy')"><lucide-icon [img]="i.AlignCenterHorizontal" [size]="17" aria-hidden="true" /></button>
+                  <button type="button" class="icon-btn icon-btn--box" [disabled]="l.locked" [attr.aria-label]="c.t('pos.alignBottom')" [title]="c.t('pos.alignBottom')" (click)="align('bottom')"><lucide-icon [img]="i.AlignEndHorizontal" [size]="17" aria-hidden="true" /></button>
+                </div>
+              </div>
+              <div class="field">
+                <span class="field__label" id="osw-order">{{ c.t('pos.order') }}</span>
+                <div class="btn-row btn-row--wrap" role="group" aria-labelledby="osw-order">
+                  <button type="button" class="btn btn--sm" (click)="order('front')"><lucide-icon [img]="i.BringToFront" [size]="15" aria-hidden="true" />{{ c.t('pos.front') }}</button>
+                  <button type="button" class="btn btn--sm" (click)="order('forward')">{{ c.t('pos.forward') }}</button>
+                  <button type="button" class="btn btn--sm" (click)="order('backward')">{{ c.t('pos.backward') }}</button>
+                  <button type="button" class="btn btn--sm" (click)="order('back')"><lucide-icon [img]="i.SendToBack" [size]="15" aria-hidden="true" />{{ c.t('pos.back') }}</button>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          @if (isStyled(l)) {
+            <details class="acc" [open]="sections()['style']" (toggle)="setSection('style', $event)">
+              <summary><lucide-icon [img]="i.Sparkles" [size]="16" aria-hidden="true" />{{ c.t('insp.style') }}</summary>
+              <div class="acc__body">
+                <label class="field"><span class="field__label">{{ c.t('style.opacity') }} · {{ l.opacity }}%</span>
+                  <input class="range" type="range" min="0" max="100" step="1" [value]="l.opacity" [style.--pct]="l.opacity / 100" (input)="patch({ opacity: +val($event) }, 'opacity')" />
+                </label>
+                <label class="field"><span class="field__label">{{ c.t('style.radius') }} · {{ l.radius }} px</span>
+                  <input class="range" type="range" min="0" max="120" step="2" [value]="l.radius" [style.--pct]="l.radius / 120" (input)="patch({ radius: +val($event) }, 'radius')" />
+                </label>
+                <div class="field-pair">
+                  <label class="field"><span class="field__label">{{ c.t('style.border') }} · {{ l.borderWidth }} px</span>
+                    <input class="range" type="range" min="0" max="16" step="1" [value]="l.borderWidth" [style.--pct]="l.borderWidth / 16" (input)="patch({ borderWidth: +val($event) }, 'border')" />
+                  </label>
+                  <label class="field field--color"><span class="field__label">{{ c.t('style.borderColor') }}</span><input type="color" [value]="l.borderColor" (input)="patch({ borderColor: val($event) }, 'bcolor')" /></label>
+                </div>
+                <label class="switch-row"><span class="switch-row__text"><strong>{{ c.t('style.shadow') }}</strong></span><span class="switch"><input type="checkbox" role="switch" [checked]="l.shadow" (change)="patch({ shadow: checked($event) })" /><span class="switch__track" aria-hidden="true"></span></span></label>
+              </div>
+            </details>
+          }
+
+          @if (isStyled(l) || l.kind === 'alert') {
+            <details class="acc" [open]="sections()['animation']" (toggle)="setSection('animation', $event)">
+              <summary><lucide-icon [img]="i.Play" [size]="16" aria-hidden="true" />{{ c.t('insp.animation') }}</summary>
+              <div class="acc__body">
+                @if (l.kind === 'alert') {
+                  <p class="note">{{ c.t('anim.alertHint') }}</p>
+                  <button type="button" class="btn btn--sm" (click)="flash(c.t('designs.editToast'))">{{ c.t('alert.editDesign') }}</button>
+                } @else {
+                  <div class="field-pair field-pair--3">
+                    <label class="field"><span class="field__label">{{ c.t('anim.enter') }}</span>
+                      <select class="input" [attr.aria-label]="c.t('anim.enter')" (change)="patch({ enter: $any(val($event)) })">@for (m of motions; track m) { <option [value]="m" [selected]="l.enter === m">{{ c.t('anim.' + m) }}</option> }</select>
+                    </label>
+                    <label class="field"><span class="field__label">{{ c.t('anim.loop') }}</span>
+                      <select class="input" [attr.aria-label]="c.t('anim.loop')" (change)="patch({ loop: $any(val($event)) })">@for (m of loops; track m) { <option [value]="m" [selected]="l.loop === m">{{ c.t('anim.' + m) }}</option> }</select>
+                    </label>
+                    <label class="field"><span class="field__label">{{ c.t('anim.exit') }}</span>
+                      <select class="input" [attr.aria-label]="c.t('anim.exit')" (change)="patch({ exit: $any(val($event)) })">@for (m of motions; track m) { <option [value]="m" [selected]="l.exit === m">{{ c.t('anim.' + m) }}</option> }</select>
+                    </label>
+                  </div>
+                  <button type="button" class="btn btn--sm" (click)="replay(l)"><lucide-icon [img]="i.Play" [size]="14" aria-hidden="true" />{{ c.t('anim.replay') }}</button>
+                }
+              </div>
+            </details>
+          }
+
+          <div class="insp-actions">
+            <button type="button" class="btn btn--sm" (click)="duplicate()"><lucide-icon [img]="i.CopyPlus" [size]="15" aria-hidden="true" />{{ c.t('insp.duplicate') }}</button>
+            <button type="button" class="btn btn--sm btn--danger" (click)="remove(l.id)"><lucide-icon [img]="i.Trash2" [size]="15" aria-hidden="true" />{{ c.t('insp.delete') }}</button>
+          </div>
+        } @else {
+          <p class="note">{{ c.t('mobile.pick') }}</p>
+          <div class="pick-strip">
+            @for (l of layersTopFirst(); track l.id) {
+              <button type="button" class="pick" (click)="select(l.id)"><span class="kind-ico kind-ico--sm" [attr.data-kind]="l.kind"><lucide-icon [img]="kindIcon[l.kind]" [size]="14" aria-hidden="true" /></span>{{ name(l) }}</button>
+            } @empty { <p class="empty">{{ c.t('left.empty') }}</p> }
+          </div>
+        }
+      </section>
+
+      <section class="pane pane--overlay" [class.d-on]="!selected()" [class.m-on]="mobileTab() === 'overlay'" aria-labelledby="osw-overlay-title">
+        <div class="pane__bar"><h2 class="pane__title" id="osw-overlay-title">{{ c.t('overlay.title') }}</h2><span class="note">{{ c.t('overlay.hint') }}</span></div>
+        <div class="field">
+          <span class="field__label" id="osw-size">{{ c.t('overlay.size') }}</span>
+          <div class="sizes" role="group" aria-labelledby="osw-size">
+            @for (z of sizes; track z.id) {
+              <button type="button" class="size" [attr.aria-pressed]="sc.width === z.w && sc.height === z.h" (click)="setSize(z.w, z.h)"><strong>{{ c.t('overlay.' + z.id) }}</strong><small>{{ z.w }} × {{ z.h }}</small></button>
+            }
+          </div>
+          <p class="note">{{ c.t('overlay.sizeHint') }}</p>
+          @if (outsideCount(); as n) {
+            <div class="warn-row" role="status"><p>{{ c.t(n === 1 ? 'overlay.outside' : 'overlay.outsideMany', { count: n }) }}</p><button type="button" class="btn btn--sm" (click)="bringIn()">{{ c.t('overlay.bringIn') }}</button></div>
+          }
+        </div>
+        <fieldset class="field">
+          <legend class="field__label">{{ c.t('overlay.queue') }}</legend>
+          <div class="pills">
+            @for (k of queueKinds; track k) { <label class="pill"><input type="checkbox" [checked]="sc.waitFor.includes(k)" (change)="toggleWait(k)" /><span>{{ c.t('events.' + k) }}</span></label> }
+          </div>
+          <p class="note">{{ c.t('overlay.queueHint') }}</p>
+        </fieldset>
+        <div class="danger">
+          <div><strong>{{ c.t('overlay.delete') }}</strong><p class="note">{{ c.t(scenes().length < 2 ? 'overlay.deleteLast' : 'overlay.deleteHint') }}</p></div>
+          <button type="button" class="btn btn--sm btn--danger" [class.is-armed]="confirm() === 'delete-scene'" [disabled]="scenes().length < 2" (click)="deleteScene()">{{ c.t(confirm() === 'delete-scene' ? 'overlay.confirmDelete' : 'overlay.delete') }}</button>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- Phones: panels in thumb reach -->
+  <nav class="mtabs" [attr.aria-label]="c.t('mobile.tabs')">
+    <button type="button" [attr.aria-pressed]="mobileTab() === 'layers'" (click)="mobileTab.set('layers')"><lucide-icon [img]="i.Layers3" [size]="19" aria-hidden="true" /><span>{{ c.t('mobile.layers') }}</span></button>
+    <button type="button" [attr.aria-pressed]="mobileTab() === 'add'" (click)="mobileTab.set('add')"><lucide-icon [img]="i.Plus" [size]="19" aria-hidden="true" /><span>{{ c.t('mobile.add') }}</span></button>
+    <button type="button" [attr.aria-pressed]="mobileTab() === 'edit'" (click)="mobileTab.set('edit')"><lucide-icon [img]="i.Settings2" [size]="19" aria-hidden="true" /><span>{{ c.t('mobile.edit') }}</span></button>
+    <button type="button" [attr.aria-pressed]="mobileTab() === 'designs'" (click)="mobileTab.set('designs')"><lucide-icon [img]="i.Bell" [size]="19" aria-hidden="true" /><span>{{ c.t('mobile.designs') }}</span></button>
+    <button type="button" [attr.aria-pressed]="mobileTab() === 'overlay'" (click)="mobileTab.set('overlay')"><lucide-icon [img]="i.Monitor" [size]="19" aria-hidden="true" /><span>{{ c.t('mobile.overlay') }}</span></button>
+  </nav>
+</div>
+
+<ng-template #interactSettings let-l>
+  <div class="field">
+    <span class="field__label" id="osw-look">{{ c.t('interact.look') }}</span>
+    <div class="seg" role="group" aria-labelledby="osw-look">
+      <button type="button" [attr.aria-pressed]="l.look !== 'compact'" (click)="patch({ look: 'card' })">{{ c.t('interact.card') }}</button>
+      <button type="button" [attr.aria-pressed]="l.look === 'compact'" (click)="patch({ look: 'compact' })">{{ c.t('interact.compact') }}</button>
+    </div>
+  </div>
+  <div class="field">
+    <span class="field__label" id="osw-stage">{{ c.t('interact.preview') }}</span>
+    <div class="chips" role="group" aria-labelledby="osw-stage">
+      @for (st of stagesFor(l); track st) { <button type="button" class="chip" [attr.aria-pressed]="(l.fixture ?? 'progress') === st" (click)="patch({ fixture: st })">{{ c.t('interact.' + st) }}</button> }
+    </div>
+    <p class="note">{{ c.t('interact.hint', { kind: c.t('interact.' + l.kind) }) }}</p>
+  </div>
+</ng-template>
+
+<ng-template #fitSetting let-l>
+  <div class="field">
+    <span class="field__label" id="osw-fit">{{ c.t('media.fit') }}</span>
+    <div class="seg" role="group" aria-labelledby="osw-fit">
+      <button type="button" [attr.aria-pressed]="l.fit !== 'cover'" (click)="patch({ fit: 'contain' })">{{ c.t('media.contain') }}</button>
+      <button type="button" [attr.aria-pressed]="l.fit === 'cover'" (click)="patch({ fit: 'cover' })">{{ c.t('media.cover') }}</button>
+    </div>
+  </div>
+</ng-template>

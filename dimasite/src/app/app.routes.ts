@@ -245,6 +245,14 @@ export const routes: Routes = [
         title: 'Clip Overlay Mocks | DomDimaBot'
       },
       {
+        path: 'overlay-studio',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/overlay-studio-wide/overlay-studio-wide.component').then(
+            (m) => m.OverlayStudioWideMockComponent
+          ),
+        title: 'Overlay Studio · Wide | DomDimaBot'
+      },
+      {
         path: 'overlay-editor',
         loadComponent: () =>
           import('./features/landing-mocks/dev/overlay-editor-mock.component').then(
