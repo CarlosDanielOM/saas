@@ -283,7 +283,7 @@ export class DevMockIndexComponent {
     {
       id: 'overlay-studio',
       title: 'Overlay Studio · Wide',
-      badge: 'DomDimaBot + StreamElements · for approval',
+      badge: 'Shipped as Overlay Studio (2026-11-04)',
       description:
         'Full-screen editor: layers and Add on the left, a zoomable canvas at true 1920×1080 in the middle, the selected layer on the right in collapsible groups. Floating tool bar with Test (plays events in the editor, optional OBS), undo, zoom, grid, snap guides and background. Real poll, prediction and clip previews; OBS status, draft and Publish live up top. Phones: pinned canvas + bottom tabs.'
     },

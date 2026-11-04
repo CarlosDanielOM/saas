@@ -1,3 +1,4 @@
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -43,7 +44,7 @@ try {
   const page=await context.newPage();page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base+'/fixture/modules/overlays');await page.locator('.stage').waitFor();
   await page.locator('.publish-status').waitFor();
-  await page.locator('.publish-settings summary').click();
+  await openStudio(page,'test');
   await page.getByRole('button',{name:'Test this overlay in OBS',exact:true}).click();
   await page.getByRole('alert').getByText('Publish this overlay’s changes before sending a test to OBS.',{exact:true}).waitFor();assert.equal(tests,0);
   await page.getByRole('button',{name:'Edit design',exact:true}).click();
@@ -78,7 +79,7 @@ try {
   await page.addScriptTag({path:'/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js'});
   const axe=await page.evaluate(()=>window.axe.run(document.querySelector('app-overlay-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(axe.violations.map(v=>v.id),[]);
   await page.getByRole('button',{name:'Save & back to overlay',exact:true}).click();
-  await page.locator('.publish-settings summary').click();
+  await openStudio(page,'test');
   await page.getByLabel('Event to test in OBS',{exact:true}).selectOption('follow');
   page.once('dialog',dialog=>dialog.accept());
   await page.getByRole('button',{name:'Test this overlay in OBS',exact:true}).click();

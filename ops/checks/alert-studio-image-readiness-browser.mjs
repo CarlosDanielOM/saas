@@ -1,5 +1,6 @@
 // Per-object alert animation editing and actual browser animation playback.
 // Every API and socket is mocked; nothing reaches production.
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -80,6 +81,7 @@ try {
  for(const width of [390,1280]) {
   // Scene event uses a different layout from the idle thumbnail; inspect the newly mounted image.
   let f=await fixture({width});
+  await openStudio(f.page,'test');
   await f.page.locator('.test-btn').filter({hasText:'Follow'}).click();
   await until(()=>f.ctx.images.some(i=>i.id==='follow'),'follow image requested');
   await sleep(200); assert.equal(await motions(f.page),0,'animation must not start while image downloads'); await sleep(1000);
@@ -95,6 +97,7 @@ try {
   // Design editor replay must wait for the existing displayed image, not a second download.
   f=await fixture({width});
   await f.page.locator('.design-row__actions button').first().click();
+  await openStudio(f.page,'test');
   const preview=f.page.getByRole('button',{name:'Preview Follows',exact:true});
   await preview.click(); await until(()=>f.ctx.images.some(i=>i.id==='follow'),'design image requested');
   await sleep(200); assert.equal(await motions(f.page),0,'animation must not start while image downloads'); await sleep(1000); assert.equal(await motions(f.page),0,'design animation waits');
@@ -106,6 +109,7 @@ try {
   await f.context.close();
   f=await fixture({width});
   await f.page.locator('.design-row__actions button').first().click();
+  await openStudio(f.page,'test');
   await f.page.getByRole('button',{name:'Preview Follows',exact:true}).click();
   await until(()=>f.ctx.images.some(i=>i.id==='follow'),'pending image before cancellation');
   await f.page.locator('.design-event-tabs').getByRole('button',{name:'Subscriptions',exact:true}).click();

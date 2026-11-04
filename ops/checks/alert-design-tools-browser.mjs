@@ -1,6 +1,7 @@
 // Design tools and variants: editing, sound/timing, rules, recovery and publication.
 // Variant CRUD runs on raids; Bits looks follow shared Bits rules (see bits-rules-browser.mjs).
 // Every API and socket is mocked; nothing reaches production.
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -95,6 +96,7 @@ try {
   await appearance.getByLabel(es?'Sombra':'Shadow',{exact:true}).check();
   await appearance.getByLabel(es?'Opacidad (%)':'Opacity (%)',{exact:true}).fill('75');await appearance.getByLabel(es?'Opacidad (%)':'Opacity (%)',{exact:true}).press('Tab');
   await until(()=>text.locator('..').evaluate(e=>getComputedStyle(e).opacity==='0.75' && getComputedStyle(e).filter.includes('drop-shadow')),'opacity/shadow');
+  await openStudio(page,'add');
   await page.locator('.palette-item[data-kind=shape]').click();
   await appearance.getByRole('combobox',{name:es?'Forma':'Shape',exact:true}).selectOption('ellipse');
   await appearance.getByLabel(es?'Ancho del borde':'Border width',{exact:true}).fill('4');await appearance.getByLabel(es?'Ancho del borde':'Border width',{exact:true}).press('Tab');
@@ -116,14 +118,17 @@ try {
   await page.getByLabel(es?'Duración de la alerta (segundos)':'Alert length (seconds)',{exact:true}).fill('7');await page.getByLabel(es?'Duración de la alerta (segundos)':'Alert length (seconds)',{exact:true}).press('Tab');
   const timing=page.locator('details.motion-timing');await timing.evaluate(d=>{d.open=true;});await timing.locator('input').first().fill('0.7');await timing.locator('input').first().press('Tab');
 
+  await openStudio(page,'add');
   await page.locator('.palette-item[data-kind=shape]').click();
   await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants?.raid?.[0]?.layout.widgets.length===3,'save variant');
   assert.equal(ctx.state.designs[0].events.raid.widgets.length,2,'base unaffected');
   const variant=ctx.state.designs[0].variants.raid[0];assert.equal(variant.min,500);assert.equal(variant.max,1000);assert.equal(variant.layout.sound.volume,.35);assert.equal(variant.layout.duration,7);assert.equal(variant.layout.widgets[1].motion.delay,.7);assert.equal(ctx.state.designs[0].events.raid.sound,undefined);assert.equal(variant.layout.widgets[1].text,'BIG $(user)');
   await variants.getByRole('button',{name:es?'Predeterminada':'Default',exact:true}).click();
   await until(()=>page.locator('.properties textarea').inputValue().then(v=>v==='$(user)'),'default content');
+  await openStudio(page,'test');
   await page.getByLabel(es?'Cantidad de ejemplo':'Sample amount',{exact:true}).fill('750');
   await page.getByRole('button',{name:es?'Cambiar a Big cheers y probar':'Switch to Big cheers & preview',exact:true}).click();
+  await openStudio(page,'layer');
   await until(()=>variants.getByRole('button',{name:'Big cheers',exact:true}).getAttribute('aria-pressed').then(v=>v==='true'),'rule preview');
   assert.equal(await page.locator('.variant-match button').count(),0,'no switch button when the match is already open');
   // Adding while a variant is open copies it (the old separate Duplicate button did the same thing).
@@ -136,7 +141,9 @@ try {
   await page.getByRole('button',{name:es?'Deshacer':'Undo',exact:true}).click();
   await until(()=>variants.getByRole('button',{name:'Priority',exact:true}).count().then(n=>n===1),'undo deletion');
   await variants.getByLabel(es?'Activada':'Enabled',{exact:true}).uncheck();
+  await openStudio(page,'test');
   await page.getByRole('button',{name:es?'Cambiar a Big cheers y probar':'Switch to Big cheers & preview',exact:true}).click();
+  await openStudio(page,'layer');
   await until(()=>variants.getByRole('button',{name:'Big cheers',exact:true}).getAttribute('aria-pressed').then(v=>v==='true'),'disabled priority skipped');
   await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants.raid[0].enabled===false,'disabled saved');
   await axe(page,'designs '+options.width);assert.equal(await overflow(page),false);
@@ -151,11 +158,13 @@ try {
     await until(()=>page.locator('.properties textarea').inputValue().then(v=>v==='Recovered variant'),'restored selected variant');
     await page.locator('.design-event-tabs button').nth(0).click();await variants.getByRole('button',{name:'Add variant',exact:true}).click();
     await variants.getByRole('combobox',{name:'Subscription tier',exact:true}).selectOption('3000');
+    await openStudio(page,'test');
     await page.getByRole('combobox',{name:'Sample subscription tier',exact:true}).selectOption('3000');
     await until(()=>page.locator('.variant-match').innerText().then(t=>t.includes('This sample plays: New variant')),'tier sample');
     assert.equal(await page.locator('.variant-match button').count(),0,'matching variant already open');
     await page.locator('.design-event-tabs button').nth(3).click();await variants.getByRole('button',{name:'Default',exact:true}).click();await variants.getByRole('button',{name:'Add variant',exact:true}).click();
     await variants.getByLabel('Minimum raid viewers',{exact:true}).fill('50');await variants.getByLabel('Minimum raid viewers',{exact:true}).press('Tab');
+    await openStudio(page,'test');
     await page.getByLabel('Sample amount',{exact:true}).fill('49');await page.getByRole('button',{name:'Switch to Default & preview',exact:true}).click();
     await until(()=>variants.getByRole('button',{name:'Default',exact:true}).getAttribute('aria-pressed').then(v=>v==='true'),'raid fallback');
     await page.locator('.publish-button').click();await until(()=>ctx.state.scenes[0].published.designs[0].variants?.raid?.some(v=>v.min===50),'published all variants');

@@ -1,4 +1,5 @@
 // Mocked Studio accounts/events: prove delayed AST values are ready on the first playing frame.
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 const { chromium } = await import('/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base=process.env.SAAS_PREVIEW_URL; assert(base);
@@ -42,8 +43,8 @@ try {
  for(const width of [390,1280]) {
   for(const mode of ['scene','design']) {
    const f=await fixture(width),{page}=f;
-   if(mode==='scene')await page.locator('.test-btn').filter({hasText:'Bits'}).click();
-   else {await page.locator('.design-row__actions button').first().click();await page.locator('.design-event-tabs').getByRole('button',{name:'Bits',exact:true}).click();await page.getByRole('button',{name:'Preview Bits',exact:true}).click();}
+   if(mode==='scene'){await openStudio(page,'test');await page.locator('.test-btn').filter({hasText:'Bits'}).click();}
+   else {await page.locator('.design-row__actions button').first().click();await page.locator('.design-event-tabs').getByRole('button',{name:'Bits',exact:true}).click();await openStudio(page,'test');await page.getByRole('button',{name:'Preview Bits',exact:true}).click();}
    await until(()=>f.held.length>0,'AST request held'); await sleep(350);
    assert.equal(await page.locator('.stage .is-preview').count(),0,'playback must wait for parsed amount');
    assert.deepEqual(await page.evaluate(()=>window.firstPlayingText),[]);
@@ -58,15 +59,18 @@ try {
  const f=await fixture(1280);
  await f.page.locator('.design-row__actions button').first().click();
  await f.page.locator('.design-event-tabs').getByRole('button',{name:'Bits',exact:true}).click();
+ await openStudio(f.page,'test');
  await f.page.getByRole('button',{name:'Preview Bits',exact:true}).click();await until(()=>f.held.length>0,'pending AST');
  await f.page.locator('.design-event-tabs').getByRole('button',{name:'Follows',exact:true}).click();
  await f.release();await sleep(250);assert.equal(await f.page.locator('.stage .is-preview').count(),0);assert.deepEqual(f.errors,[]);await f.context.close();
  const failed=await fixture(1280);
  await failed.page.locator('.design-row__actions button').first().click();
  await failed.page.locator('.design-event-tabs').getByRole('button',{name:'Bits',exact:true}).click();
+ await openStudio(failed.page,'test');
  await failed.page.getByRole('button',{name:'Preview Bits',exact:true}).click();await until(()=>failed.held.length>0,'AST failure request');await sleep(300);
  await failed.release(400);await failed.page.getByText('AST fixture failure',{exact:true}).waitFor();
  assert.equal(await failed.page.locator('.stage .is-preview').count(),0,'failed parse never plays stale text');
+ await openStudio(failed.page,'test');
  await failed.page.getByRole('button',{name:'Preview Bits',exact:true}).click();await failed.page.locator('.stage .is-preview').waitFor();
  assert.equal(await failed.page.locator('.stage .layer-content span').textContent(),'100');
  assert.equal(await failed.page.getByText('AST fixture failure',{exact:true}).count(),0,'retry clears parse error');

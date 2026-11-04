@@ -1,6 +1,7 @@
 // Overlay reliability: isolated playable previews, confirmed scene-scoped OBS tests,
 // conflict recovery and retry, responsive EN/ES controls, and accessibility.
 // Every API and socket is mocked; nothing reaches production.
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -75,6 +76,7 @@ try {
   const {context,page,ctx}=await fixture(options);
   const spanish=options.lang==='es';
   // Preview uses the private test endpoint. It never opens legacy clip/TTS namespaces.
+  await openStudio(page,'test');
   await page.locator('.event-tester__actions button').first().click();
   await until(()=>ctx.tests.length===1,'preview request');
   assert.equal(ctx.tests[0].kind,'tts');assert.equal(ctx.tests[0].destination,'preview');

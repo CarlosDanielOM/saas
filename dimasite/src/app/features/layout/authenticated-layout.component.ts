@@ -11,6 +11,7 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { ToastService } from '../../services/toast.service';
 import { UpgradeService } from '../../services/upgrade.service';
+import { LayoutFocusService } from '../../services/layout-focus.service';
 import { PendingActionsQueueService } from '../../services/pending-actions-queue.service';
 import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
 import { ToastContainerComponent } from '../../shared/toast-container/toast-container.component';
@@ -38,6 +39,8 @@ export class AuthenticatedLayoutComponent {
   private readonly toastService = inject(ToastService);
   private readonly upgradeService = inject(UpgradeService);
   private readonly pendingActionsQueue = inject(PendingActionsQueueService);
+  /** Full-screen pages such as Overlay Studio hide the navbar while they are open. */
+  readonly focus = inject(LayoutFocusService).active;
   private readonly profileMenu = viewChild<ElementRef<HTMLElement>>('profileMenu');
   private readonly mobileMenu = viewChild<ElementRef<HTMLElement>>('mobileMenu');
 

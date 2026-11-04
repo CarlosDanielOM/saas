@@ -19,7 +19,9 @@ import { defaultMotion } from './overlay-object-motion';
 import { ALERT_TRANSITIONS, ALERT_LOOPS } from './overlay.model';
 import { OverlayHistory, type OverlayEditSnapshot } from './overlay-history';
 import { OverlayQueueComponent } from './overlay-queue.component';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { ThemeService } from '../../services/theme.service';
+import { LayoutFocusService } from '../../services/layout-focus.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { OverlayTestMediaService, type TestChannel, type TestMedia } from '../landing-mocks/dev/overlay-test-media.service';
 import { OverlayTriggerFilterComponent } from './overlay-trigger-filter.component';
@@ -35,13 +37,24 @@ import { OverlayDraftStorage, type LocalOverlayDraft, type OverlayRecovery } fro
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, ChevronDown, Clapperboard, Copy, ExternalLink, Eye, EyeOff, FlaskConical, Image, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Radio, Settings2, Sparkles, Trash2, Type, Volume2, X, Zap, LucideAngularModule } from 'lucide-angular';
+import { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, Clapperboard, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FlaskConical, Image, Keyboard, Languages, Link2, Moon, PanelsTopLeft, Scan, Sun, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Radio, Settings2, Sparkles, Trash2, Type, Volume2, X, Zap, ZoomIn, ZoomOut, LucideAngularModule } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
 import { ALERT_EVENTS, EVENT_KINDS, AlertDesign, AlertEvent, EventKind, OverlayScene, OverlayWidget, WidgetKind, clone, makeDesign, makeScene, matchesTrigger } from './overlay.model';
 
 type Dimension = 'x' | 'y' | 'width' | 'height';
 interface PointerSession { id: string; action: 'move' | 'resize'; startX: number; startY: number; original: OverlayWidget; canvas: DOMRect }
 interface MockEvent { serialized?: boolean; originalTargets?: string[]; text?: string; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; assets?: Map<string, PreparedAsset>; texts?: Record<string, string>; preparing?: boolean; id: number; kind: EventKind; channel?: TestChannel; targets?: string[]; media?: TestMedia; placements?: OverlayWidget[] }
+type StudioPop = 'scenes' | 'obs' | 'menu';
+type MobileTab = 'layers' | 'add' | 'edit' | 'test' | 'more';
+type StudioPane = 'variants' | 'add' | 'layers' | 'designs' | 'timeline' | 'tester' | 'layer' | 'overlay';
+/** Zoom steps for the canvas (1 = true pixels). "Fit" picks the largest scale that shows the whole canvas. */
+const ZOOM_STEPS = [0.1, 0.15, 0.2, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2];
+/** Add palette groups, by what the streamer wants to show. Kinds not listed land in the last group. */
+const PALETTE_GROUPS: { id: 'events' | 'interact' | 'media'; kinds: WidgetKind[] }[] = [
+  { id: 'events', kinds: ['alert', 'trigger', 'tts', 'clip'] },
+  { id: 'interact', kinds: ['poll', 'prediction'] },
+  { id: 'media', kinds: [] }
+];
 interface MediaJob { cancel?: () => void; timers: Map<string, ReturnType<typeof setTimeout>>; pending: Set<string>; started: Set<string> }
 
 @Component({
@@ -52,6 +65,7 @@ interface MediaJob { cancel?: () => void; timers: Map<string, ReturnType<typeof 
 })
 export class OverlayEditorComponent {
   private readonly api = inject(OverlayApi);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly previewPreparations = new Map<string, AbortController>();
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -114,7 +128,7 @@ export class OverlayEditorComponent {
   private pointer: PointerSession | null = null;
   private timers = new Set<ReturnType<typeof setTimeout>>();
   private nextId = Date.now();
-  readonly icons = { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, ChevronDown, Clapperboard, Copy, ExternalLink, Eye, EyeOff, FlaskConical, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Radio, Settings2, Sparkles, Trash2, Volume2, X, Zap };
+  readonly icons = { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, Clapperboard, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FlaskConical, Keyboard, Languages, Link2, Moon, PanelsTopLeft, Scan, Sun, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Radio, Settings2, Sparkles, Trash2, Volume2, X, Zap, ZoomIn, ZoomOut };
   readonly alertEvents = ALERT_EVENTS;
   readonly eventKinds = EVENT_KINDS;
   readonly designs = signal<AlertDesign[]>([]);
@@ -235,8 +249,81 @@ export class OverlayEditorComponent {
   readonly designEventEnabled = computed(() => this.scene()?.widgets.some(w => w.visible && w.kind === 'alert'
     && w.designId === this.designDraft()?.id && w.events?.includes(this.designEvent())) ?? false);
 
+  // ── Studio layout (view state only; nothing here is saved) ─────────────────
+  private readonly theme = inject(ThemeService);
+  private readonly layoutFocus = inject(LayoutFocusService);
+  private readonly workspace = viewChild<ElementRef<HTMLElement>>('workspace');
+  /** Below 960px the studio stacks: pinned canvas on top, one panel at a time behind bottom tabs. */
+  readonly compact = signal(false);
+  readonly pop = signal<StudioPop | null>(null);
+  private popTrigger: HTMLElement | null = null;
+  readonly testOpen = signal(false);
+  readonly panels = signal(true);
+  readonly addOpen = signal(true);
+  readonly rightTab = signal<'layer' | 'overlay'>('layer');
+  /** Phones open on Layers: what is on the overlay (and its alert designs) before any one setting. */
+  readonly mobileTab = signal<MobileTab>('layers');
+  /** Inspector groups the streamer folded away stay folded while hopping between layers. */
+  readonly sections = signal<Record<string, boolean>>({ settings: true, position: true, appearance: true, motion: true });
+  readonly workspaceSize = signal({ width: 0, height: 0 });
+  readonly zoomMode = signal<'fit' | number>('fit');
+  readonly fitScale = computed(() => {
+    const { width, height } = this.workspaceSize();
+    if (!width || !height) return 0.3;
+    const pad = this.compact() ? 10 : 32, toolbar = this.compact() ? 0 : 72;
+    return Math.max(0.05, Math.min((width - pad * 2) / this.canvasWidth(), (height - pad * 2 - toolbar) / this.canvasHeight()));
+  });
+  readonly zoom = computed(() => { const mode = this.zoomMode(); return mode === 'fit' ? this.fitScale() : mode; });
+  readonly zoomPercent = computed(() => Math.round(this.zoom() * 100));
+  /** Alignment guides shown while dragging, in canvas pixels. */
+  readonly guides = signal<{ v: number[]; h: number[] }>({ v: [], h: [] });
+  readonly paletteGroups = computed(() => {
+    const kinds = this.palette(), listed = new Set(PALETTE_GROUPS.flatMap(g => g.kinds));
+    return PALETTE_GROUPS.map(group => ({ id: group.id, kinds: group.id === 'media' ? kinds.filter(k => !listed.has(k)) : group.kinds.filter(k => kinds.includes(k)) }))
+      .filter(group => group.kinds.length);
+  });
+  readonly dark = computed(() => this.theme.isDarkMode());
+  readonly accountName = computed(() => this.auth.session()?.twitchUser.display_name || this.auth.session()?.twitchUser.login || '');
+  readonly accountAvatar = computed(() => this.auth.session()?.twitchUser.profile_image_url || '');
+  readonly accountAvatarFailed = signal(false);
+  private dragLayerId: string | null = null;
+
   constructor() {
     this.seed();
+    // The studio is full screen once it is open; loading, error and permission screens keep the site navbar.
+    effect(() => this.layoutFocus.active.set(this.owner() && this.loaded()));
+    inject(DestroyRef).onDestroy(() => this.layoutFocus.active.set(false));
+    afterNextRender(() => {
+      const media = window.matchMedia('(max-width: 959.98px)');
+      const sync = () => this.compact.set(media.matches);
+      sync(); media.addEventListener('change', sync);
+      this.destroyRef.onDestroy(() => media.removeEventListener('change', sync));
+    });
+    // Phones: whatever scrolls into view (keyboard focus, error fields) lands between the pinned canvas
+    // and the save bar/tabs instead of underneath them.
+    effect(onCleanup => {
+      if (!this.compact() || !this.workspace() || typeof ResizeObserver === 'undefined') return;
+      const root = document.documentElement, canvas = this.host.querySelector('.studio__canvas'), bar = this.host.querySelector('.lf-save-bar');
+      if (!canvas || !bar) return;
+      const apply = () => {
+        root.style.scrollPaddingTop = Math.round(canvas.getBoundingClientRect().height + 8) + 'px';
+        root.style.scrollPaddingBottom = Math.round(Math.max(0, window.innerHeight - bar.getBoundingClientRect().top) + 8) + 'px';
+      };
+      apply();
+      const observer = new ResizeObserver(apply); observer.observe(canvas); observer.observe(bar); window.addEventListener('resize', apply);
+      onCleanup(() => { observer.disconnect(); window.removeEventListener('resize', apply); root.style.scrollPaddingTop = ''; root.style.scrollPaddingBottom = ''; });
+    });
+    // "Fit" follows the workspace size, so hiding panels or opening the test drawer re-fits the canvas.
+    effect(onCleanup => {
+      const element = this.workspace()?.nativeElement;
+      if (!element || typeof ResizeObserver === 'undefined') return;
+      const measure = () => this.workspaceSize.set({ width: element.clientWidth, height: element.clientHeight });
+      const wheel = (event: WheelEvent) => { if (!event.ctrlKey && !event.metaKey) return; event.preventDefault(); if (event.deltaY < 0) this.zoomIn(); else this.zoomOut(); };
+      measure();
+      const observer = new ResizeObserver(measure); observer.observe(element);
+      element.addEventListener('wheel', wheel, { passive: false });
+      onCleanup(() => { observer.disconnect(); element.removeEventListener('wheel', wheel); });
+    });
     afterNextRender(() => void this.loadSaved());
     effect(onCleanup => {
       if (!this.loaded() || !this.channel || this.loading()) return;
@@ -280,6 +367,118 @@ export class OverlayEditorComponent {
     this.language.currentLanguage(); return this.language.translate(`overlayStudio.${key}`, params);
   }
   toggleSnap(): void { this.snap.update(v => !v); }
+
+  // ── Studio layout ──────────────────────────────────────────────────────────
+  /** Which panes show: desktop uses the side panels/drawer state, phones show one pane per bottom tab. */
+  paneOn(pane: StudioPane, device: 'desktop' | 'phone'): boolean {
+    const design = !!this.designDraft();
+    if (device === 'phone') {
+      const tab = this.mobileTab();
+      switch (pane) {
+        case 'layers': case 'designs': return tab === 'layers';
+        // Bits looks and variants pick what you are editing: they lead the Edit tab in design mode.
+        case 'variants': return tab === 'edit';
+        case 'add': return tab === 'add';
+        // Alert designs: the timeline follows the selected object's settings, as before.
+        case 'layer': case 'timeline': return tab === 'edit';
+        case 'tester': return tab === 'test';
+        case 'overlay': return tab === 'more';
+      }
+    }
+    switch (pane) {
+      case 'variants': return design;
+      case 'designs': return !design;
+      case 'add': case 'layers': return true;
+      case 'timeline': return design;
+      case 'tester': return this.testOpen();
+      case 'layer': return this.rightTab() === 'layer';
+      case 'overlay': return this.rightTab() === 'overlay';
+    }
+  }
+  /** A layer picked by the streamer (canvas or list) opens its settings, on phones too. */
+  pick(id: string): void {
+    this.select(id); this.rightTab.set('layer');
+    if (this.compact()) this.mobileTab.set('edit');
+  }
+  /** Clicking empty canvas clears the selection, like most design tools. */
+  onWorkspaceClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (!target || target.closest('.widget, .resize-handle, .studio-toolbar, .pop')) return;
+    if (this.selectedId()) { this.endHistoryGroup(); this.selectedId.set(null); }
+  }
+  setRightTab(tab: 'layer' | 'overlay'): void { this.rightTab.set(tab); }
+  /** Adding from the palette selects the new layer; on phones it also opens its settings. */
+  addFromPalette(kind: WidgetKind): void { this.addWidget(kind); this.rightTab.set('layer'); if (this.compact()) this.mobileTab.set('edit'); }
+  setMobileTab(tab: MobileTab): void { this.closePop(); this.mobileTab.set(tab); }
+  toggleTest(): void {
+    if (this.compact()) { this.setMobileTab('test'); return; }
+    this.testOpen.update(open => !open);
+  }
+  togglePop(pop: StudioPop, event?: Event): void {
+    if (this.pop() === pop) { this.closePop(); return; }
+    this.popTrigger = (event?.currentTarget as HTMLElement | null) ?? null;
+    this.pop.set(pop);
+    setTimeout(() => (this.host.querySelector('.pop:not([hidden]) [data-autofocus]') as HTMLElement | null)?.focus(), 0);
+  }
+  closePop(): void {
+    if (!this.pop()) return;
+    this.pop.set(null); this.popTrigger?.focus(); this.popTrigger = null;
+  }
+  setSection(key: string, event: Event): void {
+    const open = (event.target as HTMLDetailsElement).open;
+    if (this.sections()[key] !== open) this.sections.update(all => ({ ...all, [key]: open }));
+  }
+  zoomIn(): void { const now = this.zoom(); this.zoomMode.set(ZOOM_STEPS.find(z => z > now + 0.001) ?? ZOOM_STEPS[ZOOM_STEPS.length - 1]); }
+  zoomOut(): void { const now = this.zoom(); this.zoomMode.set([...ZOOM_STEPS].reverse().find(z => z < now - 0.001) ?? ZOOM_STEPS[0]); }
+  fitCanvas(): void { this.zoomMode.set('fit'); }
+  toggleTheme(): void { this.theme.toggleTheme(); }
+  toggleLanguage(): void { this.language.toggleLanguage(); }
+  sceneLayerCount(scene: OverlayScene): number { return scene.widgets.length; }
+  /** Drag a row in Layers to change what shows in front. The row takes the target's place. */
+  onLayerDragStart(event: DragEvent, id: string): void {
+    this.dragLayerId = id; event.dataTransfer?.setData('application/x-overlay-layer', id);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  }
+  onLayerDragOver(event: DragEvent): void { if (this.dragLayerId) event.preventDefault(); }
+  onLayerDrop(event: DragEvent, targetId: string): void {
+    const id = this.dragLayerId; this.dragLayerId = null;
+    if (!id || id === targetId) return;
+    event.preventDefault();
+    this.updateWidgets(all => {
+      const from = all.findIndex(w => w.id === id), to = all.findIndex(w => w.id === targetId);
+      if (from < 0 || to < 0) return all;
+      const next = [...all], [moved] = next.splice(from, 1); next.splice(to, 0, moved); return next;
+    });
+  }
+  /** Snap a dragged box to the canvas edges/centre and to other visible layers (within 8 screen pixels). */
+  private alignMove(id: string, x: number, y: number, width: number, height: number, pxPerUnit: number): { x: number; y: number } {
+    if (!this.snap()) { this.guides.set({ v: [], h: [] }); return { x, y }; }
+    const threshold = 8 / Math.max(pxPerUnit, 0.01), others = this.widgets().filter(w => w.id !== id && w.visible);
+    const axis = (pos: number, size: number, targets: number[]) => {
+      let best: { d: number; pos: number | null; guide: number | null } = { d: threshold, pos: null, guide: null };
+      for (const target of targets) for (const offset of [0, size / 2, size]) {
+        const d = Math.abs(pos + offset - target);
+        if (d < best.d) best = { d, pos: Math.round(target - offset), guide: target };
+      }
+      return best;
+    };
+    const vx = axis(x, width, [0, this.canvasWidth() / 2, this.canvasWidth(), ...others.flatMap(w => [w.x, w.x + w.width / 2, w.x + w.width])]);
+    const hy = axis(y, height, [0, this.canvasHeight() / 2, this.canvasHeight(), ...others.flatMap(w => [w.y, w.y + w.height / 2, w.y + w.height])]);
+    this.guides.set({ v: vx.guide === null ? [] : [vx.guide], h: hy.guide === null ? [] : [hy.guide] });
+    return { x: vx.pos ?? x, y: hy.pos ?? y };
+  }
+  /** Studio shortcuts that are not edit history: Escape, zoom and delete. Typing in fields is never intercepted. */
+  private onStudioKey(event: KeyboardEvent): void {
+    if (event.defaultPrevented || event.isComposing) return;
+    if (event.key === 'Escape' && this.pop()) { event.preventDefault(); this.closePop(); return; }
+    const target = event.target instanceof Element ? event.target : null;
+    if (!this.loaded() || !target?.closest('app-overlay-editor') || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="dialog"]:not(.pop)')) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if ((event.key === 'Delete' || event.key === 'Backspace') && this.selected() && !this.busy()) { event.preventDefault(); this.deleteSelected(); }
+    else if (event.key === '+' || event.key === '=') { event.preventDefault(); this.zoomIn(); }
+    else if (event.key === '-') { event.preventDefault(); this.zoomOut(); }
+    else if (event.key === '0') { event.preventDefault(); this.fitCanvas(); }
+  }
   select(id: string): void { if (this.selectedId() !== id) this.endHistoryGroup(); this.selectedId.set(id); }
   value(event: Event): string { return (event.target as HTMLInputElement).value; }
   private id(prefix: string): string { return `${prefix}-${this.nextId++}`; }
@@ -413,21 +612,27 @@ export class OverlayEditorComponent {
   startPointer(event: PointerEvent, widget: OverlayWidget, action: 'move' | 'resize'): void {
     if (this.busy() || widget.locked || event.button !== 0) return;
     // Touch: the first tap only selects, so swiping across the canvas still scrolls the page.
-    if (event.pointerType === 'touch' && action === 'move' && this.selectedId() !== widget.id) { this.select(widget.id); return; }
+    if (event.pointerType === 'touch' && action === 'move' && this.selectedId() !== widget.id) { this.pick(widget.id); return; }
     event.preventDefault(); event.stopPropagation();
     const canvas = (event.currentTarget as HTMLElement).closest('.stage')?.getBoundingClientRect();
-    if (canvas) { this.select(widget.id); this.pointer = { id: widget.id, action, startX: event.clientX, startY: event.clientY, original: { ...widget }, canvas }; }
+    // Cancelling pointerdown also cancels the browser's focus; focus the source so arrow keys work next.
+    ((event.currentTarget as HTMLElement).closest('.widget') as HTMLElement | null)?.focus({ preventScroll: true });
+    if (canvas) { this.pick(widget.id); this.pointer = { id: widget.id, action, startX: event.clientX, startY: event.clientY, original: { ...widget }, canvas }; }
   }
   onPointerMove(event: PointerEvent): void {
     if (this.busy() || this.loading()) return;
     const s = this.pointer; if (!s) return;
     const dx = (event.clientX-s.startX)/s.canvas.width*this.canvasWidth(), dy = (event.clientY-s.startY)/s.canvas.height*this.canvasHeight();
-    this.patch(s.id, s.action === 'move' ? { x: this.round(s.original.x+dx), y: this.round(s.original.y+dy) } : { width: Math.max(20,this.round(s.original.width+dx)), height: Math.max(20,this.round(s.original.height+dy)) });
+    if (s.action === 'move') {
+      const moved = this.alignMove(s.id, this.round(s.original.x+dx), this.round(s.original.y+dy), s.original.width, s.original.height, s.canvas.width/this.canvasWidth());
+      this.patch(s.id, moved);
+    } else this.patch(s.id, { width: Math.max(20,this.round(s.original.width+dx)), height: Math.max(20,this.round(s.original.height+dy)) });
   }
-  stopPointer(): void { if (this.pointer) this.endHistoryGroup(); this.pointer = null; }
+  stopPointer(): void { if (this.pointer) this.endHistoryGroup(); this.pointer = null; if (this.guides().v.length || this.guides().h.length) this.guides.set({ v: [], h: [] }); }
   onWidgetKeydown(event: KeyboardEvent, widget: OverlayWidget): void {
     if (event.target !== event.currentTarget) return;
-    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.select(widget.id); return; }
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.pick(widget.id); return; }
+    if ((event.key === 'Delete' || event.key === 'Backspace') && this.selectedId() === widget.id) { event.preventDefault(); this.deleteSelected(); return; }
     const moves: Record<string, number[]> = { ArrowLeft: [-1,0], ArrowRight: [1,0], ArrowUp: [0,-1], ArrowDown: [0,1] };
     const current = this.widgets().find(w => w.id === widget.id);
     const move = moves[event.key]; if (!move || !current || current.locked) return;
@@ -479,7 +684,11 @@ export class OverlayEditorComponent {
     const copy = { ...clone(w), id:this.id(w.kind), x:w.x+30,y:w.y+30,locked:false };
     this.updateWidgets(all=>[...all,copy]); this.select(copy.id);
   }
-  deleteSelected(): void { this.updateWidgets(all=>all.filter(w=>w.id!==this.selectedId())); this.selectedId.set(this.widgets().at(-1)?.id ?? null); }
+  deleteSelected(): void {
+    this.updateWidgets(all=>all.filter(w=>w.id!==this.selectedId())); this.selectedId.set(this.widgets().at(-1)?.id ?? null);
+    // The focused source or button just disappeared: keep focus in the studio so Ctrl+Z still undoes.
+    (this.host.querySelector('.workspace') as HTMLElement | null)?.focus({ preventScroll: true });
+  }
   moveLayer(direction: -1 | 1): void {
     const all=[...this.widgets()], index=all.findIndex(w=>w.id===this.selectedId()), next=index+direction;
     if(index<0||next<0||next>=all.length) return;
@@ -495,8 +704,10 @@ export class OverlayEditorComponent {
     this.stopPointer(); this.endHistoryGroup(); this.resetSimulation();
     const design=this.designs().find(d=>d.id===id) ?? makeDesign(this.id('design'),this.t('newDesign'));
     this.designDraft.set(clone(design)); this.variantId.set(null); this.designEvent.set('follow'); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); this.saved.set(false);
+    // Opening a design is to edit it: show the object's settings (and, on phones, its timeline).
+    this.rightTab.set('layer'); if (this.compact()) this.mobileTab.set('edit');
   }
-  async closeDesign(): Promise<void> { if (!await this.saveDesign()) return; this.stopPointer(); this.endHistoryGroup(); this.resetSimulation(); this.designDraft.set(null); this.selectedId.set('alert-1'); this.previewDesign.set(false); this.saved.set(false); }
+  async closeDesign(): Promise<void> { if (!await this.saveDesign()) return; this.stopPointer(); this.endHistoryGroup(); this.resetSimulation(); this.designDraft.set(null); this.selectedId.set('alert-1'); this.previewDesign.set(false); this.saved.set(false); if (this.compact()) this.mobileTab.set('layers'); }
   setDesignEvent(event: AlertEvent): void { this.resetSimulation(); this.stopPointer(); this.endHistoryGroup(); this.designEvent.set(event); this.variantId.set(null); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); }
   async saveDesign(asCopy=false): Promise<boolean> {
     const draft=this.designDraft(); if(!draft) return false;
@@ -920,6 +1131,7 @@ export class OverlayEditorComponent {
     this.saved.set(!this.dirty()); this.notice.set(notice); this.flushRecovery();
   }
   onHistoryKeydown(event: KeyboardEvent): void {
+    this.onStudioKey(event);
     if (event.defaultPrevented || event.isComposing || event.altKey || !(event.ctrlKey || event.metaKey)) return;
     const key = event.key.toLowerCase();
     if (key !== 'z' && key !== 'y') return;

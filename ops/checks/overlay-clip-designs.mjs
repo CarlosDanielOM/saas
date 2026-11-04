@@ -1,8 +1,9 @@
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL; assert(base);
-const navToggle=async(p,which)=>{const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
+const navToggle=async(p,which)=>{if(await p.locator('.studio-menu-btn').count()){const{studioToggle}=await import('/root/saas/ops/checks/overlay-studio-ui-helpers.mjs');return studioToggle(p,which);}const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
 const browser = await chromium.launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 const api = 'https://api.domdimabot.com', publicId = 'a'.repeat(48), errors = [];
 // One-second H.264/AAC fixture generated with ffmpeg in an isolated candidate container.
@@ -89,6 +90,7 @@ try {
   await select.selectOption('hud'); await save(); assert.equal(state.scenes[0].published.widgets[0].clipDesign, 'pill', 'saving a design never changes the published layout');
   await page.locator('.properties').getByRole('button', { name: 'Duplicate', exact: true }).click(); await select.selectOption('slash'); await save(); await publish();
   assert.deepEqual(state.scenes[0].published.widgets.map(w => w.clipDesign), ['hud', 'slash']);
+  await openStudio(page, 'test');
   await page.locator('.event-tester__actions').getByRole('button', { name: 'Clips', exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll('app-overlay-scene-renderer .placement app-overlay-clip video').length === 2);
   assert.equal(await page.locator('app-overlay-scene-renderer .placement app-overlay-clip').count(), 2, 'each playing widget has one renderer; sample metadata must be removed');
@@ -98,6 +100,7 @@ try {
   assert.equal(previewRequests, 1); assert.deepEqual(legacySockets, [], 'preview never joins the live clip producer');
   assert.equal(await page.locator('app-overlay-scene-renderer .placement app-overlay-clip').count(), 2, 'sample cards return after completion');
   await select.selectOption('orbit');
+  await openStudio(page, 'test');
   await page.locator('.event-tester__actions').getByRole('button', { name: 'Clips', exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll('app-overlay-scene-renderer .placement app-overlay-clip video').length === 2);
   await page.waitForFunction(() => [...document.querySelectorAll('app-overlay-scene-renderer .placement app-overlay-clip video')].every(v => v.readyState >= 2 && !v.paused));
@@ -113,7 +116,7 @@ try {
   assert.equal(previewRequests, 2); assert.deepEqual(legacySockets, []);
   await select.selectOption('slash');
   await page.locator('.widget[data-kind="clip"]').last().click();
-  for (const width of [320, 375, 768, 1440]) { await page.setViewportSize({ width, height: 1000 }); await select.waitFor(); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `overflow ${width}`); if (shots && [375, 1440].includes(width)) { await mkdir(shots, { recursive: true }); await page.locator('.properties').screenshot({ path: `${shots}/clip-selector-${width}.png` }); } }
+  for (const width of [320, 375, 768, 1440]) { await page.setViewportSize({ width, height: 1000 }); await openStudio(page, 'layer'); await select.waitFor(); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `overflow ${width}`); if (shots && [375, 1440].includes(width)) { await mkdir(shots, { recursive: true }); await page.locator('.properties').screenshot({ path: `${shots}/clip-selector-${width}.png` }); } }
   await page.addScriptTag({ path: '/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js' });
   const axe = async () => { const result = await page.evaluate(() => window.axe.run(document.querySelector('app-overlay-editor'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })); assert.deepEqual(result.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []); }; await axe();
   await navToggle(page,'lang'); await page.getByLabel('Diseño de clips', { exact: true }).waitFor(); await axe();

@@ -1,9 +1,10 @@
 // Fixture-only browser interaction and native playback; no real events or writes.
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL; assert(base);
-const navToggle=async(p,which)=>{const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
+const navToggle=async(p,which)=>{if(await p.locator('.studio-menu-btn').count()){const{studioToggle}=await import('/root/saas/ops/checks/overlay-studio-ui-helpers.mjs');return studioToggle(p,which);}const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
 const browser = await chromium.launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 const api = 'https://api.domdimabot.com', publicId = 'a'.repeat(48), errors = [], triggerA = '1'.repeat(24), triggerB = '2'.repeat(24), deleted = 'd'.repeat(24);
 const user = { id: '990191', login: 'fixture', display_name: 'Fixture' };
@@ -64,6 +65,7 @@ try {
   await mode.selectOption('selected'); await page.getByLabel('Airhorn', { exact: true }).check(); await save();
   await selectWidget(1); assert(await page.getByRole('checkbox', { name: /Confetti/ }).isChecked());
   await page.getByLabel('Search triggers', { exact: true }).fill('horn'); assert.equal(await page.locator('.trigger-choice').count(), 1); await page.getByLabel('Search triggers', { exact: true }).fill('missing'); await page.getByText('No triggers match your search.', { exact: true }).waitFor(); await page.getByLabel('Search triggers', { exact: true }).fill('');
+  await openStudio(page, 'test');
   const test = page.locator('.event-tester__actions').getByRole('button', { name: 'Trigger alerts', exact: true });
   await test.click(); await page.waitForFunction(() => document.querySelectorAll('app-overlay-scene-renderer .placement video').length === 2);
   assert.deepEqual(await page.locator('.widget').evaluateAll(widgets => widgets.map(w => !!document.querySelector('app-overlay-scene-renderer [data-widget-id="' + w.dataset.widgetId + '"] video'))), [true, false, true, false]);

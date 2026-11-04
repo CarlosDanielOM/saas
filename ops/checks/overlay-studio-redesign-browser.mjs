@@ -1,9 +1,11 @@
-// Overlay Studio (Live First redesign): OBS status chips and setup strip, overlay tabs, touch move pad,
-// centering, layer quick toggles, tucked-away settings, phone pinned canvas + layer strip, tap-to-select
-// on touch, tests that bring the canvas into view, design mode, EN/ES, light/dark and axe.
+// Overlay Studio (full-screen studio): OBS status chip and link panel, overlay switcher, touch move pad,
+// centering, layer quick toggles, tucked-away settings, zoom/fit, side panels, test drawer, snap guides,
+// layer reordering, keyboard shortcuts, studio menu, phone tabs with a pinned canvas, design mode,
+// EN/ES, light/dark and axe.
 // Every API and socket is mocked; nothing reaches production.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const AXE = process.env.AXE_MODULE || '/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js';
 const base = process.env.SAAS_PREVIEW_URL; assert(base, 'SAAS_PREVIEW_URL required');
@@ -60,12 +62,15 @@ const overflow = page => page.evaluate(() => document.documentElement.scrollWidt
 const exactValue = (page, key) => page.locator('.properties').getByLabel(key, { exact: true }).inputValue();
 
 try {
-  // Desktop: plain-language OBS status, tabs, setup strip, move pad, centering, layer toggles.
+  // Desktop: full screen, plain-language OBS status + link panel, move pad, centering, layer toggles, save states.
   {
-    const { context, page, ctx } = await fixture();
+    const { context, page, ctx } = await fixture({ width: 1440, height: 900 });
+    assert.equal(await page.locator('.auth-navbar').count(), 0, 'the open studio hides the site navbar');
     const head = page.locator('.lf-head__chips');
     await head.getByText('In OBS · 1 connected', { exact: true }).waitFor();
     await head.getByText('Live · v3', { exact: true }).waitFor();
+    assert((await page.locator('.stage-frame').boundingBox()).width > 700, 'the canvas uses the width');
+    await openStudio(page, 'obs');
     await page.locator('.lf-setup').getByText('Connected. OBS shows what you last published.', { exact: true }).waitFor();
     assert.equal(await page.locator('.lf-setup--warn').count(), 0, 'connected overlay is not amber');
     assert.match(await page.locator('.url-row code').innerText(), /\/overlays\/a{48}$/);
@@ -73,19 +78,21 @@ try {
     await page.getByText('Overlay URL copied.', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Dismiss', exact: true }).click();
     await until(async () => !(await page.getByText('Overlay URL copied.', { exact: true }).count()), 'notice dismissed');
-    // Advanced pieces start tucked away.
-    for (const selector of ['.publish-settings', 'app-overlay-connections details', 'details.exact', 'details.queue-panel', 'app-overlay-queue details']) {
+    // Advanced pieces start tucked away; canvas size lives in the Overlay tab.
+    for (const selector of ['app-overlay-connections details', 'details.exact', 'details.queue-panel', 'app-overlay-queue details']) {
       assert.equal(await page.locator(selector).evaluate(d => d.open), false, selector + ' starts closed');
     }
-    assert.equal(await page.getByLabel('Canvas width', { exact: true }).isVisible(), false, 'canvas size lives in settings');
+    assert.equal(await page.getByLabel('Canvas width', { exact: true }).isVisible(), false, 'canvas size lives in the Overlay tab');
 
-    // Losing OBS turns the strip amber with a plain consequence.
+    // Losing OBS turns the status and the link panel amber with a plain consequence.
     ctx.sources = 0; await page.locator('app-overlay-connections details').evaluate(d => { d.open = true; });
     await page.locator('app-overlay-connections').getByRole('button', { name: 'Refresh status', exact: true }).click();
     await head.getByText('Not in OBS yet', { exact: true }).waitFor();
     await page.locator('.lf-setup--warn').getByText(/Viewers can't see this overlay yet/).waitFor();
+    assert.match(await page.locator('.studio-status').getAttribute('class'), /is-warn/);
     ctx.sources = 1; await page.locator('app-overlay-connections').getByRole('button', { name: 'Refresh status', exact: true }).click();
     await head.getByText('In OBS · 1 connected', { exact: true }).waitFor();
+    await closeStudioMenus(page);
 
     // Move pad: taps move by the snap step and group into one undo; centering is exact.
     await page.locator('.layers').getByRole('button', { name: 'Text to speech', exact: true }).click();
@@ -130,63 +137,125 @@ try {
     await page.locator('.lf-save-bar').getByText('Saved · not live in OBS yet', { exact: true }).waitFor();
     await head.getByText('Unpublished changes', { exact: true }).waitFor();
 
-    // Overlay tabs switch scenes.
-    await page.locator('.scene-tab[data-id="chat"]').click();
-    await until(async () => await page.locator('.scene-tab[data-id="chat"]').getAttribute('aria-pressed') === 'true', 'tab selected');
-    await until(async () => await page.getByLabel('Overlay name', { exact: true }).inputValue() === 'Just chatting' && await page.locator('.widget').count() === 1, 'scene switched');
-    await page.locator('.scene-tab[data-id="main"]').click();
+    // The overlay switcher changes overlays.
+    await switchStudioScene(page, 'chat');
+    await until(async () => await studioSceneId(page) === 'chat' && await page.getByLabel('Overlay name', { exact: true }).inputValue() === 'Just chatting' && await page.locator('.widget').count() === 1, 'scene switched');
+    await switchStudioScene(page, 'main');
 
     // Design rows act on the named design without clashing with the inspector's "Edit design".
     await page.getByRole('button', { name: 'Edit Aurora alerts', exact: true }).click();
     await page.locator('.design-event-tabs').waitFor();
-    await page.getByRole('heading', { name: 'Alert design', exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Alert design', exact: true }).waitFor({ state: 'attached' });
+    await openStudio(page, 'test');
     await page.getByRole('button', { name: 'Preview Follows', exact: true }).waitFor();
     await page.locator('.design-event-tabs').getByRole('button', { name: 'Bits', exact: true }).click();
     await page.getByRole('button', { name: 'Preview Bits', exact: true }).waitFor();
-    assert.equal(await page.locator('.lf-setup').count(), 0, 'setup strip belongs to overlays, not designs');
-    if (shots) { await mkdir(shots, { recursive: true }); await page.screenshot({ path: shots + '/redesign-design-desktop.png', fullPage: true }); }
+    assert.equal(await page.locator('.lf-setup').count(), 0, 'the OBS link belongs to overlays, not designs');
+    if (shots) { await mkdir(shots, { recursive: true }); await page.screenshot({ path: shots + '/redesign-design-desktop.png' }); }
     await axe(page, 'design desktop light');
     await page.getByRole('button', { name: 'Save & back to overlay', exact: true }).click();
-    await page.locator('.scene-tabs').waitFor();
-    if (shots) await page.screenshot({ path: shots + '/redesign-desktop.png', fullPage: true });
+    await page.locator('.scene-switch').waitFor();
+    if (shots) await page.screenshot({ path: shots + '/redesign-desktop.png' });
     await axe(page, 'overlay desktop light');
     await context.close();
   }
 
-  // Phone (touch): pinned canvas, layer strip, tap-to-select, tests reveal the canvas.
+  // Desktop studio tools: zoom and fit, side panels, test drawer, snap guide, layer order, keys, menu.
+  {
+    const { context, page } = await fixture({ width: 1920, height: 1000, dark: true });
+    const pct = async () => Number((await page.locator('.tb--pct').innerText()).replace('%', ''));
+    const frameWidth = async () => (await page.locator('.stage-frame').boundingBox()).width;
+    const fit = await pct(); assert(fit >= 55, 'fit at 1920: ' + fit);
+    await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+    await until(async () => await pct() > fit, 'zoom in');
+    await page.getByRole('button', { name: 'Fit to screen', exact: true }).click();
+    await until(async () => await pct() === fit, 'fit again');
+    const wide = await frameWidth();
+    await page.getByRole('button', { name: 'Side panels', exact: true }).click();
+    await until(async () => await frameWidth() > wide + 150, 'canvas grows without side panels');
+    await page.getByRole('button', { name: 'Side panels', exact: true }).click();
+    await until(async () => Math.abs(await frameWidth() - wide) < 2, 'side panels back');
+    // The test drawer shrinks the canvas instead of covering it.
+    await openStudio(page, 'test');
+    await until(async () => await frameWidth() < wide - 20, 'canvas makes room for the drawer');
+    const stageBox = await page.locator('.stage').boundingBox(), drawerBox = await page.locator('.tester').boundingBox();
+    assert(stageBox.y + stageBox.height <= drawerBox.y + 1, 'the drawer never covers the canvas');
+    await page.locator('.tester__close').click();
+    await until(async () => Math.abs(await frameWidth() - wide) < 2, 'drawer closed');
+    // Dragging near the canvas centre snaps to it and shows a guide while dragging.
+    await page.locator('.layers').getByRole('button', { name: 'Text to speech', exact: true }).click();
+    const tts = await page.locator('.widget[data-kind="tts"]').boundingBox();
+    await page.mouse.move(tts.x + tts.width / 2, tts.y + tts.height / 2); await page.mouse.down();
+    await page.mouse.move(tts.x + tts.width / 2 + 40, tts.y + tts.height / 2, { steps: 4 });
+    await page.mouse.move(tts.x + tts.width / 2 + 3, tts.y + tts.height / 2, { steps: 3 });
+    await until(async () => await page.locator('.guide--v').count() === 1, 'centre guide while dragging');
+    await page.mouse.up();
+    await until(async () => await page.locator('.guide').count() === 0, 'guides cleared');
+    assert.equal(await exactValue(page, 'X'), '670', 'snapped back to the centre');
+    // Dragging a row in Layers changes what shows in front; undo restores it.
+    const names = () => page.locator('.layer__name').allInnerTexts();
+    assert.deepEqual(await names(), ['Alerts', 'Trigger alerts', 'Text to speech']);
+    const row = name => page.locator('.layer-row').filter({ has: page.locator('.layer__name', { hasText: new RegExp('^' + name + '$') }) });
+    await row('Text to speech').dragTo(row('Alerts'));
+    await until(async () => (await names())[0] === 'Text to speech', 'dragged to the front');
+    await page.locator('.history-toolbar').getByRole('button', { name: 'Undo', exact: true }).click();
+    await until(async () => (await names())[0] === 'Alerts', 'order undone');
+    // Keyboard: Delete removes the focused, selected source; Ctrl+Z brings it back; + and 0 zoom.
+    await page.locator('.widget[data-kind="tts"]').click();
+    await page.keyboard.press('Delete');
+    await until(async () => await page.locator('.widget[data-kind="tts"]').count() === 0, 'deleted with the keyboard');
+    await page.keyboard.press('Control+z');
+    await until(async () => await page.locator('.widget[data-kind="tts"]').count() === 1, 'restored with Ctrl+Z');
+    await page.locator('.studio__size').click({ force: true });
+    await page.keyboard.press('+'); await until(async () => await pct() > fit, '+ zooms in');
+    await page.keyboard.press('0'); await until(async () => await pct() === fit, '0 fits');
+    // Studio menu: account, theme and language; shortcuts listed.
+    await page.locator('.studio-menu-btn').click();
+    assert.match(await page.locator('.studio-menu-btn').getAttribute('aria-label'), /Fixture/);
+    await page.getByText('Signed in as Fixture', { exact: true }).waitFor();
+    await page.getByText('Keyboard shortcuts', { exact: true }).waitFor();
+    await page.keyboard.press('Escape');
+    await until(async () => await page.locator('.pop--menu').count() === 0, 'menu closed');
+    if (shots) await page.screenshot({ path: shots + '/redesign-desktop-dark-1920.png' });
+    await axe(page, 'desktop dark 1920');
+    // Leaving the studio brings the site navbar back.
+    page.once('dialog', dialog => dialog.accept());
+    await page.getByRole('link', { name: 'Back to modules', exact: true }).click();
+    await page.locator('.auth-navbar').waitFor();
+    await context.close();
+  }
+
+  // Phone (touch): layers first, pinned canvas, tap-to-select opens Edit, move pad, Test and Overlay tabs.
   for (const dark of [false, true]) {
     const { context, page } = await fixture({ width: 390, height: 844, dark, touch: true });
     assert.equal(await overflow(page), false);
+    assert.equal(await page.locator('.studio-mtabs [data-tab="layers"]').getAttribute('aria-pressed'), 'true', 'phones open on Layers');
+    await page.locator('.layers').waitFor(); await page.locator('.designs').waitFor();
     const canvas = page.locator('.studio__canvas');
     assert.equal(await canvas.evaluate(el => getComputedStyle(el).position), 'sticky');
-    // Scroll into the inspector: the canvas stays on screen under the navbar.
+    // Tapping a source selects it without moving it and opens its settings.
+    await page.locator('.widget[data-kind="trigger"]').tap();
+    await until(async () => await page.locator('.studio-mtabs [data-tab="edit"]').getAttribute('aria-pressed') === 'true', 'tap opens settings');
+    await until(async () => await page.locator('.selected-card').getAttribute('data-widget-id') === 'trigger-1', 'tap selected');
+    await page.locator('details.exact').evaluate(d => { d.open = true; });
+    await until(async () => await exactValue(page, 'X') === '80', 'selected coordinates render');
+    // Scroll into the settings: the canvas stays pinned on top.
     await page.locator('.mover').scrollIntoViewIfNeeded();
     const pinned = await canvas.boundingBox();
-    assert(pinned.y >= 0 && pinned.y < 140, 'canvas pinned near the top, got ' + pinned.y);
-    assert(await page.locator('.mover').isVisible());
-    // Layer strip is one row and selects.
-    const rows = await page.locator('.layer-row').evaluateAll(els => [...new Set(els.map(e => Math.round(e.getBoundingClientRect().top)))]);
-    assert.equal(rows.length, 1, 'layers form one row on phones');
-    assert.equal(await page.locator('.layer-toggle').first().isVisible(), false);
-    // Tap selects an unselected source without moving it.
-    await page.locator('.layers').getByRole('button', { name: 'Text to speech', exact: true }).click();
-    await page.locator('details.exact').evaluate(d => { d.open = true; });
-    const before = await exactValue(page, 'X');
-    await page.locator('.widget[data-kind="trigger"]').tap();
-    await until(async () => await page.locator('.selected-card').getAttribute('data-widget-id') === 'trigger-1', 'tap selected');
-    await until(async () => await exactValue(page, 'X') === '80', 'selected coordinates render'); assert.notEqual(before, '80');
-    // Move pad buttons are thumb-sized.
+    assert(pinned.y >= -1 && pinned.y < 40, 'canvas pinned at the top, got ' + pinned.y);
     for (const name of ['Move up', 'Move down', 'Move left', 'Move right']) {
       const box = await page.getByRole('button', { name, exact: true }).boundingBox(); assert(box.width >= 44 && box.height >= 44, name + ' size');
     }
-    // Test buttons sit below the canvas; tapping one brings the canvas back into view.
-    await page.locator('.tester').scrollIntoViewIfNeeded(); await page.evaluate(() => window.scrollBy(0, 400));
+    // Tests have their own tab; the pinned canvas plays them in view.
+    await openStudio(page, 'test');
     await page.locator('.event-tester__actions').getByRole('button', { name: 'Raids', exact: true }).click();
-    await until(async () => { const b = await page.locator('.stage').boundingBox(); return b && b.y >= 0 && b.y + b.height <= 844; }, 'stage revealed');
-    // Phone order: try it → designs → live controls → settings.
-    const order = await page.evaluate(() => ['.tester', '.designs', 'app-overlay-queue', '.publish-settings'].map(s => document.querySelector(s).getBoundingClientRect().top + scrollY));
-    assert.deepEqual([...order].sort((a, b) => a - b), order, 'phone section order');
-    if (shots) await page.screenshot({ path: `${shots}/redesign-mobile-${dark ? 'dark' : 'light'}.png`, fullPage: true });
+    await until(async () => { const b = await page.locator('.stage').boundingBox(); return b && b.y >= -1 && b.y + b.height <= 844; }, 'stage in view');
+    // Overlay tab: live controls, polls & predictions and the canvas settings. Save stays in thumb reach.
+    await openStudio(page, 'overlay');
+    await page.getByLabel('Canvas width', { exact: true }).waitFor();
+    const bar = await page.locator('.lf-save-bar').boundingBox();
+    assert(bar.y > 844 - 220 && bar.y + bar.height <= 844, 'save bar sits above the tabs');
+    if (shots) await page.screenshot({ path: `${shots}/redesign-mobile-${dark ? 'dark' : 'light'}.png` });
     await axe(page, `overlay mobile ${dark ? 'dark' : 'light'}`);
     await context.close();
   }
@@ -194,9 +263,8 @@ try {
   // Spanish + widths: no overflow and axe-clean at 320/390/1280 in both themes.
   for (const dark of [false, true]) for (const width of [320, 390, 1280]) {
     const { context, page } = await fixture({ width, height: 900, dark });
-    await page.evaluate(() => document.querySelector('.auth-navbar__avatar-btn').click());
-    await page.locator('.auth-navbar__dropdown-item .auth-navbar__lang-icon').first().waitFor({ state: 'attached' });
-    await page.evaluate(() => document.querySelector('.auth-navbar__dropdown-item .auth-navbar__lang-icon').closest('button').click());
+    await studioToggle(page, 'lang');
+    await openStudio(page, 'obs');
     await page.getByText('Añádelo a OBS', { exact: true }).waitFor();
     await page.locator('.publish-settings').evaluate(d => { d.open = true; });
     await page.locator('details.exact').evaluate(d => { d.open = true; });
@@ -205,5 +273,5 @@ try {
     await context.close();
   }
   assert.deepEqual(errors, []);
-  console.log('PASS Overlay Studio redesign: OBS status chips + amber setup strip, copy link, dismissable notices, tucked-away settings, overlay tabs, move pad with grouped undo and snap step, centering, remembered exact section, layer hide/lock toggles, save bar states, named design actions, design mode, phone pinned canvas + one-row layers + tap-to-select + tests reveal canvas + section order, EN/ES, light/dark, 320–1280px and axe.');
+  console.log('PASS Overlay Studio (full-screen studio): OBS status + amber link panel, copy link, dismissable notices, tucked-away settings, overlay switcher, move pad with grouped undo and snap step, centering, remembered exact section, layer hide/lock toggles, save bar states, named design actions, design mode, zoom/fit, side panels, test drawer, snap guide, layer drag order, keyboard delete/undo/zoom, studio menu, navbar restored on leave, phone tabs with pinned canvas, EN/ES, light/dark and axe');
 } catch (error) { console.log('Browser errors:', errors); throw error; } finally { await browser.close(); }

@@ -1,3 +1,4 @@
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -113,6 +114,7 @@ try {
   assert.equal(state.scenes[0].published.widgets[0].showTtsText, true);
   await toggle.uncheck();
   assert.equal(state.scenes[0].published.widgets[0].showTtsText, true, 'draft does not change published text setting');
+  await openStudio(editor, 'test');
   await editor.locator('.test-btn').filter({ hasText: 'Text to speech' }).click();
   await editor.locator('app-overlay-scene-renderer .placement[data-kind="tts"] video').waitFor();
   assert.equal(await editor.locator('app-overlay-scene-renderer .placement[data-kind="tts"] .audio-label,app-overlay-scene-renderer .placement[data-kind="tts"] .media-title').count(), 0);
@@ -126,7 +128,7 @@ try {
     for (const width of [320, 390, 1280]) {
       await editor.setViewportSize({ width, height: 1100 });
       assert.equal(await editor.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${theme} ${width} overflow`);
-      await toggle.scrollIntoViewIfNeeded(); assert(await toggle.isVisible());
+      await openStudio(editor, 'layer'); await toggle.scrollIntoViewIfNeeded(); assert(await toggle.isVisible());
       await editor.addScriptTag({ path: '/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js' });
       const violations = await editor.evaluate(async () => (await window.axe.run(document.querySelector('app-overlay-editor'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })).violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })));
       assert.deepEqual(violations, []); await screenshot(editor, `tts-editor-${theme}-${width}`);

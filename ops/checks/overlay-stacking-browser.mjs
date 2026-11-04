@@ -89,6 +89,8 @@ function bootstrap(config) {
         } else {
           await wait(() => document.querySelector('.stage'), 'Editor missing');
           document.querySelector('.stage').scrollIntoView({ block: 'center' });
+          if (!document.querySelector('.event-tester__actions')?.offsetParent) document.querySelector('.tb--test').click();
+          await wait(() => document.querySelector('.event-tester__actions')?.offsetParent, 'Test drawer missing');
           await click(button('Trigger alerts', document.querySelector('.event-tester__actions')));
           await wait(() => document.querySelector('app-overlay-scene-renderer .placement[data-kind="trigger"] video')?.readyState >= 2, 'Preview video missing');
           const video = document.querySelector('app-overlay-scene-renderer .placement video'); await video.play(); video.pause();

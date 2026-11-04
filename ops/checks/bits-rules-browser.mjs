@@ -8,6 +8,7 @@
  *   sample-amount matches, "Use the default look" + undo, a rule created here gets a look, turning alerts on.
  * Phones and desktop, dark and light, Spanish; axe (wcag2a/2aa/21aa) and no horizontal overflow.
  */
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const tools = process.env.SAAS_BROWSER_TOOLS || '/tmp/saas-cooldown-browser';
@@ -302,6 +303,7 @@ try {
     await looks.getByText('Rules using the default look (2)').waitFor();
 
     // Sample amounts explain what plays.
+    await openStudio(page, 'test');
     const sample = page.getByLabel('Sample amount', { exact: true });
     const match = page.locator('.variant-match');
     await sample.fill('69'); await until(() => match.innerText().then(t => t.includes('This sample plays: Nice, no alert')), 'no alert match');
@@ -309,6 +311,7 @@ try {
     await sample.fill('1500'); await until(() => match.innerText().then(t => t.includes('Big cheer, default look')), 'rule default look');
 
     // Give Big cheer its own look; edit it; save.
+    await openStudio(page, 'layer');
     await looks.getByRole('button', { name: 'Give Big cheer its own look' }).click();
     const bigTab = looks.locator('.bl__tab').filter({ hasText: 'Big cheer' });
     await until(() => bigTab.getAttribute('aria-pressed').then(v => v === 'true'), 'look tab selected');

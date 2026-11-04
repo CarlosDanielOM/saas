@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL;
-const navToggle=async(p,which)=>{const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
+const navToggle=async(p,which)=>{if(await p.locator('.studio-menu-btn').count()){const{studioToggle}=await import('/root/saas/ops/checks/overlay-studio-ui-helpers.mjs');return studioToggle(p,which);}const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
 assert(base);
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 const user = { id: '990091', login: 'fixture', display_name: 'Fixture' };

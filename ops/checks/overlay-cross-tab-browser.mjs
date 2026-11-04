@@ -1,4 +1,5 @@
 // Real browser storage events and the application's real HTTP interceptor; every API/socket is mocked.
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -74,9 +75,10 @@ try {
     const session = JSON.parse(localStorage.getItem(key)); session.token = 'fixture-renewed'; session.twitchUser.display_name = 'Renewed Fixture';
     localStorage.setItem(key, JSON.stringify(session));
   }, storageKey);
-  await page.waitForFunction(() => document.querySelector('.auth-navbar__avatar-btn')?.getAttribute('aria-label')?.includes('Renewed Fixture') || document.querySelector('.auth-navbar')?.textContent?.includes('Renewed Fixture'));
+  await page.waitForFunction(() => [document.querySelector('.auth-navbar__avatar-btn'), document.querySelector('.studio-menu-btn')].some(el => el?.getAttribute('aria-label')?.includes('Renewed Fixture')) || document.querySelector('.auth-navbar')?.textContent?.includes('Renewed Fixture'));
   await page.waitForTimeout(100);
   assert.equal(readCount('/twitch-events'), checkBefore, 'Updating a token must not replay unrelated requests');
+  await openStudio(page, 'obs');
   await page.locator('app-overlay-connections details').evaluate(el => { el.open = true; });
   const refresh = page.locator('app-overlay-connections').getByRole('button', { name: 'Refresh status', exact: true });
   failConnections = false; failQueue = false; delayedConnections = true;

@@ -1,8 +1,9 @@
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base=process.env.SAAS_PREVIEW_URL;assert(base);const api='https://api.domdimabot.com', publicId='b'.repeat(48);
-const navToggle=async(p,which)=>{const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
+const navToggle=async(p,which)=>{if(await p.locator('.studio-menu-btn').count()){const{studioToggle}=await import('/root/saas/ops/checks/overlay-studio-ui-helpers.mjs');return studioToggle(p,which);}const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
 const browser=await chromium.launch({args:['--no-sandbox','--autoplay-policy=no-user-gesture-required']});
 const user={id:'990081',login:'fixture',display_name:'Fixture'},app={name:'Fixture',email:'fixture@example.invalid',language:'en',plan_tier:'pro',actived:true,chat_enabled:true,twitch_user_id:user.id,has_permissions:true,up_to_date_permissions:true,administrating:[]};
 const text={id:'text',kind:'text',x:0,y:0,width:600,height:120,visible:true,locked:false,text:'$(user)',color:'#ffffff',fontSize:30};
@@ -55,7 +56,7 @@ try {
   return route.fulfill({json:{error:false,status:200,data}});
  });
  const source=await context.newPage();source.on('pageerror',e=>errors.push(e.message));await source.goto(base+'/overlays/'+publicId);await source.locator('.canvas').waitFor();
- const editor=await context.newPage();editor.on('pageerror',e=>errors.push(e.message));await editor.goto(base+'/fixture/modules/overlays');const panel=editor.locator('app-overlay-queue');await panel.getByText('Queue is running',{exact:true}).waitFor();await panel.locator('details.options').evaluate(d=>{d.open=true;});
+ const editor=await context.newPage();editor.on('pageerror',e=>errors.push(e.message));await editor.goto(base+'/fixture/modules/overlays');await editor.locator('.stage').waitFor();await openStudio(editor,'overlay');const panel=editor.locator('app-overlay-queue');await panel.getByText('Queue is running',{exact:true}).waitFor();await panel.locator('details.options').evaluate(d=>{d.open=true;});
  emit('tw-current');await until(()=>report.active.includes('tw-current'));
  emit('tw-wait');emit('kick-wait','kick');await until(()=>report.queued.length===2);
  await panel.getByLabel('Event platform').selectOption('twitch');await panel.getByRole('button',{name:'Pause queue',exact:true}).click();
@@ -94,7 +95,7 @@ try {
  await panel.getByLabel('Event platform').selectOption('kick');await panel.getByText('$(overlay.skip.kick)',{exact:true}).waitFor();
  await panel.getByText('Playing: 1',{exact:true}).waitFor(); await panel.getByText('Waiting: 0',{exact:true}).waitFor();
  for(const width of [320,375,768,1440]) {
-  await editor.setViewportSize({width,height:1000});await panel.scrollIntoViewIfNeeded();assert.equal(await editor.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`mobile overflow ${width}`);
+  await editor.setViewportSize({width,height:1000});await openStudio(editor,'overlay');await panel.scrollIntoViewIfNeeded();assert.equal(await editor.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`mobile overflow ${width}`);
   if(process.env.SAAS_SCREENSHOT_DIR){await mkdir(process.env.SAAS_SCREENSHOT_DIR,{recursive:true});await panel.screenshot({path:process.env.SAAS_SCREENSHOT_DIR+`/controls-${width}.png`});}
  }
  await editor.addScriptTag({path:'/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js'});

@@ -1,5 +1,6 @@
 // Compare the editor's design preview with the actual OBS renderer. All API,
 // socket and media requests are intercepted; no production data is touched.
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -51,7 +52,7 @@ async function setup(width, timing=false, theme='dark') {
  });
  const editor=await context.newPage();editor.on('pageerror',e=>errors.push(e.message));await editor.goto(base+'/fixture/modules/overlays');await editor.locator('.stage').waitFor();
  if(timing){const source=await context.newPage();source.on('pageerror',e=>errors.push(e.message));await source.goto(base+'/overlays/'+publicId);await source.locator('app-overlay-scene-renderer').waitFor({state:'attached'});await until(()=>!!socket,'OBS socket');return {context,editor,source,send,ended};}
- await editor.getByRole('button',{name:'Edit design',exact:true}).click();
+ await openStudio(editor,'layer');await editor.getByRole('button',{name:'Edit design',exact:true}).click();
  await editor.locator('app-overlay-scene-renderer').waitFor({state:'attached'});
  await editor.locator('.stage').scrollIntoViewIfNeeded();
  await editor.getByRole('button',{name:'Play timeline',exact:true}).click();
@@ -109,6 +110,7 @@ try {
   if(process.env.SAAS_SCREENSHOT_DIR){await editor.getByLabel('Preview position (seconds)').fill('3');await mkdir(process.env.SAAS_SCREENSHOT_DIR,{recursive:true});await editor.screenshot({path:`${process.env.SAAS_SCREENSHOT_DIR}/renderer-parity-${theme}-${width}.png`,fullPage:true});}
   send('overlay-control',{id:'skip',action:'skip',eventIds:['parity-event']});await until(()=>ended.includes('parity-event'),'OBS event completion');
   await editor.getByRole('button',{name:'Save & back to overlay',exact:true}).click();
+  await openStudio(editor,'test');
   await editor.locator('.test-btn').filter({hasText:'Text to speech'}).click();
   await until(async()=>await editor.locator('app-overlay-scene-renderer .speech-text').count()===2,'editor TTS captions');
   send('overlay-event',{id:'speech-event',kind:'tts'});await until(async()=>await source.locator('[data-event="tts"] .speech-text').count()===2,'OBS TTS captions');
@@ -126,8 +128,10 @@ try {
  // same box must wait until that box is released.
  {
   const {context,editor,source,send,ended}=await setup(1280,true);
+  await openStudio(editor,'test');
   await editor.locator('.test-btn').filter({hasText:'Follows'}).click();
   await until(async()=>await editor.locator('app-overlay-scene-renderer [data-event="follow"]:not([data-idle])[data-widget-id="short-box"]').count()===1,'editor short alert');
+  await openStudio(editor,'test');
   await editor.locator('.test-btn').filter({hasText:'Bits'}).click();
   assert.equal(await editor.locator('app-overlay-scene-renderer [data-event="bits"]:not([data-idle])[data-widget-id="short-box"]').count(),0,'editor queues a second event in the occupied box');
   await until(async()=>await editor.locator('app-overlay-scene-renderer [data-event="follow"]:not([data-idle])[data-widget-id="short-box"]').count()===0,'editor short placement expires');

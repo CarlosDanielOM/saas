@@ -1,3 +1,4 @@
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -70,11 +71,11 @@ try {
   const props = page.locator('.properties');
   const openDetails = selector => page.locator(selector).evaluate(d => { d.open = true; });
   const openExact = () => openDetails('.properties details.exact');
-  const openSettings = () => openDetails('.publish-settings');
-  const sceneValue = () => page.locator('.scene-tab[aria-pressed="true"]').getAttribute('data-id');
-  const sceneCount = () => page.locator('.scene-tab[data-id]').count();
-  const toggleLanguage = async () => { await page.evaluate(() => document.querySelector('.auth-navbar__avatar-btn').click()); await page.locator('.auth-navbar__dropdown-item .auth-navbar__lang-icon').first().waitFor({ state: 'attached' }); await page.evaluate(() => document.querySelector('.auth-navbar__dropdown-item .auth-navbar__lang-icon').closest('button').click()); };
-  const toggleTheme = async () => { await page.evaluate(() => document.querySelector('.auth-navbar__avatar-btn').click()); await page.locator('.auth-navbar__dropdown-item .auth-navbar__theme-icon').first().waitFor({ state: 'attached' }); await page.evaluate(() => document.querySelector('.auth-navbar__dropdown-item .auth-navbar__theme-icon').closest('button').click()); };
+  const openSettings = async () => { await openStudio(page, 'overlay'); await openDetails('.publish-settings'); };
+  const sceneValue = () => studioSceneId(page);
+  const sceneCount = async () => { await openStudio(page, 'scenes'); const count = await page.locator('.scene-tab[data-id]').count(); await closeStudioMenus(page); return count; };
+  const toggleLanguage = () => studioToggle(page, 'lang');
+  const toggleTheme = () => studioToggle(page, 'theme');
   const dimensions = key => props.getByLabel(key, { exact: true });
   const widgetIds = () => page.locator('.layers .layer').evaluateAll(els => els.map(el => el.textContent.trim()));
   const selectTts = () => page.locator('.layers').getByRole('button', { name: 'Text to speech', exact: true }).click();
@@ -153,7 +154,7 @@ try {
   assert.deepEqual(mutations.at(-1).scenes[0].published, publication, 'history never restores an older local publication');
   await redo.click();
   // Scene creation/deletion are reversible, even when deletion was already saved.
-  await page.getByRole('button', { name: 'New overlay', exact: true }).click(); await eventually('equal', async () => await sceneCount(), 3);
+  await openStudio(page, 'scenes'); await page.getByRole('button', { name: 'New overlay', exact: true }).click(); await eventually('equal', async () => await sceneCount(), 3);
   await undo.click(); await eventually('equal', async () => await sceneValue(), 'main');
   await redo.click(); await save(); const newSceneId = await sceneValue();
   await page.getByRole('button', { name: 'Delete this overlay', exact: true }).click(); const deleteResponse = page.waitForResponse(r => r.url() === api + '/overlay-studio/' + user.id && r.request().method() === 'PUT'); await page.getByRole('button', { name: 'Yes, delete this overlay and its URL', exact: true }).click(); await deleteResponse;
@@ -161,7 +162,7 @@ try {
   await undo.click(); await eventually('equal', async () => await sceneValue(), newSceneId);
   await eventually('equal', async () => await page.locator('.url-row code').textContent(), 'Save this overlay to create its URL.');
   await save(); assert(state.scenes.some(s => s.id === newSceneId));
-  await page.locator('.scene-tab[data-id="main"]').click();
+  await switchStudioScene(page, 'main');
   await page.locator('.layers').getByRole('button', { name: 'Alerts', exact: true }).click();
   await props.getByRole('button', { name: 'Edit design', exact: true }).click();
   const textInput = props.getByLabel('Text template', { exact: true }); await textInput.fill('Hello $(user)');
@@ -173,7 +174,7 @@ try {
   // A design copy is one undo operation; shared design revisions continue forward.
   const copyResponse = page.waitForResponse(r => r.url() === api + '/overlay-studio/' + user.id && r.request().method() === 'PUT'); await openSettings(); await page.getByRole('button', { name: 'Save as a new design', exact: true }).click(); await copyResponse; await until(() => page.locator('.editor-fields').isEnabled(), 'copy saved');
   assert.equal(state.designs.length, 2); await undo.click(); await save(); assert.equal(state.designs.length, 1);
-  await page.getByRole('button', { name: 'Save & back to overlay', exact: true }).click(); await until(() => page.locator('.scene-tabs').isVisible(), 'back to scene');
+  await page.getByRole('button', { name: 'Save & back to overlay', exact: true }).click(); await until(() => page.locator('.scene-switch').isVisible(), 'back to scene');
   // Save failure leaves history/recovery intact; no edits while a save is in flight.
   await selectTts(); await dimensions('X').fill('250'); failSave = true; await save(); failSave = false;
   await eventually('equal', async () => await undo.isEnabled(), true); await undo.click(); await eventually('equal', async () => await dimensions('X').inputValue(), '100');

@@ -1,3 +1,4 @@
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium }=await import(process.env.PLAYWRIGHT_MODULE||'/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -70,7 +71,7 @@ try {
   return route.fulfill({json:{error:false,data}});
  });
  const editor=await context.newPage();editor.on('pageerror',e=>errors.push(e.message));await editor.goto(base+'/interactionfixture/modules/overlays');await editor.locator('.stage').waitFor();
- const setup=editor.locator('app-overlay-interaction-setup');await setup.getByText('Events needed',{exact:true}).first().waitFor();
+ await openStudio(editor,'overlay');const setup=editor.locator('app-overlay-interaction-setup');await setup.getByText('Events needed',{exact:true}).first().waitFor();
  await setup.getByRole('button',{name:'Activate Twitch events',exact:true}).first().click();await setup.getByText('Ready',{exact:true}).waitFor();assert.deepEqual(activations,['poll']);
  await setup.getByRole('button',{name:'Activate Twitch events',exact:true}).nth(1).click();await editor.waitForTimeout(200);assert.deepEqual(activations,['poll','prediction']);
  await editor.locator('.palette-item[data-kind="poll"]').click();await editor.locator('app-overlay-scene-renderer .placement[data-kind="poll"] .panel').waitFor();
@@ -78,18 +79,18 @@ try {
  await editor.locator('.palette-item[data-kind="prediction"]').click();await editor.getByLabel('Preview state',{exact:true}).selectOption('locked');await editor.locator('app-overlay-scene-renderer .placement[data-kind="prediction"] [data-phase="locked"]').waitFor();
  await editor.getByRole('button',{name:'Save draft',exact:true}).click();await editor.getByRole('button',{name:'Saved',exact:true}).waitFor();assert.equal(state.scenes[0].widgets[0].interactionDesign,'compact');assert.equal(state.scenes[0].widgets[1].kind,'prediction');
  await editor.getByRole('button',{name:/Publish live/}).click();await editor.getByText('Published. Connected browser sources are updating.',{exact:true}).waitFor();assert.equal(state.scenes[0].published.widgets.length,2);
- readiness=ready('permission');await setup.getByRole('button',{name:'Refresh status',exact:true}).click();await setup.getByRole('link',{name:'Reconnect Twitch',exact:true}).first().waitFor();const href=await setup.getByRole('link',{name:'Reconnect Twitch',exact:true}).first().getAttribute('href');assert.match(href,/\/auth\/authorize\?/);assert.match(href,/state=interactionfixture/);
+ await openStudio(editor,'overlay');readiness=ready('permission');await setup.getByRole('button',{name:'Refresh status',exact:true}).click();await setup.getByRole('link',{name:'Reconnect Twitch',exact:true}).first().waitFor();const href=await setup.getByRole('link',{name:'Reconnect Twitch',exact:true}).first().getAttribute('href');assert.match(href,/\/auth\/authorize\?/);assert.match(href,/state=interactionfixture/);
  checkFailed=true;await setup.getByRole('button',{name:'Refresh status',exact:true}).click();await setup.getByRole('alert').waitFor();checkFailed=false;readiness=ready('ready');await setup.getByRole('button',{name:'Refresh status',exact:true}).click();await setup.getByText('Ready',{exact:true}).first().waitFor();
  for(const theme of ['dark','light']){
   await editor.evaluate(theme=>localStorage.setItem('theme',theme),theme);await editor.reload();await editor.locator('.stage').waitFor();
   for(const width of [320,390,1280]){
    await editor.setViewportSize({width,height:1100});assert.equal(await editor.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${theme} ${width} overflow`);
-   await setup.scrollIntoViewIfNeeded();await screenshot(editor,`editor-${theme}-${width}`);
+   await openStudio(editor,'overlay');await setup.scrollIntoViewIfNeeded();await screenshot(editor,`editor-${theme}-${width}`);
    await editor.addScriptTag({path:'/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js'});
    const violations=await editor.evaluate(async()=> (await axe.run('app-overlay-interaction-setup',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})));
    assert.deepEqual(violations,[],`${theme} ${width} accessibility`);
   }
  }
- app.language='es';await editor.evaluate(()=>{localStorage.setItem('userLanguage','es');const saved=JSON.parse(localStorage.getItem('dimasite.session.v1'));saved.appUser.language='es';localStorage.setItem('dimasite.session.v1',JSON.stringify(saved));});await editor.reload();await editor.locator('.stage').waitFor();await setup.getByText('Encuestas y predicciones',{exact:true}).waitFor();await editor.locator('.palette-item[data-kind="poll"]').getByText('Encuesta',{exact:true}).waitFor();
+ app.language='es';await editor.evaluate(()=>{localStorage.setItem('userLanguage','es');const saved=JSON.parse(localStorage.getItem('dimasite.session.v1'));saved.appUser.language='es';localStorage.setItem('dimasite.session.v1',JSON.stringify(saved));});await editor.reload();await editor.locator('.stage').waitFor();await openStudio(editor,'overlay');await setup.getByText('Encuestas y predicciones',{exact:true}).waitFor();await openStudio(editor,'add');await editor.locator('.palette-item[data-kind="poll"]').getByText('Encuesta',{exact:true}).waitFor();
  assert.deepEqual(errors,[]);await context.close();console.log('PASS editor: manual activation, readiness/error/reconnect, both layer kinds, presets, previews, draft/publish, 320/390/1280 light/dark, setup axe and Spanish.');
 } finally {await browser.close();}

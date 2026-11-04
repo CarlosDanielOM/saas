@@ -1,5 +1,6 @@
 // Alert sound editing and actual browser audio playback.
 // Every API and socket is mocked; nothing reaches production.
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -91,6 +92,7 @@ const exactValue = (page, key) => page.locator('.properties').getByLabel(key, { 
   await controls.locator('input[type=range]').fill('60');
   await controls.locator('summary').click();
   for(const [index,value] of ['.6','.5','1'].entries()){await controls.locator('input[type=number]').nth(index).fill(value);await controls.locator('input[type=number]').nth(index).press('Tab');}
+  await openStudio(page,'test');
   const play=page.locator('.tester').getByRole('button',{name:es?'Previsualizar':'Preview',exact:false}).last();
   await play.click();const audio=page.locator('app-overlay-sound audio');await audio.waitFor({state:'attached'});
   assert.equal(await audio.evaluate(a=>a.paused),true,'delay before playback');

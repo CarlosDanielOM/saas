@@ -1,3 +1,4 @@
+import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
@@ -78,6 +79,7 @@ try {
   await margin.fill('72'); await margin.blur(); assert.deepEqual(state.scenes[0].published, frozen);
   await margin.fill('48'); await margin.blur();
   // Preview chooses once and survives inspector edits during the active playback.
+  await openStudio(page, 'test');
   await page.locator('.test-btn').filter({ hasText: 'Trigger alerts' }).click();
   await page.locator('app-overlay-scene-renderer .placement[data-kind="trigger"] img').waitFor();
   const preview = await editorGeometry(page);
@@ -86,6 +88,7 @@ try {
   await until(async () => !await page.locator('app-overlay-scene-renderer .placement[data-kind="trigger"] img').count(), 'Preview ends normally');
   const draftPosition = await editorGeometry(page); assert.equal(draftPosition.left, 75 / 1920 * 100);
   await margin.fill('48'); await margin.blur();
+  await openStudio(page, 'test');
   await page.locator('.test-btn').filter({ hasText: 'Trigger alerts' }).click();
   await page.locator('app-overlay-scene-renderer .placement[data-kind="trigger"] img').waitFor(); assert.notDeepEqual(await editorGeometry(page), preview);
   await until(async () => !await page.locator('app-overlay-scene-renderer .placement[data-kind="trigger"] img').count(), 'Second preview ends');
