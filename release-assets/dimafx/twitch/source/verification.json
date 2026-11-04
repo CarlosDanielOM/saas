@@ -1,0 +1,142 @@
+{
+  "runtimeFiles": {
+    "panel.html": "134850fcea38fe030a4df6ee8a98c3d92c0c1d0ad8e897c046ffe3feb1db3bf7",
+    "mobile.html": "548903dfd4fa47bb20b6bcad8d7859e686def1db22d562bd7508a2f7d298409d",
+    "panel.js": "da8789a68afb881127f5f9762d5fb7c5a623f67bb493c05d166111bc669ce6a1",
+    "storefront.css": "8a712a84c8d254dbf6be213b39739412394e231307bb85270cb81681c2211c06",
+    "assets/logo-mark-white.png": "61615a0f9c2b83e73f547cbc1eebb592dea6ef77da3bf585a277f56dca5f9510"
+  },
+  "brandSource": "dimasite/public/assets/brand/mark-on-dark.png",
+  "brandSha256": "57c5193b77d7da8f8825801413ab5ce675b0636f85ed856d72b24ed6488230cf",
+  "captures": [
+    {
+      "capture": "en-store.png",
+      "viewport": {
+        "width": 524,
+        "height": 584
+      },
+      "checkoutCalls": 0,
+      "mutations": 0
+    },
+    {
+      "capture": "en-saved.png",
+      "viewport": {
+        "width": 334,
+        "height": 330
+      },
+      "checkoutCalls": 0,
+      "mutations": 0
+    },
+    {
+      "capture": "en-voice.png",
+      "viewport": {
+        "width": 390,
+        "height": 620
+      },
+      "checkoutCalls": 0,
+      "mutations": 0
+    },
+    {
+      "capture": "es-store.png",
+      "viewport": {
+        "width": 524,
+        "height": 584
+      },
+      "checkoutCalls": 0,
+      "mutations": 0
+    },
+    {
+      "capture": "es-saved.png",
+      "viewport": {
+        "width": 334,
+        "height": 330
+      },
+      "checkoutCalls": 0,
+      "mutations": 0
+    },
+    {
+      "capture": "es-voice.png",
+      "viewport": {
+        "width": 390,
+        "height": 620
+      },
+      "checkoutCalls": 0,
+      "mutations": 0
+    }
+  ],
+  "pngs": [
+    {
+      "file": "logo-100x100.png",
+      "width": 100,
+      "height": 100,
+      "bytes": 6305,
+      "opaque": true,
+      "sha256": "47ede19c0f0921fec4918b99aa5d7da0a3b6c9e5656865aa2ae848102575ec81"
+    },
+    {
+      "file": "taskbar-icon-24x24.png",
+      "width": 24,
+      "height": 24,
+      "bytes": 946,
+      "opaque": true,
+      "sha256": "0f5682c2e43d0ab7ae69dbb6d53afd8e8b4524b061ccb24424f00171dc910065"
+    },
+    {
+      "file": "logo-transparent-100x100.png",
+      "width": 100,
+      "height": 100,
+      "bytes": 5050,
+      "opaque": false,
+      "sha256": "7879864dd7b02946fbeeb5a2ffc31863ae0ab9f14851d4aa6b755372bbf267c7"
+    },
+    {
+      "file": "en/discovery-300x200.png",
+      "width": 300,
+      "height": 200,
+      "bytes": 32642,
+      "opaque": true,
+      "sha256": "aa737cf04dfac56c6570c8e110f3b7cd827a099c7cb343b3b20ca5296d2ea8bd"
+    },
+    {
+      "file": "en/screenshot-01-store-1024x768.png",
+      "width": 1024,
+      "height": 768,
+      "bytes": 296585,
+      "opaque": true,
+      "sha256": "5d429f42e4f4bf606a4ccdfc9a8b993c5b7702cc35fe7a9e3bd95c329fbdae16"
+    },
+    {
+      "file": "en/screenshot-02-voice-1024x768.png",
+      "width": 1024,
+      "height": 768,
+      "bytes": 236095,
+      "opaque": true,
+      "sha256": "be46fa595eed16c25420fd8b5a2372de4bdc96a4a8ab306381c286a1cb2ecd6c"
+    },
+    {
+      "file": "es/discovery-300x200.png",
+      "width": 300,
+      "height": 200,
+      "bytes": 31583,
+      "opaque": true,
+      "sha256": "b3c8d1bcb8088a9cce8b57a6783f7dbc348c691be350b92b86773c381b64c064"
+    },
+    {
+      "file": "es/screenshot-01-store-1024x768.png",
+      "width": 1024,
+      "height": 768,
+      "bytes": 305739,
+      "opaque": true,
+      "sha256": "ba3b6f2c57242d2ebe44ee6fada00fe9bb6f3484590c949289c71509fd76c7e4"
+    },
+    {
+      "file": "es/screenshot-02-voice-1024x768.png",
+      "width": 1024,
+      "height": 768,
+      "bytes": 233463,
+      "opaque": true,
+      "sha256": "e8c91c7dd448830154ac951d2cf5e95da3a864001f3374789ec2bbcc8bf1d7bb"
+    }
+  ],
+  "externalNetworkRequests": 0
+}

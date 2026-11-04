@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>DimaFX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="storefront.css?v=50" />
+  </head>
+  <body class="fx fx--panel">
+    <div class="fx-app">
+      <header class="fx-head">
+        <div class="fx-brand">
+          <img src="assets/logo-mark-white.png" alt="" width="18" height="20" />
+          <span class="fx-brand__name">DimaFX</span>
+        </div>
+        <span id="fx-live-chip" class="fx-chip fx-chip--muted" data-state="checking">
+          <span class="fx-dot"></span><span id="fx-live-label" data-i18n="status.checkingShort">Checking…</span>
+        </span>
+        <button id="fx-balance" class="fx-chip fx-chip--gold fx-balance" type="button" onclick="showBitsBalance()" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9 12h6M12 9v6"></path></svg>
+          <span id="header-balance">0</span>
+        </button>
+      </header>
+
+      <main class="fx-view">
+        <!-- Store -->
+        <section id="screen-store" class="app-screen active" aria-labelledby="fx-store-title">
+          <div class="fx-intro">
+            <h1 id="fx-store-title" class="fx-title" data-i18n="store.title">Play something on stream</h1>
+            <p id="dimafx-connection-status" class="fx-status" role="status" data-i18n="status.checking">Checking the stream overlay…</p>
+          </div>
+
+          <div class="fx-tools">
+            <label class="fx-search" id="fx-search" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+              <span class="fx-sr" data-i18n="store.searchLabel">Search items</span>
+              <input type="search" id="search-bar" autocomplete="off" data-i18n-placeholder="store.search" placeholder="Search" oninput="handleSearch(this.value)" />
+            </label>
+            <div id="fx-filters" class="fx-filters" role="group" data-i18n-aria="store.filters" aria-label="Filter by type"></div>
+          </div>
+
+          <div id="skeleton-loader" class="fx-grid fx-skeleton active" aria-hidden="true">
+            <div class="fx-sk"></div><div class="fx-sk"></div><div class="fx-sk"></div><div class="fx-sk"></div>
+          </div>
+
+          <div id="media-grid" class="fx-grid"></div>
+
+          <div id="empty-state" class="fx-empty" hidden>
+            <div class="fx-empty__title" id="fx-empty-title" data-i18n="store.emptyTitle">Nothing for sale yet</div>
+            <div class="fx-empty__desc" id="fx-empty-desc" data-i18n="store.emptyDesc">The streamer hasn't added any items.</div>
+          </div>
+        </section>
+
+        <!-- Saved items -->
+        <section id="screen-inventory" class="app-screen" aria-labelledby="fx-saved-title">
+          <div class="fx-intro">
+            <h1 id="fx-saved-title" class="fx-title" data-i18n="saved.title">Your saved items</h1>
+            <p class="fx-sub" data-i18n="saved.sub">Already paid for. Play them on stream whenever you want.</p>
+          </div>
+          <div id="inventory-list" class="fx-rows"></div>
+        </section>
+
+        <!-- Settings -->
+        <section id="screen-config" class="app-screen" aria-labelledby="fx-settings-title">
+          <div class="fx-intro">
+            <h1 id="fx-settings-title" class="fx-title" data-i18n="settings.title">Settings</h1>
+          </div>
+
+          <div class="fx-card">
+            <div class="fx-row-head">
+              <label for="preview-volume" class="fx-label" data-i18n="settings.volume">Preview volume</label>
+              <span class="fx-value" id="val-volume">80%</span>
+            </div>
+            <input id="preview-volume" type="range" class="fx-range volume-slider" min="0" max="100" value="80" style="--pct: 0.8" oninput="onPreviewVolumeInput(this)" />
+            <p class="fx-note" data-i18n="settings.volumeNote">Only for previews in this panel. The stream uses the streamer's volume.</p>
+          </div>
+
+          <div id="fx-quick-settings" class="fx-card"></div>
+
+          <div class="fx-card">
+            <div class="fx-label" data-i18n="settings.creditsTitle">What are credits?</div>
+            <p class="fx-note" data-i18n="settings.creditsNote">If something you paid for can't play, you get it back as credits for this channel. Spend them like Bits on any item.</p>
+          </div>
+        </section>
+      </main>
+
+      <nav class="bottom-nav fx-tabs" data-i18n-aria="nav.label" aria-label="DimaFX sections">
+        <button class="nav-tab active" type="button" aria-current="page" onclick="switchTab('store', this)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16l-1.5 12.5a1 1 0 0 1-1 .5h-11a1 1 0 0 1-1-.5L4 7Z"></path><path d="M9 7a3 3 0 0 1 6 0"></path></svg>
+          <span data-i18n="nav.store">Store</span>
+        </button>
+        <button class="nav-tab" type="button" onclick="switchTab('inventory', this)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3Z"></path></svg>
+          <span data-i18n="nav.saved">Saved</span>
+          <span id="fx-saved-count" class="fx-badge" hidden>0</span>
+        </button>
+        <button class="nav-tab" type="button" onclick="switchTab('config', this)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg>
+          <span data-i18n="nav.settings">Settings</span>
+        </button>
+      </nav>
+    </div>
+
+    <div id="drawer-backdrop" class="fx-backdrop" onclick="closeDrawer()"></div>
+
+    <div id="preview-drawer" class="fx-sheet" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden>
+      <div class="fx-sheet__handle" aria-hidden="true"></div>
+      <div id="player-widget" class="fx-stage" data-preview-kind="audio">
+        <div class="preview-visual" hidden></div>
+        <div class="fx-stage__audio" aria-hidden="true">
+          <span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>
+        </div>
+        <div class="fx-stage__tts"><span class="fx-quote" id="fx-stage-quote"></span></div>
+        <button class="fx-stage__play" type="button" id="player-play" onclick="togglePlayPreview()" data-i18n-aria="sheet.preview" aria-label="Preview">
+          <svg class="fx-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5-11-6.5Z"></path></svg>
+          <svg class="fx-icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zM13 5h3v14h-3z"></path></svg>
+        </button>
+        <span id="player-time" class="fx-stage__time">0:00</span>
+        <button class="fx-sheet__close" type="button" onclick="closeDrawer()" data-i18n-aria="sheet.close" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+        </button>
+      </div>
+
+      <div class="fx-sheet__body">
+        <div class="fx-sheet__head">
+          <h2 id="drawer-title" class="fx-sheet__title">Item</h2>
+          <div id="drawer-subtitle" class="fx-sheet__meta"></div>
+        </div>
+        <p id="drawer-desc" class="fx-sheet__desc"></p>
+
+        <div id="tts-input-wrap" class="fx-tts" hidden>
+          <label for="tts-text-input" class="fx-label" data-i18n="sheet.ttsLabel">Your message</label>
+          <textarea id="tts-text-input" maxlength="280" rows="3" data-i18n-placeholder="sheet.ttsPlaceholder" placeholder="Type what the voice will say on stream…" oninput="onTtsTextInput()"></textarea>
+          <div id="tts-char-count" class="fx-tts__count">0 / 280</div>
+        </div>
+
+        <div class="drawer-actions"></div>
+      </div>
+    </div>
+
+    <div id="toast" class="fx-toast" role="status" aria-live="polite">
+      <div class="toast-icon" aria-hidden="true"></div>
+      <div>
+        <div class="toast-title"></div>
+        <div id="toast-desc" class="toast-desc"></div>
+      </div>
+    </div>
+
+    <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+    <script src="panel.js?v=51"></script>
+  </body>
+</html>
