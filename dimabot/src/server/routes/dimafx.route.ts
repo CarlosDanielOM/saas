@@ -15,6 +15,7 @@ import { scheduleThumbnailGeneration } from '../../utils/thumbnail_generator.js'
 import {
     getAllowedDimafxBitPrices,
     getDimafxSkuForBitsPrice,
+    dimafxItemUsesViewerInput,
     hasDimafxPermission,
     normalizeDimafxPurchaseAction,
     normalizeDimafxTtsConfig,
@@ -545,14 +546,6 @@ async function recoverBitsPurchase(existing: IExtensionWalletTransaction): Promi
         return { status: 200, body: { error: false, status: 200, message: 'DimaFX purchase already processed', data: { duplicate: true, inventory: inventory ? mapInventory(inventory) : null } } };
     }
     if (fulfillment === 'refund_pending') return refundBitsPurchase(existing);
-    const claimed = await ExtensionWalletTransactionSchema.updateOne(
-        { _id: existing._id, $or: [
-            { 'metadata.fulfillment': 'pending' },
-            { 'metadata.fulfillment': 'processing', updatedAt: { $lt: new Date(Date.now() - 30_000) } },
-        ] }, { $set: { 'metadata.fulfillment': 'processing' } },
-    );
-    if (!claimed.modifiedCount) return { status: 200, body: { error: false, status: 200, message: 'DimaFX purchase is already being processed', data: { duplicate: true } } };
-
     // Resolve durable side effects before checking current item/overlay state.
     // Deleting an item or disconnecting OBS must not undo a fulfilled purchase.
     const action = normalizeDimafxPurchaseAction(existing.metadata?.action);
@@ -560,11 +553,21 @@ async function recoverBitsPurchase(existing: IExtensionWalletTransaction): Promi
     const saved = action === 'save' && existing.userID
         ? await UserExtensionInventorySchema.findOne({ ...inventoryIdentityFilter(channelID, existing.userID), dimafxReceipts: `save:${existing._id}` }).lean()
         : null;
+    const itemData = queued || saved ? null : await getActiveChannelItem(channelID, String(existing.channelExtensionItemID || ''));
+    if (itemData && !existing.userID && dimafxItemUsesViewerInput(itemData.item)) {
+        return { status: 403, body: { error: true, status: 403, message: 'Identity sharing is required to use custom DimaFX content' } };
+    }
+    const claimed = await ExtensionWalletTransactionSchema.updateOne(
+        { _id: existing._id, $or: [
+            { 'metadata.fulfillment': 'pending' },
+            { 'metadata.fulfillment': 'processing', updatedAt: { $lt: new Date(Date.now() - 30_000) } },
+        ] }, { $set: { 'metadata.fulfillment': 'processing' } },
+    );
+    if (!claimed.modifiedCount) return { status: 200, body: { error: false, status: 200, message: 'DimaFX purchase is already being processed', data: { duplicate: true } } };
     if (queued || saved) {
         await markPurchaseFulfillment(existing._id, 'fulfilled');
         return { status: 200, body: { error: false, status: 200, message: 'DimaFX purchase recovered', data: { duplicate: true, ...(queued?.ok ? { queued: true, triggerID: queued.triggerID, queueLength: queued.queueLength } : {}), ...(saved ? { inventory: mapInventory(saved) } : {}) } } };
     }
-    const itemData = await getActiveChannelItem(channelID, String(existing.channelExtensionItemID || ''));
     if (!itemData) return refundBitsPurchase(existing);
     return fulfillBitsPurchase({
         ledgerID: existing._id, priceBits: existing.amountBits, channelID, itemData,
@@ -745,7 +748,10 @@ router.post('/internal/channels/:channelID/items/:itemID/purchase', internalServ
 
         // Custom-text TTS items must play immediately: the viewer's text only
         // exists in this request, so saving them for later is not supported.
-        const isCustomTts = itemData.item.category === 'tts' && itemData.item.tts?.mode === 'custom';
+        const isCustomTts = dimafxItemUsesViewerInput(itemData.item);
+        if (isCustomTts && !body.userID) {
+            return res.status(403).json({ error: true, message: 'Identity sharing is required to use custom DimaFX content', status: 403 });
+        }
         if (action === 'save' && isCustomTts) {
             return res.status(400).json({ error: true, message: 'Custom TTS items must be used immediately', status: 400 });
         }
@@ -838,7 +844,7 @@ router.post('/internal/channels/:channelID/items/:itemID/use-credit', internalSe
             return res.status(404).json({ error: true, message: 'DimaFX item not found', status: 404 });
         }
 
-        const isCustomTts = itemData.item.category === 'tts' && itemData.item.tts?.mode === 'custom';
+        const isCustomTts = dimafxItemUsesViewerInput(itemData.item);
         if (action === 'save' && isCustomTts) {
             return res.status(400).json({ error: true, message: 'Custom TTS items must be used immediately', status: 400 });
         }

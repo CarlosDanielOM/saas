@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-const { chromium } = await import('playwright').catch(() => import('/tmp/saas-visual-check/node_modules/playwright/index.mjs'));
+const { chromium } = await import(process.env.PLAYWRIGHT_PATH || 'playwright').catch(() => import('/tmp/saas-visual-check/node_modules/playwright/index.mjs'));
 const axePath = process.env.AXE_PATH || '/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js';
 const base = process.env.SAAS_DIMAFX_PREVIEW_URL;
 assert.ok(base, 'SAAS_DIMAFX_PREVIEW_URL required');
@@ -18,7 +18,7 @@ async function noOverflow(page, label) {
 }
 async function openStore({ file, viewport, query = '', theme = 'dark', shared = true, config = { quickPurchasePriority: 'bits_first', quickPurchaseAction: 'use_now' }, balance = 10, items, owned = [] }) {
   const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
-  const state = { connected: false, requests: [] };
+  const state = { connected: false, shared, requests: [] };
   const inventory = { balance, items: owned, config };
   await context.addInitScript((theme) => {
     window.bitsCalls = 0;
@@ -33,9 +33,13 @@ async function openStore({ file, viewport, query = '', theme = 'dark', shared = 
       state.requests.push({ path: url.pathname, method: route.request().method(), body: route.request().postData() });
       let data = {};
       if (url.pathname.endsWith('/overlay-status')) data = { connected: state.connected };
-      else if (url.pathname.endsWith('/me')) data = shared ? { identityShared: true, inventory } : { identityShared: false, inventory: null };
+      else if (url.pathname.endsWith('/me')) data = state.shared ? { identityShared: true, inventory } : { identityShared: false, inventory: null };
       else if (url.pathname.endsWith('/items')) data = items;
       else if (url.pathname.endsWith('/purchase') || url.pathname.endsWith('/use-credit') || url.pathname.endsWith('/redeem')) data = { queued: true };
+      if (url.pathname.endsWith('/me') && state.holdNextMe) {
+        state.holdNextMe = false;
+        await new Promise(resolve => { state.releaseMe = resolve; });
+      }
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ error: false, data }) });
     }
     if (url.origin === new URL(base).origin && !url.pathname.startsWith('/assets/')) return route.continue();
@@ -51,7 +55,8 @@ async function openStore({ file, viewport, query = '', theme = 'dark', shared = 
   await page.locator('.price-btn, #empty-state:not([hidden])').first().waitFor();
   await page.waitForFunction(() => overlayChecked);
   const setConnected = async (value) => { state.connected = value; await page.evaluate(() => refreshOverlayStatus()); };
-  return { context, page, state, errors, setConnected };
+  const setShared = async (value) => { state.shared = value; await page.evaluate(() => refreshMe()); };
+  return { context, page, state, errors, setConnected, setShared };
 }
 const fixtureItems = [
   { id: 'item-1', name: 'Fixture audio', category: 'audio', bitsPrice: 5, sku: 'dimafx_bits_5', description: 'Test purchase', mediaType: 'audio', durationMs: 1000, channelName: 'FixtureChannel', createdAt: new Date(Date.now() - day).toISOString() },
@@ -170,6 +175,111 @@ try {
     await context.close();
   }
 
+  // Custom content requires identity; normal and streamer-written voice items stay available.
+  for (const theme of ['dark', 'light']) {
+    for (const [file, viewport] of [['panel.html', { width: 318, height: 500 }], ['mobile.html', { width: 320, height: 640 }], ['mobile.html', { width: 390, height: 844 }]]) {
+      const label = `${file}@${viewport.width} ${theme} no-id custom`;
+      const fixed = { ...fixtureItems[1], id: 'fixed-voice', name: 'Streamer message', tts: { mode: 'fixed', text: 'Chosen by the streamer' } };
+      const freeCustom = { ...fixtureItems[1], id: 'custom-free', bitsPrice: 0, sku: 'dimafx_free' };
+      const missingMode = { ...fixtureItems[1], id: 'legacy-voice', tts: null };
+      const { context, page, state, errors, setConnected, setShared } = await openStore({
+        file, viewport, theme, shared: false, query: '?language=es', items: [...fixtureItems, fixed, freeCustom, missingMode],
+      });
+      await setConnected(true);
+      await page.locator('.fx-tile[data-id="item-2"] .price-btn').click();
+      await page.locator('#preview-drawer.open').waitFor();
+      assert.equal(await page.locator('#tts-input-wrap').isHidden(), true, `${label}: custom input hidden`);
+      assert.equal(await page.locator('#tts-text-input').isDisabled(), true, `${label}: custom input disabled`);
+      assert.equal(await page.locator('.drawer-buy-btn').count(), 0, `${label}: no custom payment button`);
+      assert.match(await page.locator('.drawer-actions').innerText(), /Comparte tu ID.*contenido propio/, `${label}: localized restriction`);
+      await page.locator('.drawer-actions button').click();
+      assert.ok(await page.evaluate(() => window.idShareCalls >= 2), `${label}: share prompt works`);
+      await noOverflow(page, label);
+      await axe(page, label);
+      await page.screenshot({ path: `/tmp/dimafx-identity-${file}-${viewport.width}-${theme}.png` });
+
+      // Direct callers and stale payment callbacks must not bypass the sheet.
+      await page.evaluate(async () => {
+        const item = products.find(item => item.id === 'item-2');
+        document.getElementById('tts-text-input').value = 'unshared input';
+        await buyWithBits(item, 'use_now');
+        await buyWithCredits(item, 'use_now');
+        await triggerFreeItem(products.find(item => item.id === 'custom-free'));
+        await redeemSaved(item.id);
+        await completeBitsPurchase(item, 'use_now', { transactionId: 'stale-callback' }, 'unshared input');
+      });
+      assert.equal(await page.evaluate(() => window.bitsCalls), 0, `${label}: no Twitch checkout`);
+      assert.equal(state.requests.filter(r => r.method === 'POST').length, 0, `${label}: no custom mutation`);
+      assert.equal(await page.evaluate(() => actionInFlight), false, `${label}: rejected callback releases action`);
+
+      // An identity opt-in updates an already open sheet and permits custom TTS.
+      await setShared(true);
+      assert.equal(await page.locator('#tts-input-wrap').isVisible(), true, `${label}: opt-in unlocks current sheet`);
+      await page.locator('#tts-text-input').fill('shared message');
+      await page.locator('.drawer-buy-btn.bits').click();
+      await page.waitForFunction(() => window.bitsCalls === 1);
+      // Revoke identity during Twitch checkout; completion cannot submit the captured message.
+      await setShared(false);
+      assert.equal(await page.locator('#tts-input-wrap').isHidden(), true, `${label}: revocation hides input`);
+      assert.equal(await page.locator('#tts-text-input').inputValue(), '', `${label}: revocation clears draft`);
+      await page.evaluate(() => window.completeTransaction({ transactionId: 'revoked-checkout' }));
+      await page.waitForFunction(() => !actionInFlight);
+      assert.equal(state.requests.filter(r => r.method === 'POST').length, 0, `${label}: revoked pending purchase blocked`);
+
+      await page.evaluate(() => closeDrawer());
+      for (const id of ['custom-free', 'legacy-voice']) {
+        await page.evaluate(id => openDrawerById(id), id);
+        assert.equal(await page.locator('#tts-input-wrap').isHidden(), true, `${label}: ${id} no input`);
+        assert.equal(await page.locator('.drawer-buy-btn').count(), 0, `${label}: ${id} no checkout`);
+      }
+      await page.evaluate(() => closeDrawer());
+      // Fixed TTS can be purchased without identity, and carries no viewer text.
+      await page.evaluate(() => openDrawerById('fixed-voice'));
+      assert.equal(await page.locator('#tts-input-wrap').isHidden(), true, `${label}: fixed voice has no editor`);
+      assert.equal(await page.locator('.drawer-buy-btn.bits').isEnabled(), true, `${label}: fixed voice allowed`);
+      await page.locator('.drawer-buy-btn.bits').click();
+      await page.waitForFunction(() => window.bitsCalls === 2);
+      await page.evaluate(() => window.completeTransaction({ transactionId: 'fixed-voice' }));
+      await page.waitForFunction(() => !actionInFlight);
+      const fixedPurchase = state.requests.find(r => r.path.endsWith('/fixed-voice/purchase'));
+      assert.ok(fixedPurchase, `${label}: fixed voice fulfilled`);
+      assert.equal(JSON.parse(fixedPurchase.body).ttsText, undefined, `${label}: no text override on fixed TTS`);
+      await page.evaluate(() => triggerFreeItem(products.find(item => item.id === 'item-3')));
+      assert.ok(state.requests.find(r => r.path.endsWith('/item-3/purchase')), `${label}: normal free item allowed`);
+      assert.deepEqual(errors, [], `client errors: ${errors}`);
+      await context.close();
+    }
+  }
+
+  // A response issued under an older Twitch authorization cannot restore revoked identity.
+  {
+    const { context, page, state, errors, setConnected } = await openStore({
+      file: 'panel.html', viewport: { width: 318, height: 500 }, items: fixtureItems, shared: true,
+    });
+    await setConnected(true);
+    await page.evaluate(() => openDrawerById('item-2'));
+    await page.locator('#tts-text-input').fill('old identity draft');
+    for (const request of ['refreshMe', 'loadStore']) {
+      state.shared = true;
+      await page.evaluate(() => refreshMe());
+      state.holdNextMe = true;
+      await page.evaluate(request => { window.oldIdentityRequest = window[request](); }, request);
+      // The mock holds exactly the first /me response after it captured shared=true.
+      for (let attempts = 0; !state.releaseMe && attempts < 100; attempts++) await new Promise(resolve => setTimeout(resolve, 10));
+      assert.equal(typeof state.releaseMe, 'function', `${request}: fixture captured the old response`);
+      state.shared = false;
+      await page.evaluate(request => window.authorize({ token: `revoked-${request}`, channelId: '999983' }), request);
+      state.releaseMe();
+      state.releaseMe = null;
+      await page.evaluate(() => window.oldIdentityRequest);
+      assert.equal(await page.evaluate(() => identityShared), false, `${request}: old response cannot restore identity`);
+      assert.equal(await page.locator('#tts-input-wrap').isHidden(), true, `${request}: custom input stays hidden`);
+      assert.equal(await page.locator('.drawer-buy-btn').count(), 0, `${request}: custom checkout stays blocked`);
+    }
+    assert.deepEqual(errors, [], `client errors: ${errors}`);
+    await context.close();
+  }
+
   // Empty store says so in plain words.
   {
     const { context, page, errors } = await openStore({ file: 'mobile.html', viewport: { width: 390, height: 844 }, items: [] });
@@ -209,5 +319,5 @@ try {
   assert.equal(await page.locator('#dimafx-player img').count(), 0, 'completed receipt survives player reload');
   assert.equal(await page.evaluate(() => window.emitted[0].name), 'dimafx-ended');
   await context.close();
-  console.log('PASS: panel/mobile offline gating, checkout preflight race, online purchase, filters, credits double-tap, custom voice message, saved redeem, identity/Spanish, empty store, axe + overflow at 318/320/390 in dark and light, and OBS deduplication during playback/completion/reload');
+  console.log('PASS: panel/mobile offline gating, checkout preflight race, online purchase, filters, credits double-tap, custom voice message, saved redeem, identity/Spanish, no-ID custom blocking and opt-in/revocation, fixed voice, empty store, axe + overflow at 318/320/390 in dark and light, and OBS deduplication during playback/completion/reload');
 } finally { await browser.close(); }

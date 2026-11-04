@@ -2,10 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Types } from 'mongoose';
 import {
+    dimafxItemUsesViewerInput,
     normalizeDimafxViewerConfig,
     selectRedeemCandidate,
     type DimafxViewerConfig
 } from './dimafx.service.js';
+
+test('viewer input classification follows playback configuration, including legacy TTS', () => {
+    assert.equal(dimafxItemUsesViewerInput({ category: 'tts', tts: { mode: 'custom' } }), true);
+    assert.equal(dimafxItemUsesViewerInput({ category: 'tts', tts: null }), true);
+    assert.equal(dimafxItemUsesViewerInput({ category: 'tts', tts: { mode: 'fixed' } }), false);
+    assert.equal(dimafxItemUsesViewerInput({ category: 'video', tts: { mode: 'custom' } }), false);
+});
 
 const DEFAULT_CONFIG: DimafxViewerConfig = {
     quickPurchasePriority: 'credits_first',

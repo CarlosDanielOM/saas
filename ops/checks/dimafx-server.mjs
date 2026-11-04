@@ -69,6 +69,23 @@ try {
   const proxiedCredit = received.find((r) => r.url === '/extensions/dimafx/internal/channels/555777/items/item-1/use-credit');
   assert.equal(proxiedCredit?.body.ttsText, 'credit fixture', 'viewer TTS text forwarded on credit use');
 
+  // Caller-supplied identity never overrides the verified Twitch JWT. The API
+  // makes the final item decision using this trusted identity and its catalog.
+  const anonymous = await post('/v1/channels/555777/items/item-2/purchase', validJwt({ user_id: undefined }), {
+    sku: 'dimafx_bits_5', transactionID: 'tx-anonymous', action: 'use_now', ttsText: 'anonymous input',
+    userID: 'spoofed-user', identityShared: true, displayName: 'spoofed-name',
+  });
+  assert.equal(anonymous.status, 200);
+  const anonymousProxy = received.at(-1);
+  assert.equal(anonymousProxy.body.userID, undefined, 'body cannot spoof a shared Twitch ID');
+  assert.equal(anonymousProxy.body.identityShared, undefined, 'sharing flag is not trusted');
+  assert.equal(anonymousProxy.body.displayName, undefined, 'display name is not trusted');
+  assert.equal(anonymousProxy.body.opaqueUserID, 'op-1');
+  const beforeAnonymousCredit = received.length;
+  const anonymousCredit = await post('/v1/channels/555777/items/item-2/use-credit', validJwt({ user_id: undefined }), { userID: 'spoofed-user', identityShared: true, ttsText: 'anonymous input' });
+  assert.equal(anonymousCredit.status, 403);
+  assert.equal(received.length, beforeAnonymousCredit, 'anonymous credit attempt never proxied');
+
   // Channel mismatch is rejected before proxying.
   const before = received.length;
   const mismatch = await post('/v1/channels/555777/items/item-1/purchase', validJwt({ channel_id: '999000' }), { sku: 'x', transactionID: 'y' });

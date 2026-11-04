@@ -116,6 +116,47 @@ try {
   const statusAfter = await fetch(`${root}/extensions/dimafx/${channel}/overlay-status`, { headers: authHeaders }).then((r) => r.json());
   assert.equal(statusAfter.data.connected, true, 'overlay reported connected after connect');
 
+  // Identity gating happens before ledger creation, queueing, or synthesis.
+  // Opaque IDs and client-provided sharing flags never unlock viewer content.
+  for (const [index, extra] of [
+    {}, { opaqueUserID: 'opaque-only' }, { identityShared: true },
+    { userID: '', identityShared: true },
+  ].entries()) {
+    const transactionID = `tx-anonymous-custom-${index}`;
+    const denied = await purchase(String(ttsItem), { sku: 'free', transactionID, action: 'use_now', ttsText: 'must not play', ...extra });
+    assert.equal(denied.status, 403, JSON.stringify(denied));
+    assert.equal(await db.collection('extensionwallettransactions').countDocuments({ twitchTransactionID: transactionID }), 0, 'blocked input creates no receipt');
+  }
+  assert.equal(await db.collection('dimafxplaybacks').countDocuments({ channelID: channel }), 0, 'blocked input creates no playback');
+  assert.equal(overlay.triggers.length, 0, 'blocked input never reaches overlay');
+
+  for (const [mode, price] of [['custom', 5], [undefined, 0]]) {
+    const extraItem = new mongoose.Types.ObjectId();
+    const transactionID = `tx-anonymous-${mode || 'legacy'}`;
+    await db.collection('channelextensionitems').insertOne({
+      ...baseItem, _id: extraItem, assetID: null, name: 'Identity fixture', category: 'tts', mediaType: 'audio',
+      durationMs: 0, bitsPrice: price, sku: price ? 'dimafx_bits_5' : 'free',
+      ...(mode ? { tts: { mode, text: '', voice: '', language: 'en' } } : {}),
+    });
+    const denied = await purchase(String(extraItem), { sku: price ? 'dimafx_bits_5' : 'free', transactionID, action: 'use_now', ttsText: 'must not play' });
+    assert.equal(denied.status, 403, `anonymous ${mode || 'legacy'} price=${price}: ${JSON.stringify(denied)}`);
+    assert.equal(await db.collection('extensionwallettransactions').countDocuments({ twitchTransactionID: transactionID }), 0);
+  }
+
+  // Legacy pending custom purchases must not resume under an anonymous ID.
+  const pendingID = new mongoose.Types.ObjectId();
+  await db.collection('extensionwallettransactions').insertOne({
+    _id: pendingID, platform: 'twitch', userID: null, opaqueUserID: 'opaque-only', channelID: channel,
+    type: 'bits_purchase', amountBits: 0, balanceDelta: 0, channelExtensionItemID: ttsItem,
+    twitchTransactionID: 'tx-anonymous-pending-custom', sku: 'free',
+    metadata: { action: 'use_now', fulfillment: 'pending', viewerText: 'legacy text must not play' },
+    createdAt: new Date(Date.now() - 60000), updatedAt: new Date(Date.now() - 60000),
+  });
+  const pendingDenied = await purchase(String(ttsItem), { sku: 'free', transactionID: 'tx-anonymous-pending-custom', action: 'use_now' });
+  assert.equal(pendingDenied.status, 403, JSON.stringify(pendingDenied));
+  assert.equal(await db.collection('dimafxplaybacks').countDocuments({ _id: `bits-${pendingID}` }), 0, 'pending recovery never bypasses identity');
+  assert.equal((await db.collection('extensionwallettransactions').findOne({ _id: pendingID })).metadata.fulfillment, 'pending', 'identity refusal does not claim a refund');
+
   // 1) First purchase dispatches immediately.
   const first = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-1', action: 'use_now' });
   assert.equal(first.status, 200, JSON.stringify(first));
@@ -153,7 +194,7 @@ try {
 
   // 6) Custom TTS item: viewer text is synthesized at dispatch time, after the
   //    unacknowledged image item times out (~2s).
-  const ttsPurchase = await purchase(String(ttsItem), { sku: 'free', transactionID: 'tx-4', action: 'use_now', ttsText: '  Hello   from the fixture https://spam.example ' });
+  const ttsPurchase = await purchase(String(ttsItem), { sku: 'free', transactionID: 'tx-4', action: 'use_now', userID: 'shared-tts-viewer', ttsText: '  Hello   from the fixture https://spam.example ' });
   assert.equal(ttsPurchase.status, 200, JSON.stringify(ttsPurchase));
   await wait(() => overlay.triggers.length === 4, 'tts trigger dispatched after timeout');
   const ttsTrigger = overlay.triggers[3];
@@ -209,6 +250,27 @@ try {
   overlay.ack(overlay.triggers[0].triggerID);
   await wait(async () => (await db.collection('dimafxplaybacks').countDocuments({ channelID: channel, state: { $nin: ['completed', 'refunded'] } })) === 0, 'queue drains');
   assert.equal(legacy.triggers.length, 0, 'DimaFX purchases never reach legacy trigger sockets');
+
+  // Anonymous viewers retain streamer-selected speech and media. Submitted text
+  // cannot replace a streamer's fixed speech or add text to a media purchase.
+  const fixedItem = new mongoose.Types.ObjectId();
+  await db.collection('channelextensionitems').insertOne({
+    ...baseItem, _id: fixedItem, assetID: null, name: 'Fixed speech', category: 'tts', mediaType: 'audio',
+    durationMs: 0, bitsPrice: 0, sku: 'free', tts: { mode: 'fixed', text: 'Streamer selected words', voice: '', language: 'en' },
+  });
+  for (const [itemID, sku, transactionID] of [
+    [fixedItem, 'free', 'tx-anonymous-fixed'], [videoItem, 'dimafx_bits_5', 'tx-anonymous-media'],
+  ]) {
+    const before = overlay.triggers.length;
+    const allowed = await purchase(String(itemID), { sku, transactionID, action: 'use_now', opaqueUserID: 'opaque-only', ttsText: 'injected viewer text' });
+    assert.equal(allowed.status, 200, JSON.stringify(allowed));
+    await wait(() => overlay.triggers.length === before + 1, 'streamer-selected content dispatches anonymously');
+    overlay.ack(overlay.triggers[before].triggerID);
+    await wait(async () => (await db.collection('dimafxplaybacks').findOne({ _id: overlay.triggers[before].triggerID })).state === 'completed', 'streamer-selected content completes');
+  }
+  const fixedSyntheses = fs.readFileSync('/tmp/saas-fixtures/provider-calls.jsonl', 'utf8').trim().split('\n').map(JSON.parse).filter(c => c.synthesis);
+  assert.equal(fixedSyntheses.at(-1).synthesis.text, 'Streamer selected words');
+  assert.ok(fixedSyntheses.every(c => !c.synthesis.text.includes('injected viewer text') && !c.synthesis.text.includes('must not play')), 'anonymous text never reaches synthesis');
 
   // Failure after durable enqueue, before purchase-ledger finalization.
   fs.writeFileSync('/tmp/saas-fixtures/fail-finalization-once', '1');
@@ -267,7 +329,7 @@ try {
   const childOverlay = await connectOverlay({ port: 4001, id: childChannel });
   await wait(async () => (await fetch(`http://127.0.0.1:4001/extensions/dimafx/internal/channels/${childChannel}/overlay-status`, { headers: serviceHeaders }).then(r => r.json())).data.connected, 'child overlay ready');
   const childPurchase = await fetch(`http://127.0.0.1:4001/extensions/dimafx/internal/channels/${childChannel}/items/${childItem}/purchase`, {
-    method: 'POST', headers: serviceHeaders, body: JSON.stringify({ sku: 'free', transactionID: 'tx-restart', action: 'use_now', ttsText: 'RESTART_PENDING speech' }),
+    method: 'POST', headers: serviceHeaders, body: JSON.stringify({ sku: 'free', transactionID: 'tx-restart', action: 'use_now', userID: 'shared-restart-viewer', ttsText: 'RESTART_PENDING speech' }),
   }).then(r => r.json());
   assert.equal(childPurchase.error, false, JSON.stringify(childPurchase));
   const childTriggerID = childPurchase.data.triggerID;

@@ -3,6 +3,7 @@ let products = [];
 let inventory = null;
 let identityShared = false;
 let authToken = null;
+let authorizationVersion = 0;
 let channelID = null;
 let channelName = "";
 let currentFilter = "all";
@@ -69,6 +70,7 @@ const STRINGS = {
     "tile.credits": "{price} credits",
     "tile.confirmCredits": "Spend {price}?",
     "tile.yourText": "Type your own message",
+    "custom.needsIdentity": "Share your Twitch ID to send custom text or other content. You can still play items chosen by the streamer.",
     "price.bits": "{price} Bits",
     "price.free": "Free",
     "nav.label": "DimaFX sections",
@@ -185,6 +187,7 @@ const STRINGS = {
     "tile.credits": "{price} créditos",
     "tile.confirmCredits": "¿Gastar {price}?",
     "tile.yourText": "Escribe tu propio mensaje",
+    "custom.needsIdentity": "Comparte tu ID de Twitch para enviar texto u otro contenido propio. Puedes seguir usando los artículos elegidos por el streamer.",
     "price.bits": "{price} Bits",
     "price.free": "Gratis",
     "nav.label": "Secciones de DimaFX",
@@ -351,7 +354,21 @@ function isFreeItem(item) {
 }
 
 function isCustomTtsItem(item) {
-  return item?.category === "tts" && item?.tts?.mode === "custom";
+  return item?.category === "tts" && item?.tts?.mode !== "fixed";
+}
+
+function canUseViewerInput(item) {
+  return identityShared || !isCustomTtsItem(item);
+}
+
+function requireViewerInputIdentity(item) {
+  if (!canUseViewerInput(item)) throw new Error(t("custom.needsIdentity"));
+}
+
+function checkViewerInputIdentity(item) {
+  if (canUseViewerInput(item)) return true;
+  showToast(t("toast.identity"), t("custom.needsIdentity"), "info");
+  return false;
 }
 
 // Only images and GIFs can stand in as their own thumbnail; an audio URL would render as a broken image.
@@ -458,8 +475,14 @@ function renderStatus() {
 // ---------- Boot ----------
 
 async function initializeDimaFx(auth) {
+  authorizationVersion++;
   authToken = auth.token;
   channelID = auth.channelId;
+  // Authorization can change while a sheet or Twitch checkout is open.
+  // Fail closed until this token's server-verified identity response arrives.
+  identityShared = false;
+  inventory = null;
+  renderAll();
   if (overlayStatusTimer) clearInterval(overlayStatusTimer);
   overlayStatusTimer = setInterval(() => { void refreshOverlayStatus(); }, 5000);
   void refreshOverlayStatus();
@@ -467,6 +490,7 @@ async function initializeDimaFx(auth) {
 }
 
 async function loadStore() {
+  const requestedVersion = authorizationVersion;
   toggleShimmer(true);
   getEl("empty-state").hidden = true;
   try {
@@ -474,17 +498,21 @@ async function loadStore() {
       apiFetch("/me"),
       apiFetch(`/channels/${encodeURIComponent(channelID)}/items`),
     ]);
+    if (requestedVersion !== authorizationVersion) return;
     identityShared = Boolean(me.identityShared);
     inventory = me.inventory || null;
     products = (items || []).map(mapItem);
     channelName = products.find((item) => item.channelName)?.channelName || channelName;
     loadFailed = false;
   } catch (error) {
+    if (requestedVersion !== authorizationVersion) return;
     loadFailed = products.length === 0;
     showToast(t("toast.unavailable"), error.message || t("toast.loadFailed"), "error");
   } finally {
-    toggleShimmer(false);
-    renderAll();
+    if (requestedVersion === authorizationVersion) {
+      toggleShimmer(false);
+      renderAll();
+    }
   }
 }
 
@@ -495,6 +523,8 @@ function renderAll() {
   renderLibrary();
   renderInventory();
   renderUserConfigControls();
+  syncTtsInput(false);
+  renderDrawerActions();
 }
 
 function applyTheme(theme) {
@@ -596,6 +626,7 @@ function quickPlan(item) {
 }
 
 function quickActionLabel(item) {
+  if (!canUseViewerInput(item)) return escapeHtml(t("share.button"));
   if (!overlayConnected) return escapeHtml(t("tile.offline"));
   const plan = quickPlan(item);
   const price = formatNumber(item.priceValue);
@@ -611,6 +642,7 @@ function quickActionClass(item) {
 }
 
 function quickActionAria(item) {
+  if (!canUseViewerInput(item)) return `${t("share.button")}: ${item.name}`;
   const plan = quickPlan(item);
   const price = plan.pay === "free" ? t("price.free") : plan.pay === "credits" ? t("tile.credits", { price: formatNumber(item.priceValue) }) : t("price.bits", { price: formatNumber(item.priceValue) });
   const verb = plan.action === "save" ? t("sheet.save") : t("sheet.playNow");
@@ -782,16 +814,17 @@ function onTtsTextInput() {
   renderDrawerActions();
 }
 
-function syncTtsInput() {
+function syncTtsInput(reset = true) {
   const wrap = getEl("tts-input-wrap");
   if (!wrap) return;
-  const show = isCustomTtsItem(selectedItem);
+  const show = identityShared && isCustomTtsItem(selectedItem);
   wrap.hidden = !show;
-  if (show) {
-    const input = getEl("tts-text-input");
-    if (input) input.value = "";
-    onTtsTextInput();
+  const input = getEl("tts-text-input");
+  if (input) {
+    input.disabled = !show;
+    if (!show || reset) input.value = "";
   }
+  if (show) onTtsTextInput();
 }
 
 function openDrawerById(itemId, trigger) {
@@ -840,6 +873,10 @@ function renderDrawerActions() {
   const item = selectedItem;
   const isFree = isFreeItem(item);
   const customTts = isCustomTtsItem(item);
+  if (!canUseViewerInput(item)) {
+    actionContainer.innerHTML = `<p class="fx-hint">${escapeHtml(t("custom.needsIdentity"))}</p><button type="button" class="fx-btn fx-btn--primary" onclick="requestIdShare()">${escapeHtml(t("share.button"))}</button>`;
+    return;
+  }
   const ttsMissing = customTts && !getTtsInputText();
   // Custom-text TTS items must be used immediately — the viewer's text only exists in this purchase request.
   const saveDisabled = !identityShared || customTts;
@@ -1103,6 +1140,7 @@ function showSuccess(item, action) {
 }
 
 async function buyWithBits(item, action) {
+  if (!checkViewerInputIdentity(item)) return;
   if (!window.Twitch?.ext?.bits?.useBits) {
     showToast(t("toast.bitsUnavailable"), t("toast.bitsOnlyTwitch"), "info");
     return;
@@ -1115,6 +1153,7 @@ async function buyWithBits(item, action) {
   if (!beginAction()) return;
   try {
     await requireOverlayConnected();
+    requireViewerInputIdentity(item);
     pendingBitsPurchase = { item, action, ttsText };
     Twitch.ext.bits.useBits(item.sku);
   } catch (error) {
@@ -1125,6 +1164,7 @@ async function buyWithBits(item, action) {
 }
 
 async function triggerFreeItem(item, action = "use_now") {
+  if (!checkViewerInputIdentity(item)) return;
   // Free items are fulfilled server-side without ever touching the Twitch Bits API,
   // because Twitch rejects 0-cost SKUs in Twitch.ext.bits.useBits.
   const ttsText = isCustomTtsItem(item) ? getTtsInputText() : undefined;
@@ -1137,6 +1177,7 @@ async function triggerFreeItem(item, action = "use_now") {
   const transactionID = `free_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   try {
     await requireOverlayConnected();
+    requireViewerInputIdentity(item);
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/purchase`, {
       method: "POST",
       body: JSON.stringify({ sku: item.sku, transactionID, action: safeAction, ttsText }),
@@ -1156,6 +1197,7 @@ async function triggerFreeItem(item, action = "use_now") {
 async function completeBitsPurchase(item, action, transaction, pendingTtsText) {
   const ttsText = isCustomTtsItem(item) ? pendingTtsText ?? getTtsInputText() : undefined;
   try {
+    requireViewerInputIdentity(item);
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/purchase`, {
       method: "POST",
       body: JSON.stringify({ sku: item.sku, transactionID: transaction?.transactionId || transaction?.id || `${Date.now()}`, action, ttsText }),
@@ -1173,6 +1215,7 @@ async function completeBitsPurchase(item, action, transaction, pendingTtsText) {
 }
 
 async function buyWithCredits(item, action) {
+  if (!checkViewerInputIdentity(item)) return;
   const ttsText = isCustomTtsItem(item) ? getTtsInputText() : undefined;
   if (isCustomTtsItem(item) && !ttsText) {
     showToast(t("toast.messageRequired"), t("toast.messageRequiredDesc"), "info");
@@ -1182,6 +1225,7 @@ async function buyWithCredits(item, action) {
   const safeAction = action === "save" && !isCustomTtsItem(item) ? "save" : "use_now";
   try {
     await requireOverlayConnected();
+    requireViewerInputIdentity(item);
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/use-credit`, {
       method: "POST",
       body: JSON.stringify({ action: safeAction, ttsText }),
@@ -1200,10 +1244,11 @@ async function buyWithCredits(item, action) {
 
 async function redeemSaved(itemId) {
   const item = products.find((candidate) => String(candidate.id) === String(itemId));
-  if (!item) return;
+  if (!item || !checkViewerInputIdentity(item)) return;
   if (!beginAction()) return;
   try {
     await requireOverlayConnected();
+    requireViewerInputIdentity(item);
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/redeem`, { method: "POST", body: "{}" });
     if (data?.inventory) inventory = data.inventory;
     await refreshMe();
@@ -1216,13 +1261,17 @@ async function redeemSaved(itemId) {
 }
 
 async function refreshMe() {
+  const requestedVersion = authorizationVersion;
   const me = await apiFetch("/me");
+  if (requestedVersion !== authorizationVersion) return;
   identityShared = Boolean(me.identityShared);
   inventory = me.inventory || null;
   updateBalanceBadge();
   renderLibrary();
   renderInventory();
   renderUserConfigControls();
+  syncTtsInput(false);
+  renderDrawerActions();
 }
 
 function updateBalanceBadge() {

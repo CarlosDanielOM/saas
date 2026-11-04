@@ -13,6 +13,11 @@ const DEFAULT_SKU_MAP: Record<number, string> = {
 export type DimafxPurchaseAction = "use_now" | "save";
 export type DimafxQuickPurchasePriority = "credits_first" | "bits_first";
 
+/** Match playback's fixed-vs-viewer-text selection, including legacy configs. */
+export function dimafxItemUsesViewerInput(item: { category?: string; tts?: { mode?: string } | null }): boolean {
+  return item.category === "tts" && item.tts?.mode !== "fixed";
+}
+
 export interface DimafxViewerConfig {
   quickPurchasePriority: DimafxQuickPurchasePriority;
   quickPurchaseAction: DimafxPurchaseAction;
