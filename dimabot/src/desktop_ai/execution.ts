@@ -1,3 +1,4 @@
+import { updateTurn, changeTurn, BOT_AUDIO_DELIVERY_MS } from './updates.js';
 import { randomUUID } from 'node:crypto';
 import { moodInstruction } from '../pets/moods.js';
 import { safelyBuildMoodInstruction } from '../pets/mood_decoration.js';
@@ -7,7 +8,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { DesktopAiTurn, type DesktopTurn } from './schema.js';
-import { assertRunning, claimSpeechPreparing, speechStillPreparing, hashTicket, newTicket, operation, ticketKey, tickets } from './service.js';
+import { assertRunning, armBotSpeechExpiry, clearBotSpeechExpiry, claimSpeechPreparing, speechStillPreparing, hashTicket, newTicket, operation, ticketKey, tickets } from './service.js';
 import { truncateReply } from './input.js';
 import Users from '../schemas/users.schema.js';
 import { OAuthSession } from '../schemas/oauth_session.schema.js';
@@ -40,6 +41,7 @@ export async function startBotSpeech(id: string) {
     return !!handle && await startSpeechActivity(handle);
 }
 export async function finishBotSpeech(id: string, reason: string) {
+    clearBotSpeechExpiry(id);
     const handle = botActivities.get(id); botActivities.delete(id);
     if (handle) await finishSpeechActivity(handle, reason);
     else {
@@ -108,14 +110,14 @@ export async function executeDesktopTurn(turn: DesktopTurn, signal: AbortSignal)
         text = normalized.text;
     }
     await assertCurrent();
-    const saved = await DesktopAiTurn.findOneAndUpdate({ _id: turn._id, status: 'running' },
-        { $set: { replyText: text, ...(persona?.moods?.enabled ? { moodText: result.message } : {}) }, $inc: { revision: 1 } }, { new: true }).lean();
+    const saved = await changeTurn({ _id: turn._id, status: 'running' },
+        { $set: { replyText: text, ...(persona?.moods?.enabled ? { moodText: result.message } : {}) }, $inc: { revision: 1 } }, { new: true });
     if (!saved) return;
     if (saved.speech && saved.speech.status !== 'cancelled') {
         if (persona) await speakPet(saved, username);
         else await speakBot(saved, streamer, signal);
     }
-    await DesktopAiTurn.updateOne({ _id: turn._id, status: 'running' }, { $set: { status: 'completed' }, $inc: { revision: 1 } });
+    await updateTurn({ _id: turn._id, status: 'running' }, { $set: { status: 'completed' }, $inc: { revision: 1 } });
 }
 export async function speakPet(turn: DesktopTurn, username: string) {
     if (!await speechActive(turn._id)) return;
@@ -128,16 +130,16 @@ export async function speakPet(turn: DesktopTurn, username: string) {
             actor: { userId: turn.channelId, displayName: username } });
         });
         if ('prevented' in result) return;
-        const linked = await DesktopAiTurn.findOneAndUpdate({ _id: turn._id, 'speech.status': 'preparing' },
-            { $set: { petRequestId: result.requestId, 'speech.status': 'queued' }, $inc: { revision: 1 } }, { new: true }).lean();
+        const linked = await changeTurn({ _id: turn._id, 'speech.status': 'preparing' },
+            { $set: { petRequestId: result.requestId, 'speech.status': 'queued' }, $inc: { revision: 1 } }, { new: true });
         if (!linked) {
             const { cancelPetRequest } = await import('../pets/state.js');
             await cancelPetRequest(turn.ownerId, result.requestId, `turn:${turn._id}`);
         }
     } catch (error) {
         if (!(error instanceof PetError)) throw error;
-        await DesktopAiTurn.updateOne({ _id: turn._id, 'operations.id': 'pet_talk' }, { $set: { 'operations.$.status': 'failed' } });
-        await DesktopAiTurn.updateOne({ _id: turn._id, 'speech.status': { $ne: 'cancelled' } },
+        await updateTurn({ _id: turn._id, 'operations.id': 'pet_talk' }, { $set: { 'operations.$.status': 'failed' } });
+        await updateTurn({ _id: turn._id, 'speech.status': { $ne: 'cancelled' } },
             { $set: { 'speech.status': 'failed', 'speech.errorCode': error.code }, $inc: { revision: 1 } });
     }
 }
@@ -158,7 +160,7 @@ export async function speakBot(turn: DesktopTurn, streamer: { user_id: string; n
             piperFallbackVoice: settings.voices[language], kokoroFallbackVoice: settings.voices.kokoroDefault }, creditStatus, streamer.plan_tier);
         signal.throwIfAborted();
         if (!await speechActive(turn._id)) return;
-        if (request.text !== turn.replyText) await DesktopAiTurn.updateOne({ _id: turn._id, status: 'running' }, { $set: { replyText: request.text }, $inc: { revision: 1 } });
+        if (request.text !== turn.replyText) await updateTurn({ _id: turn._id, status: 'running' }, { $set: { replyText: request.text }, $inc: { revision: 1 } });
         if (!await claimSpeechPreparing(turn._id)) return;
         signal.throwIfAborted();
         directory = await mkdtemp(path.join(tmpdir(), 'dima-desktop-ai-'));
@@ -190,12 +192,13 @@ export async function speakBot(turn: DesktopTurn, streamer: { user_id: string; n
         if (!handle) throw new OAuthError('output_unavailable', 409);
         botActivities.set(turn._id, handle);
         signal.throwIfAborted();
-        const ticket = newTicket(), deadline = new Date(Date.now() + 15_000);
-        await (await tickets()).set(ticketKey(turn._id), ticket, { EX: 15 });
-        const ready = await DesktopAiTurn.findOneAndUpdate({ _id: turn._id, 'speech.status': 'preparing' }, { $set: {
+        const ticket = newTicket(), deadline = new Date(Date.now() + BOT_AUDIO_DELIVERY_MS);
+        await (await tickets()).set(ticketKey(turn._id), ticket, { PX: BOT_AUDIO_DELIVERY_MS });
+        const ready = await changeTurn({ _id: turn._id, 'speech.status': 'preparing' }, { $set: {
             'speech.status': 'ready', 'speech.ticketHash': hashTicket(ticket), 'speech.ticketExpiresAt': deadline, 'speech.startBefore': deadline,
-            'speech.privateDir': directory, 'speech.path': audioPath, 'speech.mimeType': synthesis.mimeType, 'speech.durationMs': durationMs }, $inc: { revision: 1 } }, { new: true }).lean();
+            'speech.privateDir': directory, 'speech.path': audioPath, 'speech.mimeType': synthesis.mimeType, 'speech.durationMs': durationMs }, $inc: { revision: 1 } }, { new: true });
         if (!ready) { await finishBotSpeech(turn._id, 'cancelled'); return; }
+        armBotSpeechExpiry(turn._id, deadline);
         directory = undefined;
     } catch (error) {
         await finishBotSpeech(turn._id, 'failed');
@@ -203,7 +206,7 @@ export async function speakBot(turn: DesktopTurn, streamer: { user_id: string; n
             const code = error instanceof OAuthError ? error.code : 'synthesis_failed';
             const current = await DesktopAiTurn.findById(turn._id).lean();
             const unknown = current?.operations.some(item => item.status === 'pending');
-            await DesktopAiTurn.updateOne({ _id: turn._id, 'speech.status': { $ne: 'cancelled' } },
+            await updateTurn({ _id: turn._id, 'speech.status': { $ne: 'cancelled' } },
                 { $set: { 'speech.status': unknown ? 'indeterminate' : 'failed', 'speech.errorCode': unknown ? 'operation_outcome_unknown' : code }, $inc: { revision: 1 } });
         }
     } finally {

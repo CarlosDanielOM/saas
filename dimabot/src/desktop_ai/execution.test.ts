@@ -8,7 +8,7 @@ const model = { exists: async () => true, findById: () => ({ lean: async () => s
     updateOne: async () => ({ modifiedCount: 1 }), findOneAndUpdate: () => ({ lean: async () => null }) };
 const modules: [string, Record<string, unknown>, unknown?][] = [
     ['./schema.js', { DesktopAiTurn: model }],
-    ['./service.js', { assertRunning: async () => {}, claimSpeechPreparing: async () => claim,
+    ['./service.js', { assertRunning: async () => {}, armBotSpeechExpiry: () => {}, clearBotSpeechExpiry: () => {}, claimSpeechPreparing: async () => claim,
         speechStillPreparing: async () => preparing, hashTicket: () => '', newTicket: () => '', ticketKey: () => '', tickets: async () => ({}),
         operation: async (_id: string, _operation: string, _kind: string, task: () => Promise<unknown>) => task() }],
     ['../schemas/users.schema.js', {}, {}],

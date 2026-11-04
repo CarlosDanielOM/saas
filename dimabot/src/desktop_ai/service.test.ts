@@ -59,7 +59,7 @@ mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDra
     eval: async (script: string, options: any) => { if (script.includes('ZREMRANGEBYSCORE')) return 1; if (script.includes("redis.call('DEL'")) { if (cache.get(options.keys[0]) === options.arguments[0]) cache.delete(options.keys[0]); return 1; } return 1; } }) } });
 mock.module('../schemas/pet_runtime.schema.js', { namedExports: { PetRequest: { findOne: (filter: any) => query(() => clone(petRows.get(filter._id) ?? null)) } } });
 mock.module('../pets/state.js', { namedExports: { cancelPetRequest: async (_owner: string, id: string) => cancelPet(id) } });
-const { submitTurn, getTurn, cancelTurn, cancelSpeech, claimSpeechPreparing, speechStillPreparing, operation, claimAudio, hashTicket, speechEvent, expireCancelledBotSpeech } = await import('./service.js');
+const { submitTurn, getTurn, cancelTurn, cancelSpeech, claimSpeechPreparing, speechStillPreparing, operation, claimAudio, hashTicket, speechEvent, expireCancelledBotSpeech, armBotSpeechExpiry, clearBotSpeechExpiry } = await import('./service.js');
 const identity = { session_id: 'session-1', user_id: 'owner-1', client_id: 'dima-desktop', channel_id: '12345', scopes: ['ai:interact', 'pet:interact'] };
 const payload = () => ({ request_id: randomUUID(), target: 'bot', text: ' Hey Dima, how are you? ', source: 'asr', silent: false });
 
@@ -236,4 +236,24 @@ test('an ended event crossing cancellation remains stop proof and keeps the canc
     const result = await speechEvent(identity, first.turn_id, { playback_id: row.speech.playbackId, output_generation: 1, event: 'ended' });
     beforeUpdate = undefined;
     assert.equal(result.snapshot.speech?.status, 'cancelled'); assert.equal(finishCalls, 1);
+});
+
+
+test('Bot delivery deadline starts at ready, expires at20 seconds and never expires started playback', async t => {
+    await new Promise<void>(resolve => setImmediate(resolve));
+    const now = Date.now();
+    t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now });
+    const id = randomUUID();
+    const row: any = { _id: id, revision: 1, operations: [], speech: { status: 'ready', startBefore: new Date(now + 20_000) } };
+    rows.set(id, row); armBotSpeechExpiry(id, row.speech.startBefore);
+    t.mock.timers.tick(19_999); await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(row.speech.status, 'ready', 'time spent before readiness is outside the delivery window');
+    t.mock.timers.tick(2); await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(row.speech.status, 'expired');
+    row.speech.status = 'delivering'; row.speech.startBefore = new Date(Date.now() + 20_000);
+    armBotSpeechExpiry(id, row.speech.startBefore);
+    row.speech.status = 'playing'; row.speech.playbackDeadline = new Date(Date.now() + 65_000);
+    t.mock.timers.tick(20_001); await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(row.speech.status, 'playing', 'a successful start wins over the old delivery timer');
+    clearBotSpeechExpiry(id); rows.delete(id);
 });

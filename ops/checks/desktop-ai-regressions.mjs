@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 const suites = [
-  'desktop_ai/input', 'desktop_ai/service', 'desktop_ai/execution', 'desktop_ai/activity',
+  'desktop_ai/input', 'desktop_ai/service', 'desktop_ai/execution', 'desktop_ai/activity', 'desktop_ai/updates',
   'pets/socket_adapter', 'pets/admission', 'pets/state', 'pets/delivery', 'pets/wakeups',
   'pets/readiness', 'pets/speech_text', 'pets/queue', 'pets/read_tts',
   'handlers/tts_controls', 'handlers/tts_queue_credits', 'handlers/tts_pet_lane',

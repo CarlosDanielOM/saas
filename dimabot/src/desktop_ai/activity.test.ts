@@ -50,10 +50,19 @@ const cache = {
     throw new Error('unexpected script');
   },
 };
+const turnListeners = new Set<(update: any) => void>();
+mock.module('./updates.js', { namedExports: { TURN_STATUS_FEATURE: 'turn-status-v1',
+  subscribeTurnUpdates: (listener: (update: any) => void) => { turnListeners.add(listener); return () => turnListeners.delete(listener); },
+  refreshPetTurnUpdates: async () => {} } });
+mock.module('../pets/wakeups.js', { namedExports: { subscribePetWakeups: () => () => {} } });
+mock.module('./schema.js', { namedExports: { DesktopAiTurn: {} } });
+let revoked = false;
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => cache } });
 mock.module('../server/oauth/service.js', { namedExports: { authenticateAccess: async (token: string) => {
-  if (token !== 'owner') throw new Error('invalid_token');
-  return { session_id: 'session-a', user_id: 'owner-a', channel_id: 'channel-a', client_id: 'dima-desktop', scopes: ['desktop:connect', 'pet:interact'] };
+  if (revoked || !['owner', 'other-session', 'no-ai', 'foreign-owner', 'foreign-client', 'foreign-channel'].includes(token)) throw new Error('invalid_token');
+  return { session_id: token === 'other-session' ? 'other-session' : 'session-a', user_id: token === 'foreign-owner' ? 'owner-b' : 'owner-a',
+    channel_id: token === 'foreign-channel' ? 'channel-b' : 'channel-a', client_id: token === 'foreign-client' ? 'another-client' : 'dima-desktop',
+    scopes: ['desktop:connect', ...(token === 'no-ai' ? [] : ['pet:interact', 'ai:interact'])] };
 } } });
 const { registerDesktopSpeechActivity, prepareSpeechActivity, startSpeechActivity, finishSpeechActivity, retireMatchingSpeechActivity, confirmRetiredSpeechActivity, hasSafeDesktopPetStop } = await import('./activity.js');
 const { petSocketAdapter } = await import('../pets/socket_adapter.js');
@@ -150,4 +159,61 @@ test('speech barrier, output serialization, fencing, reconnect snapshot and time
   ws.send(`43/desktop-ai,${rejectedFrame.ack}${JSON.stringify([{ v: 1, playback_id: 'bad-ack', output_generation: 9, paused: false }])}`);
   assert.equal(await rejected, null, 'a failed pause cancels that output');
   assert.equal(entries.has('desktop:speech:slot:channel-a'), false);
+});
+
+
+test('turn status hints require explicit capability, exact initiating identity and live target scopes', async t => {
+  const http = createServer(), io = new Server(http);
+  const stop = registerDesktopSpeechActivity(io), clients: WebSocket[] = [];
+  t.after(async () => { revoked = false; stop(); for (const client of clients) client.terminate(); await io.close(); });
+  http.listen(0, '127.0.0.1'); await once(http, 'listening');
+  const address = http.address(); assert.ok(address && typeof address !== 'string');
+  const port = address.port;
+  async function connect(token: string, features?: unknown) {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/socket.io/?EIO=4&transport=websocket`); clients.push(ws);
+    const packets: any[] = []; const changed = new EventEmitter();
+    const ready = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('missing socket handshake')), 2000);
+      ws.on('message', raw => {
+        const frame = raw.toString();
+        if (frame === '2') ws.send('3');
+        else if (frame.startsWith('0')) ws.send(`40/desktop-ai,${JSON.stringify({ v: 1, accessToken: token, ...(features === undefined ? {} : { features }) })}`);
+        else if (frame.startsWith('44/desktop-ai,')) { clearTimeout(timer); reject(new Error('unauthorized')); }
+        else if (frame.startsWith('42/desktop-ai,')) {
+          const [name, data] = JSON.parse(frame.slice('42/desktop-ai,'.length)); packets.push({ name, data }); changed.emit('packet');
+          if (name === 'speech:snapshot') { clearTimeout(timer); resolve(); }
+        }
+      });
+    });
+    await ready; return { ws, packets, changed };
+  }
+  await assert.rejects(() => connect('owner', []), /unauthorized/);
+  await assert.rejects(() => connect('owner', ['turn-status-v1', 'unknown']), /unauthorized/);
+  const legacy = await connect('owner'), opted = await connect('owner', ['turn-status-v1']);
+  const other = await connect('other-session', ['turn-status-v1']);
+  const update = { turn: { _id: 'turn-a', requestId: 'request-a', sessionId: 'session-a', ownerId: 'owner-a',
+    channelId: 'channel-a', clientId: 'dima-desktop', target: 'bot', text: 'private', speech: { ticket: 'secret' } }, revision: 100001 };
+  for (const listener of turnListeners) listener(update);
+  await once(opted.changed, 'packet', { signal: AbortSignal.timeout(2000) });
+  assert.deepEqual(opted.packets.at(-1), { name: 'ai:turn-updated', data: { v: 1, request_id: 'request-a', turn_id: 'turn-a', revision: 100001 } });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(legacy.packets.length, 1); assert.equal(other.packets.length, 1);
+  for (const mismatch of [{ ownerId: 'other' }, { sessionId: 'other' }, { clientId: 'other' }, { channelId: 'other' }]) {
+    for (const listener of turnListeners) listener({ ...update, turn: { ...update.turn, ...mismatch } });
+  }
+  await new Promise(resolve => setTimeout(resolve, 20)); assert.equal(opted.packets.length, 2);
+  for (const listener of turnListeners) { listener({ ...update, revision: 300001 }); listener({ ...update, revision: 200001 }); listener({ ...update, revision: 300001 }); }
+  await once(opted.changed, 'packet', { signal: AbortSignal.timeout(2000) });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(opted.packets.length, 3, 'duplicate and reordered revisions never add extra invalidations');
+  assert.equal(opted.packets.at(-1).data.revision, 300001);
+  const closed = once(opted.ws, 'close'); opted.ws.terminate(); await closed;
+  const noScope = await connect('no-ai', ['turn-status-v1']);
+  for (const listener of turnListeners) listener(update);
+  await new Promise(resolve => setTimeout(resolve, 20)); assert.equal(noScope.packets.length, 1);
+  revoked = true;
+  const before = other.packets.length;
+  for (const listener of turnListeners) listener({ ...update, turn: { ...update.turn, sessionId: 'other-session' } });
+  await once(other.ws, 'close', { signal: AbortSignal.timeout(2000) });
+  assert.equal(other.packets.length, before, 'revoked tokens never receive a hint');
 });

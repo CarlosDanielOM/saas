@@ -72,6 +72,8 @@ function successful(snapshot) { assert.equal(snapshot.status, 'completed', JSON.
 let groups = 0;
 let r = await call('/v1/me/ai/capabilities', legacy.access_token);
 assert.equal(r.status, 200); assert.equal(r.body.permission_profile_version, 2);
+assert.deepEqual(r.body.features, ['turn-status-v1'], 'capabilities advertises optional socket feature before opt-in');
+const advertisedFeatures = r.body.features;
 assert.deepEqual(r.body.required_scopes, { bot: ['ai:interact'], pet: ['pet:interact'] });
 assert.ok(r.body.supported_scopes.includes('ai:interact') && r.body.supported_scopes.includes('pet:interact'));
 assert.deepEqual([...r.body.granted_scopes].sort(), seven.split(' ').sort());
@@ -120,13 +122,13 @@ assert.equal(invalidConversation.body.error, 'invalid_conversation');
 groups++;
 
 const sockets = [];
-async function connect(namespace, accessToken, acknowledge = true) {
+async function connect(namespace, accessToken, acknowledge = true, features) {
   const ws = new WebSocket('ws://127.0.0.1:3000/socket.io/?EIO=4&transport=websocket');
   sockets.push(ws); const events = [], acknowledgements = new Map(); let joined = false, failed, sequence = 0;
   ws.on('message', raw => {
     const message = raw.toString();
     if (message === '2') return ws.send('3');
-    if (message.startsWith('0')) return ws.send(`40${namespace},${JSON.stringify({ v: 1, accessToken })}`);
+    if (message.startsWith('0')) return ws.send(`40${namespace},${JSON.stringify({ v: 1, accessToken, ...(features ? { features } : {}) })}`);
     if (message.startsWith(`40${namespace},`)) joined = true;
     if (message.startsWith(`44${namespace},`)) failed = message;
     if (message.startsWith(`43${namespace},`)) {
@@ -161,7 +163,31 @@ async function connect(namespace, accessToken, acknowledge = true) {
     }
   };
 }
-const activity = await connect('/desktop-ai', token);
+const activity = await connect('/desktop-ai', token, true, advertisedFeatures);
+// The released activity parser is strict: omitted features must never receive hints.
+const plainActivity = await connect('/desktop-ai', token);
+await plainActivity.event('speech:snapshot');
+const otherSessionActivity = await connect('/desktop-ai', second.access_token, true, ['turn-status-v1']);
+await otherSessionActivity.event('speech:snapshot');
+const foreignActivity = await connect('/desktop-ai', foreign.access_token, true, ['turn-status-v1']);
+await foreignActivity.event('speech:snapshot');
+const limitedActivity = await connect('/desktop-ai', legacy.access_token, true, ['turn-status-v1']);
+await limitedActivity.event('speech:snapshot');
+function assertHint(hint, snapshot) {
+  assert.deepEqual(Object.keys(hint).sort(), ['request_id', 'revision', 'turn_id', 'v']);
+  assert.equal(hint.v, 1); assert.equal(hint.request_id, snapshot.request_id); assert.equal(hint.turn_id, snapshot.turn_id);
+  assert.ok(Number.isSafeInteger(hint.revision) && hint.revision > 0);
+  assert.equal(hint.revision, snapshot.revision, 'hint uses the same wire revision as HTTP');
+}
+async function currentHint(snapshot) {
+  return until(async () => {
+    const authoritative = (await read(snapshot.turn_id)).body;
+    const hint = activity.events.findLast(item => item.event === 'ai:turn-updated' && item.data.turn_id === snapshot.turn_id &&
+      item.data.revision >= snapshot.revision && item.data.revision === authoritative.revision)?.data;
+    if (!hint) return null;
+    assertHint(hint, authoritative); return hint;
+  }, 'committed hint matching current HTTP revision');
+}
 const activitySnapshot = await activity.event('speech:snapshot');
 assert.ok(Number.isSafeInteger(activitySnapshot.server_time));
 const old = await connect('/desktop', legacy.access_token);
@@ -172,6 +198,37 @@ const fullHello = await desktop.event('desktop:hello');
 assert.deepEqual([...fullHello.scopes].sort(), `${seven} ai:interact pet:interact`.split(' ').sort());
 groups++;
 
+// A ready hint can race an older HTTP result still being processed by the app.
+await redis.set('desktop:test:mode', 'hold');
+const racing = await submit(payload({ silent: false })); assert.equal(racing.status, 202);
+const inFlightSnapshot = await fetch(base + `${turns}/${racing.body.turn_id}`, { headers: { Authorization: `Bearer ${token}` } });
+assert.equal(inFlightSnapshot.status, 200);
+const readyHint = await until(async () => {
+  const hint = activity.events.findLast(item => item.event === 'ai:turn-updated' && item.data.turn_id === racing.body.turn_id)?.data;
+  if (!hint) return null;
+  const current = (await read(hint.turn_id)).body;
+  return current.speech?.status === 'ready' && hint.revision === current.revision ? hint : null;
+}, 'ready hint while stale HTTP snapshot is in flight');
+const staleSnapshot = await inFlightSnapshot.json();
+assert.ok(staleSnapshot.revision < readyHint.revision);
+const afterRace = (await read(readyHint.turn_id)).body; assertHint(readyHint, afterRace);
+assert.equal(afterRace.speech.status, 'ready');
+assert.equal((await call(`${turns}/${afterRace.turn_id}/speech/cancel`, token, 'POST', {
+  playback_id: afterRace.speech.playback_id, output_generation: afterRace.speech.output_generation })).body.accepted, true);
+await redis.del('desktop:test:mode');
+// Simulate lost/ignored transport hints: bounded fallback GET still discovers
+// readiness and keeps the existing one-fetch path, without submitting again.
+const lostInput = payload({ silent: false }), beforeLost = await redis.lLen('desktop:test:llm');
+const lost = await submit(lostInput); assert.equal(lost.status, 202);
+const fallbackReady = await until(async () => {
+  const value = (await read(lost.body.turn_id)).body;
+  return value.speech?.status === 'ready' ? value : null;
+}, 'HTTP fallback without reading any hint');
+assert.equal(await redis.lLen('desktop:test:llm'), beforeLost + 1);
+assert.equal((await call(`${turns}/${fallbackReady.turn_id}/speech/cancel`, token, 'POST', {
+  playback_id: fallbackReady.speech.playback_id, output_generation: fallbackReady.speech.output_generation })).body.accepted, true);
+groups++;
+
 // Bot synthesis works with no pet enabled or selected, and never emits pet animation.
 const voiced = await submit(payload({ silent: false })); assert.equal(voiced.status, 202);
 const spoken = await until(async () => { const result = (await read(voiced.body.turn_id)).body;
@@ -180,6 +237,11 @@ const spoken = await until(async () => { const result = (await read(voiced.body.
 assert.equal(spoken.speech.animate_pet, false); assert.equal(spoken.speech.transport, 'http');
 assert.equal(spoken.speech.destination, 'desktop');
 assert.match(spoken.speech.audio_url, /^\/v1\/me\/ai\/turns\//);
+await currentHint(spoken);
+const readyTTL = await redis.pTTL(`desktop-ai:ticket:${spoken.turn_id}`);
+assert.ok(readyTTL > 18_000 && readyTTL <= 20_000, `ready ticket TTL ${readyTTL}`);
+assert.equal(spoken.speech.start_before, spoken.speech.ticket_expires_at);
+assert.ok(spoken.speech.start_before - Date.now() > 18_000 && spoken.speech.start_before - Date.now() <= 20_000);
 const audioURL = base + spoken.speech.audio_url;
 assert.equal((await fetch(audioURL)).status, 401);
 assert.ok([401, 403].includes((await fetch(audioURL, { headers: { Authorization: `Bearer ${token}` } })).status));
@@ -208,9 +270,25 @@ assert.equal(r.status, 200); assert.equal(r.body.snapshot.speech.status, 'comple
 await until(() => activity.events.some(item => item.event === 'speech:ended' && item.data.playback_id === fence.playback_id), 'ended notification');
 await observer.event('speech:ended', item => item.playback_id === fence.playback_id);
 observer.ws.close();
+await currentHint(r.body.snapshot);
 assert.ok(activity.events.find(item => item.event === 'speech:started' && item.data.playback_id === fence.playback_id).data.revision > prepareEvent.revision);
 assert.ok(!old.events.some(item => item.event.startsWith('speech:') || item.event.startsWith('ai:') || item.event === 'pet:play'));
 assert.equal(await db.collection('pet_requests').countDocuments(), 0, 'Bot never enters pet.talk/read-TTS'); groups++;
+
+assert.ok(!plainActivity.events.some(item => item.event === 'ai:turn-updated'), 'legacy activity parser receives no hint');
+assert.ok(!otherSessionActivity.events.some(item => item.event === 'ai:turn-updated'), 'same owner another session receives no hint');
+assert.ok(!foreignActivity.events.some(item => item.event === 'ai:turn-updated'), 'other owner receives no hint');
+assert.ok(!limitedActivity.events.some(item => item.event === 'ai:turn-updated'), 'missing interaction scope receives no hint');
+// Reordering/duplicates are hints only: reconciliation never replays provider work.
+const hints = activity.events.filter(item => item.event === 'ai:turn-updated' && item.data.turn_id === spoken.turn_id).map(item => item.data);
+const beforeHints = await redis.lLen('desktop:test:llm');
+for (const hint of [...hints].reverse().concat(hints)) {
+  assert.equal((await read(hint.turn_id)).body.speech.status, 'completed');
+}
+assert.equal(await redis.lLen('desktop:test:llm'), beforeHints);
+otherSessionActivity.ws.close(); foreignActivity.ws.close(); limitedActivity.ws.close();
+await until(() => otherSessionActivity.ws.readyState === WebSocket.CLOSED, 'other-session fixture closes');
+groups++;
 
 // A different authorized installation can cancel the turn while the initiating
 // app is still audibly playing. Only that initiating player can prove it stopped.
@@ -338,6 +416,7 @@ assert.equal((await submit(ambiguousInput)).body.turn_id, ambiguous.body.turn_id
 assert.equal((await submit({ ...ambiguousInput, text: 'A different request' })).status, 409);
 await pause(350);
 assert.equal(await redis.lLen('desktop:test:llm'), beforeUnknown + 1, 'lookup/conflict does not retry unknown provider outcome');
+await currentHint(unknown);
 await redis.del('desktop:test:mode'); groups++;
 
 // Recreate a preexisting queued row and an interrupted running row in disposable
@@ -394,6 +473,7 @@ await redis.del(ownerLease); groups++;
 // A live subscriber that fails to pause cannot let the first audible sample through.
 const unresponsive = await connect('/desktop-ai', second.access_token, false);
 await unresponsive.event('speech:snapshot');
+const blockedAt = Date.now();
 const blocked = await submit(payload({ silent: false })); assert.equal(blocked.status, 202);
 const blockedFinal = await until(async () => {
   const value = (await read(blocked.body.turn_id)).body;
@@ -404,7 +484,25 @@ assert.equal(blockedFinal.speech.error.code, 'output_unavailable');
 await until(() => unresponsive.ws.readyState === WebSocket.CLOSED, 'unresponsive subscriber disconnected');
 assert.ok(unresponsive.events.some(item => item.event === 'speech:prepare'));
 assert.ok(!unresponsive.events.some(item => item.event === 'speech:started' && item.data.playback_id === blocked.body.speech.playback_id));
-assert.equal(blockedFinal.speech.audio_url, undefined); groups++;
+assert.equal(blockedFinal.speech.audio_url, undefined);
+await currentHint(blockedFinal);
+assert.ok(Date.now() - blockedAt < 8_000, 'known failure is pushed without waiting for the delivery deadline'); groups++;
+
+// A ready turn remains collectable after the former15s cutoff; readiness starts
+// the20s clock, independently from the LLM execution timeout.
+const late = await submit(payload({ silent: false })); assert.equal(late.status, 202);
+const lateReady = await until(async () => { const value = (await read(late.body.turn_id)).body;
+  return value.speech?.status === 'ready' ? value : null; }, 'late collection ready');
+await currentHint(lateReady);
+await pause(16_000);
+assert.ok(lateReady.speech.start_before > Date.now(), '20s delivery window still open after16s');
+const lateAudio = await fetch(base + lateReady.speech.audio_url, { headers: { Authorization: `Bearer ${token}`,
+  'X-Dima-Audio-Ticket': lateReady.speech.ticket } });
+assert.equal(lateAudio.status, 200); await lateAudio.arrayBuffer();
+const lateFence = { playback_id: lateReady.speech.playback_id, output_generation: lateReady.speech.output_generation };
+assert.equal((await call(`${turns}/${lateReady.turn_id}/speech/events`, token, 'POST', { ...lateFence, event: 'started' })).body.snapshot.speech.status, 'playing');
+assert.equal((await call(`${turns}/${lateReady.turn_id}/speech/events`, token, 'POST', { ...lateFence, event: 'ended' })).body.snapshot.speech.status, 'completed');
+groups++;
 
 // Lost start acknowledgement eventually ends the reservation authoritatively.
 const expiring = await submit(payload({ silent: false })); assert.equal(expiring.status, 202);
@@ -412,9 +510,37 @@ const expiryReady = await until(async () => {
   const value = (await read(expiring.body.turn_id)).body;
   return value.speech?.status === 'ready' ? value : null;
 }, 'expiry case ready');
+const expiryTicketTTL = await redis.pTTL(`desktop-ai:ticket:${expiryReady.turn_id}`);
+assert.ok(expiryTicketTTL > 18_000 && expiryTicketTTL <= 20_000);
 const expiryEnded = await activity.event('speech:ended', item => item.playback_id === expiryReady.speech.playback_id && item.reason === 'expired', 26_000);
 assert.ok(Number.isSafeInteger(expiryEnded.server_time));
-assert.equal((await read(expiring.body.turn_id)).body.speech.status, 'expired');
+const expiredSnapshot = (await read(expiring.body.turn_id)).body;
+assert.equal(expiredSnapshot.speech.status, 'expired');
+assert.ok(Date.now() >= expiryReady.speech.start_before);
+assert.ok(Date.now() - expiryReady.speech.start_before < 6_500, 'expiry is reconciled promptly after20s');
+assert.equal(await redis.get(`desktop-ai:ticket:${expiryReady.turn_id}`), null);
+await currentHint(expiredSnapshot);
+assert.ok([403,409].includes((await fetch(base + expiryReady.speech.audio_url, { headers: { Authorization: `Bearer ${token}`,
+  'X-Dima-Audio-Ticket': expiryReady.speech.ticket } })).status));
+// Reconnect recovers by GET of tracked IDs; it does not replay old paid work.
+plainActivity.ws.close(); activity.ws.close();
+await until(() => activity.ws.readyState === WebSocket.CLOSED && plainActivity.ws.readyState === WebSocket.CLOSED, 'initiating fixtures close');
+const reconnectActivity = await connect('/desktop-ai', token, true, ['turn-status-v1']);
+await reconnectActivity.event('speech:snapshot');
+const beforeReconnect = await redis.lLen('desktop:test:llm');
+assert.equal((await read(expiryReady.turn_id)).body.speech.status, 'expired');
+assert.equal(await redis.lLen('desktop:test:llm'), beforeReconnect);
+// Keep the existing activity recorder for later historical assertions; the new
+// connection continues to ACK barriers for the remaining Pet/TTS regressions.
+reconnectActivity.ws.close();
+await until(() => reconnectActivity.ws.readyState === WebSocket.CLOSED, 'reconnect fixture closes');
+// Subsequent checks expect activity.event to follow new output.
+const resumedActivity = await connect('/desktop-ai', token, true, ['turn-status-v1']);
+activity.ws = resumedActivity.ws;
+const historicalEvents = activity.events;
+activity.events = resumedActivity.events;
+activity.events.unshift(...historicalEvents);
+activity.event = resumedActivity.event;
 groups++;
 
 // A browser/legacy normal-TTS overlay cannot receive audio until a slow desktop
@@ -521,6 +647,7 @@ const petReady = await until(async () => {
 assert.equal(petReady.speech.transport, 'pet_socket'); assert.equal(petReady.speech.animate_pet, true);
 assert.equal(petReady.speech.audio_url, undefined);
 const petPlay = await desktop.event('pet:play', item => item.requestId === petReady.pet_request_id, 25_000);
+await currentHint((await read(pet.body.turn_id)).body);
 await redis.del('desktop:test:mode');
 const firstMood = process.env.DIMA046_MOOD_FAILURES === 'first' ? 'neutral' : 'angry';
 assert.equal((await PetRequest.findById(petReady.pet_request_id).lean()).mood, firstMood, 'desktop mood extraction failure cannot prevent actual Pet playback');
@@ -640,5 +767,5 @@ assert.equal(await redis.get(`desktop:speech:slot:${owner}`), null);
 groups++;
 
 for (const ws of sockets) ws.close();
-console.log(`PASS desktop AI: ${groups} groups; consent/legacy grants, UTF16 and authority validation, durable concurrent idempotency, refresh lookup, thread context, private Bot TTS, pre-play activity barrier and expiry, uncertain provider, speech-only mute, short replies, streamer tools, protected targets, Pet cooldown priority and session-scoped cancellation`);
+console.log(`PASS desktop AI: ${groups} groups; advertised/negotiated committed hints, legacy/session/scope isolation, in-flight stale GET and polling fallback, exact Bot/Pet wire revisions,20s delivery and16s fetch, one-fetch started proof, no paid replay, consent/idempotency, private Bot TTS, output barrier/expiry, uncertainty and fenced cancellation`);
 process.exit(0);

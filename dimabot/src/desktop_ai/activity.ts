@@ -1,3 +1,5 @@
+import { TURN_STATUS_FEATURE, subscribeTurnUpdates, refreshPetTurnUpdates, type TurnUpdate } from './updates.js';
+import { subscribePetWakeups } from '../pets/wakeups.js';
 import { randomUUID } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
 import { authenticateAccess, type AccessIdentity } from '../server/oauth/service.js';
@@ -16,7 +18,7 @@ type ActivityInput = Omit<SpeechActivityHandle, 'fence'> & { signal?: AbortSigna
 type RetiredProof = { kind: 'pet'; ownerId: string; peerId: string; leaseId: string; requestId: string; generation: number }
     | { kind: 'tts'; source: string };
 type Stored = SpeechActivityHandle & { phase: 'preparing' | 'playing'; retiredProof?: RetiredProof };
-interface Peer { socket: Socket; identity: AccessIdentity; token: string; ready: Promise<void>; snapshotSent?: boolean }
+interface Peer { socket: Socket; identity: AccessIdentity; token: string; ready: Promise<void>; snapshotSent?: boolean; turnStatus?: boolean; turnRevisions?: Map<string, number> }
 const peers = new Map<string, Peer>();
 const timers = new Map<string, NodeJS.Timeout>();
 const slotKey = (channel: string) => `desktop:speech:slot:${channel}`;
@@ -122,8 +124,38 @@ async function valid(peer: Peer): Promise<boolean> {
     try {
         const current = await authenticateAccess(peer.token);
         return current.session_id === peer.identity.session_id && current.user_id === peer.identity.user_id &&
-            current.channel_id === peer.identity.channel_id && current.scopes.includes('desktop:connect');
+            current.channel_id === peer.identity.channel_id && current.client_id === peer.identity.client_id && current.scopes.includes('desktop:connect');
     } catch { return false; }
+}
+
+/** Optional capabilities are exact, bounded and never enabled implicitly. */
+export function turnStatusFeature(auth: Record<string, unknown>): boolean {
+    if (!Object.hasOwn(auth, 'features')) return false;
+    if (!Array.isArray(auth.features) || auth.features.length !== 1 || auth.features[0] !== TURN_STATUS_FEATURE) throw new Error('invalid_auth');
+    return true;
+}
+function matchesTurnPeer(peer: Peer, turn: TurnUpdate['turn']): boolean {
+    return peer.turnStatus === true && peer.socket.connected && peer.identity.session_id === turn.sessionId &&
+        peer.identity.user_id === turn.ownerId && peer.identity.client_id === turn.clientId &&
+        peer.identity.channel_id === turn.channelId && peer.identity.scopes.includes(turn.target === 'bot' ? 'ai:interact' : 'pet:interact');
+}
+function emitTurnUpdate(update: TurnUpdate): void {
+    for (const peer of peers.values()) if (matchesTurnPeer(peer, update.turn) &&
+        (peer.turnRevisions?.get(update.turn._id) ?? 0) < update.revision) {
+        void (async () => {
+            await peer.ready;
+            // Revalidate at delivery, including the target-specific scope. A
+            // refresh/reconnect supplies a new token; an expired socket is fenced.
+            const current = await authenticateAccess(peer.token);
+            if (!matchesTurnPeer({ ...peer, identity: current }, update.turn) || !current.scopes.includes('desktop:connect')) return;
+            if (!peer.socket.connected || (peer.turnRevisions?.get(update.turn._id) ?? 0) >= update.revision) return;
+            const revisions = peer.turnRevisions ??= new Map();
+            revisions.delete(update.turn._id); revisions.set(update.turn._id, update.revision);
+            if (revisions.size > 128) revisions.delete(revisions.keys().next().value!);
+            peer.socket.emit('ai:turn-updated', { v: 1, request_id: update.turn.requestId,
+                turn_id: update.turn._id, revision: update.revision });
+        })().catch(() => { peer.socket.disconnect(true); });
+    }
 }
 
 /** Only an upgraded same-session desktop can promise stop-before-feedback. */
@@ -262,12 +294,13 @@ export function registerDesktopSpeechActivity(io: Server): () => void {
         void (async () => {
             const auth = socket.handshake.auth;
             if (socket.recovered || !auth || auth.v !== 1 || typeof auth.accessToken !== 'string' ||
-                Object.keys(auth).some(key => key !== 'v' && key !== 'accessToken') ||
+                Object.keys(auth).some(key => key !== 'v' && key !== 'accessToken' && key !== 'features') ||
                 ['token', 'accessToken', 'capability', 'authorization'].some(key => key in socket.handshake.query)) throw new Error('invalid_auth');
+            const turnStatus = turnStatusFeature(auth);
             const identity = await authenticateAccess(auth.accessToken);
             if (!identity.scopes.includes('desktop:connect')) throw new Error('insufficient_scope');
             if ([...peers.values()].filter(peer => peer.identity.session_id === identity.session_id).length >= 2 || peers.size >= 1024) throw new Error('too_many_connections');
-            socket.data.speechPeer = { socket, identity, token: auth.accessToken };
+            socket.data.speechPeer = { socket, identity, token: auth.accessToken, turnStatus };
         })().then(() => next(), () => { const error = new Error('unauthorized') as Error & { data: unknown }; error.data = { code: 'unauthorized' }; next(error); });
     });
     namespace.on('connection', socket => {
@@ -280,10 +313,26 @@ export function registerDesktopSpeechActivity(io: Server): () => void {
         void snapshot(peer.identity.channel_id).then(value => { if (socket.connected) { socket.emit('speech:snapshot', value); peer.snapshotSent = true; } ready(); }).catch(() => { socket.disconnect(true); ready(); });
         socket.once('disconnect', () => { peers.delete(socket.id); });
     });
+    const stopTurnUpdates = subscribeTurnUpdates(emitTurnUpdate, () => [...peers.values()].some(peer => peer.turnStatus && peer.socket.connected));
+    // Reuse Pet's existing committed owner wakeups. Queries are shared by owner,
+    // event-driven, coalesced and bounded; a missed hint uses ordinary HTTP polls.
+    // The recent64 cap may omit older history after a large burst. It cannot
+    // authorize work/playback; HTTP polling remains required for every pending turn.
+    const petRefreshes = new Set<string>();
+    const stopPetWakeups = subscribePetWakeups(owners => {
+        for (const owner of owners) {
+            const eligible = [...peers.values()].filter(peer => peer.turnStatus && peer.socket.connected &&
+                peer.identity.user_id === owner && peer.identity.scopes.includes('pet:interact'));
+            if (!eligible.length || petRefreshes.has(owner)) continue;
+            petRefreshes.add(owner);
+            void refreshPetTurnUpdates(owner, eligible.map(peer => peer.identity.session_id))
+                .catch(() => {}).finally(() => { petRefreshes.delete(owner); });
+        }
+    });
     let checking = false;
     const timer = setInterval(() => {
         if (checking) return; checking = true;
         void Promise.all([...peers.values()].map(async peer => { if (!await valid(peer)) peer.socket.disconnect(true); })).finally(() => { checking = false; });
     }, 15_000); timer.unref();
-    return () => { clearInterval(timer); for (const peer of peers.values()) peer.socket.disconnect(true); peers.clear(); for (const item of timers.values()) clearTimeout(item); timers.clear(); };
+    return () => { stopTurnUpdates(); stopPetWakeups(); clearInterval(timer); for (const peer of peers.values()) peer.socket.disconnect(true); peers.clear(); for (const item of timers.values()) clearTimeout(item); timers.clear(); };
 }

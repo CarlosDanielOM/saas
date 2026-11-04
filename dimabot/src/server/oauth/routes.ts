@@ -10,6 +10,7 @@ import { PetError, cancelPetRequest } from '../../pets/state.js';
 import { getPetRuntime } from '../../pets/runtime.js';
 import { selectOwnPetPlayback } from '../../pets/selection.js';
 import { submitTurn, getTurn, cancelTurn, cancelSpeech, claimAudio, speechEvent } from '../../desktop_ai/service.js';
+import { TURN_STATUS_FEATURE } from '../../desktop_ai/updates.js';
 import { ACCESS_TTL_SECONDS, DESKTOP_CLIENT_ID, OAuthError, OAUTH_SCOPES } from './catalog.js';
 import { approveAuthorization, authenticateAccess, exchangeCode, getAuthorization, getClient,
     oauthIssuer, oauthWebsite, rateLimit, refreshAccess, revokeSession, revokeToken,
@@ -185,7 +186,7 @@ oauthApiRoute.get('/me', asyncRoute(async (req, res) => {
 }));
 oauthApiRoute.get('/me/ai/capabilities', asyncRoute(async (req, res) => {
     const identity = await access(req, 'profile:read');
-    res.json({ version: 1, permission_profile_version: 2, available: true, supported_scopes: ['ai:interact', 'pet:interact'],
+    res.json({ version: 1, permission_profile_version: 2, available: true, features: [TURN_STATUS_FEATURE], supported_scopes: ['ai:interact', 'pet:interact'],
         required_scopes: { bot: ['ai:interact'], pet: ['pet:interact'] }, granted_scopes: identity.scopes });
 }));
 oauthApiRoute.post('/me/ai/turns', asyncRoute(async (req, res) => {

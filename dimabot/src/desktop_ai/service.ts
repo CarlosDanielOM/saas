@@ -1,3 +1,4 @@
+import { updateTurn, changeTurn, notifyTurnUpdated, turnWireRevision } from './updates.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -40,6 +41,27 @@ function safeSpeechDirectory(dir: string | undefined): dir is string {
 }
 async function cleanSpeechDirectory(dir: string | undefined) {
     if (safeSpeechDirectory(dir)) await rm(dir, { recursive: true, force: true });
+}
+const speechExpiryTimers = new Map<string, NodeJS.Timeout>();
+export function clearBotSpeechExpiry(id: string): void {
+    clearTimeout(speechExpiryTimers.get(id)); speechExpiryTimers.delete(id);
+}
+/** The one-shot announces expiry at the delivery deadline; durable recovery
+ * supplies the same transition after a restart. It can never expire playing. */
+export function armBotSpeechExpiry(id: string, deadline: Date): void {
+    clearBotSpeechExpiry(id);
+    const timer = setTimeout(() => {
+        speechExpiryTimers.delete(id);
+        void (async () => {
+            const expired = await changeTurn({ _id: id, 'speech.status': { $in: ['ready', 'delivering'] },
+                'speech.startBefore': { $lte: new Date() } }, { $set: { 'speech.status': 'expired' }, $inc: { revision: 1 } });
+            if (!expired) return;
+            await (await tickets()).del(ticketKey(id));
+            await finishBotSpeech(id, 'expired');
+            await cleanSpeechDirectory(expired.speech?.privateDir);
+        })().catch(() => {});
+    }, Math.max(0, deadline.getTime() - Date.now() + 1));
+    timer.unref(); speechExpiryTimers.set(id, timer);
 }
 export const tickets = () => getDragonflyClient('desktop-ai-tickets');
 export const ticketKey = (turnId: string) => `desktop-ai:ticket:${turnId}`;
@@ -88,7 +110,7 @@ export async function submitTurn(identity: AccessIdentity, payload: unknown) {
         origin: 'oauth_desktop', target: input.target, source: input.source, silent: input.silent, text: input.text, fingerprint, conversationId,
         status: 'queued', revision: 1, createdAt: now, expiresAt: new Date(now.getTime() + RETENTION), operations: [],
         ...(input.silent ? {} : { speech: { playbackId: randomUUID(), outputGeneration: 1, status: 'queued', destination: 'desktop', animatePet: input.target === 'pet' } }) };
-    try { await DesktopAiTurn.create(turn); }
+    try { await DesktopAiTurn.create(turn); notifyTurnUpdated(turn._id); }
     catch (error) {
         if ((error as { code?: number }).code !== 11000) { if (reserved === 1) await releaseQueue(turn).catch(() => {}); throw error; }
         const existing = await duplicate();
@@ -127,7 +149,7 @@ export async function snapshot(turn: DesktopTurn, identity: AccessIdentity) {
     const actions = turn.operations.filter(item => item.kind.startsWith('tool:')).slice(0, 16).map(item => ({
         operation_id: item.id, tool: item.kind.slice(5, 45), status: item.status === 'pending' && turn.status === 'indeterminate' ? 'indeterminate' : item.status }));
     return { request_id: turn.requestId, turn_id: turn._id, target: turn.target, conversation_id: turn.conversationId,
-        status: turn.status, revision: (turn.revision - 1) * 100_000 + 1 + petVersion, poll_after_ms: 1000,
+        status: turn.status, revision: turnWireRevision(turn.revision, petVersion), poll_after_ms: 1000,
         ...(turn.replyText ? { reply_text: turn.replyText } : {}), ...(turn.errorCode ? { error: { code: turn.errorCode.slice(0, 80) } } : {}),
         ...(turn.petRequestId ? { pet_request_id: turn.petRequestId } : {}), ...(actions.length ? { actions } : {}), ...(speech ? { speech } : {}) };
 }
@@ -135,7 +157,7 @@ export async function snapshot(turn: DesktopTurn, identity: AccessIdentity) {
 export async function operation<T>(turnId: string, id: string, kind: string, task: () => Promise<T>): Promise<T> {
     const billing = kind === 'billing';
     if (!billing) await assertRunning(turnId);
-    const inserted = await DesktopAiTurn.updateOne({ _id: turnId, ...(!billing ? { status: 'running' } : {}), 'operations.id': { $ne: id } },
+    const inserted = await updateTurn({ _id: turnId, ...(!billing ? { status: 'running' } : {}), 'operations.id': { $ne: id } },
         { $push: { operations: { id, kind, status: 'pending' } }, $inc: { revision: 1 } });
     if (!inserted.modifiedCount) throw new OAuthError('operation_unavailable', 409);
     if (!billing) await assertRunning(turnId);
@@ -148,7 +170,7 @@ export async function operation<T>(turnId: string, id: string, kind: string, tas
     // uncertainty rather than converting that into an ordinary failure/retry.
     if (resultRecord?.outcomeUnknown === true || (kind === 'speech' && resultRecord?.error === true) ||
         (kind === 'provider' && resultRecord?.error === true && Number((result as { status?: number }).status ?? 0) >= 500)) throw new OAuthError('operation_outcome_unknown', 503);
-    await DesktopAiTurn.updateOne({ _id: turnId, 'operations.id': id },
+    await updateTurn({ _id: turnId, 'operations.id': id },
         { $set: { 'operations.$.status': resultRecord?.success === false ? 'failed' : 'completed' }, $inc: { revision: 1 } });
     return result;
 }
@@ -168,8 +190,8 @@ async function runTurn(id: string) {
         const locked = await (await tickets()).set(leaseKey, leaseToken, { NX: true, PX: RUN_TIMEOUT + 30_000 });
         if (!locked) { leaseKey = undefined; return; }
         activeOwners.add(candidate.ownerId);
-        const claimed = await DesktopAiTurn.findOneAndUpdate({ _id: id, status: 'queued' },
-            { $set: { status: 'running', executionFence: leaseToken, runDeadline: new Date(Date.now() + RUN_TIMEOUT) }, $inc: { revision: 1 } }, { new: true }).lean();
+        const claimed = await changeTurn({ _id: id, status: 'queued' },
+            { $set: { status: 'running', executionFence: leaseToken, runDeadline: new Date(Date.now() + RUN_TIMEOUT) }, $inc: { revision: 1 } }, { new: true });
         if (!claimed) return;
         const controller = new AbortController(); ongoing.set(id, controller); starting.delete(id);
         const timeout = setTimeout(() => controller.abort(), RUN_TIMEOUT); timeout.unref();
@@ -181,9 +203,9 @@ async function runTurn(id: string) {
                 if (!renewed) throw new Error('owner_lease_lost');
             })().catch(async () => {
                 controller.abort();
-                await DesktopAiTurn.updateOne({ _id: id, status: 'running', executionFence: leaseToken },
+                await updateTurn({ _id: id, status: 'running', executionFence: leaseToken },
                     { $set: { status: 'indeterminate', errorCode: 'owner_lease_lost' }, $inc: { revision: 1 } }).catch(() => {});
-                await DesktopAiTurn.updateOne({ _id: id, 'speech.status': { $in: ['queued', 'preparing'] } },
+                await updateTurn({ _id: id, 'speech.status': { $in: ['queued', 'preparing'] } },
                     { $set: { 'speech.status': 'indeterminate', 'speech.errorCode': 'owner_lease_lost' }, $inc: { revision: 1 } }).catch(() => {});
             }).finally(() => { renewing = false; });
         }, 15_000); heartbeat.unref();
@@ -194,8 +216,8 @@ async function runTurn(id: string) {
             if (current?.status === 'running') {
                 const unknown = current.operations.some(item => item.status === 'pending');
                 const code = error && typeof error === 'object' && 'code' in error && /^[a-z_]{1,80}$/.test(String(error.code)) ? String(error.code) : 'generation_failed';
-                await DesktopAiTurn.updateOne({ _id: id, status: 'running' }, { $set: { status: unknown ? 'indeterminate' : 'failed', errorCode: unknown ? 'operation_outcome_unknown' : code }, $inc: { revision: 1 } });
-                await DesktopAiTurn.updateOne({ _id: id, 'speech.status': { $in: ['queued', 'preparing'] } }, { $set: { 'speech.status': unknown ? 'indeterminate' : 'failed', 'speech.errorCode': unknown ? 'operation_outcome_unknown' : code }, $inc: { revision: 1 } });
+                await updateTurn({ _id: id, status: 'running' }, { $set: { status: unknown ? 'indeterminate' : 'failed', errorCode: unknown ? 'operation_outcome_unknown' : code }, $inc: { revision: 1 } });
+                await updateTurn({ _id: id, 'speech.status': { $in: ['queued', 'preparing'] } }, { $set: { 'speech.status': unknown ? 'indeterminate' : 'failed', 'speech.errorCode': unknown ? 'operation_outcome_unknown' : code }, $inc: { revision: 1 } });
             }
         } finally { finished = true; clearTimeout(timeout); clearInterval(heartbeat); ongoing.delete(id); await releaseQueue(claimed).catch(() => {}); }
     } finally {
@@ -226,8 +248,8 @@ export async function cancelTurn(identity: AccessIdentity, id: string) {
     const turn = await found(identity, { _id: id });
     let accepted = turn.status === 'cancelled';
     if (turn.status === 'queued' || turn.status === 'running') {
-        const updated = await DesktopAiTurn.findOneAndUpdate({ _id: id, status: { $in: ['queued', 'running'] }, 'operations.status': { $ne: 'pending' } },
-            { $set: { status: 'cancelled', errorCode: 'cancelled' }, $inc: { revision: 1 } }, { new: true }).lean();
+        const updated = await changeTurn({ _id: id, status: { $in: ['queued', 'running'] }, 'operations.status': { $ne: 'pending' } },
+            { $set: { status: 'cancelled', errorCode: 'cancelled' }, $inc: { revision: 1 } }, { new: true });
         accepted = !!updated;
         if (accepted) { ongoing.get(id)?.abort(); await releaseQueue(turn).catch(() => {}); }
     }
@@ -237,7 +259,7 @@ export async function cancelTurn(identity: AccessIdentity, id: string) {
     return { accepted, too_late: !accepted, snapshot: await getTurn(identity, id) };
 }
 export async function claimSpeechPreparing(id: string): Promise<boolean> {
-    const result = await DesktopAiTurn.updateOne({ _id: id, 'speech.status': 'queued' },
+    const result = await updateTurn({ _id: id, 'speech.status': 'queued' },
         { $set: { 'speech.status': 'preparing' }, $inc: { revision: 1 } });
     return result.modifiedCount === 1;
 }
@@ -253,9 +275,9 @@ export async function cancelSpeech(identity: AccessIdentity, id: string, input: 
         const pet = await PetRequest.findOne({ _id: turn.petRequestId, ownerId: turn.ownerId }).select('status').lean();
         if (pet && ['completed', 'failed', 'expired'].includes(pet.status)) return { accepted: false, too_late: true, snapshot: await getTurn(identity, id) };
     }
-    const updated = await DesktopAiTurn.findOneAndUpdate({ _id: id, 'speech.playbackId': playback_id, 'speech.outputGeneration': output_generation,
+    const updated = await changeTurn({ _id: id, 'speech.playbackId': playback_id, 'speech.outputGeneration': output_generation,
         'speech.status': { $in: ['queued', 'preparing', 'ready', 'delivering', 'playing', 'cancelled'] } },
-        { $set: { 'speech.status': 'cancelled' }, $inc: { revision: 1 } }, { new: true }).lean();
+        { $set: { 'speech.status': 'cancelled' }, $inc: { revision: 1 } }, { new: true });
     if (!updated) return { accepted: false, too_late: true, snapshot: await getTurn(identity, id) };
     // Abort locally before any further I/O; the persisted fence is authoritative.
     cancelPendingSpeech(id);
@@ -264,7 +286,7 @@ export async function cancelSpeech(identity: AccessIdentity, id: string, input: 
         if (pet.status !== 'cancelled') {
             // The pet finished while cancellation was crossing the queue. Preserve
             // the true terminal outcome and do not claim cancellation succeeded.
-            await DesktopAiTurn.updateOne({ _id: id, petRequestId: updated.petRequestId, 'speech.playbackId': playback_id,
+            await updateTurn({ _id: id, petRequestId: updated.petRequestId, 'speech.playbackId': playback_id,
                 'speech.outputGeneration': output_generation, 'speech.status': 'cancelled' },
                 { $set: { 'speech.status': ['completed', 'failed', 'expired'].includes(pet.status) ? pet.status : 'failed' }, $inc: { revision: 1 } });
             return { accepted: false, too_late: true, snapshot: await getTurn(identity, id) };
@@ -277,7 +299,7 @@ export async function cancelSpeech(identity: AccessIdentity, id: string, input: 
     // and the shared output slot fenced until the initiating player reports a
     // terminal event, or the bounded playback deadline elapses.
     if (!deadline || deadline.getTime() <= Date.now()) {
-        if (deadline) await DesktopAiTurn.updateOne({ _id: id, 'speech.status': 'cancelled',
+        if (deadline) await updateTurn({ _id: id, 'speech.status': 'cancelled',
             'speech.playbackDeadline': { $lte: new Date() }, 'speech.stopConfirmed': { $ne: true } },
             { $set: { 'speech.stopConfirmed': true }, $inc: { revision: 1 } });
         await finishBotSpeech(id, 'cancelled');
@@ -288,9 +310,9 @@ export async function cancelSpeech(identity: AccessIdentity, id: string, input: 
 
 /** Release a cancelled Bot output only once its bounded playback time is over. */
 export async function expireCancelledBotSpeech(id: string, now: Date): Promise<boolean> {
-    const expired = await DesktopAiTurn.findOneAndUpdate({ _id: id, 'speech.animatePet': false, 'speech.status': 'cancelled',
+    const expired = await changeTurn({ _id: id, 'speech.animatePet': false, 'speech.status': 'cancelled',
         'speech.stopConfirmed': { $ne: true }, 'speech.playbackDeadline': { $lte: now } },
-        { $set: { 'speech.stopConfirmed': true }, $inc: { revision: 1 } }, { new: true }).lean();
+        { $set: { 'speech.stopConfirmed': true }, $inc: { revision: 1 } }, { new: true });
     if (!expired) return false;
     await finishBotSpeech(id, 'expired');
     await cleanSpeechDirectory(expired.speech?.privateDir);
@@ -313,11 +335,13 @@ export async function startDesktopAiRuntime() {
             const now = new Date();
             const overdue = await DesktopAiTurn.find({ status: 'running', runDeadline: { $lte: now } }).limit(64).lean();
             for (const turn of overdue) {
-                const changed = await DesktopAiTurn.updateOne({ _id: turn._id, status: 'running', runDeadline: { $lte: now } },
+                const changed = await updateTurn({ _id: turn._id, status: 'running', runDeadline: { $lte: now } },
                     { $set: { status: 'indeterminate', errorCode: 'operation_outcome_unknown' }, $inc: { revision: 1 } });
                 if (changed.modifiedCount) await releaseQueue(turn).catch(() => {});
             }
-            await DesktopAiTurn.updateMany({ status: 'indeterminate', errorCode: 'operation_outcome_unknown', 'speech.status': { $in: ['queued', 'preparing'] } },
+            const uncertain = await DesktopAiTurn.find({ status: 'indeterminate', errorCode: 'operation_outcome_unknown',
+                'speech.status': { $in: ['queued', 'preparing'] } }).limit(64).select('_id').lean();
+            for (const turn of uncertain) await updateTurn({ _id: turn._id, 'speech.status': { $in: ['queued', 'preparing'] } },
                 { $set: { 'speech.status': 'indeterminate', 'speech.errorCode': 'operation_outcome_unknown' }, $inc: { revision: 1 } });
             await drainQueue();
             const expired = await DesktopAiTurn.find({ 'speech.animatePet': false, $or: [
@@ -326,15 +350,20 @@ export async function startDesktopAiRuntime() {
                 { 'speech.status': 'cancelled', 'speech.stopConfirmed': { $ne: true }, 'speech.playbackDeadline': { $lte: now } } ] }).limit(32).lean();
             for (const turn of expired) {
                 if (turn.speech?.status === 'cancelled') { await expireCancelledBotSpeech(turn._id, now); continue; }
-                await DesktopAiTurn.updateOne({ _id: turn._id, 'speech.status': { $in: ['ready', 'delivering', 'playing'] } }, { $set: { 'speech.status': 'expired' }, $inc: { revision: 1 } });
-                await finishBotSpeech(turn._id, 'expired');
-                await cleanSpeechDirectory(turn.speech?.privateDir);
+                const changed = await updateTurn({ _id: turn._id, ...(turn.speech?.status === 'playing' ? {
+                    'speech.status': 'playing', 'speech.playbackDeadline': { $lte: now }
+                } : { 'speech.status': { $in: ['ready', 'delivering'] }, 'speech.startBefore': { $lte: now } }) },
+                    { $set: { 'speech.status': 'expired' }, $inc: { revision: 1 } });
+                if (changed.modifiedCount) {
+                    await finishBotSpeech(turn._id, 'expired');
+                    await cleanSpeechDirectory(turn.speech?.privateDir);
+                }
             }
         } finally { busy = false; }
     };
     await recover();
     const timer = setInterval(() => { void recover().catch(() => {}); }, 5000); timer.unref();
-    return () => { clearInterval(timer); for (const controller of ongoing.values()) controller.abort(); };
+    return () => { clearInterval(timer); for (const id of speechExpiryTimers.keys()) clearBotSpeechExpiry(id); for (const controller of ongoing.values()) controller.abort(); };
 }
 
 export async function claimAudio(identity: AccessIdentity, id: string, ticket: unknown) {
@@ -342,8 +371,8 @@ export async function claimAudio(identity: AccessIdentity, id: string, ticket: u
     if (identity.session_id !== turn.sessionId || !turn.speech || turn.speech.animatePet ||
         typeof ticket !== 'string' || !/^[\w-]{43}$/.test(ticket) || hashTicket(ticket) !== turn.speech.ticketHash ||
         !turn.speech.startBefore || turn.speech.startBefore.getTime() <= Date.now()) throw new OAuthError('invalid_ticket', 403);
-    const claimed = await DesktopAiTurn.findOneAndUpdate({ _id: id, 'speech.status': 'ready', 'speech.ticketHash': hashTicket(ticket),
-        'speech.startBefore': { $gt: new Date() } }, { $set: { 'speech.status': 'delivering' }, $inc: { revision: 1 } }, { new: true }).lean();
+    const claimed = await changeTurn({ _id: id, 'speech.status': 'ready', 'speech.ticketHash': hashTicket(ticket),
+        'speech.startBefore': { $gt: new Date() } }, { $set: { 'speech.status': 'delivering' }, $inc: { revision: 1 } }, { new: true });
     if (!claimed?.speech?.path || !claimed.speech.mimeType || !safeSpeechDirectory(claimed.speech.privateDir) ||
         path.dirname(claimed.speech.path) !== claimed.speech.privateDir || !/^speech\.(wav|mp3)$/.test(path.basename(claimed.speech.path))) throw new OAuthError('audio_unavailable', 409);
     await (await tickets()).del(ticketKey(id));
@@ -359,30 +388,31 @@ export async function speechEvent(identity: AccessIdentity, id: string, value: u
         if (turn.speech.status !== 'delivering' || !turn.speech.startBefore || turn.speech.startBefore.getTime() <= Date.now()) throw new OAuthError('audio_unavailable', 409);
         // Fence concurrent started requests before touching the shared output
         // slot. A losing duplicate must never release the winning playback.
-        const startClaim = await DesktopAiTurn.findOneAndUpdate({ _id: id, 'speech.status': 'delivering', 'speech.playbackId': playback_id,
+        const startClaim = await changeTurn({ _id: id, 'speech.status': 'delivering', 'speech.playbackId': playback_id,
             'speech.outputGeneration': output_generation, 'speech.startBefore': { $gt: new Date() }, 'speech.startClaimed': { $ne: true } },
-            { $set: { 'speech.startClaimed': true }, $inc: { revision: 1 } }, { new: true }).lean();
+            { $set: { 'speech.startClaimed': true }, $inc: { revision: 1 } }, { new: true });
         if (!startClaim) throw new OAuthError('audio_unavailable', 409);
         if (!await startBotSpeech(id)) {
-            await DesktopAiTurn.updateOne({ _id: id, 'speech.status': 'delivering', 'speech.startClaimed': true },
+            await updateTurn({ _id: id, 'speech.status': 'delivering', 'speech.startClaimed': true },
                 { $set: { 'speech.status': 'failed', 'speech.errorCode': 'output_unavailable' }, $inc: { revision: 1 } });
             await finishBotSpeech(id, 'output_unavailable'); throw new OAuthError('output_unavailable', 409);
         }
-        const started = await DesktopAiTurn.findOneAndUpdate({ _id: id, 'speech.status': 'delivering', 'speech.playbackId': playback_id,
+        const started = await changeTurn({ _id: id, 'speech.status': 'delivering', 'speech.playbackId': playback_id,
             'speech.outputGeneration': output_generation, 'speech.startBefore': { $gt: new Date() }, 'speech.startClaimed': true }, { $set: { 'speech.status': 'playing',
-                'speech.playbackDeadline': new Date(Date.now() + (turn.speech.durationMs || 60_000) + 5000) }, $inc: { revision: 1 } }, { new: true }).lean();
+                'speech.playbackDeadline': new Date(Date.now() + (turn.speech.durationMs || 60_000) + 5000) }, $inc: { revision: 1 } }, { new: true });
         if (!started) { await finishBotSpeech(id, 'stale'); throw new OAuthError('audio_unavailable', 409); }
+        clearBotSpeechExpiry(id);
     } else {
-        const ended = await DesktopAiTurn.findOneAndUpdate({ _id: id, 'speech.status': { $in: ['delivering', 'playing'] },
-            'speech.playbackId': playback_id, 'speech.outputGeneration': output_generation }, { $set: { 'speech.status': event === 'ended' ? 'completed' : 'failed' }, $inc: { revision: 1 } }, { new: true }).lean();
+        const ended = await changeTurn({ _id: id, 'speech.status': { $in: ['delivering', 'playing'] },
+            'speech.playbackId': playback_id, 'speech.outputGeneration': output_generation }, { $set: { 'speech.status': event === 'ended' ? 'completed' : 'failed' }, $inc: { revision: 1 } }, { new: true });
         if (!ended) {
             // A cancellation can win after this event's initial read. Accept a
             // fenced late player stop as proof without changing cancelled into
             // completed/failed, and make duplicate proof idempotent.
-            const stopped = await DesktopAiTurn.findOneAndUpdate({ _id: id, 'speech.status': 'cancelled',
+            const stopped = await changeTurn({ _id: id, 'speech.status': 'cancelled',
                 'speech.playbackId': playback_id, 'speech.outputGeneration': output_generation,
                 'speech.playbackDeadline': { $gt: new Date(0) }, 'speech.stopConfirmed': { $ne: true } },
-                { $set: { 'speech.stopConfirmed': true }, $inc: { revision: 1 } }, { new: true }).lean();
+                { $set: { 'speech.stopConfirmed': true }, $inc: { revision: 1 } }, { new: true });
             if (stopped) {
                 await finishBotSpeech(id, event);
                 await cleanSpeechDirectory(stopped.speech?.privateDir);
