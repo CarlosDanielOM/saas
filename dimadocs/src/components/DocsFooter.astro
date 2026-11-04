@@ -4,10 +4,12 @@ import { textPath } from '../lib/markdown.mjs';
 const { entry } = Astro.locals.starlightRoute;
 const spanish = entry.id === 'es' || entry.id.startsWith('es/');
 ---
-<nav class="machine-links" aria-label={spanish ? 'Documentación para IA' : 'Documentation for AI'}>
+<nav class="machine-links" aria-label={spanish ? 'Documentación e información legal' : 'Documentation and legal information'}>
   <a href={textPath(entry.id)}>{spanish ? 'Leer Markdown' : 'Read Markdown'}</a>
   <a href={spanish ? '/es/llms.txt' : '/llms.txt'}>llms.txt</a>
   <a href={spanish ? '/es/ai-assistants/' : '/ai-assistants/'}>{spanish ? 'Usar con asistentes de IA' : 'Use with AI assistants'}</a>
+  <a href={spanish ? '/es/legal/dimafx-terms/' : '/legal/dimafx-terms/'}>{spanish ? 'Términos de DimaFX' : 'DimaFX Terms'}</a>
+  <a href={spanish ? '/es/legal/dimafx-privacy/' : '/legal/dimafx-privacy/'}>{spanish ? 'Privacidad de DimaFX' : 'DimaFX Privacy'}</a>
 </nav>
 <Footer />
 <style>

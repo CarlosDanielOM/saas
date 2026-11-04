@@ -90,6 +90,14 @@ const sidebar = [
     translations: { es: 'Ayuda' },
     items: [page('ai-assistants', 'Use with AI assistants', 'Usar con asistentes de IA')],
   },
+  {
+    label: 'Legal',
+    translations: { es: 'Legal' },
+    items: [
+      page('legal/dimafx-terms', 'DimaFX Terms of Service', 'Términos de servicio de DimaFX'),
+      page('legal/dimafx-privacy', 'DimaFX Privacy Policy', 'Política de privacidad de DimaFX'),
+    ],
+  },
 ];
 
 export default defineConfig({
