@@ -1296,6 +1296,7 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
 
 export function createExecutionContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
     return {
+        randomUserState: { selected: new Set<string>() },
         variables: new Map<string, unknown>(),
         arrays: new Map<string, string[]>(),
         broadcasterId: '',

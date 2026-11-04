@@ -1,0 +1,37 @@
+<details class="randomuser-settings">
+  <summary>{{ t('commands.randomuser.title') }}</summary>
+  <div class="randomuser-settings__body">
+    <p class="randomuser-settings__hint">{{ t('commands.randomuser.hint') }}</p>
+    @if (loading()) {
+      <p role="status">{{ t('commands.randomuser.loading') }}</p>
+    } @else if (loadFailed()) {
+      <p class="randomuser-settings__error" role="alert">{{ t('commands.randomuser.loadError') }}</p>
+      <button type="button" (click)="retry()">{{ t('common.retry') }}</button>
+    } @else {
+      <form (submit)="$event.preventDefault(); save()" [attr.aria-busy]="saving()">
+        <label for="randomuser-blacklist">{{ t('commands.randomuser.label') }}</label>
+        <textarea id="randomuser-blacklist" rows="4" [value]="draft()" [disabled]="saving()"
+          (input)="edit($any($event.target).value)" spellcheck="false" autocapitalize="none" autocorrect="off"
+          aria-describedby="randomuser-format randomuser-validation"
+          [attr.aria-invalid]="submitAttempted() && !!validationKey()"></textarea>
+        <p class="randomuser-settings__hint" id="randomuser-format">{{ t('commands.randomuser.format') }}</p>
+        <div id="randomuser-validation">
+          @if (submitAttempted() && validationKey()) {
+            <p class="randomuser-settings__error" role="alert">{{ t(validationKey()) }}</p>
+          }
+        </div>
+        @if (saveFailed()) {
+          <p class="randomuser-settings__error" role="alert">{{ t('commands.randomuser.saveError') }}</p>
+        }
+        <div class="randomuser-settings__save">
+          <span role="status">{{ t(dirty() ? 'commands.randomuser.unsaved' : 'commands.randomuser.saved') }}</span>
+          <button type="submit" class="randomuser-settings__primary" [disabled]="saving() || !dirty()">
+            {{ t(saving() ? 'commands.randomuser.saving' : 'commands.randomuser.save') }}
+          </button>
+        </div>
+      </form>
+    }
+    <p class="randomuser-settings__hint">{{ t('commands.randomuser.extraHint') }} <code>$(randomuser unique ignore bot1 bot2)</code></p>
+    <p class="randomuser-settings__hint">{{ t('commands.randomuser.localHint') }} <code>$(randomuser local ignore bot1)</code></p>
+  </div>
+</details>

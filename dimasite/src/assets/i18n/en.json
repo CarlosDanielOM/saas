@@ -3931,6 +3931,23 @@
     "newKeyword": "New keyword",
     "onCount": "{{on}} of {{total}} on",
     "viewOnly": "View only",
+    "randomuser": {
+      "title": "Random viewer exclusions",
+      "hint": "Keep bots and other accounts out of every $(randomuser) selection in this channel.",
+      "label": "Excluded Twitch usernames",
+      "format": "Separate usernames with spaces, commas or new lines. @ is optional. Up to 200; leave empty to clear.",
+      "loading": "Loading exclusions…",
+      "loadError": "Couldn't load the exclusions. Retry to edit them safely.",
+      "saveError": "Couldn't save the exclusions. Your changes are still here; try saving again.",
+      "invalid": "Use Twitch usernames with 1–25 letters, numbers or underscores. Don't paste profile links.",
+      "tooMany": "You can exclude up to 200 different usernames.",
+      "unsaved": "Unsaved changes",
+      "saved": "All changes saved",
+      "save": "Save exclusions",
+      "saving": "Saving…",
+      "extraHint": "Add extra exclusions to one command:",
+      "localHint": "To use only a command's own exclusions, bypass the shared list with local:"
+    },
     "publicStrip": {
       "title": "Viewer list",
       "hint": "Viewers only see the commands they can use. Share it in your Twitch panels or chat.",

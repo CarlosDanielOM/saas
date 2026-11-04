@@ -141,7 +141,7 @@ try {
     assert.deepEqual((await root.locator('.lf-cmd-row h4').allTextContents()).sort(), ['Clear chat', 'Secret']);
     await root.getByRole('button', { name: /^Built-in/ }).click();
     await rowCount(7);
-    await page.waitForFunction(() => [...document.querySelectorAll('app-commands-page details')].every(d => d.open));
+    await page.waitForFunction(() => [...document.querySelectorAll('app-commands-page .lf-fold')].every(d => d.open));
 
     await root.getByRole('searchbox').fill('!shoutout');
     await root.getByText('Matches for “!shoutout”: 1').waitFor();

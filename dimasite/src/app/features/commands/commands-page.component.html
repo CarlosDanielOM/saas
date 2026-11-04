@@ -183,6 +183,9 @@
       </div>
 
       <aside class="lf-col lf-col--side">
+        @if (canManage() && channelID(); as settingsChannelID) {
+          <app-randomuser-settings [channelID]="settingsChannelID"></app-randomuser-settings>
+        }
         <section class="lf-tile lf-panel" aria-labelledby="commands-kinds-title">
           <h2 class="lf-h3" id="commands-kinds-title">{{ t('commands.kinds.title') }}</h2>
           <dl class="lf-kinds">

@@ -3931,6 +3931,23 @@
     "newKeyword": "Nueva palabra clave",
     "onCount": "{{on}} de {{total}} activos",
     "viewOnly": "Solo lectura",
+    "randomuser": {
+      "title": "Exclusiones de espectador aleatorio",
+      "hint": "Evita que bots y otras cuentas salgan elegidos con $(randomuser) en este canal.",
+      "label": "Nombres de usuario de Twitch excluidos",
+      "format": "Separa los nombres con espacios, comas o saltos de línea. @ es opcional. Hasta 200; deja vacío para borrar la lista.",
+      "loading": "Cargando exclusiones…",
+      "loadError": "No se pudieron cargar las exclusiones. Reintenta para editarlas de forma segura.",
+      "saveError": "No se pudieron guardar las exclusiones. Tus cambios siguen aquí; intenta guardar de nuevo.",
+      "invalid": "Usa nombres de Twitch de 1 a 25 letras, números o guiones bajos. No pegues enlaces de perfiles.",
+      "tooMany": "Puedes excluir hasta 200 nombres de usuario distintos.",
+      "unsaved": "Cambios sin guardar",
+      "saved": "Todos los cambios guardados",
+      "save": "Guardar exclusiones",
+      "saving": "Guardando…",
+      "extraHint": "Añade exclusiones adicionales a un comando:",
+      "localHint": "Para usar solo las exclusiones de un comando, omite la lista compartida con local:"
+    },
     "publicStrip": {
       "title": "Lista para espectadores",
       "hint": "Tus espectadores solo ven los comandos que pueden usar. Compártela en tus paneles de Twitch o en el chat.",

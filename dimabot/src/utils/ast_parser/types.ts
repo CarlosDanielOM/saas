@@ -220,6 +220,7 @@ export interface AstSimulationCache {
 }
 
 export interface ExecutionContext {
+    randomUserState: { selected: Set<string>; blacklist?: Promise<string[]> };
     effectContext?: AstEffectContext;
     simulation?: AstSimulation;
     variables: Map<string, unknown>;

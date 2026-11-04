@@ -33,6 +33,7 @@ import {
 } from './builtin-commands';
 import { CommandModalComponent, CommandModalSavePayload, PlanTier } from './command-modal.component';
 import { BlocksViewerDialogComponent } from './blocks/blocks-viewer-dialog.component';
+import { RandomUserSettingsComponent } from './randomuser-settings.component';
 import { clearDraft, draftKey, takeResume } from './blocks/blocks.draft';
 import { commandBlocksRoot, commandReplyText, isBlockCommand, timerMessageFor } from './blocks/command-blocks.util';
 
@@ -48,7 +49,7 @@ interface CommandListItem extends Command {
 
 @Component({
   selector: 'app-commands-page',
-  imports: [ReactiveFormsModule, NgTemplateOutlet, ConfirmationModalComponent, CommandModalComponent, LfIconComponent, BlocksViewerDialogComponent],
+  imports: [ReactiveFormsModule, NgTemplateOutlet, ConfirmationModalComponent, CommandModalComponent, LfIconComponent, BlocksViewerDialogComponent, RandomUserSettingsComponent],
   templateUrl: './commands-page.component.html',
   styleUrl: './commands-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

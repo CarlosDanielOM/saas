@@ -286,6 +286,25 @@ export class CommandsApiService {
     return this.getCommands(channelID, { skipCache: true });
   }
 
+  getRandomUserBlacklist(channelID: string): Observable<string[] | null> {
+    return this.http.get<{ error: boolean; blacklist?: string[] }>(
+      `${this.linksService.getApiUrl()}/commands/${channelID}/randomuser-settings`
+    ).pipe(
+      map((response) => !response.error && Array.isArray(response.blacklist) ? response.blacklist : null),
+      catchError(() => of(null))
+    );
+  }
+
+  saveRandomUserBlacklist(channelID: string, blacklist: string[]): Observable<string[] | null> {
+    return this.http.put<{ error: boolean; blacklist?: string[] }>(
+      `${this.linksService.getApiUrl()}/commands/${channelID}/randomuser-settings`,
+      { blacklist }
+    ).pipe(
+      map((response) => !response.error && Array.isArray(response.blacklist) ? response.blacklist : null),
+      catchError(() => of(null))
+    );
+  }
+
   clearAllCache(): void {
     this.cache.clear();
   }

@@ -12,8 +12,36 @@ import { normalizeKeyword, validateKeyword } from '../../utils/keywords.js';
 import { refreshKeywordIndex } from '../../utils/keyword_cache.js';
 import { MAX_COMMAND_TEXT, BlocksError, importCommandText } from '../../utils/ast_blocks/index.js';
 import { CommandBlocksRequestError, presentCommand, resolveCommandBody } from '../services/command_blocks.service.js';
+import { RandomUserSettingsSchema } from '../../schemas/randomuser_settings.schema.js';
+import { getRandomUserBlacklist, normalizeRandomUserBlacklist } from '../../utils/ast_parser/randomuser_settings.js';
 
 const router = express.Router();
+
+router.get('/:channelID/randomuser-settings', authMiddleware as any, async (req: Request, res: Response) => {
+    const channelID = String(req.params.channelID);
+    try {
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'commands:manage');
+        if (!access.allowed) return res.status(403).send({ error: true, message: 'You do not have access to this channel', status: 403 });
+        const blacklist = await getRandomUserBlacklist(channelID);
+        return res.send({ error: false, status: 200, blacklist });
+    } catch {
+        return res.status(500).send({ error: true, message: 'Unable to load random user settings', status: 500 });
+    }
+});
+
+router.put('/:channelID/randomuser-settings', authMiddleware as any, async (req: Request, res: Response) => {
+    const channelID = String(req.params.channelID);
+    try {
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'commands:manage');
+        if (!access.allowed) return res.status(403).send({ error: true, message: 'You do not have access to this channel', status: 403 });
+        const blacklist = normalizeRandomUserBlacklist(req.body?.blacklist);
+        if (!blacklist) return res.status(400).send({ error: true, message: 'Blacklist must contain at most 200 valid Twitch logins', status: 400 });
+        await RandomUserSettingsSchema.updateOne({ channelID }, { $set: { blacklist } }, { upsert: true });
+        return res.send({ error: false, status: 200, blacklist });
+    } catch {
+        return res.status(500).send({ error: true, message: 'Unable to save random user settings', status: 500 });
+    }
+});
 
 /** Computes the non-localized permission mode for API responses. */
 function permissionModeFor(command: { permissionExpression?: unknown }): 'level' | 'tags' | 'invalid' {

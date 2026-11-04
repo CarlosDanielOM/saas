@@ -1,6 +1,6 @@
 {
-  "version": "f8adf03dcd78",
-  "generatedAt": "2026-11-04T05:52:28.837Z",
+  "version": "eb1604b3da02",
+  "generatedAt": "2026-11-04T23:40:54.440Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
   "functionCount": 117,
@@ -667,11 +667,14 @@
     },
     {
       "name": "randomuser",
-      "description": "Returns the name of a random active chatter in the channel.",
-      "syntax": "randomuser",
+      "description": "Returns a random chatter, excluding the channel blacklist. Use unique to avoid earlier picks in this execution, ignore followed by logins for additional exclusions, or local to replace the shared blacklist with only those exclusions. Returns a placeholder if no eligible chatter remains.",
+      "syntax": "randomuser [unique] [local] [ignore login ...]",
       "category": "user",
       "examples": [
-        "randomuser"
+        "randomuser",
+        "randomuser unique",
+        "randomuser unique ignore nightbot",
+        "randomuser unique local ignore nightbot"
       ],
       "aliases": [],
       "minUserLevel": 1,

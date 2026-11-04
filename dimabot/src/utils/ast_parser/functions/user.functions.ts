@@ -1,6 +1,7 @@
 import type { ExecutionContext } from '../types.js';
 import { registerFunction, type FunctionHandler } from '../evaluator.js';
 import * as ChatFunctions from '../../../functions/chats/index.js';
+import { getRandomUserBlacklist } from '../randomuser_settings.js';
 
 function sanitizeInput(input: unknown): string {
     if (typeof input !== 'string') return String(input || '');
@@ -134,15 +135,37 @@ const touserHandler: FunctionHandler = async (args, ctx) => {
     return getUserName(ctx);
 };
 
-const randomuserHandler: FunctionHandler = async (_args, ctx) => {
+const randomuserHandler: FunctionHandler = async (args, ctx) => {
+    const tokens = flattenArgumentTokens(args).flatMap(token => token.split(',')).filter(Boolean);
+    const ignoreIndex = tokens.indexOf('ignore');
+    const options = ignoreIndex < 0 ? tokens : tokens.slice(0, ignoreIndex);
+    const unique = options.includes('unique');
+    const local = options.includes('local');
+    const excluded = new Set((ignoreIndex < 0 ? [] : tokens.slice(ignoreIndex + 1)).map(name => name.replace(/^@/, '')));
+    if (!local) {
+        try {
+            ctx.randomUserState.blacklist ??= getRandomUserBlacklist(ctx.broadcasterId);
+            for (const name of await ctx.randomUserState.blacklist) excluded.add(name.toLowerCase());
+        } catch {
+            return '<unable to load randomuser blacklist>';
+        }
+    }
     const chattersResult = await ChatFunctions.getChatters(ctx.broadcasterId, ctx.broadcasterId);
     if (chattersResult.error) {
         return chattersResult.message;
     }
-    if (!chattersResult.chatters || chattersResult.chatters.length === 0) {
+    if ((!chattersResult.chatters || chattersResult.chatters.length === 0) && !unique && excluded.size === 0) {
         return getUserName(ctx) || 'Unknown';
     }
-    const randomChatter = chattersResult.chatters[Math.floor(Math.random() * chattersResult.chatters.length)];
+    const eligible = (chattersResult.chatters ?? []).filter(chatter => {
+        const login = String(chatter.user_login || '').toLowerCase();
+        const display = String(chatter.user_name || '').toLowerCase();
+        const identity = login || display;
+        return identity && !excluded.has(login) && !excluded.has(display) && (!unique || !ctx.randomUserState.selected.has(identity));
+    });
+    if (!eligible.length) return '<no eligible chatters>';
+    const randomChatter = eligible[Math.floor(Math.random() * eligible.length)];
+    ctx.randomUserState.selected.add(String(randomChatter.user_login || randomChatter.user_name).toLowerCase());
     return randomChatter.user_name || randomChatter.user_login || 'Unknown';
 };
 
@@ -162,10 +185,10 @@ export function registerUserFunctions(): void {
         keywords: ['target', 'argument', 'objetivo', 'destinatario']
     });
     registerFunction('randomuser', randomuserHandler, {
-        description: 'Returns the name of a random active chatter in the channel.',
-        syntax: 'randomuser',
+        description: 'Returns a random chatter, excluding the channel blacklist. Use unique to avoid earlier picks in this execution, ignore followed by logins for additional exclusions, or local to replace the shared blacklist with only those exclusions. Returns a placeholder if no eligible chatter remains.',
+        syntax: 'randomuser [unique] [local] [ignore login ...]',
         category: 'user',
-        examples: ['randomuser'],
+        examples: ['randomuser', 'randomuser unique', 'randomuser unique ignore nightbot', 'randomuser unique local ignore nightbot'],
         keywords: ['random chatter', 'random viewer', 'usuario aleatorio', 'alguien random']
     });
 }

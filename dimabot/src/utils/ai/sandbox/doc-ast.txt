@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: f8adf03dcd78
+# Catalog version: eb1604b3da02
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -337,8 +337,11 @@
 #   Example: $(twitch.viewers)
 #
 # --- user ---
-# $(randomuser) - Returns the name of a random active chatter in the channel.
+# $(randomuser [unique] [local] [ignore login ...]) - Returns a random chatter, excluding the channel blacklist. Use unique to avoid earlier picks in this execution, ignore followed by logins for additional exclusions, or local to replace the shared blacklist with only those exclusions. Returns a placeholder if no eligible chatter remains.
 #   Example: $(randomuser)
+#   Example: $(randomuser unique)
+#   Example: $(randomuser unique ignore nightbot)
+#   Example: $(randomuser unique local ignore nightbot)
 # $(touser [target]) - Returns the target username from the first argument; falls back to the caller when no argument is given.
 #   Example: $(touser)
 #   Example: $(touser $(randomuser))

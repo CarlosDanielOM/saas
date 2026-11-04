@@ -3,8 +3,15 @@ import test, { mock } from 'node:test';
 
 // The chat helpers are irrelevant for `$(user ...)`; they are mocked so the
 // test never loads the chat/DB stack.
+let chatterResult: { error: boolean; message: string; chatters?: Array<{ user_id: string; user_login: string; user_name: string }> } = { error: false, message: '', chatters: [] };
+let sharedBlacklist: string[] = [];
+let blacklistFails = false;
+mock.module('../randomuser_settings.js', { namedExports: { getRandomUserBlacklist: async () => {
+    if (blacklistFails) throw new Error('database offline');
+    return sharedBlacklist;
+} } });
 mock.module('../../../functions/chats/index.js', {
-    namedExports: { getChatters: async () => ({ error: false, chatters: [] }) }
+    namedExports: { getChatters: async () => chatterResult }
 });
 
 // The nested TTS check exercises the real AST TTS function, but the queue and
@@ -61,6 +68,49 @@ async function renderAsChatter(source: string, chatterName: string, chatterLogin
         eventData: { chatter_user_name: chatterName, chatter_user_login: chatterLogin }
     });
 }
+
+test('randomuser unique excludes earlier picks and the inline blacklist for one run', async () => {
+    chatterResult = { error: false, message: '', chatters: [
+        { user_id: '1', user_login: 'nightbot', user_name: 'Nightbot' },
+        { user_id: '2', user_login: 'alice', user_name: 'Alice' },
+        { user_id: '3', user_login: 'bob', user_name: 'Bob' }
+    ] };
+    const source = '$(randomuser unique ignore @NIGHTBOT) $(randomuser unique ignore @nightbot) $(randomuser unique ignore @nightbot)';
+    const first = (await render(source)).split(' ');
+    assert.deepEqual(new Set(first.slice(0, 2)), new Set(['Alice', 'Bob']));
+    assert.equal(first.slice(2).join(' '), '<no eligible chatters>');
+    const second = (await render(source)).split(' ');
+    assert.deepEqual(new Set(second.slice(0, 2)), new Set(['Alice', 'Bob']));
+});
+
+test('randomuser tracks ordinary picks for later unique calls and respects empty and error cases', async () => {
+    chatterResult = { error: false, message: '', chatters: [{ user_id: '1', user_login: 'alice', user_name: 'Alice' }] };
+    assert.equal(await render('$(randomuser) $(randomuser unique)'), 'Alice <no eligible chatters>');
+    assert.equal(await render('$(randomuser ignore Alice)'), '<no eligible chatters>');
+    chatterResult = { error: false, message: '', chatters: [] };
+    assert.equal(await render('$(randomuser)'), 'user_login');
+    assert.equal(await render('$(randomuser unique)'), '<no eligible chatters>');
+    chatterResult = { error: true, message: 'lookup failed' };
+    assert.equal(await render('$(randomuser unique)'), 'lookup failed');
+    chatterResult = { error: false, message: '', chatters: [] };
+});
+
+test('randomuser applies shared blacklist, local additions and an explicit local override', async () => {
+    sharedBlacklist = ['nightbot'];
+    chatterResult = { error: false, message: '', chatters: [
+        { user_id: '1', user_login: 'nightbot', user_name: 'Nightbot' },
+        { user_id: '2', user_login: 'alice', user_name: 'Alice' }
+    ] };
+    assert.equal(await render('$(randomuser)'), 'Alice');
+    assert.equal(await render('$(randomuser ignore ALICE)'), '<no eligible chatters>');
+    assert.equal(await render('$(randomuser local ignore alice)'), 'Nightbot');
+    blacklistFails = true;
+    assert.equal(await render('$(randomuser)'), '<unable to load randomuser blacklist>');
+    assert.equal(await render('$(randomuser local ignore alice)'), 'Nightbot');
+    blacklistFails = false;
+    sharedBlacklist = [];
+    chatterResult = { error: false, message: '', chatters: [] };
+});
 
 test('$(user) without arguments returns the raw chatter name', async () => {
     assert.equal(await renderAsChatter('$(user)', 'cdom201'), 'cdom201');
