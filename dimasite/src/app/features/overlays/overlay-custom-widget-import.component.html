@@ -1,5 +1,6 @@
 <dialog #dialog class="cw-dialog" [class.dragging]="dragOver()" aria-labelledby="cw-import-title" aria-describedby="cw-import-intro"
-  (cancel)="onCancel($event)" (close)="onClosed()" (dragover)="onDragOver($event)" (dragleave)="dragOver.set(false)" (drop)="onDrop($event)">
+  (cancel)="onCancel($event)" (close)="onClosed()" (dragover)="phase() === 'files' && onDragOver($event)" (dragleave)="dragOver.set(false)" (drop)="phase() === 'files' && onDrop($event)">
+  @if (phase() === 'files') {
   <header class="head">
     <div class="head__copy">
       <h2 id="cw-import-title">{{ t(mode() === 'replace' ? 'customReplaceTitle' : 'customImportTitle') }}</h2>
@@ -48,16 +49,17 @@
           <strong>{{ t('customSummary', { settings: s.settings, groups: s.groups }) }}</strong>
           @if (s.author) { <span>{{ t('customByAuthor', { author: s.author }) }}</span> }
         </p>
+        <p class="note" data-cw-import-uses>{{ t(s.manifest.engine === 'dima' ? 'customEngineDima' : 'customEngineSe') }} · {{ s.manifest.uses.length ? t('customReads') + ' ' + usesText(s.manifest.uses) : t('customReadsNothing') }}</p>
         @if (s.issues.length) {
           <details class="issues">
             <summary>{{ n('customIssues', s.issues.length) }}</summary>
-            <ul>@for (issue of s.issues; track $index) { <li><code>{{ issue.key || '—' }}</code> {{ t('customIssue_' + issue.code) }}</li> }</ul>
+            <ul>@for (issue of s.issues; track $index) { <li><code>{{ issue.key || issue.detail || '—' }}</code> {{ t('customIssue_' + issue.code) }}</li> }</ul>
           </details>
         }
         @if (s.streamElements.length) {
           <div class="banner banner--warn" data-cw-remote>
             <strong>{{ n('customRemoteTitle', s.streamElements.length) }}</strong>
-            <span>{{ t('customRemoteBody') }}</span>
+            <span>{{ t('customRemoteNext') }}</span>
           </div>
         }
         @if (mode() === 'replace') { <p class="note">{{ t('customReplaceNote') }}</p> }
@@ -80,4 +82,56 @@
     <button type="button" [disabled]="busy()" (click)="close()">{{ t('cancel') }}</button>
     <button type="button" class="primary" [disabled]="!ready()" (click)="submit()" data-cw-submit>{{ busy() ? t('customImporting') : t(mode() === 'replace' ? 'customReplaceAction' : 'customImportAction') }}</button>
   </footer>
+  } @else {
+  <!-- Copy StreamElements-hosted files into the channel's storage -->
+  <header class="head">
+    <div class="head__copy">
+      <h2 id="cw-import-title">{{ t('customMediaTitle') }}</h2>
+      <p id="cw-import-intro">{{ t('customMediaIntro', { name: mediaWidget()?.name ?? '' }) }}</p>
+    </div>
+    <button type="button" class="icon-button" [attr.aria-label]="t('close')" [disabled]="copying()" (click)="close()"><lucide-icon [img]="icons.X" [size]="20" aria-hidden="true" /></button>
+  </header>
+  <div class="body" data-cw-media>
+    @if (copyResult(); as result) {
+      <p class="banner" [class.banner--ok]="!result.failed.length" [class.banner--warn]="result.failed.length > 0" role="status" data-cw-media-result>
+        <strong>{{ n('customMediaDone', copiedCount()) }}</strong>
+        @if (result.failed.length) { <span>{{ n('customMediaFailed', result.failed.length) }}</span> }
+      </p>
+      @if (result.failed.length) {
+        <ul class="media-list">@for (item of result.failed; track item.url) { <li><span class="media-list__name">{{ fileName(item.url) }}</span><span class="media-list__size">{{ t('customMediaReason_' + item.reason) }}</span></li> }</ul>
+      }
+    } @else if (plan(); as p) {
+      <ul class="media-list" [attr.aria-label]="t('customMediaFiles')">
+        @for (file of p.files; track file.url) {
+          <li [attr.data-copied]="file.copied ? '' : null">
+            @if (file.kind === 'image' && !brokenThumbs().has(file.url)) { <img class="media-list__thumb" [src]="file.url" alt="" loading="lazy" referrerpolicy="no-referrer" (error)="thumbFailed(file.url)" /> }
+            @else { <span class="media-list__thumb media-list__thumb--icon" aria-hidden="true">{{ t('customMediaKind_' + file.kind) }}</span> }
+            <span class="media-list__name">{{ fileName(file.url) }}</span>
+            <span class="media-list__size">{{ file.copied ? t('customMediaCopied') : file.bytes !== null ? size(file.bytes) : t('customMediaUnknownSize') }}</span>
+          </li>
+        }
+      </ul>
+      @if (pendingFiles().length) {
+        <p class="note" data-cw-media-storage>{{ t('customMediaUses', { size: size(p.totalBytes), free: size(freeBytes()), quota: size(p.quota.quotaBytes) }) }}@if (p.unknownSizes) { {{ ' ' + t('customMediaUnknownNote') }} }</p>
+        @if (noRoom()) {
+          <div class="banner banner--gold"><strong>{{ t('customMediaNoRoom') }}</strong>
+            @if (canUpgrade()) { <button type="button" class="gold" (click)="upgrade()"><lucide-icon [img]="icons.Star" [size]="16" aria-hidden="true" />{{ t('customSeePlans') }}</button> }
+          </div>
+        }
+      } @else { <p class="note">{{ t('customMediaAllCopied') }}</p> }
+      @if (copying()) { <p class="note" role="status">{{ t('customMediaCopying') }}</p> }
+    } @else if (!planError()) {
+      <p class="note" role="status">{{ t('customMediaChecking') }}</p>
+    }
+    @if (planError()) { <p class="banner banner--danger" role="alert">{{ planError() }}</p> }
+  </div>
+  <footer class="foot">
+    @if (copyResult() || !pendingFiles().length) {
+      <button type="button" class="primary" [disabled]="copying()" (click)="close()" data-cw-media-done>{{ t('customMediaDoneButton') }}</button>
+    } @else {
+      <button type="button" [disabled]="copying()" (click)="close()" data-cw-media-keep>{{ t('customMediaKeep') }}</button>
+      <button type="button" class="primary" [disabled]="copying() || !plan()" (click)="copy()" data-cw-media-copy>{{ copying() ? t('customMediaCopyingShort') : n('customMediaCopy', pendingFiles().length) }}</button>
+    }
+  </footer>
+  }
 </dialog>

@@ -1,0 +1,5 @@
+<main class="wrap">
+  <header class="banner" hidden><span class="banner__text"></span></header>
+  <ol class="chat" aria-live="polite"></ol>
+  <footer class="footer"><span class="count">0</span> <span class="count-label">{{countLabel}}</span> · <span class="deaths">0</span> deaths</footer>
+</main>

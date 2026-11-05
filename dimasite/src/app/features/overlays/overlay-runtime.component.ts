@@ -16,6 +16,8 @@ import { OverlayApi, Snapshot } from './overlay-api.service';
 import type { TestMedia, OverlaySpeechPlayback } from './overlay-media.component';
 import { matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
 import { placeTrigger } from './overlay-trigger-placement';
+import { LiveWidgetEnv } from './widget-runtime/live-env';
+import { CUSTOM_WIDGET_ENV } from './widget-runtime/widget-env';
 interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; tts?: { speechID: string; ownerClientId: string | null; durationMs: number }; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
 interface Retry { attempts: number; timer?: ReturnType<typeof setTimeout> }
 const layoutAssets = (layouts: AlertLayout[]) => layouts.flatMap(layout => layout.widgets).filter(part => part.visible && (part.kind === 'image' || part.kind === 'video') && part.assetId).map(part => part.assetId!);
@@ -24,6 +26,7 @@ const retryable = (error: unknown) => error instanceof TimeoutError || error ins
 interface Playing { assets: Map<string, PreparedAsset>; event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
 @Component({
   selector: 'app-overlay-runtime', imports: [OverlaySceneRendererComponent], changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [LiveWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: LiveWidgetEnv }],
   template: `@if (snapshot(); as scene) {
     <app-overlay-scene-renderer [scene]="scene" [jobs]="playing()" [publicId]="publicId" [audioOwner]="rendererClientId()" [viewport]="viewport()" [states]="widgetStates()" [clockOffset]="clockOffset()"
       (started)="renderedStarted($event)" (ended)="renderedEnded($event)" (failed)="renderedEnded($event,true)"
@@ -105,6 +108,8 @@ export class OverlayRuntimeComponent {
       for (const command of state.commands ?? []) this.applyControl(command);
       this.batching = false; this.next(); this.reportHealth(); this.reportPlayback();
     });
+    // Custom widget data (chat, alerts, store, session) for this overlay's code layers.
+    inject(LiveWidgetEnv).attach(this.publicId, this.socket);
     this.socket.on('overlay-interactions', (state: InteractionSnapshot) => this.acceptInteractions(state));
     this.socket.on('overlay-widget-states', (state: WidgetStateSnapshot) => this.acceptState(state));
     this.socket.on('overlay-queue-state', (state: QueueState) => this.applyQueueState(state));

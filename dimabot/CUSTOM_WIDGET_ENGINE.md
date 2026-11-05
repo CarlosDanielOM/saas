@@ -1,0 +1,220 @@
+# Custom widget engine (Dima SDK v1)
+
+Runs the code of custom widget layers (see [`CUSTOM_WIDGETS.md`](./CUSTOM_WIDGETS.md) for the package/data model).
+Our own runtime is the base; StreamElements support is a translation layer built only from Dima SDK calls.
+
+## 1. Packages: `widget.json`
+
+Optional sixth file. Imports without one (StreamElements exports) get it inferred from their code.
+
+```json
+{ "engine": "dima", "api": 1, "name": "Pastel chat", "author": "Ana", "version": "1.2.0",
+  "description": "Chat with pastel bubbles", "uses": ["chat", "alerts", "store"] }
+```
+
+- `engine`: `dima` (native) or `streamelements` (adds the SE translation layer). Default: `streamelements` without a manifest.
+- `api`: Dima SDK version the code targets. Only `1` exists. Unknown versions are refused on import.
+- `uses` (api 1): `chat` (messages, deletes, clears), `alerts` (follow, sub, resub, gift, bits, raid, tip), `store`
+  (persistent key/value), `counters` (read command counts), `session` (latest/recent/session totals). Unknown entries
+  are reported as import issues and ignored. Studio shows these in plain words before a widget is added, and the server
+  only streams what a published widget uses.
+- SE inference: any `onEventReceived` handler gets `chat` and `alerts` (listener names are often built indirectly),
+  otherwise `chat` if the code checks the `message` / `delete-message` listeners, `alerts` for `*-latest`,
+  `store` for `SE_API.store`, `counters` for `SE_API.counters`, `session` for `session`/`onSessionUpdate`/`-recent`/`-goal`.
+
+## 2. The frame
+
+Each custom layer is an `<iframe sandbox="allow-scripts" srcdoc="…">` sized to the layer box. Opaque origin: no access
+to the site's storage/login, the parent DOM, top navigation, popups or forms. Same in the editor preview and OBS.
+
+The `srcdoc` document, in order:
+1. A CSP meta (`object-src 'none'; form-action 'none'`), `<base href="<site origin>/">` (so widget code can't read the
+   overlay's link from its base URL) and the base style (`html,body{margin:0;background:transparent;overflow:hidden}`).
+2. Dima SDK, called with this run's boot data `{ exec, fields }` (`exec` tags every message; `Dima.fields` works before
+   the widget's code runs). The SDK and SE layer are TypeScript functions compiled into the app and inlined as text:
+   they must stay self-contained and must not use object spread (the production build turns it into a shared helper).
+3. StreamElements only: jQuery 3.7.1 (`assets/widget-runtime/jquery-3.7.1.min.js`, SRI-checked when added) and the SE layer.
+4. Widget CSS in `<style>`, widget HTML in `<body>`, widget JS in a classic `<script>` at the end of `<body>` (sloppy mode,
+   like StreamElements — widgets rely on implicit globals).
+
+Text substitution of settings (`{key}` and `{{key}}`, only for keys that exist; arrays joined by `,`; null → empty):
+StreamElements engine in HTML, CSS and JS (StreamElements parity); Dima engine in HTML and CSS only (JS reads `Dima.fields`).
+`</script` and `</style` in substituted text are escaped so a value can't end our tags early.
+
+Copied media: URLs in files/values that were copied into the channel's storage are rewritten to our URLs before
+substitution (editor: owner asset URL; OBS: the overlay's public asset URL).
+
+Opaque origins throw on `localStorage`; the SDK installs an in-memory `localStorage`/`sessionStorage` before widget code runs.
+
+### Trust boundaries
+
+- **The site and the account:** widget code never runs on the site's origin, so it can't read the login, call the API as
+  the streamer, or touch Studio. Editor previews get short-lived asset links, never the session token.
+- **One published overlay is one trust boundary.** The overlay link is a bearer link; widget code that learns it (for
+  example from a copied asset URL) could open its own connection and read or write the saved data of other widgets in
+  the same overlay. Only the channel owner can add widget code, so this is the owner's own code.
+- **OBS:** OBS gives every browser source page (and frame) its `window.obsstudio` API at the permission level set in the
+  source's "Page permissions". The SDK hides it from widget code, but nested frames can get it again, so this is not a
+  guarantee: the streamer's OBS setting decides (the default allows reading OBS status, not controlling it). This is the
+  same exposure StreamElements custom widgets have; our docs recommend keeping the default.
+- **Network:** widgets may load scripts and call public APIs (StreamElements widgets rely on it). Anything a widget
+  loads runs with the widget's data: public chat, alerts and its own saved values.
+- **Resources:** a widget can still use CPU, memory or audio in its OBS source. Heartbeats restart frozen frames (3 times
+  in 5 minutes, then the frame is stopped); a widget stuck in a tight loop can stall its own browser source page.
+
+## 3. Host ⇄ frame protocol (`postMessage`)
+
+Every message is `{ dima: 1, type, … }`. The host accepts only messages whose `event.source` is that frame's
+`contentWindow`; the SDK accepts only `event.source === window.parent`. Data is plain JSON (structured clone).
+
+Host → frame:
+- `init` `{ widget: { id, layerId, name, revision }, engine, manifest, fields, channel: { id, login, name }, mode: 'editor'|'live', muted, session? }`
+- `event` `{ event: DimaEvent }` — only categories in `manifest.uses` (plus `button` in the editor).
+- `fields` `{ fields }` — settings changed in the editor (Dima engine updates live; SE engine reloads the frame).
+- `rpc-result` `{ id, ok, value?, error? }`
+
+Frame → host:
+- `ready` (after the widget's scripts ran), `heartbeat` every 2 s, `log` `{ level, args }` (console capture),
+  `error` `{ message, stack? }` (uncaught errors / rejections)
+- `rpc` `{ id, method, params }`: `store.get`, `store.set`, `counters.get`, `field.set` (editor only), `queue.done` (no-op in v1)
+
+Host limits: 30 RPCs/s and 200 logs/min per frame (excess dropped, counted); RPC payloads ≤ 64 KB; a frame that misses
+heartbeats for 10 s is reloaded (max 3 reloads per 5 min, then stopped with an error shown in Studio). Note: an endless
+loop in a same-process frame can still stall the page; a separate widget origin (out-of-process frames) is a later step.
+
+## 4. Dima SDK v1 (inside the frame)
+
+```js
+const ctx = await Dima.ready();         // { widget, channel, fields, mode: 'editor'|'live', muted, session }
+Dima.fields;                             // current settings (plain object)
+Dima.on('chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'button' | 'fields' | 'store' | 'session', handler) → off()
+Dima.store.get(key) / Dima.store.set(key, value)   // Promise; JSON values ≤ 64 KB
+Dima.counters.get(name)                  // Promise<number> — the count of the channel's command `name`
+Dima.html(message)                       // safe HTML for a chat message: escaped text + <img> emotes
+Dima.escape(text)
+Dima.log(...args)                        // shows in Studio's widget log
+```
+
+Events (all JSON):
+
+```ts
+type Platform = 'twitch';
+interface DimaUser { id: string; login: string; name: string }
+interface DimaChat {
+  id: string; platform: Platform; at: number;
+  user: DimaUser & { color: string | null; badges: DimaBadge[]; roles: DimaRoles; subMonths: number | null };
+  text: string; parts: DimaPart[]; kind: 'text' | 'highlighted' | 'intro' | 'power-up' | 'gigantified';
+  action: boolean; firstMessage: boolean; bits: number; rewardId: string | null;
+  reply: { id: string; user: DimaUser; text: string } | null;
+  sharedChat: { channelId: string; messageId: string } | null;
+}
+interface DimaBadge { set: string; version: string; info: string; title: string; images: { '1x': string; '2x': string; '4x': string } }
+interface DimaRoles { broadcaster: boolean; moderator: boolean; vip: boolean; subscriber: boolean; founder: boolean;
+  artist: boolean; staff: boolean; partner: boolean; turbo: boolean; prime: boolean }
+type DimaPart =
+  | { type: 'text'; text: string }
+  | { type: 'emote'; text: string; id: string; animated: boolean; images: { '1x': string; '2x': string; '4x': string } }
+  | { type: 'cheer'; text: string; prefix: string; bits: number; tier: number }
+  | { type: 'mention'; text: string; user: DimaUser };
+interface DimaChatDelete { messageId: string; userId: string | null }
+interface DimaChatClear { userId: string | null }          // null = whole chat cleared
+interface DimaAlert {
+  id: string; type: 'follow' | 'sub' | 'resub' | 'gift' | 'bits' | 'raid' | 'tip'; at: number; test: boolean;
+  user: DimaUser | null;                                   // null: anonymous gifter
+  amount: number;                                          // months (sub/resub), gifts, bits, viewers, tip amount
+  tier: '1000' | '2000' | '3000' | 'prime' | null; months: number | null; streak: number | null;
+  message: string | null; recipient: DimaUser | null; currency: string | null; rule: { id: string; name: string } | null;
+}
+```
+
+Twitch notes: first-time chatters are marked from `message_type: 'user_intro'` (Twitch's "introduce yourself"); EventSub
+has no general first-message flag. Emote images use `https://static-cdn.jtvnw.net/emoticons/v2/<id>/<static|animated>/dark/<1.0|2.0|3.0>`.
+Badge images come from a cached Helix global + channel badge lookup.
+
+## 5. StreamElements translation layer
+
+Built on the Dima SDK; loaded only for `engine: "streamelements"`.
+
+- `onWidgetLoad` (after `Dima.ready()`): `detail = { channel: { id, username, providerId }, currency: { code: 'USD', name:
+  'U.S. Dollar', symbol: '$' }, fieldData, recents, session: { data }, overlay: { isEditorMode, muted }, emotes: [] }`.
+  No `apiToken` (SE API calls from widgets are not supported).
+- `onEventReceived` `detail.listener` / `detail.event`:
+  - chat → `message` with `event.data = { time, tags, nick, userId, displayName, displayColor, badges: [{ type, version, url,
+    description }], channel, text, isAction, emotes: [{ type: 'twitch', name, id, gif, urls: { 1, 2, 4 }, start, end }], msgId }`
+    and `event.renderedText` (escaped HTML with emote images). `tags` are IRC-style strings: `badges`, `badge-info`, `color`,
+    `display-name`, `emotes`, `first-msg`, `id`, `mod`, `subscriber`, `vip`, `turbo`, `room-id`, `user-id`, `tmi-sent-ts`, `user-type`.
+  - chat.delete → `delete-message` `{ msgId }`; chat.clear with a user → `delete-messages` `{ userId }` (whole-chat clear has no SE event).
+  - alerts → `follower-latest` `{ name }`, `subscriber-latest` `{ name, amount, tier, message, gifted, sender, bulkGifted,
+    isCommunityGift }`, `cheer-latest` `{ name, amount, message }`, `raid-latest` `{ name, amount }`, `tip-latest`
+    `{ name, amount, message, currency }`. Each also updates `session.data` and fires `onSessionUpdate`.
+  - buttons → `widget-button` `{ field, value }`; store writes → `kvstore:update` `{ data: { key, value } }`.
+- `SE_API`: `store.get/set` (channel-wide namespace `se`; updates arrive as `kvstore:update` with key `customWidget.<key>`),
+  `counters.get(name)` → `{ id, count }` (plus `{ counter, value }` for older widgets), `sanitize({ message })` →
+  `{ skip: false, result: { message } }`, `cheerFilter(text)` (removes cheermotes), `getOverlayStatus()` →
+  `{ isEditorMode, muted }`, `resumeQueue()`, `setField(key, value, reload = true)` (editor only, never saved).
+- Alert queue: with a `widgetDuration` setting, alerts play one at a time for that many seconds or until
+  `SE_API.resumeQueue()`; chat and other events never wait.
+- A whole-chat clear (no StreamElements event exists) restarts StreamElements widgets so cleared messages disappear.
+
+## 6. Server: delivery to OBS
+
+Code: `GET /overlay-studio/public/:publicId/custom-widgets/:widgetId/:revision` returns `{ engine, manifest, files, media }`
+only when that published overlay pins that widget revision. Immutable, cacheable. Owner editor:
+`GET /overlay-studio/:channel/custom-widgets/:id/bundle`.
+
+Socket (existing `/overlay-studio/:publicId` namespace):
+- server → source: `overlay-feed` `{ v: 1, type: 'chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'store' | 'session', data }`,
+  sent only to sources whose published snapshot has a visible custom layer using that category.
+- source → server: `overlay-widget-rpc` `{ layerId, method, params }` with an ack `{ ok, value | error }`; checked against
+  the layer's manifest (`store` / `counters`) and rate-limited per source.
+
+Chat feed (bot → API): the bot handles `channel.chat.message` (and, once activated, `channel.chat.message_delete`,
+`channel.chat.clear_user_messages`, `channel.chat.clear`). When the Dragonfly key `widget-feed:demand:<channel>` exists
+(set by the API every 20 s, TTL 60 s, while a source using `chat` is connected), it normalizes the event (section 4) and
+publishes `{ channel, type, data }` to the Dragonfly channel `widget-feed`. The API subscribes once and forwards.
+Delete/clear subscriptions are created per channel when an overlay with a chat widget is published (like poll/prediction
+activation), never for every channel.
+
+Alerts: the API already polls the domain-event journal for follow/sub/gift/bits/raid; each alert is also normalized to a
+`DimaAlert` and sent as `overlay-feed` to sources using `alerts` (no queue, no acknowledgement). OBS tests from Studio reach
+code widgets too, including overlays that have only custom widgets. Alerts follow the built-in alert filter (gift
+recipients come as one gift alert; a sub + resub-message pair shows once) and Bits rules with alerts turned off.
+
+Delivery guarantees: chat, deletes and alerts for widgets are live only. A source that is disconnected misses them (the
+built-in alert boxes keep their recoverable queue); session snapshots are sent again on every connection.
+
+Chat delete/clear subscriptions are activated when an overlay with a chat widget is published and re-checked at most
+hourly when such an overlay connects; failures are logged and retried, never blocking publishing.
+
+Store: collection `custom_widget_store` `{ _id: '<owner>:<namespace>:<key>', owner, namespace, key, json, bytes, updatedAt }`
+(values kept as JSON text so any JSON round-trips).
+Namespace: `se` for StreamElements widgets (channel-wide, like SE), the widget ID for Dima widgets. Limits: key ≤ 100
+chars, value ≤ 64 KB JSON, 500 keys / 2 MB per channel. Writes broadcast `store` feed events (`{ key, value, namespace }`) to the channel's sources that use `store` in the same
+namespace, and each frame host applies only updates from its own namespace (one OBS source can hold several widgets). Each source may
+make 20 widget requests per second and the channel 60 saves per 10 seconds.
+The editor reads the real store but keeps its writes in memory (previews don't change live data).
+
+Session (`session.data` for SE, `Dima.ready().session` for Dima): built from the alert journal since the current stream
+started (latest `stream.online`, else the last 24 h): `*-latest` and `*-recent` (25) from the newest 500 alerts,
+`*-session` and `*-week` counts/amounts counted in the database over the whole range. Totals and
+goals that we can't compute are present with 0 so widgets don't crash. Tips are always empty until our tipping ships.
+
+## 7. Copying StreamElements media
+
+Import lists remote files (`externalMedia`). For images, video and audio on StreamElements' media hosts
+(`cdn.streamelements.com`, `static.streamelements.com`; the server and Studio use the same list), Studio
+offers "Copy to your storage (X MB)" vs "Keep loading from StreamElements". Copying downloads them server-side
+(https on the default port, StreamElements hosts only, every redirect hop re-checked, names resolving to private
+addresses refused, 50 MB per file, the channel's storage quota), stores them in the channel's Asset Library and saves a
+`media` map (URL → asset ID) on the widget. The map is shared by all revisions on purpose: copying protects every
+overlay at once, including published ones. The runtime rewrites those URLs (section 2). Copied assets can't be deleted
+while a widget uses them; the original files keep the StreamElements URLs, so exports stay StreamElements-compatible.
+
+OBS loads copied files through the overlay's public asset route. Studio previews use owner preview links
+(`/asset-library/:channel/:id/access?for=custom-widget`): 12 hours for files a custom widget copied (sounds and videos
+load again each time they play, long after the frame started), 15 minutes for everything else. Studio fetches fresh
+links for new frames once its cached ones are an hour old, and restarts a widget's preview when its copied files change.
+
+The download guard checks every address a name resolves to before connecting, but doesn't pin the connection to the
+checked address (a DNS answer that changes between the check and the connect isn't caught). Only two StreamElements
+CDN hosts are allowed, which keeps that window narrow; pinning is a follow-up.

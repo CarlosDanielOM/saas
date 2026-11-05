@@ -1,5 +1,5 @@
 // saas-ops only (api target): disposable Mongo/Redis, fixture identities and an in-check fake S3.
-// Custom widgets: preview gate, plan limits, import parsing, private S3 files, Studio save/publish
+// Custom widgets: availability, plan limits, import parsing, private S3 files, Studio save/publish
 // validation, revisions kept only while published, prune, delete protection and file cleanup.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -47,12 +47,14 @@ const base = '/overlay-studio/' + preview, widgetsPath = base + '/custom-widgets
 const keysFor = id => [...objects.keys()].filter(key => key.startsWith(`custom-widgets/${preview}/${id}/`)).sort();
 
 try {
-  // Gate and ownership.
-  assert.deepEqual(await data('GET', `/overlay-studio/${other}/custom-widgets`, null, 200, other), { enabled: false, planTier: 'pro', limit: 25, used: 0, widgets: [] });
-  assert.equal((await req('POST', `/overlay-studio/${other}/custom-widgets`, { files: source }, 403, other)).code, 'preview');
+  // Available to every channel; owner-only access.
+  assert.deepEqual(await data('GET', `/overlay-studio/${other}/custom-widgets`, null, 200, other), { enabled: true, planTier: 'pro', limit: 25, used: 0, widgets: [] });
+  const otherWidget = (await data('POST', `/overlay-studio/${other}/custom-widgets`, { files: source }, 201, other)).widget;
+  await req('DELETE', `/overlay-studio/${other}/custom-widgets/${otherWidget.id}`, null, 403);
   await req('GET', widgetsPath, null, 403, other);
+  assert.deepEqual(await data('DELETE', `/overlay-studio/${other}/custom-widgets/${otherWidget.id}`, null, 200, other), { deleted: true });
   assert.deepEqual(await data('GET', widgetsPath), { enabled: true, planTier: 'free', limit: 1, used: 0, widgets: [] });
-  console.log('PASS preview gate, owner-only access and free-plan limit in the list.');
+  console.log('PASS every channel can use custom widgets; owner-only access; free-plan limit in the list.');
 
   // Bad imports are rejected before anything is stored.
   for (const [body, pattern] of [[{ files: { ...source, fields: '{oops' } }, /fields file isn't valid JSON/], [{ files: { ...source, data: '[1]' } }, /data file must be a JSON object/],

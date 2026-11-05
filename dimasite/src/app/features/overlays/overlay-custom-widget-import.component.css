@@ -90,3 +90,13 @@ button:not(:disabled):hover { border-color: color-mix(in srgb, var(--accent) 45%
   .body { padding: 1.1rem 1.25rem; }
   .foot { padding: 0.85rem 1.25rem; }
 }
+
+.banner--ok { border-color: color-mix(in srgb, var(--ok) 30%, transparent); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.media-list { display: grid; padding: 0; margin: 0; list-style: none; border: 1px solid var(--line); border-radius: 0.9rem; overflow: hidden; }
+.media-list li { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr) auto; align-items: center; gap: 0.6rem; min-height: 48px; padding: 0.35rem 0.75rem; }
+.media-list li + li { border-top: 1px solid var(--line); }
+.media-list li[data-copied] { opacity: 0.85; }
+.media-list__thumb { width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; object-fit: contain; background: var(--input-bg); }
+.media-list__thumb--icon { display: grid; place-items: center; color: var(--muted); font-size: 0.62rem; font-weight: 800; text-transform: uppercase; }
+.media-list__name { min-width: 0; overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.media-list__size { color: var(--muted); font-size: 0.78rem; font-weight: 650; white-space: nowrap; }

@@ -1,0 +1,8 @@
+{
+  "accent": { "type": "colorpicker", "label": "Accent", "value": "#7c3aed", "group": "Look" },
+  "textColor": { "type": "colorpicker", "label": "Text", "value": "#ffffff", "group": "Look" },
+  "textSize": { "type": "slider", "label": "Text size", "value": 18, "min": 12, "max": 40, "group": "Look" },
+  "limit": { "type": "number", "label": "Messages on screen", "value": 6, "min": 1, "max": 30, "group": "Chat" },
+  "hideCommands": { "type": "checkbox", "label": "Hide !commands", "value": true, "group": "Chat" },
+  "countLabel": { "type": "text", "label": "Counter label", "value": "alerts so far", "group": "Chat" }
+}

@@ -776,6 +776,14 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
 .custom-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .custom-usage { padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--btn); color: var(--muted); font-size: 0.72rem; font-weight: 800; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 .palette.custom-list { grid-template-columns: minmax(0, 1fr); }
+.widget-tests { display: grid; gap: 0.55rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+.widget-tests h3 { margin: 0; }
+.widget-tests__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.widget-tests__target { display: inline-flex; padding: 0.2rem; border: 1px solid var(--line); border-radius: 999px; background: var(--btn); }
+.widget-tests__target button { min-height: 36px; padding: 0.3rem 0.85rem; border: 0; border-radius: 999px; color: var(--fg); background: transparent; font-size: 0.78rem; font-weight: 750; cursor: pointer; }
+.widget-tests__target button[aria-pressed='true'] { color: #fff; background: #7c3aed; }
+.widget-tests__row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.widget-tests__label { flex: 0 0 100%; color: var(--muted); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
 .custom-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 0.4rem; }
 .custom-row .palette-item { min-width: 0; }
 .custom-row__delete { align-self: center; color: var(--danger); }

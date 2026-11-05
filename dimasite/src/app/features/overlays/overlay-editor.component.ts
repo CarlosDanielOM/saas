@@ -6,6 +6,10 @@ import { OverlayWidgetSettingsComponent } from './overlay-widget-settings.compon
 import { CustomWidgetsService, message as apiMessage, type CustomWidgetView } from './custom-widgets.service';
 import { OverlayCustomWidgetImportComponent } from './overlay-custom-widget-import.component';
 import { groupFields } from './custom-widget-format.generated';
+import { EditorWidgetEnv } from './widget-runtime/editor-env';
+import { CUSTOM_WIDGET_ENV } from './widget-runtime/widget-env';
+import { ALERT_TESTS, CHAT_TESTS, testAlert, type AlertTest, type ChatTest } from './widget-runtime/test-events';
+import type { DimaEvent } from './widget-runtime/dima-events';
 import { createWidget, getWidgetModule, widgetModuleFor, widgetPalette } from './overlay-widget-registry';
 import { OverlayInteractionSetupComponent } from './overlay-interaction-setup.component';
 import { OverlayKeyframeEditorComponent } from './overlay-keyframe-editor.component';
@@ -61,7 +65,7 @@ const PALETTE_GROUPS: { id: 'events' | 'interact' | 'media'; kinds: WidgetKind[]
 interface MediaJob { cancel?: () => void; timers: Map<string, ReturnType<typeof setTimeout>>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
+  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
@@ -104,6 +108,11 @@ export class OverlayEditorComponent {
   channel = '';
   readonly assetPickerOpen = signal(false);
   readonly customWidgets = inject(CustomWidgetsService);
+  readonly widgetEnv = inject(EditorWidgetEnv);
+  readonly chatTests = CHAT_TESTS;
+  readonly alertTests = ALERT_TESTS;
+  /** The overlay being edited has custom widget layers (the Test drawer then offers chat and widget alert tests). */
+  readonly customLayers = computed(() => !this.designDraft() && this.widgets().some(w => w.kind === 'custom'));
   readonly customImportOpen = signal(false);
   readonly customError = signal('');
   readonly customBusy = signal('');
@@ -632,6 +641,39 @@ export class OverlayEditorComponent {
     catch (e) { this.customError.set(apiMessage(e) || this.t('customDeleteFailed')); }
     finally { this.customBusy.set(''); }
   }
+  private sampleAlertToWidgets(kind: AlertEvent): void {
+    const name = this.sampleUser().trim().slice(0, 40) || 'Luna', amount = Math.max(1, Math.round(Number(this.sampleAmount()) || 100));
+    const base = testAlert(kind === 'bits' ? 'bits' : kind === 'raid' ? 'raid' : kind === 'sub' ? 'sub' : 'follow');
+    const tier = this.sampleTier() as '1000' | '2000' | '3000';
+    this.widgetEnv.emit({ type: 'alert', data: { ...base, user: { id: 'test-' + name.toLowerCase(), login: name.toLowerCase(), name },
+      amount: kind === 'bits' || kind === 'raid' ? amount : 1, message: kind === 'bits' ? `Cheer${amount}` : base.message, ...(kind === 'sub' ? { tier } : {}) } });
+  }
+  /** Custom widget tests go to the preview, or (after a confirmation) to this overlay in OBS. */
+  readonly widgetTestTarget = signal<'preview' | 'obs'>('preview');
+  readonly widgetTestBusy = signal(false);
+  setWidgetTestTarget(target: 'preview' | 'obs'): void {
+    if (target === 'obs' && this.widgetTestTarget() !== 'obs') {
+      // Tests reach the published version, so only an overlay that was never published blocks them.
+      if (!this.scene()?.published) { this.error.set(this.t('testPublishFirst')); return; }
+      if (!window.confirm(this.t('widgetTestsObsConfirm', { overlay: this.scene().name }))) return;
+    }
+    this.widgetTestTarget.set(target);
+  }
+  private async sendWidgetTest(event: DimaEvent | null): Promise<void> {
+    if (!event) return;
+    if (this.widgetTestTarget() === 'preview') { this.revealStage(); this.widgetEnv.emit(event); return; }
+    if (this.widgetTestBusy()) return;
+    this.widgetTestBusy.set(true); this.error.set('');
+    try {
+      await this.api.request('POST', `${this.channel}/widget-test`, { sceneId: this.sceneId(), type: event.type, data: event.data });
+      this.notice.set('testSent');
+    } catch (e) { this.error.set((e as { error?: { message?: string } })?.error?.message || this.t('testPlaybackError')); }
+    finally { this.widgetTestBusy.set(false); }
+  }
+  sendWidgetChat(kind: ChatTest): void { void this.sendWidgetTest(this.widgetEnv.chatTest(kind)); }
+  sendWidgetAlert(kind: AlertTest): void { void this.sendWidgetTest(this.widgetEnv.alertTest(kind)); }
+  deleteWidgetMessage(): void { void this.sendWidgetTest(this.widgetEnv.deleteTest()); }
+  clearWidgetChat(): void { void this.sendWidgetTest(this.widgetEnv.clearTest()); }
   onPaletteDrag(event: DragEvent, kind: WidgetKind): void { event.dataTransfer?.setData('application/x-overlay-widget', kind); }
   onCanvasDragOver(event: DragEvent): void { event.preventDefault(); }
   onCanvasDrop(event: DragEvent): void {
@@ -804,10 +846,13 @@ export class OverlayEditorComponent {
     if (ALERT_EVENTS.includes(kind as AlertEvent)) this.designEvent.set(kind as AlertEvent);
     if (this.testBusy(kind)) return;
     this.revealStage();
+    // Custom widgets get the same sample alert (viewer, amount and tier from the Test drawer).
+    const widgetAlert = ALERT_EVENTS.includes(kind as AlertEvent) && this.customLayers();
+    if (widgetAlert) this.sampleAlertToWidgets(kind as AlertEvent);
     const real = kind === 'clip' || kind === 'trigger' || kind === 'tts',channel = this.testChannel();
     if (real && (!this.auth.hasValidSession() || !channel)) { this.notice.set('testSignIn'); return; }
     const targets = real ? this.widgets().filter(w => w.visible && w.kind === kind).map(w => w.id) : alertPlacementIds(this.widgets(),kind);
-    if (!targets.length) { this.notice.set('testAddSource'); return; }
+    if (!targets.length) { if (!widgetAlert) this.notice.set('testAddSource'); return; }
     const event: MockEvent = {id:this.nextId++,kind,serialized:this.scene().waitFor.includes(kind),preparing:true,targets,...(real && channel ? {channel:{...channel}} : {})};
     this.queue.update(queue => [...queue,event]); this.runNext();
   }
@@ -1085,7 +1130,7 @@ export class OverlayEditorComponent {
         if (!this.channel) throw new Error('Channel unavailable');
         if (initial) this.findRecovery();
         void this.bitsRules.load(this.channel);
-        void this.customWidgets.load(this.channel);
+        void this.customWidgets.load(this.channel).then(() => { if (this.customWidgets.enabled()) void this.widgetEnv.loadSession(); });
         const state = await this.api.load(this.channel);
         if (this.disposed) return;
         // Replace local work only after the server has returned a complete saved draft.

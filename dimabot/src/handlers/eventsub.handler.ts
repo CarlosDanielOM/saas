@@ -52,7 +52,11 @@ export const eventsubHandler = async (
     }
 
     // Feed-only events bypass announcement configuration and all command/history side effects.
+    // Chat reaches custom widgets even when the bot's chat handling is turned off for this channel.
     switch (subscriptionData.type) {
+        case 'channel.chat.message':
+            void publishWidgetChatEvent(eventData.broadcaster_user_id ?? '', 'chat', eventData);
+            break;
         case 'channel.chat.message_delete':
             void publishWidgetChatEvent(eventData.broadcaster_user_id ?? '', 'chat.delete', eventData);
             return;
@@ -225,7 +229,6 @@ export const eventsubHandler = async (
             break;
         }
         case 'channel.chat.message':
-            void publishWidgetChatEvent(STREAMER.id, 'chat', eventData);
             messageHandler(STREAMER.id, eventData as IChatMessage, options.chatEffectContext);
             break;
         case 'channel.raid':

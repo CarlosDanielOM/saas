@@ -33,7 +33,7 @@
                   </label>
                 }
                 @case ('button') {
-                  <button type="button" class="lf-btn lf-btn--compact" disabled [attr.aria-describedby]="'cw-btn-hint-' + layer().id">{{ field.label }}</button>
+                  <button type="button" class="lf-btn lf-btn--compact" [disabled]="!canPress" (click)="press(field)" [attr.data-button-key]="field.key" [attr.aria-describedby]="'cw-btn-hint-' + layer().id">{{ field.label }}</button>
                 }
                 @default {
                   <label class="cw-label" [for]="inputId(field)">{{ field.label }}</label>

@@ -1,12 +1,8 @@
 # Custom widgets (StreamElements-compatible)
 
-Overlay Studio can import a StreamElements custom widget package and keep it as a layer with its own settings.
-This first step stores the package and builds the settings UI from its fields. The widget's code does not run yet:
-the widget engine (our own runtime, with a StreamElements translation layer on top) is the next step. Until then the
-editor shows a labelled frame and OBS shows nothing for these layers.
-
-**Preview gate:** only channels in `CUSTOM_WIDGET_PREVIEW_CHANNELS` (`src/custom_widgets/store.ts`, currently the owner's
-test channel) see the feature. Everyone else gets `enabled: false` from the list endpoint and 403 `preview` on writes.
+Overlay Studio can import a StreamElements custom widget package (or a native Dima widget) and keep it as a layer with
+its own settings. The widget engine runs the code in Studio's preview and in OBS: see [`CUSTOM_WIDGET_ENGINE.md`](./CUSTOM_WIDGET_ENGINE.md).
+Available to every channel; the only limit is the number of widgets per plan.
 
 ## Package format
 
@@ -38,7 +34,10 @@ is the portable parser shared with Studio (copied to `dimasite/.../custom-widget
                 fields: WidgetField[], data: {…}, externalMedia: [{ url, host, kind, in }], author?, createdAt }] }
 ```
 
-- A revision is immutable: its files, parsed fields and starting values (from data.txt). Replacing the files adds a revision.
+- A revision is immutable: its files, parsed fields, starting values (from data.txt) and `manifest` (widget.json, or
+  inferred from StreamElements code). Replacing the files adds a revision.
+- `media` (on the widget, shared by all revisions): StreamElements files copied into the Asset Library, keyed by
+  base64url(url) → `{ url, assetId }`. Copied assets can't be deleted while a widget uses them.
 - `revisions` keeps the latest revision plus any older one that a **published** overlay still uses; drafts always follow
   the latest. Old revisions and their unshared files are pruned after publishes and file replacements.
 - Plan limits per channel: Free 1, Premium 5, Pro 25 (`CUSTOM_WIDGET_PLAN_LIMITS`).
@@ -73,14 +72,18 @@ All routes are under the owner-only `/overlay-studio/:channelID` guard.
 | `PUT /custom-widgets/:id/files` `{ files }` | New revision |
 | `PATCH /custom-widgets/:id` `{ name }` | Rename |
 | `DELETE /custom-widgets/:id` | 409 `in_use` while an overlay uses it |
-| `GET /custom-widgets/:id/files/:part?revision=` | Original file text |
+| `GET /custom-widgets/:id/files/:part?revision=` | Original file text (`part` also `manifest`) |
+| `GET /custom-widgets/:id/bundle?revision=` | Code + fields + data + manifest + copied media, for the editor preview |
+| `GET` / `POST /custom-widgets/:id/media` | Plan (sizes, storage) / copy StreamElements files into the Asset Library |
+| `GET /custom-widgets/store/:namespace/:key`, `/counters/:name`, `/session` | Editor reads for store, counters, session |
+| `POST /widget-test` `{ sceneId, type, data }` | Send a custom widget test to one published overlay in OBS |
+| `GET /overlay-studio/public/:publicId/custom-widgets/:id/:revision` | OBS: code of a revision this overlay pins |
 
 ## Not built yet
 
-- The widget engine: running the code in a sandboxed frame (scripts only, no access to the site's origin or login),
-  `{field}` substitution, `onWidgetLoad` / `onEventReceived`, `SE_API`, and a chat feed to overlays.
-- Copying StreamElements-hosted media into the channel's storage (import already lists them in `externalMedia`).
-- Tip events (`tip-latest`) and 7TV/BTTV/FFZ emotes.
+- Tip events (`tip-latest` exists but never fires until our tipping feature ships) and 7TV/BTTV/FFZ emotes.
+- Step 5 (`$(widget.signal)`, bot events, live state, code tab): see [`CUSTOM_WIDGET_SIGNALS_PLAN.md`](./CUSTOM_WIDGET_SIGNALS_PLAN.md).
 
-Checks: `node --import tsx --test src/custom_widgets/format.test.ts`, `ops/checks/custom-widgets-api.mjs` (api candidate,
-fake S3) and `ops/checks/custom-widgets-browser.mjs` (site candidate, mocked API).
+Checks: `node --import tsx --test src/custom_widgets/*.test.ts`, `ops/checks/custom-widgets-api.mjs` and
+`ops/checks/custom-widgets-engine-api.mjs` (api candidate, fake S3 + fake StreamElements CDN; staging notes in each file)
+and `ops/checks/custom-widgets-browser.mjs` (site candidate, mocked API).

@@ -97,7 +97,7 @@ Dima.log('loaded'); // aparece en el Registro del widget de Studio
 await Dima.setField('accent', '#ff66aa'); // solo en el editor
 ```
 
-`Dima.setField(key, value, reload = true)` sirve para herramientas que solo funcionan en el editor. Cambia un ajuste desde el código y lo valida con la definición del campo. En modo directo devuelve un error. `Dima.done()` no hace nada en la versión 1. Los widgets Dima nativos tienen un espacio de almacenamiento propio; los widgets de StreamElements comparten el espacio `se` del canal.
+`Dima.setField(key, value, reload = true)` sirve para herramientas que solo funcionan en el editor. Cambia un ajuste desde el código y lo valida con la definición del campo. En modo directo devuelve un error. `Dima.done()` no hace nada en la versión 1. Los widgets Dima nativos tienen un espacio de almacenamiento propio. Los widgets de StreamElements comparten el espacio `se` del canal. Los eventos de actualización incluyen `{ key, value, namespace }`. Cada widget solo recibe actualizaciones de su propio espacio: el ID del widget Dima nativo o `se` para todos los widgets de StreamElements del canal. Así funciona el kvstore compartido de StreamElements.
 
 ### Eventos
 
@@ -111,7 +111,7 @@ Suscríbete con `Dima.on(type, handler)`. Devuelve una función para cancelar la
 | `alert` | `DimaAlert` (forma más abajo) | `alerts` |
 | `button` | `{ field: string, value: unknown }` | Solo editor; siempre disponible en la vista previa |
 | `fields` | Objeto de ajustes actual | Solo editor |
-| `store` | `{ key: string, value: unknown }` después de guardar un valor | `store` |
+| `store` | `{ key: string, value: unknown, namespace: string }` después de guardar un valor | `store` |
 | `session` | `{ data: Record<string, unknown>, recents: unknown[] }` | `session` |
 
 `Dima.ready()` devuelve un objeto con `widget: { id, layerId, name, revision }`, `channel: { id, login, name }`, `fields`, `mode` (`"editor"` o `"live"`), `muted` y `session` (o `null`).
@@ -157,7 +157,7 @@ Un evento de alerta tiene esta forma:
 }
 ```
 
-`DimaSession.data` es una instantánea compatible con el formato de StreamElements, con claves como `follower-latest`, `subscriber-recent` y `cheer-session`; `recents` contiene alertas recientes. La instantánea se crea con los eventos desde que empezó el directo actual o, si no hay un inicio registrado, de las últimas 24 horas. Algunos totales que aún no se pueden calcular aparecen en cero. Los valores de propinas seguirán vacíos hasta que estén disponibles.
+`DimaSession.data` es una instantánea compatible con el formato de StreamElements, con claves como `follower-latest`, `subscriber-recent`, `cheer-session` y `follower-week`. `recents` contiene alertas recientes. Los conteos y las cantidades de `-session` abarcan todo el directo actual o, si no hay un inicio registrado, las últimas 24 horas. Los de `-week` abarcan los últimos 7 días. Los valores `*-latest` y `*-recent` salen de las 500 alertas más recientes. Cada lista `*-recent` contiene hasta 25 elementos. Algunos totales que aún no se pueden calcular aparecen en cero. Los valores de propinas seguirán vacíos hasta que estén disponibles.
 
 `Dima.html(message)` escapa el texto y genera elementos `<img>` para los emotes de Twitch. Usa `Dima.escape` para escapar texto de espectadores que insertes tú mismo en HTML. Para otro texto dinámico, es preferible usar `textContent`.
 
@@ -239,7 +239,7 @@ Usa `"engine": "streamelements"` (o importa un paquete sin manifiesto) para carg
 
 En el chat, `event.data` incluye `time`, etiquetas `tags` al estilo IRC, `nick`, `userId`, `displayName`, `displayColor`, `badges`, `channel`, `text`, `isAction`, `emotes` y `msgId`; `event.renderedText` es HTML escapado con emotes de Twitch. Los objetos de alerta incluyen, según el tipo, campos como `name`, `amount`, `tier`, `message`, `gifted`, `sender` o `currency`.
 
-Los métodos `SE_API` disponibles son `store.get/set`, `counters.get(name)`, `sanitize({ message })`, `cheerFilter(text)`, `getOverlayStatus()`, `resumeQueue()` y `setField(key, value, reload)`. `store` usa un espacio de nombres compartido por el canal, como en StreamElements. `sanitize` devuelve el mensaje sin cambios; `resumeQueue` no hace nada en la versión 1; y `setField` solo funciona en el editor. La capa no ofrece un token de API de StreamElements, llamadas exclusivas de esa plataforma ni emotes de terceros. StreamElements no tiene un evento para limpiar todo el chat, así que solo se puede traducir la limpieza de mensajes de un usuario a `delete-messages`.
+Los métodos `SE_API` disponibles son `store.get/set`, `counters.get(name)`, `sanitize({ message })`, `cheerFilter(text)`, `getOverlayStatus()`, `resumeQueue()` y `setField(key, value, reload)`. `store` usa un espacio de nombres compartido por el canal, como en StreamElements. `sanitize` devuelve el mensaje sin cambios. Si el widget tiene el ajuste `widgetDuration`, pone en cola los eventos de alerta que recibe `onEventReceived`. Las alertas se reproducen de una en una. Cada una espera esos segundos, hasta 300, salvo que `SE_API.resumeQueue()` libere antes la siguiente. Pueden esperar hasta 50 alertas. El chat y los demás eventos nunca esperan. Sin `widgetDuration`, las alertas no se ponen en cola. `setField` solo funciona en el editor. La capa no ofrece un token de API de StreamElements, llamadas exclusivas de esa plataforma ni emotes de terceros. StreamElements no tiene un evento para limpiar todo el chat. Una limpieza completa vuelve a cargar sus widgets para que empiecen de cero. La limpieza de un usuario se traduce a `delete-messages`. Los widgets Dima nativos reciben `chat.clear` con `userId: null` al limpiar todo el chat.
 
 Los widgets de StreamElements sustituyen `{key}` y `{{key}}` en HTML, CSS y JavaScript. Los widgets Dima nativos solo sustituyen en HTML y CSS; JavaScript consulta los valores actuales en `Dima.fields`. Al cambiar ajustes en el editor, los widgets Dima nativos reciben un evento `fields`; los widgets de StreamElements vuelven a cargarse, como suelen hacer en su plataforma.
 

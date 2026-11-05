@@ -1,28 +1,29 @@
 import { createHash } from 'node:crypto';
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { BUCKET, s3Client } from '../utils/s3.js';
-import type { PackageFile, PackageSource } from './format.js';
+import type { PackageFile, PackageInput } from './format.js';
 
 export interface FileRef { key: string; sha256: string; bytes: number }
-export type PackageFiles = Record<PackageFile, FileRef>;
+export type PackageFiles = Record<PackageFile, FileRef> & { manifest?: FileRef };
+export type StoredFile = PackageFile | 'manifest';
 
 /**
  * Widget files are private S3 objects (no public ACL), addressed by content so unchanged files are
  * shared between revisions. The API reads them back; nothing links to the bucket directly.
  */
-export const fileKey = (owner: string, widgetId: string, file: PackageFile, sha256: string) => `custom-widgets/${owner}/${widgetId}/${file}/${sha256}.txt`;
+export const fileKey = (owner: string, widgetId: string, file: StoredFile, sha256: string) => `custom-widgets/${owner}/${widgetId}/${file}/${sha256}.txt`;
 
-export function describeFiles(owner: string, widgetId: string, source: PackageSource): PackageFiles {
+export function describeFiles(owner: string, widgetId: string, source: PackageInput): PackageFiles {
   const refs = {} as PackageFiles;
-  for (const file of Object.keys(source) as PackageFile[]) {
-    const body = Buffer.from(source[file], 'utf8'), sha256 = createHash('sha256').update(body).digest('hex');
+  for (const file of Object.keys(source).filter(key => source[key as StoredFile] !== undefined) as StoredFile[]) {
+    const body = Buffer.from(source[file]!, 'utf8'), sha256 = createHash('sha256').update(body).digest('hex');
     refs[file] = { key: fileKey(owner, widgetId, file, sha256), sha256, bytes: body.length };
   }
   return refs;
 }
 
-export async function putFiles(refs: PackageFiles, source: PackageSource): Promise<void> {
-  const unique = new Map(Object.entries(refs).map(([file, ref]) => [ref.key, source[file as PackageFile]]));
+export async function putFiles(refs: PackageFiles, source: PackageInput): Promise<void> {
+  const unique = new Map(Object.entries(refs).map(([file, ref]) => [ref.key, source[file as StoredFile]!]));
   await Promise.all([...unique].map(([key, text]) => s3Client.send(new PutObjectCommand({
     Bucket: BUCKET, Key: key, Body: Buffer.from(text, 'utf8'), ContentType: 'text/plain; charset=utf-8', CacheControl: 'private, max-age=31536000, immutable'
   }))));

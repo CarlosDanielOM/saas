@@ -4,6 +4,7 @@ import { LucideAngularModule, RotateCcw, Search, SlidersHorizontal } from 'lucid
 import { LanguageService } from '../../services/language.service';
 import { fieldValue, groupFields, resolveFieldData, type JsonObject, type JsonValue, type WidgetField } from './custom-widget-format.generated';
 import { CustomWidgetsService } from './custom-widgets.service';
+import { EditorWidgetEnv } from './widget-runtime/editor-env';
 import type { OverlayWidget } from './overlay.model';
 import type { WidgetSettingsContext } from './overlay-widget-module';
 
@@ -32,6 +33,7 @@ export class OverlayCustomWidgetFieldsComponent {
   readonly previewChange = output<string>();
   private readonly widgets = inject(CustomWidgetsService);
   private readonly language = inject(LanguageService);
+  private readonly env = inject(EditorWidgetEnv, { optional: true });
   readonly icons = { RotateCcw, Search, SlidersHorizontal };
   readonly fonts = FONT_SUGGESTIONS;
 
@@ -108,6 +110,9 @@ export class OverlayCustomWidgetFieldsComponent {
     const raw = (event.target as HTMLInputElement | HTMLTextAreaElement).value;
     this.set(field, field.multiple ? raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean) : raw.trim());
   }
+  /** Setting buttons send a `widget-button` event to this layer's preview (StreamElements behaviour). */
+  press(field: WidgetField): void { this.env?.pressButton(this.layer().id, field.key, field.value ?? field.key); }
+  readonly canPress = !!this.env;
   reset(field: WidgetField): void { this.write(field.key, undefined); this.clearError(field.key); }
   resetAll(): void { this.errors.set({}); this.emit({}); }
 

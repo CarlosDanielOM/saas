@@ -2,18 +2,27 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom, map, timeout } from 'rxjs';
 import { OverlayApi } from './overlay-api.service';
-import type { CustomWidgetPlan, ExternalMedia, FieldIssue, JsonObject, PackageFile, PackageSource, WidgetField } from './custom-widget-format.generated';
+import type { CustomWidgetPlan, ExternalMedia, FieldIssue, JsonObject, PackageFile, PackageInput, WidgetField, WidgetManifest } from './custom-widget-format.generated';
+import type { DimaSession } from './widget-runtime/dima-events';
+import type { RuntimeBundle } from './widget-runtime/widget-env';
 
 export interface WidgetUse { sceneId: string; sceneName: string; draft: boolean; published: boolean }
 /** Mirrors `CustomWidgetView` in dimabot/src/custom_widgets/store.ts. */
 export interface CustomWidgetView {
   id: string; name: string; engine: 'streamelements'; revision: number; author?: string;
-  fields: WidgetField[]; data: JsonObject; externalMedia: ExternalMedia[];
+  fields: WidgetField[]; data: JsonObject; externalMedia: ExternalMedia[]; manifest: WidgetManifest | null; media: Record<string, string>;
   files: Record<PackageFile, { bytes: number; sha256: string }>;
   createdAt: string; updatedAt: string; usedIn: WidgetUse[];
 }
 export interface CustomWidgetList { enabled: boolean; planTier: CustomWidgetPlan; limit: number; used: number; widgets: CustomWidgetView[] }
 export interface ImportResult { widget: CustomWidgetView; issues: FieldIssue[] }
+export interface MediaFile { url: string; kind: string; bytes: number | null; copied: boolean; assetId?: string }
+export interface MediaPlan { files: MediaFile[]; totalBytes: number; unknownSizes: number; quota: { usedBytes: number; quotaBytes: number } }
+export interface MediaCopyResult { copied: Record<string, string>; failed: { url: string; reason: string }[] }
+/** StreamElements-hosted images, videos and sounds not yet copied into the channel's storage. */
+export function copyableMedia(widget: Pick<CustomWidgetView, 'externalMedia' | 'media'>): number {
+  return widget.externalMedia.filter(item => ['image', 'video', 'audio'].includes(item.kind) && /^(cdn|static)\.streamelements\.com$/i.test(item.host) && !widget.media?.[item.url]).length;
+}
 
 /** The channel's imported widgets, shared by the Add panel, layer settings and import dialog. */
 @Injectable({ providedIn: 'root' })
@@ -38,12 +47,12 @@ export class CustomWidgetsService {
     catch (error) { if (channel === this.channel) this.error.set(message(error)); }
     finally { if (channel === this.channel) this.loading.set(false); }
   }
-  async create(name: string, files: PackageSource): Promise<ImportResult> {
+  async create(name: string, files: PackageInput): Promise<ImportResult> {
     const result = await this.api.request<ImportResult>('POST', `${this.channel}/custom-widgets`, { name, files }, 60000);
     this.patchList(list => ({ ...list, used: list.used + 1, widgets: [...list.widgets, result.widget] }));
     return result;
   }
-  async replace(id: string, files: PackageSource): Promise<ImportResult> {
+  async replace(id: string, files: PackageInput): Promise<ImportResult> {
     const result = await this.api.request<ImportResult>('PUT', `${this.channel}/custom-widgets/${id}/files`, { files }, 60000);
     this.patchList(list => ({ ...list, widgets: list.widgets.map(widget => widget.id === id ? result.widget : widget) }));
     return result;
@@ -58,9 +67,36 @@ export class CustomWidgetsService {
     this.patchList(list => ({ ...list, used: Math.max(0, list.used - 1), widgets: list.widgets.filter(widget => widget.id !== id) }));
   }
   /** Original file text (latest revision unless one is given). */
-  file(id: string, file: PackageFile, revision?: number): Promise<string> {
+  file(id: string, file: PackageFile | 'manifest', revision?: number): Promise<string> {
     const query = revision === undefined ? '' : `?revision=${revision}`;
     return firstValueFrom(this.http.get(`${this.api.base}/overlay-studio/${this.channel}/custom-widgets/${id}/files/${file}${query}`, { responseType: 'text' }).pipe(timeout(30000), map(text => text)));
+  }
+  /** Code and settings of one revision (latest unless given), for the editor preview. */
+  bundle(id: string, revision?: number): Promise<RuntimeBundle> {
+    return this.api.request<RuntimeBundle>('GET', `${this.channel}/custom-widgets/${id}/bundle${revision === undefined ? '' : `?revision=${revision}`}`, undefined, 30000);
+  }
+  /** Copied media load from short-lived links in the editor (frames can't send the login token). */
+  async resolveMedia(bundle: RuntimeBundle): Promise<RuntimeBundle> {
+    const entries = Object.entries(bundle.media ?? {});
+    if (!entries.length) return bundle;
+    const resolved = await Promise.all(entries.map(async ([url, assetId]) => {
+      try { const access = await firstValueFrom(this.http.get<{ data: { path: string } }>(`${this.api.base}/asset-library/${this.channel}/${assetId}/access?for=custom-widget`)); return [url, this.api.base + access.data.path] as const; }
+      catch { return [url, url] as const; }
+    }));
+    return { ...bundle, media: Object.fromEntries(resolved) };
+  }
+  storeGet(namespace: string, key: string): Promise<unknown> {
+    return this.api.request<{ value: unknown }>('GET', `${this.channel}/custom-widgets/store/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}`).then(result => result.value);
+  }
+  counter(name: string): Promise<number> {
+    return this.api.request<{ value: number }>('GET', `${this.channel}/custom-widgets/counters/${encodeURIComponent(name)}`).then(result => result.value);
+  }
+  session(): Promise<DimaSession> { return this.api.request<DimaSession>('GET', `${this.channel}/custom-widgets/session`); }
+  mediaPlan(id: string): Promise<MediaPlan> { return this.api.request<MediaPlan>('GET', `${this.channel}/custom-widgets/${id}/media`, undefined, 60000); }
+  async copyMedia(id: string, urls: string[]): Promise<MediaCopyResult> {
+    const result = await this.api.request<MediaCopyResult>('POST', `${this.channel}/custom-widgets/${id}/media`, { urls }, 600000);
+    if (Object.keys(result.copied).length) this.patchList(list => ({ ...list, widgets: list.widgets.map(widget => widget.id === id ? { ...widget, media: { ...widget.media, ...result.copied } } : widget) }));
+    return result;
   }
   private patchList(change: (list: CustomWidgetList) => CustomWidgetList): void { const list = this.list(); if (list) this.list.set(change(list)); }
 }

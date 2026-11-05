@@ -1,0 +1,39 @@
+// DomDimaBot native sample widget (Dima SDK v1). Written for tests; free to reuse.
+const chat = document.querySelector('.chat');
+const banner = document.querySelector('.banner');
+let settings = {};
+function applySettings(fields) {
+  settings = fields;
+  document.documentElement.style.setProperty('--accent', fields.accent);
+  document.documentElement.style.setProperty('--text', fields.textColor);
+  document.documentElement.style.setProperty('--size', fields.textSize + 'px');
+}
+Dima.ready().then(async ctx => {
+  applySettings(ctx.fields);
+  document.body.dataset.channel = ctx.channel.login;
+  document.body.dataset.mode = ctx.mode;
+  document.body.dataset.session = String(ctx.session?.data?.['follower-latest']?.name ?? '');
+  document.querySelector('.count').textContent = String((await Dima.store.get('alerts')) ?? 0);
+  document.querySelector('.deaths').textContent = String(await Dima.counters.get('!deaths'));
+  console.log('ready', ctx.channel.login);
+});
+Dima.on('fields', applySettings);
+Dima.on('chat', message => {
+  if (settings.hideCommands && message.text.startsWith('!')) return;
+  const item = document.createElement('li');
+  item.className = 'msg' + (message.firstMessage ? ' first' : '');
+  item.dataset.id = message.id;
+  item.dataset.user = message.user.id;
+  item.innerHTML = '<span class="name" style="color:' + Dima.escape(message.user.color || '#c4b5fd') + '">' + Dima.escape(message.user.name) + '</span>' + Dima.html(message);
+  chat.append(item);
+  while (chat.children.length > Number(settings.limit || 6)) chat.firstElementChild.remove();
+});
+Dima.on('chat.delete', ({ messageId }) => chat.querySelector('[data-id="' + CSS.escape(messageId) + '"]')?.remove());
+Dima.on('chat.clear', ({ userId }) => chat.querySelectorAll(userId ? '[data-user="' + CSS.escape(userId) + '"]' : '.msg').forEach(node => node.remove()));
+Dima.on('alert', async alert => {
+  banner.hidden = false;
+  banner.querySelector('.banner__text').textContent = (alert.user ? alert.user.name : 'Someone') + ' · ' + alert.type + (alert.amount > 1 ? ' ×' + alert.amount : '');
+  const count = Number((await Dima.store.get('alerts')) ?? 0) + 1;
+  await Dima.store.set('alerts', count);
+});
+Dima.on('store', ({ key, value }) => { if (key === 'alerts') document.querySelector('.count').textContent = String(value); });

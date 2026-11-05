@@ -2,9 +2,10 @@
 let settings = {};
 const chat = () => document.querySelector('.chat');
 const escapeHtml = text => String(text).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
-function addRow(html, className) {
+function addRow(html, className, id) {
   const row = document.createElement('div');
   row.className = 'row ' + (className || '');
+  if (id) row.dataset.id = id;
   row.innerHTML = html;
   if (settings.alignMessages === 'top') chat().prepend(row); else chat().append(row);
   const rows = chat().children, limit = Number(settings.messageLimit) || 10;
@@ -22,7 +23,7 @@ window.addEventListener('onEventReceived', event => {
     const message = data.data;
     if (settings.hideCommands && message.text.startsWith('!')) return;
     if (String(settings.ignoredUsers || '').toLowerCase().split(',').map(s => s.trim()).includes(message.nick)) return;
-    addRow('<span class="name">' + escapeHtml(message.displayName) + '</span><span>' + escapeHtml(message.text) + '</span>');
+    addRow('<span class="name">' + escapeHtml(message.displayName) + '</span><span>' + escapeHtml(message.text) + '</span>', '', message.msgId);
   }
   if (listener === 'delete-message') document.querySelectorAll('.row').forEach(row => row.dataset.id === data.msgId && row.remove());
   if (settings.showAlerts && listener === 'follower-latest') addRow(escapeHtml(data.name) + ' followed', 'alert');

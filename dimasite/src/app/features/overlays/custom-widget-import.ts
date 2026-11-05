@@ -1,13 +1,13 @@
-import { PACKAGE_FILES, PackageFormatError, groupFields, isStreamElementsHost, matchPackageFiles, parseWidgetIni, readPackage,
-  type ExternalMedia, type FieldIssue, type PackageFile, type PackageSource } from './custom-widget-format.generated';
+import { MANIFEST_FILE, PACKAGE_FILES, PackageFormatError, groupFields, isStreamElementsHost, matchPackageFiles, parseWidgetIni, readPackage,
+  type ExternalMedia, type FieldIssue, type PackageFile, type PackageInput, type WidgetManifest } from './custom-widget-format.generated';
 import { ZipError, blobBytes, blobText, readZip } from './custom-widget-zip';
 
 export interface PickedFile { path: string; blob: Blob }
 export interface ImportPart { file: PackageFile; name: string | null; bytes: number }
-export interface ImportSummary { settings: number; groups: number; issues: FieldIssue[]; remote: ExternalMedia[]; streamElements: ExternalMedia[]; author?: string }
+export interface ImportSummary { settings: number; groups: number; issues: FieldIssue[]; remote: ExternalMedia[]; streamElements: ExternalMedia[]; manifest: WidgetManifest; author?: string }
 /** What the import dialog shows before anything is uploaded. */
 export interface ImportDraft {
-  source: PackageSource | null;
+  source: PackageInput | null;
   parts: ImportPart[];
   suggestedName: string;
   summary: ImportSummary | null;
@@ -47,12 +47,14 @@ export async function readImport(picked: readonly PickedFile[]): Promise<ImportD
   const scope = ini ? entries.filter(entry => folder(entry.path) === folder(ini.path)) : entries;
   const names = matchPackageFiles(scope.map(entry => entry.path), ini ? parseWidgetIni(ini.text) : undefined);
   if (!fallbackName && ini && folder(ini.path)) fallbackName = folder(ini.path).split('/').pop()!;
-  const source = {} as PackageSource, parts: ImportPart[] = [];
+  const source = {} as PackageInput, parts: ImportPart[] = [];
   for (const file of PACKAGE_FILES) {
     const entry = names[file] ? scope.find(item => item.path === names[file]) : undefined;
     source[file] = entry?.text ?? '';
     parts.push({ file, name: entry ? entry.path.split('/').pop()! : null, bytes: entry ? new TextEncoder().encode(entry.text).length : 0 });
   }
+  const manifest = scope.find(entry => entry.path.split('/').pop()!.toLowerCase() === MANIFEST_FILE);
+  if (manifest) source.manifest = manifest.text;
   if (!source.html.trim() && !source.css.trim() && !source.js.trim()) return { ...empty('noCode'), parts };
   try {
     const pkg = readPackage(source);
@@ -60,7 +62,7 @@ export async function readImport(picked: readonly PickedFile[]): Promise<ImportD
     return { source, parts, error: '', errorDetail: '',
       suggestedName: (pkg.name || fallbackName || '').slice(0, 80),
       summary: { settings: groups.reduce((sum, group) => sum + group.fields.length, 0), groups: groups.length, issues: pkg.issues,
-        remote: pkg.externalMedia, streamElements: pkg.externalMedia.filter(item => isStreamElementsHost(item.host)), ...(pkg.author ? { author: pkg.author } : {}) } };
+        remote: pkg.externalMedia, streamElements: pkg.externalMedia.filter(item => isStreamElementsHost(item.host)), manifest: pkg.manifest, ...(pkg.author ? { author: pkg.author } : {}) } };
   } catch (error) {
     return { ...empty('format', error instanceof PackageFormatError ? error.message : String(error)), parts, suggestedName: fallbackName };
   }

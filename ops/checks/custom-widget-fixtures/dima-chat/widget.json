@@ -1,0 +1,9 @@
+{
+  "engine": "dima",
+  "api": 1,
+  "name": "Dima sample chat",
+  "author": "DomDimaBot",
+  "version": "1.0.0",
+  "description": "Chat bubbles with emotes, a follow/Bits banner and a saved alert counter.",
+  "uses": ["chat", "alerts", "store", "counters", "session"]
+}

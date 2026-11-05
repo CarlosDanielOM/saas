@@ -97,7 +97,7 @@ Dima.log('loaded'); // appears in Studio's Widget log
 await Dima.setField('accent', '#ff66aa'); // editor only
 ```
 
-`Dima.setField(key, value, reload = true)` is for editor-only tools. It changes a setting from code, validating it against the field definition. It rejects in live mode. `Dima.done()` is a no-op in v1. Native Dima widgets get a store namespace scoped to their widget; StreamElements widgets share the `se` namespace across the channel.
+`Dima.setField(key, value, reload = true)` is for editor-only tools. It changes a setting from code and validates it against the field definition. It rejects in live mode. `Dima.done()` is a no-op in v1. Native Dima widgets get a store namespace scoped to their widget. StreamElements widgets share the `se` namespace across the channel. Store update events include `{ key, value, namespace }`. Widgets only receive updates for their own store: the widget ID for native Dima widgets, or `se` for all StreamElements widgets in the channel. This matches StreamElements' shared kvstore.
 
 ### Events
 
@@ -111,7 +111,7 @@ Subscribe with `Dima.on(type, handler)`. It returns an unsubscribe function. You
 | `alert` | `DimaAlert` (shape below) | `alerts` |
 | `button` | `{ field: string, value: unknown }` | Editor only; always available in preview |
 | `fields` | The current settings object | Editor only |
-| `store` | `{ key: string, value: unknown }` after a store write | `store` |
+| `store` | `{ key: string, value: unknown, namespace: string }` after a store write | `store` |
 | `session` | `{ data: Record<string, unknown>, recents: unknown[] }` | `session` |
 
 `Dima.ready()` resolves to an object with `widget: { id, layerId, name, revision }`, `channel: { id, login, name }`, `fields`, `mode` (`"editor"` or `"live"`), `muted`, and `session` (or `null`).
@@ -157,7 +157,7 @@ An alert event has this shape:
 }
 ```
 
-`DimaSession.data` is a StreamElements-style snapshot with keys such as `follower-latest`, `subscriber-recent`, and `cheer-session`; `recents` contains recent alert items. The snapshot is built from events since the current stream started, or the past 24 hours if no stream start is available. Some totals that cannot yet be calculated are present as zero. Tips remain empty until tipping is available.
+`DimaSession.data` is a StreamElements-style snapshot with keys such as `follower-latest`, `subscriber-recent`, `cheer-session`, and `follower-week`. `recents` contains recent alert items. Session counts and amounts cover the whole current stream, or the past 24 hours if no stream start is available. Week counts and amounts cover the past 7 days. The `*-latest` and `*-recent` values come from the newest 500 alerts. Each `*-recent` list contains up to 25 items. Some totals that cannot yet be calculated are present as zero. Tips remain empty until tipping is available.
 
 `Dima.html(message)` escapes message text and produces `<img>` elements for Twitch emotes. Use `Dima.escape` for viewer-controlled text you insert into HTML yourself. For other dynamic DOM text, prefer `textContent`.
 
@@ -239,7 +239,7 @@ Set `"engine": "streamelements"` (or import a package without a manifest) to loa
 
 For chat, `event.data` includes `time`, IRC-style `tags`, `nick`, `userId`, `displayName`, `displayColor`, `badges`, `channel`, `text`, `isAction`, `emotes`, and `msgId`; `event.renderedText` is escaped HTML with Twitch emotes. Alert objects include the listener-specific fields such as `name`, `amount`, `tier`, `message`, `gifted`, `sender`, or `currency` where applicable.
 
-The supported `SE_API` methods are `store.get/set`, `counters.get(name)`, `sanitize({ message })`, `cheerFilter(text)`, `getOverlayStatus()`, `resumeQueue()`, and `setField(key, value, reload)`. `store` uses a channel-wide StreamElements namespace. `sanitize` returns the message unchanged, `resumeQueue` does nothing in SDK v1, and `setField` only works in the editor. The layer does not provide a StreamElements API token, StreamElements-only API calls, or third-party emotes. A whole-chat clear has no StreamElements event, so only clear-by-user maps to `delete-messages`.
+The supported `SE_API` methods are `store.get/set`, `counters.get(name)`, `sanitize({ message })`, `cheerFilter(text)`, `getOverlayStatus()`, `resumeQueue()`, and `setField(key, value, reload)`. `store` uses a channel-wide StreamElements namespace. `sanitize` returns the message unchanged. A widget with a `widgetDuration` setting queues alert events received by `onEventReceived`. Alerts play one at a time. Each waits for that many seconds, up to 300, unless `SE_API.resumeQueue()` releases the next alert early. Up to 50 alerts can wait. Chat and other events never wait. Without `widgetDuration`, alerts are not queued. `setField` only works in the editor. The layer does not provide a StreamElements API token, StreamElements-only API calls, or third-party emotes. StreamElements has no whole-chat-clear event. A whole-chat clear reloads StreamElements widgets so they start fresh. A user clear maps to `delete-messages`. Native Dima widgets receive `chat.clear` with `userId: null` for a whole-chat clear.
 
 StreamElements widgets substitute `{key}` and `{{key}}` in HTML, CSS, and JavaScript. Native Dima widgets substitute in HTML and CSS; JavaScript reads current values from `Dima.fields`. When settings change in the editor, native Dima widgets receive a `fields` event; StreamElements widgets reload, matching their usual behavior.
 

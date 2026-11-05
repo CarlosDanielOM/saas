@@ -11,6 +11,7 @@ import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { AssetError, MAX_ASSET_BYTES, assetQuota, deleteAsset, findAsset, listAssets, uploadAsset, requireMoodAssetPlan } from '../../assets/library.js';
 import { serveAsset } from '../../assets/http.js';
+import { widgetMediaAsset } from '../../custom_widgets/store.js';
 
 export const assetLibraryRoute = express.Router();
 const wrap = (fn: (req: AuthRequest, res: Response) => Promise<unknown>) => (req: AuthRequest, res: Response, next: NextFunction) => { void fn(req, res).catch(next); };
@@ -41,7 +42,10 @@ assetLibraryRoute.get('/:channelID', wrap(async (req, res) => ok(res, await list
 assetLibraryRoute.get('/:channelID/:id/access', wrap(async (req, res) => {
   const asset = await findAsset(param(req, 'channelID'), param(req, 'id'), true);
   await requireMoodAssetPlan(param(req, 'channelID'), asset);
-  const ticket = jwt.sign({ owner: param(req, 'channelID') }, secret(), { algorithm: 'HS256', audience: 'asset-preview', subject: asset.id, expiresIn: '15m' });
+  // Custom widgets load copied sounds and videos whenever they play, long after the frame started: their Studio
+  // preview links last a working session. Everything else keeps short links.
+  const long = req.query.for === 'custom-widget' && await widgetMediaAsset(param(req, 'channelID'), asset.id);
+  const ticket = jwt.sign({ owner: param(req, 'channelID') }, secret(), { algorithm: 'HS256', audience: 'asset-preview', subject: asset.id, expiresIn: long ? '12h' : '15m' });
   return ok(res, { path: `/asset-library/content/${asset.id}?ticket=${encodeURIComponent(ticket)}` });
 }));
 // Bound ingress globally and per owner before accepting multipart bytes.

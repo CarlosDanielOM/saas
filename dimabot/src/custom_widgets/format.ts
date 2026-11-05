@@ -7,6 +7,10 @@
 export const PACKAGE_FILES = ['html', 'css', 'js', 'fields', 'data'] as const;
 export type PackageFile = typeof PACKAGE_FILES[number];
 export type PackageSource = Record<PackageFile, string>;
+/** A package as uploaded: the five StreamElements parts plus our optional `widget.json` manifest. */
+export type PackageInput = PackageSource & { manifest?: string };
+export const MANIFEST_FILE = 'widget.json';
+export const MANIFEST_BYTES = 16_000;
 
 export const CUSTOM_WIDGET_LIMITS = {
   fileBytes: { html: 512_000, css: 512_000, js: 1_000_000, fields: 256_000, data: 128_000 } as Readonly<Record<PackageFile, number>>,
@@ -48,7 +52,19 @@ export interface WidgetField {
   min?: number; max?: number; step?: number;
   multiple?: boolean;
 }
-export interface FieldIssue { key?: string; code: 'invalid-key' | 'invalid-field' | 'too-many-fields' | 'no-options' | 'invalid-value' | 'invalid-data-key' | 'data-value-dropped'; detail?: string }
+export interface FieldIssue { key?: string; code: 'invalid-key' | 'invalid-field' | 'too-many-fields' | 'no-options' | 'invalid-value' | 'invalid-data-key' | 'data-value-dropped' | 'unknown-use'; detail?: string }
+
+/** Which runtime API the widget's code was written for. `streamelements` adds the StreamElements translation layer. */
+export type WidgetEngine = 'dima' | 'streamelements';
+/** Data a widget can ask for (Dima SDK v1). Studio shows these in plain words; the server streams only these. */
+export const WIDGET_USES = ['chat', 'alerts', 'store', 'counters', 'session'] as const;
+export type WidgetUse = typeof WIDGET_USES[number];
+export interface WidgetManifest {
+  engine: WidgetEngine; api: 1; uses: WidgetUse[];
+  name?: string; author?: string; version?: string; description?: string;
+  /** True when Studio worked it out from StreamElements code instead of reading a widget.json. */
+  inferred?: boolean;
+}
 export class PackageFormatError extends Error { constructor(readonly code: string, message: string) { super(message); } }
 
 /** StreamElements reserves field names starting with `widget`; these three are documented. */
@@ -344,8 +360,43 @@ export function matchPackageFiles(names: readonly string[], ini?: Partial<Record
   return result;
 }
 
+/** Reads widget.json. Unknown `uses` entries become issues; an unknown engine or API version is refused. */
+export function parseManifest(text: string): { manifest: WidgetManifest; issues: FieldIssue[] } {
+  const trimmed = text.replace(/^\uFEFF/, '').trim();
+  let raw: unknown;
+  try { raw = JSON.parse(trimmed); } catch (error) { throw new PackageFormatError('invalid-manifest', `widget.json isn't valid JSON: ${(error as Error).message}`); }
+  if (!isObject(raw)) throw new PackageFormatError('invalid-manifest', 'widget.json must be a JSON object ({ ... })');
+  const engine = raw['engine'] === undefined ? 'dima' : raw['engine'];
+  if (engine !== 'dima' && engine !== 'streamelements') throw new PackageFormatError('invalid-manifest', 'widget.json: "engine" must be "dima" or "streamelements"');
+  if ((raw['api'] ?? 1) !== 1) throw new PackageFormatError('unsupported-api', 'widget.json: this widget needs a newer widget engine ("api" must be 1)');
+  const issues: FieldIssue[] = [], uses: WidgetUse[] = [];
+  for (const use of Array.isArray(raw['uses']) ? raw['uses'] : []) {
+    if ((WIDGET_USES as readonly unknown[]).includes(use)) { if (!uses.includes(use as WidgetUse)) uses.push(use as WidgetUse); }
+    else issues.push({ code: 'unknown-use', detail: String(use).slice(0, 40) });
+  }
+  const manifest: WidgetManifest = { engine, api: 1, uses };
+  for (const [key, max] of [['name', CUSTOM_WIDGET_LIMITS.name], ['author', 80], ['version', 40], ['description', 300]] as const) {
+    const value = raw[key];
+    if (typeof value === 'string' && value.trim()) manifest[key] = value.trim().slice(0, max);
+  }
+  return { manifest, issues };
+}
+/** What a StreamElements widget reads, worked out from the listeners and APIs its code mentions. */
+export function inferManifest(source: Pick<PackageSource, 'html' | 'js'>): WidgetManifest {
+  const code = source.js + '\n' + source.html, uses: WidgetUse[] = [];
+  // Listener names are often built indirectly, so any onEventReceived handler gets chat and alerts.
+  const events = /onEventReceived/.test(code);
+  if (events || /["'`](?:message|delete-message|delete-messages)["'`]/.test(code)) uses.push('chat');
+  if (events || /-latest["'`]|["'`]event:test["'`]/.test(code)) uses.push('alerts');
+  if (/SE_API\s*\.\s*store|kvstore:update/.test(code)) uses.push('store');
+  if (/SE_API\s*\.\s*counters|bot:counter/.test(code)) uses.push('counters');
+  if (/onSessionUpdate|\.session\b|-recent["'`]|-goal["'`]|-session["'`]|-total["'`]/.test(code)) uses.push('session');
+  return { engine: 'streamelements', api: 1, uses, inferred: true };
+}
+
 /** Size check for a whole package before it is stored. */
-export function checkPackageSize(source: PackageSource): string | null {
+export function checkPackageSize(source: PackageInput): string | null {
+  if (source.manifest !== undefined && (typeof source.manifest !== 'string' || byteLength(source.manifest) > MANIFEST_BYTES)) return 'widget.json is too large (max 16 KB)';
   let total = 0;
   for (const file of PACKAGE_FILES) {
     if (typeof source[file] !== 'string') return `The ${file} file is missing`;
@@ -355,14 +406,17 @@ export function checkPackageSize(source: PackageSource): string | null {
   return total > CUSTOM_WIDGET_LIMITS.totalBytes ? 'The widget files are too large together (max 2 MB)' : null;
 }
 
-export interface PackageSummary { fields: WidgetField[]; data: JsonObject; issues: FieldIssue[]; externalMedia: ExternalMedia[]; name?: string; author?: string }
+export interface PackageSummary { fields: WidgetField[]; data: JsonObject; issues: FieldIssue[]; externalMedia: ExternalMedia[]; manifest: WidgetManifest; name?: string; author?: string }
 /** Everything the API stores about a package besides its files. Throws PackageFormatError. */
-export function readPackage(source: PackageSource): PackageSummary {
+export function readPackage(source: PackageInput): PackageSummary {
   const size = checkPackageSize(source); if (size) throw new PackageFormatError('too-large', size);
+  const parsedManifest = source.manifest !== undefined && source.manifest.trim() ? parseManifest(source.manifest) : { manifest: inferManifest(source), issues: [] };
   const parsedFields = parseFields(source.fields);
   const parsedData = parseData(source.data, parsedFields.fields);
   const values = resolveFieldData(parsedFields.fields, parsedData.data);
   const text = (key: string) => typeof values[key] === 'string' && (values[key] as string).trim() ? (values[key] as string).trim().slice(0, CUSTOM_WIDGET_LIMITS.name) : undefined;
-  return { fields: parsedFields.fields, data: parsedData.data, issues: [...parsedFields.issues, ...parsedData.issues],
-    externalMedia: externalMedia(source, parsedData.data), name: text(RESERVED_FIELDS.name), author: text(RESERVED_FIELDS.author) };
+  const manifest = parsedManifest.manifest;
+  return { fields: parsedFields.fields, data: parsedData.data, issues: [...parsedManifest.issues, ...parsedFields.issues, ...parsedData.issues],
+    externalMedia: externalMedia(source, parsedData.data), manifest,
+    name: manifest.name ?? text(RESERVED_FIELDS.name), author: manifest.author ?? text(RESERVED_FIELDS.author) };
 }

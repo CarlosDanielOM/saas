@@ -18,6 +18,12 @@ import { renderLayout } from './ast.js';
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { EVENT_KINDS, matchesTrigger, type AlertEvent, type EventKind, type OverlayScene } from './model.js';
+import { publishedLayers } from '../custom_widgets/store.js';
+import { alertFromEventsub, sessionFor, type DimaAlert } from '../custom_widgets/session.js';
+import { commandCount, storeGet, storeSet } from '../custom_widgets/widget-store.js';
+import { pubSubManager } from '../classes/pubsub_manager.class.js';
+import { ensureChatModerationEvents } from '../widget_feed/subscriptions.js';
+import { WIDGET_FEED_CHANNEL, widgetFeedDemandKey } from '../widget_feed/types.js';
 
 export interface ClipMetadata { streamer: string; game: string; description: string; profileImage?: string; streamerColor?: string }
 export interface LiveMedia { clip?: ClipMetadata; type: 'video' | 'audio' | 'image'; url?: string; title: string; volume: number; duration?: number }
@@ -25,9 +31,108 @@ export interface LiveEvent { tts?: { speechID: string; ownerClientId: string | n
 type Public = Awaited<ReturnType<typeof publicState>>;
 type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';
 interface Health { revision: number; issue: RuntimeIssue | null; reportedAt: number; issueAt: number | null }
-interface Peer { widgetStateVersion?: string; interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
+interface Peer { widgets?: WidgetLayers; rpc?: { at: number; count: number }; widgetStateVersion?: string; interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
 interface Pending { ttsOwnerKey?: string; ttsEpochs?: Record<string, string>; ttsTerminal?: boolean; speechID?: string; event: LiveEvent; channel: string; recipients: Set<string>; mediaId?: string; bytes?: number; expiresAt: Date; mime?: string; raw?: Record<string, unknown> }
 const peers = new Map<string, Peer>();
+/** Custom widget layers of a peer's published snapshot: what they use, keyed by layer ID. */
+type WidgetLayers = Map<string, { widgetId: string; engine: 'dima' | 'streamelements'; uses: Set<string> }>;
+const DEMAND_TTL_SECONDS = 60, MAX_WIDGET_RPC_PER_SECOND = 20, STORE_WRITES_PER_WINDOW = 60, STORE_WINDOW_MS = 10_000;
+const storeWrites = new Map<string, { at: number; count: number }>();
+const moderationChecked = new Map<string, number>();
+/** Message delete/clear events for chat widgets: subscribed per channel (publish, then at most hourly as a repair). */
+export function ensureWidgetModeration(channel: string, force = false): void {
+  if (!force && Date.now() - (moderationChecked.get(channel) ?? 0) < 3_600_000) return;
+  moderationChecked.set(channel, Date.now());
+  void ensureChatModerationEvents(channel).then(result => {
+    if (!result.ok) console.warn('Custom widget chat deletes unavailable', channel, result.message ?? result.events.map(e => `${e.type}:${e.status}`).join(','));
+  }).catch(() => { moderationChecked.delete(channel); });
+}
+const widgetUses = (peer: Peer) => new Set([...(peer.widgets?.values() ?? [])].flatMap(layer => [...layer.uses]));
+async function refreshWidgets(peer: Peer): Promise<void> {
+  try { peer.widgets = await publishedLayers(peer.channel, peer.state.snapshot.widgets); }
+  catch { peer.widgets = new Map(); }
+  // Chat starts flowing right away for a newly connected or updated chat widget (the loop refreshes it later).
+  if (peer.socket?.connected && widgetUses(peer).has('chat')) { await markChatDemand(peer.channel).catch(() => {}); ensureWidgetModeration(peer.channel); }
+}
+async function markChatDemand(channel: string): Promise<void> {
+  await (await getDragonflyClient('overlay-presence')).set(widgetFeedDemandKey(channel), '1', { EX: DEMAND_TTL_SECONDS });
+}
+/** Sends a custom widget event to the channel's connected sources whose published widgets use it. */
+function feedWidgets(channel: string, use: string, type: string, data: unknown, only?: (peer: Peer) => boolean): number {
+  let sent = 0;
+  for (const peer of peers.values()) {
+    if (peer.channel !== channel || !peer.socket?.connected || !widgetUses(peer).has(use) || only && !only(peer)) continue;
+    peer.socket.emit('overlay-feed', { v: 1, type, data }); sent++;
+  }
+  return sent;
+}
+const sessionTimers = new Map<string, ReturnType<typeof setTimeout>>();
+/** Session snapshots follow alerts; bursts are coalesced per channel. */
+function refreshSession(channel: string, delay = 1500): void {
+  if (sessionTimers.has(channel) || ![...peers.values()].some(peer => peer.channel === channel && widgetUses(peer).has('session'))) return;
+  sessionTimers.set(channel, setTimeout(() => {
+    sessionTimers.delete(channel);
+    void sessionFor(channel).then(session => feedWidgets(channel, 'session', 'session', session)).catch(() => {});
+  }, delay));
+}
+/** Alerts reach custom widgets as Dima alerts, without the alert queue or acknowledgements. */
+async function feedAlert(channel: string, subscriptionType: string, raw: Record<string, unknown>, id: string, at: number, test = false, only?: (peer: Peer) => boolean): Promise<void> {
+  // Session-only widgets still get refreshed totals, even when no widget shows alerts.
+  if (!test) refreshSession(channel);
+  if (![...peers.values()].some(peer => peer.channel === channel && widgetUses(peer).has('alerts'))) return;
+  const rule = subscriptionType.includes('bit') || subscriptionType === 'channel.cheer' ? await bitsRuleFor(channel, 'bits', raw).catch(() => null) : null;
+  if (rule?.alert === false) return;
+  const alert = alertFromEventsub(subscriptionType, raw, id, at, test, rule ? { id: rule.id, name: rule.name ?? '' } : null);
+  if (alert) feedWidgets(channel, 'alerts', 'alert', alert, only);
+}
+/** OBS tests from Studio: alert kinds map to their usual EventSub source. */
+const TEST_SOURCES: Record<AlertEvent, string> = { follow: 'channel.follow', sub: 'channel.subscribe', bits: 'channel.bits.use', raid: 'channel.raid' };
+export async function feedTestAlert(channel: string, publicId: string, kind: AlertEvent, raw: Record<string, unknown>): Promise<void> {
+  const shaped = kind === 'raid' ? { from_broadcaster_user_name: raw.user_name, from_broadcaster_user_login: raw.user_login, from_broadcaster_user_id: raw.user_id, viewers: raw.viewers, ...raw } : raw;
+  await feedAlert(channel, TEST_SOURCES[kind], shaped, `test-${randomUUID()}`, Date.now(), true, peer => peer.publicId === publicId);
+}
+/** Studio "send to OBS" for custom widget tests (chat, alerts, deletes): one published overlay only. */
+export function feedTestEvent(channel: string, publicId: string, type: string, data: unknown): number {
+  const use = type === 'alert' ? 'alerts' : type.startsWith('chat') ? 'chat' : '';
+  if (!use) throw new OverlayError('Invalid widget test');
+  return feedWidgets(channel, use, type, data, peer => peer.publicId === publicId);
+}
+let chatFeed: Promise<void> | undefined;
+function subscribeChatFeed(): void {
+  chatFeed ??= pubSubManager.subscribe(WIDGET_FEED_CHANNEL, (message: { channel?: unknown; type?: unknown; data?: unknown }) => {
+    if (typeof message?.channel !== 'string' || !['chat', 'chat.delete', 'chat.clear'].includes(String(message.type)) || !message.data || typeof message.data !== 'object') return;
+    feedWidgets(message.channel, 'chat', String(message.type), message.data);
+  }).catch(() => { chatFeed = undefined; });
+}
+async function widgetRpc(peer: Peer, raw: unknown): Promise<unknown> {
+  const now = Date.now();
+  if (!peer.rpc || now - peer.rpc.at > 1000) peer.rpc = { at: now, count: 0 };
+  if (++peer.rpc.count > MAX_WIDGET_RPC_PER_SECOND) throw new OverlayError('Too many widget requests');
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new OverlayError('Invalid request');
+  const { layerId, method, params } = raw as { layerId?: unknown; method?: unknown; params?: unknown };
+  const layer = typeof layerId === 'string' ? peer.widgets?.get(layerId) : undefined;
+  if (!layer) throw new OverlayError('Widget not found');
+  const body = params && typeof params === 'object' && !Array.isArray(params) ? params as Record<string, unknown> : {};
+  const namespace = layer.engine === 'streamelements' ? 'se' : layer.widgetId;
+  if (method === 'store.get' || method === 'store.set') {
+    if (!layer.uses.has('store')) throw new OverlayError('This widget did not ask for "store" in widget.json');
+    if (method === 'store.get') return storeGet(peer.channel, namespace, body.key);
+    // Channel-wide write budget: every source identity of the channel shares it.
+    const window = storeWrites.get(peer.channel);
+    if (!window || now - window.at > STORE_WINDOW_MS) storeWrites.set(peer.channel, { at: now, count: 1 });
+    else if (++window.count > STORE_WRITES_PER_WINDOW) throw new OverlayError('Too many saves from this channel\'s widgets; try again shortly');
+    await storeSet(peer.channel, namespace, body.key, body.value ?? null);
+    // Other sources of the channel see the change (StreamElements "kvstore:update").
+    // The namespace travels with the update so each layer only applies its own (frames filter on it).
+    feedWidgets(peer.channel, 'store', 'store', { key: body.key, value: body.value ?? null, namespace }, other => [...(other.widgets?.values() ?? [])].some(item => item.uses.has('store') && (item.engine === 'streamelements' ? 'se' : item.widgetId) === namespace));
+    return true;
+  }
+  if (method === 'counters.get') {
+    if (!layer.uses.has('counters')) throw new OverlayError('This widget did not ask for "counters" in widget.json');
+    return commandCount(peer.channel, body.name);
+  }
+  throw new OverlayError('Unknown widget request');
+}
 let pollingFailed = false;
 const pending = new Map<string, Pending>();
 const channels = new Map<string, { after: Types.ObjectId; busy: boolean }>();
@@ -386,6 +491,15 @@ export function registerStudio(io: Server): void {
     if (interactions) peer.interactionVersion = JSON.stringify([interactions.poll?.revision, interactions.prediction?.revision]);
     socket.emit('overlay-state', { widgetStates, serverTime, failedSources, interactions, publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls, commands: peer.commands, pendingIds: [...pending.values()].filter(item => !item.event.tts && item.recipients.has(key)).map(item => item.event.id) });
     for (const item of pending.values()) if (!item.event.tts && item.recipients.has(key)) socket.emit('overlay-event', item.event);
+    // Custom widgets: what the published layers use, then their session snapshot and requests.
+    void refreshWidgets(peer).then(async () => {
+      if (peers.get(key) !== peer || !widgetUses(peer).has('session')) return;
+      peer.socket?.emit('overlay-feed', { v: 1, type: 'session', data: await sessionFor(peer.channel) });
+    }).catch(() => {});
+    socket.on('overlay-widget-rpc', (raw: unknown, ack?: (result: unknown) => void) => {
+      if (peers.get(key) !== peer || typeof ack !== 'function') return;
+      void widgetRpc(peer, raw).then(value => ack({ ok: true, value }), error => ack({ ok: false, error: error instanceof OverlayError ? error.message : 'Request failed' }));
+    });
     socket.on('overlay-control-ack', (id: unknown) => {
       if (peers.get(key) === peer && typeof id === 'string') { peer.commands = peer.commands.filter(command => command.id !== id); void savePeer(peer); }
     });
@@ -434,7 +548,8 @@ export function registerStudio(io: Server): void {
     void ensureSources(peer);
     void resyncInteractions(peer.channel, interactionKinds(state.snapshot)).catch(() => { peer.stateFailed = true; });
   }
-  let busy = false, lastSweep = 0;
+  let busy = false, lastSweep = 0, lastDemand = 0;
+  subscribeChatFeed();
   const timer = setInterval(() => { void (async () => {
     if (busy) return; busy = true;
     try {
@@ -458,6 +573,7 @@ export function registerStudio(io: Server): void {
           if (state.controls.revision !== peer.state.controls.revision) { peer.socket?.emit('overlay-queue-state', state.controls); peer.state.controls = state.controls; }
           if (peer.state.revision !== state.revision) {
             peer.state = state; peer.socket?.emit('overlay-updated', { revision: state.revision });
+            await refreshWidgets(peer);
             if (peer.socket?.connected) await ensureSources(peer);
           } else if (peer.socket?.connected && peer.activationFailed && Date.now() >= (peer.activationRetryAt ?? 0)) await ensureSources(peer);
         } catch (e) {
@@ -484,6 +600,11 @@ export function registerStudio(io: Server): void {
         }
       }
       const cache = await getDragonflyClient('overlay-presence');
+      // The bot only builds chat events for channels whose published widgets read chat.
+      if (Date.now() - lastDemand > 20000) {
+        lastDemand = Date.now();
+        for (const channel of new Set([...peers.values()].filter(peer => peer.socket?.connected && widgetUses(peer).has('chat')).map(peer => peer.channel))) await markChatDemand(channel);
+      }
       for (const [channel, cursor] of channels) {
         if (studioHasSource(channel, 'clip')) { await cache.set(`twitch:${channel}:clips:connected`, 'true'); await cache.set(`twitch:${channel}:clips:last_activity`, Date.now()); }
         if (cursor.busy) continue; cursor.busy = true;
@@ -492,6 +613,7 @@ export function registerStudio(io: Server): void {
           for (const event of events) {
             const raw = event.payload.event as Record<string, unknown>, kind = alertFilter.kind(channel, event.type, raw, event.journaledAt.getTime());
             if (kind) await publishStudioAlert(channel, kind, raw, String(event._id), event.journaledAt.getTime(), 'twitch', true);
+            if (kind) await feedAlert(channel, String((event.payload as { subscription?: { type?: unknown } })?.subscription?.type ?? ''), raw, String(event._id), event.journaledAt.getTime()).catch(() => {});
             cursor.after = event._id;
           }
         } finally { cursor.busy = false; }
