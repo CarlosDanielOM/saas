@@ -19,7 +19,7 @@ const freshIp = () => `198.51.100.${++ipCounter}`;
 // 1. Unit suites (fake MiniMax server, docs parsing/validation/sources) in the exact image.
 const astSuites = fs.readdirSync('/app/dist/utils/ast_parser', { recursive: true })
   .filter((file) => String(file).endsWith('.test.js')).map((file) => `dist/utils/ast_parser/${file}`);
-const units = spawnSync(process.execPath, ['--test', '--experimental-test-module-mocks', '--test-force-exit',
+const units = spawnSync(process.execPath, ['--test', '--experimental-test-module-mocks', '--test-force-exit', '--test-concurrency=2',
   'dist/utils/ai/minimax/minimax_client.test.js', 'dist/utils/ai/docs_assistant/docs_assistant.test.js',
   'dist/utils/ai/ast_catalog/index.test.js', ...astSuites],
   { cwd: '/app', encoding: 'utf8', env: { ...process.env, NODE_OPTIONS: '' } });
@@ -216,6 +216,31 @@ const toolRecord = await redis.hGetAll(`docs_assistant:answer:${toolCall.events.
 assert.equal(toolRecord.rounds, '2');
 assert.deepEqual(JSON.parse(toolRecord.tool_calls).map((call) => call.name), ['search_ast_functions', 'test_command']);
 console.log('tool loop (search + safe command test): ok');
+
+// 13c. The exact reported shoutout body: literal argument binding and modeled
+// lookup failures survive the HTTP route/tool round trip to the model.
+const shoutout = await ask(question('TOOLS_SHOUTOUT Is this shoutout command valid?'));
+assert.equal(shoutout.events.at(-1).event, 'done');
+assert.match(shoutout.events.filter(event => event.event === 'text').map(event => event.data.delta).join(''), /accounts remain unverified/);
+const checked = calls().find(call => call.provider === 'shoutout-tool-result').result;
+assert.equal(checked.runs.length, 5);
+for (const index of [0, 2, 3, 4]) {
+  assert.match(checked.runs[index].reply, /Please provide a valid user/);
+  assert.equal(checked.runs[index].actions, undefined);
+  assert.equal(checked.runs[index].problems, undefined);
+}
+assert.equal(checked.runs[0].argument, '');
+assert.deepEqual(checked.runs[0].sampleReads[0].args, ['']);
+assert.equal(checked.runs[1].actions.length, 3);
+assert.equal(checked.runs[1].sampleReads[0].lookup, 'simulated_found');
+assert.equal(checked.runs[2].sampleReads[0].lookup, 'simulated_not_found');
+assert.match(checked.note, /do not establish account existence/);
+assert.match(checked.note, /do not measure real requests/);
+assert.ok(checked.runs[0].bodyLength <= 450, `measure rather than estimate body length: ${checked.runs[0].bodyLength}`);
+const guardRequest = minimaxCalls().find(call => String(call.body.messages[0].content).includes('TOOLS_SHOUTOUT'));
+assert.match(guardRequest.body.system[0].text, /literal AST nodes like saved authored commands/);
+assert.doesNotMatch(guardRequest.body.system[0].text, /substitutes arguments as raw text/);
+console.log('shoutout tool regression: blank/invalid/not-found target guards, literal inputs, modeled reads and measured body length: ok');
 
 // 14. Daily total.
 await redis.hSet(`docs_assistant:stats:${day}`, 'asked', '5000');

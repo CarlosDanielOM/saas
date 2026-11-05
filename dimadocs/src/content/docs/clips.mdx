@@ -3,7 +3,7 @@ title: Clip overlay
 description: Set up the Clip overlay in OBS, pick a design, test it, and see how !clip, !promo, and !so create and play clips.
 ---
 
-The **Clip overlay** plays a Twitch clip on your stream. Add its URL to OBS once. After that, the overlay plays a clip when a `!promo` runs or a `!so` finds a clip. Viewers can also create clips with `!clip`. See [Built-in commands](/commands/built-in/) for every command option.
+The **Clip overlay** plays a Twitch clip on your stream. Add its URL to OBS once. After that, the overlay plays a clip when a `!promo` runs or a `!so` finds a clip. Viewers can also create clips with `!clip`. See [Built-in commands](/commands/built-in/) for `!clip` and [Custom commands](/commands/overview/) for editing the default `!so` command.
 
 **Who can set it up:** the channel owner, or an admin with clip management permission.
 
@@ -42,7 +42,7 @@ Twitch only creates clips while the channel is live. You can change who can use 
 ## How clips reach the overlay
 
 - **`!promo <user>`** (moderators and above by default) shows a clip of that streamer in the overlay when one is available.
-- **`!so <user>`** (moderators and above by default) sends the shoutout and shows one of that streamer's clips when one is available.
+- **`!so <user>`** (moderators and above by default) sends the shoutout and shows one of that streamer's clips when one is available. `!so` is an editable default custom command; its saved **Who can use it** setting controls access.
 
 Clips are processed one at a time; a clip requested while another is playing waits in the queue. The overlay must be connected when a clip is requested: a request made while disconnected is skipped rather than saved for later. Download failures or playback timeouts can also prevent a clip from playing.
 

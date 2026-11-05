@@ -9,7 +9,7 @@ import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Los comandos personalizados son respuestas que escribes tú. Cuando alguien escribe `!discord`, el bot responde con tu enlace. Los moderadores pueden crearlos desde el chat o desde el dashboard.
 
-Para lo que el bot ya hace, como `!so` o `!poll`, consulta [Comandos integrados](/es/commands/built-in/).
+Para los comandos reservados que ofrece el bot, como `!poll`, consulta [Comandos integrados](/es/commands/built-in/). `!so` es un comando personalizado predeterminado que puedes editar: cambia su respuesta, tiempo de espera o ajuste **Quién puede usarlo** con `!ec` o desde el dashboard. El acceso guardado del comando decide quién puede ejecutarlo, incluso si la respuesta contiene funciones restringidas para el chat de IA.
 
 ## Crear un comando
 
@@ -56,7 +56,7 @@ Escribe `!cc`, luego el nombre (sin `!`) y después la respuesta:
 
 Mensajes del chat que puedes ver (el bot los muestra en inglés):
 
-- `Command already exists`: el nombre ya está en uso, incluidos los nombres de comandos integrados como `so`.
+- `Command already exists`: el nombre ya está en uso, incluido el comando predeterminado `so`. Usa `!ec so <nueva respuesta>` para editarlo en vez de crear un duplicado con `!cc`.
 - `Command cooldown must be 0 or at least N seconds`: el valor de `-cd=` está por debajo del mínimo de tu plan.
 - `User level X is invalid`: el valor de `-ul=` no está en la tabla.
 

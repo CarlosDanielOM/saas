@@ -159,7 +159,14 @@ test('test_command tool: compact results from the safe engine run; bad input bec
     }, new AbortController().signal) as any;
     assert.ok(roulette.outcomes.some((o: any) => o.actions.includes('ban(Sam, 60)')), 'the timeout is recorded on a losing roll');
     assert.match(roulette.note, /recorded, not performed/);
-    const broken = await testCommandTool.run({ body: '*( &p1 == "" ? "EMPTY" : "GOT &p1" )' }, new AbortController().signal) as any;
-    assert.ok(broken.runs[0].problems.length > 0);
+    const targets = await testCommandTool.run({ body: '$(twitch.channel &t)', runs: [{}, { argument: 'Alice' }, { argument: 'Alice', targetLookup: 'not_found' }] }, new AbortController().signal) as any;
+    assert.equal(targets.runs[0].argument, '');
+    assert.equal(targets.runs[0].bodyLength, '$(twitch.channel &t)'.length);
+    assert.deepEqual(targets.runs[0].sampleReads[0].args, ['']);
+    assert.equal(targets.runs[1].sampleReads[0].lookup, 'simulated_found');
+    assert.equal(targets.runs[2].sampleReads[0].lookup, 'simulated_not_found');
+    assert.match(targets.note, /do not establish account existence/);
+    const differentBodies = await testCommandTool.run({ body: 'short', runs: [{}, { body: 'longer body' }] }, new AbortController().signal) as any;
+    assert.deepEqual(differentBodies.runs.map((run: any) => run.bodyLength), [5, 11]);
     await assert.rejects(testCommandTool.run({ body: '!cc hi Hello' }, new AbortController().signal), /only the response body/);
 });

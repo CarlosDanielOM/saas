@@ -52,17 +52,43 @@ test('database variables follow plan rules: Free cannot write them', async () =>
     assert.notEqual(free.runs[0].reply, 'saved gojo');
 });
 
-test('flags syntax problems: unquoted empty argument, unknown function, parse errors', async () => {
-    const unquoted = await simulateCommand(parseSimulationInput({ body: '*( &p1 == "" ? "EMPTY" : "GOT &p1" )' }));
-    assert.match(unquoted.runs[0].problems.join(' '), /printed as text/);
-    const quoted = await simulateCommand(parseSimulationInput({ body: '*( "&p1" == "" ? "EMPTY" : "GOT &p1" )', runs: [{}, { argument: 'big cat' }] }));
-    assert.deepEqual(quoted.runs.map((run) => run.reply), ['EMPTY', 'GOT big']);
-    assert.deepEqual(quoted.runs.flatMap((run) => run.problems), []);
+test('literal argument binding and syntax problem detection', async () => {
+    const result = await simulateCommand(parseSimulationInput({ body: '*( &p1 == "" ? "EMPTY" : "GOT ${&p1}" )', runs: [{}, { argument: 'big cat' }] }));
+    assert.deepEqual(result.runs.map((run) => run.reply), ['EMPTY', 'GOT big']);
     const unknown = await simulateCommand(parseSimulationInput({ body: '$(urlfetch https://example.com)' }));
     assert.match(unknown.runs[0].problems[0], /Unknown function: urlfetch/);
     const broken = await simulateCommand(parseSimulationInput({ body: '*(1 == 1 ? "a" : "b"' }));
-    assert.ok(broken.runs[0].problems.length > 0, 'unclosed expression is reported');
-    assert.deepEqual(findProblems('Hello Sam! You survived: 5 of 6.'), [], 'ordinary text is not flagged');
+    assert.ok(broken.runs[0].problems.length > 0);
+    assert.deepEqual(findProblems('Hello Sam! You survived: 5 of 6.'), []);
+});
+
+test('shoutout guard models explicit targets without verifying Twitch accounts', async () => {
+    const body = `*($(twitch.channel &t) ? $(announcement purple "Check out ${'${$(twitch.channel &t)}'} at https://twitch.tv/${'${$(twitch.login &t)}'} and give them a follow! They were last playing ${'${$(twitch.game &t)}'}") : "Please provide a valid user to shoutout. Usage: !so <username>") *($(twitch.channel &t) ? $(shoutout &t) : "") *($(twitch.channel &t) ? $(show.clip &t) : "")`;
+    const result = await simulateCommand(parseSimulationInput({body, runs: [{}, {argument:'Alice'}, {argument:'bad!'}, {argument:'two words'}, {argument:'$(ban bob)'}, {argument:'Alice', targetLookup:'not_found'}]}));
+    assert.deepEqual(result.runs.map(r => r.actions.length), [0, 3, 0, 0, 0, 0]);
+    assert.match(result.runs[0].reply, /Please provide a valid user/);
+    assert.match(result.runs[1].actions[0].args.join(' '), /alice/);
+    assert.equal(result.runs[1].samples[0].lookup, 'simulated_found');
+    assert.equal(result.runs[5].samples[0].lookup, 'simulated_not_found');
+    assert.deepEqual(result.runs[0].samples[0].args, ['']);
+    assert.deepEqual(outbound, []);
+});
+
+test('own channel versus explicit empty target and literal argument indices', async () => {
+    const result = await simulateCommand(parseSimulationInput({body:'$(twitch.channel)|$(twitch.login &p1)|&p1|&p2|$(twitch.channel &t)|&t', runs:[{}, {argument:'Alice bob'}, {argument:'$(ban bob)'}]}));
+    assert.equal(result.runs[0].reply, 'YourChannel|||||');
+    assert.match(result.runs[1].reply, /YourChannel\|alice\|Alice\|bob\|\|/);
+    assert.deepEqual(result.runs[2].actions, []);
+    const literal = await simulateCommand(parseSimulationInput({ body: '&t', runs: [{ argument: '$(ban bob)' }] }));
+    assert.equal(literal.runs[0].reply, '$(ban bob)');
+    assert.deepEqual(literal.runs[0].actions, []);
+});
+
+test('signed count arguments and quoted bound variables match authored command semantics', async () => {
+    const count = await simulateCommand(parseSimulationInput({body:'$(count &p1)', runs:[{argument:'10'}, {argument:'-3'}]}));
+    assert.deepEqual(count.runs.map(r=>r.reply), ['10','7']);
+    const quoted = await simulateCommand(parseSimulationInput({body:'*( "&p1" == "" ? "EMPTY" : "GOT" )', runs:[{}, {argument:'hello'}]}));
+    assert.deepEqual(quoted.runs.map(r=>r.reply), ['GOT','GOT']);
 });
 
 test('reads use sample values; actions are recorded; timers and delays never run', async () => {

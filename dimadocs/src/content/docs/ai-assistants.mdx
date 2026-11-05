@@ -53,6 +53,8 @@ Also read the feature guide for [TTS](/tts/), [triggers](/triggers/), or [reward
 4. Check each function's arguments, storage lifetime, plan requirement, and limits in the linked references. Set up any stored value before the command reads it. Limit commands that moderate chat or change channel settings to the people who should run them.
 5. Describe a normal input and its expected output. For arguments or stored data, also describe what happens when input is missing and on the first run. Label these results as expected. Do not claim a generated command ran unless you tested it.
 
+The assistant's function and command checks are simulations. They cannot prove that the supplied Twitch login exists, that Twitch API access and authorization are available, that a native shoutout will be accepted, or that a clip will play through a connected overlay. They do not measure actual Twitch request counts, delivered chat messages, or live cooldown state. Treat simulated output as a syntax aid, then test the command in the channel. The default `!so` reply includes a guard: missing or unrecognized targets return its usage message and skip the announcement, native shoutout, and clip actions. A quoted announcement message with interpolation can be valid at runtime even if a simulation cannot resolve its Twitch data; do not label that runtime behavior invalid based on simulated output alone.
+
 ## Worked example: a welcome command
 
 Goal: let viewers type `!hello` to get a welcome message with their own name.

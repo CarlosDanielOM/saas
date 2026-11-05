@@ -57,6 +57,7 @@ const runSchema = {
     properties: {
         user: { type: 'string', description: 'Display name of who types the command (default "Sam").' },
         argument: { type: 'string', description: 'Text typed after the command name, e.g. "Alex" for "!hug Alex". Empty = no argument.' },
+        targetLookup: { type: 'string', enum: ['found', 'not_found'], description: 'Simulate a valid target lookup succeeding (default) or failing. Neither verifies a Twitch account.' },
         role: { type: 'string', enum: ['viewer', 'mod', 'streamer'], description: 'Who types it (default viewer).' },
         body: { type: 'string', description: 'Optional: a different response body for this run, to test a setup of several commands that share variables.' },
     },
@@ -69,7 +70,7 @@ export const testCommandTool: MiniMaxTool = {
             'Run a command response body through the bot\'s real command engine in a safe test mode. Pure functions (text, random, '
             + 'user, touser, count) run for real; actions (timeouts, chat messages, TTS, triggers, polls, title changes…) are recorded '
             + 'instead of performed; Twitch/event/AI reads return sample values (e.g. game "Just Chatting"); variables exist only for '
-            + 'this test. Returns each run\'s chat reply, recorded actions, sample reads, the variables afterwards, and problems '
+            + 'this test. Target lookups are modeled, never verified; sample reads do not measure Twitch requests. Returns each run\'s bodyLength, chat reply, recorded actions, sample reads, the variables afterwards, and problems '
             + '(parse errors, unknown functions, code that printed as text). Runs happen in order and share variables, so you can test '
             + 'several viewers, arguments, a first run, or (with a per-run body) a setup of several commands. Use repeat for random commands.',
         input_schema: {
@@ -84,15 +85,17 @@ export const testCommandTool: MiniMaxTool = {
         },
     },
     async run(input) {
-        const result = await simulateCommand(parseSimulationInput(input));
+        const parsed = parseSimulationInput(input);
+        const result = await simulateCommand(parsed);
         // Keep the tool result compact: drop empty fields.
         return {
-            runs: result.runs.map((run) => ({
+            runs: result.runs.map((run, index) => ({
                 user: run.user,
-                ...(run.argument ? { argument: run.argument } : {}),
+                argument: run.argument,
+                bodyLength: (parsed.runs?.[index]?.body ?? parsed.body).length,
                 reply: run.reply,
                 ...(run.actions.length ? { actions: run.actions.map((call) => `${call.function}(${call.args.join(', ')})`) } : {}),
-                ...(run.samples.length ? { sampleReads: run.samples.map((call) => `${call.function} → ${call.value}`) } : {}),
+                ...(run.samples.length ? { sampleReads: run.samples } : {}),
                 ...(run.commandReferences.length ? { triggersCommands: run.commandReferences } : {}),
                 ...(run.problems.length ? { problems: run.problems } : {}),
             })),

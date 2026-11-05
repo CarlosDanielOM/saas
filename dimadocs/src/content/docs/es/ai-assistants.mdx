@@ -54,6 +54,8 @@ Lee también la guía de la función cuando tu comando use [Texto a voz](/es/tts
 4. Revisa en las referencias los argumentos, la duración del almacenamiento, el plan necesario y los límites de cada función. Prepara cualquier valor guardado antes de que el comando lo lea. Limita los comandos que moderan el chat o cambian la configuración del canal a quienes deben usarlos.
 5. Describe una entrada normal y su resultado esperado. Si hay argumentos o datos guardados, describe también qué pasa cuando falta una entrada y en la primera ejecución. Marca estos resultados como esperados. No afirmes que un comando generado se ejecutó si no lo probaste.
 
+Las comprobaciones de funciones y comandos del asistente son simulaciones. No pueden demostrar que el login de Twitch indicado exista, que estén disponibles el acceso y la autorización a la API de Twitch, que se acepte un shoutout nativo ni que un clip se reproduzca en un overlay conectado. No miden la cantidad real de solicitudes a Twitch, los mensajes entregados en el chat ni el estado real del cooldown. Considera la salida simulada una ayuda de sintaxis y luego prueba el comando en el canal. La respuesta predeterminada de `!so` incluye una protección: si falta el destino o no se reconoce, muestra el mensaje de uso y omite el anuncio, el shoutout nativo y las acciones del clip. Un mensaje de anuncio entre comillas con interpolación puede ser válido en tiempo de ejecución aunque la simulación no pueda resolver sus datos de Twitch; no lo califiques como inválido basándote solo en la simulación.
+
 ## Ejemplo completo: un comando de bienvenida
 
 Objetivo: que los espectadores escriban `!hello` y reciban un saludo con su propio nombre.

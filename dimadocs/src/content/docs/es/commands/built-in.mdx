@@ -1,12 +1,12 @@
 ---
 title: Comandos integrados
-description: Acceso predeterminado, sintaxis y comportamiento de los comandos integrados del chat de DomDimaBot, como !so, !poll, !duel y !vip.
+description: Acceso predeterminado, sintaxis y comportamiento de los comandos integrados del chat de DomDimaBot, como !poll, !duel y !vip.
 sidebar:
   label: Comandos integrados
   order: 3
 ---
 
-Los comandos integrados son herramientas listas que vienen con DomDimaBot. Los espectadores y los moderadores los escriben en el chat. Cada uno tiene un nivel predeterminado de **Quién puede usarlo** y un tiempo de espera, y puedes cambiar ambos.
+Los comandos integrados son herramientas listas que vienen con DomDimaBot. Los espectadores y los moderadores los escriben en el chat. Cada uno tiene un nivel predeterminado de **Quién puede usarlo** y un tiempo de espera, y puedes cambiar ambos. `!so` es un comando personalizado predeterminado que puedes editar; consulta [Comandos personalizados](/es/commands/overview/) para ver cómo cambiar su acceso y respuesta.
 
 ## Activarlos o cambiar el acceso
 
@@ -50,7 +50,6 @@ En las tablas siguientes, **Cualquiera** significa cualquier persona en el chat,
 | Comando | Uso | Quién puede usarlo | Qué hace |
 |---|---|---|---|
 | `!clip` | `!clip [segundos] [título]` | Cualquiera | Crea un clip y publica su enlace. Si la primera palabra es un número del 5 al 60, define la duración. Cualquier otra primera palabra inicia el título. Los números fuera de 5–60 usan 30 segundos. |
-| `!so` | `!so <usuario>` | Moderadores o más | Publica un anuncio de shoutout con el enlace del canal y el último juego. Envía el shoutout nativo de Twitch y muestra uno de sus clips si hay. La misma persona recibe un shoutout nativo de Twitch como máximo una vez cada 2 minutos. |
 | `!promo` | `!promo <usuario>` | Moderadores o más | Muestra un clip del canal indicado cuando hay uno disponible. |
 | `!anuncio` | `!anuncio <mensaje>` | Moderadores o más | Publica un anuncio de Twitch. El mensaje puede tener hasta 300 caracteres. |
 | `!game` | `!game <nombre>` | Moderadores o más | Cambia la categoría del stream. Si ninguna categoría coincide exactamente con el nombre, el bot usa el primer resultado de búsqueda. Sin nombre, responde con la categoría actual. Primero se comprueba el acceso al comando. |

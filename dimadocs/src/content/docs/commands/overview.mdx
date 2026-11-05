@@ -9,7 +9,7 @@ import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Custom commands are replies you write. When a viewer types `!discord`, the bot answers with your link. Moderators can create them in chat or on the dashboard.
 
-For things the bot already does, such as `!so` or `!poll`, see [Built-in commands](/commands/built-in/).
+For reserved commands the bot provides, such as `!poll`, see [Built-in commands](/commands/built-in/). `!so` is an editable default custom command: change its reply, cooldown, or **Who can use it** setting with `!ec` or on the dashboard. Its saved command access setting controls who can run it, including when its reply contains functions that are restricted for AI chat.
 
 ## Create a command
 
@@ -56,7 +56,7 @@ Type `!cc`, then the name (without `!`), then the reply:
 
 Chat replies you may see:
 
-- `Command already exists`: the name is taken, including built-in names such as `so`.
+- `Command already exists`: the name is taken, including the existing default command `so`. Use `!ec so <new reply>` to edit it instead of creating a duplicate with `!cc`.
 - `Command cooldown must be 0 or at least N seconds`: the `-cd=` value is below your plan's minimum.
 - `User level X is invalid`: the `-ul=` value is not in the table.
 

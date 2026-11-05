@@ -14,6 +14,7 @@ import { createExecutionContext, getAllRegisteredFunctions, renderAstWithSourceR
 import { unescapeRenderedText } from './render.js';
 import { registerAllFunctions } from './functions/index.js';
 import { resolveArgumentPlaceholders } from '../../handlers/special_parser.handler.js';
+import { normalizeTarget } from './functions/shoutout_target.js';
 import type { AstSimulationCache, ExecutionContext } from './types.js';
 
 /** Functions that only read the command's own context: safe to run for real. */
@@ -77,6 +78,8 @@ export interface SimulationRunInput {
     /** Text after the command name, e.g. "Alex" for "!hug Alex". */
     argument?: string;
     role?: SimulationRole;
+    /** Model a target lookup as found (default) or not found; neither checks Twitch. */
+    targetLookup?: 'found' | 'not_found';
 }
 
 export interface SimulationInput {
@@ -99,7 +102,7 @@ export interface SimulationRunResult {
     /** Actions the bot would take, in order. Recorded, not performed. */
     actions: SimulatedCall[];
     /** Reads answered with sample values. */
-    samples: Array<SimulatedCall & { value: string }>;
+    samples: Array<SimulatedCall & { value: string; lookup?: 'own_channel_sample' | 'invalid_target' | 'simulated_found' | 'simulated_not_found' }>;
     /** Other commands this one would trigger with #(name). */
     commandReferences: string[];
     problems: string[];
@@ -168,7 +171,7 @@ async function runOnce(input: SimulationInput, run: SimulationRunInput, state: S
     const level = ROLE_LEVEL[run.role ?? 'viewer'] ?? 1;
     const result: SimulationRunResult = { user: display, argument, reply: '', actions: [], samples: [], commandReferences: [], problems: [] };
 
-    const placeholders = resolveArgumentPlaceholders(run.body ?? input.body, argument);
+    const placeholders = resolveArgumentPlaceholders(run.body ?? input.body, argument, true);
     if (placeholders.error) {
         result.reply = `[Parser error: ${placeholders.error}]`;
         result.problems = findProblems(result.reply);
@@ -213,8 +216,21 @@ async function runOnce(input: SimulationInput, run: SimulationRunInput, state: S
                     result.actions.push(call);
                     return { value: '' };
                 }
-                const value = name === 'randomuser' ? 'ClipGoblin' : (SAMPLE_VALUES[name] ?? `(${name})`);
-                result.samples.push({ ...call, value });
+                let value = name === 'randomuser' ? 'ClipGoblin' : (SAMPLE_VALUES[name] ?? `(${name})`);
+                let lookup: SimulationRunResult['samples'][number]['lookup'];
+                if (['twitch.channel', 'twitch.login', 'twitch.game'].includes(name)) {
+                    if (args.length === 0) lookup = 'own_channel_sample';
+                    else {
+                        const target = normalizeTarget(args[0]);
+                        if (!target) { value = ''; lookup = 'invalid_target'; }
+                        else if (run.targetLookup === 'not_found') { value = ''; lookup = 'simulated_not_found'; }
+                        else {
+                            lookup = 'simulated_found';
+                            value = name === 'twitch.game' ? 'Just Chatting' : target;
+                        }
+                    }
+                }
+                result.samples.push({ ...call, value, ...(lookup ? { lookup } : {}) });
                 return { value };
             },
         },
@@ -263,7 +279,7 @@ export function parseSimulationInput(raw: unknown): SimulationInput {
         if (runBody && (runBody.length > MAX_BODY || /^\s*!(cc|ec)\s/i.test(runBody))) {
             throw new SimulationInputError('Each run body must be a response body (no !cc/!ec line) under 10,000 characters.');
         }
-        return { body: runBody, user: typeof value.user === 'string' ? value.user : undefined, argument: typeof value.argument === 'string' ? value.argument : '', role } as SimulationRunInput;
+        return { body: runBody, user: typeof value.user === 'string' ? value.user : undefined, argument: typeof value.argument === 'string' ? value.argument : '', role, targetLookup: value.targetLookup === 'not_found' ? 'not_found' : 'found' } as SimulationRunInput;
     }) : undefined;
     const repeat = Math.max(1, Math.min(MAX_REPEAT, Math.trunc(Number(input.repeat) || 1)));
     const plan = input.plan === 'free' || input.plan === 'pro' ? input.plan : 'premium';
@@ -284,7 +300,7 @@ export async function simulateCommand(input: SimulationInput): Promise<Simulatio
         runs: first.results,
         variables,
         useCount: first.state.count,
-        note: 'Test run: pure functions ran for real; actions were recorded, not performed; Twitch/event/AI reads used sample values; variables lived only for this test.',
+        note: 'Test run: pure functions ran for real; actions were recorded, not performed; Twitch/event/AI reads used sample values; target lookup outcomes are simulated and do not establish account existence; samples do not measure real requests; variables lived only for this test.',
     };
 
     const repeat = input.repeat ?? 1;

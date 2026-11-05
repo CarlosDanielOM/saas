@@ -63,12 +63,14 @@ These read live data from your channel. Anyone can use them.
 |----------|-------------|---------|
 | `$(twitch.live)` | `true` when the channel is live, `false` when offline or unknown. Use it in a condition | `$(twitch.live)` |
 | `$(twitch.title)` | Current stream title, or `No title set` | `$(twitch.title)` |
-| `$(twitch.game)` | Current category, or `No game set` | `$(twitch.game)` |
+| `$(twitch.game [target])` | Twitch's current or last played category for your channel or an optional target; `No game set` for your own channel when none is set ([Twitch API field](https://dev.twitch.tv/docs/api/reference/#get-channel-information)). | `$(twitch.game)` |
 | `$(twitch.viewers)` | Chatters count, or the provided event viewer count when available | `$(twitch.viewers)` |
 | `$(twitch.subs)` | Subscriber count | `$(twitch.subs)` |
 | `$(twitch.follows)` | Follower count | `$(twitch.follows)` |
-| `$(twitch.channel)` | Channel display name | `$(twitch.channel)` |
-| `$(twitch.login)` | Channel login name, lowercase | `$(twitch.login)` |
+| `$(twitch.channel [target])` | Channel display name for your channel or an optional target | `$(twitch.channel)` |
+| `$(twitch.login [target])` | Lowercase login for your channel or an optional target | `$(twitch.login)` |
+
+For `twitch.channel`, `twitch.login`, and `twitch.game`, leaving out `target` reads your own channel. A supplied target must be one Twitch login (an optional leading `@` is accepted). An empty, malformed, unknown, or failed Twitch lookup returns an empty value. When `twitch.game` has a target, it also returns an empty value if that channel has no reported category. A login that matches the syntax is not proof that the account exists. Repeated lookups for the same target are reused during one command execution.
 
 ## Moderation functions
 
@@ -291,7 +293,13 @@ Add `.twitch` or `.kick` to the name to affect only one platform, for example `$
 | `$(break)` | Leaves a loop early | `$(break)` |
 | `$(continue)` | Skips to the next loop step | `$(continue)` |
 | `$(chat.send message)` | Posts the first argument as the bot; quote multiword messages | `$(chat.send "Hello everyone!")` |
-| `$(announce [color] message)` | Posts a Twitch announcement. Colors are `blue`, `green`, `orange`, `purple`, or `primary` (the default). The message is 1–500 characters. Moderator access in AI chat | `$(announce purple Five minutes left!)` |
+| `$(announce [color] message)`, `$(announcement ...)`, or `$(chat.announcement ...)` | Posts a Twitch announcement. Colors are `blue`, `green`, `orange`, `purple`, or `primary` (the default). The message is 1–500 characters. If Twitch cannot post it, the function returns the original message for normal command delivery; it does not send that fallback as an extra chat message. Moderator access in AI chat | `$(announce purple Five minutes left!)` |
+| `$(shoutout target)` | Sends a native Twitch shoutout for one valid login. Missing or invalid targets produce no output. Moderator access in AI chat | `$(shoutout streamer)` |
+| `$(show.clip target)` | Best-effort display of a selected cached clip from the target channel on the clip overlay. If the target is missing or invalid, has no clips, or the overlay is disconnected, it produces no output. Moderator access in AI chat | `$(show.clip streamer)` |
+
+The `!so` default reply uses these functions. Its `&t` argument is the entire text after `!so`, so it must contain one login only; extra words make the target invalid. `&p1` can be used when you want only the first word as the target and want later words silently ignored. See [Custom commands](/commands/overview/) for editing `!so` and setting its authoritative command access.
+
+Twitch allows one accepted native shoutout from a sending broadcaster every 2 minutes, and one to the same target every 60 minutes. The sending channel must be live with at least one viewer, and the bot needs moderator status and the required authorization. These are Twitch endpoint limits, separate from the command's editable cooldown and from its announcement and clip behavior. See Twitch's [Send a Shoutout API reference](https://dev.twitch.tv/docs/api/reference/#send-a-shoutout).
 
 ## Quick examples
 

@@ -63,12 +63,12 @@ Estas leen datos en vivo de tu canal. Todos pueden usarlas.
 |---------|-------------|---------|
 | `$(twitch.live)` | `true` si el canal está en vivo, `false` si está offline o no se sabe. Úsala en una condición | `$(twitch.live)` |
 | `$(twitch.title)` | Título actual del stream, o `No title set` | `$(twitch.title)` |
-| `$(twitch.game)` | Categoría actual, o `No game set` | `$(twitch.game)` |
+| `$(twitch.game [target])` | Categoría que Twitch informa como actual o la última reproducida en tu canal o en un canal opcional; `No game set` para tu canal si no hay ninguna ([campo de la API de Twitch](https://dev.twitch.tv/docs/api/reference/#get-channel-information)) | `$(twitch.game)` |
 | `$(twitch.viewers)` | Cantidad de participantes del chat, o viewers del evento si están disponibles | `$(twitch.viewers)` |
 | `$(twitch.subs)` | Número de subs | `$(twitch.subs)` |
 | `$(twitch.follows)` | Número de followers | `$(twitch.follows)` |
-| `$(twitch.channel)` | Nombre visible del canal | `$(twitch.channel)` |
-| `$(twitch.login)` | Login del canal, en minúsculas | `$(twitch.login)` |
+| `$(twitch.channel [target])` | Nombre visible de tu canal o del canal opcional | `$(twitch.channel)` |
+| `$(twitch.login [target])` | Login en minúsculas de tu canal o del canal opcional | `$(twitch.login)` |
 
 ## Funciones de moderación
 
@@ -291,7 +291,15 @@ Agrega `.twitch` o `.kick` al nombre para afectar solo una plataforma, por ejemp
 | `$(break)` | Sale de un bucle antes de tiempo | `$(break)` |
 | `$(continue)` | Pasa al siguiente paso del bucle | `$(continue)` |
 | `$(chat.send mensaje)` | Publica el primer argumento como el bot; escribe mensajes de varias palabras entre comillas | `$(chat.send "¡Hola a todos!")` |
-| `$(announce [color] mensaje)` | Publica un anuncio de Twitch. Los colores son `blue`, `green`, `orange`, `purple` o `primary` (por defecto). El mensaje tiene de 1 a 500 caracteres. Requiere acceso de moderador en el chat de IA | `$(announce purple ¡Quedan cinco minutos!)` |
+| `$(announce [color] mensaje)`, `$(announcement ...)` o `$(chat.announcement ...)` | Publica un anuncio de Twitch. Los colores son `blue`, `green`, `orange`, `purple` o `primary` (por defecto). El mensaje tiene de 1 a 500 caracteres. Si Twitch no puede publicarlo, la función devuelve el mensaje original para la entrega normal del comando; no envía el texto de respaldo como un mensaje adicional. Requiere acceso de moderador en el chat de IA | `$(announce purple ¡Quedan cinco minutos!)` |
+| `$(shoutout target)` | Envía un shoutout nativo de Twitch para un solo login válido. Si falta o no es válido, no produce salida. Requiere acceso de moderador en el chat de IA | `$(shoutout streamer)` |
+| `$(show.clip target)` | Intenta mostrar en el overlay de clips un clip seleccionado en caché del canal indicado. Si falta el destino, no es válido, no hay clips o el overlay está desconectado, no produce salida. Requiere acceso de moderador en el chat de IA | `$(show.clip streamer)` |
+
+En `twitch.channel`, `twitch.login` y `twitch.game`, si omites `target`, se consulta tu propio canal. El destino indicado debe ser un solo login de Twitch (se acepta un `@` inicial). Un destino vacío, mal formado, desconocido o cuya consulta a Twitch falle devuelve un valor vacío. Cuando `twitch.game` recibe un destino, también devuelve un valor vacío si ese canal no tiene una categoría informada. Que un login cumpla la sintaxis no demuestra que la cuenta exista. Las consultas repetidas al mismo destino se reutilizan durante la ejecución de un comando.
+
+La respuesta predeterminada de `!so` usa estas funciones. Su argumento `&t` es todo el texto después de `!so`, así que debe contener un solo login; las palabras adicionales hacen que el destino no sea válido. Puedes usar `&p1` para tomar solo la primera palabra e ignorar las siguientes. Consulta [Comandos personalizados](/es/commands/overview/) para editar `!so` y configurar el acceso del comando, que es el ajuste autoritativo.
+
+Twitch permite un shoutout nativo aceptado del broadcaster emisor cada 2 minutos y uno al mismo destino cada 60 minutos. El canal emisor debe estar en vivo y tener al menos un espectador; el bot necesita rol de moderador y la autorización requerida. Estos límites de la API de Twitch son distintos del tiempo de espera editable del comando y del comportamiento del anuncio y del clip. Consulta la referencia oficial de Twitch: [Send a Shoutout](https://dev.twitch.tv/docs/api/reference/#send-a-shoutout).
 
 ## Ejemplos rápidos
 

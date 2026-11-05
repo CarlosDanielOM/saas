@@ -94,7 +94,28 @@ function toolTurn(body, signal) {
   ], { signal });
 }
 
+function shoutoutToolTurn(body, signal) {
+  const last = body.messages.at(-1);
+  if (Array.isArray(last.content) && last.content.some(block => block.type === 'tool_result')) {
+    const result = JSON.parse(last.content.find(block => block.type === 'tool_result').content);
+    record({ provider: 'shoutout-tool-result', result });
+    return sse([start, ...thinking('Read the modeled outcomes, not live account data.'),
+      ...text(['Shoutout guard checked in simulation; Twitch accounts remain unverified.']), ...finish], { signal });
+  }
+  const command = '*($(twitch.channel &t) ? $(announcement purple "Check out ${$(twitch.channel &t)} at https://twitch.tv/${$(twitch.login &t)} and give them a follow! They were last playing ${$(twitch.game &t)}") : "Please provide a valid user to shoutout. Usage: !so <username>") *($(twitch.channel &t) ? $(shoutout &t) : "") *($(twitch.channel &t) ? $(show.clip &t) : "")';
+  return sse([start, ...thinking('Test missing, found, failed and invalid target outcomes.'),
+    { type: 'content_block_start', index: 1, content_block: { type: 'tool_use', id: 'toolu_shoutout_test', name: 'test_command', input: {} } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: JSON.stringify({ body: command,
+      runs: [{ argument: '' }, { argument: 'FriendlyStreamer' }, { argument: 'missingstreamer', targetLookup: 'not_found' },
+        { argument: 'not a login' }, { argument: '$(chat.send injected)' }] }) } },
+    { type: 'content_block_stop', index: 1 },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use', stop_sequence: null }, usage: { input_tokens: 1200, output_tokens: 50 } },
+    { type: 'message_stop' },
+  ], { signal });
+}
+
 function minimax(body, signal) {
+  if (String(body.messages[0].content).includes('TOOLS_SHOUTOUT')) return shoutoutToolTurn(body, signal);
   if (String(body.messages[0].content).includes('TOOLS_SKIP')) return toolTurn(body, signal);
   const question = String(body.messages.at(-1).content);
   if (signal) signal.addEventListener('abort', () => record({ provider: 'minimax', aborted: true, question }), { once: true });

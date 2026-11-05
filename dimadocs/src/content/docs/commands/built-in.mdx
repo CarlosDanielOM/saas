@@ -1,12 +1,12 @@
 ---
 title: Built-in commands
-description: Default access, syntax, and behavior of DomDimaBot's built-in chat commands, such as !so, !poll, !duel, and !vip.
+description: Default access, syntax, and behavior of DomDimaBot's built-in chat commands, such as !poll, !duel, and !vip.
 sidebar:
   label: Built-in commands
   order: 3
 ---
 
-Built-in commands are ready-made tools that come with DomDimaBot. Viewers and moderators type them in chat. Each one has a default **Who can use it** level and a cooldown, and you can change both.
+Built-in commands are ready-made tools that come with DomDimaBot. Viewers and moderators type them in chat. Each one has a default **Who can use it** level and a cooldown, and you can change both. `!so` is an editable default custom command; see [Custom commands](/commands/overview/) for its access and editing rules.
 
 ## Turn them on or change access
 
@@ -50,7 +50,6 @@ In the tables below, **Everyone** means anyone in chat, **Mods and above** inclu
 | Command | Usage | Who can use it | What it does |
 |---|---|---|---|
 | `!clip` | `!clip [seconds] [title]` | Everyone | Creates a clip and posts its link. A first number from 5 to 60 sets the length. Any other first word starts the title. Numbers outside 5–60 use 30 seconds. |
-| `!so` | `!so <user>` | Mods and above | Posts a shoutout announcement with the channel link and last game. Sends Twitch's own shoutout, and shows one of their clips when available. The same person gets a Twitch shoutout at most once every 2 minutes. |
 | `!promo` | `!promo <user>` | Mods and above | Shows a clip from the named channel when one is available. |
 | `!anuncio` | `!anuncio <message>` | Mods and above | Posts a Twitch announcement. The message can be up to 300 characters. |
 | `!game` | `!game <name>` | Mods and above | Changes the stream category. If no category matches the name exactly, the bot uses the top search result. With no name, it replies with the current category. The command's access setting is checked first. |
