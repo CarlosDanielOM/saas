@@ -8,8 +8,9 @@
  *    on tablet/desktop and the one-line strip on phones;
  *  - shortcuts to TTS / chat events / triggers / moderation;
  *  - "Your week" facts, automod + sanctions cards from moderation logs;
- *  - "coming soon" tiles for data still being built (tips, games, days) and "Show me" chips that hide/show them and
- *    persist across reloads;
+ *  - a "coming soon" tile for data still being built (tips), the real games / best days cards (details in
+ *    dashboard-insights-site.mjs) and "Show me" chips that hide/show them and persist across reloads;
+ *  - #goals links open the folded Goals section;
  *  - phone tabs between "Your channel" and "Your bot";
  *  - folded stream history (chart sizes once opened, one row per stream) and goals;
  *  - failure cases: bot out of chat (warning + join works), automod off,
@@ -322,8 +323,9 @@ try {
     assert.match(facts[0], /Streams\s+3\s+\+50%/, `${label}: streams fact ${facts[0]}`);
     assert.match(facts[2], /New followers\s+30\s+\+20%/, `${label}: follows fact ${facts[2]}`);
 
-    // Only tips/games/days are placeholders; raids and bot usage have real cards.
-    assert.equal(await page.locator('.pane:not(.pane--bot) .soon').count(), 3, `${label}: channel coming-soon tiles`);
+    // Only tips is a placeholder; games, best days (dashboard-insights-site.mjs covers them), raids and bot usage are real cards.
+    assert.equal(await page.locator('.pane:not(.pane--bot) .soon').count(), 1, `${label}: channel coming-soon tiles`);
+    assert.equal(await page.locator('[data-testid="dashboard-games"] app-dashboard-insights-card, [data-testid="dashboard-days"] app-dashboard-insights-card').count(), 2, `${label}: games + best days cards`);
     assert.equal(await page.locator('.pane--bot .soon').count(), 0, `${label}: bot coming-soon tiles`);
     assert.equal(await page.locator('.soon__chip').first().innerText(), 'COMING SOON', `${label}: coming soon chip`);
 
@@ -365,7 +367,8 @@ try {
     const chip = page.locator('.topic', { hasText: 'Games' });
     assert.equal(await chip.getAttribute('aria-pressed'), 'true');
     await chip.click();
-    await until(async () => (await page.locator('.pane:not(.pane--bot) .soon').count()) === 2, 'games tile hidden after chip click');
+    await until(async () => (await page.locator('[data-testid="dashboard-games"]').count()) === 0, 'games card hidden after chip click');
+    assert.equal(await page.locator('[data-testid="dashboard-days"]').count(), 1, 'best days card stays');
     await page.locator('.topic', { hasText: 'Moderation' }).click();
     await until(async () => (await page.locator('app-dashboard-moderation-card').count()) === 0, 'moderation cards hidden');
     for (const name of ['Commands', 'Emotes']) await page.locator('.topic', { hasText: name }).click();
@@ -373,7 +376,7 @@ try {
     await page.reload();
     await page.waitForSelector('.gh__title');
     assert.equal(await page.locator('.topic', { hasText: 'Games' }).getAttribute('aria-pressed'), 'false', 'chip choice persisted');
-    assert.equal(await page.locator('.pane:not(.pane--bot) .soon').count(), 2, 'games tile still hidden after reload');
+    assert.equal(await page.locator('[data-testid="dashboard-games"]').count(), 0, 'games card still hidden after reload');
     // Credits within pace
     await until(async () => (await page.locator('.bs__item').nth(2).innerText()).includes('Should last until they reset on'), 'credits on-track text');
     assert.equal(await page.locator('.bs__item').nth(2).getAttribute('data-tone'), 'ok');
