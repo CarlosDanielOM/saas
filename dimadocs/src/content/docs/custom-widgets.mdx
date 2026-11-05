@@ -38,6 +38,8 @@ In the Add panel, choose **New widget** in the custom widgets list. Give the wid
 
 Choose **Edit code** in a custom widget layer's settings to open the same editor for an imported or created widget.
 
+The pencil button beside the widget name is labeled **Rename widget**. Type a name and choose **Rename** or press Enter; press Escape to cancel. The new name is saved right away and isn't part of the files, so it doesn't create a version. If `widget.json` still has the old name, the editor changes it as an unsaved edit; save to keep it, since that name is used on import. Layers still showing the widget's old name follow the new name; layers you renamed keep their names.
+
 The tabs contain HTML, CSS, JS, **Fields** (`fields.txt`, the settings shown in the right panel), **Data** (starting values from `data.txt`; changes in the right panel still win for each layer), and `widget.json`. A StreamElements widget without `widget.json` shows **Add widget.json**. It creates a manifest from what Studio worked out from the code.
 
 The preview runs unsaved code at the layer's size in the same sandbox as the overlay. On phones, switch between **Code** and **Preview**. **Try it** sends test chat messages and alerts, but only the kinds listed in the widget's `widget.json`. Choose **Restart** to restart the preview. The widget log shows its messages, warnings, and errors.

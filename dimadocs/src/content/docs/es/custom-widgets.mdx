@@ -38,6 +38,8 @@ En el panel Añadir, elige **Nuevo widget** en la lista de widgets personalizado
 
 Elige **Editar código** en los ajustes de una capa de widget personalizado para abrir el mismo editor con cualquier widget importado o creado.
 
+El botón con el lápiz junto al nombre del widget se llama **Cambiar el nombre del widget**. Escribe el nombre y elige **Cambiar nombre** o pulsa Intro; pulsa Escape para cancelar. El nombre nuevo se guarda de inmediato y no forma parte de los archivos, así que no crea una versión. Si `widget.json` aún tiene el nombre anterior, el editor también lo cambia como una edición sin guardar; guarda para conservarlo, porque ese nombre se usa al importar. Las capas que aún muestran el nombre anterior del widget adoptan el nuevo; las capas a las que cambiaste el nombre conservan el suyo.
+
 Las pestañas contienen HTML, CSS, JS, **Ajustes** (`fields.txt`, los ajustes que aparecen en el panel derecho), **Datos** (valores iniciales de `data.txt`; los cambios del panel derecho siguen teniendo prioridad en cada capa) y `widget.json`. Un widget de StreamElements sin `widget.json` muestra **Añadir widget.json**. Esta opción crea un manifiesto a partir de lo que Studio dedujo del código.
 
 La vista previa ejecuta el código sin guardar al tamaño de la capa y en la misma zona aislada que el overlay. En teléfonos, cambia entre **Código** y **Vista previa**. **Pruébalo** envía mensajes de prueba y alertas, pero solo de los tipos que aparecen en el `widget.json` del widget. Pulsa **Reiniciar** para reiniciar la vista previa. El registro del widget muestra sus mensajes, avisos y errores.
