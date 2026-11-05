@@ -54,6 +54,14 @@ Si el widget cambió en otro lugar después de abrirlo, por ejemplo en otra pest
 
 Escape dentro del código no cierra el editor. Pulsa Escape y luego Tab para mover el foco fuera del código.
 
+Al escribir, aparecen sugerencias de llamadas al SDK de Dima, eventos (incluida la entrada `uses` que necesiten en `widget.json`), datos de los controladores, tus ajustes después de `Dima.fields.` y en los marcadores `{key}`, además de `SE_API`, los detalles de eventos y los nombres de listeners de StreamElements. También se sugieren claves y valores válidos en `widget.json` y Ajustes; pasa el cursor sobre `Dima` o `SE_API` para ver qué hacen. Escape cierra la lista de sugerencias.
+
+## Usa tu propio editor de código
+
+En la columna de vista previa, abre **Usa tu propio editor de código** y elige **Descargar para tu editor**. El zip contiene `widget.html`, `widget.css`, `widget.js`, `fields.json`, `data.json`, `widget.json` si el widget lo tiene y `widget.ini` para volver a importarlo. También incluye `dima.d.ts` y `jsconfig.json` con sugerencias y comprobaciones del SDK de Dima, sus eventos y tus ajustes en editores como VS Code, además de una carpeta `.vscode` con comprobaciones para `fields.json` y `widget.json`.
+
+Edita los archivos y luego elige **Cargar una carpeta** o **Cargar archivos** con un `.zip` o archivos individuales. Solo los archivos cargados reemplazan las pestañas correspondientes y quedan como cambios sin guardar. Si no incluyes `widget.json`, se conserva el manifiesto actual. Comprueba la vista previa y guarda. En los widgets de StreamElements, los marcadores `{key}` de `widget.js` se reemplazan antes de ejecutar el código, así que tu editor podría marcarlos.
+
 ## Añade y ajusta una capa
 
 Añade el widget importado desde la paleta de capas y abre sus **Ajustes**. Los campos aparecen en grupos desplegables; los que no tienen grupo aparecen en **General**. Usa **Buscar un ajuste** para encontrar un campo. La marca **Cambiado** señala los ajustes distintos de los valores guardados del widget. Pulsa **Restablecer** para devolver un ajuste a su valor original o **Restablecer todo** para recuperar todos los valores.

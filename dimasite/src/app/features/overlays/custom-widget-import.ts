@@ -59,7 +59,7 @@ export async function readImport(picked: readonly PickedFile[]): Promise<ImportD
   }
   const manifest = scope.find(entry => entry.path.split('/').pop()!.toLowerCase() === MANIFEST_FILE);
   if (manifest) source.manifest = manifest.text;
-  if (!source.html.trim() && !source.css.trim() && !source.js.trim()) return { ...empty('noCode'), parts };
+  if (!source.html.trim() && !source.css.trim() && !source.js.trim()) return { ...empty('noCode'), source, parts };
   try {
     const pkg = readPackage(source);
     const groups = groupFields(pkg.fields);
@@ -69,7 +69,8 @@ export async function readImport(picked: readonly PickedFile[]): Promise<ImportD
         remote: pkg.externalMedia, streamElements: pkg.externalMedia.filter(item => isStreamElementsHost(item.host)), manifest: pkg.manifest, ...(pkg.author ? { author: pkg.author } : {}),
         builtIn: builtInValues(pkg.fields, pkg.data) } };
   } catch (error) {
-    return { ...empty('format', error instanceof PackageFormatError ? error.message : String(error)), parts, suggestedName: fallbackName };
+    // The files stay available (the code editor loads them to be fixed); importing still needs them to parse.
+    return { ...empty('format', error instanceof PackageFormatError ? error.message : String(error)), source, parts, suggestedName: fallbackName };
   }
 }
 

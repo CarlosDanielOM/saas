@@ -39,7 +39,13 @@ const theme = EditorView.theme({
   '.cm-tooltip, .cm-panels': { color: 'var(--fg)', backgroundColor: 'var(--tile)', border: '1px solid var(--line)' },
   '.cm-tooltip-autocomplete > ul > li[aria-selected]': { color: 'var(--fg)', backgroundColor: 'var(--accent-soft)' },
   '.cm-panel input, .cm-panel button': { fontSize: '16px' },
-  '.cm-foldPlaceholder': { color: 'var(--cm-fg)', backgroundColor: 'var(--cm-active)', border: 'none' }
+  '.cm-foldPlaceholder': { color: 'var(--cm-fg)', backgroundColor: 'var(--cm-active)', border: 'none' },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul': { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", maxHeight: '16em' },
+  '.cm-completionDetail': { color: 'var(--muted)', fontStyle: 'normal', marginLeft: '0.75em' },
+  '.cm-completionInfo': { maxWidth: '22rem', padding: '0.4rem 0.6rem', color: 'var(--fg)', backgroundColor: 'var(--tile)', border: '1px solid var(--line)', fontFamily: 'inherit' },
+  '.cm-dima-hover': { maxWidth: '24rem', padding: '0.45rem 0.6rem', fontSize: '0.8rem', lineHeight: '1.45' },
+  '.cm-dima-hover code': { display: 'block', marginBottom: '0.2rem', color: 'var(--cm-keyword)', fontWeight: '700' },
+  '.cm-dima-hover p': { margin: '0', color: 'var(--fg)' }
 });
 const highlight = HighlightStyle.define([
   { tag: [tags.keyword, tags.operatorKeyword, tags.modifier, tags.controlKeyword], color: 'var(--cm-keyword)' },
@@ -53,8 +59,10 @@ const highlight = HighlightStyle.define([
 ]);
 const languages: Record<CodeLanguage, () => Extension> = { html: () => html(), css: () => css(), js: () => javascript(), json: () => json() };
 
-export function createCodeEditor<K extends string>(parent: HTMLElement, tabs: Record<K, CodeTab>, first: K, onChange: (tab: K, text: string) => void): CodeEditor<K> {
+export function createCodeEditor<K extends string>(parent: HTMLElement, tabs: Record<K, CodeTab>, first: K, onChange: (tab: K, text: string) => void,
+  extra: (tab: K) => Extension[] = () => []): CodeEditor<K> {
   const make = (tab: K, text: string) => EditorState.create({ doc: text, extensions: [
+    ...extra(tab),
     basicSetup, keymap.of([indentWithTab]), EditorView.lineWrapping, theme, syntaxHighlighting(highlight), languages[tabs[tab].language](),
     // tabindex makes the (already focusable) editable area count as the scroll region's focusable content.
     EditorView.contentAttributes.of({ 'aria-label': tabs[tab].label, tabindex: '0' }),

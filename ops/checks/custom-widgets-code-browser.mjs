@@ -11,7 +11,8 @@
  */
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 
 const tools = process.env.SAAS_BROWSER_TOOLS || '/tmp/saas-cooldown-browser';
 const require = createRequire(`${tools}/package.json`);
@@ -24,6 +25,11 @@ const fixtures = process.env.CUSTOM_WIDGET_FIXTURES || `${repo}/ops/checks/custo
 const formatModule = `/tmp/custom-widget-format-code-${process.pid}.mjs`;
 createRequire(`${repo}/dimabot/package.json`)('esbuild').buildSync({ entryPoints: [`${repo}/dimabot/src/custom_widgets/format.ts`], format: 'esm', platform: 'node', outfile: formatModule, logLevel: 'error' });
 const { readPackage } = await import(formatModule);
+// The kit's zip format and the TypeScript compiler (to prove the typings work as an editor would use them).
+const zipModule = `/tmp/custom-widget-zip-${process.pid}.mjs`;
+createRequire(`${repo}/dimabot/package.json`)('esbuild').buildSync({ entryPoints: [`${repo}/dimasite/src/app/features/overlays/custom-widget-zip.ts`], format: 'esm', platform: 'neutral', outfile: zipModule, logLevel: 'error' });
+const { readZip, writeZip } = await import(zipModule);
+const ts = createRequire(`${repo}/dimasite/package.json`)('typescript');
 const api = 'https://api.domdimabot.com', errors = [];
 const shots = process.env.SAAS_SCREENSHOT_DIR || '';
 const shot = async (page, name) => { if (!shots) return; await mkdir(shots, { recursive: true }); await page.screenshot({ path: `${shots}/custom-widgets-code-${name}.png` }); };
@@ -117,6 +123,25 @@ async function insertCode(dialog, text, where) {
 }
 /** The rendered text of the open tab (CodeMirror draws the lines on screen, enough for these short checks). */
 const code = dialog => dialog.locator('[data-cwc-editor] .cm-content').evaluate(node => node.innerText);
+
+/** Downloads the kit from the open editor, unpacks it and returns its folder and file names. */
+async function downloadKit(page, dialog) {
+  if (!(await dialog.locator('[data-cwc-kit]').evaluate(d => d.open))) await dialog.locator('[data-cwc-kit] summary').click();
+  const [download] = await Promise.all([page.waitForEvent('download'), dialog.locator('[data-cwc-kit-download]').click()]);
+  const dir = await mkdtemp('/tmp/cw-kit-'), zipPath = join(dir, 'kit.zip');
+  await download.saveAs(zipPath);
+  const entries = await readZip((await readFile(zipPath)).buffer);
+  for (const entry of entries) { await mkdir(dirname(join(dir, 'out', entry.name)), { recursive: true }); await writeFile(join(dir, 'out', entry.name), entry.data); }
+  const root = join(dir, 'out', entries[0].name.split('/')[0]);
+  return { dir, root, names: entries.map(entry => entry.name.split('/').slice(1).join('/')), suggested: download.suggestedFilename() };
+}
+/** TypeScript errors in a kit folder, using its own jsconfig.json (what VS Code would show). */
+function typeErrors(root) {
+  const config = ts.readConfigFile(join(root, 'jsconfig.json'), ts.sys.readFile);
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root);
+  return ts.getPreEmitDiagnostics(ts.createProgram(parsed.fileNames, parsed.options)).map(d => `${d.file ? d.file.fileName.split('/').pop() : ''}: ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`);
+}
+const popup = page => page.locator('.cm-tooltip-autocomplete .cm-completionLabel').allTextContents();
 
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 try {
@@ -303,6 +328,84 @@ try {
   await dialog.locator('[data-cwc-discard]').click();
   await dialog.locator('[data-cwc-reload]').focus(); await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'detached' });
   await context.close();
+
+  // 3. Suggestions (typing, handler types, hover) and the own-editor kit (typings checked by TypeScript, load back).
+  for (const starter of ['dima', 'streamelements']) {
+    const km = mocks(), kctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', acceptDownloads: true });
+    await km.install(kctx);
+    const kp = await kctx.newPage(); kp.setDefaultTimeout(15000); kp.on('pageerror', e => errors.push(e.message));
+    await kp.goto(`${base}/${user.login}/modules/overlays`); await kp.locator('.stage').waitFor();
+    await kp.locator('[data-custom-new]').click();
+    const kd = kp.locator('dialog.cwc');
+    await kd.locator(`[data-cwc-starter="${starter}"]`).check();
+    await kd.locator('[data-cwc-start]').click();
+    await kd.locator('[data-cwc-editor] .cm-editor').waitFor();
+    if (starter === 'dima') {
+      await kd.locator('[data-cwc-editor] .cm-content').click();
+      await kp.keyboard.press('ControlOrMeta+End');
+      await kp.keyboard.type('\nDima.');
+      await until(async () => { const list = await popup(kp); return ['on', 'fields', 'store', 'ready'].every(label => list.includes(label)); }, 'Dima. suggestions');
+      await shot(kp, 'suggest-dark-1280');
+      await kp.keyboard.press('Escape');
+      await until(async () => (await kp.locator('.cm-tooltip-autocomplete').count()) === 0, 'Escape closes the suggestions');
+      assert.equal(await kd.isVisible(), true, 'and keeps the editor open');
+      await kp.keyboard.type("fields.");
+      await until(async () => (await popup(kp)).includes('accentColor'), 'settings after Dima.fields.');
+      // Accepting a suggestion inserts it.
+      await kp.keyboard.type('maxM');
+      await until(async () => (await popup(kp))[0] === 'maxMessages', 'filtered to maxMessages');
+      await kp.keyboard.press('Enter');
+      await until(async () => /Dima\.fields\.maxMessages$/.test((await code(kd)).trimEnd()), 'accepted suggestion');
+      await kp.keyboard.type(";\nDima.on('alert', a => a.");
+      await until(async () => { const list = await popup(kp); return ['amount', 'user', 'tier'].every(label => list.includes(label)); }, 'alert handler parameter');
+      await kp.keyboard.type('user.');
+      await until(async () => (await popup(kp)).includes('name'), 'nested user');
+      await kp.keyboard.press('Escape');
+      // Hover docs.
+      await kp.keyboard.type('name);\nconst saved = Dima.store;'); // a reference only: the preview runs this code
+      const box = await kd.locator('.cm-content').evaluate(content => {
+        const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const at = node.textContent.indexOf('store'); if (at < 0) continue;
+          const range = document.createRange(); range.setStart(node, at); range.setEnd(node, at + 5);
+          const r = range.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+        }
+        return null;
+      });
+      assert(box, 'found the word to hover');
+      await kp.mouse.move(box.x, box.y);
+      await until(async () => /store: DimaStore/.test(await kd.locator('.cm-dima-hover').textContent().catch(() => '')), 'hover doc');
+      await shot(kp, 'hover-dark-1280');
+      await axe(kp, 'suggestions and hover');
+      console.log('PASS suggestions: Dima members, settings (accepted with Enter), handler parameter types (alert → user → name), Escape closes only the list, hover docs.');
+    }
+    // The kit: real names, typings that TypeScript accepts for the starter, and a typo that it catches.
+    const kit = await downloadKit(kp, kd);
+    assert.equal(kit.suggested, 'My widget.zip', 'named after the widget');
+    assert.deepEqual(kit.names.sort(), ['.vscode/fields.schema.json', '.vscode/settings.json', '.vscode/widget.schema.json', 'README.md', 'data.json', 'dima.d.ts', 'fields.json', 'jsconfig.json',
+      'widget.css', 'widget.html', 'widget.ini', 'widget.js', ...(starter === 'dima' ? ['widget.json'] : [])].sort());
+    // The Dima starter got a typed line above (with the user's typing); both starters must type-check cleanly.
+    assert.deepEqual(typeErrors(kit.root), [], `${starter} kit type-checks`);
+    if (starter === 'streamelements') assert.match(await readFile(join(kit.root, 'dima.d.ts'), 'utf8'), /declare const SE_API: SEApi;/);
+    await writeFile(join(kit.root, 'widget.js'), (await readFile(join(kit.root, 'widget.js'), 'utf8')) + '\nDima.store.gett("x");\n');
+    assert.match(typeErrors(kit.root).join('\n'), /gett/, 'a typo in an SDK call is an error in the editor');
+    // Edited elsewhere → load the zip back: the CSS change lands in the tab as an unsaved change.
+    await writeFile(join(kit.root, 'widget.css'), (await readFile(join(kit.root, 'widget.css'), 'utf8')) + '\n/* from my editor */\n');
+    await writeFile(join(kit.root, 'widget.js'), (await readFile(join(kit.root, 'widget.js'), 'utf8')).replace('\nDima.store.gett("x");\n', '\n'));
+    const files = [];
+    for (const name of kit.names) files.push({ name: `edited/${name}`, text: await readFile(join(kit.root, name), 'utf8') });
+    const edited = join(kit.dir, 'edited.zip');
+    await writeFile(edited, Buffer.from(await writeZip(files).arrayBuffer()));
+    await kd.locator('[data-cwc-kit-files]').setInputFiles(edited);
+    await kd.locator('[data-cwc-loaded]').waitFor();
+    assert.match(await kd.locator('[data-cwc-loaded]').textContent(), new RegExp(`Loaded ${starter === 'dima' ? 6 : 5} files`));
+    await kd.locator('[data-cwc-tab="css"]').click();
+    await until(async () => /from my editor/.test(await code(kd)), 'loaded files replace the tab');
+    assert.equal(await kd.locator('[data-cwc-status]').getAttribute('data-status'), 'new');
+    await rm(kit.dir, { recursive: true, force: true });
+    await kctx.close();
+  }
+  console.log('PASS own code editor: kit with real names, typings + jsconfig that TypeScript accepts (and that catch an SDK typo), JSON schemas; edited files load back as unsaved changes.');
 
   // 2. Edit code of an imported StreamElements widget; phone layout, light then dark.
   for (const theme of ['light', 'dark']) {

@@ -98,6 +98,14 @@ session (`.<session>` suffix): a session copies another's draft when restoring i
 `PATCH { name }` only: no new revision, the base revision is untouched; widget.json's `name` follows as an unsaved
 change when it still had the old name, and layers still showing the old name follow.
 
+Suggestions and hover docs (`custom-widget-code-hints.ts`, loaded with CodeMirror) and the "Use your own code editor" kit
+(`custom-widget-editor-kit.ts`: real file names + widget.ini, `dima.d.ts` with a `WidgetFields` interface from the
+widget's settings, jsconfig, VS Code JSON schemas) both come from one reference, `widget-runtime/sdk-reference.ts`;
+`custom-widget-code-hints.spec.ts` checks it against the SDK, the SE layer and real payloads. Handler parameters are typed
+from the enclosing `Dima.on('event', …)` / `Dima.ready().then(…)` / `addEventListener('onEventReceived', …)` call via the
+Lezer tree (first plain parameter only). "Load files" replaces only the parts found (broken or settings-only files load
+too; the import dialog still refuses them).
+
 ## Not built yet
 
 - Tip events (`tip-latest` exists but never fires until our tipping feature ships) and 7TV/BTTV/FFZ emotes.

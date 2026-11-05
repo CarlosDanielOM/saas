@@ -152,6 +152,8 @@ button:not(:disabled):hover, .icon-button:hover { border-color: color-mix(in srg
 .count--error { background: var(--danger-soft); color: var(--danger); }
 .fold__empty { padding: 0 0.75rem 0.6rem; }
 .fold__foot { display: flex; justify-content: flex-end; padding: 0 0.5rem 0.5rem; }
+.kit { display: grid; gap: 0.6rem; padding: 0 0.75rem 0.75rem; }
+.kit__actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .log { display: grid; gap: 0.25rem; max-height: 14rem; padding: 0 0.75rem 0.5rem; overflow: auto; list-style: none; font: 500 0.72rem/1.45 var(--mono); }
 .log li { color: var(--muted); overflow-wrap: anywhere; white-space: pre-wrap; }
 .log li[data-level='error'] { color: var(--danger); }

@@ -75,7 +75,7 @@ Dima.on('chat', message => {
 });
 Dima.on('chat.delete', event => chat.querySelector('[data-id="' + CSS.escape(event.messageId) + '"]')?.remove());
 Dima.on('chat.clear', event => {
-  for (const row of [...chat.children]) if (!event.userId || row.dataset.user === event.userId) row.remove();
+  for (const row of [...chat.children]) if (!event.userId || row.getAttribute('data-user') === event.userId) row.remove();
 });
 
 let hideTimer;
@@ -116,7 +116,7 @@ window.addEventListener('onEventReceived', obj => {
   if (listener === 'message') return addMessage(event.data, event.renderedText);
   if (listener === 'delete-message') return chat.querySelector('[data-id="' + CSS.escape(event.msgId) + '"]')?.remove();
   if (listener === 'delete-messages') {
-    for (const row of [...chat.children]) if (row.dataset.user === event.userId) row.remove();
+    for (const row of [...chat.children]) if (row.getAttribute('data-user') === event.userId) row.remove();
     return;
   }
   if (fieldData.showAlerts && TEXT[listener]) showBanner(TEXT[listener].replace('{name}', event.name).replace('{amount}', String(event.amount)));

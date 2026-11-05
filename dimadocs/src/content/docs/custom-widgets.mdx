@@ -54,6 +54,14 @@ If the widget changed somewhere else after you opened it, such as in another tab
 
 Escape inside the code does not close the editor. Press Escape, then Tab, to move focus out of the code.
 
+As you type, suggestions show Dima SDK calls, events (including any `widget.json` `uses` entry they need), handler data fields, your settings after `Dima.fields.` and in `{key}` placeholders, and StreamElements `SE_API`, event details, and listener names. Suggestions also show valid keys and values in `widget.json` and Fields; hover over `Dima` or `SE_API` for a description. Escape closes the suggestion list.
+
+## Use your own code editor
+
+In the preview column, open **Use your own code editor** and choose **Download for your editor**. The zip contains `widget.html`, `widget.css`, `widget.js`, `fields.json`, `data.json`, `widget.json` when the widget has one, and `widget.ini` so it can be imported again. It also includes `dima.d.ts` and `jsconfig.json` for Dima SDK, event, and setting suggestions and checks in editors such as VS Code, plus a `.vscode` folder with checks for `fields.json` and `widget.json`.
+
+Edit the files, then choose **Load a folder** or **Load files** with a `.zip` or individual files. Only loaded files replace their matching tabs, as unsaved changes. If `widget.json` is not included, the current manifest stays. Check the preview, then save. In StreamElements widgets, `{key}` placeholders in `widget.js` are replaced before the code runs, so your editor may mark those spots.
+
 ## Add and adjust a layer
 
 Add the imported widget from the layer palette. Open its **Settings** to edit it. Fields appear in collapsible groups; fields without a group appear under **General**. Use **Find a setting** to search. A **Changed** marker shows settings that differ from the widget’s saved values. Choose **Reset** for one setting or **Reset all** to restore them.

@@ -1,9 +1,12 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
-import { BookOpen, Code2, Eye, LucideAngularModule, Pencil, RotateCcw, Star, X } from 'lucide-angular';
+import { BookOpen, Code2, Download, Eye, FileUp, FolderOpen, LucideAngularModule, Pencil, RotateCcw, Star, X } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { UpgradeService } from '../../services/upgrade.service';
-import { PackageFormatError, readPackage, type FieldIssue } from './custom-widget-format.generated';
+import { PACKAGE_FILES, PackageFormatError, readPackage, type FieldIssue } from './custom-widget-format.generated';
+import type { HintContext } from './custom-widget-code-hints';
+import { pickedFromInput, readImport } from './custom-widget-import';
+import { writeZip } from './custom-widget-zip';
 import { CODE_FILES, codeDraftKey, dismissCodeDraft, emptyCodeFiles, latestCodeDraft, removeCodeDraft, sameCodeFiles, toPackage, writeCodeDraft, type CodeFile, type CodeFiles, type StoredCodeDraft } from './custom-widget-code-drafts';
 import type { CodeEditor, CodeLanguage, CodeTab } from './custom-widget-code-mirror';
 import { starterFiles, type StarterKind, type StarterTexts } from './custom-widget-templates';
@@ -78,7 +81,7 @@ export class OverlayCustomWidgetCodeComponent {
   private readonly stage = viewChild<ElementRef<HTMLElement>>('stage');
   private readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
   private readonly renameButton = viewChild<ElementRef<HTMLButtonElement>>('renameButton');
-  readonly icons = { BookOpen, Code2, Eye, Pencil, RotateCcw, Star, X };
+  readonly icons = { BookOpen, Code2, Download, Eye, FileUp, FolderOpen, Pencil, RotateCcw, Star, X };
   readonly codeFiles = CODE_FILES;
   readonly starters: readonly StarterKind[] = ['dima', 'streamelements'];
   readonly chatTests: readonly ChatTest[] = ['viewer', 'subscriber', 'moderator', 'first', 'emotes', 'long'];
@@ -124,6 +127,10 @@ export class OverlayCustomWidgetCodeComponent {
   readonly renameError = signal('');
   /** The rename also changed the name inside widget.json (an unsaved change). */
   readonly manifestRenamed = signal(false);
+  /** Files loaded from the user's own editor (unsaved until saved). */
+  readonly loadedNote = signal<{ count: number; keptManifest: boolean } | null>(null);
+  readonly kitBusy = signal(false);
+  readonly kitError = signal('');
   readonly scale = signal(1);
   private media: Record<string, string> = {};
   private editor: CodeEditor<CodeFile> | null = null;
@@ -142,8 +149,8 @@ export class OverlayCustomWidgetCodeComponent {
   });
   readonly dirty = computed(() => !sameCodeFiles(this.files(), this.saved()));
   /** The manifest of the last code that parsed (with errors, the engine and tests stay as they were). */
-  private readonly lastManifest = signal<ReturnType<typeof readPackage>['manifest'] | null>(null);
-  readonly manifest = computed(() => this.check().pkg?.manifest ?? this.lastManifest());
+  private readonly lastPkg = signal<ReturnType<typeof readPackage> | null>(null);
+  readonly manifest = computed(() => (this.check().pkg ?? this.lastPkg())?.manifest ?? null);
   readonly engine = computed(() => this.manifest()?.engine ?? 'streamelements');
   readonly uses = computed<readonly string[]>(() => this.manifest()?.uses ?? []);
   readonly size = computed(() => ({ width: this.layer()?.width || 480, height: this.layer()?.height || 640 }));
@@ -188,7 +195,7 @@ export class OverlayCustomWidgetCodeComponent {
     effect(() => {
       const pkg = this.check().pkg, files = this.settled();
       if (!pkg || this.step() !== 'code' || this.loading()) return;
-      untracked(() => this.lastManifest.set(pkg.manifest));
+      untracked(() => this.lastPkg.set(pkg));
       untracked(() => this.previewBundle.set({
         widgetId: this.widgetId() ?? 'draft-preview', revision: 0, engine: pkg.manifest.engine, manifest: pkg.manifest,
         html: files.html, css: files.css, js: files.js, fields: pkg.fields, data: pkg.data, media: this.media, channel: this.channel()
@@ -299,15 +306,20 @@ export class OverlayCustomWidgetCodeComponent {
     this.editor?.destroy(); this.editor = null; this.editorParent = host;
     this.editorState.set('loading');
     try {
-      const { createCodeEditor } = await import('./custom-widget-code-mirror');
+      const [{ createCodeEditor }, { codeHints }] = await Promise.all([import('./custom-widget-code-mirror'), import('./custom-widget-code-hints')]);
       if (this.destroyed || this.editorParent !== host) return;
-      const files = this.files();
+      const files = this.files(), hints = () => this.hintContext();
       const tabs = Object.fromEntries(CODE_FILES.map(file => [file, { text: files[file], language: TAB_LANGUAGE[file], label: this.t('customCodeEditorLabel', { file: this.fileLabel(file) }) }])) as Record<CodeFile, CodeTab>;
-      this.editor = createCodeEditor(host, tabs, this.tab(), (tab, text) => this.files.update(all => all[tab] === text ? all : { ...all, [tab]: text }));
+      this.editor = createCodeEditor(host, tabs, this.tab(), (tab, text) => this.files.update(all => all[tab] === text ? all : { ...all, [tab]: text }), tab => codeHints(tab, hints));
       this.editorState.set('ready');
     } catch {
       this.editorState.set('failed');
     }
+  }
+  /** What suggestions know: the last code that parsed (engine, uses, settings). */
+  private hintContext(): HintContext {
+    const pkg = this.check().pkg ?? this.lastPkg();
+    return { engine: pkg?.manifest.engine ?? 'streamelements', uses: pkg?.manifest.uses ?? [], fields: pkg?.fields ?? [], dataKeys: Object.keys(pkg?.data ?? {}) };
   }
   /** Puts new text in every tab (editor and state), each as an undoable change. */
   private replaceAll(files: CodeFiles): void {
@@ -435,13 +447,53 @@ export class OverlayCustomWidgetCodeComponent {
         this.base.set(result.widget.revision);
         removeCodeDraft(this.ownKey());
       }
-      this.saved.set(files); this.openedVersion.set(null); this.draftNote.set(null); this.manifestRenamed.set(false);
+      this.saved.set(files); this.openedVersion.set(null); this.draftNote.set(null); this.manifestRenamed.set(false); this.loadedNote.set(null);
     } catch (error) {
       const code = errorCode(error);
       if (code === 'stale') this.stale.set(true);
       else if (code === 'plan_limit' || code === 'limit') this.limitReached.set(true);
       this.saveError.set(code === 'stale' ? '' : message(error) || this.t('customCodeSaveFailed'));
     } finally { this.saving.set(false); }
+  }
+
+  /** The editor's current text as a folder for VS Code and other editors (real file names, typings, schemas). */
+  async downloadKit(): Promise<void> {
+    if (this.kitBusy()) return;
+    this.kitBusy.set(true); this.kitError.set('');
+    try {
+      const { editorKit } = await import('./custom-widget-editor-kit');
+      // A folder name that can't point outside itself when unzipped (no "..", no leading dots).
+      const context = this.hintContext(), cleaned = this.name().replace(/[^\p{L}\p{N} _.-]+/gu, '').replace(/^[\s.]+|[\s.]+$/g, '');
+      const folder = cleaned && !/^\.+$/.test(cleaned) ? cleaned : 'widget';
+      const files = editorKit(this.files(), context.fields, context.dataKeys, context.engine, this.t('customKitReadme', { name: this.name() }));
+      const url = URL.createObjectURL(writeZip(files.map(file => ({ name: `${folder}/${file.name}`, text: file.text })))), link = document.createElement('a');
+      link.href = url; link.download = `${folder}.zip`;
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (error) { this.kitError.set(message(error) || this.t('customKitFailed')); }
+    finally { this.kitBusy.set(false); }
+  }
+  /** Files edited elsewhere (a folder, a .zip or single files) replace the matching tabs as unsaved changes. */
+  async loadFiles(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement, picked = pickedFromInput(input.files); input.value = '';
+    if (!picked.length || this.kitBusy()) return;
+    this.kitBusy.set(true); this.kitError.set(''); this.loadedNote.set(null);
+    try {
+      const draft = await readImport(picked);
+      // Unlike an import, broken, empty or settings-only files still load: they're fixed and checked here.
+      const found = draft.parts.filter(part => part.name).map(part => part.file);
+      if (!draft.source || (!found.length && draft.source.manifest === undefined)) {
+        this.kitError.set(draft.source ? this.t('customImportError_noFiles') : draft.error === 'format' ? `${this.t('customImportError_format')} ${draft.errorDetail}` : this.t('customImportError_' + draft.error));
+        return;
+      }
+      const next = { ...this.files() };
+      for (const file of PACKAGE_FILES) if (found.includes(file)) next[file] = draft.source[file];
+      // Without a widget.json in the files, the current one stays (dropping it would change how the widget runs).
+      const manifest = draft.source.manifest;
+      if (manifest !== undefined) next.manifest = manifest;
+      this.replaceAll(next); this.pane.set('code');
+      this.loadedNote.set({ count: found.length + (manifest !== undefined ? 1 : 0), keptManifest: manifest === undefined && !!next.manifest.trim() });
+    } finally { this.kitBusy.set(false); }
   }
 
   sendChat(kind: ChatTest): void { this.env.emit(this.env.chatTest(kind), PREVIEW_LAYER); }
