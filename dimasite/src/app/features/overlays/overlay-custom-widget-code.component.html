@@ -1,0 +1,208 @@
+<dialog #dialog class="cwc" [class.cwc--start]="step() === 'start'" aria-labelledby="cwc-title" (cancel)="onCancel($event)" (close)="onClosed()" (keydown)="onKeydown($event)" data-cw-code>
+  @if (step() === 'start') {
+    <header class="head">
+      <div class="head__copy">
+        <h2 id="cwc-title">{{ t('customCodeNewTitle') }}</h2>
+        <p>{{ t('customCodeNewIntro') }}</p>
+      </div>
+      <button type="button" class="icon-button" [attr.aria-label]="t('close')" (click)="close()"><lucide-icon [img]="icons.X" [size]="20" aria-hidden="true" /></button>
+    </header>
+    <div class="body">
+      @if (newDraft(); as draft) {
+        <div class="banner" data-cwc-continue>
+          <strong>{{ t('customCodeContinueTitle', { name: draft.name || t('customCodeDefaultName'), time: when(draft.at) }) }}</strong>
+          <div class="banner__actions">
+            <button type="button" class="primary" (click)="continueDraft()" data-cwc-continue-open>{{ t('customCodeContinue') }}</button>
+            <button type="button" (click)="discardNewDraft()">{{ t('customCodeDiscard') }}</button>
+          </div>
+        </div>
+      }
+      <label class="field"><span>{{ t('customWidgetName') }}</span>
+        <input type="text" maxlength="80" [value]="name()" (input)="name.set($any($event.target).value)" data-cwc-name />
+      </label>
+      <fieldset class="choices">
+        <legend>{{ t('customCodeStarter') }}</legend>
+        @for (kind of starters; track kind) {
+          <label class="choice" [class.choice--on]="starter() === kind">
+            <input type="radio" name="cwc-starter" [value]="kind" [checked]="starter() === kind" (change)="starter.set(kind)" [attr.data-cwc-starter]="kind" />
+            <span class="choice__head"><strong>{{ t('customCodeStarter_' + kind) }}</strong>@if (kind === 'dima') { <span class="tag">{{ t('customCodeRecommended') }}</span> }</span>
+            <span class="choice__copy">{{ t('customCodeStarterHint_' + kind) }}</span>
+          </label>
+        }
+      </fieldset>
+      @if (blockedByLimit()) {
+        <div class="banner banner--gold" data-cwc-limit>
+          <strong>{{ n('customLimitTitle', list()?.limit ?? 0, { limit: list()?.limit ?? 0, plan: t('customPlan_' + (list()?.planTier ?? 'free')) }) }}</strong>
+          <span>{{ t(canUpgrade() ? 'customLimitUpgrade' : 'customLimitDelete') }}</span>
+          @if (canUpgrade()) { <button type="button" class="gold" (click)="upgrade()"><lucide-icon [img]="icons.Star" [size]="16" aria-hidden="true" />{{ t('customSeePlans') }}</button> }
+        </div>
+      }
+    </div>
+    <footer class="foot">
+      @if (!blockedByLimit() && usage()) { <span class="foot__note">{{ usage() }}</span> }
+      <button type="button" (click)="close()">{{ t('cancel') }}</button>
+      <button type="button" class="primary" [disabled]="blockedByLimit()" (click)="start()" data-cwc-start>{{ t('customCodeStart') }}</button>
+    </footer>
+  } @else if (step() === 'code') {
+    <header class="head head--code">
+      <div class="head__copy">
+        <h2 id="cwc-title">{{ widgetId() ? t('customCodeEditTitle', { name: name() }) : name() }}</h2>
+        <p class="head__meta">
+          <span class="chip" [attr.data-status]="status()" data-cwc-status>{{ t('customCodeStatus_' + status()) }}</span>
+          <span>{{ t(engine() === 'dima' ? 'customEngineDima' : 'customEngineSe') }}</span>
+          @if (widgetId()) { <span>{{ t('customVersion', { revision: base() }) }}</span> }
+        </p>
+      </div>
+      <a class="icon-button" [href]="docsUrl()" target="_blank" rel="noopener" [attr.aria-label]="t('customCodeDocs')" [title]="t('customCodeDocs')"><lucide-icon [img]="icons.BookOpen" [size]="18" aria-hidden="true" /></a>
+      <button type="button" class="icon-button" [attr.aria-label]="t('close')" [disabled]="saving()" (click)="close()"><lucide-icon [img]="icons.X" [size]="20" aria-hidden="true" /></button>
+    </header>
+
+    @if (loading()) {
+      <div class="body"><p class="note" role="status">{{ t('customCodeLoading') }}</p></div>
+    } @else if (loadError()) {
+      <div class="body"><p class="banner banner--danger" role="alert">{{ loadError() }}</p></div>
+    } @else {
+      <div class="seg" role="group" [attr.aria-label]="t('customCodeView')">
+        <button type="button" [attr.aria-pressed]="pane() === 'code'" (click)="pane.set('code')" data-cwc-pane="code"><lucide-icon [img]="icons.Code2" [size]="16" aria-hidden="true" />{{ t('customCodeCode') }}@if (problems().length) { <span class="seg__count">{{ problems().length }}</span> }</button>
+        <button type="button" [attr.aria-pressed]="pane() === 'preview'" (click)="pane.set('preview')" data-cwc-pane="preview"><lucide-icon [img]="icons.Eye" [size]="16" aria-hidden="true" />{{ t('customCodePreview') }}</button>
+      </div>
+
+      <div class="work" [attr.data-pane]="pane()">
+        <section class="code" [attr.aria-label]="t('customCodeCode')">
+          <div class="tabs" role="tablist" [attr.aria-label]="t('customCodeFiles')">
+            @for (file of codeFiles; track file) {
+              <button type="button" role="tab" [id]="'cwc-tab-' + file" [attr.aria-selected]="tab() === file" aria-controls="cwc-panel" [tabindex]="tab() === file ? 0 : -1"
+                (click)="selectTab(file)" (keydown)="tabKey($event, file)" [attr.data-cwc-tab]="file">
+                {{ fileLabel(file) }}@if (tabProblems()[file]; as count) { <span class="tabs__count" [attr.aria-label]="n('customCodeTabProblems', count)">{{ count }}</span> }
+              </button>
+            }
+          </div>
+          <div id="cwc-panel" class="panel" role="tabpanel" [attr.aria-labelledby]="'cwc-tab-' + tab()">
+            <p class="hint" data-cwc-hint>{{ hint() }}</p>
+            @if (draftNote(); as note) {
+              <div class="banner banner--compact" data-cwc-draft>
+                <span>{{ t(note.mismatch ? 'customCodeDraftOld' : 'customCodeDraftRestored', { time: when(note.at), revision: note.base }) }}</span>
+                <div class="banner__actions">
+                  @if (note.mismatch) { <button type="button" (click)="openPendingDraft()" data-cwc-draft-open>{{ t('customCodeDraftOpen') }}</button> }
+                  <button type="button" (click)="note.mismatch ? dropPendingDraft() : discardRestored()" data-cwc-draft-discard>{{ t('customCodeDiscard') }}</button>
+                </div>
+              </div>
+            }
+            @if (openedVersion(); as revision) { <p class="banner banner--compact" data-cwc-opened>{{ t('customCodeVersionOpened', { revision: revision }) }}</p> }
+            @if (tab() === 'manifest' && !files().manifest.trim()) {
+              <div class="banner banner--compact" data-cwc-no-manifest>
+                <span>{{ t('customCodeNoManifest', { uses: uses().length ? uses().join(', ') : '—' }) }}</span>
+                <div class="banner__actions"><button type="button" (click)="addManifest()" data-cwc-add-manifest>{{ t('customCodeAddManifest') }}</button></div>
+              </div>
+            }
+            <div class="editor" #editorHost [class.editor--off]="editorState() === 'failed'" data-cwc-editor></div>
+            @if (editorState() === 'loading') { <p class="note editor-note" role="status">{{ t('customCodeEditorLoading') }}</p> }
+            @if (editorState() === 'failed') {
+              <textarea class="fallback" spellcheck="false" [value]="files()[tab()]" (input)="setFile(tab(), $any($event.target).value)" [attr.aria-label]="t('customCodeEditorLabel', { file: fileLabel(tab()) })" data-cwc-fallback></textarea>
+            }
+          </div>
+          @if (problems().length) {
+            <div class="problems" data-cwc-problems>
+              <h3>{{ n(blocking() ? 'customCodeErrors' : 'customCodeProblems', problems().length) }}</h3>
+              <ul>
+                @for (problem of problems(); track $index) {
+                  <li [class.problems__item--block]="problem.blocking">
+                    <button type="button" (click)="goTo(problem)" [disabled]="!problem.tab">
+                      @if (problem.tab) { <span class="problems__where">{{ fileLabel(problem.tab) + (problem.line ? ':' + problem.line : '') }}</span> }
+                      @if (problem.key) { <code>{{ problem.key }}</code> }
+                      <span>{{ problem.text }}</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </section>
+
+        <aside class="side" [attr.aria-label]="t('customCodePreview')">
+          <div class="stage" #stage data-cwc-stage>
+            <div class="stage__box" [style.width.px]="size().width * scale()" [style.height.px]="size().height * scale()">
+              <div class="stage__frame" [style.width.px]="size().width" [style.height.px]="size().height" [style.transform]="'scale(' + scale() + ')'">
+                @if (previewBundle(); as bundle) { <app-overlay-custom-widget [context]="previewContext()" [draft]="bundle" /> }
+              </div>
+            </div>
+          </div>
+          <div class="side__bar">
+            <p class="status" role="status" [attr.data-status]="log()?.status ?? 'loading'" data-cwc-preview-status>
+              <span class="status__dot" aria-hidden="true"></span>{{ t('customStatus_' + (log()?.status ?? 'loading')) }}
+              <span class="status__size">{{ size().width }} × {{ size().height }}</span>
+            </p>
+            <button type="button" (click)="reloadPreview()" data-cwc-reload><lucide-icon [img]="icons.RotateCcw" [size]="16" aria-hidden="true" />{{ t('customCodeReload') }}</button>
+          </div>
+          @if (blocking()) { <p class="note note--warn">{{ t('customCodePreviewStale') }}</p> }
+
+          <section class="tests" aria-labelledby="cwc-tests-title">
+            <h3 id="cwc-tests-title">{{ t('customCodeTests') }}</h3>
+            @if (uses().includes('chat')) {
+              <div class="chips" role="group" [attr.aria-label]="t('customCodeTestChat')">
+                @for (kind of chatTests; track kind) { <button type="button" (click)="sendChat(kind)" [attr.data-cwc-chat]="kind">{{ t('chatTest_' + kind) }}</button> }
+                <button type="button" (click)="deleteLast()" data-cwc-delete>{{ t('customCodeDeleteLast') }}</button>
+                <button type="button" (click)="clearChat()" data-cwc-clear>{{ t('customCodeClearChat') }}</button>
+              </div>
+            }
+            @if (uses().includes('alerts')) {
+              <div class="chips" role="group" [attr.aria-label]="t('customCodeTestAlerts')">
+                @for (kind of alertTests; track kind) { <button type="button" (click)="sendAlert(kind)" [attr.data-cwc-alert]="kind">{{ t('alertTest_' + kind) }}</button> }
+              </div>
+            }
+            @if (!uses().includes('chat') && !uses().includes('alerts')) { <p class="note">{{ t('customCodeNoTests') }}</p> }
+          </section>
+
+          @let current = log();
+          <details class="fold" data-cwc-log>
+            <summary>{{ t('customLog') }} <span class="count" [class.count--error]="!!current && current.errors > 0">{{ current && current.errors ? n('customLogErrors', current.errors) : (current ? current.entries.length : 0) }}</span></summary>
+            @if (current && current.entries.length) {
+              <ol class="log">@for (entry of current.entries; track $index) { <li [attr.data-level]="entry.level">{{ time(entry.at) }} {{ entry.text }}</li> }</ol>
+              <div class="fold__foot"><button type="button" (click)="clearLog()">{{ t('customLogClear') }}</button></div>
+            } @else { <p class="note fold__empty">{{ t('customLogEmpty') }}</p> }
+          </details>
+
+          @if (history().length) {
+            <details class="fold" data-cwc-versions>
+              <summary>{{ t('customCodeVersions') }} <span class="count">{{ history().length }}</span></summary>
+              <ul class="versions">
+                @for (version of history(); track version.revision) {
+                  <li [attr.data-revision]="version.revision">
+                    <span class="versions__copy">
+                      <strong>{{ t('customVersion', { revision: version.revision }) }}</strong>
+                      <span>{{ when(version.createdAt) }}@if (version.revision === base()) { · {{ t('customCodeVersionCurrent') }} }@if (version.published) { · {{ t('customCodeVersionLive') }} }</span>
+                    </span>
+                    @if (version.revision !== base() || dirty()) {
+                      <button type="button" [disabled]="versionBusy() !== null" (click)="loadVersion(version.revision)" [attr.aria-label]="t('customCodeOpenVersionLabel', { revision: version.revision })" [attr.data-cwc-version]="version.revision">{{ versionBusy() === version.revision ? t('customCodeLoading') : t('customCodeOpenVersion') }}</button>
+                    }
+                  </li>
+                }
+              </ul>
+              @if (versionError()) { <p class="note note--danger" role="alert">{{ versionError() }}</p> }
+            </details>
+          }
+        </aside>
+      </div>
+
+      @if (stale()) {
+        <div class="banner banner--warn banner--bar" role="alert" data-cwc-stale>
+          <span>{{ t('customCodeStale') }}</span>
+          <div class="banner__actions"><button type="button" (click)="save(true)" data-cwc-save-anyway>{{ t('customCodeSaveAnyway') }}</button></div>
+        </div>
+      } @else if (saveError()) {
+        <div class="banner banner--danger banner--bar" role="alert" data-cwc-error>
+          <span>{{ saveError() }}</span>
+          @if (blockedByLimit() && canUpgrade()) { <button type="button" class="gold" (click)="upgrade()"><lucide-icon [img]="icons.Star" [size]="16" aria-hidden="true" />{{ t('customSeePlans') }}</button> }
+        </div>
+      }
+      <footer class="foot foot--code">
+        <p class="foot__status" data-cwc-foot-status>{{ t('customCodeFoot_' + status()) }}@if (draftBlocked() && dirty()) { {{ ' ' + t('customCodeDraftBlocked') }} }</p>
+        @if (saved() && dirty() && !saving()) { <button type="button" (click)="discardChanges()" data-cwc-discard>{{ t('customCodeDiscardChanges') }}</button> }
+        <button type="button" class="foot__close" [disabled]="saving()" (click)="close()">{{ t('close') }}</button>
+        <button type="button" class="primary" [disabled]="saving() || (!!widgetId() && !dirty()) || blockedByLimit()" (click)="save()" data-cwc-save>
+          {{ saving() ? t('customCodeSaving') : widgetId() ? t('customCodeSave') : t('customCodeCreate') }}
+        </button>
+      </footer>
+    }
+  }
+</dialog>

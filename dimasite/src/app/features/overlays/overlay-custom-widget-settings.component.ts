@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
-import { Download, FileUp, LucideAngularModule, Puzzle } from 'lucide-angular';
+import { Code2, Download, FileUp, LucideAngularModule, Puzzle } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
 import { EXPORT_FILE_NAMES, MANIFEST_FILE, PACKAGE_FILES, buildWidgetIni, groupFields, resolveFieldData, type JsonObject } from './custom-widget-format.generated';
 import { writeZip } from './custom-widget-zip';
 import { CustomWidgetsService, copyableMedia, message } from './custom-widgets.service';
 import { EditorWidgetEnv } from './widget-runtime/editor-env';
+import { OverlayCustomWidgetCodeComponent } from './overlay-custom-widget-code.component';
 import { OverlayCustomWidgetImportComponent } from './overlay-custom-widget-import.component';
 import type { OverlayWidget } from './overlay.model';
 import type { WidgetSettingsContext } from './overlay-widget-module';
@@ -12,7 +13,7 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
 /** Settings-section block for a custom widget layer: which widget it is, replacing its files and exporting it. */
 @Component({
   selector: 'app-overlay-custom-widget-settings',
-  imports: [LucideAngularModule, OverlayCustomWidgetImportComponent],
+  imports: [LucideAngularModule, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display:grid; gap:.75rem; min-width:0 }
@@ -53,6 +54,7 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
         <span><strong>{{ widget.name }}</strong><small>{{ details() }}</small></span>
       </div>
       <div class="cw-actions">
+        <button type="button" class="lf-btn" (click)="codeOpen.set(true)" data-cw-edit-code><lucide-icon [img]="icons.Code2" [size]="16" aria-hidden="true" />{{ t('customEditCode') }}</button>
         <button type="button" class="lf-btn" (click)="replaceOpen.set(true)" data-cw-replace><lucide-icon [img]="icons.FileUp" [size]="16" aria-hidden="true" />{{ t('customReplaceFiles') }}</button>
         <button type="button" class="lf-btn" [disabled]="exporting()" (click)="exportZip()" data-cw-export><lucide-icon [img]="icons.Download" [size]="16" aria-hidden="true" />{{ exporting() ? t('customExporting') : t('customExport') }}</button>
       </div>
@@ -77,6 +79,7 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
       }
       @if (replaceOpen()) { <app-overlay-custom-widget-import mode="replace" [widget]="widget" (closed)="replaceOpen.set(false)" /> }
       @if (mediaOpen()) { <app-overlay-custom-widget-import mode="media" [widget]="widget" (closed)="mediaOpen.set(false)" /> }
+      @if (codeOpen()) { <app-overlay-custom-widget-code [widget]="widget" [layer]="context().widget" (closed)="codeOpen.set(false)" /> }
     } @else if (listLoaded()) {
       <p class="lf-note lf-note--warn" role="alert">{{ t('customMissing') }}</p>
     }
@@ -94,8 +97,9 @@ export class OverlayCustomWidgetSettingsComponent {
   readonly uses = computed(() => this.source()?.manifest?.uses ?? []);
   time(at: number): string { return new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
   clearLog(): void { this.env?.clearLog(this.context().widget.id); }
-  readonly icons = { Download, FileUp, Puzzle };
+  readonly icons = { Code2, Download, FileUp, Puzzle };
   readonly replaceOpen = signal(false);
+  readonly codeOpen = signal(false);
   readonly mediaOpen = signal(false);
   readonly exporting = signal(false);
   readonly exportError = signal('');

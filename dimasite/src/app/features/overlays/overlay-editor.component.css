@@ -788,6 +788,7 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
 .custom-row .palette-item { min-width: 0; }
 .custom-row__delete { align-self: center; color: var(--danger); }
 .custom-import { justify-self: start; }
+.custom-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 :host-context(html.dark) :is(.palette-item__icon[data-kind='trigger'], .layer__icon[data-kind='trigger'], .selected-card[data-kind='trigger'] .selected-card__icon) { --k: #fbbf24; }
 :host-context(html.dark) :is(.palette-item__icon[data-kind='tts'], .layer__icon[data-kind='tts'], .selected-card[data-kind='tts'] .selected-card__icon) { --k: #38bdf8; }
 :host-context(html.dark) :is(.palette-item__icon[data-kind='clip'], .layer__icon[data-kind='clip'], .selected-card[data-kind='clip'] .selected-card__icon) { --k: #f472b6; }

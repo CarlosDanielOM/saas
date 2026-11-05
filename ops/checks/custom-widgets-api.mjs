@@ -1,6 +1,6 @@
 // saas-ops only (api target): disposable Mongo/Redis, fixture identities and an in-check fake S3.
 // Custom widgets: availability, plan limits, import parsing, private S3 files, Studio save/publish
-// validation, revisions kept only while published, prune, delete protection and file cleanup.
+// validation, revisions (10 newest + published), stale editor saves, prune, delete protection and file cleanup.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -122,12 +122,25 @@ try {
   assert.deepEqual(state.scenes[0].widgets.at(-1).config.values, { textColor: '#123456' }, 'settings removed by new files are dropped on save');
   state = await data('POST', `${base}/scenes/${state.scenes[0].id}/publish`, { revision: state.revision });
   assert.equal(state.scenes[0].published.widgets.at(-1).config.revision, 2);
-  assert.deepEqual((await CustomWidgets.findById(id).lean()).revisions.map(r => r.revision), [2], 'unpublished old revisions are pruned');
-  await req('GET', `${widgetsPath}/${id}/files/fields?revision=1`, null, 404);
-  assert.equal(keysFor(id).length, 5, 'pruned-only files are deleted from S3');
+  assert.deepEqual((await CustomWidgets.findById(id).lean()).revisions.map(r => r.revision), [1, 2], 'recent revisions stay as version history');
+  assert.equal(await fileText(`${widgetsPath}/${id}/files/fields?revision=1`), source.fields);
   assert.equal((await data('PUT', `${widgetsPath}/${id}/files`, { files: { ...source, css: source.css + '\n/* v3 */' } })).widget.revision, 3);
-  assert.deepEqual((await CustomWidgets.findById(id).lean()).revisions.map(r => r.revision), [2, 3]);
-  console.log('PASS publish pins revisions; replacing files keeps published versions until republish, then prunes them and their files.');
+  const listed = (await data('GET', widgetsPath)).widgets.find(w => w.id === id);
+  assert.deepEqual(listed.history.map(h => [h.revision, h.published]), [[3, false], [2, true], [1, false]], 'history: newest first, published marked');
+  // Code editor saves name the version they started from; a stale one is refused instead of overwriting.
+  const staleSave = await req('PUT', `${widgetsPath}/${id}/files`, { files: { ...source, css: source.css + '\n/* stale */' }, baseRevision: 2 }, 409);
+  assert.equal(staleSave.code, 'stale'); assert.match(staleSave.message, /version 3/);
+  await req('PUT', `${widgetsPath}/${id}/files`, { files: source, baseRevision: 'x' }, 400);
+  assert.equal((await data('PUT', `${widgetsPath}/${id}/files`, { files: { ...source, css: source.css + '\n/* v4 */' }, baseRevision: 3 })).widget.revision, 4);
+  // History keeps the 10 newest plus published ones; files only the pruned revisions used are deleted.
+  let saved;
+  for (let v = 5; v <= 14; v++) saved = await data('PUT', `${widgetsPath}/${id}/files`, { files: { ...source, css: source.css + `\n/* v${v} */` }, baseRevision: v - 1 });
+  const kept = (await CustomWidgets.findById(id).lean()).revisions;
+  assert.deepEqual(kept.map(r => r.revision), [2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], 'newest 10 + the published revision 2');
+  assert.deepEqual(saved.widget.history.map(h => h.revision), [14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 2], 'the save response shows what was kept');
+  await req('GET', `${widgetsPath}/${id}/files/css?revision=3`, null, 404);
+  assert.deepEqual(keysFor(id), [...new Set(kept.flatMap(r => Object.values(r.files).map(f => f.key)))].sort(), 'S3 holds exactly the kept revisions\' files');
+  console.log('PASS publish pins revisions; version history (10 newest + published), stale editor saves refused, pruned files deleted.');
 
   // Delete: refused while used (draft or published), then removes the document and every file.
   const inUse = await req('DELETE', `${widgetsPath}/${id}`, null, 409);
@@ -136,7 +149,7 @@ try {
   state = await data('PUT', base, state);
   assert.equal((await req('DELETE', `${widgetsPath}/${id}`, null, 409)).code, 'in_use', 'the published overlay still uses it');
   state = await data('POST', `${base}/scenes/${state.scenes[0].id}/publish`, { revision: state.revision });
-  assert.deepEqual((await CustomWidgets.findById(id).lean()).revisions.map(r => r.revision), [3], 'publishing without the layer releases its old revision');
+  assert.deepEqual((await CustomWidgets.findById(id).lean()).revisions.map(r => r.revision), [5, 6, 7, 8, 9, 10, 11, 12, 13, 14], 'publishing without the layer releases its old revision');
   assert.deepEqual(await data('DELETE', `${widgetsPath}/${id}`), { deleted: true });
   assert.equal(keysFor(id).length, 0); assert.equal(await CustomWidgets.countDocuments({ _id: id }), 0);
   assert.equal((await data('GET', widgetsPath)).used, 1);

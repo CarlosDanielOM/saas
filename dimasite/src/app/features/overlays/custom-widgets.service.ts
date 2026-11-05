@@ -9,10 +9,12 @@ import type { RuntimeBundle } from './widget-runtime/widget-env';
 export interface WidgetUse { sceneId: string; sceneName: string; draft: boolean; published: boolean }
 /** Mirrors `CustomWidgetView` in dimabot/src/custom_widgets/store.ts. */
 export interface CustomWidgetView {
-  id: string; name: string; engine: 'streamelements'; revision: number; author?: string;
+  id: string; name: string; engine: WidgetManifest['engine']; revision: number; author?: string;
   fields: WidgetField[]; data: JsonObject; externalMedia: ExternalMedia[]; manifest: WidgetManifest | null; media: Record<string, string>;
   files: Record<PackageFile, { bytes: number; sha256: string }>;
   createdAt: string; updatedAt: string; usedIn: WidgetUse[];
+  /** Stored versions, newest first (latest, the 10 newest, and published ones). */
+  history?: { revision: number; createdAt: string; published: boolean }[];
 }
 export interface CustomWidgetList { enabled: boolean; planTier: CustomWidgetPlan; limit: number; used: number; widgets: CustomWidgetView[] }
 export interface ImportResult { widget: CustomWidgetView; issues: FieldIssue[] }
@@ -37,6 +39,8 @@ export class CustomWidgetsService {
   readonly widgets = computed(() => this.list()?.widgets ?? []);
   readonly atLimit = computed(() => { const list = this.list(); return !!list && list.used >= list.limit; });
 
+  /** The channel this list belongs to (Studio's owner). */
+  get channelId(): string { return this.channel; }
   widget(id: unknown): CustomWidgetView | undefined { return typeof id === 'string' ? this.widgets().find(widget => widget.id === id) : undefined; }
 
   async load(channel: string): Promise<void> {
@@ -52,8 +56,9 @@ export class CustomWidgetsService {
     this.patchList(list => ({ ...list, used: list.used + 1, widgets: [...list.widgets, result.widget] }));
     return result;
   }
-  async replace(id: string, files: PackageInput): Promise<ImportResult> {
-    const result = await this.api.request<ImportResult>('PUT', `${this.channel}/custom-widgets/${id}/files`, { files }, 60000);
+  /** `baseRevision` (code editor): the server refuses with `stale` if the widget changed since. */
+  async replace(id: string, files: PackageInput, baseRevision?: number): Promise<ImportResult> {
+    const result = await this.api.request<ImportResult>('PUT', `${this.channel}/custom-widgets/${id}/files`, { files, ...(baseRevision === undefined ? {} : { baseRevision }) }, 60000);
     this.patchList(list => ({ ...list, widgets: list.widgets.map(widget => widget.id === id ? result.widget : widget) }));
     return result;
   }

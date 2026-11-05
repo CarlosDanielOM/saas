@@ -43,6 +43,8 @@ export interface CustomWidgetView {
   fields: WidgetField[]; data: JsonObject; externalMedia: ExternalMedia[]; manifest: WidgetManifest | null; media: Record<string, string>;
   files: Record<PackageFile, { bytes: number; sha256: string }>;
   createdAt: string; updatedAt: string; usedIn: WidgetUse[];
+  /** Stored versions, newest first: the latest, recent ones (code editor history) and any a published overlay uses. */
+  history: { revision: number; createdAt: string; published: boolean }[];
 }
 export interface CustomWidgetList { enabled: boolean; planTier: CustomWidgetPlan; limit: number; used: number; widgets: CustomWidgetView[] }
 
@@ -61,12 +63,30 @@ function usage(scenes: OverlayScene[], id: string): WidgetUse[] {
     draft: scene.widgets.some(w => isCustom(w) && widgetIdOf(w) === id),
     published: !!scene.published?.widgets.some(w => isCustom(w) && widgetIdOf(w) === id) })).filter(use => use.draft || use.published);
 }
+/** Revisions kept besides the latest and published ones, newest first, within a size budget for the document. */
+export const HISTORY_REVISIONS = 10;
+const HISTORY_BYTES = 6_000_000;
+const revisionBytes = (r: WidgetRevision) => JSON.stringify([r.fields, r.data, r.externalMedia, r.manifest ?? null]).length;
+function keptRevisions(doc: StoredWidget, pinned: (revision: number) => boolean): WidgetRevision[] {
+  let count = 0, bytes = 0;
+  const keep = new Set<number>();
+  for (const r of [...doc.revisions].sort((a, b) => b.revision - a.revision)) {
+    const always = r.revision === doc.revision || pinned(r.revision), size = revisionBytes(r);
+    if (!always && (count >= HISTORY_REVISIONS || bytes + size > HISTORY_BYTES)) continue;
+    count++; bytes += size; keep.add(r.revision);
+  }
+  return doc.revisions.filter(r => keep.has(r.revision));
+}
+const publishedRevisions = (scenes: OverlayScene[], id: string) => new Set(scenes.flatMap(scene => scene.published?.widgets ?? [])
+  .filter(w => isCustom(w) && widgetIdOf(w) === id).map(w => w.config?.['revision']).filter((r): r is number => typeof r === 'number'));
+
 function view(doc: StoredWidget, scenes: OverlayScene[]): CustomWidgetView {
-  const current = latest(doc);
+  const current = latest(doc), published = publishedRevisions(scenes, doc._id);
   return { id: doc._id, name: doc.name, engine: current.manifest?.engine ?? doc.engine, revision: doc.revision, ...(current.author ? { author: current.author } : {}),
     fields: current.fields, data: current.data, externalMedia: current.externalMedia, manifest: current.manifest ?? null, media: mediaUrls(doc.media),
     files: Object.fromEntries(PACKAGE_FILES.map(file => [file, { bytes: current.files[file].bytes, sha256: current.files[file].sha256 }])) as CustomWidgetView['files'],
-    createdAt: new Date(doc.createdAt).toISOString(), updatedAt: new Date(doc.updatedAt).toISOString(), usedIn: usage(scenes, doc._id) };
+    createdAt: new Date(doc.createdAt).toISOString(), updatedAt: new Date(doc.updatedAt).toISOString(), usedIn: usage(scenes, doc._id),
+    history: [...doc.revisions].sort((a, b) => b.revision - a.revision).map(r => ({ revision: r.revision, createdAt: new Date(r.createdAt).toISOString(), published: published.has(r.revision) })) };
 }
 async function scenesOf(owner: string): Promise<OverlayScene[]> { return (await Studio.findById(owner).lean())?.scenes ?? []; }
 async function plan(owner: string) {
@@ -133,12 +153,17 @@ export async function createWidget(owner: string, body: Record<string, unknown>)
   });
 }
 
-/** Replaces a widget's files with a new revision. Drafts use it right away; published overlays keep theirs until republished. */
+/**
+ * Replaces a widget's files with a new revision. Drafts use it right away; published overlays keep theirs until republished.
+ * `baseRevision` (code editor): refuse when the widget changed since the editor opened it, instead of overwriting.
+ */
 export async function replaceFiles(owner: string, id: string, body: Record<string, unknown>): Promise<{ widget: CustomWidgetView; issues: FieldIssue[] }> {
   const files = source(body.files), summary = readSource(files);
+  if (body.baseRevision !== undefined && !Number.isSafeInteger(body.baseRevision)) throw new CustomWidgetError('Invalid base revision');
   await db();
   return withAssetLibrary(owner, async () => {
     const doc = await owned(owner, id), revision = doc.revision + 1, refs = describeFiles(owner, id, files);
+    if (body.baseRevision !== undefined && body.baseRevision !== doc.revision) throw new CustomWidgetError(`This widget changed since you opened it (now version ${doc.revision})`, 409, 'stale');
     const name = body.name === undefined ? doc.name : widgetName(body.name, doc.name);
     await putFiles(refs, files);
     const next = newRevision(revision, refs, summary), updatedAt = new Date();
@@ -149,7 +174,9 @@ export async function replaceFiles(owner: string, id: string, body: Record<strin
       throw new CustomWidgetError('This widget changed while you were updating it. Try again.', 409);
     }
     await pruneRevisions(owner, id);
-    return { widget: view({ ...doc, name, revision, revisions: [...doc.revisions, next], updatedAt }, await scenesOf(owner)), issues: summary.issues };
+    // Re-read so the returned history matches what pruning kept.
+    const saved = await CustomWidgets.findOne({ _id: id, owner }).lean<StoredWidget>() ?? { ...doc, name, revision, revisions: [...doc.revisions, next], updatedAt };
+    return { widget: view(saved, await scenesOf(owner)), issues: summary.issues };
   });
 }
 
@@ -305,11 +332,11 @@ export async function pinCustomLayers(owner: string, widgets: OverlayWidget[]): 
 export async function pruneRevisions(owner: string, onlyId?: string): Promise<void> {
   await db();
   const docs = await CustomWidgets.find(onlyId ? { _id: onlyId, owner } : { owner }).lean<StoredWidget[]>();
-  if (!docs.some(doc => doc.revisions.length > 1)) return;
+  if (!docs.some(doc => doc.revisions.length > HISTORY_REVISIONS || doc.revisions.reduce((sum, r) => sum + revisionBytes(r), 0) > HISTORY_BYTES)) return;
   const scenes = await scenesOf(owner);
   const pinned = new Set(scenes.flatMap(scene => scene.published?.widgets ?? []).filter(isCustom).map(w => `${widgetIdOf(w)}:${w.config?.['revision']}`));
   for (const doc of docs) {
-    const kept = doc.revisions.filter(r => r.revision === doc.revision || pinned.has(`${doc._id}:${r.revision}`));
+    const kept = keptRevisions(doc, revision => pinned.has(`${doc._id}:${revision}`));
     if (kept.length === doc.revisions.length) continue;
     const result = await CustomWidgets.updateOne({ _id: doc._id, owner, revision: doc.revision }, { $set: { revisions: kept } });
     if (!result.modifiedCount) continue;

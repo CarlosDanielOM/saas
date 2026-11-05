@@ -44,6 +44,8 @@ const LEVELS = new Set(['info', 'warn', 'error', 'debug']);
 })
 export class OverlayCustomWidgetComponent {
   readonly context = input.required<WidgetRenderContext>();
+  /** Code editor preview: run this unsaved code instead of loading the layer's widget. */
+  readonly draft = input<RuntimeBundle | null>(null);
   readonly env = inject(CUSTOM_WIDGET_ENV, { optional: true });
   private readonly widgets = inject(CustomWidgetsService);
   private readonly language = inject(LanguageService);
@@ -92,8 +94,10 @@ export class OverlayCustomWidgetComponent {
       if (this.fieldsTimer) clearTimeout(this.fieldsTimer);
       this.removeFrame();
     });
-    // New widget, revision or copied files: load its code and start a fresh frame.
+    // New widget, revision or copied files (or new draft code): load its code and start a fresh frame.
     effect(() => {
+      const draft = this.draft();
+      if (draft) { untracked(() => void this.loadDraft(draft)); return; }
       const widgetId = this.widgetId(), revision = this.revision();
       this.mediaKey();
       untracked(() => void this.load(widgetId, revision));
@@ -126,6 +130,19 @@ export class OverlayCustomWidgetComponent {
       if (token !== this.loadToken) return;
       this.bundle = bundle;
       this.createFrame(scripts);
+    } catch (error) {
+      if (token !== this.loadToken) return;
+      this.status.set('error');
+      this.report({ status: 'error', entry: { at: Date.now(), level: 'error', text: this.t('customLoadError') + (error instanceof Error && error.message ? ` (${error.message})` : '') } });
+    }
+  }
+  private async loadDraft(bundle: RuntimeBundle): Promise<void> {
+    const token = ++this.loadToken;
+    this.removeFrame(); this.bundle = bundle; this.previewOverrides = {}; this.buffered = [];
+    this.status.set('loading'); this.report({ status: 'loading' });
+    try {
+      const scripts = await frameScripts();
+      if (token === this.loadToken) this.createFrame(scripts);
     } catch (error) {
       if (token !== this.loadToken) return;
       this.status.set('error');

@@ -5,6 +5,7 @@ import { alertPlacementIds, placementStartSeconds, placementMediaSeconds, type O
 import { OverlayWidgetSettingsComponent } from './overlay-widget-settings.component';
 import { CustomWidgetsService, message as apiMessage, type CustomWidgetView } from './custom-widgets.service';
 import { OverlayCustomWidgetImportComponent } from './overlay-custom-widget-import.component';
+import { OverlayCustomWidgetCodeComponent } from './overlay-custom-widget-code.component';
 import { groupFields } from './custom-widget-format.generated';
 import { EditorWidgetEnv } from './widget-runtime/editor-env';
 import { CUSTOM_WIDGET_ENV } from './widget-runtime/widget-env';
@@ -44,7 +45,7 @@ import { OverlayDraftStorage, type LocalOverlayDraft, type OverlayRecovery } fro
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, Clapperboard, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FileUp, FlaskConical, Image, Keyboard, Languages, Link2, Moon, PanelsTopLeft, Scan, Sun, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Puzzle, Radio, Settings2, Sparkles, Trash2, Type, Volume2, X, Zap, ZoomIn, ZoomOut, LucideAngularModule } from 'lucide-angular';
+import { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, Clapperboard, Code2, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FileUp, FlaskConical, Image, Keyboard, Languages, Link2, Moon, PanelsTopLeft, Scan, Sun, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Puzzle, Radio, Settings2, Sparkles, Trash2, Type, Volume2, X, Zap, ZoomIn, ZoomOut, LucideAngularModule } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
 import { ALERT_EVENTS, EVENT_KINDS, AlertDesign, AlertEvent, EventKind, OverlayScene, OverlayWidget, WidgetKind, clone, makeDesign, makeScene, matchesTrigger } from './overlay.model';
 
@@ -65,7 +66,7 @@ const PALETTE_GROUPS: { id: 'events' | 'interact' | 'media'; kinds: WidgetKind[]
 interface MediaJob { cancel?: () => void; timers: Map<string, ReturnType<typeof setTimeout>>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
+  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
@@ -114,6 +115,8 @@ export class OverlayEditorComponent {
   /** The overlay being edited has custom widget layers (the Test drawer then offers chat and widget alert tests). */
   readonly customLayers = computed(() => !this.designDraft() && this.widgets().some(w => w.kind === 'custom'));
   readonly customImportOpen = signal(false);
+  /** Code editor for a new widget ("New widget" in the Add panel). */
+  readonly customCodeOpen = signal(false);
   readonly customError = signal('');
   readonly customBusy = signal('');
   readonly soundPickerOpen = signal(false);
@@ -144,7 +147,7 @@ export class OverlayEditorComponent {
   private pointer: PointerSession | null = null;
   private timers = new Set<ReturnType<typeof setTimeout>>();
   private nextId = Date.now();
-  readonly icons = { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, Clapperboard, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FileUp, FlaskConical, Keyboard, Languages, Link2, Moon, PanelsTopLeft, Scan, Sun, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Puzzle, Radio, Settings2, Sparkles, Trash2, Volume2, X, Zap, ZoomIn, ZoomOut };
+  readonly icons = { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, Clapperboard, Code2, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FileUp, FlaskConical, Keyboard, Languages, Link2, Moon, PanelsTopLeft, Scan, Sun, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Puzzle, Radio, Settings2, Sparkles, Trash2, Volume2, X, Zap, ZoomIn, ZoomOut };
   readonly alertEvents = ALERT_EVENTS;
   readonly eventKinds = EVENT_KINDS;
   readonly designs = signal<AlertDesign[]>([]);

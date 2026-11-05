@@ -79,9 +79,8 @@ Signals are fire-and-forget (no queue, no replay after a reconnect), like chat.
    source) and push snapshots as `state` events; `Dima.state('goals', fn)`.
 3. **Real chat replay in the editor:** "Replay recent chat" in the Test drawer sends the last 20 messages from the existing
    chat history (Dragonfly) to the preview.
-4. **Code tab:** edit html/css/js/fields/widget.json in Studio with a live preview; Save creates a new revision (the
-   existing replace-files path), so publish/rollback behave as today.
-5. **Roll back:** list stored revisions and "Use this version" (copies it as a new latest revision).
+4. ~~**Code tab**~~ and 5. ~~**Roll back**~~: shipped 2026-11-05 as the Studio code editor ("New widget" / "Edit code",
+   version history with "Open"); see `CUSTOM_WIDGETS.md` → Code editor.
 
 ## 7. Checks
 

@@ -48,8 +48,10 @@ export class EditorWidgetEnv implements CustomWidgetEnv {
     if (method === 'store.get' || method === 'store.set') {
       if (!target.uses.includes('store')) throw new Error('This widget did not ask for "store" in widget.json');
       if (!key || key.length > 100) throw new Error('Store keys are 1–100 characters');
-      const scoped = `${storeNamespace(target)}:${key}`;
-      if (method === 'store.get') return this.previewStore.has(scoped) ? this.previewStore.get(scoped) : this.widgets.storeGet(storeNamespace(target), key);
+      const namespace = storeNamespace(target), scoped = `${namespace}:${key}`;
+      // A widget that isn't saved yet (code editor) has no stored values: its preview store starts empty.
+      const saved = namespace === 'se' || /^[a-f0-9]{24}$/.test(namespace);
+      if (method === 'store.get') return this.previewStore.has(scoped) ? this.previewStore.get(scoped) : saved ? this.widgets.storeGet(namespace, key) : null;
       const value = params['value'] ?? null;
       if (JSON.stringify(value).length > MAX_VALUE_BYTES) throw new Error('Store values are limited to 64 KB');
       this.previewStore.set(scoped, structuredClone(value));

@@ -38,8 +38,10 @@ is the portable parser shared with Studio (copied to `dimasite/.../custom-widget
   inferred from StreamElements code). Replacing the files adds a revision.
 - `media` (on the widget, shared by all revisions): StreamElements files copied into the Asset Library, keyed by
   base64url(url) → `{ url, assetId }`. Copied assets can't be deleted while a widget uses them.
-- `revisions` keeps the latest revision plus any older one that a **published** overlay still uses; drafts always follow
-  the latest. Old revisions and their unshared files are pruned after publishes and file replacements.
+- `revisions` keeps the latest revision, the 10 newest overall (the code editor's version history, within a 6 MB
+  budget for parsed fields/data so the document stays small) and any older one a **published** overlay still uses;
+  drafts always follow the latest. Revisions outside that and their unshared files are pruned after publishes and file
+  replacements. The widget view lists them as `history` (newest first, with `published`).
 - Plan limits per channel: Free 1, Premium 5, Pro 25 (`CUSTOM_WIDGET_PLAN_LIMITS`).
 
 **Files** live in S3 as private objects (no public ACL), content-addressed:
@@ -69,7 +71,7 @@ All routes are under the owner-only `/overlay-studio/:channelID` guard.
 |-------|---------|
 | `GET /custom-widgets` | `{ enabled, planTier, limit, used, widgets }` with fields, data and where each widget is used |
 | `POST /custom-widgets` `{ name?, files }` | Import (201, `{ widget, issues }`); 403 `plan_limit` / `limit` at the plan limit |
-| `PUT /custom-widgets/:id/files` `{ files }` | New revision |
+| `PUT /custom-widgets/:id/files` `{ files, baseRevision? }` | New revision; with `baseRevision` (code editor) 409 `stale` if the widget changed since |
 | `PATCH /custom-widgets/:id` `{ name }` | Rename |
 | `DELETE /custom-widgets/:id` | 409 `in_use` while an overlay uses it |
 | `GET /custom-widgets/:id/files/:part?revision=` | Original file text (`part` also `manifest`) |
@@ -79,11 +81,23 @@ All routes are under the owner-only `/overlay-studio/:channelID` guard.
 | `POST /widget-test` `{ sceneId, type, data }` | Send a custom widget test to one published overlay in OBS |
 | `GET /overlay-studio/public/:publicId/custom-widgets/:id/:revision` | OBS: code of a revision this overlay pins |
 
+## Code editor (Studio)
+
+`dimasite/src/app/features/overlays/overlay-custom-widget-code.component.*`: "New widget" (Add panel; starters in
+`custom-widget-templates.ts`, labels/alert lines localized) and "Edit code" (layer settings). Six tabs (html, css, js,
+fields, data, widget.json) in CodeMirror 6, lazy-loaded from `custom-widget-code-mirror.ts` so Studio doesn't carry it.
+The same portable `readPackage` the server uses checks the files as you type: errors (bad JSON, size) block saving and
+keep the last good preview; issues are listed. The preview is the normal frame host with a `draft` bundle (layer id
+`cw-code-preview`, so tests and logs reach only it; an unsaved widget's store stays in memory). Saving creates the
+widget or `PUT /files` with `baseRevision` (409 `stale` → "Save anyway"). Unsaved work is kept in localStorage
+(`dimasite.cw-code.v1.<channel>.<widgetId|new>`, `custom-widget-code-drafts.ts`) until saved or discarded; "Versions"
+uses `history` and loads a revision's files as unsaved changes.
+
 ## Not built yet
 
 - Tip events (`tip-latest` exists but never fires until our tipping feature ships) and 7TV/BTTV/FFZ emotes.
-- Step 5 (`$(widget.signal)`, bot events, live state, code tab): see [`CUSTOM_WIDGET_SIGNALS_PLAN.md`](./CUSTOM_WIDGET_SIGNALS_PLAN.md).
+- Step 5 (`$(widget.signal)`, bot events, live state): see [`CUSTOM_WIDGET_SIGNALS_PLAN.md`](./CUSTOM_WIDGET_SIGNALS_PLAN.md).
 
 Checks: `node --import tsx --test src/custom_widgets/*.test.ts`, `ops/checks/custom-widgets-api.mjs` and
-`ops/checks/custom-widgets-engine-api.mjs` (api candidate, fake S3 + fake StreamElements CDN; staging notes in each file)
-and `ops/checks/custom-widgets-browser.mjs` (site candidate, mocked API).
+`ops/checks/custom-widgets-engine-api.mjs` (api candidate, fake S3 + fake StreamElements CDN; staging notes in each file),
+`ops/checks/custom-widgets-browser.mjs` and `ops/checks/custom-widgets-code-browser.mjs` (site candidate, mocked API).

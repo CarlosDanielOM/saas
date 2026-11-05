@@ -32,6 +32,26 @@ Antes de añadir el widget, Overlay Studio muestra su motor y la lista **Usa:**.
 
 Si un widget no solicita datos en directo, no recibe ninguno. Overlay Studio solo le entrega las categorías que haya declarado.
 
+## Escribe código en Studio
+
+En el panel Añadir, elige **Nuevo widget** en la lista de widgets personalizados. Ponle un nombre y elige una plantilla. Recomendamos **SDK de Dima**: sus ajustes se actualizan en directo e incluye un `widget.json`. **Compatible con StreamElements** usa `onWidgetLoad` y `onEventReceived`; los mismos archivos también funcionan en StreamElements. Pulsa **Empezar a programar** y luego **Crear widget** para guardarlo y añadirlo al overlay actual. Los widgets nuevos cuentan para el límite de widgets personalizados de tu plan: Free 1, Premium 5 y Pro 25.
+
+Elige **Editar código** en los ajustes de una capa de widget personalizado para abrir el mismo editor con cualquier widget importado o creado.
+
+Las pestañas contienen HTML, CSS, JS, **Ajustes** (`fields.txt`, los ajustes que aparecen en el panel derecho), **Datos** (valores iniciales de `data.txt`; los cambios del panel derecho siguen teniendo prioridad en cada capa) y `widget.json`. Un widget de StreamElements sin `widget.json` muestra **Añadir widget.json**. Esta opción crea un manifiesto a partir de lo que Studio dedujo del código.
+
+La vista previa ejecuta el código sin guardar al tamaño de la capa y en la misma zona aislada que el overlay. En teléfonos, cambia entre **Código** y **Vista previa**. **Pruébalo** envía mensajes de prueba y alertas, pero solo de los tipos que aparecen en el `widget.json` del widget. Pulsa **Reiniciar** para reiniciar la vista previa. El registro del widget muestra sus mensajes, avisos y errores.
+
+El JSON incorrecto o los archivos que superan los límites de tamaño son errores. La pestaña muestra cuántos hay; elige un error para ir a su línea. Los errores bloquean el guardado y la vista previa conserva la última versión que funcionó. Los ajustes o valores que se omitirían aparecen como cosas por revisar, pero no bloquean el guardado.
+
+**Guardar** (o Ctrl/⌘+S) crea una versión nueva. Las capas de Studio la usan enseguida. Los overlays en OBS conservan su versión hasta que los publiques. Los cambios sin guardar se conservan en este navegador hasta que los guardes o descartes; al volver a abrir el editor se restauran.
+
+Si el widget cambió en otro lugar después de abrirlo, por ejemplo en otra pestaña, al guardar recibirás un aviso y podrás elegir **Guardar de todos modos**.
+
+**Versiones** muestra las 10 versiones más recientes y cualquier versión que use un overlay publicado. **Abrir** carga una versión como cambios sin guardar. Guárdala para volver a usarla.
+
+Escape dentro del código no cierra el editor. Pulsa Escape y luego Tab para mover el foco fuera del código.
+
 ## Añade y ajusta una capa
 
 Añade el widget importado desde la paleta de capas y abre sus **Ajustes**. Los campos aparecen en grupos desplegables; los que no tienen grupo aparecen en **General**. Usa **Buscar un ajuste** para encontrar un campo. La marca **Cambiado** señala los ajustes distintos de los valores guardados del widget. Pulsa **Restablecer** para devolver un ajuste a su valor original o **Restablecer todo** para recuperar todos los valores.

@@ -217,7 +217,10 @@
               } @empty {
                 <p class="lf-note">{{ t('customEmpty') }}</p>
               }
-              <button type="button" class="lf-btn custom-import" (click)="customImportOpen.set(true)" data-custom-import><lucide-icon [name]="icons.FileUp" [size]="16" aria-hidden="true" />{{ t('customImportButton') }}</button>
+              <div class="custom-actions">
+                <button type="button" class="lf-btn custom-import" (click)="customImportOpen.set(true)" data-custom-import><lucide-icon [name]="icons.FileUp" [size]="16" aria-hidden="true" />{{ t('customImportButton') }}</button>
+                <button type="button" class="lf-btn custom-import" (click)="customCodeOpen.set(true)" data-custom-new><lucide-icon [name]="icons.Code2" [size]="16" aria-hidden="true" />{{ t('customNewButton') }}</button>
+              </div>
             </div>
             @if (customError()) { <p class="lf-note lf-note--warn" role="alert">{{ customError() }}</p> }
             @if (customWidgets.error()) { <p class="lf-note lf-note--warn" role="alert">{{ t('customLoadFailed') }} <button type="button" class="lf-btn lf-btn--compact" (click)="customWidgets.load(channel)">{{ t('retry') }}</button></p> }
@@ -699,4 +702,5 @@
 }
 
 @if (customImportOpen() && channel) { <app-overlay-custom-widget-import (done)="addCustomWidget($event)" (closed)="customImportOpen.set(false)" /> }
+@if (customCodeOpen() && channel) { <app-overlay-custom-widget-code (created)="addCustomWidget($event)" (closed)="customCodeOpen.set(false)" /> }
 @if (soundPickerOpen() && channel) { <app-asset-library-dialog [owner]="channel" kind="audio" (selected)="useSound($event)" (closed)="soundPickerOpen.set(false)" /> }

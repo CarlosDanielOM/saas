@@ -32,6 +32,26 @@ Before you add the widget, Overlay Studio shows its engine and **Uses:** list. T
 
 A widget that does not ask for live data receives none. Overlay Studio only delivers the categories the widget declared.
 
+## Write code in Studio
+
+In the Add panel, choose **New widget** in the custom widgets list. Give the widget a name and choose a starter. **Dima SDK** is recommended: its settings update live and it includes a `widget.json`. **StreamElements-compatible** uses `onWidgetLoad` and `onEventReceived`; the same files also work on StreamElements. Choose **Start coding**, then **Create widget** to save it and add it to the current overlay. New widgets count toward your plan's custom widget limit: Free 1, Premium 5, Pro 25.
+
+Choose **Edit code** in a custom widget layer's settings to open the same editor for an imported or created widget.
+
+The tabs contain HTML, CSS, JS, **Fields** (`fields.txt`, the settings shown in the right panel), **Data** (starting values from `data.txt`; changes in the right panel still win for each layer), and `widget.json`. A StreamElements widget without `widget.json` shows **Add widget.json**. It creates a manifest from what Studio worked out from the code.
+
+The preview runs unsaved code at the layer's size in the same sandbox as the overlay. On phones, switch between **Code** and **Preview**. **Try it** sends test chat messages and alerts, but only the kinds listed in the widget's `widget.json`. Choose **Restart** to restart the preview. The widget log shows its messages, warnings, and errors.
+
+Broken JSON or files over the size limits are errors. A tab shows the error count; choose a problem to jump to its line. Errors block saving, and the preview keeps the last version that worked. Settings or values that would be skipped appear as things to check, but do not block saving.
+
+**Save** (or Ctrl/⌘+S) creates a new version. Studio layers use it right away. Overlays in OBS keep their version until you publish. Unsaved changes stay in this browser until you save or discard them; reopening the editor restores them.
+
+If the widget changed somewhere else after you opened it, such as in another tab, saving warns you and offers **Save anyway**.
+
+**Versions** lists the 10 most recent versions and any version used by a published overlay. **Open** loads a version as unsaved changes. Save to use it again.
+
+Escape inside the code does not close the editor. Press Escape, then Tab, to move focus out of the code.
+
 ## Add and adjust a layer
 
 Add the imported widget from the layer palette. Open its **Settings** to edit it. Fields appear in collapsible groups; fields without a group appear under **General**. Use **Find a setting** to search. A **Changed** marker shows settings that differ from the widget’s saved values. Choose **Reset** for one setting or **Reset all** to restore them.
