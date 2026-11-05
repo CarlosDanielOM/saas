@@ -90,6 +90,26 @@ Before implementing data-dependent features or functions that may duplicate exis
 - For a broad docs refresh, delegate source-backed audits to separate agents when the harness permits it. Give each agent a non-overlapping set of files and feature sources, stay within the actual concurrency limit, and have one integrator reconcile terminology and English/Spanish parity.
 - Delegation does not replace verification. Repository guidance changes need a reviewed diff and `git diff --check`; published `dimadocs` content still needs the docs preview, candidate build, behavior check, deployment, and production verification described above.
 
+## Teammate for Claude agents: GPT-6.1 Sol
+
+Claude agents (Claude Code) work with **GPT-6.1 Sol in high reasoning mode** as a teammate whenever the harness provides
+it (T3 Code: `delegate_task` with provider `codex`, model `gpt-6.1-sol`, `reasoningEffort: high`). Ping it without
+asking the user first, as often as it helps:
+
+- **Second view** on a plan or design before building something non-trivial.
+- **Review** of a finished diff before deploying: correctness, security, edge cases, missed tests.
+- **Second pair of hands** when debugging (hypotheses, reproductions, reading logs) or for well-scoped pieces of code.
+
+How to work with it:
+
+- Give it a self-contained brief: the goal, the files and facts it needs, what it must not touch, and what to send back.
+- UI/UX design decisions stay with the Claude agent unless the user says otherwise.
+- Its findings and code are input, not authority: verify them yourself and decide; tell the user what you took and
+  what you set aside, and why.
+- It does not deploy, commit, run `scripts/dima-update`, or touch other agents' work; the Claude agent owns the
+  delivery workflow above, including all verification.
+- Credit it in the commit message (`Agent:` line) when its review or code shaped the change.
+
 ## Where to Edit – Quick Reference
 
 **Backend (dimabot)**:
