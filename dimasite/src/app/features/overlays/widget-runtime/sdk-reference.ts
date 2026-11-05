@@ -25,9 +25,9 @@ export const TYPES: Record<string, RefType> = {
     fields: p('WidgetFields', 'Current settings. Available immediately; updated before each `fields` event.'),
     mode: p("'editor' | 'live' | null", '`editor` in Studio, `live` in OBS (null before `ready()`).'),
     on: m('<K extends keyof DimaEvents>(type: K, handler: (data: DimaEvents[K]) => void) => () => void', "on('event', handler)",
-      'Listens for an event (chat, chat.delete, chat.clear, alert, button, fields, store, session). Returns a function that stops listening.'),
+      'Listens for an event (chat, chat.delete, chat.clear, alert, button, fields, storage, session, signal or signal:<name>). Returns a function that stops listening.'),
     off: m('<K extends keyof DimaEvents>(type: K, handler: (data: DimaEvents[K]) => void) => void', "off('event', handler)", 'Stops a handler added with `on`.'),
-    store: p('DimaStore', 'Values saved for this widget (needs "store" in widget.json uses).'),
+    storage: p('DimaStorage', 'Values saved for this widget (needs "storage" in widget.json uses).'),
     counters: p('DimaCounters', 'The bot\'s command counters (needs "counters" in widget.json uses).'),
     setField: m('(key: string, value: unknown, reload?: boolean) => Promise<void>', 'setField(key, value, reload?)', 'Studio only: changes a setting from code (reloads the widget unless reload is false).'),
     done: m('() => Promise<void>', 'done()', 'Reserved for the alert queue; does nothing in SDK v1.'),
@@ -35,9 +35,9 @@ export const TYPES: Record<string, RefType> = {
     html: m('(message: DimaChat) => string', 'html(message)', 'A chat message as safe HTML with Twitch emotes as <img>.'),
     log: m('(...args: unknown[]) => void', 'log(...args)', 'Writes to the widget log in Studio.')
   } },
-  DimaStore: { doc: 'Saved values (JSON, up to 64 KB each).', props: {
+  DimaStorage: { doc: 'Saved values (JSON, up to 64 KB each).', props: {
     get: m('(key: string) => Promise<unknown>', 'get(key)', 'Reads a saved value (null when missing).'),
-    set: m('(key: string, value: unknown) => Promise<void>', 'set(key, value)', 'Saves a value; other sources of this widget get a `store` event.')
+    set: m('(key: string, value: unknown) => Promise<void>', 'set(key, value)', 'Saves a value; other sources of this widget get a `storage` event.')
   } },
   DimaCounters: { doc: 'Bot command counters.', props: {
     get: m('(name: string) => Promise<number>', 'get(name)', 'A command counter\'s value (0 when it doesn\'t exist).')
@@ -92,7 +92,18 @@ export const TYPES: Record<string, RefType> = {
   } },
   DimaAlertRule: { doc: 'An alert rule.', props: { id: p('string', 'Rule ID.'), name: p('string', 'Rule name.') } },
   DimaButton: { doc: 'A settings button was pressed in Studio (event `button`).', props: { field: p('string', 'The button\'s field key.'), value: p('unknown', 'The button\'s value.') } },
-  DimaStoreUpdate: { doc: 'A saved value changed (event `store`).', props: { key: p('string', 'Key.'), value: p('unknown', 'New value.'), namespace: p('string', 'Store it belongs to.') } },
+  DimaStorageUpdate: { doc: 'A saved value changed (event `storage`).', props: { key: p('string', 'Key.'), value: p('unknown', 'New value.'), namespace: p('string', 'Store it belongs to.') } },
+  DimaSignal: { doc: 'A chat command ran `$(widget.signal name value)` (event `signal`, or `signal:name` for one name). The value is viewer text: show it with `textContent` or `Dima.escape()`.', props: {
+    id: p('string', 'Signal ID.'), name: p('string', 'Signal name (lowercase letters, digits and _).'),
+    value: p('string', 'Text after the name, e.g. what the viewer typed (`&p1`, `&t`). Empty when none.'),
+    json: p('unknown', 'The value parsed when it is a JSON number, boolean, array or object (otherwise null).'),
+    args: p('string[]', 'The value split on spaces.'), at: p('number', 'Time sent (ms).'),
+    user: p('DimaSignalUser | null', 'Who used the command (null when unknown).'),
+    source: p('DimaSignalSource', 'What sent it: a command, keyword, event or a Studio test.'),
+    target: p('string | null', 'Layer name for `$(widget.signal.to …)` (null: every widget that uses signals).')
+  } },
+  DimaSignalUser: { doc: 'Who used the command.', props: { id: p('string', 'Twitch user ID.'), login: p('string', 'Login (lowercase).'), name: p('string', 'Display name.'), roles: p('DimaRoles', 'Broadcaster, moderator, VIP, subscriber.') } },
+  DimaSignalSource: { doc: 'What sent a signal.', props: { kind: p("'command' | 'keyword' | 'event' | 'studio'", 'Command, keyword, Twitch event or Studio test.'), name: p('string', 'Command or keyword name.') } },
   DimaSession: { doc: 'Recent events and totals (StreamElements-style keys).', props: {
     data: p('Record<string, unknown>', 'Keys like "follower-latest", "subscriber-recent", "cheer-session".'), recents: p('unknown[]', 'Recent events, newest first.')
   } },
@@ -124,13 +135,17 @@ export const TYPES: Record<string, RefType> = {
     data: p('SEMessageData', 'listener "message": the chat message.'), renderedText: p('string', 'listener "message": escaped HTML with emotes.'),
     service: p('string', 'listener "message": "twitch".'),
     msgId: p('string', 'listener "delete-message": deleted message ID.'), userId: p('string', 'listener "delete-messages": cleared user ID.'),
-    name: p('string', 'Alerts: who did it.'), amount: p('number', 'Alerts: Bits, months, gifts or raid viewers.'), message: p('string', 'Alerts: their message.'),
+    name: p('string', 'Alerts: who did it. dima:signal: the signal name.'), amount: p('number', 'Alerts: Bits, months, gifts or raid viewers.'), message: p('string', 'Alerts: their message.'),
     type: p('string', 'Alerts: follower, subscriber, cheer, raid, tip.'), tier: p('string', 'Subs: "1000", "2000", "3000" or "prime".'),
     gifted: p('boolean', 'Subs: a gifted sub.'), sender: p('string', 'Gifted subs: who gifted.'), bulkGifted: p('boolean', 'Community gift.'),
     isCommunityGift: p('boolean', 'Community gift.'), playedAsCommunityGift: p('boolean', 'Subs: shown as part of a community gift.'),
     streak: p('number', 'Resubs: streak months.'), currency: p('string', 'Tips: currency.'), _id: p('string', 'Event ID.'), createdAt: p('string', 'ISO time.'),
     listener: p('string', 'listener "widget-button": the listener name again.'),
-    field: p('string', 'listener "widget-button": the button\'s field key.'), value: p('unknown', 'listener "widget-button": its value.')
+    field: p('string', 'listener "widget-button": the button\'s field key.'), value: p('unknown', 'listener "widget-button": its value. dima:signal: the text after the signal name.'),
+    id: p('string', 'listener "dima:signal": signal ID.'), at: p('number', 'listener "dima:signal": time sent (ms).'),
+    json: p('unknown', 'listener "dima:signal": the value as JSON (number, boolean, array or object) or null.'), args: p('string[]', 'listener "dima:signal": the value split on spaces.'),
+    user: p('DimaSignalUser | null', 'listener "dima:signal": who used the command.'), source: p('DimaSignalSource', 'listener "dima:signal": what sent it.'),
+    target: p('string | null', 'listener "dima:signal": layer name for widget.signal.to.')
   } },
   SEMessageData: { doc: 'A chat message (StreamElements shape).', props: {
     time: p('number', 'Time (ms).'), tags: p('Record<string, string>', 'IRC tags (badges, color, emotes, first-msg…).'), nick: p('string', 'Login.'),
@@ -145,7 +160,7 @@ export const TYPES: Record<string, RefType> = {
 /** Type aliases for the typings (unions that can't be completed into). */
 export const ALIASES: Record<string, string> = {
   DimaPart: "{ type: 'text'; text: string } | { type: 'emote'; text: string; id: string; animated: boolean; images: DimaImages } | { type: 'cheer'; text: string; prefix: string; bits: number; tier: number } | { type: 'mention'; text: string; user: DimaUser }",
-  SEListener: "'message' | 'delete-message' | 'delete-messages' | 'follower-latest' | 'subscriber-latest' | 'cheer-latest' | 'raid-latest' | 'tip-latest' | 'widget-button' | 'kvstore:update'"
+  SEListener: "'message' | 'delete-message' | 'delete-messages' | 'follower-latest' | 'subscriber-latest' | 'cheer-latest' | 'raid-latest' | 'tip-latest' | 'widget-button' | 'kvstore:update' | 'dima:signal'"
 };
 
 /** Dima SDK events: payload type and the widget.json `uses` entry needed to receive them. */
@@ -156,9 +171,12 @@ export const DIMA_EVENTS: { name: string; type: string; uses: string | null; doc
   { name: 'alert', type: 'DimaAlert', uses: 'alerts', doc: 'Follow, sub, resub, gift, Bits, raid or tip.' },
   { name: 'button', type: 'DimaButton', uses: null, doc: 'A settings button was pressed in Studio.' },
   { name: 'fields', type: 'WidgetFields', uses: null, doc: 'Settings changed in Studio (no reload).' },
-  { name: 'store', type: 'DimaStoreUpdate', uses: 'store', doc: 'A saved value changed.' },
-  { name: 'session', type: 'DimaSession', uses: 'session', doc: 'Recent events and totals changed.' }
+  { name: 'storage', type: 'DimaStorageUpdate', uses: 'storage', doc: 'A saved value changed.' },
+  { name: 'session', type: 'DimaSession', uses: 'session', doc: 'Recent events and totals changed.' },
+  { name: 'signal', type: 'DimaSignal', uses: 'signals', doc: 'A chat command sent a signal: $(widget.signal name value). Use \'signal:name\' for one name.' }
 ];
+/** `Dima.on('signal:feed', …)`: one signal by name. */
+export const SIGNAL_EVENT = /^signal:([a-z0-9_]{1,40})$/;
 export const SE_EVENTS: { name: string; type: string; doc: string }[] = [
   { name: 'onWidgetLoad', type: 'SEWidgetLoad', doc: 'Once at start: settings (fieldData), channel and session.' },
   { name: 'onEventReceived', type: 'SEEventReceived', doc: 'Chat, deletes, alerts, buttons and store changes.' },
@@ -174,7 +192,8 @@ export const SE_LISTENERS: { name: string; doc: string }[] = [
   { name: 'raid-latest', doc: 'A raid (event.name, amount).' },
   { name: 'tip-latest', doc: 'A tip (never fires until tipping is available).' },
   { name: 'widget-button', doc: 'A settings button was pressed (event.field, event.value).' },
-  { name: 'kvstore:update', doc: 'A saved value changed (event.data.key, event.data.value).' }
+  { name: 'kvstore:update', doc: 'A saved value changed (event.data.key, event.data.value).' },
+  { name: 'dima:signal', doc: 'A chat command sent a signal (event.name, event.value, event.user). Needs "signals" in widget.json uses.' }
 ];
 
 /** widget.json keys and values. */
@@ -185,11 +204,12 @@ export const MANIFEST_KEYS: { name: string; doc: string; values?: readonly strin
   { name: 'author', doc: 'Who made it.' },
   { name: 'version', doc: 'Your version text, e.g. "1.0.0".' },
   { name: 'description', doc: 'One line about what it does.' },
-  { name: 'uses', doc: 'Live data the widget may read.', values: WIDGET_USES }
+  { name: 'uses', doc: 'Live data the widget may read.', values: WIDGET_USES },
+  { name: 'signals', doc: 'Signals your code listens for. Studio shows each one as a ready-to-paste command: [{ "name": "feed", "description": "Feed the pet", "values": ["pizza"] }].' }
 ];
 export const USES_DOCS: Record<string, string> = {
-  chat: 'Chat messages, deletes and clears.', alerts: 'Follows, subs, gifts, Bits, raids and tips.', store: 'Saved values (Dima.store / SE_API.store).',
-  counters: 'Bot command counters.', session: 'Recent events and totals.'
+  chat: 'Chat messages, deletes and clears.', alerts: 'Follows, subs, gifts, Bits, raids and tips.', storage: 'Saved values (Dima.storage / SE_API.store).',
+  counters: 'Bot command counters.', session: 'Recent events and totals.', signals: 'Signals from chat commands: $(widget.signal name value).'
 };
 /** fields.txt field types and properties. */
 export const FIELD_TYPES: { name: FieldType; doc: string }[] = [

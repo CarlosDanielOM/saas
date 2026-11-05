@@ -27,7 +27,7 @@ import { defaultMotion } from './overlay-object-motion';
 import { ALERT_TRANSITIONS, ALERT_LOOPS } from './overlay.model';
 import { OverlayHistory, type OverlayEditSnapshot } from './overlay-history';
 import { OverlayQueueComponent } from './overlay-queue.component';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ThemeService } from '../../services/theme.service';
 import { LayoutFocusService } from '../../services/layout-focus.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -684,6 +684,21 @@ export class OverlayEditorComponent {
   sendWidgetAlert(kind: AlertTest): void { void this.sendWidgetTest(this.widgetEnv.alertTest(kind)); }
   deleteWidgetMessage(): void { void this.sendWidgetTest(this.widgetEnv.deleteTest()); }
   clearWidgetChat(): void { void this.sendWidgetTest(this.widgetEnv.clearTest()); }
+  /** "Send a signal": what $(widget.signal name value) would send, from you. */
+  readonly signalName = signal('');
+  readonly signalValue = signal('');
+  /** Signals the overlay's widgets declare in widget.json (quick picks). */
+  private readonly shareLayers = effect(() => { const layers = this.widgets(); untracked(() => this.widgetEnv.sceneLayers.set(layers)); });
+  readonly declaredSignals = computed(() => [...new Set(this.widgets().filter(w => w.kind === 'custom')
+    .flatMap(w => this.customWidgets.widget(w.config?.['widgetId'])?.manifest?.signals?.map(s => s.name) ?? []))].slice(0, 12));
+  sendWidgetSignal(): void {
+    const name = this.signalName().trim().toLowerCase();
+    if (!/^[a-z0-9_]{1,40}$/.test(name)) { this.error.set(this.t('widgetTestSignalInvalid')); return; }
+    this.error.set('');
+    const user = this.auth.session()?.twitchUser;
+    void this.sendWidgetTest(this.widgetEnv.signalTest(name, this.signalValue(), null,
+      { id: this.channel, login: user?.login ?? this.streamer, name: user?.display_name ?? this.streamer }));
+  }
   onPaletteDrag(event: DragEvent, kind: WidgetKind): void { event.dataTransfer?.setData('application/x-overlay-widget', kind); }
   onCanvasDragOver(event: DragEvent): void { event.preventDefault(); }
   onCanvasDrop(event: DragEvent): void {

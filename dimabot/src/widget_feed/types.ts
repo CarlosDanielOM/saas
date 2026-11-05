@@ -27,3 +27,24 @@ export type WidgetFeedMessage = {
 };
 export const WIDGET_FEED_CHANNEL = 'widget-feed';
 export const widgetFeedDemandKey = (channel: string): string => 'widget-feed:demand:' + channel;
+
+/** A widget signal: a named message from a command (or Studio test) to the channel's custom widgets. */
+export interface DimaSignal {
+  id: string; name: string;
+  /** Evaluated arguments joined with spaces (viewer text: show with textContent / Dima.escape). */
+  value: string;
+  /** `value` parsed as JSON when it is a number, boolean, array or object; otherwise null. */
+  json: unknown;
+  /** `value` split on whitespace. */
+  args: string[];
+  at: number;
+  user: { id: string; login: string; name: string; roles: { broadcaster: boolean; moderator: boolean; vip: boolean; subscriber: boolean } } | null;
+  source: { kind: 'command' | 'keyword' | 'event' | 'studio'; name: string };
+  /** Layer name for `widget.signal.to`; null sends to every layer that uses signals. */
+  target: string | null;
+}
+export interface WidgetSignalMessage { channel: string; type: 'signal'; data: DimaSignal }
+export const SIGNAL_NAME = /^[a-z0-9_]{1,40}$/;
+export const SIGNAL_LIMITS = { value: 500, target: 80, perChannel: 30, windowSeconds: 10 } as const;
+export const widgetSignalRateKey = (channel: string) => 'widget-signal:rate:' + channel;
+export const widgetSignalSkippedKey = (channel: string) => 'widget-signal:skipped:' + channel;

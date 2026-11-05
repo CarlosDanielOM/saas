@@ -7,6 +7,8 @@ export interface StarterTexts {
   accent: string; text: string; size: string; max: string; alerts: string;
   /** `{name}` and `{amount}` are filled in by the widget. */
   follow: string; sub: string; gift: string; bits: string; raid: string;
+  /** Description of the starter's `shout` command signal (shown in Studio's Commands block) and an example text. */
+  shout: string; shoutExample: string;
 }
 
 const html = `<div class="chat" id="chat"></div>
@@ -38,7 +40,8 @@ body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; color: var(--t
 function dimaFiles(name: string, t: StarterTexts): CodeFiles {
   const texts = JSON.stringify({ follow: t.follow, sub: t.sub, resub: t.sub, gift: t.gift, bits: t.bits, raid: t.raid }, null, 2);
   return {
-    manifest: JSON.stringify({ engine: 'dima', api: 1, name, version: '1.0.0', description: 'Chat messages with emotes and a banner for follows, subs, Bits and raids.', uses: ['chat', 'alerts'] }, null, 2) + '\n',
+    manifest: JSON.stringify({ engine: 'dima', api: 1, name, version: '1.0.0', description: 'Chat messages with emotes and a banner for follows, subs, Bits and raids.',
+      uses: ['chat', 'alerts', 'signals'], signals: [{ name: 'shout', description: t.shout, values: [t.shoutExample] }] }, null, 2) + '\n',
     html,
     // Colours and sizes are CSS variables set from the settings in the script, so changes apply without a reload.
     css: `:root { --accent: #8b5cf6; --text: #ffffff; --size: 22px; }\n` + baseCss,
@@ -79,14 +82,21 @@ Dima.on('chat.clear', event => {
 });
 
 let hideTimer;
-Dima.on('alert', alert => {
-  const line = TEXT[alert.type];
-  if (!settings.showAlerts || !line) return;
-  banner.textContent = line.replace('{name}', alert.user ? alert.user.name : '?').replace('{amount}', String(alert.amount));
+function showBanner(text) {
+  banner.textContent = text; // textContent: viewer text is never read as HTML
   banner.hidden = false;
   clearTimeout(hideTimer);
   hideTimer = setTimeout(() => { banner.hidden = true; }, 5000);
+}
+Dima.on('alert', alert => {
+  const line = TEXT[alert.type];
+  if (!settings.showAlerts || !line) return;
+  showBanner(line.replace('{name}', alert.user ? alert.user.name : '?').replace('{amount}', String(alert.amount)));
 });
+
+// Chat commands can control the widget: a command with the response $(widget.signal shout &t)
+// shows what the viewer typed in the banner (Settings → Commands has it ready to copy).
+Dima.on('signal:shout', signal => showBanner(signal.value || (signal.user ? signal.user.name : '') + ' 📣'));
 
 Dima.ready().then(context => Dima.log('Ready on ' + context.channel.name));
 `,

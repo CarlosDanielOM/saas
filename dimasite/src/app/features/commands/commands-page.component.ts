@@ -10,7 +10,7 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, type ParamMap } from '@angular/router';
 import { catchError, combineLatest, map, of, switchMap } from 'rxjs';
 
 import { Command, CreateCommandRequest, UpdateCommandRequest, USER_LEVELS, USER_LEVEL_NAMES, whoCanUsePhrase } from '../../models/command.model';
@@ -31,7 +31,7 @@ import {
   realDescription,
   replyParts
 } from './builtin-commands';
-import { CommandModalComponent, CommandModalSavePayload, PlanTier } from './command-modal.component';
+import { CommandModalComponent, CommandModalSavePayload, CommandPrefill, PlanTier } from './command-modal.component';
 import { BlocksViewerDialogComponent } from './blocks/blocks-viewer-dialog.component';
 import { RandomUserSettingsComponent } from './randomuser-settings.component';
 import { clearDraft, draftKey, takeResume } from './blocks/blocks.draft';
@@ -47,6 +47,14 @@ interface CommandListItem extends Command {
   optimistic?: boolean;
 }
 
+/** Reads a "Make a command" link once; the values only fill in the form (nothing is saved until the streamer saves). */
+function readCommandPrefill(params: ParamMap): CommandPrefill | null {
+  if (params.get('new') !== 'command') return null;
+  const text = (key: string, max: number) => (params.get(key) ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max);
+  const prefill = { cmd: text('cmd', 40).replace(/^!+/, '').replace(/\s+/g, '').toLowerCase().slice(0, 30), name: text('name', 40), message: text('message', 500), description: text('description', 200) };
+  return prefill.cmd || prefill.message ? prefill : null;
+}
+
 @Component({
   selector: 'app-commands-page',
   imports: [ReactiveFormsModule, NgTemplateOutlet, ConfirmationModalComponent, CommandModalComponent, LfIconComponent, BlocksViewerDialogComponent, RandomUserSettingsComponent],
@@ -59,6 +67,7 @@ interface CommandListItem extends Command {
 })
 export class CommandsPageComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly commandsApi = inject(CommandsApiService);
@@ -304,6 +313,7 @@ export class CommandsPageComponent {
     this.commandsApi.getCommands(channelID, { skipCache: options.skipCache, activation: 'all', limit: 1000 }).subscribe({
       next: (cmds) => {
         this.commands.set(this.normalizeCommands(cmds));
+        this.commandsLoadedFor.set(channelID);
         this.syncCurrentPage();
       },
       error: (err) => {
@@ -379,6 +389,24 @@ export class CommandsPageComponent {
     untracked(() => this.resumeAfterCheckout(channelID));
   });
 
+  /** Starting values for the create dialog, from a "Make a command" link (?new=command&cmd=…&message=…). */
+  readonly modalPrefill = signal<CommandPrefill | null>(null);
+  private readonly commandsLoadedFor = signal<string | null>(null);
+  private linkPrefill = readCommandPrefill(this.route.snapshot.queryParamMap);
+  private readonly prefillEffect = effect(() => {
+    const channelID = this.channelID();
+    // Waits for a successful list load (an empty list counts); after a failed load, Retry brings it back.
+    if (!this.linkPrefill || !channelID || !this.canManage() || this.commandsLoadedFor() !== channelID) return;
+    untracked(() => {
+      const prefill = this.linkPrefill;
+      this.linkPrefill = null;
+      void this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
+      if (this.showCommandModal() || !prefill) return;
+      this.newItemKind.set('command');
+      this.openCreateModal(prefill);
+    });
+  });
+
   /** Back from the upgrade checkout: reopen the command that was being built. */
   private resumeAfterCheckout(channelID: string): void {
     if (this.resumeChecked === channelID) return;
@@ -399,9 +427,10 @@ export class CommandsPageComponent {
     this.viewingBlocks.set(command);
   }
 
-  openCreateModal(): void {
+  openCreateModal(prefill: CommandPrefill | null = null): void {
     if (!this.canManage()) return;
     if (!this.checkRateLimit()) return;
+    this.modalPrefill.set(prefill);
     this.editingCommand.set(null);
     this.resumeDraft.set(false);
     this.modalSaveError.set(null);
@@ -419,6 +448,7 @@ export class CommandsPageComponent {
 
   closeModal(): void {
     this.showCommandModal.set(false);
+    this.modalPrefill.set(null);
     this.editingCommand.set(null);
     this.resumeDraft.set(false);
   }

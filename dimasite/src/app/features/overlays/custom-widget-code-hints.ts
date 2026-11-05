@@ -16,10 +16,10 @@ import { hoverTooltip, type EditorView, type Tooltip } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import type { WidgetEngine, WidgetField } from './custom-widget-format.generated';
 import type { CodeFile } from './custom-widget-code-drafts';
-import { DIMA_EVENTS, FIELD_PROPS, FIELD_TYPES, MANIFEST_KEYS, SE_EVENTS, SE_LISTENERS, TYPES, USES_DOCS, fieldValueType, isIdentifier, typeName, type RefProp } from './widget-runtime/sdk-reference';
+import { DIMA_EVENTS, FIELD_PROPS, FIELD_TYPES, MANIFEST_KEYS, SE_EVENTS, SE_LISTENERS, SIGNAL_EVENT, TYPES, USES_DOCS, fieldValueType, isIdentifier, typeName, type RefProp } from './widget-runtime/sdk-reference';
 
 /** What the suggestions know about the widget being edited (from its last parsed files). */
-export interface HintContext { engine: WidgetEngine; uses: readonly string[]; fields: readonly WidgetField[]; dataKeys: readonly string[] }
+export interface HintContext { engine: WidgetEngine; uses: readonly string[]; fields: readonly WidgetField[]; dataKeys: readonly string[]; signals?: readonly string[] }
 export type Hints = () => HintContext;
 
 const FIELDS = 'WidgetFields';
@@ -51,7 +51,7 @@ function paramType(state: EditorState, pos: number, name: string, engine: Widget
     const callee = nodeText(state, call.firstChild).replace(/\s+/g, '');
     const args = call.getChild('ArgList'), first = args?.firstChild?.nextSibling ?? null; // skip "("
     const event = first ? unquote(nodeText(state, first)) : null;
-    if (callee === 'Dima.on' || callee === 'Dima.off') return DIMA_EVENTS.find(e => e.name === event)?.type ?? null;
+    if (callee === 'Dima.on' || callee === 'Dima.off') return DIMA_EVENTS.find(e => e.name === event)?.type ?? (event && SIGNAL_EVENT.test(event) ? 'DimaSignal' : null);
     if (callee === 'Dima.ready().then') return 'DimaContext';
     if (engine === 'streamelements' && /(^|\.)addEventListener$/.test(callee)) { const known = SE_EVENTS.find(e => e.name === event); return known ? `CustomEvent<${known.type}>` : null; }
     return null;
@@ -67,7 +67,7 @@ function propsOf(type: string, hints: HintContext): Record<string, RefProp> {
 }
 /** A member by its own name only (`toString`, `constructor`… are not members). */
 const member = (props: Record<string, RefProp>, name: string) => Object.hasOwn(props, name) ? props[name] : undefined;
-/** Resolves `Dima.store`, `message.user`, `obj.detail.event`… to a type name. */
+/** Resolves `Dima.storage`, `message.user`, `obj.detail.event`… to a type name. */
 function resolvePath(path: string[], state: EditorState, pos: number, hints: HintContext): string | null {
   const [root, ...rest] = path;
   let type = root === 'Dima' ? 'DimaSDK' : root === 'SE_API' && hints.engine === 'streamelements' ? 'SEApi' : paramType(state, pos, root, hints.engine);
@@ -105,10 +105,17 @@ function members(type: string, hints: HintContext, callFollows = false): Complet
   // `Dima.on` fills in a ready-to-edit handler, unless the call is already written.
   return type === 'DimaSDK' && !callFollows ? options.map(option => option.label === 'on' ? DIMA_ON_SNIPPET : option) : options;
 }
-const eventOptions = (hints: HintContext): Completion[] => DIMA_EVENTS.map(event => {
-  const missing = event.uses !== null && !hints.uses.includes(event.uses);
-  return { label: event.name, type: 'enum', detail: missing ? `needs "${event.uses}" in widget.json uses` : event.type, info: event.doc, boost: missing ? -1 : 0 };
-});
+const eventOptions = (hints: HintContext): Completion[] => {
+  const options: Completion[] = DIMA_EVENTS.map(event => {
+    const missing = event.uses !== null && !hints.uses.includes(event.uses);
+    return { label: event.name, type: 'enum', detail: missing ? `needs "${event.uses}" in widget.json uses` : event.type, info: event.doc, boost: missing ? -1 : 0 };
+  });
+  // Signals declared in widget.json: `signal:feed` for one name.
+  const missing = !hints.uses.includes('signals');
+  for (const name of hints.signals ?? []) options.push({ label: `signal:${name}`, type: 'enum', detail: missing ? 'needs "signals" in widget.json uses' : 'DimaSignal',
+    info: `The "${name}" signal declared in widget.json.`, boost: missing ? -1 : 0 });
+  return options;
+};
 /** `{key}` / `{{key}}` placeholders (HTML, CSS, and JS of StreamElements widgets). */
 function placeholderResult(context: CompletionContext, hints: HintContext, css: boolean): CompletionResult | null {
   // In CSS, `.row {` opens a rule: placeholders are only offered right after the brace ({key}, no space).

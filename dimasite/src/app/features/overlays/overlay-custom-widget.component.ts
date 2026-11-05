@@ -190,10 +190,18 @@ export class OverlayCustomWidgetComponent {
     if (!bundle || layerId !== undefined && layerId !== this.context().widget.id) return;
     const use = EVENT_USES[event.type];
     if (use && !bundle.manifest.uses.includes(use as never)) return;
+    // widget.signal.to: only layers with that name (OBS already got matched layer IDs; this covers Studio previews).
+    if (event.type === 'signal' && event.data.target !== null && event.data.target.trim().toLocaleLowerCase() !== (this.context().widget.name ?? '').trim().toLocaleLowerCase()) return;
     // Store updates reach only widgets sharing that store (all StreamElements widgets, or this Dima widget).
-    if (event.type === 'store' && event.data.namespace !== undefined && event.data.namespace !== storeNamespace(bundle)) return;
+    if (event.type === 'storage' && event.data.namespace !== undefined && event.data.namespace !== storeNamespace(bundle)) return;
     // StreamElements has no "whole chat cleared" event: start such widgets fresh instead.
     if (event.type === 'chat.clear' && !event.data.userId && bundle.engine === 'streamelements') { this.reload(); return; }
+    // Studio's widget log notes each command signal (the widget may not log anything itself).
+    if (event.type === 'signal' && this.env?.mode === 'editor') {
+      const { name, value, user } = event.data;
+      this.report({ entry: { at: Date.now(), level: 'info', text: this.t(user ? 'customLogSignalFrom' : 'customLogSignal')
+        .replace('{{name}}', name).replace('{{value}}', value.length > 80 ? value.slice(0, 79) + '…' : value || '—').replace('{{user}}', user?.name ?? '') } });
+    }
     if (!this.loaded) { if (this.buffered.length < MAX_BUFFERED) this.buffered.push(event); return; }
     this.post({ type: 'event', event });
   }

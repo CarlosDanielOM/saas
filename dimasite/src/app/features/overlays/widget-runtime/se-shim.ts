@@ -99,7 +99,7 @@ export function seShim(win: any): void {
     }
   };
   win.SE_API = Object.freeze({
-    store: Object.freeze({ get: (key: string) => Dima.store.get(key), set: (key: string, value: unknown) => Dima.store.set(key, value) }),
+    store: Object.freeze({ get: (key: string) => Dima.storage.get(key), set: (key: string, value: unknown) => Dima.storage.set(key, value) }),
     // Documented shape { id, count }; older widgets read { counter, value }, so both are present.
     counters: Object.freeze({ get: (counter: string) => Dima.counters.get(counter).then((value: number) => ({ id: counter, count: value, counter, value })) }),
     sanitize: (input: { message?: string }) => Promise.resolve({ skip: false, result: { message: String(input?.message ?? '') } }),
@@ -133,7 +133,9 @@ export function seShim(win: any): void {
     fire('onSessionUpdate', { session: session.data });
   });
   Dima.on('button', (b: any) => received('widget-button', { listener: 'widget-button', field: b?.field, value: b?.value }));
-  Dima.on('store', (s: any) => received('kvstore:update', { data: { key: 'customWidget.' + s?.key, value: s?.value } }));
+  // Signals from commands ($(widget.signal …)) as a StreamElements listener, so one file can support both platforms.
+  Dima.on('signal', (s: any) => received('dima:signal', s));
+  Dima.on('storage', (s: any) => received('kvstore:update', { data: { key: 'customWidget.' + s?.key, value: s?.value } }));
 }
 
 export const SE_SHIM_SCRIPT = `(${seShim.toString()})(window);`;

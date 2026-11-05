@@ -35,11 +35,12 @@ The manifest is a JSON object. It accepts these fields:
 |---|---:|---|
 | `engine` | No | `"dima"` for native Dima SDK code, or `"streamelements"` to enable the StreamElements compatibility layer. Defaults to `"dima"` when a manifest is present; with no manifest, imports default to StreamElements. |
 | `api` | No | Dima SDK version. Defaults to `1`; unsupported versions are refused. |
-| `uses` | No | Array of data categories the widget needs: `chat`, `alerts`, `store`, `counters`, and/or `session`. Defaults to an empty list. Unknown entries are reported and ignored. |
+| `uses` | No | Array of data categories the widget needs: `chat`, `alerts`, `storage`, `counters`, `session`, and/or `signals`. Defaults to an empty list. Unknown entries are reported and ignored. |
 | `name` | No | Widget name shown in Studio. |
 | `author` | No | Creator name. |
 | `version` | No | Your package version string. |
 | `description` | No | Short description of the widget. |
+| `signals` | No | Optional signal declarations for ready-made commands in Studio (up to 30). Each has a lowercase `name`, optional `description` (up to 200 characters), and optional `values` examples (up to 30, each up to 60 characters). Invalid declarations are skipped with the import note `signal declaration skipped`. |
 
 ```json
 {
@@ -49,11 +50,12 @@ The manifest is a JSON object. It accepts these fields:
   "author": "Ana",
   "version": "1.2.0",
   "description": "Chat with pastel bubbles",
-  "uses": ["chat", "alerts", "store", "counters", "session"]
+  "uses": ["chat", "alerts", "storage", "counters", "session", "signals"],
+  "signals": [{ "name": "feed", "description": "Feed the pet", "values": ["pizza", "cake"] }]
 }
 ```
 
-Declare only what the widget actually needs. `chat` permits chat, delete, and clear events; `alerts` permits follow, subscription, gift, Bits, raid, and tip alert categories; `store` permits persistent values; `counters` permits command counts; and `session` permits recent events and totals. Real tip events are not available yet. In Studio, the manifest’s `uses` list is shown to the channel owner, and a published widget receives only the categories it declares. Editor button tests are available independently of `uses`.
+Declare only what the widget actually needs. `chat` permits chat, delete, and clear events; `alerts` permits follow, subscription, gift, Bits, raid, and tip alert categories; `storage` permits persistent values; `counters` permits command counts; `session` permits recent events and totals; and `signals` lets chat commands control the widget. Real tip events are not available yet. In Studio, the manifest’s `uses` list is shown to the channel owner, and a published widget receives only the categories it declares. Editor button tests are available independently of `uses`.
 
 ## Editable settings
 
@@ -92,8 +94,8 @@ const ctx = await Dima.ready();
 Dima.fields; // current settings
 const unsubscribe = Dima.on('chat', message => { /* ... */ });
 Dima.off('chat', handler); // or call the function returned by Dima.on
-Dima.store.get('key'); // Promise resolving to a JSON value or null
-Dima.store.set('key', { seen: true }); // Promise
+Dima.storage.get('key'); // Promise resolving to a JSON value or null
+Dima.storage.set('key', { seen: true }); // Promise
 Dima.counters.get('!deaths'); // Promise<number>
 Dima.html(message); // escaped text plus safe Twitch emote images
 Dima.escape(viewerText); // escaped string
@@ -101,7 +103,33 @@ Dima.log('loaded'); // appears in Studio's Widget log
 await Dima.setField('accent', '#ff66aa'); // editor only
 ```
 
-`Dima.setField(key, value, reload = true)` is for editor-only tools. It changes a setting from code and validates it against the field definition. It rejects in live mode. `Dima.done()` is a no-op in v1. Native Dima widgets get a store namespace scoped to their widget. StreamElements widgets share the `se` namespace across the channel. Store update events include `{ key, value, namespace }`. Widgets only receive updates for their own store: the widget ID for native Dima widgets, or `se` for all StreamElements widgets in the channel. This matches StreamElements' shared kvstore.
+Native Dima widgets use `Dima.storage.get/set`, the `storage` event and `"storage"` in `widget.json` `uses`. StreamElements widgets keep `SE_API.store` and `kvstore:update`.
+
+`Dima.setField(key, value, reload = true)` is for editor-only tools. It changes a setting from code and validates it against the field definition. It rejects in live mode. `Dima.done()` is a no-op in v1. Native Dima widgets get a storage namespace scoped to their widget. StreamElements widgets share the `se` namespace across the channel. Storage update events are `DimaStorageUpdate { key, value, namespace }`. Widgets only receive updates for their own storage namespace: the widget ID for native Dima widgets, or `se` for all StreamElements widgets in the channel. This matches StreamElements' shared kvstore.
+
+### Command signals
+
+Declare `"signals"` in `uses` to receive command signals. You can optionally declare up to 30 signals in `widget.json`; Studio uses their names, descriptions, and example values to prepare commands: with no `values`, the command sends no value; single-word examples send the viewer's first word (`&p1`); an example with spaces sends all text after the command (`&t`). Names use lowercase letters, digits, and `_`, up to 40 characters. Invalid declarations are skipped with the import note `signal declaration skipped`.
+
+```json
+{
+  "uses": ["signals"],
+  "signals": [{ "name": "feed", "description": "Feed the pet", "values": ["pizza", "cake"] }]
+}
+```
+
+Subscribe to every signal or one name. Signal values come from viewer text: render them with `textContent` or `Dima.escape()`, never `innerHTML`.
+
+```js
+Dima.on('signal', signal => { /* handle every signal */ });
+Dima.on('signal:feed', signal => {
+  document.querySelector('.pet-status').textContent = `Eating ${signal.value || 'snack'}`;
+});
+```
+
+`DimaSignal` contains `id`, `name`, `value` (text after the name, or `''`), `json` (parsed only when the value is a JSON number, boolean, array, or object; otherwise `null`), `args` (value split on spaces), `at` (milliseconds), `user`, `source`, and `target`. `user` contains `id`, `login`, `name`, and verified Twitch badge roles (`broadcaster`, `moderator`, `vip`, `subscriber`), or `null` when unknown. `source` contains `kind` (`command`, `keyword`, `event`, or `studio`) and `name`. `target` is the layer name for targeted signals, otherwise `null`.
+
+For StreamElements compatibility, the same data arrives through `onEventReceived` with `listener: 'dima:signal'` (`obj.detail.event.name`, `.value`, `.user`, and other signal fields), so one widget file can support both engines.
 
 ### Events
 
@@ -115,8 +143,9 @@ Subscribe with `Dima.on(type, handler)`. It returns an unsubscribe function. You
 | `alert` | `DimaAlert` (shape below) | `alerts` |
 | `button` | `{ field: string, value: unknown }` | Editor only; always available in preview |
 | `fields` | The current settings object | Editor only |
-| `store` | `{ key: string, value: unknown, namespace: string }` after a store write | `store` |
+| `storage` | `DimaStorageUpdate { key: string, value: unknown, namespace: string }` after a storage write | `storage` |
 | `session` | `{ data: Record<string, unknown>, recents: unknown[] }` | `session` |
+| `signal` / `signal:<name>` | `DimaSignal` | `signals` |
 
 `Dima.ready()` resolves to an object with `widget: { id, layerId, name, revision }`, `channel: { id, login, name }`, `fields`, `mode` (`"editor"` or `"live"`), `muted`, and `session` (or `null`).
 
@@ -167,14 +196,14 @@ An alert event has this shape:
 
 ### Complete native example
 
-This small chat widget is adapted from the `dima-chat` sample. It declares the data it reads, displays safely escaped chat, listens for moderation events, and uses the store and counter APIs.
+This small chat widget is adapted from the `dima-chat` sample. It declares the data it reads, displays safely escaped chat, listens for moderation events, and uses the storage and counter APIs.
 
 `widget.json`:
 
 ```json
 {
   "engine": "dima", "api": 1, "name": "Dima sample chat", "author": "DomDimaBot",
-  "version": "1.0.0", "description": "A compact chat overlay", "uses": ["chat", "store", "counters"]
+  "version": "1.0.0", "description": "A compact chat overlay", "uses": ["chat", "storage", "counters"]
 }
 ```
 
@@ -213,7 +242,7 @@ const deaths = document.querySelector('.deaths');
 let fields = {};
 Dima.ready().then(async ctx => {
   fields = ctx.fields;
-  count.textContent = String((await Dima.store.get('alerts')) ?? 0);
+  count.textContent = String((await Dima.storage.get('alerts')) ?? 0);
   deaths.textContent = String(await Dima.counters.get('!deaths'));
 });
 Dima.on('fields', next => { fields = next; });
@@ -238,12 +267,12 @@ The native example has no `widget.ini`; Studio adds these files to an overlay wh
 Set `"engine": "streamelements"` (or import a package without a manifest) to load the compatibility layer. It listens to Dima SDK events and exposes the familiar browser events:
 
 - `onWidgetLoad` fires after `Dima.ready()` with `detail.channel`, `currency`, `fieldData`, `recents`, `session`, `overlay`, and `emotes`.
-- `onEventReceived` receives chat as `listener: "message"`, message deletion as `"delete-message"`, user chat clear as `"delete-messages"`, alerts as `"follower-latest"`, `"subscriber-latest"`, `"cheer-latest"`, `"raid-latest"`, or `"tip-latest"`, plus `"widget-button"` and `"kvstore:update"`.
+- `onEventReceived` receives chat as `listener: "message"`, message deletion as `"delete-message"`, user chat clear as `"delete-messages"`, alerts as `"follower-latest"`, `"subscriber-latest"`, `"cheer-latest"`, `"raid-latest"`, or `"tip-latest"`, plus `"widget-button"`, `"kvstore:update"`, and `"dima:signal"` (with the same signal data).
 - Session updates fire `onSessionUpdate` with `{ session }`.
 
 For chat, `event.data` includes `time`, IRC-style `tags`, `nick`, `userId`, `displayName`, `displayColor`, `badges`, `channel`, `text`, `isAction`, `emotes`, and `msgId`; `event.renderedText` is escaped HTML with Twitch emotes. Alert objects include the listener-specific fields such as `name`, `amount`, `tier`, `message`, `gifted`, `sender`, or `currency` where applicable.
 
-The supported `SE_API` methods are `store.get/set`, `counters.get(name)`, `sanitize({ message })`, `cheerFilter(text)`, `getOverlayStatus()`, `resumeQueue()`, and `setField(key, value, reload)`. `store` uses a channel-wide StreamElements namespace. `sanitize` returns the message unchanged. A widget with a `widgetDuration` setting queues alert events received by `onEventReceived`. Alerts play one at a time. Each waits for that many seconds, up to 300, unless `SE_API.resumeQueue()` releases the next alert early. Up to 50 alerts can wait. Chat and other events never wait. Without `widgetDuration`, alerts are not queued. `setField` only works in the editor. The layer does not provide a StreamElements API token, StreamElements-only API calls, or third-party emotes. StreamElements has no whole-chat-clear event. A whole-chat clear reloads StreamElements widgets so they start fresh. A user clear maps to `delete-messages`. Native Dima widgets receive `chat.clear` with `userId: null` for a whole-chat clear.
+The supported `SE_API` methods are `store.get/set`, `counters.get(name)`, `sanitize({ message })`, `cheerFilter(text)`, `getOverlayStatus()`, `resumeQueue()`, and `setField(key, value, reload)`. Native Dima storage is scoped to each widget; StreamElements storage remains channel-wide through `SE_API.store`. `sanitize` returns the message unchanged. A widget with a `widgetDuration` setting queues alert events received by `onEventReceived`. Alerts play one at a time. Each waits for that many seconds, up to 300, unless `SE_API.resumeQueue()` releases the next alert early. Up to 50 alerts can wait. Chat and other events never wait. Without `widgetDuration`, alerts are not queued. `setField` only works in the editor. The layer does not provide a StreamElements API token, StreamElements-only API calls, or third-party emotes. StreamElements has no whole-chat-clear event. A whole-chat clear reloads StreamElements widgets so they start fresh. A user clear maps to `delete-messages`. Native Dima widgets receive `chat.clear` with `userId: null` for a whole-chat clear.
 
 StreamElements widgets substitute `{key}` and `{{key}}` in HTML, CSS, and JavaScript. Native Dima widgets substitute in HTML and CSS; JavaScript reads current values from `Dima.fields`. When settings change in the editor, native Dima widgets receive a `fields` event; StreamElements widgets reload, matching their usual behavior.
 

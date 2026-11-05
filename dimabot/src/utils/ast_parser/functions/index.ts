@@ -19,6 +19,7 @@ import { registerPinFunctions } from './pin.functions.js';
 import { registerStringFunctions } from './string.functions.js';
 import { registerGoalFunctions } from './goals.functions.js';
 import { registerPetFunctions } from './pet.functions.js';
+import { registerWidgetFunctions } from './widget.functions.js';
 
 let registered = false;
 
@@ -49,6 +50,7 @@ export function registerAllFunctions(options: { startWorkers?: boolean } = {}): 
     registerEventsubFunctions();
     registerTtsFunctions();
     registerPetFunctions();
+    registerWidgetFunctions();
     registerGoalFunctions();
     registerTriggerFunctions();
     registerDelayFunctions();

@@ -301,6 +301,17 @@ La respuesta predeterminada de `!so` usa estas funciones. Su argumento `&t` es t
 
 Twitch permite un shoutout nativo aceptado del broadcaster emisor cada 2 minutos y uno al mismo destino cada 60 minutos. El canal emisor debe estar en vivo y tener al menos un espectador; el bot necesita rol de moderador y la autorización requerida. Estos límites de la API de Twitch son distintos del tiempo de espera editable del comando y del comportamiento del anuncio y del clip. Consulta la referencia oficial de Twitch: [Send a Shoutout](https://dev.twitch.tv/docs/api/reference/#send-a-shoutout).
 
+## Funciones de widgets
+
+Estas funciones de la categoría **overlay** están disponibles en todos los planes y no tienen límite por plan. Ambas envían una señal en directo y devuelven un resultado vacío, así que pueden acompañar al texto del chat. Usan el nivel de acceso y el tiempo de espera del propio comando. Las señales se envían desde comandos reales del chat de Twitch, keywords, comandos referenciados y mensajes de eventos de Chat. Los temporizadores, las recompensas de puntos del canal, la ruleta, las solicitudes de IA y las pruebas del panel o del asistente de documentación devuelven `Error: widget_signal_context_required`. El texto del espectador que parece `$(...)` nunca se evalúa.
+
+| Función | Descripción | Ejemplo |
+|---------|-------------|---------|
+| `$(widget.signal <name> [value…])` | Envía a todos los widgets de los overlays publicados del canal que estén abiertos en OBS y cuyo `widget.json` incluya `"signals"` en `uses`. Los nombres pasan a minúsculas y solo admiten letras minúsculas, números y `_` (hasta 40 caracteres); un nombre con punto, como `pet.feed`, devuelve `Error: invalid_widget_signal_name`. Los argumentos restantes forman un valor de hasta 500 caracteres; si es más largo, devuelve `Error: widget_signal_too_long`. | `$(widget.signal feed &p1)` |
+| `$(widget.signal.to "<layer name>" <name> [value…])` | Envía solo a las capas con ese nombre (sin distinguir mayúsculas y minúsculas; ignora los espacios al inicio y al final). Si dos capas tienen el mismo nombre, reaccionan ambas. | `$(widget.signal.to "Pet" feed &p1)` |
+
+Los valores usan la sintaxis normal de argumentos: `&p1`, `&p2` y `&t` para todo el texto después del comando (no `$(1)`). Una respuesta como `$(user) fed Mochi! $(widget.signal feed &p1)` muestra el texto en el chat mientras el widget reacciona. Una ejecución de comando puede enviar hasta 5 señales, compartidas con los comandos referenciados; cada canal puede enviar hasta 30 cada 10 segundos. Las adicionales se descartan en silencio y se cuentan. Si Twitch entrega dos veces el mismo mensaje, la señal no se envía dos veces. Las señales solo se envían en directo y no se repiten tras reconectar OBS.
+
 ## Ejemplos rápidos
 
 | Función | Ejemplo de uso | Salida de ejemplo |

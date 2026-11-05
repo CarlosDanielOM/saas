@@ -97,6 +97,8 @@ export function dimaSdk(win: any, boot: { exec: string; fields: Record<string, u
     } else if (message.type === 'event' && context && message.event && typeof message.event.type === 'string') {
       if (message.event.type === 'session') context.session = message.event.data;
       emit(message.event.type, message.event.data);
+      // Dima.on('signal:feed', …) listens to one signal name.
+      if (message.event.type === 'signal' && typeof message.event.data?.name === 'string') emit('signal:' + message.event.data.name, message.event.data);
     } else if (message.type === 'fields' && context && message.fields && typeof message.fields === 'object') {
       context.fields = message.fields;
       emit('fields', message.fields);
@@ -122,7 +124,8 @@ export function dimaSdk(win: any, boot: { exec: string; fields: Record<string, u
       return () => { listeners.get(type)?.delete(handler); };
     },
     off(type: string, handler: (data: any) => void) { listeners.get(type)?.delete(handler); },
-    store: Object.freeze({
+    /** Values saved for this widget (RPC names stay `store.*` internally). */
+    storage: Object.freeze({
       get: (key: string) => rpc('store.get', { key: String(key) }),
       set: (key: string, value: unknown) => rpc('store.set', { key: String(key), value })
     }),

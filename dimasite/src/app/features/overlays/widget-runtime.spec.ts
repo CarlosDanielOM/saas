@@ -88,7 +88,7 @@ describe('Dima SDK and StreamElements layer (inside a fake frame)', () => {
     expect(seEvents.filter(e => e.detail?.listener === 'cheer-latest').at(-1)!.detail.event).toMatchObject({ name: 'Ame', amount: 500 });
     send({ type: 'event', event: { type: 'chat.delete', data: { messageId: 'm1', userId: 'u' } } });
     expect(seEvents.filter(e => e.detail?.listener === 'delete-message').at(-1)!.detail.event).toEqual({ msgId: 'm1' });
-    send({ type: 'event', event: { type: 'store', data: { key: 'score', value: 3 } } });
+    send({ type: 'event', event: { type: 'storage', data: { key: 'score', value: 3 } } });
     expect(seEvents.filter(e => e.detail?.listener === 'kvstore:update').at(-1)!.detail.event).toEqual({ data: { key: 'customWidget.score', value: 3 } });
     send({ type: 'event', event: { type: 'button', data: { field: 'test', value: 'v' } } });
     expect(seEvents.filter(e => e.detail?.listener === 'widget-button').at(-1)!.detail.event).toEqual({ listener: 'widget-button', field: 'test', value: 'v' });

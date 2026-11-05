@@ -47,6 +47,9 @@ import { BlocksStore } from './blocks/blocks.store';
 
 export type PlanTier = 'free' | 'premium' | 'pro';
 
+/** Fields a link (e.g. an overlay widget's "Make a command") fills in on a new command. */
+export interface CommandPrefill { cmd: string; name: string; message: string; description: string }
+
 export interface CommandModalSavePayload {
   command: CreateCommandRequest;
   timer: {
@@ -107,6 +110,8 @@ export class CommandModalComponent {
   readonly isOwner = input(true);
   /** Reopening after the upgrade checkout: restore the draft without asking. */
   readonly resumeDraft = input(false);
+  /** Starting values for a new command (ignored when editing). */
+  readonly prefill = input<CommandPrefill | null>(null);
   /** Why the last block save failed (set by the commands page). */
   readonly saveError = input<CommandSaveError | null>(null);
 
@@ -715,6 +720,8 @@ export class CommandModalComponent {
         timerMinutes: this.defaultTimerMinutes()
       });
       this.commandForm.enable({ emitEvent: false });
+      const prefill = this.prefill();
+      if (prefill && this.startAs() === 'command') this.commandForm.patchValue(prefill, { emitEvent: false });
     }
     this.finishSetup();
   }

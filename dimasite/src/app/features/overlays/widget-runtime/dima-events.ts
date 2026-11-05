@@ -31,7 +31,15 @@ export interface DimaAlert {
 }
 export interface DimaButton { field: string; value: unknown }
 /** `namespace` is `se` for StreamElements widgets and the widget id for Dima widgets; frames only see their own. */
-export interface DimaStoreUpdate { key: string; value: unknown; namespace?: string }
+export interface DimaStorageUpdate { key: string; value: unknown; namespace?: string }
+/** A named message from a command (`$(widget.signal …)`) or a Studio test. `value` is viewer text: show it with textContent. */
+export interface DimaSignal {
+  id: string; name: string; value: string; json: unknown; args: string[]; at: number;
+  user: { id: string; login: string; name: string; roles: { broadcaster: boolean; moderator: boolean; vip: boolean; subscriber: boolean } } | null;
+  source: { kind: 'command' | 'keyword' | 'event' | 'studio'; name: string };
+  /** Layer name for widget.signal.to (null: every layer that uses signals). */
+  target: string | null;
+}
 /** StreamElements-style session snapshot: `data` keys like `follower-latest`, `cheer-session`, `subscriber-recent`. */
 export interface DimaSession { data: Record<string, unknown>; recents: unknown[] }
 export type DimaEvent =
@@ -40,10 +48,11 @@ export type DimaEvent =
   | { type: 'chat.clear'; data: DimaChatClear }
   | { type: 'alert'; data: DimaAlert }
   | { type: 'button'; data: DimaButton }
-  | { type: 'store'; data: DimaStoreUpdate }
-  | { type: 'session'; data: DimaSession };
+  | { type: 'storage'; data: DimaStorageUpdate }
+  | { type: 'session'; data: DimaSession }
+  | { type: 'signal'; data: DimaSignal };
 export type DimaEventType = DimaEvent['type'];
 /** Which manifest `uses` entry lets a widget receive each event. Buttons are editor-only and always allowed. */
 export const EVENT_USES: Record<DimaEventType, string | null> = {
-  chat: 'chat', 'chat.delete': 'chat', 'chat.clear': 'chat', alert: 'alerts', button: null, store: 'store', session: 'session'
+  chat: 'chat', 'chat.delete': 'chat', 'chat.clear': 'chat', alert: 'alerts', button: null, storage: 'storage', session: 'session', signal: 'signals'
 };

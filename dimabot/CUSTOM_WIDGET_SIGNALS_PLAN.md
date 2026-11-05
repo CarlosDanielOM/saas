@@ -1,6 +1,6 @@
 # Step 5 plan: `$(widget.signal)` and the rest of the widget engine "magic"
 
-Status: plan only (2026-11-05). Steps 1–4 of the engine are built (see `CUSTOM_WIDGET_ENGINE.md`).
+Status: Release A built 2026-11-05 — signals, Studio Commands block, Test drawer, storage rename; sections 6.1–6.3 are Release B.
 
 ## 1. What a signal is
 
@@ -26,12 +26,13 @@ Values use the bot's normal command syntax: `&p1`, `&p2`… for arguments, `&t` 
 - `$(widget.signal.to <layer name> <name> [value…])`: send to custom layers with that name only.
 - Output is empty (signals are silent) so they can be combined with chat text; errors return a short `Error: …`
   only for mistakes the streamer can fix (bad name, value too long).
-- **Real runs only:** signals are sent only when the execution has an effect context (`ctx.effectContext`, the same
-  authority pet actions use for genuine chat commands and Twitch events). Dashboard tests and previews return
-  `[signal theme → night]` instead of sending, so testing a command never changes what's on stream.
-- Rules: name `^[a-z0-9][a-z0-9_.-]{0,39}$`; value is the remaining arguments joined with spaces, max 500 characters;
-  at most 5 signals per command run; per channel 30 signals per 10 s (Dragonfly counter). Over the limit: dropped silently
-  and counted (visible in the Studio widget log as "N signals skipped").
+- **Real Twitch runs only:** chat commands, keywords, commands referenced with `#(name)`, and Chat event messages
+  (follow/sub/raid announcements) send signals. Timers, channel-point rewards, roulette, AI requests, and dashboard/docs-assistant
+  tests return `Error: widget_signal_context_required`. Viewer text that looks like `$(...)` is never evaluated.
+- Rules: names match `^[a-z0-9_]{1,40}$`; uppercase is lowered (`FOCUS` → `focus`); `pet.feed` returns
+  `Error: invalid_widget_signal_name`. The remaining value is at most 500 characters (`Error: widget_signal_too_long`).
+  At most 5 signals per command run (shared with referenced commands) and 30 per channel every 10 s. Extras are silently
+  dropped and counted; Studio shows "N command signals were skipped recently". Duplicate Twitch delivery is de-duplicated.
 - Registered with full metadata (description, syntax, examples, category `overlay`, keywords in EN/ES, plan `free`) so
   the command editor, AST Blocks, the docs assistant's function search and dimadocs pick it up automatically.
 
@@ -86,7 +87,7 @@ Signals are fire-and-forget (no queue, no replay after a reconnect), like chat.
 
 ## 6b. Decided with the user (2026-11-05)
 
-- Rename the Dima SDK store to **`Dima.storage`** everywhere (`Dima.storage.get/set`, event `storage`, widget.json
+- Rename the Dima SDK storage to **`Dima.storage`** everywhere (`Dima.storage.get/set`, event `storage`, widget.json
   `uses: ["storage"]`), shipped with step 5. No live widget uses `store` yet (0 custom widgets in production), so no
   alias. StreamElements keeps `SE_API.store` (its own API).
 - Example use case: Etsy/StreamElements pets with `!pet` / `!feed` commands → `$(widget.signal feed &p1)`; declared
@@ -95,7 +96,7 @@ Signals are fire-and-forget (no queue, no replay after a reconnect), like chat.
 
 ## 7. Checks
 
-- AST unit tests: parsing, name/value rules, per-run and per-channel limits, dry-run when there is no effect context.
+- AST unit tests: parsing, name/value rules, per-run and per-channel limits, context errors when there is no Twitch authority.
 - API check: command execution with an effect context → Dragonfly → `overlay-feed` signal on the right sources only
   (`uses`, `.to` targeting, other channels never), limits.
 - Browser check: Studio "Commands" block (copy, Make a command pre-fill), Test drawer signal to preview/OBS, Dima and SE

@@ -4,7 +4,7 @@ import { OverlayApi } from '../overlay-api.service';
 import type { DimaEvent, DimaEventType, DimaSession } from './dima-events';
 import { WidgetEventBus, type CustomWidgetEnv, type RuntimeBundle, type WidgetLogEntry, type WidgetStatus, type WidgetTarget } from './widget-env';
 
-const FEED_TYPES = new Set<DimaEventType>(['chat', 'chat.delete', 'chat.clear', 'alert', 'store', 'session']);
+const FEED_TYPES = new Set<DimaEventType>(['chat', 'chat.delete', 'chat.clear', 'alert', 'storage', 'session', 'signal']);
 
 /**
  * OBS environment for custom widget frames: code of the revision this published overlay pins, live data from the
@@ -52,9 +52,11 @@ export class LiveWidgetEnv implements CustomWidgetEnv {
   }
   private feed(message: unknown): void {
     if (!message || typeof message !== 'object') return;
-    const { v, type, data } = message as { v?: unknown; type?: unknown; data?: unknown };
+    const { v, type, data, layers } = message as { v?: unknown; type?: unknown; data?: unknown; layers?: unknown };
     if (v !== 1 || typeof type !== 'string' || !FEED_TYPES.has(type as DimaEventType) || !data || typeof data !== 'object') return;
     if (type === 'session') this.sessionData = data as DimaSession;
+    // Signals name the layers they're for (the server matched uses and widget.signal.to names).
+    if (Array.isArray(layers)) { for (const layer of layers) if (typeof layer === 'string') this.bus.emit({ type, data } as DimaEvent, layer); return; }
     this.bus.emit({ type, data } as DimaEvent);
   }
 }

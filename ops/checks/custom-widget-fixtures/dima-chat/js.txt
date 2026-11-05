@@ -13,7 +13,7 @@ Dima.ready().then(async ctx => {
   document.body.dataset.channel = ctx.channel.login;
   document.body.dataset.mode = ctx.mode;
   document.body.dataset.session = String(ctx.session?.data?.['follower-latest']?.name ?? '');
-  document.querySelector('.count').textContent = String((await Dima.store.get('alerts')) ?? 0);
+  document.querySelector('.count').textContent = String((await Dima.storage.get('alerts')) ?? 0);
   document.querySelector('.deaths').textContent = String(await Dima.counters.get('!deaths'));
   console.log('ready', ctx.channel.login);
 });
@@ -33,7 +33,7 @@ Dima.on('chat.clear', ({ userId }) => chat.querySelectorAll(userId ? '[data-user
 Dima.on('alert', async alert => {
   banner.hidden = false;
   banner.querySelector('.banner__text').textContent = (alert.user ? alert.user.name : 'Someone') + ' · ' + alert.type + (alert.amount > 1 ? ' ×' + alert.amount : '');
-  const count = Number((await Dima.store.get('alerts')) ?? 0) + 1;
-  await Dima.store.set('alerts', count);
+  const count = Number((await Dima.storage.get('alerts')) ?? 0) + 1;
+  await Dima.storage.set('alerts', count);
 });
-Dima.on('store', ({ key, value }) => { if (key === 'alerts') document.querySelector('.count').textContent = String(value); });
+Dima.on('storage', ({ key, value }) => { if (key === 'alerts') document.querySelector('.count').textContent = String(value); });

@@ -52,19 +52,23 @@ export interface WidgetField {
   min?: number; max?: number; step?: number;
   multiple?: boolean;
 }
-export interface FieldIssue { key?: string; code: 'invalid-key' | 'invalid-field' | 'too-many-fields' | 'no-options' | 'invalid-value' | 'invalid-data-key' | 'data-value-dropped' | 'unknown-use'; detail?: string }
+export interface FieldIssue { key?: string; code: 'invalid-key' | 'invalid-field' | 'too-many-fields' | 'no-options' | 'invalid-value' | 'invalid-data-key' | 'data-value-dropped' | 'unknown-use' | 'invalid-signal'; detail?: string }
 
 /** Which runtime API the widget's code was written for. `streamelements` adds the StreamElements translation layer. */
 export type WidgetEngine = 'dima' | 'streamelements';
 /** Data a widget can ask for (Dima SDK v1). Studio shows these in plain words; the server streams only these. */
-export const WIDGET_USES = ['chat', 'alerts', 'store', 'counters', 'session'] as const;
+export const WIDGET_USES = ['chat', 'alerts', 'storage', 'counters', 'session', 'signals'] as const;
 export type WidgetUse = typeof WIDGET_USES[number];
 export interface WidgetManifest {
   engine: WidgetEngine; api: 1; uses: WidgetUse[];
   name?: string; author?: string; version?: string; description?: string;
+  /** Signals the widget understands (discovery for Studio's "Commands" block; any signal still reaches it). */
+  signals?: WidgetSignalDeclaration[];
   /** True when Studio worked it out from StreamElements code instead of reading a widget.json. */
   inferred?: boolean;
 }
+export interface WidgetSignalDeclaration { name: string; description?: string; values?: string[] }
+export const SIGNAL_DECLARATION_LIMITS = { count: 30, description: 200, values: 30, value: 60 } as const;
 export class PackageFormatError extends Error { constructor(readonly code: string, message: string) { super(message); } }
 
 /** StreamElements reserves field names starting with `widget`; these three are documented. */
@@ -381,6 +385,22 @@ export function parseManifest(text: string): { manifest: WidgetManifest; issues:
     const value = raw[key];
     if (typeof value === 'string' && value.trim()) manifest[key] = value.trim().slice(0, max);
   }
+  if (raw['signals'] !== undefined) {
+    const signals: WidgetSignalDeclaration[] = [];
+    for (const item of Array.isArray(raw['signals']) ? raw['signals'] : [raw['signals']]) {
+      const name = isObject(item) && typeof item['name'] === 'string' ? item['name'].trim() : '';
+      if (!/^[a-z0-9_]{1,40}$/.test(name) || signals.some(signal => signal.name === name) || signals.length >= SIGNAL_DECLARATION_LIMITS.count) {
+        issues.push({ code: 'invalid-signal', detail: name.slice(0, 40) || String(isObject(item) ? '' : item).slice(0, 40) }); continue;
+      }
+      const declaration: WidgetSignalDeclaration = { name };
+      const description = isObject(item) ? item['description'] : undefined;
+      if (typeof description === 'string' && description.trim()) declaration.description = description.trim().slice(0, SIGNAL_DECLARATION_LIMITS.description);
+      const values = isObject(item) && Array.isArray(item['values']) ? item['values'].filter((v): v is string => typeof v === 'string' && !!v.trim()).map(v => v.trim().slice(0, SIGNAL_DECLARATION_LIMITS.value)) : [];
+      if (values.length) declaration.values = [...new Set(values)].slice(0, SIGNAL_DECLARATION_LIMITS.values);
+      signals.push(declaration);
+    }
+    if (signals.length) manifest.signals = signals;
+  }
   return { manifest, issues };
 }
 /** What a StreamElements widget reads, worked out from the listeners and APIs its code mentions. */
@@ -390,9 +410,10 @@ export function inferManifest(source: Pick<PackageSource, 'html' | 'js'>): Widge
   const events = /onEventReceived/.test(code);
   if (events || /["'`](?:message|delete-message|delete-messages)["'`]/.test(code)) uses.push('chat');
   if (events || /-latest["'`]|["'`]event:test["'`]/.test(code)) uses.push('alerts');
-  if (/SE_API\s*\.\s*store|kvstore:update/.test(code)) uses.push('store');
+  if (/SE_API\s*\.\s*store|kvstore:update/.test(code)) uses.push('storage');
   if (/SE_API\s*\.\s*counters|bot:counter/.test(code)) uses.push('counters');
   if (/onSessionUpdate|\.session\b|-recent["'`]|-goal["'`]|-session["'`]|-total["'`]/.test(code)) uses.push('session');
+  if (/dima:signal/.test(code)) uses.push('signals');
   return { engine: 'streamelements', api: 1, uses, inferred: true };
 }
 

@@ -2,17 +2,24 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readPackage } from './custom-widget-format.generated';
 import { CODE_FILES, codeDraftKey, dismissCodeDraft, latestCodeDraft, removeCodeDraft, toPackage, writeCodeDraft, type CodeFiles } from './custom-widget-code-drafts';
 import { starterFiles, type StarterTexts } from './custom-widget-templates';
+import { signalSnippet, signalValueKind } from './custom-widgets.service';
 import { checkCode, errorLine } from './overlay-custom-widget-code.component';
 
 const texts: StarterTexts = { groupLook: 'Look', groupChat: 'Chat', groupAlerts: 'Alerts', accent: 'Accent', text: 'Text', size: 'Size', max: 'Max', alerts: 'Alerts on',
-  follow: '{name} followed!', sub: '{name} subscribed!', gift: '{name} gifted {amount}!', bits: '{name} cheered {amount}!', raid: '{name} raids with {amount}!' };
+  follow: '{name} followed!', sub: '{name} subscribed!', gift: '{name} gifted {amount}!', bits: '{name} cheered {amount}!', raid: '{name} raids with {amount}!', shout: 'Shout', shoutExample: 'Hello chat!' };
 const issueText = () => 'skipped';
 
 describe('code editor starters', () => {
-  it('Dima starter: a widget.json for chat + alerts, settings that parse without issues', () => {
+  it('Dima starter: a widget.json for chat + alerts + a command signal, settings that parse without issues', () => {
     const files = starterFiles('dima', 'My chat', texts), pkg = readPackage(toPackage(files));
     expect(pkg.issues).toEqual([]);
-    expect(pkg.manifest).toMatchObject({ engine: 'dima', api: 1, name: 'My chat', uses: ['chat', 'alerts'] });
+    expect(pkg.manifest).toMatchObject({ engine: 'dima', api: 1, name: 'My chat', uses: ['chat', 'alerts', 'signals'], signals: [{ name: 'shout', description: 'Shout' }] });
+    expect(files.js).toContain("Dima.on('signal:shout'");
+    // Its example has spaces, so Studio's ready-made command passes all text after the command.
+    expect(signalSnippet('shout', signalValueKind(pkg.manifest.signals![0].values!))).toBe('$(widget.signal shout &t)');
+    expect([signalValueKind([]), signalValueKind(['pizza', 'cake']), signalValueKind(['GG', 'hello chat'])]).toEqual(['none', 'word', 'text']);
+    expect(signalSnippet('feed', 'word', 'Pet corner')).toBe('$(widget.signal.to "Pet corner" feed &p1)');
+    expect(signalSnippet('feed', 'none', 'Bad "name"')).toBe('$(widget.signal feed)'); // names that can't be quoted safely: broadcast
     expect(pkg.fields.map(field => field.key)).toEqual(['accentColor', 'textColor', 'fontSize', 'maxMessages', 'showAlerts']);
     expect(files.js).toContain("Dima.on('fields'");
     expect(files.js).toContain('"follow": "{name} followed!"');

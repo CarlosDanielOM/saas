@@ -169,7 +169,16 @@
                 @for (kind of alertTests; track kind) { <button type="button" (click)="sendAlert(kind)" [attr.data-cwc-alert]="kind">{{ t('alertTest_' + kind) }}</button> }
               </div>
             }
-            @if (!uses().includes('chat') && !uses().includes('alerts')) { <p class="note">{{ t('customCodeNoTests') }}</p> }
+            @if (uses().includes('signals')) {
+              <form class="chips signal-test" [attr.aria-label]="t('widgetTestsSignal')" (submit)="$event.preventDefault(); sendSignal()" data-cwc-signal>
+                @for (name of declaredSignals(); track name) { <button type="button" [attr.aria-pressed]="signalName() === name" (click)="signalName.set(name)" [attr.data-cwc-signal-name]="name">{{ name }}</button> }
+                <label><span class="sr-only">{{ t('widgetTestSignalName') }}</span><input type="text" maxlength="40" autocomplete="off" spellcheck="false" [value]="signalName()" (input)="signalName.set(inputValue($event))" [placeholder]="t('widgetTestSignalNameHint')" [attr.aria-invalid]="signalInvalid()" data-cwc-signal-input /></label>
+                <label><span class="sr-only">{{ t('widgetTestSignalValue') }}</span><input type="text" maxlength="500" autocomplete="off" [value]="signalValue()" (input)="signalValue.set(inputValue($event))" [placeholder]="t('widgetTestSignalValueHint')" data-cwc-signal-value /></label>
+                <button type="submit" data-cwc-signal-send>{{ t('widgetTestSignalSend') }}</button>
+                @if (signalInvalid()) { <p class="note note--warn" role="alert">{{ t('widgetTestSignalInvalid') }}</p> }
+              </form>
+            }
+            @if (!uses().includes('chat') && !uses().includes('alerts') && !uses().includes('signals')) { <p class="note">{{ t('customCodeNoTests') }}</p> }
           </section>
 
           <details class="fold" data-cwc-kit>

@@ -301,6 +301,17 @@ The `!so` default reply uses these functions. Its `&t` argument is the entire te
 
 Twitch allows one accepted native shoutout from a sending broadcaster every 2 minutes, and one to the same target every 60 minutes. The sending channel must be live with at least one viewer, and the bot needs moderator status and the required authorization. These are Twitch endpoint limits, separate from the command's editable cooldown and from its announcement and clip behavior. See Twitch's [Send a Shoutout API reference](https://dev.twitch.tv/docs/api/reference/#send-a-shoutout).
 
+## Widget functions
+
+These category **overlay** functions are available on every plan, with no plan limit. Both send a live signal and return an empty result, so they can sit beside chat text. They use the command’s own access level and cooldown. Signals are sent from real Twitch chat commands, keywords, referenced commands, and Chat event messages. Timers, channel-point rewards, roulette, AI requests, and dashboard or docs-assistant tests return `Error: widget_signal_context_required`. Viewer text that looks like `$(...)` is never evaluated.
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `$(widget.signal <name> [value…])` | Sends to every widget in the channel’s published overlays open in OBS whose `widget.json` includes `"signals"` in `uses`. Names are lowercased and limited to lowercase letters, digits, and `_` (up to 40 characters); a dotted name such as `pet.feed` returns `Error: invalid_widget_signal_name`. The remaining arguments form a value of up to 500 characters; a longer value returns `Error: widget_signal_too_long`. | `$(widget.signal feed &p1)` |
+| `$(widget.signal.to "<layer name>" <name> [value…])` | Sends only to layers with that name (case-insensitive; surrounding spaces are ignored). If two layers share the name, both react. | `$(widget.signal.to "Pet" feed &p1)` |
+
+Values use normal command arguments: `&p1`, `&p2`, and `&t` for all text after the command (not `$(1)`). A response such as `$(user) fed Mochi! $(widget.signal feed &p1)` displays the chat text while the widget reacts. A command run can send at most 5 signals, shared with referenced commands; each channel can send up to 30 per 10 seconds. Extras are silently dropped and counted. Duplicate delivery of a Twitch chat message does not send twice. Signals are live-only and do not replay after OBS reconnects.
+
 ## Quick examples
 
 | Function | Example use | Example output |

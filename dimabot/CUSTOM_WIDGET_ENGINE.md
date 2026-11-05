@@ -9,18 +9,18 @@ Optional sixth file. Imports without one (StreamElements exports) get it inferre
 
 ```json
 { "engine": "dima", "api": 1, "name": "Pastel chat", "author": "Ana", "version": "1.2.0",
-  "description": "Chat with pastel bubbles", "uses": ["chat", "alerts", "store"] }
+  "description": "Chat with pastel bubbles", "uses": ["chat", "alerts", "storage", "signals"] }
 ```
 
 - `engine`: `dima` (native) or `streamelements` (adds the SE translation layer). Default: `streamelements` without a manifest.
 - `api`: Dima SDK version the code targets. Only `1` exists. Unknown versions are refused on import.
-- `uses` (api 1): `chat` (messages, deletes, clears), `alerts` (follow, sub, resub, gift, bits, raid, tip), `store`
-  (persistent key/value), `counters` (read command counts), `session` (latest/recent/session totals). Unknown entries
+- `uses` (api 1): `chat` (messages, deletes, clears), `alerts` (follow, sub, resub, gift, bits, raid, tip), `storage`
+  (persistent key/value), `signals` (chat command signals), `counters` (read command counts), `session` (latest/recent/session totals). Unknown entries
   are reported as import issues and ignored. Studio shows these in plain words before a widget is added, and the server
   only streams what a published widget uses.
 - SE inference: any `onEventReceived` handler gets `chat` and `alerts` (listener names are often built indirectly),
   otherwise `chat` if the code checks the `message` / `delete-message` listeners, `alerts` for `*-latest`,
-  `store` for `SE_API.store`, `counters` for `SE_API.counters`, `session` for `session`/`onSessionUpdate`/`-recent`/`-goal`.
+  `storage` for `SE_API.store`, `counters` for `SE_API.counters`, `session` for `session`/`onSessionUpdate`/`-recent`/`-goal`.
 
 ## 2. The frame
 
@@ -82,13 +82,30 @@ Host limits: 30 RPCs/s and 200 logs/min per frame (excess dropped, counted); RPC
 heartbeats for 10 s is reloaded (max 3 reloads per 5 min, then stopped with an error shown in Studio). Note: an endless
 loop in a same-process frame can still stall the page; a separate widget origin (out-of-process frames) is a later step.
 
-## 4. Dima SDK v1 (inside the frame)
+
+## 4. Command signals
+
+Widgets opt in with `"signals"` in `widget.json` `uses`. Optional declarations provide Studio with ready-made commands:
+
+```json
+{ "uses": ["signals"], "signals": [{ "name": "feed", "description": "Feed the pet", "values": ["pizza", "cake"] }] }
+```
+
+There can be up to 30 declarations. Names match `^[a-z0-9_]{1,40}$`; descriptions are at most 200 characters; values contain up to 30 examples, each at most 60 characters. Invalid entries are skipped with the import note `signal declaration skipped`.
+
+The Dima SDK emits `signal` and `signal:<name>` events. `DimaSignal` has `id`, `name`, `value`, `json`, `args`, `at`, verified-badge `user` and `source` metadata, and a `target` layer name or `null`. `value`, `args`, and `json` originate in viewer text: render them with `textContent` or `Dima.escape()`, never `innerHTML`. StreamElements compatibility sends the same data through `onEventReceived` with `listener: 'dima:signal'`.
+
+Signals are sent only from real Twitch chat commands, keywords, referenced commands, and Chat event messages. Timer, channel-point reward, roulette, AI request, and dashboard/docs-assistant test contexts return `Error: widget_signal_context_required`. A command run may send 5 signals maximum (shared with referenced commands); a channel may send 30 per 10 seconds. Excess signals are silently dropped and counted. Twitch duplicate chat delivery is de-duplicated. Signals are live-only with no reconnect replay.
+
+The public SDK storage names are `Dima.storage.get/set`, the `storage` update event (`DimaStorageUpdate { key, value, namespace }`), and `widget.json` `uses: ["storage"]`. There is no compatibility alias because no live widget used the old public API. StreamElements retains `SE_API.store` and `kvstore:update`. Internal names remain RPC `store.get` / `store.set`, route `custom-widgets/store/...`, and collection `custom_widget_store`.
+
+## 5. Dima SDK v1 (inside the frame)
 
 ```js
 const ctx = await Dima.ready();         // { widget, channel, fields, mode: 'editor'|'live', muted, session }
 Dima.fields;                             // current settings (plain object)
-Dima.on('chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'button' | 'fields' | 'store' | 'session', handler) → off()
-Dima.store.get(key) / Dima.store.set(key, value)   // Promise; JSON values ≤ 64 KB
+Dima.on('chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'button' | 'fields' | 'storage' | 'session' | 'signal' | 'signal:<name>', handler) → off()
+Dima.storage.get(key) / Dima.storage.set(key, value)   // Promise; JSON values ≤ 64 KB
 Dima.counters.get(name)                  // Promise<number> — the count of the channel's command `name`
 Dima.html(message)                       // safe HTML for a chat message: escaped text + <img> emotes
 Dima.escape(text)
@@ -131,7 +148,7 @@ Twitch notes: first-time chatters are marked from `message_type: 'user_intro'` (
 has no general first-message flag. Emote images use `https://static-cdn.jtvnw.net/emoticons/v2/<id>/<static|animated>/dark/<1.0|2.0|3.0>`.
 Badge images come from a cached Helix global + channel badge lookup.
 
-## 5. StreamElements translation layer
+## 6. StreamElements translation layer
 
 Built on the Dima SDK; loaded only for `engine: "streamelements"`.
 
@@ -156,17 +173,17 @@ Built on the Dima SDK; loaded only for `engine: "streamelements"`.
   `SE_API.resumeQueue()`; chat and other events never wait.
 - A whole-chat clear (no StreamElements event exists) restarts StreamElements widgets so cleared messages disappear.
 
-## 6. Server: delivery to OBS
+## 7. Server: delivery to OBS
 
 Code: `GET /overlay-studio/public/:publicId/custom-widgets/:widgetId/:revision` returns `{ engine, manifest, files, media }`
 only when that published overlay pins that widget revision. Immutable, cacheable. Owner editor:
 `GET /overlay-studio/:channel/custom-widgets/:id/bundle`.
 
 Socket (existing `/overlay-studio/:publicId` namespace):
-- server → source: `overlay-feed` `{ v: 1, type: 'chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'store' | 'session', data }`,
+- server → source: `overlay-feed` `{ v: 1, type: 'chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'storage' | 'session' | 'signal', data }`,
   sent only to sources whose published snapshot has a visible custom layer using that category.
 - source → server: `overlay-widget-rpc` `{ layerId, method, params }` with an ack `{ ok, value | error }`; checked against
-  the layer's manifest (`store` / `counters`) and rate-limited per source.
+  the layer's manifest (`storage` / `counters`) and rate-limited per source.
 
 Chat feed (bot → API): the bot handles `channel.chat.message` (and, once activated, `channel.chat.message_delete`,
 `channel.chat.clear_user_messages`, `channel.chat.clear`). When the Dragonfly key `widget-feed:demand:<channel>` exists
@@ -186,20 +203,20 @@ built-in alert boxes keep their recoverable queue); session snapshots are sent a
 Chat delete/clear subscriptions are activated when an overlay with a chat widget is published and re-checked at most
 hourly when such an overlay connects; failures are logged and retried, never blocking publishing.
 
-Store: collection `custom_widget_store` `{ _id: '<owner>:<namespace>:<key>', owner, namespace, key, json, bytes, updatedAt }`
+Storage: collection `custom_widget_store` `{ _id: '<owner>:<namespace>:<key>', owner, namespace, key, json, bytes, updatedAt }`
 (values kept as JSON text so any JSON round-trips).
 Namespace: `se` for StreamElements widgets (channel-wide, like SE), the widget ID for Dima widgets. Limits: key ≤ 100
-chars, value ≤ 64 KB JSON, 500 keys / 2 MB per channel. Writes broadcast `store` feed events (`{ key, value, namespace }`) to the channel's sources that use `store` in the same
+chars, value ≤ 64 KB JSON, 500 keys / 2 MB per channel. Writes broadcast `storage` feed events (`DimaStorageUpdate { key, value, namespace }`) to the channel's sources that use `storage` in the same
 namespace, and each frame host applies only updates from its own namespace (one OBS source can hold several widgets). Each source may
 make 20 widget requests per second and the channel 60 saves per 10 seconds.
-The editor reads the real store but keeps its writes in memory (previews don't change live data).
+The editor reads the real storage but keeps its writes in memory (previews don't change live data).
 
 Session (`session.data` for SE, `Dima.ready().session` for Dima): built from the alert journal since the current stream
 started (latest `stream.online`, else the last 24 h): `*-latest` and `*-recent` (25) from the newest 500 alerts,
 `*-session` and `*-week` counts/amounts counted in the database over the whole range. Totals and
 goals that we can't compute are present with 0 so widgets don't crash. Tips are always empty until our tipping ships.
 
-## 7. Copying StreamElements media
+## 8. Copying StreamElements media
 
 Import lists remote files (`externalMedia`). For images, video and audio on StreamElements' media hosts
 (`cdn.streamelements.com`, `static.streamelements.com`; the server and Studio use the same list), Studio

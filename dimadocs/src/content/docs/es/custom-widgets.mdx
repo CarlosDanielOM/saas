@@ -27,6 +27,7 @@ Antes de añadir el widget, Overlay Studio muestra su motor y la lista **Usa:**.
 - **Mensajes del chat** — mensajes nuevos, mensajes borrados y limpieza del chat.
 - **Follows, subs, Bits y raids** — eventos de alerta. La categoría de propinas aparece como compatible, pero las propinas reales aún no se envían.
 - **Guarda sus propios datos** — almacenamiento persistente de pares clave y valor del widget.
+- **Los comandos pueden controlarlo** — los comandos del chat pueden enviar señales a las que reacciona el widget.
 - **Contadores de comandos** — consulta el número de usos de los comandos.
 - **Eventos recientes y totales del directo** — alertas recientes y totales de la sesión.
 
@@ -70,9 +71,19 @@ Los ajustes se guardan por capa. Puedes añadir el mismo widget varias veces y d
 
 Al reemplazar los archivos del widget, se conservan los ajustes que cambiaste salvo que los archivos nuevos eliminen esos campos. Las capas del borrador usan los archivos más recientes. Un overlay ya publicado conserva la versión del widget con la que se publicó hasta que vuelvas a publicar ese overlay.
 
+## Los comandos pueden controlarlo
+
+Un widget que incluya `"signals"` en `uses` puede reaccionar al ejecutar un comando del chat. En los **Ajustes** de la capa, el bloque **Comandos** muestra cada señal declarada en `widget.json`, su descripción y ejemplos, una respuesta lista para copiar, **Copiar** y **Crear un comando**. Si el widget no declara señales, Studio ofrece una entrada **Cualquier comando**.
+
+**Crear un comando** abre la página Comandos en otra pestaña con el comando rellenado (por ejemplo, `!feed`), incluido su nombre, respuesta y descripción. No se guarda nada hasta que pulses **Guardar**. Elige el acceso y el tiempo de espera del comando como siempre; para efectos visuales puedes limitarlo a moderadores. Un comando para una mascota podría responder `$(user) fed Mochi! $(widget.signal feed &p1)`: en el chat aparece “Ada fed Mochi!” y la mascota come. Los widgets de mascotas de Etsy o StreamElements encajan bien con comandos como `!pet` y `!feed`. Los valores usan la sintaxis normal de argumentos, como `&p1`, `&p2` y `&t` (todo el texto después del comando), no `$(1)`.
+
+Una señal puede llegar a todos los widgets compatibles de los overlays publicados y abiertos en OBS. Si otro widget del mismo overlay también usa señales, Studio sugiere una respuesta dirigida como `$(widget.signal.to "Pet" feed &p1)`, para que reaccione solo esa capa. La dirección funciona si el nombre de la capa usa letras sencillas, números, espacios y `_ ' . , ! ? -`. Si no, Studio avisa de que los otros widgets también podrían reaccionar y recomienda un nombre más sencillo. Dos capas con el mismo nombre reaccionan las dos. Si cambias el nombre de la capa, actualiza sus comandos. Studio también avisa si hay otra capa con el mismo nombre y muestra cuántas señales de comandos se omitieron hace poco.
+
+Las señales solo se envían desde comandos reales del chat de Twitch, keywords, comandos a los que hacen referencia (`#(name)`) y mensajes de eventos de Chat, como anuncios de follow, sub y raid. Los temporizadores, las recompensas de puntos del canal, la ruleta, las solicitudes de IA y las pruebas del panel o del asistente de documentación no pueden enviarlas; devuelven `Error: widget_signal_context_required`. El texto escrito por un espectador que parece `$(...)` nunca se ejecuta. Los nombres se convierten a minúsculas y solo admiten letras minúsculas, números y `_` (hasta 40 caracteres); por ejemplo, `FOCUS` pasa a `focus`, mientras que `pet.feed` devuelve `Error: invalid_widget_signal_name`. Los valores pueden tener hasta 500 caracteres (`Error: widget_signal_too_long`). Se permiten hasta 5 señales por ejecución de comando, compartidas con los comandos referenciados, y hasta 30 por canal cada 10 segundos; las adicionales se descartan en silencio y se cuentan. Si Twitch entrega dos veces el mismo mensaje, la señal no se envía dos veces. Las señales solo se envían en directo y no se repiten cuando OBS se reconecta, como el chat.
+
 ## Prueba en Studio
 
-Abre **Probar** y busca **Pruebas de widgets personalizados**. Elige **Vista previa** para enviar las pruebas solo a la vista previa del editor. Las pruebas de chat incluyen **Espectador**, **Suscriptor**, **VIP**, **Moderador**, **Tú**, **Primer mensaje**, **Emotes**, **Respuesta**, **Mensaje largo** y **!comando**. Las pruebas de alertas incluyen **Follow**, **Sub**, **Resub**, **Sub regalada**, **5 subs regaladas**, **Bits**, **Raid** y **Propina**. Las pruebas de moderación incluyen **Borrar último mensaje** y **Limpiar chat**.
+Abre **Probar** y busca **Pruebas de widgets personalizados**. Elige **Vista previa** para enviar las pruebas solo a la vista previa del editor. La fila **Señal de comando** permite escribir un nombre (o elegir una señal declarada), un valor opcional y pulsar **Enviar señal** para probar la vista previa. Elige **OBS** para enviarla a OBS tras la confirmación habitual; las pruebas de OBS cuentan para el límite de 30 cada 10 segundos y aparecen como broadcaster con origen `studio`. Las pruebas de chat incluyen **Espectador**, **Suscriptor**, **VIP**, **Moderador**, **Tú**, **Primer mensaje**, **Emotes**, **Respuesta**, **Mensaje largo** y **!comando**. Las pruebas de alertas incluyen **Follow**, **Sub**, **Resub**, **Sub regalada**, **5 subs regaladas**, **Bits**, **Raid** y **Propina**. Las pruebas de moderación incluyen **Borrar último mensaje** y **Limpiar chat**.
 
 Los botones propios del widget, que aparecen en sus ajustes, también envían un evento de botón a ese widget en la vista previa. No envían una alerta ni un mensaje real.
 
@@ -80,7 +91,7 @@ Elige **OBS** en el panel de pruebas para enviar las pruebas a las fuentes conec
 
 ## Registro del widget
 
-Abre los **Ajustes** del widget para consultar su **Registro del widget**. Allí aparecen los mensajes de `console.log` o `Dima.log`, las advertencias y los errores del widget. Pulsa **Borrar registro** para eliminar las entradas actuales. Se conservan hasta 200 entradas recientes; si el widget escribe demasiados mensajes en un minuto, se descartan los que superen el límite. Si se congela varias veces, Studio lo reinicia y finalmente lo apaga. Corrige el código o reemplaza los archivos y luego vuelve a cargar el overlay.
+Abre los **Ajustes** del widget para consultar su **Registro del widget**. Allí aparecen los mensajes de `console.log` o `Dima.log`, las advertencias y los errores del widget. En Studio también anota cada señal de comando que recibe el widget, por ejemplo “Señal feed → pizza de Ada”. Pulsa **Borrar registro** para eliminar las entradas actuales. Se conservan hasta 200 entradas recientes; si el widget escribe demasiados mensajes en un minuto, se descartan los que superen el límite. Si se congela varias veces, Studio lo reinicia y finalmente lo apaga. Corrige el código o reemplaza los archivos y luego vuelve a cargar el overlay.
 
 ## Archivos multimedia de StreamElements
 
@@ -98,7 +109,11 @@ Cada canal puede importar hasta **1 widget personalizado en Free**, **5 en Premi
 
 ## Funciones que aún no están disponibles
 
-- Los widgets personalizados no reciben propinas reales hasta que DomDimaBot ofrezca la función de propinas. La prueba **Propina** de Studio solo envía datos de ejemplo.
+- Eventos del bot como TTS, triggers, mascotas, duelos, ruleta, DimaFX y recompensas.
+- Estado en directo de objetivos y encuestas.
+- Repetición de mensajes recientes del chat en el editor.
+- Sincronización en directo desde un editor local.
+- Los widgets personalizados no reciben propinas reales hasta que DomDimaBot ofrezca la función de propinas; la prueba **Propina** de Studio solo envía datos de ejemplo.
 - No se admiten los emotes de 7TV, BetterTTV (BTTV) ni FrankerFaceZ (FFZ).
 - No están disponibles los tokens de la API de StreamElements ni las API exclusivas de StreamElements.
 

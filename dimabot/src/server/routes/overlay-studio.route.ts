@@ -8,7 +8,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { change, load, publicState, validateState, object, string, token, OverlayError, requireOverlayAccount } from '../../overlays/store.js';
-import { bitsRuleFor, ensureWidgetModeration, eventFor, feedTestAlert, feedTestEvent, fileFor, publishStudioAlert, publishTest, studioConnections, queueStatus, controlStudio } from '../../overlays/live.js';
+import { bitsRuleFor, ensureWidgetModeration, eventFor, feedSignal, feedTestAlert, feedTestEvent, fileFor, publishStudioAlert, publishTest, studioConnections, queueStatus, controlStudio } from '../../overlays/live.js';
 import { renderTemplate, sampleEvent } from '../../overlays/ast.js';
 import { ALERT_EVENTS, EVENT_KINDS, type EventKind, type AlertEvent } from '../../overlays/model.js';
 import { AssetError, withAssetLibrary } from '../../assets/library.js';
@@ -17,7 +17,8 @@ import { snapshotAssets, validateAssets } from '../../overlays/assets.js';
 import { copyMedia, planMediaCopy } from '../../custom_widgets/media.js';
 import { sessionFor } from '../../custom_widgets/session.js';
 import { commandCount, storeGet } from '../../custom_widgets/widget-store.js';
-import { checkCustomLayers, createWidget, deleteWidget, listWidgets, publishedBundle, publishedLayers, publishedMediaAsset, widgetBundle, pinCustomLayers, pruneRevisions, renameWidget, replaceFiles, widgetFile } from '../../custom_widgets/store.js';
+import { channelInfo, checkCustomLayers, createWidget, deleteWidget, listWidgets, publishedBundle, publishedLayers, publishedMediaAsset, widgetBundle, pinCustomLayers, pruneRevisions, renameWidget, replaceFiles, widgetFile } from '../../custom_widgets/store.js';
+import { buildSignal, signalError, skippedSignals, widgetSignals } from '../../widget_feed/signals.js';
 export const overlayStudioRoute = express.Router();
 const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { void fn(req, res).catch(next); };
 const param = (req: Request, key: string) => string(req.params[key]);
@@ -117,6 +118,7 @@ overlayStudioRoute.patch('/:channelID/custom-widgets/:widgetId', wrap(async (req
 overlayStudioRoute.delete('/:channelID/custom-widgets/:widgetId', wrap(async (req, res) => ok(res, await deleteWidget(param(req, 'channelID'), param(req, 'widgetId')))));
 overlayStudioRoute.get('/:channelID/custom-widgets/store/:namespace/:key', wrap(async (req, res) => ok(res, { value: await storeGet(param(req, 'channelID'), param(req, 'namespace'), req.params.key) })));
 overlayStudioRoute.get('/:channelID/custom-widgets/counters/:name', wrap(async (req, res) => ok(res, { value: await commandCount(param(req, 'channelID'), req.params.name) })));
+overlayStudioRoute.get('/:channelID/custom-widgets/signals', wrap(async (req, res) => ok(res, { skipped: await skippedSignals(param(req, 'channelID')) })));
 overlayStudioRoute.get('/:channelID/custom-widgets/session', wrap(async (req, res) => ok(res, await sessionFor(param(req, 'channelID')))));
 overlayStudioRoute.get('/:channelID/custom-widgets/:widgetId/media', wrap(async (req, res) => ok(res, await planMediaCopy(param(req, 'channelID'), param(req, 'widgetId')))));
 overlayStudioRoute.post('/:channelID/custom-widgets/:widgetId/media', wrap(async (req, res) => ok(res, await copyMedia(param(req, 'channelID'), param(req, 'widgetId'), object(req.body).urls))));
@@ -125,7 +127,21 @@ overlayStudioRoute.post('/:channelID/widget-test', wrap(async (req, res) => {
   const channel = param(req, 'channelID'), body = object(req.body), state = await load(channel);
   const scene = state.scenes.find(s => s.id === body.sceneId);
   if (!scene?.published) throw new OverlayError('Publish this overlay before testing', 409);
-  if (!['chat', 'chat.delete', 'chat.clear', 'alert'].includes(String(body.type)) || !body.data || typeof body.data !== 'object' || Array.isArray(body.data) || JSON.stringify(body.data).length > 16_000) throw new OverlayError('Invalid widget test');
+  if (!['chat', 'chat.delete', 'chat.clear', 'alert', 'signal'].includes(String(body.type)) || !body.data || typeof body.data !== 'object' || Array.isArray(body.data) || JSON.stringify(body.data).length > 16_000) throw new OverlayError('Invalid widget test');
+  if (body.type === 'signal') {
+    // Studio test signals: stamped here (source, sender, time) and counted against the channel's signal limit.
+    const input = body.data as { name?: unknown; value?: unknown; target?: unknown };
+    const name = String(input.name ?? '').trim().toLowerCase(), value = String(input.value ?? '').trim(), target = typeof input.target === 'string' && input.target.trim() ? input.target.trim() : null;
+    const invalid = signalError(name, value, target);
+    if (invalid) throw new OverlayError(invalid === 'invalid_widget_signal_name' ? 'Signal names use letters, digits and _ (up to 40)' : 'Invalid signal');
+    if (!await widgetSignals.admit(channel)) throw new OverlayError('Too many signals for this channel right now; try again in a few seconds', 429);
+    const owner = await channelInfo(channel);
+    const signal = buildSignal({ name, value, target, source: { kind: 'studio', name: 'Studio test' },
+      user: { id: channel, login: owner.login, name: owner.name, roles: { broadcaster: true, moderator: false, vip: false, subscriber: false } } });
+    const sent = feedSignal(channel, signal, peer => peer.publicId === scene.publicId);
+    if (!sent) throw new OverlayError('Open this published overlay in OBS first. Only widgets that use signals (with that layer name) receive it.', 409);
+    return ok(res, { sent: true, clients: sent });
+  }
   const data = body.type === 'alert' ? { ...(body.data as Record<string, unknown>), test: true } : body.data;
   const sent = feedTestEvent(channel, scene.publicId, String(body.type), data);
   if (!sent) throw new OverlayError('Open this published overlay in OBS first. Only widgets that use this data receive it.', 409);

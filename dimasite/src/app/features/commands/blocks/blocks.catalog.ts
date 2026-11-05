@@ -151,7 +151,9 @@ export function levelLabel(level: number): string | null {
 const REST_PARAM = /^(message|text|prompt|message_and_actions|actions|reason|title)$/i;
 const PARAM_OVERRIDES: Record<string, CatalogParam[]> = {
   'set.title': [{ label: 'new title', optional: false, rest: true }],
-  'set.game': [{ label: 'game name', optional: false, rest: true }]
+  'set.game': [{ label: 'game name', optional: false, rest: true }],
+  'widget.signal': [{ label: 'signal name', optional: false, rest: false }, { label: 'value', optional: true, rest: true }],
+  'widget.signal.to': [{ label: 'layer name', optional: false, rest: false }, { label: 'signal name', optional: false, rest: false }, { label: 'value', optional: true, rest: true }]
 };
 const paramCache = new Map<string, CatalogParam[]>();
 

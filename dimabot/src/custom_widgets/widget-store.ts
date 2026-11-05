@@ -4,7 +4,7 @@ import { CommandsSchema } from '../schemas/commands.schema.js';
 import { CustomWidgetError } from './store.js';
 
 /**
- * `custom_widget_store`: small key/value data that widgets save (Dima.store / SE_API.store). Namespace `se` is
+ * `custom_widget_store`: small key/value data that widgets save (Dima.storage / SE_API.store). Namespace `se` is
  * shared by all StreamElements widgets of a channel (as on StreamElements); Dima widgets use their widget ID.
  */
 /** Values are kept as JSON text, so any JSON (including keys Mongo can't store) round-trips exactly. */

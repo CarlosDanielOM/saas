@@ -1,9 +1,9 @@
 {
-  "version": "283271b0f856",
-  "generatedAt": "2026-11-05T00:54:12.557Z",
+  "version": "71756e493836",
+  "generatedAt": "2026-11-05T21:23:20.021Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 119,
+  "functionCount": 121,
   "entries": [
     {
       "name": "overlay.skip",
@@ -2256,6 +2256,65 @@
         "authoring"
       ],
       "planTier": "premium"
+    },
+    {
+      "name": "widget.signal",
+      "description": "Sends a named signal with an optional value to the channel's Overlay Studio custom widgets; the widget's code decides what it does (a pet eats, a wheel spins, colours change). Works in Twitch chat commands, keywords and event actions (not timers, channel-point rewards or AI requests). Widgets receive it when their widget.json uses \"signals\". Silent in chat. Names: letters, digits and _ (max 40); value up to 500 characters.",
+      "syntax": "widget.signal name value",
+      "category": "overlay",
+      "examples": [
+        "widget.signal hype",
+        "widget.signal feed &p1",
+        "widget.signal theme night"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "widget",
+        "custom widget",
+        "overlay",
+        "overlay studio",
+        "signal",
+        "señal",
+        "widget personalizado",
+        "mascota",
+        "pet",
+        "comando"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ],
+      "planTier": "free"
+    },
+    {
+      "name": "widget.signal.to",
+      "description": "Like widget.signal, but only custom widget layers with this name react (quote names with spaces; published names count). Works in Twitch chat commands, keywords and event actions (not timers, channel-point rewards or AI requests). Widgets receive it when their widget.json uses \"signals\". Silent in chat.",
+      "syntax": "widget.signal.to \"layer name\" name value",
+      "category": "overlay",
+      "examples": [
+        "widget.signal.to \"Chat box\" focus on",
+        "widget.signal.to Wheel spin"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "widget",
+        "custom widget",
+        "overlay",
+        "overlay studio",
+        "signal",
+        "señal",
+        "widget personalizado",
+        "mascota",
+        "pet",
+        "comando"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ],
+      "planTier": "free"
     },
     {
       "name": "goal.add",

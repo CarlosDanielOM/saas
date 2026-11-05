@@ -215,7 +215,7 @@ export interface WidgetBundle {
   channel: { id: string; login: string; name: string };
 }
 const channels = new Map<string, { at: number; value: WidgetBundle['channel'] }>();
-async function channelInfo(owner: string): Promise<WidgetBundle['channel']> {
+export async function channelInfo(owner: string): Promise<WidgetBundle['channel']> {
   const cached = channels.get(owner);
   if (cached && Date.now() - cached.at < 600_000) return cached.value;
   const user = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: owner } } }).select('accounts').lean();
@@ -252,7 +252,7 @@ export async function publishedBundle(owner: string, widgets: OverlayWidget[], i
 /** Manifests of published widget revisions, cached (revisions never change). */
 const manifestCache = new Map<string, WidgetManifest>();
 /** Visible custom layers of a published snapshot: widget, engine and what each one uses. */
-export async function publishedLayers(owner: string, widgets: OverlayWidget[]): Promise<Map<string, { widgetId: string; engine: WidgetManifest['engine']; uses: Set<string> }>> {
+export async function publishedLayers(owner: string, widgets: OverlayWidget[]): Promise<Map<string, { widgetId: string; name: string; engine: WidgetManifest['engine']; uses: Set<string> }>> {
   const layers = widgets.filter(w => w.visible && isCustom(w) && validId(widgetIdOf(w)) && typeof w.config?.['revision'] === 'number');
   const missing = layers.filter(w => !manifestCache.has(`${widgetIdOf(w)}:${w.config!['revision']}`));
   if (missing.length) {
@@ -265,10 +265,11 @@ export async function publishedLayers(owner: string, widgets: OverlayWidget[]): 
       if (manifestCache.size > 5000) manifestCache.delete(manifestCache.keys().next().value!);
     }
   }
-  const result = new Map<string, { widgetId: string; engine: WidgetManifest['engine']; uses: Set<string> }>();
+  const result = new Map<string, { widgetId: string; name: string; engine: WidgetManifest['engine']; uses: Set<string> }>();
   for (const layer of layers) {
     const manifest = manifestCache.get(`${widgetIdOf(layer)}:${layer.config!['revision']}`);
-    if (manifest) result.set(layer.id, { widgetId: widgetIdOf(layer), engine: manifest.engine, uses: new Set(manifest.uses) });
+    // The published layer name is what widget.signal.to matches.
+    if (manifest) result.set(layer.id, { widgetId: widgetIdOf(layer), name: (layer.name ?? '').trim(), engine: manifest.engine, uses: new Set(manifest.uses) });
   }
   return result;
 }

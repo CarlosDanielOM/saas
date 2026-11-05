@@ -21,6 +21,18 @@ export interface ImportResult { widget: CustomWidgetView; issues: FieldIssue[] }
 export interface MediaFile { url: string; kind: string; bytes: number | null; copied: boolean; assetId?: string }
 export interface MediaPlan { files: MediaFile[]; totalBytes: number; unknownSizes: number; quota: { usedBytes: number; quotaBytes: number } }
 export interface MediaCopyResult { copied: Record<string, string>; failed: { url: string; reason: string }[] }
+/** Layer names the command parser reads back exactly inside quotes (no quotes, backslashes, $ or brackets). */
+const QUOTABLE = /^[\p{L}\p{N}][\p{L}\p{N} _'.,!?-]{0,79}$/u;
+/** A command response that sends this signal: to every listening widget, or (`target`) to layers with that name. */
+/** What a command passes as the signal's value: nothing, one word (`&p1`) or all text after the command (`&t`). */
+export type SignalValue = 'none' | 'word' | 'text';
+/** Declared example values with spaces mean the signal takes free text; single words mean one word; none means no value. */
+export const signalValueKind = (values: readonly string[]): SignalValue => !values.length ? 'none' : values.some(value => /\s/.test(value.trim())) ? 'text' : 'word';
+export function signalSnippet(name: string, kind: SignalValue, target: string | null = null): string {
+  const value = kind === 'text' ? ' &t' : kind === 'word' ? ' &p1' : '';
+  return target && QUOTABLE.test(target) && target === target.trim() ? `$(widget.signal.to "${target}" ${name}${value})` : `$(widget.signal ${name}${value})`;
+}
+export const canTarget = (layerName: string) => QUOTABLE.test(layerName) && layerName === layerName.trim();
 /** StreamElements-hosted images, videos and sounds not yet copied into the channel's storage. */
 export function copyableMedia(widget: Pick<CustomWidgetView, 'externalMedia' | 'media'>): number {
   return widget.externalMedia.filter(item => ['image', 'video', 'audio'].includes(item.kind) && /^(cdn|static)\.streamelements\.com$/i.test(item.host) && !widget.media?.[item.url]).length;
@@ -96,6 +108,8 @@ export class CustomWidgetsService {
   counter(name: string): Promise<number> {
     return this.api.request<{ value: number }>('GET', `${this.channel}/custom-widgets/counters/${encodeURIComponent(name)}`).then(result => result.value);
   }
+  /** Signals dropped by the channel limits in the last 10 minutes. */
+  signalStatus(): Promise<{ skipped: number }> { return this.api.request<{ skipped: number }>('GET', `${this.channel}/custom-widgets/signals`); }
   session(): Promise<DimaSession> { return this.api.request<DimaSession>('GET', `${this.channel}/custom-widgets/session`); }
   mediaPlan(id: string): Promise<MediaPlan> { return this.api.request<MediaPlan>('GET', `${this.channel}/custom-widgets/${id}/media`, undefined, 60000); }
   async copyMedia(id: string, urls: string[]): Promise<MediaCopyResult> {

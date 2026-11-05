@@ -1,7 +1,7 @@
 /**
  * Overlay Studio custom widget code editor, against an isolated site preview/candidate with every API mocked:
  *  - "New widget": name + Dima SDK starter → editor (CodeMirror) with a live preview of the unsaved code; test chat and
- *    alerts reach only the preview; editing CSS updates the preview; broken fields JSON shows a blocking problem on its
+ *    alerts and the starter's `shout` command signal reach only the preview; editing CSS updates the preview; broken fields JSON shows a blocking problem on its
  *    tab (with the line), keeps the last good preview and blocks saving; "Create widget" posts the files and adds a layer
  *  - saving again sends the base revision; version history lists both and "Open" loads an older version as unsaved
  *  - unsaved work survives a reload (restored banner, discard); a stale save is refused and can be saved anyway
@@ -168,8 +168,16 @@ try {
   await frame.locator('.row').first().waitFor();
   await dialog.locator('[data-cwc-alert="follow"]').click();
   await until(async () => /followed!/.test(await frame.locator('#banner').textContent() ?? ''), 'follow banner');
+  // The starter declares a `shout` command signal: the preview's signal test shows the value in the banner.
+  const signalTest = dialog.locator('[data-cwc-signal]');
+  await signalTest.locator('[data-cwc-signal-name="shout"]').click();
+  await signalTest.locator('[data-cwc-signal-value]').fill('<b>hi</b> chat');
+  await signalTest.locator('[data-cwc-signal-send]').click();
+  await until(async () => (await frame.locator('#banner').textContent()) === '<b>hi</b> chat', 'shout banner (text, never HTML)');
+  await signalTest.locator('[data-cwc-signal-input]').fill('Bad.Name'); await signalTest.locator('[data-cwc-signal-send]').click();
+  await signalTest.locator('[role="alert"]').waitFor();
   assert.equal(await page.locator('app-overlay-scene-renderer app-overlay-custom-widget').count(), 0, 'nothing on the canvas yet');
-  console.log('PASS new widget: Dima starter in CodeMirror, live preview runs it, test chat and alerts reach the preview.');
+  console.log('PASS new widget: Dima starter in CodeMirror, live preview runs it, test chat, alerts and its command signal reach the preview.');
 
   // Edit CSS → the preview restarts with it.
   await dialog.locator('[data-cwc-tab="css"]').click();
@@ -344,7 +352,7 @@ try {
       await kd.locator('[data-cwc-editor] .cm-content').click();
       await kp.keyboard.press('ControlOrMeta+End');
       await kp.keyboard.type('\nDima.');
-      await until(async () => { const list = await popup(kp); return ['on', 'fields', 'store', 'ready'].every(label => list.includes(label)); }, 'Dima. suggestions');
+      await until(async () => { const list = await popup(kp); return ['on', 'fields', 'storage', 'ready'].every(label => list.includes(label)); }, 'Dima. suggestions');
       await shot(kp, 'suggest-dark-1280');
       await kp.keyboard.press('Escape');
       await until(async () => (await kp.locator('.cm-tooltip-autocomplete').count()) === 0, 'Escape closes the suggestions');
@@ -362,19 +370,19 @@ try {
       await until(async () => (await popup(kp)).includes('name'), 'nested user');
       await kp.keyboard.press('Escape');
       // Hover docs.
-      await kp.keyboard.type('name);\nconst saved = Dima.store;'); // a reference only: the preview runs this code
+      await kp.keyboard.type('name);\nconst saved = Dima.storage;'); // a reference only: the preview runs this code
       const box = await kd.locator('.cm-content').evaluate(content => {
         const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
         for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-          const at = node.textContent.indexOf('store'); if (at < 0) continue;
-          const range = document.createRange(); range.setStart(node, at); range.setEnd(node, at + 5);
+          const at = node.textContent.indexOf('storage'); if (at < 0) continue;
+          const range = document.createRange(); range.setStart(node, at); range.setEnd(node, at + 7);
           const r = range.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
         }
         return null;
       });
       assert(box, 'found the word to hover');
       await kp.mouse.move(box.x, box.y);
-      await until(async () => /store: DimaStore/.test(await kd.locator('.cm-dima-hover').textContent().catch(() => '')), 'hover doc');
+      await until(async () => /storage: DimaStorage/.test(await kd.locator('.cm-dima-hover').textContent().catch(() => '')), 'hover doc');
       await shot(kp, 'hover-dark-1280');
       await axe(kp, 'suggestions and hover');
       console.log('PASS suggestions: Dima members, settings (accepted with Enter), handler parameter types (alert → user → name), Escape closes only the list, hover docs.');
@@ -387,11 +395,11 @@ try {
     // The Dima starter got a typed line above (with the user's typing); both starters must type-check cleanly.
     assert.deepEqual(typeErrors(kit.root), [], `${starter} kit type-checks`);
     if (starter === 'streamelements') assert.match(await readFile(join(kit.root, 'dima.d.ts'), 'utf8'), /declare const SE_API: SEApi;/);
-    await writeFile(join(kit.root, 'widget.js'), (await readFile(join(kit.root, 'widget.js'), 'utf8')) + '\nDima.store.gett("x");\n');
+    await writeFile(join(kit.root, 'widget.js'), (await readFile(join(kit.root, 'widget.js'), 'utf8')) + '\nDima.storage.gett("x");\n');
     assert.match(typeErrors(kit.root).join('\n'), /gett/, 'a typo in an SDK call is an error in the editor');
     // Edited elsewhere → load the zip back: the CSS change lands in the tab as an unsaved change.
     await writeFile(join(kit.root, 'widget.css'), (await readFile(join(kit.root, 'widget.css'), 'utf8')) + '\n/* from my editor */\n');
-    await writeFile(join(kit.root, 'widget.js'), (await readFile(join(kit.root, 'widget.js'), 'utf8')).replace('\nDima.store.gett("x");\n', '\n'));
+    await writeFile(join(kit.root, 'widget.js'), (await readFile(join(kit.root, 'widget.js'), 'utf8')).replace('\nDima.storage.gett("x");\n', '\n'));
     const files = [];
     for (const name of kit.names) files.push({ name: `edited/${name}`, text: await readFile(join(kit.root, name), 'utf8') });
     const edited = join(kit.dir, 'edited.zip');

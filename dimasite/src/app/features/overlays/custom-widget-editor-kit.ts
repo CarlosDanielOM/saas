@@ -3,7 +3,7 @@
  * CSS, JavaScript and JSON), typings for the Dima SDK / StreamElements layer and this widget's settings, and JSON
  * schemas for fields.json and widget.json. widget.ini maps the names, so the folder or zip imports straight back.
  */
-import { WIDGET_USES, type WidgetEngine, type WidgetField } from './custom-widget-format.generated';
+import { SIGNAL_DECLARATION_LIMITS, WIDGET_USES, type WidgetEngine, type WidgetField } from './custom-widget-format.generated';
 import type { CodeFiles } from './custom-widget-code-drafts';
 import { ALIASES, DIMA_EVENTS, FIELD_PROPS, FIELD_TYPES, MANIFEST_KEYS, TYPES, USES_DOCS, fieldValueType, isIdentifier } from './widget-runtime/sdk-reference';
 
@@ -29,6 +29,7 @@ export function widgetTypings(fields: readonly WidgetField[], dataKeys: readonly
   out.push('}', '');
   out.push('/** Events for Dima.on(type, handler) and the data each handler gets. */', 'interface DimaEvents {');
   for (const event of DIMA_EVENTS) out.push(`  /** ${docText(event.doc + (event.uses ? ` Needs "${event.uses}" in widget.json uses.` : ''))} */`, `  ${key(event.name)}: ${event.type};`);
+  out.push('  /** One signal by name, e.g. Dima.on(\'signal:feed\', …). Needs "signals" in widget.json uses. */', '  [name: `signal:${string}`]: DimaSignal;');
   out.push('}', '');
   for (const [name, type] of Object.entries(ALIASES)) if (engine === 'streamelements' || !name.startsWith('SE')) out.push(`type ${name} = ${type};`);
   out.push('');
@@ -73,7 +74,12 @@ export function manifestSchema(): string {
       engine: { enum: ['dima', 'streamelements'], description: doc('engine') }, api: { const: 1, description: doc('api') },
       name: { type: 'string', maxLength: 80, description: doc('name') }, author: { type: 'string', description: doc('author') },
       version: { type: 'string', description: doc('version') }, description: { type: 'string', description: doc('description') },
-      uses: { type: 'array', uniqueItems: true, description: doc('uses'), items: { enum: [...WIDGET_USES], markdownEnumDescriptions: WIDGET_USES.map(use => USES_DOCS[use]) } }
+      uses: { type: 'array', uniqueItems: true, description: doc('uses'), items: { enum: [...WIDGET_USES], markdownEnumDescriptions: WIDGET_USES.map(use => USES_DOCS[use]) } },
+      signals: { type: 'array', maxItems: SIGNAL_DECLARATION_LIMITS.count, description: doc('signals'), items: { type: 'object', required: ['name'], additionalProperties: false, properties: {
+        name: { type: 'string', pattern: '^[a-z0-9_]{1,40}$', description: 'Signal name: lowercase letters, digits and _.' },
+        description: { type: 'string', maxLength: SIGNAL_DECLARATION_LIMITS.description, description: 'What it does, shown in Studio.' },
+        values: { type: 'array', maxItems: SIGNAL_DECLARATION_LIMITS.values, items: { type: 'string', maxLength: SIGNAL_DECLARATION_LIMITS.value }, description: 'Example values, shown in Studio.' }
+      } } }
     }
   });
 }

@@ -432,6 +432,15 @@
                 <button type="button" class="test-btn" data-chat-delete (click)="deleteWidgetMessage()">{{ t('widgetTestDelete') }}</button>
                 <button type="button" class="test-btn" data-chat-clear (click)="clearWidgetChat()">{{ t('widgetTestClear') }}</button>
               </div>
+              <form class="widget-tests__row widget-tests__signal" [attr.aria-label]="t('widgetTestsSignal')" (submit)="$event.preventDefault(); sendWidgetSignal()" data-widget-signal>
+                <span class="widget-tests__label" aria-hidden="true">{{ t('widgetTestsSignal') }}</span>
+                @for (name of declaredSignals(); track name) { <button type="button" class="test-btn" [attr.aria-pressed]="signalName() === name" (click)="signalName.set(name)" [attr.data-signal-suggestion]="name">{{ name }}</button> }
+                <label class="signal-field"><span class="sr-only">{{ t('widgetTestSignalName') }}</span>
+                  <input type="text" maxlength="40" autocomplete="off" spellcheck="false" [value]="signalName()" (input)="signalName.set(value($event))" [placeholder]="t('widgetTestSignalNameHint')" data-signal-name /></label>
+                <label class="signal-field signal-field--value"><span class="sr-only">{{ t('widgetTestSignalValue') }}</span>
+                  <input type="text" maxlength="500" autocomplete="off" [value]="signalValue()" (input)="signalValue.set(value($event))" [placeholder]="t('widgetTestSignalValueHint')" data-signal-value /></label>
+                <button type="submit" class="test-btn" [disabled]="widgetTestBusy()" data-signal-send>{{ t('widgetTestSignalSend') }}</button>
+              </form>
               <p class="lf-note">{{ t(widgetTestTarget() === 'obs' ? 'widgetTestsObsHint' : 'widgetTestsHint') }}</p>
             </div>
           }

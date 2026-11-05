@@ -27,6 +27,7 @@ Before you add the widget, Overlay Studio shows its engine and **Uses:** list. T
 - **Chat messages** — new messages, message deletions, and chat clears.
 - **Follows, subs, Bits and raids** — alert events. Tip events are listed as a supported category, but real tips do not fire yet.
 - **Saves its own data** — persistent key/value storage for the widget.
+- **Commands can control it** — chat commands can send signals that the widget reacts to.
 - **Command counters** — read command-use counts.
 - **Recent events and stream totals** — the session’s recent alerts and totals.
 
@@ -70,9 +71,19 @@ Settings belong to each layer. You can add the same widget more than once and st
 
 When you replace a widget’s files, its changed settings stay unless the new files remove those fields. Draft layers use the newest files. An already published overlay keeps the widget version it was published with until you publish that overlay again.
 
+## Commands can control it
+
+A widget that lists `"signals"` in `uses` can react when a chat command runs. In the layer’s **Settings**, the **Commands** block shows each signal declared in `widget.json`, its description and example values, a ready-to-paste response, **Copy**, and **Make a command**. If the widget has no declarations, Studio offers one **Any command** entry.
+
+**Make a command** opens the Commands page in a new tab with the command pre-filled (for example `!feed`), including its name, response, and description. Nothing is saved until you press **Save**. Choose the command’s access and cooldown as usual; for visual effects, you can make it mods-only. A pet command could reply `$(user) fed Mochi! $(widget.signal feed &p1)`: chat shows “Ada fed Mochi!” while the pet eats. Etsy or StreamElements pet widgets are a natural fit for `!pet` and `!feed`. Values use command arguments such as `&p1`, `&p2`, and `&t` (all text after the command), not `$(1)`.
+
+A signal can reach every matching widget in published overlays open in OBS. When another widget in the same overlay also uses signals, Studio suggests a targeted response such as `$(widget.signal.to "Pet" feed &p1)`, so only that layer reacts. Targeting works when the layer name uses simple letters, numbers, spaces, and `_ ' . , ! ? -`. Otherwise, Studio notes that the other widgets can react too and suggests a simpler name. Two layers with the same name both react. If you rename a layer, update its commands. Studio also warns when another layer has the same name and shows how many command signals were skipped recently.
+
+Signals are sent only by real Twitch chat commands, keywords, referenced commands (`#(name)`), and Chat event messages such as follow, sub, and raid announcements. Timers, channel-point rewards, roulette, AI requests, and dashboard or docs-assistant tests cannot send them; they return `Error: widget_signal_context_required`. Text typed by a viewer that looks like `$(...)` is never run. Names are lowercased, then limited to lowercase letters, digits, and `_` (up to 40 characters); for example, `FOCUS` becomes `focus`, while `pet.feed` returns `Error: invalid_widget_signal_name`. Values are limited to 500 characters (`Error: widget_signal_too_long`). Up to 5 signals are allowed per command run, shared with referenced commands, and up to 30 per channel in 10 seconds; extra signals are silently dropped and counted. Duplicate delivery of the same Twitch chat message does not send the signal twice. Signals are live-only and are not replayed when OBS reconnects, like chat.
+
 ## Test in Studio
 
-Open **Test** and find **Custom widget tests**. Choose **Preview** to send tests only to the editor preview. Chat tests include **Viewer**, **Subscriber**, **VIP**, **Moderator**, **You**, **First-time chatter**, **Emotes**, **Reply**, **Long message**, and **!command**. Alert tests include **Follow**, **Sub**, **Resub**, **Gift sub**, **5 gift subs**, **Bits**, **Raid**, and **Tip**. Moderation tests include **Delete last message** and **Clear chat**.
+Open **Test** and find **Custom widget tests**. Choose **Preview** to send tests only to the editor preview. The **Command signal** row lets you enter a name (or choose a declared signal chip), an optional value, and press **Send signal** to test the preview. Choose **OBS** to send it to OBS after the usual confirmation; OBS tests count toward the 30-per-10-seconds channel limit and appear as the broadcaster with source `studio`. Chat tests include **Viewer**, **Subscriber**, **VIP**, **Moderator**, **You**, **First-time chatter**, **Emotes**, **Reply**, **Long message**, and **!command**. Alert tests include **Follow**, **Sub**, **Resub**, **Gift sub**, **5 gift subs**, **Bits**, **Raid**, and **Tip**. Moderation tests include **Delete last message** and **Clear chat**.
 
 The test buttons inside a widget’s own settings also send a button event to that widget in the preview. They do not send a real alert or message.
 
@@ -80,7 +91,7 @@ Choose **OBS** in the test drawer to send tests to the connected sources for the
 
 ## Widget log
 
-Open the widget’s **Settings** to see its **Widget log**. It shows messages written with `console.log` or `Dima.log`, warnings, and errors from the widget. Use **Clear log** to remove the current entries. The log keeps up to 200 recent entries; excess messages are dropped when a widget writes too many in one minute. If the widget freezes repeatedly, Studio restarts it and eventually turns it off; fix the code or replace its files, then reload the overlay.
+Open the widget’s **Settings** to see its **Widget log**. It shows messages written with `console.log` or `Dima.log`, warnings, and errors from the widget. In Studio it also notes each command signal the widget receives, for example “Signal feed → pizza from Ada”. Use **Clear log** to remove the current entries. The log keeps up to 200 recent entries; excess messages are dropped when a widget writes too many in one minute. If the widget freezes repeatedly, Studio restarts it and eventually turns it off; fix the code or replace its files, then reload the overlay.
 
 ## StreamElements media
 
@@ -98,7 +109,11 @@ Each channel can import up to **1 custom widget on Free**, **5 on Premium**, or 
 
 ## Not available yet
 
-- Real tips do not trigger custom widgets until DomDimaBot tipping is available. The Studio **Tip** test only sends sample data.
+- Bot events such as TTS, triggers, pets, duels, roulette, DimaFX, and rewards.
+- Live goal and poll state.
+- Replaying recent chat in the editor.
+- Live sync from a local editor.
+- Real tips do not trigger custom widgets until DomDimaBot tipping is available; the Studio **Tip** test only sends sample data.
 - 7TV, BetterTTV (BTTV), and FrankerFaceZ (FFZ) emotes are not supported.
 - StreamElements API tokens and APIs that only StreamElements provides are not available.
 

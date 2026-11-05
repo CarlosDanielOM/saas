@@ -106,15 +106,26 @@ test('widget.json: engine, api version, uses and StreamElements inference', asyn
   const { parseManifest, inferManifest } = await import('./format.js');
   const dima = readFileSync(new URL('../dima-chat/widget.json', fixture), 'utf8');
   const parsed = parseManifest(dima);
-  assert.deepEqual(parsed.manifest, { engine: 'dima', api: 1, uses: ['chat', 'alerts', 'store', 'counters', 'session'], name: 'Dima sample chat', author: 'DomDimaBot', version: '1.0.0', description: 'Chat bubbles with emotes, a follow/Bits banner and a saved alert counter.' });
+  assert.deepEqual(parsed.manifest, { engine: 'dima', api: 1, uses: ['chat', 'alerts', 'storage', 'counters', 'session'], name: 'Dima sample chat', author: 'DomDimaBot', version: '1.0.0', description: 'Chat bubbles with emotes, a follow/Bits banner and a saved alert counter.' });
   assert.deepEqual(parseManifest('{"uses":["chat","chat","telepathy"]}'), { manifest: { engine: 'dima', api: 1, uses: ['chat'] }, issues: [{ code: 'unknown-use', detail: 'telepathy' }] });
   assert.throws(() => parseManifest('{"api":2}'), /newer widget engine/);
   assert.throws(() => parseManifest('{"engine":"obs"}'), /engine/);
   assert.throws(() => parseManifest('[]'), /JSON object/);
   assert.deepEqual(inferManifest(sample).uses, ['chat', 'alerts']);
-  assert.deepEqual(inferManifest({ html: '', js: 'SE_API.store.set("x",1); window.addEventListener("onSessionUpdate", f); SE_API.counters.get("d")' }).uses, ['store', 'counters', 'session']);
+  assert.deepEqual(inferManifest({ html: '', js: 'SE_API.store.set("x",1); window.addEventListener("onSessionUpdate", f); SE_API.counters.get("d")' }).uses, ['storage', 'counters', 'session']);
   const withManifest = readPackage({ ...sample, manifest: dima });
   assert.equal(withManifest.manifest.engine, 'dima'); assert.equal(withManifest.name, 'Dima sample chat', 'widget.json name wins over widgetName');
   assert.equal(readPackage(sample).manifest.inferred, true);
   assert.throws(() => readPackage({ ...sample, manifest: 'x'.repeat(16_001) }), /widget.json is too large/);
+});
+
+test('widget.json signal declarations: bounded, unique, valid names; SE code listening for dima:signal infers "signals"', async () => {
+  const { parseManifest, inferManifest } = await import('./format.js');
+  const parsed = parseManifest(JSON.stringify({ engine: 'dima', uses: ['signals'], signals: [
+    { name: 'feed', description: 'Feeds the pet', values: ['burger', 'pizza', 'burger', '  '] }, { name: 'spin' },
+    { name: 'pet.feed' }, { name: 'feed' }, 'nope', { name: 'x'.repeat(41) }] }));
+  assert.deepEqual(parsed.manifest.signals, [{ name: 'feed', description: 'Feeds the pet', values: ['burger', 'pizza'] }, { name: 'spin' }]);
+  assert.deepEqual(parsed.issues.map(issue => [issue.code, issue.detail]), [['invalid-signal', 'pet.feed'], ['invalid-signal', 'feed'], ['invalid-signal', 'nope'], ['invalid-signal', 'x'.repeat(40)]]);
+  assert.deepEqual(parsed.manifest.uses, ['signals']);
+  assert.ok(inferManifest({ html: '', js: 'window.addEventListener("onEventReceived", e => { if (e.detail.listener === "dima:signal") go(); })' }).uses.includes('signals'));
 });

@@ -145,6 +145,11 @@ button:not(:disabled):hover, .icon-button:hover { border-color: color-mix(in srg
 .tests h3, .fold summary { font-size: 0.82rem; font-weight: 800; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .chips button { min-height: 44px; padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+.chips button[aria-pressed='true'] { border-color: #7c3aed; background: #7c3aed; color: #fff; }
+.signal-test label { display: flex; flex: 1 1 8rem; min-width: 0; }
+.signal-test input { width: 100%; min-height: 44px; padding: 0.4rem 0.65rem; border: 1px solid var(--line); border-radius: 0.8rem; background: var(--input-bg); font-size: 1rem; }
+.signal-test input[aria-invalid='true'] { border-color: var(--danger); }
+.signal-test .note { flex-basis: 100%; margin: 0; }
 
 .fold { flex: none; border: 1px solid var(--line); border-radius: 0.8rem; background: var(--input-bg); }
 .fold summary { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; padding: 0 0.75rem; cursor: pointer; }
@@ -189,3 +194,4 @@ button:not(:disabled):hover, .icon-button:hover { border-color: color-mix(in srg
   .stage { height: clamp(16rem, 46dvh, 34rem); }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

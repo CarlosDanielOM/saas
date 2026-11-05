@@ -78,7 +78,7 @@ All routes are under the owner-only `/overlay-studio/:channelID` guard.
 | `GET /custom-widgets/:id/files/:part?revision=` | Original file text (`part` also `manifest`) |
 | `GET /custom-widgets/:id/bundle?revision=` | Code + fields + data + manifest + copied media, for the editor preview |
 | `GET` / `POST /custom-widgets/:id/media` | Plan (sizes, storage) / copy StreamElements files into the Asset Library |
-| `GET /custom-widgets/store/:namespace/:key`, `/counters/:name`, `/session` | Editor reads for store, counters, session |
+| Storage, counter, and session reads | Editor reads for widget storage, counters, and session |
 | `POST /widget-test` `{ sceneId, type, data }` | Send a custom widget test to one published overlay in OBS |
 | `GET /overlay-studio/public/:publicId/custom-widgets/:id/:revision` | OBS: code of a revision this overlay pins |
 
@@ -89,7 +89,7 @@ All routes are under the owner-only `/overlay-studio/:channelID` guard.
 fields, data, widget.json) in CodeMirror 6, lazy-loaded from `custom-widget-code-mirror.ts` so Studio doesn't carry it.
 The same portable `readPackage` the server uses checks the files as you type: errors (bad JSON, size) block saving and
 keep the last good preview; issues are listed. The preview is the normal frame host with a `draft` bundle (layer id
-`cw-code-preview`, so tests and logs reach only it; an unsaved widget's store stays in memory). Saving creates the
+`cw-code-preview`, so tests and logs reach only it; an unsaved widget's storage stays in memory). Saving creates the
 widget or `PUT /files` with `baseRevision` (409 `stale` → "Save anyway"). Unsaved work is kept in localStorage
 (`dimasite.cw-code.v1.<channel>.<widgetId|new>`, `custom-widget-code-drafts.ts`) until saved or discarded; "Versions"
 uses `history` and loads a revision's files as unsaved changes (typing while it loads wins). Drafts are per editor

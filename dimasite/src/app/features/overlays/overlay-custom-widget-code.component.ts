@@ -23,7 +23,7 @@ const PREVIEW_LAYER = 'cw-code-preview';
 const TAB_LANGUAGE: Record<CodeFile, CodeLanguage> = { html: 'html', css: 'css', js: 'js', fields: 'json', data: 'json', manifest: 'json' };
 const ISSUE_TAB: Record<FieldIssue['code'], CodeFile> = {
   'invalid-key': 'fields', 'invalid-field': 'fields', 'too-many-fields': 'fields', 'no-options': 'fields', 'invalid-value': 'fields',
-  'invalid-data-key': 'data', 'data-value-dropped': 'data', 'unknown-use': 'manifest'
+  'invalid-data-key': 'data', 'data-value-dropped': 'data', 'unknown-use': 'manifest', 'invalid-signal': 'manifest'
 };
 const ERROR_TAB: Record<string, CodeFile> = { 'invalid-fields': 'fields', 'invalid-data': 'data', 'data-too-large': 'data', 'invalid-manifest': 'manifest', 'unsupported-api': 'manifest' };
 
@@ -244,7 +244,7 @@ export class OverlayCustomWidgetCodeComponent {
     return user && user.id === id ? { id, login: user.login, name: user.display_name || user.login } : { id, login: '', name: '' };
   }
   private starterTexts(): StarterTexts {
-    const keys: (keyof StarterTexts)[] = ['groupLook', 'groupChat', 'groupAlerts', 'accent', 'text', 'size', 'max', 'alerts', 'follow', 'sub', 'gift', 'bits', 'raid'];
+    const keys: (keyof StarterTexts)[] = ['groupLook', 'groupChat', 'groupAlerts', 'accent', 'text', 'size', 'max', 'alerts', 'follow', 'sub', 'gift', 'bits', 'raid', 'shout', 'shoutExample'];
     return Object.fromEntries(keys.map(key => [key, this.t('customTpl_' + key)])) as unknown as StarterTexts;
   }
 
@@ -319,7 +319,7 @@ export class OverlayCustomWidgetCodeComponent {
   /** What suggestions know: the last code that parsed (engine, uses, settings). */
   private hintContext(): HintContext {
     const pkg = this.check().pkg ?? this.lastPkg();
-    return { engine: pkg?.manifest.engine ?? 'streamelements', uses: pkg?.manifest.uses ?? [], fields: pkg?.fields ?? [], dataKeys: Object.keys(pkg?.data ?? {}) };
+    return { engine: pkg?.manifest.engine ?? 'streamelements', uses: pkg?.manifest.uses ?? [], fields: pkg?.fields ?? [], dataKeys: Object.keys(pkg?.data ?? {}), signals: pkg?.manifest.signals?.map(signal => signal.name) ?? [] };
   }
   /** Puts new text in every tab (editor and state), each as an undoable change. */
   private replaceAll(files: CodeFiles): void {
@@ -498,6 +498,21 @@ export class OverlayCustomWidgetCodeComponent {
 
   sendChat(kind: ChatTest): void { this.env.emit(this.env.chatTest(kind), PREVIEW_LAYER); }
   sendAlert(kind: AlertTest): void { this.env.emit(this.env.alertTest(kind), PREVIEW_LAYER); }
+  /** Signal names declared in widget.json (suggestions for the signal test). */
+  readonly declaredSignals = computed(() => this.manifest()?.signals?.map(signal => signal.name) ?? []);
+  readonly signalName = signal('');
+  readonly signalValue = signal('');
+  readonly signalInvalid = signal(false);
+  inputValue(event: Event): string { return (event.target as HTMLInputElement).value; }
+  /** Sends a signal to the draft preview only, as if a command of the broadcaster ran $(widget.signal name value). */
+  sendSignal(): void {
+    const name = (this.signalName().trim() || this.declaredSignals()[0] || '').toLowerCase();
+    this.signalInvalid.set(!/^[a-z0-9_]{1,40}$/.test(name));
+    if (this.signalInvalid()) return;
+    this.signalName.set(name);
+    const channel = this.channel();
+    this.env.emit(this.env.signalTest(name, this.signalValue(), null, { id: channel.id, login: channel.login, name: channel.name }), PREVIEW_LAYER);
+  }
   deleteLast(): void { const event = this.env.deleteTest(); if (event) this.env.emit(event, PREVIEW_LAYER); }
   clearChat(): void { this.env.emit(this.env.clearTest(), PREVIEW_LAYER); }
   reloadPreview(): void { const bundle = this.previewBundle(); if (bundle) this.previewBundle.set({ ...bundle }); }

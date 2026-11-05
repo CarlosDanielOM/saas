@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
-import { Code2, Download, FileUp, LucideAngularModule, Puzzle } from 'lucide-angular';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Router } from '@angular/router';
+import { Code2, Copy, Download, ExternalLink, FileUp, LucideAngularModule, Puzzle } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
 import { EXPORT_FILE_NAMES, MANIFEST_FILE, PACKAGE_FILES, buildWidgetIni, groupFields, resolveFieldData, type JsonObject } from './custom-widget-format.generated';
 import { writeZip } from './custom-widget-zip';
-import { CustomWidgetsService, copyableMedia, message } from './custom-widgets.service';
+import { CustomWidgetsService, canTarget, copyableMedia, message, signalSnippet, signalValueKind } from './custom-widgets.service';
 import { EditorWidgetEnv } from './widget-runtime/editor-env';
 import { OverlayCustomWidgetCodeComponent } from './overlay-custom-widget-code.component';
 import { OverlayCustomWidgetImportComponent } from './overlay-custom-widget-import.component';
@@ -46,6 +47,14 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
     .cw-log li[data-level='error'] { color:var(--danger) }
     .cw-log li[data-level='warn'] { color:var(--warn) }
     .cw-log__foot { display:flex; justify-content:flex-end; padding:0 .5rem .5rem }
+    .cw-commands { display:grid; gap:.6rem; padding:.75rem; border:1px solid var(--line); border-radius:.9rem; background:var(--input-bg) }
+    .cw-commands h4 { margin:0; color:var(--fg); font-size:.86rem; font-weight:800 }
+    .cw-signal { display:grid; gap:.4rem; padding-top:.6rem; border-top:1px solid var(--line) }
+    .cw-signal__head { display:flex; flex-wrap:wrap; align-items:baseline; gap:.15rem .5rem }
+    .cw-signal__head strong { color:var(--fg); font-size:.84rem; font-weight:800 }
+    .cw-signal__head span { color:var(--muted); font-size:.76rem }
+    .cw-snippet { display:block; padding:.45rem .6rem; border:1px solid var(--line); border-radius:.6rem; background:var(--tile, transparent); color:var(--fg); font:600 .76rem/1.5 var(--mono, ui-monospace, monospace); white-space:pre-wrap; overflow-wrap:anywhere; user-select:all }
+    a.lf-btn { text-decoration:none }
   `,
   template: `
     @if (source(); as widget) {
@@ -63,6 +72,30 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
         <div><p class="lf-note">{{ t(widget.manifest?.engine === 'dima' ? 'customEngineDima' : 'customEngineSe') }} · {{ t('customReads') }}</p>
         <ul class="cw-uses" data-cw-uses>@for (use of uses(); track use) { <li>{{ t('customUse_' + use) }}</li> }</ul></div>
       } @else { <p class="lf-note">{{ t(widget.manifest?.engine === 'dima' ? 'customEngineDima' : 'customEngineSe') }} · {{ t('customReadsNothing') }}</p> }
+      @if (uses().includes('signals')) {
+        <section class="cw-commands" aria-labelledby="cw-commands-title" data-cw-commands>
+          <h4 id="cw-commands-title">{{ t('customCommandsTitle') }}</h4>
+          <p class="lf-note">{{ t('customCommandsIntro') }}</p>
+          @if (targeted()) { <p class="lf-note" data-cw-targeted>{{ t('customCommandsTargeted', { name: layerName() }) }}</p> }
+          @else if (othersListen()) { <p class="lf-note lf-note--warn" data-cw-untargetable>{{ t('customCommandsUntargetable') }}</p> }
+          @if (sameName()) { <p class="lf-note lf-note--warn" data-cw-same-name>{{ t('customCommandsSameName', { name: layerName() }) }}</p> }
+          @for (item of commandItems(); track item.name) {
+            <div class="cw-signal" [attr.data-cw-signal]="item.name || 'any'">
+              <div class="cw-signal__head">
+                <strong>{{ item.name ? '!' + item.name : t('customCommandsAny') }}</strong>
+                @if (item.description) { <span>{{ item.description }}</span> }
+                @if (item.values.length) { <span>{{ t('customCommandsValues', { values: item.values.join(' · ') }) }}</span> }
+              </div>
+              <code class="cw-snippet" data-cw-snippet>{{ item.snippet }}</code>
+              <div class="cw-actions">
+                <button type="button" class="lf-btn" (click)="copy(item.snippet, item.name)" data-cw-copy><lucide-icon [img]="icons.Copy" [size]="16" aria-hidden="true" />{{ copied() === item.name ? t('customCommandsCopied') : t('customCommandsCopy') }}</button>
+                <a class="lf-btn" [href]="item.link" target="_blank" rel="noopener" [attr.aria-label]="t('customCommandsMakeLabel', { name: item.name || '…' })" data-cw-make><lucide-icon [img]="icons.ExternalLink" [size]="16" aria-hidden="true" />{{ t('customCommandsMake') }}</a>
+              </div>
+            </div>
+          }
+          @if (skipped(); as count) { <p class="lf-note lf-note--warn" data-cw-skipped>{{ n('customCommandsSkipped', count) }}</p> }
+        </section>
+      }
       @if (remoteCount()) {
         <div class="cw-remote"><p class="lf-note lf-note--warn">{{ n('customRemoteShort', remoteCount()) }}</p>
         <button type="button" class="lf-btn" (click)="mediaOpen.set(true)" data-cw-copy-media>{{ t('customMediaButton') }}</button></div>
@@ -97,13 +130,43 @@ export class OverlayCustomWidgetSettingsComponent {
   readonly uses = computed(() => this.source()?.manifest?.uses ?? []);
   time(at: number): string { return new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
   clearLog(): void { this.env?.clearLog(this.context().widget.id); }
-  readonly icons = { Code2, Download, FileUp, Puzzle };
+  readonly icons = { Code2, Copy, Download, ExternalLink, FileUp, Puzzle };
   readonly replaceOpen = signal(false);
   readonly codeOpen = signal(false);
   readonly mediaOpen = signal(false);
   readonly exporting = signal(false);
   readonly exportError = signal('');
   readonly listLoaded = computed(() => this.widgets.list() !== null);
+  private readonly router = inject(Router);
+  readonly copied = signal<string | null>(null);
+  readonly skipped = signal(0);
+  readonly layerName = computed(() => (this.context().widget.name || this.source()?.name || '').trim());
+  private readonly listening = computed(() => (this.env?.sceneLayers() ?? []).filter(layer => layer.kind === 'custom' && layer.visible !== false
+    && this.widgets.widget(layer.config?.['widgetId'])?.manifest?.uses.includes('signals')));
+  /** Other widgets here also listen: this layer's commands name it (when the name can be quoted safely). */
+  readonly othersListen = computed(() => this.listening().some(layer => layer.id !== this.context().widget.id));
+  readonly targeted = computed(() => this.othersListen() && canTarget(this.layerName()));
+  readonly sameName = computed(() => this.targeted() && this.listening().some(layer => layer.id !== this.context().widget.id
+    && (layer.name ?? '').trim().toLocaleLowerCase() === this.layerName().toLocaleLowerCase()));
+  /** Declared signals (or one generic entry) with the response to paste and a pre-filled "Make a command" link. */
+  readonly commandItems = computed(() => {
+    const declared = this.source()?.manifest?.signals ?? [], target = this.targeted() ? this.layerName() : null;
+    const streamer = this.router.url.split(/[/?#]/)[1] ?? '';
+    const items = declared.length ? declared.map(signal => ({ name: signal.name, description: signal.description ?? '', values: signal.values ?? [] }))
+      : [{ name: '', description: this.t('customCommandsGeneric'), values: [] as string[] }];
+    return items.map(item => {
+      const snippet = signalSnippet(item.name || 'name', item.name ? signalValueKind(item.values) : 'word', target);
+      const query = new URLSearchParams({ new: 'command', cmd: item.name, name: item.name ? item.name[0].toUpperCase() + item.name.slice(1).replace(/_/g, ' ') : '', message: snippet, description: item.name ? item.description : '' });
+      return { ...item, snippet, link: `/${encodeURIComponent(streamer)}/commands?${query.toString()}` };
+    });
+  });
+  private readonly loadSkipped = effect(() => {
+    if (!this.uses().includes('signals')) return;
+    untracked(() => void this.widgets.signalStatus().then(status => this.skipped.set(status.skipped)).catch(() => {}));
+  });
+  async copy(text: string, name: string): Promise<void> {
+    try { await navigator.clipboard.writeText(text); this.copied.set(name); setTimeout(() => { if (this.copied() === name) this.copied.set(null); }, 2000); } catch { /* clipboard blocked: the text stays selectable */ }
+  }
   readonly source = computed(() => this.widgets.widget(this.context().widget.config?.['widgetId']));
   /** StreamElements-hosted images, videos and sounds not copied yet. */
   readonly remoteCount = computed(() => { const source = this.source(); return source ? copyableMedia(source) : 0; });

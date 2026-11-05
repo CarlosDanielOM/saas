@@ -10,6 +10,9 @@
  *  - the engine: the imported StreamElements sample runs in a sandboxed frame; Test drawer chat/alerts, the widget's own
  *    button and a settings change reach it; a native Dima widget gets live settings without reloading, store and counters,
  *    and logs to the widget log; the copy-files step; OBS runs published widgets and receives socket chat/alerts
+ *  - command signals: the layer's Commands block (snippets aimed at the layer name, copy, "Make a command" link, skipped count),
+ *    Test drawer signals reaching Dima (`signal:<name>`) and StreamElements (`dima:signal`) widgets, invalid names, OBS tests,
+ *    and OBS delivering a signal only to the layers the server named
  *  - plan limit blocks the import with an upgrade prompt
  *  - axe (wcag2a/2aa/21aa) and no horizontal overflow at 320/390/1280, dark then light
  */
@@ -43,6 +46,19 @@ const dimaSource = Object.fromEntries(await Promise.all(parts.map(async part => 
 dimaSource.manifest = await readFile(`${dimaDir}/widget.json`, 'utf8');
 const dimaPkg = readPackage(dimaSource), dimaId = 'c3'.repeat(12);
 const seMedia = pkg.externalMedia.filter(item => item.host === 'cdn.streamelements.com');
+// Two small widgets that react to command signals (Dima SDK and StreamElements layer).
+const petId = 'e5'.repeat(12), sePetId = 'f6'.repeat(12);
+const petSignals = [{ name: 'feed', description: 'Feed the pet', values: ['pizza', 'cake'] }, { name: 'pet', description: 'Pet it' }];
+const extraWidgets = {
+  [petId]: { manifest: { engine: 'dima', api: 1, name: 'Pet', uses: ['signals'], signals: petSignals }, css: 'body { color: #fff; font: 20px sans-serif; }',
+    html: '<p class="food">hungry</p><p class="who"></p><p class="last"></p>',
+    js: "Dima.on('signal:feed', s => { document.querySelector('.food').textContent = s.value || 'snack'; document.querySelector('.who').textContent = s.user ? s.user.name + (s.user.roles.broadcaster ? ' (broadcaster)' : '') : ''; });\n" +
+      "Dima.on('signal', s => { document.querySelector('.last').textContent = s.name + ':' + s.args.length; });\n" },
+  [sePetId]: { manifest: { engine: 'streamelements', api: 1, name: 'SE pet', uses: ['signals'] }, css: 'body { color: #fff; }', html: '<p class="food">hungry</p>',
+    js: "window.addEventListener('onEventReceived', obj => { if (obj.detail.listener === 'dima:signal') document.querySelector('.food').textContent = obj.detail.event.name + ':' + obj.detail.event.value; });\n" }
+};
+const extraView = id => ({ id, name: extraWidgets[id].manifest.name, engine: extraWidgets[id].manifest.engine, revision: 1, author: '', fields: [], data: {}, externalMedia: [], manifest: extraWidgets[id].manifest, media: {},
+  files: Object.fromEntries(parts.map(part => [part, { bytes: 1, sha256: 'f'.repeat(64) }])), createdAt: '', updatedAt: '', usedIn: [] });
 
 // Same stored-zip layout the site writes; used to build the upload.
 function zip(files) {
@@ -66,6 +82,8 @@ const user = { id: '533538623', login: 'customfixture', display_name: 'Fixture' 
 const app = { name: 'Fixture', email: 'fixture@example.invalid', language: 'en', plan_tier: 'premium', actived: true, chat_enabled: false, twitch_user_id: user.id, has_permissions: true, up_to_date_permissions: true, administrating: [] };
 const layout = { duration: 5, widgets: [] };
 const bundleOf = (id, extra = {}) => {
+  const own = extraWidgets[id];
+  if (own) return { widgetId: id, revision: 1, engine: own.manifest.engine, manifest: own.manifest, html: own.html, css: own.css, js: own.js, fields: [], data: {}, media: {}, channel: { id: user.id, login: user.login, name: user.display_name }, ...extra };
   const [p, src] = id === dimaId ? [dimaPkg, dimaSource] : [pkg, source];
   return { widgetId: id, revision: 1, engine: p.manifest.engine, manifest: p.manifest, html: src.html, css: src.css, js: src.js, fields: p.fields, data: p.data, media: {}, channel: { id: user.id, login: user.login, name: user.display_name }, ...extra };
 };
@@ -104,6 +122,7 @@ function mocks(options) {
         return file === 'manifest' ? route.fulfill({ status: 404, json: { error: true, status: 404, message: 'This widget has no widget.json' } }) : route.fulfill({ status: 200, contentType: 'text/plain', body: source[file] });
       } else if (/\/custom-widgets\/[a-f0-9]{24}\/bundle$/.test(path)) data = bundleOf(path.split('/').at(-2));
       else if (path === `${list}/session`) data = { data: { 'follower-latest': { name: 'Session Sam' } }, recents: [] };
+      else if (path === `${list}/signals`) data = { skipped: options.skipped ?? 0 };
       else if (path.startsWith(`${list}/store/`)) data = { value: 3 };
       else if (path.startsWith(`${list}/counters/`)) data = { value: 7 };
       else if (path === `${list}/${widgetId}/media` && req.method() === 'GET') {
@@ -402,6 +421,103 @@ try {
     await ctx.close();
     console.log('PASS engine (Dima): store/counters/session, emotes, first-time, delete, alerts, live settings without reload, widget log, uses.');
   }
+  // 4c. Command signals: the layer's Commands block and the Test drawer.
+  {
+    const petLayer = (id, widgetId, name, x) => ({ id, kind: 'custom', configVersion: 1, x, y: 40, width: 400, height: 300, visible: true, locked: false, name, config: { widgetId } });
+    const sm = mocks({ widgets: [extraView(petId), extraView(sePetId)], layers: [petLayer('pet-1', petId, 'Pet corner', 40), petLayer('pet-2', sePetId, 'Chat box', 500)], skipped: 2 });
+    sm.world.state.scenes[0].published = { width: 1920, height: 1080, widgets: structuredClone(sm.world.state.scenes[0].widgets), designs: [], waitFor: [] };
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
+    await sm.install(ctx);
+    const p = await ctx.newPage(); p.setDefaultTimeout(12000); p.on('pageerror', e => errors.push(e.message));
+    await p.goto(`${base}/${user.login}/modules/overlays`); await p.locator('.stage').waitFor();
+    await p.locator('.widget[data-widget-id="pet-1"]').dispatchEvent('click');
+    const block = p.locator('[data-cw-commands]');
+    await block.locator('[data-cw-targeted]').waitFor();
+    assert.deepEqual(await block.locator('[data-cw-snippet]').allTextContents(), ['$(widget.signal.to "Pet corner" feed &p1)', '$(widget.signal.to "Pet corner" pet)'],
+      'another widget here listens too, so snippets name this layer; only signals with example values take &p1');
+    assert.match(await block.locator('[data-cw-signal="feed"]').textContent(), /!feed\s*Feed the pet\s*Values: pizza · cake/);
+    await block.locator('[data-cw-signal="feed"] [data-cw-copy]').click();
+    await block.locator('[data-cw-signal="feed"] [data-cw-copy]', { hasText: 'Copied' }).waitFor();
+    assert.equal(await p.evaluate(() => navigator.clipboard.readText()), '$(widget.signal.to "Pet corner" feed &p1)');
+    const make = block.locator('[data-cw-signal="feed"] [data-cw-make]'), link = new URL(await make.getAttribute('href'), base);
+    assert.deepEqual([link.pathname, ...['new', 'cmd', 'name', 'message', 'description'].map(key => link.searchParams.get(key)), await make.getAttribute('target')],
+      [`/${user.login}/commands`, 'command', 'feed', 'Feed', '$(widget.signal.to "Pet corner" feed &p1)', 'Feed the pet', '_blank']);
+    assert.match(await block.locator('[data-cw-skipped]').textContent(), /2 command signals were skipped/);
+    assert.match(await p.locator('[data-cw-uses]').textContent(), /Commands can control it/);
+    await axe(p, 'commands block dark');
+    if (shots) { await block.scrollIntoViewIfNeeded(); await block.screenshot({ path: `${shots}/custom-widgets-signals-block-dark-1280.png` }); }
+
+    // Test drawer → both preview frames; the Dima widget gets signal:feed and signal, the StreamElements one dima:signal.
+    await p.locator('.tb--test').click(); await p.locator('[data-widget-tests]').waitFor();
+    const form = p.locator('[data-widget-signal]');
+    assert.deepEqual(await form.locator('[data-signal-suggestion]').allTextContents(), ['feed', 'pet']);
+    await form.locator('[data-signal-suggestion="feed"]').click();
+    await form.locator('[data-signal-value]').fill('cake 2');
+    await form.locator('[data-signal-send]').click();
+    const dimaFrame = p.frameLocator('app-overlay-scene-renderer [data-widget-id="pet-1"] iframe'), seFrame = p.frameLocator('app-overlay-scene-renderer [data-widget-id="pet-2"] iframe');
+    await dimaFrame.locator('.food', { hasText: 'cake 2' }).waitFor();
+    assert.deepEqual([await dimaFrame.locator('.who').textContent(), await dimaFrame.locator('.last').textContent()], [`${user.display_name} (broadcaster)`, 'feed:2']);
+    await seFrame.locator('.food', { hasText: 'feed:cake 2' }).waitFor();
+    await p.locator('[data-cw-log] summary').click();
+    await p.locator('[data-cw-log] li', { hasText: `Signal feed → cake 2 from ${user.display_name}` }).waitFor();
+    await form.locator('[data-signal-name]').fill('Pet.Feed'); await form.locator('[data-signal-send]').click();
+    await p.locator('[role="alert"]', { hasText: 'Signal names use lowercase letters' }).first().waitFor();
+    assert.equal(sm.world.widgetTests.length, 0, 'preview tests stay in the browser');
+    p.once('dialog', d => d.accept());
+    await p.locator('[data-widget-target="obs"]').click();
+    await form.locator('[data-signal-name]').fill('pet'); await form.locator('[data-signal-value]').fill(''); await form.locator('[data-signal-send]').click();
+    await until(() => sm.world.widgetTests.length === 1, 'signal test sent to OBS');
+    assert.deepEqual([sm.world.widgetTests[0].sceneId, sm.world.widgetTests[0].type, sm.world.widgetTests[0].data.name, sm.world.widgetTests[0].data.value, sm.world.widgetTests[0].data.target], ['main', 'signal', 'pet', '', null]);
+    await p.locator('[data-widget-target="preview"]').click();
+    await shot(p, 'signals-tests-dark-1280');
+    // Light theme and phone width: the Commands block stays readable and within the screen.
+    await p.evaluate(() => localStorage.setItem('theme', 'light'));
+    await p.setViewportSize({ width: 390, height: 900 }); await p.reload(); await p.locator('.stage').waitFor();
+    await p.locator('.widget[data-widget-id="pet-1"]').dispatchEvent('click');
+    await p.locator('.studio-mtabs [data-tab="edit"]').click();
+    await block.locator('[data-cw-snippet]').first().waitFor();
+    assert.equal(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'commands block fits a phone');
+    await axe(p, 'commands block light 390');
+    if (shots) { await block.scrollIntoViewIfNeeded(); await block.screenshot({ path: `${shots}/custom-widgets-signals-block-light-390.png` }); }
+    await ctx.close();
+    console.log('PASS command signals: Commands block (layer-named snippets, copy, Make a command link, skipped count), Test drawer to Dima and StreamElements widgets, name rules, OBS test, light + phone.');
+  }
+  // 4d. OBS: a signal reaches only the layers the server named.
+  {
+    const runtime = await browser.newContext({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
+    const layer = (id, widgetId, name) => ({ id, kind: 'custom', configVersion: 1, x: 0, y: 0, width: 400, height: 300, visible: true, locked: false, name, config: { widgetId, revision: 1 } });
+    const snapshot = { width: 1280, height: 720, designs: [], waitFor: [], widgets: [layer('pet-1', petId, 'Pet corner'), layer('pet-2', sePetId, 'Chat box')] };
+    let socket;
+    await runtime.routeWebSocket('**/*', ws => {
+      if (!ws.url().includes('/socket.io/')) return ws.close();
+      socket = ws;
+      ws.send('0{"sid":"custom","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}');
+      ws.onMessage(message => { if (String(message).startsWith('40/overlay-studio/')) { ws.send(`40/overlay-studio/${publicId},{"sid":"custom"}`); ws.send(`42/overlay-studio/${publicId},${JSON.stringify(['overlay-state', { revision: 1, snapshot, widgetStates: {}, serverTime: Date.now() }])}`); } });
+    });
+    await runtime.route('**/*', route => {
+      const url = new URL(route.request().url());
+      if (url.origin === new URL(base).origin) return route.continue();
+      const match = /^\/overlay-studio\/public\/[a-z0-9]+\/custom-widgets\/([a-f0-9]{24})\/1$/.exec(url.pathname);
+      return match && extraWidgets[match[1]] ? route.fulfill({ json: { error: false, data: bundleOf(match[1]) } }) : route.abort();
+    });
+    const p = await runtime.newPage(); p.on('pageerror', e => errors.push(e.message));
+    await p.goto(`${base}/overlays/${publicId}`);
+    await until(async () => (await p.locator('[data-custom-frame="running"]').count()) === 2, 'both widgets running');
+    const signal = (name, value, target, layers) => socket.send(`42/overlay-studio/${publicId},${JSON.stringify(['overlay-feed', { v: 1, type: 'signal', layers,
+      data: { id: name + value, name, value, json: null, args: value ? value.split(' ') : [], at: Date.now(), user: { id: '5', login: 'ada', name: 'Ada', roles: { broadcaster: false, moderator: true, vip: false, subscriber: false } }, source: { kind: 'command', name }, target } }])}`);
+    const frames = ['pet-1', 'pet-2'].map(id => p.frameLocator(`[data-widget-id="${id}"] iframe`));
+    signal('feed', 'pizza', 'Pet corner', ['pet-1']);
+    await frames[0].locator('.food', { hasText: 'pizza' }).waitFor();
+    await p.waitForTimeout(300);
+    assert.equal(await frames[1].locator('.food').textContent(), 'hungry', 'a layer the server did not name gets nothing');
+    signal('feed', 'cake', null, ['pet-1', 'pet-2']);
+    await frames[1].locator('.food', { hasText: 'feed:cake' }).waitFor();
+    await frames[0].locator('.food', { hasText: 'cake' }).waitFor();
+    assert.equal(await frames[0].locator('.who').textContent(), 'Ada');
+    await runtime.close();
+    console.log('PASS OBS: signals reach only the layers the server named (Dima and StreamElements widgets).');
+  }
   // 5. OBS: published widgets run with this overlay's socket data.
   {
     const runtime = await browser.newContext({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
@@ -430,7 +546,7 @@ try {
     await f.locator('.row', { hasText: 'live hello' }).waitFor();
     assert.equal(await f.locator('.row', { hasText: 'live hello' }).evaluate(n => getComputedStyle(n).color), 'rgb(18, 52, 86)', 'published layer settings apply on stream');
     feed('alert', { id: 'a1', type: 'raid', at: Date.now(), test: false, user: { id: '9', login: 'sakura', name: 'Sakura' }, amount: 42, tier: null, months: null, streak: null, message: null, recipient: null, currency: null, rule: null });
-    feed('store', { key: 'x', value: 1 });
+    feed('storage', { key: 'x', value: 1 });
     await p.waitForTimeout(300);
     assert.equal(await f.locator('.row.alert').count(), 0, 'the sample only shows follows and cheers');
     feed('alert', { id: 'a2', type: 'follow', at: Date.now(), test: false, user: { id: '7', login: 'luna', name: 'Luna' }, amount: 1, tier: null, months: null, streak: null, message: null, recipient: null, currency: null, rule: null });

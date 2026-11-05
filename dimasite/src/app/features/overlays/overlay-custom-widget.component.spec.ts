@@ -15,17 +15,17 @@ describe('custom widget frame host', () => {
   let fixture: ComponentFixture<OverlayCustomWidgetComponent>;
   let bus: WidgetEventBus;
   let rpc: Mock<CustomWidgetEnv['rpc']>;
-  const bundle = (engine: WidgetManifest['engine']): RuntimeBundle => ({
-    widgetId: WIDGET, revision: 1, engine, manifest: { engine, api: 1, uses: ['store', 'session'] },
+  const bundle = (engine: WidgetManifest['engine'], uses: WidgetManifest['uses']): RuntimeBundle => ({
+    widgetId: WIDGET, revision: 1, engine, manifest: { engine, api: 1, uses },
     html: '', css: '', js: '', fields: [], data: { sound: REMOTE, list: [REMOTE] }, media: { [REMOTE]: COPIED },
     channel: { id: '1', login: 'chan', name: 'Chan' }
   });
 
-  async function start(engine: WidgetManifest['engine'] = 'dima') {
+  async function start(engine: WidgetManifest['engine'] = 'dima', uses: WidgetManifest['uses'] = ['storage', 'session'], name = '') {
     bus = new WidgetEventBus();
     rpc = vi.fn<CustomWidgetEnv['rpc']>();
     const env: CustomWidgetEnv = {
-      mode: 'live', bundle: async () => bundle(engine), subscribe: listener => bus.subscribe(listener),
+      mode: 'live', bundle: async () => bundle(engine, uses), subscribe: listener => bus.subscribe(listener),
       rpc: (...args) => rpc(...args), session: () => null, report: () => {}
     };
     TestBed.configureTestingModule({ providers: [
@@ -34,7 +34,7 @@ describe('custom widget frame host', () => {
       { provide: LanguageService, useValue: { translate: (key: string) => key } }
     ] });
     fixture = TestBed.createComponent(OverlayCustomWidgetComponent);
-    fixture.componentRef.setInput('context', { widget: { id: 'layer-1', kind: 'custom', config: { widgetId: WIDGET, revision: 1 }, x: 0, y: 0, width: 100, height: 100, visible: true, locked: false }, state: null, preview: false, clockOffset: 0 });
+    fixture.componentRef.setInput('context', { widget: { id: 'layer-1', kind: 'custom', name, config: { widgetId: WIDGET, revision: 1 }, x: 0, y: 0, width: 100, height: 100, visible: true, locked: false }, state: null, preview: false, clockOffset: 0 });
     fixture.detectChanges();
     return loadedFrame();
   }
@@ -62,7 +62,7 @@ describe('custom widget frame host', () => {
 
   it('delivers store updates only from the store this widget shares', async () => {
     const { posts } = await start();
-    const store = (namespace?: string): DimaEvent => ({ type: 'store', data: { key: 'score', value: 1, namespace } });
+    const store = (namespace?: string): DimaEvent => ({ type: 'storage', data: { key: 'score', value: 1, namespace } });
     bus.emit(store(OTHER)); bus.emit(store('se')); bus.emit(store(WIDGET));
     const delivered = posts.filter(message => message['type'] === 'event').map(message => (message['event'] as DimaEvent).data);
     expect(delivered).toEqual([{ key: 'score', value: 1, namespace: WIDGET }]);
@@ -70,8 +70,19 @@ describe('custom widget frame host', () => {
 
   it('StreamElements widgets share the "se" store', async () => {
     const { posts } = await start('streamelements');
-    bus.emit({ type: 'store', data: { key: 'k', value: 2, namespace: WIDGET } }); bus.emit({ type: 'store', data: { key: 'k', value: 3, namespace: 'se' } });
+    bus.emit({ type: 'storage', data: { key: 'k', value: 2, namespace: WIDGET } }); bus.emit({ type: 'storage', data: { key: 'k', value: 3, namespace: 'se' } });
     expect(posts.filter(message => message['type'] === 'event').map(message => (message['event'] as { data: { value: number } }).data.value)).toEqual([3]);
+  });
+
+  it('signals reach widgets that use them, and .to signals only the layer with that name', async () => {
+    const signal = (name: string, target: string | null): DimaEvent => ({ type: 'signal', data: { id: name, name, value: '', json: null, args: [], at: 1, user: null, source: { kind: 'command', name }, target } });
+    const { posts } = await start('dima', ['signals'], 'Chat box');
+    for (const [name, target] of [['all', null], ['mine', 'chat BOX'], ['other', 'Pet'], ['spaced', ' Chat box ']] as const) bus.emit(signal(name, target));
+    expect(posts.filter(message => message['type'] === 'event').map(message => (message['event'] as { data: { name: string } }).data.name)).toEqual(['all', 'mine', 'spaced']);
+    fixture.destroy(); TestBed.resetTestingModule();
+    const other = await start('dima', ['storage']);
+    bus.emit(signal('all', null));
+    expect(other.posts.filter(message => message['type'] === 'event')).toEqual([]);
   });
 
   it('drops answers to requests made by a frame that has since restarted', async () => {

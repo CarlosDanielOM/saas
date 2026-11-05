@@ -2,7 +2,7 @@
 // Stage into --fixtures: custom-widget-fixtures/{providers.mjs,sample-chat,dima-chat} and
 // overlay-fixtures/providers.mjs as base-providers.mjs. Test env: custom-widget-fixtures/test-env.json.
 // Covers the widget engine's server side: widget.json, owner/public bundles, the overlay-feed socket
-// (session, journal alerts, chat from the bot's pub/sub, store events, Studio tests), widget RPC
+// (session, journal alerts, chat and command signals from the bot's pub/sub, storage events, Studio tests), widget RPC
 // (store, counters, limits, manifest permissions), chat demand, media copying and copied-asset serving.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -45,19 +45,22 @@ const until = async (fn, label, tries = 160) => { for (let i = 0; i < tries; i++
 try {
   // widget.json import + bundles.
   const native = (await data('POST', widgetsPath, { files: dima }, 201)).widget;
-  assert.deepEqual([native.name, native.manifest.engine, native.manifest.uses], ['Dima sample chat', 'dima', ['chat', 'alerts', 'store', 'counters', 'session']]);
+  assert.deepEqual([native.name, native.manifest.engine, native.manifest.uses], ['Dima sample chat', 'dima', ['chat', 'alerts', 'storage', 'counters', 'session']]);
   const seWidget = (await data('POST', widgetsPath, { files: sample }, 201)).widget;
   const twin = (await data('POST', widgetsPath, { name: 'Second Dima widget', files: dima }, 201)).widget;
   assert.deepEqual([seWidget.manifest.engine, seWidget.manifest.uses, seWidget.manifest.inferred], ['streamelements', ['chat', 'alerts'], true]);
   assert.match((await req('POST', widgetsPath, { files: { ...dima, manifest: '{"api":9}' } }, 400)).message, /newer widget engine/);
+  const petSignals = [{ name: 'feed', description: 'Feed the pet', values: ['pizza'] }];
+  const pet = (await data('POST', widgetsPath, { name: 'Pet', files: { ...dima, manifest: JSON.stringify({ engine: 'dima', api: 1, name: 'Pet', uses: ['signals'], signals: [...petSignals, { name: 'Bad.Name' }] }) } }, 201)).widget;
+  assert.deepEqual([pet.manifest.uses, pet.manifest.signals], [['signals'], petSignals], 'declared signals are kept; invalid declarations are skipped');
   const ownerBundle = await data('GET', `${widgetsPath}/${native.id}/bundle`);
   assert.deepEqual([ownerBundle.engine, ownerBundle.js, ownerBundle.revision, ownerBundle.channel], ['dima', dima.js, 1, { id: preview, login: 'cdom201', name: 'CDom201' }]);
   assert.equal(await (await fetch(`http://127.0.0.1:3000${widgetsPath}/${native.id}/files/manifest`, { headers: { Authorization: 'Bearer cwe-' + preview } })).text(), dima.manifest);
 
   // Publish both widgets in one overlay.
   let state = await data('GET', base);
-  const layer = (id, widgetId) => ({ id, kind: 'custom', configVersion: 1, x: 0, y: 0, width: 480, height: 640, visible: true, locked: false, config: { widgetId } });
-  state.scenes[0].widgets = [layer('dima-layer', native.id), layer('se-layer', seWidget.id), layer('twin-layer', twin.id)];
+  const layer = (id, widgetId, name) => ({ id, kind: 'custom', configVersion: 1, x: 0, y: 0, width: 480, height: 640, visible: true, locked: false, config: { widgetId }, ...(name ? { name } : {}) });
+  state.scenes[0].widgets = [layer('dima-layer', native.id), layer('se-layer', seWidget.id), layer('twin-layer', twin.id), layer('pet-layer', pet.id, 'Pet corner'), layer('pet2-layer', pet.id, 'Chat box')];
   state = await data('PUT', base, state);
   state = await data('POST', `${base}/scenes/${state.scenes[0].id}/publish`, { revision: state.revision });
   const scene = state.scenes[0], publicPath = '/overlay-studio/public/' + scene.publicId;
@@ -114,18 +117,32 @@ try {
   assert(!feed.some(item => item.data?.id === 'other-channel' || item.type === 'nonsense'), 'only this channel and known types');
   console.log('PASS chat, deletes from the bot feed reach this channel only.');
 
+  // Command signals from the bot: only layers whose widgets use signals; widget.signal.to picks layers by name.
+  const signal = (name, target = null, extra = {}) => ({ id: 'sig-' + name, name, value: 'pizza', json: null, args: ['pizza'], at: Date.now(), user: null, source: { kind: 'command', name }, target, ...extra });
+  const sendSignal = (data, channel = preview) => publisher.publish('widget-feed', JSON.stringify({ channel, type: 'signal', data }));
+  await sendSignal(signal('feed'));
+  assert.deepEqual((await nextFeed('signal', item => item.id === 'sig-feed')).layers.sort(), ['pet-layer', 'pet2-layer']);
+  await sendSignal(signal('focus', ' pet CORNER '));
+  assert.deepEqual((await nextFeed('signal', item => item.id === 'sig-focus')).layers, ['pet-layer']);
+  for (const data of [signal('nobody', 'Nobody'), signal('bad.name'), signal('long', null, { value: 'x'.repeat(501) })]) await sendSignal(data);
+  await sendSignal(signal('elsewhere'), '999');
+  await sendSignal(signal('after'));
+  await nextFeed('signal', item => item.id === 'sig-after');
+  assert.deepEqual(feed.filter(item => item.type === 'signal').map(item => item.data.id), ['sig-feed', 'sig-focus', 'sig-after'], 'no unknown layer names, invalid signals or other channels');
+  console.log('PASS command signals reach layers that use them; .to targets one layer by name; invalid ones and other channels never.');
+
   // Widget RPC: store (namespaced per engine), counters, permissions and limits.
   assert.deepEqual(await rpc('dima-layer', 'store.set', { key: 'alerts', value: { count: 5, 'a.b': '$x' } }), { ok: true, value: true });
   assert.deepEqual(await rpc('dima-layer', 'store.get', { key: 'alerts' }), { ok: true, value: { count: 5, 'a.b': '$x' } });
-  const storeEvent = (await nextFeed('store', item => item.key === 'alerts')).data;
+  const storeEvent = (await nextFeed('storage', item => item.key === 'alerts')).data;
   assert.deepEqual([storeEvent.value, storeEvent.namespace], [{ count: 5, 'a.b': '$x' }, native.id], 'store updates name their store so frames apply only their own');
   assert.deepEqual(await rpc('twin-layer', 'store.get', { key: 'alerts' }), { ok: true, value: null }, 'two Dima widgets never share keys');
   assert.deepEqual(await rpc('twin-layer', 'store.set', { key: 'alerts', value: 'twin' }), { ok: true, value: true });
-  assert.equal((await nextFeed('store', item => item.key === 'alerts' && item.value === 'twin')).data.namespace, twin.id);
+  assert.equal((await nextFeed('storage', item => item.key === 'alerts' && item.value === 'twin')).data.namespace, twin.id);
   assert.deepEqual(await rpc('dima-layer', 'store.get', { key: 'alerts' }), { ok: true, value: { count: 5, 'a.b': '$x' } });
   assert.deepEqual(await rpc('dima-layer', 'counters.get', { name: '!deaths' }), { ok: true, value: 7 });
   assert.deepEqual(await rpc('dima-layer', 'counters.get', { name: 'nope' }), { ok: true, value: 0 });
-  for (const [layerId, method, params, pattern] of [['se-layer', 'store.set', { key: 'x', value: 1 }, /did not ask for "store"/], ['ghost', 'store.get', { key: 'x' }, /Widget not found/],
+  for (const [layerId, method, params, pattern] of [['se-layer', 'store.set', { key: 'x', value: 1 }, /did not ask for "storage"/], ['ghost', 'store.get', { key: 'x' }, /Widget not found/],
     ['dima-layer', 'store.set', { key: 'big', value: 'x'.repeat(64_001) }, /64 KB/], ['dima-layer', 'store.set', { key: '', value: 1 }, /1–100/], ['dima-layer', 'eval', {}, /Unknown/]]) {
     const result = await rpc(layerId, method, params); assert.equal(result.ok, false); assert.match(result.error, pattern);
   }
@@ -141,13 +158,30 @@ try {
   const testChat = { ...chat, id: 'test-chat' };
   assert.equal((await data('POST', `${base}/widget-test`, { sceneId: scene.id, type: 'chat', data: testChat })).clients, 1);
   await nextFeed('chat', item => item.id === 'test-chat');
-  await req('POST', `${base}/widget-test`, { sceneId: scene.id, type: 'store', data: {} }, 400);
+  await req('POST', `${base}/widget-test`, { sceneId: scene.id, type: 'storage', data: {} }, 400);
   await req('POST', `${base}/widget-test`, { sceneId: 'missing', type: 'chat', data: testChat }, 409);
   const obs = await data('POST', `${base}/test`, { kind: 'follow', sceneId: scene.id, destination: 'obs', confirmed: true, user: 'Tester' });
   assert.deepEqual([obs.sent, obs.clients], [true, 0], 'overlays with only custom widgets skip the alert queue');
   const testAlert = await nextFeed('alert', item => item.test === true);
   assert.deepEqual([testAlert.data.type, testAlert.data.user.name], ['follow', 'Tester']);
   console.log('PASS Studio chat and alert tests reach the published overlay\'s widgets.');
+
+  // Studio signal tests: stamped by the server (sender = owner, source = Studio), name-targeted, counted in the channel limit.
+  const forged = { id: 'forged', name: 'Feed', value: ' pizza ', target: 'chat box', user: { id: 'evil', login: 'evil', name: 'Evil', roles: { broadcaster: true } }, source: { kind: 'command', name: 'x' }, at: 1 };
+  assert.equal((await data('POST', `${base}/widget-test`, { sceneId: scene.id, type: 'signal', data: forged })).clients, 1);
+  const stamped = await nextFeed('signal', item => item.source.kind === 'studio');
+  assert.deepEqual([stamped.layers, stamped.data.name, stamped.data.value, stamped.data.target, stamped.data.user.id, stamped.data.user.login, stamped.data.user.roles.broadcaster],
+    [['pet2-layer'], 'feed', 'pizza', 'chat box', preview, 'cdom201', true]);
+  assert(stamped.data.id !== 'forged' && stamped.data.at > 1, 'id and time come from the server');
+  assert.match((await req('POST', `${base}/widget-test`, { sceneId: scene.id, type: 'signal', data: { name: 'pet.feed', value: '' } }, 400)).message, /Signal names/);
+  await req('POST', `${base}/widget-test`, { sceneId: scene.id, type: 'signal', data: { name: 'feed', value: '', target: 'Nobody' } }, 409);
+  assert.deepEqual(await data('GET', `${widgetsPath}/signals`), { skipped: 0 });
+  const statuses = [];
+  for (let i = 0; i < 31; i++) statuses.push((await fetch(`http://127.0.0.1:3000${base}/widget-test`, { method: 'POST', headers: { Authorization: 'Bearer cwe-' + preview, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sceneId: scene.id, type: 'signal', data: { name: 'burst', value: String(i), target: null } }) })).status);
+  assert(statuses.slice(0, 25).every(status => status === 200) && statuses.at(-1) === 429, `30 signals per 10 s per channel (got ${statuses.join(',')})`);
+  assert((await data('GET', `${widgetsPath}/signals`)).skipped >= 1, 'skipped signals are counted for Studio');
+  console.log('PASS Studio signal tests: server-stamped sender and source, layer targeting, name rules, channel limit with a skipped count.');
 
   // Media copying: plan with sizes and storage, copy, serve to the pinned overlay, protect from deletion.
   const plan = await data('GET', `${widgetsPath}/${seWidget.id}/media`);

@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: 283271b0f856
+# Catalog version: 71756e493836
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -226,6 +226,13 @@
 #   Example: $(overlay.skip.kick)
 # $(overlay.skip.twitch) - Stops current event playback and advances the queue. Applies to twitch events only across this owner’s Global Overlay scenes.
 #   Example: $(overlay.skip.twitch)
+# $(widget.signal name value) - Sends a named signal with an optional value to the channel's Overlay Studio custom widgets; the widget's code decides what it does (a pet eats, a wheel spins, colours change). Works in Twitch chat commands, keywords and event actions (not timers, channel-point rewards or AI requests). Widgets receive it when their widget.json uses "signals". Silent in chat. Names: letters, digits and _ (max 40); value up to 500 characters.
+#   Example: $(widget.signal hype)
+#   Example: $(widget.signal feed &p1)
+#   Example: $(widget.signal theme night)
+# $(widget.signal.to "layer name" name value) - Like widget.signal, but only custom widget layers with this name react (quote names with spaces; published names count). Works in Twitch chat commands, keywords and event actions (not timers, channel-point rewards or AI requests). Widgets receive it when their widget.json uses "signals". Silent in chat.
+#   Example: $(widget.signal.to "Chat box" focus on)
+#   Example: $(widget.signal.to Wheel spin)
 #
 # --- pet ---
 # $(pet.ask prompt) - Asks the pet personality for a reply, then speaks it. Waits in the TTS queue or the pet queue, as set on the Pet page. Requires a configured command or Twitch event action.

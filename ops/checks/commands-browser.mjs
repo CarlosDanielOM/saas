@@ -32,7 +32,7 @@ const fixtures = () => [
   c({ _id: 'b-odd', name: 'Mystery Tool', cmd: 'mystery', func: 'someNewFunc', reserved: true, description: 'Does a new thing.' }),
 ];
 
-async function open(browser, path, { tier = 'premium', canManage = true, width = 1280, height = 900, theme = 'light', lang = 'en', failPut = false, loggedIn = true } = {}) {
+async function open(browser, path, { tier = 'premium', canManage = true, width = 1280, height = 900, theme = 'light', lang = 'en', failPut = false, loggedIn = true, empty = false } = {}) {
   const context = await browser.newContext({ viewport: { width, height } });
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
   const user = { id: channelID, login: 'test', display_name: 'Test' };
@@ -47,7 +47,7 @@ async function open(browser, path, { tier = 'premium', canManage = true, width =
     sessionStorage.clear();
   }, { user, app, lang, theme, loggedIn });
   await context.routeWebSocket(/.*/, ws => ws.close());
-  const commands = fixtures();
+  const commands = empty ? [] : fixtures();
   const writes = [];
   await context.route('**/*', async route => {
     const request = route.request();
@@ -198,6 +198,39 @@ try {
     assert.equal(await root.locator('.lf-switch').count(), 0);
     console.log('PASS view only');
     await context.close();
+  }
+
+  // 3b. "Make a command" links (Overlay Studio widgets) open the editor pre-filled; nothing is saved by opening it.
+  {
+    const message = '$(widget.signal.to "Pet corner" feed &p1)';
+    const query = new URLSearchParams({ new: 'command', cmd: '!Feed', name: 'Feed', message, description: 'Feed the pet' });
+    const { context, page, writes, errors } = await open(browser, `/test/commands?${query}`);
+    const modal = page.locator('app-command-modal');
+    await modal.locator('[role="dialog"]').waitFor();
+    assert.deepEqual(await Promise.all(['cmd', 'name', 'message', 'description'].map(name => modal.locator(`[formControlName="${name}"]`).inputValue())),
+      ['feed', 'Feed', message, 'Feed the pet']);
+    await modal.locator('#command-type-tab[aria-selected="true"]').waitFor();
+    await page.waitForFunction(() => !location.search, null, { timeout: 5000 });
+    assert.deepEqual(writes, [], 'opening the link saves nothing');
+    await page.keyboard.press('Escape');
+    await page.locator('app-command-modal [role="dialog"]').waitFor({ state: 'detached' });
+    await page.locator('app-commands-page').getByRole('button', { name: 'New command' }).click();
+    assert.equal(await modal.locator('[formControlName="message"]').inputValue(), '', 'a normal "New command" starts empty');
+    await page.keyboard.press('Escape');
+    assert.deepEqual(errors, []);
+    await context.close();
+    // A channel with no commands yet: the link still opens once the (empty) list has loaded.
+    const fresh = await open(browser, `/test/commands?${query}`, { empty: true });
+    await fresh.page.locator('app-command-modal [role="dialog"]').waitFor();
+    assert.equal(await fresh.page.locator('app-command-modal [formControlName="cmd"]').inputValue(), 'feed');
+    await fresh.context.close();
+    // Helpers without edit access: the link opens nothing.
+    const viewOnly = await open(browser, `/test/commands?${query}`, { canManage: false });
+    await viewOnly.page.locator('app-commands-page .lf-cmd-row').first().waitFor();
+    await viewOnly.page.waitForTimeout(500);
+    assert.equal(await viewOnly.page.locator('app-command-modal [role="dialog"]').count(), 0);
+    await viewOnly.context.close();
+    console.log('PASS "Make a command" link pre-fills a new command (saves nothing; view-only opens nothing)');
   }
 
   // 4. Public page for viewers.

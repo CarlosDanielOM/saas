@@ -2,12 +2,17 @@
 // test-env.json. Signed EventSub webhooks go to the candidate's own bot runtime (port 3333) and the check listens on the
 // Dragonfly `widget-feed` channel: chat is normalized for custom widgets only while a widget wants chat (demand key),
 // message deletes and clears are forwarded, and shared-chat copies reach widgets without running bot actions.
+// A chat command with $(widget.signal …) publishes signals (no demand needed) with the verified sender, once per message.
 import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
+import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
+import { CommandsSchema } from '/app/dist/schemas/commands.schema.js';
 
 const secret = process.env.TWITCH_EVENTSUB_SECRET, channel = '990777';
 const redis = await getDragonflyClient('custom-widgets-bot-check');
+await getMongoDBConnection('custom-widgets-bot-check');
+await redis.set('app:twitch:token', 'dummy');
 let ready = false;
 for (let i = 0; i < 60; i++) {
   try { ready = (await fetch('http://127.0.0.1:3333/eventsub', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status === 403; } catch {}
@@ -67,6 +72,27 @@ try {
   const shared = await until(() => feed.find(item => item.data?.id === 'm3'), 'shared chat');
   assert.deepEqual(shared.data.sharedChat, { channelId: '123', messageId: 'orig-3' });
   console.log('PASS shared-chat copies reach widgets.');
+
+  // !feed pizza → the real command handler → signals on the widget feed + the chat reply.
+  const pets = '990778';
+  await redis.hSet(`accounts:twitch:${pets}:data`, { id: pets, name: 'petfixture', plan_tier: 'free', chat_enabled: 'true' });
+  await CommandsSchema.create({ channelID: pets, channel: 'petfixture', name: 'Feed', cmd: 'feed', func: 'feed', cooldown: 0, userLevel: 1,
+    message: '$(user) fed Mochi! $(widget.signal feed &p1) $(widget.signal.to "Pet corner" focus)' });
+  const petChat = (id, text) => chat(id, text, { broadcaster_user_id: pets, broadcaster_user_login: 'petfixture', broadcaster_user_name: 'PetFixture',
+    message: { text, fragments: [{ type: 'text', text, emote: null, cheermote: null, mention: null }] } });
+  await webhook('channel.chat.message', petChat('p1', '!feed pizza'), { broadcaster_user_id: pets, user_id: '698614112' });
+  const fed = await until(() => feed.find(item => item.type === 'signal' && item.data.name === 'feed'), 'feed signal');
+  assert.deepEqual([fed.channel, fed.data.value, fed.data.args, fed.data.user.login, fed.data.user.name, fed.data.user.roles.moderator, fed.data.user.roles.subscriber, fed.data.user.roles.broadcaster, fed.data.source, fed.data.target],
+    [pets, 'pizza', ['pizza'], 'ada', 'Ada', true, true, false, { kind: 'command', name: 'feed' }, null]);
+  assert.equal((await until(() => feed.find(item => item.type === 'signal' && item.data.name === 'focus'), 'focus signal')).data.target, 'Pet corner');
+  let replies = [];
+  for (let i = 0; i < 100 && !replies.length; i++) { replies = (await redis.lRange('keywords:test:messages', 0, -1)).map(item => JSON.parse(item)).filter(body => body.broadcaster_id === pets); if (!replies.length) await new Promise(r => setTimeout(r, 50)); }
+  assert.deepEqual(replies.map(body => body.message), ['Ada fed Mochi!'], 'the chat reply keeps its text; signals add nothing to chat');
+  // The same chat message delivered again (EventSub retry with a new notification ID) sends no second signal.
+  await webhook('channel.chat.message', petChat('p1', '!feed pizza'), { broadcaster_user_id: pets, user_id: '698614112' });
+  await new Promise(r => setTimeout(r, 1000));
+  assert.equal(feed.filter(item => item.type === 'signal' && item.data.name === 'feed').length, 1, 'a redelivered chat message sends no second signal');
+  console.log('PASS a chat command with $(widget.signal) sends signals with the verified sender (badge roles) and its chat reply, once per chat message.');
 } catch (error) {
   console.error(error); process.exitCode = 1;
 } finally {

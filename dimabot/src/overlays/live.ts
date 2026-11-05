@@ -35,7 +35,7 @@ interface Peer { widgets?: WidgetLayers; rpc?: { at: number; count: number }; wi
 interface Pending { ttsOwnerKey?: string; ttsEpochs?: Record<string, string>; ttsTerminal?: boolean; speechID?: string; event: LiveEvent; channel: string; recipients: Set<string>; mediaId?: string; bytes?: number; expiresAt: Date; mime?: string; raw?: Record<string, unknown> }
 const peers = new Map<string, Peer>();
 /** Custom widget layers of a peer's published snapshot: what they use, keyed by layer ID. */
-type WidgetLayers = Map<string, { widgetId: string; engine: 'dima' | 'streamelements'; uses: Set<string> }>;
+type WidgetLayers = Map<string, { widgetId: string; name: string; engine: 'dima' | 'streamelements'; uses: Set<string> }>;
 const DEMAND_TTL_SECONDS = 60, MAX_WIDGET_RPC_PER_SECOND = 20, STORE_WRITES_PER_WINDOW = 60, STORE_WINDOW_MS = 10_000;
 const storeWrites = new Map<string, { at: number; count: number }>();
 const moderationChecked = new Map<string, number>();
@@ -66,6 +66,26 @@ function feedWidgets(channel: string, use: string, type: string, data: unknown, 
   }
   return sent;
 }
+const sameName = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
+/**
+ * Signals reach layers that use "signals" (for widget.signal.to, only those with that published name). The layer IDs
+ * travel with the event, so a source holding several widgets delivers only to those layers.
+ */
+export function feedSignal(channel: string, signal: { target: string | null }, only?: (peer: Peer) => boolean): number {
+  let sent = 0;
+  for (const peer of peers.values()) {
+    if (peer.channel !== channel || !peer.socket?.connected || (only && !only(peer))) continue;
+    const layers = [...(peer.widgets ?? [])].filter(([, layer]) => layer.uses.has('signals') && (signal.target === null || sameName(layer.name, signal.target))).map(([id]) => id);
+    if (!layers.length) continue;
+    peer.socket.emit('overlay-feed', { v: 1, type: 'signal', data: signal, layers }); sent++;
+  }
+  return sent;
+}
+const validSignal = (data: unknown): data is { name: string; value: string; target: string | null } => {
+  const s = data as { name?: unknown; value?: unknown; target?: unknown } | null;
+  return !!s && typeof s.name === 'string' && /^[a-z0-9_]{1,40}$/.test(s.name) && typeof s.value === 'string' && s.value.length <= 500
+    && (s.target === null || (typeof s.target === 'string' && s.target.length <= 80));
+};
 const sessionTimers = new Map<string, ReturnType<typeof setTimeout>>();
 /** Session snapshots follow alerts; bursts are coalesced per channel. */
 function refreshSession(channel: string, delay = 1500): void {
@@ -100,7 +120,9 @@ export function feedTestEvent(channel: string, publicId: string, type: string, d
 let chatFeed: Promise<void> | undefined;
 function subscribeChatFeed(): void {
   chatFeed ??= pubSubManager.subscribe(WIDGET_FEED_CHANNEL, (message: { channel?: unknown; type?: unknown; data?: unknown }) => {
-    if (typeof message?.channel !== 'string' || !['chat', 'chat.delete', 'chat.clear'].includes(String(message.type)) || !message.data || typeof message.data !== 'object') return;
+    if (typeof message?.channel !== 'string' || !message.data || typeof message.data !== 'object') return;
+    if (message.type === 'signal') { if (validSignal(message.data)) feedSignal(message.channel, message.data); return; }
+    if (!['chat', 'chat.delete', 'chat.clear'].includes(String(message.type))) return;
     feedWidgets(message.channel, 'chat', String(message.type), message.data);
   }).catch(() => { chatFeed = undefined; });
 }
@@ -115,7 +137,8 @@ async function widgetRpc(peer: Peer, raw: unknown): Promise<unknown> {
   const body = params && typeof params === 'object' && !Array.isArray(params) ? params as Record<string, unknown> : {};
   const namespace = layer.engine === 'streamelements' ? 'se' : layer.widgetId;
   if (method === 'store.get' || method === 'store.set') {
-    if (!layer.uses.has('store')) throw new OverlayError('This widget did not ask for "store" in widget.json');
+    // RPC method names stay internal ("store.*"); widgets ask for "storage" in widget.json.
+    if (!layer.uses.has('storage')) throw new OverlayError('This widget did not ask for "storage" in widget.json');
     if (method === 'store.get') return storeGet(peer.channel, namespace, body.key);
     // Channel-wide write budget: every source identity of the channel shares it.
     const window = storeWrites.get(peer.channel);
@@ -124,7 +147,7 @@ async function widgetRpc(peer: Peer, raw: unknown): Promise<unknown> {
     await storeSet(peer.channel, namespace, body.key, body.value ?? null);
     // Other sources of the channel see the change (StreamElements "kvstore:update").
     // The namespace travels with the update so each layer only applies its own (frames filter on it).
-    feedWidgets(peer.channel, 'store', 'store', { key: body.key, value: body.value ?? null, namespace }, other => [...(other.widgets?.values() ?? [])].some(item => item.uses.has('store') && (item.engine === 'streamelements' ? 'se' : item.widgetId) === namespace));
+    feedWidgets(peer.channel, 'storage', 'storage', { key: body.key, value: body.value ?? null, namespace }, other => [...(other.widgets?.values() ?? [])].some(item => item.uses.has('storage') && (item.engine === 'streamelements' ? 'se' : item.widgetId) === namespace));
     return true;
   }
   if (method === 'counters.get') {
