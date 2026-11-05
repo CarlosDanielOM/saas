@@ -1,0 +1,77 @@
+---
+title: Custom widgets
+description: Import StreamElements widgets into Overlay Studio, adjust their settings, test them, and publish them to OBS.
+---
+
+Custom widgets let you add a StreamElements custom widget to an Overlay Studio overlay. Import it once, then add it as a layer and give each layer its own settings. StreamElements widgets and native Dima widgets run in an isolated area.
+
+For the full package format and the Dima SDK, see [Building widgets (Dima SDK)](/building-custom-widgets-dima-sdk/).
+
+## Import a widget
+
+Open **Modules → Overlay Studio**, choose an overlay, and select **Import widget**. Choose the widget’s `.zip`, its folder, or its files. You can also drag the files into the import area. A normal StreamElements package contains:
+
+| File | What it contains |
+|---|---|
+| `widget.ini` | The paths to the widget’s other files. |
+| `html` | The page structure and content. |
+| `css` | The widget’s appearance. |
+| `js` | Its behavior and event handlers. |
+| `fields` | A JSON object describing the settings you can change. |
+| `data` | A JSON object with saved setting values. |
+
+HTML, CSS, JavaScript, fields, and data files are required as a set, though missing fields or data files can be left empty. The package must include some HTML, CSS, or JavaScript. Overlay Studio also accepts a `widget.json` manifest for native Dima widgets; StreamElements packages usually do not have one.
+
+Before you add the widget, Overlay Studio shows its engine and **Uses:** list. This list comes from the widget’s manifest or, for StreamElements packages, is inferred from its code. It tells you what live information it asks to receive:
+
+- **Chat messages** — new messages, message deletions, and chat clears.
+- **Follows, subs, Bits and raids** — alert events. Tip events are listed as a supported category, but real tips do not fire yet.
+- **Saves its own data** — persistent key/value storage for the widget.
+- **Command counters** — read command-use counts.
+- **Recent events and stream totals** — the session’s recent alerts and totals.
+
+A widget that does not ask for live data receives none. Overlay Studio only delivers the categories the widget declared.
+
+## Add and adjust a layer
+
+Add the imported widget from the layer palette. Open its **Settings** to edit it. Fields appear in collapsible groups; fields without a group appear under **General**. Use **Find a setting** to search. A **Changed** marker shows settings that differ from the widget’s saved values. Choose **Reset** for one setting or **Reset all** to restore them.
+
+Settings belong to each layer. You can add the same widget more than once and style each copy differently. **Save draft** saves the overlay’s layer settings. **Publish live** sends a snapshot to connected OBS browser sources. Later draft changes do not affect OBS until you publish again.
+
+When you replace a widget’s files, its changed settings stay unless the new files remove those fields. Draft layers use the newest files. An already published overlay keeps the widget version it was published with until you publish that overlay again.
+
+## Test in Studio
+
+Open **Test** and find **Custom widget tests**. Choose **Preview** to send tests only to the editor preview. Chat tests include **Viewer**, **Subscriber**, **VIP**, **Moderator**, **You**, **First-time chatter**, **Emotes**, **Reply**, **Long message**, and **!command**. Alert tests include **Follow**, **Sub**, **Resub**, **Gift sub**, **5 gift subs**, **Bits**, **Raid**, and **Tip**. Moderation tests include **Delete last message** and **Clear chat**.
+
+The test buttons inside a widget’s own settings also send a button event to that widget in the preview. They do not send a real alert or message.
+
+Choose **OBS** in the test drawer to send tests to the connected sources for the published version of this overlay. Publish your changes first if the widget changed. The editor asks you to confirm because chat tests and alerts can be visible on stream. A test alert for a tip is sample data only; real tip events are not available yet.
+
+## Widget log
+
+Open the widget’s **Settings** to see its **Widget log**. It shows messages written with `console.log` or `Dima.log`, warnings, and errors from the widget. Use **Clear log** to remove the current entries. The log keeps up to 200 recent entries; excess messages are dropped when a widget writes too many in one minute. If the widget freezes repeatedly, Studio restarts it and eventually turns it off; fix the code or replace its files, then reload the overlay.
+
+## StreamElements media
+
+After importing, Overlay Studio can find images, videos, and sounds loaded from StreamElements. Choose **Copy to my storage** to put supported files in your Asset Library. The widget then uses those stored copies. This keeps media working if the original StreamElements file is removed. Copying uses your plan’s design storage; a file over 50 MB or a file that cannot be copied remains linked to StreamElements.
+
+Choose **Keep loading from StreamElements** to leave the links as they are. This saves your storage, but the widget’s media can stop appearing if StreamElements removes a file or the link stops working. You can copy files later from the widget’s settings.
+
+## Export for StreamElements
+
+Choose **Export for StreamElements** in the widget’s settings to download a StreamElements-compatible `.zip`. The export contains `widget.ini`, the original HTML, CSS, JavaScript, and fields files, plus a `data.txt` with the values for that layer. Use the zip when importing the widget into StreamElements.
+
+## Plan limits
+
+Each channel can import up to **1 custom widget on Free**, **5 on Premium**, or **25 on Pro**. The limit counts imported widgets, not the number of overlay layers using them. Deleting a widget removes its files, and you must first remove it from every draft and published overlay that uses it.
+
+## Not available yet
+
+- Real tips do not trigger custom widgets until DomDimaBot tipping is available. The Studio **Tip** test only sends sample data.
+- 7TV, BetterTTV (BTTV), and FrankerFaceZ (FFZ) emotes are not supported.
+- StreamElements API tokens and APIs that only StreamElements provides are not available.
+
+## Safety
+
+Widgets run in an isolated area. They cannot access your DomDimaBot account, sign-in, site storage, other overlay layers, or OBS controls. They only receive the live data categories listed in **Uses:**. Treat widget code as something that can appear on stream, and review a widget before publishing it.

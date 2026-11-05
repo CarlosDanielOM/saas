@@ -1,0 +1,77 @@
+---
+title: Widgets personalizados
+description: Importa widgets de StreamElements en Overlay Studio, ajusta sus opciones, pruébalos y publícalos en OBS.
+---
+
+Los widgets personalizados te permiten añadir a un overlay de Overlay Studio un widget personalizado de StreamElements. Impórtalo una vez y después añádelo como capa; cada capa puede tener sus propios ajustes. Los widgets de StreamElements y los widgets Dima nativos se ejecutan en una zona aislada.
+
+Para consultar el formato completo y el SDK de Dima, visita [Cómo crear widgets (SDK de Dima)](/es/building-custom-widgets-dima-sdk/).
+
+## Importa un widget
+
+Abre **Módulos → Estudio de overlays**, elige un overlay y selecciona **Importar widget**. Puedes elegir el `.zip`, la carpeta o los archivos del widget. También puedes arrastrar los archivos al área de importación. Un paquete normal de StreamElements contiene:
+
+| Archivo | Qué contiene |
+|---|---|
+| `widget.ini` | Las rutas de los demás archivos del widget. |
+| `html` | La estructura y el contenido de la página. |
+| `css` | El aspecto del widget. |
+| `js` | Su comportamiento y los controladores de eventos. |
+| `fields` | Un objeto JSON que describe los ajustes que puedes cambiar. |
+| `data` | Un objeto JSON con los valores guardados de esos ajustes. |
+
+Los archivos HTML, CSS, JavaScript, fields y data forman el paquete, aunque fields y data pueden dejarse vacíos si faltan. El paquete debe incluir al menos HTML, CSS o JavaScript. Overlay Studio también acepta un manifiesto `widget.json` para widgets Dima nativos; normalmente los paquetes de StreamElements no lo incluyen.
+
+Antes de añadir el widget, Overlay Studio muestra su motor y la lista **Usa:**. La lista sale del manifiesto del widget o, en los paquetes de StreamElements, se deduce a partir del código. Indica qué datos en directo solicita:
+
+- **Mensajes del chat** — mensajes nuevos, mensajes borrados y limpieza del chat.
+- **Follows, subs, Bits y raids** — eventos de alerta. La categoría de propinas aparece como compatible, pero las propinas reales aún no se envían.
+- **Guarda sus propios datos** — almacenamiento persistente de pares clave y valor del widget.
+- **Contadores de comandos** — consulta el número de usos de los comandos.
+- **Eventos recientes y totales del directo** — alertas recientes y totales de la sesión.
+
+Si un widget no solicita datos en directo, no recibe ninguno. Overlay Studio solo le entrega las categorías que haya declarado.
+
+## Añade y ajusta una capa
+
+Añade el widget importado desde la paleta de capas y abre sus **Ajustes**. Los campos aparecen en grupos desplegables; los que no tienen grupo aparecen en **General**. Usa **Buscar un ajuste** para encontrar un campo. La marca **Cambiado** señala los ajustes distintos de los valores guardados del widget. Pulsa **Restablecer** para devolver un ajuste a su valor original o **Restablecer todo** para recuperar todos los valores.
+
+Los ajustes se guardan por capa. Puedes añadir el mismo widget varias veces y dar un estilo distinto a cada copia. **Guardar borrador** guarda los ajustes de las capas del overlay. **Publicar en directo** envía una copia a las fuentes de navegador conectadas en OBS. Los cambios posteriores del borrador no llegan a OBS hasta que vuelvas a publicar.
+
+Al reemplazar los archivos del widget, se conservan los ajustes que cambiaste salvo que los archivos nuevos eliminen esos campos. Las capas del borrador usan los archivos más recientes. Un overlay ya publicado conserva la versión del widget con la que se publicó hasta que vuelvas a publicar ese overlay.
+
+## Prueba en Studio
+
+Abre **Probar** y busca **Pruebas de widgets personalizados**. Elige **Vista previa** para enviar las pruebas solo a la vista previa del editor. Las pruebas de chat incluyen **Espectador**, **Suscriptor**, **VIP**, **Moderador**, **Tú**, **Primer mensaje**, **Emotes**, **Respuesta**, **Mensaje largo** y **!comando**. Las pruebas de alertas incluyen **Follow**, **Sub**, **Resub**, **Sub regalada**, **5 subs regaladas**, **Bits**, **Raid** y **Propina**. Las pruebas de moderación incluyen **Borrar último mensaje** y **Limpiar chat**.
+
+Los botones propios del widget, que aparecen en sus ajustes, también envían un evento de botón a ese widget en la vista previa. No envían una alerta ni un mensaje real.
+
+Elige **OBS** en el panel de pruebas para enviar las pruebas a las fuentes conectadas con la versión publicada de este overlay. Si cambiaste el widget, publica primero. El editor te pide confirmar porque las pruebas de chat y las alertas podrían verse en directo. La prueba de propina solo envía datos de ejemplo; las propinas reales todavía no están disponibles.
+
+## Registro del widget
+
+Abre los **Ajustes** del widget para consultar su **Registro del widget**. Allí aparecen los mensajes de `console.log` o `Dima.log`, las advertencias y los errores del widget. Pulsa **Borrar registro** para eliminar las entradas actuales. Se conservan hasta 200 entradas recientes; si el widget escribe demasiados mensajes en un minuto, se descartan los que superen el límite. Si se congela varias veces, Studio lo reinicia y finalmente lo apaga. Corrige el código o reemplaza los archivos y luego vuelve a cargar el overlay.
+
+## Archivos multimedia de StreamElements
+
+Después de importar el widget, Overlay Studio busca imágenes, videos y sonidos que carga desde StreamElements. Pulsa **Copiar a mi almacenamiento** para guardar los archivos compatibles en tu Biblioteca de recursos. El widget usará esas copias y los medios seguirán funcionando aunque StreamElements elimine los archivos originales. La copia ocupa espacio de almacenamiento para diseños de tu plan; los archivos de más de 50 MB o los que no se puedan copiar seguirán enlazados a StreamElements.
+
+Elige **Seguir cargando desde StreamElements** para conservar los enlaces actuales. Así no ocupas tu espacio, pero los medios podrían dejar de aparecer si StreamElements elimina un archivo o el enlace deja de funcionar. También puedes copiarlos más adelante desde los ajustes del widget.
+
+## Exporta para StreamElements
+
+En los ajustes del widget, selecciona **Exportar para StreamElements** para descargar un `.zip` compatible. El archivo incluye `widget.ini`, los archivos originales de HTML, CSS, JavaScript y fields, además de un `data.txt` con los valores de esa capa. Usa el zip para importar el widget en StreamElements.
+
+## Límites del plan
+
+Cada canal puede importar hasta **1 widget personalizado en Free**, **5 en Premium** o **25 en Pro**. El límite cuenta los widgets importados, no las capas de overlay que los usan. Al eliminar un widget también se borran sus archivos. Primero debes quitarlo de todos los overlays, tanto borradores como publicados, que lo usen.
+
+## Funciones que aún no están disponibles
+
+- Los widgets personalizados no reciben propinas reales hasta que DomDimaBot ofrezca la función de propinas. La prueba **Propina** de Studio solo envía datos de ejemplo.
+- No se admiten los emotes de 7TV, BetterTTV (BTTV) ni FrankerFaceZ (FFZ).
+- No están disponibles los tokens de la API de StreamElements ni las API exclusivas de StreamElements.
+
+## Seguridad
+
+Los widgets se ejecutan en una zona aislada. No pueden acceder a tu cuenta de DomDimaBot, tu inicio de sesión, el almacenamiento del sitio, otras capas del overlay ni los controles de OBS. Solo reciben las categorías de datos en directo que aparecen en **Usa:**. Antes de publicar un widget, revisa su código y lo que muestra en pantalla.

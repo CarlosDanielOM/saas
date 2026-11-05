@@ -1,0 +1,269 @@
+---
+title: Cómo crear widgets (SDK de Dima)
+description: Crea widgets personalizados para Overlay Studio con un manifiesto, campos editables y el SDK de Dima v1.
+---
+
+Esta guía está dirigida a quienes crean widgets personalizados para Overlay Studio. Un widget es un paquete pequeño de HTML, CSS y JavaScript que se ejecuta en un marco aislado. Los widgets nativos usan el SDK de Dima; los paquetes de StreamElements usan una capa de compatibilidad basada en ese SDK.
+
+Si quieres saber cómo importarlos y usarlos en tus overlays, consulta [Widgets personalizados](/es/custom-widgets/).
+
+## Archivos del paquete
+
+Un paquete puede incluir estos archivos:
+
+| Archivo | Para qué sirve |
+|---|---|
+| `widget.json` | Manifiesto opcional para widgets Dima; permite declarar el motor Dima nativo y los datos que necesita. Los paquetes de StreamElements sin manifiesto se reconocen por su código. |
+| `widget.ini` | Mapa de StreamElements entre secciones y nombres de archivo. |
+| `html.txt` | Marcado que se inserta en el cuerpo del marco. |
+| `css.txt` | Estilos que se insertan en el marco. |
+| `js.txt` | Script JavaScript clásico que se ejecuta después del HTML. |
+| `fields.txt` | Objeto JSON que describe los ajustes editables. |
+| `data.txt` | Objeto JSON con los valores guardados de esos ajustes. |
+
+En un paquete de StreamElements, `widget.ini` indica dónde están los archivos de HTML, CSS, JavaScript, fields y data. Para un widget Dima nativo, usa `widget.json` y los mismos archivos de contenido; no hace falta `widget.ini`. El importador conserva el texto original de fields y data para poder exportarlo.
+
+### Manifiesto `widget.json`
+
+El manifiesto es un objeto JSON y admite estos campos:
+
+| Campo | Obligatorio | Significado |
+|---|---:|---|
+| `engine` | No | `"dima"` para código nativo del SDK de Dima o `"streamelements"` para activar la compatibilidad con StreamElements. Si el manifiesto existe, el valor predeterminado es `"dima"`; sin manifiesto, la importación usa StreamElements. |
+| `api` | No | Versión del SDK de Dima. El valor predeterminado es `1`; se rechazan las versiones no compatibles. |
+| `uses` | No | Lista de categorías que necesita el widget: `chat`, `alerts`, `store`, `counters` o `session`. Si falta, queda vacía. Las categorías desconocidas se notifican y se ignoran. |
+| `name` | No | Nombre que se muestra en Studio. |
+| `author` | No | Nombre de quien creó el widget. |
+| `version` | No | Cadena de versión del paquete. |
+| `description` | No | Breve descripción del widget. |
+
+```json
+{
+  "engine": "dima",
+  "api": 1,
+  "name": "Chat pastel",
+  "author": "Ana",
+  "version": "1.2.0",
+  "description": "Chat con burbujas pastel",
+  "uses": ["chat", "alerts", "store", "counters", "session"]
+}
+```
+
+Declara solo lo que el widget necesite. `chat` permite recibir eventos de chat, borrado y limpieza; `alerts` permite eventos de follow, suscripción, regalo, Bits, raid y propina; `store` permite guardar valores persistentes; `counters` permite consultar contadores de comandos; y `session` permite consultar eventos recientes y totales. Las propinas reales aún no están disponibles. En Studio, el propietario del canal ve la lista `uses`, y los widgets publicados solo reciben las categorías declaradas. Las pruebas de botones del editor están disponibles aparte de `uses`.
+
+## Ajustes editables
+
+`fields.txt` es un objeto JSON cuyas claves son los nombres de los ajustes. Cada entrada puede incluir `type`, `label`, `value` (valor predeterminado), `group` y opciones propias del tipo, como `min`, `max`, `step` y `options`. Los campos con el mismo nombre de grupo aparecen juntos en un grupo desplegable; los que no tienen grupo aparecen en **General**. Los valores ocultos siguen disponibles para tu código. La búsqueda de Studio usa las etiquetas de los ajustes. Cada capa guarda solo los valores que cambió; al restablecer un campo, se elimina ese cambio.
+
+Tipos disponibles:
+
+- `text`, `textarea`, `number` y `slider` (con `min`, `max` y `step` opcionales)
+- `checkbox`
+- `colorpicker`
+- `dropdown`, con `options` como objeto que relaciona valores y etiquetas
+- `googleFont`
+- `image-input`, `video-input` y `sound-input`; usa `multiple: true` para aceptar una lista de URL
+- `button`, que envía un evento `button` solo para el editor
+- `hidden`, cuyo valor no aparece en el editor
+
+Por ejemplo:
+
+```json
+{
+  "accent": { "type": "colorpicker", "label": "Color de acento", "value": "#7c3aed", "group": "Aspecto" },
+  "limit": { "type": "number", "label": "Mensajes en pantalla", "value": 6, "min": 1, "max": 30, "group": "Chat" },
+  "hideCommands": { "type": "checkbox", "label": "Ocultar !comandos", "value": true, "group": "Chat" }
+}
+```
+
+El valor final de un campo parte de su valor predeterminado, luego se aplica `data.txt` y, por último, el valor cambiado en esa capa. En HTML o CSS puedes usar `{key}` o `{{key}}`, por ejemplo `{{countLabel}}`. Solo se sustituyen claves conocidas; las listas se unen con comas y `null` se convierte en texto vacío. En los widgets Dima nativos, la sustitución solo se aplica a HTML y CSS; en JavaScript, lee los valores desde `Dima.fields`. En los widgets de StreamElements, también se aplica a JavaScript por compatibilidad. El importador protege las secuencias `</script` y `</style` de los valores sustituidos.
+
+## SDK de Dima v1
+
+El SDK está disponible como `Dima` dentro del marco del widget.
+
+```js
+const ctx = await Dima.ready();
+// ctx: { widget, channel, fields, mode, muted, session }
+Dima.fields; // ajustes actuales
+const unsubscribe = Dima.on('chat', message => { /* ... */ });
+Dima.off('chat', handler); // o llama a la función devuelta por Dima.on
+Dima.store.get('key'); // Promise con un valor JSON o null
+Dima.store.set('key', { seen: true }); // Promise
+Dima.counters.get('!deaths'); // Promise<number>
+Dima.html(message); // texto escapado más imágenes seguras de emotes de Twitch
+Dima.escape(viewerText); // cadena escapada
+Dima.log('loaded'); // aparece en el Registro del widget de Studio
+await Dima.setField('accent', '#ff66aa'); // solo en el editor
+```
+
+`Dima.setField(key, value, reload = true)` sirve para herramientas que solo funcionan en el editor. Cambia un ajuste desde el código y lo valida con la definición del campo. En modo directo devuelve un error. `Dima.done()` no hace nada en la versión 1. Los widgets Dima nativos tienen un espacio de almacenamiento propio; los widgets de StreamElements comparten el espacio `se` del canal.
+
+### Eventos
+
+Suscríbete con `Dima.on(type, handler)`. Devuelve una función para cancelar la suscripción. También puedes llamar a `Dima.off(type, handler)`.
+
+| Evento | Forma de `data` | Requiere `uses` |
+|---|---|---|
+| `chat` | `DimaChat` (forma más abajo) | `chat` |
+| `chat.delete` | `{ messageId: string, userId: string \| null }` | `chat` |
+| `chat.clear` | `{ userId: string \| null }`; `null` significa todo el chat | `chat` |
+| `alert` | `DimaAlert` (forma más abajo) | `alerts` |
+| `button` | `{ field: string, value: unknown }` | Solo editor; siempre disponible en la vista previa |
+| `fields` | Objeto de ajustes actual | Solo editor |
+| `store` | `{ key: string, value: unknown }` después de guardar un valor | `store` |
+| `session` | `{ data: Record<string, unknown>, recents: unknown[] }` | `session` |
+
+`Dima.ready()` devuelve un objeto con `widget: { id, layerId, name, revision }`, `channel: { id, login, name }`, `fields`, `mode` (`"editor"` o `"live"`), `muted` y `session` (o `null`).
+
+Un evento de chat tiene esta forma:
+
+```ts
+{
+  id: string; platform: 'twitch'; at: number;
+  user: {
+    id: string; login: string; name: string; color: string | null;
+    badges: Array<{ set: string; version: string; info: string; title: string;
+      images: { '1x': string; '2x': string; '4x': string } }>;
+    roles: { broadcaster: boolean; moderator: boolean; vip: boolean; subscriber: boolean;
+      founder: boolean; artist: boolean; staff: boolean; partner: boolean; turbo: boolean; prime: boolean };
+    subMonths: number | null;
+  };
+  text: string;
+  parts: Array<
+    | { type: 'text'; text: string }
+    | { type: 'emote'; text: string; id: string; animated: boolean; images: { '1x': string; '2x': string; '4x': string } }
+    | { type: 'cheer'; text: string; prefix: string; bits: number; tier: number }
+    | { type: 'mention'; text: string; user: { id: string; login: string; name: string } }
+  >;
+  kind: 'text' | 'highlighted' | 'intro' | 'power-up' | 'gigantified';
+  action: boolean; firstMessage: boolean; bits: number; rewardId: string | null;
+  reply: { id: string; user: { id: string; login: string; name: string }; text: string } | null;
+  sharedChat: { channelId: string; messageId: string } | null;
+}
+```
+
+Un evento de alerta tiene esta forma:
+
+```ts
+{
+  id: string; type: 'follow' | 'sub' | 'resub' | 'gift' | 'bits' | 'raid' | 'tip';
+  at: number; test: boolean; user: { id: string; login: string; name: string } | null;
+  amount: number; // meses, regalos, Bits, espectadores del raid o cantidad de propina
+  tier: '1000' | '2000' | '3000' | 'prime' | null;
+  months: number | null; streak: number | null; message: string | null;
+  recipient: { id: string; login: string; name: string } | null;
+  currency: string | null; rule: { id: string; name: string } | null;
+}
+```
+
+`DimaSession.data` es una instantánea compatible con el formato de StreamElements, con claves como `follower-latest`, `subscriber-recent` y `cheer-session`; `recents` contiene alertas recientes. La instantánea se crea con los eventos desde que empezó el directo actual o, si no hay un inicio registrado, de las últimas 24 horas. Algunos totales que aún no se pueden calcular aparecen en cero. Los valores de propinas seguirán vacíos hasta que estén disponibles.
+
+`Dima.html(message)` escapa el texto y genera elementos `<img>` para los emotes de Twitch. Usa `Dima.escape` para escapar texto de espectadores que insertes tú mismo en HTML. Para otro texto dinámico, es preferible usar `textContent`.
+
+### Ejemplo nativo completo
+
+Este pequeño widget de chat está basado en el ejemplo `dima-chat`. Declara los datos que consulta, muestra el chat de forma segura, escucha los eventos de moderación y usa el almacenamiento y los contadores.
+
+`widget.json`:
+
+```json
+{
+  "engine": "dima", "api": 1, "name": "Chat de ejemplo Dima", "author": "DomDimaBot",
+  "version": "1.0.0", "description": "Un overlay de chat compacto", "uses": ["chat", "store", "counters"]
+}
+```
+
+`fields.txt`:
+
+```json
+{
+  "accent": { "type": "colorpicker", "label": "Color de acento", "value": "#7c3aed", "group": "Aspecto" },
+  "limit": { "type": "number", "label": "Mensajes en pantalla", "value": 6, "min": 1, "max": 30, "group": "Chat" }
+}
+```
+
+`html.txt`:
+
+```html
+<ol class="chat" aria-live="polite"></ol>
+<footer><span class="count">0</span> alertas · <span class="deaths">0</span> muertes</footer>
+```
+
+`css.txt`:
+
+```css
+:root { --accent: {accent}; }
+body { margin: 0; color: white; font: 18px system-ui, sans-serif; }
+.chat { display: flex; flex-direction: column; gap: 6px; list-style: none; padding: 12px; }
+.msg { padding: 8px 12px; border-left: 4px solid var(--accent); background: #111c; }
+.msg img.dima-emote { height: 1.4em; vertical-align: middle; }
+```
+
+`js.txt`:
+
+```js
+const chat = document.querySelector('.chat');
+const count = document.querySelector('.count');
+const deaths = document.querySelector('.deaths');
+let fields = {};
+Dima.ready().then(async ctx => {
+  fields = ctx.fields;
+  count.textContent = String((await Dima.store.get('alerts')) ?? 0);
+  deaths.textContent = String(await Dima.counters.get('!deaths'));
+});
+Dima.on('fields', next => { fields = next; });
+Dima.on('chat', message => {
+  const item = document.createElement('li');
+  item.className = 'msg';
+  item.dataset.id = message.id;
+  item.innerHTML = '<strong>' + Dima.escape(message.user.name) + '</strong> ' + Dima.html(message);
+  chat.append(item);
+  while (chat.children.length > Number(fields.limit || 6)) chat.firstElementChild.remove();
+});
+Dima.on('chat.delete', ({ messageId }) => {
+  chat.querySelector('[data-id="' + CSS.escape(messageId) + '"]')?.remove();
+});
+Dima.on('chat.clear', () => { chat.replaceChildren(); });
+```
+
+El ejemplo nativo no lleva `widget.ini`; Studio añade estos archivos al overlay cuando importas el paquete.
+
+## Compatibilidad con StreamElements
+
+Usa `"engine": "streamelements"` (o importa un paquete sin manifiesto) para cargar la capa de compatibilidad. Esta escucha los eventos del SDK de Dima y ofrece los eventos de navegador habituales:
+
+- `onWidgetLoad` se dispara después de `Dima.ready()` con `detail.channel`, `currency`, `fieldData`, `recents`, `session`, `overlay` y `emotes`.
+- `onEventReceived` recibe el chat con `listener: "message"`, el borrado de mensajes con `"delete-message"`, la limpieza de mensajes de un usuario con `"delete-messages"`, las alertas con `"follower-latest"`, `"subscriber-latest"`, `"cheer-latest"`, `"raid-latest"` o `"tip-latest"`, además de `"widget-button"` y `"kvstore:update"`.
+- Las actualizaciones de sesión se envían mediante `onSessionUpdate` con `{ session }`.
+
+En el chat, `event.data` incluye `time`, etiquetas `tags` al estilo IRC, `nick`, `userId`, `displayName`, `displayColor`, `badges`, `channel`, `text`, `isAction`, `emotes` y `msgId`; `event.renderedText` es HTML escapado con emotes de Twitch. Los objetos de alerta incluyen, según el tipo, campos como `name`, `amount`, `tier`, `message`, `gifted`, `sender` o `currency`.
+
+Los métodos `SE_API` disponibles son `store.get/set`, `counters.get(name)`, `sanitize({ message })`, `cheerFilter(text)`, `getOverlayStatus()`, `resumeQueue()` y `setField(key, value, reload)`. `store` usa un espacio de nombres compartido por el canal, como en StreamElements. `sanitize` devuelve el mensaje sin cambios; `resumeQueue` no hace nada en la versión 1; y `setField` solo funciona en el editor. La capa no ofrece un token de API de StreamElements, llamadas exclusivas de esa plataforma ni emotes de terceros. StreamElements no tiene un evento para limpiar todo el chat, así que solo se puede traducir la limpieza de mensajes de un usuario a `delete-messages`.
+
+Los widgets de StreamElements sustituyen `{key}` y `{{key}}` en HTML, CSS y JavaScript. Los widgets Dima nativos solo sustituyen en HTML y CSS; JavaScript consulta los valores actuales en `Dima.fields`. Al cambiar ajustes en el editor, los widgets Dima nativos reciben un evento `fields`; los widgets de StreamElements vuelven a cargarse, como suelen hacer en su plataforma.
+
+## Límites y funcionamiento
+
+| Límite | Máximo |
+|---|---:|
+| Archivo HTML o CSS | 512 KB cada uno |
+| Archivo JavaScript | 1 MB |
+| Archivo fields | 256 KB |
+| Archivo data | 128 KB |
+| Manifiesto `widget.json` | 16 KB |
+| Paquete completo | 2 MB |
+| Ajustes por widget | 500 |
+| Cambios por capa | 64 KB |
+| Valor del almacenamiento | 64 KB en JSON |
+| Claves por canal | 500 claves y 2 MB en total |
+| Nombre de una clave | 100 caracteres |
+| Carga de una solicitud RPC | 64 KB |
+| Llamadas desde un marco | 30 por segundo |
+| Mensajes de registro desde un marco | 200 por minuto |
+
+El marco envía una señal cada dos segundos. Si deja de responder durante diez segundos, Studio lo vuelve a cargar, hasta tres veces en cinco minutos; después lo apaga y muestra un error. Las llamadas o líneas de registro que superen el límite se descartan. Un bucle infinito muy ajustado todavía puede bloquear la página, porque el marco comparte proceso con ella. Mantén el trabajo acotado, evita los bucles que bloquean la ejecución y usa temporizadores para tareas repetidas.
+
+## Seguridad
+
+Cada widget se ejecuta en un iframe aislado con scripts activados y un origen opaco. No puede leer el almacenamiento ni el inicio de sesión del sitio, acceder a la página principal o a otras capas, abrir ventanas o formularios, navegar la página superior ni controlar OBS. El SDK proporciona versiones en memoria de `localStorage` y `sessionStorage`; no confíes en que esos valores persistan entre marcos. Solo se entregan las categorías de datos en directo declaradas en `uses`. Escapa el texto que escriben los espectadores antes de insertarlo en HTML o usa `textContent` para mostrar texto sin formato.

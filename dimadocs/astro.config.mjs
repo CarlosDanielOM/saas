@@ -46,6 +46,8 @@ const sidebar = [
       page('media-library', 'Media library', 'Biblioteca de medios'),
       page('tts', 'Text to speech', 'Texto a voz'),
       page('overlay-studio', 'Overlay Studio', 'Estudio de overlays', { badge: alpha }),
+      page('custom-widgets', 'Custom widgets', 'Widgets personalizados'),
+      page('building-custom-widgets-dima-sdk', 'Building widgets (Dima SDK)', 'Cómo crear widgets (SDK de Dima)'),
       page('roulette', 'Roulette', 'Ruleta', { badge: { text: { en: 'Alpha · Free', es: 'Alfa · Gratis' }, variant: 'caution' } }),
       page('dimafx', 'DimaFX extension', 'Extensión DimaFX'),
     ],
