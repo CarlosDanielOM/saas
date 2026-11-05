@@ -113,7 +113,7 @@ export async function feedTestAlert(channel: string, publicId: string, kind: Ale
 }
 /** Studio "send to OBS" for custom widget tests (chat, alerts, deletes): one published overlay only. */
 export function feedTestEvent(channel: string, publicId: string, type: string, data: unknown): number {
-  const use = type === 'alert' ? 'alerts' : type.startsWith('chat') ? 'chat' : '';
+  const use = type === 'alert' ? 'alerts' : type.startsWith('chat') ? 'chat' : type === 'session' ? 'session' : '';
   if (!use) throw new OverlayError('Invalid widget test');
   return feedWidgets(channel, use, type, data, peer => peer.publicId === publicId);
 }
@@ -122,6 +122,8 @@ function subscribeChatFeed(): void {
   chatFeed ??= pubSubManager.subscribe(WIDGET_FEED_CHANNEL, (message: { channel?: unknown; type?: unknown; data?: unknown }) => {
     if (typeof message?.channel !== 'string' || !message.data || typeof message.data !== 'object') return;
     if (message.type === 'signal') { if (validSignal(message.data)) feedSignal(message.channel, message.data); return; }
+    // Goal progress or settings changed (cron worker / goals route): StreamElements "*-goal" values follow them.
+    if (message.type === 'session.refresh') { refreshSession(message.channel, 300); return; }
     if (!['chat', 'chat.delete', 'chat.clear'].includes(String(message.type))) return;
     feedWidgets(message.channel, 'chat', String(message.type), message.data);
   }).catch(() => { chatFeed = undefined; });

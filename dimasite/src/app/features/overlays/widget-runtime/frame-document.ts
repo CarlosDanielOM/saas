@@ -41,6 +41,19 @@ const safeScript = (text: string) => text.replace(/<\/(script)/gi, '<\\/$1').rep
 const safeStyle = (text: string) => text.replace(/<\/(style)/gi, '<\\/$1');
 
 /**
+ * Inline `onerror="fn(this)"` handlers in the widget's HTML can fire (e.g. `<img src="">`) before the widget's script at
+ * the end of <body> has defined `fn`. Hold those error events until the script has run, then replay them, so the
+ * handler finds its function (StreamElements widgets rely on this).
+ */
+const HOLD_ERRORS = "(function(){var held=[],hold=function(e){var t=e.target;if(t&&t.nodeType===1&&t.hasAttribute('onerror')){e.stopImmediatePropagation();"
+  + "for(var i=0;i<held.length;i++)if(held[i][0]===t)return;held.push([t,t.getAttribute('src')]);}};"
+  + "addEventListener('error',hold,true);Object.defineProperty(window,'__dimaReleaseErrors',{configurable:true,value:function(){removeEventListener('error',hold,true);"
+  + "delete window.__dimaReleaseErrors;held.splice(0).forEach(function(h){var t=h[0];"
+  // Replayed once, only while the element is still in the page with the same source and an onerror handler.
+  + "if(t.isConnected&&t.getAttribute('src')===h[1]&&typeof t.onerror==='function')t.dispatchEvent(new Event('error'));});}});})();";
+const RELEASE_ERRORS = 'window.__dimaReleaseErrors&&window.__dimaReleaseErrors();';
+
+/**
  * The sandboxed frame's document: base style, Dima SDK, then (StreamElements engine) jQuery and the SE layer,
  * then the widget's CSS, HTML and a classic, non-strict script at the end of <body>.
  */
@@ -57,8 +70,8 @@ export function buildFrameDocument(bundle: WidgetBundle, values: JsonObject, scr
     + `<meta http-equiv="Content-Security-Policy" content="object-src 'none'; form-action 'none'">`
     + `<base href="${boot.origin.replace(/"/g, '')}/">`
     + '<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden;width:100%;height:100%}</style>'
-    + `<script>(${safeScript(scripts.sdk)})(window, ${bootJson});</script>`
+    + `<script>(${safeScript(scripts.sdk)})(window, ${bootJson});</script><script>${HOLD_ERRORS}</script>`
     + (se ? `<script>${safeScript(scripts.jquery)}</script><script>${safeScript(scripts.shim)}</script>` : '')
     + `<style>${safeStyle(css)}</style></head><body>${html}`
-    + `<script>${safeScript(js)}\n</script></body></html>`;
+    + `<script>${safeScript(js)}\n</script><script>${RELEASE_ERRORS}</script></body></html>`;
 }

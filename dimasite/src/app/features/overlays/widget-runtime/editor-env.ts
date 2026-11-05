@@ -1,7 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import type { OverlayWidget } from '../overlay.model';
 import { CustomWidgetsService } from '../custom-widgets.service';
-import type { DimaChat, DimaEvent, DimaSession, DimaSignal } from './dima-events';
+import type { DimaAlert, DimaChat, DimaEvent, DimaSession, DimaSignal } from './dima-events';
+import { sessionAfterAlert } from './session-preview';
 import { testAlert, testChat, type AlertTest, type ChatTest } from './test-events';
 import { WidgetEventBus, storeNamespace, type CustomWidgetEnv, type RuntimeBundle, type WidgetLogEntry, type WidgetStatus, type WidgetTarget } from './widget-env';
 
@@ -23,8 +24,14 @@ export class EditorWidgetEnv implements CustomWidgetEnv {
   private readonly linked = new Map<string, { at: number; bundle: Promise<RuntimeBundle> }>();
   private readonly previewStore = new Map<string, unknown>();
   private sessionData: DimaSession | null = null;
+  /** OBS's session totals after this tab's test alerts to OBS (tests aren't journaled, so the server can't count them). */
+  private obsSession: DimaSession | null = null;
+  /** The server's snapshot as loaded (preview tests change `sessionData`, never this). */
+  private serverSession: DimaSession | null = null;
   private lastChat: DimaChat | null = null;
   readonly logs = signal<Record<string, LayerLog>>({});
+  /** Which goal on the Goals page feeds each StreamElements "manual" goal (`follower-goal`…), from the owner snapshot. */
+  readonly goalSources = signal<Record<string, { id: string; name: string; status: string }> | null>(null);
   /** The overlay's current layers (the Commands block checks which other widgets listen to signals). */
   readonly sceneLayers = signal<readonly OverlayWidget[]>([]);
 
@@ -45,7 +52,15 @@ export class EditorWidgetEnv implements CustomWidgetEnv {
     return bundle;
   }
   subscribe(listener: (event: DimaEvent, layerId?: string) => void): () => void { return this.bus.subscribe(listener); }
-  emit(event: DimaEvent, layerId?: string): void { this.bus.emit(event, layerId); }
+  emit(event: DimaEvent, layerId?: string): void {
+    this.bus.emit(event, layerId);
+    // Like OBS, where the server sends fresh session data after each alert: preview alerts update the preview's
+    // snapshot, so widgets that only read session totals (e.g. StreamElements goal widgets) react too.
+    if (event.type === 'alert' && this.sessionData) {
+      this.sessionData = sessionAfterAlert(this.sessionData, event.data);
+      this.bus.emit({ type: 'session', data: this.sessionData }, layerId);
+    }
+  }
   async rpc(target: WidgetTarget, method: string, params: Record<string, unknown>): Promise<unknown> {
     const key = typeof params['key'] === 'string' ? params['key'] : '';
     if (method === 'store.get' || method === 'store.set') {
@@ -70,7 +85,10 @@ export class EditorWidgetEnv implements CustomWidgetEnv {
   session(): DimaSession | null { return this.sessionData; }
   /** Loads this channel's session snapshot (latest follower, recent events…) for widgets that use it. */
   async loadSession(): Promise<void> {
-    try { this.sessionData = await this.widgets.session(); } catch { this.sessionData = { data: {}, recents: [] }; }
+    try {
+      const { goalSources, ...session } = await this.widgets.session();
+      this.sessionData = session; this.serverSession = session; this.obsSession = null; this.goalSources.set(goalSources ?? {});
+    } catch { this.sessionData = { data: {}, recents: [] }; }
     // Frames that started before the snapshot arrived get it now.
     this.bus.emit({ type: 'session', data: this.sessionData });
   }
@@ -97,6 +115,11 @@ export class EditorWidgetEnv implements CustomWidgetEnv {
     return { type: 'chat', data: message };
   }
   alertTest(kind: AlertTest): DimaEvent { return { type: 'alert', data: testAlert(kind) }; }
+  /** The session snapshot OBS should show after a test alert sent there. */
+  obsSessionAfter(alert: DimaAlert): DimaSession | null {
+    const base = this.obsSession ?? this.serverSession;
+    return base ? this.obsSession = sessionAfterAlert(base, alert) : null;
+  }
   deleteTest(): DimaEvent | null { return this.lastChat ? { type: 'chat.delete', data: { messageId: this.lastChat.id, userId: this.lastChat.user.id } } : null; }
   clearTest(): DimaEvent { return { type: 'chat.clear', data: { userId: null } }; }
   /** A signal as a command would send it, from you (the streamer) as a Studio test. */

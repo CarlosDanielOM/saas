@@ -74,10 +74,16 @@ export function seShim(win: any): void {
     const data = session.data;
     data[prefix + '-latest'] = event;
     data[prefix + '-recent'] = [event, ...(Array.isArray(data[prefix + '-recent']) ? data[prefix + '-recent'] : [])].slice(0, 25);
-    const counted = prefix === 'cheer' || prefix === 'tip' ? event.amount : 1;
+    // Counted like the server: Bits and tips by amount, a community gift by its number of subs, everything else once.
+    const counted = prefix === 'cheer' || prefix === 'tip' || event.bulkGifted ? Number(event.amount) || 0 : 1;
     for (const span of ['session', 'week', 'month', 'total']) {
       const key = prefix + '-' + span, current = data[key] && typeof data[key] === 'object' ? data[key] : {};
       data[key] = prefix === 'cheer' || prefix === 'tip' ? Object.assign({}, current, { amount: (Number(current.amount) || 0) + counted }) : Object.assign({}, current, { count: (Number(current.count) || 0) + counted });
+    }
+    // The goal fed by the streamer's Goals page counts the same events (until the server's next snapshot says otherwise).
+    if (prefix === 'follower' || prefix === 'subscriber' || prefix === 'cheer') {
+      const goal = data[prefix + '-goal'] && typeof data[prefix + '-goal'] === 'object' ? data[prefix + '-goal'] : {};
+      data[prefix + '-goal'] = Object.assign({}, goal, { amount: (Number(goal.amount) || 0) + counted });
     }
     session.recents = [event, ...session.recents].slice(0, 25);
   };

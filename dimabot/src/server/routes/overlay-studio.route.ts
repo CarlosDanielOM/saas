@@ -119,7 +119,8 @@ overlayStudioRoute.delete('/:channelID/custom-widgets/:widgetId', wrap(async (re
 overlayStudioRoute.get('/:channelID/custom-widgets/store/:namespace/:key', wrap(async (req, res) => ok(res, { value: await storeGet(param(req, 'channelID'), param(req, 'namespace'), req.params.key) })));
 overlayStudioRoute.get('/:channelID/custom-widgets/counters/:name', wrap(async (req, res) => ok(res, { value: await commandCount(param(req, 'channelID'), req.params.name) })));
 overlayStudioRoute.get('/:channelID/custom-widgets/signals', wrap(async (req, res) => ok(res, { skipped: await skippedSignals(param(req, 'channelID')) })));
-overlayStudioRoute.get('/:channelID/custom-widgets/session', wrap(async (req, res) => ok(res, await sessionFor(param(req, 'channelID')))));
+// Studio also learns which goal feeds each StreamElements "manual" goal (`goalSources`); OBS sources never get it.
+overlayStudioRoute.get('/:channelID/custom-widgets/session', wrap(async (req, res) => ok(res, await sessionFor(param(req, 'channelID'), Date.now(), true))));
 overlayStudioRoute.get('/:channelID/custom-widgets/:widgetId/media', wrap(async (req, res) => ok(res, await planMediaCopy(param(req, 'channelID'), param(req, 'widgetId')))));
 overlayStudioRoute.post('/:channelID/custom-widgets/:widgetId/media', wrap(async (req, res) => ok(res, await copyMedia(param(req, 'channelID'), param(req, 'widgetId'), object(req.body).urls))));
 /** Custom widget tests sent to one published overlay in OBS (Studio's "Send to OBS"). */
@@ -127,7 +128,13 @@ overlayStudioRoute.post('/:channelID/widget-test', wrap(async (req, res) => {
   const channel = param(req, 'channelID'), body = object(req.body), state = await load(channel);
   const scene = state.scenes.find(s => s.id === body.sceneId);
   if (!scene?.published) throw new OverlayError('Publish this overlay before testing', 409);
-  if (!['chat', 'chat.delete', 'chat.clear', 'alert', 'signal'].includes(String(body.type)) || !body.data || typeof body.data !== 'object' || Array.isArray(body.data) || JSON.stringify(body.data).length > 16_000) throw new OverlayError('Invalid widget test');
+  if (!['chat', 'chat.delete', 'chat.clear', 'alert', 'signal', 'session'].includes(String(body.type)) || !body.data || typeof body.data !== 'object' || Array.isArray(body.data)
+    || JSON.stringify(body.data).length > (body.type === 'session' ? 64_000 : 16_000)) throw new OverlayError('Invalid widget test');
+  // Test alerts aren't in the journal, so the server can't count them: Studio sends the session totals they lead to.
+  if (body.type === 'session') {
+    const session = body.data as { data?: unknown; recents?: unknown };
+    if (!session.data || typeof session.data !== 'object' || Array.isArray(session.data) || !Array.isArray(session.recents) || session.recents.length > 50) throw new OverlayError('Invalid widget test');
+  }
   if (body.type === 'signal') {
     // Studio test signals: stamped here (source, sender, time) and counted against the channel's signal limit.
     const input = body.data as { name?: unknown; value?: unknown; target?: unknown };

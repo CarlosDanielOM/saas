@@ -13,6 +13,9 @@
  *  - command signals: the layer's Commands block (snippets aimed at the layer name, copy, "Make a command" link, skipped count),
  *    Test drawer signals reaching Dima (`signal:<name>`) and StreamElements (`dima:signal`) widgets, invalid names, OBS tests,
  *    and OBS delivering a signal only to the layers the server named
+ *  - StreamElements goal widgets: a session-only widget reacts to preview test alerts (onSessionUpdate), inline
+ *    onerror handlers in the HTML find functions defined in the widget's script, the "Goal data" section names the
+ *    goal behind "Manual"; a .rar package imports like the .zip
  *  - plan limit blocks the import with an upgrade prompt
  *  - axe (wcag2a/2aa/21aa) and no horizontal overflow at 320/390/1280, dark then light
  */
@@ -47,7 +50,7 @@ dimaSource.manifest = await readFile(`${dimaDir}/widget.json`, 'utf8');
 const dimaPkg = readPackage(dimaSource), dimaId = 'c3'.repeat(12);
 const seMedia = pkg.externalMedia.filter(item => item.host === 'cdn.streamelements.com');
 // Two small widgets that react to command signals (Dima SDK and StreamElements layer).
-const petId = 'e5'.repeat(12), sePetId = 'f6'.repeat(12);
+const petId = 'e5'.repeat(12), sePetId = 'f6'.repeat(12), seGoalId = 'a7'.repeat(12);
 const petSignals = [{ name: 'feed', description: 'Feed the pet', values: ['pizza', 'cake'] }, { name: 'pet', description: 'Pet it' }];
 const extraWidgets = {
   [petId]: { manifest: { engine: 'dima', api: 1, name: 'Pet', uses: ['signals'], signals: petSignals }, css: 'body { color: #fff; font: 20px sans-serif; }',
@@ -57,6 +60,12 @@ const extraWidgets = {
   [sePetId]: { manifest: { engine: 'streamelements', api: 1, name: 'SE pet', uses: ['signals'] }, css: 'body { color: #fff; }', html: '<p class="food">hungry</p>',
     js: "window.addEventListener('onEventReceived', obj => { if (obj.detail.listener === 'dima:signal') document.querySelector('.food').textContent = obj.detail.event.name + ':' + obj.detail.event.value; });\n" }
 };
+// A StreamElements goal widget that only reads session data, with an early inline onerror handler.
+extraWidgets[seGoalId] = { manifest: { engine: 'streamelements', api: 1, name: 'SE goal', uses: ['session'] }, css: 'body { color: #fff; }',
+  html: '<p class="goal">0</p><img class="avatar" src="" alt="" onerror="markBroken(this)">',
+  js: "function markBroken(img) { img.dataset.fallback = 'yes'; }\n"
+    + "window.addEventListener('onWidgetLoad', obj => { document.querySelector('.goal').textContent = obj.detail.session.data['follower-session'].count; });\n"
+    + "window.addEventListener('onSessionUpdate', obj => { document.querySelector('.goal').textContent = obj.detail.session['follower-session'].count; });\n" };
 const extraView = id => ({ id, name: extraWidgets[id].manifest.name, engine: extraWidgets[id].manifest.engine, revision: 1, author: '', fields: [], data: {}, externalMedia: [], manifest: extraWidgets[id].manifest, media: {},
   files: Object.fromEntries(parts.map(part => [part, { bytes: 1, sha256: 'f'.repeat(64) }])), createdAt: '', updatedAt: '', usedIn: [] });
 
@@ -76,6 +85,23 @@ function zip(files) {
   return Buffer.concat([...locals, dir, end]);
 }
 const upload = `/tmp/custom-widget-check-${process.pid}.zip`;
+// The same package as a RAR 1.5–4.x archive with stored files (RARLAB technote), the format many SE widgets ship in.
+function rar(files) {
+  const table = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = data => { let c = 0xffffffff; for (const b of data) c = table[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const block = body => { const head = Buffer.alloc(2); head.writeUInt16LE(crc(body) & 0xffff, 0); return Buffer.concat([head, body]); };
+  const main = Buffer.alloc(11); main.writeUInt8(0x73, 0); main.writeUInt16LE(13, 3);
+  const out = [Buffer.from([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00]), block(main)];
+  for (const file of files) {
+    const name = Buffer.from(file.name.replace(/\//g, '\\')), data = Buffer.from(file.text), head = Buffer.alloc(30 + name.length);
+    head.writeUInt8(0x74, 0); head.writeUInt16LE(0x8000, 1); head.writeUInt16LE(32 + name.length, 3); head.writeUInt32LE(data.length, 5); head.writeUInt32LE(data.length, 9);
+    head.writeUInt8(2, 13); head.writeUInt32LE(crc(data), 14); head.writeUInt32LE(0x5a210000, 18); head.writeUInt8(20, 22); head.writeUInt8(0x30, 23); head.writeUInt16LE(name.length, 24); head.writeUInt32LE(0x20, 26);
+    name.copy(head, 30); out.push(block(head), data);
+  }
+  const end = Buffer.alloc(5); end.writeUInt8(0x7b, 0); end.writeUInt16LE(0x4000, 1); end.writeUInt16LE(7, 3); out.push(block(end));
+  return Buffer.concat(out);
+}
+const rarUpload = `/tmp/custom-widget-check-${process.pid}.rar`;
 await writeFile(upload, zip([{ name: 'Sample Chat/widget.ini', text: ini }, ...parts.map(part => ({ name: `Sample Chat/${part}.txt`, text: source[part] }))]));
 
 const user = { id: '533538623', login: 'customfixture', display_name: 'Fixture' };
@@ -121,7 +147,7 @@ function mocks(options) {
         const file = path.split('/').pop();
         return file === 'manifest' ? route.fulfill({ status: 404, json: { error: true, status: 404, message: 'This widget has no widget.json' } }) : route.fulfill({ status: 200, contentType: 'text/plain', body: source[file] });
       } else if (/\/custom-widgets\/[a-f0-9]{24}\/bundle$/.test(path)) data = bundleOf(path.split('/').at(-2));
-      else if (path === `${list}/session`) data = { data: { 'follower-latest': { name: 'Session Sam' } }, recents: [] };
+      else if (path === `${list}/session`) data = options.session ?? { data: { 'follower-latest': { name: 'Session Sam' } }, recents: [] };
       else if (path === `${list}/signals`) data = { skipped: options.skipped ?? 0 };
       else if (path.startsWith(`${list}/store/`)) data = { value: 3 };
       else if (path.startsWith(`${list}/counters/`)) data = { value: 7 };
@@ -482,6 +508,54 @@ try {
     if (shots) { await block.scrollIntoViewIfNeeded(); await block.screenshot({ path: `${shots}/custom-widgets-signals-block-light-390.png` }); }
     await ctx.close();
     console.log('PASS command signals: Commands block (layer-named snippets, copy, Make a command link, skipped count), Test drawer to Dima and StreamElements widgets, name rules, OBS test, light + phone.');
+  }
+  // 4e. StreamElements goal widgets and .rar packages.
+  {
+    const session = { data: { 'follower-session': { count: 3 }, 'follower-total': { count: 900 }, 'follower-goal': { amount: 7 } }, recents: [],
+      goalSources: { 'follower-goal': { id: 'g1', name: 'Road to 100', status: 'active' } } };
+    const gm = mocks({ widgets: [extraView(seGoalId)], session, layers: [{ id: 'goal-1', kind: 'custom', configVersion: 1, x: 40, y: 40, width: 400, height: 200, visible: true, locked: false, name: 'Goal', config: { widgetId: seGoalId } }] });
+    gm.world.state.scenes[0].published = { width: 1920, height: 1080, widgets: structuredClone(gm.world.state.scenes[0].widgets), designs: [], waitFor: [] };
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' }); await gm.install(ctx);
+    const p = await ctx.newPage(); p.setDefaultTimeout(12000);
+    const pageErrors = []; p.on('pageerror', e => { errors.push(e.message); pageErrors.push(e.message); });
+    await p.goto(`${base}/${user.login}/modules/overlays`); await p.locator('.stage').waitFor();
+    await p.locator('.widget[data-widget-id="goal-1"]').dispatchEvent('click');
+    await p.locator('[data-custom-frame="running"]').waitFor();
+    const frame = p.frameLocator('app-overlay-scene-renderer [data-widget-id="goal-1"] iframe');
+    await until(async () => (await frame.locator('.goal').textContent()) === '3', 'session count on load');
+    assert.equal(await frame.locator('img.avatar').getAttribute('data-fallback'), 'yes', 'the inline onerror handler found the function from the widget script');
+    await p.locator('.tb--test').click(); await p.locator('[data-widget-tests]').waitFor();
+    await p.locator('[data-alert-test="follow"]').click();
+    await until(async () => (await frame.locator('.goal').textContent()) === '4', 'a session-only widget reacts to a preview alert (onSessionUpdate)');
+    // Tests to OBS: the alert, then the totals it leads to (from the server's snapshot, not the preview's).
+    p.once('dialog', d => d.accept());
+    await p.locator('[data-widget-target="obs"]').click();
+    await p.locator('[data-alert-test="follow"]').click();
+    await until(() => gm.world.widgetTests.length === 2, 'alert + session sent to OBS');
+    assert.deepEqual(gm.world.widgetTests.map(test => test.type), ['alert', 'session']);
+    assert.deepEqual([gm.world.widgetTests[1].data.data['follower-session'], gm.world.widgetTests[1].data.data['follower-goal']], [{ count: 4 }, { amount: 8 }]);
+    await p.locator('[data-widget-target="preview"]').click();
+    const goalData = p.locator('[data-cw-goal-data]');
+    await goalData.locator('summary').click();
+    assert.match(await goalData.locator('[data-cw-goal-source="follower"]').textContent(), /Followers: Road to 100/);
+    assert.match(await goalData.locator('[data-cw-goal-source="cheer"]').textContent(), /Bits: no active goal/);
+    assert.equal(new URL(await goalData.locator('[data-cw-goals-link]').getAttribute('href'), base).href, `${base}/${user.login}/dashboard#goals`);
+    await p.locator('[data-cw-log] summary').click();
+    assert.equal(await p.locator('[data-cw-log] li[data-level="error"]').count(), 0, 'no widget errors');
+    await axe(p, 'goal data');
+    await shot(p, 'goal-data-dark-1280');
+    // A .rar package (common for StreamElements widgets) imports like the .zip.
+    await writeFile(rarUpload, rar([{ name: 'Sample Chat/widget.ini', text: ini }, ...parts.map(part => ({ name: `Sample Chat/${part}.txt`, text: source[part] }))]));
+    await p.locator('[data-custom-import]').click();
+    const dialog = p.locator('dialog.cw-dialog');
+    await dialog.locator('[data-cw-files]').setInputFiles(rarUpload);
+    await dialog.locator('[data-cw-summary]').waitFor();
+    assert.deepEqual(await dialog.locator('.parts li').evaluateAll(items => items.map(li => [li.dataset.part, li.classList.contains('missing')])), parts.map(part => [part, false]));
+    assert.equal(await dialog.locator('[data-cw-name]').inputValue(), 'Sample chat');
+    await p.keyboard.press('Escape'); await dialog.waitFor({ state: 'detached' });
+    assert.deepEqual(pageErrors, []);
+    await ctx.close();
+    console.log('PASS StreamElements goal widgets: preview alerts update session-only widgets, early inline onerror handlers work, Goal data names the "Manual" goal; .rar imports.');
   }
   // 4d. OBS: a signal reaches only the layers the server named.
   {

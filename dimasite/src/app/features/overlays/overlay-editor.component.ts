@@ -677,6 +677,9 @@ export class OverlayEditorComponent {
     try {
       await this.api.request('POST', `${this.channel}/widget-test`, { sceneId: this.sceneId(), type: event.type, data: event.data });
       this.notice.set('testSent');
+      // Then the totals that alert leads to, for widgets that read session data (best effort: maybe none listen).
+      const session = event.type === 'alert' ? this.widgetEnv.obsSessionAfter(event.data) : null;
+      if (session) void this.api.request('POST', `${this.channel}/widget-test`, { sceneId: this.sceneId(), type: 'session', data: session }).catch(() => {});
     } catch (e) { this.error.set((e as { error?: { message?: string } })?.error?.message || this.t('testPlaybackError')); }
     finally { this.widgetTestBusy.set(false); }
   }

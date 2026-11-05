@@ -223,7 +223,7 @@ async function newPage(browser, viewport, o) {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(`${base}/test/dashboard`);
+  await page.goto(`${base}/test/dashboard${o.hash ?? ''}`);
   await page.waitForSelector('.gh__title', { timeout: 20000 });
   return { context, page, errors, state };
 }
@@ -269,6 +269,16 @@ async function primaryButtonsPainted(page, label) {
 
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 try {
+  // ---------------------------------------------------- 0. Links to #goals (Overlay Studio's "Open Goals")
+  {
+    const { context, page, errors } = await newPage(browser, { width: 390, height: 844 }, { chatEnabled: true, automodOn: true, theme: 'dark', hash: '#goals' });
+    await until(async () => page.evaluate(() => document.getElementById('goals')?.open === true), '#goals opens the Goals section');
+    await page.locator('#goals app-channel-goals').waitFor();
+    assert.deepEqual(errors, [], '#goals: page errors');
+    await context.close();
+    console.log('PASS #goals opens the Goals section');
+  }
+
   // ---------------------------------------------------- 1. desktop, healthy bot, credits running short
   for (const theme of ['dark', 'light']) {
     const { context, page, errors } = await newPage(browser, { width: 1366, height: 900 }, {

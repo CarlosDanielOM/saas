@@ -19,3 +19,13 @@ test('EventSub alerts become Dima alerts', () => {
   assert.equal(alertFromEventsub('stream.online', {}, 'h', 5), null);
   assert.deepEqual(seSessionEntry(raid), { type: 'raid', name: 'Sakura', amount: 42, message: '', createdAt: new Date(5).toISOString(), _id: 'g' });
 });
+
+test('StreamElements "*-goal" values follow the Goals page: first active goal per metric, else the first reached one', async () => {
+  const { seGoals } = await import('./session.js');
+  const goal = (id: string, metric: string, status: string, current: number) => ({ id, name: 'Goal ' + id, metric, status, current });
+  const { data, sources } = seGoals([goal('a', 'follows', 'ended', 50), goal('b', 'follows', 'reached', 120), goal('c', 'follows', 'active', 30),
+    goal('d', 'subs', 'reached', 9), goal('e', 'bits', 'scheduled', 0), goal('f', 'currency', 'active', 12_550)]);
+  assert.deepEqual(data, { 'follower-goal': { amount: 30 }, 'subscriber-goal': { amount: 9 }, 'tip-goal': { amount: 125.5 } });
+  assert.deepEqual(Object.fromEntries(Object.entries(sources).map(([key, source]) => [key, source.id])), { 'follower-goal': 'c', 'subscriber-goal': 'd', 'tip-goal': 'f' });
+  assert.deepEqual(seGoals([]), { data: {}, sources: {} });
+});

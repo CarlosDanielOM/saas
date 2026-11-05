@@ -4,6 +4,7 @@ import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { GoalError } from '../../goals/model.js';
 import { changeGoal, goalSnapshot } from '../../goals/service.js';
+import { requestWidgetSessionRefresh } from '../../widget_feed/session-refresh.js';
 
 export const goalsRoute = express.Router();
 const wrap = (fn: (req: AuthRequest, res: Response) => Promise<unknown>) => (req: AuthRequest, res: Response, next: NextFunction) => { void fn(req, res).catch(next); };
@@ -25,6 +26,8 @@ for (const [method, path, action] of [['post', '/:channelID', 'create'], ['patch
     const revision = req.header('If-Match');
     if (!revision || !/^\d+$/.test(revision) || !Number.isSafeInteger(Number(revision))) throw new GoalError('invalid', 'If-Match revision required');
     await changeGoal(channel(req), action, req.body, Number(revision), req.params.id as string | undefined);
+    // OBS custom widgets reading StreamElements "*-goal" values follow the Goals page.
+    requestWidgetSessionRefresh(channel(req));
     return ok(res, { ...await goalSnapshot(channel(req)), canManage: true });
   }));
 }

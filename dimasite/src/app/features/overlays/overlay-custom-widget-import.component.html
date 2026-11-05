@@ -20,7 +20,7 @@
         <button type="button" [disabled]="busy() || reading()" (click)="filesInput.click()"><lucide-icon [img]="icons.FileUp" [size]="16" aria-hidden="true" />{{ t('customChooseFiles') }}</button>
         <button type="button" [disabled]="busy() || reading()" (click)="folderInput.click()"><lucide-icon [img]="icons.FolderOpen" [size]="16" aria-hidden="true" />{{ t('customChooseFolder') }}</button>
       </div>
-      <input #filesInput class="visually-hidden" type="file" multiple accept=".zip,.txt,.html,.htm,.css,.js,.json,.ini" tabindex="-1" aria-hidden="true" data-cw-files (change)="pick($event)" />
+      <input #filesInput class="visually-hidden" type="file" multiple accept=".zip,.rar,.txt,.html,.htm,.css,.js,.json,.ini" tabindex="-1" aria-hidden="true" data-cw-files (change)="pick($event)" />
       <input #folderInput class="visually-hidden" type="file" webkitdirectory tabindex="-1" aria-hidden="true" data-cw-folder (change)="pick($event)" />
     </section>
 

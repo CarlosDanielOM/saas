@@ -10,6 +10,7 @@ import { CANONICAL_BITS_EVENT_TYPE, isLegacyBitsEventType } from '../utils/event
 import { eligible, goalActions, GoalError, goalInteger, goalLabel, goalLimit, goalMetrics, newGoal, object, type Goal, type GoalOutcome, type GoalMetric, type GoalPlan } from './model.js';
 import { customGoalDelta, goalItemKey, goalWeightedAmount } from './currency.js';
 import { goalMonthAt, type GoalMonth } from './monthly.js';
+import { requestWidgetSessionRefresh } from '../widget_feed/session-refresh.js';
 
 interface StoredGoals { _id: string; revision: number; goals: Goal[]; outcomes?: Record<string, GoalOutcome>; monthlyCursors?: Record<string, string> }
 interface Contribution { _id: string; channel: string; goal: string; occurredAt: number; amount: number; expiresAt?: Date }
@@ -157,6 +158,7 @@ export async function applyGoalEvent(event: DomainEventEnvelope): Promise<void> 
     default: return;
   }
   const state = await GoalSet.findById(event.channelID).lean(), now = Date.now();
+  let changed = false;
   for (const goal of state?.goals ?? []) {
     // No historical backfill, including when the new consumer scans retained history.
     if ((goal.metric !== metric && !(goal.metric === 'currency' && (metric === 'bits' || metric === 'subs'))) || event.journaledAt.getTime() < goal.createdAt || !eligible(goal, event.occurredAt.getTime(), now)) continue;
@@ -169,7 +171,9 @@ export async function applyGoalEvent(event: DomainEventEnvelope): Promise<void> 
       channel: event.channelID, goal: goal.id, occurredAt: event.occurredAt.getTime(), amount: contribution,
       ...(goal.mode === 'rolling' ? { expiresAt: new Date(event.occurredAt.getTime() + goal.windowSeconds! * 1000) } : {})
     });
+    changed = true;
   }
+  if (changed) requestWidgetSessionRefresh(event.channelID);
 }
 
 export async function applyCustomGoalEvent(event: DomainEventEnvelope): Promise<void> {
@@ -194,6 +198,7 @@ export async function applyCustomGoalEvent(event: DomainEventEnvelope): Promise<
   }
   if (!receipt || !Number.isFinite(receipt.occurredAt) || !Number.isFinite(receipt.journaledAt)) throw new Error('Custom goal receipt has invalid timestamps');
   const state = await GoalSet.findById(event.channelID).lean(), now = Date.now();
+  let changed = false;
   for (const goal of state?.goals ?? []) {
     if (goal.metric !== 'currency' || !goal.currency || receipt.journaledAt < goal.createdAt || !eligible(goal, receipt.occurredAt, now)) continue;
     const amount = customGoalDelta(goal.currency, itemKey, quantity);
@@ -203,5 +208,7 @@ export async function applyCustomGoalEvent(event: DomainEventEnvelope): Promise<
       channel: event.channelID, goal: goal.id, occurredAt: receipt.occurredAt, amount,
       ...(goal.mode === 'rolling' ? { expiresAt: new Date(receipt.occurredAt + goal.windowSeconds! * 1000) } : {})
     });
+    changed = true;
   }
+  if (changed) requestWidgetSessionRefresh(event.channelID);
 }

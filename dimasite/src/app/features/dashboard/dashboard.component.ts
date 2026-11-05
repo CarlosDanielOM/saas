@@ -1,4 +1,5 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -112,6 +113,11 @@ interface WeekFact {
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  /** Links like Overlay Studio's "Open Goals" (#goals) open the folded Goals section and bring it into view. */
+  readonly goalsOpen = this.route.snapshot.fragment === 'goals';
+  private readonly showGoals = afterNextRender(() => {
+    if (this.goalsOpen) document.getElementById('goals')?.scrollIntoView({ block: 'start' });
+  });
   private readonly dashboardApi = inject(DashboardApiService);
   private readonly chartConfig = inject(DashboardChartConfigService);
   private readonly languageService = inject(LanguageService);

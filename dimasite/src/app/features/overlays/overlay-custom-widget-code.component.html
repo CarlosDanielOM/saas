@@ -190,7 +190,7 @@
                 <button type="button" [disabled]="kitBusy()" (click)="kitFiles.click()" data-cwc-kit-load><lucide-icon [img]="icons.FileUp" [size]="16" aria-hidden="true" />{{ t('customKitLoad') }}</button>
                 <button type="button" [disabled]="kitBusy()" (click)="kitFolder.click()" data-cwc-kit-load-folder><lucide-icon [img]="icons.FolderOpen" [size]="16" aria-hidden="true" />{{ t('customKitLoadFolder') }}</button>
               </div>
-              <input #kitFiles class="visually-hidden" type="file" multiple accept=".zip,.txt,.html,.htm,.css,.js,.json,.ini" tabindex="-1" aria-hidden="true" (change)="loadFiles($event)" data-cwc-kit-files />
+              <input #kitFiles class="visually-hidden" type="file" multiple accept=".zip,.rar,.txt,.html,.htm,.css,.js,.json,.ini" tabindex="-1" aria-hidden="true" (change)="loadFiles($event)" data-cwc-kit-files />
               <input #kitFolder class="visually-hidden" type="file" webkitdirectory tabindex="-1" aria-hidden="true" (change)="loadFiles($event)" data-cwc-kit-folder />
               @if (kitError()) { <p class="note note--danger" role="alert" data-cwc-kit-error>{{ kitError() }}</p> }
             </div>

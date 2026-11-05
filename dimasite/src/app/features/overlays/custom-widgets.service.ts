@@ -110,7 +110,8 @@ export class CustomWidgetsService {
   }
   /** Signals dropped by the channel limits in the last 10 minutes. */
   signalStatus(): Promise<{ skipped: number }> { return this.api.request<{ skipped: number }>('GET', `${this.channel}/custom-widgets/signals`); }
-  session(): Promise<DimaSession> { return this.api.request<DimaSession>('GET', `${this.channel}/custom-widgets/session`); }
+  /** Session snapshot; `goalSources` (owner only) names the goal behind each StreamElements "manual" goal. */
+  session(): Promise<DimaSession & { goalSources?: Record<string, { id: string; name: string; status: string }> }> { return this.api.request('GET', `${this.channel}/custom-widgets/session`); }
   mediaPlan(id: string): Promise<MediaPlan> { return this.api.request<MediaPlan>('GET', `${this.channel}/custom-widgets/${id}/media`, undefined, 60000); }
   async copyMedia(id: string, urls: string[]): Promise<MediaCopyResult> {
     const result = await this.api.request<MediaCopyResult>('POST', `${this.channel}/custom-widgets/${id}/media`, { urls }, 600000);

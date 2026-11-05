@@ -9,7 +9,7 @@ For the full package format and the Dima SDK, see [Building widgets (Dima SDK)](
 
 ## Import a widget
 
-Open **Modules → Overlay Studio**, choose an overlay, and select **Import widget**. Choose the widget’s `.zip`, its folder, or its files. You can also drag the files into the import area. A normal StreamElements package contains:
+Open **Modules → Overlay Studio**, choose an overlay, and select **Import widget**. Choose the widget’s `.zip` or `.rar`, its folder, or its files. You can also drag the files into the import area. Many StreamElements widgets come as `.rar` archives, which import like `.zip` files. Password-protected or split archives cannot be opened; extract one first and choose its folder. Both archive formats allow up to 300 files and 8 MB unpacked. A normal StreamElements package contains:
 
 | File | What it contains |
 |---|---|
@@ -61,7 +61,7 @@ As you type, suggestions show Dima SDK calls, events (including any `widget.json
 
 In the preview column, open **Use your own code editor** and choose **Download for your editor**. The zip contains `widget.html`, `widget.css`, `widget.js`, `fields.json`, `data.json`, `widget.json` when the widget has one, and `widget.ini` so it can be imported again. It also includes `dima.d.ts` and `jsconfig.json` for Dima SDK, event, and setting suggestions and checks in editors such as VS Code, plus a `.vscode` folder with checks for `fields.json` and `widget.json`.
 
-Edit the files, then choose **Load a folder** or **Load files** with a `.zip` or individual files. Only loaded files replace their matching tabs, as unsaved changes. If `widget.json` is not included, the current manifest stays. Check the preview, then save. In StreamElements widgets, `{key}` placeholders in `widget.js` are replaced before the code runs, so your editor may mark those spots.
+Edit the files, then choose **Load a folder** or **Load files** with a `.zip`, `.rar`, or individual files. Only loaded files replace their matching tabs, as unsaved changes. If `widget.json` is not included, the current manifest stays. Check the preview, then save. Archive limits and password or split archive restrictions are the same as for importing. In StreamElements widgets, `{key}` placeholders in `widget.js` are replaced before the code runs, so your editor may mark those spots.
 
 ## Add and adjust a layer
 
@@ -87,6 +87,8 @@ Open **Test** and find **Custom widget tests**. Choose **Preview** to send tests
 
 The test buttons inside a widget’s own settings also send a button event to that widget in the preview. They do not send a real alert or message.
 
+Test alerts also update session data, so goal widgets that listen for session updates react in the preview and in OBS. Studio sends the updated totals after each OBS test alert. Tests are sample data and never change your real totals or goals.
+
 Choose **OBS** in the test drawer to send tests to the connected sources for the published version of this overlay. Publish your changes first if the widget changed. The editor asks you to confirm because chat tests and alerts can be visible on stream. A test alert for a tip is sample data only; real tip events are not available yet.
 
 ## Widget log
@@ -107,10 +109,18 @@ Choose **Export for StreamElements** in the widget’s settings to download a St
 
 Each channel can import up to **1 custom widget on Free**, **5 on Premium**, or **25 on Pro**. The limit counts imported widgets, not the number of overlay layers using them. Deleting a widget removes its files, and you must first remove it from every draft and published overlay that uses it.
 
+## Goal data
+
+Widgets that read session data show a folded **Goal data** section in the layer settings. It identifies which Goals page entry supplies each **Manual** value: **Followers**, **Subs**, **Bits**, and **Money**. For each kind, the first active goal in your list is used; if none is active, the first reached goal is used. If there is no matching goal, the value is 0. **Open Goals** opens **Dashboard → Goals** in a new tab.
+
+The manual value is goal progress, not its target. Choose how a goal counts on the Goals page: since creation, current count, set dates, rolling window, or calendar month. Money values use currency units (for example, `12.34`) and include everything counted by that goal, such as Bits, subs, and custom items—not only tips. Widgets update within seconds when goal progress or goals change.
+
+Session data also provides `follower-month`, `subscriber-month`, `cheer-month`, and `raid-month` for the current UTC calendar month. `follower-total` and `subscriber-total` are your current dashboard totals; follows update as they happen. `cheer-total` and `raid-total` cover the last 90 days and can decrease as older events age out. Subscriber counts include each subscriber once plus gifted subs, so a 5-sub community gift adds 5. `*-session` covers the current stream, or the last 24 hours if no stream start is available; `*-week` covers the last 7 days. Tip event values (`tip-*`) stay at 0 until DomDimaBot tipping is available; the **Money** `tip-goal` value can still show a Goals page goal.
+
 ## Not available yet
 
 - Bot events such as TTS, triggers, pets, duels, roulette, DimaFX, and rewards.
-- Live goal and poll state.
+- Poll state and goal targets as separate live values. **Manual** goal values follow progress from your Goals page; see [Goal data](#goal-data).
 - Replaying recent chat in the editor.
 - Live sync from a local editor.
 - Real tips do not trigger custom widgets until DomDimaBot tipping is available; the Studio **Tip** test only sends sample data.

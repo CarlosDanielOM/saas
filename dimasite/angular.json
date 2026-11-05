@@ -31,6 +31,11 @@
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "assets"
+              },
+              {
+                "glob": "unrar.wasm",
+                "input": "node_modules/node-unrar-js/esm/js",
+                "output": "assets/widget-runtime"
               }
             ],
             "styles": [

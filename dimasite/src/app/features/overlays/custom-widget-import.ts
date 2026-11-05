@@ -29,12 +29,14 @@ const folder = (path: string) => path.includes('/') ? path.slice(0, path.lastInd
 export async function readImport(picked: readonly PickedFile[]): Promise<ImportDraft> {
   let entries: { path: string; text: string }[] = [];
   let fallbackName = '';
-  const zip = picked.length === 1 && /\.zip$/i.test(picked[0].path) ? picked[0] : null;
-  if (zip) {
-    fallbackName = stem(zip.path);
+  const archive = picked.length === 1 && /\.(zip|rar)$/i.test(picked[0].path) ? picked[0] : null;
+  if (archive) {
+    fallbackName = stem(archive.path);
     try {
-      const decoder = new TextDecoder();
-      entries = (await readZip(await blobBytes(zip.blob))).filter(entry => TEXT_FILE.test(entry.name)).map(entry => ({ path: entry.name, text: decoder.decode(entry.data) }));
+      const decoder = new TextDecoder(), bytes = await blobBytes(archive.blob);
+      // .rar packages are common for StreamElements widgets; their reader loads only when needed.
+      const read = /\.rar$/i.test(archive.path) ? (await import('./custom-widget-rar')).readRar(bytes) : readZip(bytes);
+      entries = (await read).filter(entry => TEXT_FILE.test(entry.name)).map(entry => ({ path: entry.name, text: decoder.decode(entry.data) }));
     } catch (error) {
       const code = error instanceof ZipError ? error.message : '';
       return empty(code === 'encrypted' ? 'zipEncrypted' : code === 'too-large' || code === 'too-many-files' ? 'zipTooLarge' : 'zip');

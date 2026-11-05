@@ -30,7 +30,10 @@ describe('custom widget frame document', () => {
     expect(se).toContain('.a { color: red; } .b { x: { }; }');
     expect(se).toContain('const c = "red"');
     expect(se).toContain('<\\/script><b>');
-    expect(se.match(/<\/script>/g)!.length).toBe(4);
+    expect(se.match(/<\/script>/g)!.length).toBe(6);
+    // Early inline onerror handlers wait for the widget's script (held before the widget's HTML, released after its script).
+    expect(se.indexOf('__dimaReleaseErrors')).toBeLessThan(se.indexOf('<p data-x'));
+    expect(se.lastIndexOf('window.__dimaReleaseErrors&&')).toBeGreaterThan(se.indexOf('const c = "red"'));
     const dima = buildFrameDocument(bundle('dima'), { color: 'red', name: 'Ana' }, scripts, boot);
     expect(dima).not.toContain('/*JQUERY*/');
     expect(dima).not.toContain('/*SHIM*/');
@@ -83,7 +86,8 @@ describe('Dima SDK and StreamElements layer (inside a fake frame)', () => {
     const gift = seEvents.filter(e => e.detail?.listener === 'subscriber-latest').at(-1)!.detail.event;
     expect(gift).toMatchObject({ name: 'Yuzu', amount: 5, bulkGifted: true, gifted: true, sender: 'Yuzu', isCommunityGift: true });
     const session = seEvents.filter(e => e.type === 'onSessionUpdate').at(-1)!.detail.session;
-    expect(session['subscriber-session']).toEqual({ count: 1 });
+    // A community gift counts its subs (like the server's totals), the Goals-page goal too.
+    expect([session['subscriber-session'], session['subscriber-total'], session['subscriber-goal']]).toEqual([{ count: 5 }, { count: 5 }, { amount: 5 }]);
     send({ type: 'event', event: { type: 'alert', data: testAlert('bits') } });
     expect(seEvents.filter(e => e.detail?.listener === 'cheer-latest').at(-1)!.detail.event).toMatchObject({ name: 'Ame', amount: 500 });
     send({ type: 'event', event: { type: 'chat.delete', data: { messageId: 'm1', userId: 'u' } } });

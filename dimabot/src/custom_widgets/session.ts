@@ -1,4 +1,7 @@
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
+import { FollowRelationshipLedgerSchema } from '../schemas/follow_relationship_ledger.schema.js';
+import { StreamSubscriptionLedgerSchema } from '../schemas/stream_subscription_ledger.schema.js';
+import { goalSnapshot } from '../goals/service.js';
 import { ALERT_DOMAIN_TYPES, AlertEventFilter } from '../overlays/alert-events.js';
 
 /** Dima SDK v1 alert (CUSTOM_WIDGET_ENGINE.md, section 4). */
@@ -73,29 +76,93 @@ function emptySession(): DimaSession {
 }
 
 const WEEK_MS = 7 * 24 * 3600_000, DAY_MS = 24 * 3600_000, RECENT_SCAN = 500;
+/** The event journal keeps channel events 90 days: "total" Bits and raids mean what we still have. */
+const RETAINED_MS = 90 * DAY_MS;
 interface Totals { follows: number; subs: number; bits: number; raids: number }
-/** Counts in the database across the whole range (no event limit). Subscribers count each viewer once plus gifted subs. */
-async function totals(channel: string, from: Date): Promise<Totals> {
-  const [row] = await DomainEventSchema.aggregate<{ follows: { n: number }[]; subs: { n: number }[]; gifts: { n: number }[]; bits: { n: number }[]; raids: { n: number }[] }>([
-    { $match: { channelID: channel, source: 'twitch-eventsub', type: { $in: Object.keys(ALERT_DOMAIN_TYPES) }, occurredAt: { $gte: from } } },
-    { $facet: {
-      follows: [{ $match: { type: 'channel.follow.received' } }, { $count: 'n' }],
-      subs: [{ $match: { type: 'channel.subscription.received', 'payload.event.is_gift': { $ne: true } } }, { $group: { _id: '$payload.event.user_id' } }, { $count: 'n' }],
-      gifts: [{ $match: { type: 'channel.subscription.gifted' } }, { $group: { _id: null, n: { $sum: { $ifNull: ['$payload.event.total', 1] } } } }],
-      bits: [{ $match: { type: 'channel.bits.received' } }, { $group: { _id: null, n: { $sum: { $ifNull: ['$payload.event.bits', 0] } } } }],
-      raids: [{ $match: { type: 'channel.raid.received' } }, { $count: 'n' }]
-    } }
+type Range = 'session' | 'week' | 'month' | 'retained';
+/**
+ * Counts in the journal for several ranges in one pass (no event limit). Subscribers count each viewer once plus
+ * gifted subs.
+ */
+async function totals(channel: string, ranges: Record<Range, Date>): Promise<Record<Range, Totals>> {
+  const earliest = new Date(Math.min(...Object.values(ranges).map(date => date.getTime())));
+  const when = (from: Date, type: string, ...more: unknown[]) => ({ $and: [{ $gte: ['$occurredAt', from] }, { $eq: ['$type', type] }, ...more] });
+  const group: Record<string, unknown> = { _id: null };
+  for (const [range, from] of Object.entries(ranges)) {
+    group[range + 'Follows'] = { $sum: { $cond: [when(from, 'channel.follow.received'), 1, 0] } };
+    group[range + 'Subs'] = { $addToSet: { $cond: [when(from, 'channel.subscription.received', { $ne: ['$payload.event.is_gift', true] }), '$payload.event.user_id', null] } };
+    group[range + 'Gifts'] = { $sum: { $cond: [when(from, 'channel.subscription.gifted'), { $ifNull: ['$payload.event.total', 1] }, 0] } };
+    group[range + 'Bits'] = { $sum: { $cond: [when(from, 'channel.bits.received'), { $ifNull: ['$payload.event.bits', 0] }, 0] } };
+    group[range + 'Raids'] = { $sum: { $cond: [when(from, 'channel.raid.received'), 1, 0] } };
+  }
+  const [row] = await DomainEventSchema.aggregate<Record<string, unknown>>([
+    { $match: { channelID: channel, source: 'twitch-eventsub', type: { $in: Object.keys(ALERT_DOMAIN_TYPES) }, occurredAt: { $gte: earliest } } },
+    { $group: group as never }
   ]);
-  const n = (list?: { n: number }[]) => Number(list?.[0]?.n) || 0;
-  return { follows: n(row?.follows), subs: n(row?.subs) + n(row?.gifts), bits: n(row?.bits), raids: n(row?.raids) };
+  const n = (key: string) => Number(row?.[key]) || 0;
+  const subs = (key: string) => (Array.isArray(row?.[key]) ? (row[key] as unknown[]).filter(id => id !== null && id !== undefined) : []).length;
+  return Object.fromEntries(Object.keys(ranges).map(range => [range, {
+    follows: n(range + 'Follows'), subs: subs(range + 'Subs') + n(range + 'Gifts'), bits: n(range + 'Bits'), raids: n(range + 'Raids')
+  }])) as Record<Range, Totals>;
+}
+
+const GOAL_PREFIX = { follows: 'follower', subs: 'subscriber', bits: 'cheer', currency: 'tip' } as const;
+interface GoalProgress { id: string; name: string; metric: string; status: string; current: number }
+/**
+ * StreamElements' "manual" goals (`follower-goal`, `subscriber-goal`, `cheer-goal`, `tip-goal`) follow the streamer's
+ * Goals page: per metric, the first active goal in their list, else the first reached one. Currency goals are stored in
+ * cents.
+ */
+export function seGoals(goals: readonly GoalProgress[]): { data: Record<string, { amount: number }>; sources: Record<string, { id: string; name: string; status: string }> } {
+  const data: Record<string, { amount: number }> = {}, sources: Record<string, { id: string; name: string; status: string }> = {};
+  for (const [metric, prefix] of Object.entries(GOAL_PREFIX)) {
+    const goal = goals.find(item => item.metric === metric && item.status === 'active') ?? goals.find(item => item.metric === metric && item.status === 'reached');
+    if (!goal) continue;
+    data[prefix + '-goal'] = { amount: metric === 'currency' ? goal.current / 100 : goal.current };
+    sources[prefix + '-goal'] = { id: goal.id, name: goal.name, status: goal.status };
+  }
+  return { data, sources };
 }
 /**
- * Session snapshot from the channel's event journal: latest and recent alerts (newest 500 in the last 7 days, through
- * the same filter as live alerts), and counts for the current stream (since the latest stream start, else the last
- * 24 h) and the week, counted across the whole range. Monthly/total figures and goals aren't tracked here and stay 0;
- * tips stay empty until our tipping feature ships.
+ * Session snapshot: latest and recent alerts from the channel's event journal (newest 500 in the last 7 days, through
+ * the same filter as live alerts); counts for the current stream (since the latest stream start, else the last 24 h),
+ * the week and the UTC calendar month; totals = current followers and subscribers (ledgers), Bits and raids over the
+ * journal's 90 days; `*-goal` from the streamer's Goals page (see seGoals). Tips stay empty until our tipping ships.
+ * `goalSources` (Studio only) names the goal behind each `*-goal`.
  */
-export async function sessionFor(channel: string, now = Date.now()): Promise<DimaSession> {
+type SessionSnapshot = DimaSession & { goalSources?: Record<string, { id: string; name: string; status: string }> };
+const inflight = new Map<string, Promise<SessionSnapshot>>();
+export function sessionFor(channel: string, now = Date.now(), goalSources = false): Promise<SessionSnapshot> {
+  // OBS sources reconnecting together (e.g. after a deploy) share one query per channel.
+  const key = channel + (goalSources ? ':studio' : '');
+  let pending = inflight.get(key);
+  if (!pending) {
+    pending = buildSession(channel, now, goalSources).finally(() => inflight.delete(key));
+    inflight.set(key, pending);
+  }
+  return pending;
+}
+
+/**
+ * The follower ledger is a periodic full sync from Twitch: follows journaled after its last change are added, so
+ * "total" moves with live follows. The cursor (newest ledger change) is re-read every 2 minutes or when the count moved.
+ */
+const ledgerCursors = new Map<string, { at: number; active: number; cursor: Date | null }>();
+async function followerTotal(channel: string, now: number): Promise<number> {
+  const active = await FollowRelationshipLedgerSchema.countDocuments({ platform: 'twitch', followed_id: channel, status: 'active' });
+  let cached = ledgerCursors.get(channel);
+  if (!cached || cached.active !== active || now - cached.at > 120_000) {
+    const newest = await FollowRelationshipLedgerSchema.findOne({ platform: 'twitch', followed_id: channel }).sort({ updated_at: -1 }).select('updated_at').lean() as { updated_at?: Date } | null;
+    cached = { at: now, active, cursor: newest?.updated_at ? new Date(newest.updated_at) : null };
+    ledgerCursors.delete(channel); ledgerCursors.set(channel, cached);
+    if (ledgerCursors.size > 5000) ledgerCursors.delete(ledgerCursors.keys().next().value!);
+  }
+  const since = await DomainEventSchema.countDocuments({ channelID: channel, source: 'twitch-eventsub', type: 'channel.follow.received',
+    ...(cached.cursor ? { occurredAt: { $gt: cached.cursor } } : {}) });
+  return active + since;
+}
+
+async function buildSession(channel: string, now: number, goalSources: boolean): Promise<SessionSnapshot> {
   const session = emptySession(), data = session.data, weekStart = new Date(now - WEEK_MS);
   const [started] = await DomainEventSchema.find({ channelID: channel, source: 'twitch-eventsub', type: 'stream.started', occurredAt: { $gte: weekStart } })
     .sort({ occurredAt: -1 }).limit(1).select('occurredAt').lean();
@@ -117,12 +184,25 @@ export async function sessionFor(channel: string, now = Date.now()): Promise<Dim
     data[prefix + '-recent'] = [entry, ...(data[prefix + '-recent'] as unknown[])].slice(0, 25);
     session.recents = [entry, ...session.recents].slice(0, 25);
   }
-  const [week, current] = await Promise.all([totals(channel, weekStart), totals(channel, sessionStart)]);
-  for (const [span, value] of [['week', week], ['session', current]] as const) {
-    data[`follower-${span}`] = { count: value.follows };
-    data[`subscriber-${span}`] = { count: value.subs };
-    data[`cheer-${span}`] = { amount: value.bits };
-    data[`raid-${span}`] = { count: value.raids };
+  const today = new Date(now), monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+  const [counts, followers, subscribers, goals] = await Promise.all([
+    totals(channel, { session: sessionStart, week: weekStart, month: monthStart, retained: new Date(now - RETAINED_MS) }),
+    // Totals like StreamElements': current followers and subscribers (the same ledgers the dashboard and Goals use).
+    followerTotal(channel, now),
+    StreamSubscriptionLedgerSchema.countDocuments({ platform: 'twitch', streamer_id: channel, status: 'active' }),
+    goalSnapshot(channel, now).then(snapshot => snapshot.goals as GoalProgress[]).catch(() => [] as GoalProgress[])
+  ]);
+  for (const span of ['session', 'week', 'month'] as const) {
+    data[`follower-${span}`] = { count: counts[span].follows };
+    data[`subscriber-${span}`] = { count: counts[span].subs };
+    data[`cheer-${span}`] = { amount: counts[span].bits };
+    data[`raid-${span}`] = { count: counts[span].raids };
   }
-  return session;
+  data['follower-total'] = { count: followers };
+  data['subscriber-total'] = { count: subscribers };
+  data['cheer-total'] = { amount: counts.retained.bits };
+  data['raid-total'] = { count: counts.retained.raids };
+  const manual = seGoals(goals);
+  Object.assign(data, manual.data);
+  return goalSources ? Object.assign(session, { goalSources: manual.sources }) : session;
 }

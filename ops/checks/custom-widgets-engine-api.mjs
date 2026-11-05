@@ -3,7 +3,8 @@
 // overlay-fixtures/providers.mjs as base-providers.mjs. Test env: custom-widget-fixtures/test-env.json.
 // Covers the widget engine's server side: widget.json, owner/public bundles, the overlay-feed socket
 // (session, journal alerts, chat and command signals from the bot's pub/sub, storage events, Studio tests), widget RPC
-// (store, counters, limits, manifest permissions), chat demand, media copying and copied-asset serving.
+// (store, counters, limits, manifest permissions), chat demand, media copying and copied-asset serving, and
+// StreamElements totals/month/"manual" goals in session data (ledgers, journal, Goals page) with goal refreshes.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -103,6 +104,33 @@ try {
   assert.deepEqual([busy.data['follower-latest'].name, busy.data['follower-week'].count, busy.data['follower-session'].count, busy.data['follower-recent'].length], ['Luna', 651, 1, 25]);
   console.log('PASS session data on busy channels: newest latest, week/stream totals across all events.');
 
+  // StreamElements totals, month and "manual" goals: followers/subs from the ledgers, month + 90 days from the journal,
+  // *-goal from the Goals page (Studio also learns which goal; OBS doesn't).
+  const { FollowRelationshipLedgerSchema } = await import('/app/dist/schemas/follow_relationship_ledger.schema.js');
+  const { StreamSubscriptionLedgerSchema } = await import('/app/dist/schemas/stream_subscription_ledger.schema.js');
+  const { GoalSet, GoalContribution } = await import('/app/dist/goals/service.js');
+  await FollowRelationshipLedgerSchema.collection.insertMany(['f1', 'f2', 'f3', 'f4'].map((id, i) => ({ platform: 'twitch', followed_id: preview, follower_id: id, status: i === 3 ? 'unfollowed' : 'active', followed_at: new Date(), updated_at: new Date() })));
+  await StreamSubscriptionLedgerSchema.collection.insertMany(['s1', 's2', 's3'].map((id, i) => ({ platform: 'twitch', streamer_id: preview, user_id: id, status: i === 2 ? 'ended' : 'active', subbed_at: new Date(), last_event_at: new Date() })));
+  const bitsEvent = (key, daysAgo, bits) => ({ eventKey: key, source: 'twitch-eventsub', sourceEventId: key, type: 'channel.bits.received', topic: 'channel', channelID: preview, schemaVersion: 1,
+    occurredAt: new Date(Date.now() - daysAgo * 86_400_000), journaledAt: new Date(), expiresAt: new Date(Date.now() + 600000), payload: { subscription: { type: 'channel.bits.use' }, event: { user_id: '9', user_login: 'pix', user_name: 'Pix', bits } }, metadata: {} });
+  await DomainEventSchema.insertMany([bitsEvent('cw-bits-40', 40, 300), bitsEvent('cw-bits-100', 100, 5000)]);
+  const startedAt = Date.now() - 3_600_000;
+  await GoalSet.collection.insertOne({ _id: preview, revision: 1, outcomes: {}, monthlyCursors: {}, goals: [
+    { id: 'g-follow', name: 'Road to 100', metric: 'follows', mode: 'total', target: 100, createdAt: startedAt, startsAt: startedAt },
+    { id: 'g-money', name: 'Charity', metric: 'currency', mode: 'total', target: 50_000, createdAt: startedAt, startsAt: startedAt, currency: { code: 'USD', bitValue: 1, subscriptionValue: 250, items: [] } }] });
+  await GoalContribution.collection.insertMany([{ _id: 'c1', channel: preview, goal: 'g-follow', occurredAt: Date.now() - 1000, amount: 7 }, { _id: 'c2', channel: preview, goal: 'g-money', occurredAt: Date.now() - 1000, amount: 1234 }]);
+  const full = await data('GET', `${widgetsPath}/session`), monthStart = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1);
+  assert.deepEqual([full.data['follower-total'], full.data['subscriber-total']], [{ count: 3 }, { count: 2 }], 'current followers and subscribers');
+  assert.deepEqual(full.data['follower-month'], { count: 1 + (old >= monthStart ? 650 : 0) });
+  assert.deepEqual([full.data['cheer-total'], full.data['cheer-month']], [{ amount: 300 }, { amount: 0 }], 'Bits over the 90 retained days; month = this UTC calendar month');
+  assert.deepEqual([full.data['follower-goal'], full.data['tip-goal'], full.data['subscriber-goal']], [{ amount: 7 }, { amount: 12.34 }, { amount: 0 }], '*-goal from the Goals page (currency in cents)');
+  assert.deepEqual([full.goalSources['follower-goal'].name, full.goalSources['tip-goal'].name, full.goalSources['subscriber-goal']], ['Road to 100', 'Charity', undefined]);
+  // The follower ledger is a periodic Twitch sync: follows journaled after its last change count right away.
+  await DomainEventSchema.create({ eventKey: 'cw-follow-live', source: 'twitch-eventsub', sourceEventId: 'cw-follow-live', type: 'channel.follow.received', topic: 'channel', channelID: preview, schemaVersion: 1,
+    occurredAt: new Date(Date.now() + 1000), journaledAt: new Date(), expiresAt: new Date(Date.now() + 600000), payload: { subscription: { type: 'channel.follow' }, event: { user_id: '78', user_login: 'sol', user_name: 'Sol' } }, metadata: {} });
+  assert.deepEqual((await data('GET', `${widgetsPath}/session`)).data['follower-total'], { count: 4 }, 'ledger (3) + a follow after the last sync');
+  console.log('PASS StreamElements totals (ledgers + live follows), month and 90-day counts (journal) and "manual" goals from the Goals page.');
+
   // Chat from the bot's pub/sub channel.
   const chat = { id: 'm1', platform: 'twitch', at: Date.now(), user: { id: '5', login: 'ada', name: 'Ada', color: null, badges: [], roles: {}, subMonths: null }, text: 'hello', parts: [{ type: 'text', text: 'hello' }],
     kind: 'text', action: false, firstMessage: false, bits: 0, rewardId: null, reply: null, sharedChat: null };
@@ -116,6 +144,13 @@ try {
   await new Promise(r => setTimeout(r, 300));
   assert(!feed.some(item => item.data?.id === 'other-channel' || item.type === 'nonsense'), 'only this channel and known types');
   console.log('PASS chat, deletes from the bot feed reach this channel only.');
+
+  // Goal progress applied elsewhere (cron) asks for a session refresh: OBS gets the new "manual" goal, never goalSources.
+  await GoalContribution.collection.insertOne({ _id: 'c3', channel: preview, goal: 'g-follow', occurredAt: Date.now() - 500, amount: 2 });
+  await publisher.publish('widget-feed', JSON.stringify({ channel: preview, type: 'session.refresh', data: {} }));
+  const refreshed = await nextFeed('session', item => item.data['follower-goal']?.amount === 9);
+  assert.deepEqual([refreshed.data.data['follower-total'], 'goalSources' in refreshed.data, feed.some(item => item.type === 'session' && 'goalSources' in item.data)], [{ count: 4 }, false, false]);
+  console.log('PASS goal changes refresh OBS session data (manual goal 7 → 9); goal names stay in Studio.');
 
   // Command signals from the bot: only layers whose widgets use signals; widget.signal.to picks layers by name.
   const signal = (name, target = null, extra = {}) => ({ id: 'sig-' + name, name, value: 'pizza', json: null, args: ['pizza'], at: Date.now(), user: null, source: { kind: 'command', name }, target, ...extra });
@@ -164,7 +199,12 @@ try {
   assert.deepEqual([obs.sent, obs.clients], [true, 0], 'overlays with only custom widgets skip the alert queue');
   const testAlert = await nextFeed('alert', item => item.test === true);
   assert.deepEqual([testAlert.data.type, testAlert.data.user.name], ['follow', 'Tester']);
-  console.log('PASS Studio chat and alert tests reach the published overlay\'s widgets.');
+  // After a test alert to OBS, Studio sends the session totals it leads to (tests aren't journaled).
+  const testSession = { data: { 'follower-session': { count: 42 } }, recents: [] };
+  assert.equal((await data('POST', `${base}/widget-test`, { sceneId: scene.id, type: 'session', data: testSession })).clients, 1);
+  assert.equal((await nextFeed('session', item => item.data['follower-session']?.count === 42)).data.recents.length, 0);
+  await req('POST', `${base}/widget-test`, { sceneId: scene.id, type: 'session', data: { data: [], recents: [] } }, 400);
+  console.log('PASS Studio chat and alert tests reach the published overlay\'s widgets; test session totals follow test alerts.');
 
   // Studio signal tests: stamped by the server (sender = owner, source = Studio), name-targeted, counted in the channel limit.
   const forged = { id: 'forged', name: 'Feed', value: ' pizza ', target: 'chat box', user: { id: 'evil', login: 'evil', name: 'Evil', roles: { broadcaster: true } }, source: { kind: 'command', name: 'x' }, at: 1 };

@@ -11,6 +11,7 @@ import {
 } from '../utils/stream_analytics.js';
 import { CANONICAL_BITS_EVENT_TYPE, isLegacyBitsEventType } from '../utils/eventsub.js';
 import { recordTimelineMoment } from '../utils/stream_timeline.js';
+import { requestWidgetSessionRefresh } from '../widget_feed/session-refresh.js';
 
 interface SubscriptionEventData extends Record<string, unknown> {
     broadcaster_user_id?: string;
@@ -124,6 +125,8 @@ export async function applyStreamAnalyticsDomainEvent(event: DomainEventEnvelope
                 subbed_at: event.occurredAt,
                 eventKey: event.eventKey
             });
+            // Custom widgets' "subscriber-total" reads this ledger: refresh OBS once it's written.
+            requestWidgetSessionRefresh(event.channelID);
             if (!rawEvent.is_gift) {
                 await recordStreamSubEvent({
                     channelID: event.channelID,
@@ -151,6 +154,7 @@ export async function applyStreamAnalyticsDomainEvent(event: DomainEventEnvelope
                 ended_at: event.occurredAt,
                 eventKey: event.eventKey
             });
+            requestWidgetSessionRefresh(event.channelID);
             return;
         case 'stream.started': {
             const streamID = String(event.streamID || rawEvent.id || `stream-${event.channelID}-${event.occurredAt.toISOString()}`);

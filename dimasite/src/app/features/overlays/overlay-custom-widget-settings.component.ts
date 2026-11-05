@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Code2, Copy, Download, ExternalLink, FileUp, LucideAngularModule, Puzzle } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
 import { EXPORT_FILE_NAMES, MANIFEST_FILE, PACKAGE_FILES, buildWidgetIni, groupFields, resolveFieldData, type JsonObject } from './custom-widget-format.generated';
@@ -14,7 +14,7 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
 /** Settings-section block for a custom widget layer: which widget it is, replacing its files and exporting it. */
 @Component({
   selector: 'app-overlay-custom-widget-settings',
-  imports: [LucideAngularModule, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent],
+  imports: [LucideAngularModule, RouterLink, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display:grid; gap:.75rem; min-width:0 }
@@ -47,6 +47,9 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
     .cw-log li[data-level='error'] { color:var(--danger) }
     .cw-log li[data-level='warn'] { color:var(--warn) }
     .cw-log__foot { display:flex; justify-content:flex-end; padding:0 .5rem .5rem }
+    .cw-goal-data { display:grid; gap:.5rem; padding:0 .75rem .75rem }
+    .cw-goal-data ul { display:grid; gap:.2rem; margin:0; padding:0; list-style:none; color:var(--muted); font-size:.8rem }
+    .cw-goal-data strong { color:var(--fg); font-weight:700 }
     .cw-commands { display:grid; gap:.6rem; padding:.75rem; border:1px solid var(--line); border-radius:.9rem; background:var(--input-bg) }
     .cw-commands h4 { margin:0; color:var(--fg); font-size:.86rem; font-weight:800 }
     .cw-signal { display:grid; gap:.4rem; padding-top:.6rem; border-top:1px solid var(--line) }
@@ -72,6 +75,19 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
         <div><p class="lf-note">{{ t(widget.manifest?.engine === 'dima' ? 'customEngineDima' : 'customEngineSe') }} · {{ t('customReads') }}</p>
         <ul class="cw-uses" data-cw-uses>@for (use of uses(); track use) { <li>{{ t('customUse_' + use) }}</li> }</ul></div>
       } @else { <p class="lf-note">{{ t(widget.manifest?.engine === 'dima' ? 'customEngineDima' : 'customEngineSe') }} · {{ t('customReadsNothing') }}</p> }
+      @if (uses().includes('session')) {
+        <details class="cw-log" data-cw-goal-data>
+          <summary>{{ t('customGoalData') }}</summary>
+          <div class="cw-goal-data">
+            <p class="lf-note">{{ t('customGoalDataManual') }}</p>
+            @if (goalSources(); as sources) {
+              <ul>@for (kind of goalKinds; track kind) { <li [attr.data-cw-goal-source]="kind">{{ t('customGoalKind_' + kind) }}: <strong>{{ sources[kind + '-goal']?.name ?? t('customGoalDataNone') }}</strong></li> }</ul>
+            }
+            <p class="lf-note">{{ t('customGoalDataTotals') }}</p>
+            <a class="lf-btn" [routerLink]="['/', streamer(), 'dashboard']" fragment="goals" target="_blank" rel="noopener" data-cw-goals-link><lucide-icon [img]="icons.ExternalLink" [size]="16" aria-hidden="true" />{{ t('customGoalDataOpen') }}</a>
+          </div>
+        </details>
+      }
       @if (uses().includes('signals')) {
         <section class="cw-commands" aria-labelledby="cw-commands-title" data-cw-commands>
           <h4 id="cw-commands-title">{{ t('customCommandsTitle') }}</h4>
@@ -138,9 +154,13 @@ export class OverlayCustomWidgetSettingsComponent {
   readonly exportError = signal('');
   readonly listLoaded = computed(() => this.widgets.list() !== null);
   private readonly router = inject(Router);
+  readonly goalKinds = ['follower', 'subscriber', 'cheer', 'tip'] as const;
+  readonly goalSources = computed(() => this.env?.goalSources() ?? null);
+  readonly streamer = computed(() => this.router.url.split(/[/?#]/)[1] ?? '');
   readonly copied = signal<string | null>(null);
   readonly skipped = signal(0);
-  readonly layerName = computed(() => (this.context().widget.name || this.source()?.name || '').trim());
+  // The server matches .to against the layer's own name: no fallback to the widget's name (an unnamed layer can't be targeted).
+  readonly layerName = computed(() => (this.context().widget.name ?? '').trim());
   private readonly listening = computed(() => (this.env?.sceneLayers() ?? []).filter(layer => layer.kind === 'custom' && layer.visible !== false
     && this.widgets.widget(layer.config?.['widgetId'])?.manifest?.uses.includes('signals')));
   /** Other widgets here also listen: this layer's commands name it (when the name can be quoted safely). */
@@ -151,7 +171,7 @@ export class OverlayCustomWidgetSettingsComponent {
   /** Declared signals (or one generic entry) with the response to paste and a pre-filled "Make a command" link. */
   readonly commandItems = computed(() => {
     const declared = this.source()?.manifest?.signals ?? [], target = this.targeted() ? this.layerName() : null;
-    const streamer = this.router.url.split(/[/?#]/)[1] ?? '';
+    const streamer = this.streamer();
     const items = declared.length ? declared.map(signal => ({ name: signal.name, description: signal.description ?? '', values: signal.values ?? [] }))
       : [{ name: '', description: this.t('customCommandsGeneric'), values: [] as string[] }];
     return items.map(item => {

@@ -211,10 +211,22 @@ namespace, and each frame host applies only updates from its own namespace (one 
 make 20 widget requests per second and the channel 60 saves per 10 seconds.
 The editor reads the real storage but keeps its writes in memory (previews don't change live data).
 
-Session (`session.data` for SE, `Dima.ready().session` for Dima): built from the alert journal since the current stream
-started (latest `stream.online`, else the last 24 h): `*-latest` and `*-recent` (25) from the newest 500 alerts,
-`*-session` and `*-week` counts/amounts counted in the database over the whole range. Totals and
-goals that we can't compute are present with 0 so widgets don't crash. Tips are always empty until our tipping ships.
+Session (`session.data` for SE, `Dima.ready().session` for Dima): `*-latest` and `*-recent` (up to 25) come from the newest
+500 alerts in the last 7 days. `*-session` counts/amounts cover the latest `stream.started`, else the last 24 h;
+`*-week` covers 7 days; `*-month` (follows, subs, Bits, raids) covers the current UTC calendar month. The session counts
+and amounts are counted in the database over each range. `follower-total` and `subscriber-total` use current dashboard
+ledgers (follow updates are included as they happen); `cheer-total` and `raid-total` cover the retained 90-day event
+journal and can decrease as events age out. Subscriber counts count each subscriber once plus gifted subs, so a 5-sub
+community gift adds 5.
+
+StreamElements manual goals map to `follower-goal`, `subscriber-goal`, `cheer-goal`, and `tip-goal`, each `{ amount }`.
+For each metric, the first active goal in the streamer's list is used, else the first reached goal; no matching goal means
+0. The value is progress, not target. Goal counting options (since creation, current count, set dates, rolling window,
+calendar month) are selected on the Goals page. `tip-goal` is currency units (stored cents divided by 100) and includes
+everything counted by that goal (Bits, subs, custom items), not only tips. Changes to goals or progress reach OBS widgets
+within seconds through session updates. Test alerts also update session totals in the preview and send updated totals to
+OBS after each alert; tests never change real data. Tip event values (`tip-*`) remain 0 until DomDimaBot tipping exists;
+the manual `tip-goal` can still show a Goals page goal.
 
 ## 8. Copying StreamElements media
 

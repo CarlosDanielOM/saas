@@ -9,7 +9,7 @@ Para consultar el formato completo y el SDK de Dima, visita [Cómo crear widgets
 
 ## Importa un widget
 
-Abre **Módulos → Estudio de overlays**, elige un overlay y selecciona **Importar widget**. Puedes elegir el `.zip`, la carpeta o los archivos del widget. También puedes arrastrar los archivos al área de importación. Un paquete normal de StreamElements contiene:
+Abre **Módulos → Estudio de overlays**, elige un overlay y selecciona **Importar widget**. Puedes elegir el `.zip` o `.rar`, la carpeta o los archivos del widget. También puedes arrastrar los archivos al área de importación. Muchos widgets de StreamElements vienen en archivos `.rar`, que se importan igual que los `.zip`. No se pueden abrir archivos protegidos con contraseña ni archivos divididos; primero extráelos y elige la carpeta. Ambos formatos admiten hasta 300 archivos y 8 MB descomprimidos. Un paquete normal de StreamElements contiene:
 
 | Archivo | Qué contiene |
 |---|---|
@@ -61,7 +61,7 @@ Al escribir, aparecen sugerencias de llamadas al SDK de Dima, eventos (incluida 
 
 En la columna de vista previa, abre **Usa tu propio editor de código** y elige **Descargar para tu editor**. El zip contiene `widget.html`, `widget.css`, `widget.js`, `fields.json`, `data.json`, `widget.json` si el widget lo tiene y `widget.ini` para volver a importarlo. También incluye `dima.d.ts` y `jsconfig.json` con sugerencias y comprobaciones del SDK de Dima, sus eventos y tus ajustes en editores como VS Code, además de una carpeta `.vscode` con comprobaciones para `fields.json` y `widget.json`.
 
-Edita los archivos y luego elige **Cargar una carpeta** o **Cargar archivos** con un `.zip` o archivos individuales. Solo los archivos cargados reemplazan las pestañas correspondientes y quedan como cambios sin guardar. Si no incluyes `widget.json`, se conserva el manifiesto actual. Comprueba la vista previa y guarda. En los widgets de StreamElements, los marcadores `{key}` de `widget.js` se reemplazan antes de ejecutar el código, así que tu editor podría marcarlos.
+Edita los archivos y luego elige **Cargar una carpeta** o **Cargar archivos** con un `.zip`, `.rar` o archivos individuales. Solo los archivos cargados reemplazan las pestañas correspondientes y quedan como cambios sin guardar. Si no incluyes `widget.json`, se conserva el manifiesto actual. Comprueba la vista previa y guarda. Se aplican los mismos límites y restricciones de archivos con contraseña o divididos que al importar. En los widgets de StreamElements, los marcadores `{key}` de `widget.js` se reemplazan antes de ejecutar el código, así que tu editor podría marcarlos.
 
 ## Añade y ajusta una capa
 
@@ -87,6 +87,8 @@ Abre **Probar** y busca **Pruebas de widgets personalizados**. Elige **Vista pre
 
 Los botones propios del widget, que aparecen en sus ajustes, también envían un evento de botón a ese widget en la vista previa. No envían una alerta ni un mensaje real.
 
+Las alertas de prueba también actualizan los datos de sesión, así que los widgets de metas que escuchan sus actualizaciones reaccionan en la vista previa y en OBS. Studio envía los totales actualizados después de cada alerta de prueba en OBS. Las pruebas son datos de ejemplo y nunca cambian tus totales ni metas reales.
+
 Elige **OBS** en el panel de pruebas para enviar las pruebas a las fuentes conectadas con la versión publicada de este overlay. Si cambiaste el widget, publica primero. El editor te pide confirmar porque las pruebas de chat y las alertas podrían verse en directo. La prueba de propina solo envía datos de ejemplo; las propinas reales todavía no están disponibles.
 
 ## Registro del widget
@@ -107,10 +109,18 @@ En los ajustes del widget, selecciona **Exportar para StreamElements** para desc
 
 Cada canal puede importar hasta **1 widget personalizado en Free**, **5 en Premium** o **25 en Pro**. El límite cuenta los widgets importados, no las capas de overlay que los usan. Al eliminar un widget también se borran sus archivos. Primero debes quitarlo de todos los overlays, tanto borradores como publicados, que lo usen.
 
+## Datos de metas
+
+Los widgets que consultan los datos de sesión muestran la sección plegada **Datos de metas** en los ajustes de la capa. Indica qué elemento de la página Metas proporciona cada valor **Manual**: **Seguidores**, **Subs**, **Bits** y **Dinero**. Para cada tipo se usa la primera meta activa de tu lista; si no hay ninguna, se usa la primera meta alcanzada. Si no hay una meta correspondiente, el valor es 0. **Abrir Metas** abre **Panel → Metas** en una pestaña nueva.
+
+El valor manual es el progreso de la meta, no su objetivo. En la página Metas eliges cómo se cuenta: desde su creación, conteo actual, fechas definidas, periodo móvil o mes calendario. Los valores de dinero usan unidades monetarias (por ejemplo, `12.34`) e incluyen todo lo que cuenta esa meta, como Bits, subs y artículos personalizados; no solo propinas. Los widgets se actualizan en segundos cuando cambia el progreso o las metas.
+
+Los datos de sesión también incluyen `follower-month`, `subscriber-month`, `cheer-month` y `raid-month` para el mes calendario actual en UTC. `follower-total` y `subscriber-total` son los totales actuales del panel; los follows se actualizan cuando ocurren. `cheer-total` y `raid-total` abarcan los últimos 90 días y pueden disminuir cuando vencen eventos antiguos. Los conteos de suscriptores incluyen una vez a cada suscriptor más las subs regaladas: un regalo comunitario de 5 subs suma 5. `*-session` abarca el directo actual o las últimas 24 horas si no hay un inicio registrado; `*-week` abarca los últimos 7 días. Los valores de eventos de propina (`tip-*`) permanecen en 0 hasta que DomDimaBot ofrezca las propinas; el valor `tip-goal` de **Dinero** aún puede mostrar una meta de la página Metas.
+
 ## Funciones que aún no están disponibles
 
 - Eventos del bot como TTS, triggers, mascotas, duelos, ruleta, DimaFX y recompensas.
-- Estado en directo de objetivos y encuestas.
+- Estado de encuestas y objetivos como valores en directo separados. Los valores de metas **Manual** siguen el progreso de la página Metas; consulta [Datos de metas](#datos-de-metas).
 - Repetición de mensajes recientes del chat en el editor.
 - Sincronización en directo desde un editor local.
 - Los widgets personalizados no reciben propinas reales hasta que DomDimaBot ofrezca la función de propinas; la prueba **Propina** de Studio solo envía datos de ejemplo.
