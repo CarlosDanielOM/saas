@@ -28,6 +28,7 @@ import type { BitsEventsubMigrationResult } from "../utils/eventsub.js";
 import { raidDirection } from '../utils/raid_direction.js';
 import { isForeignSharedChatEvent } from '../utils/shared_chat_origin.js';
 import type { AstEffectContext } from '../utils/ast_parser/effects.js';
+import { publishWidgetChatEvent } from '../widget_feed/publisher.js';
 //* TODO Redeem handler
 //* TODO Functions
 
@@ -42,8 +43,24 @@ export const eventsubHandler = async (
     eventData: ITwitchEventData,
     options: EventsubHandlerOptions = {}
 ) => {
-    // Reject receiver copies before account, cache, command, history or billing work.
-    if (isForeignSharedChatEvent(subscriptionData.type, eventData)) return;
+    // Shared-chat receiver copies belong in the visual feed, but must never run bot actions.
+    if (isForeignSharedChatEvent(subscriptionData.type, eventData)) {
+        if (subscriptionData.type === 'channel.chat.message') {
+            void publishWidgetChatEvent(eventData.broadcaster_user_id ?? '', 'chat', eventData);
+        }
+        return;
+    }
+
+    // Feed-only events bypass announcement configuration and all command/history side effects.
+    switch (subscriptionData.type) {
+        case 'channel.chat.message_delete':
+            void publishWidgetChatEvent(eventData.broadcaster_user_id ?? '', 'chat.delete', eventData);
+            return;
+        case 'channel.chat.clear_user_messages':
+        case 'channel.chat.clear':
+            void publishWidgetChatEvent(eventData.broadcaster_user_id ?? '', 'chat.clear', eventData);
+            return;
+    }
 
     // Production notices announce through the durable consumer. Manual event
     // tests use this immediate path; other chat notice types have no effects.
@@ -208,6 +225,7 @@ export const eventsubHandler = async (
             break;
         }
         case 'channel.chat.message':
+            void publishWidgetChatEvent(STREAMER.id, 'chat', eventData);
             messageHandler(STREAMER.id, eventData as IChatMessage, options.chatEffectContext);
             break;
         case 'channel.raid':
