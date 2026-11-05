@@ -73,6 +73,7 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
       item.triggerPlacement = { mode: placement.mode, margin: number(placement.margin, 0, 500) };
     }
     if (kind === 'alert') { item.designId = id(w.designId); item.events = list(w.events, 4).map(e => { if (!ALERT_EVENTS.includes(e as never)) throw new OverlayError('Invalid event'); return e as typeof ALERT_EVENTS[number]; }); }
+    if (kind === 'custom' && !/^[a-f0-9]{24}$/.test(String(item.config?.['widgetId'] ?? ''))) throw new OverlayError('Choose a custom widget for this layer');
     if (kind === 'text') { item.text = typeof w.text === 'string' ? w.text : ''; if (nested) { try { parseTemplate(item.text); } catch (e) { throw new OverlayError((e as Error).message); } } }
     if (w.assetId) {
       if (!['image', 'video'].includes(kind) || !/^[a-f0-9]{24}$/.test(String(w.assetId))) throw new OverlayError('Invalid design asset');

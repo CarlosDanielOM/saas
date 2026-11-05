@@ -770,7 +770,16 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
 .palette-item__icon[data-kind='prediction'], .layer__icon[data-kind='prediction'], .selected-card[data-kind='prediction'] .selected-card__icon { --k: #1d4ed8; }
 .palette-item__icon:is([data-kind='image'], [data-kind='video']), .layer__icon:is([data-kind='image'], [data-kind='video']), .selected-card:is([data-kind='image'], [data-kind='video']) .selected-card__icon { --k: #c2410c; }
 .palette-item__icon:is([data-kind='shape'], [data-kind='text'], [data-kind='animation']), .layer__icon:is([data-kind='shape'], [data-kind='text'], [data-kind='animation']), .selected-card:is([data-kind='shape'], [data-kind='text'], [data-kind='animation']) .selected-card__icon { --k: #475569; }
+.palette-item__icon[data-kind='custom'], .layer__icon[data-kind='custom'], .selected-card[data-kind='custom'] .selected-card__icon { --k: #9d174d; }
 :host-context(html.dark) :is(.palette-item__icon, .layer__icon, .selected-card__icon) { --k: #a78bfa; }
+:host-context(html.dark) :is(.palette-item__icon[data-kind='custom'], .layer__icon[data-kind='custom'], .selected-card[data-kind='custom'] .selected-card__icon) { --k: #f9a8d4; }
+.custom-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.custom-usage { padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--btn); color: var(--muted); font-size: 0.72rem; font-weight: 800; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.palette.custom-list { grid-template-columns: minmax(0, 1fr); }
+.custom-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 0.4rem; }
+.custom-row .palette-item { min-width: 0; }
+.custom-row__delete { align-self: center; color: var(--danger); }
+.custom-import { justify-self: start; }
 :host-context(html.dark) :is(.palette-item__icon[data-kind='trigger'], .layer__icon[data-kind='trigger'], .selected-card[data-kind='trigger'] .selected-card__icon) { --k: #fbbf24; }
 :host-context(html.dark) :is(.palette-item__icon[data-kind='tts'], .layer__icon[data-kind='tts'], .selected-card[data-kind='tts'] .selected-card__icon) { --k: #38bdf8; }
 :host-context(html.dark) :is(.palette-item__icon[data-kind='clip'], .layer__icon[data-kind='clip'], .selected-card[data-kind='clip'] .selected-card__icon) { --k: #f472b6; }

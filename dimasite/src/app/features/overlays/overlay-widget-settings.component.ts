@@ -13,6 +13,8 @@ import { widgetFixture, widgetModuleFor } from './overlay-widget-registry';
 export class OverlayWidgetSettingsComponent {
   readonly widget = input.required<OverlayWidget>();
   readonly placement = input<WidgetPlacement>('scene');
+  /** `settings` renders inside the Settings section; `sections` renders the module's own sections after it. */
+  readonly slot = input<'settings' | 'sections'>('settings');
   readonly previewFixture = input('');
   readonly configChange = output<Partial<OverlayWidget>>();
   readonly previewChange = output<string>();
@@ -22,7 +24,7 @@ export class OverlayWidgetSettingsComponent {
     previewFixture: widgetFixture(this.widget(), this.previewFixture()), fixtures: this.module()?.preview?.fixtures ?? [] }));
   constructor() {
     effect(() => {
-      const settings = this.module()?.settings, outlet = this.outlet();
+      const settings = this.module()?.[this.slot()], outlet = this.outlet();
       outlet.clear();
       if (settings) outlet.createComponent(settings, { bindings: [
         inputBinding('context', () => this.context()),

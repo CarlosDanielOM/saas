@@ -203,6 +203,25 @@
               }
             </div>
           }
+          @if (customWidgets.enabled() && !designDraft()) {
+            <h3 class="studio-group custom-head">{{ t('customWidgetsTitle') }}@if (customWidgets.list(); as list) { <span class="custom-usage" [title]="t('customUsageTitle', { plan: t('customPlan_' + list.planTier) })">{{ list.used }}/{{ list.limit }}</span> }</h3>
+            <div class="palette custom-list" data-custom-widgets>
+              @for (source of customWidgets.widgets(); track source.id) {
+                <div class="custom-row" [attr.data-custom-id]="source.id">
+                  <button type="button" class="palette-item" data-kind="custom" (click)="addCustomWidget(source)" [title]="t('customAddHint')">
+                    <span class="palette-item__icon" data-kind="custom"><lucide-icon [name]="icons.Puzzle" [size]="16" aria-hidden="true" /></span>
+                    <span class="palette-item__text"><span class="palette-item__name">{{ source.name }}</span><span class="palette-item__hint">{{ customHint(source) }}</span></span>
+                  </button>
+                  <button type="button" class="lf-btn lf-btn--icon custom-row__delete" [disabled]="customBusy() === source.id" (click)="deleteCustomWidget(source)" [attr.aria-label]="t('customDelete', { name: source.name })" [title]="t('customDelete', { name: source.name })"><lucide-icon [name]="icons.Trash2" [size]="16" aria-hidden="true" /></button>
+                </div>
+              } @empty {
+                <p class="lf-note">{{ t('customEmpty') }}</p>
+              }
+              <button type="button" class="lf-btn custom-import" (click)="customImportOpen.set(true)" data-custom-import><lucide-icon [name]="icons.FileUp" [size]="16" aria-hidden="true" />{{ t('customImportButton') }}</button>
+            </div>
+            @if (customError()) { <p class="lf-note lf-note--warn" role="alert">{{ customError() }}</p> }
+            @if (customWidgets.error()) { <p class="lf-note lf-note--warn" role="alert">{{ t('customLoadFailed') }} <button type="button" class="lf-btn lf-btn--compact" (click)="customWidgets.load(channel)">{{ t('retry') }}</button></p> }
+          }
         </div>
       </section>
 
@@ -504,6 +523,7 @@
         </div>
             </div>
           </details>
+          <app-overlay-widget-settings [widget]="item" [placement]="widgetPlacement()" slot="sections" [previewFixture]="widgetPreviews()[item.id] ?? ''" (configChange)="patchSelected($event)" (previewChange)="setWidgetPreview(item.id, $event)" />
 
           <details class="acc" [open]="sections()['position']" (toggle)="setSection('position', $event)">
             <summary><lucide-icon [name]="icons.Scan" [size]="16" aria-hidden="true" />{{ t('studioPosition') }}</summary>
@@ -653,4 +673,5 @@
   <app-asset-library-dialog [owner]="channel" [kind]="assetKind()" (selected)="useAsset($event)" (closed)="assetPickerOpen.set(false)" />
 }
 
+@if (customImportOpen() && channel) { <app-overlay-custom-widget-import (done)="addCustomWidget($event)" (closed)="customImportOpen.set(false)" /> }
 @if (soundPickerOpen() && channel) { <app-asset-library-dialog [owner]="channel" kind="audio" (selected)="useSound($event)" (closed)="soundPickerOpen.set(false)" /> }

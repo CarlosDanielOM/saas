@@ -1,10 +1,13 @@
 /** Portable Overlay Studio module contract. Keep this file free of server/framework imports. */
 export type WidgetPlacement = 'scene' | 'design';
-export type WidgetDelivery = 'static' | 'state' | 'event';
+/** `code` widgets run their own code (custom widgets); the widget engine feeds them. */
+export type WidgetDelivery = 'static' | 'state' | 'event' | 'code';
 export interface WidgetConfigField {
   readonly values?: readonly unknown[];
-  readonly type?: 'string' | 'number' | 'boolean';
+  readonly type?: 'string' | 'number' | 'boolean' | 'object';
   readonly maxLength?: number;
+  /** For `object` fields: JSON size limit. Module code validates the contents. */
+  readonly maxBytes?: number;
   readonly min?: number;
   readonly max?: number;
 }
@@ -32,7 +35,9 @@ export const WIDGET_DEFINITIONS = [
   { kind: 'image', configVersion: 1, placements: ['scene', 'design'], delivery: 'static', defaultSize: { width: 300, height: 180 }, defaults: {} },
   { kind: 'video', configVersion: 1, placements: ['scene', 'design'], delivery: 'static', defaultSize: { width: 300, height: 180 }, defaults: {} },
   { kind: 'animation', configVersion: 1, placements: ['design'], delivery: 'static', defaultSize: { width: 300, height: 180 }, defaults: {} },
-  { kind: 'shape', configVersion: 1, placements: ['scene', 'design'], delivery: 'static', defaultSize: { width: 300, height: 180 }, defaults: {} }
+  { kind: 'shape', configVersion: 1, placements: ['scene', 'design'], delivery: 'static', defaultSize: { width: 300, height: 180 }, defaults: {} },
+  // Created from an imported widget (Studio's custom widget list), not from the generic palette.
+  { kind: 'custom', configVersion: 1, placements: ['scene'], palette: { scene: false }, delivery: 'code', defaultSize: { width: 480, height: 640 }, defaults: {}, configFields: { widgetId: { type: 'string', maxLength: 24 }, values: { type: 'object', maxBytes: 64000 }, revision: { type: 'number', min: 1, max: 1000000000 } } }
 ] as const satisfies readonly WidgetDefinition[];
 export type WidgetKind = typeof WIDGET_DEFINITIONS[number]['kind'];
 export function getWidgetDefinition(kind: unknown): WidgetDefinition & { kind: WidgetKind } | undefined {
@@ -48,6 +53,10 @@ function validModuleValue(field: WidgetConfigField | undefined, value: unknown):
   if (field.values) return field.values.includes(value);
   if (field.type === 'string') return typeof value === 'string' && value.length > 0 && value.length <= (field.maxLength ?? 2000);
   if (field.type === 'number') return typeof value === 'number' && Number.isFinite(value) && value >= (field.min ?? -Number.MAX_VALUE) && value <= (field.max ?? Number.MAX_VALUE);
+  if (field.type === 'object') {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    try { return new TextEncoder().encode(JSON.stringify(value)).length <= (field.maxBytes ?? 2000); } catch { return false; }
+  }
   return field.type === 'boolean' && typeof value === 'boolean';
 }
 /** Validate and copy only registered module fields; styling/media have separate host validation. */

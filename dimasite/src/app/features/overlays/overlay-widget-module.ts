@@ -40,5 +40,7 @@ export interface OverlayWidgetModule {
   createDefault: (context: WidgetCreationContext) => OverlayWidget;
   renderer?: Type<WidgetRenderer>;
   settings?: Type<WidgetSettings>;
+  /** Extra right-panel sections (their own collapsible groups), shown after the Settings section. */
+  sections?: Type<WidgetSettings>;
   preview?: WidgetPreview;
 }

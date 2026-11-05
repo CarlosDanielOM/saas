@@ -40,6 +40,14 @@ The generic state path covers snapshot data only. Alerts, TTS, and clip queue pl
 
 The normal addition should not require changes to the editor, runtime host, or overlay store: they consume the registry, shared host, and validated widget shape. Change those shared layers only when the framework contract itself needs to evolve.
 
+## Code widgets (custom widgets)
+
+Delivery `code` marks a widget that runs its own code. The first one is `custom`: an imported StreamElements package whose
+layer stores `config.widgetId` plus only the settings changed on that layer. Its `values` config field uses the contract's
+`object` type (a plain JSON object with a size limit); the module's own code checks the contents against the package's
+fields on save and publish. The module registers a `sections` component, rendered after the Settings section, for the
+package's setting groups. See [`CUSTOM_WIDGETS.md`](./CUSTOM_WIDGETS.md) for the data model and API.
+
 ## Verification
 
 Run the source-level checks from the repository root:

@@ -3,6 +3,9 @@ import { OverlayAssetCache, type PreparedAsset } from './overlay-asset-cache';
 import { AssetLibraryService } from '../../shared/asset-library/asset-library.service';
 import { alertPlacementIds, placementStartSeconds, placementMediaSeconds, type OverlayRenderJob, type OverlayPlacementReport } from './overlay-playback';
 import { OverlayWidgetSettingsComponent } from './overlay-widget-settings.component';
+import { CustomWidgetsService, message as apiMessage, type CustomWidgetView } from './custom-widgets.service';
+import { OverlayCustomWidgetImportComponent } from './overlay-custom-widget-import.component';
+import { groupFields } from './custom-widget-format.generated';
 import { createWidget, getWidgetModule, widgetModuleFor, widgetPalette } from './overlay-widget-registry';
 import { OverlayInteractionSetupComponent } from './overlay-interaction-setup.component';
 import { OverlayKeyframeEditorComponent } from './overlay-keyframe-editor.component';
@@ -37,7 +40,7 @@ import { OverlayDraftStorage, type LocalOverlayDraft, type OverlayRecovery } fro
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, Clapperboard, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FlaskConical, Image, Keyboard, Languages, Link2, Moon, PanelsTopLeft, Scan, Sun, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Radio, Settings2, Sparkles, Trash2, Type, Volume2, X, Zap, ZoomIn, ZoomOut, LucideAngularModule } from 'lucide-angular';
+import { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, Clapperboard, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FileUp, FlaskConical, Image, Keyboard, Languages, Link2, Moon, PanelsTopLeft, Scan, Sun, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Puzzle, Radio, Settings2, Sparkles, Trash2, Type, Volume2, X, Zap, ZoomIn, ZoomOut, LucideAngularModule } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
 import { ALERT_EVENTS, EVENT_KINDS, AlertDesign, AlertEvent, EventKind, OverlayScene, OverlayWidget, WidgetKind, clone, makeDesign, makeScene, matchesTrigger } from './overlay.model';
 
@@ -58,7 +61,7 @@ const PALETTE_GROUPS: { id: 'events' | 'interact' | 'media'; kinds: WidgetKind[]
 interface MediaJob { cancel?: () => void; timers: Map<string, ReturnType<typeof setTimeout>>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
+  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
@@ -100,6 +103,10 @@ export class OverlayEditorComponent {
   private serverDesigns = new Map<string, AlertDesign>();
   channel = '';
   readonly assetPickerOpen = signal(false);
+  readonly customWidgets = inject(CustomWidgetsService);
+  readonly customImportOpen = signal(false);
+  readonly customError = signal('');
+  readonly customBusy = signal('');
   readonly soundPickerOpen = signal(false);
   readonly soundPercent = computed(() => Math.round((this.alertSound()?.volume ?? 1) * 100));
   readonly alertSound = computed(() => this.editingLayout()?.sound);
@@ -128,7 +135,7 @@ export class OverlayEditorComponent {
   private pointer: PointerSession | null = null;
   private timers = new Set<ReturnType<typeof setTimeout>>();
   private nextId = Date.now();
-  readonly icons = { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, Clapperboard, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FlaskConical, Keyboard, Languages, Link2, Moon, PanelsTopLeft, Scan, Sun, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Radio, Settings2, Sparkles, Trash2, Volume2, X, Zap, ZoomIn, ZoomOut };
+  readonly icons = { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, Clapperboard, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FileUp, FlaskConical, Keyboard, Languages, Link2, Moon, PanelsTopLeft, Scan, Sun, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Puzzle, Radio, Settings2, Sparkles, Trash2, Volume2, X, Zap, ZoomIn, ZoomOut };
   readonly alertEvents = ALERT_EVENTS;
   readonly eventKinds = EVENT_KINDS;
   readonly designs = signal<AlertDesign[]>([]);
@@ -363,6 +370,8 @@ export class OverlayEditorComponent {
     });
     inject(DestroyRef).onDestroy(() => { this.flushRecovery(); this.disposed = true; this.resetSimulation(); this.assetCache.clear(); });
   }
+  /** Counted strings have a `…One` variant for 1. */
+  n(key: string, count: number, params: Record<string, string | number> = {}): string { return this.t(count === 1 ? key + 'One' : key, { count, ...params }); }
   t(key: string, params?: Record<string, string | number>): string {
     this.language.currentLanguage(); return this.language.translate(`overlayStudio.${key}`, params);
   }
@@ -600,6 +609,28 @@ export class OverlayEditorComponent {
     const widget = createWidget(kind, { id: this.id(kind), placement: this.widgetPlacement(), position, defaultDesignId: this.designs()[0]?.id });
     if (!widget) return;
     this.updateWidgets(all => [...all, widget]); this.select(widget.id);
+  }
+  /** Places an imported widget in the current overlay; its settings start from the widget's saved values. */
+  addCustomWidget(source: CustomWidgetView): void {
+    if (this.designDraft()) return;
+    const widget = createWidget('custom', { id: this.id('custom'), placement: 'scene' });
+    if (!widget) return;
+    this.updateWidgets(all => [...all, { ...widget, name: source.name, config: { widgetId: source.id } }]); this.select(widget.id);
+    this.rightTab.set('layer'); if (this.compact()) this.mobileTab.set('edit');
+  }
+  customUses(source: CustomWidgetView): number { return this.scenes().reduce((sum, scene) => sum + scene.widgets.filter(w => w.kind === 'custom' && w.config?.['widgetId'] === source.id).length, 0); }
+  customHint(source: CustomWidgetView): string {
+    const settings = groupFields(source.fields).reduce((sum, group) => sum + group.fields.length, 0), uses = this.customUses(source);
+    return [this.n('customSettingsCount', settings), uses ? this.n('customLayerCount', uses) : ''].filter(Boolean).join(' · ');
+  }
+  async deleteCustomWidget(source: CustomWidgetView): Promise<void> {
+    const scenes = this.scenes().filter(scene => scene.widgets.some(w => w.kind === 'custom' && w.config?.['widgetId'] === source.id));
+    if (scenes.length) { this.customError.set(this.t('customDeleteInUse', { name: source.name, overlays: scenes.map(scene => scene.name).join(', ') })); return; }
+    if (!window.confirm(this.t('customDeleteConfirm', { name: source.name }))) return;
+    this.customBusy.set(source.id); this.customError.set('');
+    try { await this.customWidgets.remove(source.id); }
+    catch (e) { this.customError.set(apiMessage(e) || this.t('customDeleteFailed')); }
+    finally { this.customBusy.set(''); }
   }
   onPaletteDrag(event: DragEvent, kind: WidgetKind): void { event.dataTransfer?.setData('application/x-overlay-widget', kind); }
   onCanvasDragOver(event: DragEvent): void { event.preventDefault(); }
@@ -1054,6 +1085,7 @@ export class OverlayEditorComponent {
         if (!this.channel) throw new Error('Channel unavailable');
         if (initial) this.findRecovery();
         void this.bitsRules.load(this.channel);
+        void this.customWidgets.load(this.channel);
         const state = await this.api.load(this.channel);
         if (this.disposed) return;
         // Replace local work only after the server has returned a complete saved draft.

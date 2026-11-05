@@ -1,0 +1,83 @@
+<dialog #dialog class="cw-dialog" [class.dragging]="dragOver()" aria-labelledby="cw-import-title" aria-describedby="cw-import-intro"
+  (cancel)="onCancel($event)" (close)="onClosed()" (dragover)="onDragOver($event)" (dragleave)="dragOver.set(false)" (drop)="onDrop($event)">
+  <header class="head">
+    <div class="head__copy">
+      <h2 id="cw-import-title">{{ t(mode() === 'replace' ? 'customReplaceTitle' : 'customImportTitle') }}</h2>
+      <p id="cw-import-intro">{{ mode() === 'replace' ? t('customReplaceIntro', { name: widget()?.name ?? '' }) : t('customImportIntro') }}</p>
+    </div>
+    <button type="button" class="icon-button" [attr.aria-label]="t('close')" [disabled]="busy()" (click)="close()"><lucide-icon [img]="icons.X" [size]="20" aria-hidden="true" /></button>
+  </header>
+
+  <div class="body">
+    <section class="drop" [class.drop--compact]="!!draft()" aria-labelledby="cw-drop-title">
+      <span class="drop__icon" aria-hidden="true"><lucide-icon [img]="icons.FileUp" [size]="22" /></span>
+      <div class="drop__copy">
+        <strong id="cw-drop-title">{{ t('customDropTitle') }}</strong>
+        <span>{{ t('customDropHint') }}</span>
+      </div>
+      <div class="drop__buttons">
+        <button type="button" [disabled]="busy() || reading()" (click)="filesInput.click()"><lucide-icon [img]="icons.FileUp" [size]="16" aria-hidden="true" />{{ t('customChooseFiles') }}</button>
+        <button type="button" [disabled]="busy() || reading()" (click)="folderInput.click()"><lucide-icon [img]="icons.FolderOpen" [size]="16" aria-hidden="true" />{{ t('customChooseFolder') }}</button>
+      </div>
+      <input #filesInput class="visually-hidden" type="file" multiple accept=".zip,.txt,.html,.htm,.css,.js,.json,.ini" tabindex="-1" aria-hidden="true" data-cw-files (change)="pick($event)" />
+      <input #folderInput class="visually-hidden" type="file" webkitdirectory tabindex="-1" aria-hidden="true" data-cw-folder (change)="pick($event)" />
+    </section>
+
+    @if (reading()) { <p class="note" role="status">{{ t('customReading') }}</p> }
+
+    @if (draft(); as d) {
+      <ul class="parts" [attr.aria-label]="t('customFilesFound')">
+        @for (part of d.parts; track part.file) {
+          <li [class.missing]="!part.name" [attr.data-part]="part.file">
+            <span class="parts__mark" aria-hidden="true">@if (part.name) { <lucide-icon [img]="icons.Check" [size]="14" /> } @else { – }</span>
+            <span class="parts__what">{{ t('customPart_' + part.file) }}</span>
+            <span class="parts__file">{{ part.name ? part.name + ' · ' + kb(part.bytes) : t('customPartMissing') }}</span>
+          </li>
+        }
+      </ul>
+
+      @if (d.error) {
+        <p class="banner banner--danger" role="alert">{{ errorText(d) }}</p>
+      } @else if (d.summary; as s) {
+        @if (mode() === 'create') {
+          <label class="field"><span>{{ t('customWidgetName') }}</span>
+            <input type="text" maxlength="80" [value]="name()" (input)="name.set($any($event.target).value)" [placeholder]="t('customImportedName')" data-cw-name />
+          </label>
+        }
+        <p class="summary" data-cw-summary>
+          <strong>{{ t('customSummary', { settings: s.settings, groups: s.groups }) }}</strong>
+          @if (s.author) { <span>{{ t('customByAuthor', { author: s.author }) }}</span> }
+        </p>
+        @if (s.issues.length) {
+          <details class="issues">
+            <summary>{{ n('customIssues', s.issues.length) }}</summary>
+            <ul>@for (issue of s.issues; track $index) { <li><code>{{ issue.key || '—' }}</code> {{ t('customIssue_' + issue.code) }}</li> }</ul>
+          </details>
+        }
+        @if (s.streamElements.length) {
+          <div class="banner banner--warn" data-cw-remote>
+            <strong>{{ n('customRemoteTitle', s.streamElements.length) }}</strong>
+            <span>{{ t('customRemoteBody') }}</span>
+          </div>
+        }
+        @if (mode() === 'replace') { <p class="note">{{ t('customReplaceNote') }}</p> }
+      }
+    }
+
+    @if (blockedByLimit()) {
+      <div class="banner banner--gold" data-cw-limit>
+        <strong>{{ n('customLimitTitle', list()?.limit ?? 0, { limit: list()?.limit ?? 0, plan: t('customPlan_' + (list()?.planTier ?? 'free')) }) }}</strong>
+        <span>{{ t(canUpgrade() ? 'customLimitUpgrade' : 'customLimitDelete') }}</span>
+        @if (canUpgrade()) { <button type="button" class="gold" (click)="upgrade()"><lucide-icon [img]="icons.Star" [size]="16" aria-hidden="true" />{{ t('customSeePlans') }}</button> }
+      </div>
+    } @else if (serverError()) {
+      <p class="banner banner--danger" role="alert">{{ serverError() }}</p>
+    }
+  </div>
+
+  <footer class="foot">
+    @if (mode() === 'create' && !blockedByLimit() && usage()) { <span class="foot__usage">{{ usage() }}</span> }
+    <button type="button" [disabled]="busy()" (click)="close()">{{ t('cancel') }}</button>
+    <button type="button" class="primary" [disabled]="!ready()" (click)="submit()" data-cw-submit>{{ busy() ? t('customImporting') : t(mode() === 'replace' ? 'customReplaceAction' : 'customImportAction') }}</button>
+  </footer>
+</dialog>

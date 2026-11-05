@@ -1,0 +1,276 @@
+/**
+ * Overlay Studio custom widgets, against an isolated site preview/candidate with every API mocked:
+ *  - the Add panel lists imported widgets only when the API says the feature is enabled
+ *  - importing the sample package as a .zip (widget.ini + 5 parts): parts found, settings summary,
+ *    StreamElements-hosted files warning, then the new layer is added and selected
+ *  - right panel: one collapsed group per fields.txt group (+ General), hidden fields left out;
+ *    editing a colour / slider / switch / dropdown stores overrides; invalid input shows an inline
+ *    error and changes nothing; reset one and reset all; search opens matching groups
+ *  - save + publish carry config.values; export downloads a StreamElements zip with this layer's data
+ *  - plan limit blocks the import with an upgrade prompt; OBS shows nothing for the layer
+ *  - axe (wcag2a/2aa/21aa) and no horizontal overflow at 320/390/1280, dark then light
+ */
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+
+const tools = process.env.SAAS_BROWSER_TOOLS || '/tmp/saas-cooldown-browser';
+const require = createRequire(`${tools}/package.json`);
+const { chromium } = require('playwright');
+const { default: AxeBuilder } = require('@axe-core/playwright');
+const base = process.env.SAAS_PREVIEW_URL;
+assert(base, 'SAAS_PREVIEW_URL must name an isolated preview/candidate');
+const fixtures = process.env.CUSTOM_WIDGET_FIXTURES || `${process.env.SAAS_REPO || '/root/saas'}/ops/checks/custom-widget-fixtures/sample-chat`;
+// Expectations come from the canonical format code (transpiled on the fly), so they match what ships.
+const repo = process.env.SAAS_REPO || '/root/saas';
+const formatModule = `/tmp/custom-widget-format-${process.pid}.mjs`;
+createRequire(`${repo}/dimabot/package.json`)('esbuild').buildSync({ entryPoints: [`${repo}/dimabot/src/custom_widgets/format.ts`], format: 'esm', platform: 'node', outfile: formatModule, logLevel: 'error' });
+const { parseFields, parseData, groupFields, resolveFieldData, readPackage } = await import(formatModule);
+const api = 'https://api.domdimabot.com', publicId = 'd'.repeat(48), widgetId = 'a1'.repeat(12), errors = [];
+const shots = process.env.SAAS_SCREENSHOT_DIR || '';
+const shot = async (page, name) => { if (!shots) return; await mkdir(shots, { recursive: true }); await page.screenshot({ path: `${shots}/custom-widgets-${name}.png` }); };
+const until = async (fn, label) => { for (let i = 0; i < 100; i++) { if (await fn()) return; await new Promise(r => setTimeout(r, 50)); } throw new Error('Timed out: ' + label); };
+
+const parts = ['html', 'css', 'js', 'fields', 'data'];
+const source = Object.fromEntries(await Promise.all(parts.map(async part => [part, await readFile(`${fixtures}/${part}.txt`, 'utf8')])));
+const ini = await readFile(`${fixtures}/widget.ini`, 'utf8');
+const pkg = readPackage(source);
+
+// Same stored-zip layout the site writes; used to build the upload.
+function zip(files) {
+  const table = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = data => { let c = 0xffffffff; for (const b of data) c = table[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const locals = [], central = []; let offset = 0;
+  for (const file of files) {
+    const name = Buffer.from(file.name), data = Buffer.from(file.text), sum = crc(data);
+    const local = Buffer.alloc(30); local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt32LE(sum, 14); local.writeUInt32LE(data.length, 18); local.writeUInt32LE(data.length, 22); local.writeUInt16LE(name.length, 26);
+    const entry = Buffer.alloc(46); entry.writeUInt32LE(0x02014b50, 0); entry.writeUInt16LE(20, 4); entry.writeUInt16LE(20, 6); entry.writeUInt32LE(sum, 16); entry.writeUInt32LE(data.length, 20); entry.writeUInt32LE(data.length, 24); entry.writeUInt16LE(name.length, 28); entry.writeUInt32LE(offset, 42);
+    locals.push(local, name, data); central.push(entry, name); offset += 30 + name.length + data.length;
+  }
+  const dir = Buffer.concat(central), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10); end.writeUInt32LE(dir.length, 12); end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locals, dir, end]);
+}
+const upload = `/tmp/custom-widget-check-${process.pid}.zip`;
+await writeFile(upload, zip([{ name: 'Sample Chat/widget.ini', text: ini }, ...parts.map(part => ({ name: `Sample Chat/${part}.txt`, text: source[part] }))]));
+
+const user = { id: '533538623', login: 'customfixture', display_name: 'Fixture' };
+const app = { name: 'Fixture', email: 'fixture@example.invalid', language: 'en', plan_tier: 'premium', actived: true, chat_enabled: false, twitch_user_id: user.id, has_permissions: true, up_to_date_permissions: true, administrating: [] };
+const layout = { duration: 5, widgets: [] };
+const view = (extra = {}) => ({ id: widgetId, name: pkg.name, engine: 'streamelements', revision: 1, author: pkg.author, fields: pkg.fields, data: pkg.data, externalMedia: pkg.externalMedia,
+  files: Object.fromEntries(parts.map(part => [part, { bytes: Buffer.byteLength(source[part]), sha256: 'f'.repeat(64) }])), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), usedIn: [], ...extra });
+
+function mocks(options) {
+  const world = { enabled: options.enabled ?? true, planTier: options.planTier ?? 'premium', limit: options.limit ?? 5, widgets: options.widgets ?? [], imports: [], writes: 0,
+    state: { schemaVersion: 1, revision: 0, designs: [{ id: 'default', name: 'Alerts', revision: 1, width: 800, height: 240, events: { sub: layout, bits: layout, follow: layout, raid: layout } }],
+      scenes: [{ id: 'main', name: 'Main overlay', publicId, width: 1920, height: 1080, revision: 0, widgets: [], waitFor: [] }] } };
+  return { world, async install(context) {
+    await context.addInitScript(({ user, app, theme }) => {
+      localStorage.setItem('dimasite.session.v1', JSON.stringify({ version: 2, token: 'fixture-only', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3600000).toISOString(), twitchUser: user, appUser: app, permissions: {} }));
+      localStorage.setItem('theme', localStorage.getItem('theme') || theme); localStorage.setItem('userLanguage', 'en');
+    }, { user, app, theme: options.theme ?? 'dark' });
+    await context.routeWebSocket('**/*', ws => ws.close());
+    await context.route('**/*', async route => {
+      const req = route.request(), url = new URL(req.url());
+      if (url.origin === new URL(base).origin) return route.continue();
+      if (url.origin !== api) return route.abort();
+      const path = url.pathname, list = `/overlay-studio/${user.id}/custom-widgets`;
+      let data = {}, status = 200;
+      if (path === '/auth/session') data = { twitch: user, app };
+      else if (path.endsWith('/access') || path.startsWith('/auth/access/')) data = { allowed: true, role: 'owner', planTier: world.planTier };
+      else if (path.endsWith('/connections')) data = { checkedAt: Date.now(), scenes: [] };
+      else if (path === list && req.method() === 'GET') data = { enabled: world.enabled, planTier: world.planTier, limit: world.limit, used: world.widgets.length, widgets: world.widgets };
+      else if (path === list && req.method() === 'POST') {
+        const body = req.postDataJSON(); world.imports.push(body);
+        if (world.widgets.length >= world.limit) return route.fulfill({ status: 403, json: { error: true, status: 403, code: 'plan_limit', message: 'Your plan includes 1 custom widget. Delete one or upgrade to import more.' } });
+        const created = view({ name: body.name || pkg.name }); world.widgets.push(created); status = 201; data = { widget: created, issues: [] };
+      } else if (path.startsWith(`${list}/${widgetId}/files/`)) return route.fulfill({ status: 200, contentType: 'text/plain', body: source[path.split('/').pop()] });
+      else if (path === `/overlay-studio/${user.id}`) {
+        if (req.method() === 'PUT') { world.writes++; world.state = structuredClone(req.postDataJSON()); world.state.revision++; }
+        data = structuredClone(world.state);
+      } else if (path.endsWith('/publish')) {
+        world.state.scenes[0].revision++; world.state.revision++;
+        world.state.scenes[0].published = structuredClone({ width: 1920, height: 1080, widgets: world.state.scenes[0].widgets.map(w => w.kind === 'custom' ? { ...w, config: { ...w.config, revision: 1 } } : w), designs: [], waitFor: [] });
+        data = structuredClone(world.state);
+      }
+      return route.fulfill({ status, json: { error: false, status, data } });
+    });
+  } };
+}
+const browser = await chromium.launch({ args: ['--no-sandbox'] });
+const axe = async (page, label) => {
+  const result = await new AxeBuilder({ page }).include('app-overlay-editor').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  assert.deepEqual(result.violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).slice(0, 3).join(' | ')}`), [], `axe ${label}`);
+};
+const group = (page, name) => page.locator(`app-overlay-custom-widget-fields details.cw-group[data-group="${name}"]`);
+const field = (page, key) => page.locator(`app-overlay-custom-widget-fields [data-field-key="${key}"]`);
+const lastLayer = world => world.state.scenes[0].widgets.at(-1);
+
+try {
+  // 1. Feature off: nothing is shown.
+  {
+    const m = mocks({ enabled: false }), context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    await m.install(context); const page = await context.newPage(); page.on('pageerror', e => errors.push(e.message));
+    await page.goto(`${base}/${user.login}/modules/overlays`); await page.locator('.stage').waitFor();
+    await page.locator('.palette-item').first().waitFor();
+    await page.waitForTimeout(300);
+    assert.equal(await page.locator('[data-custom-widgets]').count(), 0, 'custom widgets stay hidden when the API says disabled');
+    await context.close();
+    console.log('PASS hidden when not enabled for the channel.');
+  }
+
+  // 2. Import → layer → settings → save/publish → export, desktop dark.
+  const m = mocks({}), context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', acceptDownloads: true });
+  await m.install(context);
+  const page = await context.newPage(); page.setDefaultTimeout(12000); page.on('pageerror', e => errors.push(e.message));
+  await page.goto(`${base}/${user.login}/modules/overlays`); await page.locator('.stage').waitFor();
+  await page.locator('[data-custom-widgets]').waitFor();
+  assert.equal((await page.locator('.custom-usage').textContent()).trim(), '0/5');
+  await page.locator('[data-custom-import]').click();
+  const dialog = page.locator('dialog.cw-dialog');
+  await dialog.waitFor();
+  await dialog.locator('[data-cw-files]').setInputFiles(upload);
+  await dialog.locator('[data-cw-summary]').waitFor();
+  assert.deepEqual(await dialog.locator('.parts li').evaluateAll(items => items.map(li => [li.dataset.part, li.classList.contains('missing')])), parts.map(part => [part, false]));
+  assert.equal(await dialog.locator('[data-cw-name]').inputValue(), 'Sample chat', 'name comes from the widgetName field');
+  const visibleCount = groupFields(pkg.fields).reduce((n, g) => n + g.fields.length, 0);
+  assert.match(await dialog.locator('[data-cw-summary]').textContent(), new RegExp(`${visibleCount} settings in 5 groups`));
+  assert.match(await dialog.locator('[data-cw-remote]').textContent(), /loads 2 files from StreamElements/);
+  await shot(page, 'import-dark-1280');
+  await axe(page, 'import dialog');
+  await dialog.locator('[data-cw-name]').fill('My chat');
+  await dialog.locator('[data-cw-submit]').click();
+  await dialog.waitFor({ state: 'detached' });
+  assert.equal(m.world.imports.length, 1);
+  assert.equal(m.world.imports[0].name, 'My chat');
+  for (const part of parts) assert.equal(m.world.imports[0].files[part], source[part], `${part} uploaded byte-for-byte`);
+
+  // The new layer is selected; groups render collapsed.
+  await page.locator('.selected-card[data-kind="custom"]').waitFor();
+  await page.locator('app-overlay-scene-renderer [data-custom-placeholder]').waitFor();
+  const groups = await page.locator('app-overlay-custom-widget-fields details.cw-group').evaluateAll(list => list.map(d => [d.dataset.group, d.open]));
+  assert.deepEqual(groups, [['Test', false], ['Messages', false], ['Colors', false], ['', false], ['Alerts', false]], 'one collapsed group per fields.txt group, ungrouped as General');
+  assert.equal(await page.locator('app-overlay-custom-widget-fields [data-field-key="widgetName"]').count(), 0, 'hidden fields are not shown');
+  await shot(page, 'layer-dark-1280');
+
+  // Colour: valid text, then invalid (inline error, unchanged), then picker.
+  await group(page, 'Colors').locator('summary').click();
+  const color = field(page, 'textColor').locator('input[type="text"]');
+  assert.equal(await color.inputValue(), '#fefefe', 'data.txt value shown');
+  await color.fill('rgba(255, 102, 170, 0.8)'); await color.press('Tab');
+  await until(() => field(page, 'textColor').locator('.cw-changed').count(), 'changed marker');
+  await color.fill('red; } body { display:none'); await color.press('Tab');
+  await field(page, 'textColor').locator('.cw-error').waitFor();
+  assert.equal(await color.getAttribute('aria-invalid'), 'true');
+  const opacity = field(page, 'backgroundOpacity').locator('input[type="range"]');
+  assert.equal(await opacity.inputValue(), '9', 'imported 12 is clamped to the slider max');
+  await opacity.fill('3');
+  await group(page, 'Messages').locator('summary').click();
+  await field(page, 'hideCommands').locator('input[role="switch"]').click();
+  await field(page, 'alignMessages').locator('select').selectOption('top');
+  await field(page, 'messageLimit').locator('input').fill('12'); await field(page, 'messageLimit').locator('input').press('Tab');
+  // Same value as the widget's saved data: not stored as a change.
+  await field(page, 'ignoredUsers').locator('input').fill('StreamElements,Nightbot'); await field(page, 'ignoredUsers').locator('input').press('Tab');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await page.getByRole('button', { name: 'Saved', exact: true }).waitFor();
+  assert.deepEqual(lastLayer(m.world).config, { widgetId, values: { textColor: 'rgba(255, 102, 170, 0.8)', backgroundOpacity: 3, hideCommands: false, alignMessages: 'top', messageLimit: 12 } });
+  assert.equal(lastLayer(m.world).name, 'My chat');
+
+  // Reset one, then search, then reset all.
+  await field(page, 'messageLimit').locator('.cw-reset').click();
+  await until(async () => !(await field(page, 'messageLimit').locator('.cw-changed').count()), 'reset one');
+  assert.equal(await field(page, 'messageLimit').locator('input').inputValue(), '6');
+  const search = page.locator('app-overlay-custom-widget-fields .cw-search input');
+  await search.fill('color');
+  await until(async () => (await page.locator('app-overlay-custom-widget-fields details.cw-group').count()) === 1, 'search filter');
+  assert.equal(await group(page, 'Colors').evaluate(d => d.open), true, 'matching groups open while searching');
+  await search.fill('');
+  await page.locator('app-overlay-custom-widget-fields .cw-link').click();
+  await until(async () => !(await page.locator('app-overlay-custom-widget-fields .cw-changed').count()), 'reset all');
+  await field(page, 'textColor').locator('input[type="text"]').fill('#123456'); await field(page, 'textColor').locator('input[type="text"]').press('Tab');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await page.getByRole('button', { name: 'Saved', exact: true }).waitFor();
+  assert.deepEqual(lastLayer(m.world).config, { widgetId, values: { textColor: '#123456' } });
+  await page.getByRole('button', { name: /Publish live/ }).click();
+  await page.getByText('Published. Connected browser sources are updating.', { exact: true }).waitFor();
+  assert.equal(m.world.state.scenes[0].published.widgets.at(-1).config.values.textColor, '#123456');
+
+  // Export: StreamElements zip with this layer's data.
+  const [download] = await Promise.all([page.waitForEvent('download'), page.locator('[data-cw-export]').click()]);
+  assert.match(download.suggestedFilename(), /^My chat\.zip$/);
+  const exported = await readFile(await download.path());
+  const names = [], texts = {};
+  for (let at = 0; exported.readUInt32LE(at) === 0x04034b50;) {
+    const nameLength = exported.readUInt16LE(at + 26), size = exported.readUInt32LE(at + 18), name = exported.subarray(at + 30, at + 30 + nameLength).toString();
+    names.push(name); texts[name] = exported.subarray(at + 30 + nameLength, at + 30 + nameLength + size).toString(); at += 30 + nameLength + size;
+  }
+  assert.deepEqual(names, ['widget.ini', 'html.txt', 'css.txt', 'js.txt', 'fields.txt', 'data.txt']);
+  for (const part of ['html', 'css', 'js', 'fields']) assert.equal(texts[`${part}.txt`], source[part], `${part} exported unchanged`);
+  const fields = parseFields(source.fields).fields;
+  assert.deepEqual(JSON.parse(texts['data.txt']), resolveFieldData(fields, parseData(source.data, fields).data, { textColor: '#123456' }));
+  console.log('PASS import, grouped settings, overrides/reset/search, save/publish and StreamElements export.');
+
+  // 3. Layouts and accessibility: dark then light, phone and desktop.
+  for (const theme of ['dark', 'light']) {
+    await page.evaluate(theme => localStorage.setItem('theme', theme), theme);
+    await page.reload(); await page.locator('.stage').waitFor();
+    for (const width of [320, 390, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.locator('.widget[data-kind="custom"]').first().dispatchEvent('click');
+      if (width < 960) await page.locator('.studio-mtabs [data-tab="edit"]').click();
+      await page.locator('app-overlay-custom-widget-fields details.cw-group').first().waitFor();
+      await group(page, 'Colors').evaluate(d => { d.open = true; });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${theme} ${width}px overflow`);
+      await axe(page, `${theme} ${width} layer`);
+      await shot(page, `layer-${theme}-${width}`);
+      if (width < 960) await page.locator('.studio-mtabs [data-tab="add"]').click();
+      await page.locator('[data-custom-import]').click();
+      await page.locator('dialog.cw-dialog').waitFor();
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${theme} ${width}px dialog overflow`);
+      await axe(page, `${theme} ${width} dialog`);
+      await shot(page, `dialog-${theme}-${width}`);
+      await page.keyboard.press('Escape'); await page.locator('dialog.cw-dialog').waitFor({ state: 'detached' });
+    }
+  }
+  await context.close();
+  console.log('PASS dark/light at 320/390/1280: no overflow, axe clean for the layer panel and import dialog.');
+
+  // 4. Plan limit: the import is blocked with an upgrade prompt.
+  {
+    const limited = mocks({ planTier: 'free', limit: 1, widgets: [view()] }), ctx = await browser.newContext({ viewport: { width: 390, height: 860 }, reducedMotion: 'reduce' });
+    await limited.install(ctx); const p = await ctx.newPage(); p.on('pageerror', e => errors.push(e.message));
+    await p.goto(`${base}/${user.login}/modules/overlays`); await p.locator('.stage').waitFor();
+    await p.locator('.studio-mtabs [data-tab="add"]').click();
+    await p.locator('[data-custom-import]').click();
+    const d = p.locator('dialog.cw-dialog'); await d.locator('[data-cw-limit]').waitFor();
+    assert.match(await d.locator('[data-cw-limit]').textContent(), /Free plan includes 1 custom widget/);
+    assert.equal(await d.locator('[data-cw-submit]').isDisabled(), true);
+    await d.locator('[data-cw-files]').setInputFiles(upload);
+    await d.locator('[data-cw-summary]').waitFor();
+    assert.equal(await d.locator('[data-cw-submit]').isDisabled(), true, 'still blocked after picking files');
+    assert.equal(limited.world.imports.length, 0);
+    await shot(p, 'limit-dark-390');
+    await ctx.close();
+    console.log('PASS plan limit blocks imports with an upgrade prompt.');
+  }
+
+  // 5. OBS: a published custom layer renders nothing until the widget engine exists.
+  {
+    const runtime = await browser.newContext({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
+    const snapshot = { width: 1280, height: 720, designs: [], waitFor: [], widgets: [{ id: 'custom-1', kind: 'custom', configVersion: 1, x: 0, y: 0, width: 480, height: 640, visible: true, locked: false, config: { widgetId, revision: 1 } }] };
+    await runtime.routeWebSocket('**/*', ws => {
+      if (!ws.url().includes('/socket.io/')) return ws.close();
+      ws.send('0{"sid":"custom","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}');
+      ws.onMessage(message => { if (String(message).startsWith('40/overlay-studio/')) { ws.send(`40/overlay-studio/${publicId},{"sid":"custom"}`); ws.send(`42/overlay-studio/${publicId},${JSON.stringify(['overlay-state', { revision: 1, snapshot, widgetStates: {}, serverTime: Date.now() }])}`); } });
+    });
+    await runtime.route('**/*', route => new URL(route.request().url()).origin === new URL(base).origin ? route.continue() : route.abort());
+    const p = await runtime.newPage(); p.on('pageerror', e => errors.push(e.message));
+    await p.goto(`${base}/overlays/${publicId}`);
+    await p.locator('.placement[data-kind="custom"]').waitFor({ state: 'attached' });
+    assert.equal(await p.locator('[data-custom-placeholder]').count(), 0, 'no placeholder on stream');
+    assert.equal(await p.locator('.placement[data-kind="custom"]').evaluate(n => n.getBoundingClientRect().width > 0 && n.innerText.trim()), '');
+    await runtime.close();
+    console.log('PASS OBS shows nothing for custom layers yet.');
+  }
+  assert.deepEqual(errors, []);
+} finally { await browser.close(); }

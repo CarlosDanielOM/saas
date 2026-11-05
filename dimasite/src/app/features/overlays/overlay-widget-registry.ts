@@ -1,4 +1,7 @@
-import { Bell, Clapperboard, Image, Layers3, Play, Radio, Sparkles, Type, Volume2, Zap, type LucideIconData } from 'lucide-angular';
+import { Bell, Clapperboard, Image, Layers3, Play, Puzzle, Radio, Sparkles, Type, Volume2, Zap, type LucideIconData } from 'lucide-angular';
+import { OverlayCustomWidgetComponent } from './overlay-custom-widget.component';
+import { OverlayCustomWidgetFieldsComponent } from './overlay-custom-widget-fields.component';
+import { OverlayCustomWidgetSettingsComponent } from './overlay-custom-widget-settings.component';
 import { OverlayInteractionSettingsComponent } from './overlay-interaction-settings.component';
 import { OverlayInteractionWidgetComponent } from './overlay-interaction-widget.component';
 import { sampleInteraction, type InteractionKind, type InteractionPreview } from './overlay-interaction.model';
@@ -35,7 +38,9 @@ export const OVERLAY_WIDGET_MODULES: Readonly<Record<WidgetKind, OverlayWidgetMo
   image: moduleDefinition('image', Image),
   video: moduleDefinition('video', Play),
   animation: moduleDefinition('animation', Sparkles),
-  shape: moduleDefinition('shape', Layers3)
+  shape: moduleDefinition('shape', Layers3),
+  // Layers are created from the Add panel's custom widget list (config.widgetId), never from the generic palette.
+  custom: moduleDefinition('custom', Puzzle, { renderer: OverlayCustomWidgetComponent, settings: OverlayCustomWidgetSettingsComponent, sections: OverlayCustomWidgetFieldsComponent })
 };
 export function getWidgetModule(kind: unknown): OverlayWidgetModule | undefined {
   const definition = getWidgetDefinition(kind);

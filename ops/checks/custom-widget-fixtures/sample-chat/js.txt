@@ -1,0 +1,30 @@
+// DomDimaBot sample chat widget (StreamElements format). Written for tests; free to reuse.
+let settings = {};
+const chat = () => document.querySelector('.chat');
+const escapeHtml = text => String(text).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+function addRow(html, className) {
+  const row = document.createElement('div');
+  row.className = 'row ' + (className || '');
+  row.innerHTML = html;
+  if (settings.alignMessages === 'top') chat().prepend(row); else chat().append(row);
+  const rows = chat().children, limit = Number(settings.messageLimit) || 10;
+  while (rows.length > limit) (settings.alignMessages === 'top' ? rows[rows.length - 1] : rows[0]).remove();
+  if (settings.hideAfter > 0) setTimeout(() => row.remove(), settings.hideAfter * 1000);
+}
+window.addEventListener('onWidgetLoad', event => { settings = event.detail.fieldData; });
+window.addEventListener('onEventReceived', event => {
+  const { listener, event: data } = event.detail;
+  if (listener === 'widget-button' && data.field === 'testMessage') {
+    addRow('<span class="name">Luna</span><span>Hello from the sample widget</span>');
+    return;
+  }
+  if (listener === 'message') {
+    const message = data.data;
+    if (settings.hideCommands && message.text.startsWith('!')) return;
+    if (String(settings.ignoredUsers || '').toLowerCase().split(',').map(s => s.trim()).includes(message.nick)) return;
+    addRow('<span class="name">' + escapeHtml(message.displayName) + '</span><span>' + escapeHtml(message.text) + '</span>');
+  }
+  if (listener === 'delete-message') document.querySelectorAll('.row').forEach(row => row.dataset.id === data.msgId && row.remove());
+  if (settings.showAlerts && listener === 'follower-latest') addRow(escapeHtml(data.name) + ' followed', 'alert');
+  if (settings.showAlerts && listener === 'cheer-latest') addRow(escapeHtml(data.name) + ' cheered ' + Number(data.amount) + ' Bits', 'alert');
+});

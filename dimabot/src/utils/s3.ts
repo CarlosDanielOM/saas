@@ -1,9 +1,11 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import type { Readable } from 'stream';
 
+// S3_ENDPOINT_URL (a full URL with path-style buckets) is for S3-compatible test stores; production uses region + endpoint.
 export const s3Client = new S3Client({
     region: process.env.S3_REGION!,
-    endpoint: `https://${process.env.S3_REGION!}.${process.env.S3_ENDPOINT!}`,
+    endpoint: process.env.S3_ENDPOINT_URL || `https://${process.env.S3_REGION!}.${process.env.S3_ENDPOINT!}`,
+    forcePathStyle: !!process.env.S3_ENDPOINT_URL,
     credentials: {
         accessKeyId: process.env.S3_ACCESS_KEY!,
         secretAccessKey: process.env.S3_SECRET_KEY!

@@ -1,0 +1,22 @@
+{
+  "widgetName": { "type": "hidden", "label": "Widget name", "value": "Sample chat" },
+  "widgetAuthor": { "type": "hidden", "label": "Author", "value": "DomDimaBot" },
+  "testMessage": { "type": "button", "label": "Send a test message", "value": "test", "group": "Test" },
+  "alignMessages": { "type": "dropdown", "label": "New messages appear at", "value": "bottom", "options": { "bottom": "Bottom", "top": "Top" }, "group": "Messages" },
+  "messageLimit": { "type": "number", "label": "Messages on screen", "value": 8, "min": 1, "max": 50, "step": 1, "group": "Messages" },
+  "hideAfter": { "type": "slider", "label": "Hide messages after (seconds, 0 = never)", "value": 0, "min": 0, "max": 120, "step": 1, "group": "Messages" },
+  "hideCommands": { "type": "checkbox", "label": "Hide !commands", "value": true, "group": "Messages" },
+  "ignoredUsers": { "type": "text", "label": "Ignored users (comma separated)", "value": "streamelements,nightbot", "group": "Messages" },
+  "textColor": { "type": "colorpicker", "label": "Text color", "value": "#ffffff", "group": "Colors" },
+  "nameColor": { "type": "colorpicker", "label": "Name color", "value": "#c4b5fd", "group": "Colors" },
+  "borderColor": { "type": "colorpicker", "label": "Border color", "value": "rgba(255,255,255,0.4)", "group": "Colors" },
+  "alertColor": { "type": "colorpicker", "label": "Alert background", "value": "#fbbf24", "group": "Colors" },
+  "backgroundOpacity": { "type": "slider", "label": "Background opacity", "value": 7, "min": 0, "max": 9, "step": 1, "group": "Colors" },
+  "msgFont": { "type": "googleFont", "label": "Font", "value": "Plus Jakarta Sans" },
+  "textSize": { "type": "number", "label": "Text size", "value": 18, "min": 10, "max": 64 },
+  "nameWeight": { "type": "dropdown", "label": "Name weight", "value": "700", "options": { "400": "Regular", "700": "Bold" } },
+  "radius": { "type": "slider", "label": "Corner radius", "value": 14, "min": 0, "max": 40 },
+  "showAlerts": { "type": "checkbox", "label": "Show follows and cheers", "value": true, "group": "Alerts" },
+  "alertImage": { "type": "image-input", "label": "Alert image", "value": "", "group": "Alerts" },
+  "alertSound": { "type": "sound-input", "label": "Alert sound", "value": "", "group": "Alerts" }
+}

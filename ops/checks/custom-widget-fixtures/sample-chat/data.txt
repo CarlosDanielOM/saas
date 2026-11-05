@@ -1,0 +1,21 @@
+{
+  "alignMessages": "bottom",
+  "messageLimit": "6",
+  "hideAfter": 0,
+  "hideCommands": true,
+  "ignoredUsers": "StreamElements,Nightbot",
+  "textColor": "#fefefe",
+  "nameColor": "#f9a8d4",
+  "borderColor": "#fcfefb",
+  "alertColor": "#fbbf24",
+  "backgroundOpacity": 12,
+  "msgFont": "Comfortaa",
+  "textSize": 19,
+  "nameWeight": 700,
+  "radius": 16,
+  "showAlerts": true,
+  "alertImage": "https://cdn.streamelements.com/uploads/fixture-alert.png",
+  "alertSound": null,
+  "accentGlow": "#ec6b93",
+  "legacyCount": 6
+}

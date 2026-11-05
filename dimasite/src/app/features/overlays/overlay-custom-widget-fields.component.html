@@ -1,0 +1,110 @@
+@if (source(); as widget) {
+  @if (groups().length) {
+    <div class="cw-tools">
+      @if (showSearch()) {
+        <label class="cw-search">
+          <lucide-icon [img]="icons.Search" [size]="16" aria-hidden="true" />
+          <input type="search" [value]="query()" (input)="query.set($any($event.target).value)" [placeholder]="t('customSearch')" [attr.aria-label]="t('customSearch')" />
+        </label>
+      }
+      @if (changedCount()) {
+        <p class="cw-changed-line" role="status">
+          <span>{{ n('customChangedCount', changedCount()) }}</span>
+          <button type="button" class="cw-link" (click)="resetAll()">{{ t('customResetAll') }}</button>
+        </p>
+      }
+    </div>
+    @for (group of visibleGroups(); track group.id) {
+      <details class="acc cw-group" [attr.data-group]="group.name ?? ''" [open]="isOpen(group.id)" (toggle)="toggle(group.id, $event)">
+        <summary>
+          <lucide-icon [img]="icons.SlidersHorizontal" [size]="16" aria-hidden="true" />
+          <span class="cw-group__name">{{ groupName(group) }}</span>
+          <span class="cw-count">{{ group.fields.length }}</span>
+          @if (changedIn(group.fields); as changed) { <span class="cw-dot" [attr.aria-label]="n('customChangedCount', changed)" [title]="n('customChangedCount', changed)"></span> }
+        </summary>
+        <div class="acc__body">
+          @for (field of group.fields; track field.key) {
+            <div class="cw-field" [attr.data-field-key]="field.key" [attr.data-type]="field.type" [class.is-changed]="isChanged(field)">
+              @switch (field.type) {
+                @case ('checkbox') {
+                  <label class="switch-row">
+                    <span>{{ field.label }}</span>
+                    <span class="lf-switch"><input type="checkbox" role="switch" [checked]="checked(field)" (change)="setChecked(field, $event)" /><span class="lf-switch__track" aria-hidden="true"></span></span>
+                  </label>
+                }
+                @case ('button') {
+                  <button type="button" class="lf-btn lf-btn--compact" disabled [attr.aria-describedby]="'cw-btn-hint-' + layer().id">{{ field.label }}</button>
+                }
+                @default {
+                  <label class="cw-label" [for]="inputId(field)">{{ field.label }}</label>
+                  @switch (field.type) {
+                    @case ('textarea') {
+                      <textarea [id]="inputId(field)" [value]="text(field)" maxlength="20000" (change)="setText(field, $event)" [attr.aria-invalid]="errors()[field.key] ? 'true' : null"></textarea>
+                    }
+                    @case ('number') {
+                      <input [id]="inputId(field)" type="number" inputmode="decimal" [value]="number(field)" [attr.min]="field.min ?? null" [attr.max]="field.max ?? null" [attr.step]="field.step ?? 'any'" (change)="setNumber(field, $event)" [attr.aria-invalid]="errors()[field.key] ? 'true' : null" />
+                    }
+                    @case ('slider') {
+                      <span class="cw-slider">
+                        <input [id]="inputId(field)" class="lf-range" type="range" [min]="sliderMin(field)" [max]="sliderMax(field)" [step]="field.step ?? 1" [value]="number(field)" [style.--pct]="sliderPct(field)" (input)="setNumber(field, $event)" />
+                        <output [for]="inputId(field)">{{ number(field) }}</output>
+                      </span>
+                    }
+                    @case ('colorpicker') {
+                      <span class="cw-color">
+                        <input type="color" [value]="hex(field)" (input)="setText(field, $event)" [attr.aria-label]="t('customPickColor', { name: field.label })" />
+                        <input [id]="inputId(field)" type="text" spellcheck="false" autocomplete="off" [value]="text(field)" (change)="setText(field, $event)" [attr.aria-invalid]="errors()[field.key] ? 'true' : null" />
+                      </span>
+                    }
+                    @case ('dropdown') {
+                      <select [id]="inputId(field)" (change)="setText(field, $event)">
+                        @for (option of field.options ?? []; track option.value) { <option [value]="option.value" [selected]="option.value === text(field)">{{ option.label }}</option> }
+                      </select>
+                    }
+                    @case ('googleFont') {
+                      <input [id]="inputId(field)" type="text" [attr.list]="'cw-fonts-' + layer().id" autocomplete="off" [value]="text(field)" (change)="setText(field, $event)" [attr.aria-invalid]="errors()[field.key] ? 'true' : null" />
+                    }
+                    @case ('image-input') { <ng-container [ngTemplateOutlet]="media" [ngTemplateOutletContext]="{ $implicit: field }" /> }
+                    @case ('video-input') { <ng-container [ngTemplateOutlet]="media" [ngTemplateOutletContext]="{ $implicit: field }" /> }
+                    @case ('sound-input') { <ng-container [ngTemplateOutlet]="media" [ngTemplateOutletContext]="{ $implicit: field }" /> }
+                    @default {
+                      <input [id]="inputId(field)" [type]="field.inputType ?? 'text'" maxlength="20000" [value]="text(field)" (change)="setText(field, $event)" [attr.aria-invalid]="errors()[field.key] ? 'true' : null" />
+                    }
+                  }
+                }
+              }
+              @if (errors()[field.key]; as error) { <p class="cw-error" role="alert">{{ error }}</p> }
+              <div class="cw-meta">
+                <code>{{ field.key }}</code>
+                @if (isChanged(field)) {
+                  <span class="cw-changed">{{ t('customChanged') }}</span>
+                  <button type="button" class="cw-reset" (click)="reset(field)" [attr.aria-label]="t('customResetOne', { name: field.label })" [title]="t('customResetOne', { name: field.label })"><lucide-icon [img]="icons.RotateCcw" [size]="14" aria-hidden="true" /></button>
+                }
+              </div>
+            </div>
+          }
+          @if (hasButtons(group.fields)) { <p class="lf-note" [id]="'cw-btn-hint-' + layer().id">{{ t('customButtonsHint') }}</p> }
+        </div>
+      </details>
+    } @empty {
+      <p class="lf-note cw-empty">{{ t('customSearchEmpty') }}</p>
+    }
+    <datalist [id]="'cw-fonts-' + layer().id">@for (font of fonts; track font) { <option [value]="font"></option> }</datalist>
+  } @else {
+    <p class="lf-note cw-empty">{{ t('customNoSettings') }}</p>
+  }
+} @else if (listLoaded()) {
+  <p class="lf-note lf-note--warn cw-empty" role="alert">{{ t('customMissing') }}</p>
+}
+
+<ng-template #media let-field>
+  @if (field.multiple) {
+    <textarea [id]="inputId(field)" rows="3" [value]="lines(field)" (change)="setMedia(field, $event)" placeholder="https://" [attr.aria-invalid]="errors()[field.key] ? 'true' : null" [attr.aria-describedby]="inputId(field) + '-hint'"></textarea>
+  } @else {
+    <span class="cw-media">
+      @if (imagePreview(field); as src) { <img [src]="src" alt="" loading="lazy" referrerpolicy="no-referrer" /> }
+      <input [id]="inputId(field)" type="url" inputmode="url" [value]="text(field)" (change)="setMedia(field, $event)" placeholder="https://" [attr.aria-invalid]="errors()[field.key] ? 'true' : null" [attr.aria-describedby]="inputId(field) + '-hint'" />
+    </span>
+  }
+  <span class="cw-hint" [id]="inputId(field) + '-hint'">{{ t(field.multiple ? 'customMediaListHint' : 'customMediaHint') }}</span>
+</ng-template>

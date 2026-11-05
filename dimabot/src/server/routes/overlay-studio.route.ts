@@ -14,6 +14,7 @@ import { ALERT_EVENTS, EVENT_KINDS, type EventKind, type AlertEvent } from '../.
 import { AssetError, withAssetLibrary } from '../../assets/library.js';
 import { serveAsset } from '../../assets/http.js';
 import { snapshotAssets, validateAssets } from '../../overlays/assets.js';
+import { checkCustomLayers, createWidget, customWidgetsEnabled, deleteWidget, listWidgets, pinCustomLayers, pruneRevisions, renameWidget, replaceFiles, widgetFile } from '../../custom_widgets/store.js';
 export const overlayStudioRoute = express.Router();
 const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { void fn(req, res).catch(next); };
 const param = (req: Request, key: string) => string(req.params[key]);
@@ -74,15 +75,37 @@ overlayStudioRoute.get('/:channelID/connections', wrap(async (req, res) => {
 overlayStudioRoute.put('/:channelID', wrap(async (req, res) => ok(res, await withAssetLibrary(param(req, 'channelID'), () => change(param(req, 'channelID'), req.body.revision, async state => {
   const validated = validateState(req.body, state);
   await validateAssets(param(req, 'channelID'), validated);
+  await checkCustomLayers(param(req, 'channelID'), validated.scenes);
   Object.assign(state, validated);
 })))));
 overlayStudioRoute.post('/:channelID/scenes/:sceneId/:action', wrap(async (req, res) => {
   const action = param(req, 'action'); if (!['publish', 'rotate'].includes(action)) throw new OverlayError('Unknown action');
-  return ok(res, await withAssetLibrary(param(req, 'channelID'), () => change(param(req, 'channelID'), req.body.revision, async state => {
+  const channel = param(req, 'channelID');
+  const result = await withAssetLibrary(channel, () => change(channel, req.body.revision, async state => {
     const scene = state.scenes.find(s => s.id === param(req, 'sceneId')); if (!scene) throw new OverlayError('Overlay not found', 404);
     if (action === 'rotate') scene.publicId = token();
-    else { await validateAssets(param(req, 'channelID'), state); scene.revision++; scene.published = structuredClone({ width: scene.width, height: scene.height, widgets: scene.widgets, waitFor: scene.waitFor, designs: state.designs.filter(d => scene.widgets.some(w => w.designId === d.id)) }); }
-  })));
+    else {
+      await validateAssets(channel, state);
+      const published = structuredClone({ width: scene.width, height: scene.height, widgets: scene.widgets, waitFor: scene.waitFor, designs: state.designs.filter(d => scene.widgets.some(w => w.designId === d.id)) });
+      await pinCustomLayers(channel, published.widgets);
+      scene.revision++; scene.published = published;
+    }
+  }));
+  // Old custom widget revisions are kept only while a published overlay uses them.
+  if (action === 'publish' && customWidgetsEnabled(channel)) {
+    await withAssetLibrary(channel, () => pruneRevisions(channel)).catch(error => console.error('Custom widget cleanup failed', error instanceof Error ? error.message : 'Unknown error'));
+  }
+  return ok(res, result);
+}));
+// Custom widgets (owner only, through the channel guard above). Code changes never reach OBS until a publish.
+overlayStudioRoute.get('/:channelID/custom-widgets', wrap(async (req, res) => ok(res, await listWidgets(param(req, 'channelID')))));
+overlayStudioRoute.post('/:channelID/custom-widgets', wrap(async (req, res) => { res.status(201); return ok(res, await createWidget(param(req, 'channelID'), object(req.body))); }));
+overlayStudioRoute.put('/:channelID/custom-widgets/:widgetId/files', wrap(async (req, res) => ok(res, await replaceFiles(param(req, 'channelID'), param(req, 'widgetId'), object(req.body)))));
+overlayStudioRoute.patch('/:channelID/custom-widgets/:widgetId', wrap(async (req, res) => ok(res, await renameWidget(param(req, 'channelID'), param(req, 'widgetId'), object(req.body)))));
+overlayStudioRoute.delete('/:channelID/custom-widgets/:widgetId', wrap(async (req, res) => ok(res, await deleteWidget(param(req, 'channelID'), param(req, 'widgetId')))));
+overlayStudioRoute.get('/:channelID/custom-widgets/:widgetId/files/:file', wrap(async (req, res) => {
+  const text = await widgetFile(param(req, 'channelID'), param(req, 'widgetId'), param(req, 'file'), req.query.revision);
+  res.type('text/plain; charset=utf-8'); res.setHeader('X-Content-Type-Options', 'nosniff'); return res.send(text);
 }));
 overlayStudioRoute.post('/:channelID/preview', wrap(async (req, res) => {
   const body = object(req.body); const kind = body.kind as AlertEvent; if (!ALERT_EVENTS.includes(kind)) throw new OverlayError('Invalid alert event');
@@ -130,5 +153,6 @@ overlayStudioRoute.use((error: unknown, _req: Request, res: Response, _next: Nex
   if (res.headersSent) return _next(error);
   const status = error instanceof OverlayError || error instanceof AssetError ? error.status : 500;
   if (status === 500) console.error('Overlay Studio request failed', error instanceof Error ? error.message : 'Unknown error');
-  res.status(status).json({ error: true, status, message: error instanceof AssetError ? 'The selected asset is unavailable or incompatible. Choose another asset.' : error instanceof OverlayError ? error.message : 'Overlay Studio is temporarily unavailable' });
+  const code = error instanceof OverlayError ? (error as OverlayError & { code?: string }).code : undefined;
+  res.status(status).json({ error: true, status, message: error instanceof AssetError ? 'The selected asset is unavailable or incompatible. Choose another asset.' : error instanceof OverlayError ? error.message : 'Overlay Studio is temporarily unavailable', ...(code ? { code } : {}) });
 });

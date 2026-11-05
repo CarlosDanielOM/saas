@@ -1,0 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family={msgFont}:wght@400;700&display=swap');
+* { box-sizing: border-box; }
+body { margin: 0; background: transparent; font-family: '{msgFont}', sans-serif; }
+.chat { display: flex; flex-direction: column; gap: 8px; padding: 12px; height: 100vh; overflow: hidden; }
+.chat[data-align="bottom"] { justify-content: flex-end; }
+.row { display: grid; gap: 4px; padding: 10px 14px; border-radius: {radius}px; border: 2px solid {borderColor}; background: rgba(15, 17, 21, 0.{backgroundOpacity}); color: {textColor}; font-size: {textSize}px; animation: pop .25s ease-out; }
+.row .name { font-weight: {nameWeight}; color: {nameColor}; }
+.row.alert { background: {alertColor}; color: #14151a; text-align: center; }
+.row.alert::before { content: ''; display: block; height: 48px; background: url("https://cdn.streamelements.com/uploads/fixture-sparkle.png") center / contain no-repeat; }
+@keyframes pop { from { transform: translateY(8px); opacity: 0; } }
