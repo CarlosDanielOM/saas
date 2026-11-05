@@ -27,5 +27,5 @@ export class DuelApi {
   readonly base=inject(LinksService).getApiUrl();
   async read(channel:string):Promise<DuelState> { return (await firstValueFrom(this.http.get<{data:DuelState}>(`${this.base}/widgets/${channel}/duel`))).data; }
   async leaderboard(channel:string):Promise<DuelLeaderboard> { return (await firstValueFrom(this.http.get<{data:DuelLeaderboard}>(`${this.base}/widgets/${channel}/duel/leaderboard`))).data; }
-  async save(channel:string, settings:DuelSettings, revision:number, key:string):Promise<DuelState> { return (await firstValueFrom(this.http.post<{data:DuelState}>(`${this.base}/widgets/${channel}/duel/configure`,settings,{headers:{'If-Match':String(revision),'Idempotency-Key':key}}))).data; }
+  async save(channel:string, settings:Partial<DuelSettings>, revision:number, key:string):Promise<DuelState> { return (await firstValueFrom(this.http.post<{data:DuelState}>(`${this.base}/widgets/${channel}/duel/configure`,settings,{headers:{'If-Match':String(revision),'Idempotency-Key':key}}))).data; }
 }

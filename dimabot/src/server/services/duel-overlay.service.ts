@@ -2,7 +2,6 @@ import type { Server, Socket } from 'socket.io';
 import { authorizeDuelOverlay, DuelChannel, duelSnapshot, presenceKey, tokenHash } from '../../duel/service.js';
 import { leaderboardStatus, normalizeSettings } from '../../duel/model.js';
 import { duelLeaderboard } from '../../duel/stats.js';
-import { hasPremium } from '../../widgets/service.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
 
 export function registerDuelOverlay(io: Server): void {
@@ -31,10 +30,9 @@ export function registerDuelOverlay(io: Server): void {
         if (owned.busy) return; owned.busy = true;
         try {
           const doc = await DuelChannel.findById(channel).lean();
-          const premium = await hasPremium(channel);
           let board: Awaited<ReturnType<typeof duelLeaderboard>> | null = null;
           for (const client of owned.sockets) {
-            if (!doc || !premium || client.data.duelTokenHash !== doc.tokenHash) { client.disconnect(true); continue; }
+            if (!doc || client.data.duelTokenHash !== doc.tokenHash) { client.disconnect(true); continue; }
             if (client.data.leaderboard) {
               // Turning the leaderboard off or switching to custom rules hides the source.
               const config = normalizeSettings(doc.settings), status = leaderboardStatus(config);
@@ -52,7 +50,7 @@ export function registerDuelOverlay(io: Server): void {
           }
           const ready = doc?.settings.enabled && [...owned.sockets].some(client => client.connected && !client.data.leaderboard && client.data.duelTokenHash === doc.tokenHash && Date.now() - (client.data.duelReadyAt ?? 0) < 10000);
           const cache = await getDragonflyClient('duel-overlay');
-          if (ready && premium) await cache.set(presenceKey(channel), JSON.stringify({ hash: doc!.tokenHash, at: Date.now() }), { EX: 5 });
+          if (ready) await cache.set(presenceKey(channel), JSON.stringify({ hash: doc!.tokenHash, at: Date.now() }), { EX: 5 });
           else await cache.del(presenceKey(channel));
         } catch {
           for (const client of owned.sockets) {

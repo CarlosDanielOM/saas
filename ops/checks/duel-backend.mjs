@@ -54,15 +54,18 @@ function checkBattle(run,rules=domain.DEFAULT_RULES){
 }
 const once=()=>execFileSync('node',['/app/dist/workers/duel.worker.js','--once'],{encoding:'utf8'});
 async function finish(){await svc.DuelChannel.updateOne({_id:channel},{$set:{'run.endsAt':Date.now()-1,dueAt:Date.now()-1}});once();await wait(async()=>(await svc.loadDuel(channel)).run?.completedAt,'duel completion');}
-function connect(token,ready=true,view){
+function connect(token,ready=true,view,target=channel){
  const ws=new WebSocket(base.replace('http:','ws:')+'/socket.io/?EIO=4&transport=websocket'),packets=[];
- ws.addEventListener('message',event=>{const text=String(event.data);if(text.startsWith('0'))ws.send('40/overlays/duel/'+channel+','+JSON.stringify(view?{token,view}:{token}));else if(text==='2')ws.send('3');else{packets.push(text);if(ready&&text.includes('duel-state'))ws.send('42/overlays/duel/'+channel+','+JSON.stringify(['duel-ready',{version:1}]));}});
- const heartbeat=setInterval(()=>{if(ready&&ws.readyState===1)ws.send('42/overlays/duel/'+channel+','+JSON.stringify(['duel-ready',{version:1}]));},1000);
+ ws.addEventListener('message',event=>{const text=String(event.data);if(text.startsWith('0'))ws.send('40/overlays/duel/'+target+','+JSON.stringify(view?{token,view}:{token}));else if(text==='2')ws.send('3');else{packets.push(text);if(ready&&text.includes('duel-state'))ws.send('42/overlays/duel/'+target+','+JSON.stringify(['duel-ready',{version:1}]));}});
+ const heartbeat=setInterval(()=>{if(ready&&ws.readyState===1)ws.send('42/overlays/duel/'+target+','+JSON.stringify(['duel-ready',{version:1}]));},1000);
  return {ws,packets,close(){clearInterval(heartbeat);ws.close();}};
 }
 await request('GET',root,undefined,401,'');await request('GET',root,undefined,403,'duel-other');
 const {AdminSchema}=await import('/app/dist/schemas/admin.schema.js');await AdminSchema.collection.insertOne({channelID:channel,adminID:other,actived:true,permissions:['dashboard:view']});await request('GET',root,undefined,403,'duel-other');await AdminSchema.updateOne({adminID:other},{$set:{permissions:['*']}});await request('GET',root,undefined,200,'duel-other');await AdminSchema.deleteMany({adminID:other});
-await request('GET','/widgets/'+other+'/duel',undefined,403,'duel-other');
+await request('GET','/widgets/'+other+'/duel',undefined,200,'duel-other');
+await request('GET','/widgets/'+other,undefined,403,'duel-other');
+{ const denied=await fetch(base+'/widgets/'+other,{headers:{Authorization:'Bearer duel-other'}}); const body=await denied.json(); assert.equal(denied.status,403); assert.equal(body.code,'premium_required'); assert.match(body.message,/Dead by Daylight/); }
+await request('GET','/widgets/'+other+'/catalog',undefined,403,'duel-other');
 let state=await request('GET',root);assert.equal(state.settings.timeoutSeconds,60);assert.equal(state.settings.timeoutEnabled,true);
 for(const value of [0,-1,1.5,1209601,'60'])await request('POST',root+'/configure',{...state.settings,timeoutSeconds:value},400,'duel-owner',{'If-Match':String(state.revision),'Idempotency-Key':crypto.randomUUID()});
 await request('POST',root+'/configure',{...state.settings,winner:'left'},400,'duel-owner',{'If-Match':String(state.revision),'Idempotency-Key':crypto.randomUUID()});
@@ -186,18 +189,30 @@ await finish();assert.equal(await stats.DuelResult.countDocuments({channel}),res
 await config({rivalries:true,leaderboard:false});assert.equal((await request('GET',root+'/leaderboard')).status,'off');await wait(()=>pausedBoard.packets.some(p=>p.includes('"status":"off"')),'source told the leaderboard is off');
 await config({leaderboard:false,rivalries:false});await duelCommand(channel,'alice',false,'@bob');await duelCommand(channel,'bob',false,'accept');run=(await svc.loadDuel(channel)).run;assert.equal(run.tracked,false,'both off: nothing is tracked');await finish();assert.equal(await stats.DuelResult.countDocuments({channel}),resultsBefore+1);
 await config({leaderboard:true,rivalries:true});assert.equal((await request('GET',root+'/leaderboard')).status,'live');source4.close();pausedBoard.close();
-// Chat language: the widget's setting on Premium channels, the account language elsewhere.
+// Chat language: free channels keep their account language until explicitly saving a language.
 await config({language:'es'});assert.equal((await duelCommand(channel,'carol',false,'@dave')).message,'@dave, ¡@carol te ha retado a un duelo! Para aceptar usa "!duel accept" o rechaza con "!duel decline" en 30 segundos.');await duelCommand(channel,'dave',false,'decline');await config({language:'en'});
 await Users.collection.updateOne({'accounts.id':other},{$set:{language:'es'}});assert.match((await duelCommand(other,'carol',false,'@dave')).message,/^@dave, ¡@carol te ha retado a un duelo!/,'free channels use the account language');
 assert.equal((await duelCommand(other,'dave',false,'decline')).message,'@dave ha rechazado el duelo de @carol.');await Users.collection.updateOne({'accounts.id':other},{$set:{language:'en'}});assert.match((await duelCommand(other,'carol',false,'@dave')).message,/^@dave, @carol has challenged you/);await duelCommand(other,'dave',false,'decline');
+const freeRoot='/widgets/'+other+'/duel';
+await Users.collection.updateOne({'accounts.id':other},{$set:{language:'es'}});
+let freeState=await request('GET',freeRoot,undefined,200,'duel-other');assert.equal(freeState.settings.language,'es','editor reflects effective account language');
+const {language:_language,...otherSettings}=freeState.settings;
+await request('POST',freeRoot+'/configure',otherSettings,200,'duel-other',{'If-Match':String(freeState.revision),'Idempotency-Key':crypto.randomUUID()});
+await Users.collection.updateOne({'accounts.id':other},{$set:{language:'en'}});
+freeState=await request('GET',freeRoot,undefined,200,'duel-other');assert.equal(freeState.settings.language,'en','saving unrelated settings keeps the account-language fallback');
+await request('POST',freeRoot+'/configure',{...freeState.settings,language:'es'},200,'duel-other',{'If-Match':String(freeState.revision),'Idempotency-Key':crypto.randomUUID()});
+assert.match((await duelCommand(other,'carol',false,'@dave')).message,/^@dave, ¡@carol te ha retado a un duelo!/,'free channels use saved duel language');await duelCommand(other,'dave',false,'decline');
+const freeToken=(await request('POST',freeRoot+'/overlay-token',{},200,'duel-other')).token;
+assert(await svc.authorizeDuelOverlay(other,freeToken),'free OBS token accepted');
+const freeSource=connect(freeToken,true,undefined,other);await wait(async()=>await svc.overlayActive(await svc.loadDuel(other)),'free OBS presence');
+await sleep(700);assert.equal(freeSource.ws.readyState,1,'free OBS stays connected during revalidation');freeSource.close();
 // K/D ranking: wins ÷ losses (wins while unbeaten), ties to more wins; the streamer is tracked but not ranked; top 10.
 await stats.DuelResult.deleteMany({channel});const seed=[];const add=(winner,loser,n,streamer=null)=>{for(let i=0;i<n;i++)seed.push({_id:crypto.randomUUID(),channel,winner,loser,streamer,at:Date.now()});};
 add('grinder','pad',100);add('pad','grinder',200);add('sharp','x',6);add('x','sharp',2);add('perfect','y',2);add('duelfixture','z',9,'duelfixture');add('z','duelfixture',1,'duelfixture');for(let i=1;i<=5;i++)add('rookie'+i,'y',1);add('elsewhere','sharp',50);for(const row of seed.slice(-50))row.channel='991899';await stats.DuelResult.insertMany(seed);
 const ranking=await request('GET',root+'/leaderboard');assert.deepEqual(ranking.players.map(p=>p.login),['sharp','pad','perfect','rookie1','rookie2','rookie3','rookie4','rookie5','grinder','x']);
 assert.deepEqual(ranking.players[0],{login:'sharp',kills:6,deaths:2,kd:3});assert.equal(ranking.players.find(p=>p.login==='grinder').kd,.5,'100 wins and 200 losses rank by K/D, not volume');assert.equal(ranking.players.find(p=>p.login==='perfect').kd,2,'unbeaten K/D is the win count');
 assert.equal(ranking.ranked,12,'the streamer is not ranked');assert.equal(ranking.duels,325,'other channels never count');assert(!ranking.players.some(p=>p.login==='duelfixture'));
-await request('GET',root+'/leaderboard',undefined,401,'');await request('GET','/widgets/'+other+'/duel/leaderboard',undefined,403,'duel-other');await stats.DuelResult.deleteMany({});
-if(io)await new Promise(resolve=>io.close(resolve));
+await request('GET',root+'/leaderboard',undefined,401,'');await request('GET','/widgets/'+other+'/duel/leaderboard',undefined,200,'duel-other');await stats.DuelResult.deleteMany({});
 // Overlay quality: display-only, validated, kept by older pages, defaulted for older channels, sent to the overlay.
 let quality=await request('GET',root);assert.equal(quality.settings.quality,'low','channels keep the original look by default');
 for(const value of ['ultra','',3,null])await request('POST',root+'/configure',{...quality.settings,quality:value},400,'duel-owner',{'If-Match':String(quality.revision),'Idempotency-Key':crypto.randomUUID()});
@@ -206,4 +221,5 @@ await config({quality:'extreme'});quality=await request('GET',root);assert.equal
 quality=await request('GET',root);assert.equal(quality.settings.quality,'extreme','an older page never resets the quality');assert.equal(quality.settings.language,'es');
 for(const value of ['medium','high','low']){await config({quality:value});assert.equal((await request('GET',root)).settings.quality,value);}
 await svc.DuelChannel.updateOne({_id:channel},{$unset:{'settings.quality':''}});assert.equal((await svc.loadDuel(channel)).settings.quality,'low','channels saved before quality existed read as low');await config({language:'en'});
+if(io)await new Promise(resolve=>io.close(resolve));
 await redis.quit();await (await getMongoDBConnection('duel-test-close')).disconnect();console.log('PASS duel '+process.env.SAAS_TARGET+': overlay/chat, deadlines, settings, tokens, concurrency, timeout safety and durable moderator restoration, overlay-only result tracking, head-to-head, K/D leaderboard and leaderboard sources, custom battle rules (validation, older pages, fuzzed fights, tracking pause, separate leaderboard/rivalry switches), overlay quality (validation, older pages and channels, overlay snapshot), chat challenge instructions with the overlay on, channel-language prompts');process.exit(0);

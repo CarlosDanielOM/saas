@@ -22,7 +22,7 @@ export async function hasPremium(id: string): Promise<boolean> {
   channel(id); await getMongoDBConnection('widget-entitlement');
   return !!await Users.exists({ accounts: { $elemMatch: { type: 'twitch', id } }, plan_tier: { $in: ['premium', 'pro'] } });
 }
-export async function requirePremium(id: string): Promise<void> { if (!await hasPremium(id)) domain.fail('premium_required', 'Widgets Alpha requires Premium', 403); }
+export async function requirePremium(id: string): Promise<void> { if (!await hasPremium(id)) domain.fail('premium_required', 'Dead by Daylight widget requires Premium', 403); }
 async function load(id: string): Promise<Stored> {
   channel(id); await getMongoDBConnection('widgets');
   let doc = await WidgetChannel.findById(id).lean();

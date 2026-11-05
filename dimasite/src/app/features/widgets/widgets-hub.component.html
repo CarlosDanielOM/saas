@@ -1,23 +1,18 @@
-<div class="lf" data-plan="premium"><main class="lf-main" data-testid="widgets-hub">
+<div class="lf"><main class="lf-main" data-testid="widgets-hub">
   <header class="lf-head">
     <a class="back" [routerLink]="['/', streamer, 'modules']"><app-lf-icon name="back" />{{ t('back') }}</a>
-    <h1>{{ t('title') }} <span class="chip alpha">{{ t('alpha') }}</span><span class="chip gold">{{ t('premium') }}</span></h1>
+    <h1>{{ t('title') }} <span class="chip alpha">{{ t('alpha') }}</span></h1>
     <p>{{ t('subtitle') }}</p>
-    @if (premium()) {
       <div class="head-chips" aria-live="polite">
         <span class="chip">{{ t('hub.count', {n: 2}) }}</span>
         @if (loaded()) { <span class="chip" [class.on-air]="live() > 0" data-testid="hub-live"><span class="dot" [class.on]="live() > 0"></span>{{ t('hub.live', {n: live(), total: 2}) }}</span> }
       </div>
-    }
   </header>
-  @if (!premium()) {
-    <section class="lf-tile gate"><app-lf-icon name="lock" /><h2>{{ t('premiumRequired') }}</h2><p>{{ t('premiumDescription') }}</p><button class="primary" (click)="promptUpgrade()">{{ t('upgradePremium') }}</button></section>
-  }
-  <section class="games" [class.locked]="!premium()" aria-labelledby="games-title">
+  <section class="games" aria-labelledby="games-title">
     <h2 id="games-title" class="sr-only">{{ t('gamesTitle') }}</h2>
 
     <!-- Duel: a live matchup on a night arena. -->
-    <a class="game duel" data-testid="widget-duel" [routerLink]="premium() ? ['/', streamer, 'modules', 'widgets', 'duel'] : null" [attr.aria-disabled]="premium() ? null : 'true'" [attr.tabindex]="premium() ? null : -1">
+    <a class="game duel" data-testid="widget-duel" [routerLink]="['/', streamer, 'modules', 'widgets', 'duel']">
       <span class="art duel-art" aria-hidden="true">
         <span class="moon"></span><span class="ridge"></span><span class="floor"></span>
         <span class="hud"><span class="bar left"><i></i></span><span class="bar right"><i></i></span></span>
@@ -35,7 +30,7 @@
           }
         </span>
         <span class="tagline">{{ t('hub.duelTagline') }}</span>
-        @if (premium()) { <span class="stats">
+        <span class="stats">
           @switch (duel().status) {
             @case ('loading') { <span class="stat skeleton"></span><span class="stat skeleton"></span> }
             @case ('error') { <span class="stat muted">{{ t('hub.statusError') }}</span> }
@@ -49,13 +44,13 @@
               </span>
             }
           }
-        </span> }
-        <span class="foot"><code>!duel &#64;viewer</code><span class="open">@if (premium()) { {{ t('hub.openDuel') }}<app-lf-icon name="forward" /> } @else { <app-lf-icon name="lock" />{{ t('premium') }} }</span></span>
+        </span>
+        <span class="foot"><code>!duel &#64;viewer</code><span class="open">{{ t('hub.openDuel') }}<app-lf-icon name="forward" /></span></span>
       </span>
     </a>
 
     <!-- Dead by Daylight: the perk wheel between the killer's skulls and the survivors' hatch. -->
-    <a class="game dbd" data-testid="widget-dbd" [routerLink]="premium() ? ['/', streamer, 'modules', 'widgets', 'dbd'] : null" [attr.aria-disabled]="premium() ? null : 'true'" [attr.tabindex]="premium() ? null : -1">
+    <a class="game dbd" data-testid="widget-dbd" [routerLink]="['/', streamer, 'modules', 'widgets', 'dbd']">
       <span class="art dbd-art" aria-hidden="true">
         <span class="fog"></span>
         <span class="emblem killer"><app-widget-streak role="killer" [wins]="1" [target]="1" /></span>

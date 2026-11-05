@@ -6,7 +6,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LanguageService } from '../../services/language.service';
-import { MODULE_TIER_REQUIREMENTS, isModuleAccessible } from '../modules/module-tier.model';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
@@ -27,7 +26,7 @@ export class WidgetsPageComponent {
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly destroy = inject(DestroyRef);
   readonly streamer = getRouteParam(inject(ActivatedRoute), 'streamer') ?? '';
-  readonly premium = computed(() => isModuleAccessible(MODULE_TIER_REQUIREMENTS.widgets, this.auth.getPlanTierForStreamer(this.streamer)));
+  readonly premium = computed(() => this.auth.getPlanTierForStreamer(this.streamer) !== 'free');
   channel = '';
   readonly catalog = signal<WidgetCatalog | null>(null);
   readonly state = signal<WidgetState | null>(null);
@@ -133,7 +132,7 @@ export class WidgetsPageComponent {
     if (mode === 'poll' || mode === 'challenge' && this.state()?.config.sequences[this.role()].poll) this.openConfirm('start');
     else void this.act('start', {mode});
   }
-  promptUpgrade(): void { void this.upgrade.promptUpgradeForModule({ moduleId: 'widgets', source: 'widgets_page' }); }
+  promptUpgrade(): void { void this.upgrade.promptUpgradeForAnyPlan('widgets_page'); }
   async load(): Promise<void> {
     this.loading.set(true); this.error.set('');
     try {

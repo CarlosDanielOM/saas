@@ -7937,7 +7937,7 @@
       "play": "Jugar la partida"
     },
     "rules": "Cinco cartas ocultas contienen de 0 a 4 ventajas, mezcladas en cada ronda. Twitch elige la carta; los empates (incluso sin votos) se resuelven al azar. Las ventajas no se repiten en un reto.",
-    "premiumRequired": "Widgets Alfa requiere Premium",
+    "premiumRequired": "Dead by Daylight requiere Premium",
     "premiumDescription": "Usa overlays para juegos con retos preparados y votaciones en directo.",
     "upgradePremium": "Mejorar a Premium",
     "loading": "Cargando widgets…",

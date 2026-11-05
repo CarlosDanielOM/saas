@@ -22,12 +22,13 @@ widgetsRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   void (async () => {
     const access = await getChannelAccessContext(req.user?.id, req.params.channelID as string, '*');
     if (!access.allowed) { res.status(403).json({ error: true, status: 403, code: 'permission_required', message: 'Channel owner or full-access admin required' }); return; }
-    await requirePremium(channel(req));
     next();
   })().catch(next);
 });
-widgetsRoute.get('/:channelID/catalog', wrap(async (_req, res) => ok(res, catalog)));
 widgetsRoute.use('/:channelID/duel', duelWidgetRoute);
+// Dead by Daylight remains a Premium widget.
+widgetsRoute.use('/:channelID', (req, _res, next) => { void requirePremium(channel(req)).then(() => next(), next); });
+widgetsRoute.get('/:channelID/catalog', wrap(async (_req, res) => ok(res, catalog)));
 widgetsRoute.get('/:channelID/events', wrap(async (req, res) => ok(res, await widgetEventSettings(channel(req)))));
 widgetsRoute.get('/:channelID', wrap(async (req, res) => ok(res, await snapshot(channel(req)))));
 widgetsRoute.get('/:channelID/overlay-token', wrap(async (req, res) => ok(res, await overlayTokenState(channel(req)))));

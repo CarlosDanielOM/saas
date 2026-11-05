@@ -7937,7 +7937,7 @@
       "play": "Play the match"
     },
     "rules": "Five hidden cards contain 0–4 perks, shuffled each round. Twitch votes pick a card; ties (including no votes) are random. Perks never repeat within a challenge.",
-    "premiumRequired": "Widgets Alpha requires Premium",
+    "premiumRequired": "Dead by Daylight requires Premium",
     "premiumDescription": "Get game-specific overlays with ready-made challenge flows and live viewer votes.",
     "upgradePremium": "Upgrade to Premium",
     "loading": "Loading widgets…",

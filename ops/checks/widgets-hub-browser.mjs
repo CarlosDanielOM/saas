@@ -1,4 +1,4 @@
-// Widget hub cards: live status per widget, per-card failures, locked view on free plans.
+// Widget hub cards: live status per widget, per-card failures, free duels and premium Dead by Daylight.
 // Every API is mocked. No live channel is read or changed.
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
@@ -6,7 +6,7 @@ import {mkdirSync} from 'node:fs';
 const require=createRequire((process.env.SAAS_BROWSER_TOOLS??'/tmp/saas-cooldown-browser')+'/package.json');
 const {chromium}=require('playwright'),AxeBuilder=require('@axe-core/playwright').default;
 const base=process.env.SAAS_PREVIEW_URL;assert(base);const evidence=process.env.SAAS_SCREENSHOT_DIR??'/tmp/widgets-hub-evidence';mkdirSync(evidence,{recursive:true});
-const browser=await chromium.launch({executablePath:'/root/.cache/ms-playwright/chromium-1247/chrome-linux64/chrome',args:['--no-sandbox','--disable-dev-shm-usage']});
+const browser=await chromium.launch({executablePath:process.env.SAAS_CHROMIUM_PATH || chromium.executablePath(),args:['--no-sandbox','--disable-dev-shm-usage']});
 const rules={hp:100,damage:100,extraTurnChance:15,heavyChance:24,specialChance:8,critChance:10,defenseChance:15,healChance:20,healCharges:5,healMin:25,healMax:40,comboHealChance:35,streamerBoost:200,streamerUltimate:40,ultimate:2};
 const sequence=()=>({character:true,fixedCharacterId:null,poll:true,perks:true,perkCount:4});
 const dbdState=visible=>({wins:{killer:2,survivor:1},loadouts:{killer:{characterId:null,perkIds:[]},survivor:{characterId:null,perkIds:[]}},revision:1,serverTime:Date.now(),packId:'dbd-killer-challenge',visible,config:{language:'en',characterDesign:'cards',spinSeconds:1,pollSeconds:15,channelPointsVoting:false,channelPointsPerVote:100,includeUnavailable:false,excludedIds:[],perkTuning:{},subWheels:[],sequences:{killer:sequence(),survivor:sequence()},targets:{killer:3,survivor:4}},phase:'idle',run:null,nextAt:null});
@@ -54,9 +54,11 @@ try{
  assert.equal(await f.page.getByTestId('widget-duel').getAttribute('href'),'/duelfixture/modules/widgets/duel','the card still opens the widget');await f.context.close();
  // Spanish.
  f=await fixture({lang:'es'});await f.page.getByTestId('widget-duel').getByText('En OBS',{exact:true}).waitFor();await f.page.getByTestId('widget-dbd').getByText('2 / 3 victorias').waitFor();await clean(f.page);await f.page.screenshot({path:`${evidence}/hub-es.png`,fullPage:true});await f.context.close();
- // Free plan: the cards are a locked showcase and no widget API is called.
- f=await fixture({tier:'free'});await f.page.getByRole('heading',{name:'Widgets Alpha requires Premium'}).waitFor();await f.page.waitForTimeout(500);
- assert(!f.requests.some(r=>r.includes('/widgets/')),'no widget reads on free plans');assert.equal(await f.page.getByTestId('widget-duel').getAttribute('href'),null,'locked cards are not links');
- await clean(f.page);await f.page.screenshot({path:`${evidence}/hub-free.png`,fullPage:true});await f.context.close();
+ // Free plans can open duels; DBD stays behind its upgrade screen and is not fetched.
+ f=await fixture({tier:'free'});await f.page.getByTestId('widget-duel').getByText('In OBS',{exact:true}).waitFor();
+ assert(f.requests.some(r=>r.includes('/widgets/991801/duel')),'free plans load duel state');assert(!f.requests.includes('GET /widgets/991801'),'free plans do not request DBD state');
+ assert.equal(await f.page.getByTestId('widget-duel').getAttribute('href'),'/duelfixture/modules/widgets/duel');
+ await f.page.getByTestId('widget-dbd').getByText('Premium',{exact:true}).waitFor();await clean(f.page);await f.page.screenshot({path:`${evidence}/hub-free.png`,fullPage:true});
+ await f.page.getByTestId('widget-dbd').click();await f.page.getByRole('heading',{name:'Dead by Daylight requires Premium'}).waitFor();await f.context.close();
  console.log('widgets hub browser check passed');
 }finally{await browser.close();}

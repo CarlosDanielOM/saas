@@ -1,7 +1,7 @@
 # Duel widget checks
 
-The Duel arena is available under `/:streamer/modules/widgets/duel` in the Premium
-Widgets module. Create a private OBS Browser Source URL there (1920 × 1080).
+The Duel arena is available on all plans under `/:streamer/modules/widgets/duel`.
+The Dead by Daylight widget remains Premium. Create a private OBS Browser Source URL there (1920 × 1080).
 The token lives in the URL fragment. Rotating the link revokes existing sources.
 A source counts as active after its authenticated client acknowledges readiness;
 presence expires after five seconds if the API/source stops refreshing it.
@@ -59,7 +59,7 @@ this field count when `mode === 'overlay'`. `GET .../leaderboard` and the `duel-
 event carry `status`: `live`, `paused` (custom rules: nothing new counts, the OBS source hides,
 old rankings stay) or `off` (source hides). Nothing is deleted when tracking pauses.
 
-Only duels shown on the OBS overlay (`run.mode === 'overlay'`, so Premium with a ready source)
+Only duels shown on the OBS overlay (`run.mode === 'overlay'`, with a ready source)
 are tracked; chat-only duels never are. When such a fight finishes, the worker inserts one
 `duel_results` row keyed by the run ID (`dimabot/src/duel/stats.ts`, so retries never
 double count) after the winner announcement and timeout, then bumps `statsRevision`.
@@ -114,7 +114,7 @@ invariants/odds over 2,000 simulated fights, overlay-only idempotent result trac
 head-to-head on rematches, leaderboard sources and K/D ranking. All
 provider requests are intercepted; no production data or Twitch messages are used.
 The browser checks cover dark/light at 320/390/1280 pixels, English/Spanish,
-WCAG AA, Premium gating, full-access admins, uncertain-save retries, conflicts,
+WCAG AA, free Duel access and Premium DBD gating, full-access admins, uncertain-save retries, conflicts,
 local previews, transparent OBS challenge/fight/winner/idle/disconnect states, the
 rivalry display and the leaderboard tile, link and OBS source.
 Browser dependencies default to the host's `/tmp/saas-cooldown-browser` installation.

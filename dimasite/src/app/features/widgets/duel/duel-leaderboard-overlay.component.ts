@@ -19,7 +19,7 @@ export class DuelLeaderboardOverlayComponent {
     const channel=route.paramMap.get('channelID')??'',token=route.fragment??'';
     const socket=/^[0-9]{1,30}$/.test(channel)&&/^[\w-]{43}$/.test(token)?io(`${inject(LinksService).getApiUrl()}/overlays/duel/${channel}`,{auth:{token,view:'leaderboard'},transports:['websocket'],reconnection:true}):null;
     socket?.on('duel-leaderboard',(board:Board)=>this.board.set(board));
-    // A revoked link or lost Premium ends the source; network blips keep the last board on screen.
+    // A revoked link ends the source; network blips keep the last board on screen.
     socket?.on('disconnect',reason=>{if(reason==='io server disconnect')this.board.set(null);});
     socket?.on('connect_error',error=>{if(/token/i.test(error.message))this.board.set(null);});
     destroy.onDestroy(()=>{socket?.disconnect();doc.body.style.background=previous[0];doc.documentElement.style.background=previous[1];});

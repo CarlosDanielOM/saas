@@ -91,9 +91,9 @@ export function settings(input: unknown, current: DuelSettings = defaultSettings
   if (Object.keys(data).some(key => !['enabled', 'timeoutEnabled', 'timeoutSeconds', 'language', 'leaderboard', 'rivalries', 'rules', 'quality'].includes(key))) fail('invalid', 'Unknown duel setting');
   if (typeof data.enabled !== 'boolean' || typeof data.timeoutEnabled !== 'boolean') fail('invalid', 'Duel switches must be booleans');
   if ([data.leaderboard, data.rivalries].some(value => value !== undefined && typeof value !== 'boolean')) fail('invalid', 'Duel switches must be booleans');
-  if (!['en', 'es'].includes(data.language as string)) fail('invalid', 'Choose English or Spanish');
+  if (data.language !== undefined && !['en', 'es'].includes(data.language as string)) fail('invalid', 'Choose English or Spanish');
   if (data.quality !== undefined && !DUEL_QUALITIES.includes(data.quality as DuelQuality)) fail('invalid', 'Choose low, medium, high or extreme quality');
-  return { enabled: data.enabled as boolean, timeoutEnabled: data.timeoutEnabled as boolean, timeoutSeconds: integer(data.timeoutSeconds, 'timeoutSeconds', 1, MAX_TIMEOUT_SECONDS), language: data.language as DuelSettings['language'],
+  return { enabled: data.enabled as boolean, timeoutEnabled: data.timeoutEnabled as boolean, timeoutSeconds: integer(data.timeoutSeconds, 'timeoutSeconds', 1, MAX_TIMEOUT_SECONDS), language: (data.language as DuelSettings['language'] | undefined) ?? current.language,
     leaderboard: (data.leaderboard as boolean | undefined) ?? current.leaderboard, rivalries: (data.rivalries as boolean | undefined) ?? current.rivalries,
     rules: data.rules === undefined ? { ...current.rules } : rules(data.rules), quality: (data.quality as DuelQuality | undefined) ?? current.quality };
 }

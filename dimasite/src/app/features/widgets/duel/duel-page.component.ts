@@ -7,10 +7,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { debounceTime, firstValueFrom, map } from 'rxjs';
 import { LanguageService } from '../../../services/language.service';
 import { SessionAuthService } from '../../../services/session-auth.service';
-import { UpgradeService } from '../../../services/upgrade.service';
 import { getRouteParam } from '../../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../../shared/lf-icon/lf-icon.component';
-import { MODULE_TIER_REQUIREMENTS, isModuleAccessible } from '../../modules/module-tier.model';
 import { DUEL_QUALITIES, DuelApi, DuelLeaderboard, DuelLeaderboardStatus, DuelQuality, DuelRecord, DuelSettings, DuelState } from './duel-api.service';
 import { DuelStageComponent } from './duel-stage.component';
 import { DuelLeaderboardComponent } from './duel-leaderboard.component';
@@ -24,15 +22,13 @@ const DEFAULT_BALANCE = duelBalance();
 export class DuelPageComponent {
   private readonly auth=inject(SessionAuthService);
   private readonly api=inject(DuelApi);
-  private readonly upgrade=inject(UpgradeService);
   readonly language=inject(LanguageService);
   readonly streamer=getRouteParam(inject(ActivatedRoute),'streamer')??'';
-  readonly premium=computed(()=>isModuleAccessible(MODULE_TIER_REQUIREMENTS.widgets,this.auth.getPlanTierForStreamer(this.streamer)));
   readonly state=signal<DuelState|null>(null);readonly loading=signal(true);readonly busy=signal(false);readonly error=signal('');readonly notice=signal('');readonly uncertainSave=signal(false);
   channel='';private formRevision=0;private stopped=false;private refreshing=false;
   readonly leaderboard=signal<DuelLeaderboard|null>(null);readonly leaderboardError=signal(false);
   private seenBoardKey:string|undefined;
-  private pending:{settings:DuelSettings;revision:number;key:string}|null=null;
+  private pending:{settings:Partial<DuelSettings>;revision:number;key:string}|null=null;
   private readonly fb=inject(FormBuilder).nonNullable;
   readonly groups=DUEL_RULE_GROUPS;readonly defaults=DEFAULT_DUEL_RULES;readonly qualities=DUEL_QUALITIES;
   /** Opens once on load when custom rules are saved; afterwards the streamer decides. */
@@ -67,7 +63,6 @@ export class DuelPageComponent {
     destroy.onDestroy(()=>{clearInterval(poll);clearInterval(clock);});
   }
   t(key:string,params?:Record<string,string|number>):string{return this.language.translate('duelWidget.'+key,params);}
-  promptUpgrade():void{void this.upgrade.promptUpgradeForModule({moduleId:'widgets',source:'duel_widget'});}
   private apply(raw:DuelState):void{if(this.stopped)return;
     // Settings saved before tracking switches and rules existed read as the defaults.
     const state={...raw,settings:{...raw.settings,leaderboard:raw.settings.leaderboard??true,rivalries:raw.settings.rivalries??true,rules:normalizeDuelRules(raw.settings.rules),quality:raw.settings.quality??'low'}};this.state.set(state);
@@ -76,12 +71,14 @@ export class DuelPageComponent {
     // Only patch real changes: every patch re-runs the balance simulation.
     if(!this.rulesOpened){this.rulesOpened=true;if(!isDefaultDuelRules(state.settings.rules))this.rulesOpen.set(true);}
     if(!this.form.dirty&&!this.pending){const next=state.settings;if(JSON.stringify(next)!==JSON.stringify(this.form.getRawValue()))this.form.patchValue(next);this.formRevision=state.revision;}}
-  private async load():Promise<void>{try{this.channel=(await firstValueFrom(this.auth.resolveChannelID(this.streamer)))??'';if(this.premium()&&this.channel){this.apply(await this.api.read(this.channel));}}catch{this.error.set(this.t('loadError'));}finally{this.loading.set(false);}}
+  private async load():Promise<void>{try{this.channel=(await firstValueFrom(this.auth.resolveChannelID(this.streamer)))??'';if(this.channel){this.apply(await this.api.read(this.channel));}}catch{this.error.set(this.t('loadError'));}finally{this.loading.set(false);}}
   async refresh():Promise<void>{if(this.refreshing)return;this.refreshing=true;try{this.apply(await this.api.read(this.channel));}catch{this.error.set(this.t('loadError'));}finally{this.refreshing=false;}}
   async save():Promise<void>{this.form.markAllAsTouched();if(this.form.invalid||this.busy()||!this.state())return;
     if(!this.pending&&this.pausesTracking()&&!this.confirmPause()){this.confirmPause.set(true);return;}
     this.busy.set(true);this.error.set('');this.notice.set('');this.confirmPause.set(false);
-    const request=this.pending??{settings:this.form.getRawValue(),revision:this.formRevision,key:crypto.randomUUID()};this.pending=request;
+    const settings:Partial<DuelSettings>=this.form.getRawValue();
+    if(!this.form.controls.language.dirty)delete settings.language;
+    const request=this.pending??{settings,revision:this.formRevision,key:crypto.randomUUID()};this.pending=request;
     try{const state=await this.api.save(this.channel,request.settings,request.revision,request.key);this.pending=null;this.uncertainSave.set(false);this.form.markAsPristine();this.dirty.set(false);this.apply(state);this.notice.set(this.t('saved'));}
     catch(error){if(error instanceof HttpErrorResponse&&error.status===409){this.pending=null;this.error.set(this.t('conflict'));}else {this.uncertainSave.set(true);this.error.set(this.t('saveError'));}}finally{this.busy.set(false);}}
   async reload():Promise<void>{this.pending=null;this.uncertainSave.set(false);this.form.markAsPristine();this.dirty.set(false);this.error.set('');await this.refresh();}

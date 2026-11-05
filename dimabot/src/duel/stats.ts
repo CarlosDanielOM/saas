@@ -2,7 +2,7 @@ import { Schema, model } from 'mongoose';
 import { loserLogin, winnerLogin, type DuelRecord, type DuelRun } from './model.js';
 
 /**
- * One finished duel. Only fights shown on the OBS overlay (a Premium feature) are
+ * One finished duel. Only fights shown on the OBS overlay are
  * recorded; chat-only duels never count. The run ID is the key, so a retried
  * completion cannot count a fight twice.
  */

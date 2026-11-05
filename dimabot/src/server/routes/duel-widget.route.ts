@@ -4,7 +4,7 @@ import { leaderboardStatus } from '../../duel/model.js';
 import { duelLeaderboard } from '../../duel/stats.js';
 import { integer, text } from '../../roulette/model.js';
 
-// Mounted inside the widget owner's authenticated Premium route boundary.
+// Mounted inside the widget owner's authenticated channel-owner route boundary.
 export const duelWidgetRoute = express.Router({ mergeParams: true });
 const wrap = (handler: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { void handler(req, res).catch(next); };
 const channel = (req: Request) => text(req.params.channelID, 'channelID', 30);

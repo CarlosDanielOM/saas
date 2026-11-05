@@ -1,7 +1,7 @@
-<div class="lf" data-plan="premium"><main class="lf-main" data-testid="duel-widget">
+<div class="lf"><main class="lf-main" data-testid="duel-widget">
   <header class="lf-head">
     <a class="back" [routerLink]="['/',streamer,'modules','widgets']"><app-lf-icon name="back" />{{ t('back') }}</a>
-    <h1>{{ t('title') }} <span class="chip gold">{{ language.translate('widgets.premium') }}</span></h1>
+    <h1>{{ t('title') }}</h1>
     <p>{{ t('subtitle') }}</p>
     @if (state(); as current) {
       <div class="head-chips" data-testid="duel-chips">
@@ -13,8 +13,7 @@
       </div>
     }
   </header>
-  @if (!premium()) { <section class="lf-tile"><h2>{{ t('premiumRequired') }}</h2><button class="primary" (click)="promptUpgrade()">{{ t('upgrade') }}</button></section> }
-  @else if (loading()) { <section class="lf-tile" role="status">{{ t('loading') }}</section> }
+  @if (loading()) { <section class="lf-tile" role="status">{{ t('loading') }}</section> }
   @else {
     @if (error()) { <div class="message error" role="alert"><span>{{ error() }}</span><button (click)="reload()" [disabled]="busy()">{{ t('reload') }}</button></div> }
     @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }

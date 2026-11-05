@@ -3,15 +3,15 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
-import { requirePremium, hasPremium } from '../widgets/service.js';
+import { hasPremium } from '../widgets/service.js';
+import Users from '../schemas/users.schema.js';
 import { fail, integer, text } from '../roulette/model.js';
 import { defaultSettings, normalizeSettings, settings, createRun, nextDeadline, type DuelSettings, type DuelChallenge, type DuelRun, type DuelSide } from './model.js';
 import { headToHead } from './stats.js';
-import Users from '../schemas/users.schema.js';
 
 interface Receipt { key: string; fingerprint: string; at: number }
-export interface DuelDocument { _id: string; revision: number; settings: DuelSettings; challenge: DuelChallenge | null; run: DuelRun | null; tokenHash: string | null; overlayToken?: { iv: string; content: string } | null; dueAt: number | null; leaseUntil: number; receipts: Receipt[]; statsRevision?: number }
-const schema = new Schema<DuelDocument>({ _id: String, revision: { type: Number, default: 0 }, settings: { type: Schema.Types.Mixed, required: true }, challenge: { type: Schema.Types.Mixed, default: null }, run: { type: Schema.Types.Mixed, default: null }, tokenHash: { type: String, default: null }, overlayToken: { type: Schema.Types.Mixed, select: false }, dueAt: { type: Number, default: null }, leaseUntil: { type: Number, default: 0 }, statsRevision: { type: Number, default: 0 }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, at: Number }, { _id: false })], default: [] } }, { versionKey: false, collection: 'duel_widgets' });
+export interface DuelDocument { _id: string; revision: number; settings: DuelSettings; challenge: DuelChallenge | null; run: DuelRun | null; tokenHash: string | null; overlayToken?: { iv: string; content: string } | null; dueAt: number | null; leaseUntil: number; receipts: Receipt[]; statsRevision?: number; languageConfigured?: boolean }
+const schema = new Schema<DuelDocument>({ _id: String, revision: { type: Number, default: 0 }, settings: { type: Schema.Types.Mixed, required: true }, challenge: { type: Schema.Types.Mixed, default: null }, run: { type: Schema.Types.Mixed, default: null }, tokenHash: { type: String, default: null }, overlayToken: { type: Schema.Types.Mixed, select: false }, dueAt: { type: Number, default: null }, leaseUntil: { type: Number, default: 0 }, statsRevision: { type: Number, default: 0 }, languageConfigured: { type: Boolean, default: false }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, at: Number }, { _id: false })], default: [] } }, { versionKey: false, collection: 'duel_widgets' });
 schema.index({ dueAt: 1 });
 export const DuelChannel = model<DuelDocument>('DuelWidget', schema);
 export const tokenHash = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -42,17 +42,18 @@ export async function overlayActive(doc: DuelDocument): Promise<boolean> {
 export async function duelSnapshot(id: string) {
   const doc = await loadDuel(id), now = Date.now();
   const run = doc.run;
-  return { revision: doc.revision, settings: doc.settings, serverTime: now, connected: await overlayActive(doc),
+  return { revision: doc.revision, settings: { ...doc.settings, language: await duelLanguage(id, doc) }, serverTime: now, connected: await overlayActive(doc),
     challenge: doc.challenge && doc.challenge.expiresAt > now ? doc.challenge : null,
     run: run ? { id: run.id, challenger: run.challenger, opponent: run.opponent, winner: run.winner, fighters: run.fighters, turns: run.turns, enraged: run.enraged ?? null, mode: run.mode, startedAt: run.startedAt, endsAt: run.endsAt, completedAt: run.completedAt, announcementError: run.announcementError, timeoutError: run.timeoutError, record: run.record ?? null, maxHp: run.maxHp ?? null, healCharges: run.healCharges ?? null, tracked: run.tracked ?? run.mode === 'overlay' } : null };
 }
 export async function configureDuel(id: string, input: unknown, revision: number, key: string): Promise<void> {
-  await requirePremium(id); integer(revision, 'If-Match', 0); text(key, 'Idempotency-Key', 128);
-  const doc = await loadDuel(id), config = settings(input, doc.settings), fingerprint = tokenHash(JSON.stringify(config)), receiptKey = tokenHash(key), now = Date.now();
+  integer(revision, 'If-Match', 0); text(key, 'Idempotency-Key', 128);
+  const doc = await loadDuel(id), config = settings(input, { ...doc.settings, language: await duelLanguage(id, doc) }), fingerprint = tokenHash(JSON.stringify(config)), receiptKey = tokenHash(key), now = Date.now();
   const previous = doc.receipts.find(receipt => receipt.key === receiptKey && now - receipt.at < 86400000);
   if (previous) { if (previous.fingerprint !== fingerprint) fail('idempotency_conflict', 'Key already used for different settings', 409); return; }
   if (revision !== doc.revision) fail('revision_conflict', 'Duel changed; refresh before saving', 409);
-  const saved = await DuelChannel.updateOne({ _id: id, revision }, { $set: { settings: config, receipts: [...doc.receipts.filter(receipt => now - receipt.at < 86400000), { key: receiptKey, fingerprint, at: now }].slice(-200) }, $inc: { revision: 1 } }, { writeConcern: { w: 1, j: true } });
+  const languageConfigured = doc.languageConfigured || (typeof input === 'object' && input !== null && Object.hasOwn(input, 'language'));
+  const saved = await DuelChannel.updateOne({ _id: id, revision }, { $set: { settings: config, languageConfigured, receipts: [...doc.receipts.filter(receipt => now - receipt.at < 86400000), { key: receiptKey, fingerprint, at: now }].slice(-200) }, $inc: { revision: 1 } }, { writeConcern: { w: 1, j: true } });
   if (!saved.modifiedCount) fail('revision_conflict', 'Duel changed; refresh before saving', 409);
 }
 function overlayTokenStore(id: string): OverlayTokenStore {
@@ -64,9 +65,8 @@ function overlayTokenStore(id: string): OverlayTokenStore {
     },
   };
 }
-export async function overlayTokenState(id: string) { await requirePremium(id); return readOverlayToken(overlayTokenStore(id)); }
+export async function overlayTokenState(id: string) { return readOverlayToken(overlayTokenStore(id)); }
 export async function updateOverlayToken(id: string, input: unknown) {
-  await requirePremium(id);
   const before = await readOverlayToken(overlayTokenStore(id));
   const result = await manageOverlayToken(overlayTokenStore(id), input, fail);
   if (before.version !== result.version) await (await getDragonflyClient('duel-token')).del(presenceKey(id));
@@ -79,7 +79,7 @@ export async function rotateDuelToken(id: string): Promise<string> {
 }
 export async function authorizeDuelOverlay(id: string, token: unknown): Promise<boolean> {
   if (!/^[0-9]{1,30}$/.test(id) || typeof token !== 'string' || !/^[\w-]{43}$/.test(token)) return false;
-  const allowed = await hasPremium(id) && !!await DuelChannel.exists({ _id: id, tokenHash: tokenHash(token) });
+  const allowed = !!await DuelChannel.exists({ _id: id, tokenHash: tokenHash(token) });
   if (allowed) await rememberOverlayToken(overlayTokenStore(id), token).catch(() => { /* Recovery must not interrupt an existing OBS source. */ });
   return allowed;
 }
@@ -91,12 +91,9 @@ async function withRecord(id: string, run: DuelRun, config: DuelSettings): Promi
   if (run.tracked && config.rivalries) run.record = await headToHead(id, run.challenger, run.opponent);
   return run;
 }
-/**
- * The language duel chat speaks: the widget's setting on Premium channels (the only ones that
- * can change it), otherwise the streamer's account language.
- */
+/** Preserve free channels' account language until they save a duel language. */
 export async function duelLanguage(id: string, doc: DuelDocument): Promise<'en' | 'es'> {
-  if (await hasPremium(id)) return doc.settings.language;
+  if (doc.languageConfigured || await hasPremium(id)) return doc.settings.language;
   const user = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id } } }, { language: 1 }).lean<{ language?: string | null }>();
   return user?.language === 'es' ? 'es' : 'en';
 }
