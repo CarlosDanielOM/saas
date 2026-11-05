@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createWidget, getWidgetModule, widgetModuleFor, widgetPalette } from './overlay-widget-registry';
 import { validWidgetModuleConfig } from './overlay-widget-contract.generated';
-import { readImport } from './custom-widget-import';
+import { builtInValues, readImport } from './custom-widget-import';
+import { experimentEnabled, rememberExperiments } from '../../shared/utils/experiments';
 import { blobBytes, crc32, readZip, writeZip } from './custom-widget-zip';
 
 const fields = JSON.stringify({ widgetName: { type: 'hidden', value: 'Fixture chat' }, color: { type: 'colorpicker', label: 'Color', value: '#ffffff', group: 'Look' },
@@ -58,7 +59,36 @@ describe('custom widget zip and import', () => {
     expect(draft.suggestedName).toBe('Fixture chat');
     expect(draft.summary).toMatchObject({ settings: 3, groups: 3 });
     expect(draft.summary!.streamElements.length).toBe(1);
+    expect(draft.summary!.builtIn).toEqual(['extra']);
     expect(draft.source!.css).toBe(css);
+  });
+
+  it('lists values the settings panel doesn\'t show: hidden fields and data without a field, not name/author', () => {
+    const list = builtInValues([
+      { key: 'widgetName', type: 'hidden', label: 'Name', value: 'x' }, { key: 'widgetAuthor', type: 'hidden', label: 'Author', value: 'y' },
+      { key: 'speeds', type: 'hidden', label: 'Speeds', value: [1, 2] }, { key: 'color', type: 'colorpicker', label: 'Color', value: '#fff' }
+    ] as never, { color: '#000', speeds: [3], legacy: 1, widgetName: 'z' });
+    expect(list).toEqual(['speeds', 'legacy']);
+    expect(builtInValues([], {})).toEqual([]);
+  });
+
+  it('turns experiments on and off from the address bar, ignoring unknown names', () => {
+    const at = location.pathname, items = new Map<string, string>();
+    vi.stubGlobal('localStorage', { getItem: (k: string) => items.get(k) ?? null, setItem: (k: string, v: string) => { items.set(k, v); }, removeItem: (k: string) => { items.delete(k); } });
+    try {
+      expect(experimentEnabled('widget-built-in-values')).toBe(false);
+      history.replaceState(null, '', at + '?experiments=nope,widget-built-in-values');
+      rememberExperiments();
+      expect(experimentEnabled('widget-built-in-values')).toBe(true);
+      expect(localStorage.getItem('dimasite.experiments')).toBe('widget-built-in-values');
+      history.replaceState(null, '', at); rememberExperiments();
+      expect(experimentEnabled('widget-built-in-values')).toBe(true); // stays on without the parameter
+      history.replaceState(null, '', at + '?experiments='); rememberExperiments();
+      expect(experimentEnabled('widget-built-in-values')).toBe(false);
+    } finally { history.replaceState(null, '', at); vi.unstubAllGlobals(); }
+    // No storage at all (private windows, blocked site data): experiments are simply off.
+    vi.stubGlobal('localStorage', undefined);
+    try { rememberExperiments(); expect(experimentEnabled('widget-built-in-values')).toBe(false); } finally { vi.unstubAllGlobals(); }
   });
 
   it('matches loose files, leaves missing parts empty and explains blocking problems', async () => {

@@ -50,6 +50,13 @@
           @if (s.author) { <span>{{ t('customByAuthor', { author: s.author }) }}</span> }
         </p>
         <p class="note" data-cw-import-uses>{{ t(s.manifest.engine === 'dima' ? 'customEngineDima' : 'customEngineSe') }} · {{ s.manifest.uses.length ? t('customReads') + ' ' + usesText(s.manifest.uses) : t('customReadsNothing') }}</p>
+        @if (showBuiltIn && s.builtIn.length) {
+          <details class="issues issues--quiet" data-cw-built-in>
+            <summary>{{ n('customBuiltIn', s.builtIn.length) }}</summary>
+            <p>{{ t('customBuiltInNote') }}</p>
+            <ul>@for (key of s.builtIn; track key) { <li><code>{{ key }}</code></li> }</ul>
+          </details>
+        }
         @if (s.issues.length) {
           <details class="issues">
             <summary>{{ n('customIssues', s.issues.length) }}</summary>

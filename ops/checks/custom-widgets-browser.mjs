@@ -163,6 +163,7 @@ try {
   const visibleCount = groupFields(pkg.fields).reduce((n, g) => n + g.fields.length, 0);
   assert.match(await dialog.locator('[data-cw-summary]').textContent(), new RegExp(`${visibleCount} settings in 5 groups`));
   assert.match(await dialog.locator('[data-cw-remote]').textContent(), /loads 2 files from StreamElements/);
+  assert.equal(await dialog.locator('[data-cw-built-in]').count(), 0, 'built-in values note is an experiment, off by default');
   await shot(page, 'import-dark-1280');
   await axe(page, 'import dialog');
   await dialog.locator('[data-cw-name]').fill('My chat');
@@ -332,6 +333,36 @@ try {
     await shot(p, 'limit-dark-390');
     await ctx.close();
     console.log('PASS plan limit blocks imports with an upgrade prompt.');
+  }
+
+  // 4a. Experiment (per browser, ?experiments=widget-built-in-values): the import lists values settings don't show.
+  {
+    const em = mocks({}), ctx = await browser.newContext({ viewport: { width: 390, height: 860 }, reducedMotion: 'reduce' });
+    await em.install(ctx); const p = await ctx.newPage(); p.on('pageerror', e => errors.push(e.message));
+    const openImport = async () => {
+      await p.locator('.stage').waitFor(); await p.locator('.studio-mtabs [data-tab="add"]').click();
+      await p.locator('[data-custom-import]').click();
+      const d = p.locator('dialog.cw-dialog'); await d.locator('[data-cw-files]').setInputFiles(upload); await d.locator('[data-cw-summary]').waitFor();
+      return d;
+    };
+    for (const theme of ['dark', 'light']) {
+      await p.goto(`${base}/${user.login}/modules/overlays?experiments=widget-built-in-values`);
+      await p.evaluate(t => localStorage.setItem('theme', t), theme); await p.reload();
+      const d = await openImport(), note = d.locator('[data-cw-built-in]');
+      assert.equal((await note.locator('summary').textContent()).trim(), "2 built-in values aren't in settings");
+      await note.locator('summary').click();
+      assert.deepEqual(await note.locator('code').allTextContents(), ['accentGlow', 'legacyCount'], 'data without a field; name/author left out');
+      assert.equal(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${theme} built-in note overflow`);
+      await axe(p, `${theme} 390 built-in values`);
+      await shot(p, `built-in-${theme}-390`);
+    }
+    // Remembered in this browser without the parameter; `?experiments=` turns it off again.
+    await p.goto(`${base}/${user.login}/modules/overlays`);
+    assert.equal(await (await openImport()).locator('[data-cw-built-in]').count(), 1, 'stays on in this browser');
+    await p.goto(`${base}/${user.login}/modules/overlays?experiments=`);
+    assert.equal(await (await openImport()).locator('[data-cw-built-in]').count(), 0, 'off again');
+    await ctx.close();
+    console.log('PASS experiment: import lists built-in values (hidden by default, per browser, dark/light, axe clean).');
   }
 
 

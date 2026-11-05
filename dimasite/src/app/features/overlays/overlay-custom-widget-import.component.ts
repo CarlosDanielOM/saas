@@ -3,6 +3,7 @@ import { Check, FileUp, FolderOpen, LucideAngularModule, Star, X } from 'lucide-
 import { LanguageService } from '../../services/language.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { CustomWidgetsService, copyableMedia, errorCode, message, type CustomWidgetView, type MediaCopyResult, type MediaPlan } from './custom-widgets.service';
+import { experimentEnabled } from '../../shared/utils/experiments';
 import { droppedFiles, pickedFromInput, readImport, type ImportDraft, type PickedFile } from './custom-widget-import';
 
 /**
@@ -22,6 +23,8 @@ export class OverlayCustomWidgetImportComponent {
   readonly done = output<CustomWidgetView>();
   readonly closed = output<void>();
   readonly widgets = inject(CustomWidgetsService);
+  /** Experiment: list values the settings panel doesn't show (`?experiments=widget-built-in-values`). */
+  readonly showBuiltIn = experimentEnabled('widget-built-in-values');
   private readonly language = inject(LanguageService);
   private readonly upgrades = inject(UpgradeService);
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');

@@ -72,6 +72,9 @@ button:not(:disabled):hover { border-color: color-mix(in srgb, var(--accent) 45%
 .issues summary { min-height: 44px; display: flex; align-items: center; color: var(--warn); font-weight: 750; cursor: pointer; }
 .issues ul { display: grid; gap: 0.25rem; padding-left: 1.1rem; color: var(--muted); font-size: 0.8rem; }
 .issues code { color: var(--fg); font-size: 0.75rem; }
+/* Informational, not a problem: muted instead of the warning colour. */
+.issues--quiet summary { color: var(--muted); }
+.issues--quiet p { margin: 0 0 0.35rem; color: var(--muted); font-size: 0.8rem; }
 
 .banner { display: grid; gap: 0.3rem; padding: 0.75rem 0.85rem; border: 1px solid var(--line); border-radius: 0.9rem; font-size: 0.82rem; line-height: 1.5; }
 .banner strong { font-size: 0.86rem; }

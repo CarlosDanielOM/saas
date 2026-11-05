@@ -1,10 +1,14 @@
-import { MANIFEST_FILE, PACKAGE_FILES, PackageFormatError, groupFields, isStreamElementsHost, matchPackageFiles, parseWidgetIni, readPackage,
-  type ExternalMedia, type FieldIssue, type PackageFile, type PackageInput, type WidgetManifest } from './custom-widget-format.generated';
+import { MANIFEST_FILE, PACKAGE_FILES, PackageFormatError, RESERVED_FIELDS, groupFields, isStreamElementsHost, matchPackageFiles, parseWidgetIni, readPackage,
+  type ExternalMedia, type FieldIssue, type JsonObject, type PackageFile, type PackageInput, type WidgetField, type WidgetManifest } from './custom-widget-format.generated';
 import { ZipError, blobBytes, blobText, readZip } from './custom-widget-zip';
 
 export interface PickedFile { path: string; blob: Blob }
 export interface ImportPart { file: PackageFile; name: string | null; bytes: number }
-export interface ImportSummary { settings: number; groups: number; issues: FieldIssue[]; remote: ExternalMedia[]; streamElements: ExternalMedia[]; manifest: WidgetManifest; author?: string }
+export interface ImportSummary {
+  settings: number; groups: number; issues: FieldIssue[]; remote: ExternalMedia[]; streamElements: ExternalMedia[]; manifest: WidgetManifest; author?: string;
+  /** Values the widget reads that the settings panel doesn't show (see `builtInValues`). */
+  builtIn: string[];
+}
 /** What the import dialog shows before anything is uploaded. */
 export interface ImportDraft {
   source: PackageInput | null;
@@ -62,10 +66,21 @@ export async function readImport(picked: readonly PickedFile[]): Promise<ImportD
     return { source, parts, error: '', errorDetail: '',
       suggestedName: (pkg.name || fallbackName || '').slice(0, 80),
       summary: { settings: groups.reduce((sum, group) => sum + group.fields.length, 0), groups: groups.length, issues: pkg.issues,
-        remote: pkg.externalMedia, streamElements: pkg.externalMedia.filter(item => isStreamElementsHost(item.host)), manifest: pkg.manifest, ...(pkg.author ? { author: pkg.author } : {}) } };
+        remote: pkg.externalMedia, streamElements: pkg.externalMedia.filter(item => isStreamElementsHost(item.host)), manifest: pkg.manifest, ...(pkg.author ? { author: pkg.author } : {}),
+        builtIn: builtInValues(pkg.fields, pkg.data) } };
   } catch (error) {
     return { ...empty('format', error instanceof PackageFormatError ? error.message : String(error)), parts, suggestedName: fallbackName };
   }
+}
+
+/**
+ * Keys the widget reads but the streamer can't change in Studio: `hidden` fields and data.txt values without a field.
+ * The widget's name and author fields are left out (they're shown as the name and author already).
+ */
+export function builtInValues(fields: readonly WidgetField[], data: Readonly<JsonObject>): string[] {
+  const known = new Set(fields.map(field => field.key)), meta = new Set<string>([RESERVED_FIELDS.name, RESERVED_FIELDS.author]);
+  const keys = [...fields.filter(field => field.type === 'hidden').map(field => field.key), ...Object.keys(data).filter(key => !known.has(key))];
+  return [...new Set(keys)].filter(key => !meta.has(key));
 }
 
 /** Files from a drop: DataTransfer items can hold folders, which are walked recursively. */
