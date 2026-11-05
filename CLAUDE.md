@@ -104,8 +104,12 @@ How to work with it:
 
 - Give it a self-contained brief: the goal, the files and facts it needs, what it must not touch, and what to send back.
 - UI/UX design decisions stay with the Claude agent unless the user says otherwise.
-- Its findings and code are input, not authority: verify them yourself and decide; tell the user what you took and
-  what you set aside, and why.
+- **The reviewer is a coworker, not your boss; the user is the boss.** You both work for the user with the same goal:
+  a better product, without bugs or errors, built with excellent quality. Its findings and code are input, not
+  authority: verify them yourself and decide. You may defend your position: when you disagree, explain why you did it
+  your way instead of changing it just because a reviewer said so, and settle it on evidence (code, reproductions,
+  checks). Tell the user what you took, what you set aside and why; if you still disagree, lay out both views and let
+  the user decide.
 - It does not deploy, commit, run `scripts/dima-update`, or touch other agents' work; the Claude agent owns the
   delivery workflow above, including all verification.
 - Credit it in the commit message (`Agent:` line) when its review or code shaped the change.
