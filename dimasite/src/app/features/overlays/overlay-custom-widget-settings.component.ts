@@ -79,7 +79,7 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
       }
       @if (replaceOpen()) { <app-overlay-custom-widget-import mode="replace" [widget]="widget" (closed)="replaceOpen.set(false)" /> }
       @if (mediaOpen()) { <app-overlay-custom-widget-import mode="media" [widget]="widget" (closed)="mediaOpen.set(false)" /> }
-      @if (codeOpen()) { <app-overlay-custom-widget-code [widget]="widget" [layer]="context().widget" (closed)="codeOpen.set(false)" /> }
+      @if (codeOpen()) { <app-overlay-custom-widget-code [widget]="widget" [layer]="context().widget" (renamed)="layerRenamed($event)" (closed)="codeOpen.set(false)" /> }
     } @else if (listLoaded()) {
       <p class="lf-note lf-note--warn" role="alert">{{ t('customMissing') }}</p>
     }
@@ -117,6 +117,10 @@ export class OverlayCustomWidgetSettingsComponent {
   n(key: string, count: number, params: Record<string, string | number> = {}): string { return this.t(count === 1 ? key + 'One' : key, { count, ...params }); }
 
 
+  /** This layer still shows the widget's old name: it follows the rename (a custom layer name stays). */
+  layerRenamed(change: { from: string; to: string }): void {
+    if (this.context().widget.name === change.from) this.configChange.emit({ name: change.to });
+  }
   /** A StreamElements-compatible zip: the original files plus this layer's settings as data.txt. */
   async exportZip(): Promise<void> {
     const widget = this.source(); if (!widget || this.exporting()) return;

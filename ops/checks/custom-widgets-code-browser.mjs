@@ -37,7 +37,7 @@ const seId = 'a1'.repeat(12);
 
 /** Mock API with real file storage per widget and revision (create, replace with baseRevision, files, history). */
 function mocks({ theme = 'dark', withSample = false } = {}) {
-  const world = { widgets: [], code: new Map(), creates: [], replaces: [], state: { schemaVersion: 1, revision: 0, designs: [],
+  const world = { widgets: [], code: new Map(), creates: [], replaces: [], renames: [], state: { schemaVersion: 1, revision: 0, designs: [],
     scenes: [{ id: 'main', name: 'Main overlay', publicId: 'e'.repeat(48), width: 1920, height: 1080, revision: 0, widgets: [], waitFor: [] }] } };
   const viewOf = (id, name) => {
     const entry = world.code.get(id), files = entry.files[entry.revision], pkg = readPackage(files);
@@ -69,6 +69,9 @@ function mocks({ theme = 'dark', withSample = false } = {}) {
       else if (path === list && req.method() === 'POST') {
         const body = req.postDataJSON(), id = (world.code.size + 1).toString(16).padStart(2, '0').repeat(12);
         world.creates.push(body); store(id, body.name, body.files); status = 201; data = { widget: world.widgets.at(-1), issues: [] };
+      } else if (/\/custom-widgets\/[a-f0-9]{24}$/.test(path) && req.method() === 'PATCH') {
+        const id = path.split('/').at(-1), entry = world.code.get(id), body = req.postDataJSON(); world.renames.push(body);
+        entry.name = body.name.trim(); const next = viewOf(id, entry.name); world.widgets = world.widgets.map(w => w.id === id ? next : w); data = next;
       } else if (files && req.method() === 'PUT') {
         const body = req.postDataJSON(), entry = world.code.get(files[1]); world.replaces.push(body);
         if (body.baseRevision !== undefined && body.baseRevision !== entry.revision) return route.fulfill({ status: 409, json: { error: true, status: 409, code: 'stale', message: `This widget changed since you opened it (now version ${entry.revision})` } });
@@ -76,6 +79,8 @@ function mocks({ theme = 'dark', withSample = false } = {}) {
         const next = viewOf(files[1], entry.name); world.widgets = world.widgets.map(w => w.id === next.id ? next : w); data = { widget: next, issues: [] };
       } else if (file) {
         const entry = world.code.get(file[1]), revision = Number(url.searchParams.get('revision') ?? entry.revision), text = entry.files[revision]?.[file[2]];
+        if (file[2] === 'manifest' && world.failManifest) return route.fulfill({ status: 500, json: { error: true, status: 500, message: 'Storage unavailable' } });
+        if (world.slowRevision === revision && url.searchParams.has('revision')) await new Promise(resolve => setTimeout(resolve, 1500));
         return text ? route.fulfill({ status: 200, contentType: 'text/plain', body: text }) : route.fulfill({ status: 404, json: { error: true, status: 404, message: 'Not found' } });
       } else if (/\/custom-widgets\/[a-f0-9]{24}\/bundle$/.test(path)) {
         const id = path.split('/').at(-2), entry = world.code.get(id), src = entry.files[entry.revision], pkg = readPackage(src);
@@ -176,21 +181,68 @@ try {
   assert.equal(JSON.parse(m.world.creates[0].files.manifest).engine, 'dima');
   assert.match(m.world.creates[0].files.css, /rgb\(0, 255, 0\)/);
   assert.match(await dialog.locator('#cwc-title').textContent(), /Code · Code test/);
+  assert.match((await page.locator('.layer-row .layer').allTextContents()).join('|'), /Code test/, 'the new layer is named after the widget');
+  // Studio's own shortcuts stay off while the editor is open (Delete would remove the selected layer).
+  await dialog.locator('[data-cwc-tab="html"]').focus();
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(200);
+  assert.equal(await page.locator('.widget[data-kind="custom"]').count(), 1, 'Delete inside the editor never deletes the layer underneath');
+  await dialog.locator('[data-cwc-tab="js"]').click();
+  // Rename: Escape cancels (the editor stays open), an empty name is refused, Enter saves; widget.json and the layer follow.
+  await dialog.locator('[data-cwc-rename]').click();
+  const renameInput = dialog.locator('[data-cwc-rename-input]');
+  assert.equal(await renameInput.evaluate(input => document.activeElement === input && input.selectionEnd - input.selectionStart === input.value.length), true, 'the field opens focused and selected');
+  await renameInput.fill('Nope');
+  await page.keyboard.press('Escape');
+  await dialog.locator('[data-cwc-rename]').waitFor();
+  assert.equal(await dialog.isVisible(), true, 'Escape in the rename field keeps the editor open');
+  assert.match(await dialog.locator('#cwc-title').textContent(), /Code test/);
+  await dialog.locator('[data-cwc-rename]').click();
+  await renameInput.fill('   ');
+  await page.keyboard.press('Enter');
+  await dialog.locator('[data-cwc-rename-error]').waitFor();
+  assert.equal(await renameInput.getAttribute('aria-invalid'), 'true');
+  await shot(page, 'rename-dark-1280');
+  await axe(page, 'rename');
+  await renameInput.fill('Chat box');
+  await page.keyboard.press('Enter');
+  await until(async () => /Code · Chat box/.test(await dialog.locator('#cwc-title').textContent()), 'renamed title');
+  assert.deepEqual(m.world.renames, [{ name: 'Chat box' }]);
+  await dialog.locator('[data-cwc-manifest-renamed]').waitFor();
+  await dialog.locator('[data-cwc-tab="manifest"]').click();
+  assert.equal(JSON.parse(await code(dialog)).name, 'Chat box', 'widget.json follows the new name (unsaved)');
+  assert.match((await page.locator('.layer-row .layer').allTextContents()).join('|'), /Chat box/, 'the layer that showed the old name follows');
+  assert.equal(await page.locator('[data-custom-widgets] .palette-item__name', { hasText: 'Chat box' }).count(), 1, 'the Add panel list shows the new name');
   await dialog.locator('[data-cwc-tab="js"]').click();
   await insertCode(dialog, '// v2\n', 'start');
   await until(async () => (await dialog.locator('[data-cwc-status]').getAttribute('data-status')) === 'unsaved', 'unsaved after an edit');
   await page.keyboard.press('ControlOrMeta+S');
   await until(async () => m.world.replaces.length === 1, 'Ctrl+S saves');
   assert.equal(m.world.replaces[0].baseRevision, 1);
+  assert.equal(JSON.parse(m.world.replaces[0].files.manifest).name, 'Chat box', 'the renamed widget.json is saved with the code');
   await dialog.locator('[data-cwc-versions] summary').click();
   assert.deepEqual(await dialog.locator('[data-cwc-versions] li').evaluateAll(items => items.map(li => li.dataset.revision)), ['2', '1']);
+  // Typing while a version loads wins over the version.
+  m.world.slowRevision = 1;
+  await dialog.locator('[data-cwc-version="1"]').click();
+  await insertCode(dialog, '// typed\n', 'start');
+  await dialog.locator('[data-cwc-version-error]').waitFor();
+  assert.match(await code(dialog), /^\/\/ typed/, 'the edit made while loading is kept');
+  m.world.slowRevision = null;
   await dialog.locator('[data-cwc-version="1"]').click();
   await dialog.locator('[data-cwc-opened]').waitFor();
-  assert.doesNotMatch(await code(dialog), /^\/\/ v2/, 'version 1 is in the editor');
+  assert.doesNotMatch(await code(dialog), /^\/\/ (v2|typed)/, 'version 1 is in the editor');
   await until(async () => (await dialog.locator('[data-cwc-status]').getAttribute('data-status')) === 'unsaved', 'an opened version is unsaved');
   await dialog.locator('[data-cwc-discard]').click();
   await until(async () => /^\/\/ v2/.test(await code(dialog)), 'discard goes back to the saved version');
-  console.log('PASS saving: "Create widget" posts the files, later saves send the base revision (Ctrl+S), versions open as unsaved changes.');
+  // Saving an opened version makes it the newest one.
+  await dialog.locator('[data-cwc-version="1"]').click();
+  await dialog.locator('[data-cwc-opened]').waitFor();
+  await dialog.locator('[data-cwc-save]').click();
+  await until(async () => m.world.replaces.length === 2, 'opened version saved');
+  assert.deepEqual([m.world.replaces[1].baseRevision, /^\/\/ v2/.test(m.world.replaces[1].files.js)], [2, false]);
+  await until(async () => (await dialog.locator('[data-cwc-versions] li').evaluateAll(items => items.map(li => li.dataset.revision))).join() === '3,2,1', 'history shows the new version');
+  console.log('PASS saving: "Create widget" posts the files; Delete never reaches the canvas; rename (Escape cancels, empty refused, widget.json + layer follow); later saves send the base revision (Ctrl+S); versions open as unsaved changes, lose to typing while loading, and save as the newest.');
 
   // Escape in the code keeps the dialog; elsewhere it closes and the layer is on the canvas.
   await dialog.locator('[data-cwc-editor] .cm-content').click();
@@ -206,8 +258,15 @@ try {
   await page.locator('[data-cw-edit-code]').click();
   await dialog.locator('[data-cwc-editor] .cm-editor').waitFor();
   await dialog.locator('[data-cwc-tab="html"]').click();
+  // Closing right after typing keeps that text (no waiting for the autosave pause).
   await insertCode(dialog, '<p class="draft">draft</p>\n', 'start');
-  await page.waitForTimeout(800);
+  await dialog.locator('[data-cwc-reload]').focus(); await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'detached' });
+  await page.locator('[data-cw-edit-code]').click();
+  await dialog.locator('[data-cwc-draft]').waitFor();
+  await dialog.locator('[data-cwc-tab="html"]').click();
+  assert.match(await code(dialog), /class="draft"/, 'the draft is restored after closing straight away');
+  // So does reloading right after typing.
+  await insertCode(dialog, '<p class="draft2">again</p>\n', 'start');
   await page.reload(); await page.locator('.stage').waitFor();
   // Studio wasn't saved, so place the widget again from the Add panel.
   const createdId = [...m.world.code.keys()].at(-1);
@@ -216,7 +275,7 @@ try {
   await dialog.locator('[data-cwc-draft]').waitFor();
   assert.equal(await dialog.locator('[data-cwc-status]').getAttribute('data-status'), 'unsaved');
   await dialog.locator('[data-cwc-tab="html"]').click();
-  assert.match(await code(dialog), /class="draft"/, 'the draft is restored');
+  assert.match(await code(dialog), /class="draft2"[\s\S]*class="draft"/, 'the draft is restored after a reload');
   const entry = m.world.code.get(createdId);
   entry.revision++; entry.files[entry.revision] = entry.files[entry.revision - 1]; // changed in another tab
   await dialog.locator('[data-cwc-save]').click();
@@ -224,7 +283,24 @@ try {
   await dialog.locator('[data-cwc-save-anyway]').click();
   await until(async () => (await dialog.locator('[data-cwc-status]').getAttribute('data-status')) === 'saved', 'saved anyway');
   assert.equal(m.world.replaces.at(-1).baseRevision, undefined, 'save anyway skips the check');
-  console.log('PASS drafts and conflicts: unsaved work is restored after a reload; a stale save is refused, then saved anyway.');
+  // A draft made on an older version waits for "Open them" / "Discard", even across closing the editor.
+  await dialog.locator('[data-cwc-tab="html"]').click();
+  await insertCode(dialog, '<p class="older">older</p>\n', 'start');
+  await dialog.locator('[data-cwc-reload]').focus(); await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'detached' });
+  entry.revision++; entry.files[entry.revision] = entry.files[entry.revision - 1]; // saved somewhere else meanwhile
+  m.world.widgets = m.world.widgets.map(w => w.id === createdId ? m.viewOf(createdId, entry.name) : w);
+  await page.reload(); await page.locator('.stage').waitFor();
+  await page.locator(`[data-custom-id="${createdId}"] .palette-item`).click();
+  await page.locator('[data-cw-edit-code]').click();
+  await dialog.locator('[data-cwc-draft-open]').waitFor();
+  await page.waitForTimeout(800);
+  await dialog.locator('[data-cwc-reload]').focus(); await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'detached' });
+  await page.locator('[data-cw-edit-code]').click();
+  await dialog.locator('[data-cwc-draft-open]').click();
+  await dialog.locator('[data-cwc-tab="html"]').click();
+  assert.match(await code(dialog), /class="older"/, 'the older draft survived closing without a decision');
+  console.log('PASS drafts and conflicts: drafts survive closing or reloading right after typing and waiting decisions; a stale save is refused, then saved anyway.');
+  await dialog.locator('[data-cwc-discard]').click();
   await dialog.locator('[data-cwc-reload]').focus(); await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'detached' });
   await context.close();
 
@@ -236,8 +312,17 @@ try {
     await p.goto(`${base}/${user.login}/modules/overlays`); await p.locator('.stage').waitFor();
     await p.locator('.studio-mtabs [data-tab="add"]').click();
     await p.locator(`[data-custom-id="${seId}"] .palette-item`).click();
-    await p.locator('[data-cw-edit-code]').click();
     const d = p.locator('dialog.cwc');
+    if (theme === 'light') {
+      // A widget.json that fails to load is an error, never "no widget.json" (saving would drop it).
+      sm.world.failManifest = true;
+      await p.locator('[data-cw-edit-code]').click();
+      await d.locator('[data-cwc-load-error]').waitFor();
+      assert.equal(await d.locator('[data-cwc-editor]').count(), 0, 'no editor without every file');
+      await d.locator('.head .icon-button[aria-label="Close"]').click(); await d.waitFor({ state: 'detached' });
+      sm.world.failManifest = false;
+    }
+    await p.locator('[data-cw-edit-code]').click();
     await d.locator('[data-cwc-editor] .cm-editor').waitFor();
     assert.equal(await d.locator('[data-cwc-tab="html"]').getAttribute('aria-selected'), 'true');
     assert.equal((await code(d)).trim(), sample.html.trim(), 'the widget\'s files load into the editor');

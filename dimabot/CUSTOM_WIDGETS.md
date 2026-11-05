@@ -38,8 +38,9 @@ is the portable parser shared with Studio (copied to `dimasite/.../custom-widget
   inferred from StreamElements code). Replacing the files adds a revision.
 - `media` (on the widget, shared by all revisions): StreamElements files copied into the Asset Library, keyed by
   base64url(url) → `{ url, assetId }`. Copied assets can't be deleted while a widget uses them.
-- `revisions` keeps the latest revision, the 10 newest overall (the code editor's version history, within a 6 MB
-  budget for parsed fields/data so the document stays small) and any older one a **published** overlay still uses;
+- `revisions` keeps the latest revision, the 10 newest overall (the code editor's version history) and any older one a
+  **published** overlay still uses, within a 6 MB budget of stored (BSON) size that latest + published take first
+  (`src/custom_widgets/history.ts`; file replacements plan the kept set before writing);
   drafts always follow the latest. Revisions outside that and their unshared files are pruned after publishes and file
   replacements. The widget view lists them as `history` (newest first, with `published`).
 - Plan limits per channel: Free 1, Premium 5, Pro 25 (`CUSTOM_WIDGET_PLAN_LIMITS`).
@@ -91,7 +92,11 @@ keep the last good preview; issues are listed. The preview is the normal frame h
 `cw-code-preview`, so tests and logs reach only it; an unsaved widget's store stays in memory). Saving creates the
 widget or `PUT /files` with `baseRevision` (409 `stale` → "Save anyway"). Unsaved work is kept in localStorage
 (`dimasite.cw-code.v1.<channel>.<widgetId|new>`, `custom-widget-code-drafts.ts`) until saved or discarded; "Versions"
-uses `history` and loads a revision's files as unsaved changes.
+uses `history` and loads a revision's files as unsaved changes (typing while it loads wins). Drafts are per editor
+session (`.<session>` suffix): a session copies another's draft when restoring it and only *dismisses* that saved state
+(never deletes another tab's key); drafts flush on close, `pagehide` and hidden tabs. Renaming (header pencil) is
+`PATCH { name }` only: no new revision, the base revision is untouched; widget.json's `name` follows as an unsaved
+change when it still had the old name, and layers still showing the old name follow.
 
 ## Not built yet
 

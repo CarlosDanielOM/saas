@@ -46,7 +46,22 @@
   } @else if (step() === 'code') {
     <header class="head head--code">
       <div class="head__copy">
-        <h2 id="cwc-title">{{ widgetId() ? t('customCodeEditTitle', { name: name() }) : name() }}</h2>
+        @if (renaming()) {
+          <h2 id="cwc-title" class="visually-hidden">{{ widgetId() ? t('customCodeEditTitle', { name: name() }) : name() }}</h2>
+          <form class="rename" (submit)="$event.preventDefault(); saveRename()" data-cwc-rename-form>
+            <label class="visually-hidden" for="cwc-rename">{{ t('customWidgetName') }}</label>
+            <input #renameInput id="cwc-rename" type="text" maxlength="80" autocomplete="off" [value]="renameText()" (input)="renameText.set($any($event.target).value)" (keydown)="renameKey($event)"
+              [attr.aria-invalid]="renameError() ? 'true' : null" [attr.aria-describedby]="renameError() ? 'cwc-rename-error' : null" data-cwc-rename-input />
+            <button type="submit" class="primary" [disabled]="renameBusy()" data-cwc-rename-save>{{ renameBusy() ? t('customCodeSaving') : t('customRenameSave') }}</button>
+            <button type="button" [disabled]="renameBusy()" (click)="cancelRename()" data-cwc-rename-cancel>{{ t('cancel') }}</button>
+          </form>
+          @if (renameError()) { <p id="cwc-rename-error" class="note note--danger" role="alert" data-cwc-rename-error>{{ renameError() }}</p> }
+        } @else {
+          <div class="head__title">
+            <h2 id="cwc-title">{{ widgetId() ? t('customCodeEditTitle', { name: name() }) : name() }}</h2>
+            <button #renameButton type="button" class="icon-button icon-button--quiet" (click)="startRename()" [attr.aria-label]="t('customRenameButton')" [title]="t('customRenameButton')" data-cwc-rename><lucide-icon [img]="icons.Pencil" [size]="16" aria-hidden="true" /></button>
+          </div>
+        }
         <p class="head__meta">
           <span class="chip" [attr.data-status]="status()" data-cwc-status>{{ t('customCodeStatus_' + status()) }}</span>
           <span>{{ t(engine() === 'dima' ? 'customEngineDima' : 'customEngineSe') }}</span>
@@ -60,7 +75,7 @@
     @if (loading()) {
       <div class="body"><p class="note" role="status">{{ t('customCodeLoading') }}</p></div>
     } @else if (loadError()) {
-      <div class="body"><p class="banner banner--danger" role="alert">{{ loadError() }}</p></div>
+      <div class="body"><p class="banner banner--danger" role="alert" data-cwc-load-error>{{ loadError() }}</p></div>
     } @else {
       <div class="seg" role="group" [attr.aria-label]="t('customCodeView')">
         <button type="button" [attr.aria-pressed]="pane() === 'code'" (click)="pane.set('code')" data-cwc-pane="code"><lucide-icon [img]="icons.Code2" [size]="16" aria-hidden="true" />{{ t('customCodeCode') }}@if (problems().length) { <span class="seg__count">{{ problems().length }}</span> }</button>
@@ -88,6 +103,7 @@
                 </div>
               </div>
             }
+            @if (manifestRenamed()) { <p class="banner banner--compact" data-cwc-manifest-renamed>{{ t('customRenameManifest') }}</p> }
             @if (openedVersion(); as revision) { <p class="banner banner--compact" data-cwc-opened>{{ t('customCodeVersionOpened', { revision: revision }) }}</p> }
             @if (tab() === 'manifest' && !files().manifest.trim()) {
               <div class="banner banner--compact" data-cwc-no-manifest>
@@ -178,7 +194,7 @@
                   </li>
                 }
               </ul>
-              @if (versionError()) { <p class="note note--danger" role="alert">{{ versionError() }}</p> }
+              @if (versionError()) { <p class="note note--danger" role="alert" data-cwc-version-error>{{ versionError() }}</p> }
             </details>
           }
         </aside>

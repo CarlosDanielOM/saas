@@ -702,5 +702,5 @@
 }
 
 @if (customImportOpen() && channel) { <app-overlay-custom-widget-import (done)="addCustomWidget($event)" (closed)="customImportOpen.set(false)" /> }
-@if (customCodeOpen() && channel) { <app-overlay-custom-widget-code (created)="addCustomWidget($event)" (closed)="customCodeOpen.set(false)" /> }
+@if (customCodeOpen() && channel) { <app-overlay-custom-widget-code (created)="addCustomWidget($event)" (renamed)="customWidgetRenamed($event)" (closed)="customCodeOpen.set(false)" /> }
 @if (soundPickerOpen() && channel) { <app-asset-library-dialog [owner]="channel" kind="audio" (selected)="useSound($event)" (closed)="soundPickerOpen.set(false)" /> }

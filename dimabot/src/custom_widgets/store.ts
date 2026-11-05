@@ -1,4 +1,4 @@
-import { Schema, Types, model } from 'mongoose';
+import { Schema, Types, model, mongo } from 'mongoose';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import Users from '../schemas/users.schema.js';
 import { assetQuota, withAssetLibrary } from '../assets/library.js';
@@ -7,6 +7,7 @@ import type { OverlayScene, OverlayWidget } from '../overlays/model.js';
 import { CUSTOM_WIDGET_LIMITS, CUSTOM_WIDGET_PLAN_LIMITS, PACKAGE_FILES, type CustomWidgetPlan, PackageFormatError, checkOverrides, inferManifest, readPackage, type PackageInput, type WidgetManifest,
   type ExternalMedia, type FieldIssue, type JsonObject, type PackageFile, type PackageSource, type WidgetField } from './format.js';
 import { deleteKeys, describeFiles, putFiles, readFile, type PackageFiles, type StoredFile } from './files.js';
+import { HISTORY_BYTES, HISTORY_REVISIONS, keptRevisions as keepRevisions } from './history.js';
 
 
 export class CustomWidgetError extends OverlayError { constructor(message: string, status = 400, readonly code?: string) { super(message, status); } }
@@ -63,20 +64,10 @@ function usage(scenes: OverlayScene[], id: string): WidgetUse[] {
     draft: scene.widgets.some(w => isCustom(w) && widgetIdOf(w) === id),
     published: !!scene.published?.widgets.some(w => isCustom(w) && widgetIdOf(w) === id) })).filter(use => use.draft || use.published);
 }
-/** Revisions kept besides the latest and published ones, newest first, within a size budget for the document. */
-export const HISTORY_REVISIONS = 10;
-const HISTORY_BYTES = 6_000_000;
-const revisionBytes = (r: WidgetRevision) => JSON.stringify([r.fields, r.data, r.externalMedia, r.manifest ?? null]).length;
-function keptRevisions(doc: StoredWidget, pinned: (revision: number) => boolean): WidgetRevision[] {
-  let count = 0, bytes = 0;
-  const keep = new Set<number>();
-  for (const r of [...doc.revisions].sort((a, b) => b.revision - a.revision)) {
-    const always = r.revision === doc.revision || pinned(r.revision), size = revisionBytes(r);
-    if (!always && (count >= HISTORY_REVISIONS || bytes + size > HISTORY_BYTES)) continue;
-    count++; bytes += size; keep.add(r.revision);
-  }
-  return doc.revisions.filter(r => keep.has(r.revision));
-}
+/** Stored (BSON) size of a revision entry: what counts toward MongoDB's document limit. */
+const revisionBytes = (r: WidgetRevision) => mongo.BSON.calculateObjectSize(r as unknown as Record<string, unknown>);
+/** Version history: latest + published always, then the newest within count and size (see history.ts). */
+const keptRevisions = (doc: Pick<StoredWidget, 'revision' | 'revisions'>, pinned: (revision: number) => boolean) => keepRevisions(doc.revisions, doc.revision, pinned, revisionBytes);
 const publishedRevisions = (scenes: OverlayScene[], id: string) => new Set(scenes.flatMap(scene => scene.published?.widgets ?? [])
   .filter(w => isCustom(w) && widgetIdOf(w) === id).map(w => w.config?.['revision']).filter((r): r is number => typeof r === 'number'));
 
@@ -167,16 +158,19 @@ export async function replaceFiles(owner: string, id: string, body: Record<strin
     const name = body.name === undefined ? doc.name : widgetName(body.name, doc.name);
     await putFiles(refs, files);
     const next = newRevision(revision, refs, summary), updatedAt = new Date();
-    const result = await CustomWidgets.updateOne({ _id: id, owner, revision: doc.revision }, { $set: { name, revision, updatedAt }, $push: { revisions: next } });
+    // Decide what stays before writing, so the new revision never takes the document past its size budget.
+    const scenes = await scenesOf(owner), published = publishedRevisions(scenes, id);
+    const kept = keptRevisions({ revision, revisions: [...doc.revisions, next] }, r => published.has(r));
+    const result = await CustomWidgets.updateOne({ _id: id, owner, revision: doc.revision }, { $set: { name, revision, updatedAt, revisions: kept } });
     if (!result.modifiedCount) {
-      const kept = revisionKeys(doc.revisions);
-      await deleteKeys([...revisionKeys([next])].filter(key => !kept.has(key)));
+      const before = revisionKeys(doc.revisions);
+      await deleteKeys([...revisionKeys([next])].filter(key => !before.has(key)));
       throw new CustomWidgetError('This widget changed while you were updating it. Try again.', 409);
     }
-    await pruneRevisions(owner, id);
-    // Re-read so the returned history matches what pruning kept.
-    const saved = await CustomWidgets.findOne({ _id: id, owner }).lean<StoredWidget>() ?? { ...doc, name, revision, revisions: [...doc.revisions, next], updatedAt };
-    return { widget: view(saved, await scenesOf(owner)), issues: summary.issues };
+    // Files only the dropped revisions used.
+    const keep = revisionKeys(kept);
+    await deleteKeys([...revisionKeys(doc.revisions)].filter(key => !keep.has(key)));
+    return { widget: view({ ...doc, name, revision, revisions: kept, updatedAt }, scenes), issues: summary.issues };
   });
 }
 

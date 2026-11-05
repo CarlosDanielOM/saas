@@ -493,7 +493,8 @@ export class OverlayEditorComponent {
     if (event.defaultPrevented || event.isComposing) return;
     if (event.key === 'Escape' && this.pop()) { event.preventDefault(); this.closePop(); return; }
     const target = event.target instanceof Element ? event.target : null;
-    if (!this.loaded() || !target?.closest('app-overlay-editor') || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="dialog"]:not(.pop)')) return;
+    // Modal dialogs (code editor, import…) own their keys: Delete or zoom there never acts on the canvas underneath.
+    if (!this.loaded() || !target?.closest('app-overlay-editor') || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), dialog, [role="dialog"]:not(.pop)')) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if ((event.key === 'Delete' || event.key === 'Backspace') && this.selected() && !this.busy()) { event.preventDefault(); this.deleteSelected(); }
     else if (event.key === '+' || event.key === '=') { event.preventDefault(); this.zoomIn(); }
@@ -629,6 +630,12 @@ export class OverlayEditorComponent {
     if (!widget) return;
     this.updateWidgets(all => [...all, { ...widget, name: source.name, config: { widgetId: source.id } }]); this.select(widget.id);
     this.rightTab.set('layer'); if (this.compact()) this.mobileTab.set('edit');
+  }
+  /** Layers in this overlay that still show the widget's old name follow a rename from the code editor. */
+  customWidgetRenamed(change: { id: string | null; from: string; to: string }): void {
+    if (!change.id) return;
+    const follows = (w: OverlayWidget) => w.kind === 'custom' && w.config?.['widgetId'] === change.id && w.name === change.from;
+    if (this.widgets().some(follows)) this.updateWidgets(all => all.map(w => follows(w) ? { ...w, name: change.to } : w));
   }
   customUses(source: CustomWidgetView): number { return this.scenes().reduce((sum, scene) => sum + scene.widgets.filter(w => w.kind === 'custom' && w.config?.['widgetId'] === source.id).length, 0); }
   customHint(source: CustomWidgetView): string {
@@ -1216,7 +1223,7 @@ export class OverlayEditorComponent {
     const key = event.key.toLowerCase();
     if (key !== 'z' && key !== 'y') return;
     const target = event.target instanceof Element ? event.target : null;
-    if (!target?.closest('app-overlay-editor') || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="dialog"]')) return;
+    if (!target?.closest('app-overlay-editor') || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), dialog, [role="dialog"]')) return;
     if (!this.loaded() || this.busy() || this.loading() || this.assetPickerOpen() || this.soundPickerOpen()) return;
     event.preventDefault();
     if (key === 'y' || event.shiftKey) this.redo(); else this.undo();

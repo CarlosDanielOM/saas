@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
-import { BookOpen, Code2, Eye, LucideAngularModule, RotateCcw, Star, X } from 'lucide-angular';
+import { BookOpen, Code2, Eye, LucideAngularModule, Pencil, RotateCcw, Star, X } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { PackageFormatError, readPackage, type FieldIssue } from './custom-widget-format.generated';
-import { CODE_FILES, clearCodeDraft, emptyCodeFiles, readCodeDraft, sameCodeFiles, toPackage, writeCodeDraft, type CodeDraft, type CodeFile, type CodeFiles } from './custom-widget-code-drafts';
+import { CODE_FILES, codeDraftKey, dismissCodeDraft, emptyCodeFiles, latestCodeDraft, removeCodeDraft, sameCodeFiles, toPackage, writeCodeDraft, type CodeFile, type CodeFiles, type StoredCodeDraft } from './custom-widget-code-drafts';
 import type { CodeEditor, CodeLanguage, CodeTab } from './custom-widget-code-mirror';
 import { starterFiles, type StarterKind, type StarterTexts } from './custom-widget-templates';
 import { CustomWidgetsService, errorCode, message, type CustomWidgetView } from './custom-widgets.service';
@@ -64,6 +64,8 @@ export class OverlayCustomWidgetCodeComponent {
   /** The layer it was opened from: preview size and that layer's settings. */
   readonly layer = input<OverlayWidget | null>(null);
   readonly created = output<CustomWidgetView>();
+  /** The widget got a new name (`id` is null before it's created): layers still showing the old name can follow. */
+  readonly renamed = output<{ id: string | null; from: string; to: string }>();
   readonly closed = output<void>();
 
   private readonly widgets = inject(CustomWidgetsService);
@@ -74,7 +76,9 @@ export class OverlayCustomWidgetCodeComponent {
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
   private readonly editorHost = viewChild<ElementRef<HTMLElement>>('editorHost');
   private readonly stage = viewChild<ElementRef<HTMLElement>>('stage');
-  readonly icons = { BookOpen, Code2, Eye, RotateCcw, Star, X };
+  private readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
+  private readonly renameButton = viewChild<ElementRef<HTMLButtonElement>>('renameButton');
+  readonly icons = { BookOpen, Code2, Eye, Pencil, RotateCcw, Star, X };
   readonly codeFiles = CODE_FILES;
   readonly starters: readonly StarterKind[] = ['dima', 'streamelements'];
   readonly chatTests: readonly ChatTest[] = ['viewer', 'subscriber', 'moderator', 'first', 'emotes', 'long'];
@@ -104,13 +108,22 @@ export class OverlayCustomWidgetCodeComponent {
   readonly limitReached = signal(false);
   /** Unsaved work found in this browser when the editor opened. */
   readonly draftNote = signal<{ at: number; base: number; mismatch: boolean } | null>(null);
-  private pendingDraft: CodeDraft | null = null;
-  readonly newDraft = signal<CodeDraft | null>(null);
+  /** An older draft (made on another version) waiting for "Open them" or "Discard"; it keeps its own key meanwhile. */
+  private pendingDraft: StoredCodeDraft | null = null;
+  readonly newDraft = signal<StoredCodeDraft | null>(null);
+  /** This editor session's own draft key: other tabs keep theirs. */
+  private readonly session = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
   readonly draftBlocked = signal(false);
   readonly openedVersion = signal<number | null>(null);
   readonly versionBusy = signal<number | null>(null);
   readonly versionError = signal('');
   readonly previewBundle = signal<RuntimeBundle | null>(null);
+  readonly renaming = signal(false);
+  readonly renameText = signal('');
+  readonly renameBusy = signal(false);
+  readonly renameError = signal('');
+  /** The rename also changed the name inside widget.json (an unsaved change). */
+  readonly manifestRenamed = signal(false);
   readonly scale = signal(1);
   private media: Record<string, string> = {};
   private editor: CodeEditor<CodeFile> | null = null;
@@ -154,9 +167,15 @@ export class OverlayCustomWidgetCodeComponent {
   constructor() {
     const destroy = inject(DestroyRef);
     let settleTimer: ReturnType<typeof setTimeout> | null = null, draftTimer: ReturnType<typeof setTimeout> | null = null;
+    // Closing, reloading or leaving the page keeps the latest text, not the text from before the last pause.
+    const flush = () => this.flushDraft();
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener('pagehide', flush); document.addEventListener('visibilitychange', onVisibility);
     destroy.onDestroy(() => {
-      this.destroyed = true; this.editor?.destroy();
       for (const timer of [settleTimer, draftTimer]) if (timer) clearTimeout(timer);
+      flush();
+      window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', onVisibility);
+      this.destroyed = true; this.editor?.destroy();
       this.env.clearLog(PREVIEW_LAYER);
     });
     // Checks and the preview follow the text once typing pauses.
@@ -175,16 +194,11 @@ export class OverlayCustomWidgetCodeComponent {
         html: files.html, css: files.css, js: files.js, fields: pkg.fields, data: pkg.data, media: this.media, channel: this.channel()
       }));
     });
-    // Unsaved work is kept in this browser (per widget, or `new`) until it's saved or discarded.
+    // Unsaved work is kept in this browser (this session's key) until it's saved or discarded.
     effect(() => {
-      const files = this.files(), dirty = this.dirty(), id = this.widgetId() ?? 'new', base = this.base(), name = this.name();
-      if (this.step() !== 'code' || this.loading() || this.loadError()) return;
+      this.files(); this.dirty(); this.widgetId(); this.base(); this.name(); this.draftNote(); this.step(); this.loading();
       if (draftTimer) clearTimeout(draftTimer);
-      draftTimer = setTimeout(() => {
-        const channel = this.widgets.channelId;
-        if (!dirty) { clearCodeDraft(channel, id); this.draftBlocked.set(false); return; }
-        this.draftBlocked.set(!writeCodeDraft(channel, id, { files, base, at: Date.now(), name }));
-      }, 500);
+      draftTimer = setTimeout(() => this.flushDraft(), 500);
     });
     // CodeMirror loads on its own (lazy chunk) once the editor area exists.
     effect(() => {
@@ -200,6 +214,11 @@ export class OverlayCustomWidgetCodeComponent {
       };
       const observer = new ResizeObserver(fit); observer.observe(stage); fit();
       onCleanup(() => observer.disconnect());
+    });
+    // The rename field takes focus with its text selected.
+    effect(() => {
+      const input = this.renameInput()?.nativeElement;
+      if (input) untracked(() => { input.focus(); input.select(); });
     });
     afterNextRender(() => {
       this.returnFocus = document.activeElement as HTMLElement | null;
@@ -222,10 +241,30 @@ export class OverlayCustomWidgetCodeComponent {
     return Object.fromEntries(keys.map(key => [key, this.t('customTpl_' + key)])) as unknown as StarterTexts;
   }
 
+  private ownKey(): string { return codeDraftKey(this.widgets.channelId, this.widgetId() ?? 'new', this.session); }
+  /**
+   * Writes (or clears) this session's own draft now; drafts of other sessions (and one waiting for "Open them") are
+   * untouched. True when this session's current work is safely stored.
+   */
+  private flushDraft(): boolean {
+    if (this.step() !== 'code' || this.loading() || this.loadError()) return false;
+    const key = this.ownKey();
+    if (this.widgetId() && !this.dirty()) { removeCodeDraft(key); this.draftBlocked.set(false); return true; }
+    const stored = writeCodeDraft(key, { files: this.files(), base: this.base(), at: Date.now(), name: this.name() });
+    this.draftBlocked.set(!stored);
+    return stored;
+  }
+  /** Takes over a draft another session left: a copy under our key, then that saved state is dismissed (never deleted). */
+  private adopt(draft: StoredCodeDraft): void {
+    const own = this.ownKey();
+    if (draft.key === own) return;
+    if (writeCodeDraft(own, { files: draft.files, base: draft.base, at: draft.at, ...(draft.name ? { name: draft.name } : {}) })) dismissCodeDraft(draft);
+  }
+
   private async init(): Promise<void> {
     const widget = untracked(this.widget);
     if (widget) { await this.openWidget(widget); return; }
-    const draft = readCodeDraft(this.widgets.channelId, 'new');
+    const draft = latestCodeDraft(this.widgets.channelId, 'new');
     this.newDraft.set(draft);
     this.name.set(this.t('customCodeDefaultName'));
     this.step.set('start');
@@ -233,7 +272,8 @@ export class OverlayCustomWidgetCodeComponent {
   private async fetchFiles(id: string, revision: number): Promise<CodeFiles> {
     const parts = ['html', 'css', 'js', 'fields', 'data'] as const;
     const [texts, manifest] = await Promise.all([Promise.all(parts.map(part => this.widgets.file(id, part, revision))),
-      this.widgets.file(id, 'manifest', revision).catch(() => '')]);
+      // Only "no widget.json" (404) means none; any other failure must not quietly drop the manifest on save.
+      this.widgets.file(id, 'manifest', revision).catch((error: unknown) => { if ((error as { status?: unknown } | null)?.status === 404) return ''; throw error; })]);
     return { html: texts[0], css: texts[1], js: texts[2], fields: texts[3], data: texts[4], manifest };
   }
   private async openWidget(widget: CustomWidgetView): Promise<void> {
@@ -244,12 +284,12 @@ export class OverlayCustomWidgetCodeComponent {
       // Copied StreamElements files load from preview links (the frame can't send the login token).
       if (Object.keys(widget.media ?? {}).length) this.media = (await this.widgets.resolveMedia({ media: widget.media } as RuntimeBundle)).media;
       this.saved.set(files); this.base.set(widget.revision);
-      const draft = readCodeDraft(this.widgets.channelId, widget.id);
+      const draft = latestCodeDraft(this.widgets.channelId, widget.id, this.ownKey());
       let start = files;
       if (draft && !sameCodeFiles(draft.files, files)) {
-        if (draft.base === widget.revision) { start = draft.files; this.draftNote.set({ at: draft.at, base: draft.base, mismatch: false }); }
+        if (draft.base === widget.revision) { start = draft.files; this.adopt(draft); this.draftNote.set({ at: draft.at, base: draft.base, mismatch: false }); }
         else { this.pendingDraft = draft; this.draftNote.set({ at: draft.at, base: draft.base, mismatch: true }); }
-      }
+      } else if (draft) removeCodeDraft(draft.key); // same as the saved files: nothing to keep
       this.replaceAll(start); this.settled.set(start);
     } catch (error) {
       this.loadError.set(message(error) || this.t('customCodeLoadFailed'));
@@ -287,14 +327,18 @@ export class OverlayCustomWidgetCodeComponent {
     const draft = this.newDraft(); if (!draft) return;
     this.name.set(draft.name || this.t('customCodeDefaultName')); this.saved.set(null); this.base.set(0); this.tab.set('js');
     this.files.set(draft.files); this.settled.set(draft.files); this.step.set('code');
+    this.adopt(draft);
   }
-  discardNewDraft(): void { clearCodeDraft(this.widgets.channelId, 'new'); this.newDraft.set(null); }
-  discardRestored(): void {
-    const saved = this.saved(); if (saved) this.replaceAll(saved);
-    clearCodeDraft(this.widgets.channelId, this.widgetId() ?? 'new'); this.draftNote.set(null);
+  discardNewDraft(): void { const draft = this.newDraft(); if (draft) dismissCodeDraft(draft); this.newDraft.set(null); }
+  /** Back to the saved files; this session's draft is cleared once they match. */
+  discardRestored(): void { const saved = this.saved(); if (saved) this.replaceAll(saved); this.draftNote.set(null); }
+  openPendingDraft(): void {
+    const draft = this.pendingDraft; if (!draft) return;
+    this.replaceAll(draft.files); this.pendingDraft = null; this.draftNote.set(null);
+    // Only once our copy is stored is the source dismissed; otherwise it stays recoverable.
+    if (this.flushDraft()) dismissCodeDraft(draft);
   }
-  openPendingDraft(): void { if (this.pendingDraft) this.replaceAll(this.pendingDraft.files); this.pendingDraft = null; this.draftNote.set(null); }
-  dropPendingDraft(): void { clearCodeDraft(this.widgets.channelId, this.widgetId() ?? 'new'); this.pendingDraft = null; this.draftNote.set(null); }
+  dropPendingDraft(): void { if (this.pendingDraft) dismissCodeDraft(this.pendingDraft); this.pendingDraft = null; this.draftNote.set(null); }
   discardChanges(): void { const saved = this.saved(); if (saved) { this.replaceAll(saved); this.openedVersion.set(null); } }
 
   selectTab(file: CodeFile): void { this.tab.set(file); this.editor?.show(file); }
@@ -320,10 +364,52 @@ export class OverlayCustomWidgetCodeComponent {
     if (this.editor) this.editor.setText('manifest', text); else this.setFile('manifest', text);
   }
 
+  startRename(): void { this.renameText.set(this.name()); this.renameError.set(''); this.renaming.set(true); }
+  cancelRename(): void {
+    if (this.renameBusy()) return;
+    this.renaming.set(false); this.renameError.set('');
+    setTimeout(() => this.renameButton()?.nativeElement.focus());
+  }
+  /** Saves the name right away (it isn't part of the files); before the widget exists it's used on "Create widget". */
+  async saveRename(): Promise<void> {
+    const to = this.renameText().trim(), from = this.name(), id = this.widgetId();
+    if (!to) { this.renameError.set(this.t('customRenameEmpty')); return; }
+    if (this.renameBusy()) return;
+    if (to !== from) {
+      if (id) {
+        this.renameBusy.set(true); this.renameError.set('');
+        try { this.name.set((await this.widgets.rename(id, to)).name); }
+        catch (error) { this.renameError.set(message(error) || this.t('customRenameFailed')); return; }
+        finally { this.renameBusy.set(false); }
+      } else this.name.set(to);
+      this.renameManifest(from, this.name());
+      this.renamed.emit({ id, from, to: this.name() });
+    }
+    this.cancelRename();
+  }
+  renameKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.cancelRename(); }
+  }
+  /** widget.json names the widget too (it wins on import): keep it in step when it still has the old name. */
+  private renameManifest(from: string, to: string): void {
+    const text = this.files().manifest;
+    const pattern = new RegExp(`("name"\\s*:\\s*)${JSON.stringify(from).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+    if (!text.trim() || !pattern.test(text)) return;
+    const next = text.replace(pattern, (_match, prefix: string) => prefix + JSON.stringify(to));
+    if (this.editor) this.editor.setText('manifest', next); else this.setFile('manifest', next);
+    this.manifestRenamed.set(true);
+  }
+
   async loadVersion(revision: number): Promise<void> {
     const id = this.widgetId(); if (!id || this.versionBusy() !== null) return;
     this.versionBusy.set(revision); this.versionError.set('');
-    try { this.replaceAll(await this.fetchFiles(id, revision)); this.openedVersion.set(revision); this.pane.set('code'); }
+    const before = this.files();
+    try {
+      const files = await this.fetchFiles(id, revision);
+      // Typing while it loaded wins: don't replace newer edits with the old version.
+      if (this.files() !== before) { this.versionError.set(this.t('customCodeVersionChanged', { revision })); return; }
+      this.replaceAll(files); this.openedVersion.set(revision); this.pane.set('code');
+    }
     catch (error) { this.versionError.set(message(error) || this.t('customCodeLoadFailed')); }
     finally { this.versionBusy.set(null); }
   }
@@ -341,15 +427,15 @@ export class OverlayCustomWidgetCodeComponent {
     try {
       if (!id) {
         const result = await this.widgets.create(this.name().trim() || this.t('customCodeDefaultName'), toPackage(files));
-        clearCodeDraft(this.widgets.channelId, 'new');
+        removeCodeDraft(this.ownKey());
         this.widgetId.set(result.widget.id); this.base.set(result.widget.revision); this.name.set(result.widget.name);
         this.created.emit(result.widget);
       } else {
         const result = await this.widgets.replace(id, toPackage(files), force ? undefined : this.base());
         this.base.set(result.widget.revision);
-        clearCodeDraft(this.widgets.channelId, id);
+        removeCodeDraft(this.ownKey());
       }
-      this.saved.set(files); this.openedVersion.set(null); this.draftNote.set(null);
+      this.saved.set(files); this.openedVersion.set(null); this.draftNote.set(null); this.manifestRenamed.set(false);
     } catch (error) {
       const code = errorCode(error);
       if (code === 'stale') this.stale.set(true);
@@ -369,10 +455,13 @@ export class OverlayCustomWidgetCodeComponent {
 
   /** Ctrl/⌘+S saves. */
   onKeydown(event: KeyboardEvent): void {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's' && this.step() === 'code') { event.preventDefault(); void this.save(); }
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's' || this.step() !== 'code') return;
+    event.preventDefault();
+    if (this.renaming()) void this.saveRename(); else void this.save();
   }
   /** Escape inside the code is the editor's (closing search, leaving with Tab), not the dialog's. */
   onCancel(event: Event): void {
+    if (this.renaming()) { event.preventDefault(); this.cancelRename(); return; }
     if (this.saving() || (document.activeElement as HTMLElement | null)?.closest('.cm-editor')) event.preventDefault();
   }
   close(): void { if (!this.saving()) this.dialog().nativeElement.close(); }

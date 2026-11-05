@@ -56,7 +56,8 @@ const languages: Record<CodeLanguage, () => Extension> = { html: () => html(), c
 export function createCodeEditor<K extends string>(parent: HTMLElement, tabs: Record<K, CodeTab>, first: K, onChange: (tab: K, text: string) => void): CodeEditor<K> {
   const make = (tab: K, text: string) => EditorState.create({ doc: text, extensions: [
     basicSetup, keymap.of([indentWithTab]), EditorView.lineWrapping, theme, syntaxHighlighting(highlight), languages[tabs[tab].language](),
-    EditorView.contentAttributes.of({ 'aria-label': tabs[tab].label }),
+    // tabindex makes the (already focusable) editable area count as the scroll region's focusable content.
+    EditorView.contentAttributes.of({ 'aria-label': tabs[tab].label, tabindex: '0' }),
     EditorView.updateListener.of(update => { if (update.docChanged) onChange(tab, update.state.doc.toString()); })
   ] });
   const states = new Map<K, EditorState>((Object.keys(tabs) as K[]).map(tab => [tab, make(tab, tabs[tab].text)]));

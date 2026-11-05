@@ -304,6 +304,8 @@ export function externalMedia(source: PackageSource, data: Readonly<JsonObject> 
   const scan = (text: string, file: PackageFile) => {
     for (const [raw] of text.matchAll(/https?:\/\/[^\s"'`()<>\\{}]+/gi)) {
       const url = raw.replace(/[.,;:!?]+$/, '');
+      // Longer "URLs" aren't media links; skipping them also bounds what each revision stores.
+      if (url.length > CUSTOM_WIDGET_LIMITS.url) continue;
       let parsed: URL; try { parsed = new URL(url); } catch { continue; }
       const entry = found.get(url) ?? { url, host: parsed.hostname.toLowerCase(), kind: mediaKind(parsed), in: [] };
       if (!entry.in.includes(file)) entry.in.push(file);
