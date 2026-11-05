@@ -52,7 +52,7 @@
       "cmd": "so",
       "func": "shoutout",
       "type": "command",
-      "reserved": true,
+      "reserved": false,
       "cooldown": 10,
       "userLevelName": "mod",
       "enabled": true,
@@ -61,7 +61,8 @@
         "en": "Mentions a user and if you have activated the clips it will send a clip to the channel",
         "es": "Menciona a un usuario y si tienes activado lo de los clips mandara un clip al canal"
       },
-      "showClip": true
+      "showClip": true,
+      "message": "*($(twitch.channel &t) ? $(announcement purple \"Check out ${$(twitch.channel &t)} at https://twitch.tv/${$(twitch.login &t)} and give them a follow! They were last playing ${$(twitch.game &t)}\") : \"Please provide a valid user to shoutout. Usage: !so <username>\") *($(twitch.channel &t) ? $(shoutout &t) : \"\") *($(twitch.channel &t) ? $(show.clip &t) : \"\")"
     },
     {
       "name": "Create Prediction",

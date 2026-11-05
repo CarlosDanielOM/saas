@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: eb1604b3da02
+# Catalog version: 283271b0f856
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -92,16 +92,20 @@
 #   Example: $(unraid)
 #
 # --- chat ---
-# $(announce [color] message) - Sends a Twitch announcement. Optional first word selects blue, green, orange, purple or primary; default primary. Message must be 1-500 characters. (aliases: chat.announcement)
+# $(announce [color] message) - Sends a Twitch announcement. Optional first word selects blue, green, orange, purple or primary; default primary. Message must be 1-500 characters. Returns the message for normal delivery if the announcement fails. (aliases: announcement, chat.announcement)
 #   Example: $(announce Welcome everyone!)
 #   Example: $(announce purple Five minutes left!)
 # $(chat.send message) - Sends a message to chat as the bot.
 #   Example: $(chat.send Hello everyone!)
+# $(shoutout target) - Sends only a native Twitch shoutout to the target login (optional @). Missing or invalid targets do nothing.
+#   Example: $(shoutout streamer)
 #
 # --- clip ---
 # $(create.clip [title]) - Creates a clip of the current stream moment and returns the clip URL. Optional clip title.
 #   Example: $(create.clip)
 #   Example: $(create.clip Epic win)
+# $(show.clip target) - Best effort: shows a cached selected clip from the target login (optional @) on the overlay. Missing or invalid targets, no clips or disconnected overlay produce no output.
+#   Example: $(show.clip streamer)
 #
 # --- counters ---
 # $(bits) - Returns the bits amount of the current cheer event context (0 outside cheer events).
@@ -319,15 +323,15 @@
 # $(followage [username]) - Returns how long a user has been following the channel (years, months, days, hours). Defaults to the caller.
 #   Example: $(followage)
 #   Example: $(followage someuser)
-# $(twitch.channel) - Returns the display name of the channel.
+# $(twitch.channel [target]) - Returns the display name of the channel or optional target login.
 #   Example: $(twitch.channel)
 # $(twitch.follows) - Returns the total follower count of the channel.
 #   Example: $(twitch.follows)
-# $(twitch.game) - Returns the current game/category of the stream.
+# $(twitch.game [target]) - Returns the current game/category of the channel or optional target login.
 #   Example: $(twitch.game)
 # $(twitch.live) - Returns true when the channel is live, false when offline or its status cannot be retrieved. Suitable for conditionals.
 #   Example: $(twitch.live)
-# $(twitch.login) - Returns the login name (lowercase, URL-safe) of the channel.
+# $(twitch.login [target]) - Returns the login name (lowercase, URL-safe) of the channel or optional target login.
 #   Example: $(twitch.login)
 # $(twitch.subs) - Returns the total subscriber count of the channel.
 #   Example: $(twitch.subs)

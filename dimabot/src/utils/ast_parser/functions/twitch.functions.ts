@@ -1,3 +1,4 @@
+import { targetChannel } from './shoutout_target.js';
 import type { ExecutionContext, IStreamerData } from '../types.js';
 import { registerFunction, type FunctionHandler } from '../evaluator.js';
 import * as ChannelFunctions from '../../../functions/channels/index.js';
@@ -27,7 +28,8 @@ const titleHandler: FunctionHandler = async (_args, ctx) => {
     return result.data?.title || 'No title set';
 };
 
-const gameHandler: FunctionHandler = async (_args, ctx) => {
+const gameHandler: FunctionHandler = async (args, ctx) => {
+    if (args.length) return (await targetChannel(ctx, args[0]))?.game_name || '';
     if (ctx.extraContext?.game) {
         return String(ctx.extraContext.game);
     }
@@ -57,7 +59,8 @@ const followsHandler: FunctionHandler = async (_args, ctx) => {
     return String(result.total || 0);
 };
 
-const channelHandler: FunctionHandler = async (_args, ctx) => {
+const channelHandler: FunctionHandler = async (args, ctx) => {
+    if (args.length) return (await targetChannel(ctx, args[0]))?.broadcaster_name || '';
     const extraContext = ctx.extraContext as Record<string, unknown> | undefined;
     
     if (extraContext?.broadcasterName) {
@@ -80,7 +83,8 @@ const channelHandler: FunctionHandler = async (_args, ctx) => {
     return streamer.name || 'Unknown';
 };
 
-const channelLoginHandler: FunctionHandler = async (_args, ctx) => {
+const channelLoginHandler: FunctionHandler = async (args, ctx) => {
+    if (args.length) return (await targetChannel(ctx, args[0]))?.broadcaster_login || '';
     const extraContext = ctx.extraContext as Record<string, unknown> | undefined;
 
     if (extraContext?.broadcasterLogin) {
@@ -125,8 +129,8 @@ export function registerTwitchFunctions(): void {
         keywords: ['title', 'stream title', 'titulo actual']
     });
     registerFunction('twitch.game', gameHandler, {
-        description: 'Returns the current game/category of the stream.',
-        syntax: 'twitch.game',
+        description: 'Returns the current game/category of the channel or optional target login.',
+        syntax: 'twitch.game [target]',
         category: 'twitch-data',
         examples: ['twitch.game'],
         keywords: ['game', 'category', 'juego actual', 'categoria actual']
@@ -146,15 +150,15 @@ export function registerTwitchFunctions(): void {
         keywords: ['followers', 'follows', 'seguidores', 'cuantos followers']
     });
     registerFunction('twitch.channel', channelHandler, {
-        description: 'Returns the display name of the channel.',
-        syntax: 'twitch.channel',
+        description: 'Returns the display name of the channel or optional target login.',
+        syntax: 'twitch.channel [target]',
         category: 'twitch-data',
         examples: ['twitch.channel'],
         keywords: ['channel name', 'nombre del canal', 'broadcaster name']
     });
     registerFunction('twitch.login', channelLoginHandler, {
-        description: 'Returns the login name (lowercase, URL-safe) of the channel.',
-        syntax: 'twitch.login',
+        description: 'Returns the login name (lowercase, URL-safe) of the channel or optional target login.',
+        syntax: 'twitch.login [target]',
         category: 'twitch-data',
         examples: ['twitch.login'],
         keywords: ['channel login', 'login del canal', 'username del canal']

@@ -438,6 +438,12 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 }
                 break;
             case 'shoutout':
+                if (!commandDBData.command?.reserved) {
+                    const result = await commandHandler(channelID, messageEventData, command, argument, { origin: 'chat', identity }, undefined, effectContext);
+                    commandFailed = result.error;
+                    if (!result.error) res = { error: false, message: result.message, commandReferences: result.commandReferences };
+                    break;
+                }
                 if (!streamerArgument) {
                     res = { error: true, message: 'Please provide a user to shoutout. Usage: !so <username>' };
                     break;

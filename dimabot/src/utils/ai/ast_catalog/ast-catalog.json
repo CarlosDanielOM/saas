@@ -1,9 +1,9 @@
 {
-  "version": "eb1604b3da02",
-  "generatedAt": "2026-11-04T23:40:54.440Z",
+  "version": "283271b0f856",
+  "generatedAt": "2026-11-05T00:54:12.557Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 117,
+  "functionCount": 119,
   "entries": [
     {
       "name": "overlay.skip",
@@ -1043,8 +1043,8 @@
     },
     {
       "name": "twitch.game",
-      "description": "Returns the current game/category of the stream.",
-      "syntax": "twitch.game",
+      "description": "Returns the current game/category of the channel or optional target login.",
+      "syntax": "twitch.game [target]",
       "category": "twitch-data",
       "examples": [
         "twitch.game"
@@ -1109,8 +1109,8 @@
     },
     {
       "name": "twitch.channel",
-      "description": "Returns the display name of the channel.",
-      "syntax": "twitch.channel",
+      "description": "Returns the display name of the channel or optional target login.",
+      "syntax": "twitch.channel [target]",
       "category": "twitch-data",
       "examples": [
         "twitch.channel"
@@ -1130,8 +1130,8 @@
     },
     {
       "name": "twitch.login",
-      "description": "Returns the login name (lowercase, URL-safe) of the channel.",
-      "syntax": "twitch.login",
+      "description": "Returns the login name (lowercase, URL-safe) of the channel or optional target login.",
+      "syntax": "twitch.login [target]",
       "category": "twitch-data",
       "examples": [
         "twitch.login"
@@ -1561,6 +1561,28 @@
         "ask ai",
         "preguntar a la ia",
         "generar respuesta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "show.clip",
+      "description": "Best effort: shows a cached selected clip from the target login (optional @) on the overlay. Missing or invalid targets, no clips or disconnected overlay produce no output.",
+      "syntax": "show.clip target",
+      "category": "clip",
+      "examples": [
+        "show.clip streamer"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "clip",
+        "overlay",
+        "show clip",
+        "mostrar clip"
       ],
       "destructive": false,
       "surfaces": [
@@ -2369,7 +2391,7 @@
     },
     {
       "name": "announce",
-      "description": "Sends a Twitch announcement. Optional first word selects blue, green, orange, purple or primary; default primary. Message must be 1-500 characters.",
+      "description": "Sends a Twitch announcement. Optional first word selects blue, green, orange, purple or primary; default primary. Message must be 1-500 characters. Returns the message for normal delivery if the announcement fails.",
       "syntax": "announce [color] message",
       "category": "chat",
       "examples": [
@@ -2377,6 +2399,7 @@
         "announce purple Five minutes left!"
       ],
       "aliases": [
+        "announcement",
         "chat.announcement"
       ],
       "minUserLevel": 7,
@@ -2384,6 +2407,27 @@
         "announcement",
         "announce",
         "anuncio"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "shoutout",
+      "description": "Sends only a native Twitch shoutout to the target login (optional @). Missing or invalid targets do nothing.",
+      "syntax": "shoutout target",
+      "category": "chat",
+      "examples": [
+        "shoutout streamer"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "shoutout",
+        "twitch shoutout",
+        "recomendar canal"
       ],
       "destructive": false,
       "surfaces": [

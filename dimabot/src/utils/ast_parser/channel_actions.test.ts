@@ -24,7 +24,7 @@ const { getTwitchUserByLogin } = await import('../../functions/users/get_user_by
 const { getPrediction } = await import('../../functions/predictions/get.prediction.js');
 const { endPrediction } = await import('../../functions/predictions/end.prediction.js');
 const { getPoll } = await import('../../functions/polls/get.poll.js');
-mock.module('../../functions/channels/index.js', { namedExports: { isLive } });
+mock.module('../../functions/channels/index.js', { namedExports: { isLive, getChannelInformation: async () => ({ error: true }) } });
 mock.module('../../functions/chats/index.js', { namedExports: { sendAnnouncement } });
 mock.module('../../functions/moderation/index.js', { namedExports: { warnUser, ban } });
 mock.module('../../functions/users/index.js', { namedExports: { getTwitchUserByLogin } });
@@ -177,9 +177,10 @@ test('moderator permission is checked before lookups or mutations, authored temp
 });
 test('Twitch errors are returned for actions without claiming success', async () => {
     setup(() => Response.json({ error: 'Forbidden', message: 'Fixture denied' }, { status: 403 }));
-    for (const action of ['lock.prediction', 'get.poll', 'announce hello', 'warn user reason']) {
+    for (const action of ['lock.prediction', 'get.poll', 'warn user reason']) {
         assert.match(String(await run(`$(${action})`)), /Fixture denied/);
     }
+    assert.equal(await run('$(announce hello)'), 'hello');
     setup(call => call.method === 'GET' ? Response.json({ data: [prediction('ACTIVE')] })
         : Response.json({ error: 'Forbidden', message: 'Lock denied' }, { status: 403 }));
     assert.match(String(await run('$(lock.prediction)')), /Lock denied/);
