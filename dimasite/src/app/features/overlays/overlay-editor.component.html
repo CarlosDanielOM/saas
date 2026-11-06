@@ -273,7 +273,7 @@
 
     <!-- Centre: the canvas at true size (zoomable), its tool bar, the alert timeline and the test drawer. -->
     <section class="studio-center" [attr.aria-label]="designDraft() ? t('designEditorLabel') : t('canvas')">
-      <div class="studio__canvas">
+      <div class="studio__canvas" [class.studio__canvas--outside]="offCanvasLayers().length > 0">
         @if (designDraft()) {
           <div class="studio__events">
       <div class="design-event-tabs" role="group" [attr.aria-label]="t('eventDesigns')">
@@ -333,7 +333,16 @@
           <button type="button" class="tb tb-desk" [attr.aria-pressed]="panels()" [attr.aria-label]="t('studioPanels')" [title]="t('studioPanels')" (click)="panels.set(!panels())"><lucide-icon [name]="icons.PanelsTopLeft" [size]="17" aria-hidden="true" /></button>
         </div>
         <p class="studio__hint">{{ t('canvasHint') }}</p>
-        @if (offCanvas()) { <p class="lf-note lf-note--warn off-canvas" role="status">{{ t('offCanvas', { count: offCanvas() }) }}</p> }
+        @if (offCanvasLayers(); as outside) {
+          @if (outside.length) {
+            <div class="off-canvas" role="status">
+              <span class="off-canvas__dot" aria-hidden="true"></span>
+              <span class="off-canvas__text">{{ outside.length === 1 ? t('offCanvasOne', { name: widgetName(outside[0]) }) : t('offCanvas', { count: outside.length }) }}</span>
+              <button type="button" class="off-canvas__btn" (click)="showOffCanvas()">{{ t('offCanvasShow') }}</button>
+              <button type="button" class="off-canvas__close" (click)="dismissOffCanvas()" [attr.aria-label]="t('offCanvasDismiss')" [title]="t('offCanvasDismiss')"><lucide-icon [name]="icons.X" [size]="15" aria-hidden="true" /></button>
+            </div>
+          }
+        }
       </div>
 
       @if (designDraft(); as draft) {

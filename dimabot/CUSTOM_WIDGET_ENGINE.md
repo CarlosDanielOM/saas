@@ -245,7 +245,10 @@ code widgets too, including overlays that have only custom widgets. Alerts follo
 recipients come as one gift alert; a sub + resub-message pair shows once) and Bits rules with alerts turned off.
 
 Delivery guarantees: chat, deletes and alerts for widgets are live only. A source that is disconnected misses them (the
-built-in alert boxes keep their recoverable queue); session snapshots are sent again on every connection.
+built-in alert boxes keep their recoverable queue); session snapshots are sent again on every connection and after every republish (a source that was already open
+when a widget reading session data was published gets it too; a failed read is retried at 2 s, 8 s and 32 s). On stream,
+a frame whose widget uses `session` waits up to 2.5 s for the first snapshot before it starts, so `onWidgetLoad` has the
+data like on StreamElements; events that arrive meanwhile are replayed first and the snapshot is delivered last.
 
 ### Step 5B-1: live state and bot events (live 2026-11-06)
 

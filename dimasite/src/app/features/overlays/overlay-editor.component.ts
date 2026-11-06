@@ -56,6 +56,7 @@ type StudioPop = 'scenes' | 'obs' | 'menu';
 type MobileTab = 'layers' | 'add' | 'edit' | 'test' | 'more';
 type StudioPane = 'variants' | 'add' | 'layers' | 'designs' | 'timeline' | 'tester' | 'layer' | 'overlay';
 /** JSON with sorted object keys, so equal documents compare equal whatever order their fields were written in. */
+const OFF_CANVAS_KEY = 'dimasite.overlayStudio.offCanvasIgnored.';
 const canonicalJson = (value: unknown): string => JSON.stringify(value, (_key, v: unknown) => v && typeof v === 'object' && !Array.isArray(v)
   ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : v);
 /** Zoom steps for the canvas (1 = true pixels). "Fit" picks the largest scale that shows the whole canvas. */
@@ -218,7 +219,34 @@ export class OverlayEditorComponent {
     const placed = placeTrigger(widget, this.scene(), 'size-check');
     return placed.width < widget.width || placed.height < widget.height || this.randomMargin() < widget.triggerPlacement.margin;
   });
-  readonly offCanvas = computed(() => this.widgets().filter(w => w.x < 0 || w.y < 0 || w.x + w.width > this.canvasWidth() || w.y + w.height > this.canvasHeight()).length);
+  /** Layers that stick out of the canvas (OBS cuts those parts off), minus hidden ones and ones the streamer chose to ignore. */
+  readonly offCanvasLayers = computed(() => {
+    const ignored = this.offCanvasIgnored(), owner = this.offCanvasOwner();
+    return this.widgets().filter(w => w.visible && !ignored.has(owner + w.id)
+      && (w.x < 0 || w.y < 0 || w.x + w.width > this.canvasWidth() || w.y + w.height > this.canvasHeight()));
+  });
+  /** "Hide this notice" per layer of each overlay or design, kept in this browser (often on purpose, e.g. a widget's empty margin). */
+  private readonly offCanvasIgnored = signal<ReadonlySet<string>>(new Set());
+  // Per overlay, or per look of a design (variants copy their layer IDs but may place them differently).
+  private readonly offCanvasOwner = computed(() => this.designDraft()
+    ? `design:${this.designDraft()!.id}:${this.designEvent()}:${this.variantId() ?? 'default'}:` : `scene:${this.sceneId()}:`);
+  private readIgnoredOffCanvas(): void {
+    try {
+      const saved = JSON.parse(localStorage.getItem(OFF_CANVAS_KEY + this.channel) ?? '[]');
+      this.offCanvasIgnored.set(new Set(Array.isArray(saved) ? saved.filter((key): key is string => typeof key === 'string') : []));
+    } catch { this.offCanvasIgnored.set(new Set()); }
+  }
+  dismissOffCanvas(): void {
+    const owner = this.offCanvasOwner();
+    const next = new Set([...this.offCanvasIgnored(), ...this.offCanvasLayers().map(w => owner + w.id)]);
+    this.offCanvasIgnored.set(next);
+    try { localStorage.setItem(OFF_CANVAS_KEY + this.channel, JSON.stringify([...next].slice(-200))); } catch { /* hidden for this visit only */ }
+  }
+  /** Selects the next layer that sticks out, so it can be moved or resized. */
+  showOffCanvas(): void {
+    const layers = this.offCanvasLayers(); if (!layers.length) return;
+    this.pick(layers[(layers.findIndex(w => w.id === this.selectedId()) + 1) % layers.length].id);
+  }
   readonly queue = signal<MockEvent[]>([]);
   readonly active = signal<MockEvent | null>(null);
   readonly parallel = signal<MockEvent[]>([]);
@@ -1335,6 +1363,7 @@ export class OverlayEditorComponent {
       if (this.owner()) {
         this.channel = (await firstValueFrom(this.auth.resolveChannelID(this.streamer))) || '';
         if (!this.channel) throw new Error('Channel unavailable');
+        this.readIgnoredOffCanvas();
         // Look before loading, so a copy can still be restored if loading fails.
         if (initial) this.findRecovery();
         void this.bitsRules.load(this.channel);

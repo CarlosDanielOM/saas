@@ -424,6 +424,36 @@ try {
   const riskyCopy = await data('POST', `${widgetsPath}/${risky.id}/media`, { urls: riskyPlan.files.map(file => file.url) });
   assert.deepEqual([Object.keys(riskyCopy.copied).length, riskyCopy.failed.map(item => item.reason)], [0, ['download_failed', 'download_failed']]);
   console.log('PASS media copy refuses redirects to private addresses or other sites.');
+  // An OBS source that's already connected when a widget reading session data is published gets the session too
+  // (VTLuciel, 2026-11-06: the goal widget waited for the next alert and showed no numbers until OBS restarted).
+  {
+    let current = await data('GET', base);
+    current.scenes.push({ id: 'later', name: 'Later', width: 1920, height: 1080, waitFor: [], widgets: [{ id: 'tts-later', kind: 'tts', x: 0, y: 0, width: 400, height: 200, visible: true, locked: false }] });
+    current = await data('PUT', base, current);
+    current = await data('POST', `${base}/scenes/later/publish`, { revision: current.revision });
+    const later = current.scenes.find(s => s.id === 'later'), lns = '/overlay-studio/' + later.publicId, events = [];
+    const obs = new WebSocket('ws://127.0.0.1:3000/socket.io/?EIO=4&transport=websocket');
+    obs.addEventListener('message', event => {
+      const m = String(event.data);
+      if (m.startsWith('0')) obs.send(`40${lns},${JSON.stringify({ clientId: crypto.randomUUID() })}`);
+      else if (m === '2') obs.send('3');
+      else if (m.startsWith(`42${lns},`)) { const [name, payload] = JSON.parse(m.slice(m.indexOf(',') + 1)); events.push([name, payload]); }
+    });
+    await until(() => events.some(([name]) => name === 'overlay-state'), 'later: overlay-state');
+    await new Promise(r => setTimeout(r, 1500));
+    assert.equal(events.filter(([name, payload]) => name === 'overlay-feed' && payload.type === 'session').length, 0, 'no session for an overlay without session widgets');
+    later.widgets.push(layer('later-dima', native.id));
+    current = await data('PUT', base, current);
+    current = await data('POST', `${base}/scenes/later/publish`, { revision: current.revision });
+    await until(() => events.some(([name]) => name === 'overlay-updated'), 'later: overlay-updated');
+    const late = await until(() => events.find(([name, payload]) => name === 'overlay-feed' && payload.type === 'session'), 'later: session after republish');
+    // The real snapshot, not the empty defaults: the Goals page's follower goal set earlier in this check.
+    const studioSession = (await data('GET', `${widgetsPath}/session`)).data;
+    assert.ok(studioSession['follower-goal'].amount > 0, 'the fixture has a real goal');
+    assert.deepEqual([late[1].data.data['follower-goal'], late[1].data.data['cheer-goal']], [studioSession['follower-goal'], studioSession['cheer-goal']]);
+    obs.close();
+  }
+  console.log('PASS a source already connected when a session widget is published gets the session snapshot.');
   ws.close(); await publisher.quit();
 } catch (error) {
   console.error(error); process.exitCode = 1;

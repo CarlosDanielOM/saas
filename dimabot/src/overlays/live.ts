@@ -144,9 +144,14 @@ function sendState(peer: Peer, name: typeof STATE_NAMES[number], value: unknown)
   peer.customStates[name] = version;
   peer.socket.emit('overlay-feed', { v: 1, type: 'state', data: { name, value } });
 }
-/** Current polls/goals state for a source that just connected or whose published layers changed (unchanged values aren't resent). */
+/**
+ * What a source's custom widgets read, for a source that just connected or whose published layers changed: the session
+ * snapshot (also after a republish that adds a widget reading it, or the widget would wait for the next alert) and
+ * polls/goals state (unchanged values aren't resent).
+ */
 function sendCustomState(peer: Peer): void {
   const uses = widgetUses(peer);
+  if (uses.has('session')) sendSession(peer);
   if (uses.has('goals')) void pushGoals(peer.channel, peer);
   if (uses.has('polls')) {
     // Like built-in poll widgets: recover a poll or prediction that started or ended while nobody was listening.
@@ -156,6 +161,12 @@ function sendCustomState(peer: Peer): void {
   // A hype train that started or ended while nobody was listening (Helix; coalesced per channel).
   if (uses.has('hypetrain')) void resyncHypeTrain(peer.channel).catch(() => {});
   if (uses.has('hypetrain') || uses.has('ads')) void sendLiveEvents(peer).catch(() => {});
+}
+/** One source's session snapshot; a failed read is tried again (2 s, 8 s, 32 s) while that source stays connected. */
+function sendSession(peer: Peer, attempt = 0): void {
+  const current = () => peers.get(peer.key) === peer && !!peer.socket?.connected;
+  void sessionFor(peer.channel).then(session => { if (current()) peer.socket!.emit('overlay-feed', { v: 1, type: 'session', data: session }); })
+    .catch(() => { if (attempt < 3) setTimeout(() => { if (current()) sendSession(peer, attempt + 1); }, 2000 * 4 ** attempt).unref?.(); });
 }
 /** Hype train and ads state (`uses`: hypetrain, ads) from the shared read; ads activity is computed against now. */
 async function sendLiveEvents(peer: Peer, scope?: WidgetStateReadScope): Promise<void> {
@@ -662,12 +673,8 @@ export function registerStudio(io: Server): void {
     if (interactions) peer.interactionVersion = JSON.stringify([interactions.poll?.revision, interactions.prediction?.revision]);
     socket.emit('overlay-state', { widgetStates, serverTime, failedSources, interactions, publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls, commands: peer.commands, pendingIds: [...pending.values()].filter(item => !item.event.tts && item.recipients.has(key)).map(item => item.event.id) });
     for (const item of pending.values()) if (!item.event.tts && item.recipients.has(key)) socket.emit('overlay-event', item.event);
-    // Custom widgets: what the published layers use, then their session snapshot and requests.
-    void refreshWidgets(peer).then(async () => {
-      if (peers.get(key) !== peer) return;
-      sendCustomState(peer);
-      if (widgetUses(peer).has('session')) peer.socket?.emit('overlay-feed', { v: 1, type: 'session', data: await sessionFor(peer.channel) });
-    }).catch(() => {});
+    // Custom widgets: what the published layers use, then their session snapshot, live state and requests.
+    void refreshWidgets(peer).then(() => { if (peers.get(key) === peer) sendCustomState(peer); }).catch(() => {});
     socket.on('overlay-widget-rpc', (raw: unknown, ack?: (result: unknown) => void) => {
       if (peers.get(key) !== peer || typeof ack !== 'function') return;
       void widgetRpc(peer, raw).then(value => ack({ ok: true, value }), error => ack({ ok: false, error: error instanceof OverlayError ? error.message : 'Request failed' }));

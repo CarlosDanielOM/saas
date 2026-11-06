@@ -11,6 +11,8 @@ import { CUSTOM_WIDGET_ENV, frameScripts, storeNamespace, type RuntimeBundle, ty
 
 const HEARTBEAT_LIMIT_MS = 10_000, PROBE_MS = 5_000;
 const MAX_RELOADS = 3, RELOAD_WINDOW_MS = 5 * 60_000;
+/** On stream: how long a frame whose widget reads session data waits for the server's first snapshot before starting. */
+const SESSION_WAIT_MS = 2500;
 const MAX_BUFFERED = 100, MAX_RPC_PER_SECOND = 30, MAX_LOGS_PER_MINUTE = 200, MAX_RPC_BYTES = 64_000;
 const LEVELS = new Set(['info', 'warn', 'error', 'debug']);
 
@@ -80,6 +82,7 @@ export class OverlayCustomWidgetComponent {
   private exec = '';
   private frame: HTMLIFrameElement | null = null;
   private loaded = false;
+  private sessionWait: { frame: HTMLIFrameElement; timer: ReturnType<typeof setTimeout> } | null = null;
   private buffered: DimaEvent[] = [];
   private probe: { token: string; answered: boolean } | null = null;
   private readonly rouletteDelivered = new Set<string>();
@@ -102,7 +105,7 @@ export class OverlayCustomWidgetComponent {
     destroy.onDestroy(() => {
       window.removeEventListener('message', onMessage); unsubscribe?.(); offReload?.(); clearInterval(watchdog);
       if (this.fieldsTimer) clearTimeout(this.fieldsTimer);
-      this.removeFrame();
+      this.clearSessionWait(); this.removeFrame();
     });
     // New widget, revision or copied files (or new draft code): load its code and start a fresh frame.
     effect(() => {
@@ -191,11 +194,12 @@ export class OverlayCustomWidgetComponent {
       });
     }
     frame.srcdoc = html;
-    this.loaded = false; this.lastBeat = Date.now(); this.rouletteDelivered.clear();
+    this.clearSessionWait(); this.loaded = false; this.lastBeat = Date.now(); this.rouletteDelivered.clear();
     this.host.nativeElement.querySelector('.frame-slot')!.append(frame);
     this.frame = frame;
   }
-  private removeFrame(): void { this.frame?.remove(); this.frame = null; this.loaded = false; }
+  private removeFrame(): void { this.clearSessionWait(); this.frame?.remove(); this.frame = null; this.loaded = false; }
+  private clearSessionWait(): void { if (this.sessionWait) clearTimeout(this.sessionWait.timer); this.sessionWait = null; }
   private reload(): void {
     if (!this.bundle) return;
     void frameScripts().then(scripts => this.createFrame(scripts));
@@ -229,7 +233,13 @@ export class OverlayCustomWidgetComponent {
       this.report({ entry: { at: Date.now(), level: 'info', text: this.t(user ? 'customLogSignalFrom' : 'customLogSignal')
         .replace('{{name}}', name).replace('{{value}}', value.length > 80 ? value.slice(0, 79) + '…' : value || '—').replace('{{user}}', user?.name ?? '') } });
     }
-    if (!this.loaded) { if (this.buffered.length < MAX_BUFFERED) this.buffered.push(event); return; }
+    if (!this.loaded) {
+      // The snapshot a waiting frame was held for: start it now, replay what arrived meanwhile, then the snapshot itself
+      // (it already counts those events, so it has the last word).
+      if (event.type === 'session' && this.sessionWait?.frame === this.frame) { this.clearSessionWait(); this.started(true); this.postEvent(event); return; }
+      if (this.buffered.length < MAX_BUFFERED) this.buffered.push(event);
+      return;
+    }
     this.postEvent(event);
   }
   /** Roulette phases can arrive twice (replayed after a restart or for a late frame): each frame gets each phase once. */
@@ -258,8 +268,18 @@ export class OverlayCustomWidgetComponent {
       case 'rpc': return void this.call(message);
     }
   }
-  private started(): void {
-    const bundle = this.bundle; if (!bundle || this.loaded) return;
+  private started(waited = false): void {
+    const bundle = this.bundle; if (!bundle || this.loaded || !this.frame) return;
+    // StreamElements always has session data in onWidgetLoad, and many widgets read it without checking. On stream the
+    // server sends it right after connecting or a republish, so a widget that's ready first waits a moment for it.
+    if (!waited && this.env?.mode === 'live' && bundle.manifest.uses.includes('session') && !this.env.session()) {
+      if (this.sessionWait?.frame === this.frame) return;
+      this.clearSessionWait();
+      const frame = this.frame;
+      this.sessionWait = { frame, timer: setTimeout(() => { if (this.sessionWait?.frame === frame && this.frame === frame) { this.sessionWait = null; this.started(true); } }, SESSION_WAIT_MS) };
+      return;
+    }
+    this.clearSessionWait();
     this.loaded = true; this.lastBeat = Date.now();
     const layer = this.context().widget;
     this.post({ type: 'init', context: {

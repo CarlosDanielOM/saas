@@ -845,7 +845,17 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
 .guide--v { top: 0; bottom: 0; width: 1px; }
 .guide--h { left: 0; right: 0; height: 1px; }
 .studio__hint { margin: 0; padding: 0.35rem 0.85rem 0.5rem; color: var(--muted); font-size: 0.74rem; line-height: 1.4; }
-.off-canvas { margin: 0 0.6rem 0.5rem; }
+/* Layers sticking out of the canvas: one quiet line with Show and a close button (the choice is remembered per layer). */
+.off-canvas { display: flex; align-items: center; gap: 0.35rem; margin: 0 0.6rem 0.5rem; padding: 0.15rem 0.15rem 0.15rem 0.6rem; border: 1px solid var(--line);
+  border-radius: 999px; background: var(--pop-bg); color: var(--fg); font-size: 0.74rem; font-weight: 600; line-height: 1.3; }
+.off-canvas__dot { flex: none; width: 0.45rem; height: 0.45rem; border-radius: 999px; background: var(--warn); }
+.off-canvas__text { flex: 1; min-width: 0; }
+.off-canvas__btn, .off-canvas__close { position: relative; flex: none; display: inline-grid; place-items: center; min-height: 32px; border: 0; border-radius: 999px; font: inherit; cursor: pointer; }
+.off-canvas__btn { padding: 0 0.7rem; background: var(--btn); color: var(--fg); font-weight: 700; }
+.off-canvas__close { width: 32px; background: transparent; color: var(--muted); }
+.off-canvas__btn::after, .off-canvas__close::after { content: ''; position: absolute; inset: -6px -2px; } /* 44px touch targets */
+.off-canvas__btn:hover, .off-canvas__close:hover { color: var(--fg); background: var(--accent-soft); }
+.off-canvas__btn:focus-visible, .off-canvas__close:focus-visible { outline: 2px solid var(--sel); outline-offset: 1px; }
 
 /* Tool bar: a scrolling strip under the canvas on phones, floating over it on desktop. */
 .studio-toolbar { display: flex; align-items: center; gap: 2px; padding: 0.3rem 0.4rem; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--line); background: var(--tile); }
@@ -981,8 +991,10 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
   .tb-desk { display: inline-flex; }
   .studio__hint { position: absolute; left: 0.9rem; top: 0.45rem; z-index: 2; max-width: calc(100% - 12rem); padding: 0; pointer-events: none; font-size: 0.72rem; }
   .lf--design .studio__hint { top: auto; bottom: 0.4rem; }
-  .off-canvas { position: absolute; left: 50%; top: 0.5rem; z-index: 3; width: max-content; max-width: calc(100% - 2rem); margin: 0; transform: translateX(-50%); }
+  .off-canvas { position: absolute; left: 0.9rem; top: 0.45rem; z-index: 3; width: max-content; max-width: calc(100% - 12rem); margin: 0; box-shadow: var(--shadow); }
+  .studio__canvas--outside .studio__hint { top: 3rem; }
   .lf--design .off-canvas { top: 3.6rem; }
+  .lf--design .studio__canvas--outside .studio__hint { top: auto; }
 
   .studio-timeline.d-on, .tester.d-on { flex: none; max-height: 44%; overflow-y: auto; border-top: 1px solid var(--line); background: var(--tile); }
   .tester.d-on { column-gap: 1.5rem; padding-right: 3.25rem; }

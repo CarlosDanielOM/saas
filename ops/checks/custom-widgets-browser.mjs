@@ -826,6 +826,56 @@ try {
     await runtime.close();
     console.log('PASS OBS: roulette phases that arrive before the widget loads reach it once it runs; replays are delivered once.');
   }
+  // 5b2. OBS: a StreamElements goal widget published into an overlay that's already open (VTLuciel, 2026-11-06). The server
+  // now sends the session after the republish. Like StreamElements, onWidgetLoad has it whether it arrives before the
+  // widget's code or while the ready widget waits for it (this sample reads it without checking, as many do).
+  for (const order of ['while-waiting', 'before-start']) {
+    const runtime = await browser.newContext({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
+    const empty = { width: 1280, height: 720, designs: [], waitFor: [], widgets: [] };
+    const withGoal = { ...empty, widgets: [{ id: 'goal-1', kind: 'custom', configVersion: 1, x: 0, y: 0, width: 400, height: 200, visible: true, locked: false, config: { widgetId: seGoalId, revision: 1 } }] };
+    let socket, current = { revision: 1, snapshot: empty }, releaseBundle;
+    const bundleGate = new Promise(resolve => { releaseBundle = resolve; });
+    const send = (name, payload) => socket.send(`42/overlay-studio/${publicId},${JSON.stringify([name, payload])}`);
+    const session = { data: { 'follower-session': { count: 3 }, 'follower-goal': { amount: 7 } }, recents: [] };
+    await runtime.routeWebSocket('**/*', ws => {
+      if (!ws.url().includes('/socket.io/')) return ws.close();
+      socket = ws;
+      ws.send('0{"sid":"custom","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}');
+      ws.onMessage(message => { if (String(message).startsWith('40/overlay-studio/')) {
+        ws.send(`40/overlay-studio/${publicId},{"sid":"custom"}`);
+        send('overlay-state', { revision: 1, snapshot: empty, widgetStates: {}, serverTime: Date.now() }); // nothing reads session yet: none sent
+      } });
+    });
+    await runtime.route('**/*', async route => {
+      const url = new URL(route.request().url());
+      if (url.origin === new URL(base).origin) return route.continue();
+      if (url.pathname === `/overlay-studio/public/${publicId}`) return route.fulfill({ json: { error: false, data: { publicId, ...current, controls: {} } } });
+      // Also reads alerts here, so an alert can arrive while it waits.
+      if (url.pathname === `/overlay-studio/public/${publicId}/custom-widgets/${seGoalId}/1`) { await bundleGate; return route.fulfill({ json: { error: false, data: bundleOf(seGoalId, { manifest: { ...extraWidgets[seGoalId].manifest, uses: ['session', 'alerts'] } }) } }); }
+      return route.abort();
+    });
+    const p = await runtime.newPage(); p.on('pageerror', e => errors.push(e.message));
+    await p.goto(`${base}/overlays/${publicId}`); await p.waitForTimeout(500);
+    current = { revision: 2, snapshot: withGoal };
+    send('overlay-updated', { revision: 2 });
+    if (order === 'before-start') { await p.waitForTimeout(300); send('overlay-feed', { v: 1, type: 'session', data: session }); }
+    releaseBundle();
+    if (order === 'while-waiting') {
+      await p.locator('app-overlay-custom-widget iframe').waitFor({ state: 'attached' }); await p.waitForTimeout(900);
+      assert.equal(await p.locator('[data-custom-frame="running"]').count(), 0, 'the ready widget waits for the session');
+      // A follow during the wait; the snapshot that follows already counts it (3), so it must not end up at 4.
+      send('overlay-feed', { v: 1, type: 'alert', data: { id: 'wait-follow', type: 'follow', at: Date.now(), test: false, user: { id: '8', login: 'nova', name: 'Nova' }, amount: 1, tier: null, months: null, streak: null, message: null, recipient: null, currency: null, rule: null } });
+      await p.waitForTimeout(100);
+      send('overlay-feed', { v: 1, type: 'session', data: session });
+    }
+    await p.locator('[data-custom-frame="running"]').waitFor();
+    const f = p.frameLocator('app-overlay-custom-widget iframe');
+    await until(async () => (await f.locator('.goal').textContent()) === '3', `goal numbers on stream (session ${order})`);
+    await p.waitForTimeout(600);
+    assert.equal(await f.locator('.goal').textContent(), '3', 'an alert from the wait is not counted twice');
+    await runtime.close();
+  }
+  console.log('PASS OBS: a goal widget published into an open overlay shows its numbers; onWidgetLoad has the session whether it came first or while the widget waited.');
   // 5c. OBS: "Block outside connections" (restricted) vs an open copy of the same widget.
   {
     const runtime = await browser.newContext({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
