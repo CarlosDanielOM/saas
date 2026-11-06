@@ -30,6 +30,9 @@ Before you add the widget, Overlay Studio shows its engine and **Uses:** list. T
 - **Commands can control it** — chat commands can send signals that the widget reacts to.
 - **Command counters** — read command-use counts.
 - **Recent events and stream totals** — the session’s recent alerts and totals.
+- **Twitch polls and predictions** — read current poll and prediction totals, without voter identities.
+- **Goals and their progress** — read goals and current progress from the Goals page.
+- **Text-to-speech messages**, **Trigger alerts**, and **Channel-point redemptions** — observe these bot events as they happen.
 
 A widget that does not ask for live data receives none. Overlay Studio only delivers the categories the widget declared.
 
@@ -87,6 +90,14 @@ Open **Test** and find **Custom widget tests**. Choose **Preview** to send tests
 
 The test buttons inside a widget’s own settings also send a button event to that widget in the preview. They do not send a real alert or message.
 
+When a widget in the overlay uses a live-state or bot-event category, the **Bot events** row offers **TTS message**, **Trigger**, **Channel points**, **Sample poll**, and **Sample goals**. TTS sends a start event and an end event three seconds later. The same tests are available in the code editor preview. Choose **Preview** or **OBS** as the destination; sample state sent to OBS appears for about a minute, then the real state returns. Studio previews begin with the channel’s real polls and goals.
+
+Widgets read poll and prediction totals with `Dima.state('polls', handler)` and goals with `Dima.state('goals', handler)`. The handler runs once when the value is first known and again when it changes. No callback means the value is not known yet; it does not mean there are no polls or goals. Polls and predictions reach the widget after their Twitch events are enabled. Open the layer’s **Polls & predictions** setup, which is the same setup shown on the Overlay tab. Poll state never identifies who voted. Goal state includes targets and progress, updates within seconds when goals or progress change, and is refreshed at least once a minute for time-based changes. It does not run goal completion actions.
+
+Bot events are live-only and are not replayed after OBS reconnects. TTS sends `start` when audio plays and `end` once when it finishes; a message that never plays sends no event. Trigger events say which alert was sent but do not include its media URL or play the media in a custom-widget-only overlay. Channel-point events include every redemption, even one without a bot action. Treat redemption input as viewer text: display it with `textContent` or `Dima.escape()`.
+
+The **Replay recent chat** button in the **Chat** row works in the preview only. It sends the last 20 stored channel messages, oldest first. Replay contains text only: it has no emotes, name colours, or badge images, and messages deleted by moderators may be included, so replay is not sent to OBS.
+
 Test alerts also update session data, so goal widgets that listen for session updates react in the preview and in OBS. Studio sends the updated totals after each OBS test alert. Tests are sample data and never change your real totals or goals.
 
 Choose **OBS** in the test drawer to send tests to the connected sources for the published version of this overlay. Publish your changes first if the widget changed. The editor asks you to confirm because chat tests and alerts can be visible on stream. A test alert for a tip is sample data only; real tip events are not available yet.
@@ -119,9 +130,7 @@ Session data also provides `follower-month`, `subscriber-month`, `cheer-month`, 
 
 ## Not available yet
 
-- Bot events such as TTS, triggers, pets, duels, roulette, DimaFX, and rewards.
-- Poll state and goal targets as separate live values. **Manual** goal values follow progress from your Goals page; see [Goal data](#goal-data).
-- Replaying recent chat in the editor.
+- Pet events, DimaFX purchases, duels, and roulette events. Each needs fixes before it can be added.
 - Live sync from a local editor.
 - Real tips do not trigger custom widgets until DomDimaBot tipping is available; the Studio **Tip** test only sends sample data.
 - 7TV, BetterTTV (BTTV), and FrankerFaceZ (FFZ) emotes are not supported.

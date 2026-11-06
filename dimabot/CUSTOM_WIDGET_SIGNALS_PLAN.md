@@ -1,6 +1,6 @@
 # Step 5 plan: `$(widget.signal)` and the rest of the widget engine "magic"
 
-Status: Release A built 2026-11-05 — signals, Studio Commands block, Test drawer, storage rename; sections 6.1–6.3 are Release B.
+Status: Release A built 2026-11-05 — signals, Studio Commands block, Test drawer, storage rename. Step 5B-1 built 2026-11-06 — polls/goals live state, TTS/trigger/reward bot events, and recent chat replay; not deployed. Step 5B-2 is next: pets, DimaFX purchases, duels and roulette events; each needs fixes first.
 
 ## 1. What a signal is
 
@@ -73,15 +73,31 @@ Signals are fire-and-forget (no queue, no replay after a reconnect), like chat.
 - Widget log shows each received signal ("signal theme → night from MOD_kitsune").
 - Import summary and the "Uses:" chips list "Commands can control it" when `signals` is used.
 
-## 6. Other step-5 features (same release train, smaller)
+## 6. Step 5B-1: live state and bot events (built 2026-11-06; not deployed)
 
-1. **Bot events** (`uses`: `tts`, `triggers`, `pets`, `duels`, `dimafx`, `rewards`): forward the events these modules
-   already publish (TTS start/end with text and voice, trigger played, pet talk/mood, duel result, roulette result, DimaFX
-   purchase, channel-point redemption) as new `overlay-feed` types, each mapped once in `live.ts` from existing publishers.
-2. **Live state** (`uses`: `goals`, `polls`): reuse `WidgetStateSource` (goals service `goalSnapshot`, the poll/prediction
-   source) and push snapshots as `state` events; `Dima.state('goals', fn)`.
-3. **Real chat replay in the editor:** "Replay recent chat" in the Test drawer sends the last 20 messages from the existing
-   chat history (Dragonfly) to the preview.
+Implemented in this checkout:
+
+1. **Live state** (`uses`: `polls`, `goals`): reuse `WidgetStateSource` for the sanitized poll/prediction state and the
+   Goals page projection. Publish per-source snapshots as `state` events; `Dima.state(name, handler)` sends the latest
+   known value immediately, then changes. Unknown state does not call the handler. Poll state contains totals only;
+   goals include progress and targets but never run completion actions. Poll/prediction EventSub must be enabled. Goal
+   edits/progress reach widgets within seconds and time-based changes at least once a minute.
+2. **Bot events** (`uses`: `tts`, `triggers`, `rewards`): map existing publishers to live-only `overlay-feed` events.
+   TTS sends start on playback and one end event on completion (same ID, filtered spoken text, end reason); messages
+   that never play send nothing. Trigger includes the send/trigger IDs, name and media type but no media URL. Reward
+   includes every channel-point redemption, with viewer input rendered safely as text.
+3. **Recent chat replay in Studio:** **Replay recent chat** sends the last 20 stored channel messages oldest-first to the
+   preview only. Replay is text-only; emotes, name colours and badge images are unavailable, and moderator-deleted
+   messages may appear, so replay is not sent to OBS.
+4. **Studio tests:** the **Bot events** row offers TTS (start, then end 3 seconds later), Trigger, Channel points, Sample
+   poll and Sample goals. The editor preview has the same tests. Sample OBS state appears for about a minute, then real
+   state returns; preview starts with the channel's real polls and goals.
+
+## 6.1. Step 5B-2: remaining bot events (next)
+
+Pets, DimaFX purchases, duels and roulette events remain for the next step. Each source feature needs fixes first, then
+its event contract and live feed mapping can be added. Do not advertise these categories as available until those fixes
+and their isolated behavior checks are complete.
 4. ~~**Code tab**~~ and 5. ~~**Roll back**~~: shipped 2026-11-05 as the Studio code editor ("New widget" / "Edit code",
    version history with "Open"); see `CUSTOM_WIDGETS.md` → Code editor.
 

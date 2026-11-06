@@ -35,7 +35,7 @@ El manifiesto es un objeto JSON y admite estos campos:
 |---|---:|---|
 | `engine` | No | `"dima"` para código nativo del SDK de Dima o `"streamelements"` para activar la compatibilidad con StreamElements. Si el manifiesto existe, el valor predeterminado es `"dima"`; sin manifiesto, la importación usa StreamElements. |
 | `api` | No | Versión del SDK de Dima. El valor predeterminado es `1`; se rechazan las versiones no compatibles. |
-| `uses` | No | Lista de categorías que necesita el widget: `chat`, `alerts`, `storage`, `counters`, `session` o `signals`. Si falta, queda vacía. Las categorías desconocidas se notifican y se ignoran. |
+| `uses` | No | Lista de categorías que necesita el widget: `chat`, `alerts`, `storage`, `counters`, `session`, `signals`, `polls`, `goals`, `tts`, `triggers` o `rewards`. Si falta, queda vacía. Las categorías desconocidas se notifican y se ignoran. |
 | `name` | No | Nombre que se muestra en Studio. |
 | `author` | No | Nombre de quien creó el widget. |
 | `version` | No | Cadena de versión del paquete. |
@@ -50,12 +50,12 @@ El manifiesto es un objeto JSON y admite estos campos:
   "author": "Ana",
   "version": "1.2.0",
   "description": "Chat con burbujas pastel",
-  "uses": ["chat", "alerts", "storage", "counters", "session", "signals"],
+  "uses": ["chat", "alerts", "storage", "counters", "session", "signals", "polls", "goals", "tts", "triggers", "rewards"],
   "signals": [{ "name": "feed", "description": "Feed the pet", "values": ["pizza", "cake"] }]
 }
 ```
 
-Declara solo lo que el widget necesite. `chat` permite recibir eventos de chat, borrado y limpieza; `alerts` permite eventos de follow, suscripción, regalo, Bits, raid y propina; `storage` permite guardar valores persistentes; `counters` permite consultar contadores de comandos; `session` permite consultar eventos recientes y totales; y `signals` permite controlar el widget con comandos del chat. Las propinas reales aún no están disponibles. En Studio, el propietario del canal ve la lista `uses`, y los widgets publicados solo reciben las categorías declaradas. Las pruebas de botones del editor están disponibles aparte de `uses`.
+Declara solo lo que el widget necesite. `chat` permite recibir eventos de chat, borrado y limpieza; `alerts` permite eventos de follow, suscripción, regalo, Bits, raid y propina; `storage` permite guardar valores persistentes; `counters` permite consultar contadores de comandos; `session` permite consultar eventos recientes y totales; `signals` permite controlar el widget con comandos del chat; `polls` y `goals` permiten recibir su estado en directo; y `tts`, `triggers` y `rewards` permiten recibir esos eventos del bot. Las propinas reales aún no están disponibles. En Studio, el propietario del canal ve la lista `uses`, y los widgets publicados solo reciben las categorías declaradas. Las pruebas de botones del editor están disponibles aparte de `uses`.
 
 ## Ajustes editables
 
@@ -146,6 +146,54 @@ Suscríbete con `Dima.on(type, handler)`. Devuelve una función para cancelar la
 | `storage` | `DimaStorageUpdate { key: string, value: unknown, namespace: string }` después de guardar un valor | `storage` |
 | `session` | `{ data: Record<string, unknown>, recents: unknown[] }` | `session` |
 | `signal` / `signal:<name>` | `DimaSignal` | `signals` |
+| `state` | `DimaState` (`{ name, value }`) | `polls` o `goals`, según `name` |
+| `tts` | `DimaTts` | `tts` |
+| `trigger` | `DimaTrigger` | `triggers` |
+| `reward` | `DimaReward` | `rewards` |
+
+### Estado en directo
+
+Usa `Dima.state(name, handler)` para recibir el último valor conocido de encuestas o metas y sus cambios posteriores. La instantánea actual se vuelve a enviar cuando una fuente de OBS se conecta o reconecta. El controlador se ejecuta en cuanto se conoce un valor y después cada vez que cambia. Si aún no se conoce, no se ejecuta; un valor desconocido no equivale a una encuesta vacía ni a una lista de metas vacía. La función que devuelve detiene la escucha. También puedes recibir todos los cambios con `Dima.on('state', ({ name, value }) => …)`.
+
+```js
+const stopPolls = Dima.state('polls', ({ poll, prediction }) => {
+  document.querySelector('#poll-title').textContent = poll?.title ?? 'Aún no hay encuesta';
+});
+Dima.state('goals', goals => {
+  document.querySelector('#goal-count').textContent = String(goals.length);
+});
+// Después: stopPolls();
+```
+
+`polls` requiere `"polls"` en `uses` y tiene la forma `DimaPolls` (`{ poll, prediction }`); cada valor es `null` o un `DimaPoll`. Una encuesta tiene `kind` (`poll` o `prediction`), `id`, `title`, `phase` (`active`, `locked`, `completed`, `archived`, `terminated`, `resolved` o `canceled`), `choices`, `startedAt`, `deadline`, `endedAt`, `winnerId` y `revision`. Cada opción tiene `id`, `title`, `votes`, `users` y `points`, y puede tener `channelPointsVotes` y `color`. Los datos de encuestas y predicciones solo incluyen totales, nunca identifican a quienes votaron. Llegan al widget cuando están activados los eventos de encuestas y predicciones de Twitch; los ajustes de la capa en Studio muestran la misma configuración **Encuestas y predicciones** que la pestaña Overlay.
+
+`goals` requiere `"goals"` en `uses` y es un array de valores `DimaGoal` de la página Metas. Cada meta incluye `id`, `name`, `metric` (`follows`, `subs`, `bits` o `currency`), `mode`, `target`, `current`, `percent`, `currency` (código o `null`), `status` (`scheduled`, `active`, `reached` o `ended`), `startsAt`, `endsAt`, `windowSeconds` y `period`. Los valores monetarios usan unidades de la divisa (por ejemplo, `87.5`). El estado cambia en segundos tras editar metas o su progreso y se envía al menos una vez por minuto para cambios basados en el tiempo. Incluye objetivos y estados; nunca ejecuta acciones de finalización de metas.
+
+### Eventos del bot
+
+Estos eventos solo se envían en directo: una fuente de OBS que se reconecta no recibe los eventos enviados mientras estaba desconectada. Todos incluyen `at` (milisegundos) y `test` (`true` en las pruebas de Studio).
+
+| Evento | Datos | Notas |
+|---|---|---|
+| `tts` (`uses: ["tts"]`) | `DimaTts`: `id`, `phase` (`start` o `end`), `text`, `user`, `reason` | `text` es el texto filtrado que se pronunció. El inicio se envía al reproducir el audio; el final se envía una vez al terminar, con el motivo `ended`, `skipped`, `cleared` o `interrupted`. Ambas fases comparten `id`; los mensajes que nunca se reproducen no generan eventos. |
+| `trigger` (`uses: ["triggers"]`) | `DimaTrigger`: `id`, `triggerId`, `name`, `mediaType` (`audio`, `video`, `image` o `unknown`) | Se envía al enviar una alerta de trigger desde un comando, un canje de puntos del canal o una regla de Bits. No incluye la URL del medio. Un overlay que solo tenga widgets personalizados puede observar el envío, pero no reproduce el medio. |
+| `reward` (`uses: ["rewards"]`) | `DimaReward`: `id`, `reward: { id, title, cost }`, `user`, `input` | Se envía por cada canje de puntos del canal, incluso si la recompensa no tiene una acción del bot. `input` es el texto del espectador cuando lo proporciona; usa `textContent` o `Dima.escape()`, nunca `innerHTML`. |
+
+```js
+Dima.on('tts', event => {
+  if (event.phase === 'start') document.querySelector('#spoken').textContent = event.text;
+});
+Dima.on('trigger', event => console.log(event.name, event.mediaType));
+Dima.on('reward', event => {
+  document.querySelector('#reward-input').textContent = event.input ?? '';
+});
+```
+
+### Pruebas de estado y eventos en Studio
+
+La fila **Eventos del bot** aparece cuando un widget del overlay usa alguna de estas categorías. Permite enviar TTS (inicio y final tres segundos después), Trigger, Puntos del canal, Encuesta de ejemplo y Metas de ejemplo a la vista previa o a OBS. La vista previa del editor de código ofrece las mismas pruebas. El estado de ejemplo enviado a OBS se muestra durante aproximadamente un minuto y después vuelve el estado real. Las vistas previas de Studio empiezan con las encuestas y metas reales del canal.
+
+El botón **Repetir chat reciente** está en la fila **Chat** y solo funciona en la vista previa. Envía los últimos 20 mensajes almacenados del canal, del más antiguo al más reciente. La repetición solo incluye texto: no incluye emotes, colores de nombre ni imágenes de insignias, y puede mostrar mensajes borrados por moderadores, por eso no se envía a OBS.
 
 `Dima.ready()` devuelve un objeto con `widget: { id, layerId, name, revision }`, `channel: { id, login, name }`, `fields`, `mode` (`"editor"` o `"live"`), `muted` y `session` (o `null`).
 
@@ -273,7 +321,7 @@ El ejemplo nativo no lleva `widget.ini`; Studio añade estos archivos al overlay
 Usa `"engine": "streamelements"` (o importa un paquete sin manifiesto) para cargar la capa de compatibilidad. Esta escucha los eventos del SDK de Dima y ofrece los eventos de navegador habituales:
 
 - `onWidgetLoad` se dispara después de `Dima.ready()` con `detail.channel`, `currency`, `fieldData`, `recents`, `session`, `overlay` y `emotes`.
-- `onEventReceived` recibe el chat con `listener: "message"`, el borrado de mensajes con `"delete-message"`, la limpieza de mensajes de un usuario con `"delete-messages"`, las alertas con `"follower-latest"`, `"subscriber-latest"`, `"cheer-latest"`, `"raid-latest"` o `"tip-latest"`, además de `"widget-button"`, `"kvstore:update"` y `"dima:signal"` (con los mismos datos de la señal).
+- `onEventReceived` recibe el chat con `listener: "message"`, el borrado de mensajes con `"delete-message"`, la limpieza de mensajes de un usuario con `"delete-messages"`, las alertas con `"follower-latest"`, `"subscriber-latest"`, `"cheer-latest"`, `"raid-latest"` o `"tip-latest"`, además de `"widget-button"`, `"kvstore:update"`, `"dima:signal"`, `"dima:polls"` (`event.poll`, `event.prediction`), `"dima:goals"` (`event.goals`), `"dima:tts"`, `"dima:trigger"` y `"dima:reward"`.
 - Las actualizaciones de sesión se envían mediante `onSessionUpdate` con `{ session }`.
 
 En el chat, `event.data` incluye `time`, etiquetas `tags` al estilo IRC, `nick`, `userId`, `displayName`, `displayColor`, `badges`, `channel`, `text`, `isAction`, `emotes` y `msgId`; `event.renderedText` es HTML escapado con emotes de Twitch. Los objetos de alerta incluyen, según el tipo, campos como `name`, `amount`, `tier`, `message`, `gifted`, `sender` o `currency`.

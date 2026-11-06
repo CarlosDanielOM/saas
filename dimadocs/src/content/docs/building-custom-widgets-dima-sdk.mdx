@@ -35,7 +35,7 @@ The manifest is a JSON object. It accepts these fields:
 |---|---:|---|
 | `engine` | No | `"dima"` for native Dima SDK code, or `"streamelements"` to enable the StreamElements compatibility layer. Defaults to `"dima"` when a manifest is present; with no manifest, imports default to StreamElements. |
 | `api` | No | Dima SDK version. Defaults to `1`; unsupported versions are refused. |
-| `uses` | No | Array of data categories the widget needs: `chat`, `alerts`, `storage`, `counters`, `session`, and/or `signals`. Defaults to an empty list. Unknown entries are reported and ignored. |
+| `uses` | No | Array of data categories the widget needs: `chat`, `alerts`, `storage`, `counters`, `session`, `signals`, `polls`, `goals`, `tts`, `triggers`, and/or `rewards`. Defaults to an empty list. Unknown entries are reported and ignored. |
 | `name` | No | Widget name shown in Studio. |
 | `author` | No | Creator name. |
 | `version` | No | Your package version string. |
@@ -50,12 +50,12 @@ The manifest is a JSON object. It accepts these fields:
   "author": "Ana",
   "version": "1.2.0",
   "description": "Chat with pastel bubbles",
-  "uses": ["chat", "alerts", "storage", "counters", "session", "signals"],
+  "uses": ["chat", "alerts", "storage", "counters", "session", "signals", "polls", "goals", "tts", "triggers", "rewards"],
   "signals": [{ "name": "feed", "description": "Feed the pet", "values": ["pizza", "cake"] }]
 }
 ```
 
-Declare only what the widget actually needs. `chat` permits chat, delete, and clear events; `alerts` permits follow, subscription, gift, Bits, raid, and tip alert categories; `storage` permits persistent values; `counters` permits command counts; `session` permits recent events and totals; and `signals` lets chat commands control the widget. Real tip events are not available yet. In Studio, the manifest’s `uses` list is shown to the channel owner, and a published widget receives only the categories it declares. Editor button tests are available independently of `uses`.
+Declare only what the widget actually needs. `chat` permits chat, delete, and clear events; `alerts` permits follow, subscription, gift, Bits, raid, and tip alert categories; `storage` permits persistent values; `counters` permits command counts; `session` permits recent events and totals; `signals` lets chat commands control the widget; `polls` and `goals` permit their live state; and `tts`, `triggers`, and `rewards` permit those bot events. Real tip events are not available yet. In Studio, the manifest’s `uses` list is shown to the channel owner, and a published widget receives only the categories it declares. Editor button tests are available independently of `uses`.
 
 ## Editable settings
 
@@ -146,6 +146,54 @@ Subscribe with `Dima.on(type, handler)`. It returns an unsubscribe function. You
 | `storage` | `DimaStorageUpdate { key: string, value: unknown, namespace: string }` after a storage write | `storage` |
 | `session` | `{ data: Record<string, unknown>, recents: unknown[] }` | `session` |
 | `signal` / `signal:<name>` | `DimaSignal` | `signals` |
+| `state` | `DimaState` (`{ name, value }`) | `polls` or `goals`, according to `name` |
+| `tts` | `DimaTts` | `tts` |
+| `trigger` | `DimaTrigger` | `triggers` |
+| `reward` | `DimaReward` | `rewards` |
+
+### Live state
+
+Use `Dima.state(name, handler)` for the latest known polls or goals value and later changes. The current snapshot is sent again when an OBS source connects or reconnects. The handler runs as soon as a value is known, then whenever it changes. If no value is known yet, it does not run; an unknown value is not an empty poll or goals list. The return value stops listening. You can also subscribe to every state change with `Dima.on('state', ({ name, value }) => …)`.
+
+```js
+const stopPolls = Dima.state('polls', ({ poll, prediction }) => {
+  document.querySelector('#poll-title').textContent = poll?.title ?? 'No poll yet';
+});
+Dima.state('goals', goals => {
+  document.querySelector('#goal-count').textContent = String(goals.length);
+});
+// Later: stopPolls();
+```
+
+`polls` requires `"polls"` in `uses` and has shape `DimaPolls` (`{ poll, prediction }`); each value is `null` or a `DimaPoll`. A poll has `kind` (`poll` or `prediction`), `id`, `title`, `phase` (`active`, `locked`, `completed`, `archived`, `terminated`, `resolved`, or `canceled`), `choices`, `startedAt`, `deadline`, `endedAt`, `winnerId`, and `revision`. Each choice has `id`, `title`, `votes`, `users`, and `points`, with optional `channelPointsVotes` and `color`. Poll and prediction data is totals only and never identifies voters. It reaches the widget once Twitch poll and prediction events are enabled; Studio shows the same **Polls & predictions** setup as the Overlay tab.
+
+`goals` requires `"goals"` in `uses` and is an array of `DimaGoal` values from the Goals page. Each goal includes `id`, `name`, `metric` (`follows`, `subs`, `bits`, or `currency`), `mode`, `target`, `current`, `percent`, `currency` (code or `null`), `status` (`scheduled`, `active`, `reached`, or `ended`), `startsAt`, `endsAt`, `windowSeconds`, and `period`. Money values use currency units (for example, `87.5`). State changes after edits or progress updates within seconds, and time-based changes are sent at least once a minute. This state includes goal targets and status; it never runs goal completion actions.
+
+### Bot events
+
+These events are live-only: an OBS source that reconnects does not receive events sent while it was disconnected. Every event includes `at` (milliseconds) and `test` (`true` for Studio tests).
+
+| Event | Data | Notes |
+|---|---|---|
+| `tts` (`uses: ["tts"]`) | `DimaTts`: `id`, `phase` (`start` or `end`), `text`, `user`, `reason` | `text` is the filtered text spoken. Start is sent when audio plays; end is sent once when it finishes, with reason `ended`, `skipped`, `cleared`, or `interrupted`. Both phases share an `id`; messages that never play produce no event. |
+| `trigger` (`uses: ["triggers"]`) | `DimaTrigger`: `id`, `triggerId`, `name`, `mediaType` (`audio`, `video`, `image`, or `unknown`) | Sent when a trigger alert is sent by a command, channel-point redemption, or Bits rule. It contains no media URL. A custom-widget-only overlay can observe the send but does not play the media. |
+| `reward` (`uses: ["rewards"]`) | `DimaReward`: `id`, `reward: { id, title, cost }`, `user`, `input` | Sent for every channel-point redemption, including rewards without a bot action. `input` is viewer text when supplied; use `textContent` or `Dima.escape()`, never `innerHTML`. |
+
+```js
+Dima.on('tts', event => {
+  if (event.phase === 'start') document.querySelector('#spoken').textContent = event.text;
+});
+Dima.on('trigger', event => console.log(event.name, event.mediaType));
+Dima.on('reward', event => {
+  document.querySelector('#reward-input').textContent = event.input ?? '';
+});
+```
+
+### Studio state and event tests
+
+The **Bot events** row appears when a widget in the overlay uses one of these categories. It can send TTS (start and then end three seconds later), Trigger, Channel points, Sample poll, and Sample goals to the preview or OBS. The code editor preview offers the same tests. Sample state sent to OBS is shown for about a minute, then the real state returns. Studio previews start with the channel’s real polls and goals.
+
+The **Replay recent chat** button is in the **Chat** row and works in the preview only. It sends the channel’s last 20 stored messages, oldest first. Replay is text only: it has no emotes, name colours, or badge images, and messages deleted by moderators may appear, so they are not sent to OBS.
 
 `Dima.ready()` resolves to an object with `widget: { id, layerId, name, revision }`, `channel: { id, login, name }`, `fields`, `mode` (`"editor"` or `"live"`), `muted`, and `session` (or `null`).
 
@@ -273,7 +321,7 @@ The native example has no `widget.ini`; Studio adds these files to an overlay wh
 Set `"engine": "streamelements"` (or import a package without a manifest) to load the compatibility layer. It listens to Dima SDK events and exposes the familiar browser events:
 
 - `onWidgetLoad` fires after `Dima.ready()` with `detail.channel`, `currency`, `fieldData`, `recents`, `session`, `overlay`, and `emotes`.
-- `onEventReceived` receives chat as `listener: "message"`, message deletion as `"delete-message"`, user chat clear as `"delete-messages"`, alerts as `"follower-latest"`, `"subscriber-latest"`, `"cheer-latest"`, `"raid-latest"`, or `"tip-latest"`, plus `"widget-button"`, `"kvstore:update"`, and `"dima:signal"` (with the same signal data).
+- `onEventReceived` receives chat as `listener: "message"`, message deletion as `"delete-message"`, user chat clear as `"delete-messages"`, alerts as `"follower-latest"`, `"subscriber-latest"`, `"cheer-latest"`, `"raid-latest"`, or `"tip-latest"`, plus `"widget-button"`, `"kvstore:update"`, `"dima:signal"`, `"dima:polls"` (`event.poll`, `event.prediction`), `"dima:goals"` (`event.goals`), `"dima:tts"`, `"dima:trigger"`, and `"dima:reward"`.
 - Session updates fire `onSessionUpdate` with `{ session }`.
 
 For chat, `event.data` includes `time`, IRC-style `tags`, `nick`, `userId`, `displayName`, `displayColor`, `badges`, `channel`, `text`, `isAction`, `emotes`, and `msgId`; `event.renderedText` is escaped HTML with Twitch emotes. Alert objects include the listener-specific fields such as `name`, `amount`, `tier`, `message`, `gifted`, `sender`, or `currency` where applicable.

@@ -9,15 +9,16 @@ Optional sixth file. Imports without one (StreamElements exports) get it inferre
 
 ```json
 { "engine": "dima", "api": 1, "name": "Pastel chat", "author": "Ana", "version": "1.2.0",
-  "description": "Chat with pastel bubbles", "uses": ["chat", "alerts", "storage", "signals"] }
+  "description": "Chat with pastel bubbles", "uses": ["chat", "alerts", "storage", "signals", "polls", "goals", "tts", "triggers", "rewards"] }
 ```
 
 - `engine`: `dima` (native) or `streamelements` (adds the SE translation layer). Default: `streamelements` without a manifest.
 - `api`: Dima SDK version the code targets. Only `1` exists. Unknown versions are refused on import.
 - `uses` (api 1): `chat` (messages, deletes, clears), `alerts` (follow, sub, resub, gift, bits, raid, tip), `storage`
-  (persistent key/value), `signals` (chat command signals), `counters` (read command counts), `session` (latest/recent/session totals). Unknown entries
-  are reported as import issues and ignored. Studio shows these in plain words before a widget is added, and the server
-  only streams what a published widget uses.
+  (persistent key/value), `signals` (chat command signals), `counters` (read command counts), `session` (latest/recent/session totals),
+  `polls` and `goals` (live state), `tts`, `triggers`, and `rewards` (bot events). Unknown entries are reported as import
+  issues and ignored. Studio shows these in plain words before a widget is added, and the server only streams what a
+  published widget uses.
 - SE inference: any `onEventReceived` handler gets `chat` and `alerts` (listener names are often built indirectly),
   otherwise `chat` if the code checks the `message` / `delete-message` listeners, `alerts` for `*-latest`,
   `storage` for `SE_API.store`, `counters` for `SE_API.counters`, `session` for `session`/`onSessionUpdate`/`-recent`/`-goal`.
@@ -104,7 +105,8 @@ The public SDK storage names are `Dima.storage.get/set`, the `storage` update ev
 ```js
 const ctx = await Dima.ready();         // { widget, channel, fields, mode: 'editor'|'live', muted, session }
 Dima.fields;                             // current settings (plain object)
-Dima.on('chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'button' | 'fields' | 'storage' | 'session' | 'signal' | 'signal:<name>', handler) → off()
+Dima.on('chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'button' | 'fields' | 'storage' | 'session' | 'signal' | 'signal:<name>' | 'state' | 'tts' | 'trigger' | 'reward', handler) → off()
+Dima.state('polls' | 'goals', handler) → off() // latest value once known, then every change
 Dima.storage.get(key) / Dima.storage.set(key, value)   // Promise; JSON values ≤ 64 KB
 Dima.counters.get(name)                  // Promise<number> — the count of the channel's command `name`
 Dima.html(message)                       // safe HTML for a chat message: escaped text + <img> emotes
@@ -142,6 +144,30 @@ interface DimaAlert {
   tier: '1000' | '2000' | '3000' | 'prime' | null; months: number | null; streak: number | null;
   message: string | null; recipient: DimaUser | null; currency: string | null; rule: { id: string; name: string } | null;
 }
+interface DimaPollChoice { id: string; title: string; votes: number; users: number; points: number;
+  channelPointsVotes?: number; color?: string }
+interface DimaPoll {
+  kind: 'poll' | 'prediction'; id: string; title: string;
+  phase: 'active' | 'locked' | 'completed' | 'archived' | 'terminated' | 'resolved' | 'canceled';
+  choices: DimaPollChoice[]; startedAt: string; deadline: string | null; endedAt: string | null;
+  winnerId: string | null; revision: number; occurredAt?: string; receipt?: string;
+}
+interface DimaPolls { poll: DimaPoll | null; prediction: DimaPoll | null } // totals only; never voter identities
+interface DimaGoal {
+  id: string; name: string; metric: 'follows' | 'subs' | 'bits' | 'currency'; mode: string; target: number; current: number;
+  percent: number; currency: string | null; status: 'scheduled' | 'active' | 'reached' | 'ended';
+  startsAt: number; endsAt: number | null; windowSeconds: number | null; period: unknown | null;
+} // money uses currency units (e.g. 87.5); public state, no completion actions
+interface DimaTts {
+  id: string; phase: 'start' | 'end'; text: string; user: DimaUser | null;
+  reason: 'ended' | 'skipped' | 'cleared' | 'interrupted' | null; at: number; test: boolean;
+}
+interface DimaTrigger { id: string; triggerId: string; name: string; mediaType: 'audio' | 'video' | 'image' | 'unknown'; at: number; test: boolean }
+interface DimaReward {
+  id: string; reward: { id: string; title: string; cost: number }; user: DimaUser | null;
+  input: string | null; at: number; test: boolean;
+}
+type DimaState = { name: 'polls'; value: DimaPolls } | { name: 'goals'; value: DimaGoal[] };
 ```
 
 Twitch notes: first-time chatters are marked from `message_type: 'user_intro'` (Twitch's "introduce yourself"); EventSub
@@ -180,7 +206,7 @@ only when that published overlay pins that widget revision. Immutable, cacheable
 `GET /overlay-studio/:channel/custom-widgets/:id/bundle`.
 
 Socket (existing `/overlay-studio/:publicId` namespace):
-- server → source: `overlay-feed` `{ v: 1, type: 'chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'storage' | 'session' | 'signal', data }`,
+- server → source: `overlay-feed` `{ v: 1, type: 'chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'storage' | 'session' | 'signal' | 'state' | 'tts' | 'trigger' | 'reward', data }`,
   sent only to sources whose published snapshot has a visible custom layer using that category.
 - source → server: `overlay-widget-rpc` `{ layerId, method, params }` with an ack `{ ok, value | error }`; checked against
   the layer's manifest (`storage` / `counters`) and rate-limited per source.
@@ -199,6 +225,30 @@ recipients come as one gift alert; a sub + resub-message pair shows once) and Bi
 
 Delivery guarantees: chat, deletes and alerts for widgets are live only. A source that is disconnected misses them (the
 built-in alert boxes keep their recoverable queue); session snapshots are sent again on every connection.
+
+### Step 5B-1: live state and bot events (built 2026-11-06; not deployed)
+
+`state` is the current snapshot keyed by `name`: `polls` is `{ poll, prediction }` (each `null` when absent); `goals` is
+the public `DimaGoal[]` projection from the Goals page. State is resent after source connection/layer changes and only
+emitted when the value changes. The SDK remembers known values: `Dima.state(name, handler)` immediately invokes the
+handler once known, then on changes, and returns an unsubscribe function. An unknown state does not call the handler.
+Polls reuse the sanitized Twitch interactions source and expose totals, never voters. The channel's enabled Twitch poll
+and prediction events are required. Goal state follows goal/progress edits within seconds and refreshes at least once a
+minute for time-based changes; it does not execute goal completion actions.
+
+Bot feed events are `tts`, `trigger`, and `reward`; all include `at` (milliseconds) and `test` (true for Studio tests).
+They are live-only and have no reconnect replay. TTS start is emitted when audio plays and end once on completion;
+both share `id`, end carries `reason`, and a message that never plays has no event. Trigger sends include only the send
+ID, trigger ID, name and media type, never a media URL; widget-only sources observe the send without playing it. Reward
+sends represent every channel-points redemption whether or not a bot action exists. The `input` property is viewer text
+and widget examples must render it as text or escape it.
+
+Studio's **Bot events** test row appears for a layer using these categories: TTS start followed by end after 3 seconds,
+Trigger, Channel points, Sample poll, and Sample goals. The code editor preview has the same tests. A sample state sent
+to OBS is shown for about one minute before real state is restored. Studio previews are initialized from real polls and
+goals. The **Replay recent chat** button in the Chat row is preview-only and sends the last 20 stored messages
+oldest-first, text-only (no emotes, name colors, or badge images). Moderator-deleted messages can appear, so replay is
+not sent to OBS.
 
 Chat delete/clear subscriptions are activated when an overlay with a chat widget is published and re-checked at most
 hourly when such an overlay connects; failures are logged and retried, never blocking publishing.
