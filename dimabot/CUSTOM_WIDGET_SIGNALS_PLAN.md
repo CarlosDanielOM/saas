@@ -1,6 +1,6 @@
 # Step 5 plan: `$(widget.signal)` and the rest of the widget engine "magic"
 
-Status: Release A live 2026-11-05 — signals, Studio Commands block, Test drawer, storage rename. Step 5B-1 live 2026-11-06 — polls/goals live state, TTS/trigger/reward bot events, and recent chat replay. Step 5B-2 live 2026-11-06 — pet replies, DimaFX purchases, duels, and roulette events.
+Status: Release A live 2026-11-05 — signals, Studio Commands block, Test drawer, storage rename. Step 5B-1 live 2026-11-06 — polls/goals live state, TTS/trigger/reward bot events, and recent chat replay. Step 5B-2 live 2026-11-06 — pet replies, DimaFX purchases, duels, and roulette events. Step 5B-3 live 2026-11-06 — hype train and ad break live state, with roulette results recovered from saved spins.
 
 ## 1. What a signal is
 

@@ -9,14 +9,14 @@ Optional sixth file. Imports without one (StreamElements exports) get it inferre
 
 ```json
 { "engine": "dima", "api": 1, "name": "Pastel chat", "author": "Ana", "version": "1.2.0",
-  "description": "Chat with pastel bubbles", "uses": ["chat", "alerts", "storage", "signals", "polls", "goals", "tts", "triggers", "rewards", "pets", "duels", "roulette", "dimafx"] }
+  "description": "Chat with pastel bubbles", "uses": ["chat", "alerts", "storage", "signals", "polls", "goals", "hypetrain", "ads", "tts", "triggers", "rewards", "pets", "duels", "roulette", "dimafx"] }
 ```
 
 - `engine`: `dima` (native) or `streamelements` (adds the SE translation layer). Default: `streamelements` without a manifest.
 - `api`: Dima SDK version the code targets. Only `1` exists. Unknown versions are refused on import.
 - `uses` (api 1): `chat` (messages, deletes, clears), `alerts` (follow, sub, resub, gift, bits, raid, tip), `storage`
   (persistent key/value), `signals` (chat command signals), `counters` (read command counts), `session` (latest/recent/session totals),
-  `polls` and `goals` (live state), and `tts`, `triggers`, `rewards`, `pets`, `duels`, `roulette`, and `dimafx` (bot events). Unknown entries are reported as import
+  `polls`, `goals`, `hypetrain`, and `ads` (live state), and `tts`, `triggers`, `rewards`, `pets`, `duels`, `roulette`, and `dimafx` (bot events). Unknown entries are reported as import
   issues and ignored. Studio shows these in plain words before a widget is added, and the server only streams what a
   published widget uses.
 - SE inference: any `onEventReceived` handler gets `chat` and `alerts` (listener names are often built indirectly),
@@ -265,8 +265,9 @@ and `dima:dimafx`.
   `mood` is null when moods are off, and `result` is populated only on `done` (`completed` or `stopped`).
 - Duel events send `started` on an accepted challenge or a challenge against the streamer, then `ended` once the fight
   finishes. Challenger and opponent are Twitch logins; winner and loser stay null until `ended` to avoid spoilers.
-- Roulette events send `spinning` and then `result` with the landed label. The result is best-effort and can be missed
-  if the API restarts during a spin.
+- Roulette events send `spinning` and then `result` with the landed label. The result comes from the saved spin, so an
+  API restart or OBS reconnect does not lose it. A source connecting up to two minutes after the spin ended still gets
+  the result; widgets that should ignore old spins must check `endsAt`.
 - DimaFX events send once when an item starts playing and require the DimaFX overlay to be connected. Viewer identity
   is present only when shared with the extension; custom TTS message text is viewer input and must be escaped or shown
   with `textContent`.
@@ -279,6 +280,36 @@ and `dima:dimafx`.
   than 10 minutes ahead and holds the label in a timer until `endsAt`. DimaFX claims `widgetSentAt` on the playback job
   before publishing, so a job recovered after an API restart is not announced again. The duel worker flushes pending
   widget messages (2 s cap) before it exits.
+
+### Step 5B-3: Hype trains, ad breaks and roulette from saved spins (live 2026-11-06)
+
+This change is implemented in the current checkout and awaits deployment. Existing 5B-1 and 5B-2 releases remain live.
+
+Widgets opt in with `uses` values `hypetrain` and `ads`. These are live state alongside polls and goals, not bot events:
+`Dima.state('hypetrain', handler)` receives a `DimaHypeTrain` or `null`, and `Dima.state('ads', handler)` receives a
+`DimaAds` object. Both handlers get the latest known value immediately, then every change. They also arrive through
+`Dima.on('state', ...)`.
+
+- Hype train state includes ID, active/ended phase, level, total points in Twitch units, next-level progress and goal
+  (`null` when ended), public top contributions, channel all-time high, regular/golden-kappa/treasure type, shared-train
+  status and participant channels, and start/expiry/end/cooldown timestamps. `expiresAt` is `null` after end. An ended
+  train remains visible until cooldown ends (up to two hours), then becomes `null`. If the end was missed, the API asks
+  Twitch for current status and clears stale active state when Twitch reports no running train. Twitch exposes the top
+  contributors publicly; no private contribution details are added.
+- Ad state is `{ active, schedule }`. `active` is null or `{ startedAt, endsAt, duration, automatic }`; duration is
+  seconds and `automatic` reports whether the schedule started it. The starter is never included. `schedule` is null
+  when unknown, otherwise includes next break time, duration, last break, snoozes, snooze refresh, and preroll-free
+  expiry. Times are milliseconds except duration, which is seconds. Because Twitch emits no schedule-change event, the
+  API reads the schedule about once a minute only while an OBS source with an `ads` widget is connected. A streamer
+  with an old login may need to log in again to grant schedule permission; until then, schedule stays null.
+- StreamElements listeners are `dima:hypetrain` (`event.hypetrain`, null when none) and `dima:ads`
+  (`event.active`, `event.schedule`). Studio's Bot events row adds **Sample hype train** and **Sample ad break**; in
+  OBS each sample reverts to real state after about a minute, like Sample poll. Hype train and ad break chat messages
+  remain unchanged on the Events page. Very late Twitch retries do not announce an old train or ad break.
+- Roulette event shape is unchanged. Its result is now read from the saved spin, so an API restart or OBS reconnect
+  does not lose the result. A source connecting up to two minutes after the spin ended still receives it; check
+  `endsAt` if your widget should ignore old spins.
+- Public typings include `DimaHypeTrain`, `DimaHypeContribution`, `DimaAds`, `DimaAdBreak`, and `DimaAdSchedule`.
 
 Chat delete/clear subscriptions are activated when an overlay with a chat widget is published and re-checked at most
 hourly when such an overlay connects; failures are logged and retried, never blocking publishing.

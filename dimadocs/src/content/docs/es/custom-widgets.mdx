@@ -32,6 +32,8 @@ Antes de añadir el widget, Overlay Studio muestra su motor y la lista **Usa:**.
 - **Eventos recientes y totales del directo** — alertas recientes y totales de la sesión.
 - **Encuestas y predicciones de Twitch** — consulta los totales actuales de encuestas y predicciones, sin identificar a quienes votaron.
 - **Metas y su progreso** — consulta las metas y el progreso actual de la página Metas.
+- **Hype trains** — consulta el tren actual, su nivel y progreso, y los principales contribuidores públicos.
+- **Pausas publicitarias** — consulta la pausa activa y la programación de Twitch cuando esté disponible.
 - **Mensajes de texto a voz**, **Alertas de trigger** y **Canjes de puntos del canal** — observa estos eventos del bot cuando ocurren.
 - **La mascota hablando** — observa cuándo empieza y termina una respuesta hablada de la mascota.
 - **Duelos** — observa cuándo empiezan y terminan los duelos.
@@ -94,11 +96,13 @@ Abre **Probar** y busca **Pruebas de widgets personalizados**. Elige **Vista pre
 
 Los botones propios del widget, que aparecen en sus ajustes, también envían un evento de botón a ese widget en la vista previa. No envían una alerta ni un mensaje real.
 
-Cuando un widget del overlay usa una categoría de estado en directo o de eventos del bot, la fila **Eventos del bot** ofrece **Mensaje de texto a voz**, **Trigger**, **Puntos del canal**, **Encuesta de ejemplo**, **Metas de ejemplo**, **Respuesta de la mascota**, **Duelo**, **Ruleta** y **Compra de DimaFX**. Los eventos emparejados envían la segunda fase unos tres segundos después. Las mismas pruebas están disponibles en la vista previa del editor de código. Elige **Vista previa** u **OBS** como destino; el estado de ejemplo enviado a OBS aparece durante aproximadamente un minuto y luego vuelve el estado real. Las vistas previas de Studio empiezan con las encuestas y metas reales del canal.
+Cuando un widget del overlay usa una categoría de estado en directo o de eventos del bot, la fila **Eventos del bot** ofrece **Mensaje de texto a voz**, **Trigger**, **Puntos del canal**, **Encuesta de ejemplo**, **Metas de ejemplo**, **Hype train de ejemplo**, **Pausa publicitaria de ejemplo**, **Respuesta de la mascota**, **Duelo**, **Ruleta** y **Compra de DimaFX**. Los eventos emparejados envían la segunda fase unos tres segundos después. Las mismas pruebas están disponibles en la vista previa del editor de código. Elige **Vista previa** u **OBS** como destino; el estado de ejemplo enviado a OBS aparece durante aproximadamente un minuto y luego vuelve el estado real. Las vistas previas de Studio empiezan con las encuestas, metas, hype train y pausas publicitarias reales del canal.
 
 Los widgets leen los totales de encuestas y predicciones con `Dima.state('polls', handler)` y las metas con `Dima.state('goals', handler)`. El controlador se ejecuta cuando se conoce el valor por primera vez y cada vez que cambia. Si no se ejecuta, el valor aún no se conoce; no significa que no haya encuestas ni metas. Las encuestas llegan al widget cuando se activan sus eventos de Twitch. Abre el ajuste **Encuestas y predicciones** de la capa, el mismo que aparece en la pestaña Overlay. El estado de las encuestas nunca identifica a quienes votaron. El estado de las metas incluye objetivos y progreso, se actualiza en segundos cuando cambian las metas o el progreso y se renueva al menos una vez por minuto para los cambios basados en tiempo. No ejecuta acciones de finalización de metas.
 
-Los eventos del bot solo se envían en directo y no se repiten cuando OBS se reconecta. El texto a voz envía `start` al reproducir el audio y `end` una vez cuando termina; si un mensaje nunca se reproduce, no envía eventos. Los eventos de trigger indican qué alerta se envió, pero no incluyen la URL del medio ni lo reproducen en un overlay que solo contiene widgets personalizados. Los eventos de puntos del canal incluyen todos los canjes, incluso los que no tienen una acción del bot. Trata el texto del canje como texto del espectador: muéstralo con `textContent` o `Dima.escape()`.
+Los hype trains y las pausas publicitarias también son estados en directo: declara `hypetrain` o `ads` en `uses` y consúltalos con `Dima.state('hypetrain', handler)` o `Dima.state('ads', handler)`. El hype train es `null` cuando no hay uno visible; la programación de anuncios puede permanecer en `null` si Twitch no la proporciona.
+
+La mayoría de los eventos del bot solo se envían en directo y no se repiten cuando OBS se reconecta. Los resultados de ruleta vienen de giros guardados y pueden repetirse hasta dos minutos después de `endsAt`. El texto a voz envía `start` al reproducir el audio y `end` una vez cuando termina; si un mensaje nunca se reproduce, no envía eventos. Los eventos de trigger indican qué alerta se envió, pero no incluyen la URL del medio ni lo reproducen en un overlay que solo contiene widgets personalizados. Los eventos de puntos del canal incluyen todos los canjes, incluso los que no tienen una acción del bot. Trata el texto del canje como texto del espectador: muéstralo con `textContent` o `Dima.escape()`.
 
 El botón **Repetir chat reciente** de la fila **Chat** solo funciona en la vista previa. Envía los últimos 20 mensajes almacenados del canal, del más antiguo al más reciente. La repetición solo incluye texto: no incluye emotes, colores de nombre ni imágenes de insignias, y puede mostrar mensajes borrados por moderadores; por eso no se envía a OBS.
 
@@ -134,7 +138,6 @@ Los datos de sesión también incluyen `follower-month`, `subscriber-month`, `ch
 
 ## Funciones que aún no están disponibles
 
-- Los widgets personalizados no reciben eventos de hype trains ni de pausas publicitarias.
 - Sincronización en directo desde un editor local.
 - Los widgets personalizados no reciben propinas reales hasta que DomDimaBot ofrezca la función de propinas; la prueba **Propina** de Studio solo envía datos de ejemplo.
 - No se admiten los emotes de 7TV, BetterTTV (BTTV) ni FrankerFaceZ (FFZ).

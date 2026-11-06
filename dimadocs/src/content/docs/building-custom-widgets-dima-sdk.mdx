@@ -35,7 +35,7 @@ The manifest is a JSON object. It accepts these fields:
 |---|---:|---|
 | `engine` | No | `"dima"` for native Dima SDK code, or `"streamelements"` to enable the StreamElements compatibility layer. Defaults to `"dima"` when a manifest is present; with no manifest, imports default to StreamElements. |
 | `api` | No | Dima SDK version. Defaults to `1`; unsupported versions are refused. |
-| `uses` | No | Array of data categories the widget needs: `chat`, `alerts`, `storage`, `counters`, `session`, `signals`, `polls`, `goals`, `tts`, `triggers`, `rewards`, `pets`, `duels`, `roulette`, and/or `dimafx`. Defaults to an empty list. Unknown entries are reported and ignored. |
+| `uses` | No | Array of data categories the widget needs: `chat`, `alerts`, `storage`, `counters`, `session`, `signals`, `polls`, `goals`, `tts`, `triggers`, `rewards`, `pets`, `duels`, `roulette`, `dimafx`, `hypetrain`, and/or `ads`. Defaults to an empty list. Unknown entries are reported and ignored. |
 | `name` | No | Widget name shown in Studio. |
 | `author` | No | Creator name. |
 | `version` | No | Your package version string. |
@@ -55,7 +55,7 @@ The manifest is a JSON object. It accepts these fields:
 }
 ```
 
-Declare only what the widget actually needs. `chat` permits chat, delete, and clear events; `alerts` permits follow, subscription, gift, Bits, raid, and tip alert categories; `storage` permits persistent values; `counters` permits command counts; `session` permits recent events and totals; `signals` lets chat commands control the widget; `polls` and `goals` permit their live state; and `tts`, `triggers`, `rewards`, `pets`, `duels`, `roulette`, and `dimafx` permit those bot events. Real tip events are not available yet. In Studio, the manifest’s `uses` list is shown to the channel owner, and a published widget receives only the categories it declares. Editor button tests are available independently of `uses`.
+Declare only what the widget actually needs. `chat` permits chat, delete, and clear events; `alerts` permits follow, subscription, gift, Bits, raid, and tip alert categories; `storage` permits persistent values; `counters` permits command counts; `session` permits recent events and totals; `signals` lets chat commands control the widget; `polls`, `goals`, `hypetrain`, and `ads` permit their live state; and `tts`, `triggers`, `rewards`, `pets`, `duels`, `roulette`, and `dimafx` permit those bot events. Real tip events are not available yet. In Studio, the manifest’s `uses` list is shown to the channel owner, and a published widget receives only the categories it declares. Editor button tests are available independently of `uses`.
 
 ## Editable settings
 
@@ -146,7 +146,7 @@ Subscribe with `Dima.on(type, handler)`. It returns an unsubscribe function. You
 | `storage` | `DimaStorageUpdate { key: string, value: unknown, namespace: string }` after a storage write | `storage` |
 | `session` | `{ data: Record<string, unknown>, recents: unknown[] }` | `session` |
 | `signal` / `signal:<name>` | `DimaSignal` | `signals` |
-| `state` | `DimaState` (`{ name, value }`) | `polls` or `goals`, according to `name` |
+| `state` | `DimaState` (`{ name, value }`) | `polls`, `goals`, `hypetrain`, or `ads`, according to `name` |
 | `tts` | `DimaTts` | `tts` |
 | `trigger` | `DimaTrigger` | `triggers` |
 | `reward` | `DimaReward` | `rewards` |
@@ -157,7 +157,7 @@ Subscribe with `Dima.on(type, handler)`. It returns an unsubscribe function. You
 
 ### Live state
 
-Use `Dima.state(name, handler)` for the latest known polls or goals value and later changes. The current snapshot is sent again when an OBS source connects or reconnects. The handler runs as soon as a value is known, then whenever it changes. If no value is known yet, it does not run; an unknown value is not an empty poll or goals list. The return value stops listening. You can also subscribe to every state change with `Dima.on('state', ({ name, value }) => …)`.
+Use `Dima.state(name, handler)` for the latest known polls, goals, hype train, or ad break value and later changes. The current snapshot is sent again when an OBS source connects or reconnects. The handler runs as soon as a value is known, then whenever it changes. If no value is known yet, it does not run; an unknown value is not an empty poll or goals list. The return value stops listening. You can also subscribe to every state change with `Dima.on('state', ({ name, value }) => …)`.
 
 ```js
 const stopPolls = Dima.state('polls', ({ poll, prediction }) => {
@@ -169,13 +169,19 @@ Dima.state('goals', goals => {
 // Later: stopPolls();
 ```
 
+`hypetrain` requires `"hypetrain"` in `uses` and has type `DimaHypeTrain` or `null`. It is the current train, including one that just ended; an ended train remains visible until its cooldown ends (at most two hours), then the value becomes `null`. If DomDimaBot missed the end, it asks Twitch for the current train and clears stale active state when Twitch reports none. The value includes `id`, `phase` (`active` or `ended`), `level`, `total` (points in Twitch units), `progress` and `goal` (points toward and needed for the next level, both `null` after it ends), `topContributions`, `allTimeHigh`, `type` (`regular`, `golden_kappa`, or `treasure`), `shared` (whether the train is shared), `sharedParticipants`, `startedAt`, `expiresAt`, `endedAt`, and `cooldownEndsAt`. Contributor entries (`DimaHypeContribution`) have `user` (`id`, `login`, `name`), `type` (`bits`, `subscription`, or `other`), and `total` (their points); Twitch shows top contributors publicly. `allTimeHigh` is `{ level, total }` for the channel record or `null`. `sharedParticipants` lists channels in a shared train. All times are milliseconds; `expiresAt` is when the train ends unless someone contributes and is `null` once ended.
+
+`ads` requires `"ads"` in `uses` and has type `DimaAds`: `active` is `null` or a `DimaAdBreak` with `startedAt`, `endsAt`, `duration` (seconds), and `automatic` (started by the ad schedule); `schedule` is a `DimaAdSchedule` or `null` when unknown. Its fields are `nextAt` (also `null` when no break is scheduled or the channel is offline), `duration` (seconds), `lastAt`, `snoozes`, `snoozeRefreshAt`, and `prerollFreeUntil`; each schedule field can be `null` when Twitch does not provide it. Times are milliseconds except durations, which are seconds. Twitch's schedule is read about once a minute while an OBS source using an ads widget is connected, because Twitch sends no schedule-change event. The ad's starter is never included. If a streamer logged in before the ad-schedule permission was added, they may need to log in again; until then, the schedule stays null.
+
 `polls` requires `"polls"` in `uses` and has shape `DimaPolls` (`{ poll, prediction }`); each value is `null` or a `DimaPoll`. A poll has `kind` (`poll` or `prediction`), `id`, `title`, `phase` (`active`, `locked`, `completed`, `archived`, `terminated`, `resolved`, or `canceled`), `choices`, `startedAt`, `deadline`, `endedAt`, `winnerId`, and `revision`. Each choice has `id`, `title`, `votes`, `users`, and `points`, with optional `channelPointsVotes` and `color`. Poll and prediction data is totals only and never identifies voters. It reaches the widget once Twitch poll and prediction events are enabled; Studio shows the same **Polls & predictions** setup as the Overlay tab.
+
+StreamElements-compatible widgets receive live state through `onEventReceived`: `dima:hypetrain` uses `event.hypetrain` (null when no train), and `dima:ads` uses `event.active` and `event.schedule`.
 
 `goals` requires `"goals"` in `uses` and is an array of `DimaGoal` values from the Goals page. Each goal includes `id`, `name`, `metric` (`follows`, `subs`, `bits`, or `currency`), `mode`, `target`, `current`, `percent`, `currency` (code or `null`), `status` (`scheduled`, `active`, `reached`, or `ended`), `startsAt`, `endsAt`, `windowSeconds`, and `period`. Money values use currency units (for example, `87.5`). State changes after edits or progress updates within seconds, and time-based changes are sent at least once a minute. This state includes goal targets and status; it never runs goal completion actions.
 
 ### Bot events
 
-These events are live-only: an OBS source that reconnects does not receive events sent while it was disconnected. Every event includes `at` (milliseconds) and `test` (`true` for Studio tests).
+Bot events are normally live-only: an OBS source that reconnects does not receive events sent while it was disconnected. Roulette results are read from saved spins and can be replayed for up to two minutes after `endsAt`, as described below. Every event includes `at` (milliseconds) and `test` (`true` for Studio tests).
 
 | Event | Data | Notes |
 |---|---|---|
@@ -184,7 +190,7 @@ These events are live-only: an OBS source that reconnects does not receive event
 | `reward` (`uses: ["rewards"]`) | `DimaReward`: `id`, `reward: { id, title, cost }`, `user`, `input` | Sent for every channel-point redemption, including rewards without a bot action. `input` is viewer text when supplied; use `textContent` or `Dima.escape()`, never `innerHTML`. |
 | `pet` (`uses: ["pets"]`) | `DimaPet`: `id`, `kind`, `phase`, `text`, `mood`, `result` | Sent when the pet starts speaking and once when it finishes, only for replies that spoke. Handle `done` even if no `speaking` arrived first. `text` is what the pet said, never the viewer’s question. Private DomDimaBot desktop app replies are not sent to widgets. |
 | `duel` (`uses: ["duels"]`) | `DimaDuel`: `id`, `phase`, `challenger`, `opponent`, `mode`, `winner`, `loser`, `endsAt` | Names are Twitch logins. `started` is sent when a challenge is accepted or someone challenges the streamer; `ended` is sent once after the fight, with the result revealed only then. |
-| `roulette` (`uses: ["roulette"]`) | `DimaRoulette`: `id`, `rouletteId`, `name`, `phase`, `label`, `endsAt` | Sends `spinning`, then `result` with the landed label when the spin ends. A result can be missed if DomDimaBot restarts during a spin. |
+| `roulette` (`uses: ["roulette"]`) | `DimaRoulette`: `id`, `rouletteId`, `name`, `phase`, `label`, `endsAt` | Sends `spinning`, then `result` with the landed label when the spin ends. The result comes from the saved spin, so an API restart or OBS reconnect does not lose it. A source connecting up to two minutes after the spin ended still receives the result; check `endsAt` if your widget should ignore old spins. |
 | `dimafx` (`uses: ["dimafx"]`) | `DimaDimafx`: `id`, `item`, `source`, `bits`, `credits`, `user`, `message` | Sent once when a DimaFX item starts playing; the DimaFX overlay must be connected. Viewer identity is included only when shared with the extension. Custom TTS `message` is viewer text; use `textContent` or `Dima.escape()`, never `innerHTML`. |
 
 `DimaPet.kind` is `talk`, `ask`, or `tts`; `phase` is `speaking` then `done`. `mood` is null when moods are off, and `result` is `completed` or `stopped` only on `done`. `DimaDuel.phase` is `started` then `ended`; `challenger` and `opponent` are Twitch logins, `mode` is `overlay` or `chat`, `winner` and `loser` are null until `ended`, and `endsAt` may be null. `DimaRoulette.phase` is `spinning` then `result`; `label` is present only on `result`. For `DimaDimafx`, `item` is `{ id, name, type }`, `source` is `bits`, `credits`, `saved`, or `test`; `bits` and `credits` are the amount paid or null. `user` contains `{ id, login, name }` only when the viewer shared their identity with the extension, otherwise it is null. `message` is the viewer's text only for custom TTS items; otherwise it is null.
@@ -207,11 +213,11 @@ Dima.on('roulette', event => {
 Dima.on('dimafx', event => console.log(event.item.name, event.source));
 ```
 
-The `DimaPet`, `DimaDuel`, `DimaRoulette`, and `DimaDimafx` typings describe these event objects. StreamElements-compatible widgets receive the same events through `onEventReceived` listeners `dima:pet`, `dima:duel`, `dima:roulette`, and `dima:dimafx` (`obj.detail.event`). All four event types include `at` (milliseconds) and `test` (`true` for Studio tests). They are live-only and are not replayed after an OBS reconnect.
+The `DimaPet`, `DimaDuel`, `DimaRoulette`, and `DimaDimafx` typings describe these event objects. StreamElements-compatible widgets receive the same events through `onEventReceived` listeners `dima:pet`, `dima:duel`, `dima:roulette`, and `dima:dimafx` (`obj.detail.event`). All four event types include `at` (milliseconds) and `test` (`true` for Studio tests). Pet, duel, and DimaFX events are live-only; roulette results come from the saved spin and may be replayed for up to two minutes after `endsAt`.
 
 ### Studio state and event tests
 
-The **Bot events** row appears when a widget in the overlay uses one of these categories. It can send TTS (start and then end three seconds later), Trigger, Channel points, Sample poll, Sample goals, Pet reply, Duel, Roulette, and DimaFX purchase to the preview or OBS. Paired events send their second phase about three seconds later. The code editor preview offers the same tests. Sample state sent to OBS is shown for about a minute, then the real state returns. Studio previews start with the channel’s real polls and goals.
+The **Bot events** row appears when a widget in the overlay uses one of these categories. It can send TTS (start and then end three seconds later), Trigger, Channel points, Sample poll, Sample goals, Sample hype train, Sample ad break, Pet reply, Duel, Roulette, and DimaFX purchase to the preview or OBS. Paired events send their second phase about three seconds later. The code editor preview offers the same tests. Sample state sent to OBS is shown for about a minute, then the real state returns. Studio previews start with the channel’s real polls, goals, hype train, and ad state.
 
 The **Replay recent chat** button is in the **Chat** row and works in the preview only. It sends the channel’s last 20 stored messages, oldest first. Replay is text only: it has no emotes, name colours, or badge images, and messages deleted by moderators may appear, so they are not sent to OBS.
 
