@@ -41,7 +41,7 @@ import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-li
 import type { DesignAsset } from '../../shared/asset-library/asset-library.service';
 import { OverlayConnectionsComponent, type ConnectionState } from './overlay-connections.component';
 import { OverlayApi, StudioState, Snapshot } from './overlay-api.service';
-import { OverlayDraftStorage, type LocalOverlayDraft, type OverlayRecovery } from './overlay-draft-storage.service';
+import { OverlayDraftStorage, type DraftScene, type LocalOverlayDraft, type OverlayRecovery } from './overlay-draft-storage.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -55,6 +55,9 @@ interface MockEvent { serialized?: boolean; originalTargets?: string[]; text?: s
 type StudioPop = 'scenes' | 'obs' | 'menu';
 type MobileTab = 'layers' | 'add' | 'edit' | 'test' | 'more';
 type StudioPane = 'variants' | 'add' | 'layers' | 'designs' | 'timeline' | 'tester' | 'layer' | 'overlay';
+/** JSON with sorted object keys, so equal documents compare equal whatever order their fields were written in. */
+const canonicalJson = (value: unknown): string => JSON.stringify(value, (_key, v: unknown) => v && typeof v === 'object' && !Array.isArray(v)
+  ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : v);
 /** Zoom steps for the canvas (1 = true pixels). "Fit" picks the largest scale that shows the whole canvas. */
 const ZOOM_STEPS = [0.1, 0.15, 0.2, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2];
 /** Add palette groups, by what the streamer wants to show. Kinds not listed land in the last group. */
@@ -358,13 +361,9 @@ export class OverlayEditorComponent {
     afterNextRender(() => void this.loadSaved());
     effect(onCleanup => {
       if (!this.loaded() || !this.channel || this.loading()) return;
-      // A pristine editor must leave the offered recovery copy intact until the user chooses.
-      const dirty = this.dirty(), offered = this.recovery();
-      const draft = dirty ? this.localDraft() : null;
-      const timer = setTimeout(() => {
-        if (draft) this.writeRecovery(draft);
-        else if (!offered) this.clearRecovery();
-      }, 250);
+      // Clearing only removes this editor's own copy; an offered recovery copy stays until the user chooses.
+      const draft = this.dirty() ? this.localDraft() : null;
+      const timer = setTimeout(() => { if (draft) this.writeRecovery(draft); else this.clearRecovery(); }, 250);
       onCleanup(() => clearTimeout(timer));
     });
     effect(onCleanup => {
@@ -1244,7 +1243,9 @@ export class OverlayEditorComponent {
     this.loaded.set(true);
     this.savedDocument.set(this.documentFingerprint());
     this.recovered.set(false); this.conflict.set(false); this.recoveryRequestId = null;
-    if (!preserveRecovery) { this.recovery.set(null); this.clearRecovery(); }
+    // Saving makes the account draft current, so a recovery copy the user passed over is stale now.
+    if (!preserveRecovery) { this.discardRecovery(); this.recovery.set(null); }
+    this.clearRecovery();
     this.saved.set(true);
   }
   private report(e: unknown): void {
@@ -1282,12 +1283,13 @@ export class OverlayEditorComponent {
     await this.loadSaved();
   }
   private async loadSaved(): Promise<void> {
-    const initial = !this.loaded();
+    const initial = !this.loaded(), rescan = initial || !!this.recovery();
     this.loading.set(true); this.error.set(''); this.stopPointer();
     try {
       if (this.owner()) {
         this.channel = (await firstValueFrom(this.auth.resolveChannelID(this.streamer))) || '';
         if (!this.channel) throw new Error('Channel unavailable');
+        // Look before loading, so a copy can still be restored if loading fails.
         if (initial) this.findRecovery();
         void this.bitsRules.load(this.channel);
         void this.customWidgets.load(this.channel).then(() => { if (this.customWidgets.enabled()) void this.widgetEnv.loadSession(); });
@@ -1295,7 +1297,10 @@ export class OverlayEditorComponent {
         if (this.disposed) return;
         // Replace local work only after the server has returned a complete saved draft.
         this.resetSimulation(); this.designDraft.set(null);
-        this.accept(state, initial); this.history.clear();
+        // Reloading saves nothing, so an offered copy stays offered.
+        this.accept(state, true); this.history.clear();
+        // Now that the saved draft is known, copies that match it are deleted instead of offered.
+        if (rescan) this.findRecovery();
         this.selectedId.set(this.widgets()[0]?.id ?? null);
       }
     } catch (e) { this.report(e); } finally { this.loading.set(false); }
@@ -1401,20 +1406,28 @@ export class OverlayEditorComponent {
   private flushRecovery(): void {
     if (!this.channel || !this.loaded()) return;
     if (this.dirty()) this.writeRecovery(this.localDraft());
-    else if (!this.recovery()) this.clearRecovery();
+    else this.clearRecovery();
   }
+  /** Removes this editor's own copy and the copy it restored; a copy still on offer is left alone. */
   private clearRecovery(): void {
     try {
-      // Loading a saved draft must not remove a recovery copy that hasn't been offered yet.
-      if (this.recovery()) return;
       this.draftStorage.clear(this.channel);
       if (this.consumedRecovery) this.draftStorage.discard(this.consumedRecovery);
       this.consumedRecovery = null; this.storageError.set(false);
     } catch { this.storageError.set(true); }
   }
   private findRecovery(): void {
-    try { this.recovery.set(this.draftStorage.find(this.channel)); }
+    try { this.recovery.set(this.draftStorage.find(this.channel, this.loaded() ? draft => this.matchesSaved(draft) : undefined)); }
     catch { this.storageError.set(true); }
+  }
+  /** True when a recovery copy holds nothing beyond the draft just loaded from the account. */
+  private matchesSaved(draft: LocalOverlayDraft): boolean {
+    const scenes = (list: readonly DraftScene[]) => list.map(scene => { const { publicId: _publicId, published: _published, revision: _revision, ...rest } = scene as OverlayScene; return rest; });
+    const design = (value: AlertDesign) => { const { revision: _revision, ...rest } = withoutLegacyBitsLooks(value); return rest; };
+    const saved = this.designs();
+    if (canonicalJson([scenes(draft.scenes), draft.designs.map(design)]) !== canonicalJson([scenes(this.scenes()), saved.map(design)])) return false;
+    const open = draft.designDraft, match = open && saved.find(d => d.id === open.id);
+    return !open || (!!match && canonicalJson(design(open)) === canonicalJson(design(match)));
   }
   restoreRecovery(): void {
     const recovery = this.recovery();

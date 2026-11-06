@@ -28,7 +28,7 @@
 </main>
 </div>
 } @else {
-<div class="lf editor studio" [class.lf--design]="!!designDraft()" [class.studio--panels-off]="!panels()" [class.studio--testing]="testOpen() && !compact()" [attr.data-mobile-tab]="mobileTab()">
+<div class="lf editor studio" [class.studio--sheet]="!!pop()" [class.lf--design]="!!designDraft()" [class.studio--panels-off]="!panels()" [class.studio--testing]="testOpen() && !compact()" [attr.data-mobile-tab]="mobileTab()">
 <fieldset class="editor-fields" [disabled]="busy() || loading()" [attr.aria-label]="t('studio')">
 <div class="editor-fields__content studio-shell">
   <h1 class="sr-only">{{ designDraft() ? t('designHeadTitle') : t('studio') }}</h1>

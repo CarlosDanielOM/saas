@@ -123,24 +123,33 @@ export class OverlayDraftStorage {
     }
     return `${PREFIX}${channel}:${this.tabId}`;
   }
-  find(channel: string): OverlayRecovery | null {
+  /**
+   * The copy to offer: this tab's previous copy, else the newest. Copies `holdsNothingNew` accepts
+   * (they match the draft saved to the account) are deleted instead.
+   */
+  find(channel: string, holdsNothingNew?: (draft: LocalOverlayDraft) => boolean): OverlayRecovery | null {
     const storage = this.storage, ownKey = this.key(channel);
     const preferredKey = `${PREFIX}${channel}:${this.previousTabId}`;
-    let latest: OverlayRecovery | null = null;
+    let latest: OverlayRecovery | null = null, preferred: OverlayRecovery | null = null;
+    const stale: [string, string][] = [];
     for (let i = 0; i < storage.length; i++) {
       const key = storage.key(i);
       if (!key?.startsWith(`${PREFIX}${channel}:`)) continue;
       const serialized = storage.getItem(key);
       const draft = serialized && parseDraft(serialized, channel);
       if (!draft || !serialized) continue;
+      if (holdsNothingNew?.(draft)) { stale.push([key, serialized]); continue; }
       const recovery = { key, serialized, draft };
-      if (key === ownKey || key === preferredKey) return recovery;
+      if (key === ownKey || key === preferredKey) preferred = recovery;
       if (!latest || draft.updatedAt > latest.draft.updatedAt) latest = recovery;
     }
-    return latest;
+    // Another tab may have written new work under that key meanwhile.
+    for (const [key, serialized] of stale) if (storage.getItem(key) === serialized) storage.removeItem(key);
+    return preferred ?? latest;
   }
   write(channel: string, draft: LocalOverlayDraft): void { this.storage.setItem(this.key(channel), JSON.stringify(draft)); }
   clear(channel: string): void { this.storage.removeItem(this.key(channel)); }
+  /** Deletes a copy the user has dealt with (restored, discarded or saved over). Other copies may hold other work. */
   discard(recovery: OverlayRecovery): void {
     // Another tab may have updated this copy since the recovery banner appeared.
     if (this.storage.getItem(recovery.key) === recovery.serialized) this.storage.removeItem(recovery.key);

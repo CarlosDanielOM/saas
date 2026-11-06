@@ -51,4 +51,30 @@ describe('module-aware local draft recovery', () => {
     const invalidPreset = draft(); invalidPreset.scenes[0].widgets[0].config = { interactionDesign: 'unknown' }; storage.write('123', invalidPreset);
     expect(storage.find('123')).toBeNull(); expect(local.length).toBe(1);
   });
+  it('deletes copies that hold nothing new instead of offering them', () => {
+    const newer = draft(); newer.updatedAt += 10; newer.scenes[0].name = 'Same as saved';
+    const older = draft(); older.scenes[0].name = 'Unsaved edit';
+    local.setItem('domdimabot-overlay-draft:123:newer', JSON.stringify(newer));
+    local.setItem('domdimabot-overlay-draft:123:older', JSON.stringify(older));
+    const offered = storage.find('123', copy => copy.scenes[0].name === 'Same as saved');
+    expect(offered?.key).toBe('domdimabot-overlay-draft:123:older');
+    expect(local.getItem('domdimabot-overlay-draft:123:newer')).toBeNull();
+    expect(storage.find('123', () => true)).toBeNull(); expect(local.length).toBe(0);
+  });
+  it('keeps a copy another tab rewrote between the check and the delete', () => {
+    const key = 'domdimabot-overlay-draft:123:other-tab', newer = draft(); newer.scenes[0].name = 'New work';
+    local.setItem(key, JSON.stringify(draft()));
+    expect(storage.find('123', () => { local.setItem(key, JSON.stringify(newer)); return true; })).toBeNull();
+    expect(local.getItem(key)).toBe(JSON.stringify(newer));
+  });
+  it('discarding deletes only the copy that was offered', () => {
+    const at = (offset: number, name: string) => { const value = draft(); value.updatedAt += offset; value.scenes[0].name = name; return value; };
+    local.setItem('domdimabot-overlay-draft:123:older', JSON.stringify(at(-20, 'Older')));
+    local.setItem('domdimabot-overlay-draft:123:offered', JSON.stringify(at(0, 'Offered')));
+    const offered = storage.find('123')!;
+    expect(offered.key).toBe('domdimabot-overlay-draft:123:offered');
+    storage.discard(offered);
+    expect(local.getItem('domdimabot-overlay-draft:123:offered')).toBeNull();
+    expect(storage.find('123')?.draft.scenes[0].name).toBe('Older');
+  });
 });
