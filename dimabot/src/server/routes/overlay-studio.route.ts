@@ -7,7 +7,7 @@ import { readFileStream } from '../../overlays/delivery-store.js';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
-import { change, load, publicState, validateState, object, string, token, OverlayError, requireOverlayAccount } from '../../overlays/store.js';
+import { change, load, publicState, validateState, object, string, token, OverlayError, requireOverlayAccount, type StudioState } from '../../overlays/store.js';
 import { bitsRuleFor, ensureWidgetModeration, eventFor, feedSignal, feedTestAlert, feedTestEvent, fileFor, publishStudioAlert, publishTest, studioConnections, queueStatus, controlStudio } from '../../overlays/live.js';
 import { renderTemplate, sampleEvent } from '../../overlays/ast.js';
 import { ALERT_EVENTS, EVENT_KINDS, type EventKind, type AlertEvent } from '../../overlays/model.js';
@@ -17,7 +17,7 @@ import { snapshotAssets, validateAssets } from '../../overlays/assets.js';
 import { copyMedia, planMediaCopy } from '../../custom_widgets/media.js';
 import { sessionFor } from '../../custom_widgets/session.js';
 import { commandCount, storeGet } from '../../custom_widgets/widget-store.js';
-import { channelInfo, checkCustomLayers, createWidget, deleteWidget, listWidgets, publishedBundle, publishedLayers, publishedMediaAsset, widgetBundle, pinCustomLayers, pruneRevisions, renameWidget, replaceFiles, widgetFile } from '../../custom_widgets/store.js';
+import { channelInfo, checkCustomLayers, createWidget, deleteWidget, listWidgets, publishedBundle, publishedLayers, publishedMediaAsset, widgetBundle, overlaysLive, publishedCopy, pruneRevisions, renameWidget, replaceFiles, widgetFile } from '../../custom_widgets/store.js';
 import { buildSignal, signalError, skippedSignals, widgetSignals } from '../../widget_feed/signals.js';
 import { replayChat } from '../../widget_feed/chat-replay.js';
 import { channelGoals, publicGoals } from '../../custom_widgets/state.js';
@@ -70,30 +70,44 @@ async function requireAlertPlays(channel: string, kind: EventKind, raw?: Record<
   const rule = await bitsRuleFor(channel, kind, raw);
   if (rule?.alert === false) throw new OverlayError(`No alert plays for ${raw?.bits} Bits: the "${rule.name || 'matching'}" Bits rule has alerts turned off`, 409);
 }
+/** Studio state for its owner, with each overlay's live status (OBS already plays its saved draft). */
+async function studio(channel: string, state: StudioState): Promise<StudioState & { live?: Record<string, boolean> }> {
+  try { return { ...state, live: await overlaysLive(channel, state) }; }
+  catch (error) {
+    // Saves and publishes already happened: send the state without a status (the Studio asks again) instead of an error.
+    console.error('Overlay live status failed', channel, error instanceof Error ? error.message : 'Unknown error');
+    return state;
+  }
+}
 overlayStudioRoute.use(authMiddleware);
 overlayStudioRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   if (req.user?.id !== req.params.channelID) { res.status(403).json({ error: true, message: 'Channel owner required', status: 403 }); return; }
   void requireOverlayAccount(param(req, 'channelID')).then(() => next(), next);
 });
-overlayStudioRoute.get('/:channelID', wrap(async (req, res) => ok(res, await load(param(req, 'channelID')))));
+overlayStudioRoute.get('/:channelID', wrap(async (req, res) => { const channel = param(req, 'channelID'); return ok(res, await studio(channel, await load(channel))); }));
+/** Live status alone, for when a custom widget's code changes what publishing would send. */
+overlayStudioRoute.get('/:channelID/live', wrap(async (req, res) => {
+  const channel = param(req, 'channelID'), state = await load(channel);
+  return ok(res, { revision: state.revision, live: await overlaysLive(channel, state) });
+}));
 overlayStudioRoute.get('/:channelID/twitch-events', wrap(async (req, res) => ok(res, await interactionReadiness(param(req, 'channelID')))));
 overlayStudioRoute.post('/:channelID/twitch-events/:kind', wrap(async (req, res) => {
   const kind = param(req, 'kind'); if (kind !== 'poll' && kind !== 'prediction') throw new OverlayError('Invalid Twitch widget');
   return ok(res, await activateInteraction(param(req, 'channelID'), kind));
 }));
-overlayStudioRoute.post('/:channelID/recover', wrap(async (req, res) => ok(res, await recoverCopies(param(req, 'channelID'), req.body))));
+overlayStudioRoute.post('/:channelID/recover', wrap(async (req, res) => { const channel = param(req, 'channelID'); return ok(res, await studio(channel, await recoverCopies(channel, req.body))); }));
 overlayStudioRoute.get('/:channelID/queue', wrap(async (req, res) => ok(res, await queueStatus(param(req, 'channelID')))));
 overlayStudioRoute.post('/:channelID/queue', wrap(async (req, res) => ok(res, await controlStudio(param(req, 'channelID'), req.body?.action, req.body?.platform))));
 overlayStudioRoute.get('/:channelID/connections', wrap(async (req, res) => {
   const channel = param(req, 'channelID'), state = await load(channel);
   return ok(res, studioConnections(channel, state.scenes));
 }));
-overlayStudioRoute.put('/:channelID', wrap(async (req, res) => ok(res, await withAssetLibrary(param(req, 'channelID'), () => change(param(req, 'channelID'), req.body.revision, async state => {
+overlayStudioRoute.put('/:channelID', wrap(async (req, res) => { const channel = param(req, 'channelID'); return ok(res, await studio(channel, await withAssetLibrary(channel, () => change(channel, req.body.revision, async state => {
   const validated = validateState(req.body, state);
-  await validateAssets(param(req, 'channelID'), validated);
-  await checkCustomLayers(param(req, 'channelID'), validated.scenes);
+  await validateAssets(channel, validated);
+  await checkCustomLayers(channel, validated.scenes);
   Object.assign(state, validated);
-})))));
+})))); }));
 overlayStudioRoute.post('/:channelID/scenes/:sceneId/:action', wrap(async (req, res) => {
   const action = param(req, 'action'); if (!['publish', 'rotate'].includes(action)) throw new OverlayError('Unknown action');
   const channel = param(req, 'channelID');
@@ -102,9 +116,8 @@ overlayStudioRoute.post('/:channelID/scenes/:sceneId/:action', wrap(async (req, 
     if (action === 'rotate') scene.publicId = token();
     else {
       await validateAssets(channel, state);
-      const published = structuredClone({ width: scene.width, height: scene.height, widgets: scene.widgets, waitFor: scene.waitFor, designs: state.designs.filter(d => scene.widgets.some(w => w.designId === d.id)) });
-      await pinCustomLayers(channel, published.widgets);
-      scene.revision++; scene.published = published;
+      // The same copy the live status compares against (overlays/publish.ts).
+      scene.published = await publishedCopy(channel, scene, state.designs); scene.revision++;
     }
   }));
   // Old custom widget revisions are kept only while a published overlay uses them.
@@ -114,7 +127,7 @@ overlayStudioRoute.post('/:channelID/scenes/:sceneId/:action', wrap(async (req, 
     const published = result.scenes.find(s => s.id === param(req, 'sceneId'))?.published;
     if (published) void publishedLayers(channel, published.widgets).then(layers => { if ([...layers.values()].some(layer => layer.uses.has('chat'))) ensureWidgetModeration(channel, true); }).catch(() => {});
   }
-  return ok(res, result);
+  return ok(res, await studio(channel, result));
 }));
 // Custom widgets (owner only, through the channel guard above). Code changes never reach OBS until a publish.
 overlayStudioRoute.get('/:channelID/custom-widgets', wrap(async (req, res) => ok(res, await listWidgets(param(req, 'channelID')))));

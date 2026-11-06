@@ -8,6 +8,9 @@
  *  - Escape inside the code doesn't close the dialog; Escape elsewhere does
  *  - "Edit code" on an imported StreamElements widget: files load, no widget.json → "Add widget.json" writes one
  *  - phones: Code / Preview switch; axe (wcag2a/2aa/21aa) and no horizontal overflow at 390 and 1280, dark and light
+ *  - live status: a published overlay with a custom widget reads "All changes published"; saving new code turns it to
+ *    "not live in OBS yet" at once (even when asking the API again fails) until it is published again; code saved in
+ *    another tab shows up when the Studio comes back into view
  */
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -40,6 +43,7 @@ const sample = Object.fromEntries(await Promise.all(parts.map(async part => [par
 const user = { id: '533538623', login: 'customfixture', display_name: 'Fixture' };
 const app = { name: 'Fixture', email: 'fixture@example.invalid', language: 'en', plan_tier: 'premium', actived: true, chat_enabled: false, twitch_user_id: user.id, has_permissions: true, up_to_date_permissions: true, administrating: [] };
 const seId = 'a1'.repeat(12);
+const { liveMap, withLive } = await import(`${repo}/ops/checks/overlay-studio-live-fixture.mjs`);
 
 /** Mock API with real file storage per widget and revision (create, replace with baseRevision, files, history). */
 function mocks({ theme = 'dark', withSample = false } = {}) {
@@ -52,8 +56,11 @@ function mocks({ theme = 'dark', withSample = false } = {}) {
       history: Object.keys(entry.files).map(Number).sort((a, b) => b - a).map(revision => ({ revision, createdAt: new Date(Date.UTC(2026, 10, 5, 10, revision)).toISOString(), published: false })) };
   };
   const store = (id, name, files) => { world.code.set(id, { revision: 1, name, files: { 1: files } }); world.widgets.push(viewOf(id, name)); };
+  /** Like the API: the published copy pins each custom layer to its widget's current revision. */
+  const publishCopy = scene => structuredClone({ width: scene.width, height: scene.height, waitFor: scene.waitFor, designs: [],
+    widgets: scene.widgets.map(w => w.kind === 'custom' ? { ...w, config: { ...w.config, revision: world.code.get(w.config.widgetId).revision } } : w) });
   if (withSample) store(seId, 'Sample chat', { ...sample });
-  return { world, viewOf, async install(context) {
+  return { world, viewOf, publishCopy, async install(context) {
     await context.addInitScript(({ user, app, theme }) => {
       if (window.top !== window) return;
       localStorage.setItem('dimasite.session.v1', JSON.stringify({ version: 2, token: 'fixture-only', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3600000).toISOString(), twitchUser: user, appUser: app, permissions: {} }));
@@ -96,7 +103,15 @@ function mocks({ theme = 'dark', withSample = false } = {}) {
       else if (path.startsWith(`${list}/counters/`)) data = { value: 0 };
       else if (path === `/overlay-studio/${user.id}`) {
         if (req.method() === 'PUT') { world.state = structuredClone(req.postDataJSON()); world.state.revision++; }
-        data = structuredClone(world.state);
+        data = withLive(structuredClone(world.state), publishCopy);
+      } else if (path === `/overlay-studio/${user.id}/live`) {
+        world.liveReads = (world.liveReads ?? 0) + 1;
+        if (world.failLive) return route.fulfill({ status: 503, json: { error: true, status: 503, message: 'Unavailable' } });
+        data = { revision: world.state.revision, live: liveMap(world.state, publishCopy) };
+      }
+      else if (path === `/overlay-studio/${user.id}/scenes/main/publish`) {
+        const scene = world.state.scenes[0]; scene.published = publishCopy(scene); scene.revision++; world.state.revision++;
+        data = withLive(structuredClone(world.state), publishCopy);
       }
       return route.fulfill({ status, json: { error: false, status, data } });
     });
@@ -469,5 +484,48 @@ try {
     await ctx.close();
   }
   console.log('PASS edit code: an imported StreamElements widget loads, widget.json can be added from what Studio inferred; phone Code/Preview (under the owner\'s outside-connection choice), axe clean dark/light 390 and 1280.');
+
+  // 4. Live status: published with a custom widget = live (its pin is only in the published copy, VTLuciel 2026-11-06);
+  // new code is not live until published again.
+  {
+    const lm = mocks({ withSample: true }), scene = lm.world.state.scenes[0];
+    scene.widgets = [{ id: 'custom-1', kind: 'custom', configVersion: 1, name: 'Sample chat', x: 10, y: 10, width: 480, height: 640, visible: true, locked: false, config: { widgetId: seId } }];
+    scene.published = lm.publishCopy(scene); scene.revision = 1; lm.world.state.revision = 1;
+    const lctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    await lm.install(lctx);
+    const lp = await lctx.newPage(); lp.setDefaultTimeout(15000); lp.on('pageerror', e => errors.push(e.message));
+    await lp.goto(`${base}/${user.login}/modules/overlays`); await lp.locator('.stage').waitFor();
+    const bar = lp.locator('.lf-save-bar');
+    await bar.getByText('All changes published', { exact: true }).waitFor();
+    assert.equal(await lp.locator('.publish-status').count(), 0, 'no "Unpublished changes" chip');
+    await lp.locator('.widget[data-kind="custom"]').first().dispatchEvent('click');
+    await lp.locator('[data-cw-edit-code]').click();
+    const ld = lp.locator('dialog.cwc');
+    await ld.locator('[data-cwc-editor] .cm-editor').waitFor();
+    await ld.locator('[data-cwc-tab="css"]').click();
+    await insertCode(ld, '/* new look */\n', 'start');
+    await until(async () => (await ld.locator('[data-cwc-status]').getAttribute('data-status')) === 'unsaved', 'unsaved code');
+    lm.world.failLive = true; // asking the API again fails: the new code must still read as not live
+    await ld.locator('[data-cwc-save]').click();
+    await until(async () => lm.world.replaces.length === 1 && (await ld.locator('[data-cwc-status]').getAttribute('data-status')) === 'saved', 'code saved');
+    await ld.locator('[data-cwc-reload]').focus(); await lp.keyboard.press('Escape'); await ld.waitFor({ state: 'detached' });
+    await bar.getByText('Saved · not live in OBS yet', { exact: true }).waitFor();
+    await lp.locator('.publish-status').waitFor();
+    assert(lm.world.liveReads >= 1, 'the Studio asked the API again');
+    lm.world.failLive = false;
+    await lp.getByRole('button', { name: /Publish live/ }).click();
+    await bar.getByText('All changes published', { exact: true }).waitFor();
+    assert.equal(lm.world.state.scenes[0].published.widgets[0].config.revision, 2, 'the new code is pinned');
+    // Code saved in another tab: this tab's widget list doesn't change, so it asks again when it comes back into view.
+    const other = lm.world.code.get(seId); other.revision++; other.files[other.revision] = other.files[other.revision - 1];
+    lm.world.widgets = lm.world.widgets.map(w => w.id === seId ? lm.viewOf(seId, other.name) : w);
+    await lp.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await bar.getByText('Saved · not live in OBS yet', { exact: true }).waitFor();
+    await lp.getByRole('button', { name: /Publish live/ }).click();
+    await bar.getByText('All changes published', { exact: true }).waitFor();
+    assert.equal(lm.world.state.scenes[0].published.widgets[0].config.revision, 3);
+    await lctx.close();
+  }
+  console.log('PASS live status: a published overlay with a custom widget is live; new code turns it to "not live in OBS yet" (even if asking again fails) until published again; another tab\'s code shows up on return.');
   assert.deepEqual(errors, []);
 } finally { await browser.close(); }

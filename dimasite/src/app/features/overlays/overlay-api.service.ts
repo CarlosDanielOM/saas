@@ -5,7 +5,13 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, map, timeout } from 'rxjs';
 import { LinksService } from '../../services/links.service';
 import type { AlertDesign, OverlayScene, AlertEvent } from './overlay.model';
-export interface StudioState { schemaVersion: 1; revision: number; scenes: OverlayScene[]; designs: AlertDesign[] }
+export interface StudioState {
+  schemaVersion: 1; revision: number; scenes: OverlayScene[]; designs: AlertDesign[];
+  /** Server responses only: per overlay, whether OBS already plays its saved draft (publishing would change nothing). */
+  live?: Record<string, boolean>;
+}
+/** The live status alone, for the saved draft at `revision`. */
+export interface StudioLive { revision: number; live: Record<string, boolean> }
 export interface OverlaySourceConnection {
   connected: boolean; connectedAt: number; disconnectedAt: number | null; lastReportAt: number | null; revision: number | null;
   status: 'reconnecting' | 'loading' | 'unresponsive' | 'updating' | 'ready';
@@ -24,6 +30,7 @@ export class OverlayApi {
     return firstValueFrom(this.http.request<{ data: T }>(method, `${this.base}/overlay-studio/${path}`, { body }).pipe(timeout(timeoutMs), map(r => r.data)));
   }
   load(channel: string) { return this.request<StudioState>('GET', channel); }
+  live(channel: string) { return this.request<StudioLive>('GET', `${channel}/live`); }
   twitchEvents(channel: string) { return this.request<InteractionReadinessSnapshot>('GET', `${channel}/twitch-events`); }
   activateTwitchEvents(channel: string, kind: InteractionKind) { return this.request<InteractionReadinessSnapshot>('POST', `${channel}/twitch-events/${kind}`, {}, 60000); }
   connections(channel: string) { return this.request<OverlayConnections>('GET', `${channel}/connections`); }

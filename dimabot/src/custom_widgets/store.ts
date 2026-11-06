@@ -2,9 +2,10 @@ import { Schema, Types, model, mongo } from 'mongoose';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import Users from '../schemas/users.schema.js';
 import { assetQuota, withAssetLibrary } from '../assets/library.js';
-import { OverlayError, Studio } from '../overlays/store.js';
+import { OverlayError, Studio, type StudioState } from '../overlays/store.js';
+import { PublishBlocked, buildPublished, liveStatus, type PublishWidget, type PublishedOverlay } from '../overlays/publish.js';
 import { reloadCustomWidget } from '../overlays/bridge.js';
-import type { OverlayScene, OverlayWidget } from '../overlays/model.js';
+import type { AlertDesign, OverlayScene, OverlayWidget } from '../overlays/model.js';
 import { CUSTOM_WIDGET_LIMITS, CUSTOM_WIDGET_PLAN_LIMITS, PACKAGE_FILES, type CustomWidgetPlan, PackageFormatError, checkOverrides, inferManifest, readPackage, type PackageInput, type WidgetManifest,
   type ExternalMedia, type FieldIssue, type JsonObject, type PackageFile, type PackageSource, type WidgetField, type WidgetNetwork, outsideCode } from './format.js';
 import { deleteKeys, describeFiles, putFiles, readFile, type PackageFiles, type StoredFile } from './files.js';
@@ -337,18 +338,21 @@ export async function checkCustomLayers(owner: string, scenes: OverlayScene[]): 
     layer.config = { widgetId: doc._id, ...(Object.keys(checked.values).length ? { values: checked.values } : {}) };
   }
 }
-/** Studio publish: pin each custom layer in the published copy to the widget's current revision. */
-export async function pinCustomLayers(owner: string, widgets: OverlayWidget[]): Promise<void> {
+/** The custom widgets these layers use, as publishing needs them (one read; none without custom layers). */
+async function publishWidgets(owner: string, widgets: OverlayWidget[]): Promise<Map<string, PublishWidget>> {
   const layers = widgets.filter(isCustom);
-  if (!layers.length) return;
+  if (!layers.length) return new Map();
   const docs = await layerDocs(owner, layers);
-  for (const layer of layers) {
-    const doc = docs.get(widgetIdOf(layer));
-    if (!doc) throw new CustomWidgetError('A custom widget in this overlay was deleted. Remove its layer before publishing.', 404, 'missing_widget');
-    const checked = checkOverrides(latest(doc).fields, layer.config?.['values']);
-    if ('error' in checked) throw new CustomWidgetError(`${doc.name}: ${checked.error}`, 400, 'invalid_value');
-    layer.config = { widgetId: doc._id, revision: doc.revision, ...(Object.keys(checked.values).length ? { values: checked.values } : {}) };
-  }
+  return new Map([...docs.values()].map(doc => [doc._id, { id: doc._id, name: doc.name, revision: doc.revision, fields: latest(doc).fields }]));
+}
+/** Studio publish: the copy of one overlay that OBS plays, custom layers pinned to their widget's current revision. */
+export async function publishedCopy(owner: string, scene: OverlayScene, designs: readonly AlertDesign[]): Promise<PublishedOverlay> {
+  try { return buildPublished(scene, designs, await publishWidgets(owner, scene.widgets)); }
+  catch (error) { throw error instanceof PublishBlocked ? new CustomWidgetError(error.message, error.status, error.code) : error; }
+}
+/** Per overlay: whether OBS already plays its saved draft (publishing now would change nothing). */
+export async function overlaysLive(owner: string, state: Pick<StudioState, 'scenes' | 'designs'>): Promise<Record<string, boolean>> {
+  return liveStatus(state.scenes, state.designs, await publishWidgets(owner, state.scenes.flatMap(scene => scene.published ? scene.widgets : [])));
 }
 /** Drops revisions that are neither the latest nor used by a published overlay, and their unshared files. */
 export async function pruneRevisions(owner: string, onlyId?: string): Promise<void> {

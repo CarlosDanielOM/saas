@@ -1,6 +1,7 @@
 // saas-ops only (api target): disposable Mongo/Redis, fixture identities and an in-check fake S3.
 // Custom widgets: availability, plan limits, import parsing, private S3 files, Studio save/publish
-// validation, revisions (10 newest + published), stale editor saves, prune, delete protection and file cleanup.
+// validation, revisions (10 newest + published), stale editor saves, prune, delete protection and file cleanup,
+// and the Studio live status (a published overlay with custom widgets reads as live; new code makes it not live).
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -105,6 +106,14 @@ try {
 
   // Studio save: valid layer values are kept; stale keys dropped; bad values and foreign IDs rejected.
   let state = await data('GET', base);
+  const sceneId = state.scenes[0].id;
+  // Live status: whether OBS already plays the saved draft (computed by the server on every Studio response).
+  const live = async expected => {
+    const status = await data('GET', `${base}/live`);
+    assert.equal(status.revision, state.revision, 'the live status names the saved draft it describes');
+    assert.equal(status.live[sceneId], expected, `GET live: ${JSON.stringify(status.live)}`);
+  };
+  assert.deepEqual(state.live, { [sceneId]: false }, 'never published');
   const layer = { id: 'custom-1', kind: 'custom', configVersion: 1, x: 10, y: 10, width: 480, height: 640, visible: true, locked: false, name: 'Chat', config: { widgetId: id, revision: 99, values: { textColor: '#123456', hideCommands: false, removedSetting: 1, testMessage: 'x' } } };
   state.scenes[0].widgets.push(layer);
   state = await data('PUT', base, state);
@@ -120,11 +129,22 @@ try {
   console.log('PASS Studio save: values checked against fields, stale keys dropped, injection/foreign IDs/design placement rejected.');
 
   // Publish pins revision 1; replacing files makes revision 2 for drafts only.
+  assert.equal(state.live[sceneId], false, 'saved, not published');
   state = await data('POST', `${base}/scenes/${state.scenes[0].id}/publish`, { revision: state.revision });
   assert.deepEqual(state.scenes[0].published.widgets.at(-1).config, { widgetId: id, revision: 1, values: { textColor: '#123456', hideCommands: false } });
+  // The pin exists only in the published copy, yet the overlay is live (VTLuciel, 2026-11-06: it read "not live" forever).
+  assert.deepEqual(state.scenes[0].widgets.at(-1).config, { widgetId: id, values: { textColor: '#123456', hideCommands: false } });
+  assert.equal(state.live[sceneId], true, 'publish response: live');
+  assert.equal((await data('GET', base)).live[sceneId], true, 'reload: live');
+  await live(true);
+  state = await data('PUT', base, state);
+  assert.equal(state.live[sceneId], true, 'saving with no changes keeps it live');
+  state = await data('POST', `${base}/scenes/${sceneId}/rotate`, { revision: state.revision });
+  assert.equal(state.live[sceneId], true, 'a new OBS link keeps it live');
   const newFields = JSON.parse(source.fields); delete newFields.hideCommands; newFields.glow = { type: 'colorpicker', label: 'Glow', value: '#ff00ff', group: 'Colors' };
   const replaced = await data('PUT', `${widgetsPath}/${id}/files`, { files: { ...source, fields: JSON.stringify(newFields) } });
   assert.equal(replaced.widget.revision, 2); assert(replaced.widget.fields.some(f => f.key === 'glow'));
+  await live(false); // OBS still runs revision 1
   assert.deepEqual((await CustomWidgets.findById(id).lean()).revisions.map(r => r.revision), [1, 2], 'published revision 1 is kept');
   assert.equal(keysFor(id).length, 6, 'unchanged files are shared between revisions');
   assert.equal(await fileText(`${widgetsPath}/${id}/files/fields?revision=1`), source.fields);
@@ -138,11 +158,22 @@ try {
   await data('PATCH', `${widgetsPath}/${id}`, { network: 'open' });
   state = await data('PUT', base, state);
   assert.deepEqual(state.scenes[0].widgets.at(-1).config.values, { textColor: '#123456' }, 'settings removed by new files are dropped on save');
+  assert.equal(state.live[sceneId], false, 'saved, still not published');
   state = await data('POST', `${base}/scenes/${state.scenes[0].id}/publish`, { revision: state.revision });
   assert.equal(state.scenes[0].published.widgets.at(-1).config.revision, 2);
+  assert.equal(state.live[sceneId], true, 'published revision 2: live');
+  // A layer with no changed settings (no values at all), as VTLuciel's was.
+  state.scenes[0].widgets.at(-1).config = { widgetId: id };
+  state = await data('PUT', base, state);
+  assert.deepEqual(state.scenes[0].widgets.at(-1).config, { widgetId: id });
+  assert.equal(state.live[sceneId], false, 'settings changed');
+  state = await data('POST', `${base}/scenes/${sceneId}/publish`, { revision: state.revision });
+  assert.deepEqual(state.scenes[0].published.widgets.at(-1).config, { widgetId: id, revision: 2 });
+  assert.equal(state.live[sceneId], true, 'no settings: live after publishing');
   assert.deepEqual((await CustomWidgets.findById(id).lean()).revisions.map(r => r.revision), [1, 2], 'recent revisions stay as version history');
   assert.equal(await fileText(`${widgetsPath}/${id}/files/fields?revision=1`), source.fields);
   assert.equal((await data('PUT', `${widgetsPath}/${id}/files`, { files: { ...source, css: source.css + '\n/* v3 */' } })).widget.revision, 3);
+  await live(false); // new code that OBS doesn't run yet
   const listed = (await data('GET', widgetsPath)).widgets.find(w => w.id === id);
   assert.deepEqual(listed.history.map(h => [h.revision, h.published]), [[3, false], [2, true], [1, false]], 'history: newest first, published marked');
   // Code editor saves name the version they started from; a stale one is refused instead of overwriting.
@@ -159,6 +190,7 @@ try {
   await req('GET', `${widgetsPath}/${id}/files/css?revision=3`, null, 404);
   assert.deepEqual(keysFor(id), [...new Set(kept.flatMap(r => Object.values(r.files).map(f => f.key)))].sort(), 'S3 holds exactly the kept revisions\' files');
   console.log('PASS publish pins revisions; version history (10 newest + published), stale editor saves refused, pruned files deleted.');
+  console.log('PASS live status: published with custom widgets = live (with and without settings), new code or settings = not live until published.');
 
   // Delete: refused while used (draft or published), then removes the document and every file.
   const inUse = await req('DELETE', `${widgetsPath}/${id}`, null, 409);
@@ -166,7 +198,9 @@ try {
   state.scenes[0].widgets = state.scenes[0].widgets.filter(w => w.kind !== 'custom');
   state = await data('PUT', base, state);
   assert.equal((await req('DELETE', `${widgetsPath}/${id}`, null, 409)).code, 'in_use', 'the published overlay still uses it');
+  assert.equal(state.live[sceneId], false, 'the published copy still has the layer');
   state = await data('POST', `${base}/scenes/${state.scenes[0].id}/publish`, { revision: state.revision });
+  assert.equal(state.live[sceneId], true, 'published without custom widgets: live');
   assert.deepEqual((await CustomWidgets.findById(id).lean()).revisions.map(r => r.revision), [5, 6, 7, 8, 9, 10, 11, 12, 13, 14], 'publishing without the layer releases its old revision');
   assert.deepEqual(await data('DELETE', `${widgetsPath}/${id}`), { deleted: true });
   assert.equal(keysFor(id).length, 0); assert.equal(await CustomWidgets.countDocuments({ _id: id }), 0);

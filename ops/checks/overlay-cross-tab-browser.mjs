@@ -1,6 +1,7 @@
 // Real browser storage events and the application's real HTTP interceptor; every API/socket is mocked.
 import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
+import { withLive } from '/root/saas/ops/checks/overlay-studio-live-fixture.mjs';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL; assert(base, 'SAAS_PREVIEW_URL required');
@@ -46,7 +47,7 @@ try {
         data = { checkedAt: Date.now(), pollingFailed: false, scenes: [{ id: 'main', published: true, revision: 1, width: 1920, height: 1080, receives: ['trigger'], sources: [] }] };
         return await route.fulfill({ json: { error: false, data } });
       } finally { connectionActive--; }
-    } else if (url.pathname === `/overlay-studio/${user.id}`) data = state;
+    } else if (url.pathname === `/overlay-studio/${user.id}`) data = withLive(state);
     else if (url.pathname.startsWith('/triggers/')) data = [];
     return route.fulfill({ json: { error: false, data } });
   });

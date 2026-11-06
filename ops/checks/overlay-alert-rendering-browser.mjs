@@ -1,5 +1,6 @@
 import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
+import { withLive } from '/root/saas/ops/checks/overlay-studio-live-fixture.mjs';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL; assert(base);
@@ -32,10 +33,10 @@ try {
     else if(u.pathname.endsWith('/preview'))data=r.postDataJSON().texts.map(t=>t.replace('$(user)','Luna'));
     else if(u.pathname===`/overlay-studio/${user.id}`){
       if(r.method()==='PUT'){state=structuredClone(r.postDataJSON());state.revision++;state.designs.forEach(d=>d.revision++);}
-      data=state;
+      data=withLive(state);
     } else if(u.pathname.endsWith('/publish')){
       assert.equal(r.postDataJSON().revision,state.revision);
-      const s=state.scenes[0];s.revision++;s.published=structuredClone({width:s.width,height:s.height,widgets:s.widgets,waitFor:s.waitFor,designs:state.designs});state.revision++;data=state;
+      const s=state.scenes[0];s.revision++;s.published=structuredClone({width:s.width,height:s.height,widgets:s.widgets,waitFor:s.waitFor,designs:state.designs});state.revision++;data=withLive(state);
     } else if(u.pathname.endsWith('/test')){tests++;data={sent:true,clients:1};}
     else if(u.pathname.endsWith('/connections'))data={checkedAt:Date.now(),pollingFailed:false,scenes:[]};
     else if(u.pathname.endsWith('/queue'))data={state:{revision:0,all:false,platforms:{}},events:[],connected:0,needsRefresh:0};

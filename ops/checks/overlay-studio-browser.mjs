@@ -1,5 +1,6 @@
 import { openStudio, closeStudioMenus, switchStudioScene, studioSceneId, studioToggle } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 import assert from 'node:assert/strict';
+import { withLive } from '/root/saas/ops/checks/overlay-studio-live-fixture.mjs';
 import { mkdir } from 'node:fs/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base=process.env.SAAS_PREVIEW_URL; assert(base);
@@ -25,11 +26,11 @@ await context.route('**/*',async route=>{
  else if(url.pathname===`/overlay-studio/${user.id}/connections`)data={ checkedAt: Date.now(), pollingFailed: false, scenes: state.scenes.map(s => ({ id: s.id, published: !!s.published, revision: s.revision, width: s.published?.width ?? s.width, height: s.published?.height ?? s.height, receives: [], sources: [] })) };
  else if(url.pathname===`/overlay-studio/${user.id}`){
   if(req.method()==='PUT'){writes++;if(conflict)return route.fulfill({status:409,json:{error:true,message:'Conflict'}});state=structuredClone(body);state.revision++;state.scenes.forEach(s=>{if(!s.publicId)s.publicId='b'.repeat(48);});}
-  data=structuredClone(state);
+  data=withLive(structuredClone(state));
  }else if(url.pathname.includes('/scenes/')){
   const selected=state.scenes.find(s=>s.id===url.pathname.split('/')[4]);
   if(url.pathname.endsWith('/publish')){selected.revision++;selected.published=structuredClone({width:selected.width,height:selected.height,widgets:selected.widgets,waitFor:selected.waitFor,designs:state.designs});}else selected.publicId='c'.repeat(48);
-  state.revision++;data=structuredClone(state);
+  state.revision++;data=withLive(structuredClone(state));
  }else if(url.pathname.startsWith('/triggers/'))data=[];
  return route.fulfill({json:{error:false,status:200,data}});
 });

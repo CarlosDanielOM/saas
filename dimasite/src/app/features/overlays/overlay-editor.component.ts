@@ -265,16 +265,26 @@ export class OverlayEditorComponent {
     const draft = this.designDraft();
     return !!draft && this.designFingerprint(draft) !== this.designFingerprint(this.designs().find(d => d.id === draft.id));
   });
+  /**
+   * Per overlay, from the server: OBS already plays its saved draft. Only the server decides this, because
+   * publishing may change the copy it stores (e.g. custom widget pins), so comparing that copy here can't work.
+   */
+  private readonly liveScenes = signal<Readonly<Record<string, boolean>>>({});
+  /** Each overlay's content as last saved, to tell whether it has unsaved edits of its own. */
+  private readonly savedContent = signal<ReadonlyMap<string, string>>(new Map());
   readonly unpublished = computed(() => {
     const scene = this.scene();
-    if (!scene?.published) return true;
-    const designs = this.designs().map(d => this.designDraft()?.id === d.id ? this.designDraft()! : d);
-    const snapshot = { width: scene.width, height: scene.height, widgets: scene.widgets, waitFor: scene.waitFor,
-      designs: designs.filter(d => scene.widgets.some(w => w.designId === d.id)) };
-    // Saving increments design revisions even if no artwork changed.
-    const content = (value: typeof snapshot) => JSON.stringify({ ...value, designs: value.designs.map(({ revision: _revision, ...d }) => d) });
-    return content(snapshot) !== content(scene.published);
+    if (!scene?.published || this.liveScenes()[scene.id] !== true) return true;
+    // The server answered for the saved draft; edits to this overlay that aren't saved yet aren't in OBS either.
+    const draft = this.designDraft();
+    return this.sceneContent(scene, draft ? this.designs().map(d => d.id === draft.id ? draft : d) : this.designs()) !== this.savedContent().get(scene.id);
   });
+  /** What publishing this overlay would send, as the editor holds it (draft vs saved, never vs the published copy). */
+  private sceneContent(scene: OverlayScene, designs: readonly AlertDesign[]): string {
+    // Saving increments design revisions even if no artwork changed.
+    return canonicalJson({ width: scene.width, height: scene.height, widgets: scene.widgets, waitFor: scene.waitFor,
+      designs: designs.filter(d => scene.widgets.some(w => w.designId === d.id)).map(({ revision: _revision, ...d }) => d) });
+  }
   readonly saveStatus = computed(() => this.loading() ? 'loading' : this.busy() ? 'saving' : this.dirty() ? 'unsavedChanges'
     : this.designDraft() ? 'statusDesignSaved' : this.unpublished() ? 'statusNotLive' : 'statusLive');
   readonly designUsage = computed(() => { const id = this.designDraft()?.id; return id ? this.usage(id) : 0; });
@@ -384,6 +394,28 @@ export class OverlayEditorComponent {
         }).catch(e => { if (valid) this.astError.set(e?.error?.message || this.t('astFailed')); });
       }, 200);
       onCleanup(() => { valid = false; clearTimeout(timer); });
+    });
+    // A custom widget's new revision (code editor, file replace) reaches OBS only when its overlays are published again.
+    let widgetRevisions: ReadonlyMap<string, number> | null = null;
+    effect(() => {
+      if (!this.customWidgets.list()) return;
+      const next = new Map(this.customWidgets.widgets().map(widget => [widget.id, widget.revision])), previous = widgetRevisions;
+      widgetRevisions = next;
+      if (!previous) return;
+      const changed = new Set([...previous.keys(), ...next.keys()].filter(id => previous.get(id) !== next.get(id)));
+      untracked(() => {
+        const affected = [...this.serverScenes.values()].filter(scene => scene.widgets.some(w => w.kind === 'custom' && changed.has(w.config?.['widgetId'] as string)));
+        if (!affected.length) return;
+        // New code is never in OBS yet: these overlays are not live until the API answers (and stay so if it can't).
+        this.liveScenes.update(live => ({ ...live, ...Object.fromEntries(affected.map(scene => [scene.id, false])) }));
+        void this.refreshLive();
+      });
+    });
+    // Widget code saved in another tab: ask again when the Studio comes back into view.
+    afterNextRender(() => {
+      const visible = () => { if (document.visibilityState === 'visible') void this.refreshLive(); };
+      document.addEventListener('visibilitychange', visible);
+      this.destroyRef.onDestroy(() => document.removeEventListener('visibilitychange', visible));
     });
     effect(onCleanup => {
       // Notices sit next to the save bar; they fade on their own instead of piling up.
@@ -1224,10 +1256,21 @@ export class OverlayEditorComponent {
   async regenerateUrl(): Promise<void> {
     if (!this.confirmRotate()) { this.confirmRotate.set(true); return; }
     this.busy.set(true);
-    try { const state = await this.api.action(this.channel, this.sceneId(), this.revision, 'rotate'); this.rememberServerState(state); this.revision = state.revision; const remote = state.scenes.find(s => s.id === this.sceneId())!; this.scenes.update(all => all.map(s => s.id === remote.id ? { ...s, publicId: remote.publicId } : s)); this.notice.set('urlRegenerated'); this.confirmRotate.set(false); }
+    try { const state = await this.api.action(this.channel, this.sceneId(), this.revision, 'rotate'); this.rememberServerState(state); this.revision = state.revision; if (state.live) this.liveScenes.set(state.live); else void this.refreshLive(); const remote = state.scenes.find(s => s.id === this.sceneId())!; this.scenes.update(all => all.map(s => s.id === remote.id ? { ...s, publicId: remote.publicId } : s)); this.notice.set('urlRegenerated'); this.confirmRotate.set(false); }
     catch (e) { this.report(e); } finally { this.busy.set(false); }
   }
   async saveDraft(): Promise<void> { if (this.designDraft()) await this.saveDesign(); else await this.persist(); }
+  private liveRequest = 0;
+  /** Asks the API again (new custom widget code changes what publishing would send). */
+  private async refreshLive(): Promise<void> {
+    if (!this.channel || !this.loaded()) return;
+    const request = ++this.liveRequest;
+    try {
+      const status = await this.api.live(this.channel);
+      // Only the newest answer counts, and only about the saved draft open here.
+      if (!this.disposed && request === this.liveRequest && status?.revision === this.revision && status.live) this.liveScenes.set(status.live);
+    } catch { /* overlays already marked not live stay that way until the next answer */ }
+  }
   private async persist(): Promise<boolean> {
     if (this.busy() || !this.channel) return false;
     this.stopPointer(); this.endHistoryGroup();
@@ -1242,6 +1285,9 @@ export class OverlayEditorComponent {
     if (!state.scenes.some(s => s.id === this.sceneId())) this.sceneId.set(state.scenes[0].id);
     this.loaded.set(true);
     this.savedDocument.set(this.documentFingerprint());
+    this.savedContent.set(new Map(this.scenes().map(scene => [scene.id, this.sceneContent(scene, this.designs())])));
+    // Without a status (the API couldn't work it out) nothing counts as live until it answers again.
+    this.liveScenes.set(state.live ?? {}); if (!state.live) void this.refreshLive();
     this.recovered.set(false); this.conflict.set(false); this.recoveryRequestId = null;
     // Saving makes the account draft current, so a recovery copy the user passed over is stale now.
     if (!preserveRecovery) { this.discardRecovery(); this.recovery.set(null); }

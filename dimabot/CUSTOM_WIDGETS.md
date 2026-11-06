@@ -59,6 +59,11 @@ and checks the hash; nothing links to the bucket directly. The original fields/d
   and Save / Undo / Publish work like every other layer. Setting a value back to the widget's own value removes it.
 - Saving a draft checks `values` against the widget's latest fields, drops settings the new files removed and never pins
   a revision. Publishing pins `config.revision` in the published copy, so OBS keeps that version until the next publish.
+- Because publishing changes the copy it stores, only the server says whether an overlay is live: every Studio state
+  response carries `live: { [sceneId]: boolean }` (and `GET /overlay-studio/:channelID/live` returns it alone). It is
+  true when rebuilding the published copy from the saved draft (`overlays/publish.ts` `buildPublished`, the same function
+  publishing uses) gives the stored copy, so new widget code or settings read "not live" until published again. The
+  Studio never compares its draft with the published copy itself (that broke for every custom widget, 2026-11-06).
 - A widget can't be deleted while any draft or published overlay uses it.
 
 **Export** (Studio) writes a StreamElements zip: `widget.ini`, the original html/css/js/fields files and a `data.txt` with

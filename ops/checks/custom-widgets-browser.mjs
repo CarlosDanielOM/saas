@@ -24,6 +24,7 @@
  *  - axe (wcag2a/2aa/21aa) and no horizontal overflow at 320/390/1280, dark then light
  */
 import assert from 'node:assert/strict';
+import { withLive } from '/root/saas/ops/checks/overlay-studio-live-fixture.mjs';
 import { createRequire } from 'node:module';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
@@ -164,6 +165,8 @@ const dimaView = () => ({ id: dimaId, name: dimaPkg.name, engine: 'streamelement
 const view = (extra = {}) => ({ id: widgetId, name: pkg.name, engine: 'streamelements', revision: 1, author: pkg.author, fields: pkg.fields, data: pkg.data, externalMedia: pkg.externalMedia, manifest: pkg.manifest, media: {},
   files: Object.fromEntries(parts.map(part => [part, { bytes: Buffer.byteLength(source[part]), sha256: 'f'.repeat(64) }])), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), usedIn: [], ...extra });
 
+/** Like the API, publishing pins each custom layer to its widget revision, in the published copy only. */
+const fakePublish = scene => structuredClone({ width: 1920, height: 1080, widgets: scene.widgets.map(w => w.kind === 'custom' ? { ...w, config: { ...w.config, revision: 1 } } : w), designs: [], waitFor: [] });
 function mocks(options) {
   const world = { enabled: options.enabled ?? true, planTier: options.planTier ?? 'premium', limit: options.limit ?? 5, widgets: options.widgets ?? [], imports: [], writes: 0, copies: [], widgetTests: [], patches: [],
     state: { schemaVersion: 1, revision: 0, designs: [{ id: 'default', name: 'Alerts', revision: 1, width: 800, height: 240, events: { sub: layout, bits: layout, follow: layout, raid: layout } }],
@@ -211,11 +214,11 @@ function mocks(options) {
       } else if (path === `/overlay-studio/${user.id}/widget-test`) { world.widgetTests.push(req.postDataJSON()); data = { sent: true, clients: 1 }; }
       else if (path === `/overlay-studio/${user.id}`) {
         if (req.method() === 'PUT') { world.writes++; world.state = structuredClone(req.postDataJSON()); world.state.revision++; }
-        data = structuredClone(world.state);
+        data = withLive(structuredClone(world.state), fakePublish);
       } else if (path.endsWith('/publish')) {
         world.state.scenes[0].revision++; world.state.revision++;
-        world.state.scenes[0].published = structuredClone({ width: 1920, height: 1080, widgets: world.state.scenes[0].widgets.map(w => w.kind === 'custom' ? { ...w, config: { ...w.config, revision: 1 } } : w), designs: [], waitFor: [] });
-        data = structuredClone(world.state);
+        world.state.scenes[0].published = fakePublish(world.state.scenes[0]);
+        data = withLive(structuredClone(world.state), fakePublish);
       }
       return route.fulfill({ status, json: { error: false, status, data } });
     });
@@ -341,6 +344,9 @@ try {
   await page.getByRole('button', { name: /Publish live/ }).click();
   await page.getByText('Published. Connected browser sources are updating.', { exact: true }).waitFor();
   assert.equal(m.world.state.scenes[0].published.widgets.at(-1).config.values.textColor, '#123456');
+  // The pinned revision exists only in the published copy; the Studio must still say it's live (VTLuciel, 2026-11-06).
+  await page.locator('.lf-save-bar').getByText('All changes published', { exact: true }).waitFor();
+  assert.equal(await page.locator('.publish-status').count(), 0, 'no "Unpublished changes" chip');
 
   // Export: StreamElements zip with this layer's data.
   const [download] = await Promise.all([page.waitForEvent('download'), page.locator('[data-cw-export]').click()]);
