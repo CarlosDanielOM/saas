@@ -1,5 +1,7 @@
 # Custom widget engine (Dima SDK v1)
 
+Status: live. Latest: "Block outside connections" and the outside-code notice (2026-11-06).
+
 Runs the code of custom widget layers (see [`CUSTOM_WIDGETS.md`](./CUSTOM_WIDGETS.md) for the package/data model).
 Our own runtime is the base; StreamElements support is a translation layer built only from Dima SDK calls.
 
@@ -51,15 +53,30 @@ Opaque origins throw on `localStorage`; the SDK installs an in-memory `localStor
 
 - **The site and the account:** widget code never runs on the site's origin, so it can't read the login, call the API as
   the streamer, or touch Studio. Editor previews get short-lived asset links, never the session token.
-- **One published overlay is one trust boundary.** The overlay link is a bearer link; widget code that learns it (for
-  example from a copied asset URL) could open its own connection and read or write the saved data of other widgets in
-  the same overlay. Only the channel owner can add widget code, so this is the owner's own code.
+- **Each frame is isolated from the page and other layers.** Widget code cannot read the overlay link or another
+  layer's data. It talks to DomDimaBot through the host-checked, rate-limited SDK RPC; storage is scoped to its own
+  widget, and command counters are read-only.
 - **OBS:** OBS gives every browser source page (and frame) its `window.obsstudio` API at the permission level set in the
-  source's "Page permissions". The SDK hides it from widget code, but nested frames can get it again, so this is not a
-  guarantee: the streamer's OBS setting decides (the default allows reading OBS status, not controlling it). This is the
-  same exposure StreamElements custom widgets have; our docs recommend keeping the default.
-- **Network:** widgets may load scripts and call public APIs (StreamElements widgets rely on it). Anything a widget
-  loads runs with the widget's data: public chat, alerts and its own saved values.
+  source's "Page permissions". The SDK removes it before widget code runs, as a best effort. Restricted mode also blocks
+  inner frames. This is not airtight (an inner frame or an opened page gets a fresh copy): the OBS setting still decides
+  what pages in the source can do, so recommend "No access to OBS" for sources that show imported widgets.
+- **Network:** by default, widgets may load scripts and call public APIs (StreamElements widgets rely on it). Anything a widget
+  loads runs with the widget's data: public chat, alerts and its own saved values. By default a widget may send received
+  data to other servers, expose the streaming PC's IP to them, display anything on stream, and consume CPU and memory.
+  Code loaded from another site can change after import. The import dialog detects and lists outside script/style hosts,
+  warns about changing code and outgoing data, and offers the owner-controlled per-widget switch.
+- **Block outside connections:** the per-widget owner setting is off by default and is never read from `widget.json`.
+  When enabled, the frame policy (`restrictedPolicy` in frame-document.ts) is `default-src 'none'` with only inline
+  scripts and eval (no outside scripts, StreamElements included), styles inline or from Google Fonts, `connect-src 'none'`,
+  `frame-src 'none'`, and `worker-src 'none'`; images/fonts/media load from DomDimaBot and copied files, StreamElements
+  file hosts (`cdn.streamelements.com`, `static.streamelements.com`), Google Fonts, and Twitch emotes/badges
+  (`static-cdn.jtvnw.net`). DNS prefetch is off and WebRTC constructors are removed. The iframe also carries the policy
+  (`csp`, embedded enforcement); the host probes the frame after its first load (`probe`/`probe-ok` with the exec nonce,
+  5 s) and stops it on a second load, so a frame that navigates (even before its first load) or reloads is stopped. That
+  is containment: the navigation request has already been sent. Libraries or fonts from hosts such as cdnjs or jsDelivr
+  stop working. Studio preview uses the same rule; a change makes connected OBS sources reload that widget
+  (`overlay-widget-reload`, bridge `widgetChanged`). It stops normal tracking, uploads and later code changes, but is
+  not airtight against a determined author (navigation URLs, explicit DNS hints).
 - **Resources:** a widget can still use CPU, memory or audio in its OBS source. Heartbeats restart frozen frames (3 times
   in 5 minutes, then the frame is stopped); a widget stuck in a tight loop can stall its own browser source page.
 
