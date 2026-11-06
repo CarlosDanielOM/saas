@@ -33,6 +33,10 @@ Antes de añadir el widget, Overlay Studio muestra su motor y la lista **Usa:**.
 - **Encuestas y predicciones de Twitch** — consulta los totales actuales de encuestas y predicciones, sin identificar a quienes votaron.
 - **Metas y su progreso** — consulta las metas y el progreso actual de la página Metas.
 - **Mensajes de texto a voz**, **Alertas de trigger** y **Canjes de puntos del canal** — observa estos eventos del bot cuando ocurren.
+- **La mascota hablando** — observa cuándo empieza y termina una respuesta hablada de la mascota.
+- **Duelos** — observa cuándo empiezan y terminan los duelos.
+- **Giros de ruleta** — observa el giro y su resultado.
+- **Compras de DimaFX** — observa un artículo de DimaFX cuando empieza a reproducirse.
 
 Si un widget no solicita datos en directo, no recibe ninguno. Overlay Studio solo le entrega las categorías que haya declarado.
 
@@ -90,7 +94,7 @@ Abre **Probar** y busca **Pruebas de widgets personalizados**. Elige **Vista pre
 
 Los botones propios del widget, que aparecen en sus ajustes, también envían un evento de botón a ese widget en la vista previa. No envían una alerta ni un mensaje real.
 
-Cuando un widget del overlay usa una categoría de estado en directo o de eventos del bot, la fila **Eventos del bot** ofrece **Mensaje de texto a voz**, **Trigger**, **Puntos del canal**, **Encuesta de ejemplo** y **Metas de ejemplo**. El texto a voz envía un evento de inicio y otro de final tres segundos después. Las mismas pruebas están disponibles en la vista previa del editor de código. Elige **Vista previa** u **OBS** como destino; el estado de ejemplo enviado a OBS aparece durante aproximadamente un minuto y luego vuelve el estado real. Las vistas previas de Studio empiezan con las encuestas y metas reales del canal.
+Cuando un widget del overlay usa una categoría de estado en directo o de eventos del bot, la fila **Eventos del bot** ofrece **Mensaje de texto a voz**, **Trigger**, **Puntos del canal**, **Encuesta de ejemplo**, **Metas de ejemplo**, **Respuesta de la mascota**, **Duelo**, **Ruleta** y **Compra de DimaFX**. Los eventos emparejados envían la segunda fase unos tres segundos después. Las mismas pruebas están disponibles en la vista previa del editor de código. Elige **Vista previa** u **OBS** como destino; el estado de ejemplo enviado a OBS aparece durante aproximadamente un minuto y luego vuelve el estado real. Las vistas previas de Studio empiezan con las encuestas y metas reales del canal.
 
 Los widgets leen los totales de encuestas y predicciones con `Dima.state('polls', handler)` y las metas con `Dima.state('goals', handler)`. El controlador se ejecuta cuando se conoce el valor por primera vez y cada vez que cambia. Si no se ejecuta, el valor aún no se conoce; no significa que no haya encuestas ni metas. Las encuestas llegan al widget cuando se activan sus eventos de Twitch. Abre el ajuste **Encuestas y predicciones** de la capa, el mismo que aparece en la pestaña Overlay. El estado de las encuestas nunca identifica a quienes votaron. El estado de las metas incluye objetivos y progreso, se actualiza en segundos cuando cambian las metas o el progreso y se renueva al menos una vez por minuto para los cambios basados en tiempo. No ejecuta acciones de finalización de metas.
 
@@ -130,7 +134,7 @@ Los datos de sesión también incluyen `follower-month`, `subscriber-month`, `ch
 
 ## Funciones que aún no están disponibles
 
-- Eventos de mascotas, compras de DimaFX, duelos y ruleta. Cada función necesita correcciones antes de añadirse.
+- Los widgets personalizados no reciben eventos de hype trains ni de pausas publicitarias.
 - Sincronización en directo desde un editor local.
 - Los widgets personalizados no reciben propinas reales hasta que DomDimaBot ofrezca la función de propinas; la prueba **Propina** de Studio solo envía datos de ejemplo.
 - No se admiten los emotes de 7TV, BetterTTV (BTTV) ni FrankerFaceZ (FFZ).

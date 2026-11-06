@@ -9,14 +9,14 @@ Optional sixth file. Imports without one (StreamElements exports) get it inferre
 
 ```json
 { "engine": "dima", "api": 1, "name": "Pastel chat", "author": "Ana", "version": "1.2.0",
-  "description": "Chat with pastel bubbles", "uses": ["chat", "alerts", "storage", "signals", "polls", "goals", "tts", "triggers", "rewards"] }
+  "description": "Chat with pastel bubbles", "uses": ["chat", "alerts", "storage", "signals", "polls", "goals", "tts", "triggers", "rewards", "pets", "duels", "roulette", "dimafx"] }
 ```
 
 - `engine`: `dima` (native) or `streamelements` (adds the SE translation layer). Default: `streamelements` without a manifest.
 - `api`: Dima SDK version the code targets. Only `1` exists. Unknown versions are refused on import.
 - `uses` (api 1): `chat` (messages, deletes, clears), `alerts` (follow, sub, resub, gift, bits, raid, tip), `storage`
   (persistent key/value), `signals` (chat command signals), `counters` (read command counts), `session` (latest/recent/session totals),
-  `polls` and `goals` (live state), `tts`, `triggers`, and `rewards` (bot events). Unknown entries are reported as import
+  `polls` and `goals` (live state), and `tts`, `triggers`, `rewards`, `pets`, `duels`, `roulette`, and `dimafx` (bot events). Unknown entries are reported as import
   issues and ignored. Studio shows these in plain words before a widget is added, and the server only streams what a
   published widget uses.
 - SE inference: any `onEventReceived` handler gets `chat` and `alerts` (listener names are often built indirectly),
@@ -105,7 +105,7 @@ The public SDK storage names are `Dima.storage.get/set`, the `storage` update ev
 ```js
 const ctx = await Dima.ready();         // { widget, channel, fields, mode: 'editor'|'live', muted, session }
 Dima.fields;                             // current settings (plain object)
-Dima.on('chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'button' | 'fields' | 'storage' | 'session' | 'signal' | 'signal:<name>' | 'state' | 'tts' | 'trigger' | 'reward', handler) → off()
+Dima.on('chat' | 'chat.delete' | 'chat.clear' | 'alert' | 'button' | 'fields' | 'storage' | 'session' | 'signal' | 'signal:<name>' | 'state' | 'tts' | 'trigger' | 'reward' | 'pet' | 'duel' | 'roulette' | 'dimafx', handler) → off()
 Dima.state('polls' | 'goals', handler) → off() // latest value once known, then every change
 Dima.storage.get(key) / Dima.storage.set(key, value)   // Promise; JSON values ≤ 64 KB
 Dima.counters.get(name)                  // Promise<number> — the count of the channel's command `name`
@@ -167,6 +167,10 @@ interface DimaReward {
   id: string; reward: { id: string; title: string; cost: number }; user: DimaUser | null;
   input: string | null; at: number; test: boolean;
 }
+interface DimaPet { id: string; kind: 'talk' | 'ask' | 'tts'; phase: 'speaking' | 'done'; text: string; mood: string | null; result: 'completed' | 'stopped' | null; at: number; test: boolean }
+interface DimaDuel { id: string; phase: 'started' | 'ended'; challenger: string; opponent: string; mode: 'overlay' | 'chat'; winner: string | null; loser: string | null; endsAt: number | null; at: number; test: boolean }
+interface DimaRoulette { id: string; rouletteId: string; name: string; phase: 'spinning' | 'result'; label: string | null; endsAt: number; at: number; test: boolean }
+interface DimaDimafx { id: string; item: { id: string; name: string; type: string }; source: 'bits' | 'credits' | 'saved' | 'test'; bits: number | null; credits: number | null; user: DimaUser | null; message: string | null; at: number; test: boolean }
 type DimaState = { name: 'polls'; value: DimaPolls } | { name: 'goals'; value: DimaGoal[] };
 ```
 
@@ -226,7 +230,7 @@ recipients come as one gift alert; a sub + resub-message pair shows once) and Bi
 Delivery guarantees: chat, deletes and alerts for widgets are live only. A source that is disconnected misses them (the
 built-in alert boxes keep their recoverable queue); session snapshots are sent again on every connection.
 
-### Step 5B-1: live state and bot events (built 2026-11-06; not deployed)
+### Step 5B-1: live state and bot events (live 2026-11-06)
 
 `state` is the current snapshot keyed by `name`: `polls` is `{ poll, prediction }` (each `null` when absent); `goals` is
 the public `DimaGoal[]` projection from the Goals page. State is resent after source connection/layer changes and only
@@ -236,7 +240,7 @@ Polls reuse the sanitized Twitch interactions source and expose totals, never vo
 and prediction events are required. Goal state follows goal/progress edits within seconds and refreshes at least once a
 minute for time-based changes; it does not execute goal completion actions.
 
-Bot feed events are `tts`, `trigger`, and `reward`; all include `at` (milliseconds) and `test` (true for Studio tests).
+Bot feed events are `tts`, `trigger`, `reward`, `pet`, `duel`, `roulette`, and `dimafx`; all include `at` (milliseconds) and `test` (true for Studio tests).
 They are live-only and have no reconnect replay. TTS start is emitted when audio plays and end once on completion;
 both share `id`, end carries `reason`, and a message that never plays has no event. Trigger sends include only the send
 ID, trigger ID, name and media type, never a media URL; widget-only sources observe the send without playing it. Reward
@@ -249,6 +253,32 @@ to OBS is shown for about one minute before real state is restored. Studio previ
 goals. The **Replay recent chat** button in the Chat row is preview-only and sends the last 20 stored messages
 oldest-first, text-only (no emotes, name colors, or badge images). Moderator-deleted messages can appear, so replay is
 not sent to OBS.
+
+### Step 5B-2: pet, duel, roulette, and DimaFX events (live 2026-11-06)
+
+Widgets opt in with `uses` values `pets`, `duels`, `roulette`, or `dimafx`. Dima SDK event names are `pet`, `duel`,
+`roulette`, and `dimafx`; StreamElements compatibility listeners are `dima:pet`, `dima:duel`, `dima:roulette`,
+and `dima:dimafx`.
+
+- Pet events send `speaking` when a pet actually starts playback and `done` once when a reply that spoke finishes.
+  `text` is the pet's spoken output, never the viewer's question; private DomDimaBot desktop-app requests are excluded.
+  `mood` is null when moods are off, and `result` is populated only on `done` (`completed` or `stopped`).
+- Duel events send `started` on an accepted challenge or a challenge against the streamer, then `ended` once the fight
+  finishes. Challenger and opponent are Twitch logins; winner and loser stay null until `ended` to avoid spoilers.
+- Roulette events send `spinning` and then `result` with the landed label. The result is best-effort and can be missed
+  if the API restarts during a spin.
+- DimaFX events send once when an item starts playing and require the DimaFX overlay to be connected. Viewer identity
+  is present only when shared with the extension; custom TTS message text is viewer input and must be escaped or shown
+  with `textContent`.
+- Studio's Bot events row includes Pet reply, Duel, Roulette, and DimaFX purchase. Paired events send the second phase
+  about three seconds later; editor preview has the same tests. All Studio events carry `test: true`.
+- Delivery (code): producers publish to Dragonfly `widget-feed` (`widget_feed/bot-events.ts`) after their own claim —
+  pets after the ready→playing update and the terminal `finishRequest` claim, duels after the accept/`fightStreamer`
+  write and the `run.completedAt: null` settle claim, roulette after the start CAS (never a replay). The API drops a
+  pet `speaking` that arrives after its `done` (producers run in different processes), refuses roulette deadlines more
+  than 10 minutes ahead and holds the label in a timer until `endsAt`. DimaFX claims `widgetSentAt` on the playback job
+  before publishing, so a job recovered after an API restart is not announced again. The duel worker flushes pending
+  widget messages (2 s cap) before it exits.
 
 Chat delete/clear subscriptions are activated when an overlay with a chat widget is published and re-checked at most
 hourly when such an overlay connects; failures are logged and retried, never blocking publishing.

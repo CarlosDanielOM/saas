@@ -1,6 +1,6 @@
 # Step 5 plan: `$(widget.signal)` and the rest of the widget engine "magic"
 
-Status: Release A built 2026-11-05 — signals, Studio Commands block, Test drawer, storage rename. Step 5B-1 built 2026-11-06 — polls/goals live state, TTS/trigger/reward bot events, and recent chat replay; not deployed. Step 5B-2 is next: pets, DimaFX purchases, duels and roulette events; each needs fixes first.
+Status: Release A live 2026-11-05 — signals, Studio Commands block, Test drawer, storage rename. Step 5B-1 live 2026-11-06 — polls/goals live state, TTS/trigger/reward bot events, and recent chat replay. Step 5B-2 live 2026-11-06 — pet replies, DimaFX purchases, duels, and roulette events.
 
 ## 1. What a signal is
 
@@ -73,7 +73,7 @@ Signals are fire-and-forget (no queue, no replay after a reconnect), like chat.
 - Widget log shows each received signal ("signal theme → night from MOD_kitsune").
 - Import summary and the "Uses:" chips list "Commands can control it" when `signals` is used.
 
-## 6. Step 5B-1: live state and bot events (built 2026-11-06; not deployed)
+## 6. Step 5B-1: live state and bot events (live 2026-11-06)
 
 Implemented in this checkout:
 
@@ -93,11 +93,27 @@ Implemented in this checkout:
    poll and Sample goals. The editor preview has the same tests. Sample OBS state appears for about a minute, then real
    state returns; preview starts with the channel's real polls and goals.
 
-## 6.1. Step 5B-2: remaining bot events (next)
+## 6.1. Step 5B-2: pet, DimaFX, duel, and roulette events (live 2026-11-06)
 
-Pets, DimaFX purchases, duels and roulette events remain for the next step. Each source feature needs fixes first, then
-its event contract and live feed mapping can be added. Do not advertise these categories as available until those fixes
-and their isolated behavior checks are complete.
+Implemented in this checkout:
+
+1. **Pet replies** (`uses: pets`): send `speaking` when playback actually starts and `done` once for replies that spoke.
+   The event text is the pet's spoken output, never the viewer's question. Private DomDimaBot desktop-app replies are
+   excluded; mood is null when moods are off; completion result is present only on `done`.
+2. **Duels** (`uses: duels`): send `started` when a challenge is accepted or someone challenges the streamer, then
+   `ended` once after the fight. Challenger and opponent are Twitch logins; winner and loser remain null until the end.
+3. **Roulette** (`uses: roulette`): send `spinning`, then `result` with the landed label when the spin ends. Best
+   effort: an API restart during a spin can lose the result event.
+4. **DimaFX purchases** (`uses: dimafx`): send once when the item starts playing; the DimaFX overlay must be connected.
+   Viewer identity is included only when shared with the extension. Custom TTS message text is viewer input and must be
+   escaped by widgets.
+5. **SDK and Studio:** Dima event names are `pet`, `duel`, `roulette`, and `dimafx`; StreamElements listeners are
+   `dima:pet`, `dima:duel`, `dima:roulette`, and `dima:dimafx`. The Test drawer offers Pet reply, Duel, Roulette, and
+   DimaFX purchase. Paired events send the second phase about three seconds later; editor preview has the same tests.
+   Events include `at` and `test`; Studio tests set `test: true`.
+
+All four categories are live-only and are not replayed after OBS reconnects. These changes are built but have not been
+deployed.
 4. ~~**Code tab**~~ and 5. ~~**Roll back**~~: shipped 2026-11-05 as the Studio code editor ("New widget" / "Edit code",
    version history with "Open"); see `CUSTOM_WIDGETS.md` → Code editor.
 

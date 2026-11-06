@@ -33,6 +33,10 @@ Before you add the widget, Overlay Studio shows its engine and **Uses:** list. T
 - **Twitch polls and predictions** — read current poll and prediction totals, without voter identities.
 - **Goals and their progress** — read goals and current progress from the Goals page.
 - **Text-to-speech messages**, **Trigger alerts**, and **Channel-point redemptions** — observe these bot events as they happen.
+- **The pet speaking** — observe when a pet starts and finishes a spoken reply.
+- **Duels** — observe duels starting and ending.
+- **Roulette spins** — observe a spin and its result.
+- **DimaFX purchases** — observe a DimaFX item when it starts playing.
 
 A widget that does not ask for live data receives none. Overlay Studio only delivers the categories the widget declared.
 
@@ -90,7 +94,7 @@ Open **Test** and find **Custom widget tests**. Choose **Preview** to send tests
 
 The test buttons inside a widget’s own settings also send a button event to that widget in the preview. They do not send a real alert or message.
 
-When a widget in the overlay uses a live-state or bot-event category, the **Bot events** row offers **TTS message**, **Trigger**, **Channel points**, **Sample poll**, and **Sample goals**. TTS sends a start event and an end event three seconds later. The same tests are available in the code editor preview. Choose **Preview** or **OBS** as the destination; sample state sent to OBS appears for about a minute, then the real state returns. Studio previews begin with the channel’s real polls and goals.
+When a widget in the overlay uses a live-state or bot-event category, the **Bot events** row offers **TTS message**, **Trigger**, **Channel points**, **Sample poll**, **Sample goals**, **Pet reply**, **Duel**, **Roulette**, and **DimaFX purchase**. Paired events send their second phase about three seconds later. The same tests are available in the code editor preview. Choose **Preview** or **OBS** as the destination; sample state sent to OBS appears for about a minute, then the real state returns. Studio previews begin with the channel’s real polls and goals.
 
 Widgets read poll and prediction totals with `Dima.state('polls', handler)` and goals with `Dima.state('goals', handler)`. The handler runs once when the value is first known and again when it changes. No callback means the value is not known yet; it does not mean there are no polls or goals. Polls and predictions reach the widget after their Twitch events are enabled. Open the layer’s **Polls & predictions** setup, which is the same setup shown on the Overlay tab. Poll state never identifies who voted. Goal state includes targets and progress, updates within seconds when goals or progress change, and is refreshed at least once a minute for time-based changes. It does not run goal completion actions.
 
@@ -130,7 +134,7 @@ Session data also provides `follower-month`, `subscriber-month`, `cheer-month`, 
 
 ## Not available yet
 
-- Pet events, DimaFX purchases, duels, and roulette events. Each needs fixes before it can be added.
+- Hype trains and ad breaks are not available to custom widgets.
 - Live sync from a local editor.
 - Real tips do not trigger custom widgets until DomDimaBot tipping is available; the Studio **Tip** test only sends sample data.
 - 7TV, BetterTTV (BTTV), and FrankerFaceZ (FFZ) emotes are not supported.

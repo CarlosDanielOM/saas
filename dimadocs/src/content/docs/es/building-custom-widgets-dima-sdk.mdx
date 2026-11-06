@@ -35,7 +35,7 @@ El manifiesto es un objeto JSON y admite estos campos:
 |---|---:|---|
 | `engine` | No | `"dima"` para código nativo del SDK de Dima o `"streamelements"` para activar la compatibilidad con StreamElements. Si el manifiesto existe, el valor predeterminado es `"dima"`; sin manifiesto, la importación usa StreamElements. |
 | `api` | No | Versión del SDK de Dima. El valor predeterminado es `1`; se rechazan las versiones no compatibles. |
-| `uses` | No | Lista de categorías que necesita el widget: `chat`, `alerts`, `storage`, `counters`, `session`, `signals`, `polls`, `goals`, `tts`, `triggers` o `rewards`. Si falta, queda vacía. Las categorías desconocidas se notifican y se ignoran. |
+| `uses` | No | Lista de categorías que necesita el widget: `chat`, `alerts`, `storage`, `counters`, `session`, `signals`, `polls`, `goals`, `tts`, `triggers`, `rewards`, `pets`, `duels`, `roulette` o `dimafx`. Si falta, queda vacía. Las categorías desconocidas se notifican y se ignoran. |
 | `name` | No | Nombre que se muestra en Studio. |
 | `author` | No | Nombre de quien creó el widget. |
 | `version` | No | Cadena de versión del paquete. |
@@ -55,7 +55,7 @@ El manifiesto es un objeto JSON y admite estos campos:
 }
 ```
 
-Declara solo lo que el widget necesite. `chat` permite recibir eventos de chat, borrado y limpieza; `alerts` permite eventos de follow, suscripción, regalo, Bits, raid y propina; `storage` permite guardar valores persistentes; `counters` permite consultar contadores de comandos; `session` permite consultar eventos recientes y totales; `signals` permite controlar el widget con comandos del chat; `polls` y `goals` permiten recibir su estado en directo; y `tts`, `triggers` y `rewards` permiten recibir esos eventos del bot. Las propinas reales aún no están disponibles. En Studio, el propietario del canal ve la lista `uses`, y los widgets publicados solo reciben las categorías declaradas. Las pruebas de botones del editor están disponibles aparte de `uses`.
+Declara solo lo que el widget necesite. `chat` permite recibir eventos de chat, borrado y limpieza; `alerts` permite eventos de follow, suscripción, regalo, Bits, raid y propina; `storage` permite guardar valores persistentes; `counters` permite consultar contadores de comandos; `session` permite consultar eventos recientes y totales; `signals` permite controlar el widget con comandos del chat; `polls` y `goals` permiten recibir su estado en directo; y `tts`, `triggers`, `rewards`, `pets`, `duels`, `roulette` y `dimafx` permiten recibir esos eventos del bot. Las propinas reales aún no están disponibles. En Studio, el propietario del canal ve la lista `uses`, y los widgets publicados solo reciben las categorías declaradas. Las pruebas de botones del editor están disponibles aparte de `uses`.
 
 ## Ajustes editables
 
@@ -150,6 +150,10 @@ Suscríbete con `Dima.on(type, handler)`. Devuelve una función para cancelar la
 | `tts` | `DimaTts` | `tts` |
 | `trigger` | `DimaTrigger` | `triggers` |
 | `reward` | `DimaReward` | `rewards` |
+| `pet` | `DimaPet` | `pets` |
+| `duel` | `DimaDuel` | `duels` |
+| `roulette` | `DimaRoulette` | `roulette` |
+| `dimafx` | `DimaDimafx` | `dimafx` |
 
 ### Estado en directo
 
@@ -178,6 +182,12 @@ Estos eventos solo se envían en directo: una fuente de OBS que se reconecta no 
 | `tts` (`uses: ["tts"]`) | `DimaTts`: `id`, `phase` (`start` o `end`), `text`, `user`, `reason` | `text` es el texto filtrado que se pronunció. El inicio se envía al reproducir el audio; el final se envía una vez al terminar, con el motivo `ended`, `skipped`, `cleared` o `interrupted`. Ambas fases comparten `id`; los mensajes que nunca se reproducen no generan eventos. |
 | `trigger` (`uses: ["triggers"]`) | `DimaTrigger`: `id`, `triggerId`, `name`, `mediaType` (`audio`, `video`, `image` o `unknown`) | Se envía al enviar una alerta de trigger desde un comando, un canje de puntos del canal o una regla de Bits. No incluye la URL del medio. Un overlay que solo tenga widgets personalizados puede observar el envío, pero no reproduce el medio. |
 | `reward` (`uses: ["rewards"]`) | `DimaReward`: `id`, `reward: { id, title, cost }`, `user`, `input` | Se envía por cada canje de puntos del canal, incluso si la recompensa no tiene una acción del bot. `input` es el texto del espectador cuando lo proporciona; usa `textContent` o `Dima.escape()`, nunca `innerHTML`. |
+| `pet` (`uses: ["pets"]`) | `DimaPet`: `id`, `kind`, `phase`, `text`, `mood`, `result` | Se envía cuando la mascota empieza a hablar y una vez cuando termina, solo en respuestas que llegaron a hablar. Procesa `done` aunque antes no haya llegado `speaking`. `text` es lo que dijo la mascota, nunca la pregunta del espectador. Las respuestas privadas de la aplicación de escritorio de DomDimaBot no se envían a los widgets. |
+| `duel` (`uses: ["duels"]`) | `DimaDuel`: `id`, `phase`, `challenger`, `opponent`, `mode`, `winner`, `loser`, `endsAt` | Los nombres son logins de Twitch. Se envía `started` cuando se acepta un desafío o alguien desafía al streamer; `ended` llega una vez al terminar la pelea y solo entonces revela el resultado. |
+| `roulette` (`uses: ["roulette"]`) | `DimaRoulette`: `id`, `rouletteId`, `name`, `phase`, `label`, `endsAt` | Envía `spinning` y luego `result` con la opción elegida cuando termina el giro. El evento del resultado puede perderse si DomDimaBot se reinicia durante el giro. |
+| `dimafx` (`uses: ["dimafx"]`) | `DimaDimafx`: `id`, `item`, `source`, `bits`, `credits`, `user`, `message` | Se envía una vez cuando empieza a reproducirse un artículo de DimaFX; el overlay de DimaFX debe estar conectado. Solo incluye la identidad del espectador si la compartió con la extensión. `message` es texto del espectador en los artículos de TTS personalizado; usa `textContent` o `Dima.escape()`, nunca `innerHTML`. |
+
+`DimaPet.kind` puede ser `talk`, `ask` o `tts`; `phase` pasa de `speaking` a `done`. `mood` es `null` si los estados de ánimo están desactivados, y `result` es `completed` o `stopped` solo en `done`. `DimaDuel.phase` pasa de `started` a `ended`; `challenger` y `opponent` son logins de Twitch, `mode` es `overlay` o `chat`, `winner` y `loser` son `null` hasta `ended`, y `endsAt` puede ser `null`. `DimaRoulette.phase` pasa de `spinning` a `result`; `label` solo está disponible en `result`. En `DimaDimafx`, `item` es `{ id, name, type }`, `source` puede ser `bits`, `credits`, `saved` o `test`, y `bits` y `credits` son el importe pagado o `null`. `user` contiene `{ id, login, name }` solo si el espectador compartió su identidad con la extensión; en caso contrario, es `null`. `message` es el texto del espectador solo para artículos de TTS personalizado; en los demás casos es `null`.
 
 ```js
 Dima.on('tts', event => {
@@ -187,11 +197,21 @@ Dima.on('trigger', event => console.log(event.name, event.mediaType));
 Dima.on('reward', event => {
   document.querySelector('#reward-input').textContent = event.input ?? '';
 });
+Dima.on('pet', event => {
+  if (event.phase === 'speaking') document.querySelector('#pet').textContent = event.text;
+});
+Dima.on('duel', event => console.log(event.phase, event.challenger, event.opponent));
+Dima.on('roulette', event => {
+  if (event.phase === 'result') document.querySelector('#winner').textContent = event.label ?? '';
+});
+Dima.on('dimafx', event => console.log(event.item.name, event.source));
 ```
+
+Los tipos `DimaPet`, `DimaDuel`, `DimaRoulette` y `DimaDimafx` describen estos eventos. Los widgets compatibles con StreamElements reciben los mismos eventos mediante los listeners `dima:pet`, `dima:duel`, `dima:roulette` y `dima:dimafx` de `onEventReceived` (`obj.detail.event`). Los cuatro tipos incluyen `at` (milisegundos) y `test` (`true` en las pruebas de Studio). Solo se envían en directo; no se repiten al reconectarse OBS.
 
 ### Pruebas de estado y eventos en Studio
 
-La fila **Eventos del bot** aparece cuando un widget del overlay usa alguna de estas categorías. Permite enviar TTS (inicio y final tres segundos después), Trigger, Puntos del canal, Encuesta de ejemplo y Metas de ejemplo a la vista previa o a OBS. La vista previa del editor de código ofrece las mismas pruebas. El estado de ejemplo enviado a OBS se muestra durante aproximadamente un minuto y después vuelve el estado real. Las vistas previas de Studio empiezan con las encuestas y metas reales del canal.
+La fila **Eventos del bot** aparece cuando un widget del overlay usa alguna de estas categorías. Permite enviar TTS (inicio y final tres segundos después), Trigger, Puntos del canal, Encuesta de ejemplo, Metas de ejemplo, Respuesta de la mascota, Duelo, Ruleta y Compra de DimaFX a la vista previa o a OBS. Los eventos emparejados envían la segunda fase unos tres segundos después. La vista previa del editor de código ofrece las mismas pruebas. El estado de ejemplo enviado a OBS se muestra durante aproximadamente un minuto y después vuelve el estado real. Las vistas previas de Studio empiezan con las encuestas y metas reales del canal.
 
 El botón **Repetir chat reciente** está en la fila **Chat** y solo funciona en la vista previa. Envía los últimos 20 mensajes almacenados del canal, del más antiguo al más reciente. La repetición solo incluye texto: no incluye emotes, colores de nombre ni imágenes de insignias, y puede mostrar mensajes borrados por moderadores, por eso no se envía a OBS.
 
