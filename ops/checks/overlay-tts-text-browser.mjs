@@ -105,7 +105,8 @@ try {
   await editor.locator('.layers').getByRole('button', { name: 'Text to speech', exact: true }).click();
   const toggle = editor.getByRole('switch', { name: 'Show spoken text', exact: true });
   assert.equal(await toggle.isChecked(), false, 'existing widgets default off');
-  assert(await editor.locator('.widget[data-kind="tts"]').getByText('Audio only · transparent on stream', { exact: true }).isVisible());
+  // The idle card is drawn by the shared renderer, in layer order.
+  assert(await editor.locator('app-overlay-scene-renderer .placeholder[data-kind="tts"]').getByText('Audio only · transparent on stream', { exact: true }).isVisible());
   assert.equal(await editor.getByRole('switch', { name: 'Enable TTS playback', exact: true }).isChecked(), true);
   await toggle.check();
   await editor.getByRole('button', { name: 'Save draft', exact: true }).click(); await editor.getByRole('button', { name: 'Saved', exact: true }).waitFor();

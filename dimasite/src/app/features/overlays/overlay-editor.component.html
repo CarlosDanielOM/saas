@@ -232,8 +232,8 @@
         <div class="layers__heading"><h3>{{ t('layers') }} <span>{{ widgets().length }}</span></h3><span class="lf-note">{{ t('layersHint') }}</span></div>
         <ul class="layers__list">
           @for (widget of layersTopFirst(); track widget.id) {
-            <li class="layer-row" [class.selected]="widget.id === selectedId()" [class.is-hidden]="!widget.visible" draggable="true" (dragstart)="onLayerDragStart($event, widget.id)" (dragover)="onLayerDragOver($event)" (drop)="onLayerDrop($event, widget.id)">
-              <span class="layer-row__grip" aria-hidden="true"></span>
+            <li class="layer-row" [attr.data-layer-id]="widget.id" [class.selected]="widget.id === selectedId()" [class.is-hidden]="!widget.visible" [class.is-dragging]="layerDrag()?.id === widget.id" [class.is-drop-target]="layerDrag()?.over === widget.id && layerDrag()?.id !== widget.id" (pointerdown)="startLayerDrag($event, widget.id)">
+              <span class="layer-row__grip" aria-hidden="true" (pointerdown)="startLayerDrag($event, widget.id, true)" (click)="$event.stopPropagation()"></span>
               <button type="button" class="layer" [class.selected]="widget.id === selectedId()" [attr.aria-current]="widget.id === selectedId() ? 'true' : null" (click)="pick(widget.id)"><span class="layer__icon" [attr.data-kind]="widget.kind"><lucide-icon [name]="widgetIcon(widget.kind)" [size]="14" aria-hidden="true" /></span><span class="layer__name">{{ widgetName(widget) }}</span>@if (!widget.visible) { <span class="layer__hidden">{{ t('timelineHidden') }}</span> }</button>
               <button type="button" class="layer-toggle" [class.is-off]="!widget.visible" [attr.aria-label]="t(widget.visible ? 'hideLayer' : 'showLayer', { name: widgetName(widget) })" [title]="t(widget.visible ? 'hideLayer' : 'showLayer', { name: widgetName(widget) })" (click)="toggleVisibility(widget.id)"><lucide-icon [name]="widget.visible ? icons.Eye : icons.EyeOff" [size]="16" aria-hidden="true" /></button>
               <button type="button" class="layer-toggle" [class.on]="widget.locked" [attr.aria-label]="t(widget.locked ? 'unlockLayer' : 'lockLayer', { name: widgetName(widget) })" [title]="t(widget.locked ? 'unlockLayer' : 'lockLayer', { name: widgetName(widget) })" (click)="toggleLock(widget.id)"><lucide-icon [name]="widget.locked ? icons.LockKeyhole : icons.LockOpen" [size]="16" aria-hidden="true" /></button>
@@ -304,12 +304,6 @@
                 <div class="widget widget--selection" role="group" tabindex="0" [attr.data-kind]="widget.kind" [attr.data-widget-id]="widget.id" [attr.data-delivery]="widgetModule(widget)?.definition?.delivery" [class.selected]="selectedId() === widget.id" [class.is-preview]="isPlaying(widget)" [class.is-locked]="widget.locked"
                   [style.left.%]="placement.x / canvasWidth() * 100" [style.top.%]="placement.y / canvasHeight() * 100" [style.width.%]="placement.width / canvasWidth() * 100" [style.height.%]="placement.height / canvasHeight() * 100" [style.z-index]="layerIndex + 1"
                   (pointerdown)="startPointer($event,widget,'move')" (click)="pick(widget.id)" (keydown)="onWidgetKeydown($event,widget)" [attr.aria-label]="widgetName(widget) + ' ' + t('canvasItem')">
-                  @if (!isPlaying(widget) && (widget.kind === 'tts' || widget.kind === 'trigger')) {
-                    <div class="widget__content widget__placeholder">
-                      <span class="widget__icon"><lucide-icon [name]="widget.kind === 'tts' ? icons.Volume2 : icons.Zap" [size]="18" aria-hidden="true" /></span>
-                      <div><small>{{ t(widget.kind === 'tts' ? 'ttsPreviewLabel' : 'triggerPreviewLabel') }}</small><strong>{{ t(widget.kind === 'tts' ? (widget.showTtsText === true ? 'ttsPreviewText' : 'ttsAudioOnly') : 'triggerPreviewText') }}</strong></div>
-                    </div>
-                  }
                   @if (selectedId() === widget.id && !widget.locked) { <button type="button" class="resize-handle" (pointerdown)="startPointer($event,widget,'resize')" [attr.aria-label]="t('resize')"></button> }
                 </div>
               }

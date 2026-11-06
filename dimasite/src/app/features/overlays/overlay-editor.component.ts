@@ -315,7 +315,9 @@ export class OverlayEditorComponent {
   readonly accountName = computed(() => this.auth.session()?.twitchUser.display_name || this.auth.session()?.twitchUser.login || '');
   readonly accountAvatar = computed(() => this.auth.session()?.twitchUser.profile_image_url || '');
   readonly accountAvatarFailed = signal(false);
-  private dragLayerId: string | null = null;
+  /** The Layers row being dragged and the row it would take the place of. */
+  readonly layerDrag = signal<{ id: string; over: string } | null>(null);
+  private layerGesture?: () => void;
 
   constructor() {
     this.seed();
@@ -390,7 +392,7 @@ export class OverlayEditorComponent {
       const timer = setTimeout(() => this.notice.set(''), 8000);
       onCleanup(() => clearTimeout(timer));
     });
-    inject(DestroyRef).onDestroy(() => { this.flushRecovery(); this.disposed = true; this.resetSimulation(); this.assetCache.clear(); });
+    inject(DestroyRef).onDestroy(() => { this.layerGesture?.(); this.flushRecovery(); this.disposed = true; this.resetSimulation(); this.assetCache.clear(); });
   }
   /** Counted strings have a `…One` variant for 1. */
   n(key: string, count: number, params: Record<string, string | number> = {}): string { return this.t(count === 1 ? key + 'One' : key, { count, ...params }); }
@@ -465,16 +467,68 @@ export class OverlayEditorComponent {
   toggleTheme(): void { this.theme.toggleTheme(); }
   toggleLanguage(): void { this.language.toggleLanguage(); }
   sceneLayerCount(scene: OverlayScene): number { return scene.widgets.length; }
-  /** Drag a row in Layers to change what shows in front. The row takes the target's place. */
-  onLayerDragStart(event: DragEvent, id: string): void {
-    this.dragLayerId = id; event.dataTransfer?.setData('application/x-overlay-layer', id);
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  /**
+   * Drag a row in Layers to change what shows in front; the row takes the target's place.
+   * Pointer events, so it works with touch: the grip drags at once, a mouse drags the row
+   * after a few pixels, and a finger holds the row briefly (a quick swipe still scrolls).
+   */
+  startLayerDrag(event: PointerEvent, id: string, grip = false): void {
+    const target = event.target as Element;
+    // The grip handles its own press first; the row then sees a gesture in progress and skips it.
+    if (event.button !== 0 || this.layerGesture || target.closest('.layer-toggle')) return;
+    const row = (event.currentTarget as HTMLElement).closest<HTMLElement>('.layer-row')!, touch = event.pointerType !== 'mouse';
+    const pointerId = event.pointerId, startX = event.clientX, startY = event.clientY;
+    // A drop only applies to the overlay or design it started in.
+    const scope = this.sceneId() + '|' + (this.designDraft()?.id ?? '');
+    let started = false, hold: ReturnType<typeof setTimeout> | undefined, frame = 0, lastX = startX, lastY = startY;
+    const scroller = (() => { for (let node = row.parentElement; node; node = node.parentElement) { const overflow = getComputedStyle(node).overflowY; if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight) return node; } return document.scrollingElement as HTMLElement | null; })();
+    const retarget = () => {
+      const over = document.elementFromPoint(lastX, lastY)?.closest<HTMLElement>('.layer-row[data-layer-id]')?.dataset['layerId'];
+      if (over) this.layerDrag.set({ id, over });
+    };
+    // Holding near the list's edge keeps scrolling, so rows out of view can be reached.
+    const edgeScroll = () => {
+      const box = scroller === document.scrollingElement ? { top: 0, bottom: innerHeight } : scroller?.getBoundingClientRect();
+      const step = !scroller || !box ? 0 : lastY < box.top + 48 ? -8 : lastY > box.bottom - 48 ? 8 : 0;
+      if (step) { scroller!.scrollBy(0, step); retarget(); }
+      frame = requestAnimationFrame(edgeScroll);
+    };
+    const begin = () => {
+      started = true; clearTimeout(hold); this.layerDrag.set({ id, over: id });
+      try { row.setPointerCapture(pointerId); } catch { /* The pointer already ended. */ }
+      if (touch) navigator.vibrate?.(12);
+      frame = requestAnimationFrame(edgeScroll);
+    };
+    const move = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      if (!started) {
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) < (touch ? 8 : 4)) return;
+        // A finger that moves before the hold is scrolling the list, not dragging.
+        if (touch && !grip) { stop(); return; }
+        begin();
+      }
+      lastX = e.clientX; lastY = e.clientY; retarget();
+    };
+    // While dragging, the page must not scroll under the finger (needs a non-passive listener).
+    const touchMove = (e: TouchEvent) => { if (started) e.preventDefault(); };
+    const contextMenu = (e: Event) => e.preventDefault();
+    const up = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      const drag = started ? this.layerDrag() : null; stop();
+      if (drag && drag.over !== drag.id && scope === this.sceneId() + '|' + (this.designDraft()?.id ?? '')) this.reorderLayer(drag.id, drag.over);
+    };
+    const cancel = (e: PointerEvent) => { if (e.pointerId === pointerId) stop(); };
+    const stop = () => {
+      clearTimeout(hold); cancelAnimationFrame(frame); this.layerDrag.set(null); this.layerGesture = undefined;
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel);
+      removeEventListener('touchmove', touchMove); row.removeEventListener('contextmenu', contextMenu);
+    };
+    addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
+    addEventListener('touchmove', touchMove, { passive: false }); row.addEventListener('contextmenu', contextMenu);
+    this.layerGesture = stop;
+    if (touch && !grip) hold = setTimeout(begin, 350);
   }
-  onLayerDragOver(event: DragEvent): void { if (this.dragLayerId) event.preventDefault(); }
-  onLayerDrop(event: DragEvent, targetId: string): void {
-    const id = this.dragLayerId; this.dragLayerId = null;
-    if (!id || id === targetId) return;
-    event.preventDefault();
+  private reorderLayer(id: string, targetId: string): void {
     this.updateWidgets(all => {
       const from = all.findIndex(w => w.id === id), to = all.findIndex(w => w.id === targetId);
       if (from < 0 || to < 0) return all;
@@ -841,7 +895,7 @@ export class OverlayEditorComponent {
     if(index<0||next<0||next>=all.length) return;
     [all[index],all[next]]=[all[next],all[index]]; this.updateWidgets(()=>all);
   }
-  switchScene(id: string): void { if (id === this.sceneId()) return; this.stopPointer(); this.endHistoryGroup(); this.confirmRotate.set(false); this.confirmDelete.set(false); this.resetSimulation(); this.sceneId.set(id); this.selectedId.set(this.widgets()[0]?.id ?? null); this.saved.set(false); }
+  switchScene(id: string): void { if (id === this.sceneId()) return; this.layerGesture?.(); this.stopPointer(); this.endHistoryGroup(); this.confirmRotate.set(false); this.confirmDelete.set(false); this.resetSimulation(); this.sceneId.set(id); this.selectedId.set(this.widgets()[0]?.id ?? null); this.saved.set(false); }
   newScene(): void {
     const scene=makeScene(this.id('overlay'),this.t('newOverlay'),this.designs()[0].id); scene.widgets=[]; scene.publicId='';
     this.stopPointer(); this.edit(() => { this.scenes.update(all=>[...all,scene]); this.sceneId.set(scene.id); this.selectedId.set(null); this.resetSimulation(); }, null);

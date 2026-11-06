@@ -617,8 +617,6 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 /* Editor chrome overlays the canonical scene without changing its content box. */
 .widget.widget--selection { padding:0; border:0; border-radius:0; background:transparent; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25) }
-.widget--selection .widget__placeholder { background:rgba(33,38,55,.88); border-radius:8px }
-.widget--selection[data-kind="trigger"] .widget__placeholder { background:linear-gradient(135deg,rgba(66,42,23,.94),rgba(33,38,55,.9)) }
 .widget--selection.is-preview { pointer-events:none }
 .widget--selection.is-preview .resize-handle { pointer-events:auto }
 
@@ -809,7 +807,12 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
 .layer-row { display: flex; align-items: center; gap: 2px; padding-right: 0.15rem; border-radius: 0.8rem; }
 .layer-row:hover { background: color-mix(in srgb, var(--btn) 70%, transparent); }
 .layer-row.selected { background: var(--accent-soft); }
-.layer-row__grip { flex: none; width: 0.6rem; height: 1rem; margin-left: 0.2rem; background: radial-gradient(circle, var(--muted) 1.2px, transparent 1.6px) 0 0 / 0.3rem 0.33rem; cursor: grab; opacity: 0.6; }
+/* The dots stay 0.6rem x 1rem; the padding makes a finger-sized drag target. */
+.layer-row__grip { flex: none; box-sizing: border-box; width: 1.5rem; height: 2.1rem; padding: 0.55rem 0.45rem; margin-left: -0.1rem; background: radial-gradient(circle, var(--muted) 1.2px, transparent 1.6px) 0 0 / 0.3rem 0.33rem; background-origin: content-box; background-clip: content-box; cursor: grab; opacity: 0.6; touch-action: none; }
+/* Rows are dragged with pointer events: no text selection or long-press menu while holding. */
+.layer-row { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.layer-row.is-dragging { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--accent-soft); }
+.layer-row.is-drop-target { box-shadow: inset 0 0 0 2px var(--accent); }
 .layer { display: flex; flex: 1; align-items: center; gap: 0.5rem; min-width: 0; min-height: 44px; padding: 0 0.35rem; border: 0; border-radius: 0.8rem; color: var(--fg); background: transparent; font-size: 0.86rem; font-weight: 700; text-align: left; }
 .layer__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .layer-row.is-hidden .layer__name { color: var(--muted); font-weight: 600; }

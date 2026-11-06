@@ -13,11 +13,12 @@ import type { PreparedAsset } from './overlay-asset-cache';
 import { ALERT_READY_LIMIT_MS, sceneScale, waitsForPictures, type OverlayPlacementReport, type OverlayPlaybackId, type OverlayRenderJob } from './overlay-playback';
 import { waitForOverlayMedia } from './overlay-image-readiness';
 import { LanguageService } from '../../services/language.service';
+import { LucideAngularModule, Volume2, Zap } from 'lucide-angular';
 
 /** The OBS visual composition. The editor supplies draft/sample data to this same renderer. */
 @Component({
   selector: 'app-overlay-scene-renderer',
-  imports: [OverlayLayerComponent, OverlayWidgetHostComponent, OverlayMediaComponent, OverlayClipComponent, OverlaySoundComponent],
+  imports: [OverlayLayerComponent, OverlayWidgetHostComponent, OverlayMediaComponent, OverlayClipComponent, OverlaySoundComponent, LucideAngularModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<div class="canvas" [style.width.px]="scene().width" [style.height.px]="scene().height" [style.transform]="'scale(' + scale() + ')'" [attr.data-scene-scale]="scale()">
     @for (epoch of [staticPlaybackKey()]; track epoch) { @for (w of scene().widgets; track w.id) { @if (w.visible && delivery(w) === 'static') {
@@ -28,6 +29,16 @@ import { LanguageService } from '../../services/language.service';
     } }
     @if (preview()) { @for (w of scene().widgets; track w.id) { @if (w.visible && w.kind === 'clip' && !hasPlaying(w.id)) {
       <div class="placement" [attr.data-widget-id]="w.id" data-kind="clip" data-idle="" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="$index"><app-overlay-clip [design]="w.clipDesign ?? 'classic'" [streamer]="streamer()" /></div>
+    } } }
+    <!-- Studio-only cards showing where idle speech and trigger boxes are, in layer order (OBS shows nothing). -->
+    @if (preview()) { @for (w of scene().widgets; track w.id) { @if (w.visible && (w.kind === 'tts' || w.kind === 'trigger') && !hasPlaying(w.id)) {
+      <div class="placement placeholder" [attr.data-widget-id]="w.id" [attr.data-kind]="w.kind" data-idle="" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="$index">
+        <!-- The card cancels the canvas zoom, so its text is laid out in screen pixels and stays crisp. -->
+        <div class="placeholder__card" [style.width.px]="w.width * scale()" [style.height.px]="w.height * scale()" [style.transform]="'scale(' + 1 / scale() + ')'">
+          <span class="placeholder__icon"><lucide-icon [img]="w.kind === 'tts' ? speechIcon : triggerIcon" [size]="18" aria-hidden="true" /></span>
+          <div><small>{{ language.translate(w.kind === 'tts' ? 'overlayStudio.ttsPreviewLabel' : 'overlayStudio.triggerPreviewLabel') }}</small><strong>{{ language.translate(w.kind === 'tts' ? (w.showTtsText === true ? 'overlayStudio.ttsPreviewText' : 'overlayStudio.ttsAudioOnly') : 'overlayStudio.triggerPreviewText') }}</strong></div>
+        </div>
+      </div>
     } } }
     @if (designSound(); as sound) { @if (staticPlaybackKey() && staticShown()) { <app-overlay-sound [sound]="sound" [duration]="staticDuration()" [playbackKey]="staticPlaybackKey()" [transport]="transport()" [preparedSource]="staticAssets().get(sound.assetId)?.url || ''" [owner]="owner()" [publicId]="publicId()" (failed)="issue.emit('media')" (playbackBlocked)="issue.emit('autoplay')" (started)="soundStarted.emit()" /> } }
     @for (job of jobs(); track job.event.id) {
@@ -52,7 +63,7 @@ import { LanguageService } from '../../services/language.service';
       }
     }
   </div>`,
-  styles: `:host { position:absolute; inset:0; width:100%; height:100%; display:block; margin:0; padding:0; background:transparent; pointer-events:none } .canvas { position:relative; overflow:hidden; transform-origin:top left; font-family:'Plus Jakarta Sans',sans-serif } .placement { position:absolute; overflow:hidden } .placement.art { overflow:visible } app-overlay-sound { position:relative; z-index:1000; pointer-events:auto } app-overlay-media,app-overlay-clip { background:transparent; pointer-events:auto } .speech-text { position:absolute; inset:0; display:grid; place-content:center; color:white; background:#171a21cc; font-size:28px; padding:12px; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:none }`
+  styles: `:host { position:absolute; inset:0; width:100%; height:100%; display:block; margin:0; padding:0; background:transparent; pointer-events:none } .canvas { position:relative; overflow:hidden; transform-origin:top left; font-family:'Plus Jakarta Sans',sans-serif } .placement { position:absolute; overflow:hidden } .placement.art { overflow:visible } app-overlay-sound { position:relative; z-index:1000; pointer-events:auto } app-overlay-media,app-overlay-clip { background:transparent; pointer-events:auto } .placeholder__card { position:absolute; top:0; left:0; box-sizing:border-box; transform-origin:top left; display:flex; align-items:center; gap:7px; padding:7px; overflow:hidden; border-radius:8px; background:rgba(33,38,55,.88); color:#fff; box-shadow:0 8px 25px rgba(0,0,0,.35) } .placeholder[data-kind=trigger] .placeholder__card { background:linear-gradient(135deg,rgba(66,42,23,.94),rgba(33,38,55,.9)) } .placeholder__card>div { display:grid; gap:2px; min-width:0; flex:1 } .placeholder__icon { flex:none; display:flex; align-items:center; justify-content:center; width:27px; height:27px; border-radius:7px; background:#7c3aed } .placeholder[data-kind=trigger] .placeholder__icon { background:#d97706 } .placeholder__icon lucide-icon { display:flex } .placeholder small,.placeholder strong { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .placeholder small { font-size:clamp(6px,.6vw,10px); color:#c9d1e1; font-weight:700 } .placeholder strong { font-size:clamp(8px,.8vw,13px); line-height:1.2 } .speech-text { position:absolute; inset:0; display:grid; place-content:center; color:white; background:#171a21cc; font-size:28px; padding:12px; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:none }`
 })
 export class OverlaySceneRendererComponent {
   readonly scene = input.required<Snapshot>();
@@ -74,6 +85,7 @@ export class OverlaySceneRendererComponent {
    * pictures decoded and videos on their first frame: its clock starts here. */
   readonly ready = output<{ id: OverlayPlaybackId }>();
   readonly language = inject(LanguageService);
+  readonly speechIcon = Volume2; readonly triggerIcon = Zap;
   private readonly measured = signal({ width:0,height:0 });
   readonly scale = computed(() => sceneScale(this.scene(),this.viewport() ?? this.measured()));
   private readonly readyKeys = signal<ReadonlySet<string>>(new Set());
