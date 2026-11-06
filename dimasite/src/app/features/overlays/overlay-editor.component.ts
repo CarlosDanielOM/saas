@@ -130,6 +130,7 @@ export class OverlayEditorComponent {
   readonly clipDesigns = computed(() => this.clips.getDesigns({ channelID: this.channel, login: this.streamer, planTier: this.auth.getPlanTierForStreamer(this.streamer) }));
   private readonly jobs = new Map<number, MediaJob>();
   private readonly assetCache = new OverlayAssetCache();
+  private readonly previewLinks = new Map<string, { url: string; at: number }>();
   private readonly assetLibrary = inject(AssetLibraryService);
   private readonly designAssets = signal<Map<string, PreparedAsset>>(new Map());
   private readonly channelChoice = signal('');
@@ -232,7 +233,9 @@ export class OverlayEditorComponent {
     const active = [this.active(),...this.parallel()].filter((event): event is MockEvent => !!event && !event.preparing && !!event.snapshot);
     const playing = active.map(event => ({ event:{ id:event.id,kind:event.kind,media:event.media,text:event.text,layouts:event.layouts },
       widgets:(event.placements ?? event.snapshot!.widgets.filter(w => event.targets?.includes(w.id))),snapshot:event.snapshot!,assets:event.assets,audioWidgetId:event.originalTargets?.[0] }));
-    const occupied = new Set(active.flatMap(event => event.originalTargets ?? event.targets ?? []));
+    // A box's resting example hides as soon as a test for it starts preparing, so the
+    // test appears whole instead of the example streaming in its pictures first.
+    const occupied = new Set([this.active(),...this.parallel()].flatMap(event => event?.originalTargets ?? event?.targets ?? []));
     // Idle examples remain editable, but never animate or play sound. Active events
     // mount fresh OBS jobs, so their clocks/GIFs cannot inherit an idle preview's phase.
     const idle = scene.widgets.filter(w => w.visible && w.kind === 'alert' && !occupied.has(w.id)).flatMap(widget => {
@@ -990,7 +993,10 @@ export class OverlayEditorComponent {
     const ids = new Set(layouts.flatMap(layout => [...layout.widgets.filter(w => w.visible && (w.kind === 'image' || w.kind === 'video') && w.assetId).map(w => w.assetId!),...(layout.sound ? [layout.sound.assetId] : [])]));
     const assets = new Map<string,PreparedAsset>();
     const sources = await Promise.all([...ids].map(async id => {
-      try { return {id,url:await this.assetLibrary.preview(this.channel,id)}; } catch { return null; }
+      // Reusing a recent link keeps the bytes the cache already holds; links last 15 minutes.
+      const recent = this.previewLinks.get(id);
+      if (recent && Date.now() - recent.at < 10 * 60_000) return {id,url:recent.url};
+      try { const url = await this.assetLibrary.preview(this.channel,id); this.previewLinks.set(id,{url,at:Date.now()}); return {id,url}; } catch { return null; }
     }));
     if (this.disposed || generation !== this.playbackGeneration || !valid()) return assets;
     // Register ownership before preparing: the shared loader retains encoded

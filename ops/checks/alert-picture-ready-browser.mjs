@@ -187,18 +187,25 @@ async function studio(width) {
     localStorage.setItem('userLanguage', 'en'); localStorage.setItem('theme', 'dark');
   }, { user, app });
   await context.routeWebSocket('**/*', ws => ws.close());
-  const held = [];
+  const held = [], requests = [];
+  let holdImages = false, fetchOk = false;
   await context.route('**/*', route => {
     const req = route.request(), url = new URL(req.url());
     if (url.origin === new URL(base).origin) return route.continue();
     if (url.origin !== api) return route.abort();
     let data = {}; const body = req.postDataJSON?.();
-    if (url.pathname.startsWith('/asset-library/') && url.pathname.endsWith('/access')) return route.fulfill({ json: { data: { path: '/asset-library/content/' + url.pathname.split('/').at(-2) } } });
+    if (url.pathname.startsWith('/asset-library/') && url.pathname.endsWith('/access')) {
+      const id = url.pathname.split('/').at(-2); requests.push({ id, type: 'access' });
+      return route.fulfill({ json: { data: { path: `/asset-library/content/${id}?ticket=${requests.length}` } } });
+    }
     if (url.pathname.startsWith('/asset-library/content/')) {
-      if (url.pathname.endsWith('/sound')) return route.fulfill({ contentType: 'audio/wav', body: wav });
-      // The local download fails; the displayed <img> is held mid-load.
-      if (req.resourceType() === 'fetch') return route.fulfill({ status: 503, body: '' });
-      held.push({ id: url.pathname.split('/').at(-1), route }); return;
+      const id = url.pathname.split('/').at(-1); requests.push({ id, type: req.resourceType() });
+      if (id === 'sound') return route.fulfill({ contentType: 'audio/wav', body: wav });
+      // First the local download fails and the displayed <img> is held mid-load;
+      // later tests download normally, to prove repeats reuse the bytes.
+      if (req.resourceType() === 'fetch') return fetchOk ? route.fulfill({ contentType: 'image/jpeg', body: jpeg }) : route.fulfill({ status: 503, body: '' });
+      if (holdImages) { held.push({ id, route }); return; }
+      return route.fulfill({ contentType: 'image/jpeg', body: jpeg });
     }
     if (url.pathname === '/auth/session') data = { twitch: user, app };
     else if (url.pathname.endsWith('/access') || url.pathname.startsWith('/auth/access/')) data = { allowed: true, role: 'owner', planTier: 'pro' };
@@ -211,7 +218,24 @@ async function studio(width) {
   });
   const page = await context.newPage(); page.setDefaultTimeout(12000); page.on('pageerror', e => errors.push(e.message));
   await page.goto(base + '/fixture/modules/overlays'); await page.locator('app-overlay-editor .stage').waitFor();
-  await openStudio(page, 'test'); await page.evaluate(SAMPLER);
+  await openStudio(page, 'test');
+  // The box's resting example (another event's design) is fully shown before the test.
+  await until(() => page.locator('.stage .placement[data-idle] [data-overlay-image] img').evaluateAll(imgs => imgs.length > 0 && imgs.every(img => img.complete && img.naturalWidth > 0)), 'resting example loaded');
+  holdImages = true;
+  await page.evaluate(SAMPLER);
+  // What the user saw: after clicking a test, the box's resting example switched to the tested
+  // design and streamed its picture in. No visible frame of the box may show a partial picture.
+  await page.evaluate(() => {
+    window.__idlePartial = 0;
+    const tick = () => {
+      for (const el of document.querySelectorAll('.stage .placement[data-idle][data-widget-id="alert-1"]')) {
+        if (getComputedStyle(el).visibility !== 'visible') continue;
+        if ([...el.querySelectorAll('[data-overlay-image]')].some(layer => { const img = layer.querySelector('img'); return !img || !img.complete || !img.naturalWidth; })) window.__idlePartial++;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
   await page.locator('.test-btn').filter({ hasText: 'Follow' }).click();
   const placement = page.locator('.stage .placement[data-event=follow]:not([data-idle])');
   await placement.locator('[data-overlay-image] img').waitFor({ state: 'attached' });
@@ -221,6 +245,7 @@ async function studio(width) {
   assert.ok(rec.hidden > 5 && !rec.firstVisible, 'Studio test alert stays hidden while its picture loads');
   assert.equal(rec.motionHidden + rec.soundHidden, 0, 'Studio: no motion or sound before the picture');
   const released = Date.now();
+  holdImages = false;
   for (const h of held.splice(0)) await h.route.fulfill({ contentType: 'image/jpeg', body: jpeg });
   await until(async () => (await gate(page, key))?.firstVisible, 'Studio alert shows after its picture loads');
   rec = await gate(page, key);
@@ -228,6 +253,25 @@ async function studio(width) {
   await until(async () => await placement.count() === 0, 'Studio alert completes', 6000);
   const played = Date.now() - rec.firstVisible;
   assert.ok(rec.firstVisible >= released && played >= 1050, `Studio: full duration runs after the reveal (${played} ms)`);
+  assert.equal(await page.evaluate(() => window.__idlePartial), 0, 'Studio: the box never shows a half-loaded resting example while a test prepares');
+
+  // Repeat tests reuse the downloaded picture: no new link or download, and it shows at once.
+  fetchOk = true;
+  await page.locator('.test-btn').filter({ hasText: 'Follow' }).click();
+  await until(async () => await placement.count() === 1, 'second Studio test starts');
+  await until(async () => await placement.count() === 0, 'second Studio test completes', 8000);
+  const before = requests.filter(r => r.id === 'follow' && (r.type === 'access' || r.type === 'fetch')).length;
+  const clicked = Date.now();
+  await page.locator('.test-btn').filter({ hasText: 'Follow' }).click();
+  await until(async () => await placement.count() === 1, 'third Studio test starts');
+  const third = await placement.getAttribute('data-playback-key');
+  await until(async () => (await gate(page, third))?.firstVisible, 'third Studio test shows');
+  rec = await gate(page, third);
+  assert.ok(rec.firstVisible - clicked < 800 && rec.partialVisible === 0, `Studio: repeat test shows whole and promptly (${rec.firstVisible - clicked} ms)`);
+  assert.equal(requests.filter(r => r.id === 'follow' && (r.type === 'access' || r.type === 'fetch')).length, before, 'Studio: repeat test downloads nothing new');
+  assert.match(await placement.locator('[data-overlay-image] img').getAttribute('src'), /^blob:/, 'Studio: repeat test plays local bytes');
+  assert.equal(await page.evaluate(() => window.__idlePartial), 0, 'Studio: resting example stays hidden during repeat tests');
+  await until(async () => await placement.count() === 0, 'third Studio test completes', 8000);
   await page.screenshot({ path: `/tmp/alert-picture-ready-studio-${width}.png` });
   await context.close();
 }
