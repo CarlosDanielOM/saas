@@ -8217,7 +8217,7 @@
     "customReplaceNote": "La configuración que cambiaste se mantiene salvo que los archivos nuevos la quiten. Los overlays publicados usan los archivos anteriores hasta que vuelvas a publicar.",
     "customLimitTitle": "Tu plan {{plan}} incluye {{limit}} widgets personalizados",
     "customLimitTitleOne": "Tu plan {{plan}} incluye 1 widget personalizado",
-    "customLimitUpgrade": "Premium incluye 5 y Pro incluye 25. O elimina un widget que ya no uses.",
+    "customLimitUpgrade": "Premium incluye {{premium}} y Pro incluye {{pro}}. O elimina un widget que ya no uses.",
     "customLimitDelete": "Elimina un widget que ya no uses para importar otro.",
     "customSeePlans": "Ver planes",
     "customImporting": "Guardando…",

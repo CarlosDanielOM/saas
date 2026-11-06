@@ -3,7 +3,7 @@ import { BookOpen, Code2, Download, Eye, FileUp, FolderOpen, LucideAngularModule
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { UpgradeService } from '../../services/upgrade.service';
-import { PACKAGE_FILES, PackageFormatError, readPackage, type FieldIssue } from './custom-widget-format.generated';
+import { CUSTOM_WIDGET_PLAN_LIMITS, PACKAGE_FILES, PackageFormatError, readPackage, type FieldIssue } from './custom-widget-format.generated';
 import type { HintContext } from './custom-widget-code-hints';
 import { pickedFromInput, readImport } from './custom-widget-import';
 import { writeZip } from './custom-widget-zip';
@@ -166,6 +166,8 @@ export class OverlayCustomWidgetCodeComponent {
   readonly list = this.widgets.list;
   readonly blockedByLimit = computed(() => !this.widgetId() && (this.widgets.atLimit() || this.limitReached()));
   readonly canUpgrade = computed(() => this.list()?.planTier !== 'pro');
+  /** Paid plans' limits for the upgrade hint (the same numbers the API enforces). */
+  readonly paidLimits = { premium: CUSTOM_WIDGET_PLAN_LIMITS.premium, pro: CUSTOM_WIDGET_PLAN_LIMITS.pro };
   readonly usage = computed(() => { const list = this.list(); return list ? this.t('customUsage', { used: Math.min(list.used + 1, list.limit), limit: list.limit, plan: this.t('customPlan_' + list.planTier) }) : ''; });
   /** Short state for the header chip; the footer says it in a sentence. */
   readonly status = computed<'saving' | 'new' | 'problems' | 'unsaved' | 'saved'>(() =>

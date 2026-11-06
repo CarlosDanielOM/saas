@@ -49,12 +49,12 @@ const keysFor = id => [...objects.keys()].filter(key => key.startsWith(`custom-w
 
 try {
   // Available to every channel; owner-only access.
-  assert.deepEqual(await data('GET', `/overlay-studio/${other}/custom-widgets`, null, 200, other), { enabled: true, planTier: 'pro', limit: 25, used: 0, widgets: [] });
+  assert.deepEqual(await data('GET', `/overlay-studio/${other}/custom-widgets`, null, 200, other), { enabled: true, planTier: 'pro', limit: 100, used: 0, widgets: [] });
   const otherWidget = (await data('POST', `/overlay-studio/${other}/custom-widgets`, { files: source }, 201, other)).widget;
   await req('DELETE', `/overlay-studio/${other}/custom-widgets/${otherWidget.id}`, null, 403);
   await req('GET', widgetsPath, null, 403, other);
   assert.deepEqual(await data('DELETE', `/overlay-studio/${other}/custom-widgets/${otherWidget.id}`, null, 200, other), { deleted: true });
-  assert.deepEqual(await data('GET', widgetsPath), { enabled: true, planTier: 'free', limit: 1, used: 0, widgets: [] });
+  assert.deepEqual(await data('GET', widgetsPath), { enabled: true, planTier: 'free', limit: 5, used: 0, widgets: [] });
   console.log('PASS every channel can use custom widgets; owner-only access; free-plan limit in the list.');
 
   // Bad imports are rejected before anything is stored.
@@ -83,10 +83,15 @@ try {
   assert.equal(stored.owner, preview); assert.equal(stored.revisions.length, 1); assert.equal(stored.revisions[0].files.html.key, `custom-widgets/${preview}/${id}/html/${stored.revisions[0].files.html.sha256}.txt`);
   console.log('PASS import: parsed fields/data, issues, private S3 files that round-trip, stored revision 1.');
 
-  // Plan limit (free = 1), then premium allows more.
+  // Plan limit (free = 5), then premium allows more (20). The extra imports are removed again.
+  const fillers = [];
+  for (let n = 2; n <= 5; n++) fillers.push((await data('POST', widgetsPath, { name: 'Filler ' + n, files: { ...source, js: source.js + '\n// filler ' + n } }, 201)).widget);
+  assert.equal((await data('GET', widgetsPath)).used, 5);
   const limited = await req('POST', widgetsPath, { files: source }, 403);
-  assert.equal(limited.code, 'plan_limit'); assert.match(limited.message, /includes 1 custom widget/);
+  assert.equal(limited.code, 'plan_limit'); assert.match(limited.message, /includes 5 custom widgets/);
+  for (const filler of fillers) assert.deepEqual(await data('DELETE', `${widgetsPath}/${filler.id}`), { deleted: true });
   await Users.collection.updateOne({ accounts: { $elemMatch: { type: 'twitch', id: preview } } }, { $set: { plan_tier: 'premium' } });
+  assert.equal((await data('GET', widgetsPath)).limit, 20);
   const second = (await data('POST', widgetsPath, { name: 'Second', files: { ...source, js: source.js + '\n// second' } }, 201)).widget;
   assert.equal((await data('GET', widgetsPath)).used, 2);
   assert.equal((await data('PATCH', `${widgetsPath}/${second.id}`, { name: 'Renamed' })).name, 'Renamed');
@@ -102,7 +107,7 @@ try {
   assert.deepEqual([outside.network, outside.outsideCode], ['restricted', ['cdn.jsdelivr.net']], 'imported blocked; the outside code is named');
   await data('DELETE', `${widgetsPath}/${outside.id}`);
   assert.equal((await data('GET', widgetsPath)).used, 2);
-  console.log('PASS plan limits (free 1, premium 5), rename, and "Block outside connections" (owner setting, bundle, import opt-in, outside code listed).');
+  console.log('PASS plan limits (free 5, premium 20, pro 100), rename, and "Block outside connections" (owner setting, bundle, import opt-in, outside code listed).');
 
   // Studio save: valid layer values are kept; stale keys dropped; bad values and foreign IDs rejected.
   let state = await data('GET', base);

@@ -8217,7 +8217,7 @@
     "customReplaceNote": "Your changed settings stay unless the new files remove them. Published overlays keep the old files until you publish again.",
     "customLimitTitle": "Your {{plan}} plan includes {{limit}} custom widgets",
     "customLimitTitleOne": "Your {{plan}} plan includes 1 custom widget",
-    "customLimitUpgrade": "Premium includes 5 and Pro includes 25. Or delete a widget you no longer use.",
+    "customLimitUpgrade": "Premium includes {{premium}} and Pro includes {{pro}}. Or delete a widget you no longer use.",
     "customLimitDelete": "Delete a widget you no longer use to import another.",
     "customSeePlans": "See plans",
     "customImporting": "Saving…",

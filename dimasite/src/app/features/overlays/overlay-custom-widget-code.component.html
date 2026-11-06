@@ -33,7 +33,7 @@
       @if (blockedByLimit()) {
         <div class="banner banner--gold" data-cwc-limit>
           <strong>{{ n('customLimitTitle', list()?.limit ?? 0, { limit: list()?.limit ?? 0, plan: t('customPlan_' + (list()?.planTier ?? 'free')) }) }}</strong>
-          <span>{{ t(canUpgrade() ? 'customLimitUpgrade' : 'customLimitDelete') }}</span>
+          <span>{{ t(canUpgrade() ? 'customLimitUpgrade' : 'customLimitDelete', paidLimits) }}</span>
           @if (canUpgrade()) { <button type="button" class="gold" (click)="upgrade()"><lucide-icon [img]="icons.Star" [size]="16" aria-hidden="true" />{{ t('customSeePlans') }}</button> }
         </div>
       }

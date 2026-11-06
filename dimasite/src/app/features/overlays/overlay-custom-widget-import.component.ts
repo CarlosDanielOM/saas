@@ -5,7 +5,7 @@ import { UpgradeService } from '../../services/upgrade.service';
 import { CustomWidgetsService, copyableMedia, errorCode, message, type CustomWidgetView, type MediaCopyResult, type MediaPlan } from './custom-widgets.service';
 import { experimentEnabled } from '../../shared/utils/experiments';
 import { droppedFiles, pickedFromInput, readImport, type ImportDraft, type PickedFile } from './custom-widget-import';
-import { outsideCode } from './custom-widget-format.generated';
+import { CUSTOM_WIDGET_PLAN_LIMITS, outsideCode } from './custom-widget-format.generated';
 
 /**
  * Import a StreamElements widget package, replace an imported widget's files, or (mode `media`, also the step
@@ -59,6 +59,8 @@ export class OverlayCustomWidgetImportComponent {
   readonly list = this.widgets.list;
   readonly blockedByLimit = computed(() => this.mode() === 'create' && (this.widgets.atLimit() || this.limitReached()));
   readonly canUpgrade = computed(() => this.list()?.planTier !== 'pro');
+  /** Paid plans' limits for the upgrade hint (the same numbers the API enforces). */
+  readonly paidLimits = { premium: CUSTOM_WIDGET_PLAN_LIMITS.premium, pro: CUSTOM_WIDGET_PLAN_LIMITS.pro };
   readonly ready = computed(() => { const draft = this.draft(); return !!draft?.source && !draft.error && !this.busy() && !this.blockedByLimit(); });
   readonly usage = computed(() => { const list = this.list(); return list ? this.t('customUsage', { used: Math.min(list.used + 1, list.limit), limit: list.limit, plan: this.t('customPlan_' + list.planTier) }) : ''; });
 

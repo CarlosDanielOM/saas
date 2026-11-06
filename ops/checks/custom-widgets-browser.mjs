@@ -459,13 +459,15 @@ try {
 
   // 4. Plan limit: the import is blocked with an upgrade prompt.
   {
-    const limited = mocks({ planTier: 'free', limit: 1, widgets: [view()] }), ctx = await browser.newContext({ viewport: { width: 390, height: 860 }, reducedMotion: 'reduce' });
+    const full = Array.from({ length: 5 }, (_, i) => ({ ...view(), id: (i + 1).toString(16).repeat(24), name: `Widget ${i + 1}` }));
+    const limited = mocks({ planTier: 'free', limit: 5, widgets: full }), ctx = await browser.newContext({ viewport: { width: 390, height: 860 }, reducedMotion: 'reduce' });
     await limited.install(ctx); const p = await ctx.newPage(); p.on('pageerror', e => errors.push(e.message));
     await p.goto(`${base}/${user.login}/modules/overlays`); await p.locator('.stage').waitFor();
     await p.locator('.studio-mtabs [data-tab="add"]').click();
     await p.locator('[data-custom-import]').click();
     const d = p.locator('dialog.cw-dialog'); await d.locator('[data-cw-limit]').waitFor();
-    assert.match(await d.locator('[data-cw-limit]').textContent(), /Free plan includes 1 custom widget/);
+    assert.match(await d.locator('[data-cw-limit]').textContent(), /Free plan includes 5 custom widgets/);
+    assert.match(await d.locator('[data-cw-limit]').textContent(), /Premium includes 20 and Pro includes 100\./, 'the upgrade hint names the paid limits');
     assert.equal(await d.locator('[data-cw-submit]').isDisabled(), true);
     await d.locator('[data-cw-files]').setInputFiles(upload);
     await d.locator('[data-cw-summary]').waitFor();

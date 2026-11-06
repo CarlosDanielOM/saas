@@ -28,7 +28,7 @@ export const CUSTOM_WIDGET_LIMITS = {
   externalMedia: 200
 } as const;
 /** Custom widgets each channel can keep, by plan. */
-export const CUSTOM_WIDGET_PLAN_LIMITS = { free: 1, premium: 5, pro: 25 } as const;
+export const CUSTOM_WIDGET_PLAN_LIMITS = { free: 5, premium: 20, pro: 100 } as const;
 export type CustomWidgetPlan = keyof typeof CUSTOM_WIDGET_PLAN_LIMITS;
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };

@@ -89,7 +89,7 @@ function view(doc: StoredWidget, scenes: OverlayScene[]): CustomWidgetView {
 async function scenesOf(owner: string): Promise<OverlayScene[]> { return (await Studio.findById(owner).lean())?.scenes ?? []; }
 async function plan(owner: string) {
   const planTier = (await assetQuota(owner)).planTier as CustomWidgetPlan;
-  return { planTier, limit: CUSTOM_WIDGET_PLAN_LIMITS[planTier] };
+  return { planTier, limit: CUSTOM_WIDGET_PLAN_LIMITS[planTier] as number };
 }
 function source(raw: unknown): PackageInput {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new CustomWidgetError('Choose the widget files to import');

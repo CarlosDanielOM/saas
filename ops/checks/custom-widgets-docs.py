@@ -36,4 +36,9 @@ for prefix, guide_title, sdk_title, guide_texts, sdk_texts in cases:
         assert f'href="/{prefix}{page}"' in studio, f"{prefix}overlay-studio links {page}"
     llms = get(f"{prefix}llms.txt")
     assert f"{prefix}custom-widgets" in llms and f"{prefix}building-custom-widgets-dima-sdk" in llms, f"{prefix}llms.txt lists the guides"
-print("PASS custom widget guides (EN/ES): sections, rendering, Overlay Studio links and llms.txt entries")
+# Plan limits match the API (dimabot/src/custom_widgets/format.ts CUSTOM_WIDGET_PLAN_LIMITS).
+limits = {"": "up to **5 custom widgets on Free**, **20 on Premium**, or **100 on Pro**",
+          "es/": "hasta **5 widgets personalizados en Free**, **20 en Premium** o **100 en Pro**"}
+for prefix, text in limits.items():
+    assert text in get(f"{prefix}custom-widgets/index.txt"), f"{prefix}custom-widgets plan limits"
+print("PASS custom widget guides (EN/ES): sections, rendering, Overlay Studio links, llms.txt entries and plan limits (5/20/100)")
