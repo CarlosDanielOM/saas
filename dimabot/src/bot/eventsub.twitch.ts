@@ -243,6 +243,7 @@ export function createTwitchEventsubApp({
                     notification.event as ITwitchEventData,
                     {
                         durableChatHandled: Boolean(durableEvent),
+                        ...(timestampDecision.staleRetry ? { staleRetry: true } : {}),
                         ...(chatEffectContext ? { chatEffectContext } : {}),
                         ...(durableEvent?.metadata?.durableDefenseHandled === true
                             ? { durableDefenseHandled: true } : {})

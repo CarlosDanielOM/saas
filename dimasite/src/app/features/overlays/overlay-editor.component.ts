@@ -9,7 +9,7 @@ import { OverlayCustomWidgetCodeComponent } from './overlay-custom-widget-code.c
 import { groupFields } from './custom-widget-format.generated';
 import { EditorWidgetEnv } from './widget-runtime/editor-env';
 import { CUSTOM_WIDGET_ENV } from './widget-runtime/widget-env';
-import { ALERT_TESTS, BOT_TEST_USES, CHAT_TESTS, botTestEvents, testAlert, testGoals, testPolls, type AlertTest, type BotTestKind, type ChatTest } from './widget-runtime/test-events';
+import { ALERT_TESTS, BOT_TEST_USES, CHAT_TESTS, botTestEvents, isStateTest, testAlert, testState, type AlertTest, type BotTestKind, type ChatTest } from './widget-runtime/test-events';
 import type { DimaEvent } from './widget-runtime/dima-events';
 import { createWidget, getWidgetModule, widgetModuleFor, widgetPalette } from './overlay-widget-registry';
 import { OverlayInteractionSetupComponent } from './overlay-interaction-setup.component';
@@ -693,13 +693,13 @@ export class OverlayEditorComponent {
     return BOT_TEST_USES.filter(([, use]) => uses.has(use)).map(([kind]) => kind);
   });
   sendBotTest(kind: BotTestKind): void {
-    if (kind !== 'polls' && kind !== 'goals') {
+    if (!isStateTest(kind)) {
       // Paired events (TTS, pet, duel, roulette) send their second half a few seconds later, like the real ones.
       const { now, later } = botTestEvents(kind);
       void this.sendWidgetTest(now);
       if (later) setTimeout(() => void this.sendWidgetTest(later), 3000);
     } else {
-      const value = kind === 'polls' ? testPolls() : testGoals();
+      const value = testState(kind);
       if (this.widgetTestTarget() === 'preview') { this.revealStage(); this.widgetEnv.setState(kind, value); }
       else void this.sendWidgetTest({ type: 'state', data: { name: kind, value } });
     }

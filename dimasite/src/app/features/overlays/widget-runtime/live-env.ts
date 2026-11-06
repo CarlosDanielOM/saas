@@ -52,10 +52,26 @@ export class LiveWidgetEnv implements CustomWidgetEnv {
   report(layerId: string, update: { status?: WidgetStatus; entry?: WidgetLogEntry }): void {
     if (update.entry?.level === 'error') console.warn(`[custom widget ${layerId}]`, update.entry.text);
   }
+  private readonly roulette = new Map<string, DimaEvent>();
+  private keepRoulette(event: DimaEvent): void {
+    const data = event.data as { id?: unknown; phase?: unknown };
+    this.roulette.delete(`${String(data.id)}:${String(data.phase)}`); this.roulette.set(`${String(data.id)}:${String(data.phase)}`, event);
+    for (const key of [...this.roulette.keys()].slice(0, Math.max(0, this.roulette.size - 40))) this.roulette.delete(key);
+  }
+  /** Roulette spins still running and results from the last 2 minutes (the server's replay window), oldest first. */
+  recent(): DimaEvent[] {
+    const now = Date.now();
+    return [...this.roulette.values()].filter(event => {
+      const { phase, endsAt } = event.data as { phase?: unknown; endsAt?: unknown };
+      return typeof endsAt === 'number' && (phase === 'spinning' ? now < endsAt : now - endsAt <= 120_000);
+    });
+  }
   private feed(message: unknown): void {
     if (!message || typeof message !== 'object') return;
     const { v, type, data, layers } = message as { v?: unknown; type?: unknown; data?: unknown; layers?: unknown };
     if (v !== 1 || typeof type !== 'string' || !FEED_TYPES.has(type as DimaEventType) || !data || typeof data !== 'object') return;
+    // Roulette phases are kept for frames that start later (a widget still loading when the result arrived gets it then).
+    if (type === 'roulette') this.keepRoulette({ type, data } as DimaEvent);
     if (type === 'session') this.sessionData = data as DimaSession;
     if (type === 'state' && typeof (data as { name?: unknown }).name === 'string') this.stateData[(data as { name: string }).name] = (data as { value?: unknown }).value ?? null;
     // Signals name the layers they're for (the server matched uses and widget.signal.to names).

@@ -169,8 +169,9 @@ test('defense ownership is opt-in, production-only and follow/raid-only', () => 
     }
 });
 
-test('redemption AST, chat, ad and ban notifications remain unjournaled', () => {
-    for (const type of ['channel.channel_points_custom_reward_redemption.add', 'channel.chat.message', 'channel.ad_break.begin', 'channel.ban']) {
+test('redemption AST, chat and ban notifications remain unjournaled (hype trains and ad breaks are, for widget state)', () => {
+    for (const type of ['channel.hype_train.begin', 'channel.hype_train.progress', 'channel.hype_train.end', 'channel.ad_break.begin']) assert.equal(isDurableTwitchEventsubType(type), true);
+    for (const type of ['channel.channel_points_custom_reward_redemption.add', 'channel.chat.message', 'channel.ban']) {
         assert.equal(normalizeTwitchEventsubDomainEvent({
             messageId: 'receipt', durableDefenseHandled: true,
             subscription: { type }, event: { broadcaster_user_id: 'channel' }

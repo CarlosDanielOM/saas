@@ -1,4 +1,7 @@
-import { resyncInteractions } from './interactions.js';
+import { STATE_NAMES } from '../custom_widgets/format.js';
+import { resyncHypeTrain, resyncInteractions } from './interactions.js';
+import { hypeTrainOverdue, publicAds, publicHypeTrain, type StoredAdBreak, type StoredHypeTrain } from './live-events-model.js';
+import { adSchedule, refreshAdSchedule, updateAdSchedules } from './ad-schedule.js';
 import { widgetStateRegistry, legacyInteractions } from './widget-state-providers.js';
 import { getWidgetDefinition, validWidgetModuleConfig } from './widget-contract.js';
 import type { WidgetStateReadScope } from './widget-state.js';
@@ -32,7 +35,7 @@ export interface LiveEvent { tts?: { speechID: string; ownerClientId: string | n
 type Public = Awaited<ReturnType<typeof publicState>>;
 type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';
 interface Health { revision: number; issue: RuntimeIssue | null; reportedAt: number; issueAt: number | null }
-interface Peer { widgets?: WidgetLayers; rpc?: { at: number; count: number }; widgetStateVersion?: string; customStates?: Record<string, string>; interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
+interface Peer { rouletteSent?: Map<string, 'spinning' | 'result'>; widgets?: WidgetLayers; rpc?: { at: number; count: number }; widgetStateVersion?: string; customStates?: Record<string, string>; interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
 interface Pending { ttsOwnerKey?: string; ttsEpochs?: Record<string, string>; ttsTerminal?: boolean; speechID?: string; event: LiveEvent; channel: string; recipients: Set<string>; mediaId?: string; bytes?: number; expiresAt: Date; mime?: string; raw?: Record<string, unknown> }
 const peers = new Map<string, Peer>();
 /** Custom widget layers of a peer's published snapshot: what they use, keyed by layer ID. */
@@ -119,20 +122,6 @@ function validDuel(raw: unknown): Record<string, unknown> | null {
   return { id: text(data.id, 64), phase: data.phase, challenger: text(data.challenger, 64), opponent: text(data.opponent, 64), mode: data.mode === 'chat' ? 'chat' : 'overlay',
     winner: ended ? text(data.winner, 64) || null : null, loser: ended ? text(data.loser, 64) || null : null, endsAt: num(data.endsAt), at: num(data.at) ?? Date.now(), test: false };
 }
-/** Roulette: `spinning` now; the label stays here until the spin ends, then `result` (best effort: an API restart mid-spin loses it). */
-const rouletteTimers = new Map<string, ReturnType<typeof setTimeout>>();
-function rouletteSpin(channel: string, raw: unknown): void {
-  const data = raw as Record<string, unknown> | null, id = text(data?.id, 64), endsAt = num(data?.endsAt);
-  // Spins last at most 2 minutes; a later deadline is invalid (holding the label that long isn't supported), and so is a full timer table.
-  if (!data || !id || endsAt === null || endsAt - Date.now() > 10 * 60_000 || rouletteTimers.size >= 1000 || !firstTime('roulette:' + id)) return;
-  const spin = { id, rouletteId: text(data.rouletteId, 64), name: text(data.name, 100), endsAt, test: false };
-  feedWidgets(channel, 'roulette', 'roulette', { ...spin, phase: 'spinning', label: null, at: num(data.at) ?? Date.now() });
-  const label = text(data.label, 200), key = `${channel}:${id}`;
-  rouletteTimers.set(key, setTimeout(() => {
-    rouletteTimers.delete(key);
-    feedWidgets(channel, 'roulette', 'roulette', { ...spin, phase: 'result', label, at: Date.now() });
-  }, Math.max(0, endsAt - Date.now())).unref());
-}
 const sessionTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const readsSession = (peer: Peer) => widgetUses(peer).has('session') || widgetUses(peer).has('goals');
 /** Session snapshots and goal state follow alerts and goal changes; bursts are coalesced per channel. */
@@ -145,7 +134,7 @@ function refreshSession(channel: string, delay = 1500): void {
   }, delay));
 }
 /** Live state for custom widgets (`uses`: polls, goals), sent to a source only when its value changed. */
-function sendState(peer: Peer, name: 'polls' | 'goals', value: unknown): void {
+function sendState(peer: Peer, name: typeof STATE_NAMES[number], value: unknown): void {
   const version = JSON.stringify(value);
   if (!peer.socket?.connected || (peer.customStates ??= {})[name] === version) return;
   peer.customStates[name] = version;
@@ -160,7 +149,57 @@ function sendCustomState(peer: Peer): void {
     void resyncInteractions(peer.channel, ['poll', 'prediction']).catch(() => { peer.stateFailed = true; });
     void pollsState(peer.channel).then(value => { if (value && peers.get(peer.key) === peer) sendState(peer, 'polls', value); }).catch(() => {});
   }
+  // A hype train that started or ended while nobody was listening (Helix; coalesced per channel).
+  if (uses.has('hypetrain')) void resyncHypeTrain(peer.channel).catch(() => {});
+  if (uses.has('hypetrain') || uses.has('ads')) void sendLiveEvents(peer).catch(() => {});
 }
+/** Hype train and ads state (`uses`: hypetrain, ads) from the shared read; ads activity is computed against now. */
+async function sendLiveEvents(peer: Peer, scope?: WidgetStateReadScope): Promise<void> {
+  const uses = widgetUses(peer), read = widgetStateRegistry.readSource(peer.channel, 'twitch-interactions', scope);
+  if (!read) return;
+  const entries = await read, now = Date.now();
+  if (peers.get(peer.key) !== peer) return;
+  const hype = (entries['hypetrain']?.state ?? null) as StoredHypeTrain | null, ad = (entries['adbreak']?.state ?? null) as StoredAdBreak | null;
+  if (uses.has('hypetrain')) {
+    sendState(peer, 'hypetrain', publicHypeTrain(hype, now));
+    // A missed end event would leave it running forever: ask Twitch once it's overdue.
+    if (hypeTrainOverdue(hype, now)) void resyncHypeTrain(peer.channel).catch(() => {});
+  }
+  if (uses.has('ads')) {
+    // A new ad break moves the next one: ask Twitch for the schedule again soon.
+    if (ad && adBreakSeen.get(peer.channel) !== ad.ad.startedAt) { adBreakSeen.set(peer.channel, ad.ad.startedAt); refreshAdSchedule(peer.channel); }
+    sendState(peer, 'ads', publicAds(ad, adSchedule(peer.channel), now));
+  }
+}
+const adBreakSeen = new Map<string, string>();
+const ROULETTE_REPLAY_MS = 120_000;
+/**
+ * Roulette events come from the saved spin (Mongo), not from a timer, so an API restart or an OBS reconnect loses
+ * nothing: `spinning` while it runs (never the label), `result` once it ended. A source that connects up to 2 minutes
+ * after a spin ended still gets its result. Each source gets each phase once (the OBS page also drops repeats).
+ */
+// The 20 newest results cover the 2-minute window (a spin lasts at least a few seconds).
+async function sendRouletteEvents(channel: string, targets: Peer[]): Promise<void> {
+  const { RouletteChannel } = await import('../roulette/service.js');
+  const doc = await RouletteChannel.findById(channel, { 'state.draw.id': 1, 'state.draw.rouletteId': 1, 'state.draw.endsAt': 1, 'state.draw.winner.label': 1,
+    'state.history': { $slice: 20 }, 'state.roulettes.id': 1, 'state.roulettes.name': 1 }).lean() as { state?: { draw?: RouletteSpin | null; history?: RouletteSpin[];
+      roulettes?: { id: string; name?: string }[] } } | null;
+  const state = doc?.state, now = Date.now(), byId = new Map<string, RouletteSpin>();
+  for (const spin of [...(state?.history ?? []), ...(state?.draw ? [state.draw] : [])]) if (spin?.id && Number.isFinite(spin.endsAt)) byId.set(spin.id, spin);
+  const spins = [...byId.values()].filter(spin => now < spin.endsAt || now - spin.endsAt <= ROULETTE_REPLAY_MS).sort((a, b) => a.endsAt - b.endsAt);
+  for (const peer of targets) {
+    const sent = peer.rouletteSent ??= new Map();
+    for (const spin of spins) {
+      const phase = now < spin.endsAt ? 'spinning' : 'result';
+      if (sent.get(spin.id) === phase || (phase === 'spinning' && sent.has(spin.id))) continue;
+      sent.set(spin.id, phase);
+      peer.socket?.emit('overlay-feed', { v: 1, type: 'roulette', data: { id: spin.id, rouletteId: spin.rouletteId, name: state?.roulettes?.find(r => r.id === spin.rouletteId)?.name ?? '',
+        phase, label: phase === 'result' ? String(spin.winner?.label ?? '').slice(0, 200) : null, endsAt: spin.endsAt, at: Date.now(), test: false } });
+    }
+    for (const id of [...sent.keys()].slice(0, Math.max(0, sent.size - 50))) sent.delete(id);
+  }
+}
+interface RouletteSpin { id: string; rouletteId: string; endsAt: number; winner?: { label?: string } }
 /** Polls and predictions: the same sanitized read built-in poll widgets use (shared per channel per tick). */
 async function pollsState(channel: string, scope?: WidgetStateReadScope): Promise<{ poll: unknown; prediction: unknown } | null> {
   const read = widgetStateRegistry.readSource(channel, 'twitch-interactions', scope);
@@ -227,7 +266,6 @@ function subscribeChatFeed(): void {
     // Producers run in different processes: a `speaking` that arrives after its `done` is dropped (widgets would show it forever).
     if (message.type === 'pet') { const pet = validPet(message.data); if (pet && (pet.phase === 'done' || !seenEvents.has(`pet:${pet.id}:done`)) && firstTime(`pet:${pet.id}:${pet.phase}`)) feedWidgets(message.channel, 'pets', 'pet', pet); return; }
     if (message.type === 'duel') { const duel = validDuel(message.data); if (duel && firstTime(`duel:${duel.id}:${duel.phase}`)) feedWidgets(message.channel, 'duels', 'duel', duel); return; }
-    if (message.type === 'roulette') { rouletteSpin(message.channel, message.data); return; }
     if (!['chat', 'chat.delete', 'chat.clear'].includes(String(message.type))) return;
     feedWidgets(message.channel, 'chat', String(message.type), message.data);
   }).catch(() => { chatFeed = undefined; });
@@ -742,6 +780,16 @@ export function registerStudio(io: Server): void {
             }
           } catch { peer.stateFailed = true; }
         }
+        if (widgetUses(peer).has('hypetrain') || widgetUses(peer).has('ads')) {
+          try { await sendLiveEvents(peer, widgetReadScope); } catch { peer.stateFailed = true; }
+        }
+      }
+      const connected = (use: string) => [...peers.values()].filter(peer => peer.socket?.connected && widgetUses(peer).has(use));
+      updateAdSchedules(new Set(connected('ads').map(peer => peer.channel)), () => {});
+      // Roulette: one saved-spin read per channel with a connected roulette widget.
+      const roulettePeers = connected('roulette');
+      for (const channel of new Set(roulettePeers.map(peer => peer.channel))) {
+        await sendRouletteEvents(channel, roulettePeers.filter(peer => peer.channel === channel)).catch(() => {});
       }
       // Goals also change with time (scheduled → active, rolling windows, monthly rollover): at least once a minute.
       for (const channel of new Set([...peers.values()].filter(peer => peer.socket?.connected && widgetUses(peer).has('goals')).map(peer => peer.channel))) {

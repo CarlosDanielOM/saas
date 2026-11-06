@@ -138,7 +138,7 @@ export function dimaSdk(win: any, boot: { exec: string; fields: Record<string, u
       return () => { listeners.get(type)?.delete(handler); };
     },
     off(type: string, handler: (data: any) => void) { listeners.get(type)?.delete(handler); },
-    /** Live state by name ('polls', 'goals'): the handler gets the latest value now (if known) and every change. */
+    /** Live state by name ('polls', 'goals', 'hypetrain', 'ads'): the handler gets the latest value now (if known) and every change. */
     state(name: string, handler: (value: any) => void) {
       if (typeof name !== 'string' || typeof handler !== 'function') throw new TypeError('Dima.state(name, handler)');
       let active = true;

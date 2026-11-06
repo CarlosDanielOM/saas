@@ -75,6 +75,7 @@ export class OverlayCustomWidgetComponent {
   private frame: HTMLIFrameElement | null = null;
   private loaded = false;
   private buffered: DimaEvent[] = [];
+  private readonly rouletteDelivered = new Set<string>();
   private previewOverrides: JsonObject = {};
   private lastBeat = 0;
   private reloads: number[] = [];
@@ -164,7 +165,7 @@ export class OverlayCustomWidgetComponent {
     // Matching colour schemes keeps the frame transparent on dark pages.
     Object.assign(frame.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', border: '0', background: 'transparent', colorScheme: 'normal' });
     frame.srcdoc = html;
-    this.loaded = false; this.lastBeat = Date.now();
+    this.loaded = false; this.lastBeat = Date.now(); this.rouletteDelivered.clear();
     this.host.nativeElement.querySelector('.frame-slot')!.append(frame);
     this.frame = frame;
   }
@@ -203,6 +204,16 @@ export class OverlayCustomWidgetComponent {
         .replace('{{name}}', name).replace('{{value}}', value.length > 80 ? value.slice(0, 79) + '…' : value || '—').replace('{{user}}', user?.name ?? '') } });
     }
     if (!this.loaded) { if (this.buffered.length < MAX_BUFFERED) this.buffered.push(event); return; }
+    this.postEvent(event);
+  }
+  /** Roulette phases can arrive twice (replayed after a restart or for a late frame): each frame gets each phase once. */
+  private postEvent(event: DimaEvent): void {
+    if (event.type === 'roulette') {
+      const key = `${event.data.id}:${event.data.phase}`;
+      if (this.rouletteDelivered.has(key)) return;
+      this.rouletteDelivered.add(key);
+      if (this.rouletteDelivered.size > 200) this.rouletteDelivered.delete(this.rouletteDelivered.values().next().value!);
+    }
     this.post({ type: 'event', event });
   }
   private receive(event: MessageEvent): void {
@@ -231,7 +242,9 @@ export class OverlayCustomWidgetComponent {
       // Live state this widget may read (polls, goals), as last known.
       states: Object.fromEntries(Object.entries(this.env!.states()).filter(([name]) => bundle.manifest.uses.includes(name as never)))
     } });
-    for (const event of this.buffered.splice(0)) this.post({ type: 'event', event });
+    // Spins and results that arrived before this frame could take them (still loading, or reloaded).
+    if (bundle.manifest.uses.includes('roulette')) for (const event of this.env!.recent?.() ?? []) this.postEvent(event);
+    for (const event of this.buffered.splice(0)) this.postEvent(event);
     this.status.set('running'); this.report({ status: 'running' });
   }
   private log(level: string, args: unknown): void {

@@ -22,6 +22,9 @@ import { buildSignal, signalError, skippedSignals, widgetSignals } from '../../w
 import { replayChat } from '../../widget_feed/chat-replay.js';
 import { channelGoals, publicGoals } from '../../custom_widgets/state.js';
 import { widgetStateRegistry } from '../../overlays/widget-state-providers.js';
+import { STATE_NAMES } from '../../custom_widgets/format.js';
+import { publicAds, publicHypeTrain, type StoredAdBreak, type StoredHypeTrain } from '../../overlays/live-events-model.js';
+import { adSchedule, updateAdSchedules } from '../../overlays/ad-schedule.js';
 export const overlayStudioRoute = express.Router();
 const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { void fn(req, res).catch(next); };
 const param = (req: Request, key: string) => string(req.params[key]);
@@ -122,14 +125,20 @@ overlayStudioRoute.delete('/:channelID/custom-widgets/:widgetId', wrap(async (re
 overlayStudioRoute.get('/:channelID/custom-widgets/store/:namespace/:key', wrap(async (req, res) => ok(res, { value: await storeGet(param(req, 'channelID'), param(req, 'namespace'), req.params.key) })));
 overlayStudioRoute.get('/:channelID/custom-widgets/counters/:name', wrap(async (req, res) => ok(res, { value: await commandCount(param(req, 'channelID'), req.params.name) })));
 overlayStudioRoute.get('/:channelID/custom-widgets/signals', wrap(async (req, res) => ok(res, { skipped: await skippedSignals(param(req, 'channelID')) })));
-/** Studio previews start from the channel's real live state (polls, goals); null when a read failed. */
+/** Studio previews start from the channel's real live state (polls, goals, hype train, ads); null when a read failed. */
 overlayStudioRoute.get('/:channelID/custom-widgets/state', wrap(async (req, res) => {
   const channel = param(req, 'channelID');
   const [interactions, goals] = await Promise.all([
     (widgetStateRegistry.readSource(channel, 'twitch-interactions') ?? Promise.resolve(null)).catch(() => null),
     channelGoals(channel).then(publicGoals).catch(() => null)
   ]);
-  ok(res, { polls: interactions ? { poll: interactions['poll']?.state ?? null, prediction: interactions['prediction']?.state ?? null } : null, goals });
+  // The ad schedule is asked for here too, so the next preview has it (OBS sources keep it fresh while connected).
+  updateAdSchedules([channel], () => {});
+  const now = Date.now();
+  // hypetrain null means none is running, so it is left out (unknown) when the read failed.
+  ok(res, { polls: interactions ? { poll: interactions['poll']?.state ?? null, prediction: interactions['prediction']?.state ?? null } : null, goals,
+    ...(interactions ? { hypetrain: publicHypeTrain((interactions['hypetrain']?.state ?? null) as StoredHypeTrain | null, now),
+      ads: publicAds((interactions['adbreak']?.state ?? null) as StoredAdBreak | null, adSchedule(channel), now) } : {}) });
 }));
 /** Studio's "Replay recent chat": the last 20 stored messages, oldest first, text only (see widget_feed/chat-replay.ts). */
 overlayStudioRoute.get('/:channelID/custom-widgets/chat-history', wrap(async (req, res) => {
@@ -148,7 +157,7 @@ overlayStudioRoute.post('/:channelID/widget-test', wrap(async (req, res) => {
   if (!['chat', 'chat.delete', 'chat.clear', 'alert', 'signal', 'session', 'tts', 'trigger', 'reward', 'state', 'pet', 'duel', 'roulette', 'dimafx'].includes(String(body.type)) || !body.data || typeof body.data !== 'object' || Array.isArray(body.data)
     || JSON.stringify(body.data).length > (body.type === 'session' || body.type === 'state' ? 64_000 : 16_000)) throw new OverlayError('Invalid widget test');
   // Sample live state (polls, goals) for one published overlay.
-  if (body.type === 'state' && !['polls', 'goals'].includes(String((body.data as { name?: unknown }).name))) throw new OverlayError('Invalid widget test');
+  if (body.type === 'state' && !(STATE_NAMES as readonly string[]).includes(String((body.data as { name?: unknown }).name))) throw new OverlayError('Invalid widget test');
   // Test alerts aren't in the journal, so the server can't count them: Studio sends the session totals they lead to.
   if (body.type === 'session') {
     const session = body.data as { data?: unknown; recents?: unknown };

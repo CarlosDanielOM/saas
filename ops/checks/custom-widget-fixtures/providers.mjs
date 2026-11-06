@@ -17,5 +17,14 @@ globalThis.fetch = async (input, options) => {
     return new Response(options?.method === 'HEAD' ? null : PNG, { status: 200, headers: { 'content-type': 'image/png', 'content-length': String(PNG.length) } });
   }
   if (url.hostname === 'evil.streamelements.com' || url.hostname === 'example.com') throw new Error('SSRF guard failed: fetched ' + url.href);
+  // Fake Twitch hype train status and ad schedule: the check writes helix-<name>.json ({ status, body, delayMs }) and reads helix-calls.jsonl.
+  if (url.hostname === 'api.twitch.tv' && (url.pathname === '/helix/hypetrain/status' || url.pathname === '/helix/channels/ads')) {
+    const { appendFileSync, readFileSync } = await import('node:fs');
+    const name = url.pathname.endsWith('/status') ? 'hypetrain' : 'ads';
+    appendFileSync('/tmp/saas-fixtures/helix-calls.jsonl', JSON.stringify({ name, at: Date.now() }) + '\n');
+    let reply; try { reply = JSON.parse(readFileSync(`/tmp/saas-fixtures/helix-${name}.json`, 'utf8')); } catch { return new Response('{}', { status: 503 }); }
+    if (reply.delayMs) await new Promise(resolve => setTimeout(resolve, reply.delayMs));
+    return new Response(JSON.stringify(reply.body), { status: reply.status ?? 200, headers: { 'content-type': 'application/json' } });
+  }
   return inner(input, options);
 };

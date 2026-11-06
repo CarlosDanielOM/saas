@@ -155,6 +155,28 @@ export const TYPES: Record<string, RefType> = {
     phase: p("'spinning' | 'result'", 'Spinning or finished.'), label: p('string | null', 'What it landed on (result only).'), endsAt: p('number', 'When the spin ends (ms).'),
     at: p('number', 'Time (ms).'), test: p('boolean', 'A Studio test.')
   } },
+  DimaHypeTrain: { doc: 'Live state "hypetrain": the running hype train, or the last one until its cooldown ends (null when there is none).', props: {
+    id: p('string', 'This hype train.'), phase: p("'active' | 'ended'", 'Running or finished.'), level: p('number', 'Current (or final) level.'),
+    total: p('number', 'Points so far (Twitch units).'), progress: p('number | null', 'Points toward the next level (null once ended).'), goal: p('number | null', 'Points this level needs (null once ended).'),
+    topContributions: p('DimaHypeContribution[]', 'Top contributors (public on Twitch).'), allTimeHigh: p('{ level: number; total: number } | null', "The channel's record."),
+    type: p("'regular' | 'golden_kappa' | 'treasure'", 'Kind of hype train.'), shared: p('boolean', 'A shared train with other channels.'), sharedParticipants: p('DimaUser[]', 'Channels in a shared train.'),
+    startedAt: p('number', 'Start (ms).'), expiresAt: p('number | null', 'When it ends unless someone contributes (ms; null once ended).'),
+    endedAt: p('number | null', 'End (ms).'), cooldownEndsAt: p('number | null', 'When the next hype train can start (ms).')
+  } },
+  DimaHypeContribution: { doc: 'A hype train contributor.', props: {
+    user: p('DimaUser', 'Who.'), type: p("'bits' | 'subscription' | 'other'", 'What they gave.'), total: p('number', 'Their points (Twitch units).')
+  } },
+  DimaAds: { doc: 'Live state "ads": the running ad break and the ad schedule. Times are ms.', props: {
+    active: p('DimaAdBreak | null', 'The ad break running now (null when none).'), schedule: p('DimaAdSchedule | null', 'From Twitch, about once a minute (null when unknown).')
+  } },
+  DimaAdBreak: { doc: 'An ad break.', props: {
+    startedAt: p('number', 'Start (ms).'), endsAt: p('number', 'End (ms).'), duration: p('number', 'Length in seconds.'), automatic: p('boolean', 'Started by the ad schedule (not by hand).')
+  } },
+  DimaAdSchedule: { doc: "Twitch's ad schedule (fields are null when Twitch doesn't say).", props: {
+    nextAt: p('number | null', 'Next scheduled ad break (ms; null when none is scheduled or offline).'), duration: p('number | null', 'Length of the next break (seconds).'),
+    lastAt: p('number | null', 'Last ad break (ms).'), snoozes: p('number | null', 'Snoozes left.'), snoozeRefreshAt: p('number | null', 'When a snooze is added back (ms).'),
+    prerollFreeUntil: p('number | null', 'Pre-roll free until (ms).')
+  } },
   DimaDimafx: { doc: 'A DimaFX item was bought and is playing (event `dimafx`). Message is viewer text: escape it.', props: {
     id: p('string', 'This purchase.'), item: p('{ id: string; name: string; type: string }', 'The item.'), source: p("'bits' | 'credits' | 'saved' | 'test'", 'How it was paid.'),
     bits: p('number | null', 'Bits paid.'), credits: p('number | null', 'Credits paid.'), user: p('DimaUser | null', 'The buyer, only when they shared their identity with the extension.'),
@@ -210,7 +232,9 @@ export const TYPES: Record<string, RefType> = {
     winner: p('string | null', 'listener "dima:duel": the winner (ended).'), loser: p('string | null', 'listener "dima:duel": the loser (ended).'), endsAt: p('number | null', 'listeners "dima:duel", "dima:roulette": when it ends (ms).'),
     rouletteId: p('string', 'listener "dima:roulette": the roulette.'), label: p('string | null', 'listener "dima:roulette": what it landed on (result).'),
     item: p('{ id: string; name: string; type: string }', 'listener "dima:dimafx": the item.'), bits: p('number | null', 'listener "dima:dimafx": Bits paid.'), credits: p('number | null', 'listener "dima:dimafx": credits paid.'),
-    target: p('string | null', 'listener "dima:signal": layer name for widget.signal.to.')
+    target: p('string | null', 'listener "dima:signal": layer name for widget.signal.to.'),
+    hypetrain: p('DimaHypeTrain | null', 'listener "dima:hypetrain": the hype train (null when none).'),
+    active: p('DimaAdBreak | null', 'listener "dima:ads": the running ad break.'), schedule: p('DimaAdSchedule | null', 'listener "dima:ads": the ad schedule.')
   } },
   SEMessageData: { doc: 'A chat message (StreamElements shape).', props: {
     time: p('number', 'Time (ms).'), tags: p('Record<string, string>', 'IRC tags (badges, color, emotes, first-msg…).'), nick: p('string', 'Login.'),
@@ -224,10 +248,10 @@ export const TYPES: Record<string, RefType> = {
 
 /** Type aliases for the typings (unions that can't be completed into). */
 export const ALIASES: Record<string, string> = {
-  DimaState: "{ name: 'polls'; value: DimaPolls } | { name: 'goals'; value: DimaGoal[] }",
-  DimaStates: "{ polls: DimaPolls; goals: DimaGoal[] }",
+  DimaState: "{ name: 'polls'; value: DimaPolls } | { name: 'goals'; value: DimaGoal[] } | { name: 'hypetrain'; value: DimaHypeTrain | null } | { name: 'ads'; value: DimaAds }",
+  DimaStates: "{ polls: DimaPolls; goals: DimaGoal[]; hypetrain: DimaHypeTrain | null; ads: DimaAds }",
   DimaPart: "{ type: 'text'; text: string } | { type: 'emote'; text: string; id: string; animated: boolean; images: DimaImages } | { type: 'cheer'; text: string; prefix: string; bits: number; tier: number } | { type: 'mention'; text: string; user: DimaUser }",
-  SEListener: "'message' | 'delete-message' | 'delete-messages' | 'follower-latest' | 'subscriber-latest' | 'cheer-latest' | 'raid-latest' | 'tip-latest' | 'widget-button' | 'kvstore:update' | 'dima:signal' | 'dima:polls' | 'dima:goals' | 'dima:tts' | 'dima:trigger' | 'dima:reward' | 'dima:pet' | 'dima:duel' | 'dima:roulette' | 'dima:dimafx'",
+  SEListener: "'message' | 'delete-message' | 'delete-messages' | 'follower-latest' | 'subscriber-latest' | 'cheer-latest' | 'raid-latest' | 'tip-latest' | 'widget-button' | 'kvstore:update' | 'dima:signal' | 'dima:polls' | 'dima:goals' | 'dima:tts' | 'dima:trigger' | 'dima:reward' | 'dima:pet' | 'dima:duel' | 'dima:roulette' | 'dima:dimafx' | 'dima:hypetrain' | 'dima:ads'",
 };
 
 /** Dima SDK events: payload type and the widget.json `uses` entry needed to receive them. */
@@ -241,7 +265,7 @@ export const DIMA_EVENTS: { name: string; type: string; uses: string | null; doc
   { name: 'storage', type: 'DimaStorageUpdate', uses: 'storage', doc: 'A saved value changed.' },
   { name: 'session', type: 'DimaSession', uses: 'session', doc: 'Recent events and totals changed.' },
   { name: 'signal', type: 'DimaSignal', uses: 'signals', doc: 'A chat command sent a signal: $(widget.signal name value). Use \'signal:name\' for one name.' },
-  { name: 'state', type: 'DimaState', uses: null, doc: 'Live state changed ({ name, value }); Dima.state(name, …) is the easy way. Needs "polls" or "goals" in uses.' },
+  { name: 'state', type: 'DimaState', uses: null, doc: 'Live state changed ({ name, value }); Dima.state(name, …) is the easy way. Needs "polls", "goals", "hypetrain" or "ads" in uses.' },
   { name: 'tts', type: 'DimaTts', uses: 'tts', doc: 'A text-to-speech message started or finished.' },
   { name: 'trigger', type: 'DimaTrigger', uses: 'triggers', doc: 'A trigger alert was sent to the overlay.' },
   { name: 'reward', type: 'DimaReward', uses: 'rewards', doc: 'A channel-point reward was redeemed.' },
@@ -253,7 +277,9 @@ export const DIMA_EVENTS: { name: string; type: string; uses: string | null; doc
 /** Dima.state('…') names and their value types. */
 export const STATE_REFS: { name: string; type: string; doc: string }[] = [
   { name: 'polls', type: 'DimaPolls', doc: 'The current Twitch poll and prediction. Needs "polls" in widget.json uses.' },
-  { name: 'goals', type: 'DimaGoal[]', doc: 'Goals from the Goals page with progress. Needs "goals" in widget.json uses.' }
+  { name: 'goals', type: 'DimaGoal[]', doc: 'Goals from the Goals page with progress. Needs "goals" in widget.json uses.' },
+  { name: 'hypetrain', type: 'DimaHypeTrain | null', doc: 'The running hype train (or the last one until its cooldown ends); null when none. Needs "hypetrain" in widget.json uses.' },
+  { name: 'ads', type: 'DimaAds', doc: 'The running ad break and the ad schedule. Needs "ads" in widget.json uses.' }
 ];
 /** `Dima.on('signal:feed', …)`: one signal by name. */
 export const SIGNAL_EVENT = /^signal:([a-z0-9_]{1,40})$/;
@@ -282,7 +308,9 @@ export const SE_LISTENERS: { name: string; doc: string }[] = [
   { name: 'dima:pet', doc: 'The pet started or finished a reply (event.phase, event.text, event.mood). Needs "pets" in widget.json uses.' },
   { name: 'dima:duel', doc: 'A duel started or ended (event.phase, event.challenger, event.opponent, event.winner). Needs "duels" in widget.json uses.' },
   { name: 'dima:roulette', doc: 'A roulette spin started or finished (event.phase, event.name, event.label). Needs "roulette" in widget.json uses.' },
-  { name: 'dima:dimafx', doc: 'A DimaFX item was bought (event.item, event.bits, event.user). Needs "dimafx" in widget.json uses.' }
+  { name: 'dima:dimafx', doc: 'A DimaFX item was bought (event.item, event.bits, event.user). Needs "dimafx" in widget.json uses.' },
+  { name: 'dima:hypetrain', doc: 'The hype train changed (event.hypetrain; null when none). Needs "hypetrain" in widget.json uses.' },
+  { name: 'dima:ads', doc: 'An ad break started or ended, or the ad schedule changed (event.active, event.schedule). Needs "ads" in widget.json uses.' }
 ];
 
 /** widget.json keys and values. */
@@ -301,7 +329,8 @@ export const USES_DOCS: Record<string, string> = {
   counters: 'Bot command counters.', session: 'Recent events and totals.', signals: 'Signals from chat commands: $(widget.signal name value).',
   polls: 'Live Twitch polls and predictions (totals only).', goals: 'Goals from the Goals page with live progress.', tts: 'Text-to-speech messages starting and finishing.',
   triggers: 'Trigger alerts sent to the overlay.', rewards: 'Channel-point redemptions.', pets: 'The pet speaking.', duels: 'Duels starting and ending.',
-  roulette: 'Roulette spins and results.', dimafx: 'DimaFX purchases playing.'
+  roulette: 'Roulette spins and results.', dimafx: 'DimaFX purchases playing.', hypetrain: 'Hype trains (level, progress, top contributors).',
+  ads: 'Ad breaks and the ad schedule.'
 };
 /** fields.txt field types and properties. */
 export const FIELD_TYPES: { name: FieldType; doc: string }[] = [

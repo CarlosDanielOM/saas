@@ -110,7 +110,7 @@ export class CustomWidgetsService {
   }
   /** Signals dropped by the channel limits in the last 10 minutes. */
   /** The channel's live state for previews (null: that read failed). */
-  liveState(): Promise<{ polls: unknown; goals: unknown }> { return this.api.request<{ polls: unknown; goals: unknown }>('GET', `${this.channel}/custom-widgets/state`); }
+  liveState(): Promise<Record<'polls' | 'goals' | 'hypetrain' | 'ads', unknown>> { return this.api.request<Record<'polls' | 'goals' | 'hypetrain' | 'ads', unknown>>('GET', `${this.channel}/custom-widgets/state`); }
   /** The channel's last stored chat messages (oldest first, text only) for "Replay recent chat". */
   chatHistory(): Promise<{ messages: DimaChat[] }> { return this.api.request<{ messages: DimaChat[] }>('GET', `${this.channel}/custom-widgets/chat-history`); }
   signalStatus(): Promise<{ skipped: number }> { return this.api.request<{ skipped: number }>('GET', `${this.channel}/custom-widgets/signals`); }

@@ -393,10 +393,35 @@ function buildEventData(
         ...(type.endsWith(".lock") ? { locked_at: new Date().toISOString() } : {}),
         ...(type.endsWith(".end") ? { status: "resolved", ended_at: new Date().toISOString(), winning_outcome_id: "one" } : {}),
         outcomes: [{ id: "one", title: "Yes", users: 12, channel_points: 1200, color: "blue" }, { id: "two", title: "No", users: 8, channel_points: 800, color: "pink" }] };
-    case "channel.update":
     case "channel.hype_train.begin":
     case "channel.hype_train.progress":
-    case "channel.hype_train.end":
+    case "channel.hype_train.end": {
+      // Hype train v2 shape (journaled for custom widget state, so it must be complete).
+      const ended = type === "channel.hype_train.end";
+      const contributions = [
+        { user_id: randomUserId, user_login: "testuser", user_name: "TestUser", type: "bits", total: 500 },
+        { user_id: "12345678", user_login: "otheruser", user_name: "OtherUser", type: "subscription", total: 1000 },
+      ];
+      return {
+        broadcaster_user_id: channelID,
+        broadcaster_user_login: "teststreamer",
+        broadcaster_user_name: "TestStreamer",
+        id: "test-hype-train",
+        level: 2,
+        total: 1500,
+        top_contributions: contributions,
+        shared_train_participants: null,
+        started_at: new Date(Date.now() - 120000).toISOString(),
+        type: "regular",
+        is_shared_train: false,
+        ...(ended
+          ? { ended_at: now, cooldown_ends_at: new Date(Date.now() + 3600000).toISOString() }
+          : { progress: 300, goal: 1800, expires_at: new Date(Date.now() + 180000).toISOString(),
+              ...(type === "channel.hype_train.begin" ? { all_time_high_level: 4, all_time_high_total: 5000 } : {}) }),
+        ...base,
+      };
+    }
+    case "channel.update":
     case "channel.shoutout.receive":
     case "user.update":
     case "automod.message.hold":

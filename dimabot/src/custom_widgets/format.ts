@@ -57,11 +57,11 @@ export interface FieldIssue { key?: string; code: 'invalid-key' | 'invalid-field
 /** Which runtime API the widget's code was written for. `streamelements` adds the StreamElements translation layer. */
 export type WidgetEngine = 'dima' | 'streamelements';
 /** Data a widget can ask for (Dima SDK v1). Studio shows these in plain words; the server streams only these. */
-export const WIDGET_USES = ['chat', 'alerts', 'storage', 'counters', 'session', 'signals', 'polls', 'goals', 'tts', 'triggers', 'rewards', 'pets', 'duels', 'roulette', 'dimafx'] as const;
+export const WIDGET_USES = ['chat', 'alerts', 'storage', 'counters', 'session', 'signals', 'polls', 'goals', 'tts', 'triggers', 'rewards', 'pets', 'duels', 'roulette', 'dimafx', 'hypetrain', 'ads'] as const;
 /** Bot events (Dima.on(kind) / SE `dima:<kind>`) and the `uses` entry each needs. */
 export const BOT_EVENT_USES = { tts: 'tts', trigger: 'triggers', reward: 'rewards', pet: 'pets', duel: 'duels', roulette: 'roulette', dimafx: 'dimafx' } as const;
 /** Live state (Dima.state(name) / SE `dima:<name>`): the name is also the `uses` entry. */
-export const STATE_NAMES = ['polls', 'goals'] as const;
+export const STATE_NAMES = ['polls', 'goals', 'hypetrain', 'ads'] as const;
 export type WidgetUse = typeof WIDGET_USES[number];
 export interface WidgetManifest {
   engine: WidgetEngine; api: 1; uses: WidgetUse[];

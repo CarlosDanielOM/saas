@@ -21,8 +21,3 @@ export function duelWidgetEvent(channel: string, run: DuelRun, phase: 'started' 
   publishToWidgets(channel, 'duel', { id: run.id, phase, challenger: run.challenger, opponent: run.opponent, mode: run.mode,
     winner: phase === 'ended' ? winnerLogin(run) : null, loser: phase === 'ended' ? loserLogin(run) : null, endsAt: run.endsAt, at: Date.now(), test: false });
 }
-
-/** A roulette spin started. The winning label travels to the API, which keeps it until the spin ends. */
-export function rouletteWidgetEvent(channel: string, draw: { id: string; rouletteId: string; endsAt: number; winner: { label: string } }, name: string): void {
-  publishToWidgets(channel, 'roulette', { id: draw.id, rouletteId: draw.rouletteId, name, endsAt: draw.endsAt, label: draw.winner.label, at: Date.now() });
-}

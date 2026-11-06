@@ -2,6 +2,7 @@ import type { DomainEventConsumerOptions } from '../utils/domain_event_consumer.
 import { GIFT_PACK_PAIRS } from '../utils/credit_gift_provider.js';
 import { WIDGET_EVENT_MAX_AGE_MS } from '../widgets/events.js';
 import { POLAR_PLAN_EVENT_TYPES } from './polar_entitlements.js';
+import { LIVE_EVENT_DOMAIN_TYPES } from '../overlays/live-events-model.js';
 
 export interface DomainEventConsumerDefinition extends DomainEventConsumerOptions {
     schemaVersions: readonly number[];
@@ -35,13 +36,14 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
     {
         consumer: 'widget-actions-v1', topics: ['channel'], schemaVersions: [1], adminReplay: false,
         maxEventAgeMs: WIDGET_EVENT_MAX_AGE_MS,
-        eventFilter: { source: twitchSources, channelID: { $exists: true } },
+        // Hype train progress can be chatty and no widget action uses it (or ad breaks): no deliveries for them.
+        eventFilter: { source: twitchSources, channelID: { $exists: true }, type: { $nin: LIVE_EVENT_DOMAIN_TYPES } },
         handler: async event => (await import('../widgets/events.js')).applyWidgetDomainEvent(event)
     },
     {
         consumer: 'overlay-interactions-v1', topics: ['channel'], schemaVersions: [1], adminReplay: false,
         maxEventAgeMs: 86_400_000,
-        eventFilter: { source: 'twitch-eventsub', type: { $in: ['channel.poll.began', 'channel.poll.updated', 'channel.poll.ended', 'channel.prediction.began', 'channel.prediction.updated', 'channel.prediction.locked', 'channel.prediction.ended'] } },
+        eventFilter: { source: 'twitch-eventsub', type: { $in: ['channel.poll.began', 'channel.poll.updated', 'channel.poll.ended', 'channel.prediction.began', 'channel.prediction.updated', 'channel.prediction.locked', 'channel.prediction.ended', ...LIVE_EVENT_DOMAIN_TYPES] } },
         handler: async event => (await import('../overlays/interactions.js')).applyInteractionEvent(event)
     },
     {
@@ -62,7 +64,7 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
         adminReplay: true,
         topics: ['channel'],
         schemaVersions: [1],
-        eventFilter: { source: twitchSources },
+        eventFilter: { source: twitchSources, type: { $nin: LIVE_EVENT_DOMAIN_TYPES } },
         handler: async (event) => (await import('./stream_analytics_events.js')).applyStreamAnalyticsDomainEvent(event)
     },
     {

@@ -14,7 +14,7 @@ import { starterFiles, type StarterTexts } from './custom-widget-templates';
 import { writeZip } from './custom-widget-zip';
 import { EVENT_USES, type DimaSignal } from './widget-runtime/dima-events';
 import { dimaSdk } from './widget-runtime/dima-sdk';
-import { testAlert, testChat, testDimafx, testDuel, testGoals, testPet, testPolls, testReward, testRoulette, testTrigger, testTts } from './widget-runtime/test-events';
+import { testAlert, testChat, testDimafx, testDuel, testAds, testGoals, testHypeTrain, testPet, testPolls, testReward, testRoulette, testTrigger, testTts } from './widget-runtime/test-events';
 import { SE_SHIM_SCRIPT, seShim } from './widget-runtime/se-shim';
 import { DIMA_EVENTS, SE_LISTENERS, TYPES } from './widget-runtime/sdk-reference';
 
@@ -61,12 +61,18 @@ describe('SDK reference matches the runtime', () => {
     handlers['signal'](signal);
     // Live state and bot events reach StreamElements widgets as dima:* listeners, always as objects.
     await new Promise(r => setTimeout(r, 0)); // the SE layer subscribes to live state after onWidgetLoad
-    states['polls'](testPolls()); states['goals'](testGoals());
+    states['polls'](testPolls()); states['goals'](testGoals()); states['hypetrain'](testHypeTrain()); states['ads'](testAds());
     handlers['tts'](testTts('start')); handlers['trigger'](testTrigger()); handlers['reward'](testReward());
     handlers['pet'](testPet('done')); handlers['duel'](testDuel('ended')); handlers['roulette'](testRoulette('result')); handlers['dimafx'](testDimafx());
     for (const [type, value] of [['DimaPet', testPet('done')], ['DimaDuel', testDuel('ended')], ['DimaRoulette', testRoulette('result')], ['DimaDimafx', testDimafx()]] as const) expect(Object.keys(value).sort()).toEqual(Object.keys(TYPES[type].props).sort());
     for (const [type, value] of [['DimaTts', testTts('end')], ['DimaTrigger', testTrigger()], ['DimaReward', testReward()]] as const) expect(Object.keys(value).sort()).toEqual(Object.keys(TYPES[type].props).sort());
     expect(Object.keys(testGoals()[0] as object).sort()).toEqual(Object.keys(TYPES['DimaGoal'].props).sort());
+    const hype = testHypeTrain(), ads = testAds();
+    expect(Object.keys(hype).sort()).toEqual(Object.keys(TYPES['DimaHypeTrain'].props).sort());
+    expect(Object.keys(hype.topContributions[0]).sort()).toEqual(Object.keys(TYPES['DimaHypeContribution'].props).sort());
+    expect(Object.keys(ads).sort()).toEqual(Object.keys(TYPES['DimaAds'].props).sort());
+    expect(Object.keys(ads.active!).sort()).toEqual(Object.keys(TYPES['DimaAdBreak'].props).sort());
+    expect(Object.keys(ads.schedule!).sort()).toEqual(Object.keys(TYPES['DimaAdSchedule'].props).sort());
     const eventKeys = new Set(Object.keys(TYPES['SEEvent'].props)), dataKeys = new Set(Object.keys(TYPES['SEMessageData'].props));
     expect(new Set(details.map(d => d.listener))).toEqual(new Set(SE_LISTENERS.map(l => l.name).filter(name => name !== 'tip-latest').concat('tip-latest')));
     for (const { listener, event } of details) {
@@ -162,7 +168,7 @@ describe('code editor suggestions', () => {
   it('widget.json, fields and data', () => {
     const manifest = jsonCompletions('manifest', () => hints()), fields = jsonCompletions('fields', () => hints()), data = jsonCompletions('data', () => hints());
     expect(labels(complete(manifest, '{ "engine": "', json()))).toEqual(['dima', 'streamelements']);
-    expect(labels(complete(manifest, '{ "engine": "dima", "uses": ["chat", "', json()))).toEqual(['chat', 'alerts', 'storage', 'counters', 'session', 'signals', 'polls', 'goals', 'tts', 'triggers', 'rewards', 'pets', 'duels', 'roulette', 'dimafx']);
+    expect(labels(complete(manifest, '{ "engine": "dima", "uses": ["chat", "', json()))).toEqual(['chat', 'alerts', 'storage', 'counters', 'session', 'signals', 'polls', 'goals', 'tts', 'triggers', 'rewards', 'pets', 'duels', 'roulette', 'dimafx', 'hypetrain', 'ads']);
     expect(labels(complete(manifest, '{ "engine": "dima", "', json()))).not.toContain('engine');
     expect(labels(complete(fields, '{ "x": { "type": "', json()))).toEqual(expect.arrayContaining(['colorpicker', 'slider', 'hidden']));
     expect(labels(complete(fields, '{ "x": { "', json()))).toEqual(expect.arrayContaining(['type', 'label', 'value', 'group']));

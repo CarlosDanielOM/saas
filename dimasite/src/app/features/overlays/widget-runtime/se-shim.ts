@@ -127,6 +127,8 @@ export function seShim(win: any): void {
     // Live state right after load (also after a frame restart, from the latest known value), then every change.
     Dima.state('polls', (value: any) => received('dima:polls', value));
     Dima.state('goals', (value: any) => received('dima:goals', { goals: value }));
+    Dima.state('hypetrain', (value: any) => received('dima:hypetrain', { hypetrain: value }));
+    Dima.state('ads', (value: any) => received('dima:ads', value));
   });
   Dima.on('chat', (m: any) => received('message', toMessage(m)));
   Dima.on('chat.delete', (d: any) => received('delete-message', { msgId: d?.messageId }));

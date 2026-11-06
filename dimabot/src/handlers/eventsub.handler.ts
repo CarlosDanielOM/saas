@@ -36,6 +36,8 @@ interface EventsubHandlerOptions {
     chatEffectContext?: AstEffectContext;
     durableChatHandled?: boolean;
     durableDefenseHandled?: boolean;
+    /** A signed Twitch retry older than the normal window (accepted only because the event is journaled). */
+    staleRetry?: boolean;
 }
 
 export const eventsubHandler = async (
@@ -256,7 +258,8 @@ export const eventsubHandler = async (
             }
             break;
         case 'channel.ad_break.begin':
-            adBreakHandler(eventData as IAdBreakEvent, eventsubData, chatEnabled);
+            // Late retries still update widget state (journal) but never announce an old ad break.
+            if (!options.staleRetry) adBreakHandler(eventData as IAdBreakEvent, eventsubData, chatEnabled);
             break;
         case 'channel.ban':
             banHandler(eventData as IBanEvent, eventsubData, chatEnabled);
@@ -269,10 +272,12 @@ export const eventsubHandler = async (
                 await handleMessageOnlyEvent();
             }
             break;
-        case 'channel.shoutout.receive':
         case 'channel.hype_train.begin':
         case 'channel.hype_train.progress':
         case 'channel.hype_train.end':
+            if (!options.staleRetry) await handleMessageOnlyEvent();
+            break;
+        case 'channel.shoutout.receive':
         case 'channel.poll.progress':
         case 'channel.prediction.progress':
         case 'channel.update':

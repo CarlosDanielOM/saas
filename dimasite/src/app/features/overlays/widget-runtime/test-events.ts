@@ -1,4 +1,4 @@
-import type { DimaAlert, DimaBadge, DimaChat, DimaDimafx, DimaDuel, DimaEvent, DimaPart, DimaPet, DimaReward, DimaRoles, DimaRoulette, DimaTrigger, DimaTts, DimaUser } from './dima-events';
+import type { DimaAlert, DimaBadge, DimaChat, DimaAds, DimaDimafx, DimaDuel, DimaHypeTrain, DimaEvent, DimaPart, DimaPet, DimaReward, DimaRoles, DimaRoulette, DimaTrigger, DimaTts, DimaUser } from './dima-events';
 
 /** Studio test presets for custom widgets: realistic Twitch-shaped chat and alerts. */
 export const CHAT_TESTS = ['viewer', 'subscriber', 'vip', 'moderator', 'broadcaster', 'first', 'emotes', 'reply', 'long', 'command'] as const;
@@ -78,8 +78,13 @@ export function testAlert(kind: AlertTest): DimaAlert {
 /** Bot events and live state the Test drawer can send (all marked as tests). */
 export const BOT_EVENT_TESTS = ['tts', 'trigger', 'reward', 'pet', 'duel', 'roulette', 'dimafx'] as const;
 export type BotEventTest = typeof BOT_EVENT_TESTS[number];
-export const STATE_TESTS = ['polls', 'goals'] as const;
+export const STATE_TESTS = ['polls', 'goals', 'hypetrain', 'ads'] as const;
 export type StateTest = typeof STATE_TESTS[number];
+export const isStateTest = (kind: string): kind is StateTest => (STATE_TESTS as readonly string[]).includes(kind);
+/** The sample value a live state test sends. */
+export function testState(kind: StateTest): unknown {
+  return kind === 'polls' ? testPolls() : kind === 'goals' ? testGoals() : kind === 'hypetrain' ? testHypeTrain() : testAds();
+}
 
 export function testTts(phase: 'start' | 'end', speechId = id()): DimaTts {
   return { id: speechId, phase, text: 'Yuzu says: the cozy stream continues!', user: person('yuzu', 'Yuzu'), reason: phase === 'end' ? 'ended' : null, at: Date.now(), test: true };
@@ -101,6 +106,20 @@ export function testGoals(): unknown[] {
     { id: 'test-follows', name: 'Road to 100 followers', metric: 'follows', mode: 'total', target: 100, current: 64, percent: 64, currency: null, status: 'active', startsAt: now - 86_400_000, endsAt: null, windowSeconds: null, period: null },
     { id: 'test-money', name: 'New microphone', metric: 'currency', mode: 'monthly', target: 250, current: 87.5, percent: 35, currency: 'USD', status: 'active', startsAt: now - 86_400_000, endsAt: null, windowSeconds: null, period: null }
   ];
+}
+
+/** A level 2 hype train halfway to level 3, like Twitch's (times in ms). */
+export function testHypeTrain(): DimaHypeTrain {
+  const now = Date.now();
+  return { id: 'test-hype-train', phase: 'active', level: 2, total: 1500, progress: 300, goal: 1800,
+    topContributions: [{ user: person('yuzu', 'Yuzu'), type: 'bits', total: 500 }, { user: person('pix', 'Pix'), type: 'subscription', total: 1000 }],
+    allTimeHigh: { level: 4, total: 5000 }, type: 'regular', shared: false, sharedParticipants: [], startedAt: now - 120_000, expiresAt: now + 180_000, endedAt: null, cooldownEndsAt: null };
+}
+/** A one-minute ad break that just started, and the next one in 20 minutes. */
+export function testAds(): DimaAds {
+  const now = Date.now();
+  return { active: { startedAt: now, endsAt: now + 60_000, duration: 60, automatic: false },
+    schedule: { nextAt: now + 20 * 60_000, duration: 90, lastAt: now, snoozes: 2, snoozeRefreshAt: now + 3_600_000, prerollFreeUntil: now + 10 * 60_000 } };
 }
 
 export function testPet(phase: 'speaking' | 'done', requestId = id()): DimaPet {
@@ -129,5 +148,5 @@ export function botTestEvents(kind: BotEventTest): { now: DimaEvent; later: Dima
   }
 }
 /** Bot events and live state a widget can be tested with, from its widget.json `uses`. */
-export const BOT_TEST_USES = [['tts', 'tts'], ['trigger', 'triggers'], ['reward', 'rewards'], ['pet', 'pets'], ['duel', 'duels'], ['roulette', 'roulette'], ['dimafx', 'dimafx'], ['polls', 'polls'], ['goals', 'goals']] as const;
+export const BOT_TEST_USES = [['tts', 'tts'], ['trigger', 'triggers'], ['reward', 'rewards'], ['pet', 'pets'], ['duel', 'duels'], ['roulette', 'roulette'], ['dimafx', 'dimafx'], ['polls', 'polls'], ['goals', 'goals'], ['hypetrain', 'hypetrain'], ['ads', 'ads']] as const;
 export type BotTestKind = typeof BOT_TEST_USES[number][0];

@@ -3,7 +3,7 @@ import type { OverlayWidget } from '../overlay.model';
 import { CustomWidgetsService } from '../custom-widgets.service';
 import type { DimaAlert, DimaChat, DimaEvent, DimaSession, DimaSignal, DimaState } from './dima-events';
 import { sessionAfterAlert } from './session-preview';
-import { testAlert, testChat, type AlertTest, type ChatTest } from './test-events';
+import { STATE_TESTS, testAlert, testChat, type AlertTest, type ChatTest } from './test-events';
 import { WidgetEventBus, storeNamespace, type CustomWidgetEnv, type RuntimeBundle, type WidgetLogEntry, type WidgetStatus, type WidgetTarget } from './widget-env';
 
 export interface LayerLog { status: WidgetStatus; errors: number; entries: WidgetLogEntry[] }
@@ -99,10 +99,10 @@ export class EditorWidgetEnv implements CustomWidgetEnv {
     } catch { this.sessionData = { data: {}, recents: [] }; }
     // Frames that started before the snapshot arrived get it now.
     this.bus.emit({ type: 'session', data: this.sessionData });
-    // The channel's real polls and goals for previews (a failed read leaves them unknown).
+    // The channel's real live state for previews (a failed read leaves it unknown; hype train null = none running).
     try {
       const state = await this.widgets.liveState();
-      for (const name of ['polls', 'goals'] as const) if (state[name] !== null && state[name] !== undefined) this.setState(name, state[name]);
+      for (const name of STATE_TESTS) if (state[name] !== undefined && (state[name] !== null || name === 'hypetrain')) this.setState(name, state[name]);
     } catch { /* unknown until a sample is sent */ }
   }
   report(layerId: string, update: { status?: WidgetStatus; entry?: WidgetLogEntry }): void {

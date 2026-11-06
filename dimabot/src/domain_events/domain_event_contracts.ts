@@ -1,4 +1,5 @@
 import { INTERACTION_EVENT_TYPES, parseInteraction } from '../overlays/interaction-model.js';
+import { AD_BREAK_EVENT_TYPES, HYPE_TRAIN_EVENT_TYPES, parseAdBreak, parseHypeTrain } from '../overlays/live-events-model.js';
 import type { IChatNotification } from '../interfaces/twitch/eventsub.interface.js';
 import type { JournalDomainEventInput } from './domain_event.types.js';
 import { DOMAIN_EVENT_RETENTION_SECONDS } from './domain_event.types.js';
@@ -17,6 +18,9 @@ export class DomainEventContractError extends Error {
 
 export const TWITCH_DOMAIN_EVENT_TYPES = {
     ...INTERACTION_EVENT_TYPES,
+    // Hype trains and ad breaks: journaled for custom widget state (their chat messages still run inline).
+    ...HYPE_TRAIN_EVENT_TYPES,
+    ...AD_BREAK_EVENT_TYPES,
     'channel.bits.use': 'channel.bits.received',
     'channel.cheer': 'channel.bits.received',
     'channel.bit.use': 'channel.bits.received',
@@ -211,7 +215,7 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
         record(event, 'payload.event');
         requireContract(subscription.type === original, 'Twitch subscription.type/originalEventType mismatch');
         if (subscription.id !== undefined) text(subscription.id, 'subscription.id');
-        if (subscription.version !== undefined) requireContract(subscription.version === (original === 'channel.follow' ? '2' : '1'), 'unsupported Twitch subscription.version');
+        if (subscription.version !== undefined) requireContract(subscription.version === (original === 'channel.follow' || original.startsWith('channel.hype_train.') ? '2' : '1'), 'unsupported Twitch subscription.version');
         if (subscription.cost !== undefined) count(subscription.cost, 'subscription.cost');
         if (subscription.created_at !== undefined) date(subscription.created_at, 'subscription.created_at');
         if (subscription.condition !== undefined) {
@@ -262,6 +266,10 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
             try { parseInteraction(original, event, String(metadata.messageTimestamp || input.occurredAt), input.sourceEventId); }
             catch (error) { throw new DomainEventContractError((error as Error).message); }
         }
+        if (typeof original === 'string' && (Object.hasOwn(HYPE_TRAIN_EVENT_TYPES, original) || Object.hasOwn(AD_BREAK_EVENT_TYPES, original))) {
+            try { if (original === 'channel.ad_break.begin') parseAdBreak(event); else parseHypeTrain(original, event, String(metadata.messageTimestamp || new Date(input.occurredAt ?? Date.now()).toISOString())); }
+            catch (error) { throw new DomainEventContractError((error as Error).message); }
+        }
         if (original === 'channel.raid') {
             text(event.from_broadcaster_user_id, 'event.from_broadcaster_user_id');
             count(event.viewers, 'event.viewers');
@@ -273,7 +281,7 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
             requireContract(input.streamID === event.id, 'Twitch streamID/event.id mismatch');
         }
         for (const field of ['total', 'cumulative_months', 'duration_months', 'months'] as const) {
-            if (event[field] !== undefined) count(event[field], `event.${field}`, field === 'total' ? 1 : 0);
+            if (event[field] !== undefined) count(event[field], `event.${field}`, field === 'total' && !original.startsWith('channel.hype_train.') ? 1 : 0);
         }
         for (const field of ['cumulative_total', 'streak_months'] as const) {
             if (event[field] != null) count(event[field], `event.${field}`);

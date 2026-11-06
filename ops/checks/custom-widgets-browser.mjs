@@ -72,8 +72,8 @@ extraWidgets[seGoalId] = { manifest: { engine: 'streamelements', api: 1, name: '
     + "window.addEventListener('onSessionUpdate', obj => { document.querySelector('.goal').textContent = obj.detail.session['follower-session'].count; });\n" };
 // Widgets that read live state and bot events (Dima SDK and StreamElements layer).
 const liveId = 'b8'.repeat(12), seLiveId = 'c9'.repeat(12);
-extraWidgets[liveId] = { manifest: { engine: 'dima', api: 1, name: 'Live', uses: ['chat', 'polls', 'goals', 'tts', 'triggers', 'rewards', 'pets', 'duels', 'roulette', 'dimafx'] }, css: 'body { color: #fff; }',
-  html: '<p class="goals"></p><p class="polls"></p><p class="tts"></p><p class="trigger"></p><p class="reward"></p><p class="pet"></p><p class="duel"></p><p class="roulette"></p><p class="dimafx"></p><ul class="chat"></ul>',
+extraWidgets[liveId] = { manifest: { engine: 'dima', api: 1, name: 'Live', uses: ['chat', 'polls', 'goals', 'tts', 'triggers', 'rewards', 'pets', 'duels', 'roulette', 'dimafx', 'hypetrain', 'ads'] }, css: 'body { color: #fff; }',
+  html: '<p class="goals"></p><p class="polls"></p><p class="tts"></p><p class="trigger"></p><p class="reward"></p><p class="pet"></p><p class="duel"></p><p class="roulette"></p><p class="dimafx"></p><p class="hype"></p><p class="ads"></p><ul class="chat"></ul>',
   js: "const out = (key, value) => { document.querySelector('.' + key).textContent = value; };\n"
     + "Dima.state('goals', goals => out('goals', goals.map(goal => goal.name + ':' + goal.current).join(',')));\n"
     + "Dima.state('polls', polls => out('polls', polls.poll ? polls.poll.title + ':' + polls.poll.choices.length : 'none'));\n"
@@ -82,14 +82,18 @@ extraWidgets[liveId] = { manifest: { engine: 'dima', api: 1, name: 'Live', uses:
     + "Dima.on('reward', event => out('reward', event.reward.title + ':' + event.input));\n"
     + "Dima.on('pet', event => out('pet', event.phase + ':' + event.text + ':' + event.mood));\n"
     + "Dima.on('duel', event => out('duel', event.phase + ':' + event.winner));\n"
-    + "Dima.on('roulette', event => out('roulette', event.phase + ':' + event.label));\n"
+    + "Dima.on('roulette', event => { const node = document.querySelector('.roulette'); node.setAttribute('data-count', String(Number(node.getAttribute('data-count') || 0) + 1)); out('roulette', event.phase + ':' + event.label); });\n"
     + "Dima.on('dimafx', event => out('dimafx', event.item.name + ':' + event.bits + ':' + (event.user ? event.user.name : 'anonymous')));\n"
+    + "Dima.state('hypetrain', train => out('hype', train ? train.phase + ':' + train.level + ':' + train.topContributions[0].user.name : 'none'));\n"
+    + "Dima.state('ads', ads => out('ads', (ads.active ? 'ad:' + ads.active.duration : 'no ad') + ':' + (ads.schedule ? 'next' : 'unknown')));\n"
     + "Dima.on('chat', message => { const item = document.createElement('li'); item.textContent = message.user.name + ': ' + message.text; document.querySelector('.chat').append(item); });\n" };
-extraWidgets[seLiveId] = { manifest: { engine: 'streamelements', api: 1, name: 'SE live', uses: ['polls', 'goals', 'tts'] }, css: 'body { color: #fff; }',
-  html: '<p class="goals"></p><p class="polls"></p><p class="tts"></p>',
+extraWidgets[seLiveId] = { manifest: { engine: 'streamelements', api: 1, name: 'SE live', uses: ['polls', 'goals', 'tts', 'hypetrain', 'ads'] }, css: 'body { color: #fff; }',
+  html: '<p class="goals"></p><p class="polls"></p><p class="tts"></p><p class="hype"></p><p class="ads"></p>',
   js: "window.addEventListener('onEventReceived', obj => { const listener = obj.detail.listener, event = obj.detail.event;\n"
     + "  if (listener === 'dima:goals') document.querySelector('.goals').textContent = event.goals.length + ' goals';\n"
     + "  if (listener === 'dima:polls') document.querySelector('.polls').textContent = event.poll ? event.poll.title : 'none';\n"
+    + "  if (listener === 'dima:hypetrain') document.querySelector('.hype').textContent = event.hypetrain ? 'level ' + event.hypetrain.level : 'none';\n"
+    + "  if (listener === 'dima:ads') document.querySelector('.ads').textContent = event.active ? 'ad running' : 'no ad';\n"
     + "  if (listener === 'dima:tts') document.querySelector('.tts').textContent = event.phase; });\n" };
 const extraView = id => ({ id, name: extraWidgets[id].manifest.name, engine: extraWidgets[id].manifest.engine, revision: 1, author: '', fields: [], data: {}, externalMedia: [], manifest: extraWidgets[id].manifest, media: {},
   files: Object.fromEntries(parts.map(part => [part, { bytes: 1, sha256: 'f'.repeat(64) }])), createdAt: '', updatedAt: '', usedIn: [] });
@@ -590,7 +594,7 @@ try {
     const goals = [{ id: 'g1', name: 'Road to 100', metric: 'follows', mode: 'total', target: 100, current: 64, percent: 64, currency: null, status: 'active', startsAt: 0, endsAt: null, windowSeconds: null, period: null }];
     const replay = ['first', 'second'].map((text, i) => ({ id: 'replay-' + i, platform: 'twitch', at: i, user: { id: '', login: 'ada', name: 'Ada', color: null, badges: [], roles: { broadcaster: false, moderator: false, vip: false, subscriber: false, founder: false, artist: false, staff: false, partner: false, turbo: false, prime: false }, subMonths: null },
       text, parts: [{ type: 'text', text }], kind: 'text', action: false, firstMessage: false, bits: 0, rewardId: null, reply: null, sharedChat: null }));
-    const lm = mocks({ widgets: [extraView(liveId), extraView(seLiveId)], liveState: { polls: null, goals }, chatHistory: replay,
+    const lm = mocks({ widgets: [extraView(liveId), extraView(seLiveId)], liveState: { polls: null, goals, hypetrain: null, ads: { active: null, schedule: null } }, chatHistory: replay,
       layers: [{ id: 'live-1', kind: 'custom', configVersion: 1, x: 40, y: 40, width: 500, height: 300, visible: true, locked: false, name: 'Live', config: { widgetId: liveId } },
         { id: 'live-2', kind: 'custom', configVersion: 1, x: 600, y: 40, width: 400, height: 200, visible: true, locked: false, name: 'SE live', config: { widgetId: seLiveId } }] });
     lm.world.state.scenes[0].published = { width: 1920, height: 1080, widgets: structuredClone(lm.world.state.scenes[0].widgets), designs: [], waitFor: [] };
@@ -601,7 +605,7 @@ try {
     await live.locator('.goals', { hasText: 'Road to 100:64' }).waitFor(); // the channel's real goals, as soon as the widget starts
     assert.equal(await live.locator('.polls').textContent(), '', 'no polls value yet: unknown until known');
     await p.locator('.tb--test').click(); await p.locator('[data-widget-tests]').waitFor();
-    assert.deepEqual(await p.locator('[data-bot-test]').evaluateAll(items => items.map(item => item.getAttribute('data-bot-test'))), ['tts', 'trigger', 'reward', 'pet', 'duel', 'roulette', 'dimafx', 'polls', 'goals']);
+    assert.deepEqual(await p.locator('[data-bot-test]').evaluateAll(items => items.map(item => item.getAttribute('data-bot-test'))), ['tts', 'trigger', 'reward', 'pet', 'duel', 'roulette', 'dimafx', 'polls', 'goals', 'hypetrain', 'ads']);
     await p.locator('[data-bot-test="tts"]').click();
     await live.locator('.tts', { hasText: 'start:Yuzu says: the cozy stream continues!:true' }).waitFor();
     await seLive.locator('.tts', { hasText: 'start' }).waitFor();
@@ -620,6 +624,13 @@ try {
     await live.locator('.polls', { hasText: 'Next game?:3' }).waitFor(); await seLive.locator('.polls', { hasText: 'Next game?' }).waitFor();
     await p.locator('[data-bot-test="goals"]').click();
     await live.locator('.goals', { hasText: 'Road to 100 followers:64' }).waitFor(); await seLive.locator('.goals', { hasText: '2 goals' }).waitFor();
+    // Hype train and ads: the real state at start (none running), then the samples.
+    await live.locator('.hype', { hasText: 'none' }).waitFor(); await live.locator('.ads', { hasText: 'no ad:unknown' }).waitFor();
+    await seLive.locator('.hype', { hasText: 'none' }).waitFor(); await seLive.locator('.ads', { hasText: 'no ad' }).waitFor();
+    await p.locator('[data-bot-test="hypetrain"]').click();
+    await live.locator('.hype', { hasText: 'active:2:Yuzu' }).waitFor(); await seLive.locator('.hype', { hasText: 'level 2' }).waitFor();
+    await p.locator('[data-bot-test="ads"]').click();
+    await live.locator('.ads', { hasText: 'ad:60:next' }).waitFor(); await seLive.locator('.ads', { hasText: 'ad running' }).waitFor();
     // Replay recent chat: stored messages in order (the SE widget doesn't use chat).
     await p.locator('[data-chat-replay]').click();
     await until(async () => (await live.locator('.chat li').allTextContents()).join('|') === 'Ada: first|Ada: second', 'replayed chat in order');
@@ -635,7 +646,7 @@ try {
     await axe(p, 'live state layer');
     await shot(p, 'live-state-dark-1280');
     await ctx.close();
-    console.log('PASS live state and bot events: real goals at start, Test drawer TTS/trigger/channel points/pet/duel/roulette/DimaFX/sample poll and goals to Dima and SE widgets, chat replay, poll setup.');
+    console.log('PASS live state and bot events: real goals at start, Test drawer TTS/trigger/channel points/pet/duel/roulette/DimaFX/sample poll, goals, hype train and ad break to Dima and SE widgets, chat replay, poll setup.');
   }
   // 4d. OBS: a signal reaches only the layers the server named.
   {
@@ -711,6 +722,45 @@ try {
     assert.equal(await p.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgba(0, 0, 0, 0)');
     await runtime.close();
     console.log('PASS OBS runtime: pinned revision, layer settings, live chat and alerts from the overlay socket, transparent output.');
+  }
+  // 5b. OBS: a roulette result that arrives while the widget is still loading reaches it once it runs, and a repeat
+  // (the server replays recent results after a restart or reconnect) is delivered only once.
+  {
+    const runtime = await browser.newContext({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
+    const snapshot = { width: 1280, height: 720, designs: [], waitFor: [], widgets: [{ id: 'roulette-1', kind: 'custom', configVersion: 1, x: 0, y: 0, width: 480, height: 640, visible: true, locked: false, config: { widgetId: liveId, revision: 1, values: {} } }] };
+    let socket, releaseBundle;
+    const bundleGate = new Promise(resolve => { releaseBundle = resolve; });
+    const feed = (type, data) => socket.send(`42/overlay-studio/${publicId},${JSON.stringify(['overlay-feed', { v: 1, type, data }])}`);
+    const spin = phase => ({ id: 'spin-late', rouletteId: 'r1', name: 'Punishments', phase, label: phase === 'result' ? 'Sing a song' : null, endsAt: Date.now() + (phase === 'result' ? -500 : 5000), at: Date.now(), test: false });
+    await runtime.routeWebSocket('**/*', ws => {
+      if (!ws.url().includes('/socket.io/')) return ws.close();
+      socket = ws;
+      ws.send('0{"sid":"custom","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}');
+      ws.onMessage(message => { if (String(message).startsWith('40/overlay-studio/')) {
+        ws.send(`40/overlay-studio/${publicId},{"sid":"custom"}`);
+        ws.send(`42/overlay-studio/${publicId},${JSON.stringify(['overlay-state', { revision: 1, snapshot, widgetStates: {}, serverTime: Date.now() }])}`);
+        // Sent right away, before the widget's code has arrived.
+        setTimeout(() => { feed('roulette', spin('spinning')); feed('roulette', spin('result')); setTimeout(releaseBundle, 400); }, 200);
+      } });
+    });
+    await runtime.route('**/*', async route => {
+      const url = new URL(route.request().url());
+      if (url.origin === new URL(base).origin) return route.continue();
+      if (url.pathname === `/overlay-studio/public/${publicId}/custom-widgets/${liveId}/1`) { await bundleGate; return route.fulfill({ json: { error: false, data: bundleOf(liveId) } }); }
+      return route.abort();
+    });
+    const p = await runtime.newPage(); p.on('pageerror', e => errors.push(e.message));
+    await p.goto(`${base}/overlays/${publicId}`);
+    await p.locator('[data-custom-frame="running"]').waitFor();
+    const f = p.frameLocator('app-overlay-custom-widget iframe');
+    await f.locator('.roulette', { hasText: 'result:Sing a song' }).waitFor();
+    feed('roulette', spin('result')); // replayed by the server after a restart
+    await p.waitForTimeout(500);
+    // The Live widget counts the roulette events it gets.
+    const phases = await f.locator('.roulette').evaluate(node => node.getAttribute('data-count'));
+    assert.equal(phases, '2', 'spinning and result, once each');
+    await runtime.close();
+    console.log('PASS OBS: roulette phases that arrive before the widget loads reach it once it runs; replays are delivered once.');
   }
   assert.deepEqual(errors, []);
 } finally { await browser.close(); }

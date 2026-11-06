@@ -84,7 +84,7 @@ export function normalizeTwitchEventsubDomainEvent(
         type: outgoing ? 'channel.raid.sent' : normalizedType,
         topic: 'channel',
         schemaVersion: 1,
-        ...(originalEventType.startsWith('channel.poll.') || originalEventType.startsWith('channel.prediction.') ? { retentionSeconds: 86400 } : {}),
+        ...(['channel.poll.', 'channel.prediction.', 'channel.hype_train.', 'channel.ad_break.'].some(prefix => originalEventType.startsWith(prefix)) ? { retentionSeconds: 86400 } : {}),
         subject: { provider: 'twitch', kind: 'streaming-account', id: channelID },
         channelID,
         streamID,

@@ -28,6 +28,8 @@ export interface CustomWidgetEnv {
   session(): DimaSession | null;
   /** Latest live state by name (polls, goals) for frames that start later. */
   states(): Record<string, unknown>;
+  /** Recent events a frame that starts later should still get (OBS: roulette spins and results from the last 2 minutes). */
+  recent?(): DimaEvent[];
   report(layerId: string, update: { status?: WidgetStatus; entry?: WidgetLogEntry }): void;
 }
 export const CUSTOM_WIDGET_ENV = new InjectionToken<CustomWidgetEnv>('CUSTOM_WIDGET_ENV');

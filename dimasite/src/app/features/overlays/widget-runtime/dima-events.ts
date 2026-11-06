@@ -41,7 +41,7 @@ export interface DimaSignal {
   target: string | null;
 }
 /** Live state by name (`Dima.state(name, …)`); the name is also the widget.json `uses` entry that allows it. */
-export interface DimaState { name: 'polls' | 'goals'; value: unknown }
+export interface DimaState { name: 'polls' | 'goals' | 'hypetrain' | 'ads'; value: unknown }
 /** A text-to-speech message started or finished playing (text is the filtered text that was spoken). */
 export interface DimaTts { id: string; phase: 'start' | 'end'; text: string; user: DimaUser | null; reason: string | null; at: number; test: boolean }
 /** A trigger alert (sound/video/image from Trigger alerts) was sent to the overlay. */
@@ -56,6 +56,18 @@ export interface DimaDuel { id: string; phase: 'started' | 'ended'; challenger: 
 export interface DimaRoulette { id: string; rouletteId: string; name: string; phase: 'spinning' | 'result'; label: string | null; endsAt: number; at: number; test: boolean }
 /** A DimaFX item was bought and is playing (the buyer only when Twitch shared their identity). */
 export interface DimaDimafx { id: string; item: { id: string; name: string; type: string }; source: 'bits' | 'credits' | 'saved' | 'test'; bits: number | null; credits: number | null; user: DimaUser | null; message: string | null; at: number; test: boolean }
+/** Live state "hypetrain": the running (or just ended) hype train; null when there is none. Times are ms. */
+export interface DimaHypeTrain {
+  id: string; phase: 'active' | 'ended'; level: number; total: number; progress: number | null; goal: number | null;
+  topContributions: { user: DimaUser; type: 'bits' | 'subscription' | 'other'; total: number }[]; allTimeHigh: { level: number; total: number } | null;
+  type: 'regular' | 'golden_kappa' | 'treasure'; shared: boolean; sharedParticipants: DimaUser[];
+  startedAt: number; expiresAt: number | null; endedAt: number | null; cooldownEndsAt: number | null;
+}
+/** Live state "ads": the running ad break (null when none) and Twitch's ad schedule (null when unknown). Times are ms. */
+export interface DimaAds {
+  active: { startedAt: number; endsAt: number; duration: number; automatic: boolean } | null;
+  schedule: { nextAt: number | null; duration: number | null; lastAt: number | null; snoozes: number | null; snoozeRefreshAt: number | null; prerollFreeUntil: number | null } | null;
+}
 /** StreamElements-style session snapshot: `data` keys like `follower-latest`, `cheer-session`, `subscriber-recent`. */
 export interface DimaSession { data: Record<string, unknown>; recents: unknown[] }
 export type DimaEvent =

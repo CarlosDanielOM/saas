@@ -15,7 +15,7 @@ import { OverlayCustomWidgetComponent } from './overlay-custom-widget.component'
 import type { OverlayWidget } from './overlay.model';
 import type { WidgetRenderContext } from './overlay-widget-module';
 import { EditorWidgetEnv, type LayerLog } from './widget-runtime/editor-env';
-import { BOT_TEST_USES, botTestEvents, testGoals, testPolls, type AlertTest, type BotTestKind, type ChatTest } from './widget-runtime/test-events';
+import { BOT_TEST_USES, botTestEvents, isStateTest, testState, type AlertTest, type BotTestKind, type ChatTest } from './widget-runtime/test-events';
 import type { RuntimeBundle } from './widget-runtime/widget-env';
 
 /** Layer id of the editor's preview; test events and the widget log are addressed to it only. */
@@ -501,7 +501,7 @@ export class OverlayCustomWidgetCodeComponent {
   /** Bot events and live state this widget asks for (preview tests). */
   readonly botTests = computed(() => BOT_TEST_USES.filter(([, use]) => this.uses().includes(use)).map(([kind]) => kind));
   sendBotTest(kind: BotTestKind): void {
-    if (kind === 'polls' || kind === 'goals') { this.env.setState(kind, kind === 'polls' ? testPolls() : testGoals(), PREVIEW_LAYER); return; }
+    if (isStateTest(kind)) { this.env.setState(kind, testState(kind), PREVIEW_LAYER); return; }
     const { now, later } = botTestEvents(kind);
     this.env.emit(now, PREVIEW_LAYER);
     if (later) setTimeout(() => this.env.emit(later, PREVIEW_LAYER), 3000);

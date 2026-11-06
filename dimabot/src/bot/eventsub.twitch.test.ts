@@ -264,14 +264,57 @@ test('unjournaled redemption/chat/ad/ban notifications keep immediate unflagged 
     }).listen(0);
     await new Promise<void>((resolve) => server.once('listening', resolve));
     context.after(() => new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve())));
-    for (const type of ['channel.channel_points_custom_reward_redemption.add', 'channel.chat.message', 'channel.ad_break.begin', 'channel.ban']) {
+    for (const type of ['channel.channel_points_custom_reward_redemption.add', 'channel.chat.message', 'channel.ban']) {
         const body = JSON.stringify({ subscription: { type }, event: { broadcaster_user_id: 'channel' } });
         assert.equal((await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/eventsub`, {
             method: 'POST', headers: signedHeaders(body, { messageId: type }), body
         })).status, 204);
         assert.deepEqual(handled.at(-1), { type, options: { durableChatHandled: false } });
     }
-    assert.equal(handled.length, 4);
+    assert.equal(handled.length, 3);
+});
+
+test('hype trains (v2) and ad breaks are journaled for widget state; a late retry is flagged so their chat messages skip it', async (context) => {
+    process.env.TWITCH_EVENTSUB_SECRET = SECRET;
+    process.env.SECRET_KEY = 'eventsub-test-encryption-key';
+    const { createTwitchEventsubApp } = await import('./eventsub.twitch.js');
+    const journaled: JournalDomainEventInput[] = [], handled: { type: string; options: unknown }[] = [];
+    const server = createTwitchEventsubApp({
+        async resolveOwner() { return '000000000000000000000001'; },
+        async journalEvent(input) {
+            journaled.push(input);
+            return { inserted: true, event: { ...input, _id: new Types.ObjectId(), eventKey: `key-${journaled.length}`, schemaVersion: 1, occurredAt: new Date(input.occurredAt!),
+                journaledAt: new Date(), metadata: input.metadata || {}, expiresAt: new Date(Date.now() + 86_400_000) } } as never;
+        },
+        async handleEvent(subscription, _event, options) { handled.push({ type: subscription.type, options }); }
+    }).listen(0);
+    await new Promise<void>((resolve) => server.once('listening', resolve));
+    context.after(() => new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve())));
+    const now = new Date().toISOString();
+    const hype = (extra: Record<string, unknown> = {}, version = '2') => ({ subscription: { id: 'sub-hype', type: 'channel.hype_train.begin', version, condition: { broadcaster_user_id: 'channel-1' } },
+        event: { id: 'train-1', broadcaster_user_id: 'channel-1', broadcaster_user_login: 'chan', broadcaster_user_name: 'Chan', total: 137, progress: 137, goal: 500, level: 1,
+            top_contributions: [{ user_id: '1', user_login: 'ame', user_name: 'Ame', type: 'bits', total: 137 }], all_time_high_level: 2, all_time_high_total: 900,
+            shared_train_participants: null, started_at: now, expires_at: new Date(Date.now() + 300_000).toISOString(), type: 'regular', is_shared_train: false, ...extra } });
+    const ad = { subscription: { id: 'sub-ad', type: 'channel.ad_break.begin', version: '1', condition: { broadcaster_user_id: 'channel-1' } },
+        event: { broadcaster_user_id: 'channel-1', broadcaster_user_login: 'chan', broadcaster_user_name: 'Chan', requester_user_id: 'channel-1', requester_user_login: 'chan',
+            requester_user_name: 'Chan', duration_seconds: 60, started_at: now, is_automatic: false } };
+    const send = (payload: unknown, messageId: string, extra: Record<string, string> = {}, messageTimestamp?: string) => {
+        const body = JSON.stringify(payload);
+        return fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/eventsub`, { method: 'POST', headers: { ...signedHeaders(body, { messageId, messageTimestamp }), ...extra }, body });
+    };
+    assert.equal((await send(hype(), 'hype-1')).status, 204);
+    assert.equal((await send(ad, 'ad-1')).status, 204);
+    assert.deepEqual(journaled.map(item => [item.type, item.retentionSeconds]), [['channel.hype_train.began', 86400], ['channel.ad_break.began', 86400]]);
+    assert.deepEqual(handled.map(item => [item.type, (item.options as { staleRetry?: boolean }).staleRetry ?? false]), [['channel.hype_train.begin', false], ['channel.ad_break.begin', false]]);
+    // Twitch retried for 20 minutes: state still updates (journal), the chat handlers are told it's late.
+    const late = new Date(Date.now() - 20 * 60_000).toISOString();
+    assert.equal((await send(hype({ started_at: late }), 'hype-late', { 'twitch-eventsub-message-retry': '1' }, late)).status, 204);
+    assert.equal((handled.at(-1)!.options as { staleRetry?: boolean }).staleRetry, true);
+    // Wrong subscription version or a payload without the train id never reaches the journal or the handlers.
+    const before = [journaled.length, handled.length];
+    assert.notEqual((await send(hype({}, '1'), 'hype-v1')).status, 204);
+    assert.notEqual((await send(hype({ id: undefined }), 'hype-no-id')).status, 204);
+    assert.deepEqual([journaled.length, handled.length], before);
 });
 
 test('only signed genuine chat ingress supplies opaque effects using Twitch message identity and timestamp', async (context) => {
