@@ -103,3 +103,5 @@ button:not(:disabled):hover { border-color: color-mix(in srgb, var(--accent) 45%
 .media-list__thumb--icon { display: grid; place-items: center; color: var(--muted); font-size: 0.62rem; font-weight: 800; text-transform: uppercase; }
 .media-list__name { min-width: 0; overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .media-list__size { color: var(--muted); font-size: 0.78rem; font-weight: 650; white-space: nowrap; }
+.check { display: flex; align-items: flex-start; gap: 0.55rem; min-height: 44px; padding-top: 0.35rem; color: var(--fg); font-weight: 650; cursor: pointer; }
+.check input { flex: none; width: 1.15rem; height: 1.15rem; margin: 0.1rem 0 0; accent-color: #7c3aed; }

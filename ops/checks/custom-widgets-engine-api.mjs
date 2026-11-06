@@ -84,13 +84,13 @@ try {
   console.log('PASS widget.json import, owner bundle with channel identity, public bundle only for pinned revisions.');
 
   // The candidate's own API process serves the overlay socket; this check plays an OBS source.
-  const ns = '/overlay-studio/' + scene.publicId, feed = [], acks = new Map(); let ackId = 1;
+  const ns = '/overlay-studio/' + scene.publicId, feed = [], reloads = [], policies = [], acks = new Map(); let ackId = 1;
   const ws = new WebSocket('ws://127.0.0.1:3000/socket.io/?EIO=4&transport=websocket');
   ws.addEventListener('message', event => {
     const m = String(event.data);
     if (m.startsWith('0')) ws.send(`40${ns},${JSON.stringify({ clientId: crypto.randomUUID() })}`);
     else if (m === '2') ws.send('3');
-    else if (m.startsWith(`42${ns},`)) { const [name, payload] = JSON.parse(m.slice(m.indexOf(',') + 1)); if (name === 'overlay-feed') feed.push(payload); }
+    else if (m.startsWith(`42${ns},`)) { const [name, payload] = JSON.parse(m.slice(m.indexOf(',') + 1)); if (name === 'overlay-feed') feed.push(payload); if (name === 'overlay-widget-reload') reloads.push(payload); if (name === 'overlay-widget-policies') policies.push(payload); }
     else if (m.startsWith(`43${ns},`)) { const rest = m.slice(m.indexOf(',') + 1), id = Number(/^\d+/.exec(rest)[0]); acks.get(id)?.(JSON.parse(rest.slice(String(id).length))[0]); }
   });
   const rpc = (layerId, method, params) => new Promise(resolve => { const id = ackId++; acks.set(id, resolve); ws.send(`42${ns},${id}${JSON.stringify(['overlay-widget-rpc', { layerId, method, params }])}`); });
@@ -99,7 +99,11 @@ try {
   const session = await nextFeed('session');
   assert.equal(session.v, 1); assert.deepEqual(session.data.data['follower-latest'], { name: '', amount: 0 });
   assert.equal(await until(() => redis.get('widget-feed:demand:' + preview), 'chat demand key'), '1');
-  console.log('PASS source receives its session snapshot; chat demand is published for channels with chat widgets.');
+  // Each widget's current load rules come with the connection (a page reloads widgets it cached under other rules).
+  const connectPolicies = (await until(() => policies[0], 'policies on connect')).networks;
+  assert.deepEqual(Object.keys(connectPolicies).sort(), [native.id, seWidget.id, twin.id, pet.id].sort());
+  assert.ok(Object.values(connectPolicies).every(network => network === 'open'));
+  console.log('PASS source receives its session snapshot and widget load rules; chat demand is published for channels with chat widgets.');
 
   // Journal alert → Dima alert + refreshed session.
   await DomainEventSchema.create({ eventKey: 'cw-follow', source: 'twitch-eventsub', sourceEventId: 'cw-follow', type: 'channel.follow.received', topic: 'channel', channelID: preview, schemaVersion: 1,
@@ -364,6 +368,20 @@ try {
   const replay = (await data('GET', `${widgetsPath}/chat-history`)).messages;
   assert.deepEqual(replay.map(message => [message.user.name, message.text, message.user.roles.vip]), [['Old', 'first', true], ['New', 'second', false]]);
   console.log('PASS Studio: bot event and state tests (stamped), live state and chat replay routes.');
+  // Block outside connections: OBS sources showing the widget are asked to load it again (it's cached per revision).
+  await data('PATCH', `${widgetsPath}/${pet.id}`, { network: 'restricted' });
+  await until(() => reloads.some(item => item.widgetId === pet.id), 'reload asked');
+  assert.equal((await data('GET', `/overlay-studio/public/${scene.publicId}/custom-widgets/${pet.id}/1`)).network, 'restricted');
+  const asked = reloads.length;
+  await data('PATCH', `${widgetsPath}/${pet.id}`, { name: 'Pet' }); // no change to the rules: no reload
+  await data('PATCH', `${widgetsPath}/${pet.id}`, { network: 'open' });
+  await until(() => reloads.length === asked + 1, 'reload asked again');
+  await data('PATCH', `${widgetsPath}/${twin.id}`, { network: 'restricted' });
+  await until(() => reloads.at(-1)?.widgetId === twin.id, 'each widget asks for itself');
+  await data('PATCH', `${widgetsPath}/${twin.id}`, { network: 'open' });
+  await until(() => reloads.length === asked + 3, 'twin open again');
+  assert.deepEqual(reloads.slice(asked).map(item => item.widgetId), [pet.id, twin.id, twin.id]);
+  console.log('PASS Block outside connections: OBS sources showing the widget load it again with the new rules (not for a rename).');
 
   // Studio signal tests: stamped by the server (sender = owner, source = Studio), name-targeted, counted in the channel limit.
   const forged = { id: 'forged', name: 'Feed', value: ' pizza ', target: 'chat box', user: { id: 'evil', login: 'evil', name: 'Evil', roles: { broadcaster: true } }, source: { kind: 'command', name: 'x' }, at: 1 };

@@ -94,6 +94,8 @@ export function dimaSdk(win: any, boot: { exec: string; fields: Record<string, u
     if (event.source !== parent) return;
     const message = event.data;
     if (!message || message.dima !== 1 || typeof message.type !== 'string' || message.exec !== exec) return;
+    // The host checks this is still the document it built (a widget that opened another page doesn't answer).
+    if (message.type === 'probe') { post({ type: 'probe-ok', token: message.token }); return; }
     if (message.type === 'init' && !context) {
       context = message.context || {};
       context.fields = context.fields || {};

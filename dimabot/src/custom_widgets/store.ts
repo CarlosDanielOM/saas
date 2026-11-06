@@ -3,9 +3,10 @@ import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import Users from '../schemas/users.schema.js';
 import { assetQuota, withAssetLibrary } from '../assets/library.js';
 import { OverlayError, Studio } from '../overlays/store.js';
+import { reloadCustomWidget } from '../overlays/bridge.js';
 import type { OverlayScene, OverlayWidget } from '../overlays/model.js';
 import { CUSTOM_WIDGET_LIMITS, CUSTOM_WIDGET_PLAN_LIMITS, PACKAGE_FILES, type CustomWidgetPlan, PackageFormatError, checkOverrides, inferManifest, readPackage, type PackageInput, type WidgetManifest,
-  type ExternalMedia, type FieldIssue, type JsonObject, type PackageFile, type PackageSource, type WidgetField } from './format.js';
+  type ExternalMedia, type FieldIssue, type JsonObject, type PackageFile, type PackageSource, type WidgetField, type WidgetNetwork, outsideCode } from './format.js';
 import { deleteKeys, describeFiles, putFiles, readFile, type PackageFiles, type StoredFile } from './files.js';
 import { HISTORY_BYTES, HISTORY_REVISIONS, keptRevisions as keepRevisions } from './history.js';
 
@@ -32,9 +33,11 @@ interface StoredWidget {
   revision: number; revisions: WidgetRevision[]; createdAt: Date; updatedAt: Date;
   /** Copied StreamElements files, shared by all revisions: base64url(url) → { url, assetId } (see media.ts). */
   media?: Record<string, { url: string; assetId: string }>;
+  /** The owner's "Block outside connections" choice (never from widget.json, so a widget's author can't change it). */
+  network?: WidgetNetwork;
 }
 const schema = new Schema<StoredWidget>({ _id: String, owner: String, name: String, engine: String, revision: Number,
-  revisions: [Schema.Types.Mixed], createdAt: Date, updatedAt: Date, media: Schema.Types.Mixed }, { versionKey: false, collection: 'custom_widgets', minimize: false });
+  revisions: [Schema.Types.Mixed], createdAt: Date, updatedAt: Date, media: Schema.Types.Mixed, network: String }, { versionKey: false, collection: 'custom_widgets', minimize: false });
 schema.index({ owner: 1, createdAt: 1 });
 export const CustomWidgets = model<StoredWidget>('CustomWidget', schema);
 
@@ -42,6 +45,8 @@ export interface WidgetUse { sceneId: string; sceneName: string; draft: boolean;
 export interface CustomWidgetView {
   id: string; name: string; engine: WidgetManifest['engine']; revision: number; author?: string;
   fields: WidgetField[]; data: JsonObject; externalMedia: ExternalMedia[]; manifest: WidgetManifest | null; media: Record<string, string>;
+  /** "restricted": outside connections are blocked. `outsideCode`: other sites its code comes from (it can change there). */
+  network: WidgetNetwork; outsideCode: string[];
   files: Record<PackageFile, { bytes: number; sha256: string }>;
   createdAt: string; updatedAt: string; usedIn: WidgetUse[];
   /** Stored versions, newest first: the latest, recent ones (code editor history) and any a published overlay uses. */
@@ -75,6 +80,7 @@ function view(doc: StoredWidget, scenes: OverlayScene[]): CustomWidgetView {
   const current = latest(doc), published = publishedRevisions(scenes, doc._id);
   return { id: doc._id, name: doc.name, engine: current.manifest?.engine ?? doc.engine, revision: doc.revision, ...(current.author ? { author: current.author } : {}),
     fields: current.fields, data: current.data, externalMedia: current.externalMedia, manifest: current.manifest ?? null, media: mediaUrls(doc.media),
+    network: networkOf(doc), outsideCode: outsideCode(current.externalMedia ?? []),
     files: Object.fromEntries(PACKAGE_FILES.map(file => [file, { bytes: current.files[file].bytes, sha256: current.files[file].sha256 }])) as CustomWidgetView['files'],
     createdAt: new Date(doc.createdAt).toISOString(), updatedAt: new Date(doc.updatedAt).toISOString(), usedIn: usage(scenes, doc._id),
     history: [...doc.revisions].sort((a, b) => b.revision - a.revision).map(r => ({ revision: r.revision, createdAt: new Date(r.createdAt).toISOString(), published: published.has(r.revision) })) };
@@ -103,6 +109,12 @@ function readSource(files: PackageInput) {
   try { return readPackage(files); }
   catch (error) { if (error instanceof PackageFormatError) throw new CustomWidgetError(error.message, 400, error.code); throw error; }
 }
+const networkOf = (doc: Pick<StoredWidget, 'network'>): WidgetNetwork => doc.network === 'restricted' ? 'restricted' : 'open';
+function widgetNetwork(raw: unknown, fallback: WidgetNetwork): WidgetNetwork {
+  if (raw === undefined || raw === null) return fallback;
+  if (raw !== 'open' && raw !== 'restricted') throw new CustomWidgetError('Outside connections must be "open" or "restricted"');
+  return raw;
+}
 function widgetName(raw: unknown, fallback: string | undefined): string {
   if (raw === undefined || raw === null || raw === '') return fallback || 'Imported widget';
   if (typeof raw !== 'string' || !raw.trim() || raw.trim().length > CUSTOM_WIDGET_LIMITS.name) throw new CustomWidgetError(`Use a name up to ${CUSTOM_WIDGET_LIMITS.name} characters`);
@@ -128,7 +140,7 @@ export async function listWidgets(owner: string): Promise<CustomWidgetList> {
 
 /** Imports a widget package as revision 1. Files go to S3 first; a failed insert removes them again. */
 export async function createWidget(owner: string, body: Record<string, unknown>): Promise<{ widget: CustomWidgetView; issues: FieldIssue[] }> {
-  const files = source(body.files), summary = readSource(files), name = widgetName(body.name, summary.name);
+  const files = source(body.files), summary = readSource(files), name = widgetName(body.name, summary.name), network = widgetNetwork(body.network, 'open');
   await db();
   return withAssetLibrary(owner, async () => {
     const { planTier, limit } = await plan(owner);
@@ -137,7 +149,8 @@ export async function createWidget(owner: string, body: Record<string, unknown>)
     }
     const id = new Types.ObjectId().toHexString(), refs = describeFiles(owner, id, files), now = new Date();
     await putFiles(refs, files);
-    const doc: StoredWidget = { _id: id, owner, name, engine: 'streamelements', revision: 1, revisions: [newRevision(1, refs, summary)], createdAt: now, updatedAt: now };
+    const doc: StoredWidget = { _id: id, owner, name, engine: 'streamelements', revision: 1, revisions: [newRevision(1, refs, summary)], createdAt: now, updatedAt: now,
+      ...(network === 'restricted' ? { network } : {}) };
     try { await CustomWidgets.create(doc); }
     catch (error) { await deleteKeys(revisionKeys(doc.revisions)); throw error; }
     return { widget: view(doc, await scenesOf(owner)), issues: summary.issues };
@@ -177,9 +190,12 @@ export async function replaceFiles(owner: string, id: string, body: Record<strin
 export async function renameWidget(owner: string, id: string, body: Record<string, unknown>): Promise<CustomWidgetView> {
   await db();
   return withAssetLibrary(owner, async () => {
-    const doc = await owned(owner, id), name = widgetName(body.name, doc.name), updatedAt = new Date();
-    await CustomWidgets.updateOne({ _id: id, owner }, { $set: { name, updatedAt } });
-    return view({ ...doc, name, updatedAt }, await scenesOf(owner));
+    // Name and/or the "Block outside connections" choice (OBS applies it the next time the widget loads).
+    const doc = await owned(owner, id), name = widgetName(body.name, doc.name), network = widgetNetwork(body.network, networkOf(doc)), updatedAt = new Date();
+    await CustomWidgets.updateOne({ _id: id, owner }, { $set: { name, network, updatedAt } });
+    // OBS caches the widget per revision: tell open sources to load it again under the new rules.
+    if (network !== networkOf(doc)) reloadCustomWidget(owner, id);
+    return view({ ...doc, name, network, updatedAt }, await scenesOf(owner));
   });
 }
 
@@ -213,6 +229,8 @@ export interface WidgetBundle {
   widgetId: string; revision: number; engine: WidgetManifest['engine']; manifest: WidgetManifest;
   html: string; css: string; js: string; fields: WidgetField[]; data: JsonObject; media: Record<string, string>;
   channel: { id: string; login: string; name: string };
+  /** The owner's current choice, not the revision's: turning the block on applies to published overlays too. */
+  network: WidgetNetwork;
 }
 const channels = new Map<string, { at: number; value: WidgetBundle['channel'] }>();
 export async function channelInfo(owner: string): Promise<WidgetBundle['channel']> {
@@ -229,7 +247,8 @@ async function bundleOf(doc: StoredWidget, found: WidgetRevision): Promise<Widge
   const [html, css, js] = await Promise.all((['html', 'css', 'js'] as const).map(file => readFile(found.files[file])));
   const manifest = found.manifest ?? inferManifest({ html, js });
   if (!found.manifest) await CustomWidgets.updateOne({ _id: doc._id, 'revisions.revision': found.revision }, { $set: { 'revisions.$.manifest': manifest } });
-  return { widgetId: doc._id, revision: found.revision, engine: manifest.engine, manifest, html, css, js, fields: found.fields, data: found.data, media: mediaUrls(doc.media), channel: await channelInfo(doc.owner) };
+  return { widgetId: doc._id, revision: found.revision, engine: manifest.engine, manifest, html, css, js, fields: found.fields, data: found.data, media: mediaUrls(doc.media),
+    channel: await channelInfo(doc.owner), network: networkOf(doc) };
 }
 /** Owner editor: latest revision unless one is given. */
 export async function widgetBundle(owner: string, id: string, revision?: unknown): Promise<WidgetBundle> {
@@ -252,6 +271,14 @@ export async function publishedBundle(owner: string, widgets: OverlayWidget[], i
 /** Manifests of published widget revisions, cached (revisions never change). */
 const manifestCache = new Map<string, WidgetManifest>();
 /** Visible custom layers of a published snapshot: widget, engine and what each one uses. */
+/** The owner's current "Block outside connections" choice per widget (OBS checks it when it connects). */
+export async function widgetNetworks(owner: string, ids: readonly string[]): Promise<Record<string, WidgetNetwork>> {
+  const wanted = [...new Set(ids)].filter(validId).slice(0, 100);
+  if (!wanted.length) return {};
+  await db();
+  const docs = await CustomWidgets.find({ _id: { $in: wanted }, owner }, { network: 1 }).lean<Pick<StoredWidget, '_id' | 'network'>[]>();
+  return Object.fromEntries(docs.map(doc => [doc._id, networkOf(doc)]));
+}
 export async function publishedLayers(owner: string, widgets: OverlayWidget[]): Promise<Map<string, { widgetId: string; name: string; engine: WidgetManifest['engine']; uses: Set<string> }>> {
   const layers = widgets.filter(w => w.visible && isCustom(w) && validId(widgetIdOf(w)) && typeof w.config?.['revision'] === 'number');
   const missing = layers.filter(w => !manifestCache.has(`${widgetIdOf(w)}:${w.config!['revision']}`));

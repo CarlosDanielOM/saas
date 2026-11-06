@@ -24,7 +24,31 @@ export class LiveWidgetEnv implements CustomWidgetEnv {
   attach(publicId: string, socket: Socket): void {
     this.publicId = publicId; this.socket = socket;
     socket.on('overlay-feed', (message: unknown) => this.feed(message));
+    // Load rules changed (cached per revision): drop the cached code and tell its layers to load it again.
+    socket.on('overlay-widget-reload', (message: unknown) => {
+      const widgetId = (message as { widgetId?: unknown } | null)?.widgetId;
+      if (typeof widgetId === 'string') this.reloadWidget(widgetId);
+    });
+    // Sent on every (re)connect and republish: reload widgets loaded under other rules (a change made while offline).
+    socket.on('overlay-widget-policies', (message: unknown) => {
+      const networks = (message as { networks?: unknown } | null)?.networks;
+      if (!networks || typeof networks !== 'object') return;
+      for (const [widgetId, network] of Object.entries(networks as Record<string, unknown>)) {
+        const loaded = this.loadedNetworks.get(widgetId);
+        if (loaded !== undefined && (network === 'restricted' ? 'restricted' : 'open') !== loaded) this.reloadWidget(widgetId);
+      }
+    });
   }
+  /** The load rules each widget's cached code was fetched with. */
+  private readonly loadedNetworks = new Map<string, 'open' | 'restricted'>();
+  private reloadWidget(widgetId: string): void {
+    if (!/^[a-f0-9]{24}$/.test(widgetId)) return;
+    for (const key of [...this.bundles.keys()]) if (key.startsWith(widgetId + ':')) this.bundles.delete(key);
+    this.loadedNetworks.delete(widgetId);
+    for (const listener of [...this.reloadListeners]) listener(widgetId);
+  }
+  private readonly reloadListeners = new Set<(widgetId: string) => void>();
+  onReload(listener: (widgetId: string) => void): () => void { this.reloadListeners.add(listener); return () => { this.reloadListeners.delete(listener); }; }
   bundle(widgetId: string, revision?: number): Promise<RuntimeBundle> {
     if (revision === undefined) return Promise.reject(new Error('Publish the overlay to run this widget'));
     const key = `${widgetId}:${revision}`;
@@ -35,7 +59,7 @@ export class LiveWidgetEnv implements CustomWidgetEnv {
         // Copied media load through this overlay's public asset route.
         media: Object.fromEntries(Object.entries(bundle.media ?? {}).map(([url, assetId]) => [url, `${this.api.base}/overlay-studio/public/${this.publicId}/assets/${assetId}`]))
       }));
-      pending.catch(() => this.bundles.delete(key));
+      pending.then(bundle => { this.loadedNetworks.set(widgetId, bundle.network === 'restricted' ? 'restricted' : 'open'); }, () => this.bundles.delete(key));
       this.bundles.set(key, pending);
     }
     return pending;

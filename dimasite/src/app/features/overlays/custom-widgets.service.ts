@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom, map, timeout } from 'rxjs';
 import { OverlayApi } from './overlay-api.service';
-import type { CustomWidgetPlan, ExternalMedia, FieldIssue, JsonObject, PackageFile, PackageInput, WidgetField, WidgetManifest } from './custom-widget-format.generated';
+import type { CustomWidgetPlan, ExternalMedia, FieldIssue, JsonObject, PackageFile, PackageInput, WidgetField, WidgetManifest, WidgetNetwork } from './custom-widget-format.generated';
 import type { DimaChat, DimaSession } from './widget-runtime/dima-events';
 import type { RuntimeBundle } from './widget-runtime/widget-env';
 
@@ -11,6 +11,8 @@ export interface WidgetUse { sceneId: string; sceneName: string; draft: boolean;
 export interface CustomWidgetView {
   id: string; name: string; engine: WidgetManifest['engine']; revision: number; author?: string;
   fields: WidgetField[]; data: JsonObject; externalMedia: ExternalMedia[]; manifest: WidgetManifest | null; media: Record<string, string>;
+  /** "restricted": outside connections blocked (owner choice). `outsideCode`: other sites its code loads from. */
+  network?: WidgetNetwork; outsideCode?: string[];
   files: Record<PackageFile, { bytes: number; sha256: string }>;
   createdAt: string; updatedAt: string; usedIn: WidgetUse[];
   /** Stored versions, newest first (latest, the 10 newest, and published ones). */
@@ -63,8 +65,8 @@ export class CustomWidgetsService {
     catch (error) { if (channel === this.channel) this.error.set(message(error)); }
     finally { if (channel === this.channel) this.loading.set(false); }
   }
-  async create(name: string, files: PackageInput): Promise<ImportResult> {
-    const result = await this.api.request<ImportResult>('POST', `${this.channel}/custom-widgets`, { name, files }, 60000);
+  async create(name: string, files: PackageInput, network: WidgetNetwork = 'open'): Promise<ImportResult> {
+    const result = await this.api.request<ImportResult>('POST', `${this.channel}/custom-widgets`, { name, files, ...(network === 'restricted' ? { network } : {}) }, 60000);
     this.patchList(list => ({ ...list, used: list.used + 1, widgets: [...list.widgets, result.widget] }));
     return result;
   }
@@ -73,6 +75,12 @@ export class CustomWidgetsService {
     const result = await this.api.request<ImportResult>('PUT', `${this.channel}/custom-widgets/${id}/files`, { files, ...(baseRevision === undefined ? {} : { baseRevision }) }, 60000);
     this.patchList(list => ({ ...list, widgets: list.widgets.map(widget => widget.id === id ? result.widget : widget) }));
     return result;
+  }
+  /** "Block outside connections" on or off (OBS applies it the next time the widget loads). */
+  async setNetwork(id: string, network: WidgetNetwork): Promise<CustomWidgetView> {
+    const widget = await this.api.request<CustomWidgetView>('PATCH', `${this.channel}/custom-widgets/${id}`, { network });
+    this.patchList(list => ({ ...list, widgets: list.widgets.map(item => item.id === id ? widget : item) }));
+    return widget;
   }
   async rename(id: string, name: string): Promise<CustomWidgetView> {
     const widget = await this.api.request<CustomWidgetView>('PATCH', `${this.channel}/custom-widgets/${id}`, { name });

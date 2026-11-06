@@ -18,6 +18,8 @@ interface Bridge {
   widgetEvent?(channel: string, use: string, type: string, data: unknown): number;
   /** Whether a connected OBS source has a custom widget that uses this. */
   widgetsUse?(channel: string, use: string): boolean;
+  /** Ask OBS sources showing this custom widget to load it again (its load rules changed); returns how many. */
+  widgetChanged?(channel: string, widgetId: string): number;
 }
 let bridge: Bridge | undefined;
 export function registerStudioBridge(value: Bridge) { bridge = value; }
@@ -32,6 +34,7 @@ export const publishStudioTrigger = (channel: string, body: Record<string, unkno
 /** Custom widget bot events: live only, never fails or delays the producer. */
 export const publishWidgetEvent = (channel: string, use: string, type: string, data: unknown): number => { try { return bridge?.widgetEvent?.(channel, use, type, data) ?? 0; } catch { return 0; } };
 export const widgetsUse = (channel: string, use: string): boolean => bridge?.widgetsUse?.(channel, use) ?? false;
+export const reloadCustomWidget = (channel: string, widgetId: string): number => { try { return bridge?.widgetChanged?.(channel, widgetId) ?? 0; } catch { return 0; } };
 export const controlStudioTts = (channel: string, action: 'skip' | 'clear' | 'refresh') => bridge?.controlTts?.(channel, action) ?? Promise.resolve();
 
 export const studioTtsStatus = (channel: string, currentSpeechID?: string) => bridge?.ttsStatus?.(channel, currentSpeechID) ?? Promise.resolve({ connected: false, playing: false, queueLength: 0 });

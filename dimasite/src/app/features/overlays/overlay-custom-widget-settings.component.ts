@@ -33,6 +33,18 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
     .lf-note--warn { color:var(--warn) }
     .lf-note--danger { color:var(--danger); font-weight:700 }
     .cw-uses { display:flex; flex-wrap:wrap; gap:.35rem; margin:0; padding:0; list-style:none }
+    .cw-network { display:grid; gap:.35rem; padding:.7rem; border:1px solid var(--line); border-radius:.9rem; background:var(--input-bg) }
+    .cw-network__row { display:flex; align-items:center; gap:.6rem }
+    .cw-network__row label { color:var(--fg); font-size:.86rem; font-weight:800; cursor:pointer }
+    .lf-switch { position:relative; display:inline-flex; align-items:center; flex-shrink:0; width:3rem; height:2.75rem }
+    .lf-switch input { position:absolute; inset:0; z-index:1; width:100%; height:100%; margin:0; opacity:0; cursor:pointer }
+    .lf-switch input:disabled { cursor:progress }
+    .lf-switch input:focus-visible + .lf-switch__track { outline:2px solid var(--accent); outline-offset:3px }
+    .lf-switch__track { position:relative; width:100%; height:1.75rem; border:1px solid var(--line); border-radius:999px; background:var(--btn); transition:background 160ms ease }
+    .lf-switch__track::after { content:''; position:absolute; top:.17rem; left:.17rem; width:1.25rem; height:1.25rem; border-radius:999px; background:var(--fg); transition:transform 160ms ease }
+    .lf-switch input:checked + .lf-switch__track { border-color:#7c3aed; background:#7c3aed }
+    .lf-switch input:checked + .lf-switch__track::after { transform:translateX(1.2rem); background:#fff }
+    @media (prefers-reduced-motion: reduce) { .lf-switch__track, .lf-switch__track::after { transition:none } }
     .cw-uses li { padding:.2rem .55rem; border:1px solid var(--line); border-radius:999px; background:var(--btn); color:var(--fg); font-size:.74rem; font-weight:700 }
     .cw-status { display:flex; align-items:center; gap:.5rem; margin:0; color:var(--fg); font-size:.8rem; font-weight:750 }
     .cw-status__dot { flex:none; width:.55rem; height:.55rem; border-radius:999px; background:var(--muted) }
@@ -76,6 +88,16 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
         <div><p class="lf-note">{{ t(widget.manifest?.engine === 'dima' ? 'customEngineDima' : 'customEngineSe') }} · {{ t('customReads') }}</p>
         <ul class="cw-uses" data-cw-uses>@for (use of uses(); track use) { <li>{{ t('customUse_' + use) }}</li> }</ul></div>
       } @else { <p class="lf-note">{{ t(widget.manifest?.engine === 'dima' ? 'customEngineDima' : 'customEngineSe') }} · {{ t('customReadsNothing') }}</p> }
+      <section class="cw-network" data-cw-network>
+        <div class="cw-network__row">
+          <span class="lf-switch"><input type="checkbox" role="switch" id="cw-network-switch" [checked]="widget.network === 'restricted'" [disabled]="networkSaving()"
+            (change)="setNetwork(widget.id, $event)" aria-describedby="cw-network-hint" data-cw-network-switch /><span class="lf-switch__track" aria-hidden="true"></span></span>
+          <label for="cw-network-switch">{{ t('customNetworkTitle') }}</label>
+        </div>
+        <p class="lf-note" id="cw-network-hint" data-cw-network-hint>{{ t(widget.network === 'restricted' ? 'customNetworkOn' : 'customNetworkOff') }}</p>
+        @if (widget.outsideCode?.length) { <p class="lf-note lf-note--warn" data-cw-outside-code>{{ t('customOutsideCode', { hosts: widget.outsideCode!.join(', ') }) }}</p> }
+        @if (networkError()) { <p class="lf-note lf-note--danger" role="alert">{{ networkError() }}</p> }
+      </section>
       @if (uses().includes('polls')) {
         <div data-cw-polls-setup><p class="lf-note">{{ t('customPollsSetup') }}</p><app-overlay-interaction-setup [channel]="channelId()" [streamer]="streamer()" /></div>
       }
@@ -156,6 +178,16 @@ export class OverlayCustomWidgetSettingsComponent {
   readonly mediaOpen = signal(false);
   readonly exporting = signal(false);
   readonly exportError = signal('');
+  readonly networkSaving = signal(false);
+  readonly networkError = signal('');
+  /** "Block outside connections": saved right away; the preview restarts with it (OBS on its next load). */
+  async setNetwork(id: string, event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement, network = input.checked ? 'restricted' : 'open';
+    this.networkSaving.set(true); this.networkError.set('');
+    try { await this.widgets.setNetwork(id, network); }
+    catch (error) { input.checked = !input.checked; this.networkError.set(message(error) || this.t('customNetworkFailed')); }
+    finally { this.networkSaving.set(false); }
+  }
   readonly listLoaded = computed(() => this.widgets.list() !== null);
   private readonly router = inject(Router);
   readonly goalKinds = ['follower', 'subscriber', 'cheer', 'tip'] as const;

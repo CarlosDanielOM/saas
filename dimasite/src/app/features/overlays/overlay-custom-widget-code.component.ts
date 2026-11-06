@@ -92,6 +92,8 @@ export class OverlayCustomWidgetCodeComponent {
   readonly starter = signal<StarterKind>('dima');
   readonly name = signal('');
   readonly widgetId = signal<string | null>(null);
+  /** The saved widget's current choice (the list updates when the owner changes it); new widgets start open. */
+  private readonly network = computed(() => { const id = this.widgetId(); return (id ? this.widgets.widget(id)?.network : undefined) ?? this.widget()?.network ?? 'open'; });
   /** Revision the editor's text started from (0 = not created yet). */
   readonly base = signal(0);
   /** Text of the last saved version (null until a new widget is created). */
@@ -193,12 +195,13 @@ export class OverlayCustomWidgetCodeComponent {
     });
     // Only code that parses runs; with errors the preview keeps the last good version.
     effect(() => {
-      const pkg = this.check().pkg, files = this.settled();
+      const pkg = this.check().pkg, files = this.settled(), network = this.network();
       if (!pkg || this.step() !== 'code' || this.loading()) return;
       untracked(() => this.lastPkg.set(pkg));
+      // The preview runs under the owner's "Block outside connections" choice, like the layer and OBS.
       untracked(() => this.previewBundle.set({
         widgetId: this.widgetId() ?? 'draft-preview', revision: 0, engine: pkg.manifest.engine, manifest: pkg.manifest,
-        html: files.html, css: files.css, js: files.js, fields: pkg.fields, data: pkg.data, media: this.media, channel: this.channel()
+        html: files.html, css: files.css, js: files.js, fields: pkg.fields, data: pkg.data, media: this.media, channel: this.channel(), network
       }));
     });
     // Unsaved work is kept in this browser (this session's key) until it's saved or discarded.

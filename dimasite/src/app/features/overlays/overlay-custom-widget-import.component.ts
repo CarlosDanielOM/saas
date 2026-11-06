@@ -5,6 +5,7 @@ import { UpgradeService } from '../../services/upgrade.service';
 import { CustomWidgetsService, copyableMedia, errorCode, message, type CustomWidgetView, type MediaCopyResult, type MediaPlan } from './custom-widgets.service';
 import { experimentEnabled } from '../../shared/utils/experiments';
 import { droppedFiles, pickedFromInput, readImport, type ImportDraft, type PickedFile } from './custom-widget-import';
+import { outsideCode } from './custom-widget-format.generated';
 
 /**
  * Import a StreamElements widget package, replace an imported widget's files, or (mode `media`, also the step
@@ -35,6 +36,9 @@ export class OverlayCustomWidgetImportComponent {
   readonly busy = signal(false);
   readonly dragOver = signal(false);
   readonly name = signal('');
+  /** Outside sites the package's code loads from (its code can change there), and the opt-in block. */
+  readonly outsideHosts = computed(() => outsideCode(this.draft()?.summary?.remote ?? []));
+  readonly blockOutside = signal(false);
   readonly serverError = signal('');
   readonly limitReached = signal(false);
   private returnFocus: HTMLElement | null = null;
@@ -99,7 +103,7 @@ export class OverlayCustomWidgetImportComponent {
     try {
       const result = this.mode() === 'replace' && this.widget()
         ? await this.widgets.replace(this.widget()!.id, draft.source)
-        : await this.widgets.create(this.name().trim(), draft.source);
+        : await this.widgets.create(this.name().trim(), draft.source, this.blockOutside() && this.outsideHosts().length ? 'restricted' : 'open');
       this.busy.set(false);
       this.done.emit(result.widget);
       // Offer to copy StreamElements-hosted files right away; otherwise we're done.

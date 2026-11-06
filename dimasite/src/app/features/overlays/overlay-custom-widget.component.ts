@@ -5,17 +5,21 @@ import { resolveFieldData, type JsonObject } from './custom-widget-format.genera
 import { CustomWidgetsService } from './custom-widgets.service';
 import type { WidgetRenderContext } from './overlay-widget-module';
 import { eventUse, type DimaEvent } from './widget-runtime/dima-events';
-import { buildFrameDocument, rewriteValues } from './widget-runtime/frame-document';
+import { buildFrameDocument, restrictedPolicy, rewriteValues } from './widget-runtime/frame-document';
+import { OverlayApi } from './overlay-api.service';
 import { CUSTOM_WIDGET_ENV, frameScripts, storeNamespace, type RuntimeBundle, type WidgetTarget } from './widget-runtime/widget-env';
 
-const HEARTBEAT_LIMIT_MS = 10_000;
+const HEARTBEAT_LIMIT_MS = 10_000, PROBE_MS = 5_000;
 const MAX_RELOADS = 3, RELOAD_WINDOW_MS = 5 * 60_000;
 const MAX_BUFFERED = 100, MAX_RPC_PER_SECOND = 30, MAX_LOGS_PER_MINUTE = 200, MAX_RPC_BYTES = 64_000;
 const LEVELS = new Set(['info', 'warn', 'error', 'debug']);
 
 /**
- * Hosts one custom widget layer in a sandboxed frame (scripts only, opaque origin): no access to the site,
- * its login, other layers or OBS. Messages are accepted only from this frame's window.
+ * Hosts one custom widget layer in a sandboxed frame (scripts only, opaque origin): no access to the site, its login
+ * or other layers. Messages are accepted only from this frame's window. OBS gives every frame its page-control API
+ * (`window.obsstudio`, limited by the browser source's Page permissions); the SDK removes it before the widget runs,
+ * but an inner frame or a page the widget opens would get a fresh copy. "Block outside connections" also blocks inner
+ * frames, outside loads and stops a widget that opens another page (frame-document.ts).
  */
 @Component({
   selector: 'app-overlay-custom-widget',
@@ -47,6 +51,7 @@ export class OverlayCustomWidgetComponent {
   /** Code editor preview: run this unsaved code instead of loading the layer's widget. */
   readonly draft = input<RuntimeBundle | null>(null);
   readonly env = inject(CUSTOM_WIDGET_ENV, { optional: true });
+  private readonly overlayApi = inject(OverlayApi);
   private readonly widgets = inject(CustomWidgetsService);
   private readonly language = inject(LanguageService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -65,7 +70,8 @@ export class OverlayCustomWidgetComponent {
     return values && typeof values === 'object' && !Array.isArray(values) ? values as JsonObject : {};
   });
   /** Editor only: copying a widget's files to storage changes this, and the frame restarts with the copies. */
-  private readonly mediaKey = computed(() => this.env?.mode === 'editor' ? JSON.stringify(this.source()?.media ?? {}) : '');
+  /** Editor: copied files or the "Block outside connections" choice changed → load the widget again. */
+  private readonly mediaKey = computed(() => this.env?.mode === 'editor' ? JSON.stringify([this.source()?.media ?? {}, this.source()?.network ?? 'open']) : '');
   readonly missing = computed(() => this.env?.mode === 'editor' && this.widgets.list() !== null && !this.source());
   readonly name = computed(() => this.context().widget.name || this.source()?.name || this.t('customName'));
 
@@ -75,6 +81,7 @@ export class OverlayCustomWidgetComponent {
   private frame: HTMLIFrameElement | null = null;
   private loaded = false;
   private buffered: DimaEvent[] = [];
+  private probe: { token: string; answered: boolean } | null = null;
   private readonly rouletteDelivered = new Set<string>();
   private previewOverrides: JsonObject = {};
   private lastBeat = 0;
@@ -89,9 +96,11 @@ export class OverlayCustomWidgetComponent {
     const onMessage = (event: MessageEvent) => this.receive(event);
     window.addEventListener('message', onMessage);
     const unsubscribe = this.env?.subscribe((event, layerId) => this.deliver(event, layerId));
+    // OBS: the owner changed this widget's load rules; load its code again (the published revision stays the same).
+    const offReload = this.env?.onReload?.(widgetId => { if (widgetId === this.widgetId() && !this.draft()) void this.load(widgetId, this.revision()); });
     const watchdog = setInterval(() => this.checkHeartbeat(), 2000);
     destroy.onDestroy(() => {
-      window.removeEventListener('message', onMessage); unsubscribe?.(); clearInterval(watchdog);
+      window.removeEventListener('message', onMessage); unsubscribe?.(); offReload?.(); clearInterval(watchdog);
       if (this.fieldsTimer) clearTimeout(this.fieldsTimer);
       this.removeFrame();
     });
@@ -154,7 +163,9 @@ export class OverlayCustomWidgetComponent {
     const bundle = this.bundle; if (!bundle) return;
     this.removeFrame();
     this.exec = crypto.randomUUID();
-    const html = buildFrameDocument({ ...bundle, uses: bundle.manifest.uses }, this.values(), scripts, { exec: this.exec, origin: location.origin });
+    const boot = { exec: this.exec, origin: location.origin, apiOrigin: this.overlayApi.base };
+    const restricted = bundle.network === 'restricted';
+    const html = buildFrameDocument({ ...bundle, uses: bundle.manifest.uses }, this.values(), scripts, boot);
     const frame = document.createElement('iframe');
     frame.setAttribute('sandbox', 'allow-scripts');
     frame.setAttribute('allow', 'autoplay');
@@ -164,6 +175,21 @@ export class OverlayCustomWidgetComponent {
     frame.tabIndex = -1;
     // Matching colour schemes keeps the frame transparent on dark pages.
     Object.assign(frame.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', border: '0', background: 'transparent', colorScheme: 'normal' });
+    // Restricted: the same policy on the frame itself, so a page it opens must run under it too. After each load the
+    // frame must answer as the document we built (a page it opened, even before its first load, can't); a second
+    // load (another page or a reload) stops the widget. Containment: the request for that page has already gone out.
+    if (restricted) {
+      frame.setAttribute('csp', restrictedPolicy(boot));
+      let loads = 0;
+      frame.addEventListener('load', () => {
+        if (this.frame !== frame) return;
+        if (++loads > 1) { this.stopNavigated(); return; }
+        const token = crypto.randomUUID(), exec = this.exec;
+        this.probe = { token, answered: false };
+        this.post({ type: 'probe', token });
+        setTimeout(() => { if (this.frame === frame && this.exec === exec && this.probe?.token === token && !this.probe.answered) this.stopNavigated(); }, PROBE_MS);
+      });
+    }
     frame.srcdoc = html;
     this.loaded = false; this.lastBeat = Date.now(); this.rouletteDelivered.clear();
     this.host.nativeElement.querySelector('.frame-slot')!.append(frame);
@@ -223,6 +249,7 @@ export class OverlayCustomWidgetComponent {
     switch (message['type']) {
       case 'loaded': return this.started();
       case 'heartbeat': this.lastBeat = Date.now(); return;
+      case 'probe-ok': if (this.probe && message['token'] === this.probe.token) this.probe.answered = true; return;
       case 'log': return this.log(String(message['level']), message['args']);
       case 'error': {
         const text = String(message['message'] ?? 'Error').slice(0, 500) + (typeof message['line'] === 'number' ? ` (line ${message['line']})` : '');
@@ -283,6 +310,10 @@ export class OverlayCustomWidgetComponent {
     if (method === 'queue.done') return reply(true, true);
     try { reply(true, await this.env!.rpc(target, method, params as Record<string, unknown>)); }
     catch (error) { reply(false, undefined, error instanceof Error ? error.message : 'Request failed'); }
+  }
+  private stopNavigated(): void {
+    this.removeFrame(); this.status.set('stopped');
+    this.report({ status: 'stopped', entry: { at: Date.now(), level: 'error', text: this.t('customStoppedNavigated') } });
   }
   private checkHeartbeat(): void {
     if (!this.frame || !this.loaded || Date.now() - this.lastBeat < HEARTBEAT_LIMIT_MS) return;

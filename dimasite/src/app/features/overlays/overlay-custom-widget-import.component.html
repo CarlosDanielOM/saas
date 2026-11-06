@@ -69,6 +69,15 @@
             <span>{{ t('customRemoteNext') }}</span>
           </div>
         }
+        @if (outsideHosts().length) {
+          <div class="banner banner--warn" data-cw-outside>
+            <strong>{{ t('customImportOutsideTitle') }}</strong>
+            <span>{{ t('customImportOutsideBody', { hosts: outsideHosts().join(', ') }) }}</span>
+            @if (mode() === 'create') {
+              <label class="check"><input type="checkbox" [checked]="blockOutside()" (change)="blockOutside.set($any($event.target).checked)" data-cw-block-outside /><span>{{ t('customImportBlock') }}</span></label>
+            } @else { <span>{{ t('customImportBlockLater') }}</span> }
+          </div>
+        }
         @if (mode() === 'replace') { <p class="note">{{ t('customReplaceNote') }}</p> }
       }
     }

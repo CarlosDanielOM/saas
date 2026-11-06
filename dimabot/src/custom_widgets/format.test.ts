@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { buildWidgetIni, checkOverrides, externalMedia, fieldValue, groupFields, isStreamElementsHost, matchPackageFiles, parseData, parseFields,
+import { buildWidgetIni, checkOverrides, externalMedia, outsideCode, fieldValue, groupFields, isStreamElementsHost, matchPackageFiles, parseData, parseFields,
   parseWidgetIni, PackageFormatError, placeholderKeys, readPackage, resolveFieldData, type PackageSource, type WidgetField } from './format.js';
 
 const fixture = new URL('../../../ops/checks/custom-widget-fixtures/sample-chat/', import.meta.url);
@@ -95,6 +95,27 @@ test('placeholders and remote files are found for the import summary', () => {
   const hosted = media.filter(m => isStreamElementsHost(m.host));
   assert.deepEqual(hosted.map(m => [m.kind, m.in]), [['image', ['css']], ['image', ['data']]]);
   assert(media.some(m => m.kind === 'font' && m.host === 'fonts.googleapis.com'));
+});
+
+test('outside code: scripts, styles, connection hints and package CDNs from other sites; our own, Google Fonts and saved values are left out', () => {
+  const source = { fields: '{}', data: '{}',
+    html: '<script src="https://cdn.jsdelivr.net/npm/gsap@3"></script><script src=https://evil.example/w></script>'
+      + '<link rel="stylesheet" href="https://styles.example/look"><link rel="icon" href="https://icons.example/a.png">'
+      + '<link href="https://fonts.googleapis.com/css2?family=Inter" rel="stylesheet"><img src="https://cdn.streamelements.com/uploads/a.png">'
+      + '<link rel="dns-prefetch" href="https://leak.example">',
+    css: '@import url("https://more.example/theme"); .a { background: url(https://images.example/bg.png) }',
+    js: 'import("https://esm.sh/canvas-confetti"); const s = "https://static.streamelements.com/lib.js"; fetch("https://api.example/x"); const m = "https://www.domdimabot.com/a.js";' };
+  const media = externalMedia(source, { theme: 'https://data.example/pack.js' });
+  assert.deepEqual(outsideCode(media), ['cdn.jsdelivr.net', 'esm.sh', 'evil.example', 'leak.example', 'more.example', 'static.streamelements.com', 'styles.example'],
+    'StreamElements-hosted scripts can change too; StreamElements images and Google Fonts are not code');
+  assert.equal(media.find(item => item.url === 'https://evil.example/w')?.kind, 'script', 'a <script src> is code without a .js ending');
+  assert.equal(media.find(item => item.url === 'https://icons.example/a.png')?.kind, 'image', 'other links stay media');
+  assert.deepEqual(outsideCode([]), []);
+  // Protocol-relative addresses (//host) are code too; comments and protocol-relative images are not.
+  const relative = externalMedia({ fields: '{}', data: '{}', html: '<script src="//evil.example/w"></script><link rel="stylesheet" href=//styles2.example/a><img src="//cdn.streamelements.com/a.png">',
+    css: '@import "//more2.example/t";', js: "const s = document.createElement('script'); s.src = '//dyn.example/x.js'; // see example.com/docs later" });
+  assert.deepEqual(outsideCode(relative), ['dyn.example', 'evil.example', 'more2.example', 'styles2.example']);
+  assert.equal(relative.some(item => item.host === 'cdn.streamelements.com' || item.host === 'example.com'), false);
 });
 
 test('package size limits', () => {

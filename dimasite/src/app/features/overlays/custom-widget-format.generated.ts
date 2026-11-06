@@ -309,16 +309,33 @@ const EXTENSIONS: [RegExp, ExternalMediaKind][] = [
 /** Remote files the widget loads (for example StreamElements uploads), found in its code and saved values. */
 export function externalMedia(source: PackageSource, data: Readonly<JsonObject> = {}): ExternalMedia[] {
   const found = new Map<string, ExternalMedia>();
+  // `<script src>`, stylesheet links and CSS @import are code even without a .js/.css ending. Protocol-relative
+  // addresses (`//host/…`) count as https.
+  const code = new Map<string, ExternalMediaKind>();
+  const absolute = (url: string) => url.startsWith('//') ? 'https:' + url : url;
+  const ADDRESS = '((?:https?:)?\\/\\/[^"\'\\s>)]+)';
+  for (const [, url] of source.html.matchAll(new RegExp(`<script\\b[^>]*?\\ssrc\\s*=\\s*["']?${ADDRESS}`, 'gi'))) code.set(absolute(url), 'script');
+  for (const [tag] of source.html.matchAll(/<link\b[^>]*>/gi)) {
+    const href = new RegExp(`\\shref\\s*=\\s*["']?${ADDRESS}`, 'i').exec(tag)?.[1];
+    // Connection hints (dns-prefetch, preconnect) are listed with code: the widget plans to contact that site.
+    if (href && /\srel\s*=\s*["']?[^"'>]*\b(stylesheet|modulepreload|preload|preconnect|dns-prefetch)\b/i.test(tag)) code.set(absolute(href), /\bstylesheet\b/i.test(tag) ? 'style' : 'script');
+  }
+  for (const text of [source.css, source.html]) for (const [, url] of text.matchAll(new RegExp(`@import\\s+(?:url\\()?\\s*["']?${ADDRESS}`, 'gi'))) code.set(absolute(url), 'style');
+  const add = (url: string, file: PackageFile, onlyCode: boolean) => {
+    // Longer "URLs" aren't media links; skipping them also bounds what each revision stores.
+    if (url.length > CUSTOM_WIDGET_LIMITS.url) return;
+    let parsed: URL; try { parsed = new URL(url); } catch { return; }
+    const host = parsed.hostname.toLowerCase(), kind = code.get(url) ?? mediaKind(parsed);
+    // Protocol-relative addresses are only kept as code (media copying works on the full addresses it can rewrite).
+    if (onlyCode && kind !== 'script' && kind !== 'style' && !(CODE_CDN_HOSTS as readonly string[]).includes(host)) return;
+    const entry = found.get(url) ?? { url, host, kind, in: [] };
+    if (!entry.in.includes(file)) entry.in.push(file);
+    if (found.size < CUSTOM_WIDGET_LIMITS.externalMedia || found.has(url)) found.set(url, entry);
+  };
   const scan = (text: string, file: PackageFile) => {
-    for (const [raw] of text.matchAll(/https?:\/\/[^\s"'`()<>\\{}]+/gi)) {
-      const url = raw.replace(/[.,;:!?]+$/, '');
-      // Longer "URLs" aren't media links; skipping them also bounds what each revision stores.
-      if (url.length > CUSTOM_WIDGET_LIMITS.url) continue;
-      let parsed: URL; try { parsed = new URL(url); } catch { continue; }
-      const entry = found.get(url) ?? { url, host: parsed.hostname.toLowerCase(), kind: mediaKind(parsed), in: [] };
-      if (!entry.in.includes(file)) entry.in.push(file);
-      if (found.size < CUSTOM_WIDGET_LIMITS.externalMedia || found.has(url)) found.set(url, entry);
-    }
+    for (const [raw] of text.matchAll(/https?:\/\/[^\s"'`()<>\\{}]+/gi)) add(raw.replace(/[.,;:!?]+$/, ''), file, false);
+    // Quoted `//host/…` (not comments): code only.
+    for (const [, raw] of text.matchAll(/["'`(=]\s*(\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)+(?::\d+)?(?:\/[^\s"'`()<>\\{}]*)?)/gi)) add('https:' + raw.replace(/[.,;:!?]+$/, ''), file, true);
   };
   for (const file of ['html', 'css', 'js'] as const) scan(source[file], file);
   const strings = (value: JsonValue): string[] => typeof value === 'string' ? [value] : Array.isArray(value) ? value.flatMap(strings) : value && typeof value === 'object' ? Object.values(value).flatMap(strings) : [];
@@ -330,6 +347,31 @@ function mediaKind(url: URL): ExternalMediaKind {
   return EXTENSIONS.find(([pattern]) => pattern.test(url.pathname))?.[1] ?? 'other';
 }
 export const isStreamElementsHost = (host: string) => host === 'streamelements.com' || host.endsWith('.streamelements.com');
+
+/**
+ * Hosts a widget may still load images, fonts, sounds and video from with "Block outside connections" on:
+ * StreamElements' file servers, Google Fonts and Twitch's emote/badge images (never scripts: only the widget's own
+ * code runs). Our own API (copied files) and site are added at run time.
+ */
+export const TRUSTED_WIDGET_HOSTS = ['static.streamelements.com', 'cdn.streamelements.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'static-cdn.jtvnw.net'] as const;
+/** Package CDNs: anything they serve is code, whatever the address looks like. */
+export const CODE_CDN_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com', 'esm.sh', 'cdn.skypack.dev', 'code.jquery.com', 'ajax.googleapis.com', 'cdn.socket.io', 'ga.jspm.io'] as const;
+/** Owner choice per widget: "restricted" blocks outside connections (see the frame's Content-Security-Policy). */
+export type WidgetNetwork = 'open' | 'restricted';
+const OUR_HOSTS = /(^|\.)domdimabot\.com$/;
+/**
+ * Outside sites the widget loads code (scripts or styles) from or plans to contact, found in its files. That code lives
+ * on someone else's server and can change after the import. Only our own sites and Google Fonts aren't listed.
+ */
+export function outsideCode(media: readonly ExternalMedia[]): string[] {
+  const hosts = new Set<string>();
+  for (const item of media) {
+    if (item.in.includes('data') && item.in.length === 1) continue; // a saved setting value, not the code
+    if (OUR_HOSTS.test(item.host) || item.host === 'fonts.googleapis.com' || item.host === 'fonts.gstatic.com') continue;
+    if (item.kind === 'script' || item.kind === 'style' || (CODE_CDN_HOSTS as readonly string[]).includes(item.host)) hosts.add(item.host);
+  }
+  return [...hosts].sort();
+}
 
 /** Reads widget.ini (`[HTML]` / `path = "html.txt"`), mapping each part to its file name. */
 export function parseWidgetIni(text: string): Partial<Record<PackageFile, string>> {

@@ -21,7 +21,7 @@ import { renderLayout } from './ast.js';
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { EVENT_KINDS, matchesTrigger, type AlertEvent, type EventKind, type OverlayScene } from './model.js';
-import { publishedLayers } from '../custom_widgets/store.js';
+import { publishedLayers, widgetNetworks } from '../custom_widgets/store.js';
 import { alertFromEventsub, sessionFor, type DimaAlert } from '../custom_widgets/session.js';
 import { channelGoals, publicGoals } from '../custom_widgets/state.js';
 import { commandCount, storeGet, storeSet } from '../custom_widgets/widget-store.js';
@@ -55,6 +55,10 @@ const widgetUses = (peer: Peer) => new Set([...(peer.widgets?.values() ?? [])].f
 async function refreshWidgets(peer: Peer): Promise<void> {
   try { peer.widgets = await publishedLayers(peer.channel, peer.state.snapshot.widgets); }
   catch { peer.widgets = new Map(); }
+  // Each widget's current load rules (Block outside connections): the page reloads widgets it cached under other
+  // rules, e.g. after the owner changed one while this source was offline (a reload request it missed).
+  const ids = [...new Set([...peer.widgets.values()].map(layer => layer.widgetId))];
+  if (ids.length && peer.socket?.connected) void widgetNetworks(peer.channel, ids).then(networks => peer.socket?.emit('overlay-widget-policies', { networks })).catch(() => {});
   // Chat starts flowing right away for a newly connected or updated chat widget (the loop refreshes it later).
   if (peer.socket?.connected && widgetUses(peer).has('chat')) { await markChatDemand(peer.channel).catch(() => {}); ensureWidgetModeration(peer.channel); }
 }
@@ -829,4 +833,13 @@ registerStudioBridge({ queueChannels: function* () {
   }
 }, hasLiveSource: (channel, kind) => recipients(channel, kind).length > 0, readTts: publishStudioReadTts, endReadTts: endStudioReadTts, hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts, ttsStatus: studioTtsStatus,
   widgetEvent: (channel, use, type, data) => feedWidgets(channel, use, type, data),
-  widgetsUse: (channel, use) => [...peers.values()].some(peer => peer.channel === channel && peer.socket?.connected && widgetUses(peer).has(use)) });
+  widgetsUse: (channel, use) => [...peers.values()].some(peer => peer.channel === channel && peer.socket?.connected && widgetUses(peer).has(use)),
+  // The owner changed how a widget may load (Block outside connections): sources showing it load it again.
+  widgetChanged: (channel, widgetId) => {
+    let sent = 0;
+    for (const peer of peers.values()) {
+      if (peer.channel !== channel || !peer.socket?.connected || ![...(peer.widgets?.values() ?? [])].some(layer => layer.widgetId === widgetId)) continue;
+      peer.socket.emit('overlay-widget-reload', { widgetId }); sent++;
+    }
+    return sent;
+  } });

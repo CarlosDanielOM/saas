@@ -36,8 +36,9 @@ export class EditorWidgetEnv implements CustomWidgetEnv {
   readonly sceneLayers = signal<readonly OverlayWidget[]>([]);
 
   bundle(widgetId: string, revision?: number): Promise<RuntimeBundle> {
-    // Copying files changes the media map without a new revision, so it is part of the key.
-    const key = `${widgetId}:${revision ?? 'latest'}:${JSON.stringify(this.widgets.widget(widgetId)?.media ?? {})}`;
+    // Copying files changes the media map (and the owner can block outside connections) without a new revision.
+    const view = this.widgets.widget(widgetId);
+    const key = `${widgetId}:${revision ?? 'latest'}:${JSON.stringify(view?.media ?? {})}:${view?.network ?? 'open'}`;
     let code = this.bundles.get(key);
     if (!code) {
       code = this.widgets.bundle(widgetId, revision);

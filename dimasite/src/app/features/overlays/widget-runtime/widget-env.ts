@@ -10,6 +10,8 @@ export interface RuntimeBundle {
   widgetId: string; revision: number; engine: WidgetManifest['engine']; manifest: WidgetManifest;
   html: string; css: string; js: string; fields: WidgetField[]; data: JsonObject; media: Record<string, string>;
   channel: { id: string; login: string; name: string };
+  /** The owner's "Block outside connections" choice. */
+  network?: 'open' | 'restricted';
 }
 export interface WidgetLogEntry { at: number; level: 'info' | 'warn' | 'error' | 'debug'; text: string }
 export type WidgetStatus = 'loading' | 'running' | 'error' | 'stopped';
@@ -30,6 +32,8 @@ export interface CustomWidgetEnv {
   states(): Record<string, unknown>;
   /** Recent events a frame that starts later should still get (OBS: roulette spins and results from the last 2 minutes). */
   recent?(): DimaEvent[];
+  /** OBS: the owner changed how a widget may load (Block outside connections); its layers load it again. */
+  onReload?(listener: (widgetId: string) => void): () => void;
   report(layerId: string, update: { status?: WidgetStatus; entry?: WidgetLogEntry }): void;
 }
 export const CUSTOM_WIDGET_ENV = new InjectionToken<CustomWidgetEnv>('CUSTOM_WIDGET_ENV');

@@ -89,7 +89,19 @@ try {
   const second = (await data('POST', widgetsPath, { name: 'Second', files: { ...source, js: source.js + '\n// second' } }, 201)).widget;
   assert.equal((await data('GET', widgetsPath)).used, 2);
   assert.equal((await data('PATCH', `${widgetsPath}/${second.id}`, { name: 'Renamed' })).name, 'Renamed');
-  console.log('PASS plan limits (free 1, premium 5) and rename.');
+  // Block outside connections: the owner's choice (never widget.json), in the view and the bundle; outside code is listed.
+  assert.deepEqual([second.network, second.outsideCode], ['open', []]);
+  const blocked = await data('PATCH', `${widgetsPath}/${second.id}`, { network: 'restricted' });
+  assert.deepEqual([blocked.network, blocked.name], ['restricted', 'Renamed'], 'changing one keeps the other');
+  await req('PATCH', `${widgetsPath}/${second.id}`, { network: 'off' }, 400);
+  assert.equal((await data('GET', `${widgetsPath}/${second.id}/bundle`)).network, 'restricted');
+  assert.equal((await data('PATCH', `${widgetsPath}/${second.id}`, { network: 'open' })).network, 'open');
+  await req('POST', widgetsPath, { name: 'Bad', network: 'nope', files: source }, 400);
+  const outside = (await data('POST', widgetsPath, { name: 'Outside', network: 'restricted', files: { ...source, html: source.html + '<script src="https://cdn.jsdelivr.net/npm/gsap@3"></script>' } }, 201)).widget;
+  assert.deepEqual([outside.network, outside.outsideCode], ['restricted', ['cdn.jsdelivr.net']], 'imported blocked; the outside code is named');
+  await data('DELETE', `${widgetsPath}/${outside.id}`);
+  assert.equal((await data('GET', widgetsPath)).used, 2);
+  console.log('PASS plan limits (free 1, premium 5), rename, and "Block outside connections" (owner setting, bundle, import opt-in, outside code listed).');
 
   // Studio save: valid layer values are kept; stale keys dropped; bad values and foreign IDs rejected.
   let state = await data('GET', base);
@@ -118,6 +130,12 @@ try {
   assert.equal(await fileText(`${widgetsPath}/${id}/files/fields?revision=1`), source.fields);
   const publicView = await data('GET', `/overlay-studio/public/${state.scenes[0].publicId}`);
   assert.equal(publicView.snapshot.widgets.at(-1).config.revision, 1, 'OBS keeps the published revision');
+  // The block applies to the published revision too (it's the owner's current choice, not part of the files).
+  const pinned = `/overlay-studio/public/${state.scenes[0].publicId}/custom-widgets/${id}/1`;
+  assert.equal((await data('GET', pinned)).network, 'open');
+  await data('PATCH', `${widgetsPath}/${id}`, { network: 'restricted' });
+  assert.equal((await data('GET', pinned)).network, 'restricted');
+  await data('PATCH', `${widgetsPath}/${id}`, { network: 'open' });
   state = await data('PUT', base, state);
   assert.deepEqual(state.scenes[0].widgets.at(-1).config.values, { textColor: '#123456' }, 'settings removed by new files are dropped on save');
   state = await data('POST', `${base}/scenes/${state.scenes[0].id}/publish`, { revision: state.revision });

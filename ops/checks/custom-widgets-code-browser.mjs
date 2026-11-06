@@ -418,6 +418,8 @@ try {
   // 2. Edit code of an imported StreamElements widget; phone layout, light then dark.
   for (const theme of ['light', 'dark']) {
     const sm = mocks({ theme, withSample: true }), ctx = await browser.newContext({ viewport: { width: 390, height: 860 }, reducedMotion: 'reduce', hasTouch: true });
+    // Dark run: the owner blocked outside connections; the code preview must follow that choice.
+    if (theme === 'dark') sm.world.widgets[0].network = 'restricted';
     await sm.install(ctx);
     const p = await ctx.newPage(); p.setDefaultTimeout(15000); p.on('pageerror', e => errors.push(e.message));
     await p.goto(`${base}/${user.login}/modules/overlays`); await p.locator('.stage').waitFor();
@@ -450,6 +452,8 @@ try {
     await p.waitForTimeout(700); // the new widget.json restarts the preview once typing settles
     await d.locator('[data-cwc-pane="preview"]').click();
     await d.locator('app-overlay-custom-widget [data-custom-frame="running"]').waitFor();
+    assert.equal((await d.locator('app-overlay-custom-widget iframe').getAttribute('csp') ?? '').includes("connect-src 'none'"), theme === 'dark',
+      'the code preview runs under the owner\'s "Block outside connections" choice');
     assert.equal(await d.locator('[data-cwc-editor]').isVisible(), false, 'phones show one pane at a time');
     await d.locator('[data-cwc-chat="subscriber"]').click();
     await d.frameLocator('app-overlay-custom-widget iframe').locator('.row').first().waitFor();
@@ -464,6 +468,6 @@ try {
     }
     await ctx.close();
   }
-  console.log('PASS edit code: an imported StreamElements widget loads, widget.json can be added from what Studio inferred; phone Code/Preview, axe clean dark/light 390 and 1280.');
+  console.log('PASS edit code: an imported StreamElements widget loads, widget.json can be added from what Studio inferred; phone Code/Preview (under the owner\'s outside-connection choice), axe clean dark/light 390 and 1280.');
   assert.deepEqual(errors, []);
 } finally { await browser.close(); }
