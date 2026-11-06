@@ -28,6 +28,14 @@ export interface OverlayRenderJob {
 }
 export interface OverlayPlacementReport { id: OverlayPlaybackId; widgetId: string; duration?: number }
 
+/** Designed alerts stay hidden until their displayed pictures are decoded; media and TTS report their own start. */
+export function waitsForPictures(event: OverlayRenderEvent): boolean { return !event.media && !event.tts; }
+/** An alert whose pictures never become ready is still shown after this long. */
+export const ALERT_READY_LIMIT_MS = 8000;
+/** Until the renderer reports readiness, a waiting alert's deadline also covers the wait. */
+export function placementMountSeconds(event: OverlayRenderEvent, widget: OverlayWidget): number {
+  return placementStartSeconds(event, widget) + (waitsForPictures(event) ? ALERT_READY_LIMIT_MS / 1000 + 2 : 0);
+}
 /** OBS starts these deadlines only once the prepared event is mounted. */
 export function placementStartSeconds(event: OverlayRenderEvent, widget: OverlayWidget): number {
   return event.tts && !event.media ? event.tts.durationMs / 1000

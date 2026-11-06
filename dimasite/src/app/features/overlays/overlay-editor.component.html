@@ -297,7 +297,7 @@
             @if (!widgets().length) { <p class="stage__empty">{{ t('stageEmpty') }}</p> }
             <app-overlay-scene-renderer [scene]="renderScene()" [jobs]="renderJobs()" [owner]="channel" [streamer]="streamer" [placement]="widgetPlacement()" [preview]="true" [previewFixtures]="widgetPreviews()"
               [texts]="renderTexts()" [staticPlaybackKey]="designPlaybackKey()" [staticDuration]="editingLayout()?.duration ?? 5" [transport]="timeline()" [designSound]="designDraft() ? editingLayout()?.sound : undefined" [staticAssets]="designPreparedAssets()"
-              (started)="rendererStarted($event)" (ended)="rendererEnded($event)" (failed)="rendererEnded($event,true)" (issue)="notice.set($event === 'autoplay' ? 'soundBlocked' : 'testPlaybackError')" />
+              (started)="rendererStarted($event)" (ready)="rendererReady($event)" (ended)="rendererEnded($event)" (failed)="rendererEnded($event,true)" (issue)="notice.set($event === 'autoplay' ? 'soundBlocked' : 'testPlaybackError')" />
             @for (widget of widgets(); track widget.id; let layerIndex = $index) {
               @if (widget.visible) {
                 @let placement = previewPlacement(widget);

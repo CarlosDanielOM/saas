@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, afterRenderEffect, computed, inject, input, output, signal } from '@angular/core';
 import type { Snapshot } from './overlay-api.service';
 import { OverlayLayerComponent } from './overlay-layer.component';
 import { OverlayWidgetHostComponent } from './overlay-widget-host.component';
@@ -10,7 +10,8 @@ import { stateForWidget } from './overlay-widget-state';
 import type { WidgetPlacement, WidgetStates } from './overlay-widget-contract.generated';
 import type { AlertSound, OverlayWidget } from './overlay.model';
 import type { PreparedAsset } from './overlay-asset-cache';
-import { sceneScale, type OverlayPlacementReport, type OverlayRenderJob } from './overlay-playback';
+import { ALERT_READY_LIMIT_MS, sceneScale, waitsForPictures, type OverlayPlacementReport, type OverlayPlaybackId, type OverlayRenderJob } from './overlay-playback';
+import { waitForOverlayImages } from './overlay-image-readiness';
 import { LanguageService } from '../../services/language.service';
 
 /** The OBS visual composition. The editor supplies draft/sample data to this same renderer. */
@@ -32,7 +33,7 @@ import { LanguageService } from '../../services/language.service';
     @for (job of jobs(); track job.event.id) {
       @for (sound of soundsFor(job); track sound.id) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="job.playbackKey ?? job.event.id" [owner]="owner()" [publicId]="publicId()" [preparedSource]="job.assets?.get(sound.config.assetId)?.url || ''" (failed)="issue.emit('media')" (playbackBlocked)="issue.emit('autoplay')" (started)="soundStarted.emit()" /> }
       @for (w of renderWidgets(job); track w.id) {
-        <div class="placement" [attr.data-widget-id]="w.id" [attr.data-kind]="w.kind" [attr.data-event]="job.event.kind" [attr.data-idle]="job.idle ? '' : null" [attr.data-playback-key]="job.playbackKey ?? job.event.id" [attr.data-platform]="job.event.platform ?? 'twitch'" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="layerIndex(job,w)">
+        <div class="placement" [attr.data-widget-id]="w.id" [attr.data-kind]="w.kind" [attr.data-event]="job.event.kind" [attr.data-idle]="job.idle ? '' : null" [attr.data-playback-key]="job.playbackKey ?? job.event.id" [attr.data-platform]="job.event.platform ?? 'twitch'" [attr.data-waiting]="shown(job) ? null : ''" [style.visibility]="shown(job) ? null : 'hidden'" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="layerIndex(job,w)">
           @if (mediaFor(job,w.id); as media) {
             @if (job.event.kind === 'clip') {
               <app-overlay-clip [design]="w.clipDesign ?? 'classic'" [media]="media" [muted]="audioWidget(job) !== w.id" (started)="started.emit({id:job.event.id,widgetId:w.id,duration:$event})" (playbackBlocked)="issue.emit('autoplay')" (ended)="ended.emit({id:job.event.id,widgetId:w.id})" (failed)="failed.emit({id:job.event.id,widgetId:w.id})" />
@@ -42,7 +43,7 @@ import { LanguageService } from '../../services/language.service';
           } @else if (!job.event.tts) {
             @if (job.event.layouts?.[w.designId || '']; as layout) {
               @for (part of layout.widgets; track part.id) { @if (part.visible) {
-                <div class="placement art" [attr.data-layer-id]="part.id" [attr.data-kind]="part.kind" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [owner]="owner()" [publicId]="publicId()" [layer]="part" [preparedSource]="job.assets?.get(part.assetId || '')?.url || ''" [playbackKey]="job.playbackKey ?? job.event.id" [duration]="layout.duration" (failed)="issue.emit('media')" /></div>
+                <div class="placement art" [attr.data-layer-id]="part.id" [attr.data-kind]="part.kind" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [owner]="owner()" [publicId]="publicId()" [layer]="part" [preparedSource]="job.assets?.get(part.assetId || '')?.url || ''" [playbackKey]="shown(job) ? (job.playbackKey ?? job.event.id) : 0" [duration]="layout.duration" (failed)="issue.emit('media')" /></div>
               } }
             }
           }
@@ -69,16 +70,55 @@ export class OverlaySceneRendererComponent {
   readonly started = output<OverlayPlacementReport>(); readonly ended = output<OverlayPlacementReport>(); readonly failed = output<OverlayPlacementReport>();
   readonly issue = output<'media'|'autoplay'>(); readonly soundStarted = output<void>();
   readonly speechPlayback = output<OverlayPlacementReport & { report: OverlaySpeechPlayback }>();
+  /** A designed alert's pictures are decoded and it is now visible: its clock starts here. */
+  readonly ready = output<{ id: OverlayPlaybackId }>();
   readonly language = inject(LanguageService);
   private readonly measured = signal({ width:0,height:0 });
   readonly scale = computed(() => sceneScale(this.scene(),this.viewport() ?? this.measured()));
+  private readonly readyKeys = signal<ReadonlySet<string>>(new Set());
+  private readonly waitsFor = new Map<string, AbortController>();
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   constructor() {
-    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement, destroy = inject(DestroyRef);
+    const host = this.host, destroy = inject(DestroyRef);
     afterNextRender(() => {
       const observer = new ResizeObserver(([entry]) => this.measured.set({ width:entry.contentRect.width,height:entry.contentRect.height }));
       observer.observe(host); destroy.onDestroy(() => observer.disconnect());
     });
+    // A new alert mounts hidden and still. Once the pictures it actually displays are
+    // loaded and decoded, it appears whole, and its motion and sound start together.
+    afterRenderEffect(() => {
+      const ready = this.readyKeys(), live = new Set<string>();
+      for (const job of this.jobs()) {
+        if (!this.gated(job)) continue;
+        const key = this.jobKey(job); live.add(key);
+        if (ready.has(key) || this.waitsFor.has(key)) continue;
+        const controller = new AbortController(); this.waitsFor.set(key, controller);
+        // A failed picture settles on its own; a removed placement stops counting.
+        void Promise.all(this.roots(key).map(root => waitForOverlayImages(root, controller.signal, ALERT_READY_LIMIT_MS))).then(() => {
+          if (!controller.signal.aborted) this.reveal(job);
+        });
+      }
+      for (const [key, controller] of this.waitsFor) if (!live.has(key)) { controller.abort(); this.waitsFor.delete(key); }
+      // A departed alert's key must never let a later job skip its wait.
+      if ([...ready].some(key => !live.has(key))) queueMicrotask(() => this.readyKeys.update(keys => new Set([...keys].filter(key => this.jobs().some(job => this.gated(job) && this.jobKey(job) === key)))));
+    });
+    destroy.onDestroy(() => { this.waitsFor.forEach(controller => controller.abort()); this.waitsFor.clear(); });
   }
+  private reveal(job: OverlayRenderJob): void {
+    const key = this.jobKey(job), current = new Set(this.jobs().map(item => this.jobKey(item)));
+    this.waitsFor.get(key)?.abort(); this.waitsFor.delete(key);
+    if (this.readyKeys().has(key) || !current.has(key)) return;
+    this.readyKeys.update(keys => new Set([...keys].filter(item => current.has(item))).add(key));
+    this.ready.emit({ id: job.event.id });
+    // Videos kept playing while the alert waited hidden; every layer starts together.
+    for (const root of this.roots(key)) for (const video of root.querySelectorAll('video')) video.currentTime = 0;
+  }
+  private roots(key: string): HTMLElement[] {
+    return [...this.host.querySelectorAll<HTMLElement>('.placement[data-playback-key]')].filter(root => root.dataset['playbackKey'] === key);
+  }
+  private gated(job: OverlayRenderJob): boolean { return !job.idle && waitsForPictures(job.event); }
+  private jobKey(job: OverlayRenderJob): string { return String(job.playbackKey ?? job.event.id); }
+  shown(job: OverlayRenderJob): boolean { return !this.gated(job) || this.readyKeys().has(this.jobKey(job)); }
   hasPlaying(id: string): boolean { return this.jobs().some(job => !job.idle && job.widgets.some(widget => widget.id === id)); }
   delivery(widget: OverlayWidget) { return widgetModuleFor(widget,this.placement())?.definition.delivery; }
   widgetState(widget: OverlayWidget) { return stateForWidget(widget,this.states()); }
@@ -89,7 +129,7 @@ export class OverlaySceneRendererComponent {
   designHeight(job: OverlayRenderJob,widget: OverlayWidget) { return job.snapshot.designs.find(d => d.id === widget.designId)?.height || 240; }
   mediaFor(job: OverlayRenderJob,widgetId: string) { return !job.event.tts || job.event.tts.ownerClientId === this.audioOwner() && this.audioWidget(job) === widgetId ? job.event.media : undefined; }
   soundsFor(job: OverlayRenderJob) {
-    if (job.idle || job.event.tts) return [];
+    if (job.idle || job.event.tts || !this.shown(job)) return [];
     return [...new Set(job.widgets.filter(w => w.kind === 'alert').map(w => w.designId!))].flatMap(id => {
       const layout = job.event.layouts?.[id]; return layout?.sound ? [{ id,config:layout.sound,duration:layout.duration }] : [];
     });

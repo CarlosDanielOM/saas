@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alertPlacementIds, placementMediaSeconds, placementStartSeconds, sceneScale, type OverlayRenderEvent } from './overlay-playback';
+import { ALERT_READY_LIMIT_MS, alertPlacementIds, placementMediaSeconds, placementMountSeconds, placementStartSeconds, sceneScale, waitsForPictures, type OverlayRenderEvent } from './overlay-playback';
 import type { OverlayWidget } from './overlay.model';
 const widget = (id: string,designId: string): OverlayWidget => ({id,designId,kind:'alert',x:0,y:0,width:800,height:240,visible:true,locked:false,events:['follow','bits']});
 
@@ -18,6 +18,15 @@ describe('shared OBS playback rules',() => {
     expect(placementMediaSeconds({...event,media:{type:'audio',url:'fixture.wav',title:'test',volume:1}},80)).toBe(95);
     expect(placementMediaSeconds({...event,media:{type:'audio',url:'fixture.wav',title:'test',volume:1,duration:80}},5)).toBe(80);
     expect(placementMediaSeconds(event)).toBe(300);
+  });
+  it('holds only designed alerts until their pictures are ready, with a bounded deadline',() => {
+    const alert: OverlayRenderEvent = {id:'follow',kind:'follow',layouts:{short:{duration:1,widgets:[]}}};
+    const media = {...alert,kind:'trigger' as const,media:{type:'video' as const,url:'fixture.mp4',title:'test',volume:1}};
+    const speech: OverlayRenderEvent = {id:'speech',kind:'tts',tts:{speechID:'speech',ownerClientId:null,durationMs:1600}};
+    expect([alert,media,speech].map(waitsForPictures)).toEqual([true,false,false]);
+    expect(placementMountSeconds(alert,widget('a','short'))).toBe(1 + ALERT_READY_LIMIT_MS / 1000 + 2);
+    expect(placementMountSeconds(media,widget('a','short'))).toBe(placementStartSeconds(media,widget('a','short')));
+    expect(placementMountSeconds(speech,widget('a','short'))).toBe(1.6);
   });
   it('reserves overlapping alert boxes for any matching category and ignores hidden boxes',() => {
     const visible = widget('a','short'),hidden = {...widget('b','long'),visible:false};

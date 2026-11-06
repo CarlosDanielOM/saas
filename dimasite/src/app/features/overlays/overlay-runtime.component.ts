@@ -1,5 +1,5 @@
 import { OverlaySceneRendererComponent } from './overlay-scene-renderer.component';
-import { placementStartSeconds, placementMediaSeconds, alertPlacementIds, type OverlayPlacementReport } from './overlay-playback';
+import { placementStartSeconds, placementMediaSeconds, placementMountSeconds, alertPlacementIds, type OverlayPlacementReport, type OverlayPlaybackId } from './overlay-playback';
 import type { InteractionSnapshot } from './overlay-interaction.model';
 import type { WidgetStates, WidgetStateSnapshot } from './overlay-widget-contract.generated';
 import { acceptWidgetStates, WidgetStateTransport, type WidgetStateMessage } from './overlay-widget-state';
@@ -29,7 +29,7 @@ interface Playing { assets: Map<string, PreparedAsset>; event: Event; widgets: O
   providers: [LiveWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: LiveWidgetEnv }],
   template: `@if (snapshot(); as scene) {
     <app-overlay-scene-renderer [scene]="scene" [jobs]="playing()" [publicId]="publicId" [audioOwner]="rendererClientId()" [viewport]="viewport()" [states]="widgetStates()" [clockOffset]="clockOffset()"
-      (started)="renderedStarted($event)" (ended)="renderedEnded($event)" (failed)="renderedEnded($event,true)"
+      (started)="renderedStarted($event)" (ready)="renderedReady($event)" (ended)="renderedEnded($event)" (failed)="renderedEnded($event,true)"
       (issue)="reportIssue($event)" (soundStarted)="soundStarted()" (speechPlayback)="renderedSpeech($event)" />
   }`,
   styles: `:host { position:relative; display:block; width:100vw; height:100vh; margin:0; padding:0; background:transparent; overflow:hidden }`
@@ -169,6 +169,13 @@ export class OverlayRuntimeComponent {
   }
   rendererClientId(): string { return this.clientId; }
   renderedStarted(event: OverlayPlacementReport): void { if (typeof event.id === 'string') this.started(event.id,event.widgetId,event.duration); }
+  renderedReady(event: { id: OverlayPlaybackId }): void {
+    const job = this.playing().find(item => item.event.id === event.id); if (!job) return;
+    for (const w of job.widgets) if (job.pending.has(w.id)) {
+      clearTimeout(job.timers.get(w.id));
+      job.timers.set(w.id, setTimeout(() => this.finishPlacement(job.event.id, w.id), placementStartSeconds(job.event,w) * 1000));
+    }
+  }
   renderedEnded(event: OverlayPlacementReport,failed = false): void {
     if (typeof event.id !== 'string') return;
     if (failed) this.failedPlacement(event.id,event.widgetId); else this.finishPlacement(event.id,event.widgetId,'ended');
@@ -296,10 +303,8 @@ export class OverlayRuntimeComponent {
       this.inFlight.delete(event.id);
       const job: Playing = { assets, event: full, snapshot, widgets, pending: new Set(widgets.map(w => w.id)), timers: new Map() };
       this.playing.update(all => [...all, job]); this.reportPlayback();
-      for (const w of widgets) {
-        const seconds = placementStartSeconds(full,w);
-        job.timers.set(w.id, setTimeout(() => this.finishPlacement(event.id, w.id), seconds * 1000));
-      }
+      // A designed alert's own clock starts when the renderer shows it (renderedReady).
+      for (const w of widgets) job.timers.set(w.id, setTimeout(() => this.finishPlacement(event.id, w.id), placementMountSeconds(full,w) * 1000));
     } catch (error) {
       if (this.disposed || generation !== this.generation || this.completed.has(event.id)) return;
       this.reportIssue('event');

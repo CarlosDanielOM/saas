@@ -24,6 +24,28 @@ describe('displayed alert image readiness', () => {
     const result=waitForOverlayImages(f.root,controller.signal); controller.abort();
     expect(await result).toBe(false);
   });
+  it('keeps waiting for a healthy picture when another one fails', async () => {
+    vi.useFakeTimers();
+    type Img = { complete: boolean; naturalWidth: number; currentSrc: string; decode: () => Promise<void> };
+    let healthy: Img = { complete: false, naturalWidth: 0, currentSrc: 'slow', decode: async () => {} };
+    const broken: Img = { complete: true, naturalWidth: 0, currentSrc: 'broken', decode: async () => {} };
+    const layers = [
+      { querySelector: () => null, hasAttribute: (name: string) => name === 'data-overlay-failed' },
+      { querySelector: () => broken, hasAttribute: () => false },
+      { querySelector: () => healthy, hasAttribute: () => false }];
+    const root = { querySelectorAll: () => layers } as unknown as HTMLElement;
+    let done = false;
+    const result = waitForOverlayImages(root, new AbortController().signal).then(value => { done = true; return value; });
+    await vi.advanceTimersByTimeAsync(1000); expect(done).toBe(false);
+    healthy = { ...healthy, complete: true, naturalWidth: 10 };
+    await vi.advanceTimersByTimeAsync(50);
+    expect(await result).toBe(false);
+    expect(done).toBe(true);
+  });
+  it('stops counting a placement that was removed while it waited', async () => {
+    const root = { isConnected: false, querySelectorAll: () => [{ querySelector: () => null }] } as unknown as HTMLElement;
+    expect(await waitForOverlayImages(root, new AbortController().signal)).toBe(true);
+  });
   it('fails boundedly when image lookup stalls and rejects failed images', async () => {
     vi.useFakeTimers(); const f=fixture();
     const result=waitForOverlayImages(f.root,new AbortController().signal);

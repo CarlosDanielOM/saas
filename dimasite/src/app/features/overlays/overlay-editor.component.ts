@@ -1,7 +1,7 @@
 import { OverlaySceneRendererComponent } from './overlay-scene-renderer.component';
 import { OverlayAssetCache, type PreparedAsset } from './overlay-asset-cache';
 import { AssetLibraryService } from '../../shared/asset-library/asset-library.service';
-import { alertPlacementIds, placementStartSeconds, placementMediaSeconds, type OverlayRenderJob, type OverlayPlacementReport } from './overlay-playback';
+import { alertPlacementIds, placementStartSeconds, placementMediaSeconds, placementMountSeconds, type OverlayRenderJob, type OverlayPlacementReport, type OverlayPlaybackId } from './overlay-playback';
 import { OverlayWidgetSettingsComponent } from './overlay-widget-settings.component';
 import { CustomWidgetsService, message as apiMessage, type CustomWidgetView } from './custom-widgets.service';
 import { OverlayCustomWidgetImportComponent } from './overlay-custom-widget-import.component';
@@ -970,9 +970,19 @@ export class OverlayEditorComponent {
     job.pending = new Set(targets); event.targets = targets; event.originalTargets = [...targets];
     const patch = (current: MockEvent) => current.id === event.id ? event : current;
     this.active.update(current => current ? patch(current) : current); this.parallel.update(all => all.map(patch));
+    // A designed alert's own clock starts when the renderer shows it (rendererReady).
     for (const widget of event.snapshot.widgets.filter(w => targets.includes(w.id))) {
-      const seconds = placementStartSeconds({id:event.id,kind:event.kind,media:event.media,layouts:event.layouts},widget);
+      const seconds = placementMountSeconds({id:event.id,kind:event.kind,media:event.media,layouts:event.layouts},widget);
       job.timers.set(widget.id,this.later(() => this.mediaFinished(event.id,widget.id),seconds*1000));
+    }
+  }
+  rendererReady(report: { id: OverlayPlaybackId }): void {
+    const id = Number(report.id), job = this.jobs.get(id);
+    const event = [this.active(),...this.parallel()].find(item => item?.id === id); if (!job || !event?.snapshot) return;
+    for (const widget of event.snapshot.widgets.filter(w => job.pending.has(w.id))) {
+      clearTimeout(job.timers.get(widget.id));
+      const seconds = placementStartSeconds({id,kind:event.kind,media:event.media,layouts:event.layouts},widget);
+      job.timers.set(widget.id,this.later(() => this.mediaFinished(id,widget.id),seconds*1000));
     }
   }
   private async prepareAssets(layouts: AlertLayout[],valid: () => boolean = () => true): Promise<Map<string,PreparedAsset>> {
