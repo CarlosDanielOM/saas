@@ -6,6 +6,7 @@ import { Injector, runInInjectionContext } from '@angular/core';
 import { firstValueFrom, of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
+import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { TriggersService } from './triggers.service';
 
@@ -24,7 +25,8 @@ describe('TriggersService public assets', () => {
     });
     const injector = Injector.create({ providers: [
       { provide: HttpClient, useValue: { get } },
-      { provide: LinksService, useValue: { getApiUrl: () => 'http://api.test' } }
+      { provide: LinksService, useValue: { getApiUrl: () => 'http://api.test' } },
+      { provide: LanguageService, useValue: { translate: (key: string) => key, getCurrentLanguage: () => 'en', currentLanguage: () => 'en' } }
     ] });
     const service = runInInjectionContext(injector, () => new TriggersService());
 

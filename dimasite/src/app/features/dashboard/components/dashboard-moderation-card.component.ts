@@ -178,7 +178,7 @@ export class DashboardModerationCardComponent {
   date(iso: string): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleDateString(this.language.currentLanguage() === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString(this.language.currentLanguage() === 'es' ? 'es-MX' : 'en-US', { month: 'short', day: 'numeric' });
   }
 
   ruleAria(): string {

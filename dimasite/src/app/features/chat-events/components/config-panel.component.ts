@@ -78,10 +78,10 @@ export class ConfigPanelComponent {
 
   getControlLabel(label: { en: string; es: string }): string {
     if (!label || typeof label !== 'object') {
-      return 'Invalid label';
+      return this.t('chatEvents.invalidLabel');
     }
     const lang = this.languageService.getCurrentLanguage();
-    return label[lang] ?? label.en ?? 'Invalid label';
+    return (label[lang] || label.en) || this.t('chatEvents.invalidLabel');
   }
 
   shouldShowControl(control: ConfigControl): boolean {

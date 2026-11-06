@@ -1,3 +1,4 @@
+import { LanguageService } from '../services/language.service';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal, OnDestroy } from '@angular/core';
 import { catchError, interval, of, startWith, Subject, switchMap, takeUntil, tap } from 'rxjs';
@@ -32,6 +33,7 @@ interface StreamStatusPayload {
 })
 export class DashboardApiService implements OnDestroy {
   private readonly http = inject(HttpClient);
+  private readonly language = inject(LanguageService);
   private readonly linksService = inject(LinksService);
   private readonly websocketService = inject(WebsocketService);
   private readonly stopLivePoll$ = new Subject<void>();
@@ -154,7 +156,7 @@ export class DashboardApiService implements OnDestroy {
           return of({
             error: true,
             status: 500,
-            message: 'Failed to load dashboard bootstrap data',
+            message: this.language.translate('dashboard.errors.loadFailed'),
             data: undefined
           } as DashboardBootstrapResponse);
         })
@@ -267,7 +269,7 @@ export class DashboardApiService implements OnDestroy {
       catchError(() => of({
         error: true,
         status: 500,
-        message: 'Failed to load AI credits',
+        message: this.language.translate('dashboard.kpis.aiCreditsNotAvailable'),
         data: undefined
       } as AiCreditsResponse))
     );

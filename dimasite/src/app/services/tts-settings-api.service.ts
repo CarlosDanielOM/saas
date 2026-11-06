@@ -1,3 +1,4 @@
+import { LanguageService } from './language.service';
 import { HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { catchError, map, throwError } from 'rxjs';
@@ -12,12 +13,13 @@ import { HttpClient } from '@angular/common/http';
 })
 export class TtsSettingsApiService {
   private readonly http = inject(HttpClient);
+  private readonly language = inject(LanguageService);
   private readonly linksService = inject(LinksService);
 
   private toRequestError(error: unknown, fallbackMessage: string): Error {
     if (error instanceof HttpErrorResponse) {
       const serverMessage = typeof error.error?.message === 'string' ? error.error.message : null;
-      return new Error(serverMessage || error.message || fallbackMessage);
+      return new Error(serverMessage || fallbackMessage);
     }
 
     if (error instanceof Error) {
@@ -43,12 +45,12 @@ export class TtsSettingsApiService {
       .pipe(
         map((response) => {
           if (response.error || !response.data) {
-            throw new Error(response.message || 'Failed to load TTS settings');
+            throw new Error(response.message || this.language.translate('modules.tts.errors.loadFailed'));
           }
 
           return response.data;
         }),
-        catchError((error) => throwError(() => this.toRequestError(error, 'Failed to load TTS settings')))
+        catchError((error) => throwError(() => this.toRequestError(error, this.language.translate('modules.tts.errors.loadFailed'))))
       );
   }
 
@@ -69,7 +71,7 @@ export class TtsSettingsApiService {
   addFavorite(channelID: string, id: string) {
     return this.http.post<ApiEnvelope<FishVoiceFavorite>>(`${this.linksService.getApiUrl()}/speech/favorites/${channelID}`, { id })
       .pipe(map(response => {
-        if (!response.data) throw new Error('favorite_save_failed');
+        if (!response.data) throw new Error(this.language.translate('modules.tts.favorites.saveError'));
         return response.data;
       }));
   }
@@ -78,11 +80,11 @@ export class TtsSettingsApiService {
     return this.http.patch<ApiEnvelope<FishVoiceFavorite>>(`${this.linksService.getApiUrl()}/speech/favorites/${channelID}/${id}`, { alias })
       .pipe(
         map(response => {
-          if (!response.data) throw new Error('favorite_rename_failed');
+          if (!response.data) throw new Error(this.language.translate('modules.tts.favorites.saveError'));
           return response.data;
         }),
         catchError(error => {
-          const requestError = this.toRequestError(error, 'Could not rename favorite voice');
+          const requestError = this.toRequestError(error, this.language.translate('modules.tts.favorites.saveError'));
           if (error instanceof HttpErrorResponse && typeof error.error?.code === 'string') {
             Object.assign(requestError, { code: error.error.code });
           }
@@ -109,12 +111,12 @@ export class TtsSettingsApiService {
       .pipe(
         map((response) => {
           if (response.error || !response.data) {
-            throw new Error(response.message || 'Failed to update TTS settings');
+            throw new Error(response.message || this.language.translate('modules.tts.errors.saveFailed'));
           }
 
           return response.data;
         }),
-        catchError((error) => throwError(() => this.toRequestError(error, 'Failed to update TTS settings')))
+        catchError((error) => throwError(() => this.toRequestError(error, this.language.translate('modules.tts.errors.saveFailed'))))
       );
   }
 }

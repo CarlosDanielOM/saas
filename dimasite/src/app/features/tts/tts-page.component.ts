@@ -233,14 +233,14 @@ export class TtsPageComponent {
 
   readonly englishVoiceOptions = computed(() =>
     mergeCurrentOption(
-      PIPER_VOICE_OPTIONS.en,
+      PIPER_VOICE_OPTIONS.en.map(option => ({ ...option, label: this.t('modules.voiceNames.ryan') })),
       this.ttsSettings()?.voices.en,
       this.t('modules.tts.fields.savedValueOption', { value: this.ttsSettings()?.voices.en ?? '' })
     )
   );
   readonly spanishVoiceOptions = computed(() =>
     mergeCurrentOption(
-      PIPER_VOICE_OPTIONS.es,
+      PIPER_VOICE_OPTIONS.es.map(option => ({ ...option, label: this.t('modules.voiceNames.ald') })),
       this.ttsSettings()?.voices.es,
       this.t('modules.tts.fields.savedValueOption', { value: this.ttsSettings()?.voices.es ?? '' })
     )

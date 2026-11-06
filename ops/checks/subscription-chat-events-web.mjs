@@ -34,7 +34,7 @@ const artifacts = process.env.SAAS_SCREENSHOTS || '/tmp/subscription-chat-events
 fs.mkdirSync(artifacts, { recursive: true });
 const labels = {
   en: { configure: 'Configure', save: 'Save Changes', community: 'Community moments' },
-  es: { configure: 'Configurar', save: 'Guardar Cambios', community: 'Momentos de la comunidad' }
+  es: { configure: 'Configurar', save: 'Guardar cambios', community: 'Momentos de la comunidad' }
 };
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 try {

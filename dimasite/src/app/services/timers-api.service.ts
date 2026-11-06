@@ -1,3 +1,4 @@
+import { LanguageService } from './language.service';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, of } from 'rxjs';
@@ -23,6 +24,7 @@ interface ApiEnvelope<T> {
 @Injectable({ providedIn: 'root' })
 export class TimersApiService {
   private readonly http = inject(HttpClient);
+  private readonly languageService = inject(LanguageService);
   private readonly links = inject(LinksService);
 
   listTimers(channelID: string): Observable<TimerRecord[]> {
@@ -56,7 +58,7 @@ export class TimersApiService {
           timer: response.data ? this.normalize(response.data) : undefined
         })),
         catchError((error: { error?: { message?: string } }) =>
-          of({ ok: false, message: error?.error?.message || 'Failed to create timer' })
+          of({ ok: false, message: error?.error?.message || this.languageService.translate('commands.serviceErrors.createTimer') })
         )
       );
   }
@@ -78,7 +80,7 @@ export class TimersApiService {
           timer: response.data ? this.normalize(response.data) : undefined
         })),
         catchError((error: { error?: { message?: string } }) =>
-          of({ ok: false, message: error?.error?.message || 'Failed to update timer' })
+          of({ ok: false, message: error?.error?.message || this.languageService.translate('commands.serviceErrors.updateTimer') })
         )
       );
   }

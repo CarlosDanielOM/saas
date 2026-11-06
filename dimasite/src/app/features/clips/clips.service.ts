@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, catchError, of } from 'rxjs';
+import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import type { 
   ClipDesign, 
@@ -16,6 +17,7 @@ import type {
 export class ClipsService {
   private readonly http = inject(HttpClient);
   private readonly linksService = inject(LinksService);
+  private readonly language = inject(LanguageService);
 
   getClipUrl(channelID: string, designId: string, timeout: number): string {
     const baseUrl = this.linksService.getApiUrl();
@@ -30,7 +32,7 @@ export class ClipsService {
       catchError((error: HttpErrorResponse) => {
         return of({
           error: true,
-          message: error.error?.message || 'Failed to test clip',
+          message: error.error?.message || this.language.translate('clips.test.errorFallback'),
           status: error.status || 500
         });
       })
@@ -45,7 +47,7 @@ export class ClipsService {
       {
         id: '1',
         name: 'Classic',
-        description: 'Split 400/400 with seam avatar and streamer-color panel. The original Design 1, now with a clean exit.',
+        description: 'clips.designCopy.description1',
         previewUrl: `${baseUrl}/clip/${channelID}`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 1,
@@ -53,13 +55,13 @@ export class ClipsService {
         premium: false,
         premiumPlus: false,
         status: 'stable' as const,
-        features: ['Split-screen layout', 'Seam avatar', 'Streamer color panel', '1.5s ease in/out'],
+        features: ['clips.designCopy.feature1', 'clips.designCopy.feature2', 'clips.designCopy.feature3', 'clips.designCopy.feature4'],
         accentColor: '#7c3aed'
       },
       {
         id: 'third',
         name: 'Third',
-        description: 'Broadcast lower-third. Video fades up, then a bar slides in with game, name, and line.',
+        description: 'clips.designCopy.description2',
         previewUrl: `${baseUrl}/clip/${channelID}?design=third`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 2,
@@ -67,13 +69,13 @@ export class ClipsService {
         premium: false,
         premiumPlus: false,
         status: 'beta' as const,
-        features: ['Lower-third bar', 'Full-bleed video', 'Accent top edge', 'Beta v1'],
+        features: ['clips.designCopy.feature5', 'clips.designCopy.feature6', 'clips.designCopy.feature7', 'clips.designCopy.feature8'],
         accentColor: '#7c3aed'
       },
       {
         id: 'tile',
         name: 'Tile',
-        description: 'Live First card. Video tile plus a readable info card. Streamer color is an accent bar only.',
+        description: 'clips.designCopy.description3',
         previewUrl: `${baseUrl}/clip/${channelID}?design=tile`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 3,
@@ -81,13 +83,13 @@ export class ClipsService {
         premium: true,
         premiumPlus: false,
         status: 'beta' as const,
-        features: ['Bento card', 'Accent bar', 'Staggered enter', 'Beta v1'],
+        features: ['clips.designCopy.feature9', 'clips.designCopy.feature10', 'clips.designCopy.feature11', 'clips.designCopy.feature8'],
         accentColor: '#8b5cf6'
       },
       {
         id: 'cinema',
         name: 'Cinema',
-        description: 'Full-bleed clip with a rising glass strip for name and line.',
+        description: 'clips.designCopy.description4',
         previewUrl: `${baseUrl}/clip/${channelID}?design=cinema`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 4,
@@ -95,13 +97,13 @@ export class ClipsService {
         premium: true,
         premiumPlus: false,
         status: 'beta' as const,
-        features: ['Full-bleed video', 'Bottom scrim', 'Compact meta', 'Beta v1'],
+        features: ['clips.designCopy.feature6', 'clips.designCopy.feature12', 'clips.designCopy.feature13', 'clips.designCopy.feature8'],
         accentColor: '#eab308'
       },
       {
         id: 'orbit',
         name: 'Orbit',
-        description: 'Avatar-forward. Pulse ring scales in, then video and type follow.',
+        description: 'clips.designCopy.description5',
         previewUrl: `${baseUrl}/clip/${channelID}?design=orbit`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 5,
@@ -109,13 +111,13 @@ export class ClipsService {
         premium: true,
         premiumPlus: false,
         status: 'beta' as const,
-        features: ['Pulse avatar', 'Compact video', 'Stacked type', 'Beta v1'],
+        features: ['clips.designCopy.feature14', 'clips.designCopy.feature15', 'clips.designCopy.feature16', 'clips.designCopy.feature8'],
         accentColor: '#22c55e'
       },
       {
         id: 'pill',
         name: 'Pill',
-        description: 'Floating capsule over full video. Capsule slides in after the picture.',
+        description: 'clips.designCopy.description6',
         previewUrl: `${baseUrl}/clip/${channelID}?design=pill`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 6,
@@ -123,13 +125,13 @@ export class ClipsService {
         premium: true,
         premiumPlus: false,
         status: 'beta' as const,
-        features: ['Full video', 'Capsule chip', 'Minimal chrome', 'Beta v1'],
+        features: ['clips.designCopy.feature17', 'clips.designCopy.feature18', 'clips.designCopy.feature19', 'clips.designCopy.feature8'],
         accentColor: '#22d3ee'
       },
       {
         id: 'hud',
         name: 'HUD',
-        description: 'Corner chips only. Game, name, and title stagger in around the clip.',
+        description: 'clips.designCopy.description7',
         previewUrl: `${baseUrl}/clip/${channelID}?design=hud`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 7,
@@ -137,13 +139,13 @@ export class ClipsService {
         premium: true,
         premiumPlus: false,
         status: 'beta' as const,
-        features: ['Corner chips', 'Staggered HUD', 'Low clutter', 'Beta v1'],
+        features: ['clips.designCopy.feature20', 'clips.designCopy.feature21', 'clips.designCopy.feature22', 'clips.designCopy.feature8'],
         accentColor: '#3b82f6'
       },
       {
         id: 'slash',
         name: 'Slash',
-        description: 'Diagonal reveal. Video wipes open, type sits in the cut, avatar on the seam.',
+        description: 'clips.designCopy.description8',
         previewUrl: `${baseUrl}/clip/${channelID}?design=slash`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 8,
@@ -151,7 +153,7 @@ export class ClipsService {
         premium: true,
         premiumPlus: false,
         status: 'beta' as const,
-        features: ['Diagonal wipe', 'Accent panel', 'Seam avatar', 'Beta v1'],
+        features: ['clips.designCopy.feature23', 'clips.designCopy.feature24', 'clips.designCopy.feature2', 'clips.designCopy.feature8'],
         accentColor: '#ec4899'
       }
     ];

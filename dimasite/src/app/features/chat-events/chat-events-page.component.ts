@@ -1,3 +1,4 @@
+import { chatEventName } from './chat-event-name';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -211,8 +212,7 @@ export class ChatEventsPageComponent implements OnInit {
   }
 
   eventLabel(event: ChatEvent): string {
-    if (event.type === 'channel.raid' || event.type === 'channel.raid.outgoing') return this.t(`raidAnalytics.${event.type === 'channel.raid' ? 'incomingEvent' : 'outgoingEvent'}`);
-    return event.type === CHAT_NOTIFICATION_TYPE && !event.notice ? this.t('chatEvents.notificationsName') : event.name;
+    return chatEventName(event, (key) => this.t(key));
   }
 
   toggleFeature(event: ChatEvent): void {
@@ -277,7 +277,7 @@ export class ChatEventsPageComponent implements OnInit {
     const otherFlag = NOTICE_FIELDS[other].flag;
     const otherOn = Boolean(base.enabled && this.noticeFlag(base, other));
     const turningOn = !card.enabled;
-    const label = card.name;
+    const label = this.eventLabel(card);
 
     this.setPendingAction(card.type, turningOn ? 'enabling' : 'disabling');
 

@@ -10,21 +10,21 @@ import { overlayDraftGuard } from './features/overlays/overlay-draft.guard';
 import { petPlanGuard } from './features/pet/pet-plan.guard';
 
 export const routes: Routes = [
-  { path: 'download', loadComponent: () => import('./features/dima-app-downloads/dima-app-downloads.component').then(m => m.DimaAppDownloadsComponent), title: 'Dima App | DomDimaBot' },
-  { path: 'pet/:capability', loadComponent: () => import('./features/pet/pet-runtime.component').then(m => m.PetRuntimeComponent), title: 'Pet | DomDimaBot' },
-  { path: 'oauth/authorize', loadComponent: () => import('./features/auth/oauth-page.component').then(m => m.OAuthPageComponent), title: 'Connect an application | DomDimaBot' },
-  { path: 'oauth/connections', loadComponent: () => import('./features/auth/oauth-page.component').then(m => m.OAuthPageComponent), title: 'Connected applications | DomDimaBot' },
-  { path: 'observability', loadComponent: () => import('./features/observability/observability-page.component').then(m => m.ObservabilityPageComponent), title: 'Observability | DomDimaBot' },
-  { path: 'overlays/:publicId', loadComponent: () => import('./features/overlays/overlay-runtime.component').then(m => m.OverlayRuntimeComponent), title: 'Overlay Studio' },
-  { path: 'overlays/duel/:channelID/leaderboard', loadComponent: () => import('./features/widgets/duel/duel-leaderboard-overlay.component').then(m => m.DuelLeaderboardOverlayComponent), title: 'Duel Leaderboard' },
-  { path: 'overlays/duel/:channelID', loadComponent: () => import('./features/widgets/duel/duel-overlay.component').then(m => m.DuelOverlayComponent), title: 'Duel Overlay' },
-  { path: 'overlays/widgets/:channelID', loadComponent: () => import('./features/widgets/widgets-overlay.component').then(m => m.WidgetsOverlayComponent), title: 'Widgets Overlay' },
-  { path: 'overlays/roulette/:channelID', loadComponent: () => import('./features/roulette/roulette-overlay.component').then(m => m.RouletteOverlayComponent), title: 'Roulette Overlay' },
+  { path: 'download', loadComponent: () => import('./features/dima-app-downloads/dima-app-downloads.component').then(m => m.DimaAppDownloadsComponent), title: 'pageTitles.dimaApp' },
+  { path: 'pet/:capability', loadComponent: () => import('./features/pet/pet-runtime.component').then(m => m.PetRuntimeComponent), title: 'pageTitles.pet' },
+  { path: 'oauth/authorize', loadComponent: () => import('./features/auth/oauth-page.component').then(m => m.OAuthPageComponent), title: 'pageTitles.connectApplication' },
+  { path: 'oauth/connections', loadComponent: () => import('./features/auth/oauth-page.component').then(m => m.OAuthPageComponent), title: 'pageTitles.connectedApplications' },
+  { path: 'observability', loadComponent: () => import('./features/observability/observability-page.component').then(m => m.ObservabilityPageComponent), title: 'pageTitles.observability' },
+  { path: 'overlays/:publicId', loadComponent: () => import('./features/overlays/overlay-runtime.component').then(m => m.OverlayRuntimeComponent), title: 'pageTitles.overlayStudio' },
+  { path: 'overlays/duel/:channelID/leaderboard', loadComponent: () => import('./features/widgets/duel/duel-leaderboard-overlay.component').then(m => m.DuelLeaderboardOverlayComponent), title: 'pageTitles.duelLeaderboard' },
+  { path: 'overlays/duel/:channelID', loadComponent: () => import('./features/widgets/duel/duel-overlay.component').then(m => m.DuelOverlayComponent), title: 'pageTitles.duelOverlay' },
+  { path: 'overlays/widgets/:channelID', loadComponent: () => import('./features/widgets/widgets-overlay.component').then(m => m.WidgetsOverlayComponent), title: 'pageTitles.widgetsOverlay' },
+  { path: 'overlays/roulette/:channelID', loadComponent: () => import('./features/roulette/roulette-overlay.component').then(m => m.RouletteOverlayComponent), title: 'pageTitles.rouletteOverlay' },
   {
     path: '',
     loadComponent: () =>
       import('./features/landing/landing-page.component').then((m) => m.LandingPageComponent),
-    title: 'DomDimaBot — A Twitch chatbot that grows with you'
+    title: 'pageTitles.landing'
   },
   // === Design Mocks (public, no auth) ===
   {
@@ -189,7 +189,7 @@ export const routes: Routes = [
     path: 'login',
     loadComponent: () =>
       import('./features/auth/login-page.component').then((m) => m.LoginPageComponent),
-    title: 'Login | DomDimaBot'
+    title: 'pageTitles.login'
   },
   {
     path: 'r/:refCode',
@@ -197,18 +197,18 @@ export const routes: Routes = [
       import('./features/referral/referral-capture-page.component').then(
         (m) => m.ReferralCapturePageComponent
       ),
-    title: 'Referral | DomDimaBot'
+    title: 'pageTitles.referral'
   },
   {
     path: 'commands/:streamer',
     component: PublicCommandsPageComponent,
-    title: 'Commands | DomDimaBot'
+    title: 'pageTitles.commands'
   },
   {
     path: 'tip/:streamer',
     loadComponent: () =>
       import('./features/tip/tip-page.component').then((m) => m.TipPageComponent),
-    title: 'Tip | DomDimaBot'
+    title: 'pageTitles.tip'
   },
   ...(['401', '403', '404', '500', '503'] as const).map((code) => ({
     path: code,
@@ -835,7 +835,7 @@ export const routes: Routes = [
         (m) => m.AuthenticatedLayoutComponent
       ),
     canActivate: [validStreamerGuard, authenticatedGuard, dashboardAccessGuard],
-    title: 'Dashboard | DomDimaBot',
+    title: 'pageTitles.dashboard',
     children: [
       {
         path: '',
@@ -859,7 +859,7 @@ export const routes: Routes = [
         data: {
           permission: 'dashboard:view'
         },
-        title: 'Dashboard | DomDimaBot'
+        title: 'pageTitles.dashboard'
       },
       {
         path: 'usage',
@@ -869,7 +869,7 @@ export const routes: Routes = [
         data: {
           permission: 'billing:view'
         },
-        title: 'AI Usage | DomDimaBot'
+        title: 'pageTitles.aiUsage'
       },
       {
         path: 'credits',
@@ -881,7 +881,7 @@ export const routes: Routes = [
         data: {
           permission: 'billing:view'
         },
-        title: 'Credit Store | DomDimaBot'
+        title: 'pageTitles.creditStore'
       },
       {
         path: 'commands',
@@ -891,7 +891,7 @@ export const routes: Routes = [
         data: {
           permission: 'commands:view'
         },
-        title: 'Commands | DomDimaBot'
+        title: 'pageTitles.commands'
       },
       {
         path: 'modules',
@@ -905,23 +905,23 @@ export const routes: Routes = [
             data: {
               permission: 'dashboard:view'
             },
-            title: 'Modules | DomDimaBot'
+            title: 'pageTitles.modules'
           },
           {
             path: 'app',
             loadComponent: () => import('./features/dima-app-downloads/app-module.component').then(m => m.AppModuleComponent),
-            title: 'App | DomDimaBot'
+            title: 'pageTitles.app'
           },
           {
-            path: 'overlays', loadComponent: () => import('./features/overlays/overlay-editor.component').then(m => m.OverlayEditorComponent), canActivate: [permissionGuard, channelOwnerGuard], canDeactivate: [overlayDraftGuard], data: { permission: 'dashboard:view' }, title: 'Overlay Studio Alpha | DomDimaBot'
+            path: 'overlays', loadComponent: () => import('./features/overlays/overlay-editor.component').then(m => m.OverlayEditorComponent), canActivate: [permissionGuard, channelOwnerGuard], canDeactivate: [overlayDraftGuard], data: { permission: 'dashboard:view' }, title: 'pageTitles.overlayStudioAlpha'
           },
-          { path: 'widgets', loadComponent: () => import('./features/widgets/widgets-hub.component').then(m => m.WidgetsHubComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'Widgets Alpha | DomDimaBot' },
-          { path: 'widgets/duel', loadComponent: () => import('./features/widgets/duel/duel-page.component').then(m => m.DuelPageComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'Duel Widget | DomDimaBot' },
-          { path: 'widgets/dbd', loadComponent: () => import('./features/widgets/widgets-page.component').then(m => m.WidgetsPageComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'Dead by Daylight Widget Alpha | DomDimaBot' },
+          { path: 'widgets', loadComponent: () => import('./features/widgets/widgets-hub.component').then(m => m.WidgetsHubComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'pageTitles.widgetsAlpha' },
+          { path: 'widgets/duel', loadComponent: () => import('./features/widgets/duel/duel-page.component').then(m => m.DuelPageComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'pageTitles.duelWidget' },
+          { path: 'widgets/dbd', loadComponent: () => import('./features/widgets/widgets-page.component').then(m => m.WidgetsPageComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'pageTitles.deadByDaylightWidget' },
           {
             path: 'roulette',
             loadComponent: () => import('./features/roulette/roulette-page.component').then(m => m.RoulettePageComponent),
-            canActivate: [permissionGuard], data: { permission: '*' }, title: 'Roulette Alpha | DomDimaBot'
+            canActivate: [permissionGuard], data: { permission: '*' }, title: 'pageTitles.rouletteAlpha'
           },
           {
             path: 'clips',
@@ -931,7 +931,7 @@ export const routes: Routes = [
             data: {
               permission: 'clips:view'
             },
-            title: 'Clips | DomDimaBot'
+            title: 'pageTitles.clips'
           },
           {
             path: 'chat-events',
@@ -941,7 +941,7 @@ export const routes: Routes = [
             data: {
               permission: 'eventsubs:view'
             },
-              title: 'Chat Events | DomDimaBot'
+              title: 'pageTitles.chatEvents'
           },
           {
             path: 'triggers',
@@ -951,7 +951,7 @@ export const routes: Routes = [
             data: {
               permission: 'triggers:view'
             },
-            title: 'Triggers | DomDimaBot'
+            title: 'pageTitles.triggers'
           },
           {
             path: 'dimafx',
@@ -961,7 +961,7 @@ export const routes: Routes = [
             data: {
               permission: 'dimafx:view'
             },
-            title: 'DimaFX | DomDimaBot'
+            title: 'pageTitles.dimafx'
           },
           {
             path: 'ai-personality',
@@ -973,13 +973,13 @@ export const routes: Routes = [
             data: {
               permission: 'ai:view'
             },
-            title: 'AI Personality | DomDimaBot'
+            title: 'pageTitles.aiPersonality'
           },
           {
             path: 'pet',
             loadComponent: () => import('./features/pet/pet-page.component').then(m => m.PetPageComponent),
             canActivate: [channelOwnerGuard, petPlanGuard],
-            title: 'Pet | DomDimaBot'
+            title: 'pageTitles.pet'
           },
           {
             path: 'memories',
@@ -991,7 +991,7 @@ export const routes: Routes = [
             data: {
               permission: 'memories:view'
             },
-            title: 'Memories | DomDimaBot'
+            title: 'pageTitles.memories'
           },
           {
             path: 'analytics',
@@ -1007,12 +1007,12 @@ export const routes: Routes = [
                 data: {
                   permission: 'analytics:view'
                 },
-                title: 'Analytics | DomDimaBot'
+                title: 'pageTitles.analytics'
               },
           {
             path: 'timeline',
             loadComponent: () => import('./features/analytics/stream-timeline-page.component').then(m => m.StreamTimelinePageComponent),
-            canActivate: [permissionGuard], data: { permission: 'analytics:view' }, title: 'Stream Timeline | DomDimaBot'
+            canActivate: [permissionGuard], data: { permission: 'analytics:view' }, title: 'pageTitles.streamTimeline'
           },
           {
             path: 'follows',
@@ -1024,7 +1024,7 @@ export const routes: Routes = [
                 data: {
                   permission: 'analytics:view'
                 },
-                title: 'Follow Ledger | DomDimaBot'
+                title: 'pageTitles.followLedger'
               }
             ]
           },
@@ -1036,7 +1036,7 @@ export const routes: Routes = [
             data: {
               permission: 'referrals:view'
             },
-            title: 'Referrals | DomDimaBot'
+            title: 'pageTitles.referrals'
           },
           {
             path: 'redemptions',
@@ -1046,7 +1046,7 @@ export const routes: Routes = [
             data: {
               permission: 'rewards:view'
             },
-            title: 'Redemptions | DomDimaBot'
+            title: 'pageTitles.redemptions'
           },
           {
             path: 'tts',
@@ -1056,7 +1056,7 @@ export const routes: Routes = [
             data: {
               permission: 'tts:view'
             },
-            title: 'Text to Speech | DomDimaBot'
+            title: 'pageTitles.textToSpeech'
           },
           {
             path: 'follow-defense',
@@ -1068,7 +1068,7 @@ export const routes: Routes = [
             data: {
               permission: 'moderation:view'
             },
-            title: 'Follow Defense | DomDimaBot'
+            title: 'pageTitles.followDefense'
           },
           {
             path: 'moderation',
@@ -1080,7 +1080,7 @@ export const routes: Routes = [
             data: {
               permission: 'moderation:view'
             },
-            title: 'Chat Moderation | DomDimaBot'
+            title: 'pageTitles.chatModeration'
           },
           {
             path: 'stream-summaries',
@@ -1092,7 +1092,7 @@ export const routes: Routes = [
             data: {
               permission: 'summaries:view'
             },
-            title: 'Stream Summaries | DomDimaBot'
+            title: 'pageTitles.streamSummaries'
           },
           {
             path: 'clip-recommendations',
@@ -1104,7 +1104,7 @@ export const routes: Routes = [
             data: {
               permission: 'clips:view'
             },
-            title: 'Clip Recommendations | DomDimaBot'
+            title: 'pageTitles.clipRecommendations'
           },
           {
             path: 'library',
@@ -1114,7 +1114,7 @@ export const routes: Routes = [
             data: {
               permission: 'triggers:view'
             },
-            title: 'Media Library | DomDimaBot'
+            title: 'pageTitles.mediaLibrary'
           }
         ]
       },
@@ -1126,7 +1126,7 @@ export const routes: Routes = [
         data: {
           permission: 'admins:view'
         },
-        title: 'Settings | DomDimaBot'
+        title: 'pageTitles.settings'
       },
       {
         path: 'admin-hub',
@@ -1136,7 +1136,7 @@ export const routes: Routes = [
         data: {
           permission: 'dashboard:view'
         },
-        title: 'Admin Hub | DomDimaBot'
+        title: 'pageTitles.adminHub'
       },
       {
         path: 'profile',
@@ -1146,7 +1146,7 @@ export const routes: Routes = [
         data: {
           permission: 'settings:view'
         },
-        title: 'Profile | DomDimaBot'
+        title: 'pageTitles.profile'
       }
     ]
   },

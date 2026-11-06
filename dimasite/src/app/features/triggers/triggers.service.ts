@@ -1,3 +1,4 @@
+import { LanguageService } from '../../services/language.service';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { EMPTY, expand, map, Observable, reduce, throwError } from 'rxjs';
@@ -25,6 +26,7 @@ import {
 })
 export class TriggersService {
   private readonly http = inject(HttpClient);
+  private readonly languageService = inject(LanguageService);
   private readonly linksService = inject(LinksService);
 
   getTriggers(channelId: string): Observable<TriggerRecord[]> {
@@ -36,25 +38,25 @@ export class TriggersService {
   createTrigger(channelId: string, payload: CreateTriggerRequest): Observable<TriggerRecord> {
     return this.http
       .post<ApiEnvelope<TriggerRecord>>(`${this.linksService.getApiUrl()}/triggers/${channelId}`, payload)
-      .pipe(map((response) => this.requireData(response, (item) => this.normalizeTrigger(item), 'Failed to create trigger')));
+      .pipe(map((response) => this.requireData(response, (item) => this.normalizeTrigger(item), this.languageService.translate('triggers.serviceErrors.create'))));
   }
 
   updateTrigger(channelId: string, triggerId: string, payload: UpdateTriggerRequest): Observable<TriggerRecord> {
     return this.http
       .patch<ApiEnvelope<TriggerRecord>>(`${this.linksService.getApiUrl()}/triggers/${channelId}/${triggerId}`, payload)
-      .pipe(map((response) => this.requireData(response, (item) => this.normalizeTrigger(item), 'Failed to update trigger')));
+      .pipe(map((response) => this.requireData(response, (item) => this.normalizeTrigger(item), this.languageService.translate('triggers.serviceErrors.update'))));
   }
 
   deleteTrigger(channelId: string, triggerId: string): Observable<void> {
     return this.http
       .delete<ApiEnvelope<TriggerRecord>>(`${this.linksService.getApiUrl()}/triggers/${channelId}/${triggerId}`)
-      .pipe(map((response) => this.requireNoError(response, 'Failed to delete trigger')));
+      .pipe(map((response) => this.requireNoError(response, this.languageService.translate('triggers.serviceErrors.delete'))));
   }
 
   sendTrigger(channelId: string, payload: TriggerTestPayload): Observable<void> {
     return this.http
       .post<ApiEnvelope<Record<string, unknown>>>(`${this.linksService.getApiUrl()}/triggers/${channelId}/send`, payload)
-      .pipe(map((response) => this.requireNoError(response, 'Failed to send trigger')));
+      .pipe(map((response) => this.requireNoError(response, this.languageService.translate('triggers.serviceErrors.send'))));
   }
 
   getLibrary(channelId: string): Observable<MediaLibraryResponse> {
@@ -99,7 +101,7 @@ export class TriggersService {
 
     return this.http
       .post<ApiEnvelope<MediaLibraryItem>>(`${this.linksService.getApiUrl()}/triggers/library/${channelId}/upload`, formData)
-      .pipe(map((response) => this.requireData(response, (item) => this.normalizeLibraryItem(item), 'Failed to upload media')));
+      .pipe(map((response) => this.requireData(response, (item) => this.normalizeLibraryItem(item), this.languageService.translate('triggers.serviceErrors.upload'))));
   }
 
   addPublicAssetToLibrary(channelId: string, assetId: string): Observable<MediaLibraryMutationResult> {
@@ -110,7 +112,7 @@ export class TriggersService {
       )
       .pipe(
         map((response) => ({
-          item: this.requireData(response, (item) => this.normalizeLibraryItem(item), 'Failed to add public asset'),
+          item: this.requireData(response, (item) => this.normalizeLibraryItem(item), this.languageService.translate('triggers.serviceErrors.addAsset')),
           meta: response.meta ? this.normalizeLibraryMeta(response.meta) : null
         }))
       );
@@ -119,7 +121,7 @@ export class TriggersService {
   removeLibraryItem(channelId: string, libraryItemId: string): Observable<void> {
     return this.http
       .delete<ApiEnvelope<MediaLibraryItem>>(`${this.linksService.getApiUrl()}/triggers/library/${channelId}/${libraryItemId}`)
-      .pipe(map((response) => this.requireNoError(response, 'Failed to remove media item')));
+      .pipe(map((response) => this.requireNoError(response, this.languageService.translate('triggers.serviceErrors.removeMedia'))));
   }
 
   renameLibraryItem(channelId: string, libraryItemId: string, localAlias: string): Observable<MediaLibraryItem> {
@@ -128,7 +130,7 @@ export class TriggersService {
         `${this.linksService.getApiUrl()}/triggers/library/${channelId}/${libraryItemId}`,
         { localAlias }
       )
-      .pipe(map((response) => this.requireData(response, (item) => this.normalizeLibraryItem(item), 'Failed to rename media item')));
+      .pipe(map((response) => this.requireData(response, (item) => this.normalizeLibraryItem(item), this.languageService.translate('triggers.serviceErrors.renameMedia'))));
   }
 
   changeLibraryItemScope(
@@ -145,8 +147,8 @@ export class TriggersService {
       .pipe(
         // The API nests both the item and the recalculated quota under `data`.
         map((response) => {
-          const data = this.requireData(response, (value) => value, 'Failed to change media scope');
-          if (!data?.item) throw new Error(response.message || 'Failed to change media scope');
+          const data = this.requireData(response, (value) => value, this.languageService.translate('triggers.serviceErrors.scope'));
+          if (!data?.item) throw new Error(response.message || this.languageService.translate('triggers.serviceErrors.scope'));
           return {
             item: this.normalizeLibraryItem(data.item),
             meta: data.meta ? this.normalizeLibraryMeta(data.meta) : null

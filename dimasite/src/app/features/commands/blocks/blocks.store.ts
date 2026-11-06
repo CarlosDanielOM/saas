@@ -22,6 +22,7 @@ import {
   patchNode,
   removeNode
 } from './blocks.model';
+import { SAMPLE_VALUES } from './blocks.catalog';
 import { DEFAULT_PREVIEW_CONTEXT, type PreviewContext, type PreviewResult, PreviewTooLong, runPreview } from './blocks.preview';
 
 export type DragPayload = { mode: 'new'; itemId: string } | { mode: 'move'; nodeId: string };
@@ -75,7 +76,11 @@ export class BlocksStore {
   readonly run = computed<{ result: PreviewResult; tooLong: boolean }>(() => {
     this.runSeed();
     try {
-      return { result: runPreview(this.root(), this.context(), this.commandLevel()), tooLong: false };
+      return { result: runPreview(this.root(), { ...this.context(), title: this.language.translate('commandBlocks.exampleText.streamTitle') }, this.commandLevel(), (name) => {
+        const key = `commandBlocks.sampleValues.${name.replace(/\./g, '_')}`;
+        const translated = this.language.translate(key);
+        return translated === key ? SAMPLE_VALUES[name] : translated;
+      }), tooLong: false };
     } catch (err) {
       if (err instanceof PreviewTooLong) return { result: EMPTY_RUN, tooLong: true };
       throw err;
@@ -113,7 +118,7 @@ export class BlocksStore {
   loadStarter(id: string): void {
     const starter = STARTERS.find((item) => item.id === id);
     if (!starter || this.readOnly()) return;
-    this.commit(starter.build(), this.t('loadedExample'));
+    this.commit(starter.build((key) => this.language.translate(key)), this.t('loadedExample'));
     this.resetCursor();
   }
 
@@ -124,7 +129,7 @@ export class BlocksStore {
 
   addItem(item: LibraryItem, title: string): BlockNode | null {
     if (this.readOnly()) return null;
-    const node = item.factory();
+    const node = item.factory((key) => this.language.translate(key));
     const target = this.insertAt() ?? { kind: 'root', index: this.root().children.length };
     this.commit(this.insertSmart(target, node), this.t('added', { name: title }));
     this.selectedId.set(node.id);
@@ -165,7 +170,7 @@ export class BlocksStore {
     if (drag.mode === 'new') {
       const item = libraryItem(drag.itemId);
       if (item) {
-        const node = item.factory();
+        const node = item.factory((key) => this.language.translate(key));
         this.commit(this.insertSmart(target, node), this.t('added', { name: titleOf(item) }));
         this.selectedId.set(node.id);
       }

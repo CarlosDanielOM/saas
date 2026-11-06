@@ -1,3 +1,4 @@
+import { LanguageService } from './language.service';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { catchError, map, throwError, Observable } from 'rxjs';
@@ -15,6 +16,7 @@ import { LinksService } from './links.service';
 })
 export class StreamSummaryApiService {
   private readonly http = inject(HttpClient);
+  private readonly language = inject(LanguageService);
   private readonly linksService = inject(LinksService);
 
   private getApiUrl(): string {
@@ -54,11 +56,11 @@ export class StreamSummaryApiService {
       .pipe(
         map((response) => {
           if (response.error || !response.data) {
-            throw new Error(response.message || 'Failed to fetch stream summaries');
+            throw new Error(response.message || this.language.translate('streamSummaries.errors.loadFailed'));
           }
           return response.data;
         }),
-        catchError((error) => this.handleError(error, 'Failed to fetch stream summaries'))
+        catchError((error) => this.handleError(error, this.language.translate('streamSummaries.errors.loadFailed')))
       );
   }
 
@@ -76,11 +78,11 @@ export class StreamSummaryApiService {
       .pipe(
         map((response) => {
           if (response.error || !response.data) {
-            throw new Error(response.message || 'Failed to fetch stream summary details');
+            throw new Error(response.message || this.language.translate('streamSummaries.errors.loadFailed'));
           }
           return response.data;
         }),
-        catchError((error) => this.handleError(error, 'Failed to fetch stream summary details'))
+        catchError((error) => this.handleError(error, this.language.translate('streamSummaries.errors.loadFailed')))
       );
   }
 }

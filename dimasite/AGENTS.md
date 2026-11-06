@@ -126,6 +126,18 @@ Older surfaces may still use `:root` / `.dark` tokens (`--surface`, `--text`, `-
 - All user-facing strings go through `LanguageService` (signal-based).
 - Translation files: `src/assets/i18n/{en,es}.json`.
 - Never hard-code English strings in templates or components.
+- Spanish is **Mexican Spanish (es-MX)**, never Spain Spanish. Informal `tú`, plural `ustedes` (never vosotros).
+  Numbers use `1,000.50`; dates/numbers format with the `es-MX` locale.
+- es-MX glossary (keep it consistent across the site):
+  - Translate feature names when natural: "Eventos de chat" (sentence case), "Defensa contra follows", "Texto a voz",
+    "Alertas", "Capas", "Panel" (dashboard), "Configuración" (settings, not "Ajustes"), "Canjes" (redemptions).
+  - Keep in English: Triggers (el trigger), overlay, Overlay Studio, widgets, streamer, stream, Bits, Subs, Cheers,
+    Raids, follows, VIP, Mod, emotes, clips, TTS, shoutout, timeout, ban, Hype Train, Alpha/Beta; plan names Premium/Pro
+    (Free → Gratis).
+  - Live → "en vivo" (never "en directo"/"el directo"); viewers → espectadores; owner → dueño; cooldown → tiempo de espera.
+  - Mexico, not Spain: computadora (ordenador), celular (móvil), video (vídeo), mouse (ratón), archivo (fichero),
+    agregar (añadir), administrar (gestionar), ingresa (introduce), haz clic/toca/presiona (pulsa), llena (rellena),
+    enojado (enfadado), está bien/listo (vale), tomar/agarrar (coger).
 
 ---
 

@@ -6,6 +6,7 @@ import { Injector, runInInjectionContext } from '@angular/core';
 import { firstValueFrom, of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { ToastService } from '../../services/toast.service';
 import { ChatEventsService } from './chat-events.service';
@@ -138,7 +139,8 @@ describe('ChatEventsService', () => {
             getApiUrl: () => 'http://api.test'
           }
         },
-        { provide: ToastService, useValue: toastService }
+        { provide: ToastService, useValue: toastService },
+        { provide: LanguageService, useValue: { translate: (key: string) => key, getCurrentLanguage: () => 'en', currentLanguage: () => 'en' } }
       ],
       name: 'ChatEventsServiceSpecInjector'
     });

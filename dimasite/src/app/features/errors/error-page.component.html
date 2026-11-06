@@ -1,7 +1,7 @@
 <div class="lf" [attr.data-code]="code()" [class.lf--embedded]="isEmbedded()">
   @if (!isEmbedded()) {
     <header class="lf-nav">
-      <a class="lf-brand" routerLink="/" aria-label="DomDimaBot home">
+      <a class="lf-brand" routerLink="/" [attr.aria-label]="t('errors.brandHome')">
         <app-brand-logo />
       </a>
       <div class="lf-nav__actions">

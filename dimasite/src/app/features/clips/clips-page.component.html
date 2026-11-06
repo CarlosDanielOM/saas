@@ -84,10 +84,10 @@
             <h2 id="clip-stage-title" class="lf-h2">{{ design.name }}</h2>
             <ng-container *ngTemplateOutlet="chips; context: { $implicit: design }"></ng-container>
           </div>
-          <p class="lf-stage__desc">{{ design.description }}</p>
+          <p class="lf-stage__desc">{{ t(design.description) }}</p>
           <ul class="lf-features">
             @for (feature of design.features; track feature) {
-              <li>{{ feature }}</li>
+              <li>{{ t(feature) }}</li>
             }
           </ul>
 

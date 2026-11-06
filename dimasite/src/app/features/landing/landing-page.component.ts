@@ -143,108 +143,108 @@ export class LandingPageComponent implements OnInit {
     }));
   });
 
-  readonly pricingTiers: PricingTier[] = [
+  readonly pricingTiers = computed<PricingTier[]>(() => [
     {
       key: 'free',
-      label: 'Free',
+      label: this.t('landing.pricingMatrix.item1'),
       monthlyPriceLabel: '$0',
-      description: 'Perfect for streamers getting started with automation and moderation.',
-      ctaLabel: 'Get Started'
+      description: this.t('landing.pricingMatrix.item2'),
+      ctaLabel: this.t('landing.pricingMatrix.item3')
     },
     {
       key: 'premium',
       label: 'Premium',
       monthlyPriceLabel: '$6',
-      description: 'Best for growing communities that need smarter moderation and deeper controls.',
-      ctaLabel: 'Choose Premium'
+      description: this.t('landing.pricingMatrix.item4'),
+      ctaLabel: this.t('landing.pricingMatrix.item5')
     },
     {
       key: 'pro',
       label: 'Pro',
       monthlyPriceLabel: '$15',
-      description: 'Built for serious creators with higher scale, quality, and AI flexibility.',
-      ctaLabel: 'Choose Pro'
+      description: this.t('landing.pricingMatrix.item6'),
+      ctaLabel: this.t('landing.pricingMatrix.item7')
     }
-  ];
+  ]);
 
-  readonly pricingCapabilities: PricingRow[] = [
-    { label: 'Chat moderation', free: 'Basic', premium: 'Smart', pro: 'AI' },
-    { label: 'Support', free: 'Normal', premium: 'Priority', pro: 'Priority+' },
-    { label: 'Custom commands', free: 'Unlimited', premium: 'Unlimited', pro: 'Unlimited' },
+  readonly pricingCapabilities = computed<PricingRow[]>(() => [
+    { label: this.t('landing.pricingMatrix.item8'), free: this.t('landing.pricingMatrix.item9'), premium: this.t('landing.pricingMatrix.item10'), pro: this.t('landing.pricingMatrix.aiShort') },
+    { label: this.t('landing.pricingMatrix.item11'), free: this.t('landing.pricingMatrix.item12'), premium: this.t('landing.pricingMatrix.item13'), pro: this.t('landing.pricingMatrix.item14') },
+    { label: this.t('landing.pricingMatrix.item15'), free: this.t('landing.pricingMatrix.item16'), premium: this.t('landing.pricingMatrix.item16'), pro: this.t('landing.pricingMatrix.item16') },
     {
-      label: 'Analytics',
-      free: 'Basic',
-      premium: 'Advanced',
-      pro: 'Advanced',
-      note: 'Advanced analytics includes per-user message counts, stream attendance frequency, command usage, and more.'
+      label: this.t('landing.pricingMatrix.item17'),
+      free: this.t('landing.pricingMatrix.item9'),
+      premium: this.t('landing.pricingMatrix.item18'),
+      pro: this.t('landing.pricingMatrix.item18'),
+      note: this.t('landing.pricingMatrix.item20')
     },
-    { label: 'Temporary VIP/Mod', free: 'X', premium: 'Check', pro: 'Check' },
-    { label: 'Variables', free: 'Cache (24h)', premium: 'Cache + DB', pro: 'Cache + DB' },
-    { label: 'TTS', free: 'All providers', premium: 'All providers', pro: 'All providers' },
-    { label: 'AI bot personalities', free: '1', premium: '2', pro: '3' },
+    { label: this.t('landing.pricingMatrix.item21'), free: 'X', premium: 'Check', pro: 'Check' },
+    { label: this.t('landing.pricingMatrix.item22'), free: 'Cache (24h)', premium: 'Cache + DB', pro: 'Cache + DB' },
+    { label: 'TTS', free: this.t('landing.pricingMatrix.item23'), premium: this.t('landing.pricingMatrix.item23'), pro: this.t('landing.pricingMatrix.item23') },
+    { label: this.t('landing.pricingMatrix.item24'), free: '1', premium: '2', pro: '3' },
     {
-      label: 'AI mode quality',
-      free: 'Base',
+      label: this.t('landing.pricingMatrix.item25'),
+      free: this.t('landing.pricingMatrix.item26'),
       premium: 'Tune*',
       pro: 'Tune*',
-      note: '*Tune is available when enough data exists (more than 50k messages and 30 days of stream data).'
+      note: this.t('landing.pricingMatrix.item27')
     },
     {
-      label: 'Custom redemptions',
-      free: 'Normal',
-      premium: 'Advanced',
-      pro: 'Advanced*',
-      note: 'Advanced* supports rule-based behavior beyond on-redeem triggers (for example time/context conditions).'
+      label: this.t('landing.pricingMatrix.item28'),
+      free: this.t('landing.pricingMatrix.item12'),
+      premium: this.t('landing.pricingMatrix.item18'),
+      pro: this.t('landing.pricingMatrix.item19'),
+      note: this.t('landing.pricingMatrix.item29')
     },
     {
-      label: 'Memory learning from chat',
-      free: 'None',
-      premium: 'Learns from chat',
-      pro: 'Learns from chat + stream summaries and more data'
+      label: this.t('landing.pricingMatrix.item30'),
+      free: this.t('landing.pricingMatrix.item31'),
+      premium: this.t('landing.pricingMatrix.item32'),
+      pro: this.t('landing.pricingMatrix.item33')
     },
     {
-      label: 'Upload visibility',
-      free: 'Public marketplace only',
-      premium: 'Public or private',
-      pro: 'Public or private'
+      label: this.t('landing.pricingMatrix.item34'),
+      free: this.t('landing.pricingMatrix.item35'),
+      premium: this.t('landing.pricingMatrix.item36'),
+      pro: this.t('landing.pricingMatrix.item36')
     },
-    { label: 'SO overlay design', free: 'Default', premium: 'Custom', pro: 'Custom' }
-  ];
+    { label: this.t('landing.pricingMatrix.item37'), free: this.t('landing.pricingMatrix.item38'), premium: this.t('landing.pricingMatrix.item39'), pro: this.t('landing.pricingMatrix.item39') }
+  ]);
 
-  readonly pricingLimits: PricingRow[] = [
+  readonly pricingLimits = computed<PricingRow[]>(() => [
     {
-      label: 'AI credits / month',
+      label: this.t('landing.pricingMatrix.item40'),
       free: '25,000',
       premium: '200,000',
       pro: '800,000',
-      note: 'Credits are non-rollover.'
+      note: this.t('landing.pricingMatrix.item41')
     },
-    { label: 'Max upload size', free: '5MB', premium: '25MB', pro: '100MB' },
-    { label: 'Private storage', free: 'None', premium: '250MB', pro: '1GB' },
+    { label: this.t('landing.pricingMatrix.item42'), free: '5MB', premium: '25MB', pro: '100MB' },
+    { label: this.t('landing.pricingMatrix.item43'), free: this.t('landing.pricingMatrix.item31'), premium: '250MB', pro: '1GB' },
     {
-      label: 'Bandwidth',
+      label: this.t('landing.pricingMatrix.item44'),
       free: '10GB',
       premium: '1TB',
-      pro: 'Unlimited*',
-      note: '10GB is around 8 hours of video, 1TB is around 30 days. Unlimited is under fair-use and abuse policies.'
+      pro: this.t('landing.pricingMatrix.item45'),
+      note: this.t('landing.pricingMatrix.item46')
     },
     {
-      label: 'Minimum command cooldowns',
+      label: this.t('landing.pricingMatrix.item47'),
       free: '5s',
       premium: '3s',
       pro: '1s',
-      note: 'Streamer can still set cooldown per command following this minimum rule.'
+      note: this.t('landing.pricingMatrix.item48')
     },
-    { label: 'Stream analytics retention', free: '30d', premium: '180d', pro: '365d' },
-    { label: 'Chat memory retention', free: '15d', premium: '45d', pro: '120d' }
-  ];
+    { label: this.t('landing.pricingMatrix.item49'), free: '30d', premium: '180d', pro: '365d' },
+    { label: this.t('landing.pricingMatrix.item50'), free: '15d', premium: '45d', pro: '120d' }
+  ]);
 
   readonly visibleCapabilities = computed(() =>
-    this.showAllPricingRows() ? this.pricingCapabilities : this.pricingCapabilities.slice(0, 6)
+    this.showAllPricingRows() ? this.pricingCapabilities() : this.pricingCapabilities().slice(0, 6)
   );
 
   readonly visibleLimits = computed(() =>
-    this.showAllPricingRows() ? this.pricingLimits : this.pricingLimits.slice(0, 4)
+    this.showAllPricingRows() ? this.pricingLimits() : this.pricingLimits().slice(0, 4)
   );
 
   ngOnInit(): void {

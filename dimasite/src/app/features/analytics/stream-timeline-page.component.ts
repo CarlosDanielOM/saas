@@ -284,7 +284,7 @@ export class StreamTimelinePageComponent {
     const minutes = Math.max(0, Math.round(seconds / 60)), hours = Math.floor(minutes / 60);
     return hours ? `${hours}h ${(minutes % 60).toString().padStart(2, '0')}m` : `${minutes}m`;
   }
-  private locale(): string { return this.language.currentLanguage() === 'es' ? 'es-ES' : 'en-US'; }
+  private locale(): string { return this.language.currentLanguage() === 'es' ? 'es-MX' : 'en-US'; }
   date(value: string): string { return new Intl.DateTimeFormat(this.locale(), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)); }
   day(value: string): string { return new Intl.DateTimeFormat(this.locale(), { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(value)); }
   clock(value: string): string { return new Intl.DateTimeFormat(this.locale(), { hour: 'numeric', minute: '2-digit' }).format(new Date(value)); }

@@ -5,6 +5,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const source = new URL('../../dimabot/src/utils/ai/ast_catalog/ast-catalog.json', import.meta.url);
 const target = new URL('../src/app/features/commands/blocks/blocks-catalog.json', import.meta.url);
 
+const translations = JSON.parse(readFileSync(new URL('../src/app/features/commands/blocks/blocks-catalog.es.json', import.meta.url), 'utf8'));
+
 const catalog = JSON.parse(readFileSync(source, 'utf8'));
 const entries = catalog.entries
   .filter((entry) => !entry.deprecated)
@@ -28,3 +30,6 @@ const entries = catalog.entries
 
 writeFileSync(target, `${JSON.stringify({ version: catalog.version, entries })}\n`);
 console.log(`Wrote ${entries.length} functions (catalog ${catalog.version})`);
+
+const missing = entries.filter((entry) => typeof translations[entry.name] !== 'string' || !translations[entry.name].trim());
+if (missing.length) console.warn(`Missing Spanish descriptions: ${missing.map((entry) => entry.name).join(', ')}`);

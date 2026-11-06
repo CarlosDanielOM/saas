@@ -145,6 +145,13 @@ export class TipPageComponent {
 
   constructor() {
     effect(() => {
+      const next = this.t('common.sliceAccessibility.defaultMessage');
+      untracked(() => {
+        if (this.message() === this.previousDefaultMessage) this.message.set(next);
+        this.previousDefaultMessage = next;
+      });
+    });
+    effect(() => {
       const login = this.routeStreamer();
       untracked(() => {
         void this.loadStreamerProfile(login);
@@ -164,9 +171,8 @@ export class TipPageComponent {
 
   readonly donorName = signal('');
   readonly donationAmount = signal('25.00');
-  readonly message = signal(
-    'Thanks for the stream. Keep going, this has been such a fun month to watch.'
-  );
+  private previousDefaultMessage = this.t('common.sliceAccessibility.defaultMessage');
+  readonly message = signal(this.previousDefaultMessage);
 
   readonly monthlyLeaderboard = computed<TipLeaderboardEntry[]>(() => {
     this.languageService.currentLanguage();

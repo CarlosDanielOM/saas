@@ -1,5 +1,6 @@
 import { DecimalPipe, UpperCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { LanguageService } from '../../../services/language.service';
 import { QualityLevel, ThreeQualityService } from '../../../core/services/three-quality.service';
 
 @Component({
@@ -7,24 +8,24 @@ import { QualityLevel, ThreeQualityService } from '../../../core/services/three-
   imports: [UpperCasePipe, DecimalPipe],
   template: `
     <button type="button" class="perf-toggle" (click)="toggle()">
-      {{ isVisible() ? 'Hide Performance' : 'Show Performance' }}
+      {{ t(isVisible() ? 'hidePerformance' : 'showPerformance') }}
     </button>
 
     @if (isVisible()) {
-      <section class="performance-monitor" aria-label="Three.js performance monitor">
+      <section class="performance-monitor" [attr.aria-label]="t('performanceMonitor')">
         <div class="perf-grid">
-          <p><span>Quality</span><strong>{{ effectiveQuality() | uppercase }}</strong></p>
-          <p><span>Mode</span><strong>{{ qualityMode() | uppercase }}</strong></p>
+          <p><span>{{ t('quality') }}</span><strong>{{ t(effectiveQuality()) | uppercase }}</strong></p>
+          <p><span>{{ t('mode') }}</span><strong>{{ t(qualityMode()) | uppercase }}</strong></p>
           <p><span>FPS</span><strong [class]="'fps-' + fpsClass()">{{ metrics().currentFps }}</strong></p>
-          <p><span>Avg FPS</span><strong>{{ metrics().averageFps | number: '1.0-0' }}</strong></p>
-          <p><span>Frame Time</span><strong>{{ metrics().frameTime | number: '1.1-1' }} ms</strong></p>
-          <p><span>Memory</span><strong>{{ metrics().memoryUsage }} MB</strong></p>
+          <p><span>{{ t('averageFps') }}</span><strong>{{ metrics().averageFps | number: '1.0-0' }}</strong></p>
+          <p><span>{{ t('frameTime') }}</span><strong>{{ metrics().frameTime | number: '1.1-1' }} ms</strong></p>
+          <p><span>{{ t('memory') }}</span><strong>{{ metrics().memoryUsage }} MB</strong></p>
         </div>
 
         <div class="perf-controls">
-          <button type="button" class="mode-btn" (click)="cycleMode()">{{ qualityMode() }}</button>
+          <button type="button" class="mode-btn" (click)="cycleMode()">{{ t(qualityMode()) }}</button>
           <button type="button" class="mode-btn" (click)="toggleEnabled()">
-            {{ qualityEnabled() ? 'Adaptive on' : 'Adaptive off' }}
+            {{ t(qualityEnabled() ? 'adaptiveOn' : 'adaptiveOff') }}
           </button>
         </div>
 
@@ -35,7 +36,7 @@ import { QualityLevel, ThreeQualityService } from '../../../core/services/three-
               [class]="'quality-btn quality-btn-' + level + (effectiveQuality() === level ? ' is-active' : '')"
               (click)="setQuality(level)"
             >
-              {{ level | uppercase }}
+              {{ t(level) | uppercase }}
             </button>
           }
         </div>
@@ -46,6 +47,8 @@ import { QualityLevel, ThreeQualityService } from '../../../core/services/three-
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PerformanceMonitorComponent {
+  private readonly language = inject(LanguageService);
+  protected t(key: string): string { return this.language.translate(`common.sliceAccessibility.${key}`); }
   private readonly qualityService = inject(ThreeQualityService);
 
   readonly isVisible = signal(false);

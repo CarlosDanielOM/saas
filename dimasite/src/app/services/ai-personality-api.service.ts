@@ -6,19 +6,21 @@ import {
   AiPersonalityResponse,
   UpdateAiPersonalityRequest
 } from '../models/ai-personality.model';
+import { LanguageService } from './language.service';
 import { LinksService } from './links.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AiPersonalityApiService {
+  private readonly language = inject(LanguageService);
   private readonly http = inject(HttpClient);
   private readonly linksService = inject(LinksService);
 
   private toRequestError(error: unknown, fallbackMessage: string): Error {
     if (error instanceof HttpErrorResponse) {
       const serverMessage = typeof error.error?.message === 'string' ? error.error.message : null;
-      return new Error(serverMessage || error.message || fallbackMessage);
+      return new Error(serverMessage || fallbackMessage);
     }
 
     if (error instanceof Error) {
@@ -34,13 +36,13 @@ export class AiPersonalityApiService {
       .pipe(
         map((response) => {
           if (response.error || !response.data) {
-            throw new Error(response.message || 'Failed to load AI personality settings');
+            throw new Error(response.message || this.language.translate('common.sliceAccessibility.aiPersonalityLoadError'));
           }
 
           return response.data;
         }),
         catchError((error) =>
-          throwError(() => this.toRequestError(error, 'Failed to load AI personality settings'))
+          throwError(() => this.toRequestError(error, this.language.translate('common.sliceAccessibility.aiPersonalityLoadError')))
         )
       );
   }
@@ -51,13 +53,13 @@ export class AiPersonalityApiService {
       .pipe(
         map((response) => {
           if (response.error || !response.data) {
-            throw new Error(response.message || 'Failed to update AI personality settings');
+            throw new Error(response.message || this.language.translate('common.sliceAccessibility.aiPersonalitySaveError'));
           }
 
           return response.data;
         }),
         catchError((error) =>
-          throwError(() => this.toRequestError(error, 'Failed to update AI personality settings'))
+          throwError(() => this.toRequestError(error, this.language.translate('common.sliceAccessibility.aiPersonalitySaveError')))
         )
       );
   }

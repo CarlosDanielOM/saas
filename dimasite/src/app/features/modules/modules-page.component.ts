@@ -229,96 +229,96 @@ export class ModulesPageComponent {
       this.buildModule('overlays', this.t('overlayStudio.studio'), 'overlayStudio.description', streamerName, userPlanTier),
       this.buildModule('widgets', this.t('widgets.title'), 'widgets.subtitle', streamerName, userPlanTier),
       this.buildModule('roulette', this.t('roulette.title'), 'roulette.subtitle', streamerName, userPlanTier),
-      this.buildModule('clips', 'Clips', 'modules.clips.description', streamerName, userPlanTier),
+      this.buildModule('clips', this.t('modules.names.clips'), 'modules.clips.description', streamerName, userPlanTier),
       this.buildModule(
         'chat-events',
-        'Chat Events',
+        this.t('modules.names.chat-events'),
         'modules.chatEvents.description',
         streamerName,
         userPlanTier
       ),
       this.buildModule(
         'triggers',
-        'Triggers',
+        this.t('modules.names.triggers'),
         'modules.triggers.description',
         streamerName,
         userPlanTier
       ),
-      this.buildModule('dimafx', 'DimaFX', 'modules.dimafx.description', streamerName, userPlanTier),
+      this.buildModule('dimafx', this.t('modules.names.dimafx'), 'modules.dimafx.description', streamerName, userPlanTier),
       this.buildModule('pet', this.t('pet.title'), 'pet.description', streamerName, userPlanTier),
       this.buildModule(
         'tts',
-        'Text to Speech',
+        this.t('modules.names.tts'),
         'modules.tts.description',
         streamerName,
         userPlanTier
       ),
       this.buildModule(
         'referrals',
-        'Referrals',
+        this.t('modules.names.referrals'),
         'modules.referrals.description',
         streamerName,
         userPlanTier
       ),
       this.buildModule(
         'redemptions',
-        'Redemptions',
+        this.t('modules.names.redemptions'),
         'modules.redemptions.description',
         streamerName,
         userPlanTier
       ),
       this.buildModule(
         'ai-personality',
-        'AI Personality',
+        this.t('modules.names.ai-personality'),
         'modules.aiPersonality.description',
         streamerName,
         userPlanTier
       ),
       this.buildModule(
         'memories',
-        'Memories',
+        this.t('modules.names.memories'),
         'modules.memories.description',
         streamerName,
         userPlanTier
       ),
       this.buildModule(
         'analytics',
-        'Analytics',
+        this.t('modules.names.analytics'),
         'modules.analytics.description',
         streamerName,
         userPlanTier
       ),
       this.buildModule(
         'follow-defense',
-        'Follow Defense',
+        this.t('modules.names.follow-defense'),
         'modules.followDefense.description',
         streamerName,
         userPlanTier
       ),
       this.buildModule(
         'moderation',
-        'Chat Moderation',
+        this.t('modules.names.moderation'),
         'modules.moderation.description',
         streamerName,
         userPlanTier
       ),
       this.buildModule(
         'stream-summaries',
-        'Stream Summaries',
+        this.t('modules.names.stream-summaries'),
         'modules.streamSummaries.description',
         streamerName,
         userPlanTier
       ),
       this.buildModule(
         'clip-recommendations',
-        'Clip Recommendations',
+        this.t('modules.names.clip-recommendations'),
         'modules.clipRecommendations.description',
         streamerName,
         userPlanTier
       ),
       this.buildModule(
         'library',
-        'Media Library',
+        this.t('modules.names.library'),
         'modules.library.description',
         streamerName,
         userPlanTier

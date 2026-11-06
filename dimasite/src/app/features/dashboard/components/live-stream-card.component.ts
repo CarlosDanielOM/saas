@@ -304,7 +304,7 @@ export class LiveStreamCardComponent {
   }
 
   formatNumber(value: number): string {
-    return value.toLocaleString();
+    return value.toLocaleString(this.languageService.currentLanguage() === 'es' ? 'es-MX' : 'en-US');
   }
 
   getThumbnailUrl(template: string): string {

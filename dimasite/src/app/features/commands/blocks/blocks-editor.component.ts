@@ -1,3 +1,4 @@
+import { catalogEntry, shortDescription } from './blocks.catalog';
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -100,7 +101,7 @@ export class BlocksEditorComponent {
 
   readonly t = (key: string, params?: Record<string, string | number>) => this.language.translate(key, params);
   readonly titleOf = (item: LibraryItem) => (item.builtIn ? this.t(`commandBlocks.items.${item.id}.title`) : item.name);
-  readonly hintOf = (item: LibraryItem) => (item.builtIn ? this.t(`commandBlocks.items.${item.id}.hint`) : item.description);
+  readonly hintOf = (item: LibraryItem) => (item.builtIn ? this.t(`commandBlocks.items.${item.id}.hint`) : (catalogEntry(item.name) ? shortDescription(catalogEntry(item.name)!, this.language.currentLanguage()) : item.description));
 
   /** Import box: only while there's nothing to overwrite, or right after an import before any edit. */
   readonly showImport = computed(() => this.allowImport() && !this.store.readOnly() && !!this.channelID() && (this.store.isEmpty() || this.store.fromImport()));

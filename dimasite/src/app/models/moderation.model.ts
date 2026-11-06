@@ -152,13 +152,7 @@ export const MODERATION_DEFAULTS = {
   maxTimeoutSeconds: 1209600
 };
 
-export function buildNewModerationRule(type: ModerationRuleType): ModerationRule {
-  const reasonByType: Record<ModerationRuleType, string> = {
-    caps: 'Please do not use so many caps',
-    links: 'Please do not post links',
-    emote_spam: 'Please do not spam emotes',
-    blacklist: 'You used a blocked word or phrase'
-  };
+export function buildNewModerationRule(type: ModerationRuleType, reason: string): ModerationRule {
 
   return {
     id: crypto.randomUUID(),
@@ -167,7 +161,7 @@ export function buildNewModerationRule(type: ModerationRuleType): ModerationRule
     firstOffense: { action: 'warn', timeoutSeconds: 60 },
     secondOffense: { action: 'delete', timeoutSeconds: 60 },
     thirdOffense: { action: 'timeout', timeoutSeconds: 60 },
-    reason: reasonByType[type],
+    reason,
     exemptUserLevel: MODERATION_DEFAULTS.exemptUserLevel,
     exemptExpression: null,
     capsThresholdMode: 'count',

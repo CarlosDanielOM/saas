@@ -126,29 +126,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly moderationApi = inject(ModerationApiService);
   private readonly usageApi = inject(UsageApiService);
   private readonly chatEvents = inject(ChatEventsService);
-  private readonly numberFormatter = new Intl.NumberFormat();
-  private readonly compactNumberFormatter = new Intl.NumberFormat(undefined, {
+  private get numberFormatter() { return new Intl.NumberFormat(this.getDashboardLocale()); }
+  private get compactNumberFormatter() { return new Intl.NumberFormat(this.getDashboardLocale(), {
     notation: 'compact',
     maximumFractionDigits: 1
-  });
-  private readonly currencyFormatter = new Intl.NumberFormat(undefined, {
+  }); }
+  private get currencyFormatter() { return new Intl.NumberFormat(this.getDashboardLocale(), {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  });
-  private readonly compactCurrencyFormatter = new Intl.NumberFormat(undefined, {
+  }); }
+  private get compactCurrencyFormatter() { return new Intl.NumberFormat(this.getDashboardLocale(), {
     style: 'currency',
     currency: 'USD',
     notation: 'compact',
     maximumFractionDigits: 1
-  });
-  private readonly tableDateFormatter = new Intl.DateTimeFormat(undefined, {
+  }); }
+  private get tableDateFormatter() { return new Intl.DateTimeFormat(this.getDashboardLocale(), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
     timeZone: 'UTC'
-  });
+  }); }
   private readonly streamerParam$ = watchRouteParam(this.route, 'streamer').pipe(
     map((value) => (value ?? '').trim().toLowerCase()),
     distinctUntilChanged(),
@@ -1162,7 +1162,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private getDashboardLocale(): string {
-    return this.languageService.getCurrentLanguage() === 'es' ? 'es-ES' : 'en-US';
+    return this.languageService.getCurrentLanguage() === 'es' ? 'es-MX' : 'en-US';
   }
 
   formatCompactNumber(value: number): string {

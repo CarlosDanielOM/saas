@@ -1,3 +1,4 @@
+import { LanguageService } from '../../services/language.service';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, of, forkJoin, throwError } from 'rxjs';
@@ -84,6 +85,7 @@ function mergeConfigControls(
 })
 export class ChatEventsService {
   private readonly http = inject(HttpClient);
+  private readonly languageService = inject(LanguageService);
   private readonly linksService = inject(LinksService);
   private readonly toastService = inject(ToastService);
   private readonly cacheKeyPrefix = 'eventsCache:v8';
@@ -100,7 +102,7 @@ export class ChatEventsService {
   getEvents(channelId: string): Observable<ChatEvent[]> {
     const normalizedChannelId = channelId.trim();
     if (!normalizedChannelId) {
-      return throwError(() => new Error('No channel ID found'));
+      return throwError(() => new Error(this.languageService.translate('chatEvents.serviceErrors.channel')));
     }
 
     const cachedEvents = this.eventsCacheByChannel.get(normalizedChannelId);
@@ -200,14 +202,14 @@ export class ChatEventsService {
   deleteEvent(channelId: string, eventType: string): Observable<SubscriptionResponse> {
     const normalizedChannelId = channelId.trim();
     if (!normalizedChannelId) {
-      return throwError(() => new Error('No channel ID found'));
+      return throwError(() => new Error(this.languageService.translate('chatEvents.serviceErrors.channel')));
     }
 
     return this.getEvents(normalizedChannelId).pipe(
       switchMap(events => {
         const event = events.find(e => e.type === eventType);
         if (!event?.subscriptionId) {
-          this.toastService.error('Not Found', 'Could not find a subscription to delete for this event.');
+          this.toastService.error(this.languageService.translate('chatEvents.serviceErrors.notFound'), this.languageService.translate('chatEvents.serviceErrors.deleteSubscription'));
           return throwError(() => new Error('Subscription not found for deletion.'));
         }
 
@@ -236,7 +238,7 @@ export class ChatEventsService {
     const label = options.label || eventType;
     const normalizedChannelId = channelId.trim();
     if (!normalizedChannelId) {
-      return throwError(() => new Error('No channel ID found'));
+      return throwError(() => new Error(this.languageService.translate('chatEvents.serviceErrors.channel')));
     }
 
     if (enabled) {
@@ -255,12 +257,12 @@ export class ChatEventsService {
               { ...fields, enabled: true }
             ).pipe(
               tap(() => {
-                this.toastService.success('Status Updated', `${label} has been enabled.`);
+                this.toastService.success(this.languageService.translate('chatEvents.serviceErrors.statusUpdated'), this.languageService.translate('chatEvents.serviceErrors.enabled', { name: label }));
               }),
               catchError((error: unknown) => {
                 const err = error as { status?: number; error?: { message?: string }; message?: string };
-                const statusCode = err.status || 'Unknown';
-                const reason = err.error?.message || err.message || 'Unknown error occurred';
+                const statusCode = err.status || this.languageService.translate('chatEvents.serviceErrors.unknown');
+                const reason = err.error?.message || err.message || this.languageService.translate('chatEvents.serviceErrors.unknownError');
                 this.toastService.error(`Error ${statusCode}`, reason);
                 throw error;
               })
@@ -288,8 +290,8 @@ export class ChatEventsService {
                         break;
                       case 'channel':
                         this.toastService.error(
-                          'Configuration Required',
-                          `The '${key}' for event '${eventType}' must be configured manually.`
+                          this.languageService.translate('chatEvents.serviceErrors.configurationRequired'),
+                          this.languageService.translate('chatEvents.serviceErrors.manualConfig', { key, event: label })
                         );
                         return throwError(() => new Error(`Manual configuration required for ${eventType}.`));
                       default:
@@ -329,12 +331,12 @@ export class ChatEventsService {
                 ).pipe(
                   tap(() => {
                     this.clearCache(normalizedChannelId);
-                    this.toastService.success('Status Updated', `${label} has been enabled.`);
+                    this.toastService.success(this.languageService.translate('chatEvents.serviceErrors.statusUpdated'), this.languageService.translate('chatEvents.serviceErrors.enabled', { name: label }));
                   }),
                   catchError((error: unknown) => {
                     const err = error as { status?: number; error?: { message?: string }; message?: string };
-                    const statusCode = err.status || 'Unknown';
-                    const reason = err.error?.message || err.message || 'Unknown error occurred';
+                    const statusCode = err.status || this.languageService.translate('chatEvents.serviceErrors.unknown');
+                    const reason = err.error?.message || err.message || this.languageService.translate('chatEvents.serviceErrors.unknownError');
                     this.toastService.error(`Error ${statusCode}`, reason);
                     throw error;
                   })
@@ -362,12 +364,12 @@ export class ChatEventsService {
             { ...fields, enabled: false }
           ).pipe(
             tap(() => {
-              this.toastService.success('Status Updated', `${label} has been disabled.`);
+              this.toastService.success(this.languageService.translate('chatEvents.serviceErrors.statusUpdated'), this.languageService.translate('chatEvents.serviceErrors.disabled', { name: label }));
             }),
             catchError((error: unknown) => {
               const err = error as { status?: number; error?: { message?: string }; message?: string };
-              const statusCode = err.status || 'Unknown';
-              const reason = err.error?.message || err.message || 'Unknown error occurred';
+              const statusCode = err.status || this.languageService.translate('chatEvents.serviceErrors.unknown');
+              const reason = err.error?.message || err.message || this.languageService.translate('chatEvents.serviceErrors.unknownError');
               this.toastService.error(`Error ${statusCode}`, reason);
               throw error;
             })
@@ -380,14 +382,14 @@ export class ChatEventsService {
   saveEventConfiguration(channelId: string, eventName: string, configToSave: Record<string, unknown>): Observable<SubscriptionResponse<BackendSubscription | null>> {
     const normalizedChannelId = channelId.trim();
     if (!normalizedChannelId) {
-      return throwError(() => new Error('No channel ID found'));
+      return throwError(() => new Error(this.languageService.translate('chatEvents.serviceErrors.channel')));
     }
 
     return this.getEvents(normalizedChannelId).pipe(
       switchMap(events => {
         const event = events.find(e => e.type === eventName);
         if (!event?.subscriptionId) {
-          this.toastService.error('Not Found', 'Could not find a subscription to update for this event.');
+          this.toastService.error(this.languageService.translate('chatEvents.serviceErrors.notFound'), this.languageService.translate('chatEvents.serviceErrors.updateSubscription'));
           return throwError(() => new Error('Subscription not found for update.'));
         }
 
@@ -397,12 +399,12 @@ export class ChatEventsService {
         ).pipe(
           tap(() => {
             this.clearCache(normalizedChannelId);
-            this.toastService.success('Configuration Saved', 'Your changes have been saved successfully.');
+            this.toastService.success(this.languageService.translate('chatEvents.toasts.configurationSavedTitle'), this.languageService.translate('chatEvents.toasts.configurationSavedMsg'));
           }),
           catchError((error: unknown) => {
             const err = error as { status?: number; error?: { message?: string }; message?: string };
-            const statusCode = err.status || 'Unknown';
-            const reason = err.error?.message || err.message || 'Unknown error occurred';
+            const statusCode = err.status || this.languageService.translate('chatEvents.serviceErrors.unknown');
+            const reason = err.error?.message || err.message || this.languageService.translate('chatEvents.serviceErrors.unknownError');
             this.toastService.error(`Error ${statusCode}`, reason);
             throw error;
           })

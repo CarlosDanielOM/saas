@@ -4,6 +4,7 @@ import { catchError, map, of, tap, throwError } from 'rxjs';
 
 import { AdminCandidate, AdminListResponse, AdminRecord, ApiEnvelope } from '../models/admin.model';
 import { LinksService } from './links.service';
+import { LanguageService } from './language.service';
 
 interface CacheEntry<T> {
   data: T;
@@ -15,6 +16,7 @@ interface CacheEntry<T> {
 })
 export class AdminApiService {
   private readonly http = inject(HttpClient);
+  private readonly language = inject(LanguageService);
   private readonly linksService = inject(LinksService);
   private readonly CACHE_TTL_MS = 5 * 60 * 1000;
   private readonly adminCache = new Map<string, CacheEntry<AdminRecord[]>>();
@@ -109,7 +111,7 @@ export class AdminApiService {
   private toRequestError(error: unknown, fallbackMessage: string): Error {
     if (error instanceof HttpErrorResponse) {
       const serverMessage = typeof error.error?.message === 'string' ? error.error.message : null;
-      return new Error(serverMessage || error.message || fallbackMessage);
+      return new Error(serverMessage || fallbackMessage);
     }
 
     if (error instanceof Error) {
@@ -137,7 +139,7 @@ export class AdminApiService {
       .pipe(
         map((response) => {
           if (response.error) {
-            throw new Error(response.message || 'Failed to load admins');
+            throw new Error(response.message || this.language.translate('adminHub.apiErrors.loadAdmins'));
           }
 
           return this.sortAdmins((response.data || []).map((entry) => this.normalizeAdminRecord(entry)));
@@ -145,7 +147,7 @@ export class AdminApiService {
         tap((admins) => {
           this.setCache(this.adminCache, cacheKey, admins);
         }),
-        catchError((error) => throwError(() => this.toRequestError(error, 'Failed to load admins')))
+        catchError((error) => throwError(() => this.toRequestError(error, this.language.translate('adminHub.apiErrors.loadAdmins'))))
       );
   }
 
@@ -165,7 +167,7 @@ export class AdminApiService {
       .pipe(
         map((response) => {
           if (response.error) {
-            throw new Error(response.message || 'Failed to load admin candidates');
+            throw new Error(response.message || this.language.translate('adminHub.apiErrors.loadCandidates'));
           }
 
           return this.sortCandidates(
@@ -177,7 +179,7 @@ export class AdminApiService {
         tap((candidates) => {
           this.setCache(this.candidateCache, cacheKey, candidates);
         }),
-        catchError((error) => throwError(() => this.toRequestError(error, 'Failed to load admin candidates')))
+        catchError((error) => throwError(() => this.toRequestError(error, this.language.translate('adminHub.apiErrors.loadCandidates'))))
       );
   }
 
@@ -193,7 +195,7 @@ export class AdminApiService {
       .pipe(
         map((response) => {
           if (response.error) {
-            throw new Error(response.message || 'Failed to add admin');
+            throw new Error(response.message || this.language.translate('adminHub.apiErrors.add'));
           }
 
           return true;
@@ -225,7 +227,7 @@ export class AdminApiService {
             );
           }
         }),
-        catchError((error) => throwError(() => this.toRequestError(error, 'Failed to add admin')))
+        catchError((error) => throwError(() => this.toRequestError(error, this.language.translate('adminHub.apiErrors.add'))))
       );
   }
 
@@ -238,7 +240,7 @@ export class AdminApiService {
       )
       .pipe(
         map((response) => {
-          if (response.error || !response.data) throw new Error(response.message || 'Failed to update admin permissions');
+          if (response.error || !response.data) throw new Error(response.message || this.language.translate('adminHub.apiErrors.update'));
           return response.data.permissions;
         }),
         tap((updated) => {
@@ -248,7 +250,7 @@ export class AdminApiService {
             entry.adminID === admin.adminID ? { ...entry, permissions: updated } : entry
           ));
         }),
-        catchError((error) => throwError(() => this.toRequestError(error, 'Failed to update admin permissions')))
+        catchError((error) => throwError(() => this.toRequestError(error, this.language.translate('adminHub.apiErrors.update'))))
       );
   }
 
@@ -260,7 +262,7 @@ export class AdminApiService {
       .pipe(
         map((response) => {
           if (response.error) {
-            throw new Error(response.message || 'Failed to delete admin');
+            throw new Error(response.message || this.language.translate('adminHub.apiErrors.delete'));
           }
 
           return true;
@@ -289,7 +291,7 @@ export class AdminApiService {
             this.setCache(this.candidateCache, candidatesKey, this.sortCandidates([...deduped, restoredCandidate]));
           }
         }),
-        catchError((error) => throwError(() => this.toRequestError(error, 'Failed to delete admin')))
+        catchError((error) => throwError(() => this.toRequestError(error, this.language.translate('adminHub.apiErrors.delete'))))
       );
   }
 

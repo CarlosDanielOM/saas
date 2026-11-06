@@ -323,7 +323,7 @@ export class FollowLedgerPageComponent {
       return this.t('analytics.follows.durationUnknown');
     }
 
-    const locale = this.languageService.currentLanguage() === 'es' ? 'es-ES' : 'en-US';
+    const locale = this.languageService.currentLanguage() === 'es' ? 'es-MX' : 'en-US';
     return new Intl.DateTimeFormat(locale, {
       dateStyle: 'medium',
       timeStyle: 'short'
@@ -336,7 +336,7 @@ export class FollowLedgerPageComponent {
       return this.t('analytics.follows.durationUnknown');
     }
 
-    const locale = this.languageService.currentLanguage() === 'es' ? 'es-ES' : 'en-US';
+    const locale = this.languageService.currentLanguage() === 'es' ? 'es-MX' : 'en-US';
     return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date);
   }
 

@@ -131,7 +131,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
 
   readonly ttsVoiceOptions = computed(() => {
     const saved = this.ttsVoice();
-    const options = [...PIPER_VOICE_OPTIONS];
+    const options = PIPER_VOICE_OPTIONS.map((option, index) => ({ ...option, label: this.t(index === 0 ? 'modules.voiceNames.ryan' : 'modules.voiceNames.ald') }));
     if (saved && !options.some((option) => option.value === saved)) {
       options.push({ value: saved, label: saved });
     }

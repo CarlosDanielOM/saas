@@ -14,6 +14,7 @@ import {
 import { LucideAngularModule, AlertCircle, CheckCircle2, Info, TriangleAlert, X } from 'lucide-angular';
 import * as THREE from 'three';
 
+import { LanguageService } from '../../services/language.service';
 import { ToastItem, ToastTone } from '../../services/toast.service';
 
 interface Toast3DConfig {
@@ -91,7 +92,7 @@ const TOAST_CONFIGS: Record<ToastTone, Toast3DConfig> = {
           type="button"
           class="toast-3d-close"
           (click)="onDismiss()"
-          aria-label="Dismiss notification"
+          [attr.aria-label]="language.translate('common.sliceAccessibility.dismissNotification')"
         >
           <lucide-icon [name]="closeIcon" class="toast-3d-close-icon"></lucide-icon>
         </button>
@@ -105,6 +106,7 @@ const TOAST_CONFIGS: Record<ToastTone, Toast3DConfig> = {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Toast3DCardComponent implements AfterViewInit, OnDestroy {
+  protected readonly language = inject(LanguageService);
   toast = input.required<ToastItem>();
   dismiss = output<string>();
 

@@ -58,7 +58,7 @@ export class CommandsApiService {
 
   private extractCommands(response: ApiEnvelope<CommandsListResponse> & LegacyCommandsResponse): Command[] {
     if (response.error) {
-      throw new Error(response.message || 'Failed to load commands');
+      throw new Error(response.message || this.languageService.translate('commands.serviceErrors.load'));
     }
 
     if (Array.isArray(response.data?.commands)) {
@@ -155,7 +155,7 @@ export class CommandsApiService {
         }),
         catchError((err) => {
           this.listLoading.set(false);
-          this.listError.set(err.message || 'Failed to load commands');
+          this.listError.set(err.message || this.languageService.translate('commands.serviceErrors.load'));
           return of([]);
         })
       );
@@ -168,7 +168,7 @@ export class CommandsApiService {
         command
       )
       .pipe(
-        map((response) => this.extractCommand(response, 'Failed to create command')),
+        map((response) => this.extractCommand(response, this.languageService.translate('commands.serviceErrors.create'))),
         tap((createdCommand) => {
           // A new keyword must not enter cached public !command lists.
           this.clearAllCache();
@@ -186,7 +186,7 @@ export class CommandsApiService {
         updates
       )
       .pipe(
-        map((response) => this.extractCommand(response, 'Failed to update command')),
+        map((response) => this.extractCommand(response, this.languageService.translate('commands.serviceErrors.update'))),
         tap((updatedCommand) => {
           this.updateCachedCommands(channelID, (commands) =>
             commands.map((command) =>
@@ -206,7 +206,7 @@ export class CommandsApiService {
       .pipe(
         map((response) => {
           if (response.error) {
-            throw new Error(response.message || 'Failed to delete command');
+            throw new Error(response.message || this.languageService.translate('commands.serviceErrors.delete'));
           }
           return true;
         }),
@@ -224,7 +224,7 @@ export class CommandsApiService {
     return this.http
       .post<ApiEnvelope<{ command: Command }> & LegacyCommandsResponse>(`${this.linksService.getApiUrl()}/commands/${channelID}`, command)
       .pipe(
-        map((response): CommandSaveResult => ({ command: this.extractCommand(response, 'Failed to create command'), error: null })),
+        map((response): CommandSaveResult => ({ command: this.extractCommand(response, this.languageService.translate('commands.serviceErrors.create')), error: null })),
         tap(() => this.clearAllCache()),
         catchError((err: unknown) => of<CommandSaveResult>({ command: null, error: this.saveError(err) }))
       );
@@ -239,7 +239,7 @@ export class CommandsApiService {
         updates
       )
       .pipe(
-        map((response): CommandSaveResult => ({ command: this.extractCommand(response, 'Failed to update command'), error: null })),
+        map((response): CommandSaveResult => ({ command: this.extractCommand(response, this.languageService.translate('commands.serviceErrors.update')), error: null })),
         tap((result) => {
           if (!result.command) return;
           this.updateCachedCommands(channelID, (commands) =>

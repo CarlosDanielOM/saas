@@ -1,3 +1,4 @@
+import { LanguageService } from './language.service';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, throwError } from 'rxjs';
@@ -17,12 +18,13 @@ import { LinksService } from './links.service';
 })
 export class MemoriesApiService {
   private readonly http = inject(HttpClient);
+  private readonly language = inject(LanguageService);
   private readonly linksService = inject(LinksService);
 
   private toRequestError(error: unknown, fallbackMessage: string): Error {
     if (error instanceof HttpErrorResponse) {
       const serverMessage = typeof error.error?.message === 'string' ? error.error.message : null;
-      return new Error(serverMessage || error.message || fallbackMessage);
+      return new Error(serverMessage || fallbackMessage);
     }
 
     if (error instanceof Error) {
@@ -57,12 +59,12 @@ export class MemoriesApiService {
     return this.http.get<{ error: boolean; data?: ListMemoriesResponse; message?: string }>(url).pipe(
       map((response) => {
         if (response.error || !response.data) {
-          throw new Error(response.message || 'Failed to load memories');
+          throw new Error(response.message || this.language.translate('modules.memories.v2.loadFailed'));
         }
         return response.data;
       }),
       catchError((error) =>
-        throwError(() => this.toRequestError(error, 'Failed to load memories'))
+        throwError(() => this.toRequestError(error, this.language.translate('modules.memories.v2.loadFailed')))
       )
     );
   }
@@ -73,12 +75,12 @@ export class MemoriesApiService {
     return this.http.get<{ error: boolean; data?: Memory; message?: string }>(url).pipe(
       map((response) => {
         if (response.error || !response.data) {
-          throw new Error(response.message || 'Failed to load memory');
+          throw new Error(response.message || this.language.translate('modules.memories.v2.loadFailed'));
         }
         return response.data;
       }),
       catchError((error) =>
-        throwError(() => this.toRequestError(error, 'Failed to load memory'))
+        throwError(() => this.toRequestError(error, this.language.translate('modules.memories.v2.loadFailed')))
       )
     );
   }
@@ -89,12 +91,12 @@ export class MemoriesApiService {
     return this.http.patch<{ error: boolean; data?: Memory; message?: string }>(url, data).pipe(
       map((response) => {
         if (response.error || !response.data) {
-          throw new Error(response.message || 'Failed to update memory');
+          throw new Error(response.message || this.language.translate('modules.memories.v2.actionFailed'));
         }
         return response.data;
       }),
       catchError((error) =>
-        throwError(() => this.toRequestError(error, 'Failed to update memory'))
+        throwError(() => this.toRequestError(error, this.language.translate('modules.memories.v2.actionFailed')))
       )
     );
   }
@@ -111,12 +113,12 @@ export class MemoriesApiService {
     return this.http.patch<{ error: boolean; data?: Memory; message?: string }>(url, body).pipe(
       map((response) => {
         if (response.error || !response.data) {
-          throw new Error(response.message || 'Failed to update memory status');
+          throw new Error(response.message || this.language.translate('modules.memories.v2.actionFailed'));
         }
         return response.data;
       }),
       catchError((error) =>
-        throwError(() => this.toRequestError(error, 'Failed to update memory status'))
+        throwError(() => this.toRequestError(error, this.language.translate('modules.memories.v2.actionFailed')))
       )
     );
   }
@@ -127,11 +129,11 @@ export class MemoriesApiService {
     return this.http.delete<{ error: boolean; message?: string }>(url).pipe(
       map((response) => {
         if (response.error) {
-          throw new Error(response.message || 'Failed to delete memory');
+          throw new Error(response.message || this.language.translate('modules.memories.v2.actionFailed'));
         }
       }),
       catchError((error) =>
-        throwError(() => this.toRequestError(error, 'Failed to delete memory'))
+        throwError(() => this.toRequestError(error, this.language.translate('modules.memories.v2.actionFailed')))
       )
     );
   }

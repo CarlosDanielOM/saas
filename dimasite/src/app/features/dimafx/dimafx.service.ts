@@ -1,3 +1,4 @@
+import { LanguageService } from '../../services/language.service';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { map, Observable } from 'rxjs';
@@ -16,6 +17,7 @@ import {
 @Injectable({ providedIn: 'root' })
 export class DimafxService {
   private readonly http = inject(HttpClient);
+  private readonly language = inject(LanguageService);
   private readonly linksService = inject(LinksService);
 
   getItems(channelId: string): Observable<DimafxItemsResponse> {
@@ -32,13 +34,13 @@ export class DimafxService {
   createItem(channelId: string, request: CreateChannelExtensionItemRequest): Observable<ChannelExtensionItem> {
     return this.http
       .post<ApiEnvelope<ChannelExtensionItem>>(`${this.linksService.getApiUrl()}/extensions/dimafx/${channelId}/items`, request)
-      .pipe(map((response) => this.requireItem(response, 'Failed to create DimaFX item')));
+      .pipe(map((response) => this.requireItem(response, this.language.translate('modules.dimafx.toasts.saveFailed'))));
   }
 
   updateItem(channelId: string, itemId: string, request: UpdateChannelExtensionItemRequest): Observable<ChannelExtensionItem> {
     return this.http
       .patch<ApiEnvelope<ChannelExtensionItem>>(`${this.linksService.getApiUrl()}/extensions/dimafx/${channelId}/items/${itemId}`, request)
-      .pipe(map((response) => this.requireItem(response, 'Failed to update DimaFX item')));
+      .pipe(map((response) => this.requireItem(response, this.language.translate('modules.dimafx.toasts.saveFailed'))));
   }
 
   deleteItem(channelId: string, itemId: string, refundSaved = false): Observable<void> {
@@ -48,7 +50,7 @@ export class DimafxService {
       })
       .pipe(
         map((response) => {
-          if (response.error) throw new Error(response.message || 'Failed to delete DimaFX item');
+          if (response.error) throw new Error(response.message || this.language.translate('modules.dimafx.toasts.deleteFailed'));
         })
       );
   }
@@ -58,7 +60,7 @@ export class DimafxService {
       .get<ApiEnvelope<DimafxOverlayStatus>>(`${this.linksService.getApiUrl()}/extensions/dimafx/${channelId}/overlay-status`)
       .pipe(
         map((response) => {
-          if (response.error || !response.data) throw new Error(response.message || 'Failed to load overlay status');
+          if (response.error || !response.data) throw new Error(response.message || this.language.translate('modules.dimafx.toasts.loadFailed'));
           return response.data;
         })
       );
@@ -69,7 +71,7 @@ export class DimafxService {
       .post<ApiEnvelope<DimafxTestTriggerResult>>(`${this.linksService.getApiUrl()}/extensions/dimafx/${channelId}/items/${itemId}/test`, {})
       .pipe(
         map((response) => {
-          if (response.error || !response.data) throw new Error(response.message || 'Failed to send test trigger');
+          if (response.error || !response.data) throw new Error(response.message || this.language.translate('modules.dimafx.testFailed'));
           return response.data;
         })
       );

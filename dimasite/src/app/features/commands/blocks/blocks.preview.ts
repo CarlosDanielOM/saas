@@ -64,15 +64,16 @@ interface RunState {
   extraLines: string[];
   steps: number;
   skipped: number;
+  translateSample?: (name: string) => string;
 }
 
 export class PreviewTooLong extends Error {}
 
-export function runPreview(root: AnyNode, ctx: PreviewContext, commandLevel: number | null = null): PreviewResult {
+export function runPreview(root: AnyNode, ctx: PreviewContext, commandLevel: number | null = null, translateSample?: (name: string) => string): PreviewResult {
   if (commandLevel !== null && ROLE_LEVEL[ctx.role] < commandLevel) {
     return { chat: '', extraLines: [], actions: [], variables: [], skippedAdvanced: 0, notAllowed: true };
   }
-  const state: RunState = { ctx, vars: new Map(), loopVars: new Map(), actions: [], extraLines: [], steps: 0, skipped: 0 };
+  const state: RunState = { ctx, vars: new Map(), loopVars: new Map(), actions: [], extraLines: [], steps: 0, skipped: 0, translateSample };
   const children = root.type === 'root' ? root.children : [root];
   const chat = children.map((node) => evalNode(node, state)).join('').trim();
   const variables = [...state.vars.entries()].map(([key, value]) => {
@@ -298,7 +299,7 @@ function evalFunction(name: string, args: BlockNode[], s: RunState): string {
     case 'length': return String(joined.length);
     case 'replace': return values.slice(2).join(' ').split(values[0] ?? '').join(values[1] ?? '');
     default:
-      if (SAMPLE_VALUES[canonical] !== undefined) return SAMPLE_VALUES[canonical];
+      if (SAMPLE_VALUES[canonical] !== undefined) return s.translateSample?.(canonical) ?? SAMPLE_VALUES[canonical];
       return `‹${canonical}›`;
   }
 }

@@ -197,7 +197,7 @@
 
       <div class="lf-tile lf-matrix">
         <div class="lf-matrix__tabs" role="tablist" aria-label="Pricing tiers">
-          @for (tier of pricingTiers; track tier.key) {
+          @for (tier of pricingTiers(); track tier.key) {
             <button type="button" role="tab" class="lf-matrix__tab" [class.lf-matrix__tab--active]="activePricingTier() === tier.key" [attr.aria-selected]="activePricingTier() === tier.key" (click)="setActivePricingTier(tier.key)">
               {{ tier.label }}
             </button>
@@ -205,7 +205,7 @@
         </div>
         <div class="lf-matrix__row lf-matrix__row--head">
           <span>{{ t('landing.pricing.capability') }}</span>
-          @for (tier of pricingTiers; track tier.key) {
+          @for (tier of pricingTiers(); track tier.key) {
             <span [class.lf-matrix__col--hidden]="activePricingTier() !== tier.key">{{ tier.label }}</span>
           }
         </div>
@@ -213,7 +213,7 @@
         @for (row of visibleCapabilities(); track row.label) {
           <div class="lf-matrix__row">
             <span>{{ row.label }}</span>
-            @for (tier of pricingTiers; track tier.key) {
+            @for (tier of pricingTiers(); track tier.key) {
               <span [class.lf-matrix__col--hidden]="activePricingTier() !== tier.key">
                 @if (isCheckValue(pricingValue(row, tier.key))) {
                   <lucide-icon [name]="checkIcon" class="lf-icon-sm" aria-hidden="true"></lucide-icon><span class="sr-only">Yes</span>
@@ -229,7 +229,7 @@
         @for (row of visibleLimits(); track row.label) {
           <div class="lf-matrix__row">
             <span>{{ row.label }}</span>
-            @for (tier of pricingTiers; track tier.key) {
+            @for (tier of pricingTiers(); track tier.key) {
               <span [class.lf-matrix__col--hidden]="activePricingTier() !== tier.key">{{ pricingValue(row, tier.key) }}</span>
             }
           </div>

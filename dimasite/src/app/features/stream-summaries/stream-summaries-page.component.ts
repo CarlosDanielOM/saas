@@ -121,7 +121,7 @@ export class StreamSummariesPageComponent {
   }
 
   private locale(): string {
-    return this.languageService.currentLanguage() === 'es' ? 'es' : 'en';
+    return this.languageService.currentLanguage() === 'es' ? 'es-MX' : 'en-US';
   }
 
   formatDate(dateString: string): string {

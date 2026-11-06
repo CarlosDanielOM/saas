@@ -34,7 +34,7 @@
 </ng-template>
 
 <ng-template #varName let-v="v">
-  <span class="blk__var">{{ v.name || 'name' }}</span>
+  <span class="blk__var">{{ v.name || t('commandBlocks.params.name') }}</span>
   @if (v.storage !== 'memory') {
     <span class="blk__store">{{ storageLabel(v.storage) }}</span>
   }

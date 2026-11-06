@@ -35,7 +35,7 @@ export class RedemptionsService {
   getRedemptions(channelId: string, forceRefresh = false): Observable<Redemption[]> {
     const normalizedId = channelId.trim();
     if (!normalizedId) {
-      return throwError(() => new Error('No channel ID found'));
+      return throwError(() => new Error(this.languageService.translate('redemptions.serviceErrors.channel')));
     }
 
     if (!forceRefresh) {
@@ -69,7 +69,7 @@ export class RedemptionsService {
   getTwitchRedemptions(channelId: string, forceRefresh = false): Observable<TwitchRedemption[]> {
     const normalizedId = channelId.trim();
     if (!normalizedId) {
-      return throwError(() => new Error('No channel ID found'));
+      return throwError(() => new Error(this.languageService.translate('redemptions.serviceErrors.channel')));
     }
 
     if (!forceRefresh) {
@@ -108,7 +108,7 @@ export class RedemptionsService {
   ): Observable<Redemption> {
     const normalizedId = channelId.trim();
     if (!normalizedId) {
-      return throwError(() => new Error('No channel ID found'));
+      return throwError(() => new Error(this.languageService.translate('redemptions.serviceErrors.channel')));
     }
 
     this.isLoading.set(true);
@@ -120,7 +120,7 @@ export class RedemptionsService {
       .pipe(
         map((res) => {
           if (res.error || !res.data) {
-            throw new Error(res.message || 'Failed to create redemption');
+            throw new Error(res.message || this.languageService.translate('redemptions.serviceErrors.create'));
           }
           return res.data;
         }),
@@ -132,7 +132,7 @@ export class RedemptionsService {
           this.isLoading.set(false);
           this.toastService.error(
             this.languageService.translate('redemptions.errors.saveTitle'),
-            this.friendlyError(error, 'Failed to create redemption'),
+            this.friendlyError(error, this.languageService.translate('redemptions.serviceErrors.create')),
           );
           return throwError(() => error);
         })
@@ -148,7 +148,7 @@ export class RedemptionsService {
   ): Observable<RewardUpdateResult> {
     const normalizedId = channelId.trim();
     if (!normalizedId || !rewardId) {
-      return throwError(() => new Error('Channel ID and Reward ID are required'));
+      return throwError(() => new Error(this.languageService.translate('redemptions.serviceErrors.ids')));
     }
 
     return this.http
@@ -159,7 +159,7 @@ export class RedemptionsService {
       .pipe(
         map((res) => {
           if (res.error || !res.data) {
-            throw new Error(res.message || 'Failed to update redemption');
+            throw new Error(res.message || this.languageService.translate('redemptions.serviceErrors.update'));
           }
           return {
             reward: res.data,
@@ -173,7 +173,7 @@ export class RedemptionsService {
           if (!options.silent) {
             this.toastService.error(
               this.languageService.translate('redemptions.errors.saveTitle'),
-              this.friendlyError(error, 'Failed to update redemption'),
+              this.friendlyError(error, this.languageService.translate('redemptions.serviceErrors.update')),
             );
           }
           return throwError(() => error);
@@ -202,7 +202,7 @@ export class RedemptionsService {
   deleteRedemption(channelId: string, rewardId: string): Observable<void> {
     const normalizedId = channelId.trim();
     if (!normalizedId || !rewardId) {
-      return throwError(() => new Error('Channel ID and Reward ID are required'));
+      return throwError(() => new Error(this.languageService.translate('redemptions.serviceErrors.ids')));
     }
 
     return this.http
@@ -212,7 +212,7 @@ export class RedemptionsService {
       .pipe(
         map((res) => {
           if (res.error) {
-            throw new Error(res.message || 'Failed to delete redemption');
+            throw new Error(res.message || this.languageService.translate('redemptions.serviceErrors.delete'));
           }
         }),
         tap(() => {
@@ -221,7 +221,7 @@ export class RedemptionsService {
         catchError((error) => {
           this.toastService.error(
             this.languageService.translate('redemptions.errors.deleteTitle'),
-            this.friendlyError(error, 'Failed to delete redemption'),
+            this.friendlyError(error, this.languageService.translate('redemptions.serviceErrors.delete')),
           );
           return throwError(() => error);
         })

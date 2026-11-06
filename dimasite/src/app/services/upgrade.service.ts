@@ -73,7 +73,7 @@ export class UpgradeService {
     return this.runPrompt(
       {
         moduleId: input.moduleId,
-        moduleName: req.displayName,
+        moduleName: this.t(`upgradeModal.moduleNames.${input.moduleId.replaceAll('.', '_')}`),
         requiredTier,
         currentTier,
         offers,
@@ -87,7 +87,6 @@ export class UpgradeService {
   async promptUpgradeForAnyPlan(source: string): Promise<UpgradePromptResult> {
     const currentTier = this.getCurrentTier();
     const moduleId: ModuleId = 'analytics';
-    const req = MODULE_TIER_REQUIREMENTS[moduleId];
 
     if (currentTier === 'pro') {
       this.analytics.capture('upgrade_prompt_skipped', {
@@ -112,7 +111,7 @@ export class UpgradeService {
     return this.runPrompt(
       {
         moduleId,
-        moduleName: req.displayName,
+        moduleName: this.t(`upgradeModal.moduleNames.${moduleId.replaceAll('.', '_')}`),
         requiredTier,
         currentTier,
         offers,
@@ -195,7 +194,7 @@ export class UpgradeService {
     try {
       const context = await firstValueFrom(this.billingService.getContext(tier));
       if (context.error || !context.data) {
-        throw new Error(context.message ?? 'Unable to resolve billing state');
+        throw new Error(context.message ?? this.t('common.sliceAccessibility.billingStateError'));
       }
 
       if (context.data.scenario === 'active_no_change') {
@@ -227,7 +226,7 @@ export class UpgradeService {
       );
 
       if (checkout.error || !checkout.data?.checkoutUrl) {
-        throw new Error(checkout.message ?? 'Unable to create checkout');
+        throw new Error(checkout.message ?? this.t('common.sliceAccessibility.checkoutCreateError'));
       }
 
       this.analytics.capture('checkout_redirected', {
@@ -241,7 +240,7 @@ export class UpgradeService {
       window.location.assign(checkout.data.checkoutUrl);
       resolve({ kind: 'redirected', tier });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unable to start checkout';
+      const errorMessage = err instanceof Error ? err.message : this.t('common.sliceAccessibility.checkoutStartError');
       this.modalService.updateState('error', errorMessage);
       this.analytics.capture('upgrade_checkout_error', {
         module_id: data.moduleId,

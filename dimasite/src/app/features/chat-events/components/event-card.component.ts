@@ -1,3 +1,4 @@
+import { chatEventName } from '../chat-event-name';
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import {
   Award,
@@ -237,32 +238,16 @@ export class EventCardComponent {
   readonly alwaysOn = computed(() => this.event().enabled && !this.canDisable());
 
   getEventName(): string {
-    if (this.event().type === 'channel.raid' || this.event().type === 'channel.raid.outgoing') return this.t(`raidAnalytics.${this.event().type === 'channel.raid' ? 'incomingEvent' : 'outgoingEvent'}`);
-    const subscriptionNames: Record<string, string> = {
-      'channel.subscribe': 'new',
-      'channel.subscription.gift': 'gift',
-      'channel.subscription.message': 'resub',
-      'channel.subscription.end': 'end'
-    };
-    const subscriptionName = subscriptionNames[this.event().type];
-    if (subscriptionName) {
-      return this.t(`chatEvents.subscriptions.${subscriptionName}`);
-    }
-    if (this.event().type === 'channel.shoutout.receive') {
-      return this.t('chatEvents.shoutoutReceived.name');
-    }
-    return this.event().type === 'channel.chat.notification' && !this.event().notice
-      ? this.t('chatEvents.notificationsName')
-      : this.event().name;
+    return chatEventName(this.event(), (key) => this.t(key));
   }
 
   getEventDescription(description: { en: string; es: string }): string {
     if (this.event().type === 'channel.raid' || this.event().type === 'channel.raid.outgoing') return this.t(`raidAnalytics.${this.event().type === 'channel.raid' ? 'incomingDescription' : 'outgoingDescription'}`);
     if (!description || typeof description !== 'object') {
-      return 'Invalid description';
+      return this.t('chatEvents.descriptionUnavailable');
     }
     const lang = this.languageService.getCurrentLanguage();
-    return description[lang] ?? description.en ?? 'Invalid description';
+    return description[lang] || description.en || this.t('chatEvents.descriptionUnavailable');
   }
 
   eventIcon(iconName: string): LucideIconData {

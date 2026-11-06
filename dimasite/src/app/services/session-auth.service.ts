@@ -273,7 +273,7 @@ export class SessionAuthService {
       map((response) => {
         if (response.error || !response.data) {
           throw new AuthLoginError(
-            response.message || 'Login failed',
+            response.message || this.languageService.translate('common.sliceAccessibility.loginFailed'),
             response.code,
             response.type,
             response.status

@@ -6,6 +6,7 @@
  * Refresh it after backend function changes: `node scripts/sync-ast-catalog.mjs` (dimasite).
  */
 import catalogJson from './blocks-catalog.json';
+import spanishDescriptions from './blocks-catalog.es.json';
 
 export interface CatalogEntry {
   name: string;
@@ -128,9 +129,15 @@ export function isActionFunction(name: string): boolean {
   return ACTION_CATEGORIES.has(entry.category) || ['timer', 'delay', 'break', 'continue'].includes(entry.name);
 }
 
+/** Catalog translations are independent of the generated English catalog. */
+export function catalogDescription(entry: CatalogEntry, language: string): string {
+  return language === 'es' ? (spanishDescriptions as Record<string, string>)[entry.name]?.trim() || entry.description : entry.description;
+}
+
 /** First sentence of the description, for one-line hints. */
-export function shortDescription(entry: CatalogEntry): string {
-  const first = entry.description.split(/(?<=\.)\s/)[0] ?? entry.description;
+export function shortDescription(entry: CatalogEntry, language = 'en'): string {
+  const description = catalogDescription(entry, language);
+  const first = description.split(/(?<=\.)\s/)[0] ?? description;
   return first.length > 96 ? `${first.slice(0, 93)}…` : first;
 }
 
@@ -202,7 +209,7 @@ export function searchCatalog(query: string): CatalogEntry[] {
   const q = query.trim().toLowerCase();
   if (!q) return CATALOG;
   return CATALOG.filter((entry) =>
-    [entry.name, entry.description, ...(entry.aliases ?? []), ...(entry.keywords ?? [])].some((field) =>
+    [entry.name, entry.description, catalogDescription(entry, 'es'), ...(entry.aliases ?? []), ...(entry.keywords ?? [])].some((field) =>
       field.toLowerCase().includes(q)
     )
   );

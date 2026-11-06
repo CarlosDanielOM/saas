@@ -939,7 +939,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
 
   addRule(type: ModerationRuleType): void {
     if (!this.canAddRule()) return;
-    this.settings.update((s) => (s ? { ...s, rules: [...s.rules, buildNewModerationRule(type)] } : s));
+    this.settings.update((s) => (s ? { ...s, rules: [...s.rules, buildNewModerationRule(type, this.t(`moderation.defaultReasons.${type}`))] } : s));
   }
 
   removeRule(ruleID: string): void {

@@ -76,6 +76,13 @@ interface ArgHole {
   target: DropTarget;
 }
 
+const PARAM_WORDS = new Set(['name', 'seconds', 'roulette', 'id', 'item', 'label', 'multiplier', 'weight', 'ignore', 'symbols', 'numbers', 'target', 'unique', 'local', 'login', 'max', 'username', 'reason', 'days', 'increment', 'channel', 'new', 'title', 'text', 'game', 'voice', 'option', 'prompt', 'message', 'value', 'layer', 'quantity', 'receipt', 'trigger', 'and', 'actions', 'color', 'duration', 'start', 'end', 'search', 'replacement', 'options', 'or']);
+
+function translateParamLabel(label: string, t: (key: string) => string): string {
+  return label.replace(/[a-z]+/gi, (word) => PARAM_WORDS.has(word.toLowerCase())
+    ? t(`commandBlocks.params.${word.toLowerCase()}`) : word);
+}
+
 /** Labelled argument holes from the function's catalog syntax. */
 export function argHoles(n: FunctionNode, t: (key: string) => string): ArgHole[] {
   const params = catalogParams(n.name);
@@ -84,7 +91,7 @@ export function argHoles(n: FunctionNode, t: (key: string) => string): ArgHole[]
   params.forEach((param, i) => {
     const nodes = param.rest ? n.args.slice(i) : n.args[i] ? [n.args[i]] : [];
     holes.push({
-      label: param.label,
+      label: translateParamLabel(param.label, t),
       optional: param.optional,
       nodes,
       target: { kind: 'list', parentId: n.id, slot: 'args', index: param.rest ? n.args.length : Math.min(i, n.args.length) }

@@ -486,14 +486,14 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
     if (!value) return '';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleDateString(this.languageService.getCurrentLanguage() === 'es' ? 'es' : 'en', {
+    return date.toLocaleDateString(this.languageService.getCurrentLanguage() === 'es' ? 'es-MX' : 'en-US', {
       month: 'short',
       day: 'numeric'
     });
   }
 
   formatNumber(value: number): string {
-    return Math.round(value).toLocaleString(this.languageService.getCurrentLanguage() === 'es' ? 'es' : 'en');
+    return Math.round(value).toLocaleString(this.languageService.getCurrentLanguage() === 'es' ? 'es-MX' : 'en-US');
   }
 
   // ── Internals ─────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { LanguageService } from './language.service';
 import { StreamTimeline, TimelineResponse, TimelineStreamList, TimelinePeople, TimelineCredits, TimelineEvent } from '../models/stream-timeline.model';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
@@ -11,6 +12,7 @@ import { LinksService } from './links.service';
 })
 export class AnalyticsApiService {
   private readonly http = inject(HttpClient);
+  private readonly language = inject(LanguageService);
   private readonly linksService = inject(LinksService);
 
   getFollowLedger(channelID: string, query: FollowLedgerQuery = {}) {
@@ -63,13 +65,13 @@ export class AnalyticsApiService {
   private toRequestError(error: unknown): Error {
     if (error instanceof HttpErrorResponse) {
       const serverMessage = typeof error.error?.message === 'string' ? error.error.message : null;
-      return new Error(serverMessage || error.message || 'Failed to load analytics data');
+      return new Error(serverMessage || error.message || this.language.translate('analytics.follows.loadError'));
     }
 
     if (error instanceof Error) {
       return error;
     }
 
-    return new Error('Failed to load analytics data');
+    return new Error(this.language.translate('analytics.follows.loadError'));
   }
 }

@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Copy, LucideAngularModule, ShieldAlert, TextCurs
 
 import { LanguageService } from '../../../services/language.service';
 import { OP_KEY, argHoles, nodeTitle, nodeTone } from './block.component';
-import { catalogEntry, catalogParams, levelKey } from './blocks.catalog';
+import { catalogDescription, catalogEntry, catalogParams, levelKey } from './blocks.catalog';
 import {
   type AnyNode,
   type ArrayAccessor,
@@ -68,7 +68,7 @@ export class BlockInspectorComponent {
   readonly help = computed(() => {
     const n = this.node();
     if (!n) return '';
-    if (n.type === 'function') return this.entry()?.description ?? this.t('commandBlocks.help.unknownFunction');
+    if (n.type === 'function') return this.entry() ? catalogDescription(this.entry()!, this.language.currentLanguage()) : this.t('commandBlocks.help.unknownFunction');
     if (n.type === 'literal' && /^&p\d+$|^&t$/.test(n.value)) return this.t('commandBlocks.help.argument');
     return this.t(`commandBlocks.help.${n.type}`);
   });

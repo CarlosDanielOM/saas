@@ -3,11 +3,11 @@
   <app-upgrade-modal />
   @if (!focus()) {
   <header class="auth-navbar">
-    <a class="auth-navbar__brand" [routerLink]="['/', streamer(), 'dashboard']" aria-label="DomDimaBot dashboard">
+    <a class="auth-navbar__brand" [routerLink]="['/', streamer(), 'dashboard']" [attr.aria-label]="t('common.sliceAccessibility.dashboardHome')">
       <app-brand-logo />
     </a>
 
-    <nav class="auth-navbar__nav" aria-label="Primary">
+    <nav class="auth-navbar__nav" [attr.aria-label]="t('common.sliceAccessibility.primaryNav')">
       <a
         class="auth-navbar__link"
         [routerLink]="currentDashboardLink()"
@@ -178,7 +178,7 @@
         class="auth-navbar__mobile-toggle"
         [attr.aria-expanded]="isMobileMenuOpen()"
         aria-haspopup="menu"
-        aria-label="Open menu"
+        [attr.aria-label]="t('common.sliceAccessibility.openMenu')"
         (click)="toggleMobileMenu($event)"
       >
         <span class="auth-navbar__mobile-toggle-bar" aria-hidden="true"></span>
@@ -195,7 +195,7 @@
 
           <div class="auth-navbar__divider" aria-hidden="true"></div>
 
-          <nav class="auth-navbar__mobile-section" aria-label="Mobile primary">
+          <nav class="auth-navbar__mobile-section" [attr.aria-label]="t('common.sliceAccessibility.mobileNav')">
             <a class="auth-navbar__mobile-link" [routerLink]="currentDashboardLink()" (click)="closeMobileMenu()">
               {{ t('navbar.dashboard') }}
             </a>

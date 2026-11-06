@@ -494,7 +494,7 @@ export class LoginPageComponent implements OnInit {
   private async completeAdminLogin(code: string | null, returnedState: string | null): Promise<void> {
     if (!code) {
       this.stage.set('error');
-      this.errorMessage.set('Missing authorization code');
+      this.errorMessage.set(this.t('common.sliceAccessibility.missingCode'));
       return;
     }
 
@@ -619,7 +619,7 @@ export class LoginPageComponent implements OnInit {
 
     const context = await firstValueFrom(this.billingService.getContext(pendingPlan));
     if (context.error || !context.data) {
-      throw new Error(context.message || 'Unable to resolve billing state');
+      throw new Error(context.message || this.t('common.sliceAccessibility.billingStateError'));
     }
 
     if (!this.shouldStartCheckout(context.data)) {
@@ -638,7 +638,7 @@ export class LoginPageComponent implements OnInit {
     );
 
     if (checkout.error || !checkout.data?.checkoutUrl) {
-      throw new Error(checkout.message || 'Unable to create checkout');
+      throw new Error(checkout.message || this.t('common.sliceAccessibility.checkoutCreateError'));
     }
 
     this.checkoutIntent.clearPendingPlan();
