@@ -12,6 +12,9 @@ const { getMongoDBConnection } = await import('/app/dist/utils/databases/mongodb
 const { getDragonflyClient } = await import('/app/dist/utils/databases/dragonfly.database.js');
 const mongo = await getMongoDBConnection('pet-runtime-check');
 const redis = await getDragonflyClient('pet-runtime-check');
+// Custom widgets (`uses: pets`) hear the real playback start and terminal claim through Dragonfly `widget-feed`.
+const petFeedSub = redis.duplicate(); await petFeedSub.connect(); const petFeed = [];
+await petFeedSub.subscribe('widget-feed', message => { const item = JSON.parse(message); if (item.type === 'pet') petFeed.push(item.data); });
 const { PetRequest, PetRuntime } = await import('/app/dist/schemas/pet_runtime.schema.js');
 const { PetSettingsSchema } = await import('/app/dist/schemas/pet_settings.schema.js');
 const { upsertChannelTtsSettings } = await import('/app/dist/schemas/channel_tts_settings.schema.js');
@@ -310,6 +313,10 @@ assert.equal((await desktop.send('pet:playback', identityFor(play, 2, 'ended')))
 await until(() => desktop.latestSnapshot()?.active === null && second.latestSnapshot()?.active === null, 'terminal wake reaches every renderer');
 await desktop.event('pet:request', data => data.request.requestId === requestId && data.request.status === 'completed');
 assert.equal((await admitPetAction(input)).status, 'completed');
+const widgetPet = () => petFeed.filter(item => item.id === requestId);
+await until(() => widgetPet().length === 2, 'pet widget events');
+assert.deepEqual(widgetPet().map(item => [item.kind, item.phase, item.result]), [['talk', 'speaking', null], ['talk', 'done', 'completed']], 'widgets: speaking at playback start, done once at the end');
+assert.ok(widgetPet().every(item => item.text && !('prompt' in item) && !('ownerId' in item) && !('origin' in item)), 'only what the pet said');
 assert.equal((await fetch(base + new URL(play.audio.url).pathname + new URL(play.audio.url).search)).status, 403);
 assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).filter(item => item.kind === 'tts').length, 1);
 const firstBilling = (await redis.lRange('pet:test:billing-events', 0, -1)).map(JSON.parse);

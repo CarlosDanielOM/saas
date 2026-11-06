@@ -145,7 +145,7 @@ overlayStudioRoute.post('/:channelID/widget-test', wrap(async (req, res) => {
   const channel = param(req, 'channelID'), body = object(req.body), state = await load(channel);
   const scene = state.scenes.find(s => s.id === body.sceneId);
   if (!scene?.published) throw new OverlayError('Publish this overlay before testing', 409);
-  if (!['chat', 'chat.delete', 'chat.clear', 'alert', 'signal', 'session', 'tts', 'trigger', 'reward', 'state'].includes(String(body.type)) || !body.data || typeof body.data !== 'object' || Array.isArray(body.data)
+  if (!['chat', 'chat.delete', 'chat.clear', 'alert', 'signal', 'session', 'tts', 'trigger', 'reward', 'state', 'pet', 'duel', 'roulette', 'dimafx'].includes(String(body.type)) || !body.data || typeof body.data !== 'object' || Array.isArray(body.data)
     || JSON.stringify(body.data).length > (body.type === 'session' || body.type === 'state' ? 64_000 : 16_000)) throw new OverlayError('Invalid widget test');
   // Sample live state (polls, goals) for one published overlay.
   if (body.type === 'state' && !['polls', 'goals'].includes(String((body.data as { name?: unknown }).name))) throw new OverlayError('Invalid widget test');
@@ -169,7 +169,7 @@ overlayStudioRoute.post('/:channelID/widget-test', wrap(async (req, res) => {
     return ok(res, { sent: true, clients: sent });
   }
   // Test events say so (widgets can tell them apart from real ones).
-  const data = ['alert', 'tts', 'trigger', 'reward'].includes(String(body.type)) ? { ...(body.data as Record<string, unknown>), test: true } : body.data;
+  const data = ['alert', 'tts', 'trigger', 'reward', 'pet', 'duel', 'roulette', 'dimafx'].includes(String(body.type)) ? { ...(body.data as Record<string, unknown>), test: true } : body.data;
   const sent = feedTestEvent(channel, scene.publicId, String(body.type), data);
   if (!sent) throw new OverlayError('Open this published overlay in OBS first. Only widgets that use this data receive it.', 409);
   return ok(res, { sent: true, clients: sent });

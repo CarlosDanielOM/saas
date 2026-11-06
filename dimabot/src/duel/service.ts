@@ -1,3 +1,4 @@
+import { duelWidgetEvent } from '../widget_feed/bot-events.js';
 import { manageOverlayToken, readOverlayToken, rememberOverlayToken, storedOverlayToken, type OverlayTokenStore } from '../utils/overlay-token.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { Schema, model } from 'mongoose';
@@ -116,7 +117,7 @@ export async function fightStreamer(id: string, challenger: string, streamer: st
     if (doc.run && doc.run.completedAt === null || doc.challenge && doc.challenge.expiresAt > now) fail('busy', 'A duel is already waiting or fighting in this channel', 409);
     const run = await withRecord(id, createRun({ id: randomUUID(), challenger, opponent: streamer, expiresAt: now, enraged: 'right' }, await withLanguage(id, doc), await overlayActive(doc), now), doc.settings);
     const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { challenge: null, run, dueAt: nextDeadline(run), leaseUntil: 0 }, $inc: { revision: 1 } });
-    if (saved.modifiedCount) return run;
+    if (saved.modifiedCount) { duelWidgetEvent(id, run, 'started'); return run; }
   }
   return fail('busy', 'Duel is busy; try again', 409);
 }
@@ -126,6 +127,7 @@ export async function acceptDuel(id: string, opponent: string): Promise<DuelRun>
   const run = await withRecord(id, createRun(doc.challenge, await withLanguage(id, doc), await overlayActive(doc), now), doc.settings);
   const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision, 'challenge.id': doc.challenge.id }, { $set: { challenge: null, run, dueAt: nextDeadline(run), leaseUntil: 0 }, $inc: { revision: 1 } });
   if (!saved.modifiedCount) return fail('busy', 'This duel was already accepted or changed', 409);
+  duelWidgetEvent(id, run, 'started');
   return run;
 }
 export async function declineDuel(id: string, opponent: string): Promise<{ challenger: string; overlay: boolean; language: 'en' | 'es' }> {

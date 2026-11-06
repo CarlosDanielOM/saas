@@ -72,14 +72,18 @@ extraWidgets[seGoalId] = { manifest: { engine: 'streamelements', api: 1, name: '
     + "window.addEventListener('onSessionUpdate', obj => { document.querySelector('.goal').textContent = obj.detail.session['follower-session'].count; });\n" };
 // Widgets that read live state and bot events (Dima SDK and StreamElements layer).
 const liveId = 'b8'.repeat(12), seLiveId = 'c9'.repeat(12);
-extraWidgets[liveId] = { manifest: { engine: 'dima', api: 1, name: 'Live', uses: ['chat', 'polls', 'goals', 'tts', 'triggers', 'rewards'] }, css: 'body { color: #fff; }',
-  html: '<p class="goals"></p><p class="polls"></p><p class="tts"></p><p class="trigger"></p><p class="reward"></p><ul class="chat"></ul>',
+extraWidgets[liveId] = { manifest: { engine: 'dima', api: 1, name: 'Live', uses: ['chat', 'polls', 'goals', 'tts', 'triggers', 'rewards', 'pets', 'duels', 'roulette', 'dimafx'] }, css: 'body { color: #fff; }',
+  html: '<p class="goals"></p><p class="polls"></p><p class="tts"></p><p class="trigger"></p><p class="reward"></p><p class="pet"></p><p class="duel"></p><p class="roulette"></p><p class="dimafx"></p><ul class="chat"></ul>',
   js: "const out = (key, value) => { document.querySelector('.' + key).textContent = value; };\n"
     + "Dima.state('goals', goals => out('goals', goals.map(goal => goal.name + ':' + goal.current).join(',')));\n"
     + "Dima.state('polls', polls => out('polls', polls.poll ? polls.poll.title + ':' + polls.poll.choices.length : 'none'));\n"
     + "Dima.on('tts', event => out('tts', event.phase + ':' + event.text + ':' + event.test));\n"
     + "Dima.on('trigger', event => out('trigger', event.name + ':' + event.mediaType));\n"
     + "Dima.on('reward', event => out('reward', event.reward.title + ':' + event.input));\n"
+    + "Dima.on('pet', event => out('pet', event.phase + ':' + event.text + ':' + event.mood));\n"
+    + "Dima.on('duel', event => out('duel', event.phase + ':' + event.winner));\n"
+    + "Dima.on('roulette', event => out('roulette', event.phase + ':' + event.label));\n"
+    + "Dima.on('dimafx', event => out('dimafx', event.item.name + ':' + event.bits + ':' + (event.user ? event.user.name : 'anonymous')));\n"
     + "Dima.on('chat', message => { const item = document.createElement('li'); item.textContent = message.user.name + ': ' + message.text; document.querySelector('.chat').append(item); });\n" };
 extraWidgets[seLiveId] = { manifest: { engine: 'streamelements', api: 1, name: 'SE live', uses: ['polls', 'goals', 'tts'] }, css: 'body { color: #fff; }',
   html: '<p class="goals"></p><p class="polls"></p><p class="tts"></p>',
@@ -597,13 +601,21 @@ try {
     await live.locator('.goals', { hasText: 'Road to 100:64' }).waitFor(); // the channel's real goals, as soon as the widget starts
     assert.equal(await live.locator('.polls').textContent(), '', 'no polls value yet: unknown until known');
     await p.locator('.tb--test').click(); await p.locator('[data-widget-tests]').waitFor();
-    assert.deepEqual(await p.locator('[data-bot-test]').evaluateAll(items => items.map(item => item.getAttribute('data-bot-test'))), ['tts', 'trigger', 'reward', 'polls', 'goals']);
+    assert.deepEqual(await p.locator('[data-bot-test]').evaluateAll(items => items.map(item => item.getAttribute('data-bot-test'))), ['tts', 'trigger', 'reward', 'pet', 'duel', 'roulette', 'dimafx', 'polls', 'goals']);
     await p.locator('[data-bot-test="tts"]').click();
     await live.locator('.tts', { hasText: 'start:Yuzu says: the cozy stream continues!:true' }).waitFor();
     await seLive.locator('.tts', { hasText: 'start' }).waitFor();
     await live.locator('.tts', { hasText: 'end:' }).waitFor({ timeout: 6000 });
     await p.locator('[data-bot-test="trigger"]').click(); await live.locator('.trigger', { hasText: 'Airhorn:audio' }).waitFor();
     await p.locator('[data-bot-test="reward"]').click(); await live.locator('.reward', { hasText: 'Hydrate!:stay hydrated, chat' }).waitFor();
+    // Paired events: the second half follows (no winner or label before it).
+    await p.locator('[data-bot-test="duel"]').click(); await live.locator('.duel', { hasText: 'started:null' }).waitFor();
+    await p.locator('[data-bot-test="roulette"]').click(); await live.locator('.roulette', { hasText: 'spinning:null' }).waitFor();
+    await p.locator('[data-bot-test="pet"]').click(); await live.locator('.pet', { hasText: 'speaking:Thanks for the follow, Luna!:happy' }).waitFor();
+    await p.locator('[data-bot-test="dimafx"]').click(); await live.locator('.dimafx', { hasText: 'Confetti:100:Ame' }).waitFor();
+    await live.locator('.duel', { hasText: 'ended:yuzu' }).waitFor({ timeout: 6000 });
+    await live.locator('.roulette', { hasText: 'result:Sing a song' }).waitFor({ timeout: 6000 });
+    await live.locator('.pet', { hasText: 'done:' }).waitFor({ timeout: 6000 });
     await p.locator('[data-bot-test="polls"]').click();
     await live.locator('.polls', { hasText: 'Next game?:3' }).waitFor(); await seLive.locator('.polls', { hasText: 'Next game?' }).waitFor();
     await p.locator('[data-bot-test="goals"]').click();
@@ -623,7 +635,7 @@ try {
     await axe(p, 'live state layer');
     await shot(p, 'live-state-dark-1280');
     await ctx.close();
-    console.log('PASS live state and bot events: real goals at start, Test drawer TTS/trigger/channel points/sample poll and goals to Dima and SE widgets, chat replay, poll setup.');
+    console.log('PASS live state and bot events: real goals at start, Test drawer TTS/trigger/channel points/pet/duel/roulette/DimaFX/sample poll and goals to Dima and SE widgets, chat replay, poll setup.');
   }
   // 4d. OBS: a signal reaches only the layers the server named.
   {

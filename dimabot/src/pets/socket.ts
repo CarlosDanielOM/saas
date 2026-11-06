@@ -1,4 +1,5 @@
 import { petDiagnostic } from './diagnostics.js';
+import { petWidgetEvent } from '../widget_feed/bot-events.js';
 import { scheduleReadTtsResume } from './tts_bridge.js';
 import { randomUUID } from 'node:crypto';
 import type { Server as SocketServer, Socket } from 'socket.io';
@@ -228,7 +229,8 @@ export async function registerPetSockets(io: SocketServer) {
                 peer.seq = Number(value.seq);
                 if (value.phase === 'started') {
                     if (request.status !== 'ready' || !request.startBefore || request.startBefore.getTime() < Date.now()) throw new PetError('stale_playback', 409);
-                    await PetRequest.updateOne({ _id: request._id, status: 'ready' }, { $set: { status: 'playing', playbackStarted: true }, $inc: { version: 1 } });
+                    const started = await PetRequest.updateOne({ _id: request._id, status: 'ready' }, { $set: { status: 'playing', playbackStarted: true }, $inc: { version: 1 } });
+                    if (started.modifiedCount) petWidgetEvent(request, 'speaking');
                 } else if (value.phase === 'progress') {
                     if (request.status !== 'playing') throw new PetError('invalid_playback');
                     peer.lastProgressAt = Date.now();

@@ -1,3 +1,5 @@
+import { publishWidgetEvent, widgetsUse } from '../overlays/bridge.js';
+import { getTwitchUserById } from '../functions/users/get_user_by_id.users.js';
 import { randomUUID } from "node:crypto";
 import fs from "fs/promises";
 
@@ -39,6 +41,7 @@ export interface DimafxEnqueueInput {
   /** Credits the viewer if the queued trigger fails before/during dispatch. */
   refundOnFailure?: { userID: string; priceBits: number };
   source: DimafxQueueSource;
+  widget?: DimafxWidgetFacts;
 }
 
 export interface DimafxQueueItem {
@@ -55,7 +58,10 @@ export interface DimafxQueueItem {
   refundOnFailure?: { userID: string; priceBits: number };
   source: DimafxQueueSource;
   enqueuedAt: number;
+  /** Custom widget `dimafx` facts recorded at purchase: price paid (ledger), the buyer only when Twitch shared their identity, the viewer's own text. */
+  widget?: DimafxWidgetFacts;
 }
+export interface DimafxWidgetFacts { bits: number | null; credits: number | null; buyerId: string | null; message: string | null }
 
 export type DimafxEnqueueResult =
   | { ok: true; triggerID: string; queueLength: number; activeConnections: number }
@@ -115,7 +121,7 @@ export class DimafxQueueHandler {
       durationMs: Math.max(0, Number(item.durationMs || 0)),
       ...(tts ? { tts } : {}),
       ...(input.refundOnFailure ? { refundOnFailure: input.refundOnFailure } : {}),
-      source: input.source, enqueuedAt: Date.now(),
+      source: input.source, enqueuedAt: Date.now(), ...(input.widget ? { widget: input.widget } : {}),
     };
     // _id is a built-in unique index. Upsert is safe even before custom indexes exist.
     try {
@@ -179,6 +185,26 @@ export class DimafxQueueHandler {
     }
   }
 
+  /**
+   * Custom widgets (`uses: dimafx`): once per purchase, outside the 5 s redelivery; never delays playback. The claim
+   * lives on the playback job, so a job recovered after a restart or retried later isn't announced twice (at most once).
+   */
+  private publishWidget(channelID: string, item: DimafxQueueItem): void {
+    if (!widgetsUse(channelID, 'dimafx')) return;
+    const facts = item.widget, source = item.source === 'bits_purchase' ? 'bits' : item.source === 'credit_purchase' ? 'credits' : item.source === 'redeem_saved' ? 'saved' : 'test';
+    void (async () => {
+      const claimed = await DimafxPlaybackSchema.updateOne({ _id: item.triggerID, channelID, widgetSentAt: null }, { $set: { widgetSentAt: new Date() } });
+      if (!claimed.modifiedCount) return;
+      let user: { id: string; login: string; name: string } | null = null;
+      if (facts?.buyerId) {
+        const found = await Promise.race([getTwitchUserById(facts.buyerId).catch(() => null), new Promise<null>(resolve => setTimeout(() => resolve(null), 1500).unref())]);
+        if (found && !found.error && found.data) user = { id: facts.buyerId, login: found.data.login, name: found.data.display_name };
+      }
+      publishWidgetEvent(channelID, 'dimafx', 'dimafx', { id: item.triggerID, item: { id: item.itemID, name: item.name, type: item.category }, source,
+        bits: facts?.bits ?? null, credits: facts?.credits ?? null, user, message: facts?.message ?? null, at: Date.now(), test: item.source === 'test' });
+    })().catch(() => {});
+  }
+
   private async dispatch(channelID: string, queueItem: DimafxQueueItem): Promise<void> {
     let mediaUrl = queueItem.mediaUrl;
     let mediaType = queueItem.mediaType || "video/mp4";
@@ -234,6 +260,7 @@ export class DimafxQueueHandler {
       ...(queueItem.tts ? { text: queueItem.tts.text } : {}),
     };
 
+    this.publishWidget(channelID, queueItem);
     try {
       const done = this.waitForCompletion(channelID, queueItem.triggerID, waitMs);
       const deliver = () => { for (const socket of this.readySockets(channelID)) socket.emit('dimafx-play', body); };

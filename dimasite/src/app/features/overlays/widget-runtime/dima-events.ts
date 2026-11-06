@@ -48,6 +48,14 @@ export interface DimaTts { id: string; phase: 'start' | 'end'; text: string; use
 export interface DimaTrigger { id: string; triggerId: string; name: string; mediaType: string; at: number; test: boolean }
 /** A channel-point reward was redeemed (input is the viewer's text, if the reward asks for one). */
 export interface DimaReward { id: string; reward: { id: string; title: string; cost: number }; user: DimaUser | null; input: string | null; at: number; test: boolean }
+/** The channel's pet started (`speaking`) or finished (`done`) a reply; text is what it said. */
+export interface DimaPet { id: string; kind: 'talk' | 'ask' | 'tts'; phase: 'speaking' | 'done'; text: string; mood: string | null; result: 'completed' | 'stopped' | null; at: number; test: boolean }
+/** A duel started (fighters only) or ended (winner and loser, after the fight). Names are Twitch logins. */
+export interface DimaDuel { id: string; phase: 'started' | 'ended'; challenger: string; opponent: string; mode: 'overlay' | 'chat'; winner: string | null; loser: string | null; endsAt: number | null; at: number; test: boolean }
+/** A roulette started spinning, then its result (label) when the spin ends. */
+export interface DimaRoulette { id: string; rouletteId: string; name: string; phase: 'spinning' | 'result'; label: string | null; endsAt: number; at: number; test: boolean }
+/** A DimaFX item was bought and is playing (the buyer only when Twitch shared their identity). */
+export interface DimaDimafx { id: string; item: { id: string; name: string; type: string }; source: 'bits' | 'credits' | 'saved' | 'test'; bits: number | null; credits: number | null; user: DimaUser | null; message: string | null; at: number; test: boolean }
 /** StreamElements-style session snapshot: `data` keys like `follower-latest`, `cheer-session`, `subscriber-recent`. */
 export interface DimaSession { data: Record<string, unknown>; recents: unknown[] }
 export type DimaEvent =
@@ -62,13 +70,17 @@ export type DimaEvent =
   | { type: 'state'; data: DimaState }
   | { type: 'tts'; data: DimaTts }
   | { type: 'trigger'; data: DimaTrigger }
-  | { type: 'reward'; data: DimaReward };
+  | { type: 'reward'; data: DimaReward }
+  | { type: 'pet'; data: DimaPet }
+  | { type: 'duel'; data: DimaDuel }
+  | { type: 'roulette'; data: DimaRoulette }
+  | { type: 'dimafx'; data: DimaDimafx };
 export type DimaEventType = DimaEvent['type'];
 /** Which manifest `uses` entry lets a widget receive each event. Buttons are editor-only and always allowed. */
 export const EVENT_USES: Record<DimaEventType, string | null> = {
   chat: 'chat', 'chat.delete': 'chat', 'chat.clear': 'chat', alert: 'alerts', button: null, storage: 'storage', session: 'session', signal: 'signals',
   // State is allowed per name (`polls`, `goals`): see eventUse().
-  state: null, tts: 'tts', trigger: 'triggers', reward: 'rewards'
+  state: null, tts: 'tts', trigger: 'triggers', reward: 'rewards', pet: 'pets', duel: 'duels', roulette: 'roulette', dimafx: 'dimafx'
 };
 /** The `uses` entry an event needs (null: always allowed). */
 export const eventUse = (event: DimaEvent): string | null => event.type === 'state' ? event.data.name : EVENT_USES[event.type];

@@ -23,6 +23,9 @@ await redis.set('app:twitch:token','fixture',{EX:3600});
 await redis.hSet('token:duel-owner',{id:channel,login:'duelfixture',display_name:'Duel Fixture'});
 await redis.hSet('token:duel-other',{id:other,login:'other',display_name:'Other'});
 await svc.DuelChannel.init();await DuelModeratorRestore.init();await stats.DuelResult.init();
+// Custom widgets (`uses: duels`) hear the real producers: accept, streamer fights and settle (in the worker process).
+const feedSub=redis.duplicate();await feedSub.connect();const duelFeed=[];await feedSub.subscribe('widget-feed',m=>{const x=JSON.parse(m);if(x.channel==='991801'&&x.type==='duel')duelFeed.push(x.data);});
+const duelEvents=id=>duelFeed.filter(e=>e.id===id).map(e=>[e.phase,e.winner,e.loser]);
 let base='http://127.0.0.1:3000',server,io;
 if(process.env.SAAS_TARGET!=='api'){
  const express=require('express'),app=express();app.use(express.json());app.use('/widgets',(await import('/app/dist/server/routes/widgets.route.js')).widgetsRoute);
@@ -91,12 +94,14 @@ assert.equal((await duelCommand(channel,'alice',false,'@bob')).message,'@bob, @a
 assert((await duelCommand(channel,'alice',false,'accept')).error,'only challenged user accepts');
 const accepted=await Promise.all([duelCommand(channel,'bob',false,'accept'),duelCommand(channel,'bob',false,'accept')]);assert.equal(accepted.filter(r=>!r.error).length,1);assert.equal(accepted.find(r=>!r.error).message,'');
 let run=(await svc.loadDuel(channel)).run;assert.equal(run.mode,'overlay');assert.equal(run.phrases.length,0);assert(['left','right'].includes(run.winner));checkBattle(run);assert.deepEqual(run.record,{left:0,right:0},'an overlay fight carries the (empty) head-to-head');
+await wait(()=>duelEvents(run.id).length>0,'duel started reaches widgets');await sleep(200);assert.deepEqual(duelEvents(run.id),[['started',null,null]],'one started for two racing accepts, no winner yet');
 await wait(()=>source.packets.some(p=>p.includes(run.id)&&p.includes('"turns"')),'overlay receives the battle');const live=JSON.parse(source.packets.find(p=>p.includes(run.id)&&p.includes('"turns"')).split(',').slice(1).join(','))[1];assert.deepEqual(live.run.turns,run.turns,'overlay animates the server battle');assert.deepEqual(live.run.fighters,run.fighters);
 source.close();await wait(async()=>!await svc.overlayActive(await svc.loadDuel(channel)),'disconnect clears presence');
 // Fights now run 15-40 s; pull the real deadline in so the check stays inside the helper's 300 s limit.
 await svc.DuelChannel.updateOne({_id:channel},{$set:{'run.endsAt':Date.now()+8000,dueAt:Date.now()+8000}});run=(await svc.loadDuel(channel)).run;
 await sleep(1200);once();assert.equal(chats().length,before,'no early winner or battle messages');
 await sleep(Math.max(0,run.endsAt-Date.now()+100));if(process.env.SAAS_TARGET!=='cron')once();await wait(()=>chats().length===before+1,'supervised winner after end');assert(chats().at(-1).at>=run.endsAt);assert.equal(chats().at(-1).body.message,domain.winnerMessage(run));assert.equal(mods().length,modBefore,'disabled timeout makes no moderation calls');once();assert.equal(chats().length,before+1,'winner cannot repeat');
+await wait(()=>duelEvents(run.id).length===2,'duel ended reaches widgets');assert.deepEqual(duelEvents(run.id),[['started',null,null],['ended',domain.winnerLogin(run),domain.loserLogin(run)]],'ended once, after the fight, with the winner');
 // Overlay fights are recorded once, keyed by run ID, and wake leaderboard sources.
 const overlayResult=await stats.DuelResult.findById(run.id).lean();assert.deepEqual([overlayResult.winner,overlayResult.loser,overlayResult.streamer],[domain.winnerLogin(run),domain.loserLogin(run),null]);assert.equal((await svc.loadDuel(channel)).statsRevision,1);
 await stats.recordDuelResult(channel,run);assert.equal(await stats.DuelResult.countDocuments({channel}),1,'recording is idempotent');
@@ -124,7 +129,9 @@ const bansBeforeStreamer=calls().filter(c=>c.path==='/helix/moderation/bans').le
 const vsStreamer=await duelCommand(channel,'alice',false,'@duelfixture');assert(!vsStreamer.error,vsStreamer.message);assert.match(vsStreamer.message,/enraged streamer accepts/);
 let streamerRun=(await svc.loadDuel(channel)).run;assert.equal((await svc.loadDuel(channel)).challenge,null,'no accept step');assert.equal(streamerRun.enraged,'right');assert.equal(streamerRun.opponent,'duelfixture');checkBattle(streamerRun);
 assert.equal((await duelCommand(channel,'bob',false,'@duelfixture')).status,409,'one fight at a time');
+await wait(()=>duelEvents(streamerRun.id).length>0,'streamer fight started reaches widgets');assert.deepEqual(duelEvents(streamerRun.id),[['started',null,null]]);
 await svc.DuelChannel.updateOne({_id:channel},{$set:{'run.winner':'left'}});await finish();
+await wait(()=>duelEvents(streamerRun.id).length===2,'streamer fight ended');assert.deepEqual(duelEvents(streamerRun.id)[1],['ended','alice','duelfixture']);
 assert.equal(calls().filter(c=>c.path==='/helix/moderation/bans').length,bansBeforeStreamer,'a losing streamer is never timed out');assert.equal(mods().length,modsBeforeStreamer,'no moderation lookups for the streamer');assert.match(chats().at(-1).body.message,/defeated the enraged streamer @duelfixture/);
 const byStreamer=await duelCommand(channel,'duelfixture',false,'@bob');assert.match(byStreamer.message,/^@bob, the enraged streamer @duelfixture has challenged you to a duel!/);assert.equal((await svc.loadDuel(channel)).challenge.enraged,'left');
 await duelCommand(channel,'bob',false,'accept');streamerRun=(await svc.loadDuel(channel)).run;assert.equal(streamerRun.enraged,'left');checkBattle(streamerRun);await finish();
@@ -222,4 +229,5 @@ quality=await request('GET',root);assert.equal(quality.settings.quality,'extreme
 for(const value of ['medium','high','low']){await config({quality:value});assert.equal((await request('GET',root)).settings.quality,value);}
 await svc.DuelChannel.updateOne({_id:channel},{$unset:{'settings.quality':''}});assert.equal((await svc.loadDuel(channel)).settings.quality,'low','channels saved before quality existed read as low');await config({language:'en'});
 if(io)await new Promise(resolve=>io.close(resolve));
-await redis.quit();await (await getMongoDBConnection('duel-test-close')).disconnect();console.log('PASS duel '+process.env.SAAS_TARGET+': overlay/chat, deadlines, settings, tokens, concurrency, timeout safety and durable moderator restoration, overlay-only result tracking, head-to-head, K/D leaderboard and leaderboard sources, custom battle rules (validation, older pages, fuzzed fights, tracking pause, separate leaderboard/rivalry switches), overlay quality (validation, older pages and channels, overlay snapshot), chat challenge instructions with the overlay on, channel-language prompts');process.exit(0);
+await sleep(300);const byRun=Map.groupBy(duelFeed,e=>e.id);assert(byRun.size>=4);for(const list of byRun.values())assert.deepEqual(list.map(e=>e.phase),list.length===2?['started','ended']:['started'],'each fight: one started, then at most one ended');
+await feedSub.quit();await redis.quit();await (await getMongoDBConnection('duel-test-close')).disconnect();console.log('PASS duel '+process.env.SAAS_TARGET+': overlay/chat, deadlines, settings, tokens, concurrency, timeout safety and durable moderator restoration, overlay-only result tracking, head-to-head, K/D leaderboard and leaderboard sources, custom battle rules (validation, older pages, fuzzed fights, tracking pause, separate leaderboard/rivalry switches), overlay quality (validation, older pages and channels, overlay snapshot), chat challenge instructions with the overlay on, channel-language prompts');process.exit(0);

@@ -53,8 +53,8 @@ try {
   assert.deepEqual([seWidget.manifest.engine, seWidget.manifest.uses, seWidget.manifest.inferred], ['streamelements', ['chat', 'alerts'], true]);
   assert.match((await req('POST', widgetsPath, { files: { ...dima, manifest: '{"api":9}' } }, 400)).message, /newer widget engine/);
   const petSignals = [{ name: 'feed', description: 'Feed the pet', values: ['pizza'] }];
-  const pet = (await data('POST', widgetsPath, { name: 'Pet', files: { ...dima, manifest: JSON.stringify({ engine: 'dima', api: 1, name: 'Pet', uses: ['signals', 'polls', 'goals', 'tts', 'triggers', 'rewards'], signals: [...petSignals, { name: 'Bad.Name' }] }) } }, 201)).widget;
-  assert.deepEqual([pet.manifest.uses, pet.manifest.signals], [['signals', 'polls', 'goals', 'tts', 'triggers', 'rewards'], petSignals], 'declared signals are kept; invalid declarations are skipped');
+  const pet = (await data('POST', widgetsPath, { name: 'Pet', files: { ...dima, manifest: JSON.stringify({ engine: 'dima', api: 1, name: 'Pet', uses: ['signals', 'polls', 'goals', 'tts', 'triggers', 'rewards', 'pets', 'duels', 'roulette', 'dimafx'], signals: [...petSignals, { name: 'Bad.Name' }] }) } }, 201)).widget;
+  assert.deepEqual([pet.manifest.uses, pet.manifest.signals], [['signals', 'polls', 'goals', 'tts', 'triggers', 'rewards', 'pets', 'duels', 'roulette', 'dimafx'], petSignals], 'declared signals are kept; invalid declarations are skipped');
   const ownerBundle = await data('GET', `${widgetsPath}/${native.id}/bundle`);
   assert.deepEqual([ownerBundle.engine, ownerBundle.js, ownerBundle.revision, ownerBundle.channel], ['dima', dima.js, 1, { id: preview, login: 'cdom201', name: 'CDom201' }]);
   assert.equal(await (await fetch(`http://127.0.0.1:3000${widgetsPath}/${native.id}/files/manifest`, { headers: { Authorization: 'Bearer cwe-' + preview } })).text(), dima.manifest);
@@ -193,6 +193,27 @@ try {
   const trigger = (await nextFeed('trigger', item => item.name === 'Airhorn')).data;
   assert.deepEqual([trigger.triggerId, trigger.mediaType, trigger.test, 'url' in trigger, 'volume' in trigger], ['', 'audio', false, false, false]);
   console.log('PASS bot events: redemptions once with known fields only; triggers reach custom-only overlays without media URLs.');
+
+  // Pets, duels and roulette from other processes: validated, known fields only, once per phase; the roulette label waits for the spin to end.
+  const petReply = { id: 'pr-1', kind: 'ask', phase: 'speaking', text: 'Hi!', mood: 'happy', result: null, at: 1, test: true, ownerId: 'internal', prompt: 'viewer prompt' };
+  const duelRun = phase => ({ id: 'duel-1', phase, challenger: 'ada', opponent: 'pix', mode: 'overlay', winner: phase === 'ended' ? 'pix' : 'leak', loser: phase === 'ended' ? 'ada' : 'leak', endsAt: 5, at: 1, turns: [] });
+  const spinEnds = Date.now() + 1500, lateDone = { id: 'pr-2', kind: 'talk', phase: 'done', text: 'Bye', mood: null, result: 'stopped', at: 2 };
+  for (const [type, data] of [['pet', petReply], ['pet', petReply], ['pet', { id: 'bad', kind: 'hack', phase: 'speaking' }],
+    ['pet', lateDone], ['pet', { ...lateDone, phase: 'speaking', result: null }], // another process's `speaking` lands after `done`
+    ['roulette', { id: 'spin-far', rouletteId: 'r1', name: 'Punishments', endsAt: Date.now() + 3_600_000, label: 'Early leak', at: 1 }], ['duel', duelRun('started')], ['duel', duelRun('started')], ['duel', duelRun('ended')],
+    ['roulette', { id: 'spin-1', rouletteId: 'r1', name: 'Punishments', endsAt: spinEnds, label: 'Sing a song', at: 1 }], ['roulette', { id: 'spin-1', rouletteId: 'r1', name: 'Punishments', endsAt: spinEnds, label: 'Sing a song', at: 1 }]]) {
+    await publisher.publish('widget-feed', JSON.stringify({ channel: preview, type, data }));
+  }
+  const spinning = (await nextFeed('roulette', item => item.id === 'spin-1')).data;
+  assert.deepEqual([spinning.phase, spinning.label, spinning.name], ['spinning', null, 'Punishments'], 'the label stays on the server until the spin ends');
+  const result = (await nextFeed('roulette', item => item.id === 'spin-1' && item.phase === 'result')).data;
+  assert.equal(result.label, 'Sing a song'); assert.ok(Date.now() >= spinEnds - 50, 'result at the end of the spin');
+  const pets = feed.filter(item => item.type === 'pet').map(item => item.data), duels = feed.filter(item => item.type === 'duel').map(item => item.data);
+  assert.deepEqual(pets, [{ id: 'pr-1', kind: 'ask', phase: 'speaking', text: 'Hi!', mood: 'happy', result: null, at: 1, test: false },
+    { id: 'pr-2', kind: 'talk', phase: 'done', text: 'Bye', mood: null, result: 'stopped', at: 2, test: false }], 'a late `speaking` after `done` is dropped');
+  assert.deepEqual(duels.map(duel => [duel.phase, duel.winner, duel.loser, 'turns' in duel]), [['started', null, null, false], ['ended', 'pix', 'ada', false]]);
+  assert.equal(feed.filter(item => item.type === 'roulette').length, 2, 'a spin ending too far ahead is refused (its label is never sent early)');
+  console.log('PASS pets, duels and roulette: validated and once per phase in order; no winner before the end; the roulette label arrives when the spin ends.');
 
   // Widget RPC: store (namespaced per engine), counters, permissions and limits.
   assert.deepEqual(await rpc('dima-layer', 'store.set', { key: 'alerts', value: { count: 5, 'a.b': '$x' } }), { ok: true, value: true });

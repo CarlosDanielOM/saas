@@ -4,7 +4,7 @@ import { OverlayApi } from '../overlay-api.service';
 import type { DimaEvent, DimaEventType, DimaSession } from './dima-events';
 import { WidgetEventBus, type CustomWidgetEnv, type RuntimeBundle, type WidgetLogEntry, type WidgetStatus, type WidgetTarget } from './widget-env';
 
-const FEED_TYPES = new Set<DimaEventType>(['chat', 'chat.delete', 'chat.clear', 'alert', 'storage', 'session', 'signal', 'state', 'tts', 'trigger', 'reward']);
+const FEED_TYPES = new Set<DimaEventType>(['chat', 'chat.delete', 'chat.clear', 'alert', 'storage', 'session', 'signal', 'state', 'tts', 'trigger', 'reward', 'pet', 'duel', 'roulette', 'dimafx']);
 
 /**
  * OBS environment for custom widget frames: code of the revision this published overlay pins, live data from the

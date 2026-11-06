@@ -1,3 +1,4 @@
+import { duelWidgetEvent } from '../widget_feed/bot-events.js';
 import { Schema, model } from 'mongoose';
 import { DuelChannel, loadDuel } from './service.js';
 import { recordDuelResult } from './stats.js';
@@ -100,7 +101,9 @@ export async function settleDuels(): Promise<void> {
       }
       // Accepted effects survive lost OBS/bot connections. Attempts are receipted
       // before sending: no automatic duplicate timeout/announcement after a crash.
-      await DuelChannel.updateOne({ _id: doc._id, 'run.id': run.id }, { $set: { 'run.completedAt': Date.now(), dueAt: null }, $inc: { revision: 1, statsRevision: tracked ? 1 : 0 } });
+      // Claim completion once (widgets get one `ended`, after the fight).
+      const completed = await DuelChannel.updateOne({ _id: doc._id, 'run.id': run.id, 'run.completedAt': null }, { $set: { 'run.completedAt': Date.now(), dueAt: null }, $inc: { revision: 1, statsRevision: tracked ? 1 : 0 } });
+      if (completed.modifiedCount) duelWidgetEvent(doc._id, run, 'ended');
     } finally { await DuelChannel.updateOne({ _id: doc._id }, { $set: { leaseUntil: 0 } }); }
   }
   const restores = await DuelModeratorRestore.find({ dueAt: { $lte: Date.now() }, leaseUntil: { $lte: Date.now() } }).limit(10).lean();

@@ -15,7 +15,7 @@ import { OverlayCustomWidgetComponent } from './overlay-custom-widget.component'
 import type { OverlayWidget } from './overlay.model';
 import type { WidgetRenderContext } from './overlay-widget-module';
 import { EditorWidgetEnv, type LayerLog } from './widget-runtime/editor-env';
-import { testGoals, testPolls, testReward, testTrigger, testTts, type AlertTest, type ChatTest } from './widget-runtime/test-events';
+import { BOT_TEST_USES, botTestEvents, testGoals, testPolls, type AlertTest, type BotTestKind, type ChatTest } from './widget-runtime/test-events';
 import type { RuntimeBundle } from './widget-runtime/widget-env';
 
 /** Layer id of the editor's preview; test events and the widget log are addressed to it only. */
@@ -499,16 +499,12 @@ export class OverlayCustomWidgetCodeComponent {
   sendChat(kind: ChatTest): void { this.env.emit(this.env.chatTest(kind), PREVIEW_LAYER); }
   sendAlert(kind: AlertTest): void { this.env.emit(this.env.alertTest(kind), PREVIEW_LAYER); }
   /** Bot events and live state this widget asks for (preview tests). */
-  readonly botTests = computed(() => ([['tts', 'tts'], ['trigger', 'triggers'], ['reward', 'rewards'], ['polls', 'polls'], ['goals', 'goals']] as const)
-    .filter(([, use]) => this.uses().includes(use)).map(([kind]) => kind));
-  sendBotTest(kind: 'tts' | 'trigger' | 'reward' | 'polls' | 'goals'): void {
-    if (kind === 'tts') {
-      const start = testTts('start');
-      this.env.emit({ type: 'tts', data: start }, PREVIEW_LAYER);
-      setTimeout(() => this.env.emit({ type: 'tts', data: testTts('end', start.id) }, PREVIEW_LAYER), 3000);
-    } else if (kind === 'trigger') this.env.emit({ type: 'trigger', data: testTrigger() }, PREVIEW_LAYER);
-    else if (kind === 'reward') this.env.emit({ type: 'reward', data: testReward() }, PREVIEW_LAYER);
-    else this.env.setState(kind, kind === 'polls' ? testPolls() : testGoals(), PREVIEW_LAYER);
+  readonly botTests = computed(() => BOT_TEST_USES.filter(([, use]) => this.uses().includes(use)).map(([kind]) => kind));
+  sendBotTest(kind: BotTestKind): void {
+    if (kind === 'polls' || kind === 'goals') { this.env.setState(kind, kind === 'polls' ? testPolls() : testGoals(), PREVIEW_LAYER); return; }
+    const { now, later } = botTestEvents(kind);
+    this.env.emit(now, PREVIEW_LAYER);
+    if (later) setTimeout(() => this.env.emit(later, PREVIEW_LAYER), 3000);
   }
   /** Signal names declared in widget.json (suggestions for the signal test). */
   readonly declaredSignals = computed(() => this.manifest()?.signals?.map(signal => signal.name) ?? []);

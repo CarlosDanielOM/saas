@@ -9,7 +9,7 @@ import { OverlayCustomWidgetCodeComponent } from './overlay-custom-widget-code.c
 import { groupFields } from './custom-widget-format.generated';
 import { EditorWidgetEnv } from './widget-runtime/editor-env';
 import { CUSTOM_WIDGET_ENV } from './widget-runtime/widget-env';
-import { ALERT_TESTS, CHAT_TESTS, testAlert, testGoals, testPolls, testReward, testTrigger, testTts, type AlertTest, type ChatTest } from './widget-runtime/test-events';
+import { ALERT_TESTS, BOT_TEST_USES, CHAT_TESTS, botTestEvents, testAlert, testGoals, testPolls, type AlertTest, type BotTestKind, type ChatTest } from './widget-runtime/test-events';
 import type { DimaEvent } from './widget-runtime/dima-events';
 import { createWidget, getWidgetModule, widgetModuleFor, widgetPalette } from './overlay-widget-registry';
 import { OverlayInteractionSetupComponent } from './overlay-interaction-setup.component';
@@ -690,17 +690,15 @@ export class OverlayEditorComponent {
   /** Bot events and live state the overlay's custom widgets ask for (widget.json `uses`). */
   readonly botTests = computed(() => {
     const uses = new Set(this.widgets().filter(widget => widget.kind === 'custom').flatMap(widget => this.customWidgets.widget(widget.config?.['widgetId'])?.manifest?.uses ?? []));
-    return ([['tts', 'tts'], ['trigger', 'triggers'], ['reward', 'rewards'], ['polls', 'polls'], ['goals', 'goals']] as const).filter(([, use]) => uses.has(use)).map(([kind]) => kind);
+    return BOT_TEST_USES.filter(([, use]) => uses.has(use)).map(([kind]) => kind);
   });
-  sendBotTest(kind: 'tts' | 'trigger' | 'reward' | 'polls' | 'goals'): void {
-    if (kind === 'tts') {
-      // A message starts, then finishes a few seconds later (same id), like real TTS.
-      const start = testTts('start');
-      void this.sendWidgetTest({ type: 'tts', data: start });
-      setTimeout(() => void this.sendWidgetTest({ type: 'tts', data: testTts('end', start.id) }), 3000);
-    } else if (kind === 'trigger') void this.sendWidgetTest({ type: 'trigger', data: testTrigger() });
-    else if (kind === 'reward') void this.sendWidgetTest({ type: 'reward', data: testReward() });
-    else {
+  sendBotTest(kind: BotTestKind): void {
+    if (kind !== 'polls' && kind !== 'goals') {
+      // Paired events (TTS, pet, duel, roulette) send their second half a few seconds later, like the real ones.
+      const { now, later } = botTestEvents(kind);
+      void this.sendWidgetTest(now);
+      if (later) setTimeout(() => void this.sendWidgetTest(later), 3000);
+    } else {
       const value = kind === 'polls' ? testPolls() : testGoals();
       if (this.widgetTestTarget() === 'preview') { this.revealStage(); this.widgetEnv.setState(kind, value); }
       else void this.sendWidgetTest({ type: 'state', data: { name: kind, value } });

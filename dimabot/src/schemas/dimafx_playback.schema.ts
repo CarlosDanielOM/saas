@@ -11,6 +11,8 @@ export interface IDimafxPlayback {
   leaseOwner: string;
   leaseUntil: Date;
   failure?: string;
+  /** Set once when custom widgets were told about this purchase (survives restarts and recovery). */
+  widgetSentAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +25,7 @@ const schema = new Schema<IDimafxPlayback>({
   leaseOwner: { type: String, default: '' },
   leaseUntil: { type: Date, default: () => new Date(0) },
   failure: String,
+  widgetSentAt: Date,
 }, { timestamps: true });
 schema.index({ channelID: 1, state: 1, createdAt: 1 });
 // Records survive disconnects and crashes as playback/idempotency receipts, and every record

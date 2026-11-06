@@ -148,6 +148,10 @@ export function seShim(win: any): void {
   Dima.on('tts', (e: any) => received('dima:tts', e));
   Dima.on('trigger', (e: any) => received('dima:trigger', e));
   Dima.on('reward', (e: any) => received('dima:reward', e));
+  Dima.on('pet', (e: any) => received('dima:pet', e));
+  Dima.on('duel', (e: any) => received('dima:duel', e));
+  Dima.on('roulette', (e: any) => received('dima:roulette', e));
+  Dima.on('dimafx', (e: any) => received('dima:dimafx', e));
   Dima.on('storage', (s: any) => received('kvstore:update', { data: { key: 'customWidget.' + s?.key, value: s?.value } }));
 }
 

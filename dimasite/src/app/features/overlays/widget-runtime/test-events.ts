@@ -1,4 +1,4 @@
-import type { DimaAlert, DimaBadge, DimaChat, DimaPart, DimaReward, DimaRoles, DimaTrigger, DimaTts, DimaUser } from './dima-events';
+import type { DimaAlert, DimaBadge, DimaChat, DimaDimafx, DimaDuel, DimaEvent, DimaPart, DimaPet, DimaReward, DimaRoles, DimaRoulette, DimaTrigger, DimaTts, DimaUser } from './dima-events';
 
 /** Studio test presets for custom widgets: realistic Twitch-shaped chat and alerts. */
 export const CHAT_TESTS = ['viewer', 'subscriber', 'vip', 'moderator', 'broadcaster', 'first', 'emotes', 'reply', 'long', 'command'] as const;
@@ -76,7 +76,7 @@ export function testAlert(kind: AlertTest): DimaAlert {
 }
 
 /** Bot events and live state the Test drawer can send (all marked as tests). */
-export const BOT_EVENT_TESTS = ['tts', 'trigger', 'reward'] as const;
+export const BOT_EVENT_TESTS = ['tts', 'trigger', 'reward', 'pet', 'duel', 'roulette', 'dimafx'] as const;
 export type BotEventTest = typeof BOT_EVENT_TESTS[number];
 export const STATE_TESTS = ['polls', 'goals'] as const;
 export type StateTest = typeof STATE_TESTS[number];
@@ -102,3 +102,32 @@ export function testGoals(): unknown[] {
     { id: 'test-money', name: 'New microphone', metric: 'currency', mode: 'monthly', target: 250, current: 87.5, percent: 35, currency: 'USD', status: 'active', startsAt: now - 86_400_000, endsAt: null, windowSeconds: null, period: null }
   ];
 }
+
+export function testPet(phase: 'speaking' | 'done', requestId = id()): DimaPet {
+  return { id: requestId, kind: 'talk', phase, text: 'Thanks for the follow, Luna!', mood: 'happy', result: phase === 'done' ? 'completed' : null, at: Date.now(), test: true };
+}
+export function testDuel(phase: 'started' | 'ended', duelId = id()): DimaDuel {
+  return { id: duelId, phase, challenger: 'yuzu', opponent: 'pix', mode: 'overlay', winner: phase === 'ended' ? 'yuzu' : null, loser: phase === 'ended' ? 'pix' : null, endsAt: Date.now() + 3000, at: Date.now(), test: true };
+}
+export function testRoulette(phase: 'spinning' | 'result', drawId = id()): DimaRoulette {
+  return { id: drawId, rouletteId: 'test-roulette', name: 'Punishments', phase, label: phase === 'result' ? 'Sing a song' : null, endsAt: Date.now() + 3000, at: Date.now(), test: true };
+}
+export function testDimafx(): DimaDimafx {
+  return { id: id(), item: { id: 'test-item', name: 'Confetti', type: 'video' }, source: 'bits', bits: 100, credits: null, user: person('ame', 'Ame'), message: null, at: Date.now(), test: true };
+}
+
+/** What a Bot events test sends: the first event now and, for paired events, the second about 3 s later (same id). */
+export function botTestEvents(kind: BotEventTest): { now: DimaEvent; later: DimaEvent | null } {
+  switch (kind) {
+    case 'tts': { const start = testTts('start'); return { now: { type: 'tts', data: start }, later: { type: 'tts', data: testTts('end', start.id) } }; }
+    case 'pet': { const speaking = testPet('speaking'); return { now: { type: 'pet', data: speaking }, later: { type: 'pet', data: testPet('done', speaking.id) } }; }
+    case 'duel': { const started = testDuel('started'); return { now: { type: 'duel', data: started }, later: { type: 'duel', data: testDuel('ended', started.id) } }; }
+    case 'roulette': { const spinning = testRoulette('spinning'); return { now: { type: 'roulette', data: spinning }, later: { type: 'roulette', data: testRoulette('result', spinning.id) } }; }
+    case 'trigger': return { now: { type: 'trigger', data: testTrigger() }, later: null };
+    case 'reward': return { now: { type: 'reward', data: testReward() }, later: null };
+    case 'dimafx': return { now: { type: 'dimafx', data: testDimafx() }, later: null };
+  }
+}
+/** Bot events and live state a widget can be tested with, from its widget.json `uses`. */
+export const BOT_TEST_USES = [['tts', 'tts'], ['trigger', 'triggers'], ['reward', 'rewards'], ['pet', 'pets'], ['duel', 'duels'], ['roulette', 'roulette'], ['dimafx', 'dimafx'], ['polls', 'polls'], ['goals', 'goals']] as const;
+export type BotTestKind = typeof BOT_TEST_USES[number][0];

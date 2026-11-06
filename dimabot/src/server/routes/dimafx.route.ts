@@ -24,7 +24,7 @@ import {
     selectRedeemCandidate,
     type DimafxPurchaseAction
 } from '../services/dimafx.service.js';
-import { dimafxQueueHandler, type DimafxQueueSource } from '../../handlers/dimafx_queue.handler.js';
+import { dimafxQueueHandler, type DimafxQueueSource, type DimafxWidgetFacts } from '../../handlers/dimafx_queue.handler.js';
 import { refundDimafxOnce, saveDimafxPurchaseOnce } from '../services/dimafx-fulfillment.service.js';
 import { dimafxOverlayUrl } from '../services/dimafx-overlay.service.js';
 import type { IExtensionWalletTransaction } from '../../schemas/extension_wallet_transaction.schema.js';
@@ -440,7 +440,7 @@ async function queueChannelExtensionItem(
     channelID: string,
     item: IChannelExtensionItem,
     asset: IMediaAsset | null,
-    options: { triggerID?: string; viewerText?: string; refundOnFailure?: { userID: string; priceBits: number }; source: DimafxQueueSource }
+    options: { triggerID?: string; viewerText?: string; refundOnFailure?: { userID: string; priceBits: number }; source: DimafxQueueSource; widget?: DimafxWidgetFacts }
 ): Promise<Record<string, unknown>> {
     const result = await dimafxQueueHandler.enqueue({
         channelID,
@@ -449,7 +449,8 @@ async function queueChannelExtensionItem(
         asset,
         viewerText: options.viewerText,
         refundOnFailure: options.refundOnFailure,
-        source: options.source
+        source: options.source,
+        widget: options.widget
     });
 
     if (!result.ok) {
@@ -524,6 +525,8 @@ async function fulfillBitsPurchase(ctx: BitsPurchaseContext): Promise<PurchaseRe
                 viewerText: ctx.viewerText,
                 source: 'bits_purchase',
                 refundOnFailure: ctx.userID ? { userID: ctx.userID, priceBits: ctx.priceBits } : undefined,
+                // Price from the Bits ledger; the buyer only when Twitch shared their identity (verified by the extension server).
+                widget: { bits: ctx.priceBits, credits: null, buyerId: ctx.userID ?? null, message: ctx.viewerText ?? null },
             });
         }
     } catch (error) {
@@ -888,7 +891,8 @@ router.post('/internal/channels/:channelID/items/:itemID/use-credit', internalSe
                 const queueResult = await queueChannelExtensionItem(channelID, itemData.item, itemData.asset, {
                     viewerText,
                     source: 'credit_purchase',
-                    refundOnFailure: { userID: body.userID!, priceBits: price }
+                    refundOnFailure: { userID: body.userID!, priceBits: price },
+                    widget: { bits: null, credits: price, buyerId: body.userID ?? null, message: viewerText ?? null }
                 });
                 return res.status(200).json({ error: false, message: 'DimaFX item queued for stream playback', status: 200, data: queueResult });
             } catch (emitError) {
@@ -965,7 +969,8 @@ router.post('/internal/channels/:channelID/items/:itemID/redeem', internalServic
         try {
             const queueResult = await queueChannelExtensionItem(channelID, itemData.item, itemData.asset, {
                 source: 'redeem_saved',
-                refundOnFailure: { userID: body.userID!, priceBits: savedItem.purchasePriceBits }
+                refundOnFailure: { userID: body.userID!, priceBits: savedItem.purchasePriceBits },
+                widget: { bits: null, credits: null, buyerId: body.userID ?? null, message: null }
             });
             try {
                 await ExtensionWalletTransactionSchema.create({

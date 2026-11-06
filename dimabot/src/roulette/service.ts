@@ -1,3 +1,4 @@
+import { rouletteWidgetEvent } from '../widget_feed/bot-events.js';
 import { manageOverlayToken, readOverlayToken, rememberOverlayToken, storedOverlayToken, type OverlayTokenStore } from '../utils/overlay-token.js';
 import { createHash } from 'node:crypto';
 import { Schema, model } from 'mongoose';
@@ -105,7 +106,11 @@ export async function execute(channelId: string, action: Action, requestKey?: st
     const saved = await RouletteChannel.updateOne({ _id: channelId, revision: doc.revision }, {
       $set: { actions: savedActions, actionDueAt: actionDue(savedActions), state: doc.state, dueAt: due(doc.state), receipts: receipts.slice(-200) }, $inc: { revision: 1 },
     });
-    if (saved.modifiedCount) return { revision: doc.revision + 1, result, replayed: false };
+    if (saved.modifiedCount) {
+      // A new spin (never an idempotent replay): custom widgets learn it now, its result when it ends.
+      if (action.operation === 'start' && doc.state.draw) rouletteWidgetEvent(channelId, doc.state.draw, domain.find(doc.state, doc.state.draw.rouletteId).name);
+      return { revision: doc.revision + 1, result, replayed: false };
+    }
   }
   return domain.fail('busy', 'Roulette is busy; retry with the same idempotency key', 409);
 }

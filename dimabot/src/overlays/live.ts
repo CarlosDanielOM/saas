@@ -104,6 +104,35 @@ function validReward(raw: unknown): Record<string, unknown> | null {
   return { id: text(data.id, 64), reward: { id: text(data.reward.id, 64), title: text(data.reward.title, 100), cost: Number.isSafeInteger(cost) && cost >= 0 ? cost : 0 },
     user, input: text(data.input, 500) || null, at: typeof data.at === 'number' && Number.isFinite(data.at) ? data.at : Date.now(), test: false };
 }
+const num = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+/** Pet replies from any process, known fields only (the producer already left out private desktop requests). */
+function validPet(raw: unknown): Record<string, unknown> | null {
+  const data = raw as Record<string, unknown> | null;
+  if (!data || !text(data.id, 64) || !['talk', 'ask', 'tts'].includes(String(data.kind)) || !['speaking', 'done'].includes(String(data.phase))) return null;
+  return { id: text(data.id, 64), kind: data.kind, phase: data.phase, text: text(data.text, 2000), mood: text(data.mood, 20) || null,
+    result: data.phase === 'done' ? (data.result === 'completed' ? 'completed' : 'stopped') : null, at: num(data.at) ?? Date.now(), test: false };
+}
+function validDuel(raw: unknown): Record<string, unknown> | null {
+  const data = raw as Record<string, unknown> | null;
+  if (!data || !text(data.id, 64) || !['started', 'ended'].includes(String(data.phase)) || !text(data.challenger, 64) || !text(data.opponent, 64)) return null;
+  const ended = data.phase === 'ended';
+  return { id: text(data.id, 64), phase: data.phase, challenger: text(data.challenger, 64), opponent: text(data.opponent, 64), mode: data.mode === 'chat' ? 'chat' : 'overlay',
+    winner: ended ? text(data.winner, 64) || null : null, loser: ended ? text(data.loser, 64) || null : null, endsAt: num(data.endsAt), at: num(data.at) ?? Date.now(), test: false };
+}
+/** Roulette: `spinning` now; the label stays here until the spin ends, then `result` (best effort: an API restart mid-spin loses it). */
+const rouletteTimers = new Map<string, ReturnType<typeof setTimeout>>();
+function rouletteSpin(channel: string, raw: unknown): void {
+  const data = raw as Record<string, unknown> | null, id = text(data?.id, 64), endsAt = num(data?.endsAt);
+  // Spins last at most 2 minutes; a later deadline is invalid (holding the label that long isn't supported), and so is a full timer table.
+  if (!data || !id || endsAt === null || endsAt - Date.now() > 10 * 60_000 || rouletteTimers.size >= 1000 || !firstTime('roulette:' + id)) return;
+  const spin = { id, rouletteId: text(data.rouletteId, 64), name: text(data.name, 100), endsAt, test: false };
+  feedWidgets(channel, 'roulette', 'roulette', { ...spin, phase: 'spinning', label: null, at: num(data.at) ?? Date.now() });
+  const label = text(data.label, 200), key = `${channel}:${id}`;
+  rouletteTimers.set(key, setTimeout(() => {
+    rouletteTimers.delete(key);
+    feedWidgets(channel, 'roulette', 'roulette', { ...spin, phase: 'result', label, at: Date.now() });
+  }, Math.max(0, endsAt - Date.now())).unref());
+}
 const sessionTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const readsSession = (peer: Peer) => widgetUses(peer).has('session') || widgetUses(peer).has('goals');
 /** Session snapshots and goal state follow alerts and goal changes; bursts are coalesced per channel. */
@@ -170,7 +199,8 @@ export async function feedTestAlert(channel: string, publicId: string, kind: Ale
 /** Studio "send to OBS" for custom widget tests (chat, alerts, deletes): one published overlay only. */
 export function feedTestEvent(channel: string, publicId: string, type: string, data: unknown): number {
   const use = type === 'alert' ? 'alerts' : type.startsWith('chat') ? 'chat' : type === 'session' ? 'session' : type === 'tts' ? 'tts' : type === 'trigger' ? 'triggers'
-    : type === 'reward' ? 'rewards' : type === 'state' ? String((data as { name?: unknown }).name) : '';
+    : type === 'reward' ? 'rewards' : type === 'state' ? String((data as { name?: unknown }).name) : type === 'pet' ? 'pets' : type === 'duel' ? 'duels'
+    : type === 'roulette' ? 'roulette' : type === 'dimafx' ? 'dimafx' : '';
   if (!use) throw new OverlayError('Invalid widget test');
   const sent = feedWidgets(channel, use, type, data, peer => peer.publicId === publicId);
   // Sample state shows for a minute, then the real state comes back (a newer sample restarts the minute).
@@ -194,6 +224,10 @@ function subscribeChatFeed(): void {
     if (message.type === 'session.refresh') { refreshSession(message.channel, 300); return; }
     // Channel-point redemptions from the bot (EventSub retries arrive once).
     if (message.type === 'reward') { const reward = validReward(message.data); if (reward && firstTime('reward:' + reward.id)) feedWidgets(message.channel, 'rewards', 'reward', reward); return; }
+    // Producers run in different processes: a `speaking` that arrives after its `done` is dropped (widgets would show it forever).
+    if (message.type === 'pet') { const pet = validPet(message.data); if (pet && (pet.phase === 'done' || !seenEvents.has(`pet:${pet.id}:done`)) && firstTime(`pet:${pet.id}:${pet.phase}`)) feedWidgets(message.channel, 'pets', 'pet', pet); return; }
+    if (message.type === 'duel') { const duel = validDuel(message.data); if (duel && firstTime(`duel:${duel.id}:${duel.phase}`)) feedWidgets(message.channel, 'duels', 'duel', duel); return; }
+    if (message.type === 'roulette') { rouletteSpin(message.channel, message.data); return; }
     if (!['chat', 'chat.delete', 'chat.clear'].includes(String(message.type))) return;
     feedWidgets(message.channel, 'chat', String(message.type), message.data);
   }).catch(() => { chatFeed = undefined; });

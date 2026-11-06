@@ -140,6 +140,26 @@ export const TYPES: Record<string, RefType> = {
     id: p('string', 'Redemption ID.'), reward: p('{ id: string; title: string; cost: number }', 'The reward.'), user: p('DimaUser | null', 'Who redeemed it.'),
     input: p('string | null', 'Their text, when the reward asks for it.'), at: p('number', 'Time (ms).'), test: p('boolean', 'A Studio test.')
   } },
+  DimaPet: { doc: 'The channel\'s pet started or finished a reply (event `pet`). Text is what it said.', props: {
+    id: p('string', 'Reply ID (same for both phases).'), kind: p("'talk' | 'ask' | 'tts'", 'pet.talk, pet.ask or a TTS message read by the pet.'),
+    phase: p("'speaking' | 'done'", 'Started or finished speaking.'), text: p('string', 'What the pet said.'), mood: p('string | null', 'Its mood when moods are on.'),
+    result: p("'completed' | 'stopped' | null", 'How it finished (done only).'), at: p('number', 'Time (ms).'), test: p('boolean', 'A Studio test.')
+  } },
+  DimaDuel: { doc: 'A duel started or ended (event `duel`). Names are Twitch logins; the winner is only sent when the fight ends.', props: {
+    id: p('string', 'Duel ID (same for both phases).'), phase: p("'started' | 'ended'", 'Fight started or ended.'), challenger: p('string', 'Who challenged.'),
+    opponent: p('string', 'Who was challenged.'), mode: p("'overlay' | 'chat'", 'Shown in the duel overlay or chat only.'), winner: p('string | null', 'Winner (ended only).'),
+    loser: p('string | null', 'Loser (ended only).'), endsAt: p('number | null', 'When the fight ends (ms).'), at: p('number', 'Time (ms).'), test: p('boolean', 'A Studio test.')
+  } },
+  DimaRoulette: { doc: 'A roulette spin (event `roulette`): `spinning`, then `result` with the label when it ends.', props: {
+    id: p('string', 'Spin ID (same for both phases).'), rouletteId: p('string', 'The roulette.'), name: p('string', 'Roulette name.'),
+    phase: p("'spinning' | 'result'", 'Spinning or finished.'), label: p('string | null', 'What it landed on (result only).'), endsAt: p('number', 'When the spin ends (ms).'),
+    at: p('number', 'Time (ms).'), test: p('boolean', 'A Studio test.')
+  } },
+  DimaDimafx: { doc: 'A DimaFX item was bought and is playing (event `dimafx`). Message is viewer text: escape it.', props: {
+    id: p('string', 'This purchase.'), item: p('{ id: string; name: string; type: string }', 'The item.'), source: p("'bits' | 'credits' | 'saved' | 'test'", 'How it was paid.'),
+    bits: p('number | null', 'Bits paid.'), credits: p('number | null', 'Credits paid.'), user: p('DimaUser | null', 'The buyer, only when they shared their identity with the extension.'),
+    message: p('string | null', 'The viewer\'s own text (custom TTS items).'), at: p('number', 'Time (ms).'), test: p('boolean', 'A Studio test.')
+  } },
   DimaSession: { doc: 'Recent events and totals (StreamElements-style keys).', props: {
     data: p('Record<string, unknown>', 'Keys like "follower-latest", "subscriber-recent", "cheer-session".'), recents: p('unknown[]', 'Recent events, newest first.')
   } },
@@ -180,11 +200,16 @@ export const TYPES: Record<string, RefType> = {
     field: p('string', 'listener "widget-button": the button\'s field key.'), value: p('unknown', 'listener "widget-button": its value. dima:signal: the text after the signal name.'),
     id: p('string', 'listener "dima:signal": signal ID.'), at: p('number', 'listener "dima:signal": time sent (ms).'),
     json: p('unknown', 'listener "dima:signal": the value as JSON (number, boolean, array or object) or null.'), args: p('string[]', 'listener "dima:signal": the value split on spaces.'),
-    user: p('DimaSignalUser | DimaUser | null', 'listeners "dima:signal", "dima:tts", "dima:reward": who it came from.'), source: p('DimaSignalSource', 'listener "dima:signal": what sent it.'),
+    user: p('DimaSignalUser | DimaUser | null', 'listeners "dima:signal", "dima:tts", "dima:reward", "dima:dimafx": who it came from.'), source: p('DimaSignalSource | string', 'listener "dima:signal": what sent it; "dima:dimafx": how it was paid.'),
     poll: p('DimaPoll | null', 'listener "dima:polls": the current poll.'), prediction: p('DimaPoll | null', 'listener "dima:polls": the current prediction.'),
     goals: p('DimaGoal[]', 'listener "dima:goals": the goals.'), phase: p('string', 'listener "dima:tts": start or end.'), text: p('string', 'listener "dima:tts": spoken text.'),
     reason: p('string | null', 'listener "dima:tts": how it finished.'), triggerId: p('string', 'listener "dima:trigger": the trigger.'), mediaType: p('string', 'listener "dima:trigger": its media.'),
     reward: p('{ id: string; title: string; cost: number }', 'listener "dima:reward": the reward.'), input: p('string | null', 'listener "dima:reward": viewer text.'), test: p('boolean', 'A Studio test.'),
+    kind: p('string', 'listener "dima:pet": talk, ask or tts.'), mood: p('string | null', 'listener "dima:pet": its mood.'), result: p('string | null', 'listener "dima:pet": how it finished.'),
+    challenger: p('string', 'listener "dima:duel": who challenged.'), opponent: p('string', 'listener "dima:duel": who was challenged.'), mode: p('string', 'listener "dima:duel": overlay or chat.'),
+    winner: p('string | null', 'listener "dima:duel": the winner (ended).'), loser: p('string | null', 'listener "dima:duel": the loser (ended).'), endsAt: p('number | null', 'listeners "dima:duel", "dima:roulette": when it ends (ms).'),
+    rouletteId: p('string', 'listener "dima:roulette": the roulette.'), label: p('string | null', 'listener "dima:roulette": what it landed on (result).'),
+    item: p('{ id: string; name: string; type: string }', 'listener "dima:dimafx": the item.'), bits: p('number | null', 'listener "dima:dimafx": Bits paid.'), credits: p('number | null', 'listener "dima:dimafx": credits paid.'),
     target: p('string | null', 'listener "dima:signal": layer name for widget.signal.to.')
   } },
   SEMessageData: { doc: 'A chat message (StreamElements shape).', props: {
@@ -202,7 +227,7 @@ export const ALIASES: Record<string, string> = {
   DimaState: "{ name: 'polls'; value: DimaPolls } | { name: 'goals'; value: DimaGoal[] }",
   DimaStates: "{ polls: DimaPolls; goals: DimaGoal[] }",
   DimaPart: "{ type: 'text'; text: string } | { type: 'emote'; text: string; id: string; animated: boolean; images: DimaImages } | { type: 'cheer'; text: string; prefix: string; bits: number; tier: number } | { type: 'mention'; text: string; user: DimaUser }",
-  SEListener: "'message' | 'delete-message' | 'delete-messages' | 'follower-latest' | 'subscriber-latest' | 'cheer-latest' | 'raid-latest' | 'tip-latest' | 'widget-button' | 'kvstore:update' | 'dima:signal' | 'dima:polls' | 'dima:goals' | 'dima:tts' | 'dima:trigger' | 'dima:reward'",
+  SEListener: "'message' | 'delete-message' | 'delete-messages' | 'follower-latest' | 'subscriber-latest' | 'cheer-latest' | 'raid-latest' | 'tip-latest' | 'widget-button' | 'kvstore:update' | 'dima:signal' | 'dima:polls' | 'dima:goals' | 'dima:tts' | 'dima:trigger' | 'dima:reward' | 'dima:pet' | 'dima:duel' | 'dima:roulette' | 'dima:dimafx'",
 };
 
 /** Dima SDK events: payload type and the widget.json `uses` entry needed to receive them. */
@@ -219,7 +244,11 @@ export const DIMA_EVENTS: { name: string; type: string; uses: string | null; doc
   { name: 'state', type: 'DimaState', uses: null, doc: 'Live state changed ({ name, value }); Dima.state(name, …) is the easy way. Needs "polls" or "goals" in uses.' },
   { name: 'tts', type: 'DimaTts', uses: 'tts', doc: 'A text-to-speech message started or finished.' },
   { name: 'trigger', type: 'DimaTrigger', uses: 'triggers', doc: 'A trigger alert was sent to the overlay.' },
-  { name: 'reward', type: 'DimaReward', uses: 'rewards', doc: 'A channel-point reward was redeemed.' }
+  { name: 'reward', type: 'DimaReward', uses: 'rewards', doc: 'A channel-point reward was redeemed.' },
+  { name: 'pet', type: 'DimaPet', uses: 'pets', doc: 'The pet started or finished a reply.' },
+  { name: 'duel', type: 'DimaDuel', uses: 'duels', doc: 'A duel started or ended.' },
+  { name: 'roulette', type: 'DimaRoulette', uses: 'roulette', doc: 'A roulette spin started, then its result.' },
+  { name: 'dimafx', type: 'DimaDimafx', uses: 'dimafx', doc: 'A DimaFX item was bought and is playing.' }
 ];
 /** Dima.state('…') names and their value types. */
 export const STATE_REFS: { name: string; type: string; doc: string }[] = [
@@ -249,7 +278,11 @@ export const SE_LISTENERS: { name: string; doc: string }[] = [
   { name: 'dima:goals', doc: 'Goals changed (event.goals). Needs "goals" in widget.json uses.' },
   { name: 'dima:tts', doc: 'A TTS message started or finished (event.phase, event.text, event.user). Needs "tts" in widget.json uses.' },
   { name: 'dima:trigger', doc: 'A trigger alert was sent (event.name, event.mediaType). Needs "triggers" in widget.json uses.' },
-  { name: 'dima:reward', doc: 'A channel-point reward was redeemed (event.reward, event.user, event.input). Needs "rewards" in widget.json uses.' }
+  { name: 'dima:reward', doc: 'A channel-point reward was redeemed (event.reward, event.user, event.input). Needs "rewards" in widget.json uses.' },
+  { name: 'dima:pet', doc: 'The pet started or finished a reply (event.phase, event.text, event.mood). Needs "pets" in widget.json uses.' },
+  { name: 'dima:duel', doc: 'A duel started or ended (event.phase, event.challenger, event.opponent, event.winner). Needs "duels" in widget.json uses.' },
+  { name: 'dima:roulette', doc: 'A roulette spin started or finished (event.phase, event.name, event.label). Needs "roulette" in widget.json uses.' },
+  { name: 'dima:dimafx', doc: 'A DimaFX item was bought (event.item, event.bits, event.user). Needs "dimafx" in widget.json uses.' }
 ];
 
 /** widget.json keys and values. */
@@ -267,7 +300,8 @@ export const USES_DOCS: Record<string, string> = {
   chat: 'Chat messages, deletes and clears.', alerts: 'Follows, subs, gifts, Bits, raids and tips.', storage: 'Saved values (Dima.storage / SE_API.store).',
   counters: 'Bot command counters.', session: 'Recent events and totals.', signals: 'Signals from chat commands: $(widget.signal name value).',
   polls: 'Live Twitch polls and predictions (totals only).', goals: 'Goals from the Goals page with live progress.', tts: 'Text-to-speech messages starting and finishing.',
-  triggers: 'Trigger alerts sent to the overlay.', rewards: 'Channel-point redemptions.'
+  triggers: 'Trigger alerts sent to the overlay.', rewards: 'Channel-point redemptions.', pets: 'The pet speaking.', duels: 'Duels starting and ending.',
+  roulette: 'Roulette spins and results.', dimafx: 'DimaFX purchases playing.'
 };
 /** fields.txt field types and properties. */
 export const FIELD_TYPES: { name: FieldType; doc: string }[] = [

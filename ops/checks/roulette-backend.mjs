@@ -12,6 +12,9 @@ const { registerAllFunctions } = await import('/app/dist/utils/ast_parser/functi
 const mongo = await getMongoDBConnection('roulette-check');
 const redis = await getDragonflyClient('roulette-check');
 await svc.RouletteChannel.init();
+// Custom widgets (`uses: roulette`): the real start publishes once, with the label the API holds until the spin ends.
+const feedSub = redis.duplicate(); await feedSub.connect(); const spinFeed = [];
+await feedSub.subscribe('widget-feed', m => { const x = JSON.parse(m); if (x.type === 'roulette') spinFeed.push({ channel: x.channel, ...x.data }); });
 await redis.set('app:twitch:token','fixture-app-token');
 const channel = '990011';
 const { default: Users } = await import('/app/dist/schemas/users.schema.js');
@@ -114,6 +117,8 @@ await request('POST', root + '/actions/show', {});
 const starts = await Promise.allSettled(Array.from({ length: 4 }, (_, i) => svc.execute(channel, { operation: 'start', roulette: id }, `start-${i}`)));
 assert.equal(starts.filter(r => r.status === 'fulfilled').length, 1, 'only one simultaneous start wins');
 state = await svc.snapshot(channel); const draw = state.draw; assert.equal(draw.slots.length, 13);
+for (let i = 0; i < 40 && !spinFeed.length; i++) await new Promise(resolve => setTimeout(resolve, 50));
+assert.deepEqual(spinFeed.map(e => [e.channel, e.id, e.rouletteId, e.label, e.endsAt]), [[channel, draw.id, draw.rouletteId, draw.winner.label, draw.endsAt]], 'one spin event for four racing starts');
 await request('POST', root + '/actions/switch', { roulette: id }, 409);
 await request('PATCH', path, { design: 'wheel' }, 409);
 await request('POST', root + '/actions/hide', {});
@@ -129,6 +134,7 @@ await svc.settleDue(); assert.equal((await svc.snapshot(channel)).history.length
 const acceptedIndex = starts.findIndex(r => r.status === 'fulfilled');
 const replay = await svc.execute(channel, { operation: 'start', roulette: id }, `start-${acceptedIndex}`);
 assert.equal(replay.result, draw.id); assert(replay.replayed, 'retry after completion cannot reroll');
+await new Promise(resolve => setTimeout(resolve, 200)); assert.equal(spinFeed.filter(e => e.id === draw.id).length, 1, 'an idempotent replay is not a new spin');
 await request('POST', root + '/overlay-token', { rotate: true, version: (await request('GET', root + '/overlay-token')).version });
 await request('GET', root + '/overlay', undefined, 401, token);
 await socket.wait(m => m.startsWith('41')); socket.ws.close(); reconnect.ws.close();
@@ -302,4 +308,4 @@ await actions.runDueActions();assert.equal(messages().filter(m=>m.message.includ
 timerScheduler?.stop();
 console.log(`PASS ${process.env.SAAS_TARGET}: persistence, CAS concurrency, API ownership, validation, idempotency, frozen draws, completion, last-one-standing capacity, WebSocket reconnect/revocation and real AST parsing/permissions`);
 if (io) await new Promise(resolve => io.close(resolve));
-await redis.quit(); await mongo.disconnect(); process.exit(0);
+await feedSub.quit(); await redis.quit(); await mongo.disconnect(); process.exit(0);

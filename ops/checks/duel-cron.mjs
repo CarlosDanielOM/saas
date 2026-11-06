@@ -18,6 +18,9 @@ for(const [id,name] of [[channel,'duelfixture'],['698614112','domdimabot']]){
 }
 await redis.set('app:twitch:token','fixture',{EX:3600});
 await svc.DuelChannel.init();await stats.DuelResult.init();
+// Custom widgets: the supervised worker and the --once runs race; the completion claim sends one `ended` per fight.
+const feedSub=redis.duplicate();await feedSub.connect();const ended=[];await feedSub.subscribe('widget-feed',m=>{const x=JSON.parse(m);if(x.channel===channel&&x.type==='duel')ended.push(x.data);});
+const runs=[];
 const chats=()=>{try{return readFileSync('/tmp/saas-fixtures/calls.jsonl','utf8').trim().split('\n').filter(Boolean).map(JSON.parse).filter(c=>c.path==='/helix/chat/messages');}catch{return [];}};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 // A finished run is stored as due; the worker announces, records (or not) and completes it.
@@ -27,7 +30,7 @@ async function settle(settings,overlay,strip){
  run.endsAt=now-1;run.phrases=[];
  await svc.DuelChannel.deleteMany({_id:channel});
  await svc.DuelChannel.create({_id:channel,settings:{...domain.defaultSettings(),timeoutEnabled:false,...settings},run,dueAt:now-1,leaseUntil:0,revision:1,statsRevision:0});
- for(let i=0;i<40;i++){execFileSync('node',['/app/dist/workers/duel.worker.js','--once'],{encoding:'utf8'});const doc=await svc.DuelChannel.findById(channel).lean();if(doc.run.completedAt)return {run,doc,recorded:!!await stats.DuelResult.exists({_id:run.id})};await sleep(250);}
+ for(let i=0;i<40;i++){execFileSync('node',['/app/dist/workers/duel.worker.js','--once'],{encoding:'utf8'});const doc=await svc.DuelChannel.findById(channel).lean();if(doc.run.completedAt){runs.push(doc.run);return {run,doc,recorded:!!await stats.DuelResult.exists({_id:run.id})};}await sleep(250);}
  throw new Error('duel did not complete');
 }
 let result=await settle({},true);assert.equal(result.run.tracked,true);assert(result.recorded,'tracked overlay fight recorded');assert.equal(result.doc.statsRevision,1);
@@ -39,5 +42,6 @@ result=await settle({},false);assert(!result.recorded,'chat duels are never reco
 result=await settle({leaderboard:false,rivalries:false},true);assert(!result.recorded,'both switches off: nothing recorded');
 result=await settle({leaderboard:false},true);assert(result.recorded,'rivalries alone still record results');
 assert.equal(await stats.DuelResult.countDocuments({channel}),3);
-await redis.quit();await (await getMongoDBConnection('duel-cron-close')).disconnect();
-console.log('PASS duel cron: tracked/legacy/custom-rule/chat/switch-off runs through the real duel worker, custom HP in the winner message');process.exit(0);
+await sleep(500);assert.deepEqual(ended.map(e=>[e.id,e.phase,e.winner]),runs.map(r=>[r.id,'ended',domain.winnerLogin(r)]),'one ended per fight, with its winner');
+await feedSub.quit();await redis.quit();await (await getMongoDBConnection('duel-cron-close')).disconnect();
+console.log('PASS duel cron: tracked/legacy/custom-rule/chat/switch-off runs through the real duel worker, custom HP in the winner message, one widget ended per fight');process.exit(0);
