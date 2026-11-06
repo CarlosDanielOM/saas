@@ -40,6 +40,14 @@ export interface DimaSignal {
   /** Layer name for widget.signal.to (null: every layer that uses signals). */
   target: string | null;
 }
+/** Live state by name (`Dima.state(name, …)`); the name is also the widget.json `uses` entry that allows it. */
+export interface DimaState { name: 'polls' | 'goals'; value: unknown }
+/** A text-to-speech message started or finished playing (text is the filtered text that was spoken). */
+export interface DimaTts { id: string; phase: 'start' | 'end'; text: string; user: DimaUser | null; reason: string | null; at: number; test: boolean }
+/** A trigger alert (sound/video/image from Trigger alerts) was sent to the overlay. */
+export interface DimaTrigger { id: string; triggerId: string; name: string; mediaType: string; at: number; test: boolean }
+/** A channel-point reward was redeemed (input is the viewer's text, if the reward asks for one). */
+export interface DimaReward { id: string; reward: { id: string; title: string; cost: number }; user: DimaUser | null; input: string | null; at: number; test: boolean }
 /** StreamElements-style session snapshot: `data` keys like `follower-latest`, `cheer-session`, `subscriber-recent`. */
 export interface DimaSession { data: Record<string, unknown>; recents: unknown[] }
 export type DimaEvent =
@@ -50,9 +58,17 @@ export type DimaEvent =
   | { type: 'button'; data: DimaButton }
   | { type: 'storage'; data: DimaStorageUpdate }
   | { type: 'session'; data: DimaSession }
-  | { type: 'signal'; data: DimaSignal };
+  | { type: 'signal'; data: DimaSignal }
+  | { type: 'state'; data: DimaState }
+  | { type: 'tts'; data: DimaTts }
+  | { type: 'trigger'; data: DimaTrigger }
+  | { type: 'reward'; data: DimaReward };
 export type DimaEventType = DimaEvent['type'];
 /** Which manifest `uses` entry lets a widget receive each event. Buttons are editor-only and always allowed. */
 export const EVENT_USES: Record<DimaEventType, string | null> = {
-  chat: 'chat', 'chat.delete': 'chat', 'chat.clear': 'chat', alert: 'alerts', button: null, storage: 'storage', session: 'session', signal: 'signals'
+  chat: 'chat', 'chat.delete': 'chat', 'chat.clear': 'chat', alert: 'alerts', button: null, storage: 'storage', session: 'session', signal: 'signals',
+  // State is allowed per name (`polls`, `goals`): see eventUse().
+  state: null, tts: 'tts', trigger: 'triggers', reward: 'rewards'
 };
+/** The `uses` entry an event needs (null: always allowed). */
+export const eventUse = (event: DimaEvent): string | null => event.type === 'state' ? event.data.name : EVENT_USES[event.type];

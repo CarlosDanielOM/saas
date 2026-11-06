@@ -57,7 +57,11 @@ export interface FieldIssue { key?: string; code: 'invalid-key' | 'invalid-field
 /** Which runtime API the widget's code was written for. `streamelements` adds the StreamElements translation layer. */
 export type WidgetEngine = 'dima' | 'streamelements';
 /** Data a widget can ask for (Dima SDK v1). Studio shows these in plain words; the server streams only these. */
-export const WIDGET_USES = ['chat', 'alerts', 'storage', 'counters', 'session', 'signals'] as const;
+export const WIDGET_USES = ['chat', 'alerts', 'storage', 'counters', 'session', 'signals', 'polls', 'goals', 'tts', 'triggers', 'rewards'] as const;
+/** Bot events (Dima.on(kind) / SE `dima:<kind>`) and the `uses` entry each needs. */
+export const BOT_EVENT_USES = { tts: 'tts', trigger: 'triggers', reward: 'rewards' } as const;
+/** Live state (Dima.state(name) / SE `dima:<name>`): the name is also the `uses` entry. */
+export const STATE_NAMES = ['polls', 'goals'] as const;
 export type WidgetUse = typeof WIDGET_USES[number];
 export interface WidgetManifest {
   engine: WidgetEngine; api: 1; uses: WidgetUse[];
@@ -414,6 +418,8 @@ export function inferManifest(source: Pick<PackageSource, 'html' | 'js'>): Widge
   if (/SE_API\s*\.\s*counters|bot:counter/.test(code)) uses.push('counters');
   if (/onSessionUpdate|\.session\b|-recent["'`]|-goal["'`]|-session["'`]|-total["'`]/.test(code)) uses.push('session');
   if (/dima:signal/.test(code)) uses.push('signals');
+  for (const name of STATE_NAMES) if (new RegExp(`dima:${name}\\b`).test(code)) uses.push(name);
+  for (const [kind, use] of Object.entries(BOT_EVENT_USES)) if (new RegExp(`dima:${kind}\\b`).test(code) && !uses.includes(use)) uses.push(use);
   return { engine: 'streamelements', api: 1, uses, inferred: true };
 }
 

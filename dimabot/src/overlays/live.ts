@@ -20,6 +20,7 @@ import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { EVENT_KINDS, matchesTrigger, type AlertEvent, type EventKind, type OverlayScene } from './model.js';
 import { publishedLayers } from '../custom_widgets/store.js';
 import { alertFromEventsub, sessionFor, type DimaAlert } from '../custom_widgets/session.js';
+import { channelGoals, publicGoals } from '../custom_widgets/state.js';
 import { commandCount, storeGet, storeSet } from '../custom_widgets/widget-store.js';
 import { pubSubManager } from '../classes/pubsub_manager.class.js';
 import { ensureChatModerationEvents } from '../widget_feed/subscriptions.js';
@@ -31,7 +32,7 @@ export interface LiveEvent { tts?: { speechID: string; ownerClientId: string | n
 type Public = Awaited<ReturnType<typeof publicState>>;
 type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';
 interface Health { revision: number; issue: RuntimeIssue | null; reportedAt: number; issueAt: number | null }
-interface Peer { widgets?: WidgetLayers; rpc?: { at: number; count: number }; widgetStateVersion?: string; interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
+interface Peer { widgets?: WidgetLayers; rpc?: { at: number; count: number }; widgetStateVersion?: string; customStates?: Record<string, string>; interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
 interface Pending { ttsOwnerKey?: string; ttsEpochs?: Record<string, string>; ttsTerminal?: boolean; speechID?: string; event: LiveEvent; channel: string; recipients: Set<string>; mediaId?: string; bytes?: number; expiresAt: Date; mime?: string; raw?: Record<string, unknown> }
 const peers = new Map<string, Peer>();
 /** Custom widget layers of a peer's published snapshot: what they use, keyed by layer ID. */
@@ -86,14 +87,69 @@ const validSignal = (data: unknown): data is { name: string; value: string; targ
   return !!s && typeof s.name === 'string' && /^[a-z0-9_]{1,40}$/.test(s.name) && typeof s.value === 'string' && s.value.length <= 500
     && (s.target === null || (typeof s.target === 'string' && s.target.length <= 80));
 };
+const seenEvents = new Map<string, number>();
+/** Bot events delivered more than once (retries) reach widgets once. */
+function firstTime(key: string): boolean {
+  const now = Date.now();
+  if (seenEvents.size > 5000) for (const [old, at] of seenEvents) if (now - at > 600_000) seenEvents.delete(old);
+  if (seenEvents.has(key)) return false;
+  seenEvents.set(key, now); return true;
+}
+const text = (value: unknown, max: number) => typeof value === 'string' ? value.slice(0, max) : '';
+/** A redemption from the bot, rebuilt with known fields only. */
+function validReward(raw: unknown): Record<string, unknown> | null {
+  const data = raw as { id?: unknown; reward?: { id?: unknown; title?: unknown; cost?: unknown }; user?: { id?: unknown; login?: unknown; name?: unknown }; input?: unknown; at?: unknown } | null;
+  if (!data || !text(data.id, 64) || !data.reward || !text(data.reward.id, 64)) return null;
+  const cost = Number(data.reward.cost), user = data.user && (text(data.user.name, 64) || text(data.user.login, 64)) ? { id: text(data.user.id, 64), login: text(data.user.login, 64), name: text(data.user.name, 64) || text(data.user.login, 64) } : null;
+  return { id: text(data.id, 64), reward: { id: text(data.reward.id, 64), title: text(data.reward.title, 100), cost: Number.isSafeInteger(cost) && cost >= 0 ? cost : 0 },
+    user, input: text(data.input, 500) || null, at: typeof data.at === 'number' && Number.isFinite(data.at) ? data.at : Date.now(), test: false };
+}
 const sessionTimers = new Map<string, ReturnType<typeof setTimeout>>();
-/** Session snapshots follow alerts; bursts are coalesced per channel. */
+const readsSession = (peer: Peer) => widgetUses(peer).has('session') || widgetUses(peer).has('goals');
+/** Session snapshots and goal state follow alerts and goal changes; bursts are coalesced per channel. */
 function refreshSession(channel: string, delay = 1500): void {
-  if (sessionTimers.has(channel) || ![...peers.values()].some(peer => peer.channel === channel && widgetUses(peer).has('session'))) return;
+  if (sessionTimers.has(channel) || ![...peers.values()].some(peer => peer.channel === channel && readsSession(peer))) return;
   sessionTimers.set(channel, setTimeout(() => {
     sessionTimers.delete(channel);
-    void sessionFor(channel).then(session => feedWidgets(channel, 'session', 'session', session)).catch(() => {});
+    if ([...peers.values()].some(peer => peer.channel === channel && widgetUses(peer).has('session'))) void sessionFor(channel).then(session => feedWidgets(channel, 'session', 'session', session)).catch(() => {});
+    void pushGoals(channel);
   }, delay));
+}
+/** Live state for custom widgets (`uses`: polls, goals), sent to a source only when its value changed. */
+function sendState(peer: Peer, name: 'polls' | 'goals', value: unknown): void {
+  const version = JSON.stringify(value);
+  if (!peer.socket?.connected || (peer.customStates ??= {})[name] === version) return;
+  peer.customStates[name] = version;
+  peer.socket.emit('overlay-feed', { v: 1, type: 'state', data: { name, value } });
+}
+/** Current polls/goals state for a source that just connected or whose published layers changed (unchanged values aren't resent). */
+function sendCustomState(peer: Peer): void {
+  const uses = widgetUses(peer);
+  if (uses.has('goals')) void pushGoals(peer.channel, peer);
+  if (uses.has('polls')) {
+    // Like built-in poll widgets: recover a poll or prediction that started or ended while nobody was listening.
+    void resyncInteractions(peer.channel, ['poll', 'prediction']).catch(() => { peer.stateFailed = true; });
+    void pollsState(peer.channel).then(value => { if (value && peers.get(peer.key) === peer) sendState(peer, 'polls', value); }).catch(() => {});
+  }
+}
+/** Polls and predictions: the same sanitized read built-in poll widgets use (shared per channel per tick). */
+async function pollsState(channel: string, scope?: WidgetStateReadScope): Promise<{ poll: unknown; prediction: unknown } | null> {
+  const read = widgetStateRegistry.readSource(channel, 'twitch-interactions', scope);
+  if (!read) return null;
+  const entries = await read;
+  return { poll: entries['poll']?.state ?? null, prediction: entries['prediction']?.state ?? null };
+}
+const goalsPushedAt = new Map<string, number>();
+const sampleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+/** Goals with progress (public projection); one read per channel shared with session data. A failed read keeps the last value. */
+async function pushGoals(channel: string, only?: Peer): Promise<void> {
+  const targets = [...peers.values()].filter(peer => peer.channel === channel && peer.socket?.connected && widgetUses(peer).has('goals') && (!only || peer === only));
+  if (!targets.length) return;
+  goalsPushedAt.set(channel, Date.now());
+  try {
+    const value = publicGoals(await channelGoals(channel));
+    for (const peer of targets) sendState(peer, 'goals', value);
+  } catch { /* keep the last value */ }
 }
 /** Alerts reach custom widgets as Dima alerts, without the alert queue or acknowledgements. */
 async function feedAlert(channel: string, subscriptionType: string, raw: Record<string, unknown>, id: string, at: number, test = false, only?: (peer: Peer) => boolean): Promise<void> {
@@ -113,9 +169,21 @@ export async function feedTestAlert(channel: string, publicId: string, kind: Ale
 }
 /** Studio "send to OBS" for custom widget tests (chat, alerts, deletes): one published overlay only. */
 export function feedTestEvent(channel: string, publicId: string, type: string, data: unknown): number {
-  const use = type === 'alert' ? 'alerts' : type.startsWith('chat') ? 'chat' : type === 'session' ? 'session' : '';
+  const use = type === 'alert' ? 'alerts' : type.startsWith('chat') ? 'chat' : type === 'session' ? 'session' : type === 'tts' ? 'tts' : type === 'trigger' ? 'triggers'
+    : type === 'reward' ? 'rewards' : type === 'state' ? String((data as { name?: unknown }).name) : '';
   if (!use) throw new OverlayError('Invalid widget test');
-  return feedWidgets(channel, use, type, data, peer => peer.publicId === publicId);
+  const sent = feedWidgets(channel, use, type, data, peer => peer.publicId === publicId);
+  // Sample state shows for a minute, then the real state comes back (a newer sample restarts the minute).
+  if (type === 'state') {
+    const key = `${publicId}:${use}`;
+    clearTimeout(sampleTimers.get(key));
+    sampleTimers.set(key, setTimeout(() => {
+      sampleTimers.delete(key);
+      for (const peer of peers.values()) if (peer.publicId === publicId && peer.customStates) delete peer.customStates[use];
+      if (use === 'goals') void pushGoals(channel); // polls come back on the next loop tick
+    }, 60_000).unref());
+  }
+  return sent;
 }
 let chatFeed: Promise<void> | undefined;
 function subscribeChatFeed(): void {
@@ -124,6 +192,8 @@ function subscribeChatFeed(): void {
     if (message.type === 'signal') { if (validSignal(message.data)) feedSignal(message.channel, message.data); return; }
     // Goal progress or settings changed (cron worker / goals route): StreamElements "*-goal" values follow them.
     if (message.type === 'session.refresh') { refreshSession(message.channel, 300); return; }
+    // Channel-point redemptions from the bot (EventSub retries arrive once).
+    if (message.type === 'reward') { const reward = validReward(message.data); if (reward && firstTime('reward:' + reward.id)) feedWidgets(message.channel, 'rewards', 'reward', reward); return; }
     if (!['chat', 'chat.delete', 'chat.clear'].includes(String(message.type))) return;
     feedWidgets(message.channel, 'chat', String(message.type), message.data);
   }).catch(() => { chatFeed = undefined; });
@@ -518,8 +588,9 @@ export function registerStudio(io: Server): void {
     for (const item of pending.values()) if (!item.event.tts && item.recipients.has(key)) socket.emit('overlay-event', item.event);
     // Custom widgets: what the published layers use, then their session snapshot and requests.
     void refreshWidgets(peer).then(async () => {
-      if (peers.get(key) !== peer || !widgetUses(peer).has('session')) return;
-      peer.socket?.emit('overlay-feed', { v: 1, type: 'session', data: await sessionFor(peer.channel) });
+      if (peers.get(key) !== peer) return;
+      sendCustomState(peer);
+      if (widgetUses(peer).has('session')) peer.socket?.emit('overlay-feed', { v: 1, type: 'session', data: await sessionFor(peer.channel) });
     }).catch(() => {});
     socket.on('overlay-widget-rpc', (raw: unknown, ack?: (result: unknown) => void) => {
       if (peers.get(key) !== peer || typeof ack !== 'function') return;
@@ -599,6 +670,7 @@ export function registerStudio(io: Server): void {
           if (peer.state.revision !== state.revision) {
             peer.state = state; peer.socket?.emit('overlay-updated', { revision: state.revision });
             await refreshWidgets(peer);
+            sendCustomState(peer);
             if (peer.socket?.connected) await ensureSources(peer);
           } else if (peer.socket?.connected && peer.activationFailed && Date.now() >= (peer.activationRetryAt ?? 0)) await ensureSources(peer);
         } catch (e) {
@@ -623,6 +695,23 @@ export function registerStudio(io: Server): void {
           const version = JSON.stringify([interactions.poll?.revision, interactions.prediction?.revision]);
           if (version !== peer.interactionVersion) { peer.socket.emit('overlay-interactions', interactions); peer.interactionVersion = version; }
         }
+        // Custom widgets that use polls: the same shared read, sent when it changed.
+        if (widgetUses(peer).has('polls')) {
+          try {
+            const value = await pollsState(peer.channel, widgetReadScope);
+            if (value) {
+              sendState(peer, 'polls', value);
+              // A missed end event would leave it "active" forever: ask Twitch once it's overdue (coalesced per channel).
+              const overdue = (['poll', 'prediction'] as const).filter(kind => { const state = value[kind] as { phase?: string; deadline?: string | null } | null;
+                return state?.phase === 'active' && !!state.deadline && Date.parse(state.deadline) + 5000 < Date.now(); });
+              if (overdue.length) void resyncInteractions(peer.channel, overdue).catch(() => { peer.stateFailed = true; });
+            }
+          } catch { peer.stateFailed = true; }
+        }
+      }
+      // Goals also change with time (scheduled → active, rolling windows, monthly rollover): at least once a minute.
+      for (const channel of new Set([...peers.values()].filter(peer => peer.socket?.connected && widgetUses(peer).has('goals')).map(peer => peer.channel))) {
+        if (Date.now() - (goalsPushedAt.get(channel) ?? 0) > 60_000) void pushGoals(channel);
       }
       const cache = await getDragonflyClient('overlay-presence');
       // The bot only builds chat events for channels whose published widgets read chat.
@@ -656,4 +745,6 @@ registerStudioBridge({ queueChannels: function* () {
     const entry = entries.next(); if (entry.done) return;
     yield entry.value.socket?.connected ? entry.value.channel : undefined;
   }
-}, hasLiveSource: (channel, kind) => recipients(channel, kind).length > 0, readTts: publishStudioReadTts, endReadTts: endStudioReadTts, hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts, ttsStatus: studioTtsStatus });
+}, hasLiveSource: (channel, kind) => recipients(channel, kind).length > 0, readTts: publishStudioReadTts, endReadTts: endStudioReadTts, hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts, ttsStatus: studioTtsStatus,
+  widgetEvent: (channel, use, type, data) => feedWidgets(channel, use, type, data),
+  widgetsUse: (channel, use) => [...peers.values()].some(peer => peer.channel === channel && peer.socket?.connected && widgetUses(peer).has(use)) });

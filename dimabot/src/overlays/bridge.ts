@@ -14,6 +14,10 @@ interface Bridge {
   ttsStatus?(channel: string, currentSpeechID?: string): Promise<{ connected: boolean; playing: boolean; queueLength: number }>;
   controlTts?(channel: string, action: 'skip' | 'clear' | 'refresh'): Promise<void>;
   trigger(channel: string, body: Record<string, unknown>, platform?: OverlayPlatform): Promise<void>;
+  /** Custom widget bot events (`uses` gates delivery); returns how many OBS sources got it. */
+  widgetEvent?(channel: string, use: string, type: string, data: unknown): number;
+  /** Whether a connected OBS source has a custom widget that uses this. */
+  widgetsUse?(channel: string, use: string): boolean;
 }
 let bridge: Bridge | undefined;
 export function registerStudioBridge(value: Bridge) { bridge = value; }
@@ -25,6 +29,9 @@ export const studioHasSource = (channel: string, kind: EventKind) => bridge?.has
 export const publishStudioMedia = (channel: string, kind: 'clip' | 'tts', media: LiveMedia, file: string, mime: string, text?: string, platform?: OverlayPlatform, speechID?: string) => bridge?.media(channel, kind, media, file, mime, text, platform, speechID) ?? Promise.resolve();
 export const publishStudioTrigger = (channel: string, body: Record<string, unknown>, platform?: OverlayPlatform) => bridge?.trigger(channel, body, platform);
 
+/** Custom widget bot events: live only, never fails or delays the producer. */
+export const publishWidgetEvent = (channel: string, use: string, type: string, data: unknown): number => { try { return bridge?.widgetEvent?.(channel, use, type, data) ?? 0; } catch { return 0; } };
+export const widgetsUse = (channel: string, use: string): boolean => bridge?.widgetsUse?.(channel, use) ?? false;
 export const controlStudioTts = (channel: string, action: 'skip' | 'clear' | 'refresh') => bridge?.controlTts?.(channel, action) ?? Promise.resolve();
 
 export const studioTtsStatus = (channel: string, currentSpeechID?: string) => bridge?.ttsStatus?.(channel, currentSpeechID) ?? Promise.resolve({ connected: false, playing: false, queueLength: 0 });

@@ -19,6 +19,9 @@ import { sessionFor } from '../../custom_widgets/session.js';
 import { commandCount, storeGet } from '../../custom_widgets/widget-store.js';
 import { channelInfo, checkCustomLayers, createWidget, deleteWidget, listWidgets, publishedBundle, publishedLayers, publishedMediaAsset, widgetBundle, pinCustomLayers, pruneRevisions, renameWidget, replaceFiles, widgetFile } from '../../custom_widgets/store.js';
 import { buildSignal, signalError, skippedSignals, widgetSignals } from '../../widget_feed/signals.js';
+import { replayChat } from '../../widget_feed/chat-replay.js';
+import { channelGoals, publicGoals } from '../../custom_widgets/state.js';
+import { widgetStateRegistry } from '../../overlays/widget-state-providers.js';
 export const overlayStudioRoute = express.Router();
 const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { void fn(req, res).catch(next); };
 const param = (req: Request, key: string) => string(req.params[key]);
@@ -119,6 +122,20 @@ overlayStudioRoute.delete('/:channelID/custom-widgets/:widgetId', wrap(async (re
 overlayStudioRoute.get('/:channelID/custom-widgets/store/:namespace/:key', wrap(async (req, res) => ok(res, { value: await storeGet(param(req, 'channelID'), param(req, 'namespace'), req.params.key) })));
 overlayStudioRoute.get('/:channelID/custom-widgets/counters/:name', wrap(async (req, res) => ok(res, { value: await commandCount(param(req, 'channelID'), req.params.name) })));
 overlayStudioRoute.get('/:channelID/custom-widgets/signals', wrap(async (req, res) => ok(res, { skipped: await skippedSignals(param(req, 'channelID')) })));
+/** Studio previews start from the channel's real live state (polls, goals); null when a read failed. */
+overlayStudioRoute.get('/:channelID/custom-widgets/state', wrap(async (req, res) => {
+  const channel = param(req, 'channelID');
+  const [interactions, goals] = await Promise.all([
+    (widgetStateRegistry.readSource(channel, 'twitch-interactions') ?? Promise.resolve(null)).catch(() => null),
+    channelGoals(channel).then(publicGoals).catch(() => null)
+  ]);
+  ok(res, { polls: interactions ? { poll: interactions['poll']?.state ?? null, prediction: interactions['prediction']?.state ?? null } : null, goals });
+}));
+/** Studio's "Replay recent chat": the last 20 stored messages, oldest first, text only (see widget_feed/chat-replay.ts). */
+overlayStudioRoute.get('/:channelID/custom-widgets/chat-history', wrap(async (req, res) => {
+  const { default: ChatHistory } = await import('../../classes/chat_history.js');
+  ok(res, { messages: replayChat(await ChatHistory.getRecentMessages(param(req, 'channelID'), 20)) });
+}));
 // Studio also learns which goal feeds each StreamElements "manual" goal (`goalSources`); OBS sources never get it.
 overlayStudioRoute.get('/:channelID/custom-widgets/session', wrap(async (req, res) => ok(res, await sessionFor(param(req, 'channelID'), Date.now(), true))));
 overlayStudioRoute.get('/:channelID/custom-widgets/:widgetId/media', wrap(async (req, res) => ok(res, await planMediaCopy(param(req, 'channelID'), param(req, 'widgetId')))));
@@ -128,8 +145,10 @@ overlayStudioRoute.post('/:channelID/widget-test', wrap(async (req, res) => {
   const channel = param(req, 'channelID'), body = object(req.body), state = await load(channel);
   const scene = state.scenes.find(s => s.id === body.sceneId);
   if (!scene?.published) throw new OverlayError('Publish this overlay before testing', 409);
-  if (!['chat', 'chat.delete', 'chat.clear', 'alert', 'signal', 'session'].includes(String(body.type)) || !body.data || typeof body.data !== 'object' || Array.isArray(body.data)
-    || JSON.stringify(body.data).length > (body.type === 'session' ? 64_000 : 16_000)) throw new OverlayError('Invalid widget test');
+  if (!['chat', 'chat.delete', 'chat.clear', 'alert', 'signal', 'session', 'tts', 'trigger', 'reward', 'state'].includes(String(body.type)) || !body.data || typeof body.data !== 'object' || Array.isArray(body.data)
+    || JSON.stringify(body.data).length > (body.type === 'session' || body.type === 'state' ? 64_000 : 16_000)) throw new OverlayError('Invalid widget test');
+  // Sample live state (polls, goals) for one published overlay.
+  if (body.type === 'state' && !['polls', 'goals'].includes(String((body.data as { name?: unknown }).name))) throw new OverlayError('Invalid widget test');
   // Test alerts aren't in the journal, so the server can't count them: Studio sends the session totals they lead to.
   if (body.type === 'session') {
     const session = body.data as { data?: unknown; recents?: unknown };
@@ -149,7 +168,8 @@ overlayStudioRoute.post('/:channelID/widget-test', wrap(async (req, res) => {
     if (!sent) throw new OverlayError('Open this published overlay in OBS first. Only widgets that use signals (with that layer name) receive it.', 409);
     return ok(res, { sent: true, clients: sent });
   }
-  const data = body.type === 'alert' ? { ...(body.data as Record<string, unknown>), test: true } : body.data;
+  // Test events say so (widgets can tell them apart from real ones).
+  const data = ['alert', 'tts', 'trigger', 'reward'].includes(String(body.type)) ? { ...(body.data as Record<string, unknown>), test: true } : body.data;
   const sent = feedTestEvent(channel, scene.publicId, String(body.type), data);
   if (!sent) throw new OverlayError('Open this published overlay in OBS first. Only widgets that use this data receive it.', 409);
   return ok(res, { sent: true, clients: sent });

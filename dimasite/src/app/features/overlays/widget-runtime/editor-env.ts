@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import type { OverlayWidget } from '../overlay.model';
 import { CustomWidgetsService } from '../custom-widgets.service';
-import type { DimaAlert, DimaChat, DimaEvent, DimaSession, DimaSignal } from './dima-events';
+import type { DimaAlert, DimaChat, DimaEvent, DimaSession, DimaSignal, DimaState } from './dima-events';
 import { sessionAfterAlert } from './session-preview';
 import { testAlert, testChat, type AlertTest, type ChatTest } from './test-events';
 import { WidgetEventBus, storeNamespace, type CustomWidgetEnv, type RuntimeBundle, type WidgetLogEntry, type WidgetStatus, type WidgetTarget } from './widget-env';
@@ -83,6 +83,14 @@ export class EditorWidgetEnv implements CustomWidgetEnv {
     throw new Error('Unknown request: ' + method);
   }
   session(): DimaSession | null { return this.sessionData; }
+  /** Live state for previews (the channel's real polls/goals when loaded, or samples from the Test drawer). */
+  private readonly stateData: Record<string, unknown> = {};
+  states(): Record<string, unknown> { return { ...this.stateData }; }
+  /** Sets one live state for the preview and sends it to running frames. */
+  setState(name: DimaState['name'], value: unknown, layerId?: string): void {
+    this.stateData[name] = value;
+    this.bus.emit({ type: 'state', data: { name, value } }, layerId);
+  }
   /** Loads this channel's session snapshot (latest follower, recent events…) for widgets that use it. */
   async loadSession(): Promise<void> {
     try {
@@ -91,6 +99,11 @@ export class EditorWidgetEnv implements CustomWidgetEnv {
     } catch { this.sessionData = { data: {}, recents: [] }; }
     // Frames that started before the snapshot arrived get it now.
     this.bus.emit({ type: 'session', data: this.sessionData });
+    // The channel's real polls and goals for previews (a failed read leaves them unknown).
+    try {
+      const state = await this.widgets.liveState();
+      for (const name of ['polls', 'goals'] as const) if (state[name] !== null && state[name] !== undefined) this.setState(name, state[name]);
+    } catch { /* unknown until a sample is sent */ }
   }
   report(layerId: string, update: { status?: WidgetStatus; entry?: WidgetLogEntry }): void {
     this.logs.update(all => {

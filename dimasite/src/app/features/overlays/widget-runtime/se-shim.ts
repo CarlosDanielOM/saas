@@ -124,6 +124,9 @@ export function seShim(win: any): void {
       fieldData: context.fields, recents: session.recents, session: { data: session.data, settings: {} },
       overlay: status(), emotes: []
     });
+    // Live state right after load (also after a frame restart, from the latest known value), then every change.
+    Dima.state('polls', (value: any) => received('dima:polls', value));
+    Dima.state('goals', (value: any) => received('dima:goals', { goals: value }));
   });
   Dima.on('chat', (m: any) => received('message', toMessage(m)));
   Dima.on('chat.delete', (d: any) => received('delete-message', { msgId: d?.messageId }));
@@ -141,6 +144,10 @@ export function seShim(win: any): void {
   Dima.on('button', (b: any) => received('widget-button', { listener: 'widget-button', field: b?.field, value: b?.value }));
   // Signals from commands ($(widget.signal …)) as a StreamElements listener, so one file can support both platforms.
   Dima.on('signal', (s: any) => received('dima:signal', s));
+  // Live state and bot events: `dima:<name>` listeners (one file can support both engines).
+  Dima.on('tts', (e: any) => received('dima:tts', e));
+  Dima.on('trigger', (e: any) => received('dima:trigger', e));
+  Dima.on('reward', (e: any) => received('dima:reward', e));
   Dima.on('storage', (s: any) => received('kvstore:update', { data: { key: 'customWidget.' + s?.key, value: s?.value } }));
 }
 

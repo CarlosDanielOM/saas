@@ -422,11 +422,18 @@
               <div class="widget-tests__row" role="group" [attr.aria-label]="t('widgetTestsChat')">
                 <span class="widget-tests__label" aria-hidden="true">{{ t('widgetTestsChat') }}</span>
                 @for (kind of chatTests; track kind) { <button type="button" class="test-btn" [attr.data-chat-test]="kind" (click)="sendWidgetChat(kind)">{{ t('chatTest_' + kind) }}</button> }
+                <button type="button" class="test-btn" [disabled]="replaying() || widgetTestTarget() === 'obs'" [attr.title]="t(widgetTestTarget() === 'obs' ? 'widgetTestReplayPreviewOnly' : 'widgetTestReplayHint')" data-chat-replay (click)="replayChat()">{{ replaying() ? t('widgetTestReplaying') : t('widgetTestReplay') }}</button>
               </div>
               <div class="widget-tests__row" role="group" [attr.aria-label]="t('widgetTestsAlerts')">
                 <span class="widget-tests__label" aria-hidden="true">{{ t('widgetTestsAlerts') }}</span>
                 @for (kind of alertTests; track kind) { <button type="button" class="test-btn" [attr.data-alert-test]="kind" (click)="sendWidgetAlert(kind)">{{ t('alertTest_' + kind) }}</button> }
               </div>
+              @if (botTests().length) {
+                <div class="widget-tests__row" role="group" [attr.aria-label]="t('widgetTestsBot')" data-bot-tests>
+                  <span class="widget-tests__label" aria-hidden="true">{{ t('widgetTestsBot') }}</span>
+                  @for (kind of botTests(); track kind) { <button type="button" class="test-btn" [attr.data-bot-test]="kind" (click)="sendBotTest(kind)">{{ t('botTest_' + kind) }}</button> }
+                </div>
+              }
               <div class="widget-tests__row" role="group" [attr.aria-label]="t('widgetTestsModeration')">
                 <span class="widget-tests__label" aria-hidden="true">{{ t('widgetTestsModeration') }}</span>
                 <button type="button" class="test-btn" data-chat-delete (click)="deleteWidgetMessage()">{{ t('widgetTestDelete') }}</button>

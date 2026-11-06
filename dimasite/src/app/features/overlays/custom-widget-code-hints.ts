@@ -16,7 +16,7 @@ import { hoverTooltip, type EditorView, type Tooltip } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import type { WidgetEngine, WidgetField } from './custom-widget-format.generated';
 import type { CodeFile } from './custom-widget-code-drafts';
-import { DIMA_EVENTS, FIELD_PROPS, FIELD_TYPES, MANIFEST_KEYS, SE_EVENTS, SE_LISTENERS, SIGNAL_EVENT, TYPES, USES_DOCS, fieldValueType, isIdentifier, typeName, type RefProp } from './widget-runtime/sdk-reference';
+import { DIMA_EVENTS, FIELD_PROPS, FIELD_TYPES, MANIFEST_KEYS, SE_EVENTS, SE_LISTENERS, SIGNAL_EVENT, STATE_REFS, TYPES, USES_DOCS, fieldValueType, isIdentifier, typeName, type RefProp } from './widget-runtime/sdk-reference';
 
 /** What the suggestions know about the widget being edited (from its last parsed files). */
 export interface HintContext { engine: WidgetEngine; uses: readonly string[]; fields: readonly WidgetField[]; dataKeys: readonly string[]; signals?: readonly string[] }
@@ -53,6 +53,7 @@ function paramType(state: EditorState, pos: number, name: string, engine: Widget
     const event = first ? unquote(nodeText(state, first)) : null;
     if (callee === 'Dima.on' || callee === 'Dima.off') return DIMA_EVENTS.find(e => e.name === event)?.type ?? (event && SIGNAL_EVENT.test(event) ? 'DimaSignal' : null);
     if (callee === 'Dima.ready().then') return 'DimaContext';
+    if (callee === 'Dima.state') return typeName(STATE_REFS.find(ref => ref.name === event)?.type ?? '');
     if (engine === 'streamelements' && /(^|\.)addEventListener$/.test(callee)) { const known = SE_EVENTS.find(e => e.name === event); return known ? `CustomEvent<${known.type}>` : null; }
     return null;
   }
@@ -134,6 +135,7 @@ export function jsCompletions(hints: Hints): CompletionSource {
     if (str) {
       const before = context.state.sliceDoc(Math.max(0, str.from - 120), str.from), from = str.from + 1;
       if (/\bDima\s*\.\s*(?:on|off)\s*\(\s*$/.test(before)) return { from, options: eventOptions(h), validFor: eventWord };
+      if (/\bDima\s*\.\s*state\s*\(\s*$/.test(before)) return { from, options: STATE_REFS.map(ref => ({ label: ref.name, type: 'enum', detail: h.uses.includes(ref.name) ? ref.type : `needs "${ref.name}" in widget.json uses`, info: ref.doc, boost: h.uses.includes(ref.name) ? 0 : -1 })), validFor: eventWord };
       if (h.engine === 'streamelements' && /addEventListener\s*\(\s*$/.test(before)) return { from, options: SE_EVENTS.map(e => ({ label: e.name, type: 'enum', detail: e.type, info: e.doc })), validFor: eventWord };
       if (h.engine === 'streamelements' && /(?:listener\s*[!=]==?\s*|case\s+)$/.test(before)) return { from, options: SE_LISTENERS.map(l => ({ label: l.name, type: 'enum', info: l.doc })), validFor: eventWord };
       return null;
@@ -204,6 +206,8 @@ export function hoverDoc(state: EditorState, pos: number, hints: HintContext): {
   if (quoted) {
     const event = /\bDima\s*\.\s*(?:on|off)\s*\(\s*['"`]$/.test(before) ? DIMA_EVENTS.find(e => e.name === name) : undefined;
     if (event) return { from: range.from, to: range.to, title: `${event.name} → ${event.type}`, doc: event.doc + (event.uses ? ` Needs "${event.uses}" in widget.json uses.` : '') };
+    const state = /\bDima\s*\.\s*state\s*\(\s*['"`]$/.test(before) ? STATE_REFS.find(ref => ref.name === name) : undefined;
+    if (state) return { from: range.from, to: range.to, title: `${state.name} → ${state.type}`, doc: state.doc };
     const listener = hints.engine === 'streamelements' ? SE_LISTENERS.find(l => l.name === name) : undefined;
     if (listener) return { from: range.from, to: range.to, title: listener.name, doc: listener.doc };
     return null;

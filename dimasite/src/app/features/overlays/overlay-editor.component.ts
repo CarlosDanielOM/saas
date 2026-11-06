@@ -9,7 +9,7 @@ import { OverlayCustomWidgetCodeComponent } from './overlay-custom-widget-code.c
 import { groupFields } from './custom-widget-format.generated';
 import { EditorWidgetEnv } from './widget-runtime/editor-env';
 import { CUSTOM_WIDGET_ENV } from './widget-runtime/widget-env';
-import { ALERT_TESTS, CHAT_TESTS, testAlert, type AlertTest, type ChatTest } from './widget-runtime/test-events';
+import { ALERT_TESTS, CHAT_TESTS, testAlert, testGoals, testPolls, testReward, testTrigger, testTts, type AlertTest, type ChatTest } from './widget-runtime/test-events';
 import type { DimaEvent } from './widget-runtime/dima-events';
 import { createWidget, getWidgetModule, widgetModuleFor, widgetPalette } from './overlay-widget-registry';
 import { OverlayInteractionSetupComponent } from './overlay-interaction-setup.component';
@@ -687,6 +687,44 @@ export class OverlayEditorComponent {
   sendWidgetAlert(kind: AlertTest): void { void this.sendWidgetTest(this.widgetEnv.alertTest(kind)); }
   deleteWidgetMessage(): void { void this.sendWidgetTest(this.widgetEnv.deleteTest()); }
   clearWidgetChat(): void { void this.sendWidgetTest(this.widgetEnv.clearTest()); }
+  /** Bot events and live state the overlay's custom widgets ask for (widget.json `uses`). */
+  readonly botTests = computed(() => {
+    const uses = new Set(this.widgets().filter(widget => widget.kind === 'custom').flatMap(widget => this.customWidgets.widget(widget.config?.['widgetId'])?.manifest?.uses ?? []));
+    return ([['tts', 'tts'], ['trigger', 'triggers'], ['reward', 'rewards'], ['polls', 'polls'], ['goals', 'goals']] as const).filter(([, use]) => uses.has(use)).map(([kind]) => kind);
+  });
+  sendBotTest(kind: 'tts' | 'trigger' | 'reward' | 'polls' | 'goals'): void {
+    if (kind === 'tts') {
+      // A message starts, then finishes a few seconds later (same id), like real TTS.
+      const start = testTts('start');
+      void this.sendWidgetTest({ type: 'tts', data: start });
+      setTimeout(() => void this.sendWidgetTest({ type: 'tts', data: testTts('end', start.id) }), 3000);
+    } else if (kind === 'trigger') void this.sendWidgetTest({ type: 'trigger', data: testTrigger() });
+    else if (kind === 'reward') void this.sendWidgetTest({ type: 'reward', data: testReward() });
+    else {
+      const value = kind === 'polls' ? testPolls() : testGoals();
+      if (this.widgetTestTarget() === 'preview') { this.revealStage(); this.widgetEnv.setState(kind, value); }
+      else void this.sendWidgetTest({ type: 'state', data: { name: kind, value } });
+    }
+  }
+  /**
+   * "Replay recent chat": the channel's last 20 messages (text only), in order, a little apart. Preview only: stored
+   * history keeps messages moderators deleted, which must never reach the stream.
+   */
+  readonly replaying = signal(false);
+  async replayChat(): Promise<void> {
+    if (this.replaying() || this.widgetTestTarget() !== 'preview') return;
+    this.replaying.set(true); this.error.set('');
+    try {
+      const { messages } = await this.customWidgets.chatHistory();
+      if (!messages.length) { this.notice.set('widgetTestReplayEmpty'); return; }
+      this.revealStage();
+      for (const message of messages) {
+        this.widgetEnv.emit({ type: 'chat', data: message });
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
+    } catch { this.error.set(this.t('widgetTestReplayFailed')); }
+    finally { this.replaying.set(false); }
+  }
   /** "Send a signal": what $(widget.signal name value) would send, from you. */
   readonly signalName = signal('');
   readonly signalValue = signal('');

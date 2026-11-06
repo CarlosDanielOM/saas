@@ -2,7 +2,8 @@
 // test-env.json. Signed EventSub webhooks go to the candidate's own bot runtime (port 3333) and the check listens on the
 // Dragonfly `widget-feed` channel: chat is normalized for custom widgets only while a widget wants chat (demand key),
 // message deletes and clears are forwarded, and shared-chat copies reach widgets without running bot actions.
-// A chat command with $(widget.signal …) publishes signals (no demand needed) with the verified sender, once per message.
+// A chat command with $(widget.signal …) publishes signals (no demand needed) with the verified sender, once per message;
+// channel-point redemptions publish reward events.
 import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
@@ -93,6 +94,14 @@ try {
   await new Promise(r => setTimeout(r, 1000));
   assert.equal(feed.filter(item => item.type === 'signal' && item.data.name === 'feed').length, 1, 'a redelivered chat message sends no second signal');
   console.log('PASS a chat command with $(widget.signal) sends signals with the verified sender (badge roles) and its chat reply, once per chat message.');
+
+  // A channel-point redemption (signed EventSub) reaches the widget feed for widgets that use rewards (no reward setup needed).
+  await webhook('channel.channel_points_custom_reward_redemption.add', { id: 'redeem-77', broadcaster_user_id: pets, broadcaster_user_login: 'petfixture', broadcaster_user_name: 'PetFixture',
+    user_id: '55', user_login: 'ada', user_name: 'Ada', user_input: 'pet the cat', status: 'unfulfilled', redeemed_at: new Date().toISOString(),
+    reward: { id: 'reward-1', title: 'Pet the cat', cost: 300, prompt: 'Say something nice' } }, { broadcaster_user_id: pets });
+  const reward = await until(() => feed.find(item => item.type === 'reward' && item.data.id === 'redeem-77'), 'reward event');
+  assert.deepEqual([reward.channel, reward.data.reward, reward.data.user, reward.data.input, 'prompt' in reward.data.reward], [pets, { id: 'reward-1', title: 'Pet the cat', cost: 300 }, { id: '55', login: 'ada', name: 'Ada' }, 'pet the cat', false]);
+  console.log('PASS channel-point redemptions reach the widget feed (reward, viewer, their text).');
 } catch (error) {
   console.error(error); process.exitCode = 1;
 } finally {

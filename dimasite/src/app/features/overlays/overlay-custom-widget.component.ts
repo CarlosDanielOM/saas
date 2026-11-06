@@ -4,7 +4,7 @@ import { LanguageService } from '../../services/language.service';
 import { resolveFieldData, type JsonObject } from './custom-widget-format.generated';
 import { CustomWidgetsService } from './custom-widgets.service';
 import type { WidgetRenderContext } from './overlay-widget-module';
-import { EVENT_USES, type DimaEvent } from './widget-runtime/dima-events';
+import { eventUse, type DimaEvent } from './widget-runtime/dima-events';
 import { buildFrameDocument, rewriteValues } from './widget-runtime/frame-document';
 import { CUSTOM_WIDGET_ENV, frameScripts, storeNamespace, type RuntimeBundle, type WidgetTarget } from './widget-runtime/widget-env';
 
@@ -188,7 +188,7 @@ export class OverlayCustomWidgetComponent {
   private deliver(event: DimaEvent, layerId?: string): void {
     const bundle = this.bundle;
     if (!bundle || layerId !== undefined && layerId !== this.context().widget.id) return;
-    const use = EVENT_USES[event.type];
+    const use = eventUse(event);
     if (use && !bundle.manifest.uses.includes(use as never)) return;
     // widget.signal.to: only layers with that name (OBS already got matched layer IDs; this covers Studio previews).
     if (event.type === 'signal' && event.data.target !== null && event.data.target.trim().toLocaleLowerCase() !== (this.context().widget.name ?? '').trim().toLocaleLowerCase()) return;
@@ -227,7 +227,9 @@ export class OverlayCustomWidgetComponent {
     this.post({ type: 'init', context: {
       widget: { id: bundle.widgetId, layerId: layer.id, name: layer.name || bundle.manifest.name || '', revision: bundle.revision },
       channel: bundle.channel, fields: this.frameValues(), mode: this.env!.mode, muted: false,
-      session: bundle.manifest.uses.includes('session') ? this.env!.session() : null
+      session: bundle.manifest.uses.includes('session') ? this.env!.session() : null,
+      // Live state this widget may read (polls, goals), as last known.
+      states: Object.fromEntries(Object.entries(this.env!.states()).filter(([name]) => bundle.manifest.uses.includes(name as never)))
     } });
     for (const event of this.buffered.splice(0)) this.post({ type: 'event', event });
     this.status.set('running'); this.report({ status: 'running' });

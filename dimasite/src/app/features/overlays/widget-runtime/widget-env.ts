@@ -26,6 +26,8 @@ export interface CustomWidgetEnv {
   subscribe(listener: (event: DimaEvent, layerId?: string) => void): () => void;
   rpc(target: WidgetTarget, method: string, params: Record<string, unknown>): Promise<unknown>;
   session(): DimaSession | null;
+  /** Latest live state by name (polls, goals) for frames that start later. */
+  states(): Record<string, unknown>;
   report(layerId: string, update: { status?: WidgetStatus; entry?: WidgetLogEntry }): void;
 }
 export const CUSTOM_WIDGET_ENV = new InjectionToken<CustomWidgetEnv>('CUSTOM_WIDGET_ENV');

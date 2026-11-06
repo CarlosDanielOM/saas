@@ -3,7 +3,7 @@ import { prepareSpeechActivity, startSpeechActivity, finishSpeechActivity, exten
 import { studioQueueChannels, publishStudioReadTts, endStudioReadTts } from '../overlays/bridge.js';
 import type { TtsStatusData } from '../utils/tts/tts_status.js';
 import { telemetryContext, restoreContext, traced, observe, type TraceContext } from '../utils/observability/telemetry.js';
-import { studioHasSource, studioHasLiveSource, controlStudioTts, studioTtsStatus } from '../overlays/bridge.js';
+import { studioHasSource, studioHasLiveSource, controlStudioTts, studioTtsStatus, publishWidgetEvent } from '../overlays/bridge.js';
 import type { RedisClientType } from "redis";
 import { randomUUID } from "node:crypto";
 import fs from "fs/promises";
@@ -663,12 +663,13 @@ class TtsQueueHandler {
         const dispatch = (async () => {
           const outcome = await publishStudioReadTts(channelID, { speechID, durationMs: playbackTimeoutMs, text: queueItem.text,
             onOwner: source => { if (!legacy && valid()) { owner.source = source; const audible = this.audibleSpeech.get(`${channelID}:${speechID}`); if (audible) audible.source = source; } },
-            legacy: !!legacy, cancelled: () => !valid(), ...(!legacy ? { beforeEmit: () => { if (!valid()) return false; owner.emitted = true; this.audibleSpeech.set(`${channelID}:${speechID}`, { source: owner.source, deadline: Date.now() + playbackTimeoutMs + 20_000 }); return true; } } : {}),
+            legacy: !!legacy, cancelled: () => !valid(), ...(!legacy ? { beforeEmit: () => { if (!valid()) return false; owner.emitted = true; this.audibleSpeech.set(`${channelID}:${speechID}`, { source: owner.source, deadline: Date.now() + playbackTimeoutMs + 20_000 }); this.widgetTtsStart(channelID, queueItem, queueItem.text); return true; } } : {}),
             file: synthesisResult.outputPath, mime: synthesisResult.mimeType || 'audio/wav' });
           if (!valid()) return;
           if (legacy?.connected && legacy.data.ttsReady) {
             owner.emitted = true;
             this.audibleSpeech.set(`${channelID}:${speechID}`, { source: owner.source, deadline: Date.now() + playbackTimeoutMs + 20_000 });
+            this.widgetTtsStart(channelID, queueItem, queueItem.text);
             legacy.emit('speech', { speechID, audioUrl: synthesisResult.publicPath, mimeType: synthesisResult.mimeType || 'audio/wav', mode: queueItem.mode, text: queueItem.text });
           } else if (!owner.emitted) await this.handleSpeechEnded(channelID, speechID, 'output_unavailable');
         })();
@@ -946,7 +947,8 @@ class TtsQueueHandler {
       this.readTtsOwners.set(channel, owner);
       const markEmission = () => {
         if (!current() || this.readTtsOwners.get(channel) !== owner || !readTtsTurnCurrent(channel, speech, input.timeoutMs + 60_000)) return false;
-        owner.emitted = true; this.audibleSpeech.set(`${channel}:${speech}`, { source: owner.source, deadline: Date.now() + input.timeoutMs + 20_000 }); head.phase = 'emitted'; this.armPlaybackTimeout(channel, speech, input.timeoutMs); return true;
+        owner.emitted = true; this.audibleSpeech.set(`${channel}:${speech}`, { source: owner.source, deadline: Date.now() + input.timeoutMs + 20_000 }); head.phase = 'emitted'; this.armPlaybackTimeout(channel, speech, input.timeoutMs);
+        this.widgetTtsStart(channel, head.item, input.text); return true;
       };
       if (route.audio === 'pet') {
         const emitted = route.emit ? await route.emit(markEmission) : markEmission();
@@ -998,6 +1000,7 @@ class TtsQueueHandler {
     // It cannot wait on dispatch: dispatch may itself be reporting its terminal.
     const speech = head.item.speechID;
     head.cancelled = true; head.epoch++; head.phase = 'terminal'; this.headWakes.delete(channel);
+    this.widgetTtsEnd(channel, speech, reason);
     head.cancellation.abort();
     if (this.dispatchedSpeechIds.get(channel) === speech) this.dispatchedSpeechIds.delete(channel);
     const completion = Promise.resolve().then(async () => {
@@ -1027,6 +1030,29 @@ class TtsQueueHandler {
       console.warn('TTS overlay playback timed out', { channelID, speechID, delay });
       this.handleSpeechEnded(channelID, speechID, 'timeout').catch(error => { console.error('TTS timeout cleanup failed', { channelID, speechID, error }); });
     }, delay));
+  }
+
+  /**
+   * Custom widget `tts` events: `start` once when the audio is handed to an output, `end` once when it finishes (only
+   * after a start, so widgets always see pairs). Text is the filtered text that was spoken; never the original message.
+   */
+  private readonly widgetTts = new Map<string, { at: number; event: Record<string, unknown> }>();
+  private widgetTtsStart(channel: string, item: TtsQueueItem, text: string): void {
+    const key = `${channel}:${item.speechID}`;
+    if (this.widgetTts.has(key)) return;
+    for (const [old, entry] of this.widgetTts) if (Date.now() - entry.at > 3_600_000) this.widgetTts.delete(old);
+    const by = item.requestedBy, name = String(by?.userName || by?.userLogin || '').slice(0, 64);
+    const event = { id: item.speechID, phase: 'start', text: String(text).slice(0, 2000), reason: null, test: false,
+      user: name ? { id: String(by?.userID ?? '').slice(0, 64), login: String(by?.userLogin || name.toLowerCase()).slice(0, 64), name } : null };
+    this.widgetTts.set(key, { at: Date.now(), event });
+    publishWidgetEvent(channel, 'tts', 'tts', { ...event, at: Date.now() });
+  }
+  private widgetTtsEnd(channel: string, speechID: string, reason: string): void {
+    const key = `${channel}:${speechID}`, started = this.widgetTts.get(key);
+    if (!started) return;
+    this.widgetTts.delete(key);
+    const publicReason = reason === 'ended' || reason === 'pet:completed' ? 'ended' : reason === 'skip' ? 'skipped' : reason === 'clear' ? 'cleared' : 'interrupted';
+    publishWidgetEvent(channel, 'tts', 'tts', { ...started.event, phase: 'end', reason: publicReason, at: Date.now() });
   }
 
   handleSpeechPlayback(channelID: string, data: { speechID?: string; phase?: string; position?: number }, source?: string): void {
@@ -1086,6 +1112,7 @@ class TtsQueueHandler {
     }
     this.dispatchedSpeechIds.delete(channelID);
     this.activeSpeechIds.delete(channelID);
+    this.widgetTtsEnd(channelID, speechID, reason);
     if (!playbackStopped) await this.retireAudibleSpeech(channelID, speechID).catch(() => {});
     const petTurn = this.petTurns.get(channelID);
     if (petTurn?.speechID === speechID) petTurn.reason = reason;
@@ -1196,6 +1223,8 @@ class TtsQueueHandler {
   }
 
   async cleanupSpeech(channelID: string, speechID: string, keepProcessing = false, playbackStopped = false): Promise<void> {
+    // Any other way a played message goes away still ends its widget event (normal endings already did).
+    this.widgetTtsEnd(channelID, speechID, 'interrupted');
     if (!this.cache) {
       await this.init();
     }

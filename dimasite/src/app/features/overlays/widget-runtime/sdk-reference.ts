@@ -27,6 +27,8 @@ export const TYPES: Record<string, RefType> = {
     on: m('<K extends keyof DimaEvents>(type: K, handler: (data: DimaEvents[K]) => void) => () => void', "on('event', handler)",
       'Listens for an event (chat, chat.delete, chat.clear, alert, button, fields, storage, session, signal or signal:<name>). Returns a function that stops listening.'),
     off: m('<K extends keyof DimaEvents>(type: K, handler: (data: DimaEvents[K]) => void) => void', "off('event', handler)", 'Stops a handler added with `on`.'),
+    state: m('<K extends keyof DimaStates>(name: K, handler: (value: DimaStates[K]) => void) => () => void', "state('polls', handler)",
+      'Live state by name: "polls" (needs "polls" in uses) or "goals" (needs "goals"). The handler gets the latest value right away (once known) and every change. Returns a function that stops listening.'),
     storage: p('DimaStorage', 'Values saved for this widget (needs "storage" in widget.json uses).'),
     counters: p('DimaCounters', 'The bot\'s command counters (needs "counters" in widget.json uses).'),
     setField: m('(key: string, value: unknown, reload?: boolean) => Promise<void>', 'setField(key, value, reload?)', 'Studio only: changes a setting from code (reloads the widget unless reload is false).'),
@@ -104,6 +106,40 @@ export const TYPES: Record<string, RefType> = {
   } },
   DimaSignalUser: { doc: 'Who used the command.', props: { id: p('string', 'Twitch user ID.'), login: p('string', 'Login (lowercase).'), name: p('string', 'Display name.'), roles: p('DimaRoles', 'Broadcaster, moderator, VIP, subscriber.') } },
   DimaSignalSource: { doc: 'What sent a signal.', props: { kind: p("'command' | 'keyword' | 'event' | 'studio'", 'Command, keyword, Twitch event or Studio test.'), name: p('string', 'Command or keyword name.') } },
+  DimaPolls: { doc: 'Live state "polls": the current Twitch poll and prediction (null when there is none).', props: {
+    poll: p('DimaPoll | null', 'The current or last poll.'), prediction: p('DimaPoll | null', 'The current or last prediction.')
+  } },
+  DimaPoll: { doc: 'A Twitch poll or prediction (totals only, never who voted).', props: {
+    kind: p("'poll' | 'prediction'", 'Poll or prediction.'), id: p('string', 'Twitch ID.'), title: p('string', 'Question.'),
+    phase: p("'active' | 'locked' | 'completed' | 'archived' | 'terminated' | 'resolved' | 'canceled'", 'Where it is: active, locked (predictions), or finished.'),
+    choices: p('DimaPollChoice[]', 'Choices with their totals.'), startedAt: p('string', 'ISO time.'), deadline: p('string | null', 'ISO time voting ends.'),
+    endedAt: p('string | null', 'ISO time it ended.'), winnerId: p('string | null', 'Winning choice (predictions).'), revision: p('number', 'Grows with every change.'),
+    occurredAt: p('string', 'ISO time of the last change.'), receipt: p('string', 'Change identifier.')
+  } },
+  DimaPollChoice: { doc: 'A poll or prediction choice.', props: {
+    id: p('string', 'Choice ID.'), title: p('string', 'Choice text.'), votes: p('number', 'Poll votes.'), users: p('number', 'People (predictions).'),
+    points: p('number', 'Channel points (predictions).'), channelPointsVotes: p('number', 'Votes bought with channel points (polls).'), color: p('string', 'Twitch colour (predictions).')
+  } },
+  DimaGoal: { doc: 'A goal from the Goals page (live state "goals"). Money goals are in currency units.', props: {
+    id: p('string', 'Goal ID.'), name: p('string', 'Goal name.'), metric: p("'follows' | 'subs' | 'bits' | 'currency'", 'What it counts.'),
+    mode: p('string', 'How it counts: total, current, fixed, rolling or monthly.'), target: p('number', 'Target.'), current: p('number', 'Progress.'),
+    percent: p('number', 'Progress in percent (0–100).'), currency: p('string | null', 'Currency code for money goals.'),
+    status: p('string', 'scheduled, active, reached or ended.'), startsAt: p('number', 'Start time (ms).'), endsAt: p('number | null', 'End time (ms) for set dates.'),
+    windowSeconds: p('number | null', 'Rolling window length.'), period: p('{ key: string; startsAt: number; endsAt: number } | null', 'Current month for monthly goals.')
+  } },
+  DimaTts: { doc: 'A text-to-speech message started or finished (event `tts`). Text is what was spoken.', props: {
+    id: p('string', 'Message ID (same for start and end).'), phase: p("'start' | 'end'", 'Started or finished.'), text: p('string', 'Spoken text.'),
+    user: p('DimaUser | null', 'Who sent it.'), reason: p("'ended' | 'skipped' | 'cleared' | 'interrupted' | null", 'How it finished (end only).'),
+    at: p('number', 'Time (ms).'), test: p('boolean', 'A Studio test.')
+  } },
+  DimaTrigger: { doc: 'A trigger alert was sent to the overlay (event `trigger`).', props: {
+    id: p('string', 'This send.'), triggerId: p('string', 'The trigger (empty for unsaved ones).'), name: p('string', 'Trigger name.'),
+    mediaType: p("'audio' | 'video' | 'image' | 'unknown'", 'Its media.'), at: p('number', 'Time (ms).'), test: p('boolean', 'A Studio test.')
+  } },
+  DimaReward: { doc: 'A channel-point reward was redeemed (event `reward`). Input is viewer text: escape it.', props: {
+    id: p('string', 'Redemption ID.'), reward: p('{ id: string; title: string; cost: number }', 'The reward.'), user: p('DimaUser | null', 'Who redeemed it.'),
+    input: p('string | null', 'Their text, when the reward asks for it.'), at: p('number', 'Time (ms).'), test: p('boolean', 'A Studio test.')
+  } },
   DimaSession: { doc: 'Recent events and totals (StreamElements-style keys).', props: {
     data: p('Record<string, unknown>', 'Keys like "follower-latest", "subscriber-recent", "cheer-session".'), recents: p('unknown[]', 'Recent events, newest first.')
   } },
@@ -144,7 +180,11 @@ export const TYPES: Record<string, RefType> = {
     field: p('string', 'listener "widget-button": the button\'s field key.'), value: p('unknown', 'listener "widget-button": its value. dima:signal: the text after the signal name.'),
     id: p('string', 'listener "dima:signal": signal ID.'), at: p('number', 'listener "dima:signal": time sent (ms).'),
     json: p('unknown', 'listener "dima:signal": the value as JSON (number, boolean, array or object) or null.'), args: p('string[]', 'listener "dima:signal": the value split on spaces.'),
-    user: p('DimaSignalUser | null', 'listener "dima:signal": who used the command.'), source: p('DimaSignalSource', 'listener "dima:signal": what sent it.'),
+    user: p('DimaSignalUser | DimaUser | null', 'listeners "dima:signal", "dima:tts", "dima:reward": who it came from.'), source: p('DimaSignalSource', 'listener "dima:signal": what sent it.'),
+    poll: p('DimaPoll | null', 'listener "dima:polls": the current poll.'), prediction: p('DimaPoll | null', 'listener "dima:polls": the current prediction.'),
+    goals: p('DimaGoal[]', 'listener "dima:goals": the goals.'), phase: p('string', 'listener "dima:tts": start or end.'), text: p('string', 'listener "dima:tts": spoken text.'),
+    reason: p('string | null', 'listener "dima:tts": how it finished.'), triggerId: p('string', 'listener "dima:trigger": the trigger.'), mediaType: p('string', 'listener "dima:trigger": its media.'),
+    reward: p('{ id: string; title: string; cost: number }', 'listener "dima:reward": the reward.'), input: p('string | null', 'listener "dima:reward": viewer text.'), test: p('boolean', 'A Studio test.'),
     target: p('string | null', 'listener "dima:signal": layer name for widget.signal.to.')
   } },
   SEMessageData: { doc: 'A chat message (StreamElements shape).', props: {
@@ -159,8 +199,10 @@ export const TYPES: Record<string, RefType> = {
 
 /** Type aliases for the typings (unions that can't be completed into). */
 export const ALIASES: Record<string, string> = {
+  DimaState: "{ name: 'polls'; value: DimaPolls } | { name: 'goals'; value: DimaGoal[] }",
+  DimaStates: "{ polls: DimaPolls; goals: DimaGoal[] }",
   DimaPart: "{ type: 'text'; text: string } | { type: 'emote'; text: string; id: string; animated: boolean; images: DimaImages } | { type: 'cheer'; text: string; prefix: string; bits: number; tier: number } | { type: 'mention'; text: string; user: DimaUser }",
-  SEListener: "'message' | 'delete-message' | 'delete-messages' | 'follower-latest' | 'subscriber-latest' | 'cheer-latest' | 'raid-latest' | 'tip-latest' | 'widget-button' | 'kvstore:update' | 'dima:signal'"
+  SEListener: "'message' | 'delete-message' | 'delete-messages' | 'follower-latest' | 'subscriber-latest' | 'cheer-latest' | 'raid-latest' | 'tip-latest' | 'widget-button' | 'kvstore:update' | 'dima:signal' | 'dima:polls' | 'dima:goals' | 'dima:tts' | 'dima:trigger' | 'dima:reward'",
 };
 
 /** Dima SDK events: payload type and the widget.json `uses` entry needed to receive them. */
@@ -173,7 +215,16 @@ export const DIMA_EVENTS: { name: string; type: string; uses: string | null; doc
   { name: 'fields', type: 'WidgetFields', uses: null, doc: 'Settings changed in Studio (no reload).' },
   { name: 'storage', type: 'DimaStorageUpdate', uses: 'storage', doc: 'A saved value changed.' },
   { name: 'session', type: 'DimaSession', uses: 'session', doc: 'Recent events and totals changed.' },
-  { name: 'signal', type: 'DimaSignal', uses: 'signals', doc: 'A chat command sent a signal: $(widget.signal name value). Use \'signal:name\' for one name.' }
+  { name: 'signal', type: 'DimaSignal', uses: 'signals', doc: 'A chat command sent a signal: $(widget.signal name value). Use \'signal:name\' for one name.' },
+  { name: 'state', type: 'DimaState', uses: null, doc: 'Live state changed ({ name, value }); Dima.state(name, …) is the easy way. Needs "polls" or "goals" in uses.' },
+  { name: 'tts', type: 'DimaTts', uses: 'tts', doc: 'A text-to-speech message started or finished.' },
+  { name: 'trigger', type: 'DimaTrigger', uses: 'triggers', doc: 'A trigger alert was sent to the overlay.' },
+  { name: 'reward', type: 'DimaReward', uses: 'rewards', doc: 'A channel-point reward was redeemed.' }
+];
+/** Dima.state('…') names and their value types. */
+export const STATE_REFS: { name: string; type: string; doc: string }[] = [
+  { name: 'polls', type: 'DimaPolls', doc: 'The current Twitch poll and prediction. Needs "polls" in widget.json uses.' },
+  { name: 'goals', type: 'DimaGoal[]', doc: 'Goals from the Goals page with progress. Needs "goals" in widget.json uses.' }
 ];
 /** `Dima.on('signal:feed', …)`: one signal by name. */
 export const SIGNAL_EVENT = /^signal:([a-z0-9_]{1,40})$/;
@@ -193,7 +244,12 @@ export const SE_LISTENERS: { name: string; doc: string }[] = [
   { name: 'tip-latest', doc: 'A tip (never fires until tipping is available).' },
   { name: 'widget-button', doc: 'A settings button was pressed (event.field, event.value).' },
   { name: 'kvstore:update', doc: 'A saved value changed (event.data.key, event.data.value).' },
-  { name: 'dima:signal', doc: 'A chat command sent a signal (event.name, event.value, event.user). Needs "signals" in widget.json uses.' }
+  { name: 'dima:signal', doc: 'A chat command sent a signal (event.name, event.value, event.user). Needs "signals" in widget.json uses.' },
+  { name: 'dima:polls', doc: 'The current Twitch poll/prediction changed (event.poll, event.prediction). Needs "polls" in widget.json uses.' },
+  { name: 'dima:goals', doc: 'Goals changed (event.goals). Needs "goals" in widget.json uses.' },
+  { name: 'dima:tts', doc: 'A TTS message started or finished (event.phase, event.text, event.user). Needs "tts" in widget.json uses.' },
+  { name: 'dima:trigger', doc: 'A trigger alert was sent (event.name, event.mediaType). Needs "triggers" in widget.json uses.' },
+  { name: 'dima:reward', doc: 'A channel-point reward was redeemed (event.reward, event.user, event.input). Needs "rewards" in widget.json uses.' }
 ];
 
 /** widget.json keys and values. */
@@ -209,7 +265,9 @@ export const MANIFEST_KEYS: { name: string; doc: string; values?: readonly strin
 ];
 export const USES_DOCS: Record<string, string> = {
   chat: 'Chat messages, deletes and clears.', alerts: 'Follows, subs, gifts, Bits, raids and tips.', storage: 'Saved values (Dima.storage / SE_API.store).',
-  counters: 'Bot command counters.', session: 'Recent events and totals.', signals: 'Signals from chat commands: $(widget.signal name value).'
+  counters: 'Bot command counters.', session: 'Recent events and totals.', signals: 'Signals from chat commands: $(widget.signal name value).',
+  polls: 'Live Twitch polls and predictions (totals only).', goals: 'Goals from the Goals page with live progress.', tts: 'Text-to-speech messages starting and finishing.',
+  triggers: 'Trigger alerts sent to the overlay.', rewards: 'Channel-point redemptions.'
 };
 /** fields.txt field types and properties. */
 export const FIELD_TYPES: { name: FieldType; doc: string }[] = [

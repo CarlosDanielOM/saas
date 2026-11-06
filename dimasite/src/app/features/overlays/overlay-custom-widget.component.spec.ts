@@ -26,7 +26,7 @@ describe('custom widget frame host', () => {
     rpc = vi.fn<CustomWidgetEnv['rpc']>();
     const env: CustomWidgetEnv = {
       mode: 'live', bundle: async () => bundle(engine, uses), subscribe: listener => bus.subscribe(listener),
-      rpc: (...args) => rpc(...args), session: () => null, report: () => {}
+      rpc: (...args) => rpc(...args), session: () => null, states: () => ({}), report: () => {}
     };
     TestBed.configureTestingModule({ providers: [
       { provide: CUSTOM_WIDGET_ENV, useValue: env },
@@ -83,6 +83,17 @@ describe('custom widget frame host', () => {
     const other = await start('dima', ['storage']);
     bus.emit(signal('all', null));
     expect(other.posts.filter(message => message['type'] === 'event')).toEqual([]);
+  });
+
+  it('live state reaches a widget only for the names it uses; frames start with the state known so far', async () => {
+    const { posts } = await start('dima', ['polls']);
+    bus.emit({ type: 'state', data: { name: 'goals', value: [{ id: 'secret-goal' }] } });
+    bus.emit({ type: 'state', data: { name: 'polls', value: { poll: null, prediction: null } } });
+    bus.emit({ type: 'tts', data: { id: 't', phase: 'start', text: 'x', user: null, reason: null, at: 1, test: true } });
+    const delivered = posts.filter(message => message['type'] === 'event').map(message => message['event'] as DimaEvent);
+    expect(delivered.map(event => event.type === 'state' ? 'state:' + event.data.name : event.type)).toEqual(['state:polls']);
+    const init = posts.find(message => message['type'] === 'init') as { context: { states: Record<string, unknown> } };
+    expect(init.context.states).toEqual({}); // nothing known when it started (states() is empty here)
   });
 
   it('drops answers to requests made by a frame that has since restarted', async () => {

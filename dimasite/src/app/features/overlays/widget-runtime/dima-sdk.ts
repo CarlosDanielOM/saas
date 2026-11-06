@@ -14,6 +14,10 @@ export function dimaSdk(win: any, boot: { exec: string; fields: Record<string, u
   // Every message carries this run's ID, so the host ignores anything from an earlier run of the frame.
   const post = (message: Record<string, unknown>) => { try { parent.postMessage(Object.assign({ dima: 1, exec }, message), '*'); } catch { /* the host is gone */ } };
   const listeners = new Map<string, Set<(data: any) => void>>();
+  const states = new Map<string, unknown>();
+  // Grows with every state value, so a deferred first delivery never lands after a newer one.
+  const stateVersions = new Map<string, number>();
+  const setState = (name: string, value: unknown) => { states.set(name, value); stateVersions.set(name, (stateVersions.get(name) ?? 0) + 1); };
   let context: any = null;
   let resolveReady: (value: any) => void = () => {};
   const ready = new Promise(resolve => { resolveReady = resolve; });
@@ -93,9 +97,19 @@ export function dimaSdk(win: any, boot: { exec: string; fields: Record<string, u
     if (message.type === 'init' && !context) {
       context = message.context || {};
       context.fields = context.fields || {};
+      // Live state known when the frame started (polls, goals…): Dima.state(name) gets it right away.
+      // Handlers registered before this message (the widget's script runs first) get them too.
+      if (context.states && typeof context.states === 'object') {
+        for (const name of Object.keys(context.states)) { setState(name, context.states[name]); emit('state:' + name, context.states[name]); }
+      }
       resolveReady(api.context);
     } else if (message.type === 'event' && context && message.event && typeof message.event.type === 'string') {
       if (message.event.type === 'session') context.session = message.event.data;
+      // Live state: remembered per name, then Dima.on('state') and Dima.state(name, …) handlers.
+      if (message.event.type === 'state' && typeof message.event.data?.name === 'string') {
+        setState(message.event.data.name, message.event.data.value);
+        emit('state:' + message.event.data.name, message.event.data.value);
+      }
       emit(message.event.type, message.event.data);
       // Dima.on('signal:feed', …) listens to one signal name.
       if (message.event.type === 'signal' && typeof message.event.data?.name === 'string') emit('signal:' + message.event.data.name, message.event.data);
@@ -124,6 +138,21 @@ export function dimaSdk(win: any, boot: { exec: string; fields: Record<string, u
       return () => { listeners.get(type)?.delete(handler); };
     },
     off(type: string, handler: (data: any) => void) { listeners.get(type)?.delete(handler); },
+    /** Live state by name ('polls', 'goals'): the handler gets the latest value now (if known) and every change. */
+    state(name: string, handler: (value: any) => void) {
+      if (typeof name !== 'string' || typeof handler !== 'function') throw new TypeError('Dima.state(name, handler)');
+      let active = true;
+      const off = api.on('state:' + name, handler);
+      if (states.has(name)) {
+        // Delivered after the widget's current code has run; skipped if it stopped listening or a newer value already came.
+        const value = states.get(name), version = stateVersions.get(name);
+        win.setTimeout(() => {
+          if (!active || stateVersions.get(name) !== version) return;
+          try { handler(value); } catch (error: any) { post({ type: 'error', message: String(error?.message || error).slice(0, 500), stack: error?.stack ? String(error.stack).slice(0, 2000) : undefined }); }
+        }, 0);
+      }
+      return () => { active = false; off(); };
+    },
     /** Values saved for this widget (RPC names stay `store.*` internally). */
     storage: Object.freeze({
       get: (key: string) => rpc('store.get', { key: String(key) }),

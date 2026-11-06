@@ -1,4 +1,5 @@
-import { studioHasSource, publishStudioTrigger } from '../../overlays/bridge.js';
+import { studioHasSource, publishStudioTrigger, publishWidgetEvent, widgetsUse } from '../../overlays/bridge.js';
+import { randomUUID } from 'node:crypto';
 import express, { type Request, type Response } from 'express';
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
@@ -1627,7 +1628,8 @@ router.post('/:channelID/send', authMiddleware as any, async (req: TriggerReques
         const namespace = io.of(namespacePath);
         const sockets = await namespace.fetchSockets();
 
-        if (sockets.length === 0 && !studioHasSource(channelIdStr, 'trigger')) {
+        // Custom widgets that use triggers observe sends too (they don't play or acknowledge the media).
+        if (sockets.length === 0 && !studioHasSource(channelIdStr, 'trigger') && !widgetsUse(channelIdStr, 'triggers')) {
             await error({
                 error: 'No Connected Trigger Clients',
                 message: 'No trigger overlay clients connected',
@@ -1650,6 +1652,11 @@ router.post('/:channelID/send', authMiddleware as any, async (req: TriggerReques
         try {
             namespace.emit('trigger', body);
             await publishStudioTrigger(channelIdStr, studioBody);
+            // Custom widgets: which trigger was sent (never its media URL or other request fields).
+            const mime = String(body.mediaType || '');
+            publishWidgetEvent(channelIdStr, 'triggers', 'trigger', { id: randomUUID(), triggerId: typeof studioBody.triggerId === 'string' ? studioBody.triggerId : '',
+                name: String(studioBody.name ?? '').slice(0, 100), mediaType: mime.startsWith('video') ? 'video' : mime.startsWith('audio') ? 'audio' : mime.startsWith('image') ? 'image' : 'unknown',
+                at: Date.now(), test: false });
         } catch (emitError) {
             await error({
                 error: 'Internal Server Error',

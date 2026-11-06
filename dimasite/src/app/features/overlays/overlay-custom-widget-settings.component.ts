@@ -6,6 +6,7 @@ import { EXPORT_FILE_NAMES, MANIFEST_FILE, PACKAGE_FILES, buildWidgetIni, groupF
 import { writeZip } from './custom-widget-zip';
 import { CustomWidgetsService, canTarget, copyableMedia, message, signalSnippet, signalValueKind } from './custom-widgets.service';
 import { EditorWidgetEnv } from './widget-runtime/editor-env';
+import { OverlayInteractionSetupComponent } from './overlay-interaction-setup.component';
 import { OverlayCustomWidgetCodeComponent } from './overlay-custom-widget-code.component';
 import { OverlayCustomWidgetImportComponent } from './overlay-custom-widget-import.component';
 import type { OverlayWidget } from './overlay.model';
@@ -14,7 +15,7 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
 /** Settings-section block for a custom widget layer: which widget it is, replacing its files and exporting it. */
 @Component({
   selector: 'app-overlay-custom-widget-settings',
-  imports: [LucideAngularModule, RouterLink, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent],
+  imports: [LucideAngularModule, RouterLink, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent, OverlayInteractionSetupComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display:grid; gap:.75rem; min-width:0 }
@@ -75,7 +76,10 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
         <div><p class="lf-note">{{ t(widget.manifest?.engine === 'dima' ? 'customEngineDima' : 'customEngineSe') }} · {{ t('customReads') }}</p>
         <ul class="cw-uses" data-cw-uses>@for (use of uses(); track use) { <li>{{ t('customUse_' + use) }}</li> }</ul></div>
       } @else { <p class="lf-note">{{ t(widget.manifest?.engine === 'dima' ? 'customEngineDima' : 'customEngineSe') }} · {{ t('customReadsNothing') }}</p> }
-      @if (uses().includes('session')) {
+      @if (uses().includes('polls')) {
+        <div data-cw-polls-setup><p class="lf-note">{{ t('customPollsSetup') }}</p><app-overlay-interaction-setup [channel]="channelId()" [streamer]="streamer()" /></div>
+      }
+      @if (uses().includes('session') || uses().includes('goals')) {
         <details class="cw-log" data-cw-goal-data>
           <summary>{{ t('customGoalData') }}</summary>
           <div class="cw-goal-data">
@@ -155,6 +159,7 @@ export class OverlayCustomWidgetSettingsComponent {
   readonly listLoaded = computed(() => this.widgets.list() !== null);
   private readonly router = inject(Router);
   readonly goalKinds = ['follower', 'subscriber', 'cheer', 'tip'] as const;
+  readonly channelId = computed(() => this.widgets.channelId);
   readonly goalSources = computed(() => this.env?.goalSources() ?? null);
   readonly streamer = computed(() => this.router.url.split(/[/?#]/)[1] ?? '');
   readonly copied = signal<string | null>(null);

@@ -1,4 +1,5 @@
 import { recordTimelineRedemption } from '../utils/stream_timeline.js';
+import { publishToWidgets } from '../widget_feed/session-refresh.js';
 import type { AstMessage } from '../utils/ast_parser/types.js';
 import { deliverAstMessage } from '../utils/ast_command_delivery.js';
 import { sendTwitchChatMessage, type SendMessageContext } from "../functions/chats/send_message.chat.js";
@@ -69,6 +70,9 @@ export async function redemptionHandler(
     chatEnabled: boolean
 ): Promise<RedemptionHandlerResponse> {
     void recordTimelineRedemption(eventData).catch(error => console.error('Timeline redemption recording failed', error));
+    // Custom widgets (`uses: rewards`) see every redemption: what Twitch shows in chat (reward, viewer, their text).
+    publishToWidgets(eventData.broadcaster_user_id, 'reward', { id: eventData.id, reward: { id: eventData.reward?.id, title: eventData.reward?.title, cost: eventData.reward?.cost },
+      user: { id: eventData.user_id, login: eventData.user_login, name: eventData.user_name }, input: eventData.user_input || null, at: Date.parse(eventData.redeemed_at) || Date.now(), test: false });
     try {
         const { broadcaster_user_id, broadcaster_user_login, user_id, user_login, user_name, reward } = eventData;
 

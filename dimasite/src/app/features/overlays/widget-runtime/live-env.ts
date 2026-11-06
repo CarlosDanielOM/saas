@@ -4,7 +4,7 @@ import { OverlayApi } from '../overlay-api.service';
 import type { DimaEvent, DimaEventType, DimaSession } from './dima-events';
 import { WidgetEventBus, type CustomWidgetEnv, type RuntimeBundle, type WidgetLogEntry, type WidgetStatus, type WidgetTarget } from './widget-env';
 
-const FEED_TYPES = new Set<DimaEventType>(['chat', 'chat.delete', 'chat.clear', 'alert', 'storage', 'session', 'signal']);
+const FEED_TYPES = new Set<DimaEventType>(['chat', 'chat.delete', 'chat.clear', 'alert', 'storage', 'session', 'signal', 'state', 'tts', 'trigger', 'reward']);
 
 /**
  * OBS environment for custom widget frames: code of the revision this published overlay pins, live data from the
@@ -17,6 +17,7 @@ export class LiveWidgetEnv implements CustomWidgetEnv {
   private readonly bus = new WidgetEventBus();
   private readonly bundles = new Map<string, Promise<RuntimeBundle>>();
   private sessionData: DimaSession | null = null;
+  private readonly stateData: Record<string, unknown> = {};
   private publicId = '';
   private socket: Socket | null = null;
 
@@ -47,6 +48,7 @@ export class LiveWidgetEnv implements CustomWidgetEnv {
     return result.value;
   }
   session(): DimaSession | null { return this.sessionData; }
+  states(): Record<string, unknown> { return { ...this.stateData }; }
   report(layerId: string, update: { status?: WidgetStatus; entry?: WidgetLogEntry }): void {
     if (update.entry?.level === 'error') console.warn(`[custom widget ${layerId}]`, update.entry.text);
   }
@@ -55,6 +57,7 @@ export class LiveWidgetEnv implements CustomWidgetEnv {
     const { v, type, data, layers } = message as { v?: unknown; type?: unknown; data?: unknown; layers?: unknown };
     if (v !== 1 || typeof type !== 'string' || !FEED_TYPES.has(type as DimaEventType) || !data || typeof data !== 'object') return;
     if (type === 'session') this.sessionData = data as DimaSession;
+    if (type === 'state' && typeof (data as { name?: unknown }).name === 'string') this.stateData[(data as { name: string }).name] = (data as { value?: unknown }).value ?? null;
     // Signals name the layers they're for (the server matched uses and widget.signal.to names).
     if (Array.isArray(layers)) { for (const layer of layers) if (typeof layer === 'string') this.bus.emit({ type, data } as DimaEvent, layer); return; }
     this.bus.emit({ type, data } as DimaEvent);

@@ -1,7 +1,7 @@
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 import { FollowRelationshipLedgerSchema } from '../schemas/follow_relationship_ledger.schema.js';
 import { StreamSubscriptionLedgerSchema } from '../schemas/stream_subscription_ledger.schema.js';
-import { goalSnapshot } from '../goals/service.js';
+import { channelGoals } from './state.js';
 import { ALERT_DOMAIN_TYPES, AlertEventFilter } from '../overlays/alert-events.js';
 
 /** Dima SDK v1 alert (CUSTOM_WIDGET_ENGINE.md, section 4). */
@@ -190,7 +190,7 @@ async function buildSession(channel: string, now: number, goalSources: boolean):
     // Totals like StreamElements': current followers and subscribers (the same ledgers the dashboard and Goals use).
     followerTotal(channel, now),
     StreamSubscriptionLedgerSchema.countDocuments({ platform: 'twitch', streamer_id: channel, status: 'active' }),
-    goalSnapshot(channel, now).then(snapshot => snapshot.goals as GoalProgress[]).catch(() => [] as GoalProgress[])
+    channelGoals(channel, now).then(goals => goals as GoalProgress[]).catch(() => [] as GoalProgress[])
   ]);
   for (const span of ['session', 'week', 'month'] as const) {
     data[`follower-${span}`] = { count: counts[span].follows };

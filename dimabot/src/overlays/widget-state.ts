@@ -25,6 +25,11 @@ export class WidgetStateRegistry {
     }
   }
   createReadScope(): WidgetStateReadScope { return new Map(); }
+  /** One source's shared read (custom widgets read whole sources by their widget.json `uses`). */
+  readSource(channel: string, name: string, scope = this.createReadScope()): Promise<SourceState> | null {
+    const source = this.sources.get(name);
+    return source ? this.read(channel, source, scope) : null;
+  }
   private read(channel: string, source: WidgetStateSource, scope: WidgetStateReadScope): Promise<SourceState> {
     const key = JSON.stringify([channel, source.source]);
     const cached = scope.get(key) ?? this.pending.get(key);

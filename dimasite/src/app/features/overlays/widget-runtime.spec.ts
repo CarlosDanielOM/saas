@@ -50,6 +50,45 @@ describe('Dima SDK and StreamElements layer (inside a fake frame)', () => {
   const send = (data: Record<string, unknown>, exec = 'run-1') => window.dispatchEvent(new MessageEvent('message', { source: window, data: { dima: 1, exec, ...data } }));
   afterEach(() => { window.removeEventListener('message', onHost); });
 
+  it('Dima.state: the value known when the frame started, then changes, per name', async () => {
+    // A fake frame window of its own (the SDK installs a read-only Dima once per window).
+    const handlers: ((event: unknown) => void)[] = [], parent = { postMessage: () => {} };
+    const win: Record<string, unknown> = { parent, console: {}, setInterval: () => 0, setTimeout: (fn: () => void) => setTimeout(fn, 0), clearTimeout: () => {},
+      addEventListener: (type: string, fn: (event: unknown) => void) => { if (type === 'message') handlers.push(fn); }, document: { readyState: 'complete' } };
+    dimaSdk(win, { exec: 'run-2', fields: {} });
+    const post = (data: Record<string, unknown>) => { for (const fn of handlers) fn({ source: parent, data: { dima: 1, exec: 'run-2', ...data } }); };
+    const Dima = win['Dima'] as { state(name: string, fn: (value: unknown) => void): () => void };
+    const tick = () => new Promise(r => setTimeout(r, 5));
+    // Registered before the start message (the widget's script runs first): seeded values still arrive.
+    const early: unknown[] = [];
+    Dima.state('polls', value => early.push(value));
+    post({ type: 'init', context: { fields: {}, mode: 'live', states: { polls: { poll: null, prediction: null } } } });
+    expect(early).toEqual([{ poll: null, prediction: null }]);
+    const polls: unknown[] = [], goals: unknown[] = [];
+    const off = Dima.state('polls', value => polls.push(value));
+    Dima.state('goals', value => goals.push(value));
+    await tick();
+    expect([polls, goals]).toEqual([[{ poll: null, prediction: null }], []]); // goals stay unknown until sent
+    post({ type: 'event', event: { type: 'state', data: { name: 'goals', value: [{ id: 'g' }] } } });
+    expect([polls.length, goals]).toEqual([1, [[{ id: 'g' }]]]);
+    off();
+    post({ type: 'event', event: { type: 'state', data: { name: 'polls', value: { poll: { id: 'p' }, prediction: null } } } });
+    expect(polls.length).toBe(1);
+    const late: unknown[] = [];
+    Dima.state('goals', value => late.push(value)); await tick();
+    expect(late).toEqual([[{ id: 'g' }]]); // late handlers get the latest value
+    // A newer value before the deferred first delivery: never the stale one after it.
+    const racing: unknown[] = [];
+    Dima.state('goals', value => racing.push(value));
+    post({ type: 'event', event: { type: 'state', data: { name: 'goals', value: [{ id: 'g2' }] } } });
+    await tick();
+    expect(racing).toEqual([[{ id: 'g2' }]]);
+    // Stopped before the deferred delivery: nothing arrives.
+    const stopped: unknown[] = [];
+    const stop = Dima.state('goals', value => stopped.push(value)); stop(); await tick();
+    expect(stopped).toEqual([]);
+  });
+
   it('starts, delivers SE-shaped events and maps SE_API to Dima calls', async () => {
     window.addEventListener('message', onHost);
     const win = window as unknown as Record<string, unknown>;
@@ -64,9 +103,15 @@ describe('Dima SDK and StreamElements layer (inside a fake frame)', () => {
     await new Promise(r => setTimeout(r, 0));
     expect(seEvents.length).toBe(0); // messages for an earlier run are ignored
     expect(typeof (win['SE_API'] as { store: unknown }).store).toBe('object');
-    send({ type: 'init', context: { widget: { id: 'w' }, channel: { id: '1', login: 'chan', name: 'Chan' }, fields: { color: 'red' }, mode: 'editor', session: { data: { 'follower-latest': { name: 'Sam' } }, recents: [] } } });
+    send({ type: 'init', context: { widget: { id: 'w' }, channel: { id: '1', login: 'chan', name: 'Chan' }, fields: { color: 'red' }, mode: 'editor', session: { data: { 'follower-latest': { name: 'Sam' } }, recents: [] },
+      states: { goals: [{ id: 'cached' }] } } });
     await new Promise(r => setTimeout(r, 0));
     const load = seEvents.find(e => e.type === 'onWidgetLoad')!;
+    // Live state known when the frame (re)started arrives right after onWidgetLoad, with no new push needed.
+    await new Promise(r => setTimeout(r, 5));
+    const cached = seEvents.find(e => e.type === 'onEventReceived' && e.detail.listener === 'dima:goals')!;
+    expect(seEvents.indexOf(cached)).toBeGreaterThan(seEvents.indexOf(load));
+    expect(cached.detail.event).toEqual({ goals: [{ id: 'cached' }] });
     expect(load.detail.fieldData).toEqual({ color: 'red' });
     expect(load.detail.channel.username).toBe('chan');
     expect(load.detail.overlay).toEqual({ isEditorMode: true, muted: false });

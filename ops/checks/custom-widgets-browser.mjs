@@ -16,6 +16,10 @@
  *  - StreamElements goal widgets: a session-only widget reacts to preview test alerts (onSessionUpdate), inline
  *    onerror handlers in the HTML find functions defined in the widget's script, the "Goal data" section names the
  *    goal behind "Manual"; a .rar package imports like the .zip
+ *  - live state and bot events: Dima.state('goals'|'polls') starts from the channel's real state, Test drawer bot events
+ *    (TTS start/end, trigger, channel points, sample poll/goals) reach Dima and StreamElements (`dima:*`) widgets,
+ *    "Replay recent chat" sends stored chat in order, the poll setup shows for widgets that use polls; in OBS a widget
+ *    only gets the state it asked for
  *  - plan limit blocks the import with an upgrade prompt
  *  - axe (wcag2a/2aa/21aa) and no horizontal overflow at 320/390/1280, dark then light
  */
@@ -66,6 +70,23 @@ extraWidgets[seGoalId] = { manifest: { engine: 'streamelements', api: 1, name: '
   js: "function markBroken(img) { img.dataset.fallback = 'yes'; }\n"
     + "window.addEventListener('onWidgetLoad', obj => { document.querySelector('.goal').textContent = obj.detail.session.data['follower-session'].count; });\n"
     + "window.addEventListener('onSessionUpdate', obj => { document.querySelector('.goal').textContent = obj.detail.session['follower-session'].count; });\n" };
+// Widgets that read live state and bot events (Dima SDK and StreamElements layer).
+const liveId = 'b8'.repeat(12), seLiveId = 'c9'.repeat(12);
+extraWidgets[liveId] = { manifest: { engine: 'dima', api: 1, name: 'Live', uses: ['chat', 'polls', 'goals', 'tts', 'triggers', 'rewards'] }, css: 'body { color: #fff; }',
+  html: '<p class="goals"></p><p class="polls"></p><p class="tts"></p><p class="trigger"></p><p class="reward"></p><ul class="chat"></ul>',
+  js: "const out = (key, value) => { document.querySelector('.' + key).textContent = value; };\n"
+    + "Dima.state('goals', goals => out('goals', goals.map(goal => goal.name + ':' + goal.current).join(',')));\n"
+    + "Dima.state('polls', polls => out('polls', polls.poll ? polls.poll.title + ':' + polls.poll.choices.length : 'none'));\n"
+    + "Dima.on('tts', event => out('tts', event.phase + ':' + event.text + ':' + event.test));\n"
+    + "Dima.on('trigger', event => out('trigger', event.name + ':' + event.mediaType));\n"
+    + "Dima.on('reward', event => out('reward', event.reward.title + ':' + event.input));\n"
+    + "Dima.on('chat', message => { const item = document.createElement('li'); item.textContent = message.user.name + ': ' + message.text; document.querySelector('.chat').append(item); });\n" };
+extraWidgets[seLiveId] = { manifest: { engine: 'streamelements', api: 1, name: 'SE live', uses: ['polls', 'goals', 'tts'] }, css: 'body { color: #fff; }',
+  html: '<p class="goals"></p><p class="polls"></p><p class="tts"></p>',
+  js: "window.addEventListener('onEventReceived', obj => { const listener = obj.detail.listener, event = obj.detail.event;\n"
+    + "  if (listener === 'dima:goals') document.querySelector('.goals').textContent = event.goals.length + ' goals';\n"
+    + "  if (listener === 'dima:polls') document.querySelector('.polls').textContent = event.poll ? event.poll.title : 'none';\n"
+    + "  if (listener === 'dima:tts') document.querySelector('.tts').textContent = event.phase; });\n" };
 const extraView = id => ({ id, name: extraWidgets[id].manifest.name, engine: extraWidgets[id].manifest.engine, revision: 1, author: '', fields: [], data: {}, externalMedia: [], manifest: extraWidgets[id].manifest, media: {},
   files: Object.fromEntries(parts.map(part => [part, { bytes: 1, sha256: 'f'.repeat(64) }])), createdAt: '', updatedAt: '', usedIn: [] });
 
@@ -149,6 +170,9 @@ function mocks(options) {
       } else if (/\/custom-widgets\/[a-f0-9]{24}\/bundle$/.test(path)) data = bundleOf(path.split('/').at(-2));
       else if (path === `${list}/session`) data = options.session ?? { data: { 'follower-latest': { name: 'Session Sam' } }, recents: [] };
       else if (path === `${list}/signals`) data = { skipped: options.skipped ?? 0 };
+      else if (path === `${list}/state`) data = options.liveState ?? { polls: null, goals: null };
+      else if (path === `${list}/chat-history`) data = { messages: options.chatHistory ?? [] };
+      else if (path.endsWith('/twitch-events')) data = { poll: { state: 'ready', events: [] }, prediction: { state: 'ready', events: [] } };
       else if (path.startsWith(`${list}/store/`)) data = { value: 3 };
       else if (path.startsWith(`${list}/counters/`)) data = { value: 7 };
       else if (path === `${list}/${widgetId}/media` && req.method() === 'GET') {
@@ -556,6 +580,50 @@ try {
     assert.deepEqual(pageErrors, []);
     await ctx.close();
     console.log('PASS StreamElements goal widgets: preview alerts update session-only widgets, early inline onerror handlers work, Goal data names the "Manual" goal; .rar imports.');
+  }
+  // 4f. Live state and bot events.
+  {
+    const goals = [{ id: 'g1', name: 'Road to 100', metric: 'follows', mode: 'total', target: 100, current: 64, percent: 64, currency: null, status: 'active', startsAt: 0, endsAt: null, windowSeconds: null, period: null }];
+    const replay = ['first', 'second'].map((text, i) => ({ id: 'replay-' + i, platform: 'twitch', at: i, user: { id: '', login: 'ada', name: 'Ada', color: null, badges: [], roles: { broadcaster: false, moderator: false, vip: false, subscriber: false, founder: false, artist: false, staff: false, partner: false, turbo: false, prime: false }, subMonths: null },
+      text, parts: [{ type: 'text', text }], kind: 'text', action: false, firstMessage: false, bits: 0, rewardId: null, reply: null, sharedChat: null }));
+    const lm = mocks({ widgets: [extraView(liveId), extraView(seLiveId)], liveState: { polls: null, goals }, chatHistory: replay,
+      layers: [{ id: 'live-1', kind: 'custom', configVersion: 1, x: 40, y: 40, width: 500, height: 300, visible: true, locked: false, name: 'Live', config: { widgetId: liveId } },
+        { id: 'live-2', kind: 'custom', configVersion: 1, x: 600, y: 40, width: 400, height: 200, visible: true, locked: false, name: 'SE live', config: { widgetId: seLiveId } }] });
+    lm.world.state.scenes[0].published = { width: 1920, height: 1080, widgets: structuredClone(lm.world.state.scenes[0].widgets), designs: [], waitFor: [] };
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' }); await lm.install(ctx);
+    const p = await ctx.newPage(); p.setDefaultTimeout(12000); p.on('pageerror', e => errors.push(e.message));
+    await p.goto(`${base}/${user.login}/modules/overlays`); await p.locator('.stage').waitFor();
+    const live = p.frameLocator('app-overlay-scene-renderer [data-widget-id="live-1"] iframe'), seLive = p.frameLocator('app-overlay-scene-renderer [data-widget-id="live-2"] iframe');
+    await live.locator('.goals', { hasText: 'Road to 100:64' }).waitFor(); // the channel's real goals, as soon as the widget starts
+    assert.equal(await live.locator('.polls').textContent(), '', 'no polls value yet: unknown until known');
+    await p.locator('.tb--test').click(); await p.locator('[data-widget-tests]').waitFor();
+    assert.deepEqual(await p.locator('[data-bot-test]').evaluateAll(items => items.map(item => item.getAttribute('data-bot-test'))), ['tts', 'trigger', 'reward', 'polls', 'goals']);
+    await p.locator('[data-bot-test="tts"]').click();
+    await live.locator('.tts', { hasText: 'start:Yuzu says: the cozy stream continues!:true' }).waitFor();
+    await seLive.locator('.tts', { hasText: 'start' }).waitFor();
+    await live.locator('.tts', { hasText: 'end:' }).waitFor({ timeout: 6000 });
+    await p.locator('[data-bot-test="trigger"]').click(); await live.locator('.trigger', { hasText: 'Airhorn:audio' }).waitFor();
+    await p.locator('[data-bot-test="reward"]').click(); await live.locator('.reward', { hasText: 'Hydrate!:stay hydrated, chat' }).waitFor();
+    await p.locator('[data-bot-test="polls"]').click();
+    await live.locator('.polls', { hasText: 'Next game?:3' }).waitFor(); await seLive.locator('.polls', { hasText: 'Next game?' }).waitFor();
+    await p.locator('[data-bot-test="goals"]').click();
+    await live.locator('.goals', { hasText: 'Road to 100 followers:64' }).waitFor(); await seLive.locator('.goals', { hasText: '2 goals' }).waitFor();
+    // Replay recent chat: stored messages in order (the SE widget doesn't use chat).
+    await p.locator('[data-chat-replay]').click();
+    await until(async () => (await live.locator('.chat li').allTextContents()).join('|') === 'Ada: first|Ada: second', 'replayed chat in order');
+    // Never to OBS: stored history can include messages moderators deleted.
+    p.once('dialog', d => d.accept());
+    await p.locator('[data-widget-target="obs"]').click();
+    assert.equal(await p.locator('[data-chat-replay]').isDisabled(), true, 'replay is preview-only');
+    assert.equal(lm.world.widgetTests.length, 0);
+    await p.locator('[data-widget-target="preview"]').click();
+    // Layer settings: the poll setup for widgets that use polls.
+    await p.locator('.widget[data-widget-id="live-1"]').dispatchEvent('click');
+    await p.locator('[data-cw-polls-setup] app-overlay-interaction-setup').waitFor();
+    await axe(p, 'live state layer');
+    await shot(p, 'live-state-dark-1280');
+    await ctx.close();
+    console.log('PASS live state and bot events: real goals at start, Test drawer TTS/trigger/channel points/sample poll and goals to Dima and SE widgets, chat replay, poll setup.');
   }
   // 4d. OBS: a signal reaches only the layers the server named.
   {

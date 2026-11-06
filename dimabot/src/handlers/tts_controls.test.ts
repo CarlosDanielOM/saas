@@ -59,7 +59,9 @@ for (const provider of ['piper', 'fish', 'kokoro']) mock.module(`../server/servi
 const { ttsQueueHandler: handler } = await import('./tts_queue.handler.js');
 const { registerStudioBridge } = await import('../overlays/bridge.js');
 const studio: string[] = [];
-registerStudioBridge({ hasSource: () => false, media: async () => {}, trigger: async () => {}, controlTts: async (_channel, action) => { studio.push(action); } });
+const widgetEvents: { channel: string; use: string; type: string; data: Record<string, unknown> }[] = [];
+registerStudioBridge({ hasSource: () => false, media: async () => {}, trigger: async () => {}, controlTts: async (_channel, action) => { studio.push(action); },
+  widgetEvent: (channel, use, type, data) => { widgetEvents.push({ channel, use, type, data: data as Record<string, unknown> }); return 1; } });
 
 function seed(channel: string, ...ids: string[]) {
   queues.set(`twitch:${channel}:tts:queue`, ids);
@@ -189,4 +191,35 @@ test('Studio skip before first playback report retains the exact owner for late 
     await handler.handleOverlayEnded('studio-proof', 'studio-proof-a', 'ended', 'studio:elected-socket', true);
     assert.equal(confirmedRetired.includes(key), true, 'the original owner can release the retired gate');
   } finally { legacyReady = true; await handler.cleanupChannel('studio-proof'); }
+});
+
+test('custom widget tts events: one start when audio goes out, one end (with a public reason), only for played messages', async () => {
+  // Earlier tests replace the bridge; this one captures widget events (legacy speech output, like the first tests).
+  registerStudioBridge({ hasSource: () => false, media: async () => {}, trigger: async () => {}, controlTts: async () => {},
+    widgetEvent: (channel, use, type, data) => { widgetEvents.push({ channel, use, type, data: data as Record<string, unknown> }); return 1; } });
+  seed('widgets', 'w-a', 'w-b', 'w-c');
+  data.set('twitch:widgets:tts:queue:data:w-a', JSON.stringify({ channelID: 'widgets', speechID: 'w-a', provider: 'piper', mode: 'speak', language: 'en', voice: 'test', text: 'Ada says: hello',
+    requestedBy: { userID: '42', userLogin: 'ada', userName: 'Ada', userLevel: 7 }, meta: { originalText: 'RAW hello' } }));
+  await handler.processNext('widgets');
+  await until(() => dispatched('w-a'));
+  await handler.handleSpeechEnded('widgets', 'w-a');
+  await handler.handleSpeechEnded('widgets', 'w-a'); // a late duplicate report
+  await until(() => dispatched('w-b'));
+  await handler.control('widgets', 'skip');
+  await until(() => dispatched('w-c'));
+  await handler.control('widgets', 'clear');
+  // A timeout, and a played message removed some other way (direct cleanup), still end exactly once.
+  seed('widgets', 'w-d', 'w-e');
+  await handler.processNext('widgets');
+  await until(() => dispatched('w-d'));
+  await handler.handleSpeechEnded('widgets', 'w-d', 'timeout');
+  await until(() => dispatched('w-e'));
+  await handler.cleanupSpeech('widgets', 'w-e');
+  const seen = widgetEvents.filter(event => event.channel === 'widgets').map(event => [event.use, event.type, event.data.id, event.data.phase, event.data.reason]);
+  assert.deepEqual(seen, [['tts', 'tts', 'w-a', 'start', null], ['tts', 'tts', 'w-a', 'end', 'ended'], ['tts', 'tts', 'w-b', 'start', null], ['tts', 'tts', 'w-b', 'end', 'skipped'],
+    ['tts', 'tts', 'w-c', 'start', null], ['tts', 'tts', 'w-c', 'end', 'cleared'], ['tts', 'tts', 'w-d', 'start', null], ['tts', 'tts', 'w-d', 'end', 'interrupted'],
+    ['tts', 'tts', 'w-e', 'start', null], ['tts', 'tts', 'w-e', 'end', 'interrupted']]);
+  assert.equal((handler as unknown as { widgetTts: Map<string, unknown> }).widgetTts.size, 0, 'nothing left waiting for an end');
+  const first = widgetEvents.find(event => event.data.id === 'w-a')!.data;
+  assert.deepEqual([first.text, first.user, first.test], ['Ada says: hello', { id: '42', login: 'ada', name: 'Ada' }, false], 'filtered text and requester; never the original text or user level');
 });

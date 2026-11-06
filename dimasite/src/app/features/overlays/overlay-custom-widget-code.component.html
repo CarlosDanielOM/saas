@@ -169,6 +169,11 @@
                 @for (kind of alertTests; track kind) { <button type="button" (click)="sendAlert(kind)" [attr.data-cwc-alert]="kind">{{ t('alertTest_' + kind) }}</button> }
               </div>
             }
+            @if (botTests().length) {
+              <div class="chips" role="group" [attr.aria-label]="t('widgetTestsBot')" data-cwc-bot-tests>
+                @for (kind of botTests(); track kind) { <button type="button" (click)="sendBotTest(kind)" [attr.data-cwc-bot-test]="kind">{{ t('botTest_' + kind) }}</button> }
+              </div>
+            }
             @if (uses().includes('signals')) {
               <form class="chips signal-test" [attr.aria-label]="t('widgetTestsSignal')" (submit)="$event.preventDefault(); sendSignal()" data-cwc-signal>
                 @for (name of declaredSignals(); track name) { <button type="button" [attr.aria-pressed]="signalName() === name" (click)="signalName.set(name)" [attr.data-cwc-signal-name]="name">{{ name }}</button> }
@@ -178,7 +183,7 @@
                 @if (signalInvalid()) { <p class="note note--warn" role="alert">{{ t('widgetTestSignalInvalid') }}</p> }
               </form>
             }
-            @if (!uses().includes('chat') && !uses().includes('alerts') && !uses().includes('signals')) { <p class="note">{{ t('customCodeNoTests') }}</p> }
+            @if (!uses().includes('chat') && !uses().includes('alerts') && !uses().includes('signals') && !botTests().length) { <p class="note">{{ t('customCodeNoTests') }}</p> }
           </section>
 
           <details class="fold" data-cwc-kit>

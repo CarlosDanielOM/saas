@@ -14,7 +14,7 @@ import { starterFiles, type StarterTexts } from './custom-widget-templates';
 import { writeZip } from './custom-widget-zip';
 import { EVENT_USES, type DimaSignal } from './widget-runtime/dima-events';
 import { dimaSdk } from './widget-runtime/dima-sdk';
-import { testAlert, testChat } from './widget-runtime/test-events';
+import { testAlert, testChat, testGoals, testPolls, testReward, testTrigger, testTts } from './widget-runtime/test-events';
 import { SE_SHIM_SCRIPT, seShim } from './widget-runtime/se-shim';
 import { DIMA_EVENTS, SE_LISTENERS, TYPES } from './widget-runtime/sdk-reference';
 
@@ -45,8 +45,8 @@ describe('SDK reference matches the runtime', () => {
     expect(SE_LISTENERS.map(l => l.name).filter(name => name !== 'tip-latest').sort()).toEqual([...used].filter(name => name !== 'tip-latest').sort());
   });
   it('every StreamElements payload the layer sends fits the SEEvent / SEMessageData typings', async () => {
-    const handlers: Record<string, (data: unknown) => void> = {}, details: { listener: string; event: Record<string, unknown> }[] = [];
-    const Dima = { ready: () => Promise.resolve({ channel: { id: '1', login: 'c', name: 'C' }, fields: {}, mode: 'editor', session: null }), on: (type: string, fn: (data: unknown) => void) => { handlers[type] = fn; },
+    const handlers: Record<string, (data: unknown) => void> = {}, states: Record<string, (value: unknown) => void> = {}, details: { listener: string; event: Record<string, unknown> }[] = [];
+    const Dima = { ready: () => Promise.resolve({ channel: { id: '1', login: 'c', name: 'C' }, fields: {}, mode: 'editor', session: null }), on: (type: string, fn: (data: unknown) => void) => { handlers[type] = fn; }, state: (name: string, fn: (value: unknown) => void) => { states[name] = fn; },
       storage: { get: async () => null, set: async () => undefined }, counters: { get: async () => 0 }, setField: async () => undefined, done: async () => undefined, html: () => '' };
     const win: Record<string, unknown> = { Dima, CustomEvent: window.CustomEvent, setTimeout: () => 0, clearTimeout: () => {}, console,
       dispatchEvent: (event: CustomEvent) => { if (event.type === 'onEventReceived') details.push(event.detail); return true; } };
@@ -59,6 +59,12 @@ describe('SDK reference matches the runtime', () => {
       user: { id: '2', login: 'ada', name: 'Ada', roles: { broadcaster: false, moderator: false, vip: false, subscriber: true } } };
     expect(Object.keys(signal).sort()).toEqual(Object.keys(TYPES['DimaSignal'].props).sort());
     handlers['signal'](signal);
+    // Live state and bot events reach StreamElements widgets as dima:* listeners, always as objects.
+    await new Promise(r => setTimeout(r, 0)); // the SE layer subscribes to live state after onWidgetLoad
+    states['polls'](testPolls()); states['goals'](testGoals());
+    handlers['tts'](testTts('start')); handlers['trigger'](testTrigger()); handlers['reward'](testReward());
+    for (const [type, value] of [['DimaTts', testTts('end')], ['DimaTrigger', testTrigger()], ['DimaReward', testReward()]] as const) expect(Object.keys(value).sort()).toEqual(Object.keys(TYPES[type].props).sort());
+    expect(Object.keys(testGoals()[0] as object).sort()).toEqual(Object.keys(TYPES['DimaGoal'].props).sort());
     const eventKeys = new Set(Object.keys(TYPES['SEEvent'].props)), dataKeys = new Set(Object.keys(TYPES['SEMessageData'].props));
     expect(new Set(details.map(d => d.listener))).toEqual(new Set(SE_LISTENERS.map(l => l.name).filter(name => name !== 'tip-latest').concat('tip-latest')));
     for (const { listener, event } of details) {
@@ -154,7 +160,7 @@ describe('code editor suggestions', () => {
   it('widget.json, fields and data', () => {
     const manifest = jsonCompletions('manifest', () => hints()), fields = jsonCompletions('fields', () => hints()), data = jsonCompletions('data', () => hints());
     expect(labels(complete(manifest, '{ "engine": "', json()))).toEqual(['dima', 'streamelements']);
-    expect(labels(complete(manifest, '{ "engine": "dima", "uses": ["chat", "', json()))).toEqual(['chat', 'alerts', 'storage', 'counters', 'session', 'signals']);
+    expect(labels(complete(manifest, '{ "engine": "dima", "uses": ["chat", "', json()))).toEqual(['chat', 'alerts', 'storage', 'counters', 'session', 'signals', 'polls', 'goals', 'tts', 'triggers', 'rewards']);
     expect(labels(complete(manifest, '{ "engine": "dima", "', json()))).not.toContain('engine');
     expect(labels(complete(fields, '{ "x": { "type": "', json()))).toEqual(expect.arrayContaining(['colorpicker', 'slider', 'hidden']));
     expect(labels(complete(fields, '{ "x": { "', json()))).toEqual(expect.arrayContaining(['type', 'label', 'value', 'group']));

@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom, map, timeout } from 'rxjs';
 import { OverlayApi } from './overlay-api.service';
 import type { CustomWidgetPlan, ExternalMedia, FieldIssue, JsonObject, PackageFile, PackageInput, WidgetField, WidgetManifest } from './custom-widget-format.generated';
-import type { DimaSession } from './widget-runtime/dima-events';
+import type { DimaChat, DimaSession } from './widget-runtime/dima-events';
 import type { RuntimeBundle } from './widget-runtime/widget-env';
 
 export interface WidgetUse { sceneId: string; sceneName: string; draft: boolean; published: boolean }
@@ -109,6 +109,10 @@ export class CustomWidgetsService {
     return this.api.request<{ value: number }>('GET', `${this.channel}/custom-widgets/counters/${encodeURIComponent(name)}`).then(result => result.value);
   }
   /** Signals dropped by the channel limits in the last 10 minutes. */
+  /** The channel's live state for previews (null: that read failed). */
+  liveState(): Promise<{ polls: unknown; goals: unknown }> { return this.api.request<{ polls: unknown; goals: unknown }>('GET', `${this.channel}/custom-widgets/state`); }
+  /** The channel's last stored chat messages (oldest first, text only) for "Replay recent chat". */
+  chatHistory(): Promise<{ messages: DimaChat[] }> { return this.api.request<{ messages: DimaChat[] }>('GET', `${this.channel}/custom-widgets/chat-history`); }
   signalStatus(): Promise<{ skipped: number }> { return this.api.request<{ skipped: number }>('GET', `${this.channel}/custom-widgets/signals`); }
   /** Session snapshot; `goalSources` (owner only) names the goal behind each StreamElements "manual" goal. */
   session(): Promise<DimaSession & { goalSources?: Record<string, { id: string; name: string; status: string }> }> { return this.api.request('GET', `${this.channel}/custom-widgets/session`); }

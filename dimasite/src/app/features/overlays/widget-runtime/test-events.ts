@@ -1,4 +1,4 @@
-import type { DimaAlert, DimaBadge, DimaChat, DimaPart, DimaRoles, DimaUser } from './dima-events';
+import type { DimaAlert, DimaBadge, DimaChat, DimaPart, DimaReward, DimaRoles, DimaTrigger, DimaTts, DimaUser } from './dima-events';
 
 /** Studio test presets for custom widgets: realistic Twitch-shaped chat and alerts. */
 export const CHAT_TESTS = ['viewer', 'subscriber', 'vip', 'moderator', 'broadcaster', 'first', 'emotes', 'reply', 'long', 'command'] as const;
@@ -73,4 +73,32 @@ export function testAlert(kind: AlertTest): DimaAlert {
     case 'raid': return { ...base, type: 'raid', user: person('sakura_streams', 'Sakura_Streams'), amount: 42 };
     case 'tip': return { ...base, type: 'tip', user: person('yuzu', 'Yuzu'), amount: 5, currency: 'USD', message: 'buy yourself a tea!' };
   }
+}
+
+/** Bot events and live state the Test drawer can send (all marked as tests). */
+export const BOT_EVENT_TESTS = ['tts', 'trigger', 'reward'] as const;
+export type BotEventTest = typeof BOT_EVENT_TESTS[number];
+export const STATE_TESTS = ['polls', 'goals'] as const;
+export type StateTest = typeof STATE_TESTS[number];
+
+export function testTts(phase: 'start' | 'end', speechId = id()): DimaTts {
+  return { id: speechId, phase, text: 'Yuzu says: the cozy stream continues!', user: person('yuzu', 'Yuzu'), reason: phase === 'end' ? 'ended' : null, at: Date.now(), test: true };
+}
+export function testTrigger(): DimaTrigger { return { id: id(), triggerId: '', name: 'Airhorn', mediaType: 'audio', at: Date.now(), test: true }; }
+export function testReward(): DimaReward {
+  return { id: id(), reward: { id: 'test-reward', title: 'Hydrate!', cost: 500 }, user: person('pix', 'Pix'), input: 'stay hydrated, chat', at: Date.now(), test: true };
+}
+/** A poll in progress and no prediction, in the shape Twitch polls arrive in. */
+export function testPolls(): { poll: unknown; prediction: unknown } {
+  const now = Date.now(), at = new Date(now).toISOString();
+  return { poll: { kind: 'poll', id: 'test-poll', title: 'Next game?', phase: 'active', startedAt: at, deadline: new Date(now + 60_000).toISOString(), endedAt: null, winnerId: null,
+    occurredAt: at, receipt: 'test', revision: 1, choices: [{ id: 'a', title: 'Celeste', votes: 12, users: 12, points: 0 }, { id: 'b', title: 'Hades', votes: 7, users: 7, points: 0 }, { id: 'c', title: 'Tetris', votes: 3, users: 3, points: 0 }] }, prediction: null };
+}
+/** Two goals like the Goals page makes (money in currency units). */
+export function testGoals(): unknown[] {
+  const now = Date.now();
+  return [
+    { id: 'test-follows', name: 'Road to 100 followers', metric: 'follows', mode: 'total', target: 100, current: 64, percent: 64, currency: null, status: 'active', startsAt: now - 86_400_000, endsAt: null, windowSeconds: null, period: null },
+    { id: 'test-money', name: 'New microphone', metric: 'currency', mode: 'monthly', target: 250, current: 87.5, percent: 35, currency: 'USD', status: 'active', startsAt: now - 86_400_000, endsAt: null, windowSeconds: null, period: null }
+  ];
 }

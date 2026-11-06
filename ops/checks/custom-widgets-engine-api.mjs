@@ -4,7 +4,8 @@
 // Covers the widget engine's server side: widget.json, owner/public bundles, the overlay-feed socket
 // (session, journal alerts, chat and command signals from the bot's pub/sub, storage events, Studio tests), widget RPC
 // (store, counters, limits, manifest permissions), chat demand, media copying and copied-asset serving, and
-// StreamElements totals/month/"manual" goals in session data (ledgers, journal, Goals page) with goal refreshes.
+// StreamElements totals/month/"manual" goals in session data (ledgers, journal, Goals page) with goal refreshes,
+// live state (polls, goals) and bot events (rewards, triggers) for widgets that use them, Studio's state/chat-history routes.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -52,8 +53,8 @@ try {
   assert.deepEqual([seWidget.manifest.engine, seWidget.manifest.uses, seWidget.manifest.inferred], ['streamelements', ['chat', 'alerts'], true]);
   assert.match((await req('POST', widgetsPath, { files: { ...dima, manifest: '{"api":9}' } }, 400)).message, /newer widget engine/);
   const petSignals = [{ name: 'feed', description: 'Feed the pet', values: ['pizza'] }];
-  const pet = (await data('POST', widgetsPath, { name: 'Pet', files: { ...dima, manifest: JSON.stringify({ engine: 'dima', api: 1, name: 'Pet', uses: ['signals'], signals: [...petSignals, { name: 'Bad.Name' }] }) } }, 201)).widget;
-  assert.deepEqual([pet.manifest.uses, pet.manifest.signals], [['signals'], petSignals], 'declared signals are kept; invalid declarations are skipped');
+  const pet = (await data('POST', widgetsPath, { name: 'Pet', files: { ...dima, manifest: JSON.stringify({ engine: 'dima', api: 1, name: 'Pet', uses: ['signals', 'polls', 'goals', 'tts', 'triggers', 'rewards'], signals: [...petSignals, { name: 'Bad.Name' }] }) } }, 201)).widget;
+  assert.deepEqual([pet.manifest.uses, pet.manifest.signals], [['signals', 'polls', 'goals', 'tts', 'triggers', 'rewards'], petSignals], 'declared signals are kept; invalid declarations are skipped');
   const ownerBundle = await data('GET', `${widgetsPath}/${native.id}/bundle`);
   assert.deepEqual([ownerBundle.engine, ownerBundle.js, ownerBundle.revision, ownerBundle.channel], ['dima', dima.js, 1, { id: preview, login: 'cdom201', name: 'CDom201' }]);
   assert.equal(await (await fetch(`http://127.0.0.1:3000${widgetsPath}/${native.id}/files/manifest`, { headers: { Authorization: 'Bearer cwe-' + preview } })).text(), dima.manifest);
@@ -166,6 +167,33 @@ try {
   assert.deepEqual(feed.filter(item => item.type === 'signal').map(item => item.data.id), ['sig-feed', 'sig-focus', 'sig-after'], 'no unknown layer names, invalid signals or other channels');
   console.log('PASS command signals reach layers that use them; .to targets one layer by name; invalid ones and other channels never.');
 
+  // Live state for widgets that use it: goals (public projection, never actions) and polls (same sanitized read as built-in poll widgets).
+  const goalsState = (await nextFeed('state', item => item.name === 'goals' && item.value.length > 0)).data.value;
+  assert.deepEqual(goalsState.map(goal => [goal.id, goal.name, goal.metric, goal.current, goal.target, goal.currency]), [['g-follow', 'Road to 100', 'follows', 9, 100, null], ['g-money', 'Charity', 'currency', 12.34, 500, 'USD']]);
+  assert(goalsState.every(goal => !('actions' in goal) && !('outcome' in goal)), 'no completion actions or outcomes');
+  const { applyInteractionEvent } = await import('/app/dist/overlays/interactions.js');
+  const pollAt = new Date().toISOString();
+  await applyInteractionEvent({ source: 'twitch-eventsub', channelID: preview, sourceEventId: 'cw-poll-1', occurredAt: new Date(), metadata: { messageTimestamp: pollAt },
+    payload: { subscription: { type: 'channel.poll.begin' }, event: { id: 'poll-1', title: 'Next game?', started_at: pollAt, ends_at: new Date(Date.now() + 60000).toISOString(),
+      choices: [{ id: 'a', title: 'Celeste', votes: 0 }, { id: 'b', title: 'Hades', votes: 0 }] } } });
+  const polls = (await nextFeed('state', item => item.name === 'polls' && item.value.poll?.id === 'poll-1')).data.value;
+  assert.deepEqual([polls.poll.title, polls.poll.phase, polls.poll.choices.map(choice => choice.title), polls.prediction], ['Next game?', 'active', ['Celeste', 'Hades'], null]);
+  assert.equal(feed.filter(item => item.type === 'state' && item.data.name === 'polls').length >= 1, true);
+  console.log('PASS live state: goals (public projection) and polls (sanitized) reach widgets that use them.');
+
+  // Bot events: channel-point redemptions from the bot (once per redemption, known fields only); triggers on a custom-only overlay.
+  const redemption = { id: 'redeem-1', reward: { id: 'r1', title: 'Hydrate!', cost: 500, secret: 'x' }, user: { id: '9', login: 'pix', name: 'Pix' }, input: 'drink water', at: 1, test: true, extra: 'drop me' };
+  for (const data of [redemption, redemption, { id: '', reward: {} }]) await publisher.publish('widget-feed', JSON.stringify({ channel: preview, type: 'reward', data }));
+  await sendSignal(signal('after_rewards'));
+  await nextFeed('signal', item => item.id === 'sig-after_rewards');
+  const rewards = feed.filter(item => item.type === 'reward');
+  assert.deepEqual(rewards.map(item => item.data), [{ id: 'redeem-1', reward: { id: 'r1', title: 'Hydrate!', cost: 500 }, user: { id: '9', login: 'pix', name: 'Pix' }, input: 'drink water', at: 1, test: false }]);
+  const sent = await data('POST', `/triggers/${preview}/send`, { name: 'Airhorn', url: 'https://example.invalid/airhorn.mp3', mediaType: 'audio/mpeg', volume: 80 });
+  assert.equal(sent.activeConnections, 0);
+  const trigger = (await nextFeed('trigger', item => item.name === 'Airhorn')).data;
+  assert.deepEqual([trigger.triggerId, trigger.mediaType, trigger.test, 'url' in trigger, 'volume' in trigger], ['', 'audio', false, false, false]);
+  console.log('PASS bot events: redemptions once with known fields only; triggers reach custom-only overlays without media URLs.');
+
   // Widget RPC: store (namespaced per engine), counters, permissions and limits.
   assert.deepEqual(await rpc('dima-layer', 'store.set', { key: 'alerts', value: { count: 5, 'a.b': '$x' } }), { ok: true, value: true });
   assert.deepEqual(await rpc('dima-layer', 'store.get', { key: 'alerts' }), { ok: true, value: { count: 5, 'a.b': '$x' } });
@@ -205,6 +233,23 @@ try {
   assert.equal((await nextFeed('session', item => item.data['follower-session']?.count === 42)).data.recents.length, 0);
   await req('POST', `${base}/widget-test`, { sceneId: scene.id, type: 'session', data: { data: [], recents: [] } }, 400);
   console.log('PASS Studio chat and alert tests reach the published overlay\'s widgets; test session totals follow test alerts.');
+
+  // Studio tests for bot events and sample state: stamped as tests; unknown state names refused.
+  for (const [type, payload] of [['tts', { id: 't1', phase: 'start', text: 'hi', user: null, reason: null, at: 1 }], ['trigger', { id: 'tr1', triggerId: '', name: 'Bell', mediaType: 'audio', at: 1 }],
+    ['reward', { id: 'rw1', reward: { id: 'r', title: 'T', cost: 1 }, user: null, input: null, at: 1 }], ['state', { name: 'goals', value: [{ id: 'sample' }] }]]) {
+    assert.equal((await data('POST', `${base}/widget-test`, { sceneId: scene.id, type, data: payload })).clients, 1, type);
+  }
+  assert.equal((await nextFeed('tts', item => item.id === 't1')).data.test, true);
+  assert.equal((await nextFeed('reward', item => item.id === 'rw1')).data.test, true);
+  await nextFeed('state', item => item.name === 'goals' && item.value[0]?.id === 'sample');
+  await req('POST', `${base}/widget-test`, { sceneId: scene.id, type: 'state', data: { name: 'secrets', value: {} } }, 400);
+  // Studio's preview routes: real state and replayed chat (oldest first, text only).
+  const studioState = await data('GET', `${widgetsPath}/state`);
+  assert.deepEqual([studioState.polls.poll.id, studioState.goals.map(goal => goal.id)], ['poll-1', ['g-follow', 'g-money']]);
+  for (const entry of [{ username: 'Old', message: 'first', timestamp: 1, badges: ['[VIP]'] }, { username: 'New', message: 'second', timestamp: 2, messageID: 'n2', badges: [] }]) await redis.lPush(`twitch:${preview}:chat:history`, JSON.stringify(entry));
+  const replay = (await data('GET', `${widgetsPath}/chat-history`)).messages;
+  assert.deepEqual(replay.map(message => [message.user.name, message.text, message.user.roles.vip]), [['Old', 'first', true], ['New', 'second', false]]);
+  console.log('PASS Studio: bot event and state tests (stamped), live state and chat replay routes.');
 
   // Studio signal tests: stamped by the server (sender = owner, source = Studio), name-targeted, counted in the channel limit.
   const forged = { id: 'forged', name: 'Feed', value: ' pizza ', target: 'chat box', user: { id: 'evil', login: 'evil', name: 'Evil', roles: { broadcaster: true } }, source: { kind: 'command', name: 'x' }, at: 1 };
