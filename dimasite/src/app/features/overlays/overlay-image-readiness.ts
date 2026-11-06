@@ -1,9 +1,10 @@
-/** Wait for the actual displayed images, including async signed-URL resolution.
+/** Wait for the actual displayed pictures and videos, including async signed-URL resolution.
  * A separate preloaded <img> is insufficient for no-store URLs or newly mounted variants.
- * Resolves once every picture is decoded (true) or some have failed (false), or at `timeoutMs`.
- * A failed picture never ends the wait for healthy ones; a removed root no longer counts.
+ * Pictures must be loaded and decoded; videos must have their first frame (HAVE_CURRENT_DATA).
+ * Resolves once every item is ready (true) or some have failed (false), or at `timeoutMs`.
+ * A failed item never ends the wait for healthy ones; a removed root no longer counts.
  */
-export function waitForOverlayImages(root: HTMLElement, signal: AbortSignal, timeoutMs = 8000): Promise<boolean> {
+export function waitForOverlayMedia(root: HTMLElement, signal: AbortSignal, timeoutMs = 8000): Promise<boolean> {
   return new Promise(resolve => {
     let finished = false;
     let poll: ReturnType<typeof setTimeout> | undefined;
@@ -14,22 +15,27 @@ export function waitForOverlayImages(root: HTMLElement, signal: AbortSignal, tim
       signal.removeEventListener('abort', abort); resolve(ready);
     };
     const abort = () => finish(false);
-    const snapshot = () => [...root.querySelectorAll<HTMLElement>('[data-overlay-image]')].map(layer => {
+    const snapshot = () => [...root.querySelectorAll<HTMLElement>('[data-overlay-image],[data-overlay-video]')].map(layer => {
+      // A layer that reported failure may have replaced its element with a message.
+      const marked = !!layer.hasAttribute?.('data-overlay-failed');
+      if (layer.hasAttribute?.('data-overlay-video')) {
+        const video = layer.querySelector('video'), failed = marked || !!video?.error;
+        return { element: video as Element | null, img: null, failed, ready: !failed && !!video && !video.seeking && video.readyState >= 2 /* HAVE_CURRENT_DATA */ };
+      }
       const img = layer.querySelector('img');
-      // A layer that reported failure may have replaced its <img> with a message.
-      const failed = !!layer.hasAttribute?.('data-overlay-failed') || !!img && img.complete && !!img.currentSrc && !img.naturalWidth;
-      return { img, failed, ready: !failed && !!img?.complete && !!img.naturalWidth };
+      const failed = marked || !!img && img.complete && !!img.currentSrc && !img.naturalWidth;
+      return { element: img as Element | null, img, failed, ready: !failed && !!img?.complete && !!img.naturalWidth };
     });
     const inspect = async () => {
       if (finished) return;
       if (root.isConnected === false) { finish(true); return; }
       const states = snapshot();
       if (states.every(state => state.failed || state.ready)) {
-        const decoded = await Promise.allSettled(states.filter(state => state.ready).map(state => state.img!.decode()));
+        const decoded = await Promise.allSettled(states.filter(state => state.ready && state.img).map(state => state.img!.decode()));
         if (finished) return;
-        // If a variant or image changed while decoding, wait for its new DOM too.
+        // If a variant, element or its readiness changed while decoding (a video seeking), wait again.
         const current = snapshot();
-        if (current.length === states.length && current.every((state, i) => state.img === states[i].img && state.failed === states[i].failed)) {
+        if (current.length === states.length && current.every((state, i) => state.element === states[i].element && state.failed === states[i].failed && state.ready === states[i].ready)) {
           finish(states.every(state => state.ready) && decoded.every(result => result.status === 'fulfilled')); return;
         }
       }

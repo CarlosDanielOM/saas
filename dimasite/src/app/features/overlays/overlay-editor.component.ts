@@ -1,7 +1,7 @@
 import { OverlaySceneRendererComponent } from './overlay-scene-renderer.component';
 import { OverlayAssetCache, type PreparedAsset } from './overlay-asset-cache';
 import { AssetLibraryService } from '../../shared/asset-library/asset-library.service';
-import { alertPlacementIds, placementStartSeconds, placementMediaSeconds, placementMountSeconds, type OverlayRenderJob, type OverlayPlacementReport, type OverlayPlaybackId } from './overlay-playback';
+import { ALERT_READY_LIMIT_MS, alertPlacementIds, placementStartSeconds, placementMediaSeconds, placementMountSeconds, type OverlayRenderJob, type OverlayPlacementReport, type OverlayPlaybackId } from './overlay-playback';
 import { OverlayWidgetSettingsComponent } from './overlay-widget-settings.component';
 import { CustomWidgetsService, message as apiMessage, type CustomWidgetView } from './custom-widgets.service';
 import { OverlayCustomWidgetImportComponent } from './overlay-custom-widget-import.component';
@@ -131,6 +131,13 @@ export class OverlayEditorComponent {
   private readonly jobs = new Map<number, MediaJob>();
   private readonly assetCache = new OverlayAssetCache();
   private readonly previewLinks = new Map<string, { url: string; at: number }>();
+  /** The design replay the renderer last showed whole, and work waiting for the current one. */
+  private shownDesign = '';
+  private designShown?: { key: string; run: () => void };
+  private whenDesignShown(run: () => void): void {
+    const epoch = this.designPlaybackKey(), key = 'static:' + epoch;
+    if (!epoch || this.shownDesign === key) { this.designShown = undefined; run(); } else this.designShown = { key, run };
+  }
   private readonly assetLibrary = inject(AssetLibraryService);
   private readonly designAssets = signal<Map<string, PreparedAsset>>(new Map());
   private readonly channelChoice = signal('');
@@ -980,6 +987,11 @@ export class OverlayEditorComponent {
     }
   }
   rendererReady(report: { id: OverlayPlaybackId }): void {
+    if (typeof report.id === 'string' && report.id.startsWith('static:')) {
+      this.shownDesign = report.id;
+      if (this.designShown?.key === report.id) { const run = this.designShown.run; this.designShown = undefined; run(); }
+      return;
+    }
     const id = Number(report.id), job = this.jobs.get(id);
     const event = [this.active(),...this.parallel()].find(item => item?.id === id); if (!job || !event?.snapshot) return;
     for (const widget of event.snapshot.widgets.filter(w => job.pending.has(w.id))) {
@@ -1058,15 +1070,22 @@ export class OverlayEditorComponent {
     this.playbackTexts.set(texts);
     const assets = await this.prepareAssets([this.editingLayout()!],() => preparation === this.timelineSeek && !!this.timeline());
     if (!this.timeline() || this.disposed || preparation !== this.timelineSeek || generation !== this.playbackGeneration) { assets.forEach(asset => asset.release()); return; }
-    this.designAssets().forEach(asset => asset.release()); this.designAssets.set(assets);
-    const start = this.timeline()!.time, began = performance.now(), seek = this.timelineSeek;
-    this.timeline.set({ time: start, playing: true, seek });
-    const tick = () => {
-      const time = Math.min(duration, start + (performance.now() - began) / 1000);
-      this.timeline.set({ time, playing: time < duration, seek });
-      if (time < duration) this.timelineFrame = requestAnimationFrame(tick);
-    };
-    this.timelineFrame = requestAnimationFrame(tick);
+    // Same media as on screen: keep it, nothing reloads. New media: a fresh replay waits for it.
+    const onScreen = this.designAssets();
+    if (assets.size === onScreen.size && [...assets.keys()].every(id => onScreen.has(id))) assets.forEach(asset => asset.release());
+    else { onScreen.forEach(asset => asset.release()); this.designAssets.set(assets); this.motionReplay.update(n => n + 1); }
+    // The playhead moves only once the replay is shown whole.
+    this.whenDesignShown(() => {
+      if (!this.timeline() || this.disposed || preparation !== this.timelineSeek || generation !== this.playbackGeneration) return;
+      const start = this.timeline()!.time, began = performance.now(), seek = this.timelineSeek;
+      this.timeline.set({ time: start, playing: true, seek });
+      const tick = () => {
+        const time = Math.min(duration, start + (performance.now() - began) / 1000);
+        this.timeline.set({ time, playing: time < duration, seek });
+        if (time < duration) this.timelineFrame = requestAnimationFrame(tick);
+      };
+      this.timelineFrame = requestAnimationFrame(tick);
+    });
   }
   pauseHiddenTimeline(): void { const clock = this.timeline(); if (document.hidden && clock?.playing) this.seekTimeline(clock.time); }
   closeTimeline(): void { this.previewPreparations.get('timeline')?.abort(); if (this.timelineFrame) cancelAnimationFrame(this.timelineFrame); this.timeline.set(null); }
@@ -1089,9 +1108,16 @@ export class OverlayEditorComponent {
     this.designAssets().forEach(asset => asset.release()); this.designAssets.set(assets);
     this.playbackTexts.set(texts);
     this.motionReplay.update(value => value + 1); this.previewDesign.set(true);
-    this.designPreviewTimer = this.later(() => this.previewDesign.set(false), (this.editingLayout()?.duration ?? 5) * 1000);
+    // The preview's clock starts once the renderer shows it whole; the longer bound covers a stalled picture.
+    const duration = (this.editingLayout()?.duration ?? 5) * 1000;
+    this.designPreviewTimer = this.later(() => this.previewDesign.set(false), duration + ALERT_READY_LIMIT_MS + 2000);
+    this.whenDesignShown(() => {
+      if (request !== this.designRequest || !this.previewDesign()) return;
+      if (this.designPreviewTimer) { clearTimeout(this.designPreviewTimer); this.timers.delete(this.designPreviewTimer); }
+      this.designPreviewTimer = this.later(() => this.previewDesign.set(false), duration);
+    });
   }
-  private resetSimulation(): void { this.playbackGeneration++; this.designRequest++; this.playbackTexts.set(null); this.previewPreparations.forEach(controller => controller.abort()); this.previewPreparations.clear(); this.closeTimeline(); this.previewDesign.set(false); this.jobs.forEach(job => job.cancel?.()); [this.active(),...this.parallel()].forEach(event => event?.assets?.forEach(asset => asset.release())); this.designAssets().forEach(asset => asset.release()); this.designAssets.set(new Map()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
+  private resetSimulation(): void { this.designShown = undefined; this.playbackGeneration++; this.designRequest++; this.playbackTexts.set(null); this.previewPreparations.forEach(controller => controller.abort()); this.previewPreparations.clear(); this.closeTimeline(); this.previewDesign.set(false); this.jobs.forEach(job => job.cancel?.()); [this.active(),...this.parallel()].forEach(event => event?.assets?.forEach(asset => asset.release())); this.designAssets().forEach(asset => asset.release()); this.designAssets.set(new Map()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
   private async prepareAlert(key: string, kind = this.designEvent()): Promise<Record<string, string> | null> {
     this.previewPreparations.get(key)?.abort();
     const controller = new AbortController();

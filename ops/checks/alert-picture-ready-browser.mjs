@@ -2,6 +2,7 @@
 // never blank or half painted, and their motion, sound and duration start at that moment.
 // OBS renderer and Studio test alerts. Every API and socket is mocked; nothing reaches production.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { openStudio } from '/root/saas/ops/checks/overlay-studio-ui-helpers.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL || process.argv[2]; assert(base, 'SAAS_PREVIEW_URL required');
@@ -38,7 +39,10 @@ const SAMPLER = () => {
       } else {
         rec.firstVisible ||= Date.now();
         const images = [...el.querySelectorAll('[data-overlay-image]')].map(layer => layer.querySelector('img'));
+        const videos = [...el.querySelectorAll('[data-overlay-video]')].map(layer => layer.querySelector('video'));
         if (images.some(img => !img || !img.complete || !img.naturalWidth)) rec.partialVisible++;
+        if (videos.some(video => !video || video.readyState < 2)) rec.partialVisible++;
+        if (videos.length && rec.videoStart === undefined) rec.videoStart = videos[0].currentTime;
       }
     }
     requestAnimationFrame(tick);
@@ -58,7 +62,9 @@ const gate = (page, key) => page.evaluate(key => window.__gate[key], String(key)
 
 // ---------- OBS renderer ----------
 const publicId = 'd'.repeat(48);
-const ids = { fast: 'a'.repeat(24), slow: 'b'.repeat(24), broken: 'c'.repeat(24), stalled: 'e'.repeat(24), sound: 'f'.repeat(24), second: '9'.repeat(24) };
+const ids = { fast: 'a'.repeat(24), slow: 'b'.repeat(24), broken: 'c'.repeat(24), stalled: 'e'.repeat(24), sound: 'f'.repeat(24), second: '9'.repeat(24), video: '8'.repeat(24), slow2: '7'.repeat(24) };
+// A real WebM clip; referenced by absolute path because saas-ops verify runs checks from a copy.
+const webm = readFileSync('/root/saas/ops/checks/clip-recommendations-fixtures/moment-1.webm');
 const motion = { enter: 'fade', exit: 'fade', loop: 'none', delay: 0, enterDuration: .2, exitDuration: .2, loopDuration: 1 };
 const layoutWith = (imageId, extra = []) => ({ duration: 1.2, sound: { assetId: ids.sound, volume: 1, delay: 0, fadeIn: 0, fadeOut: 0 }, widgets: [
   { id: 'img', kind: 'image', x: 80, y: 50, width: 190, height: 160, visible: true, locked: false, assetId: imageId, motion }, ...extra,
@@ -69,7 +75,7 @@ const snapshot = { width: 1920, height: 1080, waitFor: ['follow'], widgets: [{ i
 
 async function obs(width, height) {
   const context = await browser.newContext({ viewport: { width, height } });
-  let socket; const ended = {}, health = [], calls = [], held = [];
+  let socket, videoReleased = false; const ended = {}, health = [], calls = [], held = [];
   const send = (name, value) => socket.send(`42/overlay-studio/${publicId},${JSON.stringify([name, value])}`);
   await context.routeWebSocket('**/*', ws => {
     if (!ws.url().includes('/socket.io/')) return ws.close(); socket = ws;
@@ -88,6 +94,7 @@ async function obs(width, height) {
       const id = u.pathname.split('/').at(-1), type = req.resourceType(); calls.push({ id, type });
       if (id === ids.sound) return route.fulfill({ contentType: 'audio/wav', body: wav });
       if (id === ids.fast) return route.fulfill({ contentType: 'image/jpeg', body: jpeg });
+      if (id === ids.video && type !== 'fetch' && videoReleased) return route.fulfill({ contentType: 'video/webm', body: webm });
       // Slow, broken and stalled pictures fail the local download, so the alert falls
       // back to a network <img>: the case that used to paint top to bottom on screen.
       if (type === 'fetch') return route.fulfill({ status: 503, body: '' });
@@ -97,7 +104,8 @@ async function obs(width, height) {
     if (u.pathname.includes('/events/')) {
       const id = u.pathname.split('/').at(-1), name = id.split('-')[1];
       // "mixed": a broken picture next to one that is still loading.
-      const layout = name === 'mixed' ? layoutWith(ids.broken, [{ id: 'img-2', kind: 'image', x: 560, y: 50, width: 190, height: 160, visible: true, locked: false, assetId: ids.second }]) : layoutWith(ids[name]);
+      const layout = name === 'mixed' ? layoutWith(ids.broken, [{ id: 'img-2', kind: 'image', x: 560, y: 50, width: 190, height: 160, visible: true, locked: false, assetId: ids.second }])
+        : name === 'video' || name === 'videowait' ? layoutWith(name === 'video' ? ids.fast : ids.slow2, [{ id: 'vid', kind: 'video', x: 560, y: 50, width: 200, height: 112, visible: true, locked: false, assetId: ids.video }]) : layoutWith(ids[name]);
       return route.fulfill({ json: { data: { id, kind: 'follow', snapshot, layouts: { d1: layout } } } });
     }
     return route.abort();
@@ -167,12 +175,43 @@ async function obs(width, height) {
   const shown = await placement.evaluate(el => [...el.querySelectorAll('[data-overlay-image]:not([data-overlay-failed]) img')].every(img => img.complete && img.naturalWidth > 0));
   assert.ok(shown, 'healthy picture is whole when the mixed alert appears');
   await until(() => ended['follow-mixed-1'], 'mixed alert completes');
+
+  // 5. A video still downloading: hidden until it has a first frame, then it starts from the beginning.
+  send('overlay-event', { id: 'follow-video-1', kind: 'follow' });
+  await until(() => held.some(h => h.id === ids.video), 'video requested');
+  await sleep(1000);
+  rec = await gate(page, 'follow-video-1');
+  assert.ok(rec.hidden > 10 && !rec.firstVisible, 'alert stays hidden until its video has a first frame');
+  assert.equal(rec.motionHidden + rec.soundHidden, 0, 'no motion or sound before the video is ready');
+  videoReleased = true;
+  for (const h of held.filter(h => h.id === ids.video)) await h.route.fulfill({ contentType: 'video/webm', body: webm });
+  await until(async () => (await gate(page, 'follow-video-1'))?.firstVisible, 'video alert shows after its first frame');
+  rec = await gate(page, 'follow-video-1');
+  assert.equal(rec.partialVisible, 0, 'the video has its first frame when the alert appears');
+  assert.ok(rec.videoStart < .3, `the video starts from the beginning (${rec.videoStart} s)`);
+  const video = placement.locator('[data-overlay-video] video');
+  await until(() => video.evaluate(v => !v.paused && v.currentTime > .2).catch(() => false), 'the video plays after the reveal', 3000);
+  await until(() => ended['follow-video-1'], 'video alert completes');
+
+  // 5b. A ready video waits, held on its first frame, while a picture still loads.
+  send('overlay-event', { id: 'follow-videowait-1', kind: 'follow' });
+  await until(() => held.some(h => h.id === ids.slow2), 'picture next to the video requested');
+  await until(() => video.evaluate(v => v.readyState >= 2 && !v.seeking).catch(() => false), 'hidden video has its first frame');
+  await sleep(800);
+  assert.ok(await video.evaluate(v => v.paused && v.currentTime < .1), 'a hidden ready video is held on its first frame');
+  assert.ok(!(await gate(page, 'follow-videowait-1')).firstVisible, 'alert still waits for its picture');
+  for (const h of held.filter(h => h.id === ids.slow2)) await h.route.fulfill({ contentType: 'image/jpeg', body: jpeg });
+  await until(async () => (await gate(page, 'follow-videowait-1'))?.firstVisible, 'alert shows once the picture is ready');
+  rec = await gate(page, 'follow-videowait-1');
+  assert.ok(rec.partialVisible === 0 && rec.videoStart < .3, `held video appears on its first frame (${rec.videoStart} s)`);
+  await until(() => video.evaluate(v => !v.paused && v.currentTime > .2).catch(() => false), 'held video plays after the reveal', 3000);
+  await until(() => ended['follow-videowait-1'], 'held video alert completes');
   await page.screenshot({ path: `/tmp/alert-picture-ready-${width}.png` });
   return { context, page, send, ended, held, placement };
 }
 
 // ---------- Studio test alert ----------
-async function studio(width) {
+async function studioFixture(width) {
   const user = { id: '990191', login: 'fixture', display_name: 'Fixture' };
   const app = { name: 'Fixture', email: 'fixture@example.invalid', language: 'en', plan_tier: 'pro', actived: true, chat_enabled: true, twitch_user_id: user.id, has_permissions: true, up_to_date_permissions: true, administrating: [] };
   const layer = (id, kind, x, y, w, h, extra = {}) => ({ id, kind, x, y, width: w, height: h, visible: true, locked: false, ...extra });
@@ -188,7 +227,7 @@ async function studio(width) {
   }, { user, app });
   await context.routeWebSocket('**/*', ws => ws.close());
   const held = [], requests = [];
-  let holdImages = false, fetchOk = false;
+  const ctl = { holdImages: false, fetchOk: false };
   await context.route('**/*', route => {
     const req = route.request(), url = new URL(req.url());
     if (url.origin === new URL(base).origin) return route.continue();
@@ -203,8 +242,8 @@ async function studio(width) {
       if (id === 'sound') return route.fulfill({ contentType: 'audio/wav', body: wav });
       // First the local download fails and the displayed <img> is held mid-load;
       // later tests download normally, to prove repeats reuse the bytes.
-      if (req.resourceType() === 'fetch') return fetchOk ? route.fulfill({ contentType: 'image/jpeg', body: jpeg }) : route.fulfill({ status: 503, body: '' });
-      if (holdImages) { held.push({ id, route }); return; }
+      if (req.resourceType() === 'fetch') return ctl.fetchOk ? route.fulfill({ contentType: 'image/jpeg', body: jpeg }) : route.fulfill({ status: 503, body: '' });
+      if (ctl.holdImages) { held.push({ id, route }); return; }
       return route.fulfill({ contentType: 'image/jpeg', body: jpeg });
     }
     if (url.pathname === '/auth/session') data = { twitch: user, app };
@@ -218,10 +257,14 @@ async function studio(width) {
   });
   const page = await context.newPage(); page.setDefaultTimeout(12000); page.on('pageerror', e => errors.push(e.message));
   await page.goto(base + '/fixture/modules/overlays'); await page.locator('app-overlay-editor .stage').waitFor();
+  return { context, page, held, requests, ctl };
+}
+async function studio(width) {
+  const { context, page, held, requests, ctl } = await studioFixture(width);
   await openStudio(page, 'test');
   // The box's resting example (another event's design) is fully shown before the test.
   await until(() => page.locator('.stage .placement[data-idle] [data-overlay-image] img').evaluateAll(imgs => imgs.length > 0 && imgs.every(img => img.complete && img.naturalWidth > 0)), 'resting example loaded');
-  holdImages = true;
+  ctl.holdImages = true;
   await page.evaluate(SAMPLER);
   // What the user saw: after clicking a test, the box's resting example switched to the tested
   // design and streamed its picture in. No visible frame of the box may show a partial picture.
@@ -245,7 +288,7 @@ async function studio(width) {
   assert.ok(rec.hidden > 5 && !rec.firstVisible, 'Studio test alert stays hidden while its picture loads');
   assert.equal(rec.motionHidden + rec.soundHidden, 0, 'Studio: no motion or sound before the picture');
   const released = Date.now();
-  holdImages = false;
+  ctl.holdImages = false;
   for (const h of held.splice(0)) await h.route.fulfill({ contentType: 'image/jpeg', body: jpeg });
   await until(async () => (await gate(page, key))?.firstVisible, 'Studio alert shows after its picture loads');
   rec = await gate(page, key);
@@ -256,7 +299,7 @@ async function studio(width) {
   assert.equal(await page.evaluate(() => window.__idlePartial), 0, 'Studio: the box never shows a half-loaded resting example while a test prepares');
 
   // Repeat tests reuse the downloaded picture: no new link or download, and it shows at once.
-  fetchOk = true;
+  ctl.fetchOk = true;
   await page.locator('.test-btn').filter({ hasText: 'Follow' }).click();
   await until(async () => await placement.count() === 1, 'second Studio test starts');
   await until(async () => await placement.count() === 0, 'second Studio test completes', 8000);
@@ -276,11 +319,51 @@ async function studio(width) {
   await context.close();
 }
 
+// Design editor Preview: the replay waits for its pictures too, and its duration starts when shown.
+async function designPreview(width) {
+  const { context, page, held, ctl } = await studioFixture(width);
+  await page.locator('.design-row__actions button').first().click();
+  await openStudio(page, 'test');
+  await until(() => page.locator('.stage .placement.art [data-overlay-image] img').evaluateAll(imgs => imgs.length > 0 && imgs.every(img => img.complete && img.naturalWidth > 0)), 'design canvas loaded');
+  await page.evaluate(() => {
+    const d = window.__design = { hidden: 0, motionHidden: 0, soundHidden: 0, partialVisible: 0, firstVisible: 0 };
+    const tick = () => {
+      const els = [...document.querySelectorAll('.stage .placement.art[data-ready-key^="static:"]')];
+      if (els.length && els.some(el => getComputedStyle(el).visibility !== 'visible')) {
+        d.hidden++;
+        if (els.some(el => el.getAnimations({ subtree: true }).some(a => /^alert-(object|keyframe)/.test(a.id)))) d.motionHidden++;
+        if (document.querySelector('.stage app-overlay-sound')) d.soundHidden++;
+      } else if (els.length) {
+        d.firstVisible ||= Date.now();
+        if (els.some(el => [...el.querySelectorAll('[data-overlay-image]')].some(layer => { const img = layer.querySelector('img'); return !img || !img.complete || !img.naturalWidth; }))) d.partialVisible++;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  ctl.holdImages = true;
+  await page.getByRole('button', { name: 'Preview Follows', exact: true }).click();
+  await until(() => held.some(h => h.id === 'follow'), 'design preview picture requested');
+  await sleep(1200);
+  let d = await page.evaluate(() => window.__design);
+  assert.ok(d.hidden > 5 && !d.firstVisible, 'design preview stays hidden while its picture loads');
+  assert.equal(d.motionHidden + d.soundHidden, 0, 'design preview: no motion or sound before the picture');
+  const released = Date.now(); ctl.holdImages = false;
+  for (const h of held.splice(0)) await h.route.fulfill({ contentType: 'image/jpeg', body: jpeg });
+  await until(() => page.evaluate(() => window.__design.firstVisible), 'design preview shows after its picture loads');
+  await until(async () => await page.locator('.stage .is-preview').count() === 0, 'design preview completes', 8000);
+  d = await page.evaluate(() => window.__design);
+  const played = Date.now() - d.firstVisible;
+  assert.ok(d.firstVisible >= released && d.partialVisible === 0, 'design preview appears whole');
+  assert.ok(played >= 1050, `design preview runs its full duration after it appears (${played} ms)`);
+  await context.close();
+}
+
 try {
   for (const [width, height] of [[1920, 1080], [1280, 720]]) {
     const run = await obs(width, height);
     if (width === 1920) {
-      // 5. A picture that never arrives still lets the alert play after the bounded wait.
+      // 6. A picture that never arrives still lets the alert play after the bounded wait.
       const sent = Date.now(); run.send('overlay-event', { id: 'follow-stalled-1', kind: 'follow' });
       await until(async () => (await gate(run.page, 'follow-stalled-1'))?.firstVisible, 'stalled picture alert shows after the limit', 12000);
       const waited = (await gate(run.page, 'follow-stalled-1')).firstVisible - sent;
@@ -289,7 +372,7 @@ try {
     }
     await run.context.close();
   }
-  for (const width of [390, 1280]) await studio(width);
+  for (const width of [390, 1280]) { await studio(width); await designPreview(width); }
   assert.deepEqual(errors, []);
-  console.log('PASS alert picture readiness: OBS and Studio alerts stay hidden, still and silent until their displayed pictures are loaded and decoded, then show whole with sound playing and full duration; local bytes show promptly; a broken picture is reported without delay and never reveals a still-loading one; stalled pictures wait a bounded 8 s');
+  console.log('PASS alert picture readiness: OBS and Studio alerts stay hidden, still and silent until their displayed pictures are loaded and decoded, then show whole with sound playing and full duration; local bytes show promptly; a broken picture is reported without delay and never reveals a still-loading one; videos wait for a first frame and start from 0; Studio tests, resting examples and design previews never show partial media; stalled media waits a bounded 8 s');
 } finally { await browser.close(); }
