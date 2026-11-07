@@ -10,6 +10,7 @@ import {
   CreateChannelExtensionItemRequest,
   DimafxItemsResponse,
   DimafxOverlayStatus,
+  DimafxQueue,
   DimafxTestTriggerResult,
   UpdateChannelExtensionItemRequest
 } from './dimafx.model';
@@ -61,6 +62,40 @@ export class DimafxService {
       .pipe(
         map((response) => {
           if (response.error || !response.data) throw new Error(response.message || this.language.translate('modules.dimafx.toasts.loadFailed'));
+          return response.data;
+        })
+      );
+  }
+
+  // Twitch extension rule 7.4: the streamer can see and remove viewer plays.
+  getQueue(channelId: string): Observable<DimafxQueue> {
+    return this.http
+      .get<ApiEnvelope<DimafxQueue>>(`${this.linksService.getApiUrl()}/extensions/dimafx/${channelId}/queue`)
+      .pipe(
+        map((response) => {
+          if (response.error || !response.data) throw new Error(response.message || this.language.translate('modules.dimafx.queue.toasts.failed'));
+          return { playing: response.data.playing ?? null, queued: response.data.queued ?? [] };
+        })
+      );
+  }
+
+  skipQueueEntry(channelId: string, id?: string): Observable<{ skipped: string | null }> {
+    return this.http
+      .post<ApiEnvelope<{ skipped: string | null }>>(`${this.linksService.getApiUrl()}/extensions/dimafx/${channelId}/queue/skip`, id ? { id } : {})
+      .pipe(
+        map((response) => {
+          if (response.error || !response.data) throw new Error(response.message || this.language.translate('modules.dimafx.queue.toasts.failed'));
+          return response.data;
+        })
+      );
+  }
+
+  clearQueue(channelId: string): Observable<{ removed: number }> {
+    return this.http
+      .post<ApiEnvelope<{ removed: number }>>(`${this.linksService.getApiUrl()}/extensions/dimafx/${channelId}/queue/clear`, {})
+      .pipe(
+        map((response) => {
+          if (response.error || !response.data) throw new Error(response.message || this.language.translate('modules.dimafx.queue.toasts.failed'));
           return response.data;
         })
       );

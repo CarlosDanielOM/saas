@@ -291,6 +291,7 @@ The viewer extension uses the same language, adapted to Twitch:
 - **Size:** design for the **318×500 Twitch panel** first (compact header, scrollable middle, bottom tab bar, bottom-sheet detail), then the full-width phone view. Every check runs at 318, 320 and 390.
 - **Theme and language come from Twitch:** `Twitch.ext.onContext` → toggle `html.dark` (no theme switcher of our own); English/Spanish from the `?language=` query Twitch adds, via the `STRINGS` table in `panel.js`.
 - **Purchase safety is part of the design:** buttons are disabled while the overlay is offline, and every purchase re-checks the overlay before calling Twitch. Keep both when restyling.
+- **Twitch hosting rules:** no inline scripts or `onclick=`-style attributes anywhere (Twitch's CSP blocks them; use `data-action` + the delegated listeners), honour `features.isBitsEnabled`, preview sound starts off, and viewer copy avoids buy/purchase/spend/price (guideline 6.5). Details in `dimafx/AGENTS.md`.
 - **Publishing:** files are served straight from the checkout, so prepare in a separate worktree and publish per `dimafx/AGENTS.md`. Behaviour check: `ops/checks/dimafx-client.mjs` (mocked Twitch + API; filters, credits two-tap, custom voice message, saved items, Spanish/no-ID, axe + overflow in dark and light).
 
 ## Admin site (`admin/`)

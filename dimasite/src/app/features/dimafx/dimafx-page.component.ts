@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnInit, OnDestroy, signal, untracked } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -11,7 +11,7 @@ import { getRouteParam } from '../../shared/utils/route-param.util';
 import { MediaAsset } from '../triggers/triggers.model';
 import { TriggersService } from '../triggers/triggers.service';
 import { LazyVideoFrameDirective } from '../triggers/lazy-video-frame.directive';
-import { ChannelExtensionItem, DimafxCategory, DimafxTtsLanguage, DimafxTtsMode } from './dimafx.model';
+import { ChannelExtensionItem, DimafxCategory, DimafxQueue, DimafxQueueEntry, DimafxTtsLanguage, DimafxTtsMode } from './dimafx.model';
 import { DimafxService } from './dimafx.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
@@ -96,6 +96,16 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   readonly overlayUrl = signal('');
   readonly overlayCopied = signal(false);
   private overlayStatusTimer?: ReturnType<typeof setInterval>;
+  /** Live queue (Twitch rule 7.4: the streamer can remove viewer plays). Null until loaded or when not permitted. */
+  readonly queue = signal<DimafxQueue | null>(null);
+  readonly queueBusy = signal<string | null>(null);
+  readonly confirmClear = signal(false);
+  private confirmClearTimer?: ReturnType<typeof setTimeout>;
+  readonly queueCount = computed(() => (this.queue()?.queued.length ?? 0) + (this.queue()?.playing ? 1 : 0));
+  // Edit access resolves after the first load; show the queue as soon as it does instead of on the next poll.
+  private readonly queueOnAccess = effect(() => {
+    if (this.canEdit()) untracked(() => void this.refreshQueue());
+  });
   private destroyed = false;
   readonly testingItemId = signal<string | null>(null);
   readonly togglingItemId = signal<string | null>(null);
@@ -170,6 +180,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroyed = true;
     clearInterval(this.overlayStatusTimer);
+    clearTimeout(this.confirmClearTimer);
     this.stopAudio();
   }
 
@@ -236,6 +247,63 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
       this.overlayConnected.set(status.connected);
       this.overlayUrl.set(status.overlayUrl);
     } catch { if (!this.destroyed) this.overlayConnected.set(null); }
+    await this.refreshQueue();
+  }
+
+  // ---- Live queue (skip / remove viewer plays) -----------------------------
+
+  async refreshQueue(): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID || !this.canEdit()) return;
+    try {
+      const queue = await firstValueFrom(this.dimafxService.getQueue(channelID));
+      if (!this.destroyed && channelID === this.channelID()) this.queue.set(queue);
+    } catch {
+      // Keep the last known queue; the next poll retries.
+    }
+  }
+
+  async skipEntry(entry: DimafxQueueEntry): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID || this.queueBusy()) return;
+    this.queueBusy.set(entry.id);
+    try {
+      await firstValueFrom(this.dimafxService.skipQueueEntry(channelID, entry.id));
+      this.toastService.success(this.t('modules.dimafx.queue.toasts.skipped'), this.t('modules.dimafx.queue.toasts.skippedDesc', { name: entry.itemName }));
+    } catch (error) {
+      this.toastService.error(this.t('modules.dimafx.queue.toasts.failed'), error instanceof Error ? error.message : '');
+    } finally {
+      this.queueBusy.set(null);
+      await this.refreshQueue();
+    }
+  }
+
+  /** Clearing several plays asks once more ("Clear 3?"); a single skip acts immediately because speed matters live. */
+  async clearQueue(): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID || this.queueBusy()) return;
+    if (!this.confirmClear()) {
+      this.confirmClear.set(true);
+      clearTimeout(this.confirmClearTimer);
+      this.confirmClearTimer = setTimeout(() => this.confirmClear.set(false), 4000);
+      return;
+    }
+    this.confirmClear.set(false);
+    clearTimeout(this.confirmClearTimer);
+    this.queueBusy.set('clear');
+    try {
+      const result = await firstValueFrom(this.dimafxService.clearQueue(channelID));
+      this.toastService.success(this.t('modules.dimafx.queue.toasts.cleared'), this.t('modules.dimafx.queue.toasts.clearedDesc', { count: result.removed }));
+    } catch (error) {
+      this.toastService.error(this.t('modules.dimafx.queue.toasts.failed'), error instanceof Error ? error.message : '');
+    } finally {
+      this.queueBusy.set(null);
+      await this.refreshQueue();
+    }
+  }
+
+  queueSourceLabel(entry: DimafxQueueEntry): string {
+    return this.t(`modules.dimafx.queue.sources.${entry.source}`);
   }
 
   async copyOverlayUrl(): Promise<void> {
@@ -269,6 +337,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
       }
       this.overlayConnected.set(overlayStatus?.connected ?? null);
       this.overlayUrl.set(overlayStatus?.overlayUrl ?? '');
+      void this.refreshQueue();
       this.assetOptions.set(this.buildAssetOptions(
         (library?.items ?? []).map((item) => item.asset).filter((asset): asset is MediaAsset => Boolean(asset)),
         publicAssets

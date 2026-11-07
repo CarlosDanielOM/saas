@@ -1,12 +1,11 @@
 // DimaFX extension-server check (no database dependencies).
-// Verifies JWT verification (valid/mismatch/bad-signature/expired), service
-// token forwarding, and that viewer TTS text is proxied to dimabot on both
-// purchase and credit flows.
+// Verifies auth expiry, signed Bits receipts, forged/wrong-user rejection,
+// logged-out mutation gates, identity-safe TTS pre-checks and service proxying.
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import http from 'node:http';
 
-const root = 'http://127.0.0.1:8080';
+const root = process.env.DIMAFX_SERVER_CHECK_URL || 'http://127.0.0.1:8080';
 const secret = process.env.TWITCH_EXTENSION_SECRET;
 assert.ok(secret, 'TWITCH_EXTENSION_SECRET is required');
 
@@ -16,9 +15,14 @@ const jwt = (payload, key = Buffer.from(secret, 'base64')) => {
   return `${unsigned}.${createHmac('sha256', key).update(unsigned).digest('base64url')}`;
 };
 const validJwt = (overrides = {}) => jwt({
-  channel_id: '555777', user_id: 'u-1', opaque_user_id: 'op-1', role: 'viewer',
+  channel_id: '555777', user_id: 'u-1', opaque_user_id: 'Uop-1', role: 'viewer',
   exp: Math.floor(Date.now() / 1000) + 3600, ...overrides,
 });
+
+const receipt = (data = {}, product = {}, key) => jwt({ topic: 'bits_transaction_receipt', exp: 1, data: {
+  transactionId: 'tx-fixture', userId: 'u-1', time: new Date().toISOString(),
+  product: { sku: 'dimafx_bits_5', cost: { amount: 5, type: 'bits' }, inDevelopment: true, ...product }, ...data,
+} }, key);
 
 const received = [];
 const stub = http.createServer((req, res) => {
@@ -53,7 +57,7 @@ try {
 
   // Purchase: TTS text and identity are proxied to dimabot.
   const purchase = await post('/v1/channels/555777/items/item-1/purchase', validJwt(), {
-    sku: 'dimafx_bits_5', transactionID: 'tx-fixture', action: 'use_now', ttsText: 'hello fixture',
+    sku: 'client-sku-is-ignored', transactionID: 'client-id-is-ignored', transactionReceipt: receipt(), action: 'use_now', ttsText: 'hello fixture',
   });
   assert.equal(purchase.status, 200, JSON.stringify(purchase));
   const proxied = received.find((r) => r.url === '/extensions/dimafx/internal/channels/555777/items/item-1/purchase');
@@ -61,7 +65,11 @@ try {
   assert.equal(proxied.serviceToken, 'fixture-service-token', 'service token forwarded');
   assert.equal(proxied.body.userID, 'u-1');
   assert.equal(proxied.body.ttsText, 'hello fixture', 'viewer TTS text forwarded on purchase');
-  assert.equal(proxied.body.transactionID, 'tx-fixture');
+  assert.equal(proxied.body.transactionID, undefined);
+  assert.equal(proxied.body.bitsTransaction.transactionID, 'tx-fixture');
+  assert.equal(proxied.body.bitsTransaction.sku, 'dimafx_bits_5');
+  assert.equal(proxied.body.bitsTransaction.amount, 5);
+  assert.equal(proxied.body.bitsTransaction.inDevelopment, true);
 
   // Credit flow forwards TTS text too.
   const credit = await post('/v1/channels/555777/items/item-1/use-credit', validJwt(), { action: 'use_now', ttsText: 'credit fixture' });
@@ -72,15 +80,15 @@ try {
   // Caller-supplied identity never overrides the verified Twitch JWT. The API
   // makes the final item decision using this trusted identity and its catalog.
   const anonymous = await post('/v1/channels/555777/items/item-2/purchase', validJwt({ user_id: undefined }), {
-    sku: 'dimafx_bits_5', transactionID: 'tx-anonymous', action: 'use_now', ttsText: 'anonymous input',
+    sku: 'dimafx_bits_5', transactionID: 'tx-anonymous', transactionReceipt: receipt({ transactionId: 'tx-anonymous' }), action: 'use_now', ttsText: 'anonymous input',
     userID: 'spoofed-user', identityShared: true, displayName: 'spoofed-name',
   });
   assert.equal(anonymous.status, 200);
   const anonymousProxy = received.at(-1);
   assert.equal(anonymousProxy.body.userID, undefined, 'body cannot spoof a shared Twitch ID');
-  assert.equal(anonymousProxy.body.identityShared, undefined, 'sharing flag is not trusted');
+  assert.equal(anonymousProxy.body.identityShared, false, 'sharing flag is not trusted');
   assert.equal(anonymousProxy.body.displayName, undefined, 'display name is not trusted');
-  assert.equal(anonymousProxy.body.opaqueUserID, 'op-1');
+  assert.equal(anonymousProxy.body.opaqueUserID, 'Uop-1');
   const beforeAnonymousCredit = received.length;
   const anonymousCredit = await post('/v1/channels/555777/items/item-2/use-credit', validJwt({ user_id: undefined }), { userID: 'spoofed-user', identityShared: true, ttsText: 'anonymous input' });
   assert.equal(anonymousCredit.status, 403);
@@ -98,7 +106,21 @@ try {
   const expired = await post('/v1/channels/555777/items/item-1/purchase', validJwt({ exp: Math.floor(Date.now() / 1000) - 60 }), { sku: 'x', transactionID: 'w' });
   assert.equal(expired.status, 401, 'expired token rejected');
 
-  console.log('PASS: JWT verification, service-token proxying, and TTS text forwarding on purchase/credit flows');
+  const beforeInvalidReceipt = received.length;
+  for (const transactionReceipt of [receipt({}, {}, Buffer.from('forged')), receipt({ userId: 'someone-else' })]) {
+    assert.equal((await post('/v1/channels/555777/items/item-1/purchase', validJwt(), { transactionReceipt })).status, 400);
+  }
+  assert.equal(received.length, beforeInvalidReceipt, 'invalid receipts never reach the ledger');
+  const loggedOut = validJwt({ user_id: undefined, opaque_user_id: 'Aanonymous' });
+  for (const mutation of ['purchase', 'use-credit', 'redeem', 'tts-check']) {
+    assert.equal((await post(`/v1/channels/555777/items/item-1/${mutation}`, loggedOut, { sku: 'free' })).status, 403);
+  }
+  for (const exp of [undefined, '9999999999']) assert.equal((await post('/v1/channels/555777/items/item-1/purchase', validJwt({ exp }), {})).status, 401);
+  const ttsCheck = await post('/v1/channels/555777/items/item-1/tts-check', validJwt(), { userID: 'spoofed', ttsText: 'hello' });
+  assert.equal(ttsCheck.status, 200);
+  assert.equal(received.at(-1).body.userID, 'u-1');
+
+  console.log('PASS: signed Bits receipt verification, auth expiry, logged-out gating, trusted TTS identity and service proxying');
 } finally {
   stub.close();
 }

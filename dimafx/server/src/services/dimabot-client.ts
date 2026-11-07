@@ -34,7 +34,7 @@ export class DimabotClient {
       status: 503
     }) as ApiEnvelope<T>);
 
-    if (!primaryResult.error || !this.shouldFallback(primaryResult)) {
+    if (!primaryResult.error || !this.shouldFallback(primaryResult) || !(init.method === 'GET' || (path.endsWith('/purchase') && Boolean(JSON.parse(String(init.body || '{}')).bitsTransaction)))) {
       return primaryResult;
     }
 
@@ -73,7 +73,7 @@ export class DimabotClient {
       return { ...payload, error: true, status: response.status };
     }
 
-    return payload;
+    return { ...payload, status: response.status };
   }
 }
 

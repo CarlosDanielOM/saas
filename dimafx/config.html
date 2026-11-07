@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="storefront.css?v=50" />
+    <link rel="stylesheet" href="storefront.css?v=51" />
     <style>
       body { overflow: auto; }
       main { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem 1rem; }
@@ -20,6 +20,9 @@
       .fx-steps span.fx-note { margin: 0; }
       .fx-step-num { width: 1.6rem; height: 1.6rem; display: grid; place-items: center; border-radius: 999px; background: #7c3aed; color: #fff; font-size: 0.75rem; font-weight: 800; }
       .fx-setup .fx-btn { width: 100%; min-height: 2.9rem; font-size: 0.9rem; }
+      .fx-btn--ext { display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; }
+      .fx-btn--ext svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .fx-ext-note { margin: -0.4rem 0 0; text-align: center; }
     </style>
   </head>
   <body class="fx">
@@ -30,61 +33,21 @@
             <img src="assets/logo-mark-white.png" alt="" width="18" height="20" />
             <span class="fx-brand__name">DimaFX</span>
           </div>
-          <h1 id="title" data-i18n="title">Sell sounds, clips and voice messages to your viewers</h1>
-          <p class="fx-note" data-i18n="intro">Viewers pay with Bits in this panel and their pick plays on your stream. You set everything up on DomDimaBot.</p>
+          <h1 id="title" data-i18n="title">Let viewers play your sounds, clips and voice messages on stream</h1>
+          <p class="fx-note" data-i18n="intro">Viewers use Bits in this panel and their pick plays on your stream. You set everything up on DomDimaBot.</p>
           <ol class="fx-steps">
-            <li><span class="fx-step-num">1</span><div><b data-i18n="step1">Pick your items and prices</b><span class="fx-note" data-i18n="step1note">Choose media from your library and set a Bits price for each.</span></div></li>
-            <li><span class="fx-step-num">2</span><div><b data-i18n="step2">Add the overlay to OBS</b><span class="fx-note" data-i18n="step2note">Copy the DimaFX browser-source link from the same page. Viewers can only buy while it's open.</span></div></li>
-            <li><span class="fx-step-num">3</span><div><b data-i18n="step3">Go live</b><span class="fx-note" data-i18n="step3note">The panel shows "On stream" when purchases can play.</span></div></li>
+            <li><span class="fx-step-num">1</span><div><b data-i18n="step1">Pick your items</b><span class="fx-note" data-i18n="step1note">Choose media from your library and how many Bits each one takes.</span></div></li>
+            <li><span class="fx-step-num">2</span><div><b data-i18n="step2">Add the overlay to OBS</b><span class="fx-note" data-i18n="step2note">Copy the DimaFX browser-source link from the same page. Viewers can only use items while it's open.</span></div></li>
+            <li><span class="fx-step-num">3</span><div><b data-i18n="step3">Go live</b><span class="fx-note" data-i18n="step3note">The panel shows "On stream" when items can play.</span></div></li>
           </ol>
         </div>
         <p class="fx-status" role="status" id="status" data-i18n="waiting">Waiting for Twitch…</p>
-        <button class="fx-btn fx-btn--primary" type="button" id="configure-btn" data-i18n="cta">Set up DimaFX on DomDimaBot</button>
+        <button class="fx-btn fx-btn--primary fx-btn--ext" type="button" id="configure-btn" aria-describedby="configure-note"><span data-i18n="cta">Set up DimaFX on DomDimaBot</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></button>
+        <p class="fx-note fx-ext-note" id="configure-note" data-i18n="external">Opens domdimabot.com in a new tab.</p>
       </section>
     </main>
 
     <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
-    <script>
-      const STRINGS = {
-        en: {
-          title: 'Sell sounds, clips and voice messages to your viewers',
-          intro: 'Viewers pay with Bits in this panel and their pick plays on your stream. You set everything up on DomDimaBot.',
-          step1: 'Pick your items and prices', step1note: 'Choose media from your library and set a Bits price for each.',
-          step2: 'Add the overlay to OBS', step2note: "Copy the DimaFX browser-source link from the same page. Viewers can only buy while it's open.",
-          step3: 'Go live', step3note: 'The panel shows "On stream" when purchases can play.',
-          waiting: 'Waiting for Twitch…', ready: 'Connected to your channel. Opens DomDimaBot in a new tab.',
-          cta: 'Set up DimaFX on DomDimaBot',
-        },
-        es: {
-          title: 'Vende sonidos, clips y mensajes de voz a tus viewers',
-          intro: 'Tus viewers pagan con Bits en este panel y lo que eligen se reproduce en tu stream. Todo se configura en DomDimaBot.',
-          step1: 'Elige tus artículos y precios', step1note: 'Escoge media de tu biblioteca y ponle un precio en Bits a cada uno.',
-          step2: 'Añade el overlay a OBS', step2note: 'Copia el enlace de fuente de navegador de DimaFX en la misma página. Solo se puede comprar mientras está abierto.',
-          step3: 'Sal en directo', step3note: 'El panel muestra "En el stream" cuando las compras se pueden reproducir.',
-          waiting: 'Esperando a Twitch…', ready: 'Conectado a tu canal. Abre DomDimaBot en una pestaña nueva.',
-          cta: 'Configurar DimaFX en DomDimaBot',
-        },
-      };
-      const params = new URLSearchParams(location.search);
-      const lang = (params.get('language') || navigator.language || 'en').toLowerCase().startsWith('es') ? 'es' : 'en';
-      const t = (key) => STRINGS[lang][key];
-      document.documentElement.lang = lang;
-      document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
-
-      let channelId = '';
-      if (window.Twitch) {
-        Twitch.ext.onAuthorized(function (auth) {
-          channelId = auth.channelId || '';
-          document.getElementById('status').textContent = t('ready');
-        });
-        Twitch.ext.onContext?.(function (context) {
-          document.documentElement.classList.toggle('dark', context?.theme !== 'light');
-        });
-      }
-      document.getElementById('configure-btn').addEventListener('click', function () {
-        const returnPath = channelId ? '/' + encodeURIComponent(channelId) + '/modules/dimafx' : '/modules/dimafx';
-        window.open('https://domdimabot.com/login?return=' + encodeURIComponent(returnPath), '_blank', 'noopener,noreferrer');
-      });
-    </script>
+    <script src="config.js?v=1"></script>
   </body>
 </html>

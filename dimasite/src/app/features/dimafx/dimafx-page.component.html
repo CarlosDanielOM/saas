@@ -55,6 +55,69 @@
       </section>
     }
 
+    @if (queue(); as q) {
+      <section class="lf-tile lf-queue" aria-labelledby="dimafx-queue-title">
+        <div class="lf-queue__head">
+          <div>
+            <h2 class="lf-h3" id="dimafx-queue-title">
+              {{ t('modules.dimafx.queue.title') }}
+              @if (queueCount()) { <span class="lf-count">{{ queueCount() }}</span> }
+            </h2>
+            <p class="lf-note">{{ t('modules.dimafx.queue.hint') }}</p>
+          </div>
+          @if (q.queued.length > 1) {
+            <button type="button" class="lf-btn lf-btn--compact" [class.lf-btn--danger]="confirmClear()" [disabled]="queueBusy() !== null" (click)="clearQueue()">
+              {{ confirmClear() ? t('modules.dimafx.queue.clearConfirm', { count: q.queued.length }) : t('modules.dimafx.queue.clear') }}
+            </button>
+          }
+        </div>
+        @if (!q.playing && !q.queued.length) {
+          <p class="lf-queue__empty">{{ t('modules.dimafx.queue.empty') }}</p>
+        } @else {
+          <ul class="lf-queue__list">
+            @if (q.playing; as entry) {
+              <li class="lf-queue__row lf-queue__row--playing">
+                <div class="lf-queue__main">
+                  <div class="lf-queue__line">
+                    <span class="lf-chip lf-chip--xs lf-chip--live"><span class="lf-dot" aria-hidden="true"></span>{{ t('modules.dimafx.queue.playing') }}</span>
+                    <span class="lf-queue__name">{{ entry.itemName }}</span>
+                    <span class="lf-chip lf-chip--xs lf-chip--muted">{{ queueSourceLabel(entry) }}</span>
+                  </div>
+                  @if (entry.viewerName || entry.text) {
+                    <p class="lf-queue__meta">
+                      @if (entry.viewerName) { <b>{{ t('modules.dimafx.queue.from', { name: entry.viewerName }) }}</b> }
+                      @if (entry.text) { <q>{{ entry.text }}</q> }
+                    </p>
+                  }
+                </div>
+                <button type="button" class="lf-btn lf-btn--compact lf-btn--danger" [disabled]="queueBusy() !== null" (click)="skipEntry(entry)"
+                  [attr.aria-label]="t('modules.dimafx.queue.skipAria', { name: entry.itemName })">{{ t('modules.dimafx.queue.skip') }}</button>
+              </li>
+            }
+            @for (entry of q.queued; track entry.id; let index = $index) {
+              <li class="lf-queue__row">
+                <div class="lf-queue__main">
+                  <div class="lf-queue__line">
+                    <span class="lf-chip lf-chip--xs">{{ index + 1 }}</span>
+                    <span class="lf-queue__name">{{ entry.itemName }}</span>
+                    <span class="lf-chip lf-chip--xs lf-chip--muted">{{ queueSourceLabel(entry) }}</span>
+                  </div>
+                  @if (entry.viewerName || entry.text) {
+                    <p class="lf-queue__meta">
+                      @if (entry.viewerName) { <b>{{ t('modules.dimafx.queue.from', { name: entry.viewerName }) }}</b> }
+                      @if (entry.text) { <q>{{ entry.text }}</q> }
+                    </p>
+                  }
+                </div>
+                <button type="button" class="lf-btn lf-btn--compact" [disabled]="queueBusy() !== null" (click)="skipEntry(entry)"
+                  [attr.aria-label]="t('modules.dimafx.queue.removeAria', { name: entry.itemName })">{{ t('modules.dimafx.queue.remove') }}</button>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
     @if (error()) {
       <section class="lf-banner lf-banner--error" role="alert">
         <p class="lf-banner__title">{{ error() }}</p>

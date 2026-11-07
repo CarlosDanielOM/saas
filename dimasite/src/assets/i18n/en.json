@@ -850,6 +850,34 @@
       }
     },
     "dimafx": {
+      "queue": {
+        "title": "Playing now",
+        "hint": "Viewer plays show up here. Skip or remove anything you don't want on stream; viewers don't get credits back for plays you remove.",
+        "empty": "Nothing is playing or waiting.",
+        "playing": "Playing",
+        "next": "Next",
+        "from": "from {{name}}",
+        "skip": "Skip",
+        "remove": "Remove",
+        "skipAria": "Skip {{name}}",
+        "removeAria": "Remove {{name}} from the queue",
+        "clear": "Clear queue",
+        "clearConfirm": "Clear {{count}}?",
+        "sources": {
+          "bits": "Bits",
+          "credits": "Credits",
+          "saved": "Saved",
+          "free": "Free",
+          "test": "Test"
+        },
+        "toasts": {
+          "skipped": "Skipped",
+          "skippedDesc": "{{name}} was taken off the stream.",
+          "cleared": "Queue cleared",
+          "clearedDesc": "{{count}} waiting plays removed.",
+          "failed": "Couldn't change the queue"
+        }
+      },
       "description": "Configure your Twitch Extension storefront with media assets viewers can buy with Bits, use instantly, or save for later.",
       "subtitle": "Viewers spend Bits in your Twitch extension to play sounds, videos and messages on stream — right away or saved for later.",
       "backToModules": "Back to modules",

@@ -50,10 +50,8 @@ const extensionWalletTransactionSchema = new Schema<IExtensionWalletTransaction>
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }
 });
 
-extensionWalletTransactionSchema.index(
-    { twitchTransactionID: 1 },
-    { unique: true, partialFilterExpression: { twitchTransactionID: { $type: 'string' } } }
-);
+// Preserve the production legacy index; claims below provide uniqueness.
+extensionWalletTransactionSchema.index({ twitchTransactionID: 1 });
 extensionWalletTransactionSchema.index({ channelID: 1, userID: 1, createdAt: -1 });
 // Privacy retention: every entry expires 365 days after creation, whatever its state.
 extensionWalletTransactionSchema.index({ createdAt: 1 }, { expireAfterSeconds: DIMAFX_LOG_RETENTION_SECONDS });
@@ -61,3 +59,23 @@ extensionWalletTransactionSchema.index({ createdAt: 1 }, { expireAfterSeconds: D
 export type ExtensionWalletTransactionDocument = HydratedDocument<IExtensionWalletTransaction>;
 
 export const ExtensionWalletTransactionSchema = model<IExtensionWalletTransaction>('ExtensionWalletTransaction', extensionWalletTransactionSchema);
+
+/** Built-in _id uniqueness does not depend on the legacy non-unique ledger index. */
+export interface IDimafxTransactionClaim {
+    _id: string;
+    channelID: string;
+    userID: string;
+    ledger: IExtensionWalletTransaction;
+    materialized: boolean;
+    createdAt: Date;
+}
+const claimSchema = new Schema<IDimafxTransactionClaim>({
+    _id: { type: String, required: true },
+    channelID: { type: String, required: true },
+    userID: { type: String, required: true },
+    ledger: { type: Schema.Types.Mixed, required: true },
+    materialized: { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now },
+});
+claimSchema.index({ createdAt: 1 }, { expireAfterSeconds: DIMAFX_LOG_RETENTION_SECONDS });
+export const DimafxTransactionClaimSchema = model<IDimafxTransactionClaim>('DimafxTransactionClaim', claimSchema);

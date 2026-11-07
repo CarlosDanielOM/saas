@@ -9,7 +9,7 @@ mock.module('../functions/users/get_user_by_id.users.js', { namedExports: { getT
 // Playback jobs in memory: the widget claim is a conditional update on the job, like Mongo's.
 const jobs = new Map<string, { channelID: string; widgetSentAt: Date | null }>();
 const seed = (...ids: string[]) => { for (const id of ids) jobs.set(id, { channelID: id === 'bits-3' ? 'nobody' : '42', widgetSentAt: null }); };
-mock.module('../schemas/dimafx_playback.schema.js', { namedExports: { DimafxPlaybackSchema: {
+mock.module('../schemas/dimafx_playback.schema.js', { namedExports: { DimafxQueueGateSchema: {}, DimafxFreePaceSchema: {}, DimafxModerationCacheSchema: {}, DimafxRequestLimitSchema: {}, DimafxPlaybackSchema: {
   updateOne: async (filter: { _id: string; channelID: string; widgetSentAt: null }, update: { $set: { widgetSentAt: Date } }) => {
     const job = jobs.get(filter._id);
     if (!job || job.channelID !== filter.channelID || job.widgetSentAt !== null) return { modifiedCount: 0 };

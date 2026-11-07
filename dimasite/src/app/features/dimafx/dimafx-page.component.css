@@ -361,6 +361,37 @@ code,
   outline-offset: 2px;
 }
 
+/* Live queue (Twitch rule 7.4: the streamer can remove viewer plays) */
+
+.lf-queue { display: grid; gap: 0.6rem; padding: 0.9rem 1rem; }
+.lf-queue__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+.lf-queue__head .lf-h3 { display: flex; align-items: center; gap: 0.4rem; margin: 0; }
+.lf-queue__head .lf-note { margin: 0.15rem 0 0; }
+.lf-queue__empty { margin: 0; font-size: 0.82rem; color: var(--muted); }
+.lf-queue__list { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.lf-queue__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+}
+.lf-queue__row--playing { border-color: color-mix(in srgb, var(--danger) 35%, transparent); background: color-mix(in srgb, var(--danger) 6%, transparent); }
+.lf-queue__main { min-width: 0; display: grid; gap: 0.2rem; }
+.lf-queue__line { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
+.lf-queue__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.86rem; font-weight: 700; }
+.lf-queue__meta { margin: 0; font-size: 0.78rem; color: var(--muted); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.lf-queue__meta b { color: var(--fg); margin-right: 0.3rem; }
+.lf-queue__meta q { color: var(--fg); }
+.lf-queue .lf-btn--compact { min-height: 2.75rem; }
+.lf-chip--live { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.lf-chip--live .lf-dot { background: #ef4444; }
+.lf-chip--muted { color: var(--muted); }
+.lf-btn--danger { background: #b91c1c; border-color: transparent; color: #fff; }
+.lf-btn--danger:disabled { opacity: 0.55; }
+
 /* OBS setup strip */
 
 .lf-setup {

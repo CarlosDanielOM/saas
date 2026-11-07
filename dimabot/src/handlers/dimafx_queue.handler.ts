@@ -3,10 +3,11 @@ import { getTwitchUserById } from '../functions/users/get_user_by_id.users.js';
 import { randomUUID } from "node:crypto";
 import fs from "fs/promises";
 
+import type { DimafxTextDecision } from '../utils/moderation/dimafx_tts.js';
 import type { IChannelExtensionItem } from "../schemas/channel_extension_item.schema.js";
 import type { IMediaAsset } from "../schemas/media_asset.schema.js";
-import { DimafxPlaybackSchema, type IDimafxPlayback } from "../schemas/dimafx_playback.schema.js";
-import { refundDimafxOnce } from "../server/services/dimafx-fulfillment.service.js";
+import { DimafxPlaybackSchema, DimafxQueueGateSchema, type IDimafxPlayback } from "../schemas/dimafx_playback.schema.js";
+import { makeGoodDimafx } from "../server/services/dimafx-fulfillment.service.js";
 import { getChannelTtsSettings } from "../schemas/channel_tts_settings.schema.js";
 import { getIO } from "../server/websocket.js";
 import { buildMediaPlaybackUrl } from "../server/services/media_library.service.js";
@@ -41,6 +42,8 @@ export interface DimafxEnqueueInput {
   /** Credits the viewer if the queued trigger fails before/during dispatch. */
   refundOnFailure?: { userID: string; priceBits: number };
   source: DimafxQueueSource;
+  moderation?: DimafxTextDecision;
+  viewerUserID?: string;
   widget?: DimafxWidgetFacts;
 }
 
@@ -55,9 +58,12 @@ export interface DimafxQueueItem {
   volume: number;
   durationMs: number;
   tts?: { text: string; voice: string; language: "en" | "es" };
+  ttsMode?: "fixed" | "custom";
   refundOnFailure?: { userID: string; priceBits: number };
   source: DimafxQueueSource;
   enqueuedAt: number;
+  viewer?: { userID: string; name: string; text: string };
+  moderation?: DimafxTextDecision;
   /** Custom widget `dimafx` facts recorded at purchase: price paid (ledger), the buyer only when Twitch shared their identity, the viewer's own text. */
   widget?: DimafxWidgetFacts;
 }
@@ -71,28 +77,59 @@ export type DimafxEnqueueResult =
 export class DimafxQueueHandler {
   private processingChannels = new Set<string>();
   private dispatchedTriggerIds = new Map<string, string>();
-  private completionWaiters = new Map<string, () => void>();
+  private completionWaiters = new Map<string, (failure?: string) => void>();
   private ttsFiles = new Map<string, string>();
+  private dispatchStops = new Map<string, () => void>();
   private readonly owner = randomUUID();
 
   async isOverlayConnected(channelID: string): Promise<boolean> {
     return this.readySockets(channelID).length > 0;
   }
 
-  private readySockets(channelID: string) {
+  private readySockets(channelID: string, requireCaptions = false) {
     const sockets = getIO()?.of(`/overlays/dimafx/${channelID}`).sockets;
-    return sockets ? [...sockets.values()].filter(socket => socket.connected && socket.data.dimafxReady) : [];
+    return sockets ? [...sockets.values()].filter(socket => socket.connected && socket.data.dimafxReady && (!requireCaptions || socket.data.dimafxCaptions)) : [];
+  }
+
+  async outcome(channelID: string, triggerID: string) {
+    return DimafxPlaybackSchema.findOne({ _id: triggerID, channelID }).lean();
+  }
+
+  private async persistReservation(channelID: string, payload: DimafxQueueItem): Promise<void> {
+    try {
+      await DimafxPlaybackSchema.updateOne({ _id: payload.triggerID }, { $setOnInsert: {
+        channelID, payload, state: 'queued', leaseOwner: '', leaseUntil: new Date(0),
+      } }, { upsert: true });
+    } catch (error) { if ((error as { code?: number }).code !== 11000) throw error; }
+  }
+
+  private async recoverAdmissions(channelID: string): Promise<void> {
+    const gate = await DimafxQueueGateSchema.findById(channelID).lean();
+    for (const payload of gate?.slots || []) {
+      await this.persistReservation(channelID, payload as DimafxQueueItem);
+      const job = await this.outcome(channelID, payload.triggerID);
+      if (job && ['completed', 'refunded', 'removed_by_broadcaster'].includes(job.state)) {
+        await DimafxQueueGateSchema.updateOne({ _id: channelID }, { $pull: { slots: { triggerID: job._id } } });
+      }
+    }
   }
 
   async existing(channelID: string, triggerID: string): Promise<DimafxEnqueueResult | null> {
-    const job = await DimafxPlaybackSchema.findOne({ _id: triggerID, channelID }).lean();
-    if (!job) return null;
+    let job = await this.outcome(channelID, triggerID);
+    if (!job) {
+      const gate = await DimafxQueueGateSchema.findOne({ _id: channelID, 'slots.triggerID': triggerID }).lean();
+      const reserved = gate?.slots.find(payload => payload.triggerID === triggerID);
+      if (!reserved) return null;
+      await this.persistReservation(channelID, reserved as DimafxQueueItem);
+      job = await this.outcome(channelID, triggerID);
+      if (!job) throw new Error('DimaFX reserved playback could not be recovered');
+    }
     // Even refunded/completed jobs are receipts: never create the purchase again.
     return { ok: true, triggerID, queueLength: await this.queueLength(channelID), activeConnections: this.readySockets(channelID).length };
   }
 
   private queueLength(channelID: string): Promise<number> {
-    return DimafxPlaybackSchema.countDocuments({ channelID, state: { $nin: ['completed', 'refunded'] } }).exec();
+    return DimafxPlaybackSchema.countDocuments({ channelID, state: { $nin: ['completed', 'refunded', 'removed_by_broadcaster'] } }).exec();
   }
 
   async enqueue(input: DimafxEnqueueInput): Promise<DimafxEnqueueResult> {
@@ -103,7 +140,7 @@ export class DimafxQueueHandler {
     const isTts = item.category === 'tts';
     if (!isTts && !asset) return { ok: false, status: 500, message: 'DimaFX item has no playable media' };
     if (!await this.isOverlayConnected(channelID)) return { ok: false, status: 409, message: 'DimaFX overlay is disconnected' };
-    if (await this.queueLength(channelID) >= MAX_QUEUE_ITEMS) return { ok: false, status: 429, message: 'DimaFX queue is full for this channel' };
+
     let tts: DimafxQueueItem['tts'];
     if (isTts) {
       const config = item.tts;
@@ -113,22 +150,46 @@ export class DimafxQueueHandler {
       const voice = config?.voice || (await getChannelTtsSettings(channelID, item.channelName || '')).voices[language];
       tts = { text: text.trim(), voice, language };
     }
+    let viewer: DimafxQueueItem['viewer'];
+    if (isTts && item.tts?.mode !== 'fixed') {
+      if (!input.viewerUserID || !input.moderation?.allowed) return { ok: false, status: 403, message: 'Viewer text requires shared identity and an allowed moderation decision' };
+      if (!this.readySockets(channelID, true).length) return { ok: false, status: 409, message: 'Update the DimaFX OBS player to show viewer attribution' };
+      for (let attempt = 0; attempt < 2 && !viewer; attempt++) {
+        const found = await promiseWithTimeout(getTwitchUserById(input.viewerUserID), 2_000, 'DimaFX username lookup timed out').catch(() => null);
+        const name = found && !found.error && found.data ? found.data.display_name || found.data.login : '';
+        if (typeof name === 'string' && name.trim()) viewer = { userID: input.viewerUserID, name: name.trim().slice(0, 80), text: tts!.text };
+      }
+      if (!viewer) return { ok: false, status: 503, message: 'DimaFX cannot verify the viewer Twitch username' };
+    }
     const payload: DimafxQueueItem = {
       triggerID, channelID, itemID: String(item._id), name: item.name, category: item.category,
       mediaUrl: asset ? buildMediaPlaybackUrl(asset._id) : undefined,
       mediaType: isTts ? 'audio/wav' : asset?.mimeType || item.mediaType,
       volume: Math.max(0, Math.min(100, Number(item.volume ?? 100))),
       durationMs: Math.max(0, Number(item.durationMs || 0)),
-      ...(tts ? { tts } : {}),
+      ...(tts ? { tts, ttsMode: item.tts?.mode === 'fixed' ? 'fixed' as const : 'custom' as const } : {}),
       ...(input.refundOnFailure ? { refundOnFailure: input.refundOnFailure } : {}),
+      ...(viewer ? { viewer } : {}), ...(input.moderation ? { moderation: input.moderation } : {}),
       source: input.source, enqueuedAt: Date.now(), ...(input.widget ? { widget: input.widget } : {}),
     };
-    // _id is a built-in unique index. Upsert is safe even before custom indexes exist.
-    try {
-      await DimafxPlaybackSchema.updateOne({ _id: triggerID }, { $setOnInsert: { channelID, payload, state: 'queued', leaseOwner: '', leaseUntil: new Date(0) } }, { upsert: true });
-    } catch (error) {
-      if ((error as { code?: number }).code !== 11000) throw error;
+    // Seed once with any jobs accepted before this release. Gate reservations and
+    // their immutable payloads are admitted in ONE bounded Mongo document update.
+    const gate = await DimafxQueueGateSchema.findById(channelID).lean();
+    if (!gate) {
+      const legacy = await DimafxPlaybackSchema.find({ channelID, state: { $nin: ['completed', 'refunded', 'removed_by_broadcaster'] } }).lean();
+      try { await DimafxQueueGateSchema.updateOne({ _id: channelID }, { $setOnInsert: { slots: legacy.map(job => job.payload) } }, { upsert: true }); }
+      catch (error) { if ((error as { code?: number }).code !== 11000) throw error; }
     }
+    const admitted = await DimafxQueueGateSchema.updateOne(
+      { _id: channelID, 'slots.triggerID': { $ne: triggerID }, [`slots.${MAX_QUEUE_ITEMS - 1}`]: { $exists: false } },
+      { $push: { slots: payload } },
+    );
+    if (!admitted.modifiedCount) {
+      const duplicate = await this.existing(channelID, triggerID);
+      if (duplicate) return duplicate;
+      return { ok: false, status: 429, message: 'DimaFX queue is full for this channel' };
+    }
+    await this.persistReservation(channelID, payload);
     void this.processNext(channelID);
     return { ok: true, triggerID, queueLength: await this.queueLength(channelID), activeConnections: this.readySockets(channelID).length };
   }
@@ -137,11 +198,13 @@ export class DimafxQueueHandler {
     if (this.processingChannels.has(channelID)) return;
     this.processingChannels.add(channelID);
     try {
+      await this.recoverAdmissions(channelID);
       while (await this.isOverlayConnected(channelID)) {
-        const first = await DimafxPlaybackSchema.findOne({ channelID, state: { $nin: ['completed', 'refunded'] } }).sort({ createdAt: 1, _id: 1 }).lean();
+        const first = await DimafxPlaybackSchema.findOne({ channelID, state: { $nin: ['completed', 'refunded', 'removed_by_broadcaster'] } }).sort({ createdAt: 1, _id: 1 }).lean();
         if (!first) return;
+        if (first.payload.viewer && !this.readySockets(channelID, true).length) return;
         const job = await DimafxPlaybackSchema.findOneAndUpdate(
-          { _id: first._id, state: { $nin: ['completed', 'refunded'] }, $or: [{ leaseUntil: { $lte: new Date() } }, { leaseOwner: this.owner }] },
+          { _id: first._id, state: { $nin: ['completed', 'refunded', 'removed_by_broadcaster'] }, $or: [{ leaseUntil: { $lte: new Date() } }, { leaseOwner: this.owner }] },
           { $set: { leaseOwner: this.owner, leaseUntil: new Date(Date.now() + LEASE_MS) } }, { new: true },
         ).lean();
         // The previous process may still be alive. The connection poll retries
@@ -151,16 +214,23 @@ export class DimafxQueueHandler {
           void DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner }, { $set: { leaseUntil: new Date(Date.now() + LEASE_MS) } }).catch(error => console.error('DimaFX lease renewal failed', error));
         }, LEASE_MS / 3);
         try {
+          if (job.payload.tts && !job.payload.ttsMode) {
+            await DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner, state: { $in: ['queued', 'playing', 'refunding'] } }, { $set: { state: 'refunding', failure: 'Legacy speech lacks verified viewer attribution' } });
+            await this.refundViewer(job); continue;
+          }
           if (job.state === 'refunding') {
             await this.refundViewer(job);
             continue;
           }
-          await DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner }, { $set: { state: 'playing' } });
+          const started = await DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner, state: { $in: ['queued', 'playing'] } }, { $set: { state: 'playing' } });
+          if (!started.matchedCount) continue;
           this.dispatchedTriggerIds.set(channelID, job._id);
           try {
-            await this.dispatch(channelID, job.payload);
+            const stopKey = `${channelID}:${job._id}`;
+            const stopped = new Promise<void>(resolve => this.dispatchStops.set(stopKey, resolve));
+            try { await Promise.race([this.dispatch(channelID, job.payload), stopped]); }
+            finally { this.dispatchStops.delete(stopKey); }
           } catch (error) {
-            if (!await this.isOverlayConnected(channelID)) return;
             const failure = error instanceof Error ? error.message : String(error);
             await DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner, state: 'playing' }, { $set: { state: 'refunding', failure } });
             await this.refundViewer(job);
@@ -174,6 +244,10 @@ export class DimafxQueueHandler {
           clearInterval(heartbeat);
           this.dispatchedTriggerIds.delete(channelID);
           await DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner }, { $set: { leaseOwner: '', leaseUntil: new Date(0) } });
+          const terminal = await this.outcome(channelID, job._id);
+          if (terminal && ['completed', 'refunded', 'removed_by_broadcaster'].includes(terminal.state)) {
+            await DimafxQueueGateSchema.updateOne({ _id: channelID }, { $pull: { slots: { triggerID: job._id } } });
+          }
         }
       }
     } catch (error) {
@@ -243,6 +317,10 @@ export class DimafxQueueHandler {
       throw new Error("DimaFX trigger has no media URL");
     }
 
+    if ((await this.outcome(channelID, queueItem.triggerID))?.state === 'removed_by_broadcaster') {
+      this.scheduleTtsFileCleanup(channelID, queueItem.triggerID); return;
+    }
+
     // The overlay may have disconnected while TTS synthesis was running.
     if (!(await this.isOverlayConnected(channelID))) {
       this.scheduleTtsFileCleanup(channelID, queueItem.triggerID);
@@ -253,17 +331,20 @@ export class DimafxQueueHandler {
       url: mediaUrl,
       mediaType,
       volume: queueItem.volume,
+      durationMs: queueItem.durationMs,
+      timeoutMs: waitMs,
       source: "dimafx",
       itemID: queueItem.itemID,
       triggerID: queueItem.triggerID,
       name: queueItem.name,
+      ...(queueItem.viewer ? { viewer: queueItem.viewer } : {}),
       ...(queueItem.tts ? { text: queueItem.tts.text } : {}),
     };
 
     this.publishWidget(channelID, queueItem);
     try {
       const done = this.waitForCompletion(channelID, queueItem.triggerID, waitMs);
-      const deliver = () => { for (const socket of this.readySockets(channelID)) socket.emit('dimafx-play', body); };
+      const deliver = () => { for (const socket of this.readySockets(channelID, Boolean(queueItem.viewer))) socket.emit('dimafx-play', body); };
       deliver();
       // Stable IDs let the OBS player reject duplicate deliveries, including
       // a lost acknowledgement or API restart during playback.
@@ -296,32 +377,76 @@ export class DimafxQueueHandler {
     return Math.min(MAX_PLAYBACK_WAIT_MS, Math.max(MIN_PLAYBACK_WAIT_MS, Math.ceil(value)));
   }
 
-  /** Resolves on the overlay ack or when the duration timeout fires. */
+  /** Missing acknowledgements are uncertain delivery: stop, then make good; never call them success. */
   private waitForCompletion(channelID: string, triggerID: string, waitMs: number): Promise<void> {
-    const waiterKey = `${channelID}:${triggerID}`;
-    return new Promise((resolve) => {
+    const key = `${channelID}:${triggerID}`;
+    return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        this.completionWaiters.delete(waiterKey);
-        resolve();
+        this.completionWaiters.delete(key);
+        for (const socket of this.readySockets(channelID)) socket.emit('dimafx-stop', { triggerID });
+        reject(new Error('DimaFX playback acknowledgement timed out (delivery uncertain)'));
       }, waitMs);
-      this.completionWaiters.set(waiterKey, () => {
+      this.completionWaiters.set(key, failure => {
         clearTimeout(timer);
-        resolve();
+        if (failure) reject(new Error(failure)); else resolve();
       });
     });
   }
 
-  /** Only authenticated, ready DimaFX sockets can complete their channel's job. */
-  async handleTriggerEnded(channelID: string, triggerID?: string): Promise<void> {
+  /** Legacy dimafx-ended acknowledgements without status remain successful. */
+  async handleTriggerEnded(channelID: string, triggerID?: string, status?: string): Promise<void> {
     if (!triggerID || this.dispatchedTriggerIds.get(channelID) !== triggerID) return;
-    await DimafxPlaybackSchema.updateOne(
+    const failed = status === 'failed';
+    const result = await DimafxPlaybackSchema.updateOne(
       { _id: triggerID, channelID, leaseOwner: this.owner, state: 'playing' },
-      { $set: { state: 'completed' } },
+      { $set: { state: failed ? 'refunding' : 'completed', ...(failed ? { failure: 'Player reported media failure' } : {}) } },
     );
+    if (!result.modifiedCount) return;
+    if (failed) for (const socket of this.readySockets(channelID)) socket.emit('dimafx-stop', { triggerID });
     const key = `${channelID}:${triggerID}`;
     const waiter = this.completionWaiters.get(key);
     this.completionWaiters.delete(key);
-    waiter?.();
+    waiter?.(failed ? 'Player reported media failure' : undefined);
+  }
+
+  async snapshot(channelID: string): Promise<{ playing: Record<string, unknown> | null; queued: Record<string, unknown>[] }> {
+    await this.recoverAdmissions(channelID);
+    const jobs = await DimafxPlaybackSchema.find({ channelID, state: { $in: ['queued', 'playing'] } }).sort({ createdAt: 1, _id: 1 }).lean();
+    const entry = (job: IDimafxPlayback) => ({ id: job._id, itemID: job.payload.itemID, itemName: job.payload.name,
+      category: job.payload.category,
+      source: job.payload.source === 'bits_purchase' ? job._id.startsWith('free-') ? 'free' : 'bits' : job.payload.source === 'credit_purchase' ? 'credits' : job.payload.source === 'redeem_saved' ? 'saved' : 'test',
+      viewerName: job.payload.viewer?.name ?? null, text: job.payload.viewer?.text ?? null, createdAt: job.createdAt,
+    });
+    const playing = jobs.find(job => job.state === 'playing');
+    return { playing: playing ? entry(playing) : null, queued: jobs.filter(job => job.state === 'queued').map(entry) };
+  }
+
+  async skip(channelID: string, id?: string): Promise<string | null> {
+    await this.recoverAdmissions(channelID);
+    const job = await DimafxPlaybackSchema.findOneAndUpdate({ channelID,
+      ...(id ? { _id: id, state: { $in: ['queued', 'playing'] } } : { state: 'playing' }),
+    }, { $set: { state: 'removed_by_broadcaster', failure: 'removed_by_broadcaster' } }, { new: true }).lean();
+    if (!job) return null;
+    for (const socket of this.readySockets(channelID)) socket.emit('dimafx-stop', { triggerID: job._id, reason: 'removed_by_broadcaster' });
+    const key = `${channelID}:${job._id}`;
+    const waiter = this.completionWaiters.get(key); this.completionWaiters.delete(key); waiter?.();
+    this.dispatchStops.get(key)?.();
+    await DimafxQueueGateSchema.updateOne({ _id: channelID }, { $pull: { slots: { triggerID: job._id } } });
+    return job._id;
+  }
+
+  async clear(channelID: string): Promise<number> {
+    await this.recoverAdmissions(channelID);
+    // Conditional per-job removal cannot clear a job that started between the read and update.
+    const queued = await DimafxPlaybackSchema.find({ channelID, state: 'queued' }).lean();
+    let removed = 0;
+    for (const job of queued) {
+      const result = await DimafxPlaybackSchema.updateOne({ _id: job._id, channelID, state: 'queued' }, { $set: { state: 'removed_by_broadcaster', failure: 'removed_by_broadcaster' } });
+      if (!result.modifiedCount) continue;
+      removed++;
+      await DimafxQueueGateSchema.updateOne({ _id: channelID }, { $pull: { slots: { triggerID: job._id } } });
+    }
+    return removed;
   }
 
   async resumeIfIdle(channelID: string): Promise<void> {
@@ -329,8 +454,9 @@ export class DimafxQueueHandler {
   }
 
   private async refundViewer(job: IDimafxPlayback): Promise<void> {
+    if ((await this.outcome(job.channelID, job._id))?.state === 'removed_by_broadcaster') return;
     const refund = job.payload.refundOnFailure;
-    if (refund) await refundDimafxOnce(job.channelID, refund.userID, refund.priceBits, `refund:${job._id}`);
+    if (refund) await makeGoodDimafx(job.channelID, refund.userID, refund.priceBits, `refund:${job._id}`, job.payload.itemID);
     await DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner }, { $set: { state: 'refunded' } });
   }
 
@@ -344,7 +470,7 @@ export class DimafxQueueHandler {
       void fs.unlink(filePath).catch(() => {
         // Ignore missing temp files during delayed cleanup.
       });
-    }, 120_000);
+    }, 120_000).unref();
   }
 }
 

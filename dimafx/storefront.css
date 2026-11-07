@@ -641,6 +641,10 @@ html.dark .fx-quote { background: rgba(0, 0, 0, 0.35); color: #fde68a; }
   transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .fx-sheet.open { transform: none; }
+/* Phones: --kb is the on-screen keyboard height (visualViewport), so the message box stays above it. */
+.fx-sheet { bottom: var(--kb, 0px); max-height: calc(94dvh - var(--kb, 0px)); }
+.fx--kb .fx-stage { aspect-ratio: auto; height: 3.5rem; }
+.fx--kb .fx-stage[data-preview-kind] .fx-stage__audio, .fx--kb .fx-stage[data-preview-kind] .fx-stage__tts, .fx--kb .fx-stage[data-preview-kind] .preview-visual { display: none; }
 
 .fx-sheet__handle {
   position: absolute;
@@ -712,6 +716,27 @@ html.dark .fx-quote { background: rgba(0, 0, 0, 0.35); color: #fde68a; }
 .fx-stage.playing .fx-icon-play { display: none; }
 .fx-stage.playing .fx-icon-pause { display: block; }
 .fx-stage[data-preview-kind='gif'] .fx-stage__play { display: none; }
+
+/* Preview sound starts off (Twitch guideline 2.4); this button turns it on in one tap. */
+.fx-stage__sound {
+  position: absolute;
+  left: 3.75rem;
+  bottom: 0.6rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(10, 11, 15, 0.72);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+.fx-stage__sound[hidden] { display: none; }
+.fx-stage__sound svg { font-size: 1.1rem; }
+.fx-stage__sound .fx-icon-sound { display: none; }
+.fx-stage__sound.is-on .fx-icon-sound { display: block; }
+.fx-stage__sound.is-on .fx-icon-muted { display: none; }
 
 .fx-stage__time {
   position: absolute;

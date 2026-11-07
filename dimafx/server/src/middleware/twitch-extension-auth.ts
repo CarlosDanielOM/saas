@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export interface TwitchExtensionIdentity {
   channelID: string;
@@ -9,158 +9,86 @@ export interface TwitchExtensionIdentity {
   token: string;
   identityShared: boolean;
 }
-
-export interface TwitchExtensionRequest extends Request {
-  extension?: TwitchExtensionIdentity;
-}
-
+export interface TwitchExtensionRequest extends Request { extension?: TwitchExtensionIdentity }
 interface TwitchExtensionJwtPayload {
-  channel_id?: string;
-  user_id?: string;
-  opaque_user_id?: string;
-  role?: string;
-  exp?: number;
+  channel_id?: string; user_id?: string; opaque_user_id?: string; role?: string; exp?: number;
+}
+export interface VerifiedBitsTransaction {
+  transactionID: string; userID: string; sku: string; amount: number; time: string; inDevelopment: boolean;
 }
 
-function getSigningSecrets(): Buffer[] {
-  const secret = process.env.TWITCH_EXTENSION_SECRET;
-  if (!secret) return [];
-
-  const candidates = [
-    Buffer.from(secret, 'base64'),
-    Buffer.from(secret, 'base64url'),
-    Buffer.from(secret, 'utf8')
-  ];
-
-  return candidates.filter((candidate, index) =>
-    candidate.length > 0 && candidates.findIndex((other) => other.equals(candidate)) === index
-  );
+export function assertProductionConfiguration(): void {
+  if (process.env.NODE_ENV !== 'production') return;
+  const missing = ['TWITCH_EXTENSION_SECRET', 'DIMAFX_SERVICE_TOKEN'].filter(name => !process.env[name]?.trim());
+  if (process.env.DIMAFX_ALLOW_UNVERIFIED_TWITCH_JWT === 'true') missing.push('DIMAFX_ALLOW_UNVERIFIED_TWITCH_JWT must be disabled');
+  if (missing.length) throw new Error(`DimaFX production configuration invalid: ${missing.join(', ')}`);
 }
 
-function getToken(req: Request): string | null {
-  const authHeader = req.header('authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    return authHeader.slice(7);
-  }
-
-  const extensionHeader = req.header('x-extension-jwt');
-  return extensionHeader || null;
+/** Twitch extension secrets are base64 encoded, never literal UTF-8 signing keys. */
+function signingSecret(): Buffer { return Buffer.from(process.env.TWITCH_EXTENSION_SECRET || '', 'base64'); }
+function decode(token: string): Record<string, unknown> | null {
+  try { return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')); } catch { return null; }
 }
-
-function decodeUnverified(token: string): TwitchExtensionJwtPayload | null {
-  const parts = token.split('.');
-  if (parts.length < 2 || !parts[1]) return null;
-
+/** Receipts have their own replay/age policy below; authentication tokens always require exp. */
+export function verifyTwitchJwt(token: string, requireExpiration = true): Record<string, unknown> | null {
   try {
-    return JSON.parse(base64UrlDecode(parts[1]).toString('utf8')) as TwitchExtensionJwtPayload;
-  } catch {
-    return null;
-  }
+    const parts = token.split('.');
+    if (parts.length !== 3 || parts.some(part => !part)) return null;
+    if (JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8')).alg !== 'HS256') return null;
+    const key = signingSecret();
+    if (!key.length) return null;
+    const expected = createHmac('sha256', key).update(`${parts[0]}.${parts[1]}`).digest();
+    const actual = Buffer.from(parts[2], 'base64url');
+    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
+    const payload = decode(token);
+    if (!payload || (requireExpiration && !validExpiration(payload.exp))) return null;
+    return payload;
+  } catch { return null; }
+}
+function validExpiration(exp: unknown): boolean {
+  return typeof exp === 'number' && Number.isFinite(exp) && exp * 1000 > Date.now();
 }
 
-function base64UrlDecode(value: string): Buffer {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-  return Buffer.from(padded, 'base64');
-}
-
-function verifyTwitchJwt(token: string, signingSecrets: Buffer[]): TwitchExtensionJwtPayload | null {
-  const parts = token.split('.');
-  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return null;
-
-  const header = JSON.parse(base64UrlDecode(parts[0]).toString('utf8')) as { alg?: string };
-  if (header.alg !== 'HS256') return null;
-
-  const signedPayload = `${parts[0]}.${parts[1]}`;
-  const actualSignature = base64UrlDecode(parts[2]);
-
-  for (const signingSecret of signingSecrets) {
-    const expectedSignature = createHmac('sha256', signingSecret).update(signedPayload).digest();
-    if (expectedSignature.length === actualSignature.length && timingSafeEqual(expectedSignature, actualSignature)) {
-      const payload = decodeUnverified(token);
-      if (!payload) return null;
-      if (payload.exp && payload.exp * 1000 < Date.now()) return null;
-
-      return payload;
-    }
-  }
-
-  return null;
-}
-
-function getTokenDiagnostics(token: string): Record<string, unknown> {
-  const parts = token.split('.');
-  const payload = decodeUnverified(token);
-  let alg: string | undefined;
-
-  try {
-    alg = parts[0] ? (JSON.parse(base64UrlDecode(parts[0]).toString('utf8')) as { alg?: string }).alg : undefined;
-  } catch {
-    alg = undefined;
-  }
-
-  return {
-    tokenParts: parts.length,
-    alg,
-    hasChannelID: Boolean(payload?.channel_id),
-    hasUserID: Boolean(payload?.user_id),
-    hasOpaqueUserID: Boolean(payload?.opaque_user_id),
-    isExpired: Boolean(payload?.exp && payload.exp * 1000 < Date.now())
-  };
+export function verifyBitsReceipt(receipt: unknown, identity: TwitchExtensionIdentity): VerifiedBitsTransaction | null {
+  if (typeof receipt !== 'string') return null;
+  const payload = verifyTwitchJwt(receipt, false);
+  if (payload?.topic !== 'bits_transaction_receipt') return null;
+  const data = payload.data as { transactionId?: unknown; userId?: unknown; time?: unknown; product?: { sku?: unknown; cost?: { amount?: unknown; type?: unknown }; inDevelopment?: unknown } } | undefined;
+  const product = data?.product;
+  const amount = product?.cost?.amount;
+  if (!data || typeof data.transactionId !== 'string' || !data.transactionId.trim() || data.transactionId.length > 256 ||
+      typeof data.userId !== 'string' || !data.userId.trim() || typeof product?.sku !== 'string' || !product.sku.trim() ||
+      product.cost?.type !== 'bits' || typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount <= 0 ||
+      (identity.userID && identity.userID !== data.userId)) return null;
+  // Ignore receipt exp so a client can resume days later. A signed transaction time
+  // bounds acceptance to 30 days, safely below the 365-day claim TTL; expired claims
+  // can therefore never be replayed. The panel retries for seven days.
+  const time = typeof data.time === 'string' ? Date.parse(data.time) : NaN;
+  if (!Number.isFinite(time) || time > Date.now() + 300_000 || time < Date.now() - 30 * 86400_000) return null;
+  const inDevelopment = product.inDevelopment === true;
+  if (inDevelopment && process.env.DIMAFX_REJECT_DEVELOPMENT_PRODUCTS === 'true') return null;
+  return { transactionID: data.transactionId, userID: data.userId, sku: product.sku, amount, time: new Date(time).toISOString(), inDevelopment };
 }
 
 export function twitchExtensionAuth(req: TwitchExtensionRequest, res: Response, next: NextFunction): void {
-  const token = getToken(req);
-  if (!token) {
-    res.status(401).json({ error: true, message: 'Missing Twitch Extension token', status: 401 });
-    return;
+  try { assertProductionConfiguration(); } catch (error) {
+    console.error(String(error));
+    res.status(503).json({ error: true, status: 503, message: 'DimaFX production configuration invalid; operator action required' }); return;
   }
-
-  const allowUnverified = process.env.DIMAFX_ALLOW_UNVERIFIED_TWITCH_JWT === 'true';
-  const signingSecrets = getSigningSecrets();
-
-  try {
-    const payload = signingSecrets.length > 0
-      ? verifyTwitchJwt(token, signingSecrets)
-      : allowUnverified
-        ? decodeUnverified(token)
-        : null;
-
-    if (!payload?.channel_id) {
-      console.warn('Invalid Twitch Extension token:', {
-        hasSigningSecret: signingSecrets.length > 0,
-        allowUnverified,
-        ...getTokenDiagnostics(token),
-        timestamp: new Date().toISOString()
-      });
-      res.status(401).json({ error: true, message: 'Invalid Twitch Extension token', status: 401 });
-      return;
-    }
-
-    req.extension = {
-      channelID: payload.channel_id,
-      userID: payload.user_id,
-      opaqueUserID: payload.opaque_user_id,
-      role: payload.role,
-      token,
-      identityShared: Boolean(payload.user_id)
-    };
-
-    next();
-  } catch (error) {
-    console.error('Twitch Extension JWT validation failed:', {
-      error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
-    });
-    res.status(401).json({ error: true, message: 'Invalid Twitch Extension token', status: 401 });
+  const auth = req.header('authorization');
+  const token = auth?.startsWith('Bearer ') ? auth.slice(7) : req.header('x-extension-jwt');
+  if (!token) { res.status(401).json({ error: true, message: 'Missing Twitch Extension token', status: 401 }); return; }
+  const allowUnverified = process.env.NODE_ENV !== 'production' && process.env.DIMAFX_ALLOW_UNVERIFIED_TWITCH_JWT === 'true';
+  const payload = (signingSecret().length ? verifyTwitchJwt(token) : allowUnverified ? decode(token) : null) as TwitchExtensionJwtPayload | null;
+  if (!payload || typeof payload.channel_id !== 'string' || !payload.channel_id || !validExpiration(payload.exp) ||
+      (payload.user_id !== undefined && typeof payload.user_id !== 'string') ||
+      (payload.opaque_user_id !== undefined && typeof payload.opaque_user_id !== 'string')) {
+    res.status(401).json({ error: true, message: 'Invalid Twitch Extension token', status: 401 }); return;
   }
+  req.extension = { channelID: payload.channel_id, userID: payload.user_id, opaqueUserID: payload.opaque_user_id, role: payload.role, token, identityShared: Boolean(payload.user_id) };
+  next();
 }
-
 export function ensureChannelMatches(req: TwitchExtensionRequest, res: Response, channelID: string): boolean {
-  if (!req.extension?.channelID || req.extension.channelID !== channelID) {
-    res.status(403).json({ error: true, message: 'Extension channel mismatch', status: 403 });
-    return false;
-  }
-
+  if (req.extension?.channelID !== channelID) { res.status(403).json({ error: true, message: 'Extension channel mismatch', status: 403 }); return false; }
   return true;
 }

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="storefront.css?v=50" />
+    <link rel="stylesheet" href="storefront.css?v=51" />
   </head>
   <body class="fx fx--mobile">
     <div class="fx-app">
@@ -19,7 +19,7 @@
         <span id="fx-live-chip" class="fx-chip fx-chip--muted" data-state="checking">
           <span class="fx-dot"></span><span id="fx-live-label" data-i18n="status.checkingShort">Checking…</span>
         </span>
-        <button id="fx-balance" class="fx-chip fx-chip--gold fx-balance" type="button" onclick="showBitsBalance()" hidden>
+        <button id="fx-balance" class="fx-chip fx-chip--accent fx-balance" type="button" data-action="credits" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9 12h6M12 9v6"></path></svg>
           <span id="header-balance">0</span>
         </button>
@@ -37,7 +37,7 @@
             <label class="fx-search" id="fx-search" hidden>
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
               <span class="fx-sr" data-i18n="store.searchLabel">Search items</span>
-              <input type="search" id="search-bar" autocomplete="off" data-i18n-placeholder="store.search" placeholder="Search" oninput="handleSearch(this.value)" />
+              <input type="search" id="search-bar" autocomplete="off" data-i18n-placeholder="store.search" placeholder="Search" />
             </label>
             <div id="fx-filters" class="fx-filters" role="group" data-i18n-aria="store.filters" aria-label="Filter by type"></div>
           </div>
@@ -49,7 +49,7 @@
           <div id="media-grid" class="fx-grid"></div>
 
           <div id="empty-state" class="fx-empty" hidden>
-            <div class="fx-empty__title" id="fx-empty-title" data-i18n="store.emptyTitle">Nothing for sale yet</div>
+            <div class="fx-empty__title" id="fx-empty-title" data-i18n="store.emptyTitle">Nothing here yet</div>
             <div class="fx-empty__desc" id="fx-empty-desc" data-i18n="store.emptyDesc">The streamer hasn't added any items.</div>
           </div>
         </section>
@@ -58,7 +58,7 @@
         <section id="screen-inventory" class="app-screen" aria-labelledby="fx-saved-title">
           <div class="fx-intro">
             <h1 id="fx-saved-title" class="fx-title" data-i18n="saved.title">Your saved items</h1>
-            <p class="fx-sub" data-i18n="saved.sub">Already paid for. Play them on stream whenever you want.</p>
+            <p class="fx-sub" data-i18n="saved.sub">Already yours. Play them on stream whenever you want.</p>
           </div>
           <div id="inventory-list" class="fx-rows"></div>
         </section>
@@ -72,39 +72,39 @@
           <div class="fx-card">
             <div class="fx-row-head">
               <label for="preview-volume" class="fx-label" data-i18n="settings.volume">Preview volume</label>
-              <span class="fx-value" id="val-volume">80%</span>
+              <span class="fx-value" id="val-volume">Off</span>
             </div>
-            <input id="preview-volume" type="range" class="fx-range volume-slider" min="0" max="100" value="80" style="--pct: 0.8" oninput="onPreviewVolumeInput(this)" />
-            <p class="fx-note" data-i18n="settings.volumeNote">Only for previews in this panel. The stream uses the streamer's volume.</p>
+            <input id="preview-volume" type="range" class="fx-range volume-slider" min="0" max="100" value="0" style="--pct: 0" />
+            <p class="fx-note" data-i18n="settings.volumeNote">Only for previews in this panel, and off until you turn it up. The stream uses the streamer's volume.</p>
           </div>
 
           <div id="fx-quick-settings" class="fx-card"></div>
 
           <div class="fx-card">
             <div class="fx-label" data-i18n="settings.creditsTitle">What are credits?</div>
-            <p class="fx-note" data-i18n="settings.creditsNote">If something you paid for can't play, you get it back as credits for this channel. Spend them like Bits on any item.</p>
+            <p class="fx-note" data-i18n="settings.creditsNote">If something you used Bits on can't play, you get it back as credits for this channel. Use them like Bits on any item.</p>
           </div>
         </section>
       </main>
 
       <nav class="bottom-nav fx-tabs" data-i18n-aria="nav.label" aria-label="DimaFX sections">
-        <button class="nav-tab active" type="button" aria-current="page" onclick="switchTab('store', this)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16l-1.5 12.5a1 1 0 0 1-1 .5h-11a1 1 0 0 1-1-.5L4 7Z"></path><path d="M9 7a3 3 0 0 1 6 0"></path></svg>
-          <span data-i18n="nav.store">Store</span>
+        <button class="nav-tab active" type="button" aria-current="page" data-tab="store">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5"></path></svg>
+          <span data-i18n="nav.store">Effects</span>
         </button>
-        <button class="nav-tab" type="button" onclick="switchTab('inventory', this)">
+        <button class="nav-tab" type="button" data-tab="inventory">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3Z"></path></svg>
           <span data-i18n="nav.saved">Saved</span>
           <span id="fx-saved-count" class="fx-badge" hidden>0</span>
         </button>
-        <button class="nav-tab" type="button" onclick="switchTab('config', this)">
+        <button class="nav-tab" type="button" data-tab="config">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg>
           <span data-i18n="nav.settings">Settings</span>
         </button>
       </nav>
     </div>
 
-    <div id="drawer-backdrop" class="fx-backdrop" onclick="closeDrawer()"></div>
+    <div id="drawer-backdrop" class="fx-backdrop" data-action="close"></div>
 
     <div id="preview-drawer" class="fx-sheet" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden>
       <div class="fx-sheet__handle" aria-hidden="true"></div>
@@ -114,12 +114,16 @@
           <span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>
         </div>
         <div class="fx-stage__tts"><span class="fx-quote" id="fx-stage-quote"></span></div>
-        <button class="fx-stage__play" type="button" id="player-play" onclick="togglePlayPreview()" data-i18n-aria="sheet.preview" aria-label="Preview">
+        <button class="fx-stage__play" type="button" id="player-play" data-action="preview" data-i18n-aria="sheet.preview" aria-label="Preview">
           <svg class="fx-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5-11-6.5Z"></path></svg>
           <svg class="fx-icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zM13 5h3v14h-3z"></path></svg>
         </button>
+        <button class="fx-stage__sound" type="button" id="player-sound" data-action="sound" aria-pressed="false" data-i18n-aria="sheet.soundOn" aria-label="Turn preview sound on">
+          <svg class="fx-icon-muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"></path><path d="m16 9 5 6M21 9l-5 6"></path></svg>
+          <svg class="fx-icon-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"></path></svg>
+        </button>
         <span id="player-time" class="fx-stage__time">0:00</span>
-        <button class="fx-sheet__close" type="button" onclick="closeDrawer()" data-i18n-aria="sheet.close" aria-label="Close">
+        <button class="fx-sheet__close" type="button" data-action="close" data-i18n-aria="sheet.close" aria-label="Close">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
         </button>
       </div>
@@ -133,7 +137,7 @@
 
         <div id="tts-input-wrap" class="fx-tts" hidden>
           <label for="tts-text-input" class="fx-label" data-i18n="sheet.ttsLabel">Your message</label>
-          <textarea id="tts-text-input" maxlength="280" rows="3" data-i18n-placeholder="sheet.ttsPlaceholder" placeholder="Type what the voice will say on stream…" oninput="onTtsTextInput()"></textarea>
+          <textarea id="tts-text-input" maxlength="280" rows="3" data-i18n-placeholder="sheet.ttsPlaceholder" placeholder="Type what the voice will say on stream…"></textarea>
           <div id="tts-char-count" class="fx-tts__count">0 / 280</div>
         </div>
 
@@ -150,6 +154,6 @@
     </div>
 
     <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
-    <script src="panel.js?v=51"></script>
+    <script src="panel.js?v=53"></script>
   </body>
 </html>

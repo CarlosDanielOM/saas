@@ -850,6 +850,34 @@
       }
     },
     "dimafx": {
+      "queue": {
+        "title": "Reproduciendo ahora",
+        "hint": "Aquí aparecen las reproducciones de tus espectadores. Salta o quita lo que no quieras en tu stream; los espectadores no recuperan créditos por lo que quitas.",
+        "empty": "No hay nada reproduciéndose ni en espera.",
+        "playing": "Reproduciendo",
+        "next": "Siguiente",
+        "from": "de {{name}}",
+        "skip": "Saltar",
+        "remove": "Quitar",
+        "skipAria": "Saltar {{name}}",
+        "removeAria": "Quitar {{name}} de la cola",
+        "clear": "Vaciar la cola",
+        "clearConfirm": "¿Vaciar {{count}}?",
+        "sources": {
+          "bits": "Bits",
+          "credits": "Créditos",
+          "saved": "Guardado",
+          "free": "Gratis",
+          "test": "Prueba"
+        },
+        "toasts": {
+          "skipped": "Saltado",
+          "skippedDesc": "{{name}} se quitó del stream.",
+          "cleared": "Cola vaciada",
+          "clearedDesc": "Se quitaron {{count}} reproducciones en espera.",
+          "failed": "No se pudo cambiar la cola"
+        }
+      },
       "description": "Configura tu tienda de extensión de Twitch con archivos multimedia que los espectadores pueden comprar con Bits, usar al instante o guardar para después.",
       "subtitle": "Los espectadores gastan Bits en tu extensión de Twitch para reproducir sonidos, videos y mensajes en tu stream, al momento o guardados para después.",
       "backToModules": "Volver a módulos",

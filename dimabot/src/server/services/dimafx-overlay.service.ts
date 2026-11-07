@@ -32,10 +32,10 @@ export function registerDimafxOverlay(io: Server): void {
   namespace.on('connection', socket => {
     const channelID = socket.nsp.name.split('/')[3];
     socket.data.dimafxReady = false;
-    socket.on('dimafx-ready', () => { socket.data.dimafxReady = true; void poll(); });
-    socket.on('dimafx-ended', (data: { triggerID?: unknown }) => {
+    socket.on('dimafx-ready', (data?: { captions?: unknown }) => { socket.data.dimafxReady = true; socket.data.dimafxCaptions = data?.captions === true; void poll(); });
+    socket.on('dimafx-ended', (data: { triggerID?: unknown; status?: unknown }) => {
       if (!socket.data.dimafxReady || typeof data?.triggerID !== 'string') return;
-      void dimafxQueueHandler.handleTriggerEnded(channelID, data.triggerID).catch(error => console.error('DimaFX completion persistence failed', error));
+      void dimafxQueueHandler.handleTriggerEnded(channelID, data.triggerID, data.status === 'failed' ? 'failed' : undefined).catch(error => console.error('DimaFX completion persistence failed', error));
     });
     let recovering = false;
     const poll = async () => {

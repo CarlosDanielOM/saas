@@ -70,6 +70,23 @@ export interface DimafxOverlayStatus {
   overlayUrl: string;
 }
 
+/** One play in the streamer's DimaFX queue (GET /extensions/dimafx/:channelID/queue). */
+export interface DimafxQueueEntry {
+  id: string;
+  itemID: string;
+  itemName: string;
+  category: string;
+  source: 'bits' | 'credits' | 'saved' | 'free' | 'test';
+  viewerName: string | null;
+  text: string | null;
+  createdAt: string;
+}
+
+export interface DimafxQueue {
+  playing: DimafxQueueEntry | null;
+  queued: DimafxQueueEntry[];
+}
+
 export interface DimafxTestTriggerResult {
   queued: boolean;
   queueLength: number;

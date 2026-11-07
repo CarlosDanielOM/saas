@@ -37,6 +37,7 @@ export interface IChannelExtensionItem {
   sortOrder: number;
   tts?: ChannelExtensionItemTtsConfig | null;
   deletedAt: Date | null;
+  refundSavedPending?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -90,6 +91,7 @@ const channelExtensionItemSchema = new Schema<IChannelExtensionItem>(
       ),
       default: null,
     },
+    refundSavedPending: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null, index: true },
   },
   {

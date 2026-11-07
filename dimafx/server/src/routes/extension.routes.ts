@@ -1,6 +1,6 @@
 import express, { type Response } from 'express';
 import { dimabotClient } from '../services/dimabot-client.js';
-import { ensureChannelMatches, twitchExtensionAuth, type TwitchExtensionRequest } from '../middleware/twitch-extension-auth.js';
+import { ensureChannelMatches, twitchExtensionAuth, verifyBitsReceipt, type TwitchExtensionRequest } from '../middleware/twitch-extension-auth.js';
 
 const router = express.Router();
 
@@ -21,6 +21,13 @@ function proxyResponse<T>(res: Response, payload: { error: boolean; status?: num
 }
 
 router.use(twitchExtensionAuth);
+// Anonymous (A-prefixed) JWTs can browse but cannot perform non-Bits mutations.
+router.use((req: TwitchExtensionRequest, res: Response, next) => {
+  if (['POST', 'PATCH', 'DELETE'].includes(req.method) && req.extension?.opaqueUserID?.startsWith('A') && !req.path.endsWith('/purchase')) {
+    res.status(403).json({ error: true, status: 403, message: 'Log in to Twitch to use DimaFX' }); return;
+  }
+  next();
+});
 
 router.get('/channels/:channelID/overlay-status', async (req: TwitchExtensionRequest, res: Response) => {
   const channelID = getParamValue(req.params.channelID);
@@ -113,18 +120,38 @@ router.patch('/channels/:channelID/me/config', async (req: TwitchExtensionReques
   }
 });
 
+router.post('/channels/:channelID/items/:itemID/tts-check', async (req: TwitchExtensionRequest, res: Response) => {
+  const channelID = getParamValue(req.params.channelID);
+  if (!ensureChannelMatches(req, res, channelID)) return;
+  if (!req.extension?.userID || !req.extension.opaqueUserID?.startsWith('U')) return res.status(403).json({ error: true, status: 403, message: 'Share your Twitch identity to submit viewer speech' });
+  try {
+    const payload = await dimabotClient.post(`/extensions/dimafx/internal/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(getParamValue(req.params.itemID))}/tts-check`, { userID: req.extension.userID, ttsText: req.body?.ttsText });
+    if (payload.error && ![403, 429].includes(payload.status || 0)) return res.status(200).json({ error: false, status: 200, data: { allowed: false, reason: 'unavailable' } });
+    return proxyResponse(res, payload);
+  } catch { return res.status(200).json({ error: false, status: 200, data: { allowed: false, reason: 'unavailable' } }); }
+});
+
 router.post('/channels/:channelID/items/:itemID/purchase', async (req: TwitchExtensionRequest, res: Response) => {
   try {
     const channelID = getParamValue(req.params.channelID);
     const itemID = getParamValue(req.params.itemID);
     if (!ensureChannelMatches(req, res, channelID)) return;
 
+    const hasReceipt = req.body?.transactionReceipt !== undefined;
+    const bitsTransaction = hasReceipt ? verifyBitsReceipt(req.body.transactionReceipt, req.extension!) : null;
+    if (hasReceipt && !bitsTransaction) {
+      return res.status(400).json({ error: true, status: 400, message: 'Invalid Twitch Bits receipt' });
+    }
+    if (!bitsTransaction && !req.extension?.opaqueUserID?.startsWith('U')) {
+      return res.status(403).json({ error: true, status: 403, message: 'Log in to Twitch to use free DimaFX items' });
+    }
     const payload = await dimabotClient.post<Record<string, unknown>>(
       `/extensions/dimafx/internal/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(itemID)}/purchase`,
       {
         ...extensionIdentityBody(req),
         sku: req.body?.sku,
-        transactionID: req.body?.transactionID,
+        bitsTransaction: bitsTransaction || undefined,
+        identityShared: req.extension?.identityShared,
         action: req.body?.action,
         ttsText: req.body?.ttsText
       }

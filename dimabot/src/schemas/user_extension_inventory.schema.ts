@@ -28,6 +28,7 @@ export interface IUserExtensionInventory {
     config: IUserExtensionInventoryConfig;
     items: IUserExtensionInventoryItem[];
     dimafxReceipts: string[];
+    dimafxDeletionRefunds: { itemID: Types.ObjectId; ledgerID: Types.ObjectId; amount: number }[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -62,7 +63,9 @@ const userExtensionInventorySchema = new Schema<IUserExtensionInventory>({
     },
     items: { type: [inventoryItemSchema], default: [] },
     // Durable receipts protect saved purchases and refunds from request/process retries.
-    dimafxReceipts: { type: [String], default: [] }
+    dimafxReceipts: { type: [String], default: [] },
+    // Atomic wallet refund + audit outbox; drain with the stable ledger ID after a crash.
+    dimafxDeletionRefunds: { type: [new Schema({ itemID: Schema.Types.ObjectId, ledgerID: Schema.Types.ObjectId, amount: Number }, { _id: false })], default: [] }
 }, {
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }
 });
