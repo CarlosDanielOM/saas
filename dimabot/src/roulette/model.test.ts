@@ -81,3 +81,61 @@ test('last-one-standing design is accepted and holds up to 100 copies', () => {
   assert.throws(() => r.configure(r_roulette, { design: 'reel' }));
   assert.throws(() => r.configure(r_roulette, { design: 'plinko' }));
 });
+test('import adds every row or nothing, and follows the duplicate setting', () => {
+  const { roulette } = fixture();
+  assert.equal(r.importItems(roulette, { items: [{ label: 'A', multiplier: 2 }, { label: 'B', weight: 3 }, { label: 'VIP', multiplier: 1, weight: 10 }] }), 3);
+  assert.deepEqual(roulette.items.map(i => [i.label, i.multiplier, i.weight]), [['VIP', 3, 10], ['Game', 1, 1], ['A', 2, 1], ['B', 1, 3], ['VIP', 1, 10]]);
+  assert.equal(roulette.order.length, 8); assert.equal(new Set(roulette.order).size, 8);
+  // 'increase' joins same-label rows (also within one import) and rejects a different weight on the row that clashes.
+  roulette.settings.duplicate = 'increase';
+  const before = structuredClone(roulette);
+  r.importItems(roulette, { items: [{ label: 'A' }, { label: 'C' }, { label: 'C', multiplier: 2 }] });
+  assert.deepEqual(roulette.items.filter(i => i.label === 'A' || i.label === 'C').map(i => [i.label, i.multiplier]), [['A', 3], ['C', 3]]);
+  const clash = structuredClone(before);
+  assert.throws(() => r.importItems(clash, { items: [{ label: 'New' }, { label: 'B', weight: 1 }] }),
+    (e: r.RouletteError) => e.code === 'weight_conflict' && e.row === 2 && e.message.startsWith('Prize 2:'));
+  assert.throws(() => r.importItems(structuredClone(before), { items: [{ label: 'A', action: '$(user)' }] }), { code: 'action_conflict' });
+});
+test('import validates rows and totals before creating copies', () => {
+  const { roulette } = fixture(); // reel: 60 slots, 4 used
+  const bad = (data: Record<string, unknown>, code: string, row?: number) =>
+    assert.throws(() => r.importItems(roulette, data), (e: r.RouletteError) => e.code === code && e.row === row);
+  bad({ items: [] }, 'invalid'); bad({ items: 'x' }, 'invalid'); bad({ items: [{ label: 'a' }], replace: 'yes' }, 'invalid');
+  bad({ items: [{ label: 'a' }], extra: 1 }, 'invalid');
+  bad({ items: [{ label: 'ok' }, { label: '' }] }, 'invalid', 2);
+  bad({ items: [{ label: 'ok' }, { label: 'x', multiplier: 1.5 }] }, 'invalid', 2);
+  bad({ items: [{ label: 'ok', color: 'red' }] }, 'invalid', 1);
+  bad({ items: Array.from({ length: 10001 }, () => ({ label: 'x' })) }, 'invalid');
+  bad({ items: [{ label: 'big', multiplier: 57 }] }, 'capacity');
+  bad({ items: [{ label: 'heavy', weight: Number.MAX_SAFE_INTEGER }] }, 'weight');
+  assert.equal(roulette.order.length, 4, 'failed imports leave nothing behind');
+  // 10k slots with all-too-big rows is refused before any copy is allocated.
+  roulette.design = 'wheel';
+  const start = performance.now();
+  bad({ items: Array.from({ length: 10000 }, (_, i) => ({ label: `p${i}`, multiplier: 10000 })) }, 'capacity');
+  assert(performance.now() - start < 1000);
+});
+test('import replace swaps every prize; big imports stay fast', () => {
+  const { roulette } = fixture(); roulette.design = 'wheel'; roulette.settings.insertion = 'random';
+  r.importItems(roulette, { items: [{ label: 'Only', multiplier: 2, action: '$(user) won' }], replace: true });
+  assert.deepEqual(roulette.items.map(i => [i.label, i.multiplier, i.action]), [['Only', 2, '$(user) won']]);
+  assert.deepEqual([...roulette.order].sort(), [...roulette.items[0].copies].sort());
+  const start = performance.now();
+  r.importItems(roulette, { items: Array.from({ length: 9998 }, (_, i) => ({ label: `Viewer ${i}` })) });
+  assert(performance.now() - start < 2000, 'random insertion of ~10k copies');
+  assert.equal(roulette.order.length, 10000); assert.equal(new Set(roulette.order).size, 10000);
+  roulette.settings.duplicate = 'increase';
+  const start2 = performance.now();
+  r.importItems(roulette, { items: Array.from({ length: 9999 }, (_, i) => ({ label: `X ${i}` })), replace: true });
+  assert(performance.now() - start2 < 2000, 'label lookups are not quadratic');
+  assert.equal(roulette.items.length, 9999);
+});
+test('import joins the same existing duplicate as add() (the first one)', () => {
+  const { roulette } = fixture(); // separate: two VIP prizes can coexist
+  r.add(roulette, { label: 'VIP', weight: 2, action: '$(user) second' });
+  roulette.settings.duplicate = 'increase';
+  const single = structuredClone(roulette); r.add(single, { label: 'VIP', weight: 10 });
+  r.importItems(roulette, { items: [{ label: 'VIP', weight: 10 }] });
+  assert.deepEqual(roulette.items.map(i => i.multiplier), single.items.map(i => i.multiplier));
+  assert.deepEqual(roulette.items.filter(i => i.label === 'VIP').map(i => [i.weight, i.multiplier]), [[10, 4], [2, 1]]);
+});

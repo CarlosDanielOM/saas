@@ -4,7 +4,8 @@ import { randomBytes, randomUUID } from 'node:crypto';
 const newId = () => randomUUID().replaceAll('-', '');
 
 export class RouletteError extends Error {
-  constructor(public code: string, message: string, public status = 400) { super(message); }
+  /** `row` is the 1-based import row that caused the error, when there is one. */
+  constructor(public code: string, message: string, public status = 400, public row?: number) { super(message); }
 }
 export interface Item { id: string; label: string; multiplier: number; weight: number; copies: string[]; action?: string }
 export interface Settings {
@@ -117,23 +118,73 @@ export function find(state: State, reference?: string): Roulette {
   const r = state.roulettes.find(r => r.id === (reference || state.activeId) || r.alias === reference);
   return r || fail('not_found', 'Roulette not found in this channel', 404);
 }
-export function add(r: Roulette, data: Record<string, unknown>, random = randomTicket): Item {
+interface NewItem { label: string; multiplier: number; weight: number; action?: string }
+function parseItem(data: Record<string, unknown>): NewItem {
   if (Object.keys(data).some(k => !['label', 'multiplier', 'weight', 'action'].includes(k))) fail('invalid', 'Unknown item field');
-  const label = text(data.label, 'label');
-  const multiplier = integer(data.multiplier === undefined ? 1 : data.multiplier, 'multiplier', 1, 10000);
-  const weight = integer(data.weight === undefined ? 1 : data.weight, 'weight');
-  let item = r.settings.duplicate === 'increase' ? r.items.find(i => i.label === label) : undefined;
-  if (item && item.weight !== weight) fail('weight_conflict', 'Existing item has a different weight; update it explicitly', 409);
-  const action = data.action === undefined ? undefined : actionSource(data.action);
-  if (item && action !== undefined && (item.action ?? '') !== action) fail('action_conflict', 'Existing item has a different action; edit it explicitly', 409);
-  if (!item) { item = { id: newId(), label, multiplier: 0, weight, copies: [], action: action ?? '' }; r.items.push(item); }
-  item.multiplier += multiplier;
-  validate(r);
-  for (let i = 0; i < multiplier; i++) {
+  return {
+    label: text(data.label, 'label'),
+    multiplier: integer(data.multiplier === undefined ? 1 : data.multiplier, 'multiplier', 1, 10000),
+    weight: integer(data.weight === undefined ? 1 : data.weight, 'weight'),
+    ...(data.action === undefined ? {} : { action: actionSource(data.action) }),
+  };
+}
+/** Finds the item a new row joins ('increase' setting) or creates it; copies are added by the caller. */
+function target(r: Roulette, row: NewItem, existing?: Item): Item {
+  if (existing && existing.weight !== row.weight) fail('weight_conflict', 'Existing item has a different weight; update it explicitly', 409);
+  if (existing && row.action !== undefined && (existing.action ?? '') !== row.action) fail('action_conflict', 'Existing item has a different action; edit it explicitly', 409);
+  if (existing) return existing;
+  const item: Item = { id: newId(), label: row.label, multiplier: 0, weight: row.weight, copies: [], action: row.action ?? '' };
+  r.items.push(item); return item;
+}
+function addCopies(r: Roulette, item: Item, count: number, random: (n: number) => number): void {
+  for (let i = 0; i < count; i++) {
     const key = newId(); item.copies.push(key);
     r.order.splice(r.settings.insertion === 'random' ? random(r.order.length + 1) : r.order.length, 0, key);
   }
+}
+export function add(r: Roulette, data: Record<string, unknown>, random = randomTicket): Item {
+  const row = parseItem(data);
+  const item = target(r, row, r.settings.duplicate === 'increase' ? r.items.find(i => i.label === row.label) : undefined);
+  item.multiplier += row.multiplier;
+  validate(r);
+  addCopies(r, item, row.multiplier, random);
   return item;
+}
+export const IMPORT_LIMIT = 10000;
+function atRow<T>(row: number, run: () => T): T {
+  try { return run(); } catch (error) {
+    if (error instanceof RouletteError) { error.message = `Prize ${row}: ${error.message}`; error.row = row; }
+    throw error;
+  }
+}
+/**
+ * All-or-nothing bulk add. Rows follow the same rules as add(); `replace` clears the
+ * current prizes first. Totals are checked before any copy is created, so a huge
+ * request is rejected without allocating its slots.
+ */
+export function importItems(r: Roulette, data: Record<string, unknown>, random = randomTicket): number {
+  if (Object.keys(data).some(k => k !== 'items' && k !== 'replace')) fail('invalid', 'Unknown import field');
+  if (data.replace !== undefined && typeof data.replace !== 'boolean') fail('invalid', 'replace must be true or false');
+  const list = data.items;
+  if (!Array.isArray(list) || !list.length || list.length > IMPORT_LIMIT) fail('invalid', `items must contain 1–${IMPORT_LIMIT} prizes`);
+  const rows = list.map((entry, i) => atRow(i + 1, () => parseItem(object(entry))));
+  const kept = data.replace ? [] : r.items;
+  const slots = kept.reduce((n, i) => n + i.multiplier, 0) + rows.reduce((n, row) => n + row.multiplier, 0);
+  if (slots > capacity(r)) fail('capacity', `This design supports ${capacity(r)} copies; requested ${slots}`);
+  const total = kept.reduce((n, i) => n + i.weight * i.multiplier, 0) + rows.reduce((n, row) => n + row.weight * row.multiplier, 0);
+  if (!Number.isSafeInteger(total)) fail('weight', 'Total weight exceeds the safe integer limit');
+  if (data.replace) { r.items = []; r.order = []; }
+  // Like add()'s find(): an existing duplicate label joins its first item.
+  const byLabel = r.settings.duplicate === 'increase' ? new Map<string, Item>() : null;
+  if (byLabel) for (const item of r.items) if (!byLabel.has(item.label)) byLabel.set(item.label, item);
+  rows.forEach((row, i) => atRow(i + 1, () => {
+    const item = target(r, row, byLabel?.get(row.label));
+    byLabel?.set(row.label, item);
+    item.multiplier += row.multiplier;
+    addCopies(r, item, row.multiplier, random);
+  }));
+  validate(r);
+  return rows.length;
 }
 export function remove(r: Roulette, itemId: string): void {
   const item = r.items.find(i => i.id === itemId) || fail('not_found', 'Item not found', 404);

@@ -42,6 +42,7 @@ after editing. Snapshots and token responses use `Cache-Control: no-store`.
 | POST | `/roulettes/:roulette/items` | `{label, multiplier?: 1, weight?: 1, action?: ""}`; returns item ID |
 | PATCH | `/roulettes/:roulette/items/:item` | Partial `{label, multiplier, weight, action}` |
 | DELETE | `/roulettes/:roulette/items/:item` | Remove all copies of the item |
+| POST | `/roulettes/:roulette/import` | `{items: [{label, multiplier?, weight?, action?}] (1–10000), replace?: false}`; all-or-nothing; returns the row count |
 | POST | `/actions/show`, `/actions/hide` | `{}`; visibility only |
 | POST | `/actions/start` | `{roulette?: idOrAlias, user?: twitchLogin}`; defaults to active and streamer; returns draw ID |
 | POST | `/actions/switch` | `{roulette: idOrAlias}`; preserves visibility |
@@ -56,6 +57,19 @@ within that window returns the original result without repeating the mutation;
 reusing a key with different arguments returns `409 idempotency_conflict`. Clients
 should reuse the same key after a timeout. Token rotation is intentionally separate
 and not idempotent: a new rotation invalidates the previous token.
+
+Bulk import (`operation: 'import'`, `importItems` in `model.ts`) applies every row
+with the same rules as `add`, in one compare-and-swap: any refused row rejects the
+whole request. Slot capacity and the safe total weight are checked before copies are
+allocated. Row errors keep their usual `code` and add `row` (1-based) to the error
+body and a `Prize N:` message prefix; AST syntax is checked per row before the save.
+`replace: true` clears the roulette's items first, requires that no draw is spinning
+(`409 spinning`) and, on the active roulette, clears the finished draw and auto-hide
+timer like a configuration save. The `/roulettes` JSON parser accepts bodies up to
+4 MB (the channel state cap). The dashboard sends `If-Match` only for replace and
+keeps the same `Idempotency-Key` until the payload changes, so retrying after a lost
+response replays instead of importing twice. Check: `ops/checks/roulette-import-api.mjs`
+on the `api` target with the fixtures above.
 
 Example creation body:
 

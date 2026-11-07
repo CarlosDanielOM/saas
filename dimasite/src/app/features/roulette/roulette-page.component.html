@@ -209,7 +209,7 @@
                       <p class="lf-note">{{ t('itemsHint') }}</p>
                     </div>
                     <div class="rl-prize-btns">
-                      <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" (click)="openImport()" [disabled]="busy() || spinning()" data-rl-import>
+                      <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" (click)="importer.start()" [disabled]="busy()" data-rl-import>
                         <app-lf-icon name="list" [size]="14"></app-lf-icon> {{ t('import.button') }}
                       </button>
                       <button type="button" class="lf-btn lf-btn--compact" (click)="openPrize(null)" [disabled]="busy()">
@@ -286,6 +286,9 @@
                         <strong>{{ items().length ? t('noMatches') : t('noItems') }}</strong>
                         @if (!items().length) {
                           <span>{{ t('noItemsHint') }}</span>
+                          <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" (click)="importer.start()" [disabled]="busy()">
+                            <app-lf-icon name="list" [size]="14"></app-lf-icon> {{ t('import.emptyCta') }}
+                          </button>
                         }
                       </li>
                     }
@@ -774,120 +777,237 @@
 }
 
 <!-- Import prizes -->
-@if (importOpen()) {
-  <div class="lf-modal-overlay" (click)="importProgress() || importOpen.set(false)">
+@if (importer.open() && selected(); as r) {
+  <div class="lf-modal-overlay" (click)="importer.close()">
     <section
-      class="lf-modal lf-modal--form"
+      class="lf-modal lf-modal--form rl-import"
       role="dialog"
       aria-modal="true"
       aria-labelledby="rl-import-title"
+      aria-describedby="rl-import-help"
       (click)="$event.stopPropagation()"
       data-rl-import-dialog
     >
       <header class="lf-modal__head">
         <h2 class="lf-modal__title" id="rl-import-title">{{ t('import.title') }}</h2>
-        <button type="button" class="lf-modal__close" (click)="importOpen.set(false)" [disabled]="!!importProgress()" [attr.aria-label]="t('cancel')">
+        <button type="button" class="lf-modal__close" (click)="importer.close()" [disabled]="importer.sending()" [attr.aria-label]="t('cancel')">
           <app-lf-icon name="close" [size]="18"></app-lf-icon>
         </button>
       </header>
-      <div class="lf-modal__body">
-        <p class="lf-note">{{ t('import.help') }}</p>
-        <div class="rl-import-file">
-          <input #importFile class="visually-hidden" type="file" accept=".csv,.txt,text/csv,text/plain" tabindex="-1" aria-hidden="true" (change)="pickImportFile($event)" data-rl-import-file />
-          <button type="button" class="lf-btn lf-btn--compact" (click)="importFile.click()" [disabled]="!!importProgress()">
-            <app-lf-icon name="list" [size]="14"></app-lf-icon> {{ t('import.chooseFile') }}
-          </button>
-          <span class="lf-note">{{ t('import.fileTypes') }}</span>
-        </div>
-        @if (importFileError()) {
-          <p class="lf-field-error" role="alert">{{ importFileError() }}</p>
-        }
-        <label class="lf-field">
-          <span class="lf-field__label">{{ t('import.pasteLabel') }}</span>
-          <textarea
-            id="rl-import-text"
-            rows="6"
-            spellcheck="false"
-            [value]="importText()"
-            (input)="setImportText($any($event.target).value)"
-            [placeholder]="t('import.placeholder')"
-            [disabled]="!!importProgress()"
-            aria-describedby="rl-import-format-hint"
-          ></textarea>
-        </label>
-        @if (importText().trim()) {
-          <div class="lf-field">
-            <span class="lf-field__label" id="rl-import-format">{{ t('import.formatLabel') }}</span>
-            <div class="lf-seg" role="radiogroup" aria-labelledby="rl-import-format">
-              @for (f of ['list', 'table']; track f) {
-                <label class="lf-seg__opt">
-                  <input
-                    type="radio"
-                    name="rl-import-format"
-                    [checked]="importFormat() === f"
-                    [disabled]="!!importProgress()"
-                    (change)="importFormat.set($any(f))"
-                  />
-                  <span>{{ t('import.format.' + f) }}</span>
-                </label>
-              }
+      <div class="lf-modal__body rl-import-body">
+        <!-- Input -->
+        <div class="rl-import-in">
+          <p class="lf-note" id="rl-import-help">{{ t('import.help') }}</p>
+          <div
+            class="rl-import-drop"
+            [class.rl-import-drop--over]="importer.dragging()"
+            (dragover)="importer.dragOver($event)"
+            (dragleave)="importer.dragLeave($event)"
+            (drop)="importer.drop($event)"
+          >
+            <div class="rl-import-file">
+              <input #importFile class="rl-visually-hidden" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain,text/tab-separated-values" tabindex="-1" aria-hidden="true" (change)="importer.pick($event)" data-rl-import-file />
+              <button type="button" class="lf-btn lf-btn--compact" (click)="importFile.click()" [disabled]="importer.sending()">
+                <app-lf-icon name="list" [size]="14"></app-lf-icon> {{ t('import.chooseFile') }}
+              </button>
+              <span class="lf-note">{{ t('import.fileTypes') }}</span>
             </div>
-            <span class="lf-field__hint" id="rl-import-format-hint">{{ t('import.formatHint.' + importFormat()) }}</span>
-          </div>
-          @if (importResult(); as res) {
-            <p class="rl-preview" [class.rl-preview--warn]="importOver() || !res.rows.length" role="status" data-rl-import-summary>
-              @if (!res.rows.length) {
-                {{ t('import.nothing') }}
-              } @else if (importOver()) {
-                {{ t('previewOver', { used: importSlots(), max: capacity() }) }}
-              } @else {
-                {{ t('import.summary', { count: res.rows.length, slots: res.copies }) }}
-              }
-            </p>
-            @if (res.skipped) {
-              <p class="lf-note rl-import-skipped">{{ t('import.skipped', { count: res.skipped }) }}</p>
+            @if (importer.fileError()) {
+              <p class="lf-field-error" role="alert">{{ importer.fileError() }}</p>
+            } @else if (importer.fileNote()) {
+              <p class="lf-note" role="status">{{ importer.fileNote() }}</p>
             }
-            @if (res.rows.length) {
-              <ul class="rl-import-list" data-rl-import-list>
-                @for (row of res.rows.slice(0, 8); track $index) {
-                  <li>
-                    <strong>{{ row.label }}</strong>
-                    @if (row.count > 1) {
-                      <span class="lf-chip lf-chip--xs">{{ t('slotsChip', { count: row.count }) }}</span>
-                    }
-                    @if (row.weight > 1) {
-                      <span class="lf-chip lf-chip--xs lf-chip--gold">{{ t('weightChip', { count: row.weight }) }}</span>
-                    }
-                  </li>
-                }
-              </ul>
-              @if (res.rows.length > 8) {
-                <p class="lf-note">{{ t('import.more', { count: res.rows.length - 8 }) }}</p>
-              }
-            }
-          }
-          @if (items().length) {
-            <label class="rl-import-replace">
-              <input type="checkbox" [checked]="importReplace()" [disabled]="!!importProgress()" (change)="importReplace.set($any($event.target).checked)" data-rl-import-replace />
-              <span>{{ t('import.replace', { count: items().length }) }}</span>
+            <label class="lf-field">
+              <span class="lf-field__label">{{ t('import.pasteLabel') }}</span>
+              <textarea
+                id="rl-import-text"
+                rows="4"
+                spellcheck="false"
+                [value]="importer.text()"
+                (input)="importer.setText($any($event.target).value)"
+                (keydown.control.enter)="$event.preventDefault(); importer.send()"
+                (keydown.meta.enter)="$event.preventDefault(); importer.send()"
+                [placeholder]="t('import.placeholder')"
+                [disabled]="importer.sending()"
+              ></textarea>
+              <span class="lf-field__hint rl-import-tip">{{ importer.dragging() ? t('import.dropHere') : t('import.dropHint') }}</span>
             </label>
+          </div>
+          @if (importer.text().trim()) {
+            <div class="lf-field">
+              <span class="lf-field__label" id="rl-import-format">{{ t('import.formatLabel') }}</span>
+              <div class="lf-seg" role="radiogroup" aria-labelledby="rl-import-format">
+                @for (f of ['list', 'table']; track f) {
+                  <label class="lf-seg__opt">
+                    <input type="radio" name="rl-import-format" [checked]="importer.result().format === f" [disabled]="importer.sending()" (change)="importer.setFormat($any(f))" />
+                    <span>{{ t('import.format.' + f) }}</span>
+                  </label>
+                }
+              </div>
+              <span class="lf-field__hint">{{ t('import.formatHint.' + importer.result().format) }}</span>
+            </div>
           }
-        }
+        </div>
+
+        <!-- Preview -->
+        <div class="rl-import-out">
+          @if (!importer.text().trim()) {
+            <div class="rl-import-examples">
+              <h3 class="rl-import-h3">{{ t('import.examples') }}</h3>
+              <div>
+                <span class="lf-field__label">{{ t('import.format.list') }}</span>
+                <pre>{{ t('import.exampleList') }}</pre>
+              </div>
+              <div>
+                <span class="lf-field__label">{{ t('import.format.table') }}</span>
+                <pre>{{ t('import.exampleTable') }}</pre>
+              </div>
+              <p class="lf-note">{{ t('import.exampleHint') }}</p>
+            </div>
+          } @else if (importer.result(); as res) {
+            @if (res.unclosedQuote) {
+              <p class="rl-preview rl-preview--warn">{{ t('import.unclosedQuote', { line: res.unclosedQuote }) }}</p>
+            }
+            @if (res.extraCells) {
+              <p class="rl-preview rl-preview--warn" data-rl-import-extra>{{ t('import.extraCells', res.extraCells) }}</p>
+            }
+            @if (importer.plan(); as plan) {
+              @if (res.rows.length) {
+                <div class="rl-import-sum" [class.rl-import-sum--over]="importer.over()" role="status" data-rl-import-summary>
+                  <span><strong>{{ res.rows.length }}</strong> {{ t('import.sumPrizes') }}</span>
+                  <span><strong>{{ res.copies }}</strong> {{ t('import.sumSlots') }}</span>
+                  <span class="rl-import-sum__after">
+                    {{ capacity() >= 10000 && !importer.over() ? t('import.sumAfter', { used: plan.slots }) : t('import.sumAfterMax', { used: plan.slots, max: capacity() }) }}
+                  </span>
+                </div>
+              } @else {
+                <p class="rl-preview rl-preview--warn" role="status" data-rl-import-summary>{{ t('import.nothing') }}</p>
+              }
+
+              @if (res.issues.length) {
+                <details class="lf-more rl-import-issues" [open]="res.issues.length <= 3 || importer.needsAck()">
+                  <summary>{{ t('import.skipped', { count: res.issues.length }) }}</summary>
+                  <ul class="lf-more__body">
+                    @for (issue of res.issues.slice(0, 20); track $index) {
+                      <li>
+                        <strong>{{ t('import.line', { line: issue.line }) }}:</strong>
+                        {{ t('import.reason.' + issue.reason) }}
+                        @if (issue.text) {
+                          <code>{{ issue.text }}</code>
+                        }
+                      </li>
+                    }
+                    @if (res.issues.length > 20) {
+                      <li>{{ t('import.more', { count: res.issues.length - 20 }) }}</li>
+                    }
+                  </ul>
+                </details>
+              }
+
+              @if (res.rows.length) {
+                <ul class="rl-import-list" data-rl-import-list tabindex="0" [attr.aria-label]="t('import.previewLabel')">
+                  @for (p of importer.visibleRows(); track $index) {
+                    <li [class.rl-import-row--clash]="p.status === 'weightClash' || p.status === 'actionClash'">
+                      <span class="rl-import-row__main">
+                        <strong>{{ p.row.label }}</strong>
+                        @if (p.row.count > 1) {
+                          <span class="lf-chip lf-chip--xs">{{ t('slotsChip', { count: p.row.count }) }}</span>
+                        }
+                        @if (p.row.weight > 1) {
+                          <span class="lf-chip lf-chip--xs lf-chip--gold">{{ t('weightChip', { count: p.row.weight }) }}</span>
+                        }
+                        @if (p.row.action) {
+                          <span class="lf-chip lf-chip--xs lf-chip--accent" [title]="p.row.action"><app-lf-icon name="zap" [size]="11"></app-lf-icon> {{ t('hasAction') }}</span>
+                        }
+                        @switch (p.status) {
+                          @case ('joins') {
+                            <span class="lf-chip lf-chip--xs">{{ p.joinsLine ? t('import.status.joinsLine', { line: p.joinsLine }) : t('import.status.joins') }}</span>
+                          }
+                          @case ('sameName') {
+                            <span class="lf-chip lf-chip--xs">{{ t('import.status.sameName') }}</span>
+                          }
+                          @case ('weightClash') {
+                            <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('import.status.weightClash', { weight: p.existingWeight ?? 1 }) }}</span>
+                          }
+                          @case ('actionClash') {
+                            <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('import.status.actionClash') }}</span>
+                          }
+                        }
+                      </span>
+                      <span class="rl-import-row__meta">
+                        <span class="lf-note">{{ t('import.line', { line: p.row.line }) }}</span>
+                        @if (p.chance) {
+                          <span class="rl-import-row__pct">{{ pctLabel(p.chance) }}</span>
+                        }
+                      </span>
+                    </li>
+                  }
+                </ul>
+                @if (plan.rows.length > importer.visibleRows().length) {
+                  <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost rl-more" (click)="importer.more()">
+                    {{ t('showMore', { count: plan.rows.length - importer.visibleRows().length }) }}
+                  </button>
+                }
+              }
+
+              @if (r.items.length) {
+                <div class="rl-import-replace">
+                  <label class="rl-import-check">
+                    <input type="checkbox" [checked]="importer.replace()" [disabled]="importer.sending()" (change)="importer.setReplace($any($event.target).checked)" data-rl-import-replace />
+                    <span>{{ t('import.replace', { count: r.items.length }) }}</span>
+                  </label>
+                  @if (importer.replace()) {
+                    <p class="lf-note">
+                      {{ t('import.replaceHint') }}
+                      @if (plan.removedCommands) {
+                        <strong class="rl-import-warn">{{ t('import.replaceCommands', { count: plan.removedCommands }) }}</strong>
+                      }
+                    </p>
+                    @if (importer.needsAck()) {
+                      <label class="rl-import-check">
+                        <input type="checkbox" [formControl]="importer.ackControl" data-rl-import-ack />
+                        <span>{{ t('import.ackSkips', { count: res.issues.length }) }}</span>
+                      </label>
+                    }
+                  }
+                </div>
+              }
+            }
+          }
+
+          @if (r.items.length) {
+            <p class="rl-import-export">
+              <span class="lf-note">{{ t('import.downloadHint') }}</span>
+              <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" (click)="importer.download()" data-rl-export>
+                {{ t('import.download') }}
+              </button>
+            </p>
+          }
+
+          @if (importer.error()) {
+            <p class="lf-field-error rl-import-error" role="alert" data-rl-import-error>{{ importer.error() }}</p>
+          }
+        </div>
       </div>
-      <footer class="lf-modal__footer">
-        <button type="button" class="lf-btn" (click)="importOpen.set(false)" [disabled]="!!importProgress()">{{ t('cancel') }}</button>
-        <button
-          type="button"
-          class="lf-btn lf-btn--primary"
-          (click)="runImport()"
-          [disabled]="busy() || !importResult().rows.length || importOver()"
-          data-rl-import-run
-        >
-          @if (importProgress(); as p) {
-            {{ t('import.progress', { done: p.done, total: p.total }) }}
-          } @else {
-            {{ t('import.run', { count: importResult().rows.length }) }}
-          }
+      <footer class="lf-modal__footer rl-import-foot">
+        @if (importer.blocker(); as why) {
+          <p class="rl-import-why" role="status">
+            {{ why === 'over' ? t('previewOver', { used: importer.plan().slots, max: capacity() }) : t(why, { count: importer.plan().clashes }) }}
+          </p>
+        }
+        <button type="button" class="lf-btn" (click)="importer.close()" [disabled]="importer.sending()">{{ t('cancel') }}</button>
+        <button type="button" class="lf-btn lf-btn--primary" (click)="importer.send()" [disabled]="!importer.canSend()" data-rl-import-run>
+          {{
+            importer.sending()
+              ? t('import.sending')
+              : !importer.result().rows.length
+                ? t('import.runNone')
+                : importer.retrying()
+                  ? t('import.retry')
+                : importer.replace()
+                  ? t('import.runReplace', { count: importer.result().rows.length })
+                  : t('import.run', { count: importer.result().rows.length })
+          }}
         </button>
       </footer>
     </section>

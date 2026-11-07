@@ -28,6 +28,23 @@ En **Después de cada sorteo → Más opciones**, elige cómo se agregan las cop
 
 La capacidad depende del estilo: la rueda admite 10 000 copias; el carrete admite 60; último en pie admite 100; las cartas admiten 50, 75 o 100 copias en tamaño grande, mediano o pequeño. La sección **Premios** muestra cuántos espacios están en uso. El peso afecta las probabilidades del sorteo, no el tamaño visual del elemento.
 
+## Importar una lista o un CSV
+
+En **Premios**, elige **Importar** para agregar muchos premios a la vez. Pega el texto o elige un archivo `.txt` o `.csv`. En la computadora también puedes soltar el archivo en la ventana.
+
+- **Lista de nombres:** separa los nombres con comas o saltos de línea. Cada nombre es un espacio con peso 1, y repetir un nombre le da más espacios. `Premio 1, Premio 1, Premio 2` agrega Premio 1 con 2 espacios y Premio 2 con 1.
+- **Nombre, peso, cantidad (CSV):** un premio por línea. Peso y cantidad son opcionales (1 si están vacíos). Una cuarta columna opcional es el comando que el premio ejecuta cuando gana. Una fila de encabezado como `nombre,peso,cantidad,accion` (o `name,weight,count,action`) se omite y puede listar las columnas en cualquier orden. Las comas, los puntos y comas y las tabulaciones funcionan como separadores; pon el nombre entre comillas si contiene alguno.
+
+```text
+nombre,peso,cantidad
+VIP por un día,5,2
+Elegir el juego,1,3
+```
+
+La ventana de importación detecta el formato, y puedes cambiarlo. La vista previa muestra cada premio con su probabilidad, los espacios después de importar y las líneas omitidas con el motivo. Los nombres que ya están en la ruleta siguen el ajuste **Al agregar un nombre que ya existe**; con **Le suma espacios**, una línea con otro peso u otro comando queda marcada y hay que corregirla primero. Toda la importación se guarda en un solo paso: si algo se rechaza, no se agrega nada, y reintentar después de perder la conexión nunca agrega la lista dos veces.
+
+Activa **Reemplazar los premios actuales** para cambiar toda la lista en lugar de sumarla. Reemplazar espera a que termine un sorteo en curso. Para editar los premios en una hoja de cálculo, elige **Descargar CSV** en la ventana de importación, cambia el archivo e impórtalo con **Reemplazar**. Una importación admite hasta 10 000 premios de un archivo de hasta 2 MB, dentro del límite de espacios del estilo. Guarda los archivos de Excel (`.xlsx`) como CSV primero.
+
 ## Configurar y ejecutar un sorteo
 
 En **Aspecto**, elige un estilo:

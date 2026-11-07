@@ -46,6 +46,7 @@ rouletteRoute.post('/:channelID/roulettes', wrap((req, res) => action(req, res, 
 rouletteRoute.patch('/:channelID/roulettes/:rouletteID', wrap((req, res) => action(req, res, 'configure', object(req.body))));
 rouletteRoute.delete('/:channelID/roulettes/:rouletteID', wrap((req, res) => action(req, res, 'delete')));
 rouletteRoute.post('/:channelID/roulettes/:rouletteID/items', wrap((req, res) => action(req, res, 'add', object(req.body))));
+rouletteRoute.post('/:channelID/roulettes/:rouletteID/import', wrap((req, res) => action(req, res, 'import', object(req.body))));
 rouletteRoute.patch('/:channelID/roulettes/:rouletteID/items/:itemID', wrap((req, res) => action(req, res, 'update', object(req.body))));
 rouletteRoute.delete('/:channelID/roulettes/:rouletteID/items/:itemID', wrap((req, res) => action(req, res, 'remove')));
 rouletteRoute.post('/:channelID/actions/:action', wrap(async (req, res) => {
@@ -69,5 +70,6 @@ rouletteRoute.use((error: unknown, _req: Request, res: Response, _next: NextFunc
   const known = error instanceof RouletteError;
   if (!known) console.error('Roulette request failed', error instanceof Error ? error.message : 'Unknown error');
   res.status(known ? error.status : 500).json({ error: true, status: known ? error.status : 500,
-    code: known ? error.code : 'internal', message: known ? error.message : 'Roulette operation failed' });
+    code: known ? error.code : 'internal', message: known ? error.message : 'Roulette operation failed',
+    ...(known && error.row !== undefined ? { row: error.row } : {}) });
 });

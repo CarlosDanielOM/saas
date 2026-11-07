@@ -61,6 +61,8 @@ export const server = async (): Promise<Express.Application> => {
         app.use('/commands', express.json({ limit: '1mb' }));
         // Public docs assistant: own CORS allowlist and body limit, ahead of the global parsers/CORS.
         app.use('/docs-assistant', docsAssistantRoute);
+        // Roulette prize imports send up to 10k prizes in one atomic request (state is capped at 4 MB).
+        app.use('/roulettes', express.json({ limit: '4mb' }));
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
         // OAuth has its own origin policy; keep it ahead of legacy permissive CORS.

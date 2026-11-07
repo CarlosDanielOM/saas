@@ -123,13 +123,15 @@ export class RouletteApi {
     path: string,
     body: unknown,
     revision?: number,
+    /** Reuse the same key to retry a request whose outcome is unknown. */
+    key: string = crypto.randomUUID(),
   ): Promise<T> {
     return (
       await firstValueFrom(
         this.http.request<{ data: T }>(method, `${this.base}/roulettes/${channel}${path}`, {
           body,
           headers: {
-            'Idempotency-Key': crypto.randomUUID(),
+            'Idempotency-Key': key,
             ...(revision === undefined ? {} : { 'If-Match': String(revision) }),
           },
         }),

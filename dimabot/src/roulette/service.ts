@@ -17,7 +17,7 @@ const schema = new Schema<Stored>({
 schema.index({ dueAt: 1 });
 schema.index({ actionDueAt: 1 });
 export const RouletteChannel = model<Stored>('RouletteChannel', schema);
-export type Operation = 'create' | 'configure' | 'delete' | 'add' | 'update' | 'remove' | 'shuffle' | 'switch' | 'show' | 'hide' | 'start';
+export type Operation = 'create' | 'configure' | 'delete' | 'add' | 'import' | 'update' | 'remove' | 'shuffle' | 'switch' | 'show' | 'hide' | 'start';
 export interface Action { operation: Operation; roulette?: string; itemId?: string; data?: Record<string, unknown> }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 export const actionDue = (actions: WinnerAction[]) => { const pending = actions.filter(a => a.status === 'pending'); return pending.length ? Math.min(...pending.map(a => a.dueAt)) : null; };
@@ -55,6 +55,13 @@ function apply(state: State, action: Action, now: number): string {
       if (state.activeId === r.id) { state.activeId = null; state.visible = false; state.draw = null; state.hideAt = null; }
       return r.id;
     case 'add': return domain.add(r, data).id;
+    case 'import': {
+      // Replacing must not pull prizes out from under a spin; the old winner card goes too.
+      if (data.replace === true) domain.idle(state);
+      const count = domain.importItems(r, data);
+      if (data.replace === true && state.activeId === r.id) { state.draw = null; state.hideAt = null; }
+      return String(count);
+    }
     case 'update': return domain.updateItem(r, domain.text(action.itemId, 'itemId'), data).id;
     case 'remove': domain.remove(r, domain.text(action.itemId, 'itemId')); return action.itemId!;
     case 'shuffle': domain.idle(state); domain.shuffle(r.order); return r.id;
@@ -68,6 +75,13 @@ export async function execute(channelId: string, action: Action, requestKey?: st
   if ((action.operation === 'add' || action.operation === 'update') && action.data?.action !== undefined) {
     const source = domain.actionSource(action.data.action);
     if (source && parse(source).error) domain.fail('invalid_action', 'Invalid AST syntax in item action');
+  }
+  if (action.operation === 'import' && Array.isArray(action.data?.items)) {
+    action.data.items.forEach((entry: unknown, i: number) => {
+      const source = entry && typeof entry === 'object' ? (entry as Record<string, unknown>).action : undefined;
+      if (typeof source === 'string' && source.trim() && source.length <= 8000 && parse(source.trim()).error)
+        throw new domain.RouletteError('invalid_action', `Prize ${i + 1}: Invalid AST syntax in item action`, 400, i + 1);
+    });
   }
   if (actor && (typeof actor.userId !== 'string' || typeof actor.userLogin !== 'string' || typeof actor.userDisplayName !== 'string'
     || actor.userId.length > 100 || actor.userLogin.length > 100 || actor.userDisplayName.length > 120 || (actor.argument?.length ?? 0) > 2000)) domain.fail('invalid', 'Invalid draw actor');
