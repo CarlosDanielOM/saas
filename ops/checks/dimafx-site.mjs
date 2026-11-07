@@ -12,7 +12,7 @@ assert.ok(base, 'SAAS_PREVIEW_URL is required');
 
 for (const [language, testLabel, voiceDefault] of [
   ['en', 'Test on stream', 'Channel default (TTS settings)'],
-  ['es', 'Probar en stream', 'Predeterminada del canal (ajustes TTS)'],
+  ['es', 'Probar en stream', 'Predeterminada del canal (configuración TTS)'],
 ]) {
   const response = await fetch(`${base}/assets/i18n/${language}.json`);
   assert.equal(response.status, 200, `${language} i18n bundle`);
