@@ -104,8 +104,8 @@ try {
     deletedAt: null, createdAt: new Date(), updatedAt: new Date(),
   };
   await db.collection('channelextensionitems').insertMany([
-    { ...baseItem, _id: videoItem, assetID, name: 'Fixture Clip', category: 'video', mediaType: 'video', durationMs: 2000, bitsPrice: 5, sku: 'dimafx_bits_5' },
-    { ...baseItem, _id: imageItem, assetID, name: 'Fixture GIF', category: 'gif', mediaType: 'gif', durationMs: 1200, bitsPrice: 5, sku: 'dimafx_bits_5' },
+    { ...baseItem, _id: videoItem, assetID, name: 'Fixture Clip', category: 'video', mediaType: 'video', durationMs: 2000, bitsPrice: 5, sku: 'bits5' },
+    { ...baseItem, _id: imageItem, assetID, name: 'Fixture GIF', category: 'gif', mediaType: 'gif', durationMs: 1200, bitsPrice: 5, sku: 'bits5' },
     { ...baseItem, _id: ttsItem, assetID: null, name: 'Fixture TTS', category: 'tts', mediaType: 'audio', durationMs: 0, bitsPrice: 0, sku: 'free', tts: { mode: 'custom', text: '', voice: '', language: 'en' } },
   ]);
 
@@ -145,10 +145,10 @@ try {
     const transactionID = `tx-anonymous-${mode || 'legacy'}`;
     await db.collection('channelextensionitems').insertOne({
       ...baseItem, _id: extraItem, assetID: null, name: 'Identity fixture', category: 'tts', mediaType: 'audio',
-      durationMs: 0, bitsPrice: price, sku: price ? 'dimafx_bits_5' : 'free',
+      durationMs: 0, bitsPrice: price, sku: price ? 'bits5' : 'free',
       ...(mode ? { tts: { mode, text: '', voice: '', language: 'en' } } : {}),
     });
-    const denied = await purchase(String(extraItem), { sku: price ? 'dimafx_bits_5' : 'free', transactionID, action: 'use_now', ttsText: 'must not play' });
+    const denied = await purchase(String(extraItem), { sku: price ? 'bits5' : 'free', transactionID, action: 'use_now', ttsText: 'must not play' });
     assert.equal(denied.status, price ? 200 : 403, JSON.stringify(denied));
     if (price) assert.equal(denied.data.madeGood.credits, 5);
     assert.equal(await db.collection('extensionwallettransactions').countDocuments({ twitchTransactionID: transactionID }), price ? 1 : 0);
@@ -162,7 +162,7 @@ try {
   await db.collection('channelextensionitems').updateOne({ _id: ttsItem }, { $set: { tts: { mode: 'fixed', text: 'Hello from the fixture', voice: '', language: 'en' } } });
 
   // 1) First purchase dispatches immediately.
-  const first = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-1', action: 'use_now' });
+  const first = await purchase(String(videoItem), { sku: 'bits5', transactionID: 'tx-1', action: 'use_now' });
   assert.equal(first.status, 200, JSON.stringify(first));
   assert.equal(first.data.queued, true);
   await wait(() => overlay.triggers.length === 1, 'first trigger dispatched');
@@ -171,13 +171,13 @@ try {
   assert.ok(overlay.triggers[0].triggerID, 'trigger carries an ID');
 
   // 2) Second purchase is held by the queue while the first plays.
-  const second = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-2', action: 'use_now' });
+  const second = await purchase(String(videoItem), { sku: 'bits5', transactionID: 'tx-2', action: 'use_now' });
   assert.equal(second.status, 200, JSON.stringify(second));
   await new Promise((resolve) => setTimeout(resolve, 600));
   assert.equal(overlay.triggers.length, 1, 'queue holds the second purchase during playback');
 
   // 3) Twitch retry of the first transaction resolves idempotently.
-  const duplicate = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-1', action: 'use_now' });
+  const duplicate = await purchase(String(videoItem), { sku: 'bits5', transactionID: 'tx-1', action: 'use_now' });
   assert.equal(duplicate.status, 200, JSON.stringify(duplicate));
   assert.equal(duplicate.data.duplicate, true, 'duplicate transaction reported without re-fulfillment');
   await new Promise((resolve) => setTimeout(resolve, 300));
@@ -191,7 +191,7 @@ try {
   await wait(() => overlay.triggers.length === 2, 'second trigger dispatched after ack');
 
   // 5) Without an ack the duration timeout still advances the queue.
-  const third = await purchase(String(imageItem), { sku: 'dimafx_bits_5', transactionID: 'tx-3', action: 'use_now' });
+  const third = await purchase(String(imageItem), { sku: 'bits5', transactionID: 'tx-3', action: 'use_now' });
   assert.equal(third.status, 200, JSON.stringify(third));
   overlay.ack(overlay.triggers[1].triggerID);
   await wait(() => overlay.triggers.length === 3, 'third trigger dispatched after ack');
@@ -236,7 +236,7 @@ try {
   overlay.ws.close();
   await new Promise((resolve) => overlay.ws.addEventListener('close', resolve, { once: true }));
   await wait(async () => !(await overlayStatus()).data.connected, 'overlay disconnected');
-  const offline = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-6', action: 'use_now', userID: 'viewer-1', displayName: 'Viewer One' });
+  const offline = await purchase(String(videoItem), { sku: 'bits5', transactionID: 'tx-6', action: 'use_now', userID: 'viewer-1', displayName: 'Viewer One' });
   assert.equal(offline.status, 200, JSON.stringify(offline));
   assert.equal(offline.data.madeGood.credits, 5);
   const refundedInventory = await db.collection('userextensioninventories').findOne({ platform: 'twitch', userID: 'viewer-1', channelID: channel });
@@ -245,7 +245,7 @@ try {
   assert.equal(txSix.metadata.fulfillment, 'refunded');
 
   // 10) A retry of the refunded transaction reports the refunded state.
-  const refundedRetry = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-6', action: 'use_now', userID: 'viewer-1' });
+  const refundedRetry = await purchase(String(videoItem), { sku: 'bits5', transactionID: 'tx-6', action: 'use_now', userID: 'viewer-1' });
   assert.equal(refundedRetry.status, 200, JSON.stringify(refundedRetry));
   assert.equal(refundedRetry.data.madeGood.credits, 5);
   assert.equal(await db.collection('userextensioninventories').findOne({ platform: 'twitch', userID: 'viewer-1', channelID: channel }).then((doc) => doc.balance), 5, 'refund is not applied twice');
@@ -253,7 +253,7 @@ try {
   // 11) Reconnect resumes playback for new purchases.
   overlay = await connectOverlay();
   await wait(async () => (await overlayStatus()).data.connected, 'reconnected ready player');
-  const resumed = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-7', action: 'use_now' });
+  const resumed = await purchase(String(videoItem), { sku: 'bits5', transactionID: 'tx-7', action: 'use_now' });
   assert.equal(resumed.status, 200, JSON.stringify(resumed));
   await wait(() => overlay.triggers.length === 1, 'trigger dispatched after reconnect');
   overlay.ack(overlay.triggers[0].triggerID);
@@ -268,7 +268,7 @@ try {
     durationMs: 0, bitsPrice: 0, sku: 'free', tts: { mode: 'fixed', text: 'Streamer selected words', voice: '', language: 'en' },
   });
   for (const [itemID, sku, transactionID] of [
-    [fixedItem, 'free', 'tx-anonymous-fixed'], [videoItem, 'dimafx_bits_5', 'tx-anonymous-media'],
+    [fixedItem, 'free', 'tx-anonymous-fixed'], [videoItem, 'bits5', 'tx-anonymous-media'],
   ]) {
     const before = overlay.triggers.length;
     const allowed = await purchase(String(itemID), { sku, transactionID, action: 'use_now', opaqueUserID: 'Uopaque-only', ttsText: 'injected viewer text' });
@@ -279,7 +279,7 @@ try {
   }
   const freePaced = await purchase(String(fixedItem), { sku: 'free', transactionID: 'free-repeat', action: 'use_now', opaqueUserID: 'Uopaque-only' });
   assert.equal(freePaced.status, 429, 'per-viewer free pace survives request completion');
-  const freeWithPaidSku = await purchase(String(fixedItem), { sku: 'dimafx_bits_5', transactionID: 'tx-paid-selected-free', userID: 'wrong-sku-viewer' });
+  const freeWithPaidSku = await purchase(String(fixedItem), { sku: 'bits5', transactionID: 'tx-paid-selected-free', userID: 'wrong-sku-viewer' });
   assert.equal(freeWithPaidSku.status, 200);
   assert.equal(freeWithPaidSku.data.madeGood.credits, 5, 'paid receipt aimed at a free item is made good, never free-played');
   const fixedSyntheses = fs.readFileSync('/tmp/saas-fixtures/provider-calls.jsonl', 'utf8').trim().split('\n').map(JSON.parse).filter(c => c.synthesis);
@@ -288,7 +288,7 @@ try {
 
   // Failure after durable enqueue, before purchase-ledger finalization.
   fs.writeFileSync('/tmp/saas-fixtures/fail-finalization-once', '1');
-  const interrupted = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-interrupted', action: 'use_now' });
+  const interrupted = await purchase(String(videoItem), { sku: 'bits5', transactionID: 'tx-interrupted', action: 'use_now' });
   assert.equal(interrupted.status, 500, 'injected interrupted finalization');
   const interruptedLedger = await db.collection('extensionwallettransactions').findOne({ twitchTransactionID: 'tx-interrupted' });
   const stableID = `bits-${interruptedLedger._id}`;
@@ -296,14 +296,14 @@ try {
   overlay.ack(stableID);
   await wait(async () => (await db.collection('dimafxplaybacks').findOne({ _id: stableID })).state === 'completed', 'job completion persisted');
   await db.collection('extensionwallettransactions').updateOne({ _id: interruptedLedger._id }, { $set: { updatedAt: new Date(Date.now() - 31000) } });
-  const retries = await Promise.all(Array.from({ length: 5 }, () => purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-interrupted', action: 'use_now' })));
+  const retries = await Promise.all(Array.from({ length: 5 }, () => purchase(String(videoItem), { sku: 'bits5', transactionID: 'tx-interrupted', action: 'use_now' })));
   assert.ok(retries.every(r => [200, 503].includes(r.status)), JSON.stringify(retries));
   assert.equal(await db.collection('dimafxplaybacks').countDocuments({ _id: stableID }), 1, 'one durable job for concurrent retries');
   assert.equal((await db.collection('dimafxplaybacks').findOne({ _id: stableID })).state, 'completed', 'retry does not reset terminal job');
 
   // Saving is also idempotent if finalization is interrupted.
   fs.writeFileSync('/tmp/saas-fixtures/fail-finalization-once', '1');
-  const saveBody = { sku: 'dimafx_bits_5', transactionID: 'tx-save-interrupted', action: 'save', userID: 'saved-viewer' };
+  const saveBody = { sku: 'bits5', transactionID: 'tx-save-interrupted', action: 'save', userID: 'saved-viewer' };
   assert.equal((await purchase(String(videoItem), saveBody)).status, 500);
   await db.collection('extensionwallettransactions').updateOne({ twitchTransactionID: saveBody.transactionID }, { $set: { updatedAt: new Date(Date.now() - 31000) } });
   assert.equal((await purchase(String(videoItem), saveBody)).status, 200);
@@ -359,14 +359,14 @@ try {
   assert.equal(await db.collection('dimafxplaybacks').countDocuments({ _id: childTriggerID }), 1);
 
   // Reported media errors are refunded once, while legacy status-less acks above succeed.
-  const failed = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-player-failed', action: 'use_now', userID: 'failed-viewer' });
+  const failed = await purchase(String(videoItem), { sku: 'bits5', transactionID: 'tx-player-failed', action: 'use_now', userID: 'failed-viewer' });
   await wait(() => overlay.triggers.some(trigger => trigger.triggerID === failed.data.triggerID), 'failure fixture dispatched');
   overlay.ack(failed.data.triggerID, 'failed');
   await wait(async () => (await db.collection('dimafxplaybacks').findOne({ _id: failed.data.triggerID })).state === 'refunded', 'reported failure made good');
-  const failedRetry = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-player-failed', userID: 'failed-viewer' });
+  const failedRetry = await purchase(String(videoItem), { sku: 'bits5', transactionID: 'tx-player-failed', userID: 'failed-viewer' });
   assert.equal(failedRetry.data.madeGood.credits, 5);
   assert.equal((await db.collection('userextensioninventories').findOne({ channelID: channel, userID: 'failed-viewer' })).balance, 5);
-  const simultaneous = await Promise.all(Array.from({ length: 12 }, () => purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-first-concurrent', userID: 'concurrent-viewer' })));
+  const simultaneous = await Promise.all(Array.from({ length: 12 }, () => purchase(String(videoItem), { sku: 'bits5', transactionID: 'tx-first-concurrent', userID: 'concurrent-viewer' })));
   assert.ok(simultaneous.every(result => [200, 503].includes(result.status)), JSON.stringify(simultaneous));
   await wait(async () => (await db.collection('extensionwallettransactions').findOne({ twitchTransactionID: 'tx-first-concurrent' }))?.metadata.fulfillment === 'fulfilled', 'parallel receipt finalized');
   assert.equal(await db.collection('dimafxtransactionclaims').countDocuments({ _id: 'tx-first-concurrent' }), 1);
@@ -380,7 +380,7 @@ try {
   // Broadcaster removals give no make-good.
   const queueIDs = [];
   for (const tx of ['tx-queue-1', 'tx-queue-2', 'tx-queue-3']) {
-    const queued = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: tx, action: 'use_now', userID: 'queue-viewer' });
+    const queued = await purchase(String(videoItem), { sku: 'bits5', transactionID: tx, action: 'use_now', userID: 'queue-viewer' });
     assert.equal(queued.status, 200, JSON.stringify(queued));
     const ledger = await db.collection('extensionwallettransactions').findOne({ twitchTransactionID: tx });
     queueIDs.push(`bits-${ledger._id}`);

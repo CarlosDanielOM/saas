@@ -58,7 +58,8 @@ export function verifyBitsReceipt(receipt: unknown, identity: TwitchExtensionIde
   const amount = product?.cost?.amount;
   if (!data || typeof data.transactionId !== 'string' || !data.transactionId.trim() || data.transactionId.length > 256 ||
       typeof data.userId !== 'string' || !data.userId.trim() || typeof product?.sku !== 'string' || !product.sku.trim() ||
-      product.cost?.type !== 'bits' || typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount <= 0 ||
+      product.cost?.type !== 'bits' || typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount < 0 ||
+      (amount === 0 && product.inDevelopment !== true) ||
       (identity.userID && identity.userID !== data.userId)) return null;
   // Ignore receipt exp so a client can resume days later. A signed transaction time
   // bounds acceptance to 30 days, safely below the 365-day claim TTL; expired claims

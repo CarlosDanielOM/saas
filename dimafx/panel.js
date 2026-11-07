@@ -538,7 +538,8 @@ function loadBitsCatalog(attempt = 0) {
   Promise.resolve()
     .then(() => bits.getProducts())
     .then((list) => {
-      bitsCatalog = new Map((Array.isArray(list) ? list : []).filter((product) => product?.sku).map((product) => [String(product.sku), Number(product.cost?.amount || 0)]));
+      bitsCatalog = new Map((Array.isArray(list) ? list : []).filter((product) => product?.sku)
+        .map((product) => [String(product.sku), { amount: Number(product.cost?.amount || 0), inDevelopment: product.inDevelopment === true }]));
       renderAll();
     })
     .catch(() => {
@@ -552,7 +553,10 @@ function loadBitsCatalog(attempt = 0) {
 // Bits work for an item only when the channel takes Bits and Twitch's catalog charges exactly the price shown.
 function bitsReady(item) {
   if (!bitsEnabled || isFreeItem(item)) return false;
-  return !bitsCatalog || bitsCatalog.get(String(item.sku)) === item.priceValue;
+  if (!bitsCatalog) return true;
+  const product = bitsCatalog.get(String(item.sku));
+  // Twitch test (in-development) products may report 0 Bits; the SKU still names the tier.
+  return Boolean(product) && (product.amount === item.priceValue || (product.inDevelopment && product.amount === 0));
 }
 
 function isOwnTransaction(transaction, item) {
@@ -1406,7 +1410,7 @@ function showOutcome(item, action, data) {
   if (!madeGood) return showSuccess(item, action);
   const desc = Number(madeGood.credits) > 0
     ? t("toast.madeGoodCredits", { name: item.name, credits: formatNumber(madeGood.credits) })
-    : t("toast.madeGoodSaved", { name: item.name });
+    : madeGood.saved ? t("toast.madeGoodSaved", { name: item.name }) : t("error.unavailable");
   showToast(t("toast.madeGood"), desc, "info");
 }
 

@@ -75,14 +75,14 @@ async function fixture(price = 5) {
   const channelID = `money-${++serial}`;
   const assetID = new Types.ObjectId();
   await Assets.collection.insertOne({ _id: assetID, s3Key: String(assetID), mimeType: 'video/mp4', deletedAt: null });
-  const item = await Items.create({ channelID, channelName: 'fixture', createdByUserID: channelID, assetID, name: 'Fixture', category: 'video', mediaType: 'video', durationMs: 50, bitsPrice: price, sku: price ? 'dimafx_bits_5' : 'free' });
+  const item = await Items.create({ channelID, channelName: 'fixture', createdByUserID: channelID, assetID, name: 'Fixture', category: 'video', mediaType: 'video', durationMs: 50, bitsPrice: price, sku: price ? 'bits5' : 'free' });
   const wallet = await Wallets.create({ channelID, userID: 'buyer', balance: 100 });
   const post = async (body: object, route = 'purchase', itemID = String(item._id)) => {
     const response = await fetch(`${base}/internal/channels/${channelID}/items/${itemID}/${route}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-dimafx-service-token': 'fixture-service-token' }, body: JSON.stringify(body) });
     return { status: response.status, body: await response.json() };
   };
   const bits = (transactionID: string, extra = {}) => ({ userID: 'buyer', opaqueUserID: 'Ubuyer', identityShared: true, action: 'use_now',
-    bitsTransaction: { transactionID, userID: 'buyer', sku: 'dimafx_bits_5', amount: 5, time: new Date().toISOString(), inDevelopment: true }, ...extra });
+    bitsTransaction: { transactionID, userID: 'buyer', sku: 'bits5', amount: 5, time: new Date().toISOString(), inDevelopment: true }, ...extra });
   const balance = async () => (await Wallets.findById(wallet._id).lean())!.balance;
   const drained = () => wait(async () => !await Jobs.exists({ channelID, state: { $nin: ['completed', 'refunded', 'removed_by_broadcaster'] } }), 'queue drained');
   return { channelID, item, wallet, post, bits, balance, drained };
@@ -113,9 +113,9 @@ test('price changes, deleted/disabled items, wrong SKU, unavailable save and off
     if (reason === 'price') await Items.updateOne({ _id: f.item._id }, { $set: { bitsPrice: 10 } });
     if (reason === 'deleted') await Items.updateOne({ _id: f.item._id }, { $set: { deletedAt: new Date() } });
     if (reason === 'disabled') await Items.updateOne({ _id: f.item._id }, { $set: { isEnabled: false } });
-    if (reason === 'sku') await Items.updateOne({ _id: f.item._id }, { $set: { sku: 'other' } });
     if (reason === 'offline') connected = false;
     const body = f.bits(`unavailable-${reason}`, reason === 'save' ? { action: 'save', identityShared: false, userID: undefined } : { userID: undefined, identityShared: false });
+    if (reason === 'sku') body.bitsTransaction.sku = 'bits10';
     const result = await f.post(body, 'purchase', reason === 'invalid-id' ? 'invalid' : undefined);
     assert.equal(result.status, 200, JSON.stringify(result)); assert.equal(result.body.data.madeGood.credits, 5);
     assert.equal(result.body.data.inventory.userID, 'buyer'); assert.equal(await f.balance(), 105);
@@ -125,9 +125,9 @@ test('price changes, deleted/disabled items, wrong SKU, unavailable save and off
 });
 test('free route cannot consume a paid SKU or bypass receipts; server IDs and atomic free pacing limit concurrent plays', async () => {
   const paid = await fixture();
-  assert.equal((await paid.post({ userID: 'buyer', opaqueUserID: 'Ubuyer', sku: 'dimafx_bits_5', transactionID: 'forged' })).status, 400);
+  assert.equal((await paid.post({ userID: 'buyer', opaqueUserID: 'Ubuyer', sku: 'bits5', transactionID: 'forged' })).status, 400);
   const f = await fixture(0);
-  assert.equal((await f.post({ userID: 'buyer', opaqueUserID: 'Ubuyer', sku: 'dimafx_bits_5' })).status, 400);
+  assert.equal((await f.post({ userID: 'buyer', opaqueUserID: 'Ubuyer', sku: 'bits5' })).status, 400);
   const results = await Promise.all(Array.from({ length: 12 }, () => f.post({ userID: 'buyer', opaqueUserID: 'Ubuyer', sku: 'free', transactionID: 'client-controlled' })));
   assert.equal(results.filter(result => result.status === 200).length, 1);
   assert.equal(results.filter(result => result.status === 429).length, 11);
@@ -207,7 +207,7 @@ test('claim-only crash recovers its immutable ledger; claim and admission data a
   const ledgerID = new Types.ObjectId();
   await Claims.create({ _id: 'claim-only', channelID: f.channelID, userID: 'buyer', materialized: false, ledger: {
     _id: ledgerID, platform: 'twitch', userID: 'buyer', channelID: f.channelID, type: 'bits_purchase', amountBits: 5,
-    balanceDelta: 0, channelExtensionItemID: f.item._id, twitchTransactionID: 'claim-only', sku: 'dimafx_bits_5', metadata: { fulfillment: 'pending', action: 'use_now', identityShared: true },
+    balanceDelta: 0, channelExtensionItemID: f.item._id, twitchTransactionID: 'claim-only', sku: 'bits5', metadata: { fulfillment: 'pending', action: 'use_now', identityShared: true },
   } });
   assert.equal((await f.post(f.bits('claim-only'))).status, 200); await f.drained();
   assert.equal(await Ledgers.countDocuments({ _id: ledgerID }), 1);
@@ -354,7 +354,7 @@ test('skip during synthesis advances immediately and the late speech result can 
   try {
     const custom = await f.post(f.bits('skip-synthesis', { ttsText: 'Hello queued speech' }));
     await wait(() => synthesisStarted, 'synthesis started');
-    const mediaItem = await Items.create({ channelID: f.channelID, channelName: 'fixture', createdByUserID: f.channelID, assetID: f.item.assetID, name: 'After skipped speech', category: 'video', mediaType: 'video', bitsPrice: 5, sku: 'dimafx_bits_5' });
+    const mediaItem = await Items.create({ channelID: f.channelID, channelName: 'fixture', createdByUserID: f.channelID, assetID: f.item.assetID, name: 'After skipped speech', category: 'video', mediaType: 'video', bitsPrice: 5, sku: 'bits5' });
     const media = await f.post(f.bits('after-synthesis-skip'), 'purchase', String(mediaItem._id));
     assert.equal(await handler.skip(f.channelID), custom.body.data.triggerID);
     await wait(() => emissions.some(event => event.channelID === f.channelID && event.event === 'dimafx-play' && event.body.triggerID === media.body.data.triggerID), 'next job starts before synthesis resolves');

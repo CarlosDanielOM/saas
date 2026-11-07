@@ -79,8 +79,8 @@ async function openStore({ file, viewport, query = '', theme = 'dark', shared = 
   return { context, page, state, errors, setConnected, setShared };
 }
 const fixtureItems = [
-  { id: 'item-1', name: 'Fixture audio', category: 'audio', bitsPrice: 5, sku: 'dimafx_bits_5', description: 'Test purchase', mediaType: 'audio', durationMs: 1000, channelName: 'FixtureChannel', createdAt: new Date(Date.now() - day).toISOString() },
-  { id: 'item-2', name: 'Fixture voice', category: 'tts', bitsPrice: 20, sku: 'dimafx_bits_20', description: 'Say anything', mediaType: 'audio', tts: { mode: 'custom' }, channelName: 'FixtureChannel' },
+  { id: 'item-1', name: 'Fixture audio', category: 'audio', bitsPrice: 5, sku: 'bits5', description: 'Test purchase', mediaType: 'audio', durationMs: 1000, channelName: 'FixtureChannel', createdAt: new Date(Date.now() - day).toISOString() },
+  { id: 'item-2', name: 'Fixture voice', category: 'tts', bitsPrice: 20, sku: 'bits20', description: 'Say anything', mediaType: 'audio', tts: { mode: 'custom' }, channelName: 'FixtureChannel' },
   { id: 'item-3', name: 'Fixture image', category: 'gif', bitsPrice: 0, sku: 'dimafx_free', description: 'Free one', mediaType: 'gif', thumbnailUrl: 'https://fixture.test/thumb.png', mediaUrl: 'https://fixture.test/thumb.png', channelName: 'FixtureChannel' },
 ];
 try {
@@ -365,11 +365,12 @@ try {
 
   // Twitch's catalog decides: an item whose SKU is missing or costs a different amount can't start checkout.
   {
-    const catalog = [{ sku: 'dimafx_bits_5', cost: { amount: 5, type: 'bits' } }, { sku: 'dimafx_bits_20', cost: { amount: 25, type: 'bits' } }];
+    // bits5 is a Twitch test product, which may report 0 Bits; bits20 is live but priced differently from the item.
+    const catalog = [{ sku: 'bits5', cost: { amount: 0, type: 'bits' }, inDevelopment: true }, { sku: 'bits20', cost: { amount: 25, type: 'bits' } }];
     const { context, page, errors, setConnected } = await openStore({ file: 'panel.html', viewport: { width: 318, height: 500 }, items: fixtureItems, catalog, balance: 0 });
     await setConnected(true);
     await page.waitForFunction(() => bitsCatalog instanceof Map);
-    assert.equal(await page.locator('.fx-tile[data-id="item-1"] .price-btn').isEnabled(), true, 'matching SKU stays on');
+    assert.equal(await page.locator('.fx-tile[data-id="item-1"] .price-btn').isEnabled(), true, 'test product with 0-Bit cost still matches its SKU tier');
     await page.evaluate(() => openDrawerById('item-2'));
     await page.locator('#tts-text-input').fill('hello');
     assert.equal(await page.locator('.drawer-buy-btn.bits').count(), 0, 'cost mismatch hides Bits checkout');

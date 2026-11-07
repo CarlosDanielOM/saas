@@ -16,7 +16,7 @@ const jwt = (payload: object, key = secret) => {
 };
 const auth = (extra = {}) => jwt({ channel_id: '42', user_id: '77', opaque_user_id: 'U77', exp: Date.now() / 1000 + 3600, ...extra });
 const receipt = (extra = {}, product = {}, top = {}) => jwt({ topic: 'bits_transaction_receipt', exp: 1,
-  data: { transactionId: 'verified-tx', userId: '77', time: new Date().toISOString(), product: { sku: 'dimafx_bits_5', cost: { amount: 5, type: 'bits' }, ...product }, ...extra }, ...top });
+  data: { transactionId: 'verified-tx', userId: '77', time: new Date().toISOString(), product: { sku: 'bits5', cost: { amount: 5, type: 'bits' }, ...product }, ...extra }, ...top });
 const identity = { channelID: '42', userID: '77', token: '', identityShared: true };
 const calls: Record<string, unknown>[] = [];
 mock.method(dimabotClient, 'post', async (_path: string, body: Record<string, unknown>) => { calls.push(body); return { error: false, status: 200, data: { accepted: true } }; });
@@ -41,7 +41,7 @@ test('verified receipt fields replace client identity, SKU, transaction and pric
   assert.equal((await post({ transactionReceipt: receipt(), transactionID: 'fake', sku: 'fake', userID: 'fake', amount: 999, action: 'use_now' })).status, 200);
   const body = calls.at(-1)!;
   assert.equal(body.transactionID, undefined);
-  assert.deepEqual(body.bitsTransaction, { transactionID: 'verified-tx', userID: '77', sku: 'dimafx_bits_5', amount: 5, time: (body.bitsTransaction as { time: string }).time, inDevelopment: false });
+  assert.deepEqual(body.bitsTransaction, { transactionID: 'verified-tx', userID: '77', sku: 'bits5', amount: 5, time: (body.bitsTransaction as { time: string }).time, inDevelopment: false });
   assert.equal(body.userID, '77');
 });
 test('signed time prevents replay after claim TTL; Hosted Test products have an explicit switch', () => {

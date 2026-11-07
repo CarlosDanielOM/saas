@@ -9,7 +9,7 @@ const shots = process.env.SAAS_SCREENSHOT_DIR;
 const api = 'https://api.domdimabot.com';
 const user = { id: '991405', login: 'fx_owner', display_name: 'FX_Owner' };
 const app = { name: 'FX_Owner', email: 'fx@example.invalid', language: 'en', plan_tier: 'pro', actived: true, chat_enabled: true, twitch_user_id: user.id, has_permissions: true, up_to_date_permissions: true, administrating: [] };
-const items = [{ id: 'i1', _id: 'i1', name: 'Airhorn', category: 'audio', bitsPrice: 5, sku: 'dimafx_bits_5', isEnabled: true, sortOrder: 1, volume: 100, durationMs: 2000 }];
+const items = [{ id: 'i1', _id: 'i1', name: 'Airhorn', category: 'audio', bitsPrice: 5, sku: 'bits5', isEnabled: true, sortOrder: 1, volume: 100, durationMs: 2000 }];
 const seedQueue = () => ({
   playing: { id: 'j1', itemID: 'i2', itemName: 'Say anything', category: 'tts', source: 'bits', viewerName: 'Viewer_One', text: 'hello chat, great stream', createdAt: new Date().toISOString() },
   queued: [

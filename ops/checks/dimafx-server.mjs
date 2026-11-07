@@ -21,7 +21,7 @@ const validJwt = (overrides = {}) => jwt({
 
 const receipt = (data = {}, product = {}, key) => jwt({ topic: 'bits_transaction_receipt', exp: 1, data: {
   transactionId: 'tx-fixture', userId: 'u-1', time: new Date().toISOString(),
-  product: { sku: 'dimafx_bits_5', cost: { amount: 5, type: 'bits' }, inDevelopment: true, ...product }, ...data,
+  product: { sku: 'bits5', cost: { amount: 5, type: 'bits' }, inDevelopment: true, ...product }, ...data,
 } }, key);
 
 const received = [];
@@ -67,7 +67,7 @@ try {
   assert.equal(proxied.body.ttsText, 'hello fixture', 'viewer TTS text forwarded on purchase');
   assert.equal(proxied.body.transactionID, undefined);
   assert.equal(proxied.body.bitsTransaction.transactionID, 'tx-fixture');
-  assert.equal(proxied.body.bitsTransaction.sku, 'dimafx_bits_5');
+  assert.equal(proxied.body.bitsTransaction.sku, 'bits5');
   assert.equal(proxied.body.bitsTransaction.amount, 5);
   assert.equal(proxied.body.bitsTransaction.inDevelopment, true);
 
@@ -80,7 +80,7 @@ try {
   // Caller-supplied identity never overrides the verified Twitch JWT. The API
   // makes the final item decision using this trusted identity and its catalog.
   const anonymous = await post('/v1/channels/555777/items/item-2/purchase', validJwt({ user_id: undefined }), {
-    sku: 'dimafx_bits_5', transactionID: 'tx-anonymous', transactionReceipt: receipt({ transactionId: 'tx-anonymous' }), action: 'use_now', ttsText: 'anonymous input',
+    sku: 'bits5', transactionID: 'tx-anonymous', transactionReceipt: receipt({ transactionId: 'tx-anonymous' }), action: 'use_now', ttsText: 'anonymous input',
     userID: 'spoofed-user', identityShared: true, displayName: 'spoofed-name',
   });
   assert.equal(anonymous.status, 200);

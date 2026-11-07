@@ -5,6 +5,9 @@ import {
     dimafxItemUsesViewerInput,
     normalizeDimafxViewerConfig,
     sanitizeDimafxViewerTtsText,
+    getAllowedDimafxBitPrices,
+    getDimafxSkuForBitsPrice,
+    dimafxSkuForItem,
     selectRedeemCandidate,
     type DimafxViewerConfig
 } from './dimafx.service.js';
@@ -88,4 +91,20 @@ test('viewer TTS text is normalized so moderation judges exactly what is spoken'
   // Zero-width characters can't split a word past the moderator, compatibility forms fold (NFKC), links go.
   assert.equal(sanitizeDimafxViewerTtsText('h\u200Bello \uFF48\uFF49  chat\u200D https://spam.example'), 'hello hi chat');
   assert.equal(sanitizeDimafxViewerTtsText(42), '');
+});
+
+test('Bits tiers: 5-100 by 5, 125-1,000 by 25, 1,050-5,000 by 50, 5,100-10,000 by 100, SKUs name only the amount', () => {
+  const paid = getAllowedDimafxBitPrices().filter((price) => price > 0);
+  assert.equal(paid.length, 186);
+  assert.ok(paid.length <= 250, 'Twitch catalog limit');
+  assert.deepEqual(paid.slice(0, 4), [5, 10, 15, 20]);
+  assert.ok(paid.includes(125) && paid.includes(1050) && paid.includes(5100) && !paid.includes(110) && !paid.includes(1025) && !paid.includes(5050));
+  assert.equal(Math.max(...paid), 10000, 'Twitch caps a product at 10,000 Bits');
+  assert.equal(getDimafxSkuForBitsPrice(5), 'bits5');
+  assert.equal(getDimafxSkuForBitsPrice(10000), 'bits10000');
+  assert.equal(getDimafxSkuForBitsPrice(0), 'free');
+  assert.equal(getDimafxSkuForBitsPrice(7), null);
+  // Items saved under the old naming follow their amount, so no database migration is needed.
+  assert.equal(dimafxSkuForItem({ bitsPrice: 5, sku: 'dimafx_bits_5' }), 'bits5');
+  assert.equal(dimafxSkuForItem({ bitsPrice: 7, sku: 'legacy' }), 'legacy');
 });

@@ -32,6 +32,7 @@ Twitch serves the uploaded zip from `<client-id>.ext-twitch.tv` under its own CS
 - **Copy**: Twitch guideline 6.5 bans describing Bits use as buy/purchase/spend (also avoid sell/price/cost/pay). Say "use", "play", "get". The client check fails on those words in EN and ES.
 - **Audio** (guideline 2.4): preview sound starts off; the speaker button on the preview stage turns it on and the choice is remembered.
 - **Viewer-typed TTS** (guidelines 6.2.8, 7.x): text is checked by the server (GPT-6 Luna Decisions) before any Bits or credits are used, the sender's Twitch name is shown on stream with it, and the streamer can skip/remove plays from the DimaFX page.
+- **Bits products**: one Twitch product per amount, SKU `bits<amount>` (bits5 … bits10000, 186 products; bands in `DIMAFX_BITS_TIER_BANDS`). An item's SKU is derived from its Bits amount, never chosen per item. Create or release them with `node ops/dimafx-bits-products.mjs` (dry run by default; `--apply`, `--release`).
 - **Package for Twitch** with `python3 ops/dimafx-hosted-zip.py --source dimafx --out <file>.zip`; it refuses files that would break under the CSP.
 
 ## Development

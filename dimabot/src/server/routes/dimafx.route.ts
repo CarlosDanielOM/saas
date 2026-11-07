@@ -15,6 +15,7 @@ import { scheduleThumbnailGeneration } from '../../utils/thumbnail_generator.js'
 import {
     getAllowedDimafxBitPrices,
     getDimafxSkuForBitsPrice,
+    dimafxSkuForItem,
     dimafxItemUsesViewerInput,
     hasDimafxPermission,
     normalizeDimafxPurchaseAction,
@@ -167,7 +168,7 @@ function mapChannelExtensionItem(item: IChannelExtensionItem, asset: IMediaAsset
         thumbnailUrl: resolvedThumbnail,
         durationMs: item.durationMs,
         bitsPrice: item.bitsPrice,
-        sku: item.sku,
+        sku: dimafxSkuForItem(item),
         volume: item.volume,
         isEnabled: item.isEnabled,
         sortOrder: item.sortOrder,
@@ -470,7 +471,8 @@ async function recoverBitsPurchase(existing: IExtensionWalletTransaction): Promi
         return { status: 200, body: { error: false, status: 200, message: 'DimaFX purchase recovered', data: { duplicate: true, ...(queued?.ok ? { queued: true, triggerID: queued.triggerID, queueLength: queued.queueLength } : {}), ...(saved ? { inventory: mapInventory(saved) } : {}) } } };
     }
     const invalid = !itemData || existing.metadata?.unavailable || (action === 'save' && !existing.metadata?.identityShared) ||
-        itemData.item.sku !== existing.sku || itemData.item.bitsPrice !== existing.amountBits ||
+        // Twitch test (in-development) products may report a 0 Bits cost; their SKU still names the tier.
+        dimafxSkuForItem(itemData.item) !== existing.sku || (itemData.item.bitsPrice !== existing.amountBits && !(existing.metadata?.inDevelopment === true && existing.amountBits === 0)) ||
         (dimafxItemUsesViewerInput(itemData.item) && (!existing.metadata?.identityShared || action === 'save' || !existing.metadata?.viewerText));
     if (invalid || !itemData) return refundBitsPurchase(existing);
     let moderation: DimafxTextDecision | undefined;
@@ -651,7 +653,7 @@ router.post('/internal/channels/:channelID/items/:itemID/purchase', internalServ
         if (bits) {
             // Only EBS service auth may assert this object. Client transaction fields never enter the ledger.
             if (typeof bits.transactionID !== 'string' || !bits.transactionID || typeof bits.userID !== 'string' || !bits.userID ||
-                typeof bits.sku !== 'string' || !bits.sku || !Number.isSafeInteger(bits.amount) || bits.amount <= 0) {
+                typeof bits.sku !== 'string' || !bits.sku || !Number.isSafeInteger(bits.amount) || bits.amount < 0 || (bits.amount === 0 && bits.inDevelopment !== true)) {
                 return res.status(400).json({ error: true, status: 400, message: 'Malformed verified Bits transaction' });
             }
             const legacy = await ExtensionWalletTransactionSchema.findOne({ twitchTransactionID: bits.transactionID }).lean();
@@ -691,7 +693,7 @@ router.post('/internal/channels/:channelID/items/:itemID/purchase', internalServ
         const itemData = await getActiveChannelItem(channelID, itemID);
         if (!itemData) return res.status(404).json({ error: true, status: 404, message: 'DimaFX item not found' });
         if (itemData.item.bitsPrice !== 0) return res.status(400).json({ error: true, status: 400, message: 'A verified Twitch Bits receipt is required' });
-        if (body.sku !== itemData.item.sku) return res.status(400).json({ error: true, status: 400, message: 'SKU does not match this free item' });
+        if (body.sku !== dimafxSkuForItem(itemData.item)) return res.status(400).json({ error: true, status: 400, message: 'SKU does not match this free item' });
         if (!body.opaqueUserID?.startsWith('U')) return res.status(403).json({ error: true, status: 403, message: 'Log in to Twitch to use free items' });
         const custom = dimafxItemUsesViewerInput(itemData.item);
         const viewerText = custom ? sanitizeDimafxViewerTtsText(body.ttsText) : undefined;

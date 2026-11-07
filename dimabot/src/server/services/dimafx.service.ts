@@ -1,14 +1,32 @@
 import { AdminSchema } from "../../schemas/admin.schema.js";
 import { hasGlobalChannelOwnerAccess } from "../../middleware/admin.middleware.js";
 
-const DEFAULT_SKU_MAP: Record<number, string> = {
-  0: "free",
-  5: "dimafx_bits_5",
-  10: "dimafx_bits_10",
-  25: "dimafx_bits_25",
-  50: "dimafx_bits_50",
-  100: "dimafx_bits_100",
-};
+/**
+ * Bits amounts streamers can pick. Each is sold through the Twitch catalog SKU `bits<amount>` (bits5 … bits10000):
+ * the SKU names only the amount, so product wording and UI can change without new SKUs. 186 products in total;
+ * Twitch allows 250, 1–10,000 Bits each, and products can't be deleted, only added.
+ * Keep in sync with ops/dimafx-bits-products.mjs, which creates exactly these products in Twitch.
+ */
+export const DIMAFX_BITS_TIER_BANDS: ReadonlyArray<{ from: number; to: number; step: number }> = [
+  { from: 5, to: 100, step: 5 },
+  { from: 125, to: 1000, step: 25 },
+  { from: 1050, to: 5000, step: 50 },
+  { from: 5100, to: 10000, step: 100 },
+];
+
+export function dimafxBitsSku(amount: number): string {
+  return `bits${amount}`;
+}
+
+function buildDefaultSkuMap(): Record<number, string> {
+  const map: Record<number, string> = { 0: "free" };
+  for (const band of DIMAFX_BITS_TIER_BANDS) {
+    for (let amount = band.from; amount <= band.to; amount += band.step) map[amount] = dimafxBitsSku(amount);
+  }
+  return map;
+}
+
+const DEFAULT_SKU_MAP: Record<number, string> = buildDefaultSkuMap();
 
 export type DimafxPurchaseAction = "use_now" | "save";
 export type DimafxQuickPurchasePriority = "credits_first" | "bits_first";
@@ -56,6 +74,11 @@ export function getDimafxSkuMap(): Record<number, string> {
 
 export function getDimafxSkuForBitsPrice(bitsPrice: number): string | null {
   return getDimafxSkuMap()[bitsPrice] || null;
+}
+
+/** An item's SKU follows its Bits amount; the SKU stored on older items (e.g. "dimafx_bits_5") is only a fallback. */
+export function dimafxSkuForItem(item: { bitsPrice: number; sku?: string | null }): string {
+  return getDimafxSkuForBitsPrice(Number(item.bitsPrice)) || String(item.sku || "");
 }
 
 export function getAllowedDimafxBitPrices(): number[] {
