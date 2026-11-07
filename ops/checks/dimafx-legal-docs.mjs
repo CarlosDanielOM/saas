@@ -49,11 +49,16 @@ for (const document of documents) {
   for (const expected of ['Carlos D. Ordonez', 'CDOM Labs', 'Arizona', 'support@domdimabot.com']) {
     assert.ok(text.includes(expected), `${document.path}: ${expected}`);
   }
-  assert.ok(text.includes(document.language === 'en' ? 'November 4, 2026' : '4 de noviembre de 2026'), 'effective date');
+  assert.ok(text.includes(document.language === 'en' ? 'November 7, 2026' : '7 de noviembre de 2026'), 'effective date');
   assert.doesNotMatch(text, /\[(?:publication date|confirm|before publi|operator|fecha de publi)/i);
   assert.doesNotMatch(text, /\b(?:TODO|TBD)\b|implementation-gap/);
   if (document.kind === 'privacy') {
     for (const expected of ['365', 'Hetzner', 'HEL1', 'Piper']) assert.ok(text.includes(expected), `${document.path}: ${expected}`);
+    for (const expected of document.language === 'en'
+      ? ['transaction ID', 'product SKU', 'OpenRouter', 'OpenAI', 'zero data retention', 'Twitch display name', 'queue card']
+      : ['ID de transacción', 'SKU del producto', 'OpenRouter', 'OpenAI', 'retención cero', 'nombre para mostrar', 'tarjeta de la cola']) {
+      assert.ok(text.toLowerCase().includes(expected.toLowerCase()), `${document.path}: ${expected}`);
+    }
     assert.ok(text.includes(document.language === 'en'
       ? 'use or share it for advertising or marketing'
       : 'no la usamos ni compartimos para publicidad o marketing'), `${document.path}: no advertising or marketing use`);

@@ -1,4 +1,4 @@
-"""Check the DimaFX guide covers the playback queue, TTS items, Overlay Studio, and test trigger in both languages."""
+"""Check the DimaFX guide covers current setup, playback, TTS, Bits availability, and queue behavior in both languages."""
 import os
 from urllib.request import urlopen
 
@@ -6,18 +6,28 @@ base = os.environ['SAAS_PREVIEW_URL'].rstrip('/')
 
 checks = {
     '/dimafx/': (
-        'one at a time, in purchase order',
+        'one at a time, in activation order',
         'Overlay Studio',
         'TTS items',
         'Test on stream',
-        'resubmitting the same transaction never plays or charges twice',
+        'Set up DimaFX on DomDimaBot',
+        'Bits amount',
+        'the panel says Bits are off',
+        'Playing now',
+        'receives channel credits equal to the Bits amount',
+        '10 seconds per channel',
     ),
     '/es/dimafx/': (
-        'de uno en uno, en orden de compra',
+        'uno a la vez, en orden de activación',
         'Overlay Studio',
-        'Elementos TTS',
+        'Artículos TTS',
         'Probar en stream',
-        'reenviar la misma transacción nunca reproduce ni cobra dos veces',
+        'Configurar DimaFX en DomDimaBot',
+        'Cantidad de Bits',
+        'el panel indica que Bits están desactivados',
+        'Reproduciendo ahora',
+        'recibe créditos del canal por la misma cantidad de Bits',
+        'cada 10 segundos por canal',
     ),
 }
 
@@ -28,4 +38,4 @@ for path, needles in checks.items():
     for needle in needles:
         assert needle in body, (path, needle)
 
-print('PASS docs: DimaFX queue, TTS items, Overlay Studio, and test trigger documented in EN and ES')
+print('PASS docs: DimaFX setup, queue, TTS, Bits availability, and playback behavior documented in EN and ES')

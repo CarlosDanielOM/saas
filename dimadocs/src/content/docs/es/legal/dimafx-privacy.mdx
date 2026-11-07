@@ -3,7 +3,7 @@ title: Política de privacidad de DimaFX
 description: Conoce qué datos usa DimaFX, quién puede recibirlos y cómo solicitar acceso o eliminación.
 ---
 
-**Vigente desde el 4 de noviembre de 2026**
+**Vigente desde el 7 de noviembre de 2026**
 
 Esta política explica cómo DimaFX, la tienda de la extensión de Twitch y sus funciones relacionadas de reproducción, inventario y créditos, maneja la información. DimaFX lo ofrece Carlos D. Ordonez, una persona que opera DomDimaBot bajo el nombre CDOM Labs, en Arizona, Estados Unidos. CDOM Labs es un nombre comercial, no una empresa constituida por separado.
 
@@ -12,12 +12,12 @@ Esta política explica cómo DimaFX, la tienda de la extensión de Twitch y sus 
 Según cómo uses DimaFX, puede manejar:
 
 - **Información de Twitch y del canal:** Twitch puede enviar información técnica de la extensión, como un ID opaco, un ID de canal o un token de autorización, para que la extensión funcione, aunque no hayas elegido compartir tu identidad con DimaFX. Por separado, si autorizas compartir tu identidad, DimaFX recibe tu ID de usuario de Twitch para asociar la actividad correspondiente contigo y con el canal correcto.
-- **Registros de la tienda y de la cuenta:** artículos y ajustes creados por el broadcaster, inventario de espectadores, créditos del canal y preferencias guardadas.
-- **Registros de transacciones y reproducción:** identificadores de transacción y detalles necesarios para atender una solicitud, evitar que se atienda dos veces, emitir créditos elegibles, ofrecer soporte y conservar registros del servicio.
+- **Registros de la tienda y de la cuenta:** artículos y configuración creados por el broadcaster, inventario de espectadores, créditos del canal y preferencias guardadas.
+- **Registros de transacciones y reproducción:** para una transacción de Bits, el ID de transacción, el ID de Twitch de la cuenta que usó Bits, el SKU del producto, la cantidad de Bits, la hora y si el producto era de prueba (en desarrollo). DimaFX también conserva información necesaria para atender solicitudes, evitar que se atiendan dos veces, emitir créditos elegibles, ofrecer soporte y mantener registros del servicio. Los registros de transacciones y reproducción, incluidos los resultados de moderación, se conservan durante 365 días.
 - **Contenido:** nombres y descripciones de artículos, referencias a medios, texto TTS fijo y texto escrito por espectadores. El texto de los espectadores puede asociarse con una transacción y un registro de reproducción identificados.
 - **Información operativa y de soporte:** eventos técnicos e información de solicitudes que pueden incluir dirección IP, datos del navegador o dispositivo y datos de solicitud, según los manejen el servicio y sus proveedores para operar, analizar, registrar errores, proteger el servicio, resolver problemas y mejorar el producto. Si contactas a soporte, manejamos la información y la correspondencia que envías.
 
-Parte del contenido preseleccionado puede usarse sin identificar al espectador. Compartir tu ID de usuario de Twitch con DimaFX es opcional para las funciones que no necesitan inventario guardado, créditos, preferencias o texto escrito por el espectador. Estas funciones basadas en identidad, incluido el texto TTS personalizado escrito por el espectador, requieren ese ID compartido para que el servicio asocie la información con tu transacción y reproducción. El texto TTS fijo elegido por un broadcaster no requiere la identidad del espectador. Si dejas de compartir o retiras la autorización cuando Twitch ofrezca ese control, eso no elimina por sí solo los registros ya creados; puedes contactar a soporte para solicitar su eliminación. La autorización de la extensión de Twitch no te pide una tarjeta ni una contraseña. Twitch también maneja información conforme a sus propios avisos y política de privacidad.
+Parte del contenido preseleccionado puede usarse sin identificar al espectador. El panel no pide tu ID de Twitch al cargar. Solo te pide compartirlo cuando tocas una función que lo necesita, como artículos guardados, créditos, preferencias o escribir un mensaje de voz. El texto TTS fijo elegido por un broadcaster no requiere la identidad del espectador. Si dejas de compartir o retiras la autorización cuando Twitch ofrezca ese control, eso no elimina por sí solo los registros ya creados; puedes contactar a soporte para solicitar su eliminación. La autorización de la extensión de Twitch no te pide una tarjeta ni una contraseña. Twitch también maneja información conforme a sus propios avisos y política de privacidad.
 
 ## Cómo se usa la información
 
@@ -28,6 +28,8 @@ La información se usa para configurar y mostrar la tienda, vincular la activida
 La información puede compartirse según sea necesario para operar DimaFX:
 
 - Con Twitch, a través de la extensión y las interacciones con la plataforma necesarias para la autorización y las funciones que usan Bits.
+- Para moderar automáticamente los mensajes de voz escritos por espectadores, solo se envía el texto del mensaje a OpenRouter y OpenAI para su revisión. OpenRouter también recibe el ID del canal como identificador de quien hace la solicitud. DimaFX usa GPT-6 Luna Decisions a través de OpenRouter, con servicio de OpenAI. DimaFX le pide a OpenRouter que envíe estas solicitudes solo a proveedores que no recopilan los datos de las solicitudes para entrenar modelos. Este modelo no ofrece retención cero, así que los proveedores pueden conservar las solicitudes conforme a sus propias políticas. DimaFX conserva la decisión (permitido o rechazado), una puntuación y el nombre del modelo en el registro relacionado de transacción o reproducción durante 365 días. Un caché temporal, de unos 15 minutos, conserva el ID del canal, el ID del espectador y la decisión bajo un hash del texto para que una nueva revisión no vuelva a llamar al modelo. Los contadores de límite por minuto usan el ID del canal y el ID del espectador, y vencen en unos 2 minutos.
+- Para identificar a quien escribió el mensaje, DimaFX obtiene de Twitch el nombre para mostrar del espectador. El nombre y el mensaje aparecen en el overlay del stream y en la tarjeta **Reproduciendo ahora** del broadcaster.
 - Con el overlay del stream del broadcaster para reproducir medios o voz configurados. Después, el broadcaster y los espectadores pueden capturar o publicar ese contenido en streams, VOD, clips u otras grabaciones.
 - Con proveedores de alojamiento, red y almacenamiento que mantienen el servicio.
 - Cuando sea necesario para proteger a los usuarios o el servicio, cumplir la ley, responder a un requerimiento legal válido o atender abusos e incidentes de seguridad.
@@ -36,7 +38,7 @@ El sitio de documentación y la interfaz usan Google Fonts para la tipografía. 
 
 ## Reproducción pública y texto de espectadores
 
-El texto personalizado enviado por un espectador identificado se conserva junto con los registros relacionados de transacciones y reproducción. Si se usa para TTS, puede escucharse en un stream público y permanecer en el VOD, clips u otras grabaciones del broadcaster. DimaFX no puede eliminar copias que hagan o publiquen los broadcasters u otros espectadores. No envíes información sensible ni texto que no quieras que se escuche o grabe.
+El texto escrito por un espectador está a la vista del broadcaster y de los editores de su canal en la tarjeta de la cola. Si se usa para TTS, se dice y se muestra junto con el nombre para mostrar de Twitch del espectador en el overlay del stream, y puede permanecer en el VOD, clips u otras grabaciones del broadcaster. DimaFX no puede eliminar copias que hagan o publiquen los broadcasters u otros espectadores. No envíes información sensible ni texto que no quieras que se escuche o grabe.
 
 ## Conservación y eliminación
 

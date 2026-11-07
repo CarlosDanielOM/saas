@@ -1,13 +1,13 @@
 ---
 title: DimaFX Twitch Extension
-description: Set up the DimaFX Twitch Extension shop so viewers can pay with Bits to play sounds, videos, images, or messages on stream, now or saved for later.
+description: Set up the DimaFX Twitch Extension shop so viewers can use Bits, credits, or free items to play sounds, videos, images, or messages on stream.
 sidebar:
   order: 8
 ---
 
-DimaFX is a shop inside your Twitch Extension. Viewers spend Bits to play a sound, a video, an image or GIF, or a text-to-speech message on your stream. You choose the items and prices. Viewers can play an item right away or save it for later. The DimaFX module is available on the Free plan. You need DimaFX edit access: be the channel owner or an admin with that permission.
+DimaFX is a shop inside your Twitch Extension. Viewers can use Bits, channel credits, or free items to play a sound, video, image or GIF, or text-to-speech message on your stream. You choose the items and their Bits amounts. Viewers can play an item right away or save it for later. The DimaFX module is available on the Free plan. You need DimaFX edit access: be the channel owner or an admin with that permission.
 
-Purchases play only while the **DimaFX OBS browser source** is open. Trigger and Overlay Studio sources do not count.
+Plays run only while the **DimaFX OBS browser source** is open. Trigger and Overlay Studio sources do not count.
 
 ## Set up the shop
 
@@ -15,14 +15,14 @@ Purchases play only while the **DimaFX OBS browser source** is open. Trigger and
 2. Select **Add to shop** and fill in the item:
    - **Media**: pick a file from your media or the public library. Press ▶ to check it first.
    - **Name** and **Description viewers see**.
-   - **Price**: **Free**, or 5, 10, 25, 50, or 100 Bits. The server accepts only these prices.
+   - **Bits amount**: **Free**, or 5, 10, 25, 50, or 100 Bits. These are the only available tiers.
    - **Volume** and, for images and GIFs, **Show for (seconds)**.
-   - **On sale in the extension**: turn it on so viewers can buy it.
+   - **On sale in the extension**: turn it on so viewers can use the item.
    - **More options**: **Extension tab** is set from the media type. You can change it here. **Position** sets the order. Lower numbers show first.
 3. Select **Add to shop**.
 4. Under **OBS overlay**, select **Copy OBS link**. In OBS, add it once as a **Browser Source**. Keep it open while you stream.
-5. In Twitch, add or activate the DimaFX Extension for your channel and open its settings. The page shows **Set up DimaFX on DomDimaBot**. Select it and sign in to DomDimaBot to return to your DimaFX module. When viewers can buy, the panel shows **On stream**.
-6. Select **Test on stream** on an item to check the OBS source. A test plays the item for free. It does not charge Bits or count as a sale.
+5. In Twitch, add or activate the DimaFX Extension for your channel and open its settings. Select **Set up DimaFX on DomDimaBot**; it opens in a new tab. If you are already signed in to DomDimaBot, it opens **Modules → DimaFX**. Otherwise, sign in, open your dashboard, then go to **Modules → DimaFX**. When the extension is ready, the panel shows **On stream**.
+6. Select **Test on stream** on an item to check the OBS source. A test plays the item for free and does not use Bits or credits.
 
 [![DimaFX shop list with a disconnected overlay, sample audio and TTS items.](/guides/alerts/dimafx-en.png)](/guides/alerts/dimafx-en.png)
 
@@ -34,8 +34,10 @@ Select **Edit** on an item to change it. The **Media** file cannot be swapped. T
 
 A TTS item speaks a message instead of playing a file. Under **What it does**, choose **Read a message**. You cannot change an item's type after you create it. The form then asks for one of two modes:
 
-- **Fixed message**: you write the text once, and every purchase says the same thing.
-- **Viewer writes the message**: viewers type their own text when they buy. They must share their Twitch ID so DimaFX can associate the text with the transaction and playback. The text can be up to 280 characters, and links are removed. The message plays right away and cannot be saved for later. Fixed messages selected by the broadcaster can be used anonymously.
+- **Fixed message**: you write the text once, and every play says the same thing.
+- **Viewer writes the message**: viewers share their Twitch ID and type up to 280 characters. Links are removed. An automated moderation model checks each message before Bits or credits are used. It refuses hate, harassment, slurs (including spelled-out or phonetic tricks), sexual content, threats or violence, encouragement of self-harm, personal information, spam, links or promotions, and impersonation of Twitch, the streamer, or system messages. A refused message is not played and the viewer is told before Bits or credits are used. If the checker is unavailable, viewer-written messages pause and nothing is charged. A viewer-written message plays right away and cannot be saved. Fixed messages selected by the broadcaster can be used without sharing a viewer ID.
+
+When a viewer-written message plays, the current DimaFX OBS player shows the viewer's Twitch display name and message on stream. After this update, refresh the DimaFX browser source in OBS once (right-click it and select **Refresh**). Viewer-written messages wait until a refreshed player is connected.
 
 Choose a **Language** (English or Spanish) and a **Voice**. DimaFX uses Piper. By default it uses the channel's Piper voice for that language from [Text to Speech](/tts/), even if another engine is selected there.
 
@@ -43,45 +45,41 @@ Choose a **Language** (English or Spanish) and a **Voice**. DimaFX uses Piper. B
 
 Choose **Delete** on an item. You get two choices:
 
-- **Delete without refund**: the item is removed. Viewers' saved copies can no longer be used, and nothing is refunded.
-- **Delete and refund saved copies**: saved copies are converted to DimaFX credits, at the price each viewer paid. Viewers can spend those credits on your other items. This does not refund Twitch Bits.
+- **Delete without refund**: the item is removed. Viewers' saved copies can no longer be used, and no credits are issued.
+- **Delete and refund saved copies**: saved copies are converted to channel credits at the Bits amount or credits each viewer used. Credits can be used on other items in that channel; this does not return Bits through Twitch.
 
 ## What viewers can do
 
-Viewers open the DimaFX panel in your channel. They can browse, search, and filter the shop, and preview media. To buy, they open an item and choose:
+Viewers open the DimaFX panel in your channel. Logged-out viewers can browse, search, filter the shop, and preview media. The preview starts muted; the speaker button turns sound on, and that choice is remembered on that device. Starting a play that uses Bits prompts a logged-out viewer to sign in to Twitch. Free items need a logged-in Twitch account.
 
-- **Play now**: plays the item on stream right away.
-- **Save**: adds a copy to their inventory for this channel, so they can play it later.
+Viewers can choose **Play now** or **Save** (add a copy to their inventory for this channel, so they can play it later). Bits are available only on channels where Twitch has Bits in Extensions enabled (Affiliate or Partner channels that opted in) and the streamer has not turned Bits off for DimaFX. Otherwise, the panel says Bits are off; only free items and channel credits work.
 
-Viewers can pay with Bits, or with DimaFX credits if they have them. Bits purchases only work inside Twitch. Free items play at once and do not use Bits.
-
-Viewers must share their Twitch ID to save items, use credits, save their shop preferences, or send custom viewer-written TTS text. Without sharing an ID, viewers can activate and play eligible preselected items, including fixed TTS messages, but cannot save items, use credits, or send custom TTS text. The panel shows a **Share Twitch ID** button when they need it.
-
-Viewers can set their shop shortcuts in the panel settings:
+The panel asks viewers to share their Twitch ID only when they tap a feature that needs it: saved items, credits, preferences, or writing their own voice message. Viewers can set their shop shortcuts in panel settings:
 
 - **Pay with**: **Credits first** (the default) or **Bits only**.
-- **When you buy**: **Play now** (the default) or **Save for later**.
+- **When you play**: **Play now** (the default) or **Save for later**.
 
-These shortcuts only change the buy button on each item card. The item page always shows every choice.
+These shortcuts change the main action on each item card. The item page always shows every available choice.
 
 ### Credits
 
-Identified viewers get DimaFX credits in two cases. The first is when a purchase cannot play, for example because the overlay is closed or playback fails. The second is when you delete an item and choose to refund saved copies. Credits are per channel, and viewers can spend them on any item in that channel.
+Credits stay on the channel where they were issued. They are not Bits or money and cannot be cashed out or moved. If a Bits play cannot be delivered, the Twitch account that used Bits receives channel credits equal to the Bits amount. This applies if the overlay is closed, playback fails or cannot be confirmed, the item changes or is removed before it plays, the queue is full, or a viewer-written message is refused after Twitch confirms the Bits. Twitch provides the payer's account ID with the transaction, so the viewer can see those credits after sharing their Twitch ID. Deleting an item with **Delete and refund saved copies** also converts saved copies to credits at the amount each viewer used.
 
 ## On-stream playback
 
-Items play **one at a time, in purchase order**. If several purchases come in together, they wait in a queue of up to 25 items. If the overlay disconnects briefly, the queue resumes when it reconnects.
+Items play **one at a time, in activation order**. Up to 25 plays can wait in the queue. If the overlay disconnects briefly, the queue resumes when it reconnects. Each Bits transaction has a signed receipt that the server verifies; a transaction can be used once, and repeats return the original outcome.
 
-A purchase is declined if the DimaFX overlay is not connected, or if the queue is full. An identified viewer gets the Bits back as credits. An anonymous viewer gets no credits, so ask viewers to share their Twitch ID before they buy.
+The **Playing now** card in the DimaFX module lists the playing item and anything waiting, including the item name and whether it was activated with Bits, Credits, Saved, Free, or Test. For viewer-written messages, it also shows the viewer's name and text. You can select **Skip** for the playing item, **Remove** for a waiting play, or **Clear queue**; clearing asks you to confirm **Clear N?** first. Plays you remove do not return credits to the viewer.
 
-Twitch can send the same transaction more than once. DomDimaBot recognizes the repeated transaction and does not fulfill it twice.
+Free plays are limited to one per viewer every 10 seconds per channel. Each viewer can keep up to 20 free saved copies per channel. A viewer can submit up to 10 message checks per minute.
 
 ## Troubleshooting
 
 - **The shop is empty:** Turn on **On sale in the extension** for each item. Check that its media still exists.
 - **Items do not play:** Keep the **DimaFX OBS browser source** open. The module shows **DimaFX overlay connected** or **DimaFX overlay disconnected**. Use **Test on stream** to check playback.
 - **A viewer cannot see credits, saved items, or preferences:** The viewer needs to share their Twitch ID in the extension.
-- **Bits buying is unavailable:** Open the extension inside Twitch. Bits purchases do not work outside Twitch.
+- **Bits are off:** Bits require an eligible Affiliate or Partner channel with Bits in Extensions enabled and Bits enabled for DimaFX. Free items and credits can still be used.
+- **A viewer-written message is waiting:** Refresh the DimaFX browser source in OBS and keep it open.
 
 For the media itself, use the [Media Library](/media-library/).
 

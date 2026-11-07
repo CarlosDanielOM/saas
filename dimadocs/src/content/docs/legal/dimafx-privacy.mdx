@@ -3,7 +3,7 @@ title: DimaFX Privacy Policy
 description: Learn what DimaFX data is used, who may receive it, and how to request access or deletion.
 ---
 
-**Effective November 4, 2026**
+**Effective November 7, 2026**
 
 This policy describes how DimaFX, the Twitch Extension shop and its related playback, inventory, and credit features, handles information. DimaFX is provided by Carlos D. Ordonez, an individual operating DomDimaBot under the CDOM Labs name, in Arizona, United States. CDOM Labs is a business name, not a separate incorporated company.
 
@@ -13,11 +13,11 @@ Depending on how you use DimaFX, it may handle:
 
 - **Twitch and channel information:** Twitch may send technical extension information such as an opaque ID, channel ID, or authorization token for the extension to operate, even if you have not chosen to share your identity with DimaFX. Separately, if you authorize identity sharing, DimaFX receives your Twitch user ID to associate eligible activity with you and the right channel.
 - **Shop and account records:** broadcaster-created items and settings, viewer inventory, channel credits, and saved viewer preferences.
-- **Transaction and playback records:** transaction identifiers and details needed to fulfill a request, prevent duplicate fulfillment, issue eligible credits, provide support, and keep service records.
+- **Transaction and playback records:** for a Bits transaction, the transaction ID, paying account's Twitch user ID, product SKU, Bits amount, time, and whether the product was a test (in-development) product. DimaFX also keeps information needed to fulfill requests, prevent duplicate fulfillment, issue eligible credits, provide support, and keep service records. Transaction and playback records, including moderation results, are kept for 365 days.
 - **Content:** item names, descriptions, media references, fixed TTS text, and text entered by viewers. Viewer text may be associated with an identified transaction and playback record.
 - **Operational and support information:** technical events and request information, which may include IP address, browser or device details, and request data, as handled by the service and its providers for operation, analytics, error tracking, security, troubleshooting, and product improvement. If you contact support, we handle the information and correspondence you send.
 
-Some preset content may be used without identifying a viewer. Sharing your Twitch user ID with DimaFX is optional for features that do not need saved inventory, credits, preferences, or viewer-entered text. These identity-based features, including custom viewer-written TTS text, require that shared ID so the service can associate the information with your transaction and playback. Fixed TTS text selected by a broadcaster does not require viewer identity. If you stop sharing or withdraw authorization where Twitch provides that control, it does not by itself delete records already created; you may contact support to request deletion. Twitch extension authorization does not ask you for a card or password. Twitch also handles information under its own notices and privacy policy.
+Some preset content may be used without identifying a viewer. The panel does not ask for your Twitch ID when it loads. It asks you to share it only when you tap a feature that needs it, such as saved items, credits, preferences, or writing a voice message. Fixed TTS text selected by a broadcaster does not require viewer identity. If you stop sharing or withdraw authorization where Twitch provides that control, it does not by itself delete records already created; you may contact support to request deletion. Twitch extension authorization does not ask you for a card or password. Twitch also handles information under its own notices and privacy policy.
 
 ## How information is used
 
@@ -28,6 +28,8 @@ Information is used to configure and display the shop, connect a viewer's activi
 Information may be shared as needed to run DimaFX:
 
 - With Twitch, through the extension and the platform interactions needed for authorization and Bits-enabled features.
+- For automated moderation of viewer-written voice messages, only the message text is sent to OpenRouter and OpenAI for review. OpenRouter also receives the channel ID as a requester identifier. DimaFX uses GPT-6 Luna Decisions through OpenRouter, served by OpenAI. DimaFX asks OpenRouter to route these requests only to providers that don't collect request data for training. Zero data retention isn't available for this model, so providers may keep requests under their own policies. DimaFX keeps the decision (allowed or refused), a score, and the model name on the related transaction or playback record for 365 days. A short-lived cache, held for about 15 minutes, stores the channel ID, viewer ID, and decision under a hash of the text so a re-check does not call the model again. Per-minute rate-limit counters use the channel ID and viewer ID and expire within about 2 minutes.
+- To look up a viewer-written message's author, DimaFX gets the viewer's Twitch display name from Twitch. The name and message appear on the stream overlay and in the broadcaster's **Playing now** queue card.
 - With the broadcaster's stream overlay so configured media or speech can play. Broadcasters and viewers may then capture or publish that output in streams, VODs, clips, or other recordings.
 - With hosting, network, and storage providers that support the service.
 - When necessary to protect users or the service, comply with law, respond to valid legal process, or address abuse and security incidents.
@@ -36,7 +38,7 @@ The service uses Google Fonts for the documentation and interface typography. Di
 
 ## Public playback and viewer text
 
-Custom text submitted by an identified viewer is retained with related transaction and playback records. If it is used for TTS, it can be spoken in a public stream and may remain in the broadcaster's VOD, clips, or other recordings. DimaFX cannot remove copies made or published by broadcasters or other viewers. Do not submit sensitive information or text you do not want heard or recorded.
+Viewer-written text is visible to the broadcaster and the channel's editors in the queue card. If it is used for TTS, it is spoken and shown with the viewer's Twitch display name on the stream overlay, and may remain in the broadcaster's VOD, clips, or other recordings. DimaFX cannot remove copies made or published by broadcasters or other viewers. Do not submit sensitive information or text you do not want heard or recorded.
 
 ## Retention and deletion
 
