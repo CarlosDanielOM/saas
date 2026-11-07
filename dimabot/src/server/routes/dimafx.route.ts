@@ -697,9 +697,11 @@ router.post('/internal/channels/:channelID/items/:itemID/purchase', internalServ
         const viewerText = custom ? sanitizeDimafxViewerTtsText(body.ttsText) : undefined;
         if ((action === 'save' || custom) && !body.userID) return res.status(403).json({ error: true, status: 403, message: 'Share your identity to save or use custom content' });
         if (custom && (action === 'save' || !viewerText)) return res.status(400).json({ error: true, status: 400, message: 'Custom TTS requires text and immediate playback' });
+        // Pace before moderation so a refused free message still counts and can't drive unlimited model calls.
+        if (!await admitFreeDimafx(channelID, body.userID || body.opaqueUserID)) return res.status(429).json({ error: true, status: 429, message: 'Wait ten seconds between free DimaFX items' });
+        if (custom && !await admitDimafxTtsCheck(channelID, body.userID!)) return res.status(429).json({ error: true, status: 429, message: 'At most ten TTS checks per minute' });
         const moderation = custom ? await moderateDimafxViewerText({ channelID, userID: body.userID!, text: viewerText! }) : undefined;
         if (moderation && !moderation.allowed) return res.status(200).json({ error: false, status: 200, data: { blocked: true, reason: moderation.verdict } });
-        if (!await admitFreeDimafx(channelID, body.userID || body.opaqueUserID)) return res.status(429).json({ error: true, status: 429, message: 'Wait ten seconds between free DimaFX items' });
         if (!await dimafxQueueHandler.isOverlayConnected(channelID)) return res.status(409).json({ error: true, status: 409, message: 'DimaFX overlay is disconnected' });
         const triggerID = `free-${randomUUID()}`;
         if (action === 'save') {
@@ -708,7 +710,8 @@ router.post('/internal/channels/:channelID/items/:itemID/purchase', internalServ
             if (!inventory) return res.status(429).json({ error: true, status: 429, message: 'You can keep at most twenty free saved copies per channel' });
             return res.status(200).json({ error: false, status: 200, data: { inventory: mapInventory(inventory) } });
         }
-        const data = await queueChannelExtensionItem(channelID, itemData.item, itemData.asset, { triggerID, viewerText, source: 'bits_purchase', viewerUserID: body.userID, moderation });
+        const data = await queueChannelExtensionItem(channelID, itemData.item, itemData.asset, { triggerID, viewerText, source: 'bits_purchase', viewerUserID: body.userID, moderation,
+            widget: { bits: null, credits: null, buyerId: body.userID ?? null, message: viewerText ?? null } });
         return res.status(200).json({ error: false, status: 200, data });
     } catch (error) {
         const status = error instanceof DimafxQueueError ? error.status : 500;
@@ -750,6 +753,7 @@ router.post('/internal/channels/:channelID/items/:itemID/use-credit', internalSe
         }
 
         if (itemData.item.bitsPrice === 0) return res.status(400).json({ error: true, status: 400, message: 'Use the free purchase route for free items' });
+        if (isCustomTts && !await admitDimafxTtsCheck(channelID, body.userID)) return res.status(429).json({ error: true, status: 429, message: 'At most ten TTS checks per minute' });
         const result = await createDimafxSpend({ channelID, userID: body.userID, item: itemData.item, asset: itemData.asset, action, viewerText });
         return res.status(result.status).json({ error: result.status >= 400, status: result.status, message: result.message, data: result.data });
     } catch (error) {

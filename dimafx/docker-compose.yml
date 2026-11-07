@@ -24,6 +24,8 @@ services:
       DIMAFX_SERVICE_TOKEN: ${DIMAFX_SERVICE_TOKEN}
       TWITCH_EXTENSION_SECRET: ${TWITCH_EXTENSION_SECRET}
       DIMAFX_ALLOW_UNVERIFIED_TWITCH_JWT: ${DIMAFX_ALLOW_UNVERIFIED_TWITCH_JWT:-false}
+      # true only during Hosted Test / Twitch review (test Bits products take no Bits)
+      DIMAFX_ALLOW_DEVELOPMENT_PRODUCTS: ${DIMAFX_ALLOW_DEVELOPMENT_PRODUCTS:-false}
     expose:
       - "8080"
     networks:

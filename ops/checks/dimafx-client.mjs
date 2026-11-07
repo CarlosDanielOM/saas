@@ -240,10 +240,20 @@ try {
         await completeBitsPurchase(item, 'use_now', window.tx('stale-callback'), 'unshared input');
       });
       assert.equal(await page.evaluate(() => window.bitsCalls), 0, `${label}: no Twitch checkout`);
-      assert.equal(state.requests.filter(r => r.method === 'POST' && !r.path.endsWith('/tts-check')).length, 0, `${label}: no custom mutation`);
+      // A completion callback means Bits were already used: its receipt is still sent (the server makes it good),
+      // but the unshared viewer's text never leaves the device.
+      const directPosts = state.requests.filter(r => r.method === 'POST' && !r.path.endsWith('/tts-check'));
+      assert.equal(directPosts.length, 1, `${label}: only the paid completion is sent`);
+      assert.equal(JSON.parse(directPosts[0].body).ttsText, undefined, `${label}: no unshared text`);
+      assert.equal(JSON.parse(directPosts[0].body).transactionReceipt, 'receipt.stale-callback.sig', `${label}: receipt kept`);
+      state.requests.length = 0;
       assert.equal(await page.evaluate(() => actionInFlight), false, `${label}: rejected callback releases action`);
 
       // An identity opt-in updates an already open sheet and permits custom TTS.
+      // (The paid completion above closed the sheet, as any successful completion does; reopen it.)
+      await page.waitForFunction(() => document.querySelector('#preview-drawer').hidden);
+      await page.evaluate(() => openDrawerById('item-2'));
+      await page.locator('#preview-drawer.open').waitFor();
       await setShared(true);
       assert.equal(await page.locator('#tts-input-wrap').isVisible(), true, `${label}: opt-in unlocks current sheet`);
       await page.locator('#tts-text-input').fill('shared message');
@@ -255,7 +265,10 @@ try {
       assert.equal(await page.locator('#tts-text-input').inputValue(), '', `${label}: revocation clears draft`);
       await page.evaluate(() => window.completeTransaction(window.tx('revoked-checkout')));
       await page.waitForFunction(() => !actionInFlight);
-      assert.equal(state.requests.filter(r => r.method === 'POST' && !r.path.endsWith('/tts-check')).length, 0, `${label}: revoked pending purchase blocked`);
+      const revoked = state.requests.filter(r => r.method === 'POST' && r.path.endsWith('/purchase'));
+      assert.equal(revoked.length, 1, `${label}: paid receipt is never dropped`);
+      assert.equal(JSON.parse(revoked[0].body).ttsText, undefined, `${label}: revoked identity sends no text`);
+      state.requests.length = 0;
 
       await page.evaluate(() => closeDrawer());
       for (const id of ['custom-free', 'legacy-voice']) {
@@ -364,6 +377,18 @@ try {
     assert.equal(await page.evaluate(() => window.bitsCalls), 0, 'direct call cannot charge a mismatched SKU');
     assert.deepEqual(errors, [], `client errors: ${errors}`);
     assert.deepEqual(await page.evaluate(() => window.cspViolations), [], 'Twitch CSP violations');
+    await context.close();
+  }
+
+  // A catalog Twitch can't load hides Bits checkout (and retries) instead of offering an unverified SKU.
+  {
+    const { context, page, errors, setConnected } = await openStore({ file: 'panel.html', viewport: { width: 318, height: 500 }, items: fixtureItems.slice(0, 1), balance: 0,
+      setup: () => { window.catalogCalls = 0; Object.defineProperty(window, 'Twitch', { configurable: true, set(value) { value.ext.bits.getProducts = () => { window.catalogCalls++; return Promise.reject(new Error('rig')); }; Object.defineProperty(window, 'Twitch', { value, configurable: true, writable: true }); } }); } });
+    await setConnected(true);
+    await page.waitForFunction(() => window.catalogCalls >= 1 && bitsCatalog instanceof Map);
+    assert.equal(await page.locator('.fx-tile[data-id="item-1"] .price-btn').isDisabled(), true, 'unknown catalog hides Bits');
+    assert.match(await page.locator('.fx-tile[data-id="item-1"] .price-btn').innerText(), /Bits off/);
+    assert.deepEqual(errors, [], `client errors: ${errors}`);
     await context.close();
   }
 

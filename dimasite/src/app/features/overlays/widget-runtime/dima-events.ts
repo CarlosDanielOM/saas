@@ -55,7 +55,7 @@ export interface DimaDuel { id: string; phase: 'started' | 'ended'; challenger: 
 /** A roulette started spinning, then its result (label) when the spin ends. */
 export interface DimaRoulette { id: string; rouletteId: string; name: string; phase: 'spinning' | 'result'; label: string | null; endsAt: number; at: number; test: boolean }
 /** A DimaFX item was bought and is playing (the buyer only when Twitch shared their identity). */
-export interface DimaDimafx { id: string; item: { id: string; name: string; type: string }; source: 'bits' | 'credits' | 'saved' | 'test'; bits: number | null; credits: number | null; user: DimaUser | null; message: string | null; at: number; test: boolean }
+export interface DimaDimafx { id: string; item: { id: string; name: string; type: string }; source: 'bits' | 'credits' | 'saved' | 'free' | 'test'; bits: number | null; credits: number | null; user: DimaUser | null; message: string | null; at: number; test: boolean }
 /** Live state "hypetrain": the running (or just ended) hype train; null when there is none. Times are ms. */
 export interface DimaHypeTrain {
   id: string; phase: 'active' | 'ended'; level: number; total: number; progress: number | null; goal: number | null;

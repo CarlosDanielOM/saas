@@ -46,10 +46,10 @@ test('verified receipt fields replace client identity, SKU, transaction and pric
 });
 test('signed time prevents replay after claim TTL; Hosted Test products have an explicit switch', () => {
   assert.equal(verifyBitsReceipt(receipt({ time: new Date(Date.now() - 31 * 86400_000).toISOString() }), identity), null);
-  assert.equal(verifyBitsReceipt(receipt({}, { inDevelopment: true }), identity)?.inDevelopment, true);
-  process.env.DIMAFX_REJECT_DEVELOPMENT_PRODUCTS = 'true';
-  assert.equal(verifyBitsReceipt(receipt({}, { inDevelopment: true }), identity), null);
-  delete process.env.DIMAFX_REJECT_DEVELOPMENT_PRODUCTS;
+  assert.equal(verifyBitsReceipt(receipt({}, { inDevelopment: true }), identity), null, 'test receipts take no Bits: rejected by default');
+  process.env.DIMAFX_ALLOW_DEVELOPMENT_PRODUCTS = 'true';
+  assert.equal(verifyBitsReceipt(receipt({}, { inDevelopment: true }), identity)?.inDevelopment, true, 'allowed only while testing');
+  delete process.env.DIMAFX_ALLOW_DEVELOPMENT_PRODUCTS;
 });
 test('A viewers cannot mutate free, credits, saved copies or config; Bits receipt supplies unshared buyer', async () => {
   const token = auth({ opaque_user_id: 'A77', user_id: undefined });

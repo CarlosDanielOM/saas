@@ -195,7 +195,10 @@ export function sanitizeDimafxViewerTtsText(value: unknown): string {
   if (typeof value !== "string") {
     return "";
   }
+  // NFKC + removing format characters (zero-width joiners etc.) so moderation judges exactly what TTS will speak.
   return value
+    .normalize("NFKC")
+    .replace(/\p{Cf}/gu, "")
     .replace(/https?:\/\/\S+|www\.\S+/gi, " ")
     .replace(/\s+/g, " ")
     .trim()

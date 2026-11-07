@@ -265,7 +265,8 @@ export class DimafxQueueHandler {
    */
   private publishWidget(channelID: string, item: DimafxQueueItem): void {
     if (!widgetsUse(channelID, 'dimafx')) return;
-    const facts = item.widget, source = item.source === 'bits_purchase' ? 'bits' : item.source === 'credit_purchase' ? 'credits' : item.source === 'redeem_saved' ? 'saved' : 'test';
+    // Free plays share the purchase path but get server IDs starting with "free-".
+    const facts = item.widget, source = item.source === 'bits_purchase' ? item.triggerID.startsWith('free-') ? 'free' : 'bits' : item.source === 'credit_purchase' ? 'credits' : item.source === 'redeem_saved' ? 'saved' : 'test';
     void (async () => {
       const claimed = await DimafxPlaybackSchema.updateOne({ _id: item.triggerID, channelID, widgetSentAt: null }, { $set: { widgetSentAt: new Date() } });
       if (!claimed.modifiedCount) return;

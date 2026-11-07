@@ -4,6 +4,7 @@ import { Types } from 'mongoose';
 import {
     dimafxItemUsesViewerInput,
     normalizeDimafxViewerConfig,
+    sanitizeDimafxViewerTtsText,
     selectRedeemCandidate,
     type DimafxViewerConfig
 } from './dimafx.service.js';
@@ -81,4 +82,10 @@ test('redeem candidate prefers the newest saved copy and ignores empty rows', ()
         newest
     );
     assert.equal(selectRedeemCandidate([empty, otherItem], String(itemID)), null);
+});
+
+test('viewer TTS text is normalized so moderation judges exactly what is spoken', () => {
+  // Zero-width characters can't split a word past the moderator, compatibility forms fold (NFKC), links go.
+  assert.equal(sanitizeDimafxViewerTtsText('h\u200Bello \uFF48\uFF49  chat\u200D https://spam.example'), 'hello hi chat');
+  assert.equal(sanitizeDimafxViewerTtsText(42), '');
 });

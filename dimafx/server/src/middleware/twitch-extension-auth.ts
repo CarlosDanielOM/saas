@@ -66,7 +66,9 @@ export function verifyBitsReceipt(receipt: unknown, identity: TwitchExtensionIde
   const time = typeof data.time === 'string' ? Date.parse(data.time) : NaN;
   if (!Number.isFinite(time) || time > Date.now() + 300_000 || time < Date.now() - 30 * 86400_000) return null;
   const inDevelopment = product.inDevelopment === true;
-  if (inDevelopment && process.env.DIMAFX_REJECT_DEVELOPMENT_PRODUCTS === 'true') return null;
+  // Test products don't take Bits, so their receipts only count while testing is explicitly allowed
+  // (Hosted Test and Twitch review). Released extensions leave DIMAFX_ALLOW_DEVELOPMENT_PRODUCTS unset.
+  if (inDevelopment && process.env.DIMAFX_ALLOW_DEVELOPMENT_PRODUCTS !== 'true') return null;
   return { transactionID: data.transactionId, userID: data.userId, sku: product.sku, amount, time: new Date(time).toISOString(), inDevelopment };
 }
 

@@ -118,7 +118,7 @@ const STRINGS = {
     "settings.quickTitle": "Quick button on each item",
     "settings.quickPay": "It uses",
     "settings.creditsFirst": "Credits first",
-    "settings.bitsFirst": "Bits only",
+    "settings.bitsFirst": "Bits first",
     "settings.quickDo": "When you tap it",
     "settings.playNow": "Play now",
     "settings.save": "Save for later",
@@ -262,7 +262,7 @@ const STRINGS = {
     "settings.quickTitle": "Botón rápido de cada artículo",
     "settings.quickPay": "Usa",
     "settings.creditsFirst": "Créditos primero",
-    "settings.bitsFirst": "Solo Bits",
+    "settings.bitsFirst": "Bits primero",
     "settings.quickDo": "Al tocarlo",
     "settings.playNow": "Usar ahora",
     "settings.save": "Guardar para después",
@@ -360,7 +360,7 @@ function channelLabel() {
 }
 
 function applyStaticStrings() {
-  document.documentElement.lang = LANG;
+  document.documentElement.lang = LANG === "es" ? "es-MX" : "en";
   document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
   document.querySelectorAll("[data-i18n-aria]").forEach((el) => { el.setAttribute("aria-label", t(el.dataset.i18nAria)); });
@@ -532,17 +532,21 @@ function syncBitsFeature() {
   bitsEnabled = window.Twitch?.ext?.features?.isBitsEnabled === true;
 }
 
-function loadBitsCatalog() {
+function loadBitsCatalog(attempt = 0) {
   const bits = window.Twitch?.ext?.bits;
   if (typeof bits?.getProducts !== "function") return;
   Promise.resolve()
     .then(() => bits.getProducts())
     .then((list) => {
-      if (!Array.isArray(list)) return;
-      bitsCatalog = new Map(list.filter((product) => product?.sku).map((product) => [String(product.sku), Number(product.cost?.amount || 0)]));
+      bitsCatalog = new Map((Array.isArray(list) ? list : []).filter((product) => product?.sku).map((product) => [String(product.sku), Number(product.cost?.amount || 0)]));
       renderAll();
     })
-    .catch(() => { bitsCatalog = null; });
+    .catch(() => {
+      // Unknown catalog: hide Bits checkout rather than offer a SKU Twitch may not have (old mobile apps reject here too).
+      bitsCatalog = new Map();
+      renderAll();
+      if (attempt < 3) setTimeout(() => loadBitsCatalog(attempt + 1), 5000 * (attempt + 1));
+    });
 }
 
 // Bits work for an item only when the channel takes Bits and Twitch's catalog charges exactly the price shown.
@@ -1506,7 +1510,7 @@ async function triggerFreeItem(item, action = "use_now") {
 function readPendingBits() {
   try {
     const list = JSON.parse(localStorage.getItem(PENDING_BITS_KEY) || "[]");
-    return Array.isArray(list) ? list.filter((entry) => entry?.body?.transactionID && Date.now() - Number(entry.at || 0) < 7 * 86400000) : [];
+    return Array.isArray(list) ? list.filter((entry) => pendingKey(entry) && Date.now() - Number(entry.at || 0) < 30 * 86400000) : [];
   } catch {
     return [];
   }
@@ -1520,8 +1524,13 @@ function writePendingBits(list) {
   }
 }
 
-function forgetPendingBits(transactionID) {
-  writePendingBits(readPendingBits().filter((entry) => entry.body.transactionID !== transactionID));
+// The server accepts a signed receipt for 30 days, so the device keeps unanswered completions that long.
+function pendingKey(entry) {
+  return String(entry?.body?.transactionID || entry?.body?.transactionReceipt || "");
+}
+
+function forgetPendingBits(key) {
+  writePendingBits(readPendingBits().filter((entry) => pendingKey(entry) !== key));
 }
 
 async function postBitsCompletion(entry) {
@@ -1552,12 +1561,12 @@ async function resumePendingBitsPurchases() {
   for (const entry of due) {
     try {
       const data = await postBitsCompletion(entry);
-      forgetPendingBits(entry.body.transactionID);
+      forgetPendingBits(pendingKey(entry));
       if (data?.inventory) inventory = data.inventory;
       showOutcome({ name: entry.name }, entry.action, data);
     } catch (error) {
       if (isFinalApiError(error)) {
-        forgetPendingBits(entry.body.transactionID);
+        forgetPendingBits(pendingKey(entry));
         continue;
       }
       schedulePendingRetry();
@@ -1570,19 +1579,21 @@ async function resumePendingBitsPurchases() {
 async function completeBitsPurchase(item, action, transaction, pendingTtsText) {
   // Twitch can refresh the token mid-checkout; wait for that check rather than dropping a paid message.
   await identityReady.catch(() => undefined);
-  const ttsText = isCustomTtsItem(item) ? pendingTtsText ?? getTtsInputText() : undefined;
+  // Bits are already used at this point, so the receipt is always stored and sent. Without a shared ID the
+  // viewer's text stays on this device; the server then makes the Bits good instead of playing it.
+  const ttsText = isCustomTtsItem(item) && canUseViewerInput(item) ? pendingTtsText ?? getTtsInputText() : undefined;
   // Twitch names the field transactionID; the signed receipt is what proves the Bits were used.
   const transactionID = String(transaction?.transactionID || transaction?.transactionId || "");
   let entry = null;
   try {
-    requireViewerInputIdentity(item);
     entry = {
       channelID, viewer: viewerOpaqueID, itemID: String(item.id), name: item.name, action, at: Date.now(),
-      body: { sku: item.sku, transactionID, transactionReceipt: transaction?.transactionReceipt || "", action, ttsText },
+      body: { sku: item.sku, transactionID, transactionReceipt: transaction?.transactionReceipt || undefined, action, ttsText },
     };
-    writePendingBits([...readPendingBits().filter((other) => other.body.transactionID !== transactionID), entry]);
+    const key = pendingKey(entry);
+    writePendingBits([...readPendingBits().filter((other) => pendingKey(other) !== key), entry]);
     const data = await postBitsCompletion(entry);
-    forgetPendingBits(transactionID);
+    forgetPendingBits(key);
     if (data?.inventory) inventory = data.inventory;
     await refreshMe().catch(() => undefined);
     closeDrawer();
@@ -1592,7 +1603,7 @@ async function completeBitsPurchase(item, action, transaction, pendingTtsText) {
       showToast(t("toast.pendingTitle"), t("toast.pendingDesc", { name: item.name }), "info");
       schedulePendingRetry();
     } else {
-      if (entry) forgetPendingBits(transactionID);
+      if (entry) forgetPendingBits(pendingKey(entry));
       showToast(t("toast.purchaseIssue"), friendlyError(error), "error");
     }
     await refreshMe().catch(() => undefined);
