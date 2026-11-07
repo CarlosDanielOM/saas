@@ -7,8 +7,14 @@ mock.module('../widget_feed/session-refresh.js', { namedExports: { requestWidget
 let headerOk = true;
 mock.module('../utils/header.js', { namedExports: { getTwitchStreamerHeaderById: async () => headerOk
   ? { error: false, header: { 'Client-Id': 'x', Authorization: 'Bearer y' } } : { error: true, message: 'no token' } } });
+const subscribed: string[] = [];
+let existingSubs: string[] = [];
+mock.module('../schemas/eventsub.schema.js', { defaultExport: { find: () => ({ select: () => ({ lean: async () => existingSubs.map(type => ({ type })) }) }) } });
+mock.module('../utils/eventsub.js', { namedExports: { subscribeTwitchEvent: async (channel: string, type: string, version: string, condition: { broadcaster_user_id: string }) => {
+  assert.deepEqual([version, condition], ['1', { broadcaster_user_id: channel }]); subscribed.push(`${channel}:${type}`); return { id: 'x' };
+} } });
 const { LiveState } = await import('../overlays/interactions.js');
-const { applyTwitchGoalEvent, readTwitchGoals, resyncTwitchGoals, resyncTwitchGoalsWithin } = await import('./twitch-store.js');
+const { applyTwitchGoalEvent, ensureTwitchGoalSubscriptions, readTwitchGoals, resyncTwitchGoals, resyncTwitchGoalsWithin } = await import('./twitch-store.js');
 
 function store(t: TestContext) {
   const docs = new Map<string, { _id: string; revision: number; state: unknown }>();
@@ -86,4 +92,19 @@ test('events: duplicates do nothing; the page waits at most the given time', asy
   const started = Date.now();
   await resyncTwitchGoalsWithin('700', 50, { fromPage: true });
   assert.ok(Date.now() - started < 1000);
+});
+
+test('a channel Twitch lets us read gets its missing goal notifications once; denied channels get none', async t => {
+  store(t);
+  subscribed.length = 0; existingSubs = ['channel.goal.progress'];
+  twitchAnswers(t, [helixRow(10)]);
+  await resyncTwitchGoals('800');
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(subscribed, ['800:channel.goal.begin', '800:channel.goal.end']);
+  await ensureTwitchGoalSubscriptions('800');
+  assert.equal(subscribed.length, 2, 'checked at most once an hour');
+  twitchAnswers(t, 403);
+  await resyncTwitchGoals('801');
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(subscribed.some(entry => entry.startsWith('801:')), false);
 });

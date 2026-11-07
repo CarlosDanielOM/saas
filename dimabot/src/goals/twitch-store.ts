@@ -3,7 +3,7 @@ import { getTwitchStreamerHeaderById } from '../utils/header.js';
 import { getTwitchHelixUrl } from '../utils/links.js';
 import { LiveState, saveLive } from '../overlays/interactions.js';
 import { requestWidgetSessionRefresh } from '../widget_feed/session-refresh.js';
-import { parseHelixGoal, parseTwitchGoalEvent, reduceTwitchGoalEvent, reduceTwitchGoalsHelix, twitchGoalsPermission, visibleTwitchGoals, type StoredTwitchGoals } from './twitch.js';
+import { parseHelixGoal, parseTwitchGoalEvent, reduceTwitchGoalEvent, reduceTwitchGoalsHelix, TWITCH_GOAL_EVENT_TYPES, twitchGoalsPermission, visibleTwitchGoals, type StoredTwitchGoals } from './twitch.js';
 
 const docId = (channel: string) => `${channel}:twitchgoals`;
 /** Widgets only need a refresh when something they can see changed. */
@@ -25,6 +25,27 @@ export async function applyTwitchGoalEvent(channel: string, type: string, raw: R
     return reduced;
   });
   if (changed) requestWidgetSessionRefresh(channel);
+}
+
+const GOAL_SUBSCRIPTIONS = Object.keys(TWITCH_GOAL_EVENT_TYPES);
+const subscriptionChecks = new Map<string, number>();
+/**
+ * Existing channels only get new EventSub catalog types at login or repair (reconciliation is off in production). A
+ * channel whose goals Twitch just let us read gets the three goal notifications it is missing (live progress and the
+ * crossings actions need). At most once an hour per channel and process; failures are logged and tried again later.
+ */
+export async function ensureTwitchGoalSubscriptions(channel: string): Promise<void> {
+  const last = subscriptionChecks.get(channel);
+  if (last && Date.now() - last < 3_600_000) return;
+  subscriptionChecks.set(channel, Date.now());
+  if (subscriptionChecks.size > 5000) subscriptionChecks.delete(subscriptionChecks.keys().next().value!);
+  const [{ default: Eventsub }, { subscribeTwitchEvent }] = await Promise.all([import('../schemas/eventsub.schema.js'), import('../utils/eventsub.js')]);
+  const have = new Set((await Eventsub.find({ channelID: channel, type: { $in: GOAL_SUBSCRIPTIONS } }).select('type').lean()).map(row => row.type));
+  for (const type of GOAL_SUBSCRIPTIONS) {
+    if (have.has(type)) continue;
+    const result = await subscribeTwitchEvent(channel, type, '1', { broadcaster_user_id: channel });
+    if ('error' in result) console.error('Twitch goal subscription failed', { channel, type, status: result.status });
+  }
 }
 
 const resyncs = new Map<string, { started: number; until: number; promise: Promise<void> }>();
@@ -76,6 +97,7 @@ export function resyncTwitchGoals(channel: string, options: { fromPage?: boolean
       return reduced;
     }, before?.revision ?? 0);
     if (changed) requestWidgetSessionRefresh(channel);
+    if (!denied.has(channel)) void ensureTwitchGoalSubscriptions(channel).catch(() => {});
   })();
   resyncs.set(channel, { started: now, until: now + RESYNC_MS, promise });
   if (resyncs.size > 2000) for (const [key, entry] of resyncs) if (entry.until < Date.now()) resyncs.delete(key);

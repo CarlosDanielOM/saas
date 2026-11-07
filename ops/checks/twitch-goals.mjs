@@ -58,9 +58,16 @@ if (target === 'api') {
   state = await request('GET', 'goals/' + owner);
   assert.equal(helixCalls(owner).length, 2);
   assert.deepEqual(state.twitch.goals.map(goal => [goal.id, goal.current]), [['tg-follow', 430]], 'a goal Twitch stopped listing is hidden');
-  // Missing permission: shown as such, Twitch asked again soon from the page (reconnect), goals stay readable.
+  // A channel whose goals Twitch lets us read gets the three goal notifications (production doesn't reconcile new types).
+  const { default: Eventsub } = await import('/app/dist/schemas/eventsub.schema.js');
+  await until(async () => (await Eventsub.countDocuments({ channelID: owner, type: /^channel\.goal\./ })) === 3, 'goal notifications for the channel');
+  assert.deepEqual((await Eventsub.find({ channelID: owner, type: /^channel\.goal\./ }).lean()).map(row => [row.type, row.version, row.condition.broadcaster_user_id]).sort(),
+    [['channel.goal.begin', '1', owner], ['channel.goal.end', '1', owner], ['channel.goal.progress', '1', owner]]);
+  // Missing permission: shown as such, Twitch asked again soon from the page (reconnect), goals stay readable; no notifications.
   answer(denied, 401);
   assert.equal((await request('GET', 'goals/' + denied, null, undefined, 200, denied)).twitch.access, 'permission');
+  await sleep(500);
+  assert.equal(await Eventsub.countDocuments({ channelID: denied }), 0);
   // Actions per Twitch goal type.
   const actions = { actions: { completion: { type: 'message', text: 'We made it!' }, failure: { type: 'ast', text: '$(upper next time)' } } };
   await request('PUT', `goals/${owner}/twitch/follow`, actions, undefined, 400);
@@ -93,7 +100,7 @@ if (target === 'api') {
   const ownerSession = await request('GET', `overlay-studio/${owner}/custom-widgets/session`);
   assert.deepEqual([ownerSession.goalsBySource.twitch['follower-goal'].amount, ownerSession.twitchGoalSources['follower-goal'].name], [430, 'Road to 500']);
   assert.equal(ownerSession.data['follower-goal'].amount, 0, 'StreamElements keys stay on the Goals page source by default');
-  console.log('PASS actual API: Twitch goals free and outside the quota, streamer token, coalesced reads, hidden missing goals, permission state, per-type actions (validation, Premium Bits/cheerers, stale revision, view-only admin), Studio session/state with both sources and no actions.');
+  console.log('PASS actual API: Twitch goals free and outside the quota, streamer token, goal notifications created, coalesced reads, hidden missing goals, permission state, per-type actions (validation, Premium Bits/cheerers, stale revision, view-only admin), Studio session/state with both sources and no actions.');
 }
 
 if (target === 'cron') {
