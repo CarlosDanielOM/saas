@@ -421,6 +421,25 @@ function buildEventData(
         ...base,
       };
     }
+    case "channel.goal.begin":
+    case "channel.goal.progress":
+    case "channel.goal.end": {
+      // Twitch Creator Goal (journaled for Twitch goal state, so it must be complete).
+      const ended = type === "channel.goal.end";
+      return {
+        broadcaster_user_id: channelID,
+        broadcaster_user_login: "teststreamer",
+        broadcaster_user_name: "TestStreamer",
+        id: "test-twitch-goal",
+        type: "follow",
+        description: "Road to 500",
+        current_amount: type === "channel.goal.begin" ? 400 : ended ? 500 : 420,
+        target_amount: 500,
+        started_at: new Date(Date.now() - 3600000).toISOString(),
+        ...(ended ? { is_achieved: true, ended_at: now } : {}),
+        ...base,
+      };
+    }
     case "channel.update":
     case "channel.shoutout.receive":
     case "user.update":

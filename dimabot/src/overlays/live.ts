@@ -24,6 +24,8 @@ import { EVENT_KINDS, matchesTrigger, type AlertEvent, type EventKind, type Over
 import { publishedLayers, widgetNetworks } from '../custom_widgets/store.js';
 import { alertFromEventsub, sessionFor, type DimaAlert } from '../custom_widgets/session.js';
 import { channelGoals, publicGoals } from '../custom_widgets/state.js';
+import { resyncTwitchGoals, twitchGoalsResyncedAt } from '../goals/twitch-store.js';
+const TWITCH_GOALS_RESYNC_EVERY_MS = Math.max(60_000, Number(process.env.TWITCH_GOALS_RESYNC_EVERY_MS) || 5 * 60_000);
 import { commandCount, storeGet, storeSet } from '../custom_widgets/widget-store.js';
 import { pubSubManager } from '../classes/pubsub_manager.class.js';
 import { ensureChatModerationEvents } from '../widget_feed/subscriptions.js';
@@ -160,6 +162,8 @@ function sendCustomState(peer: Peer): void {
   }
   // A hype train that started or ended while nobody was listening (Helix; coalesced per channel).
   if (uses.has('hypetrain')) void resyncHypeTrain(peer.channel).catch(() => {});
+  // Twitch goals made or moved while nobody was listening (Helix; coalesced per channel). Changes refresh the session.
+  if (readsSession(peer)) void resyncTwitchGoals(peer.channel).catch(() => {});
   if (uses.has('hypetrain') || uses.has('ads')) void sendLiveEvents(peer).catch(() => {});
 }
 /** One source's session snapshot; a failed read is tried again (2 s, 8 s, 32 s) while that source stays connected. */
@@ -805,6 +809,10 @@ export function registerStudio(io: Server): void {
       // Goals also change with time (scheduled → active, rolling windows, monthly rollover): at least once a minute.
       for (const channel of new Set([...peers.values()].filter(peer => peer.socket?.connected && widgetUses(peer).has('goals')).map(peer => peer.channel))) {
         if (Date.now() - (goalsPushedAt.get(channel) ?? 0) > 60_000) void pushGoals(channel);
+      }
+      // Twitch goals: EventSub keeps them current; a missed notification is corrected within 5 minutes while OBS is open.
+      for (const channel of new Set([...peers.values()].filter(peer => peer.socket?.connected && readsSession(peer)).map(peer => peer.channel))) {
+        if (Date.now() - twitchGoalsResyncedAt(channel) > TWITCH_GOALS_RESYNC_EVERY_MS) void resyncTwitchGoals(channel).catch(() => {});
       }
       const cache = await getDragonflyClient('overlay-presence');
       // The bot only builds chat events for channels whose published widgets read chat.

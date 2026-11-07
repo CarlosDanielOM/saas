@@ -7,6 +7,7 @@ import { catchError, exhaustMap, interval, of, startWith, Subject, merge } from 
 import { LanguageService } from '../../../../services/language.service';
 import { LinksService } from '../../../../services/links.service';
 import { formatGoalCurrency, goalItemNet, goalMoneyInput, parseGoalCount, parseGoalMoney } from './goal-amounts';
+import { TwitchGoalsComponent, type TwitchGoals } from './twitch-goals.component';
 
 interface GoalAction { type: 'message' | 'ast'; text: string }
 interface GoalCurrencyItem { key: string; label?: string; unitAmount: number; feeBasisPoints: number }
@@ -19,16 +20,18 @@ interface Goal {
   startsAt: number; endsAt?: number; windowSeconds?: number; status: string;
   currency?: GoalCurrency; timeZone?: string; period?: { key: string; startsAt: number; endsAt: number };
 }
-interface Snapshot { plan: string; limit: number; metrics: string[]; revision: number; goals: Goal[]; canManage: boolean }
+interface Snapshot { plan: string; limit: number; metrics: string[]; revision: number; goals: Goal[]; canManage: boolean; twitch?: TwitchGoals }
 interface Envelope { data: Snapshot }
 @Component({
   selector: 'app-channel-goals',
-  imports: [ReactiveFormsModule, DatePipe, DecimalPipe],
+  imports: [ReactiveFormsModule, DatePipe, DecimalPipe, TwitchGoalsComponent],
   templateUrl: './goals.component.html', styleUrl: './goals.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GoalsComponent {
   readonly channelID = input.required<string>();
+  /** Channel login, for links to the streamer's Twitch dashboard. */
+  readonly streamer = input('');
   private readonly http = inject(HttpClient);
   private readonly links = inject(LinksService);
   private readonly language = inject(LanguageService);
@@ -75,6 +78,11 @@ export class GoalsComponent {
   }
   t(key: string, params?: Record<string, string | number>): string { return this.language.translate('channelGoals.' + key, params); }
   reload(): void { this.refresh.next(); }
+  /** Twitch goal actions saved (new snapshot) or changed elsewhere (null: reload). */
+  twitchSaved(snapshot: unknown): void {
+    if (snapshot) this.data.set(snapshot as Snapshot);
+    this.reload();
+  }
   get items() { return this.form.controls.items; }
   open(goal: Goal | null = null, remove = false): void {
     this.editing.set(goal); this.deleting.set(remove); this.saveError.set(''); this.attempted.set(false);

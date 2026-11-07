@@ -239,6 +239,8 @@ export const SUBSCRIPTION_TYPES: SubscriptionType[] = [
             message: 'Hype train has ended! It ended at level $(hypetrain.level) with $(hypetrain.progress)% progress!'
         }
     },
+    // Twitch Creator Goals: state for the Goals page and custom widgets, no chat message of their own (actions live on Goals).
+    ...(['channel.goal.begin', 'channel.goal.progress', 'channel.goal.end'] as const).map(type => ({ type, version: '1', condition: { broadcaster_user_id: '698614112' } })),
     {
         type: 'channel.shoutout.receive',
         version: '1',

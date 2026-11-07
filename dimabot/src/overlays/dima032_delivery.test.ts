@@ -9,7 +9,7 @@ const ended: any[] = [], playback: any[] = [], files = new Map(), saved = new Ma
 const state = (publicId: string) => ({ publicId, channel, revision: 1, snapshot: { widgets: [{ visible: true, kind: 'tts' }], designs: [] }, controls: { revision: 1 } });
 mock.module('./store.js', { namedExports: { publicState: async (id: string) => state(id), load: async () => {}, Studio: {}, OverlayError: Error } });
 mock.module('./ast.js', { namedExports: { renderLayout: async () => ({}) } });
-mock.module('./interactions.js', { namedExports: { resyncInteractions: async () => {} } });
+mock.module('./interactions.js', { namedExports: { resyncInteractions: async () => {}, resyncHypeTrain: async () => {}, LiveState: {}, saveLive: async () => {} } });
 mock.module('./widget-state-providers.js', { namedExports: { widgetStateRegistry: { snapshot: async () => ({ widgetStates: {}, serverTime: Date.now(), failedSources: [] }) }, legacyInteractions: () => ({}) } });
 mock.module('./widget-contract.js', { namedExports: { getWidgetDefinition: () => ({}), validWidgetModuleConfig: () => true } });
 mock.module('../schemas/domain_event.schema.js', { namedExports: { DomainEventSchema: {} } });

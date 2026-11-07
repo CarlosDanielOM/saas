@@ -171,10 +171,11 @@ interface DimaPoll {
 }
 interface DimaPolls { poll: DimaPoll | null; prediction: DimaPoll | null } // totals only; never voter identities
 interface DimaGoal {
-  id: string; name: string; metric: 'follows' | 'subs' | 'bits' | 'currency'; mode: string; target: number; current: number;
-  percent: number; currency: string | null; status: 'scheduled' | 'active' | 'reached' | 'ended';
+  id: string; source: 'dima' | 'twitch'; name: string; metric: 'follows' | 'subs' | 'subPoints' | 'bits' | 'cheerers' | 'currency';
+  mode: string; target: number; current: number; percent: number; currency: string | null; status: 'scheduled' | 'active' | 'reached' | 'ended';
+  twitchType: string | null; achieved: boolean | null;
   startsAt: number; endsAt: number | null; windowSeconds: number | null; period: unknown | null;
-} // money uses currency units (e.g. 87.5); public state, no completion actions
+} // money uses currency units (e.g. 87.5); public state, no actions or outcomes. Twitch goals: mode 'twitch' (goals/twitch.ts)
 interface DimaTts {
   id: string; phase: 'start' | 'end'; text: string; user: DimaUser | null;
   reason: 'ended' | 'skipped' | 'cleared' | 'interrupted' | null; at: number; test: boolean;
@@ -259,6 +260,14 @@ handler once known, then on changes, and returns an unsubscribe function. An unk
 Polls reuse the sanitized Twitch interactions source and expose totals, never voters. The channel's enabled Twitch poll
 and prediction events are required. Goal state follows goal/progress edits within seconds and refreshes at least once a
 minute for time-based changes; it does not execute goal completion actions.
+
+Twitch Creator Goals (2026-11-07) ride the same state: the server sends the Goals page's goals then the streamer's Twitch
+goals (`source: 'twitch'`, from `channel:twitchgoals` in `overlay_interactions`: EventSub `channel.goal.*` projected by
+overlay-interactions-v1, Helix `GET /goals` recovery on connect and every 5 minutes while OBS is open). Each layer picks
+one source with its config `goalSource` (absent = Goals page, `'twitch'`; kept by `checkCustomLayers`/`buildPublished`).
+The frame host (`dimasite/.../widget-runtime/goal-source.ts`) filters `goals` and swaps the four session `*-goal` keys
+for `goalsBySource.twitch` before posting to a frame, in Studio and OBS alike; frames never get `goalsBySource`. The SE
+layer skips its optimistic `*-goal` bump for Twitch layers, and Studio test alerts don't move Twitch values.
 
 Bot feed events are `tts`, `trigger`, `reward`, `pet`, `duel`, `roulette`, and `dimafx`; all include `at` (milliseconds) and `test` (true for Studio tests).
 They are live-only and have no reconnect replay. TTS start is emitted when audio plays and end once on completion;
@@ -357,7 +366,9 @@ calendar month) are selected on the Goals page. `tip-goal` is currency units (st
 everything counted by that goal (Bits, subs, custom items), not only tips. Changes to goals or progress reach OBS widgets
 within seconds through session updates. Test alerts also update session totals in the preview and send updated totals to
 OBS after each alert; tests never change real data. Tip event values (`tip-*`) remain 0 until DomDimaBot tipping exists;
-the manual `tip-goal` can still show a Goals page goal.
+the manual `tip-goal` can still show a Goals page goal. Layers set to Twitch goals get `follower-goal` from the active
+Twitch follower goal, `subscriber-goal` from sub goals (counts before points), `cheer-goal` from the Bits goal and
+`tip-goal` 0 (Twitch has no money goals); 0 when there is no such Twitch goal.
 
 ## 8. Copying StreamElements media
 

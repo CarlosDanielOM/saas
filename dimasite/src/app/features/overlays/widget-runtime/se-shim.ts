@@ -81,7 +81,8 @@ export function seShim(win: any): void {
       data[key] = prefix === 'cheer' || prefix === 'tip' ? Object.assign({}, current, { amount: (Number(current.amount) || 0) + counted }) : Object.assign({}, current, { count: (Number(current.count) || 0) + counted });
     }
     // The goal fed by the streamer's Goals page counts the same events (until the server's next snapshot says otherwise).
-    if (prefix === 'follower' || prefix === 'subscriber' || prefix === 'cheer') {
+    // Twitch goals count their own way (sub points, net subs): those layers wait for Twitch's number instead.
+    if ((prefix === 'follower' || prefix === 'subscriber' || prefix === 'cheer') && ctx?.goalSource !== 'twitch') {
       const goal = data[prefix + '-goal'] && typeof data[prefix + '-goal'] === 'object' ? data[prefix + '-goal'] : {};
       data[prefix + '-goal'] = Object.assign({}, goal, { amount: (Number(goal.amount) || 0) + counted });
     }

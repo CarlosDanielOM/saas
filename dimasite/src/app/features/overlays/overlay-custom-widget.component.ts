@@ -6,6 +6,7 @@ import { CustomWidgetsService } from './custom-widgets.service';
 import type { WidgetRenderContext } from './overlay-widget-module';
 import { eventUse, type DimaEvent } from './widget-runtime/dima-events';
 import { buildFrameDocument, restrictedPolicy, rewriteValues } from './widget-runtime/frame-document';
+import { eventForLayer, layerGoalSource, sessionForLayer, statesForLayer, type GoalSource } from './widget-runtime/goal-source';
 import { OverlayApi } from './overlay-api.service';
 import { CUSTOM_WIDGET_ENV, frameScripts, storeNamespace, type RuntimeBundle, type WidgetTarget } from './widget-runtime/widget-env';
 
@@ -74,6 +75,9 @@ export class OverlayCustomWidgetComponent {
   /** Editor only: copying a widget's files to storage changes this, and the frame restarts with the copies. */
   /** Editor: copied files or the "Block outside connections" choice changed → load the widget again. */
   private readonly mediaKey = computed(() => this.env?.mode === 'editor' ? JSON.stringify([this.source()?.media ?? {}, this.source()?.network ?? 'open']) : '');
+  /** Goal numbers from the Goals page or from Twitch (Studio "Goal data"); applied to everything this frame gets. */
+  private readonly goalSource = computed<GoalSource>(() => layerGoalSource(this.context().widget.config));
+  private startedSource: GoalSource | null = null;
   readonly missing = computed(() => this.env?.mode === 'editor' && this.widgets.list() !== null && !this.source());
   readonly name = computed(() => this.context().widget.name || this.source()?.name || this.t('customName'));
 
@@ -119,6 +123,11 @@ export class OverlayCustomWidgetComponent {
     effect(() => {
       this.overrides();
       untracked(() => this.settingsChanged());
+    });
+    // Another goal source: start the frame again so it never mixes numbers from both.
+    effect(() => {
+      const source = this.goalSource();
+      untracked(() => { if (this.startedSource !== null && source !== this.startedSource && this.bundle && this.frame) this.reload(); });
     });
   }
   t(key: string): string { return this.language.translate('overlayStudio.' + key); }
@@ -250,7 +259,7 @@ export class OverlayCustomWidgetComponent {
       this.rouletteDelivered.add(key);
       if (this.rouletteDelivered.size > 200) this.rouletteDelivered.delete(this.rouletteDelivered.values().next().value!);
     }
-    this.post({ type: 'event', event });
+    this.post({ type: 'event', event: eventForLayer(event, this.goalSource()) });
   }
   private receive(event: MessageEvent): void {
     if (!this.frame || event.source !== this.frame.contentWindow) return;
@@ -281,13 +290,14 @@ export class OverlayCustomWidgetComponent {
     }
     this.clearSessionWait();
     this.loaded = true; this.lastBeat = Date.now();
-    const layer = this.context().widget;
+    const layer = this.context().widget, source = this.startedSource = this.goalSource();
+    const session = bundle.manifest.uses.includes('session') ? this.env!.session() : null;
     this.post({ type: 'init', context: {
       widget: { id: bundle.widgetId, layerId: layer.id, name: layer.name || bundle.manifest.name || '', revision: bundle.revision },
-      channel: bundle.channel, fields: this.frameValues(), mode: this.env!.mode, muted: false,
-      session: bundle.manifest.uses.includes('session') ? this.env!.session() : null,
+      channel: bundle.channel, fields: this.frameValues(), mode: this.env!.mode, muted: false, goalSource: source,
+      session: session ? sessionForLayer(session, source) : null,
       // Live state this widget may read (polls, goals), as last known.
-      states: Object.fromEntries(Object.entries(this.env!.states()).filter(([name]) => bundle.manifest.uses.includes(name as never)))
+      states: statesForLayer(Object.fromEntries(Object.entries(this.env!.states()).filter(([name]) => bundle.manifest.uses.includes(name as never))), source)
     } });
     // Spins and results that arrived before this frame could take them (still loading, or reloaded).
     if (bundle.manifest.uses.includes('roulette')) for (const event of this.env!.recent?.() ?? []) this.postEvent(event);

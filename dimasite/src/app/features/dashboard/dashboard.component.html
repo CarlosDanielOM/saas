@@ -350,7 +350,7 @@
           </summary>
           <div class="fold__body">
             @if (channelID(); as channel) {
-              <app-channel-goals [channelID]="channel" />
+              <app-channel-goals [channelID]="channel" [streamer]="streamer()" />
             }
           </div>
         </details>

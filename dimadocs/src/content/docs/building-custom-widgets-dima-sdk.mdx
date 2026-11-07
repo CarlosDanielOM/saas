@@ -90,7 +90,7 @@ The SDK is available as `Dima` inside the widget frame.
 
 ```js
 const ctx = await Dima.ready();
-// ctx: { widget, channel, fields, mode, muted, session }
+// ctx: { widget, channel, fields, mode, muted, session, goalSource }
 Dima.fields; // current settings
 const unsubscribe = Dima.on('chat', message => { /* ... */ });
 Dima.off('chat', handler); // or call the function returned by Dima.on
@@ -177,7 +177,7 @@ Dima.state('goals', goals => {
 
 StreamElements-compatible widgets receive live state through `onEventReceived`: `dima:hypetrain` uses `event.hypetrain` (null when no train), and `dima:ads` uses `event.active` and `event.schedule`.
 
-`goals` requires `"goals"` in `uses` and is an array of `DimaGoal` values from the Goals page. Each goal includes `id`, `name`, `metric` (`follows`, `subs`, `bits`, or `currency`), `mode`, `target`, `current`, `percent`, `currency` (code or `null`), `status` (`scheduled`, `active`, `reached`, or `ended`), `startsAt`, `endsAt`, `windowSeconds`, and `period`. Money values use currency units (for example, `87.5`). State changes after edits or progress updates within seconds, and time-based changes are sent at least once a minute. This state includes goal targets and status; it never runs goal completion actions.
+`goals` requires `"goals"` in `uses` and is an array of `DimaGoal` values from the source selected for that layer. Each goal includes `id`, `source` (`'dima'` or `'twitch'`), `name`, `metric` (`follows`, `subs`, `subPoints`, `bits`, `cheerers`, or `currency`), `mode`, `target`, `current`, `percent`, `currency` (code or `null`), `twitchType` (the Twitch type, such as `follow`, `subscription_count`, or `new_bit`; `null` for Goals page goals), `achieved` (whether Twitch counted an ended Twitch goal as reached), `status` (`scheduled`, `active`, `reached`, or `ended`), `startsAt`, `endsAt`, `windowSeconds`, and `period`. Twitch goals use `mode: 'twitch'`; money values use currency units (for example, `87.5`). State changes after edits or progress updates within seconds, and time-based changes are sent at least once a minute. This state includes goal targets and status; it never runs goal completion actions.
 
 ### Bot events
 
@@ -221,7 +221,7 @@ The **Bot events** row appears when a widget in the overlay uses one of these ca
 
 The **Replay recent chat** button is in the **Chat** row and works in the preview only. It sends the channel’s last 20 stored messages, oldest first. Replay is text only: it has no emotes, name colours, or badge images, and messages deleted by moderators may appear, so they are not sent to OBS.
 
-`Dima.ready()` resolves to an object with `widget: { id, layerId, name, revision }`, `channel: { id, login, name }`, `fields`, `mode` (`"editor"` or `"live"`), `muted`, and `session` (or `null`).
+`Dima.ready()` resolves to an object with `widget: { id, layerId, name, revision }`, `channel: { id, login, name }`, `fields`, `mode` (`"editor"` or `"live"`), `muted`, `session` (or `null`), and `goalSource` (`'dima'` or `'twitch'`), the source selected for this layer.
 
 A chat event has this shape:
 
@@ -268,7 +268,7 @@ An alert event has this shape:
 
 `follower-total` and `subscriber-total` are the current follower and subscriber totals shown on the dashboard. Follows update as they happen. `cheer-total` and `raid-total` cover the last 90 days, the retention period for channel events, so they can decrease as older events age out. Subscriber counts include each subscriber once plus gifted subs; a 5-sub community gift adds 5.
 
-The StreamElements manual goal keys `follower-goal`, `subscriber-goal`, `cheer-goal`, and `tip-goal` each have shape `{ amount }`. They follow the first active goal of that kind in the streamer's Goals list, or the first reached goal if none is active. If there is no goal, the value is 0. The amount is goal progress, not its target. Goal counting options (since creation, current count, set dates, rolling window, or calendar month) are chosen on the Goals page. Money (`tip-goal`) is in currency units (for example, `12.34`) and includes everything counted by the goal, such as Bits, subs, and custom items, not only tips. Session updates include these values and arrive through the Dima `session` event or StreamElements `onSessionUpdate`; goal or progress changes reach widgets in OBS within seconds. Tests update session totals in the preview and send updated totals to OBS after each test alert, without changing real data. Tip event values (`tip-*`) stay at 0 until DomDimaBot tipping is available; the manual `tip-goal` value can still show a Goals page goal.
+The StreamElements manual goal keys `follower-goal`, `subscriber-goal`, `cheer-goal`, and `tip-goal` each have shape `{ amount }` and use the source selected for the layer in **Goal data**. For the Goals page source, each uses the first active goal of that kind in the streamer's Goals list, or the first reached goal if none is active. For Twitch goals, follower goals supply `follower-goal`, sub goals supply `subscriber-goal` (counts before points), Bits goals supply `cheer-goal`, and `tip-goal` is 0 because Twitch has no money goals. A key is 0 when there is no matching goal. The amount is goal progress, not its target. Goal counting options for Goals page goals (since creation, current count, set dates, rolling window, or calendar month) are chosen on the Goals page. Money (`tip-goal`) for a Goals page goal is in currency units (for example, `12.34`) and includes everything counted by the goal, such as Bits, subs, and custom items, not only tips. Session updates include these values and arrive through the Dima `session` event or StreamElements `onSessionUpdate`; goal or progress changes reach widgets in OBS within seconds. Tests update session totals in the preview and send updated totals to OBS after each test alert, without changing real data. Twitch-sourced goal values do not move for test alerts because Twitch counts its own goals; session counts still update. Tip event values (`tip-*`) stay at 0 until DomDimaBot tipping is available.
 
 Some totals that cannot yet be calculated are present as zero. StreamElements HTML inline `onerror="…"` handlers can call functions defined in the widget's script; early image errors wait until that script has run, matching StreamElements behavior.
 

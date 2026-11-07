@@ -4,18 +4,22 @@ import { getTwitchStreamerHeaderById } from '../utils/header.js';
 import { getTwitchHelixUrl } from '../utils/links.js';
 import type { DomainEventEnvelope } from '../domain_events/domain_event.types.js';
 import { parseInteraction, reduceInteraction, type InteractionKind, type InteractionState, type InteractionSnapshot } from './interaction-model.js';
+import { TWITCH_GOAL_EVENT_TYPES } from '../goals/twitch.js';
 import { clearHypeTrain, HYPE_TRAIN_EVENT_TYPES, parseAdBreak, parseHypeTrain, reduceAdBreak, reduceHypeTrain, type StoredAdBreak, type StoredHypeTrain } from './live-events-model.js';
 
 interface Stored { _id: string; revision: number; state: InteractionState }
 export const Interaction = model<Stored>('OverlayInteraction', new Schema<Stored>({ _id: String, revision: Number, state: Schema.Types.Mixed }, { collection: 'overlay_interactions', versionKey: false }));
-/** Hype trains (`channel:hypetrain`) and ad breaks (`channel:adbreak`) share the collection, with their own reducers. */
+/**
+ * Hype trains (`channel:hypetrain`), ad breaks (`channel:adbreak`) and Twitch goals (`channel:twitchgoals`, goals/twitch-store.ts)
+ * share the collection, with their own reducers.
+ */
 interface StoredLive<T> { _id: string; revision: number; state: T }
-const LiveState = Interaction as unknown as import('mongoose').Model<StoredLive<unknown>>;
+export const LiveState = Interaction as unknown as import('mongoose').Model<StoredLive<unknown>>;
 /**
  * Compare-and-swap save. `expected` fences a recovery read: if anything was saved after it was read, the recovery
  * result is dropped (a newer EventSub update wins over a slow Helix response).
  */
-async function saveLive<T>(id: string, reduce: (current: T | null) => T | null, expected?: number): Promise<void> {
+export async function saveLive<T>(id: string, reduce: (current: T | null) => T | null, expected?: number): Promise<void> {
   await getMongoDBConnection('overlay-interactions');
   for (let attempt = 0; attempt < 12; attempt++) {
     const old = await LiveState.findById(id).lean() as StoredLive<T> | null;
@@ -52,6 +56,7 @@ export async function applyInteractionEvent(event: DomainEventEnvelope): Promise
     const train = parseHypeTrain(type, raw, timestamp);
     return saveLive<StoredHypeTrain>(`${event.channelID}:hypetrain`, current => reduceHypeTrain(current, train, timestamp, event.sourceEventId));
   }
+  if (Object.hasOwn(TWITCH_GOAL_EVENT_TYPES, type)) return (await import('../goals/twitch-store.js')).applyTwitchGoalEvent(event.channelID, type, raw, timestamp, event.sourceEventId);
   if (type === 'channel.ad_break.begin') {
     const ad = parseAdBreak(raw);
     return saveLive<StoredAdBreak>(`${event.channelID}:adbreak`, current => reduceAdBreak(current, ad, timestamp, event.sourceEventId));

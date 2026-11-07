@@ -38,7 +38,7 @@ export const WIDGET_DEFINITIONS = [
   { kind: 'animation', configVersion: 1, placements: ['design'], delivery: 'static', defaultSize: { width: 300, height: 180 }, defaults: {} },
   { kind: 'shape', configVersion: 1, placements: ['scene', 'design'], delivery: 'static', defaultSize: { width: 300, height: 180 }, defaults: {} },
   // Created from an imported widget (Studio's custom widget list), not from the generic palette.
-  { kind: 'custom', configVersion: 1, placements: ['scene'], palette: { scene: false }, delivery: 'code', defaultSize: { width: 480, height: 640 }, defaults: {}, configFields: { widgetId: { type: 'string', maxLength: 24 }, values: { type: 'object', maxBytes: 64000 }, revision: { type: 'number', min: 1, max: 1000000000 } } }
+  { kind: 'custom', configVersion: 1, placements: ['scene'], palette: { scene: false }, delivery: 'code', defaultSize: { width: 480, height: 640 }, defaults: {}, configFields: { widgetId: { type: 'string', maxLength: 24 }, values: { type: 'object', maxBytes: 64000 }, revision: { type: 'number', min: 1, max: 1000000000 }, goalSource: { values: ['dima', 'twitch'] } } }
 ] as const satisfies readonly WidgetDefinition[];
 export type WidgetKind = typeof WIDGET_DEFINITIONS[number]['kind'];
 export function getWidgetDefinition(kind: unknown): WidgetDefinition & { kind: WidgetKind } | undefined {

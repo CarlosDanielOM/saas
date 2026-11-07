@@ -1,3 +1,4 @@
+import { TWITCH_GOAL_EVENT_TYPES } from '../goals/twitch.js';
 /**
  * Hype trains and ad breaks for custom widgets (`uses`: hypetrain, ads). Public data only: Twitch shows hype train top
  * contributors publicly; the ad requester and raw payloads are never kept. Stored like polls (overlay_interactions).
@@ -6,7 +7,8 @@ export const HYPE_TRAIN_EVENT_TYPES = {
   'channel.hype_train.begin': 'channel.hype_train.began', 'channel.hype_train.progress': 'channel.hype_train.updated', 'channel.hype_train.end': 'channel.hype_train.ended'
 } as const;
 export const AD_BREAK_EVENT_TYPES = { 'channel.ad_break.begin': 'channel.ad_break.began' } as const;
-export const LIVE_EVENT_DOMAIN_TYPES = [...Object.values(HYPE_TRAIN_EVENT_TYPES), ...Object.values(AD_BREAK_EVENT_TYPES)];
+/** Journaled only for live state (overlay-interactions-v1); widget actions and stream analytics skip them. Twitch goals too. */
+export const LIVE_EVENT_DOMAIN_TYPES = [...Object.values(HYPE_TRAIN_EVENT_TYPES), ...Object.values(AD_BREAK_EVENT_TYPES), ...Object.values(TWITCH_GOAL_EVENT_TYPES)];
 
 export interface HypeUser { id: string; login: string; name: string }
 export interface HypeContribution { user: HypeUser; type: 'bits' | 'subscription' | 'other'; total: number }

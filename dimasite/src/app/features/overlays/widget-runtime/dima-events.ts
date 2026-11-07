@@ -68,8 +68,11 @@ export interface DimaAds {
   active: { startedAt: number; endsAt: number; duration: number; automatic: boolean } | null;
   schedule: { nextAt: number | null; duration: number | null; lastAt: number | null; snoozes: number | null; snoozeRefreshAt: number | null; prerollFreeUntil: number | null } | null;
 }
-/** StreamElements-style session snapshot: `data` keys like `follower-latest`, `cheer-session`, `subscriber-recent`. */
-export interface DimaSession { data: Record<string, unknown>; recents: unknown[] }
+/**
+ * StreamElements-style session snapshot: `data` keys like `follower-latest`, `cheer-session`, `subscriber-recent`.
+ * The server also sends `goalsBySource.twitch` (the `*-goal` values for Twitch-sourced layers); frames never get it.
+ */
+export interface DimaSession { data: Record<string, unknown>; recents: unknown[]; goalsBySource?: { twitch?: Record<string, { amount: number }> } }
 export type DimaEvent =
   | { type: 'chat'; data: DimaChat }
   | { type: 'chat.delete'; data: DimaChatDelete }

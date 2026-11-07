@@ -1,5 +1,6 @@
 import { goalCurrency, type GoalCurrency } from './currency.js';
 import { goalTimeZone } from './monthly.js';
+import type { TwitchGoalType } from './twitch.js';
 
 export type GoalMetric = 'follows' | 'subs' | 'bits' | 'currency';
 // Keep `total` as the persisted since-creation mode for existing goals.
@@ -12,8 +13,13 @@ export interface GoalOutcome {
   sequence: number;
   at: number;
   actionStatus: 'none' | 'running' | 'finished' | 'error' | 'unknown';
-  actionSuppressed?: 'historical_catchup';
+  /** `not_seen`: a Twitch goal we only saw after it got there; `plan`: a Premium Twitch goal action on Free. */
+  actionSuppressed?: 'historical_catchup' | 'not_seen' | 'plan';
 }
+/** An action on a Twitch goal; `armedAt`: when it was saved like this (it only runs for what happens later). */
+export interface TwitchGoalAction extends GoalAction { armedAt: number }
+/** Actions for every Twitch goal of one type (Twitch gives each new goal a new id). Outside the goal quota. */
+export interface TwitchGoalRule { type: TwitchGoalType; completion?: TwitchGoalAction; failure?: TwitchGoalAction }
 export interface Goal {
   id: string;
   name: string;
@@ -102,4 +108,19 @@ export function nextGoalOutcome(goal: Goal, current: number, previous: GoalOutco
   if (goal.mode === 'fixed' && now >= goal.endsAt!) return 'failed';
   if (goal.mode === 'rolling' && previous?.phase === 'completed') return 'failed';
   return null;
+}
+
+/**
+ * The saved rule for one Twitch goal type: completion = "when reached", failure = "when it ends without being reached".
+ * An action keeps its `armedAt` while unchanged; a new or edited one only runs for what happens after `now`.
+ */
+export function twitchGoalRule(type: TwitchGoalType, value: unknown, previous: TwitchGoalRule | undefined, now: number): TwitchGoalRule | null {
+  const input = object(value);
+  if (Object.keys(input).some(key => key !== 'actions')) throw new GoalError('invalid', 'Only actions can be saved for a Twitch goal');
+  const actions = goalActions(input.actions ?? {}, 'fixed'), rule: TwitchGoalRule = { type };
+  for (const key of ['completion', 'failure'] as const) {
+    const next = actions[key], old = previous?.[key];
+    if (next) rule[key] = { ...next, armedAt: old && old.type === next.type && old.text === next.text ? old.armedAt : now };
+  }
+  return rule.completion || rule.failure ? rule : null;
 }

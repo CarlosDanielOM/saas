@@ -31,5 +31,6 @@ export function sessionAfterAlert(session: DimaSession, alert: DimaAlert): DimaS
     const goal = data[`${prefix}-goal`] as Record<string, unknown> | undefined;
     data[`${prefix}-goal`] = { ...goal, amount: (Number(goal?.['amount']) || 0) + counted };
   }
-  return { data, recents: [entry, ...session.recents].slice(0, 25) };
+  // Twitch-sourced layers keep Twitch's goal values: Twitch counts its own way, so test alerts don't move them.
+  return { data, recents: [entry, ...session.recents].slice(0, 25), ...(session.goalsBySource ? { goalsBySource: session.goalsBySource } : {}) };
 }

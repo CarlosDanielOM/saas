@@ -159,7 +159,8 @@ try {
   const page = await context.newPage(), errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base+'/test/dashboard');
   await page.waitForSelector('app-channel-goals', {state:'attached'});
-  if(width<768) await page.getByRole('button',{name:'Goals',exact:true}).click();
+  // Dashboard → Goals is a folded section since the Split + Briefing dashboard (open it when it starts closed).
+  if(!(await page.locator('details#goals').evaluate(details=>details.open))) await page.locator('details#goals > summary').click();
   await page.evaluate(theme=>document.documentElement.classList.toggle('dark',theme==='dark'),theme);
   const panel=page.locator('app-channel-goals');
   await panel.getByText('0 of 2 goals').waitFor();

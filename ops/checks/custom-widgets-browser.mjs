@@ -67,10 +67,10 @@ const extraWidgets = {
 };
 // A StreamElements goal widget that only reads session data, with an early inline onerror handler.
 extraWidgets[seGoalId] = { manifest: { engine: 'streamelements', api: 1, name: 'SE goal', uses: ['session'] }, css: 'body { color: #fff; }',
-  html: '<p class="goal">0</p><img class="avatar" src="" alt="" onerror="markBroken(this)">',
+  html: '<p class="goal">0</p><p class="manual">0</p><img class="avatar" src="" alt="" onerror="markBroken(this)">',
   js: "function markBroken(img) { img.dataset.fallback = 'yes'; }\n"
-    + "window.addEventListener('onWidgetLoad', obj => { document.querySelector('.goal').textContent = obj.detail.session.data['follower-session'].count; });\n"
-    + "window.addEventListener('onSessionUpdate', obj => { document.querySelector('.goal').textContent = obj.detail.session['follower-session'].count; });\n" };
+    + "window.addEventListener('onWidgetLoad', obj => { document.querySelector('.goal').textContent = obj.detail.session.data['follower-session'].count; document.querySelector('.manual').textContent = obj.detail.session.data['follower-goal'].amount; });\n"
+    + "window.addEventListener('onSessionUpdate', obj => { document.querySelector('.goal').textContent = obj.detail.session['follower-session'].count; document.querySelector('.manual').textContent = obj.detail.session['follower-goal'].amount; });\n" };
 // Widgets that read live state and bot events (Dima SDK and StreamElements layer).
 const liveId = 'b8'.repeat(12), seLiveId = 'c9'.repeat(12), probeBlockedId = 'd1'.repeat(12), probeOpenId = 'e2'.repeat(12), probeEarlyId = 'f3'.repeat(12);
 // Tries every kind of outside request; the blocked copy then tries to open another page.
@@ -610,7 +610,8 @@ try {
   // 4e. StreamElements goal widgets and .rar packages.
   {
     const session = { data: { 'follower-session': { count: 3 }, 'follower-total': { count: 900 }, 'follower-goal': { amount: 7 } }, recents: [],
-      goalSources: { 'follower-goal': { id: 'g1', name: 'Road to 100', status: 'active' } } };
+      goalsBySource: { twitch: { 'follower-goal': { amount: 420 }, 'subscriber-goal': { amount: 0 }, 'cheer-goal': { amount: 0 }, 'tip-goal': { amount: 0 } } },
+      goalSources: { 'follower-goal': { id: 'g1', name: 'Road to 100', status: 'active' } }, twitchGoalSources: { 'follower-goal': { id: 't1', name: 'Road to 500', status: 'active' } } };
     const gm = mocks({ widgets: [extraView(seGoalId)], session, layers: [{ id: 'goal-1', kind: 'custom', configVersion: 1, x: 40, y: 40, width: 400, height: 200, visible: true, locked: false, name: 'Goal', config: { widgetId: seGoalId } }] });
     gm.world.state.scenes[0].published = { width: 1920, height: 1080, widgets: structuredClone(gm.world.state.scenes[0].widgets), designs: [], waitFor: [] };
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' }); await gm.install(ctx);
@@ -638,6 +639,30 @@ try {
     assert.match(await goalData.locator('[data-cw-goal-source="follower"]').textContent(), /Followers: Road to 100/);
     assert.match(await goalData.locator('[data-cw-goal-source="cheer"]').textContent(), /Bits: no active goal/);
     assert.equal(new URL(await goalData.locator('[data-cw-goals-link]').getAttribute('href'), base).href, `${base}/${user.login}/dashboard#goals`);
+    // Goal numbers from Twitch: the layer's choice restarts the frame with Twitch's "Manual" values (never the server's
+    // goalsBySource field itself); test alerts don't move them (Twitch counts its own way); saved with the layer.
+    await until(async () => (await frame.locator('.manual').textContent()) === '8', 'Goals page manual goal (7 + the preview follow)');
+    const choice = goalData.locator('[data-cw-goal-source-choice]');
+    assert.equal(await choice.locator('[data-cw-goal-option="dima"] input').isChecked(), true, 'our goals by default');
+    await choice.locator('[data-cw-goal-option="twitch"] input').check();
+    await until(async () => (await frame.locator('.manual').textContent()) === '420', 'Twitch manual goal after the switch');
+    assert.match(await goalData.locator('[data-cw-goal-source="follower"]').textContent(), /Followers: Road to 500/);
+    assert.match(await goalData.locator('[data-cw-goal-source="tip"]').textContent(), /Money: Twitch has no money goals/);
+    assert.match(await goalData.locator('[data-cw-goal-source-chip]').textContent(), /Twitch/);
+    await p.locator('[data-alert-test="follow"]').click();
+    await until(async () => (await frame.locator('.goal').textContent()) === '5', 'session counts still move');
+    assert.equal(await frame.locator('.manual').textContent(), '420', 'Twitch goal values wait for Twitch');
+    await p.getByRole('button', { name: 'Save draft', exact: true }).click();
+    await p.getByRole('button', { name: 'Saved', exact: true }).waitFor();
+    assert.deepEqual(gm.world.state.scenes[0].widgets[0].config, { widgetId: seGoalId, goalSource: 'twitch' });
+    await axe(p, 'goal source');
+    await shot(p, 'goal-source-dark-1280');
+    // Back to our goals: the key is removed (older layers have none).
+    await choice.locator('[data-cw-goal-option="dima"] input').check();
+    await until(async () => (await frame.locator('.manual').textContent()) === '9', 'our manual goal again (7 + two preview follows)');
+    await p.getByRole('button', { name: 'Save draft', exact: true }).click();
+    await p.getByRole('button', { name: 'Saved', exact: true }).waitFor();
+    assert.deepEqual(gm.world.state.scenes[0].widgets[0].config, { widgetId: seGoalId });
     await p.locator('[data-cw-log] summary').click();
     assert.equal(await p.locator('[data-cw-log] li[data-level="error"]').count(), 0, 'no widget errors');
     await axe(p, 'goal data');
@@ -653,7 +678,7 @@ try {
     await p.keyboard.press('Escape'); await dialog.waitFor({ state: 'detached' });
     assert.deepEqual(pageErrors, []);
     await ctx.close();
-    console.log('PASS StreamElements goal widgets: preview alerts update session-only widgets, early inline onerror handlers work, Goal data names the "Manual" goal; .rar imports.');
+    console.log('PASS StreamElements goal widgets: preview alerts update session-only widgets, early inline onerror handlers work, Goal data names the "Manual" goal; per-layer goal source (Twitch values swapped in, not bumped by test alerts, saved and removed with the layer); .rar imports.');
   }
   // 4f. Live state and bot events.
   {

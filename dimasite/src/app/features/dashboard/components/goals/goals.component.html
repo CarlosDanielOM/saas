@@ -8,6 +8,10 @@
   <p class="error" role="status">{{ t(data() ? 'stale' : 'loadError') }} <button type="button" (click)="reload()">{{ t('retry') }}</button></p>
 }
 @if (data(); as state) {
+  @if (state.twitch; as twitch) {
+    <app-twitch-goals [twitch]="twitch" [revision]="state.revision" [channelID]="channelID()" [streamer]="streamer()" [canManage]="state.canManage" (saved)="twitchSaved($event)" />
+    <h3 class="own-title">{{ t('ownTitle') }}</h3>
+  }
   <p class="quota">{{ t('quota', { count: state.goals.length, limit: state.limit }) }} · {{ t('plans.' + state.plan) }}</p>
   @if (!state.goals.length) { <p class="empty">{{ t('empty') }}</p> }
   <div class="goals">

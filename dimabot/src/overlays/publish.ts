@@ -1,4 +1,5 @@
 import { checkOverrides, type WidgetField } from '../custom_widgets/format.js';
+import { layerGoalSource } from '../custom_widgets/goal-source.js';
 import type { AlertDesign, OverlayScene } from './model.js';
 
 export type PublishedOverlay = NonNullable<OverlayScene['published']>;
@@ -23,7 +24,9 @@ export function buildPublished(scene: OverlayScene, designs: readonly AlertDesig
     if (!widget) throw new PublishBlocked('A custom widget in this overlay was deleted. Remove its layer before publishing.', 404, 'missing_widget');
     const checked = checkOverrides(widget.fields, layer.config?.['values']);
     if ('error' in checked) throw new PublishBlocked(`${widget.name}: ${checked.error}`, 400, 'invalid_value');
-    layer.config = { widgetId: widget.id, revision: widget.revision, ...(Object.keys(checked.values).length ? { values: checked.values } : {}) };
+    const source = layerGoalSource(layer.config);
+    if (!source) throw new PublishBlocked(`${widget.name}: invalid goal source`, 400, 'invalid_value');
+    layer.config = { widgetId: widget.id, revision: widget.revision, ...(Object.keys(checked.values).length ? { values: checked.values } : {}), ...source };
   }
   return published;
 }

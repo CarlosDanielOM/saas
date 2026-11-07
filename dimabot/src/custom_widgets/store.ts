@@ -1,3 +1,4 @@
+import { layerGoalSource } from './goal-source.js';
 import { Schema, Types, model, mongo } from 'mongoose';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import Users from '../schemas/users.schema.js';
@@ -335,8 +336,13 @@ export async function checkCustomLayers(owner: string, scenes: OverlayScene[]): 
     if (!doc) throw new CustomWidgetError('A custom widget in this overlay was deleted. Remove its layer and save again.', 404, 'missing_widget');
     const checked = checkOverrides(latest(doc).fields, layer.config?.['values']);
     if ('error' in checked) throw new CustomWidgetError(`${doc.name}: ${checked.error}`, 400, 'invalid_value');
-    layer.config = { widgetId: doc._id, ...(Object.keys(checked.values).length ? { values: checked.values } : {}) };
+    layer.config = { widgetId: doc._id, ...(Object.keys(checked.values).length ? { values: checked.values } : {}), ...goalSourceOrThrow(layer.config) };
   }
+}
+function goalSourceOrThrow(config: Record<string, unknown> | undefined): { goalSource?: 'twitch' } {
+  const source = layerGoalSource(config);
+  if (!source) throw new CustomWidgetError('Invalid goal source for a custom widget layer', 400, 'invalid_value');
+  return source;
 }
 /** The custom widgets these layers use, as publishing needs them (one read; none without custom layers). */
 async function publishWidgets(owner: string, widgets: OverlayWidget[]): Promise<Map<string, PublishWidget>> {

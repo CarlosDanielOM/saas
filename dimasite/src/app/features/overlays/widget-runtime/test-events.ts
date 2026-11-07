@@ -99,12 +99,13 @@ export function testPolls(): { poll: unknown; prediction: unknown } {
   return { poll: { kind: 'poll', id: 'test-poll', title: 'Next game?', phase: 'active', startedAt: at, deadline: new Date(now + 60_000).toISOString(), endedAt: null, winnerId: null,
     occurredAt: at, receipt: 'test', revision: 1, choices: [{ id: 'a', title: 'Celeste', votes: 12, users: 12, points: 0 }, { id: 'b', title: 'Hades', votes: 7, users: 7, points: 0 }, { id: 'c', title: 'Tetris', votes: 3, users: 3, points: 0 }] }, prediction: null };
 }
-/** Two goals like the Goals page makes (money in currency units). */
+/** Two goals like the Goals page makes (money in currency units) and a Twitch goal (each layer gets its source's). */
 export function testGoals(): unknown[] {
   const now = Date.now();
   return [
-    { id: 'test-follows', name: 'Road to 100 followers', metric: 'follows', mode: 'total', target: 100, current: 64, percent: 64, currency: null, status: 'active', startsAt: now - 86_400_000, endsAt: null, windowSeconds: null, period: null },
-    { id: 'test-money', name: 'New microphone', metric: 'currency', mode: 'monthly', target: 250, current: 87.5, percent: 35, currency: 'USD', status: 'active', startsAt: now - 86_400_000, endsAt: null, windowSeconds: null, period: null }
+    { id: 'test-follows', source: 'dima', name: 'Road to 100 followers', metric: 'follows', mode: 'total', target: 100, current: 64, percent: 64, currency: null, twitchType: null, achieved: null, status: 'active', startsAt: now - 86_400_000, endsAt: null, windowSeconds: null, period: null },
+    { id: 'test-money', source: 'dima', name: 'New microphone', metric: 'currency', mode: 'monthly', target: 250, current: 87.5, percent: 35, currency: 'USD', twitchType: null, achieved: null, status: 'active', startsAt: now - 86_400_000, endsAt: null, windowSeconds: null, period: null },
+    { id: 'test-twitch-follows', source: 'twitch', name: 'Road to 500', metric: 'follows', mode: 'twitch', target: 500, current: 420, percent: 84, currency: null, twitchType: 'follow', achieved: null, status: 'active', startsAt: now - 3_600_000, endsAt: null, windowSeconds: null, period: null }
   ];
 }
 

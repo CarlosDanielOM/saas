@@ -2,6 +2,7 @@ import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 import { FollowRelationshipLedgerSchema } from '../schemas/follow_relationship_ledger.schema.js';
 import { StreamSubscriptionLedgerSchema } from '../schemas/stream_subscription_ledger.schema.js';
 import { channelGoals } from './state.js';
+import { seTwitchGoals } from '../goals/twitch.js';
 import { ALERT_DOMAIN_TYPES, AlertEventFilter } from '../overlays/alert-events.js';
 
 /** Dima SDK v1 alert (CUSTOM_WIDGET_ENGINE.md, section 4). */
@@ -127,10 +128,16 @@ export function seGoals(goals: readonly GoalProgress[]): { data: Record<string, 
  * Session snapshot: latest and recent alerts from the channel's event journal (newest 500 in the last 7 days, through
  * the same filter as live alerts); counts for the current stream (since the latest stream start, else the last 24 h),
  * the week and the UTC calendar month; totals = current followers and subscribers (ledgers), Bits and raids over the
- * journal's 90 days; `*-goal` from the streamer's Goals page (see seGoals). Tips stay empty until our tipping ships.
+ * journal's 90 days; `*-goal` from the streamer's Goals page (see seGoals), or their Twitch goals for layers set to them
+ * (`goalsBySource.twitch`, see seTwitchGoals). Tips stay empty until our tipping ships.
  * `goalSources` (Studio only) names the goal behind each `*-goal`.
  */
-type SessionSnapshot = DimaSession & { goalSources?: Record<string, { id: string; name: string; status: string }> };
+type GoalSources = Record<string, { id: string; name: string; status: string }>;
+/**
+ * `goalsBySource.twitch`: the `*-goal` values for layers set to Twitch goals (the frame host swaps them in; frames never
+ * see this field). `twitchGoalSources` (Studio only) names the Twitch goal behind each.
+ */
+type SessionSnapshot = DimaSession & { goalsBySource?: { twitch: Record<string, { amount: number }> }; goalSources?: GoalSources; twitchGoalSources?: GoalSources };
 const inflight = new Map<string, Promise<SessionSnapshot>>();
 export function sessionFor(channel: string, now = Date.now(), goalSources = false): Promise<SessionSnapshot> {
   // OBS sources reconnecting together (e.g. after a deploy) share one query per channel.
@@ -190,7 +197,7 @@ async function buildSession(channel: string, now: number, goalSources: boolean):
     // Totals like StreamElements': current followers and subscribers (the same ledgers the dashboard and Goals use).
     followerTotal(channel, now),
     StreamSubscriptionLedgerSchema.countDocuments({ platform: 'twitch', streamer_id: channel, status: 'active' }),
-    channelGoals(channel, now).then(goals => goals as GoalProgress[]).catch(() => [] as GoalProgress[])
+    channelGoals(channel, now).catch(() => null)
   ]);
   for (const span of ['session', 'week', 'month'] as const) {
     data[`follower-${span}`] = { count: counts[span].follows };
@@ -202,7 +209,8 @@ async function buildSession(channel: string, now: number, goalSources: boolean):
   data['subscriber-total'] = { count: subscribers };
   data['cheer-total'] = { amount: counts.retained.bits };
   data['raid-total'] = { count: counts.retained.raids };
-  const manual = seGoals(goals);
+  const manual = seGoals((goals?.goals ?? []) as GoalProgress[]), twitch = seTwitchGoals(goals?.twitch.goals ?? []);
   Object.assign(data, manual.data);
-  return goalSources ? Object.assign(session, { goalSources: manual.sources }) : session;
+  const snapshot: SessionSnapshot = Object.assign(session, { goalsBySource: { twitch: twitch.data } });
+  return goalSources ? Object.assign(snapshot, { goalSources: manual.sources, twitchGoalSources: twitch.sources }) : snapshot;
 }

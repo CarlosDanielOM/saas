@@ -1,5 +1,6 @@
 import { INTERACTION_EVENT_TYPES, parseInteraction } from '../overlays/interaction-model.js';
 import { AD_BREAK_EVENT_TYPES, HYPE_TRAIN_EVENT_TYPES, parseAdBreak, parseHypeTrain } from '../overlays/live-events-model.js';
+import { parseTwitchGoalEvent, TWITCH_GOAL_EVENT_TYPES } from '../goals/twitch.js';
 import type { IChatNotification } from '../interfaces/twitch/eventsub.interface.js';
 import type { JournalDomainEventInput } from './domain_event.types.js';
 import { DOMAIN_EVENT_RETENTION_SECONDS } from './domain_event.types.js';
@@ -21,6 +22,8 @@ export const TWITCH_DOMAIN_EVENT_TYPES = {
     // Hype trains and ad breaks: journaled for custom widget state (their chat messages still run inline).
     ...HYPE_TRAIN_EVENT_TYPES,
     ...AD_BREAK_EVENT_TYPES,
+    // Twitch Creator Goals: journaled for Twitch goal state (goals/twitch-store.ts); nothing runs inline.
+    ...TWITCH_GOAL_EVENT_TYPES,
     'channel.bits.use': 'channel.bits.received',
     'channel.cheer': 'channel.bits.received',
     'channel.bit.use': 'channel.bits.received',
@@ -268,6 +271,10 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
         }
         if (typeof original === 'string' && (Object.hasOwn(HYPE_TRAIN_EVENT_TYPES, original) || Object.hasOwn(AD_BREAK_EVENT_TYPES, original))) {
             try { if (original === 'channel.ad_break.begin') parseAdBreak(event); else parseHypeTrain(original, event, String(metadata.messageTimestamp || new Date(input.occurredAt ?? Date.now()).toISOString())); }
+            catch (error) { throw new DomainEventContractError((error as Error).message); }
+        }
+        if (typeof original === 'string' && Object.hasOwn(TWITCH_GOAL_EVENT_TYPES, original)) {
+            try { parseTwitchGoalEvent(original, event); }
             catch (error) { throw new DomainEventContractError((error as Error).message); }
         }
         if (original === 'channel.raid') {

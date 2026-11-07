@@ -50,7 +50,8 @@ export const TYPES: Record<string, RefType> = {
     fields: p('WidgetFields', 'Settings when the widget started.'),
     mode: p("'editor' | 'live'", '`editor` in Studio, `live` in OBS.'),
     muted: p('boolean', 'Whether sound should stay off.'),
-    session: p('DimaSession | null', 'Recent events and totals (needs "session" in uses).')
+    session: p('DimaSession | null', 'Recent events and totals (needs "session" in uses).'),
+    goalSource: p("'dima' | 'twitch'", 'Where this layer\'s goals come from (Studio, Goal data): the Goals page or the streamer\'s Twitch goals.')
   } },
   DimaWidgetInfo: { doc: 'The widget and layer.', props: {
     id: p('string', 'Widget ID.'), layerId: p('string', 'Layer ID in the overlay.'), name: p('string', 'Layer or widget name.'), revision: p('number', 'Version of the widget\'s code.')
@@ -120,11 +121,14 @@ export const TYPES: Record<string, RefType> = {
     id: p('string', 'Choice ID.'), title: p('string', 'Choice text.'), votes: p('number', 'Poll votes.'), users: p('number', 'People (predictions).'),
     points: p('number', 'Channel points (predictions).'), channelPointsVotes: p('number', 'Votes bought with channel points (polls).'), color: p('string', 'Twitch colour (predictions).')
   } },
-  DimaGoal: { doc: 'A goal from the Goals page (live state "goals"). Money goals are in currency units.', props: {
-    id: p('string', 'Goal ID.'), name: p('string', 'Goal name.'), metric: p("'follows' | 'subs' | 'bits' | 'currency'", 'What it counts.'),
-    mode: p('string', 'How it counts: total, current, fixed, rolling or monthly.'), target: p('number', 'Target.'), current: p('number', 'Progress.'),
+  DimaGoal: { doc: 'A goal (live state "goals"): from the Goals page, or from Twitch when the layer is set to Twitch goals. Money goals are in currency units.', props: {
+    id: p('string', 'Goal ID.'), source: p("'dima' | 'twitch'", 'Goals page or Twitch (each layer only gets its own source).'), name: p('string', 'Goal name.'),
+    metric: p("'follows' | 'subs' | 'subPoints' | 'bits' | 'cheerers' | 'currency'", 'What it counts (sub points and cheerers: Twitch goals only).'),
+    mode: p('string', 'How it counts: total, current, fixed, rolling, monthly, or twitch.'), target: p('number', 'Target.'), current: p('number', 'Progress.'),
     percent: p('number', 'Progress in percent (0–100).'), currency: p('string | null', 'Currency code for money goals.'),
-    status: p('string', 'scheduled, active, reached or ended.'), startsAt: p('number', 'Start time (ms).'), endsAt: p('number | null', 'End time (ms) for set dates.'),
+    twitchType: p('string | null', "Twitch's goal type (follow, subscription_count, new_bit…); null for Goals page goals."),
+    achieved: p('boolean | null', 'Twitch goals that ended: whether Twitch counted it as reached.'),
+    status: p('string', 'scheduled, active, reached or ended.'), startsAt: p('number', 'Start time (ms).'), endsAt: p('number | null', 'End time (ms) for set dates, or when a Twitch goal ended.'),
     windowSeconds: p('number | null', 'Rolling window length.'), period: p('{ key: string; startsAt: number; endsAt: number } | null', 'Current month for monthly goals.')
   } },
   DimaTts: { doc: 'A text-to-speech message started or finished (event `tts`). Text is what was spoken.', props: {
@@ -277,7 +281,7 @@ export const DIMA_EVENTS: { name: string; type: string; uses: string | null; doc
 /** Dima.state('…') names and their value types. */
 export const STATE_REFS: { name: string; type: string; doc: string }[] = [
   { name: 'polls', type: 'DimaPolls', doc: 'The current Twitch poll and prediction. Needs "polls" in widget.json uses.' },
-  { name: 'goals', type: 'DimaGoal[]', doc: 'Goals from the Goals page with progress. Needs "goals" in widget.json uses.' },
+  { name: 'goals', type: 'DimaGoal[]', doc: 'Goals with progress: the Goals page, or Twitch goals when the layer is set to them. Needs "goals" in widget.json uses.' },
   { name: 'hypetrain', type: 'DimaHypeTrain | null', doc: 'The running hype train (or the last one until its cooldown ends); null when none. Needs "hypetrain" in widget.json uses.' },
   { name: 'ads', type: 'DimaAds', doc: 'The running ad break and the ad schedule. Needs "ads" in widget.json uses.' }
 ];
@@ -327,7 +331,7 @@ export const MANIFEST_KEYS: { name: string; doc: string; values?: readonly strin
 export const USES_DOCS: Record<string, string> = {
   chat: 'Chat messages, deletes and clears.', alerts: 'Follows, subs, gifts, Bits, raids and tips.', storage: 'Saved values (Dima.storage / SE_API.store).',
   counters: 'Bot command counters.', session: 'Recent events and totals.', signals: 'Signals from chat commands: $(widget.signal name value).',
-  polls: 'Live Twitch polls and predictions (totals only).', goals: 'Goals from the Goals page with live progress.', tts: 'Text-to-speech messages starting and finishing.',
+  polls: 'Live Twitch polls and predictions (totals only).', goals: 'Goals from the Goals page (or the streamer\'s Twitch goals) with live progress.', tts: 'Text-to-speech messages starting and finishing.',
   triggers: 'Trigger alerts sent to the overlay.', rewards: 'Channel-point redemptions.', pets: 'The pet speaking.', duels: 'Duels starting and ending.',
   roulette: 'Roulette spins and results.', dimafx: 'DimaFX purchases playing.', hypetrain: 'Hype trains (level, progress, top contributors).',
   ads: 'Ad breaks and the ad schedule.'

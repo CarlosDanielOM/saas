@@ -1,0 +1,92 @@
+<section class="tw" aria-labelledby="tw-title" data-twitch-goals [attr.data-access]="twitch().access">
+  <div class="tw-head">
+    <h3 id="tw-title"><span class="tw-mark" aria-hidden="true"></span>{{ t('title') }}</h3>
+    <span class="chip chip--ok">{{ t('free') }}</span>
+  </div>
+  @if (twitch().access === 'permission') {
+    <div class="tw-callout" role="status" data-twitch-permission>
+      <p>{{ t('permission') }}</p>
+      @if (streamer()) { <a class="btn primary" [href]="reconnectUrl()">{{ t('reconnect') }}</a> }
+    </div>
+  } @else if (!twitch().goals.length) {
+    <p class="tw-empty" data-twitch-empty>{{ t('empty') }}</p>
+  }
+  @if (twitch().goals.length) {
+    <div class="tw-goals">
+      @for (goal of twitch().goals; track goal.id) {
+        <article class="goal" [attr.aria-label]="name(goal)" [attr.data-twitch-goal]="goal.type">
+          <div class="goal-head">
+            <h4>{{ name(goal) }}</h4>
+            <span class="status" [class.reached]="goal.status === 'reached' || goal.achieved === true">{{ t(goal.status === 'ended' ? (goal.achieved ? 'status.endedReached' : 'status.ended') : 'status.' + goal.status) }}</span>
+          </div>
+          <p class="detail">@if (goal.description) { {{ t('types.' + goal.type) }} · }{{ t('kinds.' + goal.type) }}</p>
+          <div class="numbers"><strong>{{ count(goal.current) }} <span>/ {{ count(goal.target) }}</span></strong><span>{{ goal.percent | number:'1.0-0' }}%</span></div>
+          <div class="progress" role="progressbar" [attr.aria-label]="name(goal)" [attr.aria-valuenow]="goal.current" [attr.aria-valuemin]="0" [attr.aria-valuemax]="goal.current > goal.target ? goal.current : goal.target" [attr.aria-valuetext]="progressText(goal)"><span [style.width.%]="goal.percent"></span></div>
+          @if (goal.outcome) { <p class="detail" [class.error]="goal.outcome.actionStatus === 'error' || goal.outcome.actionStatus === 'unknown'" data-twitch-outcome>{{ outcomeText(goal) }}</p> }
+          <div class="tw-foot">
+            <p class="detail" data-twitch-rule-summary>{{ summary(goal.type) }}</p>
+            @if (canManage()) {
+              <button type="button" (click)="open(goal.type)" [attr.aria-label]="t('actionsFor', { name: name(goal) })" [attr.data-twitch-actions]="goal.type">{{ t('actions') }}</button>
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+  <p class="note">
+    {{ t('manageHint') }}
+    @if (streamer()) { <a class="tw-link" [href]="managerUrl()" target="_blank" rel="noopener" data-twitch-manager>{{ t('manage') }}<span aria-hidden="true"> ↗</span></a> }
+  </p>
+  @if (canManage()) {
+    <details class="tw-rules" data-twitch-rules>
+      <summary>{{ t('rulesSummary', { count: ruleCount() }) }}</summary>
+      <p class="note">{{ t('rulesHint') }}</p>
+      <ul>
+        @for (type of types; track type) {
+          <li [attr.data-twitch-rule]="type">
+            <span><strong>{{ t('typeGoals.' + type) }}</strong><small>{{ summary(type) }}</small></span>
+            <button type="button" (click)="open(type)" [attr.aria-label]="t('actionsFor', { name: t('typeGoals.' + type) })">{{ t(rule(type) ? 'edit' : 'add') }}</button>
+          </li>
+        }
+      </ul>
+    </details>
+  }
+</section>
+
+<dialog #twitchEditor aria-labelledby="tw-editor-title" (cancel)="cancel($event)">
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="dialog-body">
+      @if (editing(); as type) {
+        <h2 id="tw-editor-title">{{ t('editorTitle', { kind: t('typeGoals.' + type) }) }}</h2>
+        <p class="note">{{ t('editorHint') }}</p>
+        @if (locked()) {
+          <p class="plan-note" data-twitch-locked>{{ t('premium') }} <a routerLink="/pricing">{{ t('viewPlans') }}</a></p>
+        }
+        @for (kind of kinds; track kind) {
+          <label [for]="'tw-' + kind + '-type'">{{ t('when.' + kind) }}</label>
+          <select [id]="'tw-' + kind + '-type'" [formControlName]="kind + 'Type'" [attr.aria-label]="t('when.' + kind)">
+            <option value="none">{{ language.translate('channelGoals.actionTypes.none') }}</option>
+            <option value="message">{{ language.translate('channelGoals.actionTypes.message') }}</option>
+            <option value="ast">{{ language.translate('channelGoals.actionTypes.ast') }}</option>
+          </select>
+          @if (form.get(kind + 'Type')?.value !== 'none') {
+            <label [for]="'tw-' + kind + '-text'">{{ language.translate(form.get(kind + 'Type')?.value === 'ast' ? 'channelGoals.astSource' : 'channelGoals.messageText') }}</label>
+            <textarea [id]="'tw-' + kind + '-text'" [formControlName]="kind + 'Text'" rows="3" [maxlength]="form.get(kind + 'Type')?.value === 'ast' ? 4000 : 500" [attr.aria-invalid]="attempted() && invalid(kind)" [attr.aria-describedby]="'tw-' + kind + '-help'"></textarea>
+            <p class="note" [id]="'tw-' + kind + '-help'">{{ language.translate(form.get(kind + 'Type')?.value === 'ast' ? 'channelGoals.astHint' : 'channelGoals.messageHint') }}</p>
+            @if (attempted() && invalid(kind)) { <p class="error" role="alert">{{ language.translate('channelGoals.actionError') }}</p> }
+          }
+        }
+        <p class="note">{{ t('onceHint') }}</p>
+        @if (saveError()) { <p class="error" role="alert">{{ t('errors.' + saveError()) }}</p> }
+      }
+    </div>
+    <footer>
+      <button type="button" (click)="close()" [disabled]="saving()">{{ language.translate('channelGoals.cancel') }}</button>
+      @if (locked()) {
+        @if (existing()) { <button type="button" class="primary" (click)="save(true)" [disabled]="saving()">{{ t('remove') }}</button> }
+      } @else {
+        <button type="submit" class="primary" [disabled]="saving()">{{ language.translate(saving() ? 'channelGoals.saving' : 'channelGoals.twitch.save') }}</button>
+      }
+    </footer>
+  </form>
+</dialog>

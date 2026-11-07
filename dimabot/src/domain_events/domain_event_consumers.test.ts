@@ -47,9 +47,10 @@ test('one widget consumer accepts real/injected channel events without chat anno
     assert.ok(definition);
     assert.deepEqual(definition.topics, ['channel']);
     assert.deepEqual(definition.schemaVersions, [1]);
-    // Hype trains and ad breaks only feed custom widget state (overlay-interactions-v1), never widget actions.
+    // Hype trains, ad breaks and Twitch goals only feed live state (overlay-interactions-v1), never widget actions.
     assert.deepEqual(definition.eventFilter, { source: { $in: ['twitch-eventsub', 'twitch-eventsub-test'] }, channelID: { $exists: true },
-        type: { $nin: ['channel.hype_train.began', 'channel.hype_train.updated', 'channel.hype_train.ended', 'channel.ad_break.began'] } });
+        type: { $nin: ['channel.hype_train.began', 'channel.hype_train.updated', 'channel.hype_train.ended', 'channel.ad_break.began',
+            'channel.goal.began', 'channel.goal.updated', 'channel.goal.ended'] } });
     assert.equal(definition.adminReplay, false);
     assert.equal(definition.maxEventAgeMs, 300_000);
 });

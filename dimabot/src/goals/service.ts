@@ -7,15 +7,19 @@ import { FollowRelationshipLedgerSchema } from '../schemas/follow_relationship_l
 import { StreamSubscriptionLedgerSchema } from '../schemas/stream_subscription_ledger.schema.js';
 import type { DomainEventEnvelope } from '../domain_events/domain_event.types.js';
 import { CANONICAL_BITS_EVENT_TYPE, isLegacyBitsEventType } from '../utils/eventsub.js';
-import { eligible, goalActions, GoalError, goalInteger, goalLabel, goalLimit, goalMetrics, newGoal, object, type Goal, type GoalOutcome, type GoalMetric, type GoalPlan } from './model.js';
+import { eligible, goalActions, GoalError, goalInteger, goalLabel, goalLimit, goalMetrics, newGoal, object, twitchGoalRule, type Goal, type GoalOutcome, type GoalMetric, type GoalPlan, type TwitchGoalRule } from './model.js';
+import { isTwitchGoalType, twitchGoalTypesFor, twitchGoalViews, type TwitchGoalView } from './twitch.js';
+import { readTwitchGoals } from './twitch-store.js';
 import { customGoalDelta, goalItemKey, goalWeightedAmount } from './currency.js';
 import { goalMonthAt, type GoalMonth } from './monthly.js';
 import { requestWidgetSessionRefresh } from '../widget_feed/session-refresh.js';
 
-interface StoredGoals { _id: string; revision: number; goals: Goal[]; outcomes?: Record<string, GoalOutcome>; monthlyCursors?: Record<string, string> }
+interface StoredGoals { _id: string; revision: number; goals: Goal[]; outcomes?: Record<string, GoalOutcome>; monthlyCursors?: Record<string, string>; twitchActions?: TwitchGoalRule[] }
 interface Contribution { _id: string; channel: string; goal: string; occurredAt: number; amount: number; expiresAt?: Date }
 interface CustomReceipt { _id: string; channel: string; fingerprint: string; itemKey: string; quantity: number; occurredAt: number; journaledAt: number }
-export const GoalSet = model<StoredGoals>('ChannelGoals', new Schema<StoredGoals>({ _id: String, revision: Number, goals: [Schema.Types.Mixed], outcomes: { type: Schema.Types.Mixed, default: {} }, monthlyCursors: { type: Schema.Types.Mixed, default: {} } }, { collection: 'channel_goals', versionKey: false }));
+export const GoalSet = model<StoredGoals>('ChannelGoals', new Schema<StoredGoals>({ _id: String, revision: Number, goals: [Schema.Types.Mixed], outcomes: { type: Schema.Types.Mixed, default: {} }, monthlyCursors: { type: Schema.Types.Mixed, default: {} },
+  // Actions on Twitch goals, one rule per Twitch goal type (not goals: never counted against the plan limit).
+  twitchActions: { type: [Schema.Types.Mixed], default: undefined } }, { collection: 'channel_goals', versionKey: false }));
 const contributionSchema = new Schema<Contribution>({ _id: String, channel: String, goal: String, occurredAt: Number, amount: Number, expiresAt: Date }, { collection: 'goal_contributions', versionKey: false });
 contributionSchema.index({ channel: 1, goal: 1, occurredAt: 1 });
 contributionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
@@ -75,8 +79,11 @@ export async function goalPlan(channel: string): Promise<GoalPlan> {
   if (!user) throw new GoalError('not_found', 'Channel not found', 404);
   return user.plan_tier === 'premium' || user.plan_tier === 'pro' ? user.plan_tier : 'free';
 }
+export const twitchOutcomeKey = (goalID: string): string => `twitch:${goalID}`;
 export async function goalSnapshot(channel: string, now = Date.now()) {
-  const plan = await goalPlan(channel), state = await GoalSet.findById(channel).lean();
+  const plan = await goalPlan(channel);
+  // A failed Twitch goals read never hides the channel's own goals.
+  const [state, stored] = await Promise.all([GoalSet.findById(channel).lean(), readTwitchGoals(channel).catch(() => undefined)]);
   // Use the dashboard's active ledgers, including relationships predating the goal.
   // Query each requested metric once, even if several goals share it.
   const needsTotal = (metric: GoalMetric) => state?.goals.some(goal => goal.mode === 'current' && goal.metric === metric);
@@ -90,7 +97,18 @@ export async function goalSnapshot(channel: string, now = Date.now()) {
     const outcome = state?.outcomes?.[period ? monthlyOutcomeKey(goal.id, period.key) : goal.id];
     return { ...goal, ...(period ? { period } : {}), outcome: outcome?.actionStatus === 'running' && now - outcome.at > 300_000 ? { ...outcome, actionStatus: 'unknown' as const } : outcome, current, percent: Math.min(100, current / goal.target * 100), status: now < goal.startsAt ? 'scheduled' : current >= goal.target ? 'reached' : goal.mode === 'fixed' && now >= goal.endsAt! ? 'ended' : 'active' };
   }));
-  return { plan, limit: goalLimit(plan), metrics: goalMetrics(plan), revision: state?.revision ?? 0, goals, serverTime: now };
+  const twitch = {
+    // `unknown`: never asked Twitch yet (or the read failed); `permission`: the streamer must reconnect Twitch.
+    access: stored === undefined ? 'unknown' as const : stored?.access ?? 'unknown' as const,
+    goals: twitchGoalViews(stored ?? null, now).map((goal): TwitchGoalView & { outcome?: GoalOutcome } => {
+      const outcome = state?.outcomes?.[twitchOutcomeKey(goal.id)];
+      return outcome ? { ...goal, outcome: outcome.actionStatus === 'running' && now - outcome.at > 300_000 ? { ...outcome, actionStatus: 'unknown' } : outcome } : goal;
+    }),
+    rules: state?.twitchActions ?? [],
+    /** Twitch goal types whose actions this plan can use (Bits and cheerers need Premium). */
+    actionTypes: twitchGoalTypesFor(plan)
+  };
+  return { plan, limit: goalLimit(plan), metrics: goalMetrics(plan), revision: state?.revision ?? 0, goals, twitch, serverTime: now };
 }
 
 // A single channel document provides atomic slot allocation and stale-edit detection.
@@ -135,6 +153,27 @@ export async function changeGoal(channel: string, action: 'create' | 'edit' | 'd
   // Deleted goal IDs never return. A concurrent delivery may leave an unreachable receipt,
   // but cannot affect another goal or resurrect deleted configuration.
   if (action === 'delete') await GoalContribution.deleteMany({ channel, goal: id }, { writeConcern: durable });
+}
+
+/** Saves (or removes, with no actions) the actions for one Twitch goal type. Same revision check as goal edits. */
+export async function changeTwitchGoalRule(channel: string, type: string, input: unknown, expectedRevision: number): Promise<void> {
+  if (!isTwitchGoalType(type)) throw new GoalError('invalid', 'Unknown Twitch goal type');
+  const plan = await goalPlan(channel), state = await GoalSet.findById(channel).lean();
+  if ((state?.revision ?? 0) !== expectedRevision) throw new GoalError('conflict', 'Goals changed. Refresh and try again.', 409);
+  const rules = [...(state?.twitchActions ?? [])], index = rules.findIndex(rule => rule.type === type);
+  const rule = twitchGoalRule(type, input, rules[index], Date.now());
+  if (rule && !twitchGoalTypesFor(plan).includes(type)) throw new GoalError('plan_required', 'Actions on Twitch Bits and cheerer goals require Premium', 403);
+  if (index >= 0) rules.splice(index, 1, ...(rule ? [rule] : []));
+  else if (rule) rules.push(rule);
+  try {
+    if (!state) await GoalSet.create([{ _id: channel, goals: [], revision: 1, monthlyCursors: {}, twitchActions: rules }], { w: 1, j: true });
+    else if (!(await GoalSet.updateOne({ _id: channel, revision: expectedRevision }, { $set: { twitchActions: rules }, $inc: { revision: 1 } }, { writeConcern: durable })).modifiedCount) {
+      throw new GoalError('conflict', 'Goals changed. Refresh and try again.', 409);
+    }
+  } catch (error) {
+    if ((error as { code?: number }).code === 11000) throw new GoalError('conflict', 'Goals changed. Refresh and try again.', 409);
+    throw error;
+  }
 }
 
 export async function applyGoalEvent(event: DomainEventEnvelope): Promise<void> {

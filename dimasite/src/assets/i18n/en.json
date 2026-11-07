@@ -8325,6 +8325,16 @@
     "customGoalDataNone": "no active goal (shows 0)",
     "customGoalDataTotals": "“Total” is your current followers and subscribers; Bits and raids count the last 90 days. “Month” is the calendar month (UTC).",
     "customGoalDataOpen": "Open Goals",
+    "customGoalSourceTitle": "Goal numbers come from",
+    "customGoalSourceDima": "Your goals here",
+    "customGoalSourceDimaHint": "The Goals page: money goals, set dates, monthly resets and more.",
+    "customGoalSourceTwitch": "Your Twitch goals",
+    "customGoalSourceTwitchHint": "The goals you make on Twitch. Free, and Twitch keeps the count.",
+    "customGoalSourceDimaShort": "Goals page",
+    "customGoalSourceTwitchShort": "Twitch",
+    "customGoalDataTwitch": "Goal widgets set to “Manual” follow your Twitch goals: the active Twitch goal of each kind. They move when Twitch updates them, so test alerts don't move them.",
+    "customGoalDataNoTwitch": "no Twitch goal (shows 0)",
+    "customGoalDataNoTwitchMoney": "Twitch has no money goals (shows 0)",
     "customCommandsTitle": "Commands",
     "customCommandsIntro": "Put one of these in a chat command's response. When someone uses that command, this widget reacts on stream.",
     "customCommandsAny": "Any command",
@@ -9561,6 +9571,91 @@
     "title": "Goals",
     "subtitle": "Choose what your community works toward.",
     "new": "New goal",
+    "ownTitle": "Your goals here",
+    "twitch": {
+      "title": "On Twitch",
+      "free": "Free · doesn't use a goal slot",
+      "permission": "Reconnect Twitch so DomDimaBot can read the goals you make on Twitch.",
+      "reconnect": "Reconnect Twitch",
+      "empty": "No goals on Twitch right now. Goals you make on Twitch show up here on their own, with live progress.",
+      "manageHint": "Make or change these goals on Twitch. They update here and in OBS widgets set to Twitch goals.",
+      "manage": "Open Stream Manager",
+      "actions": "Actions",
+      "actionsFor": "Actions for {{name}}",
+      "edit": "Edit",
+      "add": "Add",
+      "save": "Save actions",
+      "remove": "Remove actions",
+      "rulesSummary": "Actions for Twitch goals · {{count}} set",
+      "rulesHint": "Set them once per kind of goal: they run for every Twitch goal of that kind, including ones you make later.",
+      "editorTitle": "Actions for {{kind}}",
+      "editorHint": "These run for every Twitch goal of this kind, now and later. Twitch keeps the count; DomDimaBot sends the message.",
+      "onceHint": "Each runs once per goal, and only for what happens after you save. A goal that was already reached when DomDimaBot first saw it doesn't run anything. Failed attempts aren't retried.",
+      "premium": "Actions on Twitch Bits and cheerer goals need Premium. The goals themselves are free.",
+      "viewPlans": "See plans",
+      "when": {
+        "completion": "When it's reached",
+        "failure": "When it ends without being reached"
+      },
+      "summary": {
+        "completion": "Reached: {{action}}",
+        "failure": "Ends unreached: {{action}}"
+      },
+      "actionNames": {
+        "none": "nothing",
+        "message": "chat message",
+        "ast": "AST"
+      },
+      "status": {
+        "active": "In progress",
+        "reached": "Target reached",
+        "ended": "Ended",
+        "endedReached": "Ended · reached"
+      },
+      "outcomes": {
+        "completed": "Reached action",
+        "failed": "Ended action"
+      },
+      "suppressed": {
+        "not_seen": "Skipped: it was reached before DomDimaBot saw it",
+        "historical_catchup": "Skipped: it happened too long ago",
+        "plan": "Skipped: needs Premium"
+      },
+      "types": {
+        "follow": "Follower goal",
+        "subscription": "Sub points goal",
+        "subscription_count": "Sub goal",
+        "new_subscription": "New sub points goal",
+        "new_subscription_count": "New sub goal",
+        "new_bit": "Bits goal",
+        "new_cheerer": "Cheerer goal"
+      },
+      "typeGoals": {
+        "follow": "Follower goals",
+        "subscription": "Sub points goals",
+        "subscription_count": "Sub goals",
+        "new_subscription": "New sub points goals",
+        "new_subscription_count": "New sub goals",
+        "new_bit": "Bits goals",
+        "new_cheerer": "Cheerer goals"
+      },
+      "kinds": {
+        "follow": "Counts all your followers",
+        "subscription": "Sub points (tier 2 = 2, tier 3 = 6), minus ended subs",
+        "subscription_count": "Your subs, minus ended ones",
+        "new_subscription": "Sub points from new subs since it started",
+        "new_subscription_count": "New subs since it started",
+        "new_bit": "Bits used on your channel",
+        "new_cheerer": "Different people who cheered"
+      },
+      "errors": {
+        "conflict": "Goals changed elsewhere. Check the refreshed list, then save again.",
+        "plan_required": "Actions on Twitch Bits and cheerer goals need Premium or Pro.",
+        "permission_required": "Only the owner or a full-access channel admin can change these actions.",
+        "invalid": "Check the action text, then try again.",
+        "save": "Couldn't save. Your text is kept. Try again."
+      }
+    },
     "quota": "{{count}} of {{limit}} goals",
     "plans": {
       "free": "Free",

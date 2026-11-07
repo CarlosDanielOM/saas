@@ -122,8 +122,10 @@ export class CustomWidgetsService {
   /** The channel's last stored chat messages (oldest first, text only) for "Replay recent chat". */
   chatHistory(): Promise<{ messages: DimaChat[] }> { return this.api.request<{ messages: DimaChat[] }>('GET', `${this.channel}/custom-widgets/chat-history`); }
   signalStatus(): Promise<{ skipped: number }> { return this.api.request<{ skipped: number }>('GET', `${this.channel}/custom-widgets/signals`); }
-  /** Session snapshot; `goalSources` (owner only) names the goal behind each StreamElements "manual" goal. */
-  session(): Promise<DimaSession & { goalSources?: Record<string, { id: string; name: string; status: string }> }> { return this.api.request('GET', `${this.channel}/custom-widgets/session`); }
+  /** Session snapshot; `goalSources` / `twitchGoalSources` (owner only) name the goal behind each StreamElements "manual" goal. */
+  session(): Promise<DimaSession & { goalSources?: Record<string, { id: string; name: string; status: string }>; twitchGoalSources?: Record<string, { id: string; name: string; status: string }> }> {
+    return this.api.request('GET', `${this.channel}/custom-widgets/session`);
+  }
   mediaPlan(id: string): Promise<MediaPlan> { return this.api.request<MediaPlan>('GET', `${this.channel}/custom-widgets/${id}/media`, undefined, 60000); }
   async copyMedia(id: string, urls: string[]): Promise<MediaCopyResult> {
     const result = await this.api.request<MediaCopyResult>('POST', `${this.channel}/custom-widgets/${id}/media`, { urls }, 600000);

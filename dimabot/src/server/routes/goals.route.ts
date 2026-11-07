@@ -3,7 +3,8 @@ import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { GoalError } from '../../goals/model.js';
-import { changeGoal, goalSnapshot } from '../../goals/service.js';
+import { changeGoal, changeTwitchGoalRule, goalSnapshot } from '../../goals/service.js';
+import { resyncTwitchGoalsWithin } from '../../goals/twitch-store.js';
 import { requestWidgetSessionRefresh } from '../../widget_feed/session-refresh.js';
 
 export const goalsRoute = express.Router();
@@ -20,7 +21,18 @@ goalsRoute.use('/:channelID', (req: AuthRequest, res, next) => {
     next();
   })().catch(next);
 });
-goalsRoute.get('/:channelID', wrap(async (req, res) => ok(res, { ...await goalSnapshot(channel(req)), canManage: (await getChannelAccessContext(req.user?.id, channel(req), '*')).allowed })));
+goalsRoute.get('/:channelID', wrap(async (req, res) => {
+  // Twitch goals (free, read-only): ask Twitch first, but show the last stored ones if it takes longer than 3 s.
+  await resyncTwitchGoalsWithin(channel(req), 3000, { fromPage: true });
+  return ok(res, { ...await goalSnapshot(channel(req)), canManage: (await getChannelAccessContext(req.user?.id, channel(req), '*')).allowed });
+}));
+// Actions for one Twitch goal type ({ actions: { completion?, failure? } }; no actions removes them).
+goalsRoute.put('/:channelID/twitch/:type', wrap(async (req, res) => {
+  const revision = req.header('If-Match');
+  if (!revision || !/^\d+$/.test(revision) || !Number.isSafeInteger(Number(revision))) throw new GoalError('invalid', 'If-Match revision required');
+  await changeTwitchGoalRule(channel(req), String(req.params.type), req.body, Number(revision));
+  return ok(res, { ...await goalSnapshot(channel(req)), canManage: true });
+}));
 for (const [method, path, action] of [['post', '/:channelID', 'create'], ['patch', '/:channelID/:id', 'edit'], ['delete', '/:channelID/:id', 'delete']] as const) {
   goalsRoute[method](path, wrap(async (req, res) => {
     const revision = req.header('If-Match');

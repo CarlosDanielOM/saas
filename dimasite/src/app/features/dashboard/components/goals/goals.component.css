@@ -8,6 +8,8 @@ p { line-height:1.5; }
 .head { display:flex; gap:.75rem; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; }
 .head p,.detail,.quota,.note,.empty { color:var(--muted,#596273); font-size:.82rem; }
 .quota,.empty,.note,.plan-note { margin-top:.8rem; }
+.own-title { margin-top:1.25rem; font-size:1rem; font-weight:800; }
+.own-title + .quota { margin-top:.2rem; }
 .goals { margin-top:.5rem; }
 .goal { padding:.9rem 0; border-bottom:1px solid var(--line,rgba(15,17,21,.08)); }
 .goal-head,.numbers { display:flex; justify-content:space-between; align-items:center; gap:.6rem; }

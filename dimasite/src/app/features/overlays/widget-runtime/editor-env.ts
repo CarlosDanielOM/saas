@@ -32,6 +32,8 @@ export class EditorWidgetEnv implements CustomWidgetEnv {
   readonly logs = signal<Record<string, LayerLog>>({});
   /** Which goal on the Goals page feeds each StreamElements "manual" goal (`follower-goal`…), from the owner snapshot. */
   readonly goalSources = signal<Record<string, { id: string; name: string; status: string }> | null>(null);
+  /** The Twitch goal behind each StreamElements "manual" goal, for layers set to Twitch goals. */
+  readonly twitchGoalSources = signal<Record<string, { id: string; name: string; status: string }> | null>(null);
   /** The overlay's current layers (the Commands block checks which other widgets listen to signals). */
   readonly sceneLayers = signal<readonly OverlayWidget[]>([]);
 
@@ -95,8 +97,8 @@ export class EditorWidgetEnv implements CustomWidgetEnv {
   /** Loads this channel's session snapshot (latest follower, recent events…) for widgets that use it. */
   async loadSession(): Promise<void> {
     try {
-      const { goalSources, ...session } = await this.widgets.session();
-      this.sessionData = session; this.serverSession = session; this.obsSession = null; this.goalSources.set(goalSources ?? {});
+      const { goalSources, twitchGoalSources, ...session } = await this.widgets.session();
+      this.sessionData = session; this.serverSession = session; this.obsSession = null; this.goalSources.set(goalSources ?? {}); this.twitchGoalSources.set(twitchGoalSources ?? {});
     } catch { this.sessionData = { data: {}, recents: [] }; }
     // Frames that started before the snapshot arrived get it now.
     this.bus.emit({ type: 'session', data: this.sessionData });

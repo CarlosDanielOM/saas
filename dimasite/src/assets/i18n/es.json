@@ -8325,6 +8325,16 @@
     "customGoalDataNone": "sin meta activa (muestra 0)",
     "customGoalDataTotals": "“Total” son tus seguidores y suscriptores actuales; los Bits y las raids cuentan los últimos 90 días. “Mes” es el mes natural (UTC).",
     "customGoalDataOpen": "Abrir Metas",
+    "customGoalSourceTitle": "Los números de la meta vienen de",
+    "customGoalSourceDima": "Tus metas de aquí",
+    "customGoalSourceDimaHint": "La página de Metas: metas de dinero, fechas fijas, reinicio mensual y más.",
+    "customGoalSourceTwitch": "Tus metas de Twitch",
+    "customGoalSourceTwitchHint": "Las metas que creas en Twitch. Gratis, y Twitch lleva la cuenta.",
+    "customGoalSourceDimaShort": "Página de Metas",
+    "customGoalSourceTwitchShort": "Twitch",
+    "customGoalDataTwitch": "Los widgets de metas en “Manual” siguen tus metas de Twitch: la meta activa de cada tipo. Se mueven cuando Twitch las actualiza, así que las alertas de prueba no las mueven.",
+    "customGoalDataNoTwitch": "sin meta de Twitch (muestra 0)",
+    "customGoalDataNoTwitchMoney": "Twitch no tiene metas de dinero (muestra 0)",
     "customCommandsTitle": "Comandos",
     "customCommandsIntro": "Pon una de estas en la respuesta de un comando del chat. Cuando alguien use ese comando, este widget reacciona en vivo.",
     "customCommandsAny": "Cualquier comando",
@@ -9561,6 +9571,91 @@
     "title": "Metas",
     "subtitle": "Elige qué quiere conseguir tu comunidad.",
     "new": "Nueva meta",
+    "ownTitle": "Tus metas de aquí",
+    "twitch": {
+      "title": "En Twitch",
+      "free": "Gratis · no usa un espacio de meta",
+      "permission": "Vuelve a conectar Twitch para que DomDimaBot pueda leer las metas que creas en Twitch.",
+      "reconnect": "Volver a conectar Twitch",
+      "empty": "No tienes metas en Twitch por ahora. Las metas que crees en Twitch aparecen aquí solas, con su avance en vivo.",
+      "manageHint": "Crea o cambia estas metas en Twitch. Se actualizan aquí y en los widgets de OBS que usan metas de Twitch.",
+      "manage": "Abrir el Administrador de transmisiones",
+      "actions": "Acciones",
+      "actionsFor": "Acciones de {{name}}",
+      "edit": "Editar",
+      "add": "Agregar",
+      "save": "Guardar acciones",
+      "remove": "Quitar acciones",
+      "rulesSummary": "Acciones para metas de Twitch · {{count}} configuradas",
+      "rulesHint": "Configúralas una vez por tipo de meta: se ejecutan en cada meta de Twitch de ese tipo, también en las que crees después.",
+      "editorTitle": "Acciones para {{kind}}",
+      "editorHint": "Se ejecutan en cada meta de Twitch de este tipo, ahora y después. Twitch lleva la cuenta; DomDimaBot manda el mensaje.",
+      "onceHint": "Cada una se ejecuta una vez por meta, y solo por lo que pase después de guardar. Si una meta ya estaba cumplida cuando DomDimaBot la vio por primera vez, no se ejecuta nada. Los intentos fallidos no se repiten.",
+      "premium": "Las acciones en metas de Bits de Twitch (Bits o personas que animan con Bits) requieren Premium. Las metas en sí son gratis.",
+      "viewPlans": "Ver planes",
+      "when": {
+        "completion": "Cuando se cumpla",
+        "failure": "Cuando termine sin cumplirse"
+      },
+      "summary": {
+        "completion": "Cumplida: {{action}}",
+        "failure": "Termina sin cumplirse: {{action}}"
+      },
+      "actionNames": {
+        "none": "nada",
+        "message": "mensaje en el chat",
+        "ast": "AST"
+      },
+      "status": {
+        "active": "En progreso",
+        "reached": "Meta alcanzada",
+        "ended": "Terminada",
+        "endedReached": "Terminada · cumplida"
+      },
+      "outcomes": {
+        "completed": "Acción al cumplirse",
+        "failed": "Acción al terminar"
+      },
+      "suppressed": {
+        "not_seen": "Omitida: ya estaba cumplida antes de que DomDimaBot la viera",
+        "historical_catchup": "Omitida: pasó hace mucho",
+        "plan": "Omitida: requiere Premium"
+      },
+      "types": {
+        "follow": "Meta de seguidores",
+        "subscription": "Meta de puntos de sub",
+        "subscription_count": "Meta de subs",
+        "new_subscription": "Meta de puntos de subs nuevos",
+        "new_subscription_count": "Meta de subs nuevos",
+        "new_bit": "Meta de Bits",
+        "new_cheerer": "Meta de personas que animan con Bits"
+      },
+      "typeGoals": {
+        "follow": "Metas de seguidores",
+        "subscription": "Metas de puntos de sub",
+        "subscription_count": "Metas de subs",
+        "new_subscription": "Metas de puntos de subs nuevos",
+        "new_subscription_count": "Metas de subs nuevos",
+        "new_bit": "Metas de Bits",
+        "new_cheerer": "Metas de personas que animan con Bits"
+      },
+      "kinds": {
+        "follow": "Cuenta a todos tus seguidores",
+        "subscription": "Puntos de sub (nivel 2 = 2, nivel 3 = 6), menos los subs que terminan",
+        "subscription_count": "Tus subs, menos los que terminan",
+        "new_subscription": "Puntos de los subs nuevos desde que empezó",
+        "new_subscription_count": "Subs nuevos desde que empezó",
+        "new_bit": "Bits usados en tu canal",
+        "new_cheerer": "Personas distintas que animaron con Bits"
+      },
+      "errors": {
+        "conflict": "Las metas cambiaron en otro lado. Revisa la lista actualizada y vuelve a guardar.",
+        "plan_required": "Las acciones en metas de Bits de Twitch requieren Premium o Pro.",
+        "permission_required": "Solo el dueño o un admin del canal con acceso total puede cambiar estas acciones.",
+        "invalid": "Revisa el texto de la acción y vuelve a intentarlo.",
+        "save": "No se pudo guardar. Tu texto se conserva. Inténtalo de nuevo."
+      }
+    },
     "quota": "{{count}} de {{limit}} metas",
     "plans": {
       "free": "Gratis",

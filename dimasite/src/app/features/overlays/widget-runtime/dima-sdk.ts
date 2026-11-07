@@ -130,7 +130,7 @@ export function dimaSdk(win: any, boot: { exec: string; fields: Record<string, u
     version: 1,
     /** Resolves after Studio/OBS sends the widget's settings and channel. */
     ready: () => ready,
-    get context() { return context ? { widget: context.widget, channel: context.channel, fields: context.fields, mode: context.mode, muted: !!context.muted, session: context.session ?? null } : null; },
+    get context() { return context ? { widget: context.widget, channel: context.channel, fields: context.fields, mode: context.mode, muted: !!context.muted, session: context.session ?? null, goalSource: context.goalSource === 'twitch' ? 'twitch' : 'dima' } : null; },
     get fields() { return context ? context.fields : initialFields; },
     get mode() { return context ? context.mode : null; },
     on(type: string, handler: (data: any) => void) {

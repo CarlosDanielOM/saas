@@ -29,3 +29,14 @@ test('StreamElements "*-goal" values follow the Goals page: first active goal pe
   assert.deepEqual(Object.fromEntries(Object.entries(sources).map(([key, source]) => [key, source.id])), { 'follower-goal': 'c', 'subscriber-goal': 'd', 'tip-goal': 'f' });
   assert.deepEqual(seGoals([]), { data: {}, sources: {} });
 });
+
+test('Dima.state("goals") lists our goals then Twitch goals, each with its source and no actions', async () => {
+  const { publicGoals } = await import('./state.js');
+  const own = { id: 'o', name: 'Ours', metric: 'subs', mode: 'total', target: 10, current: 4, percent: 40, status: 'active', startsAt: 1, actions: { completion: { type: 'ast', text: 'secret' } } };
+  const twitch = { id: 't', type: 'new_cheerer', description: '', current: 3, target: 10, percent: 30, status: 'active', achieved: null, startedAt: 2, endedAt: null,
+    outcome: { phase: 'completed', sequence: 1, at: 1, actionStatus: 'finished' } };
+  const list = publicGoals({ goals: [own], twitch: { goals: [twitch], rules: [{ type: 'new_cheerer', completion: { type: 'ast', text: 'secret', armedAt: 1 } }] } } as never);
+  assert.deepEqual(list.map(goal => [goal.source, goal.id, goal.metric]), [['dima', 'o', 'subs'], ['twitch', 't', 'cheerers']]);
+  assert.equal(list[1].name, 'Cheerer goal');
+  assert.equal(JSON.stringify(list).includes('secret') || JSON.stringify(list).includes('outcome'), false);
+});

@@ -6,6 +6,7 @@ import { EXPORT_FILE_NAMES, MANIFEST_FILE, PACKAGE_FILES, buildWidgetIni, groupF
 import { writeZip } from './custom-widget-zip';
 import { CustomWidgetsService, canTarget, copyableMedia, message, signalSnippet, signalValueKind } from './custom-widgets.service';
 import { EditorWidgetEnv } from './widget-runtime/editor-env';
+import { layerGoalSource, type GoalSource } from './widget-runtime/goal-source';
 import { OverlayInteractionSetupComponent } from './overlay-interaction-setup.component';
 import { OverlayCustomWidgetCodeComponent } from './overlay-custom-widget-code.component';
 import { OverlayCustomWidgetImportComponent } from './overlay-custom-widget-import.component';
@@ -63,6 +64,15 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
     .cw-goal-data { display:grid; gap:.5rem; padding:0 .75rem .75rem }
     .cw-goal-data ul { display:grid; gap:.2rem; margin:0; padding:0; list-style:none; color:var(--muted); font-size:.8rem }
     .cw-goal-data strong { color:var(--fg); font-weight:700 }
+    .cw-goal-choice { display:grid; gap:.4rem; min-width:0; margin:0; padding:0; border:0 }
+    .cw-goal-choice legend { margin-bottom:.35rem; padding:0; color:var(--fg); font-size:.84rem; font-weight:800 }
+    .cw-goal-option { position:relative; display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:.6rem; min-height:44px; padding:.6rem .7rem; border:1px solid var(--line); border-radius:.75rem; background:var(--btn); cursor:pointer }
+    .cw-goal-option--on { border-color:var(--accent); background:var(--accent-soft) }
+    .cw-goal-option input { width:1.1rem; height:1.1rem; margin:.1rem 0 0; accent-color:var(--accent) }
+    .cw-goal-option input:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+    .cw-goal-option span { display:grid; gap:.1rem; min-width:0 }
+    .cw-goal-option strong { font-size:.84rem; font-weight:800 }
+    .cw-goal-option small { color:var(--muted); font-size:.76rem; font-weight:600; line-height:1.4 }
     .cw-commands { display:grid; gap:.6rem; padding:.75rem; border:1px solid var(--line); border-radius:.9rem; background:var(--input-bg) }
     .cw-commands h4 { margin:0; color:var(--fg); font-size:.86rem; font-weight:800 }
     .cw-signal { display:grid; gap:.4rem; padding-top:.6rem; border-top:1px solid var(--line) }
@@ -102,12 +112,23 @@ import type { WidgetSettingsContext } from './overlay-widget-module';
         <div data-cw-polls-setup><p class="lf-note">{{ t('customPollsSetup') }}</p><app-overlay-interaction-setup [channel]="channelId()" [streamer]="streamer()" /></div>
       }
       @if (uses().includes('session') || uses().includes('goals')) {
-        <details class="cw-log" data-cw-goal-data>
-          <summary>{{ t('customGoalData') }}</summary>
+        <details class="cw-log" data-cw-goal-data [open]="goalSource() === 'twitch'">
+          <summary>{{ t('customGoalData') }} <span class="cw-log__count" data-cw-goal-source-chip>{{ t(goalSource() === 'twitch' ? 'customGoalSourceTwitchShort' : 'customGoalSourceDimaShort') }}</span></summary>
           <div class="cw-goal-data">
-            <p class="lf-note">{{ t('customGoalDataManual') }}</p>
-            @if (goalSources(); as sources) {
-              <ul>@for (kind of goalKinds; track kind) { <li [attr.data-cw-goal-source]="kind">{{ t('customGoalKind_' + kind) }}: <strong>{{ sources[kind + '-goal']?.name ?? t('customGoalDataNone') }}</strong></li> }</ul>
+            <fieldset class="cw-goal-choice" data-cw-goal-source-choice>
+              <legend>{{ t('customGoalSourceTitle') }}</legend>
+              @for (option of goalSourceOptions; track option) {
+                <label class="cw-goal-option" [class.cw-goal-option--on]="goalSource() === option" [attr.data-cw-goal-option]="option">
+                  <input type="radio" [name]="'cw-goal-source-' + context().widget.id" [value]="option" [checked]="goalSource() === option" (change)="setGoalSource(option)" />
+                  <span><strong>{{ t(option === 'twitch' ? 'customGoalSourceTwitch' : 'customGoalSourceDima') }}</strong><small>{{ t(option === 'twitch' ? 'customGoalSourceTwitchHint' : 'customGoalSourceDimaHint') }}</small></span>
+                </label>
+              }
+            </fieldset>
+            <p class="lf-note">{{ t(goalSource() === 'twitch' ? 'customGoalDataTwitch' : 'customGoalDataManual') }}</p>
+            @if (goalSource() === 'twitch' ? twitchGoalSources() : goalSources(); as sources) {
+              <ul>@for (kind of goalKinds; track kind) {
+                <li [attr.data-cw-goal-source]="kind">{{ t('customGoalKind_' + kind) }}: <strong>{{ sources[kind + '-goal']?.name ?? t(goalSource() === 'twitch' ? (kind === 'tip' ? 'customGoalDataNoTwitchMoney' : 'customGoalDataNoTwitch') : 'customGoalDataNone') }}</strong></li>
+              }</ul>
             }
             <p class="lf-note">{{ t('customGoalDataTotals') }}</p>
             <a class="lf-btn" [routerLink]="['/', streamer(), 'dashboard']" fragment="goals" target="_blank" rel="noopener" data-cw-goals-link><lucide-icon [img]="icons.ExternalLink" [size]="16" aria-hidden="true" />{{ t('customGoalDataOpen') }}</a>
@@ -193,6 +214,15 @@ export class OverlayCustomWidgetSettingsComponent {
   readonly goalKinds = ['follower', 'subscriber', 'cheer', 'tip'] as const;
   readonly channelId = computed(() => this.widgets.channelId);
   readonly goalSources = computed(() => this.env?.goalSources() ?? null);
+  readonly twitchGoalSources = computed(() => this.env?.twitchGoalSources() ?? null);
+  readonly goalSourceOptions = ['dima', 'twitch'] as const;
+  readonly goalSource = computed(() => layerGoalSource(this.context().widget.config));
+  /** Goals page (default: no key saved) or Twitch goals; the preview restarts with it, OBS after the next publish. */
+  setGoalSource(source: GoalSource): void {
+    if (source === this.goalSource()) return;
+    const { goalSource: _old, ...rest } = this.context().widget.config ?? {};
+    this.configChange.emit({ config: { ...rest, ...(source === 'twitch' ? { goalSource: 'twitch' } : {}) } });
+  }
   readonly streamer = computed(() => this.router.url.split(/[/?#]/)[1] ?? '');
   readonly copied = signal<string | null>(null);
   readonly skipped = signal(0);

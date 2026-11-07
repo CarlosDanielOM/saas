@@ -7,6 +7,7 @@ import { Types } from 'mongoose';
 
 mock.module('../utils/databases/mongodb.database.js', { namedExports: { getMongoDBConnection: async () => undefined } });
 mock.module('../widget_feed/session-refresh.js', { namedExports: { requestWidgetSessionRefresh: () => undefined } });
+mock.module('./twitch-store.js', { namedExports: { readTwitchGoals: async () => null } });
 const actionCalls: string[] = [];
 mock.module('../utils/ast_command_delivery.js', { namedExports: { deliverAstMessage: async (_channel: string, message: any) => {
   actionCalls.push(message.parsedText); return { error: false };
