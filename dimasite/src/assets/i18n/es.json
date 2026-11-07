@@ -7131,6 +7131,35 @@
     "itemsHint": "Más espacios o más peso significa más probabilidad de ganar.",
     "slotsUsed": "{{used}} de {{max}} espacios usados",
     "addItem": "Agregar premio",
+    "import": {
+      "button": "Importar",
+      "title": "Importar premios",
+      "help": "Pega una lista o elige un archivo .txt o .csv. Separa los nombres con comas o saltos de línea: cada nombre es un espacio con peso 1, y repetir un nombre le da más espacios. Un CSV puede usar nombre, peso, cantidad en cada línea.",
+      "chooseFile": "Elegir archivo",
+      "fileTypes": ".txt o .csv, hasta 1 MB",
+      "fileTooBig": "Ese archivo pesa más de 1 MB. Usa uno más pequeño.",
+      "fileError": "No se pudo leer ese archivo. Intenta de nuevo o pega el texto.",
+      "pasteLabel": "O pega la lista",
+      "placeholder": "Premio 1, Premio 1, Premio 2, Premio 3",
+      "formatLabel": "Leerlo como",
+      "format": {
+        "list": "Lista de nombres",
+        "table": "Nombre, peso, cantidad"
+      },
+      "formatHint": {
+        "list": "Las comas o saltos de línea separan los nombres. Los nombres repetidos tienen más espacios.",
+        "table": "Un premio por línea. Peso y cantidad son opcionales (1 si están vacíos). Se omite la fila de encabezado."
+      },
+      "nothing": "Todavía no hay premios.",
+      "summary": "Premios: {{count}} · Espacios: {{slots}}",
+      "skipped": "Omitidos: {{count}}. Nombres de más de 120 caracteres o números que no son enteros desde 1.",
+      "more": "Y {{count}} más.",
+      "replace": "Quitar primero los {{count}} premios actuales",
+      "run": "Agregar premios ({{count}})",
+      "progress": "Agregando {{done}} de {{total}}…",
+      "done": "Premios importados: {{count}} · Espacios: {{slots}}",
+      "stopped": "La importación se detuvo después de {{done}} de {{total}} pasos."
+    },
     "search": "Buscar un premio",
     "slotsChip": "×{{count}} espacios",
     "weightChip": "{{count}}× suerte",

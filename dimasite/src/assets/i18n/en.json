@@ -7131,6 +7131,35 @@
     "itemsHint": "More slots or more weight means a better chance to win.",
     "slotsUsed": "{{used}} of {{max}} slots used",
     "addItem": "Add prize",
+    "import": {
+      "button": "Import",
+      "title": "Import prizes",
+      "help": "Paste a list or choose a .txt or .csv file. Separate names with commas or new lines: each name is one slot with weight 1, and repeating a name gives it more slots. A CSV can use name, weight, count on each line.",
+      "chooseFile": "Choose file",
+      "fileTypes": ".txt or .csv, up to 1 MB",
+      "fileTooBig": "That file is over 1 MB. Use a smaller file.",
+      "fileError": "Could not read that file. Try again or paste the text.",
+      "pasteLabel": "Or paste the list",
+      "placeholder": "Prize 1, Prize 1, Prize 2, Prize 3",
+      "formatLabel": "Read it as",
+      "format": {
+        "list": "List of names",
+        "table": "Name, weight, count"
+      },
+      "formatHint": {
+        "list": "Commas or new lines separate names. Repeated names get more slots.",
+        "table": "One prize per line. Weight and count are optional (1 if empty). A header row is skipped."
+      },
+      "nothing": "No prizes found yet.",
+      "summary": "Prizes: {{count}} · Slots: {{slots}}",
+      "skipped": "Skipped: {{count}}. Names over 120 characters or numbers that are not whole numbers from 1.",
+      "more": "And {{count}} more.",
+      "replace": "Remove the current {{count}} prizes first",
+      "run": "Add prizes ({{count}})",
+      "progress": "Adding {{done}} of {{total}}…",
+      "done": "Prizes imported: {{count}} · Slots: {{slots}}",
+      "stopped": "Import stopped after {{done}} of {{total}} steps."
+    },
     "search": "Find a prize",
     "slotsChip": "×{{count}} slots",
     "weightChip": "{{count}}× luck",

@@ -27,6 +27,7 @@ import {
 } from './roulette-api.service';
 import { RouletteApi } from './roulette-api.service';
 import { RouletteDisplayComponent } from './roulette-display.component';
+import { ImportFormat, detectFormat, parseImport } from './roulette-import';
 
 type CardSize = Roulette['cardSize'];
 type WinnerAction = Roulette['settings']['winnerAction'];
@@ -87,6 +88,18 @@ export class RoulettePageComponent {
   readonly createOpen = signal(false);
   readonly deleteOpen = signal(false);
   readonly removing = signal<RouletteItem | null>(null);
+  readonly importOpen = signal(false);
+  readonly importText = signal('');
+  readonly importFormat = signal<ImportFormat>('list');
+  readonly importReplace = signal(false);
+  readonly importProgress = signal<{ done: number; total: number } | null>(null);
+  readonly importFileError = signal('');
+  readonly importResult = computed(() => parseImport(this.importText(), this.importFormat()));
+  /** Slots after the import, checked against the design's limit before anything is sent. */
+  readonly importSlots = computed(
+    () => (this.importReplace() ? 0 : this.copies()) + this.importResult().copies,
+  );
+  readonly importOver = computed(() => this.importSlots() > this.capacity());
   readonly prizeSubmitted = signal(false);
   readonly createSubmitted = signal(false);
   private aliasEdited = false;
@@ -501,6 +514,74 @@ export class RoulettePageComponent {
       this.removing.set(null);
   }
 
+  // Import from a pasted list or a .txt/.csv file
+  openImport(): void {
+    this.importText.set('');
+    this.importFormat.set('list');
+    this.importReplace.set(false);
+    this.importProgress.set(null);
+    this.importFileError.set('');
+    this.importOpen.set(true);
+    this.focusSoon('#rl-import-text');
+  }
+  setImportText(text: string): void {
+    this.importText.set(text);
+    this.importFormat.set(detectFormat(text));
+  }
+  async pickImportFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.importFileError.set('');
+    if (file.size > 1024 * 1024) {
+      this.importFileError.set(this.t('import.fileTooBig'));
+      return;
+    }
+    try {
+      this.setImportText(await file.text());
+    } catch {
+      this.importFileError.set(this.t('import.fileError'));
+    }
+  }
+  async runImport(): Promise<void> {
+    const rows = this.importResult().rows;
+    if (!rows.length || this.importOver() || this.busy()) return;
+    const id = this.selectedId();
+    const existing = this.importReplace() ? this.items().map((i) => i.id) : [];
+    const total = existing.length + rows.length;
+    let done = 0;
+    this.busy.set(true);
+    this.error.set('');
+    this.notice.set('');
+    this.importProgress.set({ done, total });
+    try {
+      await this.refreshTask;
+      for (const itemId of existing) {
+        await this.api.write(this.channel, 'DELETE', `/roulettes/${id}/items/${itemId}`, {});
+        this.importProgress.set({ done: ++done, total });
+      }
+      for (const row of rows) {
+        await this.api.write(this.channel, 'POST', `/roulettes/${id}/items`, {
+          label: row.label,
+          weight: row.weight,
+          multiplier: row.count,
+        });
+        this.importProgress.set({ done: ++done, total });
+      }
+      this.importOpen.set(false);
+      this.notice.set(this.t('import.done', { count: rows.length, slots: this.importResult().copies }));
+    } catch (e) {
+      this.handleError(e);
+      this.error.set(`${this.t('import.stopped', { done, total })} ${this.error()}`);
+      this.importOpen.set(false);
+    } finally {
+      this.importProgress.set(null);
+      this.busy.set(false);
+      await this.refresh(false);
+    }
+  }
+
   // Roulette
   async remove(): Promise<void> {
     if (await this.mutate('DELETE', `/roulettes/${this.selectedId()}`)) this.deleteOpen.set(false);
@@ -532,6 +613,7 @@ export class RoulettePageComponent {
     if (this.removing()) this.removing.set(null);
     else if (this.deleteOpen()) this.deleteOpen.set(false);
     else if (this.prizeDialog()) this.prizeDialog.set(null);
+    else if (this.importOpen() && !this.importProgress()) this.importOpen.set(false);
     else if (this.createOpen()) this.createOpen.set(false);
   }
   private focusSoon(selector: string): void {
