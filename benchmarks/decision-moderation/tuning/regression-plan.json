@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "phase": "historical_regression",
+  "models": [
+    "respan/span-01",
+    "typesafe/jev-1.13",
+    "openai/gpt-6-luna-decisions"
+  ],
+  "repeats": 2,
+  "seed": 202611083,
+  "variants": {
+    "baseline": {
+      "kind": "baseline"
+    },
+    "context_v1": "context_v1.json",
+    "policy_v2": "policy_v2.json"
+  },
+  "cases_file": "regression-cases.json",
+  "contracts_module": "contracts.py",
+  "selection_rule": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise",
+  "reserved_fresh_validation": {
+    "file": "fresh-cases.json",
+    "sha256": "9cf6daaf72bf230f4aae050dad75685c307f2ee8c278331586243f3e7c3e11fb",
+    "cases": 168,
+    "positive": 84,
+    "benign": 84,
+    "repeats": 3
+  },
+  "scope": "Synthetic prompt experiment only; threshold/parser unchanged; no production configuration changes or deployment.",
+  "model_variants": {
+    "openai/gpt-6-luna-decisions": [
+      "baseline",
+      "policy_v2"
+    ],
+    "respan/span-01": [
+      "baseline",
+      "policy_v2"
+    ],
+    "typesafe/jev-1.13": [
+      "baseline",
+      "policy_v2"
+    ]
+  },
+  "development_selection_sha256": "c969a91c645b7ef75b0c16467ecebdecfeb4653772e27f2d65c98569abec2008"
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "selection": {
+    "openai/gpt-6-luna-decisions": "policy_v2",
+    "respan/span-01": "policy_v2",
+    "typesafe/jev-1.13": "policy_v2"
+  },
+  "selection_rule": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise",
+  "source": "Completed development only; no fresh validation outcomes used.",
+  "development_summary_sha256": "46ff6b2556d55084a9a16955a841a51a54a230260f5028a584e8533892c36b89",
+  "development_raw_sha256": "7e83b852223a44dabaf578b753be824baf96eb066ca30ee0426b0371531f4102",
+  "development_audit_sha256": "c1e597fa1df6256c98fb048a0aa5b9d6695c4e17507433c8287406921b6ff84a",
+  "reserved_fresh_sha256": "9cf6daaf72bf230f4aae050dad75685c307f2ee8c278331586243f3e7c3e11fb",
+  "pre_inference_commit": "32c23763",
+  "status": "FROZEN_BEFORE_VALIDATION"
+}
