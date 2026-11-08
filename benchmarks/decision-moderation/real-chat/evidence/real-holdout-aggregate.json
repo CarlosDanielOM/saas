@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "phase": "real-holdout",
+  "models": {
+    "openai/gpt-6-luna-decisions": {
+      "baseline": {
+        "scheduled": 339,
+        "observed": 339,
+        "complete": true,
+        "positive_cases": 0,
+        "benign_cases": 113,
+        "positive_attempts": 0,
+        "benign_attempts": 339,
+        "returned_fp": 0,
+        "returned_tp": 0,
+        "returned_fn": 0,
+        "timely_fp": 0,
+        "timely_tp": 0,
+        "timely_fn": 0,
+        "errors": 0,
+        "latency_p95_ms": 322.7729434147477,
+        "known_cost_usd": 0.05672640000000007,
+        "unknown_returned_cost_attempts": 0,
+        "unknown_byok_upstream_attempts": 0
+      },
+      "concise_v3": {
+        "scheduled": 339,
+        "observed": 339,
+        "complete": true,
+        "positive_cases": 0,
+        "benign_cases": 113,
+        "positive_attempts": 0,
+        "benign_attempts": 339,
+        "returned_fp": 0,
+        "returned_tp": 0,
+        "returned_fn": 0,
+        "timely_fp": 0,
+        "timely_tp": 0,
+        "timely_fn": 0,
+        "errors": 0,
+        "latency_p95_ms": 331.3724910840392,
+        "known_cost_usd": 0.071778,
+        "unknown_returned_cost_attempts": 0,
+        "unknown_byok_upstream_attempts": 0
+      }
+    },
+    "typesafe/jev-1.13": {
+      "baseline": {
+        "scheduled": 339,
+        "observed": 339,
+        "complete": true,
+        "positive_cases": 0,
+        "benign_cases": 113,
+        "positive_attempts": 0,
+        "benign_attempts": 339,
+        "returned_fp": 0,
+        "returned_tp": 0,
+        "returned_fn": 0,
+        "timely_fp": 0,
+        "timely_tp": 0,
+        "timely_fn": 0,
+        "errors": 0,
+        "latency_p95_ms": 288.23524340987206,
+        "known_cost_usd": 0.02249226000000001,
+        "unknown_returned_cost_attempts": 0,
+        "unknown_byok_upstream_attempts": 0
+      }
+    }
+  },
+  "audit": {
+    "complete": true,
+    "expected_rows": 1017,
+    "observed_rows": 1017,
+    "missing_rows": 0,
+    "mismatch_count": 0,
+    "native_mismatch_count": 0,
+    "metric_mismatch_count": 0,
+    "response_comparisons": 1017,
+    "baseline_request_comparisons": 226,
+    "http_errors": {},
+    "raw_sha256": "846a4b72e1496ff97a15bdc3d4390ca80203c205e9f4ec7a2f040ce59bee09cc",
+    "meta_sha256": "4abf1edbe50fa153a45bc4f50841a7ba1bf5370cb838abdf74b7ec5d411f0425"
+  },
+  "note": "Frozen root selection remains concise_v3; any per-phase engine selection field is ignored on test data. Real holdout benign-only; recall not measured."
+}

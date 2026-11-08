@@ -1,0 +1,15 @@
+{
+  "captured_at": "2026-11-08T21:14:39.858Z",
+  "snapshot_rows": 5996,
+  "snapshot_sha256": "1995ee2464c5c82cb605894bdaca00b39d30506abd89c52237112f0f6a1cf92a",
+  "eligible_rows": 5996,
+  "normalized_campaign_groups": 4725,
+  "review_cases": 300,
+  "development_cases": 180,
+  "holdout_cases": 120,
+  "selected_rare_teacher_positive_groups": 8,
+  "selected_signal_cases": 184,
+  "review_pool_sha256": "590a1eb9878a1c67bbadae5ef2d3ba0a2ae6455b97af0ab94321c03fbf0027fc",
+  "reviewed_by_humans": false,
+  "note": "Read-only Mongo snapshot. Old predictions used only for rare-case sampling, never labels or examples. Exact/domain-normalized campaign groups disjoint. Channels may overlap; no cross-channel generalization claim. Native review data remains private and excluded from git."
+}

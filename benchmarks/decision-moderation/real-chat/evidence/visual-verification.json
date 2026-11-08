@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "html_sha256": "0971a26905e37cd5de53c7186f8d5a08034684119f57f57a1f0ab83c120af569",
+  "checks": [
+    {
+      "appearance": "dark",
+      "width": 728,
+      "content_height": 834,
+      "console_messages": [],
+      "visual_review": "passed"
+    },
+    {
+      "appearance": "light",
+      "width": 390,
+      "content_height": 1270,
+      "console_messages": [],
+      "visual_review": "passed"
+    }
+  ],
+  "note": "HTML preview checks use complete audited data, no message payload. Final interactive chart retains all four separate groups.",
+  "interaction_check": {
+    "width": 390,
+    "appearance": "dark",
+    "content_height": 1288,
+    "all_four_groups_render_three_rows": true,
+    "real_holdout_shows_not_measured_for_recall": true,
+    "horizontal_overflow": false,
+    "errors": [],
+    "method": "Temporary DOM selector change events in preview; delivered HTML unchanged."
+  }
+}

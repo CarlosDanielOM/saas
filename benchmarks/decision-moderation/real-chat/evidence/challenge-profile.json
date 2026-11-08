@@ -1,0 +1,27 @@
+{
+  "scope": "New reserved synthetic challenge only; labels provisional double AI consensus",
+  "cases": 74,
+  "languages": {
+    "ar": 1,
+    "de": 1,
+    "en": 30,
+    "es": 34,
+    "fr": 2,
+    "ja": 2,
+    "ko": 2,
+    "pt": 2
+  },
+  "families": {
+    "commercial_offers": 10,
+    "context_and_permission": 10,
+    "credential_theft": 10,
+    "fake_engagement": 10,
+    "financial_scam": 8,
+    "links_and_questions": 10,
+    "own_channel": 10,
+    "report_vs_solicit": 6
+  },
+  "category_sets": {
+    "spam+ads+self_promotion": 74
+  }
+}

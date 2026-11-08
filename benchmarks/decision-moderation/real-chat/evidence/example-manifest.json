@@ -1,0 +1,12 @@
+{
+  "source_split": "development only",
+  "source_case_count": 8,
+  "source_positive_count": 4,
+  "source_campaigns": 8,
+  "transformation": "Target text retained after source pseudonymization. Examples omit unrelated context only for these selected targets whose labels are established by their own text; actual evaluated chat context is never dropped.",
+  "review": "Two blinded high-confidence AI reviews agree on selected categories. Not human-verified. No heldout examples or old model predictions.",
+  "candidate_sha256": "1e94a44ef933810e61fc802fe579523e4479a80d942737568ef51022af5a09b2",
+  "category_note": "Stylized generic viewer-service pitch is illustrated in ads; spam examples use the explicit AI-viewer offer to avoid broadening spam to every generic advertisement.",
+  "source_ids_sha256": "15db48214619e959f228729f91907436d5a71d1c65c3226598f555d681a89e84",
+  "public_redaction": "Individual source IDs omitted; full mapping retained only in protected local example manifest."
+}

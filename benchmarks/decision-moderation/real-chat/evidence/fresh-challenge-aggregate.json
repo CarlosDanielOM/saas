@@ -1,0 +1,289 @@
+{
+  "schema_version": 1,
+  "phase": "fresh-challenge",
+  "models": {
+    "openai/gpt-6-luna-decisions": {
+      "baseline": {
+        "scheduled": 222,
+        "observed": 222,
+        "complete": true,
+        "positive_cases": 34,
+        "benign_cases": 40,
+        "positive_attempts": 102,
+        "benign_attempts": 120,
+        "returned_fp": 0,
+        "returned_tp": 93,
+        "returned_fn": 9,
+        "timely_fp": 0,
+        "timely_tp": 93,
+        "timely_fn": 9,
+        "errors": 0,
+        "latency_p95_ms": 326.25953666865826,
+        "known_cost_usd": 0.03159839999999999,
+        "unknown_returned_cost_attempts": 0,
+        "unknown_byok_upstream_attempts": 0,
+        "distinct_timely_tp_cases": 31,
+        "distinct_returned_fp_cases": 0,
+        "families": {
+          "commercial_offers": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 15,
+            "returned_fp": 0
+          },
+          "context_and_permission": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 15,
+            "returned_fp": 0
+          },
+          "credential_theft": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 12,
+            "returned_fp": 0
+          },
+          "fake_engagement": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 12,
+            "returned_fp": 0
+          },
+          "financial_scam": {
+            "positive_cases": 3,
+            "benign_cases": 5,
+            "positive_attempts": 9,
+            "benign_attempts": 15,
+            "timely_tp": 9,
+            "returned_fp": 0
+          },
+          "links_and_questions": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 15,
+            "returned_fp": 0
+          },
+          "own_channel": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 12,
+            "returned_fp": 0
+          },
+          "report_vs_solicit": {
+            "positive_cases": 1,
+            "benign_cases": 5,
+            "positive_attempts": 3,
+            "benign_attempts": 15,
+            "timely_tp": 3,
+            "returned_fp": 0
+          }
+        }
+      },
+      "concise_v3": {
+        "scheduled": 222,
+        "observed": 222,
+        "complete": true,
+        "positive_cases": 34,
+        "benign_cases": 40,
+        "positive_attempts": 102,
+        "benign_attempts": 120,
+        "returned_fp": 0,
+        "returned_tp": 96,
+        "returned_fn": 6,
+        "timely_fp": 0,
+        "timely_tp": 96,
+        "timely_fn": 6,
+        "errors": 0,
+        "latency_p95_ms": 306.14025983959436,
+        "known_cost_usd": 0.04145519999999996,
+        "unknown_returned_cost_attempts": 0,
+        "unknown_byok_upstream_attempts": 0,
+        "distinct_timely_tp_cases": 32,
+        "distinct_returned_fp_cases": 0,
+        "families": {
+          "commercial_offers": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 15,
+            "returned_fp": 0
+          },
+          "context_and_permission": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 15,
+            "returned_fp": 0
+          },
+          "credential_theft": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 15,
+            "returned_fp": 0
+          },
+          "fake_engagement": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 12,
+            "returned_fp": 0
+          },
+          "financial_scam": {
+            "positive_cases": 3,
+            "benign_cases": 5,
+            "positive_attempts": 9,
+            "benign_attempts": 15,
+            "timely_tp": 9,
+            "returned_fp": 0
+          },
+          "links_and_questions": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 15,
+            "returned_fp": 0
+          },
+          "own_channel": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 12,
+            "returned_fp": 0
+          },
+          "report_vs_solicit": {
+            "positive_cases": 1,
+            "benign_cases": 5,
+            "positive_attempts": 3,
+            "benign_attempts": 15,
+            "timely_tp": 3,
+            "returned_fp": 0
+          }
+        }
+      }
+    },
+    "typesafe/jev-1.13": {
+      "baseline": {
+        "scheduled": 222,
+        "observed": 222,
+        "complete": true,
+        "positive_cases": 34,
+        "benign_cases": 40,
+        "positive_attempts": 102,
+        "benign_attempts": 120,
+        "returned_fp": 0,
+        "returned_tp": 80,
+        "returned_fn": 22,
+        "timely_fp": 0,
+        "timely_tp": 80,
+        "timely_fn": 22,
+        "errors": 0,
+        "latency_p95_ms": 286.51416953653097,
+        "known_cost_usd": 0.011362932000000003,
+        "unknown_returned_cost_attempts": 0,
+        "unknown_byok_upstream_attempts": 0,
+        "distinct_timely_tp_cases": 28,
+        "distinct_returned_fp_cases": 0,
+        "families": {
+          "commercial_offers": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 13,
+            "returned_fp": 0
+          },
+          "context_and_permission": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 15,
+            "returned_fp": 0
+          },
+          "credential_theft": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 9,
+            "returned_fp": 0
+          },
+          "fake_engagement": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 12,
+            "returned_fp": 0
+          },
+          "financial_scam": {
+            "positive_cases": 3,
+            "benign_cases": 5,
+            "positive_attempts": 9,
+            "benign_attempts": 15,
+            "timely_tp": 9,
+            "returned_fp": 0
+          },
+          "links_and_questions": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 12,
+            "returned_fp": 0
+          },
+          "own_channel": {
+            "positive_cases": 5,
+            "benign_cases": 5,
+            "positive_attempts": 15,
+            "benign_attempts": 15,
+            "timely_tp": 9,
+            "returned_fp": 0
+          },
+          "report_vs_solicit": {
+            "positive_cases": 1,
+            "benign_cases": 5,
+            "positive_attempts": 3,
+            "benign_attempts": 15,
+            "timely_tp": 1,
+            "returned_fp": 0
+          }
+        }
+      }
+    }
+  },
+  "audit": {
+    "complete": true,
+    "expected_rows": 666,
+    "observed_rows": 666,
+    "missing_rows": 0,
+    "mismatch_count": 0,
+    "native_mismatch_count": 0,
+    "metric_mismatch_count": 0,
+    "response_comparisons": 666,
+    "baseline_request_comparisons": 148,
+    "http_errors": {},
+    "raw_sha256": "5fd712b78194fed59eb99b6e5f1ffc7a5b6229dbe15505f2fac84445e422426b",
+    "meta_sha256": "1f6a5bd32542000a3c0e41c6400d762ae3e38fbfc2e91847b055f0a508c0f441"
+  },
+  "note": "Selected concise_v3 frozen before inference. Phase-local engine selection is ignored on test data. New synthetic, double AI reviewed; not human moderator truth or real spam recall."
+}

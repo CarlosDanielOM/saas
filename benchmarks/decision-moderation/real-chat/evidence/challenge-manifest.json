@@ -1,0 +1,11 @@
+{
+  "authored_cases": 80,
+  "consensus_cases": 74,
+  "positive": 34,
+  "benign": 40,
+  "excluded": 6,
+  "sha256": "87c1eaff594e6bcf6cca2a48ba13cb3c0f505eb0afbff39aa070ec054cbcc4e7",
+  "author_sha256": "d07fc3788e30083c1f1e93d4b33202e6732de6bfff84eccd252045ef67b6336b",
+  "blind_review_sha256": "cd20fe7ae3d3a63fb75851e3f3f7cbd3109b86a1d81450dc0bfda8a015aa7c6c",
+  "note": "Heldout contents remain sealed from prompt designer. Labels fixed by exact high-confidence agreement; exclusions preserved unchanged."
+}

@@ -1,0 +1,476 @@
+{
+  "schema_version": 1,
+  "title": "Luna and Jev · real-chat experiment",
+  "rows": [
+    {
+      "id": "typesafe/jev-1.13:baseline",
+      "model": "typesafe/jev-1.13",
+      "label": "Jev 1.13",
+      "role": "baseline",
+      "variant": "baseline",
+      "retained_baseline": false,
+      "variant_label": "baseline",
+      "same_stored_metrics_as": null
+    },
+    {
+      "id": "openai/gpt-6-luna-decisions:baseline",
+      "model": "openai/gpt-6-luna-decisions",
+      "label": "Luna",
+      "role": "baseline",
+      "variant": "baseline",
+      "retained_baseline": false,
+      "variant_label": "baseline",
+      "same_stored_metrics_as": null
+    },
+    {
+      "id": "openai/gpt-6-luna-decisions:selected",
+      "model": "openai/gpt-6-luna-decisions",
+      "label": "Luna",
+      "role": "selected",
+      "variant": "concise_v3",
+      "retained_baseline": false,
+      "variant_label": "concise_v3",
+      "same_stored_metrics_as": null
+    }
+  ],
+  "groups": {
+    "fresh_challenge": {
+      "label": "Fresh synthetic challenge",
+      "phase": "fresh-challenge",
+      "description": "Reserved synthetic challenge, double AI reviewed. Both catch and false-ban rates are measured against AI-consensus labels.",
+      "positive_cases": 34,
+      "benign_cases": 40,
+      "positive_attempts": 102,
+      "benign_attempts": 120,
+      "repeats": 3,
+      "rows": {
+        "typesafe/jev-1.13:baseline": {
+          "observed": 222,
+          "scheduled": 222,
+          "positive_cases": 34,
+          "benign_cases": 40,
+          "positive_attempts": 102,
+          "benign_attempts": 120,
+          "timely_tp": 80,
+          "timely_fp": 0,
+          "returned_fp": 0,
+          "errors": 0,
+          "p95_ms": 286.51416953653097,
+          "repeats": 3,
+          "complete": true
+        },
+        "openai/gpt-6-luna-decisions:baseline": {
+          "observed": 222,
+          "scheduled": 222,
+          "positive_cases": 34,
+          "benign_cases": 40,
+          "positive_attempts": 102,
+          "benign_attempts": 120,
+          "timely_tp": 93,
+          "timely_fp": 0,
+          "returned_fp": 0,
+          "errors": 0,
+          "p95_ms": 326.25953666865826,
+          "repeats": 3,
+          "complete": true
+        },
+        "openai/gpt-6-luna-decisions:selected": {
+          "observed": 222,
+          "scheduled": 222,
+          "positive_cases": 34,
+          "benign_cases": 40,
+          "positive_attempts": 102,
+          "benign_attempts": 120,
+          "timely_tp": 96,
+          "timely_fp": 0,
+          "returned_fp": 0,
+          "errors": 0,
+          "p95_ms": 306.14025983959436,
+          "repeats": 3,
+          "complete": true
+        }
+      }
+    },
+    "real_holdout": {
+      "label": "Real holdout · benign only",
+      "phase": "real-holdout",
+      "description": "Strict campaign/prior-overlap grouping left zero positive cases. This measures false bans on benign real chat; recall and overall accuracy are not measured.",
+      "positive_cases": 0,
+      "benign_cases": 113,
+      "positive_attempts": 0,
+      "benign_attempts": 339,
+      "repeats": 3,
+      "rows": {
+        "typesafe/jev-1.13:baseline": {
+          "observed": 339,
+          "scheduled": 339,
+          "positive_cases": 0,
+          "benign_cases": 113,
+          "positive_attempts": 0,
+          "benign_attempts": 339,
+          "timely_tp": 0,
+          "timely_fp": 0,
+          "returned_fp": 0,
+          "errors": 0,
+          "p95_ms": 288.23524340987206,
+          "repeats": 3,
+          "complete": true
+        },
+        "openai/gpt-6-luna-decisions:baseline": {
+          "observed": 339,
+          "scheduled": 339,
+          "positive_cases": 0,
+          "benign_cases": 113,
+          "positive_attempts": 0,
+          "benign_attempts": 339,
+          "timely_tp": 0,
+          "timely_fp": 0,
+          "returned_fp": 0,
+          "errors": 0,
+          "p95_ms": 322.7729434147477,
+          "repeats": 3,
+          "complete": true
+        },
+        "openai/gpt-6-luna-decisions:selected": {
+          "observed": 339,
+          "scheduled": 339,
+          "positive_cases": 0,
+          "benign_cases": 113,
+          "positive_attempts": 0,
+          "benign_attempts": 339,
+          "timely_tp": 0,
+          "timely_fp": 0,
+          "returned_fp": 0,
+          "errors": 0,
+          "p95_ms": 331.3724910840392,
+          "repeats": 3,
+          "complete": true
+        }
+      }
+    },
+    "real_development": {
+      "label": "Real development",
+      "phase": "development",
+      "description": "Real-chat development data used for prompt selection. This is not reserved validation.",
+      "positive_cases": 12,
+      "benign_cases": 165,
+      "positive_attempts": 24,
+      "benign_attempts": 330,
+      "repeats": 2,
+      "rows": {
+        "typesafe/jev-1.13:baseline": {
+          "observed": 354,
+          "scheduled": 354,
+          "positive_cases": 12,
+          "benign_cases": 165,
+          "positive_attempts": 24,
+          "benign_attempts": 330,
+          "timely_tp": 16,
+          "timely_fp": 0,
+          "returned_fp": 0,
+          "errors": 0,
+          "p95_ms": 284.55586917698383,
+          "repeats": 2,
+          "complete": true
+        },
+        "openai/gpt-6-luna-decisions:baseline": {
+          "observed": 354,
+          "scheduled": 354,
+          "positive_cases": 12,
+          "benign_cases": 165,
+          "positive_attempts": 24,
+          "benign_attempts": 330,
+          "timely_tp": 18,
+          "timely_fp": 0,
+          "returned_fp": 0,
+          "errors": 0,
+          "p95_ms": 320.42230013757944,
+          "repeats": 2,
+          "complete": true
+        },
+        "openai/gpt-6-luna-decisions:selected": {
+          "observed": 354,
+          "scheduled": 354,
+          "positive_cases": 12,
+          "benign_cases": 165,
+          "positive_attempts": 24,
+          "benign_attempts": 330,
+          "timely_tp": 18,
+          "timely_fp": 0,
+          "returned_fp": 0,
+          "errors": 0,
+          "p95_ms": 312.6933015882969,
+          "repeats": 2,
+          "complete": true
+        }
+      }
+    },
+    "synthetic_guardrail": {
+      "label": "Synthetic guardrail development",
+      "phase": "development",
+      "description": "Synthetic development guardrails used for prompt selection. This is not reserved validation.",
+      "positive_cases": 30,
+      "benign_cases": 30,
+      "positive_attempts": 60,
+      "benign_attempts": 60,
+      "repeats": 2,
+      "rows": {
+        "typesafe/jev-1.13:baseline": {
+          "observed": 120,
+          "scheduled": 120,
+          "positive_cases": 30,
+          "benign_cases": 30,
+          "positive_attempts": 60,
+          "benign_attempts": 60,
+          "timely_tp": 52,
+          "timely_fp": 8,
+          "returned_fp": 8,
+          "errors": 0,
+          "p95_ms": 285.6382466852665,
+          "repeats": 2,
+          "complete": true
+        },
+        "openai/gpt-6-luna-decisions:baseline": {
+          "observed": 120,
+          "scheduled": 120,
+          "positive_cases": 30,
+          "benign_cases": 30,
+          "positive_attempts": 60,
+          "benign_attempts": 60,
+          "timely_tp": 56,
+          "timely_fp": 12,
+          "returned_fp": 12,
+          "errors": 0,
+          "p95_ms": 307.10923578590155,
+          "repeats": 2,
+          "complete": true
+        },
+        "openai/gpt-6-luna-decisions:selected": {
+          "observed": 120,
+          "scheduled": 120,
+          "positive_cases": 30,
+          "benign_cases": 30,
+          "positive_attempts": 60,
+          "benign_attempts": 60,
+          "timely_tp": 58,
+          "timely_fp": 10,
+          "returned_fp": 10,
+          "errors": 0,
+          "p95_ms": 287.9668716341257,
+          "repeats": 2,
+          "complete": true
+        }
+      }
+    }
+  },
+  "default_group": "fresh_challenge",
+  "selection": {
+    "openai/gpt-6-luna-decisions": "concise_v3",
+    "typesafe/jev-1.13": "baseline"
+  },
+  "cost": {
+    "attempts": 4053,
+    "byok_attempts": 3018,
+    "unknown_returned_cost_attempts": 0,
+    "unknown_byok_upstream_attempts": 0,
+    "unknown_byok_status_attempts": 0,
+    "unknown_attempts": 0,
+    "openrouter_usd": 0.06115452,
+    "byok_usd": 0.6130448,
+    "combined_known_usd": 0.67419932,
+    "phase_attempts": {
+      "development": 2370,
+      "real-holdout": 1017,
+      "fresh-challenge": 666
+    },
+    "scope": "All actual raw attempts across available phases and variants; each stored attempt counted once."
+  },
+  "notice": "AI-consensus labels are not moderator ground truth. Selection is supplied by the frozen development-only selection file; this renderer never chooses or retunes a prompt. Retained-baseline rows reuse the same stored metrics and add no inference calls.",
+  "metadata": {
+    "selection_sha256": "bdf6ffeb7aeebeb32c89ddc3019709ab8a53d41e7e7f1aefe0e91f9da18153ae",
+    "selection_file": "/root/saas/benchmarks/decision-moderation/results/2026-11-08-real-chat/selection.json",
+    "source_hashes": {
+      "development/summary.json": "4d77bdf353ef33d3b7bb38f5c04154580b5067be9b16b8d7065699956c742f38",
+      "development/audit.json": "88f1efbfba9ad83a660592d20c2a0f0aa5957c6f239a87605335af0a0ab42e80",
+      "development/meta.json": "2dc03ff2cecdf267146ce701b0e6d7d4528469b1ba18d2c63af1815e65599d45",
+      "real-holdout/summary.json": "f9e22b8cf7798356bd762ebf401da9abab27e451be699cf647965e6a08016dca",
+      "real-holdout/audit.json": "95a9fa80ace104074adf17891b32a2b4c19fd6880e31753d45a6025b2fe9489c",
+      "real-holdout/meta.json": "4abf1edbe50fa153a45bc4f50841a7ba1bf5370cb838abdf74b7ec5d411f0425",
+      "fresh-challenge/summary.json": "1ad41fefe80cb2ab9fd1077c3d4b6dde7189338e55d616b33a4c18e503039e58",
+      "fresh-challenge/audit.json": "f8ee336d0314073780f75d28225805ab78581b40e18569ac368a37841f6db8cd",
+      "fresh-challenge/meta.json": "1f6a5bd32542000a3c0e41c6400d762ae3e38fbfc2e91847b055f0a508c0f441",
+      "development/raw.jsonl": "4f85b507101f2e6c60486ab65dbc707ab2126b95e15ec569414a7e18098ec6fc",
+      "real-holdout/raw.jsonl": "846a4b72e1496ff97a15bdc3d4390ca80203c205e9f4ec7a2f040ce59bee09cc",
+      "fresh-challenge/raw.jsonl": "5fd712b78194fed59eb99b6e5f1ffc7a5b6229dbe15505f2fac84445e422426b"
+    },
+    "frozen_phase_metadata": {
+      "development": {
+        "cases_sha256": "d16219ead4a931ac741264f9f44bdef79e7202427fa55acf7ad2e9c124a75792",
+        "contracts_sha256": "3df4f6a4bde1a8dceb6633419c49ae59ccedf42ee8abbf217e27a1e548a6ce3e",
+        "deadline_ms_exclusive": 4000,
+        "headers": {
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://domdimabot.com",
+          "X-OpenRouter-Categories": "general-chat, roleplay",
+          "X-OpenRouter-Description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+          "X-OpenRouter-Title": "DomDimaBot"
+        },
+        "model_variants": {
+          "openai/gpt-6-luna-decisions": [
+            "baseline",
+            "policy_v2",
+            "concise_v3",
+            "fewshot_v4"
+          ],
+          "typesafe/jev-1.13": [
+            "baseline"
+          ]
+        },
+        "models": [
+          "typesafe/jev-1.13",
+          "openai/gpt-6-luna-decisions"
+        ],
+        "no_automatic_retry": true,
+        "phase": "real_development",
+        "repeats": 2,
+        "requests_sha256": "de1fe03b6d05cea1c502170d21580faa4a96bc994452c65c4bca357ce0ba2e97",
+        "schedule_sha256": "45834516d386a7893dab2e2f9f61c71f68468fa9dff2b9b7d970f84f1b185caa",
+        "schema_version": 1,
+        "seed": 202611086,
+        "selection_rule": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise",
+        "source_hashes": {
+          "cases": "37f269d12124f93b5e01e940865ff19c430cc71d31d995f099c50a8d879cde72",
+          "contracts": "cf74ea897f29ffa4b28f8c5c445160d0008e00946e43b3bb6f42148aea427334",
+          "experiment": "e330b4325b38c99d7519b043e5d56d1fa33efdd287d4425197feecab50067ab6",
+          "native_contract": "726ce241361cbabbc479c02978d8d1928f1b5f9f26c96663bb694e93c0a1f5e2",
+          "plan": "4b155c5cfad8a05f0a9bb5a840d7cb98b7dfc32931a1aa5326e36b671e59def4",
+          "policy": "8b4d3ba5b069038bd220054e4aec505b323d85ac8bc3db6e815067d3a819cee8",
+          "real_chat_driver": "3a8a45a3c259ad3994d3868c248679f97e5d694597b2358bb6b6b0c5b87a703a",
+          "suite": "9e40a6a8587788f0134da58246f622bb3a1a66b636ad17644a012c803575e8fc",
+          "transport": "3ba24385c84b419e9c2f09dd793eee8163bcdb103ff1540eb46122217b0a53da",
+          "tuning_contracts": "7e6e116cc63e01125416efa5c9655f2a39e685328a92f58f512125f746d01b07",
+          "variant:concise_v3": "cc7cf81808ae2c62d35d90e300b823a1ae7e87d8fdf6b250bdbdb7543d82e5b3",
+          "variant:fewshot_v4": "1e94a44ef933810e61fc802fe579523e4479a80d942737568ef51022af5a09b2",
+          "variant:policy_v2": "bbe5ad815ec279ec4d3ec47a1ed369adba3747fdceaeb67d1dcab4c0a12ee3fd"
+        },
+        "start_spacing_seconds": 0.2,
+        "timeout_seconds": 12,
+        "transport_user": "decision-benchmark-2026-11-08",
+        "variants": [
+          "baseline",
+          "policy_v2",
+          "concise_v3",
+          "fewshot_v4"
+        ]
+      },
+      "real-holdout": {
+        "cases_sha256": "76adc495088589d66dc57408b4b9db539ce74e8d3000cbcb1e01bef7ad1f5554",
+        "contracts_sha256": "1adf7099e947de355f454a566782829a7f889952511513d70ff32fc95621270e",
+        "deadline_ms_exclusive": 4000,
+        "headers": {
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://domdimabot.com",
+          "X-OpenRouter-Categories": "general-chat, roleplay",
+          "X-OpenRouter-Description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+          "X-OpenRouter-Title": "DomDimaBot"
+        },
+        "model_variants": {
+          "openai/gpt-6-luna-decisions": [
+            "baseline",
+            "concise_v3"
+          ],
+          "typesafe/jev-1.13": [
+            "baseline"
+          ]
+        },
+        "models": [
+          "typesafe/jev-1.13",
+          "openai/gpt-6-luna-decisions"
+        ],
+        "no_automatic_retry": true,
+        "phase": "real-holdout",
+        "repeats": 3,
+        "requests_sha256": "51a55e73a20262c90761817b99fdd3da6531c9eaf11d16a0cc5abe638a88864f",
+        "schedule_sha256": "8ba4c557f02b5909814e0660de855819d64bacb9ffda27ad3921790a82cbf167",
+        "schema_version": 1,
+        "seed": 202611087,
+        "selection_rule": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise",
+        "source_hashes": {
+          "cases": "93d7555a99a9041b4fb95ca411eeb0b664800e59b69b61e48e955d50d7480018",
+          "contracts": "cf74ea897f29ffa4b28f8c5c445160d0008e00946e43b3bb6f42148aea427334",
+          "experiment": "e330b4325b38c99d7519b043e5d56d1fa33efdd287d4425197feecab50067ab6",
+          "native_contract": "726ce241361cbabbc479c02978d8d1928f1b5f9f26c96663bb694e93c0a1f5e2",
+          "plan": "1d53ae6ad5993293afa56da6eb4230483897dadac84ee76ce7501ad8d917b0c8",
+          "policy": "8b4d3ba5b069038bd220054e4aec505b323d85ac8bc3db6e815067d3a819cee8",
+          "real_chat_driver": "3a8a45a3c259ad3994d3868c248679f97e5d694597b2358bb6b6b0c5b87a703a",
+          "suite": "9e40a6a8587788f0134da58246f622bb3a1a66b636ad17644a012c803575e8fc",
+          "transport": "3ba24385c84b419e9c2f09dd793eee8163bcdb103ff1540eb46122217b0a53da",
+          "tuning_contracts": "7e6e116cc63e01125416efa5c9655f2a39e685328a92f58f512125f746d01b07",
+          "variant:concise_v3": "cc7cf81808ae2c62d35d90e300b823a1ae7e87d8fdf6b250bdbdb7543d82e5b3"
+        },
+        "start_spacing_seconds": 0.2,
+        "timeout_seconds": 12,
+        "transport_user": "decision-benchmark-2026-11-08",
+        "variants": [
+          "baseline",
+          "concise_v3"
+        ]
+      },
+      "fresh-challenge": {
+        "cases_sha256": "7656b115992e2666d28c497f219959e58aa8a70226933317de8e93b4feeee5d0",
+        "contracts_sha256": "1adf7099e947de355f454a566782829a7f889952511513d70ff32fc95621270e",
+        "deadline_ms_exclusive": 4000,
+        "headers": {
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://domdimabot.com",
+          "X-OpenRouter-Categories": "general-chat, roleplay",
+          "X-OpenRouter-Description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+          "X-OpenRouter-Title": "DomDimaBot"
+        },
+        "model_variants": {
+          "openai/gpt-6-luna-decisions": [
+            "baseline",
+            "concise_v3"
+          ],
+          "typesafe/jev-1.13": [
+            "baseline"
+          ]
+        },
+        "models": [
+          "typesafe/jev-1.13",
+          "openai/gpt-6-luna-decisions"
+        ],
+        "no_automatic_retry": true,
+        "phase": "fresh-challenge",
+        "repeats": 3,
+        "requests_sha256": "69e5da167598c6174adcf5322145df9d28308731d13373d94343a0611ebb2f10",
+        "schedule_sha256": "d4a5fcf6bdf6a6b1c21ec42ca3059acbaff62b7badb076be54d70d4d8c7f16d3",
+        "schema_version": 1,
+        "seed": 202611088,
+        "selection_rule": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise",
+        "source_hashes": {
+          "cases": "87c1eaff594e6bcf6cca2a48ba13cb3c0f505eb0afbff39aa070ec054cbcc4e7",
+          "contracts": "cf74ea897f29ffa4b28f8c5c445160d0008e00946e43b3bb6f42148aea427334",
+          "experiment": "e330b4325b38c99d7519b043e5d56d1fa33efdd287d4425197feecab50067ab6",
+          "native_contract": "726ce241361cbabbc479c02978d8d1928f1b5f9f26c96663bb694e93c0a1f5e2",
+          "plan": "00b92935dde366ee02eb6192ababba476800b15619393646b741b2194ee0d947",
+          "policy": "8b4d3ba5b069038bd220054e4aec505b323d85ac8bc3db6e815067d3a819cee8",
+          "real_chat_driver": "3a8a45a3c259ad3994d3868c248679f97e5d694597b2358bb6b6b0c5b87a703a",
+          "suite": "9e40a6a8587788f0134da58246f622bb3a1a66b636ad17644a012c803575e8fc",
+          "transport": "3ba24385c84b419e9c2f09dd793eee8163bcdb103ff1540eb46122217b0a53da",
+          "tuning_contracts": "7e6e116cc63e01125416efa5c9655f2a39e685328a92f58f512125f746d01b07",
+          "variant:concise_v3": "cc7cf81808ae2c62d35d90e300b823a1ae7e87d8fdf6b250bdbdb7543d82e5b3"
+        },
+        "start_spacing_seconds": 0.2,
+        "timeout_seconds": 12,
+        "transport_user": "decision-benchmark-2026-11-08",
+        "variants": [
+          "baseline",
+          "concise_v3"
+        ]
+      }
+    },
+    "generator_sha256": "47564061f6b77ff5db77b57d63a5757f539d1e67019f4e4608fe0a6e1aed3ca8",
+    "template_sha256": "f1145eba7e94299e342940101b6e66cafec157666f08d1b9242f5a349df60050"
+  }
+}

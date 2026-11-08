@@ -1,0 +1,14 @@
+{
+  "verified_at_utc": "2026-11-08T21:52:59.841027+00:00",
+  "status": "PASS",
+  "production_compiled_contract_unchanged": true,
+  "production_image_and_started_at_unchanged": true,
+  "files": {
+    "semantic.js": "642f1a7351104528b7d4d9f44f86f0f31fdc2370365c551390e28dadd40c114d",
+    "spam.js": "696a22a17f6317d805d903fd9a1c38fe950418dcb0d5c60dbec4eda6a8bd93fc",
+    "spam_categories.js": "4d8e2da4e6e6495ba721693fc966b87e0eeb46a095d0989352e57ce8e20a6d31",
+    "advanced.js": "6d40bf18f7feffd458136ee4009ca6638691643cc27cc416bf82e7e1cfcc9cda",
+    "app_attribution.util.js": "2ccbfad9de459b42f63dc50bf1a5978039902512c58b525ea49c1b9c857bb2be"
+  },
+  "actions": "Read-only file hashing and container inspect only; no deployment or application/data/config mutation."
+}

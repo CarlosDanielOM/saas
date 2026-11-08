@@ -1,0 +1,76 @@
+{
+  "recommendation": "luna_candidate_on_this_benchmark",
+  "selected_luna_variant": "concise_v3",
+  "checks": {
+    "real-holdout": {
+      "returned_fp": {
+        "jev": 0,
+        "luna": 0,
+        "passed": true
+      },
+      "timely_fp": {
+        "jev": 0,
+        "luna": 0,
+        "passed": true
+      },
+      "errors": {
+        "jev": 0,
+        "luna": 0,
+        "passed": true
+      },
+      "late": {
+        "jev": 0,
+        "luna": 0,
+        "passed": true
+      },
+      "luna_latency_p95_ms": {
+        "value": 331.3724910840392,
+        "limit_exclusive": 4000,
+        "passed": true
+      }
+    },
+    "fresh-challenge": {
+      "returned_fp": {
+        "jev": 0,
+        "luna": 0,
+        "passed": true
+      },
+      "timely_fp": {
+        "jev": 0,
+        "luna": 0,
+        "passed": true
+      },
+      "errors": {
+        "jev": 0,
+        "luna": 0,
+        "passed": true
+      },
+      "late": {
+        "jev": 0,
+        "luna": 0,
+        "passed": true
+      },
+      "timely_tp": {
+        "jev": 80,
+        "luna": 96,
+        "passed": true
+      },
+      "timely_tp_cases": {
+        "jev": 28,
+        "luna": 32,
+        "passed": true
+      },
+      "luna_latency_p95_ms": {
+        "value": 306.14025983959436,
+        "limit_exclusive": 4000,
+        "passed": true
+      }
+    }
+  },
+  "strict_improvement": true,
+  "gate_passed": true,
+  "limitations": [
+    "AI consensus labels, not moderator truth",
+    "real holdout no positive cases; superior real spam recall not established"
+  ]
+}

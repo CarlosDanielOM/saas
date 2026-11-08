@@ -6,6 +6,8 @@ The follow-up [three-model prompt-tuning report](tuning/REPORT-2026-11-08.md) co
 
 The [informal viewer-chat check](informal-chat/REPORT-2026-11-08.md) follows the user's correction about spoken broadcaster context and casual chat. It tests the same fixed prompts on 130 new messages with no quote delimiters or broadcaster chat, and documents separate voice-context visibility diagnostics. Earlier results remain unchanged.
 
+The [real-chat Luna experiment](real-chat/REPORT-2026-11-08.md) uses independently reviewed historical messages for development and a benign holdout, plus a separately sealed synthetic challenge. Tuned Luna won the fresh-challenge gate, while retaining one more false-positive message than Jev on known synthetic guardrails. Production remains unchanged. Real case payloads stay private; only aggregate evidence is tracked.
+
 ## Corpus
 
 `scenarios.json` is the original expanded, frozen corpus: 240 clear cases across 24 families (10 per family: 5 positive and 5 benign), plus 24 ambiguous diagnostic cases. Its clear cases are split by whole family: 120 development cases and 120 holdout cases initially reserved from model-driven tuning. Both splits were evaluated in the completed baseline; future prompt selection informed by those results needs a newly reserved holdout. The diagnostic cases are separate and expected false under the classifier's ambiguity fail-open rule. The corpus covers at least eight languages plus mixed-language examples, with Latin and non-Latin scripts.

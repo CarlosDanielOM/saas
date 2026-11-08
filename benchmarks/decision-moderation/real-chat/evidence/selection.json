@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "frozen_at_utc": "2026-11-08T21:43:27.454961+00:00",
+  "selection": {
+    "openai/gpt-6-luna-decisions": "concise_v3",
+    "typesafe/jev-1.13": "baseline"
+  },
+  "selection_rule": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise",
+  "development_summary_sha256": "4d77bdf353ef33d3b7bb38f5c04154580b5067be9b16b8d7065699956c742f38",
+  "development_audit_sha256": "88f1efbfba9ad83a660592d20c2a0f0aa5957c6f239a87605335af0a0ab42e80",
+  "development_raw_sha256": "4f85b507101f2e6c60486ab65dbc707ab2126b95e15ec569414a7e18098ec6fc",
+  "note": "Selected using development only; no heldout/challenge inference has started. Per-group no-loss gate rejects fewshot_v4 and policy_v2 because synthetic timely TP regressed."
+}

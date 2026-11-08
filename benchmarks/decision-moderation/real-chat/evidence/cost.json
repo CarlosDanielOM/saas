@@ -1,0 +1,20 @@
+{
+  "attempts": 4053,
+  "byok_attempts": 3018,
+  "unknown_returned_cost_attempts": 0,
+  "unknown_byok_upstream_attempts": 0,
+  "unknown_byok_status_attempts": 0,
+  "unknown_attempts": 0,
+  "openrouter_usd": 0.06115452,
+  "byok_usd": 0.6130448,
+  "combined_known_usd": 0.67419932,
+  "phase_attempts": {
+    "development": 2370,
+    "real-holdout": 1017,
+    "fresh-challenge": 666
+  },
+  "scope": "All actual raw attempts across available phases and variants; each stored attempt counted once.",
+  "previous_rounds_combined_known_usd": 0.91332207,
+  "cumulative_combined_known_usd": 1.58752139,
+  "prior_unknown_cost_note": "Three historical baseline refusals had unknown returned cost; this round has no unknown cost fields."
+}

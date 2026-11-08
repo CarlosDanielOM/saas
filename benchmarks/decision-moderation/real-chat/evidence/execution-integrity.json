@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "status": "PASS_FOR_EXECUTION_AND_INPUTS",
+  "original_freeze_preserved": true,
+  "original_freeze_sha256": "fc686560b8863b11172ff3f48b45007ece5d68cfafa6a9fb0f860c9d62652aca",
+  "core_unchanged": true,
+  "core_files": {
+    "contracts.py": "cf74ea897f29ffa4b28f8c5c445160d0008e00946e43b3bb6f42148aea427334",
+    "development-plan.json": "4b155c5cfad8a05f0a9bb5a840d7cb98b7dfc32931a1aa5326e36b671e59def4",
+    "luna-concise-v3.json": "cc7cf81808ae2c62d35d90e300b823a1ae7e87d8fdf6b250bdbdb7543d82e5b3",
+    "preflight.json": "cc34921cf8e8a02eacbe2c348505eaa25fe4ff9a6c545da0645bd88ad68514e5",
+    "protocol.json": "bcdbd2b3cc626866be4d8a1ff4c6fd7c5f02a1756ab4f4d1dcb3bf458f536308",
+    "run_experiment.py": "3a8a45a3c259ad3994d3868c248679f97e5d694597b2358bb6b6b0c5b87a703a",
+    "test_adapters.py": "063f1d360c33fc242136f5b86ccd391aacaf97c6d3f5b37e2971f56add610dc1"
+  },
+  "visual_only_difference": {
+    "path": "render_results.py",
+    "original_draft_sha256": "ba16bdc620adccd2adfbbeb3a44fb0be55f481ee73f16d9fabae380498eb4f9b",
+    "final_sha256": "47564061f6b77ff5db77b57d63a5757f539d1e67019f4e4608fe0a6e1aed3ca8",
+    "reason": "Initial glob captured an unfinished chart renderer. Renderer is not imported by inference, scoring or prompt selection; final tested visualization preserved separately."
+  },
+  "final_visual_files": {
+    "comparison-template.html": "f1145eba7e94299e342940101b6e66cafec157666f08d1b9242f5a349df60050",
+    "render_results.py": "47564061f6b77ff5db77b57d63a5757f539d1e67019f4e4608fe0a6e1aed3ca8",
+    "test_render_results.py": "42683554b653ce661257a3c03d45e8edf6ea2a52ac8bef126e683033ff6cb095"
+  },
+  "visual_source_commit": "0cae0252",
+  "visual_fixture_tests": 10,
+  "private_source_hash_checks_passed": true
+}

@@ -1,0 +1,27 @@
+{
+  "initial_pool_sha256": "590a1eb9878a1c67bbadae5ef2d3ba0a2ae6455b97af0ab94321c03fbf0027fc",
+  "reviewer_a_sha256": "bfba2c1058a5410707eb5c746df067d60b4d182f925860b45a659957aedc4bdb",
+  "reviewer_b_sha256": "1180dd22a55c76f2fdf506598472ed3fe50c61bc9a006dbde44bda2502e357cc",
+  "final_campaign_groups": 294,
+  "records_moved_from_holdout_to_dev_for_campaign_or_prior_target_overlap": 3,
+  "selected": 300,
+  "scored_consensus": 290,
+  "excluded": 10,
+  "split_counts": {
+    "development": {
+      "cases": 177,
+      "positive": 12,
+      "benign": 165
+    },
+    "holdout": {
+      "cases": 113,
+      "positive": 0,
+      "benign": 113
+    }
+  },
+  "pool_sha256": "68c1bf4b20cd33bc6de03e59f576e21d057b737a5ebf09065dbe282d64b19b2b",
+  "development_sha256": "50ec336f9fbda21d99a547bda00b15542767ecdd206b70b251ad0cfbcb75b4b0",
+  "heldout_sha256": "93d7555a99a9041b4fb95ca411eeb0b664800e59b69b61e48e955d50d7480018",
+  "ground_truth": "Provisional AI consensus, not human-verified. Campaigns disjoint; channels may overlap.",
+  "holdout_visibility": "Lead reads development content only before prompt selection; heldout content sealed. Initial development records never moved into heldout. Previous synthetic target/campaign overlaps forced to development."
+}
