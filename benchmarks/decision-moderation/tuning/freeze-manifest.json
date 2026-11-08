@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "note": "Pre-inference prompt-tuning freeze. Development and fresh validation bytes immutable for this experiment. Documentation and generated results excluded. Snapshot requests further pinned in each run.",
+  "files": {
+    "experiment.py": "e330b4325b38c99d7519b043e5d56d1fa33efdd287d4425197feecab50067ab6",
+    "contracts.py": "7e6e116cc63e01125416efa5c9655f2a39e685328a92f58f512125f746d01b07",
+    "test_experiment.py": "e0df07073889e7e9936e355eed0dcdaf69ffa35ef47dd3bffd6f54752f35cc1d",
+    "development-cases.json": "b640b2a42e73a48cc678a2c3e5d05b458bfe476d1895851c7b219181beef41af",
+    "fresh-cases.json": "9cf6daaf72bf230f4aae050dad75685c307f2ee8c278331586243f3e7c3e11fb",
+    "variants.json": "0e766b307b267d5acf8309d728997e843bc71338d9231b3d99c81a9ad69a4aa8",
+    "baseline.json": "a71ae4da36d5db4c06acaf72d4d72682b5a083f50de74373387420c7c0fc9dde",
+    "context_v1.json": "15c7ca7320f664c86cb8e5ffe2607a50ba565442cab10ab9a92b996103ac6f0d",
+    "policy_v2.json": "bbe5ad815ec279ec4d3ec47a1ed369adba3747fdceaeb67d1dcab4c0a12ee3fd",
+    "development-plan.json": "95429a5cd155f6ba1fb098b1128753e0385684bccf405ba3d3db047668f685f9",
+    "protocol.json": "f1d06adaa7573f1d13d853232cf191f4f8576e131cfc0f7b42d4e4234b5952e9",
+    "preflight-verification.json": "522a2d10d7cb0ccd11ad028b030ed6964ed675a60c9214fd66d2b56fd6d46f7f"
+  },
+  "dependencies": {
+    "suite.py": "9e40a6a8587788f0134da58246f622bb3a1a66b636ad17644a012c803575e8fc",
+    "run_openrouter.py": "3ba24385c84b419e9c2f09dd793eee8163bcdb103ff1540eb46122217b0a53da",
+    "verify_live_contract.py": "daaed6197e1e5864738fe48d3206dee63d555895ee6e73ee027a701fba0246ae",
+    "legacy/native_contract.py": "726ce241361cbabbc479c02978d8d1928f1b5f9f26c96663bb694e93c0a1f5e2",
+    "legacy/policy.json": "8b4d3ba5b069038bd220054e4aec505b323d85ac8bc3db6e815067d3a819cee8"
+  }
+}

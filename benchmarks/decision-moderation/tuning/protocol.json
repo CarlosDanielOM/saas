@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-08",
+  "models": [
+    "respan/span-01",
+    "typesafe/jev-1.13",
+    "openai/gpt-6-luna-decisions"
+  ],
+  "goal": "Tune wording with production baseline, threshold0.85 and safe veto fixed; minimize false positives without reducing catches.",
+  "baseline": "Exact production-equivalent existing suite.request, unchanged questions/state/categories/Unicode/parser. DomDimaBot headers and normal OpenRouter BYOK routing.",
+  "hypotheses": {
+    "context_v1": "Context speech-act ambiguity and obfuscation: explicit distinction between performing solicitation and reporting/reproducing content, while guarding fake wrapper claims. Changes only shared question instructions.",
+    "policy_v2": "Add specific recovery/OTP secrets and paid booking language, plus positive unwanted-self-promotion definition when invitation is active. This combines policy wording changes, so it cannot isolate their individual causal contributions."
+  },
+  "development": {
+    "file": "development-cases.json",
+    "cases": 168,
+    "repeats": 2,
+    "strata": [
+      "expanded_development",
+      "obfuscation_development"
+    ],
+    "planned_calls": 3024,
+    "selection_rule": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise"
+  },
+  "fresh_validation": {
+    "file": "fresh-cases.json",
+    "sha256": "9cf6daaf72bf230f4aae050dad75685c307f2ee8c278331586243f3e7c3e11fb",
+    "cases": 168,
+    "positive": 84,
+    "benign": 84,
+    "repeats": 3,
+    "selection": "Freeze one selection per model using development only. Then run baseline and that selection on every fresh case. If baseline retained, send baseline once per repeat, no duplicate candidate. Do not retune using fresh validation outcomes.",
+    "provenance": "Independent fixture author read policy/rubric but not original model outputs/scenario files. Lead reviewed labels and exact overlaps before inference; fixture design still informed by this task and policy, not independent moderator ground truth.",
+    "lead_review": [
+      "Corrected unsupported plural invitation wording to recognized form.",
+      "Replaced three exact target overlaps with older fixtures.",
+      "Clarified two quotation-wrapper positives as explicitly endorsed offers.",
+      "Removed ambiguous scam-discussion context from a positive scam solicitation."
+    ]
+  },
+  "regression": {
+    "file": "../legacy/cases.json",
+    "cases": 135,
+    "repeats": 2,
+    "role": "Historical regression reference only, known synthetic policy disagreements. Compare final selected candidates against preserved original baseline with samecase/repeat counts; contemporaneous fresh validation is the main improvement test. No original labels changed."
+  },
+  "cost": {
+    "soft_alert_usd": 1,
+    "action_if_exceeded": "Notify user and continue as already authorized.",
+    "accounting": "Returned OpenRouter usage.cost plus upstream_inference_cost only for is_byok=true; unknown usage/status preserved. Shared account ledger deltas are not benchmark-only."
+  },
+  "deadline_ms_strict": 4000,
+  "threshold": 0.85,
+  "transport": "Same 12sec response collection, one in-flight per provider/model,global0.2sec startspacing; no automatic retries. Preserve failed calls and raw Unicode.",
+  "limits": [
+    "Repeated samples and translations are not independent user examples.",
+    "Policy clarification is a candidate prompt experiment, not a change to production policy or deployment.",
+    "Fresh synthetic validation is not representative real moderation or proof of safety."
+  ]
+}

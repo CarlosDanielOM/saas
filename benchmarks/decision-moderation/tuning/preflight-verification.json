@@ -1,0 +1,60 @@
+{
+  "status": "PASS",
+  "baseline_native_request_parity": {
+    "request_comparisons": 1008,
+    "response_comparisons": 0,
+    "invalid_response_comparisons": 0,
+    "mismatch_count": 0,
+    "mismatches": []
+  },
+  "containers": {
+    "dima-bot": {
+      "image": "sha256:cfa1f51dca33aeed518b3f08ae1a402d61bbc023bb79495ee70f7a49e341240f",
+      "running": true,
+      "mounts": [],
+      "compose_project": "dimabot",
+      "compose_service": "chat-bot",
+      "source_matches_original": {
+        "semantic.js": true,
+        "spam.js": true,
+        "spam_categories.js": true,
+        "app_attribution.util.js": true,
+        "advanced.js": true
+      }
+    },
+    "dima-cron": {
+      "image": "sha256:37c5a7474c311ad111cdf1f83afdf2d57e65209317a06cd0595e64c4130079e9",
+      "running": true,
+      "mounts": [],
+      "compose_project": "dimabot",
+      "compose_service": "dima-cron",
+      "source_matches_original": {
+        "semantic.js": true,
+        "spam.js": true,
+        "spam_categories.js": true,
+        "app_attribution.util.js": true,
+        "advanced.js": true
+      }
+    }
+  },
+  "fresh_cases_sha256": "9cf6daaf72bf230f4aae050dad75685c307f2ee8c278331586243f3e7c3e11fb",
+  "fresh_cases": 168,
+  "fresh_positive": 84,
+  "fresh_benign": 84,
+  "languages": {
+    "en": 73,
+    "es": 25,
+    "pt": 18,
+    "fr": 14,
+    "de": 12,
+    "ja": 10,
+    "ko": 9,
+    "ar": 7
+  },
+  "exact_and_nfkc_unique": true,
+  "no_exact_targets_overlap_original": true,
+  "candidate_state_and_question_name_preserved": true,
+  "any_definition_matches_category_definitions": true,
+  "production_mutations": false,
+  "note": "Pre-inference checks. Fresh synthetic cases reserved; no label/metadata leakage. Baseline requests match captured compiled production code whose hashes still match both running moderation containers."
+}
