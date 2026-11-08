@@ -8,7 +8,9 @@
 //   node marketing/og/build-og.mjs --only=b-chat        # one variant
 //   DEBUG_SHEETS=1 node marketing/og/build-og.mjs       # also og-preview-<lang>.png (how cards show it)
 //
-// Production is dimasite/public/og-image.jpg (1200x630, image/jpeg; see dimasite/src/index.html).
+// Production: the chosen variant (b-chat, EN) is copied to dimasite/public/og-image-v2.jpg (and og-image.jpg for
+// old cached links); dimasite/src/index.html points og:image / twitter:image at the -v2 name so social caches refetch.
+// Release it through scripts/saas-ops build site -> verify --check ops/checks/og-image.mjs -> deploy.
 // Needs Google Fonts and the Playwright install the ops browser checks use (/tmp/saas-cooldown-browser).
 import {mkdirSync, readFileSync, statSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
