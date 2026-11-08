@@ -2,6 +2,8 @@
 
 This kit contains synthetic cases and offline tooling to validate fixtures, export model-independent requests, and evaluate response files. The seven-model OpenRouter comparison is complete; see the [final report](REPORT-2026-11-08.md) and [execution record](EXECUTION.md) for results and provenance. Labels are model-independent synthetic expectations, not moderator ground truth or evidence of production safety.
 
+The follow-up [three-model prompt-tuning report](tuning/REPORT-2026-11-08.md) compares Span 01, Jev 1.13, and Luna against contemporaneous production-prompt baselines, with development-only selection and separate fresh validation and legacy regression. Its [protocol](tuning/protocol.json), [pre-inference freeze](tuning/freeze-manifest.json), and [frozen selection](tuning/selection-2026-11-08.json) preserve the experiment; production was unchanged.
+
 ## Corpus
 
 `scenarios.json` is the original expanded, frozen corpus: 240 clear cases across 24 families (10 per family: 5 positive and 5 benign), plus 24 ambiguous diagnostic cases. Its clear cases are split by whole family: 120 development cases and 120 holdout cases initially reserved from model-driven tuning. Both splits were evaluated in the completed baseline; future prompt selection informed by those results needs a newly reserved holdout. The diagnostic cases are separate and expected false under the classifier's ambiguity fail-open rule. The corpus covers at least eight languages plus mixed-language examples, with Latin and non-Latin scripts.
