@@ -41,7 +41,8 @@ def cases_for(suite, split=None):
             for case in load_json(ROOT / 'legacy' / name):
                 items.append((case, phase))
     else:
-        items = [(c, c['split']) for c in load_json(ROOT / 'scenarios.json')]
+        filename = 'obfuscation.json' if suite == 'obfuscation' else 'scenarios.json'
+        items = [(c, c['split']) for c in load_json(ROOT / filename)]
     if split:
         items = [(c, p) for c, p in items if p == split]
     if not items:
@@ -210,27 +211,96 @@ def evaluate(items, rows, baseline, candidate, repeats):
             if len(diffs) == repeats:
                 case_wins['candidate' if sum(diffs)>0 else 'baseline' if sum(diffs)<0 else 'ties'].append(c['id'])
         slices = {}
-        for key in ('family','language','categories'):
+        for key in ('family','language','categories','variant','obfuscation_type'):
             values = sorted({v for c in subset for v in (c.get(key, []) if key == 'categories' else [c.get(key, 'unspecified')])})
             slices[key] = {v: {m: summary([c for c in subset if v in c.get(key, [])] if key == 'categories' else [c for c in subset if c.get(key,'unspecified') == v],m) for m in models} for v in values}
-        groups[phase] = {'models': summaries, 'paired_attempts': dict(paired), 'paired_affected_cases': {k: sorted(v) for k,v in paired_ids.items()}, 'paired_case_repeat_wins': case_wins, 'slices': slices}
+        pair_diagnostics = {}
+        pairs = [(c, next((o for o in subset if o.get('variant') == 'obfuscated' and o.get('clean_case_id') == c['id']), None)) for c in subset if c.get('variant') == 'plain']
+        def paired_summary(model, selected_pairs):
+            metric_names = ('observed', 'positive_clean_catches', 'positive_obfuscated_catches', 'benign_clean_false_positives', 'benign_obfuscated_false_positives', 'clean_caught_obfuscated_missed', 'obfuscated_caught_clean_missed')
+            counts = Counter({k: 0 for k in ('scheduled_pairs','scheduled_pair_attempts','observed_pair_attempts', *(name + '_attempts' for name in metric_names[1:]))})
+            affected = {name: set() for name in metric_names}
+            for clean, obf in selected_pairs:
+                if obf is None:
+                    continue
+                label = 'positive' if clean['expected'] else 'benign'
+                counts['scheduled_pairs'] += 1
+                for r in range(1, repeats + 1):
+                    counts['scheduled_pair_attempts'] += 1
+                    a, b = seen.get((model,clean['id'],r)), seen.get((model,obf['id'],r))
+                    if a is None or b is None:
+                        continue
+                    counts['observed_pair_attempts'] += 1
+                    affected['observed'].add(clean['id'])
+                    for side, v in (('clean',a),('obfuscated',b)):
+                        name = f'{label}_{side}_' + ('catches' if clean['expected'] else 'false_positives')
+                        if v['timely_ban']:
+                            counts[name + '_attempts'] += 1
+                            affected[name].add(clean['id'])
+                    if clean['expected']:
+                        for name, condition in (('clean_caught_obfuscated_missed',a['timely_ban'] and not b['timely_ban']), ('obfuscated_caught_clean_missed',b['timely_ban'] and not a['timely_ban'])):
+                            if condition:
+                                counts[name + '_attempts'] += 1
+                                affected[name].add(clean['id'])
+            return {'counts': dict(counts), 'distinct_pair_counts': {k:len(v) for k,v in affected.items()}, 'affected_pairs': {k:sorted(v) for k,v in affected.items()}, 'note':'Each clean ID identifies one paired transformation; attempts are repeated observations, not independent original scenarios.'}
+        for model in models:
+            pair_diagnostics[model] = paired_summary(model, pairs)
+            pair_diagnostics[model]['by_language'] = {language: paired_summary(model, [pair for pair in pairs if pair[0].get('language') == language]) for language in sorted({pair[0].get('language', 'unspecified') for pair in pairs})}
+        groups[phase] = {'paired_obfuscation_diagnostics': pair_diagnostics if pairs else {}, 'models': summaries, 'paired_attempts': dict(paired), 'paired_affected_cases': {k: sorted(v) for k,v in paired_ids.items()}, 'paired_case_repeat_wins': case_wins, 'slices': slices}
     qualification = 'not_evaluated_holdout'
+    qualification_basis = 'Timely positive attempts and distinct cases on the selected holdout.'
     if 'holdout' in groups:
         h = groups['holdout']['models']; b, a = h[baseline],h[candidate]
+        pair_data = groups['holdout']['paired_obfuscation_diagnostics']
+        a_unique, b_unique = len(a['timely_tp_cases']), len(b['timely_tp_cases'])
+        a_attempts, b_attempts = a['timely_tp_attempts'], b['timely_tp_attempts']
+        clean_preserved = True
+        if pair_data:
+            ac, bc = pair_data[candidate], pair_data[baseline]
+            a_unique = ac['distinct_pair_counts']['positive_obfuscated_catches']
+            b_unique = bc['distinct_pair_counts']['positive_obfuscated_catches']
+            a_attempts = ac['counts']['positive_obfuscated_catches_attempts']
+            b_attempts = bc['counts']['positive_obfuscated_catches_attempts']
+            clean_preserved = (ac['counts']['positive_clean_catches_attempts'] >= bc['counts']['positive_clean_catches_attempts']
+                and ac['distinct_pair_counts']['positive_clean_catches'] >= bc['distinct_pair_counts']['positive_clean_catches'])
+            qualification_basis = 'Obfuscated timely positive attempts and distinct transformation pairs, with no reduction in plain-text timely catches or distinct plain-text catches.'
         if not a['complete'] or not b['complete']:
             qualification = 'incomplete'
         elif baseline != 'typesafe/jev-1.13':
             qualification = 'baseline_not_jev'
         elif a['timely_fp_cases'] or a['returned_fp_cases']:
             qualification = 'false_bans_observed'
-        elif len(a['timely_tp_cases']) > len(b['timely_tp_cases']) and a['timely_tp_attempts'] > b['timely_tp_attempts']:
+        elif clean_preserved and a_unique > b_unique and a_attempts > b_attempts:
             qualification = 'synthetic_holdout_candidate'
-        elif len(a['timely_tp_cases']) == len(b['timely_tp_cases']) and a['timely_tp_attempts'] == b['timely_tp_attempts']:
+        elif clean_preserved and a_unique == b_unique and a_attempts == b_attempts:
             qualification = 'tie'
         else:
             qualification = 'no_strict_improvement_or_regression'
     return {'notice': 'Synthetic labels; calibration is unproven. Zero observed false positives is insufficient proof of safety. This is not production approval.',
-            'baseline': baseline, 'candidate': candidate, 'repeats': repeats, 'qualification': qualification, 'groups': groups}
+            'baseline': baseline, 'candidate': candidate, 'repeats': repeats, 'qualification': qualification,
+            'qualification_basis': qualification_basis, 'groups': groups}
+
+
+def validate_obfuscation_pairs(cases):
+    by_id = {c['id']: c for c in cases}
+    mates = Counter()
+    for c in cases:
+        if c.get('variant') not in ('plain','obfuscated') or c.get('obfuscation_type') != c.get('family'):
+            raise ValueError(f"invalid obfuscation metadata: {c['id']}")
+        clean = by_id.get(c.get('clean_case_id'))
+        if clean is None or clean.get('variant') != 'plain' or clean.get('clean_case_id') != clean['id']:
+            raise ValueError(f"invalid clean link: {c['id']}")
+        if c.get('normalized_reference') != clean['message']:
+            raise ValueError(f"invalid normalized reference: {c['id']}")
+        for key in ('categories','context','expected','expected_categories','label_status','language','split','family','scenario_group','obfuscation_type'):
+            if c.get(key) != clean.get(key):
+                raise ValueError(f"paired field mismatch ({key}): {c['id']}")
+        if c['variant'] == 'obfuscated':
+            if c['id'] == clean['id'] or c['message'] == clean['message']:
+                raise ValueError(f"self-linked obfuscated case: {c['id']}")
+            mates[clean['id']] += 1
+    if any(mates[c['id']] != 1 for c in cases if c['variant'] == 'plain'):
+        raise ValueError('each plain case must have exactly one obfuscated mate')
 
 
 def validate():
@@ -244,6 +314,8 @@ def validate():
             target = (ref / rel).resolve()
             if not target.is_relative_to(ref.resolve()) or hashlib.sha256(target.read_bytes()).hexdigest() != expected:
                 raise ValueError(f'hash mismatch: {rel}')
+        if path.name == 'manifest.json' and not {'scenarios.json','obfuscation.json','legacy/cases.json','legacy/supplemental-cases.json','legacy/policy.json','legacy/native_contract.py','suite.py'} <= set(doc['files']):
+            raise ValueError('manifest missing required frozen inputs')
         for rel, expected in doc.get('source_files', {}).items():
             repo = ROOT.parents[1]
             target = (repo / rel).resolve()
@@ -251,7 +323,8 @@ def validate():
                 raise ValueError(f'source hash mismatch: {rel}')
     legacy = cases_for('legacy')
     expanded = cases_for('expanded')
-    all_cases = legacy + expanded
+    obfuscation = cases_for('obfuscation')
+    all_cases = legacy + expanded + obfuscation
     ids = set()
     payloads = {}
     known_duplicate = {'hard-injection-role', 'followup-role-original'}
@@ -280,9 +353,11 @@ def validate():
                 if not isinstance(ctx, dict) or set(ctx) != {'messageID','username','message','timestamp','isBroadcaster'} or type(ctx['isBroadcaster']) is not bool or not all(isinstance(ctx[k], str) and len(ctx[k]) <= 500 for k in ('messageID','username','message')) or not ((isinstance(ctx['timestamp'], str) and len(ctx['timestamp']) <= 500) or numeric(ctx['timestamp'])):
                     raise ValueError(f"invalid context item: {c['id']}")
             expected_cats = c.get('expected_categories')
-            if (not isinstance(expected_cats,list) or len(expected_cats)!=len(set(expected_cats)) or not set(expected_cats) <= set(cats) or bool(expected_cats) != c['expected'] or c.get('group') != 'expanded' or not isinstance(c.get('language'), str) or not re.fullmatch(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*|mixed', c['language']) or not isinstance(c.get('family'),str) or not c['family'] or not isinstance(c.get('scenario_group'),str) or not c['scenario_group'] or not isinstance(c.get('tags'),list) or not all(isinstance(t,str) for t in c['tags']) or not isinstance(c.get('rationale'),str) or not c['rationale'] or c.get('label_status') != ('synthetic_ambiguous' if phase == 'diagnostic' else 'synthetic_clear') or (phase == 'diagnostic' and c['expected'])):
+            if (not isinstance(expected_cats,list) or len(expected_cats)!=len(set(expected_cats)) or not set(expected_cats) <= set(cats) or bool(expected_cats) != c['expected'] or c.get('group') not in ('expanded','obfuscation') or not isinstance(c.get('language'), str) or not re.fullmatch(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*|mixed', c['language']) or not isinstance(c.get('family'),str) or not c['family'] or not isinstance(c.get('scenario_group'),str) or not c['scenario_group'] or not isinstance(c.get('tags'),list) or not all(isinstance(t,str) for t in c['tags']) or not isinstance(c.get('rationale'),str) or not c['rationale'] or c.get('label_status') != ('synthetic_ambiguous' if phase == 'diagnostic' else 'synthetic_clear') or (phase == 'diagnostic' and c['expected'])):
                 raise ValueError(f"invalid expanded fields: {c['id']}")
         req = request(c, 'offline/contract-check')
+        if set(req) != {'model','questions','state'}:
+            raise ValueError(f"unexpected request metadata: {c['id']}")
         if req['model'] != 'offline/contract-check' or set(req['questions']) != set(cats) | {'unsafe'} or req['state']['output'] != {'role':'assistant','content':c['message']} or len(req['state']['input']) != len(c['context']):
             raise ValueError(f"invalid request contract: {c['id']}")
         for ctx, item in zip(c['context'], req['state']['input']):
@@ -295,19 +370,40 @@ def validate():
         raise ValueError(f'unexpected expanded distribution: {distribution}')
     for field in ('family','scenario_group','message'):
         locations = defaultdict(set)
-        for c, phase in expanded:
+        for c, phase in expanded + obfuscation:
             locations[c[field]].add(phase)
         if any(len(v)>1 for v in locations.values()):
             raise ValueError(f'{field} crosses splits')
     if len({c['family'] for c,p in expanded if p != 'diagnostic'}) != 24:
         raise ValueError('expected 24 clear families')
+    obs = [c for c,_ in obfuscation]
+    if len(obs) != 96 or any(c['group'] != 'obfuscation' for c in obs):
+        raise ValueError('invalid obfuscation corpus size or group')
+    if Counter((p,c['expected']) for c,p in obfuscation) != {('development',True):24,('development',False):24,('holdout',True):24,('holdout',False):24}:
+        raise ValueError('unexpected obfuscation distribution')
+    if any(c['group'] != 'expanded' for c,_ in expanded):
+        raise ValueError('invalid expanded group')
+    families = defaultdict(list)
+    for c in obs:
+        families[c['family']].append(c)
+    if len(families) != 12 or any(len(v) != 8 or sum(c['expected'] for c in v) != 4 for v in families.values()):
+        raise ValueError('expected 12 balanced eight-case families')
+    if Counter(c['split'] for c in (v[0] for v in families.values())) != {'development':6,'holdout':6}:
+        raise ValueError('expected six families per split')
+    for family_cases in families.values():
+        scenarios = defaultdict(list)
+        for c in family_cases:
+            scenarios[c['scenario_group']].append(c)
+        if len(scenarios) != 2 or any(len(v) != 4 or sum(c['expected'] for c in v) != 2 for v in scenarios.values()):
+            raise ValueError('expected two balanced quartets per family')
+    validate_obfuscation_pairs(obs)
     # Independent boundary checks guard the frozen parser contract.
     native = contract()
     for scores in ({'spam':.85,'unsafe':.15}, {'spam':.85,'unsafe':.16}, {'spam':.849,'unsafe':1}, {'spam':.2,'unsafe':.1}):
         raw = {'answers': {k:{'type':'noul','noul':v} for k,v in scores.items()}, 'usage':{'cost':0,'input_tokens':0}}
         if score(raw,['spam'])[0] != native.verdict(scores):
             raise ValueError('native verdict parity failure')
-    return {'legacy_duplicate_payloads': duplicate_legacy, 'legacy_cases': len(legacy), 'expanded_cases':len(expanded), 'expanded_distribution': {f'{p}:{v}': n for (p,v),n in sorted(distribution.items())}, 'manifest_verified':(ROOT/'manifest.json').exists()}
+    return {'legacy_duplicate_payloads': duplicate_legacy, 'legacy_cases': len(legacy), 'expanded_cases':len(expanded), 'obfuscation_cases':len(obfuscation), 'expanded_distribution': {f'{p}:{v}': n for (p,v),n in sorted(distribution.items())}, 'manifest_verified':(ROOT/'manifest.json').exists()}
 
 
 def main():
@@ -316,7 +412,7 @@ def main():
     sub.add_parser('validate')
     for name in ('export','evaluate'):
         p = sub.add_parser(name)
-        p.add_argument('--suite', choices=('legacy','expanded'), required=True)
+        p.add_argument('--suite', choices=('legacy','expanded','obfuscation'), required=True)
         p.add_argument('--split', choices=('primary','supplemental','development','holdout','diagnostic'))
         p.add_argument('--repeats', type=int)
         p.add_argument('--output', type=Path, required=(name == 'export'))
@@ -343,7 +439,11 @@ def main():
         else:
             with args.input.open(encoding='utf-8') as f:
                 rows = [json.loads(line) for line in f if line.strip()]
-            result = json.dumps(evaluate(items, rows, args.baseline, args.candidate, repeats), indent=2, ensure_ascii=False) + '\n'
+            report = evaluate(items, rows, args.baseline, args.candidate, repeats)
+            report['suite'] = args.suite
+            if args.suite == 'obfuscation':
+                report['paired_transformations_notice'] = 'Plain and obfuscated variants are paired transformations, not independent original scenarios.'
+            result = json.dumps(report, indent=2, ensure_ascii=False) + '\n'
             if args.output:
                 args.output.write_text(result, encoding='utf-8')
             else:

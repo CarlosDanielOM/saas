@@ -158,6 +158,58 @@ class ScorerTests(unittest.TestCase):
                 self.assertIn('hash mismatch',process.stderr)
                 self.assertEqual(output.read_text(),'sentinel')
 
+    def test_obfuscation_literal_unicode_and_pair_links(self):
+        clean = {'id':'plain', 'message':'Cafe spam', 'context':[], 'categories':['spam'], 'expected':True,
+                 'expected_categories':['spam'], 'label_status':'synthetic_clear', 'language':'en', 'split':'holdout',
+                 'family':'spacing','scenario_group':'one','obfuscation_type':'spacing','variant':'plain',
+                 'clean_case_id':'plain','normalized_reference':'Cafe spam'}
+        obf = {**clean, 'id':'obfuscated', 'variant':'obfuscated', 'message':'Cafe\u0301 s\u200bpаｍ'}
+        s.validate_obfuscation_pairs([clean,obf])
+        req = next(s.export_rows([(obf,'holdout')],'model',1))['request']
+        self.assertEqual(req['state']['output']['content'], obf['message'])
+        self.assertIn(chr(0x0301), req['state']['output']['content'])
+        self.assertIn(chr(0x200b), req['state']['output']['content'])
+        self.assertNotIn('normalized_reference',json.dumps(req))
+        self.assertNotIn(clean['message'],json.dumps(req))
+        row = self.row('candidate',obf)
+        report = s.evaluate([(clean,'holdout'),(obf,'holdout')],[row],'typesafe/jev-1.13','candidate',1)
+        self.assertEqual(report['groups']['holdout']['models']['candidate']['timely_tp_attempts'],1)
+        for bad in [{**obf,'clean_case_id':'missing'}, {**obf,'expected':False}, {**obf,'context':[{'message':'different'}]}, {**obf,'normalized_reference':'wrong'}]:
+            with self.assertRaises(ValueError): s.validate_obfuscation_pairs([clean,bad])
+
+    def test_obfuscation_paired_metrics(self):
+        clean = {'id':'plain', 'message':'one', 'context':[], 'categories':['spam'], 'expected':True, 'variant':'plain', 'clean_case_id':'plain','language':'es'}
+        obf = {**clean,'id':'obfuscated','variant':'obfuscated','message':'o\u200bne'}
+        items = [(clean,'holdout'),(obf,'holdout')]
+        rows = [self.row('candidate',clean,1,raw(.9,.9)), self.row('candidate',obf,1,raw(.1,.1)),
+                self.row('candidate',clean,2,raw(.1,.1)), self.row('candidate',obf,2,raw(.9,.9))]
+        report = s.evaluate(items,rows,'typesafe/jev-1.13','candidate',2)
+        pairs = report['groups']['holdout']['paired_obfuscation_diagnostics']['candidate']
+        self.assertEqual(pairs['counts']['scheduled_pairs'],1)
+        self.assertEqual(pairs['counts']['observed_pair_attempts'],2)
+        self.assertEqual(pairs['counts']['clean_caught_obfuscated_missed_attempts'],1)
+        self.assertEqual(pairs['counts']['obfuscated_caught_clean_missed_attempts'],1)
+        self.assertEqual(pairs['affected_pairs']['clean_caught_obfuscated_missed'],['plain'])
+        self.assertEqual(pairs['by_language']['es']['counts']['observed_pair_attempts'],2)
+
+    def test_obfuscation_default_grid(self):
+        items = s.cases_for('obfuscation')
+        self.assertEqual(len(items),96)
+        self.assertEqual(len(list(s.export_rows(items,'model',3))),288)
+
+    def test_obfuscated_recall_improvement_preserves_clean_recall(self):
+        clean = {'id':'plain', 'message':'one', 'context':[], 'categories':['spam'], 'expected':True,
+                 'variant':'plain', 'clean_case_id':'plain', 'language':'en'}
+        obf = {**clean,'id':'obfuscated','variant':'obfuscated','message':'o' + chr(0x200b) + 'ne'}
+        items = [(clean,'holdout'), (obf,'holdout')]
+        rows = [self.row('typesafe/jev-1.13', clean), self.row('typesafe/jev-1.13', obf, answer=raw(.1,.1)),
+                self.row('candidate', clean), self.row('candidate', obf)]
+        report = s.evaluate(items, rows, 'typesafe/jev-1.13', 'candidate', 1)
+        self.assertEqual(report['qualification'], 'synthetic_holdout_candidate')
+        rows[2]['raw'] = raw(.1,.1)
+        report = s.evaluate(items, rows, 'typesafe/jev-1.13', 'candidate', 1)
+        self.assertEqual(report['qualification'], 'no_strict_improvement_or_regression')
+
     def test_split_isolation(self):
         row = self.row('typesafe/jev-1.13', self.items[0][0])
         with self.assertRaises(ValueError):

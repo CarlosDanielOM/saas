@@ -3,8 +3,8 @@
   "files": {
     ".gitattributes": "12ec559e2d3b4cec99b1987dd728d4a77111cb5b15733d6a0c2cec72c825669a",
     ".gitignore": "dbaf56785d97941e8797254e3e7a35ae7565ae714b146dbdd806b1d59b635d0a",
-    "README.md": "1544db9c463aa77bcdcf6622124e7e48c5a6d484db4e15a6a25f236a96094cd8",
-    "RUBRIC.md": "2a2083f8670c8e7d45772e7d0dcf5cecaad75c66678f100d154828b8c3392e2d",
+    "README.md": "331d133f7db3e385fd90ec8d523c9bd18475f2e8561d75a68448a9d4850c2b90",
+    "RUBRIC.md": "ba5f1f0d5af4b39e6fb3bd6fd704becff2f944c128bd35a2923ddbf56d48515d",
     "legacy/cases.json": "7fe5a4bf6a410f68155a1ee32c114bf186fe7d2be74ef5f3b17dc2ce710c38f5",
     "legacy/native-parser.ts": "d565c0b8c1a9c48d04ec153efb165bf4551eeeffed0a90655b80c7bd192e080f",
     "legacy/native_contract.py": "726ce241361cbabbc479c02978d8d1928f1b5f9f26c96663bb694e93c0a1f5e2",
@@ -12,10 +12,12 @@
     "legacy/provenance.json": "be03e5e3891f725179d46da251eb81cde0d7c1aee75ac82e0db9c8d4e96fa225",
     "legacy/supplemental-cases.json": "b095506e011c6c1102e781f70dd7cd9f31a49b47a3b749cea500d6e90c6480af",
     "model-discovery.json": "3443662c4cd84014d655db7f492fcca705cecf170ae2c922c0bda8d8a9db8cdb",
-    "protocol.json": "cc67f7cfd2fe645fd06c3341b1f2d4fb5cdd71c98ab246cfc2e2747f8d1e80b0",
+    "obfuscation-verification.json": "9646b17bec79dc8d5264239d6c0112416fef3ec65e2f45b2e56d0436739ed1ba",
+    "obfuscation.json": "24423a1f78c6a6eff444c92eece6037f3a83f3c2de0228b8ecc1c8bfe7bc963f",
+    "protocol.json": "d1b091fdb8b24367e4c4837b1afb2abb64ee897b62b2dd6695889c908c6ec7fd",
     "scenarios.json": "97242c177ab9bc45c2e987541f14020f15a8030a9d852253f464dd88fe6b26f8",
-    "suite.py": "dc648c503ed65826643aeb518d294e42e07a0f5771d1cdda694b24110ded4715",
-    "test_suite.py": "84b6234c19cf3f3488093b9ec19a9f0350d4a87f9c835b39c6ee6772131ea788",
+    "suite.py": "9e40a6a8587788f0134da58246f622bb3a1a66b636ad17644a012c803575e8fc",
+    "test_suite.py": "513b7c65bd55dfaeb68c4d6996f04d4c789110f254a5ec3b4c32c0bfa8d71e8e",
     "verification.json": "f8bfc465c9436c2234850aec8428e649485eba313891ff68ceb31f6d0f8dcd01"
   },
   "source_files": {

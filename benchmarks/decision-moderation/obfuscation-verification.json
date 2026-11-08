@@ -1,0 +1,28 @@
+{
+  "current_source_request_comparisons": 507,
+  "current_source_score_fixture_comparisons": 960,
+  "mismatches": 0,
+  "offline_only": true,
+  "model_inferences": 0,
+  "unit_tests_passed": 14,
+  "unit_tests_failed": 0,
+  "obfuscation_cases": 96,
+  "matched_transformation_pairs": 48,
+  "matched_quartets": 24,
+  "obfuscation_sha256": "24423a1f78c6a6eff444c92eece6037f3a83f3c2de0228b8ecc1c8bfe7bc963f",
+  "original_expanded_sha256_unchanged": "97242c177ab9bc45c2e987541f14020f15a8030a9d852253f464dd88fe6b26f8",
+  "split_counts": {
+    "development": 48,
+    "holdout": 48
+  },
+  "method": "Actual pure current TypeScript request-builder and parser bodies extracted without application imports; all507 requests and960 deterministic score fixtures compared with Python. Original Unicode preserved. No network, models, or live services used.",
+  "lead_review": [
+    "Removed plain-language sales restatements that made obfuscation decoding optional.",
+    "Kept generic quote contexts identical between plain and obfuscated mates.",
+    "Verified actual NFD combining marks, zero-width characters, homoglyphs, and newlines.",
+    "Added a verified-broadcaster invited-promotion control.",
+    "Reproduced and corrected obfuscation qualification to recognize improved obfuscated recall without reducing clean recall."
+  ],
+  "offline_cli_fixture_rows": 576,
+  "offline_cli_checks": "Exported both verified model IDs with DomDimaBot headers, evaluated fixed-score fixture responses, and checked Unicode byte fidelity, costs counted once, pair counts, complete grids, and expected tie. Temporary files removed; these are not model results."
+}

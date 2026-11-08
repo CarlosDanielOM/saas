@@ -53,6 +53,23 @@ Each expanded case uses:
 
 Labels and rationales are retained in the local evaluation fixture only. They must never be included in the model wire request. `label_status` records review state; it does not imply independent human moderation or establish ground truth. The corpus author and lead review the labels against the source contract before freeze.
 
+## Unicode obfuscation suite
+
+The separate [`obfuscation.json`](obfuscation.json) suite contains 96 clear cases in 12 families, with eight records per family (four positive and four benign). Its development and holdout splits each contain 48 cases (24 positive, 24 benign), with entire families held within a split. Every family has two matched quartets: plain positive, obfuscated positive, plain benign, and obfuscated benign. The six foundational transformations are `letter_spacing`, `combining_diacritics`, `unicode_homoglyphs`, `leetspeak`, `invisible_formatting`, and `disguised_domain`. The six additional holdout forms are `stacked_obfuscation`, `fullwidth_math_fonts`, `emoji_separators`, `punctuation_newlines`, `multilingual_obfuscation`, and `markup_injection`.
+
+The extra fields are:
+
+- `variant`: `plain` or `obfuscated`.
+- `clean_case_id`: a plain record points to itself; its obfuscated mate points to that plain record.
+- `normalized_reference`: annotation-only plain reference text, equal to the corresponding plain message.
+- `obfuscation_type`: family name for the transformation.
+
+The normalized reference and all other answer-bearing metadata are fixture annotations only. Never place them in the request, prompt, or model-visible context. Preserve the `message` string's raw Unicode exactly as stored, including combining marks, homoglyphs, invisible formatting characters, spacing, punctuation, and line breaks. Do not add a normalization or preprocessing step to the application or evaluation harness; the model request should contain the raw fixture message. For example, the positive `letter_spacing` family contains a readable sales pitch using text such as `buy V i ɛ ẃ ĕ ṛ dot ç º m`. Cases must still have readable text and clear policy intent; undecipherable gibberish is out of scope.
+
+Include benign controls for quoted reports, scam warnings, harmless stylized text, bare domains, disabled categories, and verified broadcaster-invited promotion. Strange characters alone do not establish any selected violation. The paired obfuscation diagnostics compare each model's plain versus obfuscated positive catch retention and benign false-ban changes using the same 0.85 threshold and under-4,000-ms timely criterion, reporting overall and per-language attempt counts separately from distinct pairs. These are diagnostic deltas and do not contribute to the original expanded-suite qualification.
+
+The separate obfuscation holdout assessment requires a complete paired grid, zero returned false positives, strict improvement over Jev in both timely obfuscated positive attempts and distinct obfuscated positive transformation pairs, and no reduction in timely plain-text positive attempts or distinct plain-text catches. Catching both variants does not create two independent original scenarios. Any qualification remains a synthetic result only.
+
 ## Evaluation contract and freeze protocol
 
 For the current source behavior, each request includes category questions plus the `unsafe` question. The parser computes `safe = 1 - unsafe`; if the highest selected-category probability is greater than `safe`, the unsafe behavior wins. Otherwise the outcome is not a violation. A violation also requires the highest selected-category score to meet the unchanged 0.85 threshold. Thus ties, low confidence, malformed output, and uncertainty fail open. Count a returned violation as timely only when request-to-full-response transport latency is strictly below 4,000 ms. This transport interval does not cover the full production deadline, which also includes queueing, credit checks, and action execution.

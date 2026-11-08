@@ -57,12 +57,28 @@
       "languages": "Broad multilingual coverage, including mixed language and non-Latin scripts; report actual per-language counts and outcomes.",
       "split_unit": "Entire family, scenario_group, and target-message text; none may cross development, holdout, or diagnostic splits.",
       "diagnostics": "Ambiguous cases have expected=false under the absent-if-ambiguous policy. Report separately from clear-case qualification."
+    },
+    "obfuscation": {
+      "cases": 96,
+      "development_cases": 48,
+      "holdout_cases": 48,
+      "violations": 48,
+      "benign": 48,
+      "families": 12,
+      "matched_quartets": 24,
+      "planned_repeats": 3,
+      "role": "Separate paired stress set; report separately from expanded and legacy suites. Each quartet contains plain and obfuscated variants of a positive and a benign case.",
+      "pairing": "clean_case_id links each obfuscated case to its plain counterpart, preserving context, categories, label, language, and split. Whole families, scenario groups, and target texts stay within one split.",
+      "model_input": "Send the exact original Unicode text, including combining marks, confusables, and invisible characters. normalized_reference is annotation only and must never be substituted into or appended to a model request.",
+      "metrics": "Report raw and obfuscated catches, positive plain-caught/obfuscated-missed pairs, inverse changes, and benign false bans by variant. Distinguish repeated attempts and distinct transformation pairs.",
+      "limitations": "Obfuscations must remain interpretable with clear policy evidence. Decorative typography alone is not a violation; benign quotes, warnings, and ordinary stylized messages remain controls.",
+      "qualification": "On a complete obfuscation holdout, require zero returned false-positive judgments, strict improvement over Jev in both timely obfuscated positive attempts and distinct obfuscated positive transformation pairs, and no reduction in plain-text positive timely attempts or distinct plain-text catches. This is a separate synthetic_holdout_candidate assessment, not production approval."
     }
   },
   "comparison": {
     "pairing": "Both models receive the same frozen cases, policy, categories, context, and repeat counts; only model selection differs.",
     "missing_or_duplicate": "Missing planned outcomes make the comparison incomplete; reject duplicate tuples, unknown cases/models, unexpected rounds, malformed timing, and mismatched request hashes.",
-    "independence": "Repeats are not independent unique examples. Report distinct affected cases, per-case consistency, and paired outcomes alongside attempt counts.",
+    "independence": "Repeats and plain/obfuscated variants are not independent original scenarios. Report distinct affected cases, distinct transformation pairs, per-case consistency, and paired outcomes alongside attempt counts.",
     "selection": "Use development only for any prompt or rule experiments. Freeze prompt and thresholds before holdout inference; do not select a threshold on the holdout.",
     "qualification": "A complete expanded holdout with zero observed returned false-positive judgments (including late responses) and strict improvement in timely positive attempts AND distinct timely positive cases over contemporaneous Jev may be labeled synthetic_holdout_candidate only. It does not authorize a production change.",
     "cost": "Sum each returned usage.cost once. Missing usage has unknown cost, never assumed free. Keep OpenRouter usage and upstream BYOK accounting separate.",
