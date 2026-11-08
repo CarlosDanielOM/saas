@@ -1,0 +1,13 @@
+{
+  "source_reuse": {
+    "chat_collector": "dimabot/src/handlers/message.handler.ts:74 -> ChatHistory.addMessage",
+    "history": "dimabot/src/classes/chat_history.ts:47 getRecentMessages; Twitch chat text and badges",
+    "moderation_context": "dimabot/src/handlers/moderation.handler.ts:111-118 -> up to7 preceding messages inlast60000ms, eachtext<=500 chars, isBroadcasterderivedfrombadge",
+    "model_request": "dimabot/src/utils/moderation/semantic.ts:102-107 -> context user-role JSON, final message assistant-role; no audio/transcript",
+    "invitation": "dimabot/src/utils/moderation/spam.ts:38 -> verified isBroadcastertrue plus recognizedtextinvitation, not an inference about unheard speech"
+  },
+  "gap": "No stream-audio or speech-transcription input is supplied in this moderation request. User feedback says broadcasters mainly speak aloud; earlier invitation/quote-request-heavy synthetic context is therefore a conditional stress case, not representative platform traffic.",
+  "evaluation_adjustment": "Viewer-heavy casual chat with zero reliance on quote marks, formal moderator messages or written broadcaster prompts; report visibility-limited voice twins separately.",
+  "diagnostic_interpretation": "Identical text-only inputs can correspond to opposite real-world moderation intentions when speech is hidden. A deterministic text-only classifier cannot get both worlds right. These pairs illustrate end-to-end information limits, not a scored model ability or permission to hallucinate an invitation.",
+  "scope": "No ASR pipeline or product permission settings added; original results retained unchanged."
+}

@@ -1,0 +1,3891 @@
+[
+  {
+    "id": "informal-001",
+    "message": "ai viewers streamlift.example",
+    "context": [
+      {
+        "messageID": "informal-ctx-001-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794139259000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam",
+      "ads"
+    ],
+    "family": "viewer_bots",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "viewer_bots",
+      "informal"
+    ],
+    "rationale": "The speaker offers fake engagement with a domain, a terse sales pitch.",
+    "target_received_at": 1794139260000
+  },
+  {
+    "id": "informal-002",
+    "message": "viewers bot baratos subelive.example",
+    "context": [
+      {
+        "messageID": "informal-ctx-002-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794139318000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-002-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794139319000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam",
+      "ads"
+    ],
+    "family": "viewer_bots",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "viewer_bots",
+      "informal"
+    ],
+    "rationale": "The speaker offers fake engagement with a domain, a terse sales pitch.",
+    "target_received_at": 1794139320000
+  },
+  {
+    "id": "informal-003",
+    "message": "seguidores baratos turbostream.example",
+    "context": [],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam",
+      "ads"
+    ],
+    "family": "viewer_bots",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "viewer_bots",
+      "informal"
+    ],
+    "rationale": "The speaker offers fake engagement with a domain, a terse sales pitch.",
+    "target_received_at": 1794139380000
+  },
+  {
+    "id": "informal-004",
+    "message": "spectateurs IA fluxvite.example",
+    "context": [
+      {
+        "messageID": "informal-ctx-004-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794139439000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam",
+      "ads"
+    ],
+    "family": "viewer_bots",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "viewer_bots",
+      "informal"
+    ],
+    "rationale": "The speaker offers fake engagement with a domain, a terse sales pitch.",
+    "target_received_at": 1794139440000
+  },
+  {
+    "id": "informal-005",
+    "message": "bot zuschauer livepush.example",
+    "context": [
+      {
+        "messageID": "informal-ctx-005-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794139498000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-005-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794139499000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam",
+      "ads"
+    ],
+    "family": "viewer_bots",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "de",
+    "tags": [
+      "viewer_bots",
+      "informal"
+    ],
+    "rationale": "The speaker offers fake engagement with a domain, a terse sales pitch.",
+    "target_received_at": 1794139500000
+  },
+  {
+    "id": "informal-006",
+    "message": "ai viewers streamlift.example, thats what the bot posted",
+    "context": [
+      {
+        "messageID": "informal-ctx-006-1",
+        "username": "moss",
+        "message": "wtf did that bot post?",
+        "timestamp": 1794139559000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "viewer_bots",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "viewer_bots",
+      "informal"
+    ],
+    "rationale": "The message warns or reports a pitch, gives only a domain, or discusses game bots; it makes no sales offer.",
+    "target_received_at": 1794139560000
+  },
+  {
+    "id": "informal-007",
+    "message": "ojo ese bot vende viewers, no entren a subelive.example",
+    "context": [
+      {
+        "messageID": "informal-ctx-007-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794139619000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "viewer_bots",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "viewer_bots",
+      "informal"
+    ],
+    "rationale": "The message warns or reports a pitch, gives only a domain, or discusses game bots; it makes no sales offer.",
+    "target_received_at": 1794139620000
+  },
+  {
+    "id": "informal-008",
+    "message": "turbostream.example",
+    "context": [
+      {
+        "messageID": "informal-ctx-008-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794139677000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-008-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794139678000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-008-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794139679000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "viewer_bots",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "viewer_bots",
+      "informal"
+    ],
+    "rationale": "The message warns or reports a pitch, gives only a domain, or discusses game bots; it makes no sales offer.",
+    "target_received_at": 1794139680000
+  },
+  {
+    "id": "informal-009",
+    "message": "les bots du jeu sont trop forts mdr",
+    "context": [],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "viewer_bots",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "viewer_bots",
+      "informal"
+    ],
+    "rationale": "The message warns or reports a pitch, gives only a domain, or discusses game bots; it makes no sales offer.",
+    "target_received_at": 1794139740000
+  },
+  {
+    "id": "informal-010",
+    "message": "mein viewer bot im spiel ist kaputt lol",
+    "context": [
+      {
+        "messageID": "informal-ctx-010-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794139799000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "viewer_bots",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "de",
+    "tags": [
+      "viewer_bots",
+      "informal"
+    ],
+    "rationale": "The message warns or reports a pitch, gives only a domain, or discusses game bots; it makes no sales offer.",
+    "target_received_at": 1794139800000
+  },
+  {
+    "id": "informal-011",
+    "message": "dm me ur login password and i can unlock the prize",
+    "context": [
+      {
+        "messageID": "informal-ctx-011-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794139858000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-011-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794139859000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "credential_theft",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "credential_theft",
+      "informal"
+    ],
+    "rationale": "The speaker asks the recipient to surrender an account secret.",
+    "target_received_at": 1794139860000
+  },
+  {
+    "id": "informal-012",
+    "message": "pásame tu código de respaldo y te verifico la cuenta",
+    "context": [],
+    "categories": [
+      "spam"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "credential_theft",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "credential_theft",
+      "informal"
+    ],
+    "rationale": "The speaker asks the recipient to surrender an account secret.",
+    "target_received_at": 1794139920000
+  },
+  {
+    "id": "informal-013",
+    "message": "manda teu código de login aqui pra eu liberar o prêmio",
+    "context": [
+      {
+        "messageID": "informal-ctx-013-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794139979000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "credential_theft",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "credential_theft",
+      "informal"
+    ],
+    "rationale": "The speaker asks the recipient to surrender an account secret.",
+    "target_received_at": 1794139980000
+  },
+  {
+    "id": "informal-014",
+    "message": "当選確認するからログインのパスワードをDMして",
+    "context": [
+      {
+        "messageID": "informal-ctx-014-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794140038000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-014-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794140039000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "credential_theft",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ja",
+    "tags": [
+      "credential_theft",
+      "informal"
+    ],
+    "rationale": "The speaker asks the recipient to surrender an account secret.",
+    "target_received_at": 1794140040000
+  },
+  {
+    "id": "informal-015",
+    "message": "상품 받으려면 백업 코드를 나한테 보내줘",
+    "context": [],
+    "categories": [
+      "spam"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "credential_theft",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ko",
+    "tags": [
+      "credential_theft",
+      "informal"
+    ],
+    "rationale": "The speaker asks the recipient to surrender an account secret.",
+    "target_received_at": 1794140100000
+  },
+  {
+    "id": "informal-016",
+    "message": "never dm anyone ur backup codes chat",
+    "context": [
+      {
+        "messageID": "informal-ctx-016-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794140159000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "credential_theft",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "credential_theft",
+      "informal"
+    ],
+    "rationale": "The message warns about protecting secrets, without requesting one.",
+    "target_received_at": 1794140160000
+  },
+  {
+    "id": "informal-017",
+    "message": "el bot pidió el código de respaldo, no se lo den",
+    "context": [
+      {
+        "messageID": "informal-ctx-017-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794140217000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-017-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794140218000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-017-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794140219000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "credential_theft",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "credential_theft",
+      "informal"
+    ],
+    "rationale": "The message warns about protecting secrets, without requesting one.",
+    "target_received_at": 1794140220000
+  },
+  {
+    "id": "informal-018",
+    "message": "troca a senha se alguém viu ela, sério",
+    "context": [],
+    "categories": [
+      "spam"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "credential_theft",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "credential_theft",
+      "informal"
+    ],
+    "rationale": "The message warns about protecting secrets, without requesting one.",
+    "target_received_at": 1794140280000
+  },
+  {
+    "id": "informal-019",
+    "message": "パスワードは誰にも送らないでね",
+    "context": [
+      {
+        "messageID": "informal-ctx-019-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794140339000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "credential_theft",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ja",
+    "tags": [
+      "credential_theft",
+      "informal"
+    ],
+    "rationale": "The message warns about protecting secrets, without requesting one.",
+    "target_received_at": 1794140340000
+  },
+  {
+    "id": "informal-020",
+    "message": "백업 코드는 공유하면 안 돼요",
+    "context": [
+      {
+        "messageID": "informal-ctx-020-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794140398000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-020-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794140399000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "credential_theft",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ko",
+    "tags": [
+      "credential_theft",
+      "informal"
+    ],
+    "rationale": "The message warns about protecting secrets, without requesting one.",
+    "target_received_at": 1794140400000
+  },
+  {
+    "id": "informal-021",
+    "message": "send me $20 first to release your $500 prize",
+    "context": [],
+    "categories": [
+      "spam"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "money_scams",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "money_scams",
+      "informal"
+    ],
+    "rationale": "The speaker solicits an advance fee to release a promised prize.",
+    "target_received_at": 1794140460000
+  },
+  {
+    "id": "informal-022",
+    "message": "manda 15 euros de comisión y te libero el premio de 1000",
+    "context": [
+      {
+        "messageID": "informal-ctx-022-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794140519000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "money_scams",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "money_scams",
+      "informal"
+    ],
+    "rationale": "The speaker solicits an advance fee to release a promised prize.",
+    "target_received_at": 1794140520000
+  },
+  {
+    "id": "informal-023",
+    "message": "envoie moi 10 euros de frais pour débloquer ton gain",
+    "context": [
+      {
+        "messageID": "informal-ctx-023-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794140578000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-023-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794140579000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "money_scams",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "money_scams",
+      "informal"
+    ],
+    "rationale": "The speaker solicits an advance fee to release a promised prize.",
+    "target_received_at": 1794140580000
+  },
+  {
+    "id": "informal-024",
+    "message": "ارسل لي رسوم ٢٠ دولار لتحصل على جائزة ١٠٠٠ دولار",
+    "context": [],
+    "categories": [
+      "spam"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "money_scams",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ar",
+    "tags": [
+      "money_scams",
+      "informal"
+    ],
+    "rationale": "The speaker solicits an advance fee to release a promised prize.",
+    "target_received_at": 1794140640000
+  },
+  {
+    "id": "informal-025",
+    "message": "me manda 20 de taxa pra liberar teus 500 do prêmio",
+    "context": [
+      {
+        "messageID": "informal-ctx-025-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794140699000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "money_scams",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "money_scams",
+      "informal"
+    ],
+    "rationale": "The speaker solicits an advance fee to release a promised prize.",
+    "target_received_at": 1794140700000
+  },
+  {
+    "id": "informal-026",
+    "message": "nah advance fee prize is a scam yall",
+    "context": [
+      {
+        "messageID": "informal-ctx-026-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794140757000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-026-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794140758000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-026-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794140759000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "money_scams",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "money_scams",
+      "informal"
+    ],
+    "rationale": "The message warns about or reports an advance fee scam rather than soliciting payment.",
+    "target_received_at": 1794140760000
+  },
+  {
+    "id": "informal-027",
+    "message": "dice que pagues 15 de comisión para cobrar, es estafa",
+    "context": [],
+    "categories": [
+      "spam"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "money_scams",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "money_scams",
+      "informal"
+    ],
+    "rationale": "The message warns about or reports an advance fee scam rather than soliciting payment.",
+    "target_received_at": 1794140820000
+  },
+  {
+    "id": "informal-028",
+    "message": "le bot demande des frais avant le gain, arnaque",
+    "context": [
+      {
+        "messageID": "informal-ctx-028-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794140879000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "money_scams",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "money_scams",
+      "informal"
+    ],
+    "rationale": "The message warns about or reports an advance fee scam rather than soliciting payment.",
+    "target_received_at": 1794140880000
+  },
+  {
+    "id": "informal-029",
+    "message": "لا تدفع رسوم الجائزة هذا احتيال",
+    "context": [
+      {
+        "messageID": "informal-ctx-029-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794140938000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-029-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794140939000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "money_scams",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ar",
+    "tags": [
+      "money_scams",
+      "informal"
+    ],
+    "rationale": "The message warns about or reports an advance fee scam rather than soliciting payment.",
+    "target_received_at": 1794140940000
+  },
+  {
+    "id": "informal-030",
+    "message": "essa taxa pra receber prêmio é golpe kkk",
+    "context": [],
+    "categories": [
+      "spam"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "money_scams",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "money_scams",
+      "informal"
+    ],
+    "rationale": "The message warns about or reports an advance fee scam rather than soliciting payment.",
+    "target_received_at": 1794141000000
+  },
+  {
+    "id": "informal-031",
+    "message": "doing paid emotes rn, book a slot in my dms",
+    "context": [
+      {
+        "messageID": "informal-ctx-031-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794141059000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "ads"
+    ],
+    "family": "paid_creative",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "paid_creative",
+      "informal"
+    ],
+    "rationale": "The speaker solicits a booking for paid creative work.",
+    "target_received_at": 1794141060000
+  },
+  {
+    "id": "informal-032",
+    "message": "hago overlays de pago, reserva por dm",
+    "context": [
+      {
+        "messageID": "informal-ctx-032-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794141118000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-032-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794141119000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "ads"
+    ],
+    "family": "paid_creative",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "paid_creative",
+      "informal"
+    ],
+    "rationale": "The speaker solicits a booking for paid creative work.",
+    "target_received_at": 1794141120000
+  },
+  {
+    "id": "informal-033",
+    "message": "faço artes pagas pra live, chama pra encomendar",
+    "context": [],
+    "categories": [
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "ads"
+    ],
+    "family": "paid_creative",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "paid_creative",
+      "informal"
+    ],
+    "rationale": "The speaker solicits a booking for paid creative work.",
+    "target_received_at": 1794141180000
+  },
+  {
+    "id": "informal-034",
+    "message": "commissions payantes pour tes emotes, réserve en mp",
+    "context": [
+      {
+        "messageID": "informal-ctx-034-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794141239000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "ads"
+    ],
+    "family": "paid_creative",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "paid_creative",
+      "informal"
+    ],
+    "rationale": "The speaker solicits a booking for paid creative work.",
+    "target_received_at": 1794141240000
+  },
+  {
+    "id": "informal-035",
+    "message": "bezahlte stream overlays, buch mich per dm",
+    "context": [
+      {
+        "messageID": "informal-ctx-035-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794141297000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-035-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794141298000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-035-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794141299000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "ads"
+    ],
+    "family": "paid_creative",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "de",
+    "tags": [
+      "paid_creative",
+      "informal"
+    ],
+    "rationale": "The speaker solicits a booking for paid creative work.",
+    "target_received_at": 1794141300000
+  },
+  {
+    "id": "informal-036",
+    "message": "that overlay looks clean ngl",
+    "context": [],
+    "categories": [
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "paid_creative",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "paid_creative",
+      "informal"
+    ],
+    "rationale": "The message discusses art or streaming without soliciting a purchase.",
+    "target_received_at": 1794141360000
+  },
+  {
+    "id": "informal-037",
+    "message": "aprendí a hacer emotes ayer jaja",
+    "context": [
+      {
+        "messageID": "informal-ctx-037-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794141419000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "paid_creative",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "paid_creative",
+      "informal"
+    ],
+    "rationale": "The message discusses art or streaming without soliciting a purchase.",
+    "target_received_at": 1794141420000
+  },
+  {
+    "id": "informal-038",
+    "message": "esse desenho ficou lindo demais",
+    "context": [
+      {
+        "messageID": "informal-ctx-038-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794141478000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-038-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794141479000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "paid_creative",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "paid_creative",
+      "informal"
+    ],
+    "rationale": "The message discusses art or streaming without soliciting a purchase.",
+    "target_received_at": 1794141480000
+  },
+  {
+    "id": "informal-039",
+    "message": "je dessine pendant le stream aussi",
+    "context": [],
+    "categories": [
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "paid_creative",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "paid_creative",
+      "informal"
+    ],
+    "rationale": "The message discusses art or streaming without soliciting a purchase.",
+    "target_received_at": 1794141540000
+  },
+  {
+    "id": "informal-040",
+    "message": "die farben vom overlay sind nice",
+    "context": [
+      {
+        "messageID": "informal-ctx-040-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794141599000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "paid_creative",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "de",
+    "tags": [
+      "paid_creative",
+      "informal"
+    ],
+    "rationale": "The message discusses art or streaming without soliciting a purchase.",
+    "target_received_at": 1794141600000
+  },
+  {
+    "id": "informal-041",
+    "message": "paid aim coaching, book a lesson with me dm",
+    "context": [
+      {
+        "messageID": "informal-ctx-041-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794141658000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-041-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794141659000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "ads"
+    ],
+    "family": "paid_coaching",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "paid_coaching",
+      "informal"
+    ],
+    "rationale": "The speaker solicits a booking for paid lessons.",
+    "target_received_at": 1794141660000
+  },
+  {
+    "id": "informal-042",
+    "message": "clases de valorant de pago, reserva conmigo",
+    "context": [],
+    "categories": [
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "ads"
+    ],
+    "family": "paid_coaching",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "paid_coaching",
+      "informal"
+    ],
+    "rationale": "The speaker solicits a booking for paid lessons.",
+    "target_received_at": 1794141720000
+  },
+  {
+    "id": "informal-043",
+    "message": "有料のゲームコーチング予約受付中 DMして",
+    "context": [
+      {
+        "messageID": "informal-ctx-043-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794141779000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "ads"
+    ],
+    "family": "paid_coaching",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ja",
+    "tags": [
+      "paid_coaching",
+      "informal"
+    ],
+    "rationale": "The speaker solicits a booking for paid lessons.",
+    "target_received_at": 1794141780000
+  },
+  {
+    "id": "informal-044",
+    "message": "유료 에임 레슨 예약 받아요 디엠 주세요",
+    "context": [
+      {
+        "messageID": "informal-ctx-044-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794141837000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-044-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794141838000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-044-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794141839000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "ads"
+    ],
+    "family": "paid_coaching",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ko",
+    "tags": [
+      "paid_coaching",
+      "informal"
+    ],
+    "rationale": "The speaker solicits a booking for paid lessons.",
+    "target_received_at": 1794141840000
+  },
+  {
+    "id": "informal-045",
+    "message": "دروس لعب مدفوعة احجز معي بالخاص",
+    "context": [],
+    "categories": [
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "ads"
+    ],
+    "family": "paid_coaching",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ar",
+    "tags": [
+      "paid_coaching",
+      "informal"
+    ],
+    "rationale": "The speaker solicits a booking for paid lessons.",
+    "target_received_at": 1794141900000
+  },
+  {
+    "id": "informal-046",
+    "message": "that coach helped me learn crosshair placement",
+    "context": [
+      {
+        "messageID": "informal-ctx-046-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794141959000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "paid_coaching",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "paid_coaching",
+      "informal"
+    ],
+    "rationale": "The message discusses coaching or gameplay without soliciting a purchase.",
+    "target_received_at": 1794141960000
+  },
+  {
+    "id": "informal-047",
+    "message": "yo practico puntería en el mapa de entrenamiento",
+    "context": [
+      {
+        "messageID": "informal-ctx-047-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794142018000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-047-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794142019000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "paid_coaching",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "paid_coaching",
+      "informal"
+    ],
+    "rationale": "The message discusses coaching or gameplay without soliciting a purchase.",
+    "target_received_at": 1794142020000
+  },
+  {
+    "id": "informal-048",
+    "message": "エイム練習むずいねｗ",
+    "context": [],
+    "categories": [
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "paid_coaching",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ja",
+    "tags": [
+      "paid_coaching",
+      "informal"
+    ],
+    "rationale": "The message discusses coaching or gameplay without soliciting a purchase.",
+    "target_received_at": 1794142080000
+  },
+  {
+    "id": "informal-049",
+    "message": "이 맵에서 연습하면 좋아요",
+    "context": [
+      {
+        "messageID": "informal-ctx-049-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794142139000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "paid_coaching",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ko",
+    "tags": [
+      "paid_coaching",
+      "informal"
+    ],
+    "rationale": "The message discusses coaching or gameplay without soliciting a purchase.",
+    "target_received_at": 1794142140000
+  },
+  {
+    "id": "informal-050",
+    "message": "التدريب اليوم كان ممتع 😂",
+    "context": [
+      {
+        "messageID": "informal-ctx-050-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794142198000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-050-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794142199000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "paid_coaching",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ar",
+    "tags": [
+      "paid_coaching",
+      "informal"
+    ],
+    "rationale": "The message discusses coaching or gameplay without soliciting a purchase.",
+    "target_received_at": 1794142200000
+  },
+  {
+    "id": "informal-051",
+    "message": "come follow my stream at twitch.tv/pixelfern",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "self_promotion"
+    ],
+    "family": "own_channel",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "own_channel",
+      "informal"
+    ],
+    "rationale": "The speaker asks for follows or visits to their own channel.",
+    "target_received_at": 1794142260000
+  },
+  {
+    "id": "informal-052",
+    "message": "síganme en mi canal twitch.tv/lunacobre",
+    "context": [
+      {
+        "messageID": "informal-ctx-052-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794142319000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "self_promotion"
+    ],
+    "family": "own_channel",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "own_channel",
+      "informal"
+    ],
+    "rationale": "The speaker asks for follows or visits to their own channel.",
+    "target_received_at": 1794142320000
+  },
+  {
+    "id": "informal-053",
+    "message": "cola no meu canal e segue twitch.tv/solnuvem",
+    "context": [
+      {
+        "messageID": "informal-ctx-053-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794142377000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-053-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794142378000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-053-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794142379000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "self_promotion"
+    ],
+    "family": "own_channel",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "own_channel",
+      "informal"
+    ],
+    "rationale": "The speaker asks for follows or visits to their own channel.",
+    "target_received_at": 1794142380000
+  },
+  {
+    "id": "informal-054",
+    "message": "suivez ma chaîne twitch.tv/moussebleue svp",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "self_promotion"
+    ],
+    "family": "own_channel",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "own_channel",
+      "informal"
+    ],
+    "rationale": "The speaker asks for follows or visits to their own channel.",
+    "target_received_at": 1794142440000
+  },
+  {
+    "id": "informal-055",
+    "message": "folgt meinem kanal twitch.tv/kleinerfuchs",
+    "context": [
+      {
+        "messageID": "informal-ctx-055-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794142499000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "self_promotion"
+    ],
+    "family": "own_channel",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "de",
+    "tags": [
+      "own_channel",
+      "informal"
+    ],
+    "rationale": "The speaker asks for follows or visits to their own channel.",
+    "target_received_at": 1794142500000
+  },
+  {
+    "id": "informal-056",
+    "message": "i stream too but mostly on weekends",
+    "context": [
+      {
+        "messageID": "informal-ctx-056-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794142558000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-056-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794142559000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "own_channel",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "own_channel",
+      "informal"
+    ],
+    "rationale": "The speaker mentions streaming without requesting visits or follows.",
+    "target_received_at": 1794142560000
+  },
+  {
+    "id": "informal-057",
+    "message": "yo también hago directos de vez en cuando",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "own_channel",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "own_channel",
+      "informal"
+    ],
+    "rationale": "The speaker mentions streaming without requesting visits or follows.",
+    "target_received_at": 1794142620000
+  },
+  {
+    "id": "informal-058",
+    "message": "comecei a fazer live esse mês",
+    "context": [
+      {
+        "messageID": "informal-ctx-058-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794142679000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "own_channel",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "own_channel",
+      "informal"
+    ],
+    "rationale": "The speaker mentions streaming without requesting visits or follows.",
+    "target_received_at": 1794142680000
+  },
+  {
+    "id": "informal-059",
+    "message": "je stream surtout le soir",
+    "context": [
+      {
+        "messageID": "informal-ctx-059-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794142738000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-059-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794142739000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "own_channel",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "own_channel",
+      "informal"
+    ],
+    "rationale": "The speaker mentions streaming without requesting visits or follows.",
+    "target_received_at": 1794142740000
+  },
+  {
+    "id": "informal-060",
+    "message": "ich streame manchmal nach der arbeit",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "own_channel",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "de",
+    "tags": [
+      "own_channel",
+      "informal"
+    ],
+    "rationale": "The speaker mentions streaming without requesting visits or follows.",
+    "target_received_at": 1794142800000
+  },
+  {
+    "id": "informal-061",
+    "message": "viewer said its cool so follow my channel twitch.tv/wavefern",
+    "context": [
+      {
+        "messageID": "informal-ctx-061-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794142859000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "self_promotion"
+    ],
+    "family": "viewer_permission",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "viewer_permission",
+      "informal"
+    ],
+    "rationale": "The speaker asks for follows to their channel; claimed viewer or moderator permission is not a verified broadcaster invitation.",
+    "target_received_at": 1794142860000
+  },
+  {
+    "id": "informal-062",
+    "message": "un viewer me dio permiso, sigan mi canal twitch.tv/azulrio",
+    "context": [
+      {
+        "messageID": "informal-ctx-062-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794142917000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-062-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794142918000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-062-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794142919000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "self_promotion"
+    ],
+    "family": "viewer_permission",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "viewer_permission",
+      "informal"
+    ],
+    "rationale": "The speaker asks for follows to their channel; claimed viewer or moderator permission is not a verified broadcaster invitation.",
+    "target_received_at": 1794142920000
+  },
+  {
+    "id": "informal-063",
+    "message": "mod said go ahead, visit my own stream twitch.tv/mossjam",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "self_promotion"
+    ],
+    "family": "viewer_permission",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "viewer_permission",
+      "informal"
+    ],
+    "rationale": "The speaker asks for follows to their channel; claimed viewer or moderator permission is not a verified broadcaster invitation.",
+    "target_received_at": 1794142980000
+  },
+  {
+    "id": "informal-064",
+    "message": "o chat deixou, segue meu canal twitch.tv/fogoverde",
+    "context": [
+      {
+        "messageID": "informal-ctx-064-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794143039000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "self_promotion"
+    ],
+    "family": "viewer_permission",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "viewer_permission",
+      "informal"
+    ],
+    "rationale": "The speaker asks for follows to their channel; claimed viewer or moderator permission is not a verified broadcaster invitation.",
+    "target_received_at": 1794143040000
+  },
+  {
+    "id": "informal-065",
+    "message": "un viewer a dit oui donc suivez ma chaîne twitch.tv/nuageviolet",
+    "context": [
+      {
+        "messageID": "informal-ctx-065-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794143098000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-065-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794143099000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "self_promotion"
+    ],
+    "family": "viewer_permission",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "viewer_permission",
+      "informal"
+    ],
+    "rationale": "The speaker asks for follows to their channel; claimed viewer or moderator permission is not a verified broadcaster invitation.",
+    "target_received_at": 1794143100000
+  },
+  {
+    "id": "informal-066",
+    "message": "someone just asked us to follow their channel lol",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "viewer_permission",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "viewer_permission",
+      "informal"
+    ],
+    "rationale": "The speaker reports someone else asking for a follow rather than promoting their own account.",
+    "target_received_at": 1794143160000
+  },
+  {
+    "id": "informal-067",
+    "message": "sigan mi canal twitch.tv/azulrio, eso puso el bot",
+    "context": [
+      {
+        "messageID": "informal-ctx-067-1",
+        "username": "moss",
+        "message": "wait what did that bot say?",
+        "timestamp": 1794143219000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "viewer_permission",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "viewer_permission",
+      "informal"
+    ],
+    "rationale": "The speaker reports someone else asking for a follow rather than promoting their own account.",
+    "target_received_at": 1794143220000
+  },
+  {
+    "id": "informal-068",
+    "message": "o cara entrou só pra pedir follow no canal dele",
+    "context": [
+      {
+        "messageID": "informal-ctx-068-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794143278000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-068-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794143279000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "viewer_permission",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "viewer_permission",
+      "informal"
+    ],
+    "rationale": "The speaker reports someone else asking for a follow rather than promoting their own account.",
+    "target_received_at": 1794143280000
+  },
+  {
+    "id": "informal-069",
+    "message": "il vient de demander de suivre sa chaîne encore",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "viewer_permission",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "viewer_permission",
+      "informal"
+    ],
+    "rationale": "The speaker reports someone else asking for a follow rather than promoting their own account.",
+    "target_received_at": 1794143340000
+  },
+  {
+    "id": "informal-070",
+    "message": "der bot wollte follower für seinen kanal, nervig",
+    "context": [
+      {
+        "messageID": "informal-ctx-070-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794143399000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "viewer_permission",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "de",
+    "tags": [
+      "viewer_permission",
+      "informal"
+    ],
+    "rationale": "The speaker reports someone else asking for a follow rather than promoting their own account.",
+    "target_received_at": 1794143400000
+  },
+  {
+    "id": "informal-071",
+    "message": "holy shit that clutch lol",
+    "context": [
+      {
+        "messageID": "informal-ctx-071-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794143457000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-071-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794143458000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-071-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794143459000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "profanity"
+    ],
+    "family": "casual_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "casual_swear",
+      "informal"
+    ],
+    "rationale": "The speaker uses an explicit vulgar swear in their own message.",
+    "target_received_at": 1794143460000
+  },
+  {
+    "id": "informal-072",
+    "message": "fuck i missed the jump again",
+    "context": [],
+    "categories": [
+      "profanity"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "profanity"
+    ],
+    "family": "casual_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "casual_swear",
+      "informal"
+    ],
+    "rationale": "The speaker uses an explicit vulgar swear in their own message.",
+    "target_received_at": 1794143520000
+  },
+  {
+    "id": "informal-073",
+    "message": "joder qué partida jajaja",
+    "context": [
+      {
+        "messageID": "informal-ctx-073-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794143579000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "profanity"
+    ],
+    "family": "casual_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "casual_swear",
+      "informal"
+    ],
+    "rationale": "The speaker uses an explicit vulgar swear in their own message.",
+    "target_received_at": 1794143580000
+  },
+  {
+    "id": "informal-074",
+    "message": "putain ce timing mdr",
+    "context": [
+      {
+        "messageID": "informal-ctx-074-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794143638000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-074-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794143639000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "profanity"
+    ],
+    "family": "casual_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "casual_swear",
+      "informal"
+    ],
+    "rationale": "The speaker uses an explicit vulgar swear in their own message.",
+    "target_received_at": 1794143640000
+  },
+  {
+    "id": "informal-075",
+    "message": "scheiße das war knapp",
+    "context": [],
+    "categories": [
+      "profanity"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "profanity"
+    ],
+    "family": "casual_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "de",
+    "tags": [
+      "casual_swear",
+      "informal"
+    ],
+    "rationale": "The speaker uses an explicit vulgar swear in their own message.",
+    "target_received_at": 1794143700000
+  },
+  {
+    "id": "informal-076",
+    "message": "yooo that jump was wild 😂",
+    "context": [
+      {
+        "messageID": "informal-ctx-076-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794143759000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "casual_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "casual_swear",
+      "informal"
+    ],
+    "rationale": "The speaker reacts to gameplay without using an explicit vulgar swear.",
+    "target_received_at": 1794143760000
+  },
+  {
+    "id": "informal-077",
+    "message": "ostras qué salto jajaja",
+    "context": [
+      {
+        "messageID": "informal-ctx-077-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794143818000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-077-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794143819000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "casual_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "casual_swear",
+      "informal"
+    ],
+    "rationale": "The message has no explicit vulgar swear; abbreviation or a harmless substring is insufficient.",
+    "target_received_at": 1794143820000
+  },
+  {
+    "id": "informal-078",
+    "message": "purée ce timing mdr",
+    "context": [],
+    "categories": [
+      "profanity"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "casual_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "casual_swear",
+      "informal"
+    ],
+    "rationale": "The message has no explicit vulgar swear; abbreviation or a harmless substring is insufficient.",
+    "target_received_at": 1794143880000
+  },
+  {
+    "id": "informal-079",
+    "message": "oha das war knapp lol",
+    "context": [
+      {
+        "messageID": "informal-ctx-079-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794143939000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "casual_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "de",
+    "tags": [
+      "casual_swear",
+      "informal"
+    ],
+    "rationale": "The speaker reacts to gameplay without using an explicit vulgar swear.",
+    "target_received_at": 1794143940000
+  },
+  {
+    "id": "informal-080",
+    "message": "scunthorpe is on the map lol",
+    "context": [
+      {
+        "messageID": "informal-ctx-080-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794143997000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-080-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794143998000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-080-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794143999000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "casual_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "casual_swear",
+      "informal"
+    ],
+    "rationale": "The message has no explicit vulgar swear; abbreviation or a harmless substring is insufficient.",
+    "target_received_at": 1794144000000
+  },
+  {
+    "id": "informal-081",
+    "message": "this fucking boss is impossible lol",
+    "context": [],
+    "categories": [
+      "profanity"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "profanity"
+    ],
+    "family": "reported_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "reported_swear",
+      "informal"
+    ],
+    "rationale": "The speaker uses an explicit vulgar swear in their own message.",
+    "target_received_at": 1794144060000
+  },
+  {
+    "id": "informal-082",
+    "message": "mierda se cayó el servidor otra vez",
+    "context": [
+      {
+        "messageID": "informal-ctx-082-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794144119000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "profanity"
+    ],
+    "family": "reported_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "reported_swear",
+      "informal"
+    ],
+    "rationale": "The speaker uses an explicit vulgar swear in their own message.",
+    "target_received_at": 1794144120000
+  },
+  {
+    "id": "informal-083",
+    "message": "caralho que jogada kkk",
+    "context": [
+      {
+        "messageID": "informal-ctx-083-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794144178000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-083-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794144179000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "profanity"
+    ],
+    "family": "reported_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "reported_swear",
+      "informal"
+    ],
+    "rationale": "The speaker uses an explicit vulgar swear in their own message.",
+    "target_received_at": 1794144180000
+  },
+  {
+    "id": "informal-084",
+    "message": "shit i forgot to heal",
+    "context": [],
+    "categories": [
+      "profanity"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "profanity"
+    ],
+    "family": "reported_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "reported_swear",
+      "informal"
+    ],
+    "rationale": "The speaker uses an explicit vulgar swear in their own message.",
+    "target_received_at": 1794144240000
+  },
+  {
+    "id": "informal-085",
+    "message": "merde je suis tombé encore",
+    "context": [
+      {
+        "messageID": "informal-ctx-085-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794144299000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "profanity"
+    ],
+    "family": "reported_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "reported_swear",
+      "informal"
+    ],
+    "rationale": "The speaker uses an explicit vulgar swear in their own message.",
+    "target_received_at": 1794144300000
+  },
+  {
+    "id": "informal-086",
+    "message": "does the filter catch fuck? just testing the word",
+    "context": [
+      {
+        "messageID": "informal-ctx-086-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794144358000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-086-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794144359000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "reported_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "reported_swear",
+      "informal"
+    ],
+    "rationale": "The explicit term is reported or discussed as filter vocabulary, not used as the speaker’s own swear.",
+    "target_received_at": 1794144360000
+  },
+  {
+    "id": "informal-087",
+    "message": "el bot acaba de decir mierda en el chat",
+    "context": [],
+    "categories": [
+      "profanity"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "reported_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "reported_swear",
+      "informal"
+    ],
+    "rationale": "The explicit term is reported or discussed as filter vocabulary, not used as the speaker’s own swear.",
+    "target_received_at": 1794144420000
+  },
+  {
+    "id": "informal-088",
+    "message": "o filtro bloqueia caralho ou não?",
+    "context": [
+      {
+        "messageID": "informal-ctx-088-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794144479000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "reported_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "reported_swear",
+      "informal"
+    ],
+    "rationale": "The explicit term is reported or discussed as filter vocabulary, not used as the speaker’s own swear.",
+    "target_received_at": 1794144480000
+  },
+  {
+    "id": "informal-089",
+    "message": "le bot a écrit putain tout seul mdr",
+    "context": [
+      {
+        "messageID": "informal-ctx-089-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794144537000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-089-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794144538000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-089-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794144539000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "profanity"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "reported_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "reported_swear",
+      "informal"
+    ],
+    "rationale": "The explicit term is reported or discussed as filter vocabulary, not used as the speaker’s own swear.",
+    "target_received_at": 1794144540000
+  },
+  {
+    "id": "informal-090",
+    "message": "bot said shit again, why is it swearing?",
+    "context": [],
+    "categories": [
+      "profanity"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "reported_swear",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "reported_swear",
+      "informal"
+    ],
+    "rationale": "The explicit term is reported or discussed as filter vocabulary, not used as the speaker’s own swear.",
+    "target_received_at": 1794144600000
+  },
+  {
+    "id": "informal-091",
+    "message": "@mira you are a worthless piece of trash",
+    "context": [
+      {
+        "messageID": "informal-ctx-091-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794144659000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "insults"
+    ],
+    "family": "direct_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "direct_insult",
+      "informal"
+    ],
+    "rationale": "The speaker directly addresses a person with a clearly abusive insult.",
+    "target_received_at": 1794144660000
+  },
+  {
+    "id": "informal-092",
+    "message": "@luis eres una basura humana inútil",
+    "context": [
+      {
+        "messageID": "informal-ctx-092-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794144718000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-092-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794144719000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "insults"
+    ],
+    "family": "direct_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "direct_insult",
+      "informal"
+    ],
+    "rationale": "The speaker directly addresses a person with a clearly abusive insult.",
+    "target_received_at": 1794144720000
+  },
+  {
+    "id": "informal-093",
+    "message": "@bia você é um lixo humano inútil",
+    "context": [],
+    "categories": [
+      "insults"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "insults"
+    ],
+    "family": "direct_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "direct_insult",
+      "informal"
+    ],
+    "rationale": "The speaker directly addresses a person with a clearly abusive insult.",
+    "target_received_at": 1794144780000
+  },
+  {
+    "id": "informal-094",
+    "message": "@leo t’es une ordure humaine sans valeur",
+    "context": [
+      {
+        "messageID": "informal-ctx-094-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794144839000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "insults"
+    ],
+    "family": "direct_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "direct_insult",
+      "informal"
+    ],
+    "rationale": "The speaker directly addresses a person with a clearly abusive insult.",
+    "target_received_at": 1794144840000
+  },
+  {
+    "id": "informal-095",
+    "message": "@max du bist ein wertloses stück dreck",
+    "context": [
+      {
+        "messageID": "informal-ctx-095-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794144898000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-095-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794144899000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "insults"
+    ],
+    "family": "direct_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "de",
+    "tags": [
+      "direct_insult",
+      "informal"
+    ],
+    "rationale": "The speaker directly addresses a person with a clearly abusive insult.",
+    "target_received_at": 1794144900000
+  },
+  {
+    "id": "informal-096",
+    "message": "i disagree, that route wastes time",
+    "context": [],
+    "categories": [
+      "insults"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "direct_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "direct_insult",
+      "informal"
+    ],
+    "rationale": "The message criticizes a play or idea, not a person with abusive language.",
+    "target_received_at": 1794144960000
+  },
+  {
+    "id": "informal-097",
+    "message": "esa jugada no fue buena pero seguimos",
+    "context": [
+      {
+        "messageID": "informal-ctx-097-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794145019000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "direct_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "direct_insult",
+      "informal"
+    ],
+    "rationale": "The message criticizes a play or idea, not a person with abusive language.",
+    "target_received_at": 1794145020000
+  },
+  {
+    "id": "informal-098",
+    "message": "essa estratégia não funciona nesse mapa",
+    "context": [
+      {
+        "messageID": "informal-ctx-098-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794145077000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-098-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794145078000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-098-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794145079000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "direct_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "direct_insult",
+      "informal"
+    ],
+    "rationale": "The message criticizes a play or idea, not a person with abusive language.",
+    "target_received_at": 1794145080000
+  },
+  {
+    "id": "informal-099",
+    "message": "je pense que ce choix était risqué",
+    "context": [],
+    "categories": [
+      "insults"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "direct_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "fr",
+    "tags": [
+      "direct_insult",
+      "informal"
+    ],
+    "rationale": "The message criticizes a play or idea, not a person with abusive language.",
+    "target_received_at": 1794145140000
+  },
+  {
+    "id": "informal-100",
+    "message": "die taktik war heute nicht gut",
+    "context": [
+      {
+        "messageID": "informal-ctx-100-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794145199000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "direct_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "de",
+    "tags": [
+      "direct_insult",
+      "informal"
+    ],
+    "rationale": "The message criticizes a play or idea, not a person with abusive language.",
+    "target_received_at": 1794145200000
+  },
+  {
+    "id": "informal-101",
+    "message": "@ivy nobody likes you, worthless loser",
+    "context": [
+      {
+        "messageID": "informal-ctx-101-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794145258000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-101-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794145259000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "insults"
+    ],
+    "family": "reported_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "reported_insult",
+      "informal"
+    ],
+    "rationale": "The speaker directly addresses a person with a clearly abusive insult.",
+    "target_received_at": 1794145260000
+  },
+  {
+    "id": "informal-102",
+    "message": "@ana eres una escoria inútil, nadie te quiere",
+    "context": [],
+    "categories": [
+      "insults"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "insults"
+    ],
+    "family": "reported_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "reported_insult",
+      "informal"
+    ],
+    "rationale": "The speaker directly addresses a person with a clearly abusive insult.",
+    "target_received_at": 1794145320000
+  },
+  {
+    "id": "informal-103",
+    "message": "@sora お前は価値のないゴミだ",
+    "context": [
+      {
+        "messageID": "informal-ctx-103-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794145379000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "insults"
+    ],
+    "family": "reported_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ja",
+    "tags": [
+      "reported_insult",
+      "informal"
+    ],
+    "rationale": "The speaker directly addresses a person with a clearly abusive insult.",
+    "target_received_at": 1794145380000
+  },
+  {
+    "id": "informal-104",
+    "message": "@min 넌 쓸모없는 쓰레기야 아무도 널 안 좋아해",
+    "context": [
+      {
+        "messageID": "informal-ctx-104-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794145438000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-104-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794145439000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "insults"
+    ],
+    "family": "reported_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ko",
+    "tags": [
+      "reported_insult",
+      "informal"
+    ],
+    "rationale": "The speaker directly addresses a person with a clearly abusive insult.",
+    "target_received_at": 1794145440000
+  },
+  {
+    "id": "informal-105",
+    "message": "@ali أنت قمامة بلا قيمة ولا أحد يحبك",
+    "context": [],
+    "categories": [
+      "insults"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "insults"
+    ],
+    "family": "reported_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ar",
+    "tags": [
+      "reported_insult",
+      "informal"
+    ],
+    "rationale": "The speaker directly addresses a person with a clearly abusive insult.",
+    "target_received_at": 1794145500000
+  },
+  {
+    "id": "informal-106",
+    "message": "that player called ivy a worthless loser, report them",
+    "context": [
+      {
+        "messageID": "informal-ctx-106-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794145559000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "reported_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "reported_insult",
+      "informal"
+    ],
+    "rationale": "The message reports another person’s abuse rather than attacking the named person.",
+    "target_received_at": 1794145560000
+  },
+  {
+    "id": "informal-107",
+    "message": "le dijo escoria inútil a ana, reportado",
+    "context": [
+      {
+        "messageID": "informal-ctx-107-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794145617000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-107-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794145618000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-107-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794145619000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "reported_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "reported_insult",
+      "informal"
+    ],
+    "rationale": "The message reports another person’s abuse rather than attacking the named person.",
+    "target_received_at": 1794145620000
+  },
+  {
+    "id": "informal-108",
+    "message": "さっきの人がsoraをゴミって侮辱してた",
+    "context": [],
+    "categories": [
+      "insults"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "reported_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ja",
+    "tags": [
+      "reported_insult",
+      "informal"
+    ],
+    "rationale": "The message reports another person’s abuse rather than attacking the named person.",
+    "target_received_at": 1794145680000
+  },
+  {
+    "id": "informal-109",
+    "message": "아까 민한테 쓰레기라고 욕한 사람 신고했어",
+    "context": [
+      {
+        "messageID": "informal-ctx-109-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794145739000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "reported_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ko",
+    "tags": [
+      "reported_insult",
+      "informal"
+    ],
+    "rationale": "The message reports another person’s abuse rather than attacking the named person.",
+    "target_received_at": 1794145740000
+  },
+  {
+    "id": "informal-110",
+    "message": "الشخص السابق شتم علي وقال له قمامة، بلغوا عنه",
+    "context": [
+      {
+        "messageID": "informal-ctx-110-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794145798000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-110-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794145799000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "insults"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "reported_insult",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "ar",
+    "tags": [
+      "reported_insult",
+      "informal"
+    ],
+    "rationale": "The message reports another person’s abuse rather than attacking the named person.",
+    "target_received_at": 1794145800000
+  },
+  {
+    "id": "informal-111",
+    "message": "enter ur recovery code at claimdesk.example to get the drop",
+    "context": [],
+    "categories": [
+      "spam",
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "selected_boundary",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "selected_boundary",
+      "informal"
+    ],
+    "rationale": "The speaker solicits account secrets or offers fake engagement, both selected as spam.",
+    "target_received_at": 1794145860000
+  },
+  {
+    "id": "informal-112",
+    "message": "pon tu contraseña en premiofalso.example para cobrar",
+    "context": [
+      {
+        "messageID": "informal-ctx-112-1",
+        "username": "pico",
+        "message": "lag?",
+        "timestamp": 1794145919000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "selected_boundary",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "selected_boundary",
+      "informal"
+    ],
+    "rationale": "The speaker solicits account secrets or offers fake engagement, both selected as spam.",
+    "target_received_at": 1794145920000
+  },
+  {
+    "id": "informal-113",
+    "message": "manda teu código de recuperação pra mim e libero teu prêmio",
+    "context": [
+      {
+        "messageID": "informal-ctx-113-1",
+        "username": "rini",
+        "message": "vamosss",
+        "timestamp": 1794145978000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-113-2",
+        "username": "nori",
+        "message": "that was close",
+        "timestamp": 1794145979000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "selected_boundary",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "selected_boundary",
+      "informal"
+    ],
+    "rationale": "The speaker solicits account secrets or offers fake engagement, both selected as spam.",
+    "target_received_at": 1794145980000
+  },
+  {
+    "id": "informal-114",
+    "message": "cheap bot viewers viewerwave.example",
+    "context": [],
+    "categories": [
+      "spam",
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "selected_boundary",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "selected_boundary",
+      "informal"
+    ],
+    "rationale": "The speaker solicits account secrets or offers fake engagement, both selected as spam.",
+    "target_received_at": 1794146040000
+  },
+  {
+    "id": "informal-115",
+    "message": "seguidores falsos baratos ganalive.example",
+    "context": [
+      {
+        "messageID": "informal-ctx-115-1",
+        "username": "bea",
+        "message": "jajaja",
+        "timestamp": 1794146099000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "self_promotion"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam"
+    ],
+    "family": "selected_boundary",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "selected_boundary",
+      "informal"
+    ],
+    "rationale": "The speaker solicits account secrets or offers fake engagement, both selected as spam.",
+    "target_received_at": 1794146100000
+  },
+  {
+    "id": "informal-116",
+    "message": "paid emote commissions open, dm to book",
+    "context": [
+      {
+        "messageID": "informal-ctx-116-1",
+        "username": "ash",
+        "message": "one hp omg",
+        "timestamp": 1794146157000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-116-2",
+        "username": "moss",
+        "message": "that dodge tho",
+        "timestamp": 1794146158000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-116-3",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794146159000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "selected_boundary",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "selected_boundary",
+      "informal"
+    ],
+    "rationale": "The message may contain an unselected concern but does not perform either selected behavior.",
+    "target_received_at": 1794146160000
+  },
+  {
+    "id": "informal-117",
+    "message": "clases de pago disponibles, reserva por dm",
+    "context": [],
+    "categories": [
+      "spam",
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "selected_boundary",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "selected_boundary",
+      "informal"
+    ],
+    "rationale": "The message may contain an unselected concern but does not perform either selected behavior.",
+    "target_received_at": 1794146220000
+  },
+  {
+    "id": "informal-118",
+    "message": "vendo overlays pagos, encomenda no privado",
+    "context": [
+      {
+        "messageID": "informal-ctx-118-1",
+        "username": "kira",
+        "message": "lol nice",
+        "timestamp": 1794146279000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "selected_boundary",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "selected_boundary",
+      "informal"
+    ],
+    "rationale": "The message may contain an unselected concern but does not perform either selected behavior.",
+    "target_received_at": 1794146280000
+  },
+  {
+    "id": "informal-119",
+    "message": "this fucking map is wild lol",
+    "context": [
+      {
+        "messageID": "informal-ctx-119-1",
+        "username": "sunny",
+        "message": "gg next round",
+        "timestamp": 1794146338000,
+        "isBroadcaster": false
+      },
+      {
+        "messageID": "informal-ctx-119-2",
+        "username": "luna",
+        "message": "no way 😂",
+        "timestamp": 1794146339000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "selected_boundary",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "selected_boundary",
+      "informal"
+    ],
+    "rationale": "The message may contain an unselected concern but does not perform either selected behavior.",
+    "target_received_at": 1794146340000
+  },
+  {
+    "id": "informal-120",
+    "message": "@mira youre a worthless piece of trash",
+    "context": [],
+    "categories": [
+      "spam",
+      "self_promotion"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "selected_boundary",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "selected_boundary",
+      "informal"
+    ],
+    "rationale": "The message may contain an unselected concern but does not perform either selected behavior.",
+    "target_received_at": 1794146400000
+  },
+  {
+    "id": "informal-121",
+    "message": "a1 v1ewers mistyboost[dot]example",
+    "context": [
+      {
+        "messageID": "informal-ctx-121-1",
+        "username": "pico",
+        "message": "that dodge was clean",
+        "timestamp": 1794146459000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam",
+      "ads"
+    ],
+    "family": "unquoted_obfuscation_pairs",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "unquoted_obfuscation_pairs",
+      "informal",
+      "pair-01"
+    ],
+    "pair_id": "unquoted-obfuscation-01",
+    "rationale": "The readable fake-engagement offer and domain form a solicitation; unrelated viewer banter does not change its purpose.",
+    "target_received_at": 1794146460000
+  },
+  {
+    "id": "informal-122",
+    "message": "a1 v1ewers mistyboost[dot]example",
+    "context": [
+      {
+        "messageID": "informal-ctx-122-1",
+        "username": "luna",
+        "message": "yo what did that bot post? need to report it",
+        "timestamp": 1794146519000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "unquoted_obfuscation_pairs",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "unquoted_obfuscation_pairs",
+      "informal",
+      "pair-01"
+    ],
+    "pair_id": "unquoted-obfuscation-01",
+    "rationale": "An ordinary viewer asks what the bot posted for a report; the target reproduces that pitch as requested.",
+    "target_received_at": 1794146520000
+  },
+  {
+    "id": "informal-123",
+    "message": "segu1dores b4ratos lunasube[dot]example",
+    "context": [
+      {
+        "messageID": "informal-ctx-123-1",
+        "username": "pico",
+        "message": "uff casi gana jajaja",
+        "timestamp": 1794146579000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam",
+      "ads"
+    ],
+    "family": "unquoted_obfuscation_pairs",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "unquoted_obfuscation_pairs",
+      "informal",
+      "pair-02"
+    ],
+    "pair_id": "unquoted-obfuscation-02",
+    "rationale": "The readable fake-engagement offer and domain form a solicitation; unrelated viewer banter does not change its purpose.",
+    "target_received_at": 1794146580000
+  },
+  {
+    "id": "informal-124",
+    "message": "segu1dores b4ratos lunasube[dot]example",
+    "context": [
+      {
+        "messageID": "informal-ctx-124-1",
+        "username": "luna",
+        "message": "q puso el bot? pásalo pa reportar",
+        "timestamp": 1794146639000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "unquoted_obfuscation_pairs",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "unquoted_obfuscation_pairs",
+      "informal",
+      "pair-02"
+    ],
+    "pair_id": "unquoted-obfuscation-02",
+    "rationale": "An ordinary viewer asks what the bot posted for a report; the target reproduces that pitch as requested.",
+    "target_received_at": 1794146640000
+  },
+  {
+    "id": "informal-125",
+    "message": "vіewers bоt baratos nuvemlive[dot]example",
+    "context": [
+      {
+        "messageID": "informal-ctx-125-1",
+        "username": "pico",
+        "message": "boa jogada kkk",
+        "timestamp": 1794146699000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam",
+      "ads"
+    ],
+    "family": "unquoted_obfuscation_pairs",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "unquoted_obfuscation_pairs",
+      "informal",
+      "pair-03"
+    ],
+    "pair_id": "unquoted-obfuscation-03",
+    "rationale": "The readable fake-engagement offer and domain form a solicitation; unrelated viewer banter does not change its purpose.",
+    "target_received_at": 1794146700000
+  },
+  {
+    "id": "informal-126",
+    "message": "vіewers bоt baratos nuvemlive[dot]example",
+    "context": [
+      {
+        "messageID": "informal-ctx-126-1",
+        "username": "luna",
+        "message": "qual foi a msg do bot? manda pra denunciar",
+        "timestamp": 1794146759000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "unquoted_obfuscation_pairs",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "pt",
+    "tags": [
+      "unquoted_obfuscation_pairs",
+      "informal",
+      "pair-03"
+    ],
+    "pair_id": "unquoted-obfuscation-03",
+    "rationale": "An ordinary viewer asks what the bot posted for a report; the target reproduces that pitch as requested.",
+    "target_received_at": 1794146760000
+  },
+  {
+    "id": "informal-127",
+    "message": "b o t viewers fernwave[dot]example",
+    "context": [
+      {
+        "messageID": "informal-ctx-127-1",
+        "username": "pico",
+        "message": "one hp wow",
+        "timestamp": 1794146819000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam",
+      "ads"
+    ],
+    "family": "unquoted_obfuscation_pairs",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "unquoted_obfuscation_pairs",
+      "informal",
+      "pair-04"
+    ],
+    "pair_id": "unquoted-obfuscation-04",
+    "rationale": "The readable fake-engagement offer and domain form a solicitation; unrelated viewer banter does not change its purpose.",
+    "target_received_at": 1794146820000
+  },
+  {
+    "id": "informal-128",
+    "message": "b o t viewers fernwave[dot]example",
+    "context": [
+      {
+        "messageID": "informal-ctx-128-1",
+        "username": "luna",
+        "message": "what was the bot pitch? paste it so i can report",
+        "timestamp": 1794146879000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "unquoted_obfuscation_pairs",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "en",
+    "tags": [
+      "unquoted_obfuscation_pairs",
+      "informal",
+      "pair-04"
+    ],
+    "pair_id": "unquoted-obfuscation-04",
+    "rationale": "An ordinary viewer asks what the bot posted for a report; the target reproduces that pitch as requested.",
+    "target_received_at": 1794146880000
+  },
+  {
+    "id": "informal-129",
+    "message": "sеguidores bаratos brillalive[dot]example",
+    "context": [
+      {
+        "messageID": "informal-ctx-129-1",
+        "username": "pico",
+        "message": "vamosss esa partida",
+        "timestamp": 1794146939000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": true,
+    "expected_categories": [
+      "spam",
+      "ads"
+    ],
+    "family": "unquoted_obfuscation_pairs",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "unquoted_obfuscation_pairs",
+      "informal",
+      "pair-05"
+    ],
+    "pair_id": "unquoted-obfuscation-05",
+    "rationale": "The readable fake-engagement offer and domain form a solicitation; unrelated viewer banter does not change its purpose.",
+    "target_received_at": 1794146940000
+  },
+  {
+    "id": "informal-130",
+    "message": "sеguidores bаratos brillalive[dot]example",
+    "context": [
+      {
+        "messageID": "informal-ctx-130-1",
+        "username": "luna",
+        "message": "qué anuncio puso el bot? copia q lo reporto",
+        "timestamp": 1794146999000,
+        "isBroadcaster": false
+      }
+    ],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "expected": false,
+    "expected_categories": [],
+    "family": "unquoted_obfuscation_pairs",
+    "split": "informal_validation",
+    "evaluation_group": "informal_chat",
+    "language": "es",
+    "tags": [
+      "unquoted_obfuscation_pairs",
+      "informal",
+      "pair-05"
+    ],
+    "pair_id": "unquoted-obfuscation-05",
+    "rationale": "An ordinary viewer asks what the bot posted for a report; the target reproduces that pitch as requested.",
+    "target_received_at": 1794147000000
+  }
+]

@@ -1,0 +1,64 @@
+{
+  "status": "PASS",
+  "cases": 130,
+  "positive_cases": 65,
+  "benign_cases": 65,
+  "planned_calls": 1560,
+  "quote_delimiters_in_targets": 0,
+  "broadcaster_context_lines": 0,
+  "context_length_distribution": {
+    "1": 51,
+    "2": 27,
+    "0": 39,
+    "3": 13
+  },
+  "maximum_target_length": 63,
+  "language_counts": {
+    "en": 36,
+    "es": 29,
+    "pt": 20,
+    "fr": 16,
+    "de": 11,
+    "ja": 6,
+    "ko": 6,
+    "ar": 6
+  },
+  "context_timestamps": "Numeric epoch milliseconds in chronological order within60sec,matchingproduction representation.",
+  "intentional_context_pairs": 5,
+  "non_scored_unobservable_voice_pairs": 12,
+  "voice_pair_identical_wire_body_comparisons": 72,
+  "no_target_overlap_with_previous_fixtures": true,
+  "baseline_native_parity": {
+    "request_comparisons": 390,
+    "response_comparisons": 0,
+    "invalid_response_comparisons": 0,
+    "mismatch_count": 0,
+    "mismatches": []
+  },
+  "containers": {
+    "dima-bot": {
+      "image": "sha256:cfa1f51dca33aeed518b3f08ae1a402d61bbc023bb79495ee70f7a49e341240f",
+      "running": true,
+      "compiled_contract_matches": {
+        "semantic.js": true,
+        "spam.js": true,
+        "spam_categories.js": true,
+        "app_attribution.util.js": true,
+        "advanced.js": true
+      }
+    },
+    "dima-cron": {
+      "image": "sha256:37c5a7474c311ad111cdf1f83afdf2d57e65209317a06cd0595e64c4130079e9",
+      "running": true,
+      "compiled_contract_matches": {
+        "semantic.js": true,
+        "spam.js": true,
+        "spam_categories.js": true,
+        "app_attribution.util.js": true,
+        "advanced.js": true
+      }
+    }
+  },
+  "cases_sha256": "b502453e0026713accd19740c6d8fb1c31ab83f51a6b75b79766604227fb0c59",
+  "note": "Realism constraints are user-informed synthetic design, not measured traffic rates. Existing production and policy_v2 prompts frozen before this cohort; no prompt selection from these results."
+}

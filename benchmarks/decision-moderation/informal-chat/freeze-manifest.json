@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "files": {
+    "cases.json": "b502453e0026713accd19740c6d8fb1c31ab83f51a6b75b79766604227fb0c59",
+    "input-visibility.json": "c4da022931cfc5f9130c59da0d92504683fd4f04f610f087a560ae89a94e1242",
+    "plan.json": "d104fbb6d6968735d0b4f3eee6884bf7942362433e3ef30ff7bbc9cd6c226132",
+    "preflight.json": "6e2ecf2226bdb4d2f78ff998a9693a3c913e6bfe3713d7a7617c6b9e4def2673",
+    "render_results.py": "df185173ec862cae87dfa0742ec627b5d0b306d39f21b6f759a133cec04953fd",
+    "visibility-diagnostics.json": "f72c5d09672f610d51cd2ec3bd1520b80cc0e2d6cf9c69f9b49c72d89039d1f8"
+  },
+  "fixed_prompt_sha256": "bbe5ad815ec279ec4d3ec47a1ed369adba3747fdceaeb67d1dcab4c0a12ee3fd",
+  "note": "Pre-inference freeze. Annotation-only voice diagnostics are not sent. Documentation excluded."
+}

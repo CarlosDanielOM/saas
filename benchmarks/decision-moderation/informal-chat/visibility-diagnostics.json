@@ -1,0 +1,294 @@
+[
+  {
+    "id": "visibility-01-0",
+    "pair_id": "visibility-01",
+    "message": "follow my channel twitch.tv/fernpond",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "hidden_voice_story": "The host verbally invited channel links.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-01-1",
+    "pair_id": "visibility-01",
+    "message": "follow my channel twitch.tv/fernpond",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "hidden_voice_story": "No invitation occurred; the viewer is soliciting follows.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-02-0",
+    "pair_id": "visibility-02",
+    "message": "ai viewers cloudboost.example",
+    "context": [],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "hidden_voice_story": "The host verbally asked for a reproduction of a bot pitch.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-02-1",
+    "pair_id": "visibility-02",
+    "message": "ai viewers cloudboost.example",
+    "context": [],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "hidden_voice_story": "The viewer independently offered artificial viewers.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-03-0",
+    "pair_id": "visibility-03",
+    "message": "@kai youre a worthless loser",
+    "context": [],
+    "categories": [
+      "insults"
+    ],
+    "hidden_voice_story": "The viewer is reproducing a line the host requested aloud.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-03-1",
+    "pair_id": "visibility-03",
+    "message": "@kai youre a worthless loser",
+    "context": [],
+    "categories": [
+      "insults"
+    ],
+    "hidden_voice_story": "The viewer independently attacks Kai.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-04-0",
+    "pair_id": "visibility-04",
+    "message": "paid emotes, dm to book",
+    "context": [],
+    "categories": [
+      "ads"
+    ],
+    "hidden_voice_story": "The host verbally requested the exact ad they missed.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-04-1",
+    "pair_id": "visibility-04",
+    "message": "paid emotes, dm to book",
+    "context": [],
+    "categories": [
+      "ads"
+    ],
+    "hidden_voice_story": "The viewer independently offers paid emotes.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-05-0",
+    "pair_id": "visibility-05",
+    "message": "send me your backup code to claim the prize",
+    "context": [],
+    "categories": [
+      "spam"
+    ],
+    "hidden_voice_story": "The host verbally requested a reproduction of a scam message.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-05-1",
+    "pair_id": "visibility-05",
+    "message": "send me your backup code to claim the prize",
+    "context": [],
+    "categories": [
+      "spam"
+    ],
+    "hidden_voice_story": "The viewer independently seeks the code.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-06-0",
+    "pair_id": "visibility-06",
+    "message": "fuck that was close",
+    "context": [],
+    "categories": [
+      "profanity"
+    ],
+    "hidden_voice_story": "The viewer is reproducing what someone said at an unheard request.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-06-1",
+    "pair_id": "visibility-06",
+    "message": "fuck that was close",
+    "context": [],
+    "categories": [
+      "profanity"
+    ],
+    "hidden_voice_story": "The viewer independently swears at the game.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-07-0",
+    "pair_id": "visibility-07",
+    "message": "síganme en mi canal twitch.tv/solbrisa",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "hidden_voice_story": "The host invited links aloud.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-07-1",
+    "pair_id": "visibility-07",
+    "message": "síganme en mi canal twitch.tv/solbrisa",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "hidden_voice_story": "No invitation occurred and this is a follow request.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-08-0",
+    "pair_id": "visibility-08",
+    "message": "manda 10 euros para liberar el premio",
+    "context": [],
+    "categories": [
+      "spam"
+    ],
+    "hidden_voice_story": "The host asked aloud to repeat the fraud message.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-08-1",
+    "pair_id": "visibility-08",
+    "message": "manda 10 euros para liberar el premio",
+    "context": [],
+    "categories": [
+      "spam"
+    ],
+    "hidden_voice_story": "The viewer solicits an advance fee.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-09-0",
+    "pair_id": "visibility-09",
+    "message": "bot viewers streamrain.example",
+    "context": [],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "hidden_voice_story": "An unheard request asked for the bot pitch.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-09-1",
+    "pair_id": "visibility-09",
+    "message": "bot viewers streamrain.example",
+    "context": [],
+    "categories": [
+      "spam",
+      "ads"
+    ],
+    "hidden_voice_story": "The viewer offers fake viewers.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-10-0",
+    "pair_id": "visibility-10",
+    "message": "reserva mis clases de pago por dm",
+    "context": [],
+    "categories": [
+      "ads"
+    ],
+    "hidden_voice_story": "The host requested the ad be repeated aloud.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-10-1",
+    "pair_id": "visibility-10",
+    "message": "reserva mis clases de pago por dm",
+    "context": [],
+    "categories": [
+      "ads"
+    ],
+    "hidden_voice_story": "The viewer offers paid lessons.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-11-0",
+    "pair_id": "visibility-11",
+    "message": "@ana eres basura humana",
+    "context": [],
+    "categories": [
+      "insults"
+    ],
+    "hidden_voice_story": "The host asked aloud what the attacker said.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-11-1",
+    "pair_id": "visibility-11",
+    "message": "@ana eres basura humana",
+    "context": [],
+    "categories": [
+      "insults"
+    ],
+    "hidden_voice_story": "The viewer directs this insult at Ana.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-12-0",
+    "pair_id": "visibility-12",
+    "message": "follow my art account at art.example/fern",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "hidden_voice_story": "The host invited social links aloud.",
+    "hidden_intent_label": false,
+    "scoring": "excluded_unobservable"
+  },
+  {
+    "id": "visibility-12-1",
+    "pair_id": "visibility-12",
+    "message": "follow my art account at art.example/fern",
+    "context": [],
+    "categories": [
+      "self_promotion"
+    ],
+    "hidden_voice_story": "The viewer independently seeks follows.",
+    "hidden_intent_label": true,
+    "scoring": "excluded_unobservable"
+  }
+]

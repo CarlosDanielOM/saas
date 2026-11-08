@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "phase": "informal_chat_validation",
+  "models": [
+    "respan/span-01",
+    "typesafe/jev-1.13",
+    "openai/gpt-6-luna-decisions"
+  ],
+  "repeats": 2,
+  "seed": 202611084,
+  "variants": {
+    "baseline": {
+      "kind": "baseline"
+    },
+    "policy_v2": "../tuning/policy_v2.json"
+  },
+  "cases_file": "cases.json",
+  "contracts_module": "../tuning/contracts.py",
+  "selection_rule": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise",
+  "scope": "Fixed prompt transfer check for informal viewer chat. No new development selection or prompt tuning; keep original production baseline and previously frozen policy_v2 unchanged. No production deployment.",
+  "prior_selection_sha256": "c969a91c645b7ef75b0c16467ecebdecfeb4653772e27f2d65c98569abec2008",
+  "diagnostics_not_sent": "visibility-diagnostics.json"
+}
