@@ -1,0 +1,52 @@
+{
+  "current_source_request_comparisons": 411,
+  "current_source_response_comparisons": 4753,
+  "mismatches": 0,
+  "offline_only": true,
+  "model_inferences": 0,
+  "method": "Pure current TypeScript source bodies, extracted without application imports; all legacy/new requests, archived successful responses, and 1200 deterministic score fixtures compared with Python.",
+  "unit_tests": {
+    "command": "python3 -m unittest discover -s benchmarks/decision-moderation -p test_suite.py -v",
+    "passed": 10,
+    "failed": 0
+  },
+  "offline_cli_end_to_end": {
+    "expanded_fixture_rows": 1584,
+    "legacy_fixture_rows": 588,
+    "note": "Generated in temporary directories with synthetic fixed scores to verify export/evaluation plumbing; not provider responses or benchmark results. Temporary files removed."
+  },
+  "scenarios_sha256": "97242c177ab9bc45c2e987541f14020f15a8030a9d852253f464dd88fe6b26f8",
+  "label_review": {
+    "reviewer": "GPT-6.1 Sol via Codex/T3",
+    "independent_human_labels": false,
+    "changes": [
+      "Corrected language annotations.",
+      "Strengthened five exact-target quotation/context reversal pairs.",
+      "Added positive and negative examples of all main linguistic slices in both clear splits."
+    ],
+    "limitations": "Translations and labels are AI-authored and reviewed; no native-speaker or production moderator validation."
+  },
+  "expanded_counts": {
+    "cases": 264,
+    "split": {
+      "development": 120,
+      "holdout": 120,
+      "diagnostic": 24
+    },
+    "language": {
+      "pt": 13,
+      "ja": 13,
+      "fr": 13,
+      "en": 106,
+      "es": 56,
+      "de": 13,
+      "mixed": 20,
+      "ko": 13,
+      "ar": 13,
+      "und": 1,
+      "it": 1,
+      "ru": 1,
+      "hi": 1
+    }
+  }
+}

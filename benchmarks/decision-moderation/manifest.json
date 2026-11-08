@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "files": {
+    ".gitattributes": "12ec559e2d3b4cec99b1987dd728d4a77111cb5b15733d6a0c2cec72c825669a",
+    ".gitignore": "dbaf56785d97941e8797254e3e7a35ae7565ae714b146dbdd806b1d59b635d0a",
+    "README.md": "98b03e8c144e81c004e76df778bb408415c8464531941bb8497e58fb3f0d57e1",
+    "RUBRIC.md": "2a2083f8670c8e7d45772e7d0dcf5cecaad75c66678f100d154828b8c3392e2d",
+    "legacy/cases.json": "7fe5a4bf6a410f68155a1ee32c114bf186fe7d2be74ef5f3b17dc2ce710c38f5",
+    "legacy/native-parser.ts": "d565c0b8c1a9c48d04ec153efb165bf4551eeeffed0a90655b80c7bd192e080f",
+    "legacy/native_contract.py": "726ce241361cbabbc479c02978d8d1928f1b5f9f26c96663bb694e93c0a1f5e2",
+    "legacy/policy.json": "8b4d3ba5b069038bd220054e4aec505b323d85ac8bc3db6e815067d3a819cee8",
+    "legacy/provenance.json": "be03e5e3891f725179d46da251eb81cde0d7c1aee75ac82e0db9c8d4e96fa225",
+    "legacy/supplemental-cases.json": "b095506e011c6c1102e781f70dd7cd9f31a49b47a3b749cea500d6e90c6480af",
+    "protocol.json": "c34b604ed006f1281874c6ba1be41014bcd903eb3b4ff9663f55a6016104e75f",
+    "scenarios.json": "97242c177ab9bc45c2e987541f14020f15a8030a9d852253f464dd88fe6b26f8",
+    "suite.py": "dc648c503ed65826643aeb518d294e42e07a0f5771d1cdda694b24110ded4715",
+    "test_suite.py": "84b6234c19cf3f3488093b9ec19a9f0350d4a87f9c835b39c6ee6772131ea788",
+    "verification.json": "f8bfc465c9436c2234850aec8428e649485eba313891ff68ceb31f6d0f8dcd01"
+  },
+  "source_files": {
+    "dimabot/src/utils/moderation/spam_categories.ts": "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088",
+    "dimabot/src/utils/moderation/spam.ts": "eaa35698ebd7f7e2351e522ca4ece5a3d96b58a96acc41b162b6f22eb2adaaa8",
+    "dimabot/src/utils/moderation/semantic.ts": "8e14987048727194d8e55b48f5c0890a0984c3fd1fa4634488c8758d1a835e25",
+    "dimabot/src/utils/moderation/advanced.ts": "e88c52a8662a1531bdca981129e91f9cfe3b84c2543f11d38584652aede8a4d7",
+    "dimabot/src/handlers/moderation.handler.ts": "2b57bbd962c25bd1f552a52c9d1d215bc052886ca0b1f0c88109383f988c8e52",
+    "dimabot/src/utils/ai/openrouter/app_attribution.util.ts": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c"
+  },
+  "note": "Prepared before new-corpus inference. Excludes manifest self-reference and generated caches/results/exports. Source hashes pin this production contract snapshot; intentional changes require explicit review and a new freeze. No secrets or new model responses included."
+}

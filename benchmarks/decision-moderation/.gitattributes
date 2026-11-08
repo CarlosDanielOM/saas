@@ -1,0 +1,2 @@
+# Preserve this frozen archive fixture's trailing blank line for hash parity.
+legacy/native-parser.ts whitespace=-blank-at-eof

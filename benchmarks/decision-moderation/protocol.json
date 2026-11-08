@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "prepared_on": "2026-11-08",
+  "purpose": "Prepare a synthetic, paired GPT-6 Luna decision-model versus Jev evaluation. No inference has been run on the new corpus.",
+  "scope": "Built-in category-based spam protection; arbitrary custom semantic policies are a separate contract.",
+  "models": {
+    "baseline": "typesafe/jev-1.13",
+    "candidate_label": "GPT-6 Luna decisions through OpenRouter BYOK",
+    "candidate_api_id": null,
+    "candidate_route": "Verify exact catalog identifier, decision-endpoint support, and user BYOK route before inference. Do not silently substitute a chat-completion model or another provider."
+  },
+  "openrouter": {
+    "endpoint_reference": "https://openrouter.ai/api/alpha/decisions",
+    "headers": {
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://domdimabot.com",
+      "X-OpenRouter-Title": "DomDimaBot",
+      "X-OpenRouter-Description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+      "X-OpenRouter-Categories": "general-chat, roleplay"
+    },
+    "header_source": "dimabot/src/utils/ai/openrouter/app_attribution.util.ts",
+    "authentication": "Future runner supplies Authorization from its sanctioned runtime environment; exports never contain credentials.",
+    "byok": "User states Luna BYOK is available. Confirm served route and BYOK accounting before spending; OpenRouter-reported cost alone may not include upstream BYOK spend."
+  },
+  "contract": {
+    "policy_file": "legacy/policy.json",
+    "request_builder": "legacy/native_contract.py:request_for",
+    "target": "state.output assistant-role message; preceding context is state.input user-role JSON messages",
+    "selected_categories": ["spam", "ads", "self_promotion", "profanity", "insults"],
+    "threshold": 0.85,
+    "deadline_ms": 4000,
+    "enforce_if": "valid response, no error, latency_ms < 4000, max(selected category probabilities) >= 0.85, and max(selected category probabilities) > 1 - P(unsafe)",
+    "otherwise": "allow or uncertain; never enforce on a tie, invalid response, transport error, or late response",
+    "timing_scope": "Request-to-full-response transport latency. Does not prove the production end-to-end deadline, which includes queues, credit checks, and action execution."
+  },
+  "datasets": {
+    "legacy": {
+      "primary_cases": 135,
+      "supplemental_cases": 12,
+      "planned_repeats": 2,
+      "role": "Historical regression reference, reported separately. Supplemental historically had one repeat; new exports use two unless overridden. Preserve all original labels, including known policy disagreements."
+    },
+    "expanded": {
+      "development_cases": 120,
+      "holdout_cases": 120,
+      "diagnostic_cases": 24,
+      "planned_repeats": 3,
+      "languages": "Broad multilingual coverage, including mixed language and non-Latin scripts; report actual per-language counts and outcomes.",
+      "split_unit": "Entire family, scenario_group, and target-message text; none may cross development, holdout, or diagnostic splits.",
+      "diagnostics": "Ambiguous cases have expected=false under the absent-if-ambiguous policy. Report separately from clear-case qualification."
+    }
+  },
+  "comparison": {
+    "pairing": "Both models receive the same frozen cases, policy, categories, context, and repeat counts; only model selection differs.",
+    "missing_or_duplicate": "Missing planned outcomes make the comparison incomplete; reject duplicate tuples, unknown cases/models, unexpected rounds, malformed timing, and mismatched request hashes.",
+    "independence": "Repeats are not independent unique examples. Report distinct affected cases, per-case consistency, and paired outcomes alongside attempt counts.",
+    "selection": "Use development only for any prompt or rule experiments. Freeze prompt and thresholds before holdout inference; do not select a threshold on the holdout.",
+      "qualification": "A complete expanded holdout with zero observed returned false-positive judgments (including late responses) and strict improvement in timely positive attempts AND distinct timely positive cases over contemporaneous Jev may be labeled synthetic_holdout_candidate only. It does not authorize a production change.",
+    "cost": "Sum each returned usage.cost once. Missing usage has unknown cost, never assumed free. Keep OpenRouter usage and upstream BYOK accounting separate.",
+    "limitations": "AI-authored synthetic expectations, not moderator ground truth; small language slices and zero observed false bans do not establish safety, real-world accuracy, or probability calibration."
+  },
+  "execution": {
+    "current_phase": "Offline preparation and verification only",
+    "inference_budget_usd": null,
+    "inference_ready": false,
+    "next_phase": "Confirm exact Luna decision model and BYOK routing, current prices, sanctioned credentials, and a bounded run budget before running a fresh paired comparison. No production moderation or deployment is part of this kit."
+  }
+}

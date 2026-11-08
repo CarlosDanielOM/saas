@@ -1,0 +1,13 @@
+{
+  "source_archive": "decision-six-models-2026-10-08.zip",
+  "archive_sha256": "6199c41bb4e7badb55f8442b01837ce5f147c233759750a26021d43f48e88e3c",
+  "archive_root": "decision-six-models-2026-10-08/",
+  "files": {
+    "cases.json": "7fe5a4bf6a410f68155a1ee32c114bf186fe7d2be74ef5f3b17dc2ce710c38f5",
+    "supplemental-cases.json": "b095506e011c6c1102e781f70dd7cd9f31a49b47a3b749cea500d6e90c6480af",
+    "policy.json": "8b4d3ba5b069038bd220054e4aec505b323d85ac8bc3db6e815067d3a819cee8",
+    "native_contract.py": "726ce241361cbabbc479c02978d8d1928f1b5f9f26c96663bb694e93c0a1f5e2",
+    "native-parser.ts": "d565c0b8c1a9c48d04ec153efb165bf4551eeeffed0a90655b80c7bd192e080f"
+  },
+  "note": "Byte-identical frozen legacy inputs and parser reference; no model results or credentials copied."
+}
