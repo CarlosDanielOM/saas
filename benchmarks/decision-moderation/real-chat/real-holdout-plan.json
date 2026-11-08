@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "phase": "real-holdout",
+  "models": [
+    "typesafe/jev-1.13",
+    "openai/gpt-6-luna-decisions"
+  ],
+  "repeats": 3,
+  "seed": 202611087,
+  "variants": {
+    "baseline": {
+      "kind": "baseline"
+    },
+    "concise_v3": "luna-concise-v3.json"
+  },
+  "model_variants": {
+    "typesafe/jev-1.13": [
+      "baseline"
+    ],
+    "openai/gpt-6-luna-decisions": [
+      "baseline",
+      "concise_v3"
+    ]
+  },
+  "cases_file": "../results/2026-11-08-real-chat/review/holdout-consensus.json",
+  "contracts_module": "contracts.py",
+  "selection_rule": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise",
+  "frozen_selection_sha256": "bdf6ffeb7aeebeb32c89ddc3019709ab8a53d41e7e7f1aefe0e91f9da18153ae",
+  "frozen_cases_sha256": "93d7555a99a9041b4fb95ca411eeb0b664800e59b69b61e48e955d50d7480018",
+  "note": "Test only; development selection remains fixed regardless of outcomes. Jev unchanged, Luna baseline retained as contemporaneous control. Labels provisional AI consensus, not human feedback."
+}

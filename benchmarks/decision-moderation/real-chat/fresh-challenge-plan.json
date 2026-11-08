@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "phase": "fresh-challenge",
+  "models": [
+    "typesafe/jev-1.13",
+    "openai/gpt-6-luna-decisions"
+  ],
+  "repeats": 3,
+  "seed": 202611088,
+  "variants": {
+    "baseline": {
+      "kind": "baseline"
+    },
+    "concise_v3": "luna-concise-v3.json"
+  },
+  "model_variants": {
+    "typesafe/jev-1.13": [
+      "baseline"
+    ],
+    "openai/gpt-6-luna-decisions": [
+      "baseline",
+      "concise_v3"
+    ]
+  },
+  "cases_file": "../results/2026-11-08-real-chat/review/challenge-consensus.json",
+  "contracts_module": "contracts.py",
+  "selection_rule": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise",
+  "frozen_selection_sha256": "bdf6ffeb7aeebeb32c89ddc3019709ab8a53d41e7e7f1aefe0e91f9da18153ae",
+  "frozen_cases_sha256": "87c1eaff594e6bcf6cca2a48ba13cb3c0f505eb0afbff39aa070ec054cbcc4e7",
+  "note": "Test only; development selection remains fixed regardless of outcomes. Jev unchanged, Luna baseline retained as contemporaneous control. Labels provisional AI consensus, not human feedback."
+}

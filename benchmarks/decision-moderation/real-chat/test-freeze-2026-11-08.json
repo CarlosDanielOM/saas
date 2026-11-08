@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "selection_sha256": "bdf6ffeb7aeebeb32c89ddc3019709ab8a53d41e7e7f1aefe0e91f9da18153ae",
+  "files": {
+    "decide.py": "486a0fb26abe9275a777fdb67cc321a8d959dca8e87e4df794c48745a0bd6af1",
+    "test_decide.py": "5371a9af6a684d7a13249f44c5a36770119d08ea421a3dd921b43e9fbd1b3a5a",
+    "real-holdout-plan.json": "1d53ae6ad5993293afa56da6eb4230483897dadac84ee76ce7501ad8d917b0c8",
+    "fresh-challenge-plan.json": "00b92935dde366ee02eb6192ababba476800b15619393646b741b2194ee0d947",
+    "selection-2026-11-08.json": "bdf6ffeb7aeebeb32c89ddc3019709ab8a53d41e7e7f1aefe0e91f9da18153ae"
+  },
+  "real_heldout_sha256": "93d7555a99a9041b4fb95ca411eeb0b664800e59b69b61e48e955d50d7480018",
+  "fresh_challenge_sha256": "87c1eaff594e6bcf6cca2a48ba13cb3c0f505eb0afbff39aa070ec054cbcc4e7",
+  "execution_integrity_sha256": "9a273ea4a1f4648ae296f41fd5e53f6a3778a41add4f3e2e206d493ec3283435",
+  "note": "Frozen before either test phase inference."
+}
