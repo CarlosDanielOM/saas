@@ -6,8 +6,11 @@
   "models": {
     "baseline": "typesafe/jev-1.13",
     "candidate_label": "GPT-6 Luna decisions through OpenRouter BYOK",
-    "candidate_api_id": null,
-    "candidate_route": "Verify exact catalog identifier, decision-endpoint support, and user BYOK route before inference. Do not silently substitute a chat-completion model or another provider."
+    "candidate_api_id": "openai/gpt-6-luna-decisions",
+    "candidate_route": "Normal OpenRouter decisions request; public catalog advertises the OpenAI provider. OpenRouter handles account-configured BYOK. Record returned provider/model during the actual run; do not silently substitute another model.",
+    "candidate_snapshot": "openai/gpt-6-luna-decisions-20261006",
+    "baseline_snapshot": "typesafe/jev-1.13-20260917",
+    "discovery_file": "model-discovery.json"
   },
   "openrouter": {
     "endpoint_reference": "https://openrouter.ai/api/alpha/decisions",
@@ -20,13 +23,19 @@
     },
     "header_source": "dimabot/src/utils/ai/openrouter/app_attribution.util.ts",
     "authentication": "Future runner supplies Authorization from its sanctioned runtime environment; exports never contain credentials.",
-    "byok": "User states Luna BYOK is available. Confirm served route and BYOK accounting before spending; OpenRouter-reported cost alone may not include upstream BYOK spend."
+    "byok": "OpenRouter handles account-configured BYOK for the normal OpenRouter request. No separate upstream client/key handling is required. Record returned usage without assuming it includes all upstream BYOK costs."
   },
   "contract": {
     "policy_file": "legacy/policy.json",
     "request_builder": "legacy/native_contract.py:request_for",
     "target": "state.output assistant-role message; preceding context is state.input user-role JSON messages",
-    "selected_categories": ["spam", "ads", "self_promotion", "profanity", "insults"],
+    "selected_categories": [
+      "spam",
+      "ads",
+      "self_promotion",
+      "profanity",
+      "insults"
+    ],
     "threshold": 0.85,
     "deadline_ms": 4000,
     "enforce_if": "valid response, no error, latency_ms < 4000, max(selected category probabilities) >= 0.85, and max(selected category probabilities) > 1 - P(unsafe)",
@@ -55,7 +64,7 @@
     "missing_or_duplicate": "Missing planned outcomes make the comparison incomplete; reject duplicate tuples, unknown cases/models, unexpected rounds, malformed timing, and mismatched request hashes.",
     "independence": "Repeats are not independent unique examples. Report distinct affected cases, per-case consistency, and paired outcomes alongside attempt counts.",
     "selection": "Use development only for any prompt or rule experiments. Freeze prompt and thresholds before holdout inference; do not select a threshold on the holdout.",
-      "qualification": "A complete expanded holdout with zero observed returned false-positive judgments (including late responses) and strict improvement in timely positive attempts AND distinct timely positive cases over contemporaneous Jev may be labeled synthetic_holdout_candidate only. It does not authorize a production change.",
+    "qualification": "A complete expanded holdout with zero observed returned false-positive judgments (including late responses) and strict improvement in timely positive attempts AND distinct timely positive cases over contemporaneous Jev may be labeled synthetic_holdout_candidate only. It does not authorize a production change.",
     "cost": "Sum each returned usage.cost once. Missing usage has unknown cost, never assumed free. Keep OpenRouter usage and upstream BYOK accounting separate.",
     "limitations": "AI-authored synthetic expectations, not moderator ground truth; small language slices and zero observed false bans do not establish safety, real-world accuracy, or probability calibration."
   },
@@ -63,6 +72,6 @@
     "current_phase": "Offline preparation and verification only",
     "inference_budget_usd": null,
     "inference_ready": false,
-    "next_phase": "Confirm exact Luna decision model and BYOK routing, current prices, sanctioned credentials, and a bounded run budget before running a fresh paired comparison. No production moderation or deployment is part of this kit."
+    "next_phase": "The exact candidate/baseline IDs and decision endpoint are verified in the public catalog. Select the run size and bounded budget, then run paired inference through OpenRouter with DomDimaBot attribution. No production moderation or deployment is part of this kit."
   }
 }

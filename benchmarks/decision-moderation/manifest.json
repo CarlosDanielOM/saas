@@ -3,7 +3,7 @@
   "files": {
     ".gitattributes": "12ec559e2d3b4cec99b1987dd728d4a77111cb5b15733d6a0c2cec72c825669a",
     ".gitignore": "dbaf56785d97941e8797254e3e7a35ae7565ae714b146dbdd806b1d59b635d0a",
-    "README.md": "98b03e8c144e81c004e76df778bb408415c8464531941bb8497e58fb3f0d57e1",
+    "README.md": "1544db9c463aa77bcdcf6622124e7e48c5a6d484db4e15a6a25f236a96094cd8",
     "RUBRIC.md": "2a2083f8670c8e7d45772e7d0dcf5cecaad75c66678f100d154828b8c3392e2d",
     "legacy/cases.json": "7fe5a4bf6a410f68155a1ee32c114bf186fe7d2be74ef5f3b17dc2ce710c38f5",
     "legacy/native-parser.ts": "d565c0b8c1a9c48d04ec153efb165bf4551eeeffed0a90655b80c7bd192e080f",
@@ -11,7 +11,8 @@
     "legacy/policy.json": "8b4d3ba5b069038bd220054e4aec505b323d85ac8bc3db6e815067d3a819cee8",
     "legacy/provenance.json": "be03e5e3891f725179d46da251eb81cde0d7c1aee75ac82e0db9c8d4e96fa225",
     "legacy/supplemental-cases.json": "b095506e011c6c1102e781f70dd7cd9f31a49b47a3b749cea500d6e90c6480af",
-    "protocol.json": "c34b604ed006f1281874c6ba1be41014bcd903eb3b4ff9663f55a6016104e75f",
+    "model-discovery.json": "3443662c4cd84014d655db7f492fcca705cecf170ae2c922c0bda8d8a9db8cdb",
+    "protocol.json": "cc67f7cfd2fe645fd06c3341b1f2d4fb5cdd71c98ab246cfc2e2747f8d1e80b0",
     "scenarios.json": "97242c177ab9bc45c2e987541f14020f15a8030a9d852253f464dd88fe6b26f8",
     "suite.py": "dc648c503ed65826643aeb518d294e42e07a0f5771d1cdda694b24110ded4715",
     "test_suite.py": "84b6234c19cf3f3488093b9ec19a9f0350d4a87f9c835b39c6ee6772131ea788",

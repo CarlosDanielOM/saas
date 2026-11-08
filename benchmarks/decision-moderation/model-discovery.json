@@ -1,0 +1,74 @@
+{
+  "verified_at_utc": "2026-11-08T17:02:35.744964+00:00",
+  "method": "Unauthenticated public OpenRouter catalog and endpoint GET requests; HTTP 200. No inference calls and no account/BYOK credentials inspected.",
+  "catalog_url": "https://openrouter.ai/api/v1/models?output_modalities=decisions",
+  "catalog_decision_models": 35,
+  "candidate_endpoint_url": "https://openrouter.ai/api/v1/models/openai/gpt-6-luna-decisions-20261006/endpoints",
+  "models": {
+    "candidate": {
+      "id": "openai/gpt-6-luna-decisions",
+      "canonical_slug": "openai/gpt-6-luna-decisions-20261006",
+      "name": "OpenAI: GPT-6 Luna Decisions",
+      "architecture": {
+        "modality": "text+image->decisions",
+        "input_modalities": [
+          "text",
+          "image"
+        ],
+        "output_modalities": [
+          "decisions"
+        ],
+        "tokenizer": "GPT",
+        "instruct_type": null
+      },
+      "pricing": {
+        "prompt": "0.0000001",
+        "completion": "0",
+        "web_search": "0.01",
+        "input_cache_read": "0",
+        "input_cache_write": "0"
+      },
+      "endpoints": [
+        "/api/alpha/decisions"
+      ],
+      "public_providers": [
+        {
+          "provider_name": "OpenAI",
+          "tag": "openai",
+          "model_id": "openai/gpt-6-luna-decisions",
+          "status": 0
+        }
+      ]
+    },
+    "baseline": {
+      "id": "typesafe/jev-1.13",
+      "canonical_slug": "typesafe/jev-1.13-20260917",
+      "name": "TypeSafe: Jev 1.13",
+      "architecture": {
+        "modality": "text+image->decisions",
+        "input_modalities": [
+          "text",
+          "image"
+        ],
+        "output_modalities": [
+          "decisions"
+        ],
+        "tokenizer": "Other",
+        "instruct_type": null
+      },
+      "pricing": {
+        "prompt": "0.000000042",
+        "completion": "0"
+      },
+      "endpoints": [
+        "/api/alpha/decisions"
+      ]
+    }
+  },
+  "byok_handling": "OpenRouter manages account-configured BYOK. Use the normal OpenRouter request and credentials; no direct OpenAI client or separate upstream credential handling is part of this kit.",
+  "inference_verified": false,
+  "app_attribution": {
+    "HTTP-Referer": "https://domdimabot.com",
+    "X-OpenRouter-Title": "DomDimaBot"
+  }
+}
