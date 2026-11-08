@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-The run in [`results/2026-11-08-seven-model-baseline/`](results/2026-11-08-seven-model-baseline/) is in progress. Its `monitor.json` is a live coverage snapshot; do not treat partial counts or partial summaries as final conclusions. The prepared rubric, decision threshold, and prompt contract are frozen for this run. No prompt optimization or threshold search is part of this baseline.
+The run in [`results/2026-11-08-seven-model-baseline/`](results/2026-11-08-seven-model-baseline/) is complete; all 9,618 main attempts and seven smoke attempts are saved and integrity-checked. See the [final report](REPORT-2026-11-08.md) for results. The run's `frozen-inputs/` snapshot preserves the prepared manifest and contract; later workspace manifest/documentation refreshes do not change this completed run. Do not resubmit or refill its grid. No prompt optimization or threshold search was part of this baseline.
 
 The fixed model IDs are:
 

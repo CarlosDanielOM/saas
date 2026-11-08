@@ -3,7 +3,9 @@
   "files": {
     ".gitattributes": "12ec559e2d3b4cec99b1987dd728d4a77111cb5b15733d6a0c2cec72c825669a",
     ".gitignore": "dbaf56785d97941e8797254e3e7a35ae7565ae714b146dbdd806b1d59b635d0a",
-    "README.md": "331d133f7db3e385fd90ec8d523c9bd18475f2e8561d75a68448a9d4850c2b90",
+    "EXECUTION.md": "7f8438977ecf487603f4a40359829cf9af961ac0e4989d59026d283f6376faf6",
+    "README.md": "f19909b735fe72d49ae6df789b34b4b53d71fa386297f488fc37cab9e5ed4a97",
+    "REPORT-2026-11-08.md": "e58e787145a61697b8619c90f29b171c64000de457143ceefa99f0a2005991c0",
     "RUBRIC.md": "ba5f1f0d5af4b39e6fb3bd6fd704becff2f944c128bd35a2923ddbf56d48515d",
     "legacy/cases.json": "7fe5a4bf6a410f68155a1ee32c114bf186fe7d2be74ef5f3b17dc2ce710c38f5",
     "legacy/native-parser.ts": "d565c0b8c1a9c48d04ec153efb165bf4551eeeffed0a90655b80c7bd192e080f",
@@ -15,10 +17,16 @@
     "obfuscation-verification.json": "9646b17bec79dc8d5264239d6c0112416fef3ec65e2f45b2e56d0436739ed1ba",
     "obfuscation.json": "24423a1f78c6a6eff444c92eece6037f3a83f3c2de0228b8ecc1c8bfe7bc963f",
     "protocol.json": "d1b091fdb8b24367e4c4837b1afb2abb64ee897b62b2dd6695889c908c6ec7fd",
+    "run_openrouter.py": "3ba24385c84b419e9c2f09dd793eee8163bcdb103ff1540eb46122217b0a53da",
     "scenarios.json": "97242c177ab9bc45c2e987541f14020f15a8030a9d852253f464dd88fe6b26f8",
     "suite.py": "9e40a6a8587788f0134da58246f622bb3a1a66b636ad17644a012c803575e8fc",
+    "summarize_run.py": "e3d54b23c61f1a549b67e74a2e000b5ddb023ece65d73b3f9964208d30811100",
+    "test_run_openrouter.py": "8b97bb4c9d5c75f9a83f26c97427f74cdc899913457d86357133bafba13c67bf",
     "test_suite.py": "513b7c65bd55dfaeb68c4d6996f04d4c789110f254a5ec3b4c32c0bfa8d71e8e",
-    "verification.json": "f8bfc465c9436c2234850aec8428e649485eba313891ff68ceb31f6d0f8dcd01"
+    "test_summarize_run.py": "0bfe25c3383f1a94df8c43a001c3ba4232762620330f5edfc3dbf44608e9e517",
+    "test_verify_live_contract.py": "3046fff6b49c079f4dca121126c0f3f906b4f0eea8a1b0aee32a18a91aa9f508",
+    "verification.json": "f8bfc465c9436c2234850aec8428e649485eba313891ff68ceb31f6d0f8dcd01",
+    "verify_live_contract.py": "daaed6197e1e5864738fe48d3206dee63d555895ee6e73ee027a701fba0246ae"
   },
   "source_files": {
     "dimabot/src/utils/moderation/spam_categories.ts": "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088",
@@ -28,5 +36,5 @@
     "dimabot/src/handlers/moderation.handler.ts": "2b57bbd962c25bd1f552a52c9d1d215bc052886ca0b1f0c88109383f988c8e52",
     "dimabot/src/utils/ai/openrouter/app_attribution.util.ts": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c"
   },
-  "note": "Prepared before new-corpus inference. Excludes manifest self-reference and generated caches/results/exports. Source hashes pin this production contract snapshot; intentional changes require explicit review and a new freeze. No secrets or new model responses included."
+  "note": "Workspace kit refreshed after completed seven-model baseline. Excludes manifest self-reference and generated caches/results/exports. The completed run preserves the original pre-inference manifest in frozen-inputs; this workspace refresh does not change its labels, requests, responses, or evaluation contract. Source hashes remain unchanged. No secrets or raw model responses included in this manifest."
 }

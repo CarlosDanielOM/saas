@@ -1,10 +1,10 @@
 # Offline moderation decision evaluation
 
-This kit prepares a comparison of model decisions for the built-in spam classifier using synthetic chat examples. It is offline: the suite tool validates fixtures, exports model-independent requests, and evaluates response files. It does not call a provider or contain a provider SDK runner. No inference has been run on either expanded corpus. The labels describe this fixture rubric; they are not moderator ground truth and do not establish production safety.
+This kit contains synthetic cases and offline tooling to validate fixtures, export model-independent requests, and evaluate response files. The seven-model OpenRouter comparison is complete; see the [final report](REPORT-2026-11-08.md) and [execution record](EXECUTION.md) for results and provenance. Labels are model-independent synthetic expectations, not moderator ground truth or evidence of production safety.
 
 ## Corpus
 
-`scenarios.json` is the original expanded, frozen corpus: 240 clear cases across 24 families (10 per family: 5 positive and 5 benign), plus 24 ambiguous diagnostic cases. Its clear cases are split by whole family: 120 development cases and 120 holdout cases held back from inference and model-driven tuning. The diagnostic cases are separate and expected false under the classifier's ambiguity fail-open rule. The corpus covers at least eight languages plus mixed-language examples, with Latin and non-Latin scripts.
+`scenarios.json` is the original expanded, frozen corpus: 240 clear cases across 24 families (10 per family: 5 positive and 5 benign), plus 24 ambiguous diagnostic cases. Its clear cases are split by whole family: 120 development cases and 120 holdout cases initially reserved from model-driven tuning. Both splits were evaluated in the completed baseline; future prompt selection informed by those results needs a newly reserved holdout. The diagnostic cases are separate and expected false under the classifier's ambiguity fail-open rule. The corpus covers at least eight languages plus mixed-language examples, with Latin and non-Latin scripts.
 
 The separate [obfuscation corpus](obfuscation.json) adds 96 clear cases in 12 families (8 per family: 4 positive and 4 benign), split into 48 development and 48 holdout cases (24 positive and 24 benign in each). Together, the original and obfuscation corpora contain 360 expanded records; with 147 frozen legacy records, the kit has 507 records in three separate tracks. Do not merge their results or use the obfuscation split as part of original-corpus qualification.
 

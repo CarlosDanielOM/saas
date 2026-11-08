@@ -128,7 +128,12 @@ def metrics(cases, observed, model, suite, s):
               'openrouter_cost': {'known_sum_usd': math.fsum(c for c in costs if c is not None),
                                   'unknown_usage_cost_attempts': sum(c is None for c in costs)},
               'response_metadata_counts': {key: dict(Counter(r['result']['metadata'][key] for _,r in present))
-                                           for key in ('provider','resolved_model','source_model')}}
+                                           for key in ('provider','resolved_model','source_model')},
+              'provider_error_messages': dict(Counter(
+                  str(r['row']['raw']['error']['message']) for _,r in present
+                  if isinstance(r['row'].get('raw'),dict)
+                  and isinstance(r['row']['raw'].get('error'),dict)
+                  and isinstance(r['row']['raw']['error'].get('message'),str)))}
     result['chart'] = {'returned_false_bans': result['returned_fp_attempts'], 'benign_attempts': neg,
                        'returned_false_ban_percent': 100*result['returned_fp_attempts']/neg if neg else None,
                        'timely_catches': result['timely_tp_attempts'], 'positive_attempts': pos,
@@ -219,6 +224,9 @@ def failure_cases(cases, observed, grid):
                                  'scores':data['scores'],'verdict':data['verdict'],'timely_ban':data['timely_ban'],
                                  'returned_ban':data['returned_ban'],'latency_ms':data['latency_ms'],
                                  'http_status':row.get('http_status'),'error':row.get('error')})
+                raw = row.get('raw')
+                if isinstance(raw,dict) and isinstance(raw.get('error'),dict):
+                    affected[-1]['provider_error'] = raw['error']
         if affected:
             results.append({'requested_model':model,'suite':suite,'phase':phase,'case':cid,
                             'message':case['message'],'context':case['context'],'categories':case['categories'],
