@@ -1,0 +1,1999 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DomDimaBot demo video scene",
+  "type": "object",
+  "required": [
+    "id",
+    "v",
+    "beats"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "$comment": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "v": {
+      "const": 1
+    },
+    "title": {
+      "type": "string"
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "fps": {
+      "enum": [
+        30,
+        60
+      ]
+    },
+    "formats": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "vertical",
+          "landscape"
+        ]
+      }
+    },
+    "langs": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "en",
+          "es"
+        ]
+      }
+    },
+    "channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "title": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "required": [
+                "en",
+                "es"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "en": {
+                  "type": "string"
+                },
+                "es": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        },
+        "game": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "required": [
+                "en",
+                "es"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "en": {
+                  "type": "string"
+                },
+                "es": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        },
+        "viewers": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "bot": {
+      "type": "string"
+    },
+    "end": {
+      "oneOf": [
+        {
+          "const": "auto"
+        },
+        {
+          "type": "number",
+          "minimum": 500,
+          "maximum": 180000
+        }
+      ]
+    },
+    "tail": {
+      "type": "number",
+      "minimum": 0
+    },
+    "poster": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Time (ms) of the poster image."
+    },
+    "beats": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Full-screen brand card (logo, name, a short line).",
+            "additionalProperties": false,
+            "required": [
+              "do"
+            ],
+            "properties": {
+              "do": {
+                "const": "intro"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "title": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Big line under the logo. Defaults to the brand tagline."
+              },
+              "sub": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Smaller second line."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Full-screen closing card with the domain.",
+            "additionalProperties": false,
+            "required": [
+              "do"
+            ],
+            "properties": {
+              "do": {
+                "const": "outro"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "title": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Big closing line."
+              },
+              "cta": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Call to action under it. Defaults to \"Free to start\"."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Big marketing caption. Wrap words in *stars* to color them.",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "text"
+            ],
+            "properties": {
+              "do": {
+                "const": "caption"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "text": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Caption text."
+              },
+              "place": {
+                "enum": [
+                  "top",
+                  "bottom"
+                ],
+                "description": "Where it sits. Defaults: top on vertical, bottom on landscape."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A viewer chat message.",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "user",
+              "text"
+            ],
+            "properties": {
+              "do": {
+                "const": "chat"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "user": {
+                "type": "string",
+                "description": "Twitch login (fictional)."
+              },
+              "text": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "The message."
+              },
+              "first": {
+                "type": "boolean",
+                "description": "First message ever in this channel (Twitch highlights it)."
+              },
+              "badges": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "broadcaster",
+                    "mod",
+                    "vip",
+                    "sub",
+                    "verified"
+                  ]
+                },
+                "description": "Chat badges."
+              },
+              "color": {
+                "type": "string",
+                "description": "Name color (#rrggbb). Defaults to a color picked from the name."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A DomDimaBot chat message. Use refs so the wording stays what the bot really says.",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "text"
+            ],
+            "properties": {
+              "do": {
+                "const": "bot"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "text": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "The message."
+              },
+              "refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "file",
+                    "quote"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "file": {
+                      "type": "string"
+                    },
+                    "quote": {
+                      "type": "string"
+                    },
+                    "inText": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "description": "Source quotes: [{ \"file\": \"dimabot/...\", \"quote\": \"...\", \"inText\": true }]."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A highlighted chat notice (follow, sub, cheer, raid, moderation).",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "text"
+            ],
+            "properties": {
+              "do": {
+                "const": "event"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "text": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Notice text."
+              },
+              "icon": {
+                "enum": [
+                  "follow",
+                  "sub",
+                  "bits",
+                  "raid",
+                  "shield",
+                  "info"
+                ],
+                "description": "Icon. Defaults to info."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A moderator deletes one message.",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "target"
+            ],
+            "properties": {
+              "do": {
+                "const": "delete"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "target": {
+                "type": "string",
+                "description": "id of the chat beat."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "The user of a message is banned: all their messages disappear and chat shows a notice.",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "target"
+            ],
+            "properties": {
+              "do": {
+                "const": "ban"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "target": {
+                "type": "string",
+                "description": "id of one of their chat beats."
+              },
+              "notice": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Override the notice. Defaults to \"<user> has been banned.\""
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "An on-stream alert, rendered by the real Overlay Studio renderer.",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "event",
+              "user"
+            ],
+            "properties": {
+              "do": {
+                "const": "alert"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "event": {
+                "enum": [
+                  "follow",
+                  "sub",
+                  "bits",
+                  "raid"
+                ],
+                "description": "Which alert."
+              },
+              "user": {
+                "type": "string",
+                "description": "Who followed/subbed/cheered/raided."
+              },
+              "amount": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 1000000,
+                "description": "Bits, months or raid viewers."
+              },
+              "message": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Line under the name. Defaults per event."
+              },
+              "sound": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Alert sound: \"kit:chime\" or { \"src\", \"gain\", \"delay\", \"fadeIn\", \"fadeOut\" } (ms)."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A viewer message read aloud on stream (real TTS card). Length follows the voice clip.",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "user",
+              "text"
+            ],
+            "properties": {
+              "do": {
+                "const": "tts"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "user": {
+                "type": "string",
+                "description": "Who sent it."
+              },
+              "text": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "What is read."
+              },
+              "voice": {
+                "type": "string",
+                "description": "Voice name from marketing/video/voices.json. Defaults to the language default."
+              },
+              "clip": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Use this audio file instead of synthesizing (path under marketing/video/sounds/)."
+              },
+              "showText": {
+                "type": "boolean",
+                "description": "Show the text card (default true)."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A chat duel in the real duel overlay. Length comes from the seeded battle.",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "left",
+              "right"
+            ],
+            "properties": {
+              "do": {
+                "const": "duel"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "left": {
+                "type": "string",
+                "description": "Left fighter."
+              },
+              "right": {
+                "type": "string",
+                "description": "Right fighter."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A roulette spin in the real roulette overlay (0.6 s wait, spin, 2.4 s on the winner).",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "items"
+            ],
+            "properties": {
+              "do": {
+                "const": "roulette"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "title": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Roulette name."
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "en",
+                        "es"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "en": {
+                          "type": "string"
+                        },
+                        "es": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 12,
+                "description": "Prizes."
+              },
+              "winner": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 11,
+                "description": "Index of the winning prize. Defaults to a seeded pick."
+              },
+              "spin": {
+                "type": "number",
+                "minimum": 2000,
+                "maximum": 12000,
+                "description": "Spin length in ms (default 5000)."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A soft ring that points at something.",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "target"
+            ],
+            "properties": {
+              "do": {
+                "const": "highlight"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "target": {
+                "type": "string",
+                "description": "\"chat\", \"stream\" or the id of a chat/bot beat."
+              },
+              "label": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Small label next to the ring."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Zoom the stream view (mostly for vertical videos, where overlays are small).",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "focus"
+            ],
+            "properties": {
+              "do": {
+                "const": "camera"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "focus": {
+                "enum": [
+                  "full",
+                  "stream",
+                  "alert",
+                  "tts",
+                  "duel",
+                  "roulette"
+                ],
+                "description": "What to frame. \"full\"/\"stream\" zooms back out."
+              },
+              "zoom": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 3,
+                "description": "Maximum zoom (default 2.2)."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A sound effect.",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "src"
+            ],
+            "properties": {
+              "do": {
+                "const": "sfx"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "src": {
+                "type": "string",
+                "description": "\"kit:pop\" (generated kit) or a file under marketing/video/sounds/."
+              },
+              "gain": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2,
+                "description": "Volume (default 1)."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Background music from this beat to the end (needs a licensed file).",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "src"
+            ],
+            "properties": {
+              "do": {
+                "const": "music"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "src": {
+                "type": "string",
+                "description": "File under marketing/video/sounds/."
+              },
+              "gain": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2,
+                "description": "Volume (default 0.35)."
+              },
+              "fadeOut": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10000,
+                "description": "Fade at the end in ms (default 1500)."
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

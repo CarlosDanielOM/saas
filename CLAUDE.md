@@ -248,6 +248,15 @@ The `dimabot-site` nginx container bind-mounts `dimasite/dist/dimasite/browser/`
 
 **Always read the source** for the most up-to-date request/response shapes, authentication requirements, and error formats. The envelope convention `{ error, message, status, data }` is used across most endpoints.
 
+## Demo Videos (marketing/video)
+
+Promo videos are JSON scene scripts rendered frame by frame from the real UI: `cd marketing && npm ci && npm run demo -- <scene> [--vertical|--landscape] [--lang en|es]`. Read [`marketing/video/README.md`](marketing/video/README.md) before writing a scene or a new building block.
+
+- The player is the dimasite route `/mocks/dev/demo` (`dimasite/src/app/features/demo-video/`); the recorder drives it through `window.__dimaDemo`. New scenes that reuse existing building blocks need no site build or deploy; a new building block is a normal dimasite release checked with `ops/checks/demo-player.mjs`.
+- Renders run in a capped systemd scope, one at a time, and refuse to start during an Angular/site build. They read the live bundle on loopback and never touch the public site, the API or analytics.
+- Videos must show what the product really does: bot wording carries `refs` to its source, captions about plans/costs are checked against the code first, usernames are fictional.
+- TTS uses Fish Audio (`marketing/video/voices.json`); export `FISH_AUDIO_API_KEY` for the render only and never write it to disk. Paid models need `--allow-paid-tts`.
+
 ## Per-Project Agent Guides
 
 Each major project now contains its own `AGENTS.md` for domain-specific rules:

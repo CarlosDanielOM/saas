@@ -16,6 +16,12 @@ function privateSourcePath(path: string): boolean {
   try { path = decodeURIComponent(path.split(/[?#]/)[0]); } catch { /* Match a malformed path conservatively below. */ }
   return /^\/(?:pet|overlays)(?:\/|$)/.test(path);
 }
+/** Pages that send no analytics at all: private browser sources, and the demo-video player the recorder drives. */
+function untrackedPath(path: string): boolean {
+  if (privateSourcePath(path)) return true;
+  try { path = decodeURIComponent(path.split(/[?#]/)[0]); } catch { /* Match the raw path below. */ }
+  return /^\/mocks\/dev\/demo(?:\/|$)/.test(path);
+}
 const privateSourceUrl = /(^|[\s"'(<=>\[])(?:https?:\/\/[^\s/"'<>]+)?\/(?:pet|overlays)(?=\/|[?#]|$)[^\s"'<>]*/g;
 // The SDK adds previous-page/referrer/session-entry properties itself. Scrub
 // those too when a later public event follows a private browser-source route.
@@ -90,7 +96,7 @@ export class AnalyticsService {
       capture_pageleave: true,
       // Source capabilities must never enter analytics, including pageleave and
       // SDK-generated previous/referrer properties on a later public route.
-      autocapture: { url_ignorelist: [/\/(?:pet|overlays)(?:\/|$)/] },
+      autocapture: { url_ignorelist: [/\/(?:pet|overlays)(?:\/|$)/, /\/mocks\/dev\/demo(?:\/|$)/] },
       before_send: event => !event || this.isPrivateOverlay() ? null :
         { ...event, properties: redactPrivateSourceUrls(event.properties) as typeof event.properties },
     });
@@ -130,13 +136,13 @@ export class AnalyticsService {
       )
       .subscribe(event => {
         if (event instanceof NavigationStart) {
-          this.privateNavigation = privateSourcePath(event.url);
+          this.privateNavigation = untrackedPath(event.url);
           if (this.privateNavigation && !this.recordingPaused && posthog.config.disable_session_recording !== true) {
             this.recordingPaused = true; posthog.stopSessionRecording();
           }
           return;
         }
-        this.privateNavigation = event instanceof NavigationEnd ? privateSourcePath(event.urlAfterRedirects) : privateSourcePath(window.location.pathname);
+        this.privateNavigation = event instanceof NavigationEnd ? untrackedPath(event.urlAfterRedirects) : untrackedPath(window.location.pathname);
         if (!this.privateNavigation && this.recordingPaused) { this.recordingPaused = false; posthog.startSessionRecording(); }
         if (event instanceof NavigationEnd) this.capturePageView(event.urlAfterRedirects);
       });
@@ -300,7 +306,7 @@ export class AnalyticsService {
   }
 
   private isPrivateOverlay(): boolean {
-    return this.isBrowser() && (this.privateNavigation || privateSourcePath(window.location.pathname));
+    return this.isBrowser() && (this.privateNavigation || untrackedPath(window.location.pathname));
   }
 
   private isBrowser(): boolean {

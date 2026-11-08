@@ -169,3 +169,8 @@ dev-agent.md
 /dimafx-logos.zip
 
 !dima-analytics/package-lock.json
+!marketing/package-lock.json
+
+# Demo videos (marketing/video): renders and caches stay local
+marketing/video/out/
+marketing/video/.cache/

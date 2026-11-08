@@ -1,0 +1,47 @@
+{
+  "$schema": "../scene.schema.json",
+  "$comment": "First-time chatter drops a scam link; DomDimaBot's first-message review bans them (spam.ts firstOffense = ban). Free plan uses the Lite model, no credits.",
+  "id": "first-message-mod",
+  "v": 1,
+  "seed": 7,
+  "formats": ["vertical", "landscape"],
+  "langs": ["en", "es"],
+  "channel": {
+    "name": "lunatica_v",
+    "title": { "en": "Ranked grind, chill vibes", "es": "Rankeds con calma, ven a pasar el rato" },
+    "game": "Valorant",
+    "viewers": 214
+  },
+  "beats": [
+    { "do": "intro", "at": 0, "dur": 1700,
+      "title": { "en": "Scam links? *Gone.*", "es": "¿Links de estafa? *Fuera.*" },
+      "sub": { "en": "Before your chat even sees them", "es": "Antes de que tu chat los vea" } },
+
+    { "do": "chat", "id": "c1", "at": "+300", "user": "taco_fan", "text": { "en": "that clutch was insane", "es": "ese clutch estuvo increíble" }, "badges": ["sub"] },
+    { "do": "chat", "id": "c2", "at": "+700", "user": "NovaPlays", "text": { "en": "GG", "es": "GG" } },
+    { "do": "caption", "id": "cap1", "at": "+300", "dur": 3600,
+      "text": { "en": "A *first-time chatter* drops a scam link…", "es": "Alguien que *escribe por primera vez* deja un link de estafa…" } },
+    { "do": "chat", "id": "spam", "with": "cap1", "at": "+600", "user": "xx_promo_77", "first": true, "sfx": { "src": "kit:pop", "gain": 0.7 },
+      "text": { "en": "cheap viewers and followers at b00st-views.example", "es": "viewers y followers baratos en b00st-views.example" } },
+    { "do": "highlight", "id": "hl", "with": "cap1", "at": "+900", "dur": 1700, "target": "spam",
+      "label": { "en": "First message ever", "es": "Su primer mensaje" } },
+
+    { "do": "ban", "id": "ban", "after": "hl", "at": "+0", "target": "spam", "sfx": { "src": "kit:thud", "gain": 0.9 } },
+    { "do": "bot", "id": "notice", "at": "+350", "sfx": { "src": "kit:ding", "gain": 0.5 },
+      "text": "@xx_promo_77 Selected unwanted chat behavior",
+      "refs": [
+        { "file": "dimabot/src/utils/moderation/spam.ts", "quote": "Selected unwanted chat behavior" },
+        { "file": "dimabot/src/functions/moderation/execute_action.moderation.ts", "quote": "`@${username} ${reason}`", "inText": false }
+      ] },
+    { "do": "caption", "id": "cap2", "with": "ban", "at": "+0", "dur": 3400,
+      "text": { "en": "DomDimaBot's AI checks it and *bans the spammer*", "es": "La IA de DomDimaBot lo revisa y *banea al spammer*" } },
+    { "do": "chat", "id": "c3", "with": "cap2", "at": "+1500", "user": "taco_fan", "text": { "en": "bot got him lol", "es": "jaja el bot lo sacó" }, "badges": ["sub"] },
+    { "do": "chat", "id": "c4", "at": "+700", "user": "pixel_pancho", "text": { "en": "clean chat as always", "es": "chat limpio como siempre" }, "badges": ["vip"] },
+
+    { "do": "caption", "id": "cap3", "after": "cap2", "at": "+200", "dur": 2600,
+      "text": { "en": "Included in *every plan*, Free too", "es": "Incluido en *todos los planes*, también el gratis" } },
+    { "do": "outro", "id": "outro", "at": "+300", "dur": 2600,
+      "title": { "en": "Your stream, *protected*", "es": "Tu stream, *protegido*" },
+      "cta": { "en": "Free to start · domdimabot.com", "es": "Empieza gratis · domdimabot.com" } }
+  ]
+}

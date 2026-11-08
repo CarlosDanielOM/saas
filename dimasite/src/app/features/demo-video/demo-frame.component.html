@@ -1,0 +1,116 @@
+<div class="df" [demoClock]="t()" [attr.data-lang]="scene().lang">
+  <div class="df-bg" data-clock-origin="0" aria-hidden="true"><i class="df-glow df-glow--a"></i><i class="df-glow df-glow--b"></i></div>
+
+  <!-- The stream: a stylised game, the streamer cam and the real overlay components on a 1920x1080 canvas. -->
+  <section class="df-stream" [style.left.px]="streamBox().x" [style.top.px]="streamBox().y" [style.width.px]="streamBox().width" [style.height.px]="streamBox().height">
+    <div class="df-stage" [style.width.px]="stage.width" [style.height.px]="stage.height" [style.transform]="'scale(' + streamScale() + ')'">
+      <div class="df-camera" [style.transform]="camera()">
+        <div class="game" data-clock-origin="0" aria-hidden="true">
+          <div class="game__sky"></div>
+          <div class="game__sun"></div>
+          <div class="game__hills"></div>
+          <div class="game__grid"><div class="game__lines"></div></div>
+        </div>
+        <div class="hud" data-clock-origin="0">
+          <span class="hud__live"><i class="hud__dot"></i>{{ copy().live }}</span>
+          <span class="hud__viewers">{{ scene().channel.viewers }}</span>
+        </div>
+        <div class="cam" aria-hidden="true"><span>{{ scene().channel.name }}</span></div>
+
+        @for (beat of alerts(); track beat.id) {
+          <app-demo-alert [beat]="beat" [t]="t()" [lang]="scene().lang" (ready)="alertReady.emit($event)"
+            [style.left.px]="alertBox.x" [style.top.px]="alertBox.y" [style.width.px]="alertBox.width" [style.height.px]="alertBox.height" />
+        }
+        @for (d of duels(); track d.beat.id) {
+          <div class="df-duel" data-self-clock [style.visibility]="shown(d.beat) ? null : 'hidden'">
+            <app-duel-stage quality="high" [names]="{ left: str(d.beat, 'left'), right: str(d.beat, 'right') }" [battle]="d.battle"
+              [elapsed]="duelElapsed(d.beat, d.battle.duration)" [started]="true" [transparent]="true" [locale]="scene().lang" />
+          </div>
+        }
+        @for (r of roulettes(); track r.beat.id) {
+          <div class="df-roulette" [attr.data-clock-origin]="r.beat.at" [style.visibility]="shown(r.beat) ? null : 'hidden'"
+            [style.left.px]="rouletteBox.x" [style.top.px]="rouletteBox.y" [style.width.px]="rouletteBox.width" [style.height.px]="rouletteBox.height">
+            <app-roulette-display [roulette]="r.roulette" [draw]="rouletteDraw(r)" [serverTime]="rouletteTime(r)" [locale]="scene().lang" />
+          </div>
+        }
+        @if (ttsJobs().length) {
+          <div class="df-overlay" data-self-clock>
+            <app-overlay-scene-renderer [scene]="ttsScene" [jobs]="ttsJobs()" [viewport]="stageViewport" />
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <header class="df-info" [attr.data-clock-origin]="0">
+    <span class="df-info__avatar" aria-hidden="true">{{ scene().channel.name.charAt(0).toUpperCase() }}</span>
+    <span class="df-info__text">
+      <strong>{{ scene().channel.name }}</strong>
+      <span>{{ scene().channel.title }}</span>
+    </span>
+    <span class="df-info__game">{{ scene().channel.game }}</span>
+  </header>
+
+  <section class="df-chat">
+    <p class="df-chat__head">{{ copy().chat }}</p>
+    <ul class="df-lines">
+      @for (line of lines(); track line.key) {
+        <li class="ln" [attr.data-kind]="line.kind" [attr.data-clock-origin]="line.at" [attr.data-line]="line.key"
+          [class.ln--first]="line.first" [class.ln--deleted]="line.deletedAt !== null" [class.ln--hl]="!!line.highlight">
+          @if (line.first) { <span class="ln__first">{{ copy().first }}</span> }
+          @switch (line.kind) {
+            @case ('event') {
+              <span class="ln__event">@if (line.icon) { <lucide-icon [img]="line.icon" [size]="14" aria-hidden="true" /> }{{ line.text }}</span>
+            }
+            @case ('notice') {
+              <span class="ln__notice">{{ line.text }}</span>
+            }
+            @default {
+              <span class="ln__msg">
+                @for (badge of line.badges; track $index) {
+                  <span class="ln__badge" [attr.data-tone]="line.badgeTones[$index]"><lucide-icon [img]="badge" [size]="11" aria-hidden="true" /></span>
+                }
+                <span class="ln__who" [style.color]="line.color">{{ line.user }}</span><span class="ln__colon">:</span>
+                @if (line.deletedAt !== null) {
+                  <span class="ln__deleted" [attr.data-clock-origin]="line.deletedAt">{{ copy().deleted }}</span>
+                } @else {
+                  <span class="ln__text">{{ line.text }}</span>
+                }
+              </span>
+            }
+          }
+          @if (line.highlight; as hl) {
+            <span class="ln__ring" [attr.data-clock-origin]="hl.at" [style.--exit.ms]="hl.end - hl.at - 260" aria-hidden="true"></span>
+            @if (hl.label) { <span class="ln__label" [attr.data-clock-origin]="hl.at" [style.--exit.ms]="hl.end - hl.at - 260">{{ hl.label }}</span> }
+          }
+        </li>
+      }
+    </ul>
+  </section>
+
+  @for (ring of ringTargets(); track ring.id) {
+    <div class="df-ring" [attr.data-target]="str(ring, 'target')" [attr.data-clock-origin]="ring.at" [style.--exit.ms]="ring.end - ring.at - 260">
+      @if (str(ring, 'label')) { <span class="df-ring__label">{{ str(ring, 'label') }}</span> }
+    </div>
+  }
+
+  @for (cap of captions(); track cap.beat.id) {
+    <p class="df-caption" [attr.data-place]="cap.place" [attr.data-clock-origin]="cap.beat.at" [style.--exit.ms]="cap.exit">
+      @for (part of cap.parts; track $index) {<span [class.em]="part.em">{{ part.text }}</span>}
+    </p>
+  }
+
+  @for (card of cards(); track card.id) {
+    <div class="df-card" [attr.data-kind]="card.do" [attr.data-clock-origin]="card.at" [style.--exit.ms]="card.end - card.at - 320">
+      <i class="df-glow df-glow--a"></i><i class="df-glow df-glow--b"></i>
+      <img class="df-card__mark" src="/assets/brand/mark-on-dark.png" alt="" />
+      <p class="df-card__word">DomDimaBot<small>{{ copy().companion }}</small></p>
+      @let title = str(card, 'title') || (card.do === 'intro' ? copy().tagline : '');
+      @if (title) {
+        <p class="df-card__title">@for (part of segments(title); track $index) {<span [class.em]="part.em">{{ part.text }}</span>}</p>
+      }
+      @if (card.do === 'intro' && str(card, 'sub')) { <p class="df-card__sub">{{ str(card, 'sub') }}</p> }
+      @if (card.do === 'outro') { <p class="df-card__cta">{{ str(card, 'cta') || copy().cta + ' · domdimabot.com' }}</p> }
+    </div>
+  }
+</div>

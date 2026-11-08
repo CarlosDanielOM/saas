@@ -176,6 +176,15 @@ Overlay Studio widgets use a shared generated contract and module registry. See 
 
 ---
 
+## Demo-video player (`/mocks/dev/demo`)
+
+`features/demo-video/` plays promo-video scenes through real components (overlay renderer, duel, roulette). `marketing/video/` records it frame by frame through `window.__dimaDemo` (see `marketing/video/README.md`).
+
+- Treat `window.__dimaDemo` (`load`, `ready`, `frame`) and `demo-scene.ts` as a contract with the recorder. `demo-scene.ts` is imported by Node too, so it stays import-free with erasable TypeScript only.
+- Everything in the frame follows the scene time `t`. Our CSS animations carry `data-clock-origin`; components that seek their own animations sit under `data-self-clock`. A free-running animation fails the render.
+- Scenes never come from the URL. The route sends no analytics (`untrackedPath` in `analytics.service.ts`).
+- When you change the overlay renderer/layers, the duel stage or the roulette display, run `ops/checks/demo-player.mjs` too.
+
 ## When to Create a New Component vs. Extend Existing
 
 - New page or major feature section → new component + route.

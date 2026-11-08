@@ -1,12 +1,15 @@
 // Shared pieces for the procedural brand visuals (Twitter banner, profile picture, link preview).
-// Everything renders through Playwright's Chromium; the install the ops browser checks use is reused.
+// Everything renders through Playwright's Chromium (marketing/'s own install, or the ops browser-check copy).
 import {createRequire} from 'node:module';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 
 export function loadChromium() {
-  const require = createRequire('/tmp/saas-cooldown-browser/package.json');
-  return require('playwright').chromium;
+  // Prefer marketing/'s own pinned install (npm ci in marketing/); fall back to the ops browser-check copy in /tmp.
+  for (const base of [new URL('../package.json', import.meta.url).pathname, '/tmp/saas-cooldown-browser/package.json']) {
+    try { return createRequire(base)('playwright').chromium; } catch { /* try the next one */ }
+  }
+  throw new Error('Playwright not found: run `npm ci` in marketing/');
 }
 
 export const smooth = t => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };

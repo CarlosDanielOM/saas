@@ -1,0 +1,52 @@
+@if (!recording()) {
+  <header class="dp-head">
+    <div class="dp-head__text">
+      <h1>{{ copy().title }}</h1>
+      <p>{{ copy().lead }}</p>
+    </div>
+    <div class="dp-tools">
+      @if (samples.length > 1) {
+        <label class="dp-field">
+          <span>{{ copy().sample }}</span>
+          <select [value]="sampleId()" (change)="sampleId.set($any($event.target).value); restart()" [attr.aria-label]="copy().sample">
+            @for (s of samples; track s.id) { <option [value]="s.id">{{ s.label[lang()] }}</option> }
+          </select>
+        </label>
+      }
+      <div class="dp-seg" role="group" [attr.aria-label]="copy().format">
+        @for (f of formats; track f) {
+          <button type="button" [attr.aria-pressed]="format() === f" (click)="setFormat(f)">{{ copy()[f] }}</button>
+        }
+      </div>
+      <div class="dp-seg" role="group" [attr.aria-label]="copy().language">
+        @for (l of langs; track l) {
+          <button type="button" [attr.aria-pressed]="lang() === l" (click)="setLang(l)">{{ l.toUpperCase() }}</button>
+        }
+      </div>
+    </div>
+    <div class="dp-transport">
+      <button type="button" class="dp-icon" (click)="toggle()" [attr.aria-label]="playing() ? copy().pause : copy().play">
+        <lucide-icon [img]="playing() ? icons.pause : icons.play" [size]="20" aria-hidden="true" />
+      </button>
+      <button type="button" class="dp-icon" (click)="restart()" [attr.aria-label]="copy().restart">
+        <lucide-icon [img]="icons.restart" [size]="20" aria-hidden="true" />
+      </button>
+      <input class="dp-range" type="range" min="0" step="10" [max]="duration()" [value]="t()" [style.--pct]="duration() ? t() / duration() : 0"
+        (input)="scrub($event)" [attr.aria-label]="copy().time" [attr.aria-valuetext]="timeLabel()" />
+      <span class="dp-time">{{ timeLabel() }}</span>
+    </div>
+  </header>
+  @if (sampleErrors().length) {
+    <div class="dp-errors" role="alert"><strong>{{ copy().invalid }}</strong>@for (e of sampleErrors(); track e) { <span>{{ e }}</span> }</div>
+  }
+}
+
+<div class="dp-stage">
+  <!-- Every load() mounts a fresh frame, so actors (and their readiness and clocks) never carry over. -->
+  @for (run of [loads()]; track run) { @if (scene(); as s) {
+    <div class="dp-fit" [style.width.px]="recording() ? null : frameSize().width * fit()" [style.height.px]="recording() ? null : frameSize().height * fit()">
+      <app-demo-frame [scene]="s" [format]="format()" [t]="t()" (alertReady)="onAlertReady($event)"
+        [style.transform]="recording() ? null : 'scale(' + fit() + ')'" />
+    </div>
+  } }
+</div>

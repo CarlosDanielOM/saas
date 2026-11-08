@@ -1,0 +1,5 @@
+{
+  "$comment": "TTS voices for demo videos. Fish Audio only. Add a voice, then point defaults.en / defaults.es at its name. Every voice needs its owner/source and a license that allows use in ads. s2.1-pro-free costs nothing until freeUntil; after that renders need --allow-paid-tts.",
+  "defaults": { "en": null, "es": null },
+  "voices": {}
+}

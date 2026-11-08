@@ -1,0 +1,228 @@
+/* Preview page around the video frame. Always dark: it previews dark-first videos.
+   In record mode only the frame remains, pinned to the top-left corner at its exact size. */
+:host {
+  --bg: #0f1115;
+  --tile: #171a21;
+  --fg: #f5f7fb;
+  --muted: #a7b0c2;
+  --line: rgba(255, 255, 255, 0.07);
+  --btn: #1d2230;
+  --accent: #7c3aed;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 34rem;
+  background: radial-gradient(90% 60% at 50% 0%, rgba(139, 92, 246, 0.14), transparent 70%), var(--bg);
+  color: var(--fg);
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+}
+
+:host(.dp--record) {
+  display: block;
+  height: auto;
+  min-height: 0;
+  background: #0d0b14;
+}
+
+.dp-head {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.75rem;
+}
+
+.dp-head__text h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.dp-head__text p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.dp-tools,
+.dp-transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dp-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.dp-field select {
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--btn);
+  color: var(--fg);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.dp-seg {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--btn);
+}
+
+.dp-seg button,
+.dp-icon {
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dp-seg button {
+  min-width: 44px;
+  padding: 0 0.9rem;
+}
+
+.dp-seg button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #fff;
+}
+
+.dp-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  flex: none;
+  border: 1px solid var(--line);
+  background: var(--btn);
+}
+
+.dp-seg button:focus-visible,
+.dp-icon:focus-visible,
+.dp-field select:focus-visible,
+.dp-range:focus-visible {
+  outline: 3px solid #c4b5fd;
+  outline-offset: 2px;
+}
+
+.dp-range {
+  flex: 1 1 10rem;
+  min-width: 8rem;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.dp-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent) calc(var(--pct, 0) * 100%), #2b3142 calc(var(--pct, 0) * 100%));
+}
+
+.dp-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent) calc(var(--pct, 0) * 100%), #2b3142 calc(var(--pct, 0) * 100%));
+}
+
+.dp-range::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: var(--accent);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.dp-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.dp-time {
+  min-width: 7.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dp-errors {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0 1rem 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
+  font-size: 0.9rem;
+}
+
+.dp-stage {
+  flex: 1 1 0;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 0 1rem 1rem;
+  overflow: hidden;
+}
+
+:host(.dp--record) .dp-stage {
+  display: block;
+  min-height: 0;
+  padding: 0;
+}
+
+.dp-fit {
+  position: relative;
+}
+
+.dp-fit app-demo-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+:host(.dp--record) .dp-fit app-demo-frame {
+  position: static;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@media (min-width: 960px) {
+  .dp-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    padding: 1.25rem 1.5rem 1rem;
+  }
+
+  .dp-transport {
+    grid-column: 1 / -1;
+  }
+
+  .dp-stage {
+    padding: 0 1.5rem 1.5rem;
+  }
+}

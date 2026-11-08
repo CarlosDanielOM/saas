@@ -373,6 +373,13 @@ export const routes: Routes = [
         title: 'Landing proposal | DomDimaBot'
       },
       {
+        // Promo video player: marketing/video records it frame by frame (window.__dimaDemo). Not tracked by analytics.
+        path: 'demo',
+        loadComponent: () =>
+          import('./features/demo-video/demo-player.component').then((m) => m.DemoPlayerComponent),
+        title: 'Demo Video Player | DomDimaBot'
+      },
+      {
         path: 'landing-showcase',
         loadComponent: () =>
           import('./features/landing-mocks/dev/landing-proposals/landing-showcase.component').then(
