@@ -10,8 +10,7 @@
   --accent: #7c3aed;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
-  min-height: 34rem;
+  min-height: 100dvh;
   background: radial-gradient(90% 60% at 50% 0%, rgba(139, 92, 246, 0.14), transparent 70%), var(--bg);
   color: var(--fg);
   font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
@@ -28,6 +27,8 @@
   display: grid;
   gap: 0.75rem;
   padding: 1rem 1rem 0.75rem;
+  /* Solid, so the controls always sit on a known dark color (the page glow is a gradient). */
+  background: var(--bg);
 }
 
 .dp-head__text h1 {
@@ -70,8 +71,17 @@
   font-size: 1rem;
 }
 
+.dp-head,
+.dp-head > * {
+  min-width: 0;
+}
+
+/* On phones a long choice (six looks) becomes a swipeable strip instead of widening the page. */
 .dp-seg {
   display: inline-flex;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
   padding: 3px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -90,7 +100,13 @@
   cursor: pointer;
 }
 
+.dp-seg::-webkit-scrollbar {
+  display: none;
+}
+
 .dp-seg button {
+  flex: none;
+  white-space: nowrap;
   min-width: 44px;
   padding: 0 0.9rem;
 }
@@ -178,17 +194,18 @@
 }
 
 .dp-stage {
-  flex: 1 1 0;
+  /* A definite height (not content-based), so the fit-to-screen scale can't feed back into it. */
+  flex: none;
+  height: clamp(22rem, 74dvh, 75rem);
   display: grid;
   place-items: center;
-  min-height: 0;
   padding: 0 1rem 1rem;
   overflow: hidden;
 }
 
 :host(.dp--record) .dp-stage {
   display: block;
-  min-height: 0;
+  height: auto;
   padding: 0;
 }
 

@@ -83,64 +83,9 @@
   height: 100%;
 }
 
-.game,
-.game > div {
-  position: absolute;
-}
-
 .game {
-  inset: 0;
-  overflow: hidden;
-}
-
-.game__sky {
-  inset: 0;
-  background: linear-gradient(180deg, #120d2e 0%, #3b1d6e 42%, #b4467a 62%, #f08a4b 70%, #1a1030 70.5%);
-}
-
-.game__sun {
-  left: 50%;
-  top: 30%;
-  width: 576px;
-  aspect-ratio: 1;
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: repeating-linear-gradient(180deg, #ffd27a 0 9%, transparent 9% 12%), linear-gradient(#ffe29a, #ff7a59);
-  mask-image: linear-gradient(180deg, #000 0 55%, transparent 72%);
-  opacity: 0.9;
-}
-
-.game__hills {
-  left: 0;
-  right: 0;
-  bottom: 29%;
-  height: 22%;
-  background: #24124a;
-  clip-path: polygon(0 100%, 0 55%, 12% 30%, 22% 52%, 34% 18%, 47% 50%, 58% 26%, 70% 58%, 82% 22%, 92% 46%, 100% 30%, 100% 100%);
-}
-
-.game__grid {
-  left: -30%;
-  right: -30%;
-  top: 70%;
-  bottom: 0;
-  overflow: hidden;
-  background: #140a2a;
-  transform: perspective(520px) rotateX(55deg);
-  transform-origin: top;
-}
-
-/* The lines scroll by moving a taller layer (a transform), so the grid is never repainted. */
-.game__lines {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: -120px;
-  bottom: 0;
-  background:
-    repeating-linear-gradient(90deg, rgba(236, 72, 153, 0.55) 0 4px, transparent 4px 7%),
-    repeating-linear-gradient(0deg, rgba(236, 72, 153, 0.55) 0 4px, transparent 4px 120px);
-  animation: grid-move 1.6s linear infinite;
+  inset: 0;
 }
 
 .hud {
@@ -182,16 +127,14 @@
   width: 400px;
   aspect-ratio: 4 / 3;
   border-radius: 30px;
-  border: 8px solid rgba(255, 255, 255, 0.85);
-  background:
-    radial-gradient(circle at 50% 42%, #f2c7a5 0 17%, transparent 17.5%),
-    radial-gradient(ellipse at 50% 100%, #7c3aed 0 42%, transparent 42.5%),
-    linear-gradient(160deg, #2a3350, #151a2b);
+  border: 6px solid rgba(255, 255, 255, 0.85);
   overflow: hidden;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
 }
 
 .cam span {
   position: absolute;
+  z-index: 1;
   left: 16px;
   bottom: 14px;
   padding: 0.1em 0.5em;
@@ -494,17 +437,19 @@
 /* Vertical: top band, clear of the phone status bar; bottom = over the stream's lower edge. */
 :host([data-format='vertical']) .df-caption[data-place='top'] { left: 22px; right: 22px; top: 50px; font-size: 27px; }
 :host([data-format='vertical']) .df-caption[data-place='bottom'] { left: 22px; right: 22px; top: 386px; font-size: 23px; }
-/* Landscape: a band over the stream. */
+/* Landscape: bottom = the band under the stream (it takes the channel row's place, so the stream stays clear while
+   a caption holds); top = over the stream's upper edge. */
 :host([data-format='landscape']) .df-caption {
-  left: 40px;
-  width: 608px;
+  left: 16px;
+  width: 656px;
   padding: 0.38em 0.6em;
   border-radius: 14px;
   background: rgba(12, 9, 22, 0.82);
   font-size: 25px;
 }
-:host([data-format='landscape']) .df-caption[data-place='bottom'] { bottom: 172px; }
+:host([data-format='landscape']) .df-caption[data-place='bottom'] { top: 398px; }
 :host([data-format='landscape']) .df-caption[data-place='top'] { top: 32px; }
+:host([data-format='landscape']) .df-info[data-covered] { animation: info-out 280ms ease-in var(--covered, 0ms) forwards; }
 
 /* ── Brand cards ───────────────────────────────────────────────────── */
 .df-card {
@@ -610,9 +555,24 @@
 @keyframes mark-in { from { opacity: 0; transform: scale(0.55) rotate(-14deg); } to { opacity: 1; transform: none; } }
 @keyframes cap-in { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
 @keyframes cap-out { to { opacity: 0; transform: translateY(-10px); } }
+@keyframes info-out { to { opacity: 0; } }
 @keyframes ring-in { from { opacity: 0; transform: scale(1.05); } to { opacity: 1; transform: none; } }
 @keyframes ring-pulse { 50% { box-shadow: 0 0 0 8px rgba(251, 191, 36, 0.14), 0 0 34px rgba(251, 191, 36, 0.6); } }
 @keyframes ring-out { to { opacity: 0; } }
 @keyframes hud-pulse { 50% { opacity: 0.3; } }
-@keyframes grid-move { to { transform: translateY(120px); } }
 @keyframes glow-drift { 50% { transform: translate(4%, 6%) scale(1.06); } }
+
+/* While a full-screen overlay (duel, roulette) plays, the fake game steps back like a cutscene:
+   dimmer, without its HUD or hero. Only our invented backdrop changes; the overlay is untouched. */
+app-demo-game {
+  transition: filter 450ms ease;
+}
+
+.df-camera:has(> .df-duel:not([style*='hidden']), > .df-roulette:not([style*='hidden'])) app-demo-game {
+  filter: brightness(0.62) saturate(0.85);
+}
+
+.df-camera:has(> .df-duel:not([style*='hidden']), > .df-roulette:not([style*='hidden'])) app-demo-game ::ng-deep :is(.hud-game, .minimap, .hero) {
+  opacity: 0;
+  transition: opacity 300ms ease;
+}

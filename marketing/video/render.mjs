@@ -8,6 +8,7 @@
 //   --lang en|es|all     languages (default: the scene's langs)    --fps 30|60   (default: scene fps or 30)
 //   --preview            quick look: half size, 15 fps             --sheet       also write a contact sheet PNG
 //   --frames A-B         render only frames A..B (testing)          --validate    check the scene and stop
+//   --look NAME          site, studio, paper, signal, broadcast or night (default: the scene's "look")
 //   --bundle DIR         site bundle to render (default: the live one, dimasite/dist/dimasite/browser)
 //   --base-url URL       render from another address (still refuses while an Angular/site build runs)
 //   --allow-paid-tts     allow TTS models that cost money          --emit-schema write video/scene.schema.json
@@ -25,10 +26,10 @@ import {checkScene, findScene, scenesFor} from './lib/scene.mjs';
 import {soundFile} from './lib/sfx.mjs';
 import {prepareTts} from './lib/tts.mjs';
 import {bundleHash, checkBundle, serveBundle} from './lib/server.mjs';
-import {openPlayer, loadScene, captureFrames} from './lib/record.mjs';
+import {openPlayer, loadScene, captureFrames, warmFonts} from './lib/record.mjs';
 import {muxAudio, startEncoder, writeJpeg, writeSheet} from './lib/encode.mjs';
-import {chromium, playwrightVersion, probe, stopChildren} from './lib/tools.mjs';
-import {DEMO_FORMATS, DEMO_LANGS, sceneJsonSchema} from '../../dimasite/src/app/features/demo-video/demo-scene.ts';
+import {CAPTURE_ARGS, chromium, playwrightVersion, probe, stopChildren} from './lib/tools.mjs';
+import {DEMO_FORMATS, DEMO_LANGS, DEMO_LOOKS, sceneJsonSchema} from '../../dimasite/src/app/features/demo-video/demo-scene.ts';
 
 const SCRIPT = fileURLToPath(import.meta.url);
 /** Set once Ctrl-C/SIGTERM starts the cleanup: errors after that are consequences, not news. */
@@ -41,11 +42,11 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (!arg.startsWith('--')) { opts.positional.push(arg); continue; }
     const [key, inline] = arg.slice(2).split('=', 2);
-    const takesValue = ['lang', 'fps', 'frames', 'bundle', 'base-url'].includes(key);
+    const takesValue = ['lang', 'fps', 'frames', 'bundle', 'base-url', 'look'].includes(key);
     opts[key] = takesValue ? (inline ?? argv[++i]) : true;
   }
   // `npm run demo first-message-mod --vertical` (without `--`) reaches us as npm_config_* variables.
-  for (const key of ['vertical', 'landscape', 'preview', 'sheet', 'validate', 'allow-paid-tts', 'lang', 'fps', 'frames', 'bundle', 'base-url', 'emit-schema']) {
+  for (const key of ['vertical', 'landscape', 'preview', 'sheet', 'validate', 'allow-paid-tts', 'lang', 'fps', 'frames', 'bundle', 'base-url', 'emit-schema', 'look']) {
     const env = process.env[`npm_config_${key.replace(/-/g, '_')}`];
     if (opts[key] === undefined && env !== undefined && env !== '' && env !== 'false') opts[key] = env === 'true' ? true : env;
   }
@@ -72,6 +73,7 @@ async function main() {
   const langs = opts.lang && opts.lang !== 'all' ? [opts.lang] : raw.langs ?? DEMO_LANGS;
   if (langs.some(l => !DEMO_LANGS.includes(l))) fail('--lang must be en, es or all');
   if (!formats.length) fail(`this scene has no ${opts.vertical ? 'vertical' : 'landscape'} format`);
+  if (opts.look !== undefined && !DEMO_LOOKS.includes(opts.look)) fail(`--look must be one of: ${DEMO_LOOKS.join(', ')}`);
   const preview = !!opts.preview;
   const fps = preview ? 15 : Number(opts.fps ?? raw.fps ?? 30);
   if (!(preview || [30, 60].includes(fps))) fail('--fps must be 30 or 60');
@@ -132,21 +134,22 @@ async function main() {
     baseUrl = server.url;
   }
   // Our own signal handlers clean up; Playwright's would close Chromium and exit before ffmpeg is stopped.
-  browser = await chromium().launch({handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false, args: ['--mute-audio', '--autoplay-policy=no-user-gesture-required', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--font-render-hinting=none']});
+  browser = await chromium().launch({handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false, args: CAPTURE_ARGS});
 
   const outDir = resolve(OUT, raw.id + (preview ? '/preview' : ''));
   mkdirSync(outDir, {recursive: true});
   const results = [];
   try {
+    await warmFonts(browser, {baseUrl, raw, format: formats[0], lang: langs[0]});
     for (const format of formats) for (const lang of langs) {
-      const name = `${raw.id}.${format}.${lang}${frameRange ? `.frames-${frameRange[0]}-${frameRange[1]}` : ''}`;
+      const name = `${raw.id}.${format}.${lang}${opts.look ? `.${opts.look}` : ''}${frameRange ? `.frames-${frameRange[0]}-${frameRange[1]}` : ''}`;
       const started = Date.now();
       process.stdout.write(`▶ ${name} `);
       const media = ttsByLang[lang];
       const player = await openPlayer(browser, {baseUrl, format, lang, scale: preview ? 1 : 2, seed: raw.seed ?? 1, media});
       let encoder;
       try {
-        const info = await loadScene(player, raw, {format, lang, media});
+        const info = await loadScene(player, raw, {format, lang, media, look: opts.look});
         const silent = resolve(outDir, `${name}.video.mp4`), final = resolve(outDir, `${name}.mp4`);
         const outputs = [silent, final, ...['jpg', 'sheet.png', 'json'].map(ext => resolve(outDir, `${name}.${ext}`))];
         for (const file of outputs) { rmSync(file, {force: true}); partial.add(file); }
@@ -192,7 +195,7 @@ async function main() {
         if (Boolean(audio) !== mixed > 0) problems.push(mixed ? 'audio track missing' : 'unexpected audio track');
         if (problems.length) throw new Error(`output check failed: ${problems.join(', ')}`);
         writeFileSync(resolve(outDir, `${name}.json`), JSON.stringify({
-          scene: relative(REPO, sceneFile), format, lang, fps, frames: count, durationMs, size: `${video.width}x${video.height}`,
+          scene: relative(REPO, sceneFile), format, lang, look: opts.look ?? raw.look ?? 'studio', fps, frames: count, durationMs, size: `${video.width}x${video.height}`,
           audio: cues.map(c => ({kind: c.kind, src: c.src, at: c.at})), bundle: server ? {dir: bundle, hash: hashBefore} : {baseUrl},
           playwright: playwrightVersion(), chromium: browser.version(), renderedAt: new Date().toISOString(), seconds: Math.round((Date.now() - started) / 1000)
         }, null, 2) + '\n');

@@ -1,7 +1,7 @@
 // Scene rules shared by the player and the recorder.
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {normalizeScene, sceneCues, validateScene} from '../../../dimasite/src/app/features/demo-video/demo-scene.ts';
+import {captionSpans, normalizeScene, sceneCues, validateScene} from '../../../dimasite/src/app/features/demo-video/demo-scene.ts';
 import {checkScene} from '../lib/scene.mjs';
 
 const scene = beats => ({id: 't', v: 1, beats});
@@ -35,6 +35,46 @@ test('text must have both languages, ids must be unique, targets must exist', ()
 test('an outro may not cover a beat that is still playing', () => {
   const errors = validateScene(scene([{do: 'duel', id: 'd', left: 'a', right: 'b'}, {do: 'caption', with: 'd', text: 'x'}, {do: 'outro', at: '+0'}]), {duel: () => 9000});
   assert.ok(errors.some(e => e.includes('time it with "after": "d"')));
+});
+
+test('captions hold until the next one in their place, a card, or the end of the video', () => {
+  const {scene: s, errors} = normalizeScene(scene([
+    {do: 'intro', id: 'i', dur: 1000},
+    {do: 'caption', id: 'a', at: '+0', dur: 1000, text: 'a'},
+    {do: 'caption', id: 'up', with: 'a', place: 'top', text: 'up'},
+    {do: 'caption', id: 'b', after: 'a', at: '+2000', dur: 500, text: 'b'},
+    {do: 'caption', id: 'b2', with: 'b', dur: 500, text: 'b2'},
+    {do: 'caption', id: 'z', after: 'b2', at: '+1000', dur: 500, text: 'z'},
+    {do: 'outro', id: 'o', after: 'z', at: '+0'},
+    {do: 'caption', id: 'late', with: 'o', dur: 0, text: 'late'}
+  ]), 'en');
+  assert.deepEqual(errors, []);
+  const spans = format => Object.fromEntries(captionSpans(s, format).map(c => [c.beat.id, [c.beat.at, c.end]]));
+  assert.deepEqual(spans('landscape'), {
+    a: [1000, 4000],     // held past its dur until b
+    up: [1000, 6000],    // another place: held until the outro
+    b: [4000, 4000],     // same ms as b2: the one written later wins
+    b2: [4000, 5500],
+    z: [5500, 6000],     // the outro replaces it
+    late: [6000, 6000]   // starts with the outro: covered, never comes back in the tail
+  });
+  assert.equal(spans('vertical').a[1], 1000, 'on vertical "up" shares the top band and replaces "a" at once');
+  const {scene: open} = normalizeScene(scene([{do: 'caption', id: 'c', at: 0, text: 'x'}]), 'en');
+  assert.equal(captionSpans(open, 'vertical')[0].end, Infinity);
+});
+
+test('a duel result is timed by the fight, not by a longer duel "dur"', () => {
+  const t = at(scene([
+    {do: 'duel', id: 'd', at: 1000, dur: 12000, left: 'a', right: 'b'},
+    {do: 'bot', id: 'r', duel: 'd', text: '@{winner} won'}
+  ]));
+  assert.deepEqual(t.r, [1000 + 9000 - 1800, 1000 + 9000 - 1800]);
+  const short = validateScene(scene([{do: 'duel', id: 'd', dur: 5000, left: 'a', right: 'b'}]), {duel: () => 9000});
+  assert.ok(short.some(e => e.includes("can't be shorter than the fight")));
+  const early = validateScene(scene([{do: 'duel', id: 'd', left: 'a', right: 'b'}, {do: 'bot', duel: 'd', with: 'd', at: '+7100', text: 'x'}]), {duel: () => 9000});
+  assert.ok(early.some(e => e.includes('only known when the fight in d ends (7200 ms)')));
+  const onTime = validateScene(scene([{do: 'duel', id: 'd', left: 'a', right: 'b'}, {do: 'bot', duel: 'd', with: 'd', at: '+7200', text: 'x'}]), {duel: () => 9000});
+  assert.deepEqual(onTime, []);
 });
 
 test('bot wording is checked against the source file', () => {

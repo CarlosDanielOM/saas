@@ -1,0 +1,1206 @@
+/* Art directions for the demo-video frame (scene "look"). Same content and timing; each look is one system:
+   a limited palette, its own type, a texture and one camera rule. "studio" is the base stylesheet.
+   Every animation here is driven by the scene clock (see demo-clock.directive.ts). */
+
+/* Layers the base look doesn't use. */
+.df-dots,
+.df-stars,
+.df-tape,
+.df-vignette,
+.df-annot,
+.df-label,
+.df-timecode,
+.df-grain {
+  display: none;
+}
+
+.df-stage {
+  overflow: hidden;
+}
+
+/* Kinetic words: in the base look a caption moves as one block. */
+.df-caption .w,
+.df-card__title .w {
+  display: inline-block;
+}
+
+:host(:not([data-look='studio'])) .df-glow {
+  display: none;
+}
+
+/* Film grain: a tiled noise texture that shifts every few frames. */
+.df-grain {
+  position: absolute;
+  inset: -40px;
+  z-index: 40;
+  pointer-events: none;
+  background-size: 200px 200px;
+  animation: grain-shift 0.5s steps(5) infinite;
+}
+
+@keyframes grain-shift {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-23px, 11px); }
+  40% { transform: translate(17px, -19px); }
+  60% { transform: translate(-9px, 27px); }
+  80% { transform: translate(29px, 7px); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes word-rise {
+  from { opacity: 0; transform: translateY(0.45em); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes word-slam {
+  0% { opacity: 0; transform: translateY(0.22em) scale(1.32); }
+  55% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes l3-in {
+  from { opacity: 0; transform: translateX(-28px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PRINT (paper): cream stock, ink, one vermilion spot color, blue second ink.
+   Camera rule: the stream is a taped photo that slowly settles.
+   ══════════════════════════════════════════════════════════════════════════ */
+:host([data-look='paper']) {
+  --paper: #f1ebdf;
+  --card: #fffdf8;
+  --ink: #1d1b17;
+  --ink-2: #57524a;
+  --red: #e0432b;
+  --blue: #2c55c4;
+  --rule: rgba(29, 27, 23, 0.16);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Bricolage Grotesque', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+:host([data-look='paper']) .df-bg {
+  background: var(--paper);
+}
+
+:host([data-look='paper']) .df-grain {
+  display: block;
+  opacity: 0.2;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.11  0 0 0 0 0.1  0 0 0 0 0.09  0 0 0 0.75 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+:host([data-look='paper']) .df-stream {
+  overflow: visible;
+  border-radius: 2px;
+  box-shadow: 0 0 0 7px #fff, 0 0 0 8px var(--rule), 9px 11px 0 8px rgba(29, 27, 23, 0.13);
+  animation: paper-settle 16s cubic-bezier(0.3, 0, 0.3, 1) both;
+}
+
+:host([data-look='paper'][data-format='vertical']) .df-stream {
+  animation-name: paper-settle-vertical;
+}
+
+@keyframes paper-settle {
+  from { transform: rotate(-1.6deg) scale(0.985); }
+  to { transform: rotate(-0.7deg) scale(1); }
+}
+
+@keyframes paper-settle-vertical {
+  from { transform: scale(0.9) rotate(-1.8deg); }
+  to { transform: scale(0.915) rotate(-0.9deg); }
+}
+
+:host([data-look='paper']) .df-tape {
+  display: block;
+  position: absolute;
+  z-index: 3;
+  width: 78px;
+  height: 22px;
+  background: rgba(236, 213, 150, 0.78);
+  box-shadow: 0 1px 2px rgba(29, 27, 23, 0.15);
+}
+
+:host([data-look='paper']) .df-tape--a { left: -26px; top: -10px; transform: rotate(-32deg); }
+:host([data-look='paper']) .df-tape--b { right: -24px; top: -8px; transform: rotate(28deg); }
+
+:host([data-look='paper']) .hud { color: #fff; }
+:host([data-look='paper']) .hud__live { background: var(--red); border-radius: 3px; }
+:host([data-look='paper']) .hud__viewers { background: var(--ink); border-radius: 3px; }
+
+:host([data-look='paper']) .df-info__avatar {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--red);
+}
+
+:host([data-look='paper']) .df-info__text span { color: var(--ink-2); }
+
+:host([data-look='paper']) .df-info__game {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+:host([data-look='paper']) .df-chat {
+  background: var(--card);
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 5px 6px 0 var(--ink);
+}
+
+:host([data-look='paper']) .df-chat__head {
+  padding-bottom: 0.55em;
+  border-bottom: 1.5px solid var(--ink);
+  color: var(--ink);
+  letter-spacing: 0.16em;
+}
+
+:host([data-look='paper']) .df-lines { mask-image: linear-gradient(180deg, transparent 0, #000 1.6em); }
+:host([data-look='paper']) .ln__text,
+:host([data-look='paper']) .ln[data-kind='bot'] .ln__text { color: var(--ink); }
+:host([data-look='paper']) .ln__colon { color: var(--ink); }
+:host([data-look='paper']) .ln__badge { border-radius: 2px; }
+:host([data-look='paper']) .ln__badge[data-tone='violet'],
+:host([data-look='paper']) .ln__badge[data-tone='bot'] { background: var(--blue); }
+
+:host([data-look='paper']) .ln--first {
+  background: #fff0b8;
+  box-shadow: inset 3px 0 0 var(--red);
+}
+
+:host([data-look='paper']) .ln__first { color: var(--red); }
+:host([data-look='paper']) .ln__deleted,
+:host([data-look='paper']) .ln__notice { color: #847d70; }
+
+:host([data-look='paper']) .ln__event {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+/* A hand-drawn marker ring, no glow. */
+:host([data-look='paper']) .ln__ring,
+:host([data-look='paper']) .df-ring {
+  border: 2.5px solid var(--red);
+  border-radius: 50% / 44%;
+  box-shadow: none;
+  transform: rotate(-1.2deg);
+  animation: ring-in 260ms ease-out both, ring-out 260ms ease-in var(--exit, 1000ms) forwards;
+}
+
+:host([data-look='paper']) .ln__ring { inset: -6px -8px; }
+
+:host([data-look='paper']) .ln__label,
+:host([data-look='paper']) .df-ring__label {
+  border-radius: 2px;
+  background: var(--red);
+  color: #fff;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transform: rotate(3deg);
+}
+
+/* Captions: an editorial serif, italic vermilion emphasis, words rising one by one. */
+:host([data-look='paper']) .df-caption {
+  color: var(--ink);
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.005em;
+  text-shadow: none;
+  animation: cap-out 300ms ease-in var(--exit, 2000ms) forwards;
+}
+
+:host([data-look='paper']) .df-caption .w {
+  animation: word-rise 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+:host([data-look='paper']) .df-caption .em,
+:host([data-look='paper']) .df-card__title .em {
+  background: none;
+  color: var(--red);
+  font-style: italic;
+}
+
+:host([data-look='paper'][data-format='vertical']) .df-caption[data-place='top'] { top: 44px; font-size: 42px; }
+:host([data-look='paper'][data-format='vertical']) .df-caption[data-place='bottom'] { top: 372px; font-size: 34px; }
+
+:host([data-look='paper'][data-format='landscape']) .df-caption {
+  padding: 0.22em 0.55em 0.3em;
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  background: var(--card);
+  box-shadow: 5px 6px 0 var(--ink);
+  font-size: 32px;
+}
+
+/* Cards: the same paper, ink lockup, a vermilion-shadowed button. */
+:host([data-look='paper']) .df-card {
+  background: var(--paper);
+}
+
+:host([data-look='paper']) .df-card__mark { filter: none; }
+
+:host([data-look='paper']) .df-card__word {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400;
+  font-size: 56px;
+}
+
+:host([data-look='paper']) .df-card__word small {
+  padding-top: 0.7em;
+  border-top: 1.5px solid var(--ink);
+  color: var(--ink-2);
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+:host([data-look='paper']) .df-card__title {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 50px;
+  font-weight: 400;
+  line-height: 1;
+  animation: none;
+}
+
+:host([data-look='paper']) .df-card[data-kind='outro'] .df-card__title .w {
+  animation: word-rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(300ms + var(--i, 0) * 70ms);
+}
+
+:host([data-look='paper']) .df-card__sub { color: var(--ink-2); }
+
+:host([data-look='paper']) .df-card__cta {
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 4px 5px 0 var(--red);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KINETIC (signal): black, a dot grid, one acid lime. Huge condensed type that
+   slams in word by word. Camera rule: nothing moves except type and content.
+   ══════════════════════════════════════════════════════════════════════════ */
+:host([data-look='signal']) {
+  --bk: #0b0b0b;
+  --fg: #f4f4ef;
+  --lime: #c8ff2e;
+  --dim: #8f8f88;
+  background: var(--bk);
+  color: var(--fg);
+  font-family: 'Inter Tight', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+:host([data-look='signal']) .df-bg { background: var(--bk); }
+
+:host([data-look='signal']) .df-dots {
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(rgba(244, 244, 239, 0.14) 1px, transparent 1.5px) 0 0 / 16px 16px;
+}
+
+:host([data-look='signal']) .df-grain {
+  display: block;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+:host([data-look='signal']) .df-stream {
+  border-radius: 0;
+  box-shadow: 0 0 0 1.5px var(--fg);
+}
+
+:host([data-look='signal']) .hud__live { background: #ff3b2f; border-radius: 0; }
+:host([data-look='signal']) .hud__viewers { background: var(--bk); border-radius: 0; box-shadow: inset 0 0 0 3px var(--fg); }
+
+:host([data-look='signal']) .cam span { border-radius: 0; background: var(--lime); color: var(--bk); }
+
+:host([data-look='signal']) .df-info__avatar {
+  border-radius: 0;
+  background: var(--lime);
+  color: var(--bk);
+  box-shadow: none;
+}
+
+:host([data-look='signal']) .df-info__text span { color: var(--dim); }
+
+:host([data-look='signal']) .df-info__game {
+  border-radius: 0;
+  background: transparent;
+  color: var(--lime);
+  box-shadow: inset 0 0 0 1.5px var(--lime);
+}
+
+:host([data-look='signal']) .df-chat {
+  border: 0;
+  border-top: 1.5px solid var(--fg);
+  border-radius: 0;
+  background: transparent;
+}
+
+:host([data-look='signal'][data-format='vertical']) .df-chat { font-size: 17px; }
+
+:host([data-look='signal']) .df-chat__head { color: var(--lime); letter-spacing: 0.2em; }
+:host([data-look='signal']) .df-lines { gap: 0.55em; }
+:host([data-look='signal']) .ln { border-radius: 0; }
+:host([data-look='signal']) .ln__text,
+:host([data-look='signal']) .ln[data-kind='bot'] .ln__text { color: var(--fg); }
+:host([data-look='signal']) .ln__badge { border-radius: 0; }
+:host([data-look='signal']) .ln__badge[data-tone='violet'],
+:host([data-look='signal']) .ln__badge[data-tone='bot'] { background: var(--lime); color: var(--bk); }
+
+:host([data-look='signal']) .ln--first {
+  background: rgba(200, 255, 46, 0.08);
+  box-shadow: inset 4px 0 0 var(--lime);
+}
+
+:host([data-look='signal']) .ln__first { color: var(--lime); }
+:host([data-look='signal']) .ln__deleted { color: var(--dim); text-decoration: line-through; }
+:host([data-look='signal']) .ln__notice { color: var(--lime); font-style: normal; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8em; }
+:host([data-look='signal']) .ln__event { border-radius: 0; background: transparent; color: var(--lime); box-shadow: inset 0 0 0 1.5px var(--lime); }
+
+/* Corner brackets instead of rings. */
+:host([data-look='signal']) .ln__ring,
+:host([data-look='signal']) .df-ring {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  --c: var(--lime);
+  background:
+    linear-gradient(var(--c), var(--c)) top left / 16px 3px no-repeat,
+    linear-gradient(var(--c), var(--c)) top left / 3px 16px no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 16px 3px no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 3px 16px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 16px 3px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 3px 16px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 16px 3px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 3px 16px no-repeat;
+  animation: ring-in 220ms cubic-bezier(0.2, 0.9, 0.2, 1) both, ring-out 200ms ease-in var(--exit, 1000ms) forwards;
+}
+
+:host([data-look='signal']) .ln__ring { inset: -6px -6px; }
+
+:host([data-look='signal']) .ln__label,
+:host([data-look='signal']) .df-ring__label {
+  border-radius: 0;
+  background: var(--lime);
+  color: var(--bk);
+  font-family: 'Anton', 'Inter Tight', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Captions: huge condensed capitals, slammed in word by word. */
+:host([data-look='signal']) .df-caption {
+  color: var(--fg);
+  font-family: 'Anton', 'Inter Tight', sans-serif;
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+  text-shadow: none;
+  animation: cap-out 220ms ease-in var(--exit, 2000ms) forwards;
+}
+
+:host([data-look='signal']) .df-caption .w {
+  animation: word-slam 360ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 75ms);
+}
+
+:host([data-look='signal']) .df-caption .em,
+:host([data-look='signal']) .df-card__title .em {
+  background: none;
+  color: var(--lime);
+}
+
+:host([data-look='signal'][data-format='vertical']) .df-caption[data-place='top'] { top: 36px; left: 18px; right: 18px; font-size: 46px; text-align: left; }
+:host([data-look='signal'][data-format='vertical']) .df-caption[data-place='bottom'] { top: 364px; font-size: 38px; }
+
+:host([data-look='signal'][data-format='landscape']) .df-caption {
+  border-radius: 0;
+  background: var(--bk);
+  box-shadow: inset 0 0 0 1.5px var(--fg);
+  font-size: 38px;
+}
+
+:host([data-look='signal']) .df-card {
+  background: radial-gradient(rgba(244, 244, 239, 0.12) 1px, transparent 1.5px) 0 0 / 16px 16px, var(--bk);
+}
+
+:host([data-look='signal']) .df-card__mark { width: 96px; filter: none; }
+:host([data-look='signal'][data-format='vertical']) .df-card__mark { width: 116px; }
+
+:host([data-look='signal']) .df-card__word {
+  font-family: 'Anton', 'Inter Tight', sans-serif;
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+:host([data-look='signal']) .df-card__word small {
+  color: var(--dim);
+  font-family: 'Inter Tight', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+:host([data-look='signal']) .df-card__title {
+  max-width: 9ch;
+  font-family: 'Anton', 'Inter Tight', sans-serif;
+  font-size: 76px;
+  font-weight: 400;
+  line-height: 0.94;
+  text-transform: uppercase;
+  animation: none;
+}
+
+:host([data-look='signal'][data-format='landscape']) .df-card__title { max-width: 14ch; font-size: 64px; }
+
+:host([data-look='signal']) .df-card[data-kind='outro'] .df-card__title .w {
+  animation: word-slam 380ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+  animation-delay: calc(200ms + var(--i, 0) * 110ms);
+}
+
+:host([data-look='signal']) .df-card__sub { color: var(--dim); }
+
+:host([data-look='signal']) .df-card__cta {
+  border-radius: 0;
+  background: var(--lime);
+  color: var(--bk);
+  box-shadow: none;
+  font-family: 'Anton', 'Inter Tight', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BROADCAST: a real stream page, filmed. Neutral greys, the brand violet used
+   once, lower-thirds. Camera rule: one slow push-in; focus pulls to the chat
+   when something there is highlighted.
+   ══════════════════════════════════════════════════════════════════════════ */
+:host([data-look='broadcast']) {
+  --bg: #0e0e10;
+  --panel: #18181b;
+  --line: #2f2f35;
+  --fg: #efeff1;
+  --muted: #adadb8;
+  --accent: #a970ff;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Inter Tight', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+:host([data-look='broadcast']) .df-bg { background: var(--bg); }
+
+:host([data-look='broadcast']) .df {
+  transform-origin: 50% 42%;
+  animation: dolly 18s linear both;
+}
+
+@keyframes dolly {
+  from { transform: scale(1); }
+  to { transform: scale(1.045); }
+}
+
+:host([data-look='broadcast']) .df-grain {
+  display: block;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+:host([data-look='broadcast']) .df-vignette {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.45) 100%);
+}
+
+:host([data-look='broadcast']) .df-stream {
+  box-shadow: none;
+  transition: filter 420ms ease;
+}
+
+:host([data-look='broadcast'][data-format='landscape']) .df-stream { border-radius: 6px; }
+
+/* Focus pull: when the chat (or a message) is highlighted, the stream drops back. */
+:host([data-look='broadcast']:has(.ln--hl, .df-ring[data-target='chat'])) .df-stream {
+  filter: blur(2.5px) brightness(0.55);
+}
+
+:host([data-look='broadcast']) .hud { font-family: 'Inter Tight', sans-serif; }
+:host([data-look='broadcast']) .hud__live { background: #eb0400; border-radius: 6px; }
+
+:host([data-look='broadcast']) .df-info__avatar { background: #3a3a44; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px #eb0400; }
+:host([data-look='broadcast']) .df-info__text span { color: var(--muted); }
+:host([data-look='broadcast']) .df-info__game { background: #26262c; color: var(--fg); }
+
+:host([data-look='broadcast']) .df-chat {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+:host([data-look='broadcast']) .df-chat__head {
+  margin: -0.75em -0.85em 0.6em;
+  padding: 0.8em 0.85em;
+  border-bottom: 1px solid var(--line);
+  color: var(--fg);
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+
+:host([data-look='broadcast']) .ln { border-radius: 4px; }
+:host([data-look='broadcast']) .ln--first { background: rgba(169, 112, 255, 0.12); box-shadow: inset 3px 0 0 var(--accent); }
+:host([data-look='broadcast']) .ln__first { color: #c9a8ff; }
+:host([data-look='broadcast']) .ln__event { background: #26262c; color: var(--fg); }
+
+:host([data-look='broadcast']) .ln__ring,
+:host([data-look='broadcast']) .df-ring {
+  border: 2px solid #fff;
+  border-radius: 6px;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12);
+  animation: ring-in 300ms ease-out both, ring-out 260ms ease-in var(--exit, 1000ms) forwards;
+}
+
+:host([data-look='broadcast']) .ln__label,
+:host([data-look='broadcast']) .df-ring__label { border-radius: 4px; background: #fff; color: var(--bg); }
+
+/* Lower-thirds. */
+:host([data-look='broadcast']) .df-caption {
+  padding: 0.42em 0.7em 0.48em 0.85em;
+  border-radius: 4px;
+  background: rgba(14, 14, 16, 0.9);
+  box-shadow: inset 4px 0 0 var(--accent), 0 14px 40px rgba(0, 0, 0, 0.45);
+  color: var(--fg);
+  font-family: 'Inter Tight', sans-serif;
+  font-weight: 700;
+  line-height: 1.12;
+  text-align: left;
+  text-shadow: none;
+  animation: l3-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both, cap-out 300ms ease-in var(--exit, 2000ms) forwards;
+}
+
+:host([data-look='broadcast']) .df-caption::before {
+  content: 'DomDimaBot';
+  display: block;
+  margin-bottom: 0.3em;
+  color: #c9a8ff;
+  font-size: 0.42em;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+:host([data-look='broadcast']) .df-caption .em,
+:host([data-look='broadcast']) .df-card__title .em {
+  background: none;
+  color: #c9a8ff;
+}
+
+:host([data-look='broadcast'][data-format='vertical']) .df-caption[data-place='top'] { top: 30px; left: 18px; right: auto; max-width: 480px; font-size: 26px; }
+:host([data-look='broadcast'][data-format='vertical']) .df-caption[data-place='bottom'] { top: 360px; left: 18px; right: auto; max-width: 480px; font-size: 22px; }
+:host([data-look='broadcast'][data-format='landscape']) .df-caption { width: auto; max-width: 656px; font-size: 24px; }
+
+:host([data-look='broadcast']) .df-card {
+  background: radial-gradient(90% 60% at 50% 40%, #1a1a1f 0%, var(--bg) 70%);
+}
+
+:host([data-look='broadcast']) .df-card__mark { width: 120px; filter: none; }
+
+:host([data-look='broadcast']) .df-card__word {
+  font-family: 'Inter Tight', sans-serif;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+:host([data-look='broadcast']) .df-card__word small {
+  color: var(--muted);
+  font-family: 'Inter Tight', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+:host([data-look='broadcast']) .df-card__title {
+  font-family: 'Inter Tight', sans-serif;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+:host([data-look='broadcast']) .df-card__cta {
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  box-shadow: inset 0 0 0 1.5px #c9a8ff;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   NIGHT: black and a field of faint stars, one electric-violet accent, extra-wide
+   heavy type, monospace labels with a running timecode, thin-line technical framing.
+   Karaoke captions: the newest word arrives in violet, then settles to white.
+   One glow only, on the hero (the logo, the disk).
+   ══════════════════════════════════════════════════════════════════════════ */
+:host([data-look='night']) {
+  --bk: #050507;
+  --fg: #f2f1f6;
+  --dim: #7d7b88;
+  --acc: #a970ff;
+  --line: #2a2933;
+  --stars: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1000' height='1000'><circle cx='639' cy='25' r='0.8' fill='white' fill-opacity='0.5'/><circle cx='223' cy='736' r='1.3' fill='white' fill-opacity='0.35'/><circle cx='590' cy='32' r='0.6' fill='white' fill-opacity='0.5'/><circle cx='233' cy='602' r='1.0' fill='white' fill-opacity='0.5'/><circle cx='716' cy='701' r='1.0' fill='white' fill-opacity='0.5'/><circle cx='449' cy='278' r='0.6' fill='white' fill-opacity='0.5'/><circle cx='698' cy='340' r='0.8' fill='white' fill-opacity='0.5'/><circle cx='957' cy='337' r='0.6' fill='white' fill-opacity='0.8'/><circle cx='97' cy='847' r='1.0' fill='white' fill-opacity='0.6'/><circle cx='807' cy='730' r='1.0' fill='white' fill-opacity='0.35'/><circle cx='973' cy='379' r='1.0' fill='white' fill-opacity='0.6'/><circle cx='829' cy='619' r='0.8' fill='white' fill-opacity='0.5'/><circle cx='705' cy='46' r='0.8' fill='white' fill-opacity='0.6'/><circle cx='985' cy='855' r='0.6' fill='white' fill-opacity='0.8'/><circle cx='278' cy='636' r='0.8' fill='white' fill-opacity='0.5'/><circle cx='370' cy='210' r='0.8' fill='white' fill-opacity='0.35'/><circle cx='609' cy='171' r='1.3' fill='white' fill-opacity='0.5'/><circle cx='163' cy='379' r='1.3' fill='white' fill-opacity='0.5'/><circle cx='685' cy='843' r='0.6' fill='white' fill-opacity='0.5'/><circle cx='822' cy='805' r='1.0' fill='white' fill-opacity='0.6'/><circle cx='66' cy='913' r='1.0' fill='white' fill-opacity='0.6'/><circle cx='213' cy='499' r='1.3' fill='white' fill-opacity='0.8'/><circle cx='143' cy='140' r='1.3' fill='white' fill-opacity='0.6'/><circle cx='747' cy='428' r='1.0' fill='white' fill-opacity='0.8'/><circle cx='362' cy='997' r='0.8' fill='white' fill-opacity='0.8'/><circle cx='91' cy='47' r='0.6' fill='white' fill-opacity='0.5'/><circle cx='627' cy='792' r='1.0' fill='white' fill-opacity='0.35'/><circle cx='385' cy='596' r='1.0' fill='white' fill-opacity='0.6'/><circle cx='971' cy='861' r='0.6' fill='white' fill-opacity='0.35'/><circle cx='682' cy='537' r='0.8' fill='white' fill-opacity='0.6'/><circle cx='112' cy='435' r='1.0' fill='white' fill-opacity='0.35'/><circle cx='954' cy='876' r='0.8' fill='white' fill-opacity='0.5'/><circle cx='508' cy='106' r='1.3' fill='white' fill-opacity='0.6'/><circle cx='842' cy='508' r='0.8' fill='white' fill-opacity='0.5'/><circle cx='374' cy='162' r='1.0' fill='white' fill-opacity='0.35'/><circle cx='599' cy='489' r='0.6' fill='white' fill-opacity='0.6'/><circle cx='879' cy='832' r='0.8' fill='white' fill-opacity='0.5'/><circle cx='58' cy='878' r='0.6' fill='white' fill-opacity='0.35'/><circle cx='732' cy='816' r='1.0' fill='white' fill-opacity='0.5'/><circle cx='128' cy='475' r='1.0' fill='white' fill-opacity='0.5'/><circle cx='265' cy='872' r='1.0' fill='white' fill-opacity='0.5'/><circle cx='929' cy='755' r='1.3' fill='white' fill-opacity='0.5'/><circle cx='713' cy='399' r='1.3' fill='white' fill-opacity='0.6'/><circle cx='438' cy='518' r='0.6' fill='white' fill-opacity='0.5'/><circle cx='225' cy='338' r='1.0' fill='white' fill-opacity='0.5'/><circle cx='588' cy='7' r='1.3' fill='white' fill-opacity='0.35'/></svg>");
+  background: var(--bk);
+  color: var(--fg);
+  font-family: 'Inter Tight', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+:host([data-look='night']) .df-bg { background: var(--bk); }
+
+:host([data-look='night']) .df-stars {
+  display: block;
+  position: absolute;
+  inset: -6%;
+  background: var(--stars) 0 0 / 100% 100% no-repeat;
+  animation: star-drift 40s linear both;
+}
+
+@keyframes star-drift {
+  to { transform: translate(-2.5%, -1.5%); }
+}
+
+:host([data-look='night']) .df-grain {
+  display: block;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Monospace label with an accent bar, and a running timecode. */
+:host([data-look='night']) .df-label,
+:host([data-look='night']) .df-timecode {
+  display: block;
+  position: absolute;
+  z-index: 12;
+  margin: 0;
+  color: var(--fg);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+:host([data-look='night']) .df-label::after {
+  content: '';
+  display: block;
+  width: 26px;
+  height: 3px;
+  margin-top: 7px;
+  background: var(--acc);
+}
+
+:host([data-look='night']) .df-timecode { color: var(--dim); font-weight: 400; letter-spacing: 0.12em; }
+
+:host([data-look='night'][data-format='vertical']) .df-label { left: 20px; bottom: 96px; }
+:host([data-look='night'][data-format='vertical']) .df-timecode { right: 20px; bottom: 108px; }
+:host([data-look='night'][data-format='landscape']) .df-label { left: 24px; bottom: 26px; }
+:host([data-look='night'][data-format='landscape']) .df-timecode { left: 556px; bottom: 37px; }
+
+/* The stream as a technical drawing: hairline frame, corner ticks, an annotation. */
+:host([data-look='night']) .df-stream {
+  overflow: visible;
+  border-radius: 0;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+:host([data-look='night'][data-format='vertical']) .df-stream { transform: scale(0.93); }
+
+:host([data-look='night']) .df-stream::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  z-index: 3;
+  pointer-events: none;
+  --c: var(--dim);
+  background:
+    linear-gradient(var(--c), var(--c)) top left / 12px 1px no-repeat,
+    linear-gradient(var(--c), var(--c)) top left / 1px 12px no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 12px 1px no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 1px 12px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 12px 1px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 1px 12px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 12px 1px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 1px 12px no-repeat;
+}
+
+:host([data-look='night']) .df-annot {
+  display: block;
+  position: absolute;
+  right: 0;
+  top: -26px;
+  color: var(--dim);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+:host([data-look='night']) .hud { font-family: 'JetBrains Mono', monospace; font-weight: 600; letter-spacing: 0.08em; }
+:host([data-look='night']) .hud__live { border-radius: 0; background: var(--acc); }
+:host([data-look='night']) .hud__viewers { border-radius: 0; background: transparent; box-shadow: inset 0 0 0 2px var(--fg); }
+
+:host([data-look='night']) .cam span { border-radius: 0; font-family: 'JetBrains Mono', monospace; }
+
+:host([data-look='night']) .df-info__avatar { border-radius: 0; background: var(--acc); color: var(--bk); box-shadow: none; }
+:host([data-look='night']) .df-info__text span { color: var(--dim); }
+
+:host([data-look='night']) .df-info__game {
+  border-radius: 0;
+  background: transparent;
+  color: var(--dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+:host([data-look='night']) .df-chat {
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: rgba(5, 5, 7, 0.86);
+}
+
+:host([data-look='night']) .df-chat__head {
+  color: var(--dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+}
+
+:host([data-look='night']) .ln { border-radius: 0; }
+:host([data-look='night']) .ln__text,
+:host([data-look='night']) .ln[data-kind='bot'] .ln__text { color: var(--fg); }
+:host([data-look='night']) .ln__badge { border-radius: 0; }
+:host([data-look='night']) .ln__badge[data-tone='violet'],
+:host([data-look='night']) .ln__badge[data-tone='bot'] { background: var(--acc); }
+
+:host([data-look='night']) .ln--first { background: transparent; box-shadow: inset 2px 0 0 var(--acc); }
+
+:host([data-look='night']) .ln__first,
+:host([data-look='night']) .ln__notice,
+:host([data-look='night']) .ln__deleted {
+  font-family: 'JetBrains Mono', monospace;
+  font-style: normal;
+  letter-spacing: 0.06em;
+}
+
+:host([data-look='night']) .ln__first { color: var(--acc); font-size: 0.7em; }
+:host([data-look='night']) .ln__first::before { content: '▸ '; }
+:host([data-look='night']) .ln__deleted { color: var(--dim); font-size: 0.86em; }
+:host([data-look='night']) .ln__notice { color: var(--acc); font-size: 0.78em; text-transform: uppercase; }
+:host([data-look='night']) .ln__event { border-radius: 0; background: transparent; color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
+
+/* Thin accent frame; the label reads like an annotation. */
+:host([data-look='night']) .ln__ring,
+:host([data-look='night']) .df-ring {
+  border: 1.5px solid var(--acc);
+  border-radius: 0;
+  box-shadow: 0 0 18px rgba(169, 112, 255, 0.35);
+  animation: ring-in 260ms ease-out both, ring-out 240ms ease-in var(--exit, 1000ms) forwards;
+}
+
+:host([data-look='night']) .ln__ring { inset: -5px -6px; }
+
+:host([data-look='night']) .ln__label,
+:host([data-look='night']) .df-ring__label {
+  border-radius: 0;
+  background: var(--bk);
+  color: var(--acc);
+  box-shadow: inset 0 0 0 1px var(--acc);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Karaoke captions in extra-wide heavy type. */
+@keyframes kara {
+  0% { opacity: 0; transform: translateY(0.35em); color: var(--acc); }
+  28% { opacity: 1; transform: none; color: var(--acc); }
+  70% { color: var(--acc); }
+  100% { opacity: 1; transform: none; color: var(--fg); }
+}
+
+:host([data-look='night']) .df-caption {
+  color: var(--fg);
+  font-family: 'Archivo', 'Inter Tight', sans-serif;
+  font-stretch: 125%;
+  font-weight: 800;
+  line-height: 1.06;
+  letter-spacing: -0.01em;
+  text-align: left;
+  text-shadow: none;
+  animation: cap-out 260ms ease-in var(--exit, 2000ms) forwards;
+}
+
+:host([data-look='night']) .df-caption .w {
+  animation: kara 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 110ms);
+}
+
+:host([data-look='night']) .df-caption .em,
+:host([data-look='night']) .df-card__title .em {
+  background: none;
+  color: var(--acc);
+}
+
+:host([data-look='night']) .df-caption .w.em { animation-name: word-rise; animation-duration: 520ms; }
+
+:host([data-look='night'][data-format='vertical']) .df-caption[data-place='top'] { top: 40px; left: 20px; right: 20px; font-size: 30px; }
+:host([data-look='night'][data-format='vertical']) .df-caption[data-place='bottom'] { top: 372px; left: 20px; right: 20px; font-size: 26px; }
+
+:host([data-look='night'][data-format='landscape']) .df-caption {
+  border-radius: 0;
+  background: rgba(5, 5, 7, 0.88);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 26px;
+}
+
+/* Cards: the logo as the one glowing hero, a wide-type title, a mono label. */
+:host([data-look='night']) .df-card {
+  background: var(--stars) 0 0 / 100% 100% no-repeat, var(--bk);
+}
+
+:host([data-look='night']) .df-card__mark {
+  width: 150px;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 30px rgba(169, 112, 255, 0.85));
+}
+
+:host([data-look='night']) .df-card__word {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+:host([data-look='night']) .df-card__word small { display: none; }
+
+:host([data-look='night']) .df-card__word::after {
+  content: '';
+  display: block;
+  width: 26px;
+  height: 3px;
+  margin: 10px auto 0;
+  background: var(--acc);
+}
+
+:host([data-look='night']) .df-card__title {
+  max-width: 11ch;
+  font-family: 'Archivo', 'Inter Tight', sans-serif;
+  font-stretch: 125%;
+  font-size: 46px;
+  font-weight: 900;
+  line-height: 0.98;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+  animation: none;
+}
+
+:host([data-look='night'][data-format='landscape']) .df-card__title { max-width: 16ch; font-size: 44px; }
+
+:host([data-look='night']) .df-card[data-kind='outro'] .df-card__title .w {
+  animation: kara 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(250ms + var(--i, 0) * 120ms);
+}
+
+:host([data-look='night']) .df-card[data-kind='outro'] .df-card__title .w.em { animation-name: word-rise; animation-duration: 560ms; }
+
+:host([data-look='night']) .df-card__sub {
+  color: var(--dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+:host([data-look='night']) .df-card__cta {
+  border-radius: 0;
+  background: transparent;
+  color: var(--fg);
+  box-shadow: inset 0 0 0 1.5px var(--acc);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WEBSITE (site): the product's own Live First design, tokens copied from the
+   landing page. Tiles with a hairline border and the site radius, uppercase
+   violet kickers, two-tone bold titles, chips, the violet pill button.
+   Calm motion (tiles rise), no texture, only the page's own faint corner light.
+   ══════════════════════════════════════════════════════════════════════════ */
+:host([data-look='site']) {
+  --bg: #0f1115;
+  --tile: #171a21;
+  --fg: #f5f7fb;
+  --muted: #9aa3b5;
+  --line: rgba(255, 255, 255, 0.07);
+  --accent: #8b5cf6;
+  --accent-soft: rgba(139, 92, 246, 0.16);
+  --kicker: #c4b5fd;
+  --live: #ef4444;
+  --live-soft: rgba(239, 68, 68, 0.14);
+  --ok: #86efac;
+  --radius: 21px;
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  --tile-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%), var(--tile);
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+}
+
+:host([data-look='site']) .df-bg {
+  background:
+    radial-gradient(70% 42% at 92% 0%, rgba(139, 92, 246, 0.18), transparent 70%),
+    radial-gradient(60% 38% at 0% 100%, rgba(239, 68, 68, 0.1), transparent 70%),
+    var(--bg);
+}
+
+:host([data-look='site']) .df-stream {
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 1px var(--line), var(--shadow);
+}
+
+:host([data-look='site'][data-format='vertical']) .df-stream { transform: scale(0.94); }
+
+:host([data-look='site']) .hud__live { border-radius: 999px; background: #dc2626; }
+:host([data-look='site']) .hud__viewers { border-radius: 999px; background: rgba(15, 17, 21, 0.72); box-shadow: inset 0 0 0 2px var(--line); }
+
+:host([data-look='site']) .df-info__avatar { background: var(--accent); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--live); }
+:host([data-look='site']) .df-info__text span { color: var(--muted); }
+
+:host([data-look='site']) .df-info__game {
+  background: var(--accent-soft);
+  color: var(--kicker);
+  font-size: 0.82em;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+:host([data-look='site']) .df-chat {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  box-shadow: var(--shadow);
+}
+
+:host([data-look='site']) .df-chat__head { color: var(--kicker); font-weight: 750; letter-spacing: 0.08em; }
+:host([data-look='site']) .ln__text,
+:host([data-look='site']) .ln[data-kind='bot'] .ln__text { color: var(--fg); }
+:host([data-look='site']) .ln { border-radius: 12px; }
+:host([data-look='site']) .ln--first { background: var(--accent-soft); box-shadow: none; }
+:host([data-look='site']) .ln__first { color: var(--kicker); }
+:host([data-look='site']) .ln__notice { color: #fca5a5; }
+:host([data-look='site']) .ln__event { border-radius: 999px; background: var(--accent-soft); color: var(--kicker); }
+
+:host([data-look='site']) .ln__ring,
+:host([data-look='site']) .df-ring {
+  border: 2px solid var(--accent);
+  border-radius: 14px;
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  animation: ring-in 300ms ease-out both, ring-out 260ms ease-in var(--exit, 1000ms) forwards;
+}
+
+:host([data-look='site']) .df-ring { border-radius: var(--radius); }
+
+:host([data-look='site']) .ln__label,
+:host([data-look='site']) .df-ring__label {
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 750;
+}
+
+/* Captions: a site tile with a kicker and a two-tone title. */
+:host([data-look='site']) .df-caption {
+  padding: 0.5em 0.65em 0.58em;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  box-shadow: var(--shadow);
+  color: var(--fg);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  text-align: left;
+  text-shadow: none;
+  animation: cap-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both, cap-out 300ms ease-in var(--exit, 2000ms) forwards;
+}
+
+:host([data-look='site']) .df-caption::before {
+  content: attr(data-kicker);
+  display: block;
+  margin-bottom: 0.45em;
+  color: var(--kicker);
+  font-size: 0.4em;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+:host([data-look='site']) .df-caption .em,
+:host([data-look='site']) .df-card__title .em {
+  background: none;
+  color: var(--kicker);
+}
+
+:host([data-look='site'][data-format='vertical']) .df-caption[data-place='top'] { top: 22px; left: 14px; right: 14px; font-size: 28px; }
+:host([data-look='site'][data-format='vertical']) .df-caption[data-place='bottom'] { top: 352px; left: 14px; right: 14px; font-size: 24px; }
+:host([data-look='site'][data-format='landscape']) .df-caption { width: auto; max-width: 656px; font-size: 26px; }
+
+/* Cards: the landing hero tile. */
+:host([data-look='site']) .df-card {
+  background:
+    radial-gradient(70% 42% at 92% 0%, rgba(139, 92, 246, 0.18), transparent 70%),
+    radial-gradient(60% 38% at 0% 100%, rgba(239, 68, 68, 0.1), transparent 70%),
+    var(--bg);
+}
+
+:host([data-look='site']) .df-card::before {
+  content: '';
+  position: absolute;
+  inset: 22% 7%;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 6px);
+  background: var(--tile-bg);
+  box-shadow: var(--shadow);
+}
+
+:host([data-look='site'][data-format='landscape']) .df-card::before { inset: 12% 22%; }
+
+:host([data-look='site']) .df-card__mark { width: 110px; filter: none; }
+
+:host([data-look='site']) .df-card__word {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+:host([data-look='site']) .df-card__word small {
+  color: var(--kicker);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+}
+
+:host([data-look='site']) .df-card__title {
+  max-width: 13ch;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+}
+
+:host([data-look='site']) .df-card__sub { color: var(--muted); }
+
+:host([data-look='site']) .df-card__cta {
+  padding: 0.7em 1.35em;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: none;
+  font-weight: 750;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STREAM WORLD PALETTES: the same game, facecam room and game HUD in each look's
+   colors (--g-* world, --c-* facecam, --h-* HUD; read by demo-game / demo-cam).
+   ══════════════════════════════════════════════════════════════════════════ */
+:host([data-look='studio']) .df-stage {
+  --g-sky-1: #2a1650; --g-sky-2: #f08a62; --g-sun: #ffd9a0; --g-sun-glow: rgba(255, 170, 110, 0.5); --g-sun-y: 330px;
+  --g-cloud: rgba(255, 196, 170, 0.32); --g-far: #5b2d6e; --g-far-2: #3e1d57; --g-snow: #ffd0e2; --g-mid: #33194f; --g-trees: #22103c;
+  --g-ground: #2a1340; --g-path: #9d4a78; --g-stone: #4a2a60; --g-grass: #3b1d57; --g-fore: #150a24;
+  --g-hero: #ec4899; --g-hero-dark: #9d174d; --g-pack: #6d28d9; --g-roll: #fde68a; --g-accent: #fbbf24; --g-steel: #f5f3ff;
+  --g-fire: #ffd27a; --g-flower: #f9a8d4;
+  --c-wall-1: #2b1d45; --c-wall-2: #150f26; --c-led: #ec4899; --c-shelf: #3b2a58; --c-plant: #34d399; --c-pot: #a78bfa;
+  --c-poster: #7c3aed; --c-hoodie: #2f2150; --c-string: #f9a8d4; --c-hair: #3a2140;
+  --h-panel: rgba(16, 8, 30, 0.55); --h-heart: #f43f5e; --h-mana: #a78bfa;
+}
+
+:host([data-look='site']) .df-stage {
+  --g-sky-1: #12151e; --g-sky-2: #55427f; --g-sun: #ede9fe; --g-sun-glow: rgba(196, 181, 253, 0.36); --g-sun-x: 1700px; --g-sun-y: 300px; --g-sun-r: 56px;
+  --g-cloud: rgba(196, 181, 253, 0.14); --g-far: #2c2649; --g-far-2: #211e38; --g-snow: #d6caff; --g-mid: #1a1b28; --g-trees: #13141c;
+  --g-ground: #171923; --g-path: #3b3360; --g-stone: #2a2d3c; --g-grass: #232636; --g-fore: #0b0c12;
+  --g-hero: #8b5cf6; --g-hero-dark: #5b21b6; --g-pack: #334155; --g-roll: #c4b5fd; --g-accent: #fbbf24; --g-steel: #e2e8f0;
+  --g-fire: #c4b5fd; --g-flower: #f9a8d4;
+  --c-wall-1: #1f2330; --c-wall-2: #12141b; --c-led: #8b5cf6; --c-shelf: #2a2f3d; --c-plant: #34d399; --c-pot: #8b5cf6;
+  --c-poster: #8b5cf6; --c-hoodie: #262b39; --c-string: #c4b5fd; --c-hair: #2a2238;
+  --h-panel: rgba(10, 11, 16, 0.58); --h-heart: #ef4444; --h-mana: #8b5cf6;
+}
+
+:host([data-look='night']) .df-stage {
+  --g-sky-1: #040406; --g-sky-2: #241743; --g-sun: #e9ddff; --g-sun-glow: rgba(169, 112, 255, 0.45); --g-sun-x: 1680px; --g-sun-y: 300px; --g-sun-r: 50px;
+  --g-cloud: rgba(169, 112, 255, 0.07); --g-far: #120e24; --g-far-2: #0c0a19; --g-snow: #a970ff; --g-mid: #0b0a15; --g-trees: #06050c;
+  --g-ground: #08070f; --g-path: #251b48; --g-stone: #14112a; --g-grass: #110e22; --g-fore: #020203;
+  --g-hero: #a970ff; --g-hero-dark: #5b2bbf; --g-pack: #24232c; --g-roll: #e4e2ec; --g-accent: #a970ff; --g-steel: #f2f1f6;
+  --g-fire: #cdb6ff; --g-flower: #a970ff;
+  --c-wall-1: #0e0c18; --c-wall-2: #050507; --c-led: #a970ff; --c-shelf: #1c1a26; --c-plant: #6b5ca5; --c-pot: #a970ff;
+  --c-poster: #2a2140; --c-hoodie: #16151c; --c-string: #a970ff; --c-hair: #15121f;
+  --h-panel: rgba(5, 5, 7, 0.65); --h-heart: #a970ff; --h-mana: #a970ff;
+}
+
+:host([data-look='paper']) .df-stage {
+  --g-sky-1: #b9cbef; --g-sky-2: #ede6d8; --g-sun: #e0432b; --g-sun-glow: transparent; --g-sun-x: 1660px; --g-sun-y: 290px; --g-sun-r: 62px;
+  --g-cloud: #fffdf8; --g-far: #a8bce6; --g-far-2: #7f99d8; --g-snow: #fffdf8; --g-mid: #2c55c4; --g-trees: #1d1b17;
+  --g-ground: #e3dac8; --g-path: #cfc2a6; --g-stone: #1d1b17; --g-grass: #1d1b17; --g-fore: #1d1b17;
+  --g-hero: #e0432b; --g-hero-dark: #a8301f; --g-pack: #2c55c4; --g-roll: #f1ebdf; --g-accent: #e0432b; --g-steel: #fffdf8;
+  --g-fire: #e0432b; --g-fire-opacity: 0; --g-flower: #e0432b; --g-tone: 0.22;
+  --c-wall-1: #ebe3d3; --c-wall-2: #d8ccb4; --c-led: #e0432b; --c-shelf: #1d1b17; --c-plant: #2c55c4; --c-pot: #e0432b;
+  --c-poster: #2c55c4; --c-hoodie: #2c55c4; --c-string: #f1ebdf; --c-hair: #1d1b17; --c-skin: #f3d3b8; --c-skin-shade: #dcb394;
+  --h-panel: rgba(29, 27, 23, 0.78); --h-heart: #e0432b; --h-mana: #2c55c4;
+}
+
+:host([data-look='signal']) .df-stage {
+  --g-sky-1: #0c0c0c; --g-sky-2: #262626; --g-sun: #c8ff2e; --g-sun-glow: rgba(200, 255, 46, 0.18); --g-sun-x: 1680px; --g-sun-y: 300px; --g-sun-r: 48px;
+  --g-cloud: rgba(244, 244, 239, 0.05); --g-far: #171717; --g-far-2: #121212; --g-snow: #c8ff2e; --g-mid: #111; --g-trees: #0a0a0a;
+  --g-ground: #0e0e0e; --g-path: #26301a; --g-stone: #1d1d1d; --g-grass: #181818; --g-fore: #040404;
+  --g-hero: #c8ff2e; --g-hero-dark: #8fb61f; --g-pack: #2a2a2a; --g-roll: #f4f4ef; --g-accent: #c8ff2e; --g-steel: #f4f4ef;
+  --g-fire: #c8ff2e; --g-flower: #c8ff2e;
+  --c-wall-1: #171717; --c-wall-2: #0b0b0b; --c-led: #c8ff2e; --c-shelf: #262626; --c-plant: #5f7d14; --c-pot: #c8ff2e;
+  --c-poster: #1f1f1f; --c-hoodie: #1b1b1b; --c-string: #c8ff2e; --c-hair: #101010;
+  --h-panel: rgba(11, 11, 11, 0.7); --h-heart: #c8ff2e; --h-mana: #c8ff2e;
+}
+
+:host([data-look='broadcast']) .df-stage {
+  --g-sky-1: #5f9fd3; --g-sky-2: #d6eaf3; --g-sun: #fff6d1; --g-sun-glow: rgba(255, 244, 200, 0.6); --g-sun-x: 1640px; --g-sun-y: 220px;
+  --g-cloud: rgba(255, 255, 255, 0.9); --g-far: #9db9cf; --g-far-2: #7c9db6; --g-snow: #ffffff; --g-mid: #4e7f5c; --g-trees: #2c5a3c;
+  --g-ground: #69a35d; --g-path: #d8c592; --g-stone: #a99b7b; --g-grass: #4c8743; --g-fore: #21472b;
+  --g-hero: #c2410c; --g-hero-dark: #7c2d12; --g-pack: #6b4f3a; --g-roll: #ecdcb6; --g-accent: #f59e0b; --g-steel: #f8fafc;
+  --g-fire: #fff8d8; --g-flower: #f472b6;
+  --c-wall-1: #2c313d; --c-wall-2: #1b1e26; --c-led: #60a5fa; --c-shelf: #3a3f4c; --c-plant: #4ade80; --c-pot: #f59e0b;
+  --c-poster: #2563eb; --c-hoodie: #3b4252; --c-string: #93c5fd; --c-hair: #4a3326;
+  --h-panel: rgba(12, 14, 20, 0.5); --h-heart: #ef4444; --h-mana: #3b82f6;
+}
+
+/* The facecam frame in each look. */
+:host([data-look='paper']) .cam { border: 10px solid #fff; border-radius: 4px; box-shadow: 8px 9px 0 rgba(29, 27, 23, 0.18); }
+:host([data-look='signal']) .cam { border: 6px solid var(--lime); border-radius: 0; box-shadow: none; }
+:host([data-look='night']) .cam { border: 2px solid var(--fg); border-radius: 0; box-shadow: 0 0 30px rgba(169, 112, 255, 0.25); }
+:host([data-look='broadcast']) .cam { border: 0; border-radius: 18px; }
+:host([data-look='site']) .cam { border: 3px solid rgba(255, 255, 255, 0.14); border-radius: 28px; }

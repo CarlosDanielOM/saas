@@ -47,7 +47,11 @@ const SCENE = {
 
 const errors = [];
 const attempts = [];
-const browser = await chromium.launch({ args: ['--no-sandbox', '--mute-audio', '--autoplay-policy=no-user-gesture-required'] });
+// Same capture flags as the recorder (marketing/video/lib/tools.mjs CAPTURE_ARGS): drawing waits for raster,
+// one raster thread and whole tiles, so the same frame always rasterizes the same way.
+const browser = await chromium.launch({ args: ['--no-sandbox', '--mute-audio', '--autoplay-policy=no-user-gesture-required', '--font-render-hinting=none',
+  '--run-all-compositor-stages-before-draw', '--disable-low-res-tiling', '--disable-threaded-animation', '--disable-threaded-scrolling',
+  '--disable-checker-imaging', '--disable-new-content-rendering-timeout', '--num-raster-threads=1', '--disable-partial-raster'] });
 
 /** Same page set-up as the recorder: native timers saved first, seeded randomness, page-audio guard, fake clock. */
 function initPage({ seed }) {
@@ -120,10 +124,10 @@ for (const { width, height, theme } of [{ width: 390, height: 844, theme: 'dark'
 }
 
 // ── 2. Recorder contract ───────────────────────────────────────────────
-async function recorder(format, lang) {
+async function recorder(format, lang, look) {
   const size = format === 'vertical' ? { width: 540, height: 960 } : { width: 960, height: 540 };
   const { ctx, page } = await context({ viewport: size, deviceScaleFactor: 1, colorScheme: 'dark', reducedMotion: 'no-preference' }, { record: true, label: `record ${format} ${lang}` });
-  const info = await page.evaluate(([scene, opts]) => window.__dimaDemo.load(scene, opts), [SCENE, { format, lang, media: {} }]);
+  const info = await page.evaluate(([scene, opts]) => window.__dimaDemo.load(scene, opts), [SCENE, { format, lang, media: {}, ...(look ? { look } : {}) }]);
   assert.ok(info.ok, `load: ${JSON.stringify(info.errors)}`);
   const ready = await page.evaluate(() => window.__dimaDemo.ready());
   assert.deepEqual(ready.problems, [], 'ready');
@@ -168,6 +172,7 @@ async function recorder(format, lang) {
   await frame(3200);
   assert.ok((await q('[data-line="m1"]'))?.includes('<message deleted>'), 'deleted message');
   await frame(5400);
+  assert.ok((await q('.df-caption'))?.includes('An alert, live'), 'caption holds past its dur (nothing replaced it yet)');
   assert.equal(await visible('app-demo-alert'), false, 'alert gone after its time');
   assert.equal(await scale(), 1, 'camera back to the full stream');
   assert.ok((await q('.speech-text'))?.includes('read this out loud'), 'TTS card');
@@ -181,8 +186,10 @@ async function recorder(format, lang) {
   assert.ok((await q('[data-line="ban"]'))?.includes('promo_bot_9 has been permanently banned.'), 'ban notice');
   await frame(beat.d1.at + 3000);
   assert.equal(await visible('.df-duel'), true, 'duel on screen');
+  assert.ok((await q('.df-caption'))?.includes('An alert, live'), 'caption still holds during the duel');
   await frame(info.durationMs - 900); // the outro ends 500 ms before the video (tail)
   assert.ok((await q('.df-card[data-kind="outro"]'))?.includes('domdimabot.com'), 'outro card');
+  assert.equal(await q('.df-caption'), null, 'the outro replaces the caption');
   assert.deepEqual(await page.evaluate(() => window.__demoPlays), [], 'no page audio');
   const bad = await page.evaluate(() => window.__dimaDemo.load({ id: 'x', v: 1, beats: [{ do: 'nope' }] }, { format: 'vertical', lang: 'en' }));
   assert.equal(bad.ok, false, 'invalid scenes are rejected');
@@ -196,21 +203,51 @@ async function recorder(format, lang) {
   const notice = await page.evaluate(() => document.querySelector('[data-line="ban"]')?.textContent?.trim());
   assert.equal(notice, 'promo_bot_9 fue baneado permanentemente.', 'Spanish ban notice');
   assert.ok((await page.evaluate(() => document.querySelector('[data-line="m1"]')?.textContent))?.includes('<mensaje eliminado>'), 'Spanish deleted message');
+  // Landscape captions sit in the band under the stream (never over it); the channel row fades out for them.
+  const box = (sel) => page.evaluate((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r ? { top: r.top, bottom: r.bottom } : null; }, sel);
+  const caption = await box('.df-caption'), stream = await box('.df-stream');
+  assert.ok(caption && stream && caption.top >= stream.bottom, `landscape caption under the stream (${JSON.stringify({ caption, stream })})`);
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.df-info')).opacity), '0', 'channel row hidden behind the caption band');
   await ctx.close();
 }
 
-// Two separate renders give the same bytes (alert entrance, roulette spin, ban, duel).
-const TIMES = [1700, 1733, 2000, 2400, 3300, 7700, 8500, 9900, 11833, 12900, 14000, 15500];
+// Every look loads, recolors the frame and keeps the clock contract.
+{
+  const LOOKS = ['studio', 'site', 'paper', 'signal', 'broadcast', 'night'];
+  const hashes = new Set();
+  for (const look of LOOKS) {
+    for (const format of ['vertical', 'landscape']) {
+      const { ctx, page, frame, shot } = await recorder(format, 'es', look);
+      await frame(2800); // caption + alert
+      assert.equal(await page.evaluate(() => document.querySelector('app-demo-frame')?.getAttribute('data-look')), look, `${look} ${format}: look applied`);
+      hashes.add(await shot());
+      await frame(14400); // duel
+      await ctx.close();
+    }
+  }
+  assert.equal(hashes.size, LOOKS.length * 2, 'each look draws differently');
+}
+
+// Two separate renders give the same bytes over consecutive frames: alert entrance, roulette spin, ban, duel.
+// Each run starts with a jump into the middle of the scene, settled the way the recorder does (see captureFrames).
+const RUNS = [{ start: 1600, count: 14 }, { start: 7600, count: 10 }, { start: 11700, count: 8 }, { start: 14400, count: 12 }];
 const digests = [];
 for (let run = 0; run < 2; run++) {
   const { ctx, frame, shot } = await recorder('landscape', 'en');
   const list = [];
-  for (const t of TIMES) { await frame(t); list.push(await shot()); }
+  for (const { start, count } of RUNS) {
+    for (let i = 0; i < count; i++) {
+      const t = Math.round(start + (i * 1000) / 30);
+      if (i === 0) { await frame(t); await new Promise((r) => setTimeout(r, 250)); await shot(); }
+      await frame(t);
+      list.push([t, await shot()]);
+    }
+  }
   digests.push(list);
   await ctx.close();
 }
-TIMES.forEach((t, i) => assert.equal(digests[0][i], digests[1][i], `frame at ${t} ms differs between two renders`));
-assert.equal(new Set(digests[0]).size, TIMES.length, 'frames change over time');
+digests[0].forEach(([t, h], i) => assert.equal(h, digests[1][i][1], `frame at ${t} ms differs between two renders`));
+assert.ok(new Set(digests[0].map(([, h]) => h)).size > digests[0].length / 2, 'frames change over time');
 
 await browser.close();
 assert.deepEqual(attempts, [], 'the player must not reach the API, analytics or websockets');

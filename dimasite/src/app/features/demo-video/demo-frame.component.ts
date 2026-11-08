@@ -9,10 +9,12 @@ import type { OverlayRenderJob } from '../overlays/overlay-playback';
 import type { OverlayWidget } from '../overlays/overlay.model';
 import { DemoAlertComponent, ALERT_BOX } from './demo-alert.component';
 import { DemoClockDirective } from './demo-clock.directive';
-import { demoBattle, DUEL_TAIL_MS } from './demo-duel';
+import { DemoGameComponent } from './demo-game.component';
+import { DemoCamComponent } from './demo-cam.component';
+import { demoBattle, duelOutcome } from './demo-duel';
 import {
-  DEFAULT_ROULETTE_SPIN_MS, DEMO_FORMATS, ROULETTE_LEAD_MS, STAGE, beatSeed, seededRandom,
-  type DemoBeat, type DemoFormat, type DemoScene
+  DEFAULT_ROULETTE_SPIN_MS, DEMO_FORMATS, ROULETTE_LEAD_MS, STAGE, beatSeed, captionSpans, seededRandom,
+  type DemoBeat, type DemoFormat, type DemoLook, type DemoScene
 } from './demo-scene';
 
 interface Rect { x: number; y: number; width: number; height: number }
@@ -30,7 +32,16 @@ const FOCUS: Record<string, Rect> = {
 function pad(r: Rect, n: number): Rect { return { x: r.x - n, y: r.y - n, width: r.width + 2 * n, height: r.height + 2 * n }; }
 
 const PRIZE_COLORS = ['#cbbaff', '#f4c968', '#ec9baf', '#8fd3c7', '#9cc3ff', '#f6a96b'];
-const NAME_COLORS = ['#ff7eb6', '#7ee0ff', '#ffd166', '#9bff9b', '#c79bff', '#ff9f6b', '#6bd7c2', '#a3b4ff'];
+/** Chat name colors per look: readable on that look's chat background. */
+const NAME_COLORS: Record<DemoLook, readonly string[]> = {
+  studio: ['#ff7eb6', '#7ee0ff', '#ffd166', '#9bff9b', '#c79bff', '#ff9f6b', '#6bd7c2', '#a3b4ff'],
+  broadcast: ['#ff7eb6', '#7ee0ff', '#ffd166', '#9bff9b', '#c79bff', '#ff9f6b', '#6bd7c2', '#a3b4ff'],
+  paper: ['#c2410c', '#1d4ed8', '#15803d', '#7e22ce', '#be123c', '#0f766e', '#a16207', '#4338ca'],
+  signal: ['#c8ff2e', '#f4f4ef', '#c8ff2e', '#d9d9d2'],
+  night: ['#f2f1f6', '#cdb6ff', '#a970ff', '#e4e2ec', '#b9a3f5'],
+  site: ['#c4b5fd', '#86efac', '#fbbf24', '#f9a8d4', '#93c5fd', '#fca5a5', '#5eead4', '#fdba74']
+};
+const BOT_COLOR: Record<DemoLook, string> = { studio: '#c4b5fd', broadcast: '#c9a8ff', paper: '#6d28d9', signal: '#c8ff2e', night: '#a970ff', site: '#c4b5fd' };
 const DRAW_EPOCH = 1_700_000_000_000;
 
 const COPY = {
@@ -45,6 +56,8 @@ export interface ChatLine {
   highlight: { at: number; end: number; label: string } | null;
 }
 interface Segment { text: string; em: boolean }
+/** A caption word (or the space after it), numbered so kinetic looks can bring words in one by one. */
+interface Word { text: string; em: boolean; space: boolean; i: number }
 
 const BADGE_ICONS: Record<string, [LucideIconData, string]> = {
   broadcaster: [Video, 'red'], mod: [Sword, 'green'], vip: [Gem, 'pink'], sub: [Star, 'violet'], verified: [BadgeCheck, 'violet'], bot: [Bot, 'bot']
@@ -55,10 +68,23 @@ const EVENT_ICONS: Record<string, LucideIconData> = { follow: Heart, sub: Star, 
 export function segments(text: string): Segment[] {
   return text.split(/(\*[^*]+\*)/).filter(Boolean).map((part) => (part.startsWith('*') && part.endsWith('*') && part.length > 2 ? { text: part.slice(1, -1), em: true } : { text: part, em: false }));
 }
-function nameColor(name: string): string {
+/** Split `*em*` segments into words and spaces; `i` counts words only. */
+export function words(text: string): Word[] {
+  const out: Word[] = [];
+  let i = 0;
+  for (const part of segments(text)) {
+    for (const token of part.text.split(/(\s+)/).filter(Boolean)) {
+      const space = /^\s+$/.test(token);
+      out.push({ text: space ? ' ' : token, em: part.em, space, i: space ? i : i++ });
+    }
+  }
+  return out;
+}
+function nameColor(name: string, look: DemoLook): string {
   let h = 0;
   for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return NAME_COLORS[h % NAME_COLORS.length];
+  const colors = NAME_COLORS[look];
+  return colors[h % colors.length];
 }
 const ease = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
 
@@ -68,11 +94,11 @@ const ease = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 
  */
 @Component({
   selector: 'app-demo-frame',
-  imports: [LucideAngularModule, DemoClockDirective, DemoAlertComponent, DuelStageComponent, RouletteDisplayComponent, OverlaySceneRendererComponent],
+  imports: [LucideAngularModule, DemoClockDirective, DemoGameComponent, DemoCamComponent, DemoAlertComponent, DuelStageComponent, RouletteDisplayComponent, OverlaySceneRendererComponent],
   templateUrl: './demo-frame.component.html',
-  styleUrl: './demo-frame.component.css',
+  styleUrls: ['./demo-frame.component.css', './demo-looks.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[attr.data-format]': 'format()', '[style.width.px]': 'size().width', '[style.height.px]': 'size().height' }
+  host: { '[attr.data-format]': 'format()', '[attr.data-look]': 'scene().look', '[style.width.px]': 'size().width', '[style.height.px]': 'size().height' }
 })
 export class DemoFrameComponent {
   readonly scene = input.required<DemoScene>();
@@ -84,6 +110,12 @@ export class DemoFrameComponent {
   readonly size = computed(() => DEMO_FORMATS[this.format()]);
   readonly copy = computed(() => COPY[this.scene().lang]);
   readonly segments = segments;
+  readonly words = words;
+  /** The logo in ink for the light (print) look, white everywhere else. */
+  /** Running scene time for the technical looks, e.g. T+03.40. */
+  readonly timecode = computed(() => `T+${(this.t() / 1000).toFixed(2).padStart(5, '0')}`);
+  readonly label = computed(() => ['DomDimaBot', this.scene().title].filter(Boolean).join('  ×  '));
+  readonly mark = computed(() => (this.scene().look === 'paper' ? '/assets/brand/mark-on-light.png' : '/assets/brand/mark-on-dark.png'));
   readonly stage = STAGE;
   readonly ttsBox = TTS_BOX;
   readonly alertBox = ALERT_BOX;
@@ -97,17 +129,21 @@ export class DemoFrameComponent {
 
   /** Active = on screen at t. */
   private active(kind: string): DemoBeat[] { const t = this.t(); return this.beatsOf(kind).filter((b) => t >= b.at && t < b.end); }
-  /** A caption that starts where another is still showing replaces it: the older one fades out just before. */
+  /** Duel results by beat id, for bot lines that announce them. */
+  private readonly duelResults = computed(() => new Map(this.duels().map((d) => [d.beat.id, duelOutcome(d.battle, { left: this.str(d.beat, 'left'), right: this.str(d.beat, 'right') })])));
+  /** Captions hold until the next one in their place (or a card) replaces them; see captionSpans. */
+  private readonly spans = computed(() => captionSpans(this.scene(), this.format()).filter((c) => c.end > c.beat.at));
   readonly captions = computed(() => {
-    const t = this.t(), fallback = this.format() === 'vertical' ? 'top' : 'bottom';
-    const all = this.beatsOf('caption').map((beat) => ({ beat, place: (beat.props['place'] as string) ?? fallback }));
-    return all
-      .map((c) => {
-        const next = all.find((o) => o.place === c.place && o.beat.at > c.beat.at && o.beat.at < c.beat.end);
-        const end = next ? next.beat.at : c.beat.end;
-        return { ...c, end, exit: Math.max(0, end - c.beat.at - 300), parts: segments(String(c.beat.props['text'])) };
-      })
-      .filter((c) => t >= c.beat.at && t < c.end);
+    const t = this.t();
+    return this.spans()
+      .filter((c) => t >= c.beat.at && t < c.end)
+      .map((c) => ({ ...c, exit: Number.isFinite(c.end) ? Math.max(0, c.end - c.beat.at - 300) : 1e9, words: words(String(c.beat.props['text'])) }));
+  });
+  /** Landscape captions take the band under the stream, so the channel row fades out when the first one arrives. */
+  readonly infoCoveredAt = computed(() => {
+    if (this.format() !== 'landscape') return null;
+    const starts = this.spans().filter((c) => c.place === 'bottom').map((c) => c.beat.at);
+    return starts.length ? Math.min(...starts) : null;
   });
   readonly cards = computed(() => [...this.active('intro'), ...this.active('outro')]);
   readonly ringTargets = computed(() => this.active('highlight').filter((b) => b.props['target'] === 'chat' || b.props['target'] === 'stream'));
@@ -123,9 +159,11 @@ export class DemoFrameComponent {
         const bot = beat.do === 'bot';
         const badges = (bot ? ['bot'] : ((p['badges'] as string[]) ?? [])).filter((b) => BADGE_ICONS[b]);
         const user = bot ? scene.bot : String(p['user']);
+        const result = bot && typeof p['duel'] === 'string' ? this.duelResults().get(p['duel']) : undefined;
+        const text = result ? String(p['text']).replaceAll('{winner}', result.winner).replaceAll('{loser}', result.loser).replaceAll('{hp}', String(result.hp)) : String(p['text']);
         const line: ChatLine = {
-          key: beat.id, kind: bot ? 'bot' : 'viewer', at: beat.at, user, text: String(p['text']),
-          color: bot ? '#c4b5fd' : typeof p['color'] === 'string' ? p['color'] : nameColor(user),
+          key: beat.id, kind: bot ? 'bot' : 'viewer', at: beat.at, user, text,
+          color: bot ? BOT_COLOR[scene.look] : typeof p['color'] === 'string' ? p['color'] : nameColor(user, scene.look),
           badges: badges.map((b) => BADGE_ICONS[b][0]), badgeTones: badges.map((b) => BADGE_ICONS[b][1]),
           first: p['first'] === true, icon: null, deletedAt: null, highlight: null
         };

@@ -23,7 +23,28 @@
       "const": 1
     },
     "title": {
-      "type": "string"
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "en",
+            "es"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "en": {
+              "type": "string"
+            },
+            "es": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "description": "Short feature name for labels (e.g. \"Chat protection\")."
     },
     "seed": {
       "type": "integer",
@@ -34,6 +55,17 @@
         30,
         60
       ]
+    },
+    "look": {
+      "enum": [
+        "studio",
+        "site",
+        "paper",
+        "signal",
+        "broadcast",
+        "night"
+      ],
+      "description": "Art direction: studio, site (the website's Live First design), paper (print), signal (kinetic type), broadcast (cinematic UI), night (black, one accent, technical labels)."
     },
     "formats": {
       "type": "array",
@@ -397,7 +429,7 @@
           },
           {
             "type": "object",
-            "description": "Big marketing caption. Wrap words in *stars* to color them.",
+            "description": "Big marketing caption. Wrap words in *stars* to color them. It stays on screen until the next caption in its place (at the same ms, the later one wins) or a full-screen card replaces it; dur only times the beats placed after it.",
             "additionalProperties": false,
             "required": [
               "do",
@@ -502,7 +534,7 @@
                   "top",
                   "bottom"
                 ],
-                "description": "Where it sits. Defaults: top on vertical, bottom on landscape."
+                "description": "Where it sits. Defaults: top on vertical (the band above the stream), bottom on landscape (the band under the stream)."
               }
             }
           },
@@ -736,7 +768,11 @@
                     }
                   }
                 ],
-                "description": "The message."
+                "description": "The message. With \"duel\", {winner}, {loser} and {hp} come from that duel's result."
+              },
+              "duel": {
+                "type": "string",
+                "description": "id of a duel beat whose result fills {winner}, {loser} and {hp}."
               },
               "refs": {
                 "type": "array",
@@ -756,10 +792,16 @@
                     },
                     "inText": {
                       "type": "boolean"
+                    },
+                    "lang": {
+                      "enum": [
+                        "en",
+                        "es"
+                      ]
                     }
                   }
                 },
-                "description": "Source quotes: [{ \"file\": \"dimabot/...\", \"quote\": \"...\", \"inText\": true }]."
+                "description": "Source quotes: [{ \"file\": \"dimabot/...\", \"quote\": \"...\", \"inText\": true, \"lang\": \"en\" }]. lang limits the text check to one language."
               }
             }
           },
@@ -1369,7 +1411,7 @@
           },
           {
             "type": "object",
-            "description": "A chat duel in the real duel overlay. Length comes from the seeded battle.",
+            "description": "A chat duel in the real duel overlay. Length comes from the seeded battle; dur can only make it longer (holds the winner screen).",
             "additionalProperties": false,
             "required": [
               "do",

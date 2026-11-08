@@ -7,6 +7,9 @@ export const DEMO_CONTRACT_VERSION = 1;
 export type DemoLang = 'en' | 'es';
 export type DemoFormat = 'vertical' | 'landscape';
 export const DEMO_LANGS: readonly DemoLang[] = ['en', 'es'];
+/** Art directions for the frame. Content and timing are identical; only the look changes. */
+export type DemoLook = 'studio' | 'site' | 'paper' | 'signal' | 'broadcast' | 'night';
+export const DEMO_LOOKS: readonly DemoLook[] = ['studio', 'site', 'paper', 'signal', 'broadcast', 'night'];
 export const DEMO_FORMATS: Readonly<Record<DemoFormat, { width: number; height: number }>> = {
   vertical: { width: 540, height: 960 },
   landscape: { width: 960, height: 540 }
@@ -16,7 +19,7 @@ export const STAGE = { width: 1920, height: 1080 };
 
 export type DemoText = string | { en: string; es: string };
 export interface DemoSound { src: string; gain: number; delay: number; fadeIn: number; fadeOut: number }
-export interface DemoRef { file: string; quote: string; inText: boolean }
+export interface DemoRef { file: string; quote: string; inText: boolean; lang: DemoLang | null }
 
 type FieldType = 'text' | 'string' | 'number' | 'boolean' | 'id' | 'enum' | 'sound' | 'refs' | 'texts' | 'strings';
 interface FieldSpec { type: FieldType; required?: boolean; values?: readonly string[]; min?: number; max?: number; doc: string }
@@ -34,9 +37,9 @@ export const DEMO_ACTORS: Readonly<Record<string, ActorSpec>> = {
   outro: { dur: 2400, doc: 'Full-screen closing card with the domain.', fields: {
     title: { type: 'text', doc: 'Big closing line.' },
     cta: { type: 'text', doc: 'Call to action under it. Defaults to "Free to start".' } } },
-  caption: { dur: 2600, doc: 'Big marketing caption. Wrap words in *stars* to color them.', fields: {
+  caption: { dur: 2600, doc: 'Big marketing caption. Wrap words in *stars* to color them. It stays on screen until the next caption in its place (at the same ms, the later one wins) or a full-screen card replaces it; dur only times the beats placed after it.', fields: {
     text: { type: 'text', required: true, doc: 'Caption text.' },
-    place: { type: 'enum', values: ['top', 'bottom'], doc: 'Where it sits. Defaults: top on vertical, bottom on landscape.' } } },
+    place: { type: 'enum', values: ['top', 'bottom'], doc: 'Where it sits. Defaults: top on vertical (the band above the stream), bottom on landscape (the band under the stream).' } } },
   chat: { dur: 0, doc: 'A viewer chat message.', fields: {
     user: { type: 'string', required: true, doc: 'Twitch login (fictional).' },
     text: { type: 'text', required: true, doc: 'The message.' },
@@ -44,8 +47,9 @@ export const DEMO_ACTORS: Readonly<Record<string, ActorSpec>> = {
     badges: { type: 'strings', values: BADGES, doc: 'Chat badges.' },
     color: { type: 'string', doc: 'Name color (#rrggbb). Defaults to a color picked from the name.' } } },
   bot: { dur: 0, doc: 'A DomDimaBot chat message. Use refs so the wording stays what the bot really says.', fields: {
-    text: { type: 'text', required: true, doc: 'The message.' },
-    refs: { type: 'refs', doc: 'Source quotes: [{ "file": "dimabot/...", "quote": "...", "inText": true }].' } } },
+    text: { type: 'text', required: true, doc: 'The message. With "duel", {winner}, {loser} and {hp} come from that duel\'s result.' },
+    duel: { type: 'id', doc: 'id of a duel beat whose result fills {winner}, {loser} and {hp}.' },
+    refs: { type: 'refs', doc: 'Source quotes: [{ "file": "dimabot/...", "quote": "...", "inText": true, "lang": "en" }]. lang limits the text check to one language.' } } },
   event: { dur: 0, doc: 'A highlighted chat notice (follow, sub, cheer, raid, moderation).', fields: {
     text: { type: 'text', required: true, doc: 'Notice text.' },
     icon: { type: 'enum', values: ['follow', 'sub', 'bits', 'raid', 'shield', 'info'], doc: 'Icon. Defaults to info.' } } },
@@ -66,7 +70,7 @@ export const DEMO_ACTORS: Readonly<Record<string, ActorSpec>> = {
     voice: { type: 'string', doc: 'Voice name from marketing/video/voices.json. Defaults to the language default.' },
     clip: { type: 'text', doc: 'Use this audio file instead of synthesizing (path under marketing/video/sounds/).' },
     showText: { type: 'boolean', doc: 'Show the text card (default true).' } } },
-  duel: { dur: 'auto', doc: 'A chat duel in the real duel overlay. Length comes from the seeded battle.', fields: {
+  duel: { dur: 'auto', doc: 'A chat duel in the real duel overlay. Length comes from the seeded battle; dur can only make it longer (holds the winner screen).', fields: {
     left: { type: 'string', required: true, doc: 'Left fighter.' },
     right: { type: 'string', required: true, doc: 'Right fighter.' } } },
   roulette: { dur: 'auto', doc: 'A roulette spin in the real roulette overlay (0.6 s wait, spin, 2.4 s on the winner).', fields: {
@@ -102,7 +106,7 @@ const COMMON_FIELDS: Record<string, FieldSpec> = {
 };
 
 export interface RawScene {
-  id: string; v: number; title?: string; seed?: number; fps?: number;
+  id: string; v: number; title?: DemoText; seed?: number; fps?: number; look?: DemoLook;
   formats?: DemoFormat[]; langs?: DemoLang[];
   channel?: { name?: string; title?: DemoText; game?: DemoText; viewers?: number };
   bot?: string; end?: number | 'auto'; tail?: number; poster?: number;
@@ -118,7 +122,7 @@ export interface DemoBeat {
   sfx: DemoSound | null;
 }
 export interface DemoScene {
-  id: string; lang: DemoLang; seed: number; fps: number; durationMs: number; posterMs: number;
+  id: string; lang: DemoLang; look: DemoLook; title: string; seed: number; fps: number; durationMs: number; posterMs: number;
   channel: { name: string; title: string; game: string; viewers: number };
   bot: string; beats: DemoBeat[];
 }
@@ -151,6 +155,8 @@ export const ROULETTE_LEAD_MS = 600;
 export const ROULETTE_HOLD_MS = 2400;
 export const DEFAULT_ROULETTE_SPIN_MS = 5000;
 export const DEFAULT_TAIL_MS = 500;
+/** The duel's winner screen stays this long after the fight; the bot posts the result when the fight ends. */
+export const DUEL_TAIL_MS = 1800;
 
 export function parseSound(value: unknown): DemoSound | null {
   if (value === undefined || value === null) return null;
@@ -199,7 +205,7 @@ function checkField(where: string, name: string, spec: FieldSpec, value: unknown
 
 export function refsOf(beat: Record<string, unknown>): DemoRef[] {
   const refs = Array.isArray(beat['refs']) ? beat['refs'] : [];
-  return refs.filter(isObject).map((r) => ({ file: String(r['file']), quote: String(r['quote']), inText: r['inText'] !== false }));
+  return refs.filter(isObject).map((r) => ({ file: String(r['file']), quote: String(r['quote']), inText: r['inText'] !== false, lang: r['lang'] === 'en' || r['lang'] === 'es' ? r['lang'] : null }));
 }
 
 /** Small seeded generator (mulberry32) so every random choice is the same on every render. */
@@ -230,6 +236,8 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
   if (raw.langs !== undefined && (!Array.isArray(raw.langs) || !raw.langs.length || raw.langs.some((l) => !DEMO_LANGS.includes(l)))) errors.push('"langs" must list en and/or es');
   if (raw.seed !== undefined && (!Number.isInteger(raw.seed) || raw.seed < 0)) errors.push('"seed" must be a whole number');
   if (raw.fps !== undefined && raw.fps !== 30 && raw.fps !== 60) errors.push('"fps" must be 30 or 60');
+  if (raw.title !== undefined) checkField('scene', 'title', { type: 'text', doc: '' }, raw.title, errors);
+  if (raw.look !== undefined && !DEMO_LOOKS.includes(raw.look)) errors.push(`"look" must be one of: ${DEMO_LOOKS.join(', ')}`);
   if (raw.end !== undefined && raw.end !== 'auto' && (typeof raw.end !== 'number' || raw.end < 500 || raw.end > 180000)) errors.push('"end" must be "auto" or 500..180000 ms');
   if (raw.channel !== undefined) {
     if (!isObject(raw.channel)) errors.push('"channel" must be an object');
@@ -244,6 +252,8 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
   const seed = raw.seed ?? 1;
   const ids = new Map<string, number>();
   const beats: DemoBeat[] = [];
+  /** When each duel's fight ends (its winner screen runs DUEL_TAIL_MS longer), by beat id. */
+  const fightEnds = new Map<string, number>();
   let previousEnd = 0;
   raw.beats.forEach((entry, index) => {
     const where = `beat ${index + 1}`;
@@ -276,6 +286,10 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
       else at = entry['with'] !== undefined ? anchor.at : anchor.end;
     }
     const rawAt = entry['at'];
+    // A bot line that reports a duel result, with no timing of its own, lands when that fight ends.
+    const resultOf = kind === 'bot' && typeof entry['duel'] === 'string' && rawAt === undefined && anchorId === undefined && ids.has(entry['duel'] as string)
+      ? beats[ids.get(entry['duel'] as string)!] : undefined;
+    if (resultOf?.do === 'duel') at = fightEnds.get(resultOf.id) ?? resultOf.end - DUEL_TAIL_MS;
     if (typeof rawAt === 'number') {
       if (anchorId !== undefined) errors.push(`${label}: with "after"/"with", "at" must be "+N"`);
       if (!Number.isFinite(rawAt) || rawAt < 0) errors.push(`${label}: "at" must be 0 or more`);
@@ -299,23 +313,37 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
 
     // Length
     let dur = typeof entry['dur'] === 'number' ? entry['dur'] : spec.dur === 'auto' ? 0 : spec.dur;
+    // A duel lasts as long as its seeded fight plus the winner screen; "dur" may only hold the end screen longer.
+    const duelMs = kind === 'duel' ? (durations.duel ? durations.duel({ index, seed: beatSeed(seed, index) }) : 20000) : 0;
+    if (kind === 'duel' && entry['dur'] !== undefined && dur < duelMs) errors.push(`${label}: "dur" can't be shorter than the fight (${duelMs} ms); leave it out`);
     if (entry['dur'] === undefined && spec.dur === 'auto') {
       if (kind === 'tts') dur = durations.tts?.[id] ?? estimateSpeechMs(String(props['text'] ?? ''));
-      else if (kind === 'duel') dur = durations.duel ? durations.duel({ index, seed: beatSeed(seed, index) }) : 20000;
+      else if (kind === 'duel') dur = duelMs;
       else if (kind === 'roulette') dur = ROULETTE_LEAD_MS + (typeof props['spin'] === 'number' ? props['spin'] : DEFAULT_ROULETTE_SPIN_MS) + ROULETTE_HOLD_MS;
       else dur = 0; // music: until the end, resolved below
     }
     if (kind === 'roulette' && typeof props['winner'] === 'number' && Array.isArray(props['items']) && props['winner'] >= props['items'].length) errors.push(`${label}: "winner" must be below the number of items`);
     const beat: DemoBeat = { index, id, do: kind as string, at: Math.round(at), end: Math.round(at + dur), props, sfx: parseSound(entry['sfx']) };
     beats.push(beat);
+    if (kind === 'duel') fightEnds.set(id, beat.at + duelMs - DUEL_TAIL_MS);
     previousEnd = beat.end;
   });
 
   // Targets must exist and point at the right kind of beat.
   for (const beat of beats) {
+    const duel = beat.props['duel'];
+    if (typeof duel === 'string') {
+      const other = ids.has(duel) ? beats[ids.get(duel)!] : undefined;
+      if (!other || other.do !== 'duel') errors.push(`${beat.do} ${beat.id}: "duel" must be the id of a duel beat`);
+      else {
+        const known = fightEnds.get(other.id) ?? other.end - DUEL_TAIL_MS;
+        if (beat.at < known) errors.push(`${beat.do} ${beat.id}: the duel result is only known when the fight in ${duel} ends (${known} ms)`);
+      }
+    }
     const target = beat.props['target'];
     if (typeof target !== 'string') continue;
     if (beat.do === 'highlight' && (target === 'chat' || target === 'stream')) continue;
+    if (beat.do === 'bot') continue;
     const other = ids.has(target) ? beats[ids.get(target)!] : undefined;
     const allowed = beat.do === 'highlight' ? ['chat', 'bot'] : ['chat'];
     if (!other) errors.push(`${beat.do} ${beat.id}: target "${target}" is not a beat id`);
@@ -325,7 +353,7 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
   for (const beat of beats) {
     if (beat.do !== 'bot') continue;
     for (const ref of refsOf(raw.beats[beat.index] as Record<string, unknown>)) {
-      if (ref.inText && !String(beat.props['text']).includes(ref.quote)) errors.push(`bot ${beat.id}: the text must contain the quoted source wording "${ref.quote}" (${lang})`);
+      if (ref.inText && (!ref.lang || ref.lang === lang) && !String(beat.props['text']).includes(ref.quote)) errors.push(`bot ${beat.id}: the text must contain the quoted source wording "${ref.quote}" (${lang})`);
     }
   }
   if (errors.length) return { scene: null, errors };
@@ -341,7 +369,7 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
   if (beats.some((b) => b.at >= durationMs)) errors.push(`a beat starts after the video ends (${durationMs} ms); raise "end" or remove it`);
   const channel = raw.channel ?? {};
   const scene: DemoScene = {
-    id: raw.id, lang, seed, fps: raw.fps ?? 30, durationMs,
+    id: raw.id, lang, look: raw.look ?? 'studio', title: resolveText(raw.title ?? '', lang), seed, fps: raw.fps ?? 30, durationMs,
     posterMs: Math.min(durationMs - 1, Math.max(0, raw.poster ?? Math.round(durationMs * 0.45))),
     channel: {
       name: channel.name ?? 'lunatica_v',
@@ -364,6 +392,26 @@ export function validateScene(input: unknown, durations: DemoDurations = {}): st
 }
 
 /** Sounds to mix, from a resolved scene. TTS clip paths come from the recorder (`ttsSrc`). */
+export interface DemoCaptionSpan { beat: DemoBeat; place: 'top' | 'bottom'; end: number }
+
+/**
+ * When each caption is on screen. A caption holds until something replaces it, so slow readers get the whole gap:
+ * the next caption in its place (at the same ms, the one written later wins), a full-screen card that starts at or
+ * after it, or the end of the video (end = Infinity). Its `dur` only times the beats placed after it.
+ */
+export function captionSpans(scene: DemoScene, format: DemoFormat): DemoCaptionSpan[] {
+  const fallback = format === 'vertical' ? 'top' : 'bottom';
+  const captions = scene.beats.filter((b) => b.do === 'caption').map((beat) => ({ beat, place: (beat.props['place'] as 'top' | 'bottom' | undefined) ?? fallback }));
+  const cards = scene.beats.filter((b) => b.do === 'intro' || b.do === 'outro');
+  return captions.map((c) => {
+    const replacements = [
+      ...captions.filter((o) => o.place === c.place && (o.beat.at > c.beat.at || (o.beat.at === c.beat.at && o.beat.index > c.beat.index))).map((o) => o.beat.at),
+      ...cards.filter((card) => card.at >= c.beat.at).map((card) => card.at)
+    ];
+    return { ...c, end: replacements.length ? Math.min(...replacements) : Infinity };
+  });
+}
+
 export function sceneCues(scene: DemoScene, ttsSrc: Record<string, string> = {}): DemoCue[] {
   const cues: DemoCue[] = [];
   for (const beat of scene.beats) {
@@ -395,7 +443,7 @@ export function sceneJsonSchema(): Record<string, unknown> {
       case 'enum': return { enum: f.values, ...d };
       case 'strings': return { type: 'array', items: f.values ? { enum: f.values } : { type: 'string' }, ...d };
       case 'texts': return { type: 'array', items: text, ...(f.min !== undefined ? { minItems: f.min } : {}), ...(f.max !== undefined ? { maxItems: f.max } : {}), ...d };
-      case 'refs': return { type: 'array', items: { type: 'object', required: ['file', 'quote'], additionalProperties: false, properties: { file: { type: 'string' }, quote: { type: 'string' }, inText: { type: 'boolean' } } }, ...d };
+      case 'refs': return { type: 'array', items: { type: 'object', required: ['file', 'quote'], additionalProperties: false, properties: { file: { type: 'string' }, quote: { type: 'string' }, inText: { type: 'boolean' }, lang: { enum: DEMO_LANGS } } }, ...d };
     }
   };
   const common = {
@@ -410,7 +458,8 @@ export function sceneJsonSchema(): Record<string, unknown> {
     properties: {
       $schema: { type: 'string' }, $comment: { type: 'string' },
       id: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,63}$' }, v: { const: DEMO_CONTRACT_VERSION },
-      title: { type: 'string' }, seed: { type: 'integer', minimum: 0 }, fps: { enum: [30, 60] },
+      title: { ...text, description: 'Short feature name for labels (e.g. "Chat protection").' }, seed: { type: 'integer', minimum: 0 }, fps: { enum: [30, 60] },
+      look: { enum: DEMO_LOOKS, description: 'Art direction: studio, site (the website\'s Live First design), paper (print), signal (kinetic type), broadcast (cinematic UI), night (black, one accent, technical labels).' },
       formats: { type: 'array', items: { enum: Object.keys(DEMO_FORMATS) } }, langs: { type: 'array', items: { enum: DEMO_LANGS } },
       channel: { type: 'object', additionalProperties: false, properties: { name: { type: 'string' }, title: text, game: text, viewers: { type: 'number', minimum: 0 } } },
       bot: { type: 'string' }, end: { oneOf: [{ const: 'auto' }, { type: 'number', minimum: 500, maximum: 180000 }] },

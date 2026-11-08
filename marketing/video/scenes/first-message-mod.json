@@ -4,6 +4,8 @@
   "id": "first-message-mod",
   "v": 1,
   "seed": 7,
+  "look": "site",
+  "title": { "en": "Chat protection", "es": "Protección del chat" },
   "formats": ["vertical", "landscape"],
   "langs": ["en", "es"],
   "channel": {

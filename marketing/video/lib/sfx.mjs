@@ -16,9 +16,9 @@ export const KIT = {
   /** Low hit for a ban or a knockout. */
   thud: tone('0.85*sin(2*PI*(52+78*exp(-t*16))*t)*exp(-t*8.5)', 0.5),
   /** Airy sweep for transitions. */
-  whoosh: ['-f', 'lavfi', '-i', 'anoisesrc=d=0.8:c=pink:a=0.45:seed=7:r=48000', '-af', "highpass=f=350,lowpass=f=5200,afade=t=in:d=0.35:curve=qsin,afade=t=out:st=0.35:d=0.45:curve=qsin"],
-  /** Twinkle for a win. */
-  sparkle: tone('0.16*sin(2*PI*(2200+1400*sin(2*PI*11*t))*t)*exp(-t*4.5)', 0.7)
+  whoosh: ['-f', 'lavfi', '-i', 'anoisesrc=d=0.8:c=pink:a=0.45:seed=7:r=48000', '-af', "highpass=f=350,lowpass=f=5200,afade=t=in:d=0.35:curve=qsin,afade=t=out:st=0.35:d=0.45:curve=qsin"]
+  // No "sparkle": its wobbling 0.8-3.6 kHz tone was harsh on the duel result (owner, 2026-11-08). Keep new kit
+  // sounds soft and short, like pop and ding.
 };
 
 /** Path to a sound: "kit:<name>" (generated) or a file under marketing/video/sounds/ that LICENSES.md lists. */

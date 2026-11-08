@@ -93,13 +93,22 @@ export async function openPlayer(browser, {baseUrl, format, lang, scale = 2, see
   return {context, page, cdp, clip, blocked, pageErrors, close: () => context.close()};
 }
 
+/**
+ * Load the player once and let it fetch every font, so the font cache on disk is complete before frame 0.
+ * Text rendered while a font is still being downloaded can differ by a few pixels from text rendered from cache.
+ */
+export async function warmFonts(browser, {baseUrl, raw, format, lang}) {
+  const player = await openPlayer(browser, {baseUrl, format, lang, scale: 1, seed: raw.seed ?? 1});
+  try { await loadScene(player, raw, {format, lang}); } finally { await player.close(); }
+}
+
 /** Hand the scene to the player, wait for fonts/pictures/alerts, then freeze the clock at a clean start. */
-export async function loadScene(player, raw, {format, lang, media = {}}) {
+export async function loadScene(player, raw, {format, lang, media = {}, look}) {
   const {page, context} = player;
   const actors = await page.evaluate(() => ({version: window.__dimaDemo.version, actors: window.__dimaDemo.actors}));
   const missing = [...new Set((raw.beats ?? []).map(b => b.do))].filter(kind => !actors.actors.includes(kind));
   if (missing.length) throw new Error(`the player at this address doesn't know ${missing.join(', ')} yet (deploy the site, or render a candidate with --bundle/--base-url)`);
-  const options = {format, lang, media: {tts: Object.fromEntries(Object.entries(media).map(([id, m]) => [id, {src: m.src, durationMs: m.durationMs}]))}};
+  const options = {format, lang, ...(look ? {look} : {}), media: {tts: Object.fromEntries(Object.entries(media).map(([id, m]) => [id, {src: m.src, durationMs: m.durationMs}]))}};
   const info = await page.evaluate(([scene, opts]) => window.__dimaDemo.load(scene, opts), [raw, options]);
   if (!info.ok) throw new Error(`the player rejected the scene:\n  ${info.errors.join('\n  ')}`);
   const ready = await withTimeout(page.evaluate(() => window.__dimaDemo.ready()), 45000, 'waiting for fonts and pictures');
@@ -124,6 +133,14 @@ export async function captureFrames(player, {fps, durationMs, from = 0, to, onFr
     const t = (index * 1000) / fps, tMs = Math.round(t);
     if (tMs > clockMs) { await context.clock.runFor(tMs - clockMs); clockMs = tMs; }
     if (index < from) continue;
+    // The first captured frame (start, or a jump into the middle of a scene) gets a second settle pass and a
+    // throwaway capture: right after a large change, Chromium may still be re-rasterizing layers at their final
+    // resolution, and the first capture after it could draw a few anti-aliased edges either of two ways.
+    if (index === from) {
+      await withTimeout(page.evaluate(time => window.__dimaDemo.frame(time), t), 30000, `frame ${index}`);
+      await new Promise(r => setTimeout(r, 250)); // real time; the page clock stays paused
+      await cdp.send('Page.captureScreenshot', {format: 'png', optimizeForSpeed: true, captureBeyondViewport: false, clip});
+    }
     const state = await withTimeout(page.evaluate(time => window.__dimaDemo.frame(time), t), 30000, `frame ${index}`);
     if (state.waiting) throw new Error(`frame ${index}: ${state.waiting} overlay item(s) still loading pictures`);
     if (state.running.length) throw new Error(`frame ${index} (${tMs} ms): animations running on their own clock, so frames would not be exact: ${state.running.slice(0, 6).join(', ')}`);

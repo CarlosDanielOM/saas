@@ -18,6 +18,11 @@
           <button type="button" [attr.aria-pressed]="format() === f" (click)="setFormat(f)">{{ copy()[f] }}</button>
         }
       </div>
+      <div class="dp-seg" role="group" [attr.aria-label]="copy().look">
+        @for (l of looks; track l) {
+          <button type="button" [attr.aria-pressed]="currentLook() === l" (click)="setLook(l)">{{ lookNames[l][lang()] }}</button>
+        }
+      </div>
       <div class="dp-seg" role="group" [attr.aria-label]="copy().language">
         @for (l of langs; track l) {
           <button type="button" [attr.aria-pressed]="lang() === l" (click)="setLang(l)">{{ l.toUpperCase() }}</button>

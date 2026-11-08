@@ -1,0 +1,62 @@
+{
+  "$schema": "../scene.schema.json",
+  "$comment": "Chat duel as the product runs it (dimabot/src/commands/duel.command.ts, dimabot/src/duel): !duel @user, the challenged viewer answers !duel accept, the bot simulates the fight and the duel overlay replays it, the bot posts the winner. Loser timeout 60 s is the default. Free on every plan. The overlay fight is a seeded local simulation with the same rules.",
+  "id": "chat-duels",
+  "v": 1,
+  "seed": 23,
+  "look": "site",
+  "title": { "en": "Chat duels", "es": "Duelos del chat" },
+  "formats": ["vertical", "landscape"],
+  "langs": ["en", "es"],
+  "channel": {
+    "name": "lunatica_v",
+    "title": { "en": "Chill games with chat", "es": "Juegos tranquilos con el chat" },
+    "game": "Just Chatting",
+    "viewers": 186
+  },
+  "beats": [
+    { "do": "intro", "at": 0, "dur": 1700,
+      "title": { "en": "Settle it *in chat*", "es": "Resuélvanlo *en el chat*" },
+      "sub": { "en": "Chat duels on your stream", "es": "Duelos del chat en tu stream" } },
+
+    { "do": "chat", "id": "c1", "at": "+300", "user": "taco_fan", "badges": ["sub"], "text": { "en": "bet I'd win a 1v1", "es": "apuesto a que te gano un 1v1" } },
+    { "do": "chat", "id": "c2", "at": "+800", "user": "NovaPlays", "text": { "en": "prove it", "es": "demuéstralo" } },
+    { "do": "chat", "id": "ch", "at": "+700", "user": "taco_fan", "badges": ["sub"], "text": "!duel @NovaPlays", "sfx": { "src": "kit:pop", "gain": 0.7 } },
+    { "do": "bot", "id": "challenge", "at": "+500", "sfx": { "src": "kit:ding", "gain": 0.5 },
+      "text": {
+        "en": "@novaplays, @taco_fan has challenged you to a duel! To accept use \"!duel accept\" or decline with \"!duel decline\" within 30 seconds.",
+        "es": "@novaplays, ¡@taco_fan te ha retado a un duelo! Para aceptar usa \"!duel accept\" o rechaza con \"!duel decline\" en 30 segundos."
+      },
+      "refs": [
+        { "file": "dimabot/src/commands/duel.command.ts", "quote": "has challenged you to a duel! To accept use \"!duel accept\" or decline with \"!duel decline\" within 30 seconds.", "lang": "en" },
+        { "file": "dimabot/src/commands/duel.command.ts", "quote": "te ha retado a un duelo! Para aceptar usa \"!duel accept\" o rechaza con \"!duel decline\" en 30 segundos.", "lang": "es" }
+      ] },
+    { "do": "caption", "id": "cap1", "with": "ch", "at": "+200", "dur": 3400,
+      "text": { "en": "Viewers challenge each other with *!duel*", "es": "Tus viewers se retan con *!duel*" } },
+    { "do": "highlight", "with": "challenge", "at": "+300", "dur": 1800, "target": "challenge" },
+    { "do": "chat", "id": "accept", "after": "challenge", "at": "+2600", "user": "NovaPlays", "text": "!duel accept", "sfx": { "src": "kit:pop", "gain": 0.7 } },
+
+    { "do": "duel", "id": "d1", "with": "accept", "at": "+750", "left": "taco_fan", "right": "novaplays" },
+    { "do": "caption", "id": "cap2", "with": "d1", "at": "+400", "dur": 2800,
+      "text": { "en": "The bot runs the fight *live on stream*", "es": "El bot arma la pelea *en vivo*" } },
+    { "do": "chat", "with": "d1", "at": "+5200", "user": "pixel_pancho", "badges": ["vip"], "text": "TACO TACO TACO" },
+    { "do": "chat", "with": "d1", "at": "+7400", "user": "lunatica_v", "badges": ["broadcaster"], "text": { "en": "no way 😭", "es": "no puede ser 😭" } },
+    { "do": "caption", "id": "cap3", "with": "d1", "at": "+8600", "dur": 2800,
+      "text": { "en": "Whoever loses gets a *60 s timeout*", "es": "Quien pierde se lleva *60 s de timeout*" } },
+    { "do": "bot", "id": "result", "duel": "d1",
+      "text": {
+        "en": "@{winner} has won the duel against @{loser} with {hp} HP left.",
+        "es": "@{winner} ha ganado el duelo contra @{loser} con {hp} HP restantes."
+      },
+      "refs": [
+        { "file": "dimabot/src/duel/model.ts", "quote": "has won the duel against @", "lang": "en" },
+        { "file": "dimabot/src/duel/model.ts", "quote": "ha ganado el duelo contra @", "lang": "es" }
+      ] },
+    { "do": "caption", "id": "cap4", "with": "result", "at": "+300", "dur": 2400,
+      "text": { "en": "Free on *every plan*", "es": "Gratis en *todos los planes*" } },
+
+    { "do": "outro", "id": "outro", "after": "cap4", "at": "+150", "dur": 2600,
+      "title": { "en": "Let chat *settle it*", "es": "Que el chat *lo resuelva*" },
+      "cta": { "en": "Free to start · domdimabot.com", "es": "Empieza gratis · domdimabot.com" } }
+  ]
+}

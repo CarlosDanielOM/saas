@@ -21,6 +21,19 @@ export async function stopChildren() {
 export const FFMPEG = require('ffmpeg-static');
 export const FFPROBE = require('ffprobe-static').path;
 export const chromium = () => require('playwright').chromium;
+
+/**
+ * Chromium flags for exact frames: drawing waits until every tile is rasterized (no low-resolution or
+ * half-rastered tiles in a screenshot, even when the CPU is capped), and animations stay on the main thread.
+ */
+export const CAPTURE_ARGS = [
+  '--mute-audio', '--autoplay-policy=no-user-gesture-required', '--font-render-hinting=none',
+  '--run-all-compositor-stages-before-draw', '--disable-low-res-tiling', '--disable-threaded-animation',
+  '--disable-threaded-scrolling', '--disable-checker-imaging', '--disable-image-animation-resync',
+  '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-new-content-rendering-timeout',
+  // One raster thread, whole tiles: the same layer always rasterizes the same way.
+  '--num-raster-threads=1', '--disable-partial-raster'
+];
 export const playwrightVersion = () => require('playwright/package.json').version;
 
 /** Run a tool, collect stdout (Buffer) and stderr; reject on a non-zero exit. */

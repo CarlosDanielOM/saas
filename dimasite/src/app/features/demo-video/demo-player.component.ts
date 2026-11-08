@@ -8,12 +8,12 @@ import { DemoFrameComponent } from './demo-frame.component';
 import { demoDuelDuration } from './demo-duel';
 import { DEMO_SAMPLES } from './demo-samples';
 import {
-  DEMO_ACTOR_NAMES, DEMO_CONTRACT_VERSION, DEMO_FORMATS, DEMO_LANGS, normalizeScene, sceneCues,
-  type DemoFormat, type DemoLang, type DemoScene
+  DEMO_ACTOR_NAMES, DEMO_CONTRACT_VERSION, DEMO_FORMATS, DEMO_LANGS, DEMO_LOOKS, normalizeScene, sceneCues,
+  type DemoFormat, type DemoLang, type DemoLook, type DemoScene
 } from './demo-scene';
 
 /** What the recorder may pass to `load()` besides the scene. */
-interface LoadOptions { format: DemoFormat; lang: DemoLang; media?: { tts?: Record<string, { src: string; durationMs: number }> } }
+interface LoadOptions { format: DemoFormat; lang: DemoLang; look?: DemoLook; media?: { tts?: Record<string, { src: string; durationMs: number }> } }
 type LoadResult =
   | { ok: true; durationMs: number; posterMs: number; fps: number; beats: { id: string; do: string; at: number; end: number }[]; cues: ReturnType<typeof sceneCues> }
   | { ok: false; errors: string[] };
@@ -31,15 +31,25 @@ export interface DemoPlayerApi {
 interface NativeTimers { requestAnimationFrame: typeof requestAnimationFrame; setTimeout: typeof setTimeout }
 declare global { interface Window { __dimaDemo?: DemoPlayerApi; __demoNative?: NativeTimers } }
 
+const LOOK_NAMES: Record<DemoLook, Record<DemoLang, string>> = {
+  studio: { en: 'Original', es: 'Original' }, site: { en: 'Website', es: 'Sitio web' }, paper: { en: 'Print', es: 'Impreso' },
+  signal: { en: 'Kinetic', es: 'Cinético' }, broadcast: { en: 'Broadcast', es: 'Transmisión' }, night: { en: 'Night', es: 'Noche' }
+};
+
 const COPY = {
-  en: { title: 'Demo video player', lead: 'Promo videos are recorded from this frame, one frame at a time. This preview plays the built-in sample.', sample: 'Sample', format: 'Format', vertical: 'Vertical', landscape: 'Landscape', language: 'Language', play: 'Play', pause: 'Pause', restart: 'Restart', time: 'Position', invalid: 'This sample has problems:' },
-  es: { title: 'Reproductor de videos demo', lead: 'Los videos promocionales se graban desde este cuadro, una imagen a la vez. Esta vista previa reproduce el ejemplo incluido.', sample: 'Ejemplo', format: 'Formato', vertical: 'Vertical', landscape: 'Horizontal', language: 'Idioma', play: 'Reproducir', pause: 'Pausar', restart: 'Reiniciar', time: 'Posición', invalid: 'Este ejemplo tiene problemas:' }
+  en: { title: 'Demo video player', look: 'Look', lead: 'Promo videos are recorded from this frame, one frame at a time. This preview plays the built-in sample.', sample: 'Sample', format: 'Format', vertical: 'Vertical', landscape: 'Landscape', language: 'Language', play: 'Play', pause: 'Pause', restart: 'Restart', time: 'Position', invalid: 'This sample has problems:' },
+  es: { title: 'Reproductor de videos demo', look: 'Estilo', lead: 'Los videos promocionales se graban desde este cuadro, una imagen a la vez. Esta vista previa reproduce el ejemplo incluido.', sample: 'Ejemplo', format: 'Formato', vertical: 'Vertical', landscape: 'Horizontal', language: 'Idioma', play: 'Reproducir', pause: 'Pausar', restart: 'Reiniciar', time: 'Posición', invalid: 'Este ejemplo tiene problemas:' }
 } as const;
 
 const FONT_FACES = [
   '700 40px "Playfair Display"', '400 14px "Playfair Display"', '700 30px "Space Grotesk"',
+  '400 40px "Instrument Serif"', 'italic 400 40px "Instrument Serif"', '400 16px "Bricolage Grotesque"', '600 16px "Bricolage Grotesque"',
+  '400 40px "Anton"', '800 40px "Archivo"', '400 13px "JetBrains Mono"', '600 13px "JetBrains Mono"', '400 16px "Inter Tight"', '600 16px "Inter Tight"', '700 16px "Inter Tight"', '800 16px "Inter Tight"',
   '400 16px "Plus Jakarta Sans"', '700 16px "Plus Jakarta Sans"', '800 16px "Plus Jakarta Sans"'
 ];
+
+/** Google Fonts splits accents and symbols into separate files that load lazily; ask for them up front. */
+const FONT_SAMPLE = 'AaBb09 ÁáÉéÍíÓóÚúÑñÜü¿¡…·×—–“”‘’@#&%$!?';
 
 /**
  * /mocks/dev/demo: plays a demo-video scene through the real product components.
@@ -62,6 +72,10 @@ export class DemoPlayerComponent {
   readonly samples = DEMO_SAMPLES;
   readonly langs = DEMO_LANGS;
   readonly formats = Object.keys(DEMO_FORMATS) as DemoFormat[];
+  readonly looks = DEMO_LOOKS;
+  readonly lookNames = LOOK_NAMES;
+  /** Preview-only look override (the recorder passes its own in load()). */
+  readonly look = signal<DemoLook | null>(null);
 
   readonly lang = signal<DemoLang>(inject(LanguageService).currentLanguage() === 'es' ? 'es' : 'en');
   readonly format = signal<DemoFormat>('vertical');
@@ -76,7 +90,9 @@ export class DemoPlayerComponent {
   private readonly recorded = signal<DemoScene | null>(null);
   private readonly sample = computed(() => {
     const sample = DEMO_SAMPLES.find((s) => s.id === this.sampleId()) ?? DEMO_SAMPLES[0];
-    return normalizeScene(sample.scene, this.lang(), { duel: demoDuelDuration });
+    const result = normalizeScene(sample.scene, this.lang(), { duel: demoDuelDuration });
+    const look = this.look();
+    return look && result.scene ? { ...result, scene: { ...result.scene, look } } : result;
   });
   readonly sampleErrors = computed(() => this.sample().errors);
   readonly scene = computed(() => this.recorded() ?? this.sample().scene);
@@ -141,6 +157,9 @@ export class DemoPlayerComponent {
   restart(): void { this.pause(); this.t.set(0); this.play(); }
   scrub(event: Event): void { this.pause(); this.t.set(Number((event.target as HTMLInputElement).value)); }
   setFormat(format: DemoFormat): void { this.format.set(format); }
+  setLook(look: DemoLook): void { this.look.set(look); }
+  /** The look on screen: the override, else the scene's own. */
+  readonly currentLook = computed(() => this.scene()?.look ?? 'studio');
   setLang(lang: DemoLang): void { const playing = this.playing(); this.pause(); this.lang.set(lang); this.t.set(Math.min(this.t(), this.duration())); if (playing) this.play(); }
   onAlertReady(id: string): void { this.alertsReady.update((ids) => new Set(ids).add(id)); }
 
@@ -149,7 +168,7 @@ export class DemoPlayerComponent {
     if (document.querySelector('link[data-demo-font]')) return;
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=block';
+    link.href = 'https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wdth,wght@100..125,400..900&family=JetBrains+Mono:wght@400;600&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600;700;800&family=Playfair+Display:wght@400;700&display=block';
     link.dataset['demoFont'] = '';
     document.head.appendChild(link);
   }
@@ -169,10 +188,12 @@ export class DemoPlayerComponent {
       bootReady: true,
       load: (raw, options) => {
         if (!options || !(options.format in DEMO_FORMATS) || !DEMO_LANGS.includes(options.lang)) return { ok: false, errors: ['format must be vertical/landscape and lang en/es'] };
+        if (options.look !== undefined && !DEMO_LOOKS.includes(options.look)) return { ok: false, errors: [`look must be one of: ${DEMO_LOOKS.join(', ')}`] };
         const tts = options.media?.tts ?? {};
         const durations = Object.fromEntries(Object.entries(tts).map(([id, clip]) => [id, clip.durationMs]));
-        const { scene, errors } = normalizeScene(raw, options.lang, { tts: durations, duel: demoDuelDuration });
-        if (!scene) return { ok: false, errors };
+        const normalized = normalizeScene(raw, options.lang, { tts: durations, duel: demoDuelDuration });
+        if (!normalized.scene) return { ok: false, errors: normalized.errors };
+        const scene: DemoScene = options.look ? { ...normalized.scene, look: options.look } : normalized.scene;
         this.pause();
         this.recording.set(true);
         this.format.set(options.format);
@@ -191,7 +212,7 @@ export class DemoPlayerComponent {
       },
       ready: async () => {
         const problems: string[] = [];
-        await Promise.all(FONT_FACES.map((face) => document.fonts.load(face).then((faces) => { if (!faces.length) problems.push(`font not loaded: ${face}`); }, () => problems.push(`font failed: ${face}`))));
+        await Promise.all(FONT_FACES.map((face) => document.fonts.load(face, FONT_SAMPLE).then((faces) => { if (!faces.length) problems.push(`font not loaded: ${face}`); }, () => problems.push(`font failed: ${face}`))));
         await document.fonts.ready;
         this.appRef.tick();
         await nextFrame();
@@ -213,6 +234,8 @@ export class DemoPlayerComponent {
         await nextFrame();
         this.appRef.tick();
         await nextFrame();
+        // A glyph the preload missed starts a font download; never capture a frame with a fallback font.
+        if (document.fonts.status !== 'loaded') { await document.fonts.ready; this.appRef.tick(); await nextFrame(); }
         let waiting = this.host.querySelectorAll('[data-waiting]').length;
         for (let waited = 0; waiting && waited < 3000; waited += 16) {
           await nextFrame();

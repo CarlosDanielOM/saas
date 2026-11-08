@@ -28,7 +28,9 @@ about 75 s to render; landscape takes longer. `video/out/` is not committed.
 - **Recorder**: `render.mjs` serves the live site bundle (`dimasite/dist/dimasite/browser`, the same bytes
   domdimabot.com serves) on loopback, opens the player in Chromium with a fake clock, hands it the scene through
   `window.__dimaDemo`, and for every frame advances the clock by exactly 1/30 s, lets the page settle and captures it.
-  The same scene always gives the same frames (byte for byte). Frames are piped into x264 (BT.709, yuv420p).
+  The same scene always gives the same frames (byte for byte): Chromium runs with `CAPTURE_ARGS` (`lib/tools.mjs`:
+  one raster thread, no partial raster, no threaded animation) and fonts are cached and warmed before the first
+  frame. Frames are piped into x264 (BT.709, yuv420p).
 - **Sound** is mixed afterwards from cues (sound effects, alert sounds, TTS clips), so it lines up to the frame.
 
 A scene that only uses existing building blocks needs **no site build or deploy**: write the JSON, render it.
@@ -62,6 +64,16 @@ every field. `first-message-mod.json` is a complete example.
 A beat placed `with` something is still "the beat above" for the next `+N`. After a caption that runs over a duel,
 time the next beat with `"after": "<duel id>"`. The checker refuses an outro that would cover something still playing.
 
+**Look.** `"look"` picks the art direction; the stream world (game scene, webcam, chat) recolors with it. `site`
+(the website's Live First style, used by the shipped scenes), `studio` (the original), `paper`, `signal`,
+`broadcast`, `night`. `--look <name>` overrides it for one render and adds `.<name>` to the file names, handy for
+comparing. `"title"` is the small kicker above every caption (e.g. "Chat protection").
+
+**Captions** stay on screen until the next caption in the same place (or the outro) replaces it, so slow readers get
+the whole gap. Their `dur` only times the beats placed after them. Two captions in one place at the same ms: the one
+written later wins; a caption that starts with a card is covered by it. On landscape they sit in the band under the
+stream, so they never hide the webcam or the action.
+
 **Text** is one string (same in both languages) or `{ "en": "...", "es": "..." }`. Spanish is Mexican Spanish
 (computadora, celular, en vivo; no vosotros). In captions and card titles, `*words*` get the accent color.
 
@@ -70,7 +82,7 @@ time the next beat with `"after": "<duel id>"`. The checker refuses an outro tha
 | do | What | Main fields |
 |---|---|---|
 | `intro` / `outro` | Full-screen brand card. The intro is complete on frame 0, which TikTok uses as the default cover. | `title`, `sub` / `cta` |
-| `caption` | Big caption (top band on vertical, over the stream on landscape). A new caption replaces the one in the same place. | `text`, `place` |
+| `caption` | Big caption in its own band (above the stream on vertical, under it on landscape). It stays until the next caption in the same place or the outro replaces it, so slow readers get the whole gap; its `dur` only times the beats placed after it. | `text`, `place` |
 | `chat` | Viewer message. | `user`, `text`, `first`, `badges` (broadcaster, mod, vip, sub, verified), `color` |
 | `bot` | DomDimaBot message. | `text`, `refs` |
 | `event` | Highlighted chat notice. | `text`, `icon` (follow, sub, bits, raid, shield, info) |
@@ -99,7 +111,7 @@ Every beat also takes `id`, `dur` (ms) and `sfx` (a sound when it starts).
 ## Sound and TTS (optional per scene)
 
 - **Kit sounds**, generated from scratch, so no license is needed: `kit:pop`, `kit:ding`, `kit:chime`, `kit:thud`,
-  `kit:whoosh`, `kit:sparkle`. Use them as `"sfx": "kit:pop"` or `{ "src": "kit:pop", "gain": 0.6 }`.
+  `kit:whoosh`. Use them as `"sfx": "kit:pop"` or `{ "src": "kit:pop", "gain": 0.6 }`.
 - **Your own files** go in `video/sounds/` and must be listed in `video/sounds/LICENSES.md` with source and license
   first. Music needs a license that allows ads.
 - **Alert sounds** follow the overlay rules: `delay`, `fadeIn`, `fadeOut` (ms), cut when the alert ends.
