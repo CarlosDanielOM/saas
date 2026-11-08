@@ -8,46 +8,24 @@
 //
 // Needs network access for Google Fonts (Playfair Display, Space Grotesk) and the Playwright
 // install the ops browser checks use (/tmp/saas-cooldown-browser).
-import {createRequire} from 'node:module';
-import {writeFileSync, mkdirSync, readFileSync} from 'node:fs';
+import {writeFileSync, mkdirSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
-const require = createRequire('/tmp/saas-cooldown-browser/package.json');
-const {chromium} = require('playwright');
+import {loadChromium, makeRng, smooth, wavePath, bubble, particles as specks, FILTER_DEFS, FONTS, fontsReady as fontsReadyFor, brandAssets} from '../lib/art.mjs';
+const chromium = loadChromium();
 
 const W = 1500, H = 500;
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..', '..');
-const BRAND = resolve(REPO, 'dimasite/public/assets/brand');
 const OUT = resolve(process.argv.find(a => !a.startsWith('--') && a !== process.argv[0] && a !== process.argv[1]) || HERE);
 const HIRES = process.argv.includes('--hires');
 const DEBUG = !!process.env.DEBUG_SHEETS;
 mkdirSync(OUT, {recursive: true});
 
-let seed = 20261107;
-const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-const range = (a, b) => a + (b - a) * rnd();
-const smooth = t => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
-const f1 = n => n.toFixed(1);
+const rng = makeRng(20261107);
+const {markPng: mark, wordmarkPng} = brandAssets(REPO);
 
 // ---------- sound waves ----------
-function wavePath({x0, x1, yc, amp, period, phase, env, drift = 0, driftPeriod = 900}) {
-  const k = 2 * Math.PI / period, kd = 2 * Math.PI / driftPeriod;
-  const pts = [];
-  for (let x = x0; x <= x1; x += 5) {
-    const e = env(x);
-    const beat = 0.55 + 0.45 * Math.sin(x * k * 0.31 + phase * 1.9);     // amplitude modulation, like audio
-    const y = yc + drift * Math.sin(x * kd + phase) + amp * e * beat * Math.sin(x * k + phase);
-    pts.push([x, y]);
-  }
-  let d = `M${f1(pts[0][0])},${f1(pts[0][1])}`;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const [x, y] = pts[i], [nx, ny] = pts[i + 1];
-    d += ` Q${f1(x)},${f1(y)} ${f1((x + nx) / 2)},${f1((y + ny) / 2)}`;
-  }
-  return d;
-}
-
 // Right cluster: fades in from ~x=780, full strength by ~1200, runs off the right edge.
 const rightEnv = x => smooth((x - 1000) / 380);
 const rightWaves = [];
@@ -76,36 +54,6 @@ const leftWaves = [];
   });
 
 // ---------- chat bubbles ----------
-const TINT = {
-  violet:  {stroke: '#cbb8ff', fill: 'rgba(139,92,246,0.16)', glow: '#8b5cf6'},
-  cyan:    {stroke: '#a8f0fb', fill: 'rgba(34,211,238,0.11)',  glow: '#22d3ee'},
-  neutral: {stroke: 'rgba(255,255,255,0.55)', fill: 'rgba(255,255,255,0.05)', glow: '#c4b5fd'},
-};
-function bubblePath(x, y, w, h, tail) {
-  const r = Math.min(h * 0.42, 15);
-  if (tail === 'bl') {
-    return `M${x + r},${y} H${x + w - r} A${r},${r} 0 0 1 ${x + w},${y + r} V${y + h - r} A${r},${r} 0 0 1 ${x + w - r},${y + h} H${x + r + 7} L${x - 3},${y + h + 9} L${x},${y + h - 7} V${y + r} A${r},${r} 0 0 1 ${x + r},${y} Z`;
-  }
-  return `M${x + r},${y} H${x + w - r} A${r},${r} 0 0 1 ${x + w},${y + r} V${y + h - 7} L${x + w + 3},${y + h + 9} L${x + w - r - 7},${y + h} H${x + r} A${r},${r} 0 0 1 ${x},${y + h - r} V${y + r} A${r},${r} 0 0 1 ${x + r},${y} Z`;
-}
-function bubble({x, y, w, h, tail = 'bl', tint = 'violet', inner = 'dots', op = 0.5, glow = false, sw = 1.4}) {
-  const t = TINT[tint];
-  const d = bubblePath(x, y, w, h, tail);
-  let s = '';
-  if (glow) s += `<path d="${d}" fill="${t.glow}" opacity="0.26" filter="url(#blur10)"/>`;
-  s += `<g opacity="${(op * 0.82).toFixed(2)}"><path d="${d}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`;
-  const cy = y + h / 2;
-  if (inner === 'dots') {
-    const r = Math.max(1.6, h * 0.075), gap = r * 3.2, cx0 = x + w / 2 - gap;
-    for (let i = 0; i < 3; i++) s += `<circle cx="${f1(cx0 + i * gap)}" cy="${f1(cy)}" r="${f1(r)}" fill="${t.stroke}" opacity="${0.55 + 0.2 * i}"/>`;
-  } else if (inner === 'bars') {
-    const bh = Math.max(2.2, h * 0.11), pad = h * 0.36;
-    const w1 = (w - 2 * pad) * 0.78, w2 = (w - 2 * pad) * 0.5;
-    s += `<rect x="${f1(x + pad)}" y="${f1(cy - bh - 1.5)}" width="${f1(w1)}" height="${f1(bh)}" rx="${f1(bh / 2)}" fill="${t.stroke}" opacity="0.7"/>`;
-    s += `<rect x="${f1(x + pad)}" y="${f1(cy + 1.5)}" width="${f1(w2)}" height="${f1(bh)}" rx="${f1(bh / 2)}" fill="${t.stroke}" opacity="0.45"/>`;
-  }
-  return s + '</g>';
-}
 const bubbles = [
   {x: 1030, y: 58,  w: 88,  h: 40, tail: 'bl', tint: 'violet',  inner: 'bars', op: 0.55},
   {x: 1186, y: 112, w: 62,  h: 32, tail: 'br', tint: 'cyan',    inner: 'dots', op: 0.62, glow: true},
@@ -119,19 +67,11 @@ const bubbles = [
 ].map(bubble).join('\n');
 
 // ---------- particles ----------
-const particles = [];
-const zones = [
+const particles = specks(rng, [
   {x: [960, 1480], y: [18, 210], n: 9},
   {x: [1250, 1480], y: [330, 420], n: 4},
   {x: [40, 660], y: [18, 150], n: 7},
-];
-for (const z of zones) for (let i = 0; i < z.n; i++) {
-  const x = range(...z.x), y = range(...z.y), r = range(0.8, 2.3);
-  const col = ['#ffffff', '#a8f0fb', '#cbb8ff'][Math.floor(rnd() * 3)];
-  const op = range(0.25, 0.75);
-  if (rnd() < 0.4) particles.push(`<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r * 3)}" fill="${col}" opacity="${f1(op * 0.3)}" filter="url(#blur6)"/>`);
-  particles.push(`<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r)}" fill="${col}" opacity="${f1(op)}"/>`);
-}
+]);
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
@@ -152,15 +92,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" 
     <stop offset="0.6" stop-color="#67e8f9" stop-opacity="0.5"/>
     <stop offset="1" stop-color="#67e8f9" stop-opacity="0"/>
   </linearGradient>
-  <filter id="blur120" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="120"/></filter>
-  <filter id="blur90" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="90"/></filter>
-  <filter id="blur60" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="60"/></filter>
-  <filter id="blur10" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter>
-  <filter id="blur6" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
-  <filter id="grain" x="0" y="0" width="100%" height="100%">
-    <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
-    <feColorMatrix type="saturate" values="0"/>
-  </filter>
+${FILTER_DEFS}
 </defs>
 
 <rect width="${W}" height="${H}" fill="url(#base)"/>
@@ -191,8 +123,6 @@ const COPY = {
   en: {tagline: 'A Twitch chatbot that grows with you', chips: ['Commands', 'TTS', 'Moderation', 'Analytics', 'Alerts & overlays']},
   es: {tagline: 'Un chatbot de Twitch que crece contigo', chips: ['Comandos', 'TTS', 'Moderación', 'Analíticas', 'Alertas y overlays']},
 };
-const mark = `data:image/png;base64,${readFileSync(resolve(BRAND, 'mark-on-dark.png')).toString('base64')}`;
-const FONTS = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@400;500;600;700&display=block';
 const brandHtml = lang => `
 <div class="brand">
   <div class="mark"><img src="${mark}" alt=""></div>
@@ -226,11 +156,7 @@ const pageFor = lang => `<!doctype html><html lang="${lang}"><head><meta charset
 if (DEBUG) writeFileSync(resolve(OUT, 'banner.svg'), svg);
 
 const browser = await chromium.launch({args: ['--no-sandbox', '--disable-dev-shm-usage']});
-async function fontsReady(page) {
-  const faces = ['700 80px "Playfair Display"', '400 34px "Playfair Display"', '500 24px "Space Grotesk"', '600 14px "Space Grotesk"'];
-  const ok = await page.evaluate(async faces => { await Promise.all(faces.map(f => document.fonts.load(f))); await document.fonts.ready; return faces.every(f => document.fonts.check(f)); }, faces);
-  if (!ok) throw new Error('web fonts did not load');
-}
+const fontsReady = page => fontsReadyFor(page, ['700 80px "Playfair Display"', '400 34px "Playfair Display"', '500 24px "Space Grotesk"', '600 14px "Space Grotesk"']);
 const SIZES = HIRES ? [[1, '1500x500'], [2, '3000x1000']] : [[1, '1500x500']];
 for (const lang of ['en', 'es']) for (const [scale, size] of SIZES) {
   const page = await browser.newPage({viewport: {width: W, height: H}, deviceScaleFactor: scale});
@@ -241,7 +167,7 @@ for (const lang of ['en', 'es']) for (const [scale, size] of SIZES) {
   await page.close();
 }
 if (DEBUG) { // wordmark fidelity check: official PNG next to the typeset version
-  const wm = `data:image/png;base64,${readFileSync(resolve(BRAND, 'wordmark-on-dark.png')).toString('base64')}`;
+  const wm = wordmarkPng;
   const page = await browser.newPage({viewport: {width: 1100, height: 260}, deviceScaleFactor: 1});
   await page.setContent(`<!doctype html><html><head><link rel="stylesheet" href="${FONTS}"><style>${css} body{display:flex;gap:40px;align-items:center;padding:20px;color:#fff;font:13px system-ui}</style></head><body><div>official PNG (x2.5)<br><img src="${wm}" width="670"></div><div>typeset<br><div class="name">DomDimaBot</div><div class="sub">Stream Companion</div></div></body></html>`, {waitUntil: 'networkidle'});
   await fontsReady(page);
