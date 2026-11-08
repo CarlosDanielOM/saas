@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "phase": "real_development",
+  "models": [
+    "typesafe/jev-1.13",
+    "openai/gpt-6-luna-decisions"
+  ],
+  "repeats": 2,
+  "seed": 202611086,
+  "variants": {
+    "baseline": {
+      "kind": "baseline"
+    },
+    "policy_v2": "../tuning/policy_v2.json",
+    "concise_v3": "luna-concise-v3.json",
+    "fewshot_v4": "../results/2026-11-08-real-chat/config/luna-fewshot-v4.json"
+  },
+  "model_variants": {
+    "typesafe/jev-1.13": [
+      "baseline"
+    ],
+    "openai/gpt-6-luna-decisions": [
+      "baseline",
+      "policy_v2",
+      "concise_v3",
+      "fewshot_v4"
+    ]
+  },
+  "cases_file": "../results/2026-11-08-real-chat/review/development-cases.json",
+  "contracts_module": "contracts.py",
+  "selection_rule": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise",
+  "real_heldout_sha256": "93d7555a99a9041b4fb95ca411eeb0b664800e59b69b61e48e955d50d7480018",
+  "note": "Only Luna tuned. Jev uses unchanged production prompt. No heldout content or model outcomes used in candidate construction. Labels provisional AI consensus; no moderator ground truth. Cases and example source content remain private and untracked."
+}

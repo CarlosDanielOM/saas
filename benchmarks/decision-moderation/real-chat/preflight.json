@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "native_baseline_request_comparisons": 474,
+  "native_mismatches": 0,
+  "development_cases": 237,
+  "real_development": 177,
+  "synthetic_guardrail_development": 60,
+  "planned_development_calls": 2370,
+  "models": [
+    "typesafe/jev-1.13",
+    "openai/gpt-6-luna-decisions"
+  ],
+  "heldout_real_cases": 113,
+  "heldout_real_positives": 0,
+  "fresh_challenge_cases": 74,
+  "fresh_challenge_positives": 34,
+  "fresh_challenge_benign": 40,
+  "examples": 8,
+  "example_context_outside_live_chat": true,
+  "labels": "Blind AI consensus, not human moderator labels. Original verdicts withheld.",
+  "chat_state_preserved": true,
+  "real_source_data_committed": false
+}

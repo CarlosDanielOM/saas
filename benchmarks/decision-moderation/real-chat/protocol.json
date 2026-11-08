@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "task": "Improve Luna using reviewed real messages, compete against unchanged Jev1.13",
+  "fixed_parser": {
+    "threshold": 0.85,
+    "deadline_ms_exclusive": 4000,
+    "safe_veto": "highest selected category > 1-unsafe; fail open on ties/late/errors"
+  },
+  "reviewed_real_data": {
+    "source": "Read-only production first-message screening snapshot; original verdicts withheld from two AI reviewers",
+    "scored_real_dev": 177,
+    "real_dev_positive": 12,
+    "real_dev_benign": 165,
+    "heldout_real": "113 benign, zero novel positive campaigns after campaign and previous-target exclusion; measures false positives only",
+    "label_limit": "AI consensus is provisional, not human moderator truth",
+    "split_limit": "Campaign groups disjoint; channels can overlap. No all-traffic or cross-channel accuracy claim."
+  },
+  "development": {
+    "real_cases": 177,
+    "synthetic_guardrails": 60,
+    "positive_cases": 42,
+    "benign_cases": 195,
+    "calls": 2370,
+    "selection": "development: within each evaluation_group returned FP <= baseline, timely TP >= baseline, errors <= baseline; at least one strict overall TP/FP improvement; rank total returned FP ascending, timely TP descending, then variant order; baseline otherwise",
+    "fewshot_examples": 8,
+    "fewshot_source": "Development only; original prediction labels absent; examples in question instructions, never actual chat state"
+  },
+  "sealed_synthetic_challenge": "New independently authored and blindly second-reviewed challenge, consented clear consensus only. Parent sees no case contents before selection freeze. Separate synthetic recall/generalization evidence, not real spam recall.",
+  "final_comparison_gate": {
+    "real_false_positives": "Luna must not have more returned or timely FP than Jev on the real benign heldout",
+    "challenge": "Luna must not have higher FP, fewer timely positive attempts/cases or more errors/late responses than Jev on sealed challenge",
+    "strict_improvement": "At least one FP/TP improvement required; ties retain incumbent Jev. A few-shot gain on training examples is not a win.",
+    "limits": "Cannot establish superior real-spam recall because real heldout has no unseen positive campaigns. Report limited recommendation, retain Jev unless convincing improvement without regressions."
+  },
+  "cost": {
+    "previous_combined_known_usd": 0.91332207,
+    "soft_warning_usd": 1,
+    "action": "Notify when known cumulative benchmark spend exceeds1 USD and continue, as user instructed",
+    "byok": "Add upstream only when is_byok true; unknown cost remains unknown"
+  },
+  "scope": "Offline benchmark only; no production prompt/model/config/deployment/database mutation."
+}

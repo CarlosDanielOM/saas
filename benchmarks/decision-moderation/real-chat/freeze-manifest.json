@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "files": {
+    "contracts.py": "cf74ea897f29ffa4b28f8c5c445160d0008e00946e43b3bb6f42148aea427334",
+    "development-plan.json": "4b155c5cfad8a05f0a9bb5a840d7cb98b7dfc32931a1aa5326e36b671e59def4",
+    "luna-concise-v3.json": "cc7cf81808ae2c62d35d90e300b823a1ae7e87d8fdf6b250bdbdb7543d82e5b3",
+    "preflight.json": "cc34921cf8e8a02eacbe2c348505eaa25fe4ff9a6c545da0645bd88ad68514e5",
+    "protocol.json": "bcdbd2b3cc626866be4d8a1ff4c6fd7c5f02a1756ab4f4d1dcb3bf458f536308",
+    "render_results.py": "ba16bdc620adccd2adfbbeb3a44fb0be55f481ee73f16d9fabae380498eb4f9b",
+    "run_experiment.py": "3a8a45a3c259ad3994d3868c248679f97e5d694597b2358bb6b6b0c5b87a703a",
+    "test_adapters.py": "063f1d360c33fc242136f5b86ccd391aacaf97c6d3f5b37e2971f56add610dc1"
+  },
+  "private_sources": {
+    "real_corpus_snapshot": "1995ee2464c5c82cb605894bdaca00b39d30506abd89c52237112f0f6a1cf92a",
+    "review_labels_a": "bfba2c1058a5410707eb5c746df067d60b4d182f925860b45a659957aedc4bdb",
+    "review_labels_b": "1180dd22a55c76f2fdf506598472ed3fe50c61bc9a006dbde44bda2502e357cc",
+    "real_heldout": "93d7555a99a9041b4fb95ca411eeb0b664800e59b69b61e48e955d50d7480018",
+    "fresh_challenge": "87c1eaff594e6bcf6cca2a48ba13cb3c0f505eb0afbff39aa070ec054cbcc4e7",
+    "development_cases": "37f269d12124f93b5e01e940865ff19c430cc71d31d995f099c50a8d879cde72",
+    "fewshot_candidate": "1e94a44ef933810e61fc802fe579523e4479a80d942737568ef51022af5a09b2"
+  },
+  "note": "Pre-inference freeze. Real messages, labels and few-shot contents stay private outside git; only hashes and generic code/config tracked. No test content used for prompt selection."
+}
