@@ -100,7 +100,7 @@ const DATA = __BENCHMARK_JSON__;
   const number = (n) => typeof n === 'number' && Number.isFinite(n);
   const integer = (n) => number(n) ? n.toLocaleString('en-US') : 'unavailable';
   const rows = DATA.rows;
-  const groupOrder = ['fresh_validation', 'legacy_regression', 'expanded_development', 'obfuscation_development'];
+  const groupOrder = Object.keys(DATA.groups || {});
   const groups = DATA.groups || {};
   const el = (tag, className, content) => {
     const node = document.createElement(tag);

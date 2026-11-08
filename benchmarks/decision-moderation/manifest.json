@@ -4,9 +4,19 @@
     ".gitattributes": "12ec559e2d3b4cec99b1987dd728d4a77111cb5b15733d6a0c2cec72c825669a",
     ".gitignore": "dbaf56785d97941e8797254e3e7a35ae7565ae714b146dbdd806b1d59b635d0a",
     "EXECUTION.md": "7f8438977ecf487603f4a40359829cf9af961ac0e4989d59026d283f6376faf6",
-    "README.md": "b6f81cc95dece2f3a76b5814ab3a31a4f28077ac0c97b140f124772919ae2101",
+    "README.md": "7796d4b214bac84e6950f93e4d163571edf07a8ace5ba711da192855ea60dfe2",
     "REPORT-2026-11-08.md": "e58e787145a61697b8619c90f29b171c64000de457143ceefa99f0a2005991c0",
     "RUBRIC.md": "ba5f1f0d5af4b39e6fb3bd6fd704becff2f944c128bd35a2923ddbf56d48515d",
+    "informal-chat/README.md": "3cf959e35b9129b70ed9a5b9db32d3e8b8a811396b771e13c00354e3690e3145",
+    "informal-chat/REPORT-2026-11-08.md": "353885185bf4e279fefab4b43d0388867056d79da4ca563f9ad77e51bf9d25a6",
+    "informal-chat/cases.json": "b502453e0026713accd19740c6d8fb1c31ab83f51a6b75b79766604227fb0c59",
+    "informal-chat/fixture-notes.md": "8fe3b4fa32a9c92139955df7cb53ee5750b95b8d9a94e0666c4bdbc2bcd03dd7",
+    "informal-chat/freeze-manifest.json": "ad2d4a76bbd4dc66585e9c953a0de54906337a8545d0fadba1366d5ab97e9458",
+    "informal-chat/input-visibility.json": "c4da022931cfc5f9130c59da0d92504683fd4f04f610f087a560ae89a94e1242",
+    "informal-chat/plan.json": "d104fbb6d6968735d0b4f3eee6884bf7942362433e3ef30ff7bbc9cd6c226132",
+    "informal-chat/preflight.json": "6e2ecf2226bdb4d2f78ff998a9693a3c913e6bfe3713d7a7617c6b9e4def2673",
+    "informal-chat/render_results.py": "df185173ec862cae87dfa0742ec627b5d0b306d39f21b6f759a133cec04953fd",
+    "informal-chat/visibility-diagnostics.json": "f72c5d09672f610d51cd2ec3bd1520b80cc0e2d6cf9c69f9b49c72d89039d1f8",
     "legacy/cases.json": "7fe5a4bf6a410f68155a1ee32c114bf186fe7d2be74ef5f3b17dc2ce710c38f5",
     "legacy/native-parser.ts": "d565c0b8c1a9c48d04ec153efb165bf4551eeeffed0a90655b80c7bd192e080f",
     "legacy/native_contract.py": "726ce241361cbabbc479c02978d8d1928f1b5f9f26c96663bb694e93c0a1f5e2",
@@ -29,7 +39,7 @@
     "tuning/REPORT-2026-11-08.md": "923015c9bb1f5b74f9d6eed4b77358eb0bb545b3bb396ea9a23ea79fbbf0d9a2",
     "tuning/audit.py": "c7d3c17220acc58b7418576675ebe32269d00862ef46e987acd25fd28588f705",
     "tuning/baseline.json": "a71ae4da36d5db4c06acaf72d4d72682b5a083f50de74373387420c7c0fc9dde",
-    "tuning/comparison-template.html": "04502d76221968c75e3760651190016092f9bac2881fbb22f7be4a6e7e7efe41",
+    "tuning/comparison-template.html": "ce72d08478a5d7ca24150109e813198eec1284f2389ad1edd4414e50fd0a90b7",
     "tuning/context_v1.json": "15c7ca7320f664c86cb8e5ffe2607a50ba565442cab10ab9a92b996103ac6f0d",
     "tuning/contracts.py": "7e6e116cc63e01125416efa5c9655f2a39e685328a92f58f512125f746d01b07",
     "tuning/development-cases.json": "b640b2a42e73a48cc678a2c3e5d05b458bfe476d1895851c7b219181beef41af",
@@ -58,7 +68,9 @@
     "dimabot/src/utils/moderation/semantic.ts": "8e14987048727194d8e55b48f5c0890a0984c3fd1fa4634488c8758d1a835e25",
     "dimabot/src/utils/moderation/advanced.ts": "e88c52a8662a1531bdca981129e91f9cfe3b84c2543f11d38584652aede8a4d7",
     "dimabot/src/handlers/moderation.handler.ts": "2b57bbd962c25bd1f552a52c9d1d215bc052886ca0b1f0c88109383f988c8e52",
-    "dimabot/src/utils/ai/openrouter/app_attribution.util.ts": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c"
+    "dimabot/src/utils/ai/openrouter/app_attribution.util.ts": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c",
+    "dimabot/src/handlers/message.handler.ts": "320dcd23a2a5361a61ead691f4b90ffcac05eb1636a81d32b9254b236f3e4f68",
+    "dimabot/src/classes/chat_history.ts": "f121a5eb00732c99ff335bcb4cdad442768e1dff57b11d73c9c85066706b2e82"
   },
-  "note": "Workspace kit refreshed after completed baseline and three-model prompt tuning. Excludes manifest self-reference and generated caches/results/exports. Original completed runs preserve their pre-inference inputs and source/request snapshots; this workspace refresh does not alter frozen labels, requests, responses or selection. Source hashes unchanged. No secrets or raw model responses included in this manifest."
+  "note": "Workspace refreshed after baseline, tuning and fixed-prompt informal-chat validation. Completed runs retain immutable inputs, request snapshots and outcomes. Frozen prompt/corpus manifests remain unchanged. Generated results, exports, caches and this manifest self-reference excluded; no secrets or raw model responses in this manifest."
 }
