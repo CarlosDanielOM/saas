@@ -24,6 +24,16 @@ def response(case, model, frozen, aid, su, phase, byok=False, upstream=.2):
 
 
 class SummaryTests(unittest.TestCase):
+    def test_variant_latency_and_late_positive_judgment(self):
+        case = {'id':'positive','expected':True,'categories':['spam'],'variant':'obfuscated'}
+        row = {'latency_ms':4000,'http_status':200,'raw':raw(.9,.9),'error':None}
+        observed = {('model','obfuscation','positive',1):{'row':row,'result':a.classify(row,case,suite)}}
+        data = a.slices([case],observed,'model','obfuscation',suite)['variant']['obfuscated']
+        self.assertEqual(data['timely_tp_attempts'],0)
+        self.assertEqual(data['returned_tp_attempts'],1)
+        self.assertEqual(data['latency_ms']['p95'],4000)
+        self.assertEqual(data['missing_attempts'],2)
+
     def test_deadline_errors_and_byok(self):
         case={'categories':['spam']}; row={'latency_ms':4000,'http_status':200,'raw':raw(.9,.9),'error':None}
         result=a.classify(row,case,suite)

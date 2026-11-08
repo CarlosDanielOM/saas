@@ -113,6 +113,7 @@ def metrics(cases, observed, model, suite, s):
     result = {'cases': len(cases), 'scheduled_attempts': len(records), 'scheduled_positive_attempts': pos,
               'scheduled_benign_attempts': neg, 'observed_attempts': len(present), 'missing_attempts': len(records)-len(present),
               'timely_tp_attempts': sum(c['expected'] and r['result']['timely_ban'] for c, r in present),
+              'returned_tp_attempts': sum(c['expected'] and r['result']['returned_ban'] for c, r in present),
               'timely_fp_attempts': sum(not c['expected'] and r['result']['timely_ban'] for c, r in present),
               'returned_fp_attempts': sum(not c['expected'] and r['result']['returned_ban'] for c, r in present),
               'timely_tp_case_ids': tp, 'timely_fp_case_ids': tfp, 'returned_fp_case_ids': rfp,
@@ -145,7 +146,9 @@ def slices(cases, observed, model, suite, s):
             subset = [c for c in cases if v in c.get(key, [])] if key == 'categories' else [c for c in cases if c.get(key, 'unspecified') == v]
             m = metrics(subset, observed, model, suite, s)
             result[key][v] = {k:m[k] for k in ('cases','scheduled_attempts','missing_attempts','timely_tp_attempts',
-                                                 'timely_fp_attempts','returned_fp_attempts','chart')}
+                                                 'returned_tp_attempts','timely_fp_attempts','returned_fp_attempts',
+                                                 'latency_ms','transport_errors','http_errors','invalid_responses',
+                                                 'valid_responses','deadline_failures','chart')}
     return result
 
 
