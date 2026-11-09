@@ -156,6 +156,13 @@ export class DevMockIndexComponent {
       translated: true
     },
     {
+      id: 'landing-redesign',
+      title: 'Landing · Redesign',
+      badge: 'One page from the three · for approval',
+      description:
+        'The stream that plays each feature, then "what do you use today?", four things most bots don\'t do, three setup steps beside the real dashboard on a phone, plans and questions. No tip page claims.'
+    },
+    {
       id: 'landing-showcase',
       title: 'Landing · Showcase',
       badge: 'See what it does · for approval',

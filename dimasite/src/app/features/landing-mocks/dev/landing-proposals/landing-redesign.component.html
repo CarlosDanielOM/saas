@@ -1,0 +1,199 @@
+<app-lp-chrome [links]="links()">
+  <div class="lp-main">
+    <!-- 1. See it -->
+    <section class="rd-hero" id="see" aria-labelledby="rd-title">
+      <div class="rd-intro">
+        <div class="rd-intro__copy">
+          <p class="lp-kicker">{{ c.t('showcase.kicker') }}</p>
+          <h1 class="lp-title" id="rd-title">{{ c.t('showcase.title') }} <span>{{ c.t('showcase.titleAccent') }}</span></h1>
+          <p class="lp-copy">{{ c.t('showcase.copy') }}</p>
+        </div>
+        <div class="rd-intro__side">
+          <button type="button" class="lp-btn lp-btn--primary rd-cta" (click)="live.start()">{{ c.t('nav.loginLong') }}</button>
+          <ul class="lp-checks">
+            <li><lucide-icon class="lp-ico" [name]="icons.check" aria-hidden="true" />{{ c.t('common.checkFree') }}</li>
+            <li><lucide-icon class="lp-ico" [name]="icons.check" aria-hidden="true" />{{ c.t('common.checkTime') }}</li>
+            <li><lucide-icon class="lp-ico" [name]="icons.check" aria-hidden="true" />{{ c.t('common.checkLang') }}</li>
+          </ul>
+          @if (live.stats().messagesReceived > 0) {
+            <p class="lp-proof"><strong>{{ c.number(live.stats().messagesReceived) }}</strong> {{ c.t('common.messages') }}</p>
+          }
+        </div>
+      </div>
+
+      <div class="lp-tile rd-stage">
+        <app-lp-stage />
+      </div>
+
+      <app-lp-live-strip />
+    </section>
+
+    <!-- 2. Why switch -->
+    <section class="rd-switch" id="switch" aria-labelledby="rd-switch-title">
+      <div class="rd-switch__intro">
+        <p class="lp-kicker">{{ c.t('switch.kicker') }}</p>
+        <h2 class="lp-h2" id="rd-switch-title">{{ c.t('redesign.switchTitle') }}</h2>
+        <p class="lp-copy">{{ c.t('redesign.switchCopy') }}</p>
+        <ul class="rd-notes">
+          <li>
+            <span class="lp-feature__icon"><lucide-icon class="lp-ico" [name]="icons.both" aria-hidden="true" /></span>
+            <div><strong>{{ c.t('switch.m1Title') }}</strong><p>{{ c.t('switch.m1Copy') }}</p></div>
+          </li>
+          <li>
+            <span class="lp-feature__icon"><lucide-icon class="lp-ico" [name]="icons.commands" aria-hidden="true" /></span>
+            <div><strong>{{ c.t('switch.m2Title') }}</strong><p>{{ c.t('switch.m2Copy') }}</p></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="lp-tile rd-picker">
+        <div class="rd-picker__head">
+          <h3 class="lp-h3">{{ c.t('switch.pickTitle') }}</h3>
+          <p class="lp-note">{{ c.t('switch.pickHint') }}</p>
+        </div>
+        <div class="rd-uses" role="group" [attr.aria-label]="c.t('switch.pickTitle')">
+          @for (key of uses; track key) {
+            <button type="button" class="lp-chipbtn rd-use" [attr.aria-pressed]="isPicked(key)" (click)="toggle(key)">
+              @if (isPicked(key)) { <lucide-icon class="lp-ico" [name]="icons.check" aria-hidden="true" /> }
+              {{ c.t('switch.uses.' + key) }}
+            </button>
+          }
+        </div>
+
+        <p class="rd-summary" aria-live="polite">{{ summary() }}</p>
+
+        @if (covered().length) {
+          <div class="rd-cover">
+            <p class="rd-cover__title">{{ c.t('switch.coveredTitle') }}</p>
+            <ul class="rd-rows">
+              @for (row of covered(); track row.key) {
+                <li>
+                  <span class="rd-rows__from">{{ row.label }}</span>
+                  <span class="rd-rows__to">
+                    @for (cv of row.covers; track cv.name) {
+                      <span class="rd-mod">
+                        {{ cv.name }}
+                        <span class="lp-chip" [class.lp-chip--free]="cv.plan === 'free'" [class.lp-chip--gold]="cv.plan !== 'free'">{{ c.t('common.' + cv.plan) }}</span>
+                      </span>
+                    }
+                  </span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- 3. Beyond the basics -->
+    <section class="lp-section" id="beyond" aria-labelledby="rd-beyond-title">
+      <div class="lp-section__head">
+        <p class="lp-kicker">{{ c.t('switch.beyondKicker') }}</p>
+        <h2 class="lp-h2" id="rd-beyond-title">{{ c.t('switch.beyondTitle') }}</h2>
+      </div>
+      <div class="rd-beyond" role="group" aria-labelledby="rd-beyond-title" [attr.tabindex]="narrow() ? 0 : null">
+        <article class="lp-tile lp-feature rd-b">
+          <div class="rd-demo rd-demo--chat" aria-hidden="true">
+            <span class="rd-demo__q">&#64;DomDimaBot …?</span>
+            <span class="rd-demo__a">{{ c.t('switch.b1Demo') }}</span>
+          </div>
+          <h3 class="lp-h3">{{ c.t('switch.b1Title') }}</h3>
+          <p class="lp-copy">{{ c.t('switch.b1Copy') }}</p>
+          <p class="rd-tags">
+            <span class="lp-chip lp-chip--free">{{ c.t('common.free') }}</span>
+            <span class="lp-chip lp-chip--gold">{{ c.t('common.credits') }}</span>
+          </p>
+        </article>
+        <article class="lp-tile lp-feature rd-b">
+          <div class="rd-demo rd-demo--bars" aria-hidden="true">
+            @for (h of floodBars; track $index) { <i [style.height.%]="h" [class.hot]="h > 50"></i> }
+            <span>{{ c.t('switch.b2Demo') }}</span>
+          </div>
+          <h3 class="lp-h3">{{ c.t('switch.b2Title') }}</h3>
+          <p class="lp-copy">{{ c.t('switch.b2Copy') }}</p>
+          <span class="lp-chip lp-chip--free">{{ c.t('common.free') }}</span>
+        </article>
+        <article class="lp-tile lp-feature rd-b">
+          <div class="rd-demo rd-demo--clips" aria-hidden="true">
+            <div class="rd-demo__track"><i style="left: 18%"></i><i style="left: 52%"></i><i style="left: 81%"></i></div>
+            <span>{{ c.t('switch.b3Demo') }}</span>
+          </div>
+          <h3 class="lp-h3">{{ c.t('switch.b3Title') }}</h3>
+          <p class="lp-copy">{{ c.t('switch.b3Copy') }}</p>
+          <span class="lp-chip lp-chip--gold">{{ c.t('common.credits') }}</span>
+        </article>
+        <article class="lp-tile lp-feature rd-b">
+          <div class="rd-demo rd-demo--recap" aria-hidden="true">
+            <strong>{{ c.t('switch.b4Demo') }}</strong>
+            <i></i><i></i><i class="short"></i>
+          </div>
+          <h3 class="lp-h3">{{ c.t('switch.b4Title') }}</h3>
+          <p class="lp-copy">{{ c.t('switch.b4Copy') }}</p>
+          <span class="lp-chip lp-chip--free">{{ c.t('common.free') }}</span>
+        </article>
+      </div>
+    </section>
+
+    <!-- 4. Get started + the real dashboard -->
+    <section class="lp-tile rd-start" id="start" aria-labelledby="rd-start-title">
+      <div class="rd-start__copy">
+        <div class="lp-section__head">
+          <p class="lp-kicker">{{ c.t('showcase.startKicker') }}</p>
+          <h2 class="lp-h2" id="rd-start-title">{{ c.t('showcase.startTitle') }}</h2>
+        </div>
+        <ol class="lp-steps">
+          <li><strong>{{ c.t('showcase.s1') }}</strong><p>{{ c.t('showcase.s1Copy') }}</p></li>
+          <li><strong>{{ c.t('showcase.s2') }}</strong><p>{{ c.t('showcase.s2Copy') }}</p></li>
+          <li><strong>{{ c.t('showcase.s3') }}</strong><p>{{ c.t('showcase.s3Copy') }}</p></li>
+        </ol>
+        <div class="rd-after">
+          <h3 class="lp-h3">{{ c.t('redesign.phoneTitle') }}</h3>
+          <p class="lp-copy">{{ c.t('redesign.phoneCopy') }}</p>
+        </div>
+        <button type="button" class="lp-btn lp-btn--primary rd-cta" (click)="live.start()">{{ c.t('nav.loginLong') }}</button>
+      </div>
+
+      <figure class="rd-phone">
+        <div class="rd-phone__frame">
+          @if (c.lang() === 'es') {
+            <img ngSrc="/assets/landing/dashboard-phone-es.jpg" width="780" height="1600" [alt]="c.t('redesign.phoneAlt')" />
+          } @else {
+            <img ngSrc="/assets/landing/dashboard-phone-en.jpg" width="780" height="1600" [alt]="c.t('redesign.phoneAlt')" />
+          }
+        </div>
+        <figcaption class="lp-note">{{ c.t('redesign.phoneCaption') }}</figcaption>
+      </figure>
+    </section>
+
+    <!-- 5. Plans -->
+    <section class="lp-section" id="plans" aria-labelledby="rd-plans-title">
+      <div class="lp-section__head">
+        <p class="lp-kicker">{{ c.t('plans.kicker') }}</p>
+        <h2 class="lp-h2" id="rd-plans-title">{{ c.t('switch.freeTitle', { n: freeModules, total: totalModules }) }}</h2>
+        <p class="lp-copy">{{ c.t('switch.freeCopy') }}</p>
+        <p class="rd-paid">
+          @for (m of paidModules(); track m.id) { <span class="lp-chip lp-chip--gold">{{ m.name }}</span> }
+        </p>
+      </div>
+      <app-lp-plans />
+    </section>
+
+    <!-- 6. Questions -->
+    <section class="lp-section" aria-labelledby="rd-faq-title">
+      <h2 class="lp-h2" id="rd-faq-title">{{ c.t('redesign.faqTitle') }}</h2>
+      <div class="lp-faq">
+        @for (n of faq; track n) {
+          <details class="lp-tile"><summary>{{ c.t('redesign.q' + n) }}</summary><p>{{ c.t('redesign.a' + n) }}</p></details>
+        }
+      </div>
+    </section>
+
+    <section class="lp-cta" aria-labelledby="rd-cta-title">
+      <div>
+        <h2 id="rd-cta-title">{{ c.t('switch.ctaTitle') }}</h2>
+        <p>{{ c.t('switch.ctaCopy') }}</p>
+      </div>
+      <button type="button" class="lp-btn" (click)="live.start()">{{ c.t('nav.loginLong') }}</button>
+    </section>
+  </div>
+</app-lp-chrome>

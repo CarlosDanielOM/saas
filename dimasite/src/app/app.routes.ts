@@ -380,6 +380,14 @@ export const routes: Routes = [
         title: 'Demo Video Player | DomDimaBot'
       },
       {
+        path: 'landing-redesign',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/landing-proposals/landing-redesign.component').then(
+            (m) => m.LandingRedesignComponent
+          ),
+        title: 'DomDimaBot · Twitch bot, alerts and AI co-host'
+      },
+      {
         path: 'landing-showcase',
         loadComponent: () =>
           import('./features/landing-mocks/dev/landing-proposals/landing-showcase.component').then(

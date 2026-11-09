@@ -1,0 +1,443 @@
+/* 1. Hero: pitch + action, then the stream that plays every feature */
+.rd-hero {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.rd-intro {
+  display: grid;
+  gap: 1rem;
+  padding: 0.5rem 0 0;
+}
+
+.rd-intro__copy {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 44rem;
+}
+
+.rd-intro__copy .lp-kicker {
+  margin: 0;
+}
+
+.rd-intro__side {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+.rd-cta {
+  width: 100%;
+}
+
+.rd-intro__side .lp-checks {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.rd-stage {
+  padding: 0.75rem;
+}
+
+/* 2. Why switch: honest notes on the left, the tool picker on the right */
+.rd-switch {
+  display: grid;
+  gap: 1rem;
+}
+
+.rd-switch__intro {
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+}
+
+.rd-switch__intro .lp-kicker {
+  margin: 0;
+}
+
+.rd-notes {
+  display: grid;
+  gap: 0;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rd-notes li {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 0.85rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.rd-notes strong {
+  font-size: 0.95rem;
+}
+
+.rd-notes p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.rd-picker {
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+}
+
+.rd-picker__head {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.rd-uses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.rd-use {
+  font-size: 0.84rem;
+}
+
+.rd-summary {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.9rem;
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-weight: 750;
+  font-size: 0.92rem;
+}
+
+.rd-cover {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.rd-cover__title {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rd-rows {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rd-rows li {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.88rem;
+}
+
+.rd-rows__from {
+  color: var(--muted);
+}
+
+.rd-rows__to {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+  font-weight: 700;
+}
+
+.rd-mod {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* 3. Beyond the basics: small static demos. Phones swipe through them; wider screens get a grid. */
+.rd-beyond {
+  display: flex;
+  gap: 0.75rem;
+  margin-inline: -1rem;
+  padding: 0 1rem 0.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 1rem;
+  scrollbar-width: none;
+}
+
+.rd-beyond::-webkit-scrollbar {
+  display: none;
+}
+
+.rd-beyond:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.rd-beyond > .rd-b {
+  flex: 0 0 82%;
+  scroll-snap-align: start;
+}
+
+.rd-b > .lp-chip {
+  justify-self: start;
+}
+
+.rd-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.rd-demo {
+  position: relative;
+  height: 6.5rem;
+  border-radius: 0.9rem;
+  background: var(--tile-2);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  font-size: 0.78rem;
+}
+
+.rd-demo--chat {
+  display: grid;
+  align-content: center;
+  gap: 0.35rem;
+  padding: 0.7rem;
+}
+
+.rd-demo__q,
+.rd-demo__a {
+  justify-self: start;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.7rem;
+  background: var(--btn);
+  font-weight: 650;
+}
+
+.rd-demo__a {
+  justify-self: end;
+  background: #7c3aed;
+  color: #fff;
+}
+
+.rd-demo--bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6%;
+  padding: 1.6rem 0.8rem 0.6rem;
+}
+
+.rd-demo--bars i {
+  flex: 1;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent-soft);
+}
+
+.rd-demo--bars i.hot {
+  background: var(--warn);
+}
+
+.rd-demo--bars span,
+.rd-demo--clips span {
+  position: absolute;
+  left: 0.7rem;
+  top: 0.5rem;
+  font-weight: 750;
+  color: var(--fg);
+}
+
+.rd-demo--clips {
+  display: grid;
+  align-items: center;
+  padding: 1.6rem 0.8rem 0.6rem;
+}
+
+.rd-demo__track {
+  position: relative;
+  height: 1.6rem;
+  border-radius: 0.5rem;
+  background: repeating-linear-gradient(90deg, var(--btn) 0 10%, var(--tile) 10% 10.6%);
+}
+
+.rd-demo__track i {
+  position: absolute;
+  top: -0.3rem;
+  bottom: -0.3rem;
+  width: 0.5rem;
+  border-radius: 99px;
+  background: #7c3aed;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.rd-demo--recap {
+  display: grid;
+  align-content: center;
+  gap: 0.4rem;
+  padding: 0.8rem;
+}
+
+.rd-demo--recap strong {
+  color: var(--ok);
+  font-size: 0.82rem;
+}
+
+.rd-demo--recap i {
+  height: 0.45rem;
+  border-radius: 99px;
+  background: var(--btn);
+}
+
+.rd-demo--recap i.short {
+  width: 60%;
+}
+
+/* 4. Get started next to the real dashboard on a phone */
+.rd-start {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.25rem 1.1rem;
+  overflow: hidden;
+  background:
+    radial-gradient(420px 260px at 100% 0%, var(--accent-soft), transparent 70%),
+    var(--tile);
+}
+
+.rd-start__copy {
+  display: grid;
+  gap: 1.1rem;
+  align-content: center;
+}
+
+.rd-start .lp-steps {
+  gap: 0.9rem;
+}
+
+.rd-after {
+  display: grid;
+  gap: 0.3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.rd-phone {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: center;
+  margin: 0;
+}
+
+/* A phone showing the first screen of the real dashboard. The device stays dark in both themes. */
+.rd-phone__frame {
+  width: min(100%, 15.5rem);
+  aspect-ratio: 390 / 610;
+  padding: 0.45rem;
+  border-radius: 2.1rem;
+  background: #07080b;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 50px rgba(8, 6, 20, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.rd-phone__frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 1.7rem;
+  object-fit: cover;
+  object-position: top;
+}
+
+.rd-phone figcaption {
+  text-align: center;
+}
+
+.rd-paid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0;
+}
+
+@media (min-width: 640px) {
+  .rd-cta {
+    width: auto;
+    justify-self: start;
+  }
+
+  .rd-intro__side .lp-checks {
+    display: flex;
+  }
+
+  .rd-rows li {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+    align-items: center;
+  }
+
+  .rd-beyond {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-inline: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .rd-start {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    align-items: center;
+    padding: 1.75rem;
+  }
+
+  .rd-phone__frame {
+    width: min(100%, 17rem);
+    aspect-ratio: 390 / 760;
+  }
+}
+
+@media (min-width: 960px) {
+  .rd-intro {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 2rem;
+    padding-top: 1rem;
+  }
+
+  .rd-intro__side .lp-checks {
+    display: grid;
+  }
+
+  .rd-stage {
+    padding: 1rem;
+  }
+
+  .rd-beyond {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .rd-switch {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 2.5rem;
+    align-items: start;
+  }
+
+  .rd-switch__intro {
+    padding-top: 0.75rem;
+  }
+
+  .rd-start {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: 3rem;
+    padding: 2.25rem 2.5rem;
+  }
+
+  .rd-phone__frame {
+    width: 18rem;
+  }
+}
