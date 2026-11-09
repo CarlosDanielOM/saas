@@ -3782,6 +3782,7 @@
       "permissions": "Loading channel permissions",
       "dashboard": "Preparing dashboard data",
       "redirecting": "Redirecting to your dashboard",
+      "returning": "Opening the page you asked for",
       "error": "Couldn’t finish sign-in"
     },
     "toast": {

@@ -8,6 +8,7 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { LanguageService } from '../../services/language.service';
 import { ThemeService } from '../../services/theme.service';
 import { environment } from '../../../environments/environment';
+import { rememberLoginReturn } from '../../shared/utils/login-return.util';
 
 interface NamedChannels { channelNames?: Record<string, string | null> }
 interface Summary { count: number; average: number | null; p50: number | null; p95: number | null; p99: number | null; errors: number; max: number }
@@ -157,7 +158,7 @@ export class ObservabilityPageComponent implements OnInit {
   bytes(value:number):string { if(value<1024)return `${value.toFixed(0)} B`;if(value<1048576)return `${(value/1024).toFixed(1)} KiB`;if(value<1073741824)return `${(value/1048576).toFixed(1)} MiB`;return `${(value/1073741824).toFixed(2)} GiB`; }
   resourceValue(row:Resource|Group):string {const value='value'in row?row.value:row.lastValue;return /bytes|Size|^(used_memory|used_memory_rss|maxmemory)$/.test(row.name)?this.bytes(value):`${value.toFixed(2)}${row.name.endsWith('_ms')?' ms':''}`;}
   fields(log:Log):string{return Object.entries(log.fields).map(([k,v])=>`${k}: ${v}`).join(' · ');}
-  login():void {sessionStorage.setItem('dimasite.observability-return','1');void this.router.navigate(['/login']);}
+  login():void {rememberLoginReturn(this.router.url);void this.router.navigate(['/login']);}
   async confirmAccess():Promise<void>{
     const action=this.confirmation();if(!action)return;this.saving.set(true);this.notice.set('');
     try{

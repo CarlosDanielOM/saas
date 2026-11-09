@@ -3782,6 +3782,7 @@
       "permissions": "Cargando permisos del canal",
       "dashboard": "Preparando datos del panel",
       "redirecting": "Redirigiendo a tu panel",
+      "returning": "Abriendo la página que pediste",
       "error": "No se pudo completar el acceso"
     },
     "toast": {

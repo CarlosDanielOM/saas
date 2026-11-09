@@ -1,15 +1,19 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, UrlTree } from '@angular/router';
 
+import { rememberLoginReturn } from '../shared/utils/login-return.util';
+
 /**
  * Maps a failed auth/permission request to an error page, or null when the caller
- * should keep its own fallback. `from` lets 500/503 retry the page that failed.
+ * should keep its own fallback. `from` lets 500/503 retry the page that failed,
+ * and after a 401 the next sign-in returns to it.
  */
 export function errorPageForRequest(router: Router, error: unknown, from: string): UrlTree | null {
   if (!(error instanceof HttpErrorResponse)) {
     return null;
   }
   if (error.status === 401) {
+    rememberLoginReturn(from);
     return router.createUrlTree(['/401'], { queryParams: { reason: 'expired' } });
   }
   if (error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504) {

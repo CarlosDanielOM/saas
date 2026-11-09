@@ -16,6 +16,7 @@ import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { Check, LucideAngularModule, Moon, Sun, X } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { consumeOAuthReturn } from './oauth-return';
+import { clearLoginReturn, consumeLoginReturn } from '../../shared/utils/login-return.util';
 
 import { DashboardApiService } from '../../services/dashboard-api.service';
 import { AnalyticsService } from '../../services/analytics.service';
@@ -56,6 +57,20 @@ const LOG_ERROR_PATTERN = /\b(fail(ed|ure)?|error|mismatch|invalid|cleared|denie
 const LOG_OK_PATTERN = /\b(success|allowed=true|valid=true)\b/i;
 
 const LOGIN_RESET_REDIRECT_DELAY_MS = 3000;
+
+const ADMIN_ORIGIN = 'https://admin.domdimabot.com';
+
+/** The admin site is the only place a session token may be sent; anything else is refused. */
+function adminReturnTo(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  try {
+    return new URL(value).origin === ADMIN_ORIGIN ? ADMIN_ORIGIN : null;
+  } catch {
+    return null;
+  }
+}
 const LOGIN_RESET_TOAST_DURATION_MS = LOGIN_RESET_REDIRECT_DELAY_MS + 200;
 
 @Component({
@@ -113,7 +128,11 @@ export class LoginPageComponent implements OnInit {
     }
   });
 
-  readonly stageLabel = computed(() => this.t(`login.stages.${this.stage()}`));
+  /** Set while opening the page the visitor asked for before sign-in (instead of the dashboard). */
+  private readonly returningToPage = signal(false);
+  readonly stageLabel = computed(() =>
+    this.t(`login.stages.${this.stage() === 'redirecting' && this.returningToPage() ? 'returning' : this.stage()}`)
+  );
 
   readonly isBusy = computed(() => {
     const current = this.stage();
@@ -267,11 +286,7 @@ export class LoginPageComponent implements OnInit {
    * Get admin return URL from query params if present
    */
   private getAdminReturnTo(): string | null {
-    const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
-    if (returnTo && returnTo.includes('admin.domdimabot.com')) {
-      return returnTo;
-    }
-    return null;
+    return adminReturnTo(this.route.snapshot.queryParamMap.get('returnTo'));
   }
 
   private async handleQueryState(query: ParamMap): Promise<void> {
@@ -385,6 +400,7 @@ export class LoginPageComponent implements OnInit {
       sessionEstablished = true;
       const oauthReturn = consumeOAuthReturn();
       if (oauthReturn) {
+        clearLoginReturn();
         await this.router.navigateByUrl(oauthReturn);
         return;
       }
@@ -457,7 +473,7 @@ export class LoginPageComponent implements OnInit {
       }
 
       this.stage.set('dashboard');
-      await this.navigateToDashboard(primaryStreamerLogin, primaryChannel);
+      await this.navigateAfterLogin(primaryStreamerLogin, primaryChannel);
     } catch (error) {
       this.stage.set('error');
 
@@ -503,8 +519,11 @@ export class LoginPageComponent implements OnInit {
     try {
       this.stage.set('validating');
 
+      // This flow hands the session token to another site: the state must be the one this tab
+      // started, and its target must be the admin site.
       const expectedState = this.sessionAuth.consumeOAuthState();
-      if (expectedState && returnedState && expectedState !== returnedState) {
+      const returnTo = adminReturnTo(returnedState?.replace(/^admin-/, ''));
+      if (!expectedState || !returnedState || expectedState !== returnedState || !returnTo) {
         this.stage.set('error');
         this.errorMessage.set(this.t('login.errors.stateMismatch'));
         return;
@@ -532,9 +551,6 @@ export class LoginPageComponent implements OnInit {
 
       this.stage.set('redirecting');
 
-      // Parse the return URL from state (format: admin-{returnUrl})
-      const returnTo = returnedState?.replace(/^admin-/, '') || 'https://admin.domdimabot.com';
-
       // Encode session data for transfer to admin panel
       const sessionData = {
         token: exchange.data.access_token,
@@ -546,6 +562,7 @@ export class LoginPageComponent implements OnInit {
       // Redirect to admin panel with session token
       const adminUrl = new URL('/login', returnTo);
       adminUrl.searchParams.set('token', encodedToken);
+      clearLoginReturn();
       window.location.href = adminUrl.toString();
     } catch (error) {
       this.stage.set('error');
@@ -578,6 +595,7 @@ export class LoginPageComponent implements OnInit {
 
       const oauthReturn = consumeOAuthReturn();
       if (oauthReturn) {
+        clearLoginReturn();
         await this.router.navigateByUrl(oauthReturn);
         return;
       }
@@ -596,7 +614,7 @@ export class LoginPageComponent implements OnInit {
       }
 
       this.pushDebug(`Existing session detected. Navigating to /${streamer}/dashboard`);
-      await this.navigateToDashboard(streamer, channelID);
+      await this.navigateAfterLogin(streamer, channelID);
     } catch (error) {
       this.analytics.capture('auth_failed', {
         source: 'stored_session',
@@ -642,6 +660,7 @@ export class LoginPageComponent implements OnInit {
     }
 
     this.checkoutIntent.clearPendingPlan();
+    clearLoginReturn();
     this.stage.set('redirecting');
     this.pushDebug(`Redirecting to Polar checkout for ${pendingPlan}`);
     this.analytics.capture('checkout_redirected', {
@@ -723,13 +742,27 @@ export class LoginPageComponent implements OnInit {
     this.errorMessage.set(this.t('login.errors.unexpected'));
   }
 
-  private async navigateToDashboard(streamer: string, channelID: string): Promise<void> {
+  /** Opens the page the visitor tried to reach before sign-in (e.g. an email link), else the dashboard. */
+  private async navigateAfterLogin(streamer: string, channelID: string): Promise<void> {
+    const returnPath = consumeLoginReturn();
+    this.returningToPage.set(Boolean(returnPath));
     this.stage.set('redirecting');
-    this.pushDebug(`Navigating to /${streamer}/dashboard (id=${channelID})`);
 
-    const analyticsReturn = sessionStorage.getItem('dimasite.observability-return') === '1';
-    sessionStorage.removeItem('dimasite.observability-return');
-    const didNavigate = await this.router.navigate(analyticsReturn ? ['/observability'] : ['/', streamer, 'dashboard']);
+    if (returnPath) {
+      this.pushDebug(`Returning to ${returnPath}`);
+      // Guards on that page still decide access; their redirect (e.g. 403) resolves this promise.
+      const opened = await this.router.navigateByUrl(returnPath).catch(() => false);
+      // A 404 (e.g. an old email link for a renamed channel) is no better than the dashboard.
+      if (opened && this.router.url.split(/[?#]/)[0] !== '/404') {
+        return;
+      }
+      this.returningToPage.set(false);
+      this.pushDebug(`Could not open ${returnPath}. Opening the dashboard instead.`);
+    }
+
+    this.pushDebug(`Navigating to /${streamer}/dashboard (id=${channelID})`);
+    // replaceUrl so Back doesn't return to a 404 left by the remembered page.
+    const didNavigate = await this.router.navigate(['/', streamer, 'dashboard'], { replaceUrl: Boolean(returnPath) });
     if (!didNavigate) {
       throw new Error(this.t('login.errors.navigationFailed'));
     }

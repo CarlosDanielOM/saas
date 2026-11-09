@@ -3,6 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
 
 import { SessionAuthService } from '../services/session-auth.service';
+import { rememberLoginReturn } from '../shared/utils/login-return.util';
 import { errorPageForRequest } from './error-route';
 
 export const authenticatedGuard: CanActivateFn = (_route, state) => {
@@ -10,6 +11,8 @@ export const authenticatedGuard: CanActivateFn = (_route, state) => {
   const router = inject(Router);
 
   if (!sessionAuth.hasValidSession()) {
+    // Signed-out visitors (e.g. from an email link) come back here after sign-in.
+    rememberLoginReturn(state.url);
     return router.createUrlTree(['/login'], {
       queryParams: {
         debug: 'not_authenticated'
@@ -24,6 +27,7 @@ export const authenticatedGuard: CanActivateFn = (_route, state) => {
       }
 
       sessionAuth.clearSession();
+      rememberLoginReturn(state.url);
       return router.createUrlTree(['/401'], { queryParams: { reason: 'expired' } });
     }),
     catchError((error: unknown) => {
@@ -37,6 +41,7 @@ export const authenticatedGuard: CanActivateFn = (_route, state) => {
       }
 
       sessionAuth.clearSession();
+      rememberLoginReturn(state.url);
       return of(
         router.createUrlTree(['/login'], {
           queryParams: {
