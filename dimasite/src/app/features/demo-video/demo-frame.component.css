@@ -57,6 +57,14 @@
   animation-delay: -4.5s;
 }
 
+/* ── World: what a viewer of the stream sees; the director's camera moves it ─────── */
+.df-world {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transform-origin: 0 0;
+}
+
 /* ── Stream ─────────────────────────────────────────────────────────── */
 .df-stream {
   position: absolute;
@@ -267,10 +275,10 @@
 }
 
 .df-lines {
+  --line-gap: 0.45em;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 0.45em;
   min-height: 0;
   margin: 0;
   padding: 0.9em 0.2em 0.2em;
@@ -279,14 +287,42 @@
   mask-image: linear-gradient(180deg, transparent 0, #000 2.4em);
 }
 
-.ln {
+/* A chat row opens its own height when its line arrives (0fr -> 1fr), so the lines above glide up instead of
+   jumping. The gap between lines lives inside the row and opens with it. The ring and label of a pointed-at line
+   sit on the row, outside the clip. */
+.lnrow {
   position: relative;
   flex: none;
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: row-open 340ms cubic-bezier(0.22, 0.9, 0.28, 1) both;
+}
+
+.lnrow__clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The box of the line itself (the row minus its gap), for the ring and its label. */
+.lnrow__marks {
+  position: absolute;
+  inset: var(--line-gap) 0 0;
+  pointer-events: none;
+}
+
+.ln {
+  position: relative;
+  margin-top: var(--line-gap);
   padding: 0.12em 0.35em;
   border-radius: 8px;
   line-height: 1.42;
   overflow-wrap: anywhere;
-  animation: ln-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: ln-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Background chat sits a touch quieter than the lines the video is about. */
+.lnrow--crowd .ln__text {
+  opacity: 0.86;
 }
 
 .ln--first {
@@ -342,6 +378,36 @@
   color: var(--muted);
   font-style: italic;
   animation: fade-in 220ms ease-out both;
+}
+
+/* Deleting a message: the new wording opens while the old one closes below it (same easing, so the line's height
+   goes straight from the old to the new). The old text is gone after a few frames. */
+.ln__roll {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.ln__rollin {
+  display: block;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ln__roll--now {
+  animation: row-open 300ms cubic-bezier(0.22, 0.9, 0.28, 1) both;
+}
+
+.ln__roll--was {
+  animation: row-close 300ms cubic-bezier(0.22, 0.9, 0.28, 1) both, fade-out 110ms ease-out both;
+}
+
+/* The wording itself cross-fades (old out first, new in right after), so the opening edge never slices sharp text. */
+.ln__roll--now .ln__msg {
+  animation: fade-in 200ms ease-out 50ms both;
+}
+
+.ln__roll .ln__deleted {
+  animation: none;
 }
 
 .ln__event {
@@ -429,6 +495,15 @@
   animation: cap-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both, cap-out 300ms ease-in var(--exit, 2000ms) forwards;
 }
 
+.df-caption__text {
+  display: block;
+}
+
+/* A caption that takes over from another one in the same place doesn't fade in again. */
+.df-caption--swap {
+  animation: cap-out 300ms ease-in var(--exit, 2000ms) forwards;
+}
+
 .df-caption .em {
   color: #e9d5ff;
   background: linear-gradient(transparent 58%, rgba(139, 92, 246, 0.7) 58%, rgba(139, 92, 246, 0.7) 92%, transparent 92%);
@@ -438,10 +513,11 @@
 :host([data-format='vertical']) .df-caption[data-place='top'] { left: 22px; right: 22px; top: 50px; font-size: 27px; }
 :host([data-format='vertical']) .df-caption[data-place='bottom'] { left: 22px; right: 22px; top: 386px; font-size: 23px; }
 /* Landscape: bottom = the band under the stream (it takes the channel row's place, so the stream stays clear while
-   a caption holds); top = over the stream's upper edge. */
+   a caption holds); top = over the stream's upper edge. Narrower than the stream: when the director pushes in on
+   the chat, the chat's left edge comes to x = 620. */
 :host([data-format='landscape']) .df-caption {
   left: 16px;
-  width: 656px;
+  width: 584px;
   padding: 0.38em 0.6em;
   border-radius: 14px;
   background: rgba(12, 9, 22, 0.82);
@@ -464,12 +540,13 @@
   background: radial-gradient(110% 70% at 50% 30%, #1d1336 0%, #0d0b14 65%);
   text-align: center;
   z-index: 20;
-  animation: fade-in 320ms ease-out both, fade-out 320ms ease-in var(--exit, 2000ms) forwards;
+  animation: card-in 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-/* The intro is the first frame (TikTok's default cover): complete from t = 0, it only fades out. */
+/* The intro is the first frame (TikTok's default cover): complete from t = 0, it only leaves. It lifts toward the
+   viewer while the stream behind it settles back into place (the director's hand-over). */
 .df-card[data-kind='intro'] {
-  animation: fade-out 320ms ease-in var(--exit, 2000ms) forwards;
+  animation: card-out 420ms cubic-bezier(0.4, 0, 0.6, 1) var(--exit, 2000ms) forwards;
 }
 
 .df-card[data-kind='intro'] :is(.df-card__mark, .df-card__word, .df-card__title, .df-card__sub) {
@@ -548,7 +625,11 @@
 :host([data-format='vertical']) .df-card__title { font-size: 38px; }
 
 /* ── Motion ───────────────────────────────────────────────────────── */
-@keyframes ln-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes ln-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes row-open { from { grid-template-rows: 0fr; } to { grid-template-rows: 1fr; } }
+@keyframes row-close { from { grid-template-rows: 1fr; } to { grid-template-rows: 0fr; } }
+@keyframes card-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+@keyframes card-out { to { opacity: 0; transform: scale(1.06); } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fade-out { to { opacity: 0; } }
 @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }

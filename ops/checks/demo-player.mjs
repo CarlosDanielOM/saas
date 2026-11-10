@@ -4,7 +4,9 @@
 //   - the browser preview: plays, controls work, phone + desktop, dark + light, no overflow, axe on the controls;
 //   - privacy: the page makes no API, analytics or websocket attempts;
 //   - the recorder contract (window.__dimaDemo): load/validate, scene state at set times for every building block,
-//     nothing animating on its own clock, no page audio, and byte-identical frames on two separate renders.
+//     nothing animating on its own clock, no page audio, and byte-identical frames on two separate renders;
+//   - the natural-motion layer: background chat, chat rows that open smoothly, the director's camera,
+//     the steady caption band and the closing card that holds to the last frame.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -21,9 +23,10 @@ const origin = new URL(base).origin;
 const started = Date.now();
 
 // Every building block, short. Times resolve to: intro 0-1200, m1 1400, a1 1600-4600 (+event, camera),
-// del 3000, t1 4800-6800, r1 7000-11000 (spin 7600-10600), spam 11200, ban 11800 (+bot 12100), d1 12400-..., outro.
+// del 3000, t1 4800-6800, r1 7000-11000 (spin 7600-10600), spam 11200, ban 11800 (+bot 12100), d1 13000-..., outro.
+// The director's chat shot runs 11100-12800 (first-time message to just before the duel).
 const SCENE = {
-  id: 'check', v: 1, seed: 5,
+  id: 'check', v: 2, seed: 5,
   channel: { name: 'check_channel', title: 'Check stream', game: 'Chess', viewers: 3 },
   beats: [
     { do: 'intro', at: 0, dur: 1200, title: { en: 'Check *intro*', es: 'Intro de *prueba*' } },
@@ -40,7 +43,7 @@ const SCENE = {
     { do: 'highlight', with: 'spam', at: '+100', dur: 500, target: 'spam', label: 'First message' },
     { do: 'ban', id: 'ban', with: 'spam', at: '+600', target: 'spam', sfx: { src: 'kit:thud', gain: 0.9 } },
     { do: 'bot', with: 'ban', at: '+300', text: '@promo_bot_9 Selected unwanted chat behavior' },
-    { do: 'duel', id: 'd1', after: 'ban', at: '+600', left: 'viewer_one', right: 'viewer_two' },
+    { do: 'duel', id: 'd1', after: 'ban', at: '+1200', left: 'viewer_one', right: 'viewer_two' },
     { do: 'outro', after: 'd1', at: '+100', dur: 1200, cta: 'domdimabot.com' }
   ]
 };
@@ -157,12 +160,21 @@ async function recorder(format, lang, look) {
   const q = (sel) => page.evaluate((s) => document.querySelector(s)?.textContent?.trim() ?? null, sel);
   const visible = (sel) => page.evaluate((s) => { const el = document.querySelector(s); return !!el && getComputedStyle(el).visibility === 'visible'; }, sel);
   const scale = () => page.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.df-camera')).transform).a);
+  const world = () => page.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.df-world')).transform).a);
+  const height = (sel) => page.evaluate((s) => document.querySelector(s)?.getBoundingClientRect().height ?? 0, sel);
+  assert.equal(info.fps, 60, '60 fps by default');
 
   await frame(600);
   assert.ok((await q('.df-card[data-kind="intro"]'))?.includes('Check intro'), 'intro card');
   assert.equal(await visible('app-demo-alert'), false, 'alert hidden before its time');
   await frame(1500);
   assert.match(await q('[data-line="m1"]'), /viewer_one: ?hello there/, 'chat line');
+  // Background chat: the chat is already full of made-up viewers, none of them from the script.
+  const crowd = await page.evaluate(() => [...document.querySelectorAll('.lnrow--crowd .ln__who')].map((el) => el.textContent.trim()));
+  assert.ok(crowd.length >= 5, `background chat fills the chat (${crowd.length} lines)`);
+  assert.ok(!crowd.some((user) => ['viewer_one', 'viewer_two', 'viewer_three', 'promo_bot_9', 'DomDimaBot'].includes(user)), 'background viewers are not the scripted ones');
+  const chatBox = await page.evaluate(() => { const list = document.querySelector('.df-lines').getBoundingClientRect(), first = document.querySelector('.lnrow').getBoundingClientRect(); return { top: list.top, first: first.top }; });
+  assert.ok(chatBox.first <= chatBox.top + 30, 'the chat box is full to its top edge');
   await frame(2800);
   assert.equal(await visible('app-demo-alert'), true, 'alert on screen');
   assert.ok((await q('app-demo-alert'))?.includes('viewer_two'), 'alert shows the user');
@@ -175,14 +187,28 @@ async function recorder(format, lang, look) {
   assert.ok((await q('.df-caption'))?.includes('An alert, live'), 'caption holds past its dur (nothing replaced it yet)');
   assert.equal(await visible('app-demo-alert'), false, 'alert gone after its time');
   assert.equal(await scale(), 1, 'camera back to the full stream');
+  assert.ok(Math.abs((await world()) - 1) < 0.003, 'the director is wide while nothing happens in chat');
   assert.ok((await q('.speech-text'))?.includes('read this out loud'), 'TTS card');
   await frame(9000);
   assert.equal(await visible('.df-roulette'), true, 'roulette on screen');
+  // A new line opens its height over a few frames, so the lines above glide up instead of jumping.
+  await frame(11260);
+  const opening = await height('[data-line="spam"]');
   await frame(11500);
+  const open = await height('[data-line="spam"]');
+  assert.ok(opening > 0 && opening < open - 4, `a new chat row opens smoothly (${opening} then ${open})`);
   assert.ok((await page.locator('[data-line="spam"] .ln__first').count()) === 1, 'first-time chatter label');
   assert.ok((await page.locator('.ln__ring').count()) === 1, 'highlight ring');
+  const ring = await page.evaluate(() => { const r = document.querySelector('.ln__ring').getBoundingClientRect(), l = document.querySelector('[data-line="spam"] .ln').getBoundingClientRect(); return [r.top - l.top, r.bottom - l.bottom, r.left - l.left]; });
+  assert.ok(ring.every((d) => Math.abs(d) <= 8), `the ring hugs the line (${ring.map((d) => d.toFixed(1))})`);
+  await frame(11700);
+  assert.ok((await world()) > 1.02, 'the director leans in on the chat while a message is pointed at');
+  // 12 ms after the ban the old wording is still closing under the new one (the line changes height smoothly)...
+  await frame(11812);
+  assert.equal(await page.locator('[data-line="spam"] .ln__roll--was').count(), 1, 'a deleted message closes over a few frames');
   await frame(12200);
   assert.ok((await q('[data-line="spam"]'))?.includes('<message deleted>'), 'ban removes the message');
+  assert.ok(!(await q('[data-line="spam"]'))?.includes('spam.example'), '...and then the old wording is gone from the page');
   assert.ok((await q('[data-line="ban"]'))?.includes('promo_bot_9 has been permanently banned.'), 'ban notice');
   await frame(beat.d1.at + 3000);
   assert.equal(await visible('.df-duel'), true, 'duel on screen');
@@ -190,6 +216,9 @@ async function recorder(format, lang, look) {
   await frame(info.durationMs - 900); // the outro ends 500 ms before the video (tail)
   assert.ok((await q('.df-card[data-kind="outro"]'))?.includes('domdimabot.com'), 'outro card');
   assert.equal(await q('.df-caption'), null, 'the outro replaces the caption');
+  await frame(info.durationMs - 20);
+  assert.ok((await q('.df-card[data-kind="outro"]'))?.includes('domdimabot.com'), 'the closing card holds to the last frame');
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.df-card[data-kind="outro"]')).opacity), '1', 'and stays fully visible');
   assert.deepEqual(await page.evaluate(() => window.__demoPlays), [], 'no page audio');
   const bad = await page.evaluate(() => window.__dimaDemo.load({ id: 'x', v: 1, beats: [{ do: 'nope' }] }, { format: 'vertical', lang: 'en' }));
   assert.equal(bad.ok, false, 'invalid scenes are rejected');
@@ -199,6 +228,15 @@ async function recorder(format, lang, look) {
 // Spanish copy + landscape layout.
 {
   const { ctx, page, frame } = await recorder('landscape', 'es');
+  // Landscape has room for a real push-in on the chat; the caption band stays clear of it.
+  await frame(11900);
+  const zoomed = await page.evaluate(() => {
+    const rect = (s) => document.querySelector(s).getBoundingClientRect();
+    return { k: new DOMMatrix(getComputedStyle(document.querySelector('.df-world')).transform).a, chat: rect('.df-chat'), caption: rect('.df-caption'), font: parseFloat(getComputedStyle(document.querySelector('.ln__text')).fontSize) };
+  });
+  assert.ok(zoomed.k > 1.2, `landscape pushes in on the chat (${zoomed.k})`);
+  assert.ok(zoomed.caption.right <= zoomed.chat.left, `the caption stays clear of the pushed-in chat (${zoomed.caption.right} vs ${zoomed.chat.left})`);
+  assert.ok(zoomed.chat.right <= 960 && zoomed.chat.bottom <= 540, 'the chat stays inside the frame');
   await frame(12200);
   const notice = await page.evaluate(() => document.querySelector('[data-line="ban"]')?.textContent?.trim());
   assert.equal(notice, 'promo_bot_9 fue baneado permanentemente.', 'Spanish ban notice');
@@ -209,6 +247,33 @@ async function recorder(format, lang, look) {
   assert.ok(caption && stream && caption.top >= stream.bottom, `landscape caption under the stream (${JSON.stringify({ caption, stream })})`);
   assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.df-info')).opacity), '0', 'channel row hidden behind the caption band');
   await ctx.close();
+}
+
+// A caption that replaces another keeps the band: same box, no second fade-in. And both extras can be turned off.
+{
+  const scene = { id: 'band', v: 2, seed: 3, look: 'site', crowd: false, director: 'off', beats: [
+    { do: 'caption', id: 'one', at: 200, dur: 1000, text: 'Short *one*' },
+    { do: 'caption', id: 'two', at: '+0', dur: 1000, text: 'A second caption that is long enough to need *two lines* here' },
+    { do: 'chat', id: 'm', at: 300, user: 'someone', text: 'hi' },
+    { do: 'highlight', with: 'm', at: '+100', dur: 800, target: 'm' }
+  ] };
+  for (const format of ['vertical', 'landscape']) {
+    const { ctx, page, frame } = await recorder(format, 'en');
+    const info = await page.evaluate(([raw, opts]) => window.__dimaDemo.load(raw, opts), [scene, { format, lang: 'en', media: {} }]);
+    assert.ok(info.ok, `band scene: ${JSON.stringify(info.errors)}`);
+    const band = () => page.evaluate(() => { const els = [...document.querySelectorAll('.df-caption')]; const r = els[0]?.getBoundingClientRect(); return { count: els.length, top: r?.top, height: r?.height, width: r?.width, opacity: els[0] && getComputedStyle(els[0]).opacity, swap: els[0]?.classList.contains('df-caption--swap') }; });
+    await frame(1100);
+    const first = await band();
+    await frame(1230); // 30 ms into the second caption
+    const second = await band();
+    assert.equal(second.count, 1, `${format}: one caption at a time`);
+    assert.equal(second.swap, true, `${format}: the second caption takes over the band`);
+    assert.equal(second.opacity, '1', `${format}: the band does not fade out and in between captions`);
+    assert.deepEqual([second.top, second.height, second.width], [first.top, first.height, first.width], `${format}: the band keeps its box`);
+    assert.equal(await page.locator('.lnrow--crowd').count(), 0, `${format}: crowd: false leaves only the scripted lines`);
+    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.df-world')).transform), 'none', `${format}: director: off keeps the picture still`);
+    await ctx.close();
+  }
 }
 
 // Every look loads, recolors the frame and keeps the clock contract.
@@ -230,7 +295,8 @@ async function recorder(format, lang, look) {
 
 // Two separate renders give the same bytes over consecutive frames: alert entrance, roulette spin, ban, duel.
 // Each run starts with a jump into the middle of the scene, settled the way the recorder does (see captureFrames).
-const RUNS = [{ start: 1600, count: 14 }, { start: 7600, count: 10 }, { start: 11700, count: 8 }, { start: 14400, count: 12 }];
+// 11050: the director starts its push-in on the chat (spring) while a row opens; 11700: the ban and its camera kick.
+const RUNS = [{ start: 1600, count: 14 }, { start: 7600, count: 10 }, { start: 11050, count: 12 }, { start: 11700, count: 8 }, { start: 14400, count: 12 }];
 const digests = [];
 for (let run = 0; run < 2; run++) {
   const { ctx, frame, shot } = await recorder('landscape', 'en');

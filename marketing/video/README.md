@@ -16,8 +16,9 @@ npm run demo:test                                        # recorder tests
 Keep the `--` before options: without it npm 11 warns about unknown flags (the script still reads them).
 
 Each variant writes `<scene>.<format>.<lang>.mp4`, a `.jpg` poster, a `.json` with what was rendered (site bundle,
-Chromium version, sounds) and, with `--sheet`, a `.sheet.png` grid of 12 frames. A 15-second vertical video takes
-about 75 s to render; landscape takes longer. `video/out/` is not committed.
+Chromium version, sounds) and, with `--sheet`, a `.sheet.png` grid of 12 frames. Videos are 60 fps (`--fps 30` or
+`"fps": 30` in the scene halves the render time): a 15-second vertical video takes about 2.5 minutes to render;
+landscape takes longer. `video/out/` is not committed.
 
 ## How it works
 
@@ -27,7 +28,7 @@ about 75 s to render; landscape takes longer. `video/out/` is not committed.
   the scene time `t`. Opened in a browser, it plays a built-in sample with format/language switches and a scrubber.
 - **Recorder**: `render.mjs` serves the live site bundle (`dimasite/dist/dimasite/browser`, the same bytes
   domdimabot.com serves) on loopback, opens the player in Chromium with a fake clock, hands it the scene through
-  `window.__dimaDemo`, and for every frame advances the clock by exactly 1/30 s, lets the page settle and captures it.
+  `window.__dimaDemo`, and for every frame advances the clock by exactly one frame, lets the page settle and captures it.
   The same scene always gives the same frames (byte for byte): Chromium runs with `CAPTURE_ARGS` (`lib/tools.mjs`:
   one raster thread, no partial raster, no threaded animation) and fonts are cached and warmed before the first
   frame. Frames are piped into x264 (BT.709, yuv420p).
@@ -43,7 +44,7 @@ every field. `first-message-mod.json` is a complete example.
 ```json
 {
   "$schema": "../scene.schema.json",
-  "id": "my-scene", "v": 1, "seed": 7,
+  "id": "my-scene", "v": 2, "seed": 7,
   "formats": ["vertical", "landscape"], "langs": ["en", "es"],
   "channel": { "name": "lunatica_v", "title": { "en": "...", "es": "..." }, "game": "Valorant", "viewers": 214 },
   "beats": [
@@ -64,6 +65,23 @@ every field. `first-message-mod.json` is a complete example.
 A beat placed `with` something is still "the beat above" for the next `+N`. After a caption that runs over a duel,
 time the next beat with `"after": "<duel id>"`. The checker refuses an outro that would cover something still playing.
 
+**What keeps it from looking generated** (all on by default, all following the scene clock):
+
+- **Background chat.** A real chat is never empty and never waits for its cue. Made-up viewers post short reactions
+  with irregular gaps, in the scene's language, from before the first frame. They keep clear of your scripted lines
+  and stop while a message is pointed at. `"crowd": false` turns it off; `"crowd": { "every": 2600 }` thins it out
+  (average gap in ms, default 1700); `"lines"` / `"users"` replace the built-in reactions and names. Same seed, same
+  chat.
+- **The director.** The camera follows the story like a person editing a screen recording: it pushes in on the chat
+  while a message is pointed at, the bot answers or someone is banned, pulls back for overlays, and hands over
+  from/to the cards. Every move is a spring, and a ban lands with a small push. Landscape pushes in for real (the
+  chat text is small there); vertical only leans in, because the chat is already as wide as the app's own buttons
+  allow. Place your own `shot` beats (`"focus": "chat"` / `"wide"`) to direct it yourself, or set
+  `"director": "off"` for a still picture.
+- **Motion.** New chat lines open their own height, so the lines above glide up. Captions share one steady band:
+  from one caption to the next only the words change, arriving one after another. The closing card stays to the
+  last frame.
+
 **Look.** `"look"` picks the art direction; the stream world (game scene, webcam, chat) recolors with it. `site`
 (the website's Live First style, used by the shipped scenes), `studio` (the original), `paper`, `signal`,
 `broadcast`, `night`. `--look <name>` overrides it for one render and adds `.<name>` to the file names, handy for
@@ -81,7 +99,7 @@ stream, so they never hide the webcam or the action.
 
 | do | What | Main fields |
 |---|---|---|
-| `intro` / `outro` | Full-screen brand card. The intro is complete on frame 0, which TikTok uses as the default cover. | `title`, `sub` / `cta` |
+| `intro` / `outro` | Full-screen brand card. The intro is complete on frame 0, which TikTok uses as the default cover; the outro stays to the last frame. | `title`, `sub` / `cta` |
 | `caption` | Big caption in its own band (above the stream on vertical, under it on landscape). It stays until the next caption in the same place or the outro replaces it, so slow readers get the whole gap; its `dur` only times the beats placed after it. | `text`, `place` |
 | `chat` | Viewer message. | `user`, `text`, `first`, `badges` (broadcaster, mod, vip, sub, verified), `color` |
 | `bot` | DomDimaBot message. | `text`, `refs` |
@@ -94,6 +112,7 @@ stream, so they never hide the webcam or the action.
 | `roulette` | A spin in the real roulette overlay. | `items`, `winner`, `title`, `spin` |
 | `highlight` | Gold ring around the chat, the stream or one message. | `target`, `label` |
 | `camera` | Zoom the stream to `alert`, `tts`, `roulette`, or back to `full`. Use it on vertical, where overlays are small. | `focus`, `zoom` |
+| `shot` | Move the whole picture: push in on the `chat` or pull back to `wide`. Only needed to overrule the director. | `focus` |
 | `sfx` / `music` | A sound effect / background music (needs a licensed file). | `src`, `gain` |
 
 Every beat also takes `id`, `dur` (ms) and `sfx` (a sound when it starts).

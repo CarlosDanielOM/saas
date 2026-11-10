@@ -346,7 +346,7 @@
 :host([data-look='signal'][data-format='vertical']) .df-chat { font-size: 17px; }
 
 :host([data-look='signal']) .df-chat__head { color: var(--lime); letter-spacing: 0.2em; }
-:host([data-look='signal']) .df-lines { gap: 0.55em; }
+:host([data-look='signal']) .df-lines { --line-gap: 0.55em; }
 :host([data-look='signal']) .ln { border-radius: 0; }
 :host([data-look='signal']) .ln__text,
 :host([data-look='signal']) .ln[data-kind='bot'] .ln__text { color: var(--fg); }
@@ -609,7 +609,8 @@
 
 :host([data-look='broadcast'][data-format='vertical']) .df-caption[data-place='top'] { top: 30px; left: 18px; right: auto; max-width: 480px; font-size: 26px; }
 :host([data-look='broadcast'][data-format='vertical']) .df-caption[data-place='bottom'] { top: 360px; left: 18px; right: auto; max-width: 480px; font-size: 22px; }
-:host([data-look='broadcast'][data-format='landscape']) .df-caption { width: auto; max-width: 656px; font-size: 24px; }
+:host([data-look='broadcast'][data-format='landscape']) .df-caption { width: auto; max-width: 584px; font-size: 24px; }
+:host([data-look='broadcast']) .df-caption--swap { animation: cap-out 300ms ease-in var(--exit, 2000ms) forwards; }
 
 :host([data-look='broadcast']) .df-card {
   background: radial-gradient(90% 60% at 50% 40%, #1a1a1f 0%, var(--bg) 70%);
@@ -1069,7 +1070,20 @@
 
 :host([data-look='site'][data-format='vertical']) .df-caption[data-place='top'] { top: 22px; left: 14px; right: 14px; font-size: 28px; }
 :host([data-look='site'][data-format='vertical']) .df-caption[data-place='bottom'] { top: 352px; left: 14px; right: 14px; font-size: 24px; }
-:host([data-look='site'][data-format='landscape']) .df-caption { width: auto; max-width: 656px; font-size: 26px; }
+/* The caption is one steady band: the same box for every caption (two lines tall on vertical, a fixed width on
+   landscape, clear of the chat when the camera pushes in on it), so going from one caption to the next only
+   changes the words. */
+:host([data-look='site']) .df-caption { display: flex; flex-direction: column; justify-content: center; }
+:host([data-look='site']) .df-caption { min-height: 4em; }
+:host([data-look='site'][data-format='landscape']) .df-caption { width: 584px; font-size: 26px; }
+:host([data-look='site']) .df-caption--swap { animation: cap-out 300ms ease-in var(--exit, 2000ms) forwards; }
+:host([data-look='site']) .df-caption--swap .w { animation-delay: calc(var(--i) * 34ms); }
+
+/* Words arrive one after another, like a caption timed by hand. */
+:host([data-look='site']) .df-caption .w {
+  animation: word-rise 440ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(90ms + var(--i) * 34ms);
+}
 
 /* Cards: the landing hero tile. */
 :host([data-look='site']) .df-card {

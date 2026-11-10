@@ -2,7 +2,8 @@
 // Shared by the player (/mocks/dev/demo) and the recorder (marketing/video, run by Node with type stripping), so
 // this file must stay import-free and use only erasable TypeScript (no enums, namespaces or parameter properties).
 
-export const DEMO_CONTRACT_VERSION = 1;
+/** 2: background chat, the director camera and 60 fps are on by default (scenes written for 1 would render differently). */
+export const DEMO_CONTRACT_VERSION = 2;
 
 export type DemoLang = 'en' | 'es';
 export type DemoFormat = 'vertical' | 'landscape';
@@ -28,6 +29,7 @@ interface ActorSpec { dur: number | 'auto'; doc: string; fields: Record<string, 
 const BADGES = ['broadcaster', 'mod', 'vip', 'sub', 'verified'] as const;
 const ALERT_KINDS = ['follow', 'sub', 'bits', 'raid'] as const;
 const FOCUS = ['full', 'stream', 'alert', 'tts', 'duel', 'roulette'] as const;
+const SHOTS = ['wide', 'chat'] as const;
 
 /** Every building block a scene can use. The JSON Schema for editors is generated from this table. */
 export const DEMO_ACTORS: Readonly<Record<string, ActorSpec>> = {
@@ -84,6 +86,8 @@ export const DEMO_ACTORS: Readonly<Record<string, ActorSpec>> = {
   camera: { dur: 700, doc: 'Zoom the stream view (mostly for vertical videos, where overlays are small).', fields: {
     focus: { type: 'enum', required: true, values: FOCUS, doc: 'What to frame. "full"/"stream" zooms back out.' },
     zoom: { type: 'number', min: 1, max: 3, doc: 'Maximum zoom (default 2.2).' } } },
+  shot: { dur: 0, doc: 'Move the whole picture like an editor would: "chat" pushes in on the chat, "wide" pulls back. Without any shot beats the director does this by itself (chat while a message is pointed at, the bot answers or someone is banned; wide while an overlay plays).', fields: {
+    focus: { type: 'enum', required: true, values: SHOTS, doc: 'What to frame.' } } },
   sfx: { dur: 0, doc: 'A sound effect.', fields: {
     src: { type: 'string', required: true, doc: '"kit:pop" (generated kit) or a file under marketing/video/sounds/.' },
     gain: { type: 'number', min: 0, max: 2, doc: 'Volume (default 1).' } } },
@@ -107,6 +111,10 @@ const COMMON_FIELDS: Record<string, FieldSpec> = {
 
 export interface RawScene {
   id: string; v: number; title?: DemoText; seed?: number; fps?: number; look?: DemoLook;
+  /** Background chat. Default on; false turns it off. */
+  crowd?: boolean | { every?: number; lines?: DemoText[]; users?: string[] };
+  /** "auto" (default) lets the camera follow the action; "off" keeps the picture still. */
+  director?: 'auto' | 'off';
   formats?: DemoFormat[]; langs?: DemoLang[];
   channel?: { name?: string; title?: DemoText; game?: DemoText; viewers?: number };
   bot?: string; end?: number | 'auto'; tail?: number; poster?: number;
@@ -125,7 +133,13 @@ export interface DemoScene {
   id: string; lang: DemoLang; look: DemoLook; title: string; seed: number; fps: number; durationMs: number; posterMs: number;
   channel: { name: string; title: string; game: string; viewers: number };
   bot: string; beats: DemoBeat[];
+  /** Background chat lines (see ambientLines). Lines before 0 fill the chat for the first frame. */
+  ambient: DemoAmbientLine[];
+  director: 'auto' | 'off';
 }
+export interface DemoAmbientLine { key: string; at: number; user: string; text: string; sub: boolean }
+export type DemoShotFocus = 'wide' | 'chat';
+export interface DemoShot { at: number; focus: DemoShotFocus }
 export interface DemoCue { kind: 'sfx' | 'alert' | 'tts' | 'music'; beat: string; src: string; at: number; gain: number; fadeIn: number; fadeOut: number; end: number | null }
 
 export interface DemoDurations {
@@ -155,6 +169,8 @@ export const ROULETTE_LEAD_MS = 600;
 export const ROULETTE_HOLD_MS = 2400;
 export const DEFAULT_ROULETTE_SPIN_MS = 5000;
 export const DEFAULT_TAIL_MS = 500;
+/** 60 fps: chat scrolling and camera moves read as smooth; 30 is still accepted per scene or with --fps. */
+export const DEFAULT_FPS = 60;
 /** The duel's winner screen stays this long after the fight; the bot posts the result when the fight ends. */
 export const DUEL_TAIL_MS = 1800;
 
@@ -236,6 +252,16 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
   if (raw.langs !== undefined && (!Array.isArray(raw.langs) || !raw.langs.length || raw.langs.some((l) => !DEMO_LANGS.includes(l)))) errors.push('"langs" must list en and/or es');
   if (raw.seed !== undefined && (!Number.isInteger(raw.seed) || raw.seed < 0)) errors.push('"seed" must be a whole number');
   if (raw.fps !== undefined && raw.fps !== 30 && raw.fps !== 60) errors.push('"fps" must be 30 or 60');
+  if (raw.director !== undefined && raw.director !== 'auto' && raw.director !== 'off') errors.push('"director" must be "auto" or "off"');
+  if (raw.crowd !== undefined && typeof raw.crowd !== 'boolean') {
+    const c = raw.crowd as Record<string, unknown>;
+    if (!isObject(c) || Object.keys(c).some((k) => !['every', 'lines', 'users'].includes(k))) errors.push('"crowd" must be true, false or { "every", "lines", "users" }');
+    else {
+      if (c['every'] !== undefined && (typeof c['every'] !== 'number' || !Number.isFinite(c['every']) || c['every'] < 400 || c['every'] > 20000)) errors.push('crowd: "every" must be 400..20000 ms');
+      if (c['lines'] !== undefined && (!Array.isArray(c['lines']) || c['lines'].length < 4 || c['lines'].some((l) => !isText(l) || !resolveText(l, lang).trim()))) errors.push('crowd: "lines" must list at least 4 texts');
+      if (c['users'] !== undefined && (!Array.isArray(c['users']) || c['users'].length < 4 || c['users'].some((u) => typeof u !== 'string' || !u.trim()))) errors.push('crowd: "users" must list at least 4 names');
+    }
+  }
   if (raw.title !== undefined) checkField('scene', 'title', { type: 'text', doc: '' }, raw.title, errors);
   if (raw.look !== undefined && !DEMO_LOOKS.includes(raw.look)) errors.push(`"look" must be one of: ${DEMO_LOOKS.join(', ')}`);
   if (raw.end !== undefined && raw.end !== 'auto' && (typeof raw.end !== 'number' || raw.end < 500 || raw.end > 180000)) errors.push('"end" must be "auto" or 500..180000 ms');
@@ -272,6 +298,8 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
     for (const name of ['id', 'after', 'with', 'dur', 'sfx'] as const) if (entry[name] !== undefined) checkField(label, name, COMMON_FIELDS[name], entry[name], errors);
     const id = typeof entry['id'] === 'string' ? entry['id'] : `#${index + 1}`;
     if (typeof entry['id'] === 'string') {
+      // "#N" names beats without an id and "~N" names background chat lines.
+      if (/^[#~]/.test(id)) errors.push(`${label}: an id can't start with "#" or "~"`);
       if (ids.has(id)) errors.push(`${label}: id "${id}" is used twice`);
       ids.set(id, beats.length);
     }
@@ -369,7 +397,7 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
   if (beats.some((b) => b.at >= durationMs)) errors.push(`a beat starts after the video ends (${durationMs} ms); raise "end" or remove it`);
   const channel = raw.channel ?? {};
   const scene: DemoScene = {
-    id: raw.id, lang, look: raw.look ?? 'studio', title: resolveText(raw.title ?? '', lang), seed, fps: raw.fps ?? 30, durationMs,
+    id: raw.id, lang, look: raw.look ?? 'studio', title: resolveText(raw.title ?? '', lang), seed, fps: raw.fps ?? DEFAULT_FPS, durationMs,
     posterMs: Math.min(durationMs - 1, Math.max(0, raw.poster ?? Math.round(durationMs * 0.45))),
     channel: {
       name: channel.name ?? 'lunatica_v',
@@ -378,8 +406,12 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
       viewers: channel.viewers ?? 128
     },
     bot: raw.bot ?? 'DomDimaBot',
-    beats
+    beats, ambient: [], director: raw.director ?? 'auto'
   };
+  if (raw.crowd !== false) {
+    const crowd = isObject(raw.crowd) ? (raw.crowd as { every?: number; lines?: DemoText[]; users?: string[] }) : {};
+    scene.ambient = ambientLines(scene, { every: crowd.every, users: crowd.users, lines: crowd.lines?.map((l) => resolveText(l, lang)) });
+  }
   return { scene: errors.length ? null : scene, errors };
 }
 
@@ -410,6 +442,114 @@ export function captionSpans(scene: DemoScene, format: DemoFormat): DemoCaptionS
     ];
     return { ...c, end: replacements.length ? Math.min(...replacements) : Infinity };
   });
+}
+
+/* ── Background chat ───────────────────────────────────────────────────────
+   A real chat is never empty and never waits for its cue. These are short, generic reactions from made-up viewers,
+   spaced like people type (irregular gaps, small bursts), in the scene's language. They start before 0 so the chat
+   is already moving on the first frame, and they keep clear of the scripted lines so the story stays readable. */
+const CROWD_USERS = ['mika_plays', 'el_tlacuache', 'sofi_gg', 'RoboNacho', 'luna_moth', 'dany_mx', 'kiwi_bird', 'frijolito99', 'ana_banana', 'valen_tina',
+  'zorro_azul', 'chilaquil_', 'mar_y_sol', 'gato_con_wifi', 'benji_r', 'la_peque', 'otter_pop', 'rayo_mc', 'tostada_crunch', 'noche_azul'];
+const CROWD_LINES: Record<DemoLang, readonly string[]> = {
+  en: ['LUL', 'gg', 'W', 'lmaooo', 'no shot', 'clean', 'that was clean', 'hiii', 'o7', 'LETS GOOO', 'clip it', 'W stream', 'sheesh', 'bro 😂', 'nice one',
+    'wait what', 'pog', 'hello from Texas', '💜', 'true', 'ok that was good', 'unlucky', 'again again', 'HAHA', 'gg wp', 'W', 'lol', 'lol'],
+  es: ['jajaja', 'gg', 'W', 'no manches', 'qué buena', 'holaaa', 'saludos desde Monterrey', 'clipéenlo', 'eso estuvo limpio', '😂', 'F', 'vamooos',
+    'buenísimo', 'saludos desde CDMX', 'jajaj no', '💜', 'eso', 'otra otra', 'qué nivel', 'uff', 'xd', 'ya valió', 'bien jugado', 'a darle', 'jajaja', 'W', 'xd']
+};
+/** How far before 0 the background chat starts, so the chat box is full on the first frame. */
+export const CROWD_PREROLL_MS = 40000;
+export const DEFAULT_CROWD_EVERY_MS = 1700;
+
+/** Times the background chat stays out of: around every scripted line and while one is being pointed at. */
+function quietWindows(beats: readonly DemoBeat[]): [number, number][] {
+  const windows: [number, number][] = [];
+  for (const b of beats) {
+    if (b.do === 'chat' || b.do === 'bot' || b.do === 'event' || b.do === 'delete') windows.push([b.at - 450, b.at + 700]);
+    else if (b.do === 'ban') windows.push([b.at - 450, b.at + 1300]);
+    else if (b.do === 'highlight' && b.props['target'] !== 'stream') windows.push([b.at - 300, b.end + 300]);
+  }
+  return windows;
+}
+
+export function ambientLines(
+  scene: { seed: number; lang: DemoLang; durationMs: number; bot: string; beats: readonly DemoBeat[]; channel?: { name: string } },
+  options: { every?: number; lines?: readonly string[]; users?: readonly string[] } = {}
+): DemoAmbientLine[] {
+  const random = seededRandom((Math.imul(scene.seed >>> 0, 0x9e3779b1) + 97) >>> 0);
+  const every = options.every ?? DEFAULT_CROWD_EVERY_MS, minGap = Math.min(380, every / 2);
+  // Nobody the script names may also talk in the background: chatters, alert/TTS users, duel fighters, the streamer.
+  const named = scene.beats.flatMap((b) => [b.props['user'], b.props['left'], b.props['right']]).filter((u): u is string => typeof u === 'string');
+  const taken = new Set([scene.bot, scene.channel?.name ?? '', ...named].map((u) => u.toLowerCase()));
+  const users = (options.users ?? CROWD_USERS).filter((u) => !taken.has(u.toLowerCase()));
+  const pool = options.lines?.length ? options.lines : CROWD_LINES[scene.lang];
+  if (users.length < 2 || pool.length < 2) return [];
+  const windows = quietWindows(scene.beats);
+  const out: DemoAmbientLine[] = [], recentText: string[] = [];
+  let t = -CROWD_PREROLL_MS, lastUser = '';
+  for (let guard = 0; guard < 4000; guard++) {
+    // Exponential gaps (people don't type on a beat), capped so the chat never stalls for long.
+    t += minGap + Math.min(3.2, -Math.log(1 - random())) * (every - minGap);
+    const quiet = windows.filter(([from, to]) => t >= from && t < to);
+    if (quiet.length) t = Math.max(...quiet.map(([, to]) => to)) + 80 + random() * 260;
+    // Whole ms from here on, so the checks below see the time the line really gets.
+    t = Math.round(t);
+    if (windows.some(([from, to]) => t >= from && t < to)) continue;
+    if (t >= scene.durationMs) break;
+    let user = users[Math.floor(random() * users.length)];
+    if (user === lastUser) user = users[(users.indexOf(user) + 1) % users.length];
+    let text = pool[Math.floor(random() * pool.length)];
+    for (let i = 0; i < 6 && recentText.includes(text); i++) text = pool[Math.floor(random() * pool.length)];
+    recentText.push(text);
+    if (recentText.length > 5) recentText.shift();
+    lastUser = user;
+    let h = 0;
+    for (const ch of user) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    out.push({ key: `~${out.length + 1}`, at: t, user, text, sub: h % 3 === 0 });
+  }
+  return out;
+}
+
+/* ── Director ──────────────────────────────────────────────────────────────
+   Where the picture looks over time, the way a person editing a screen recording would cut it. "chat" pushes in on
+   the chat while something there matters (a message is pointed at, the bot answers, someone is banned); "wide" shows
+   everything, always while an overlay plays on the stream. Scenes can place their own `shot` beats instead. */
+const SHOT_MIN_MS = 1400;
+
+export function directorShots(scene: DemoScene): DemoShot[] {
+  if (scene.director === 'off') return [];
+  const own = scene.beats.filter((b) => b.do === 'shot');
+  if (own.length) return own.map((b) => ({ at: b.at, focus: b.props['focus'] as DemoShotFocus })).sort((a, b) => a.at - b.at);
+  // When the chat is the subject.
+  let spans: [number, number][] = [];
+  for (const b of scene.beats) {
+    if (b.do === 'highlight' && b.props['target'] !== 'stream') spans.push([b.at - 150, b.end + 900]);
+    else if (b.do === 'bot') spans.push([b.at - 100, b.at + 2600]);
+    else if (b.do === 'ban') spans.push([b.at - 100, b.at + 2200]);
+    else if (b.do === 'chat' && b.props['first'] === true) spans.push([b.at - 100, b.at + 1500]);
+  }
+  spans.sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [];
+  for (const span of spans) {
+    const last = merged[merged.length - 1];
+    if (last && span[0] <= last[1] + 900) last[1] = Math.max(last[1], span[1]);
+    else merged.push([span[0], span[1]]);
+  }
+  // Overlays and full-screen cards win: cut the chat spans around them.
+  const blocks: [number, number][] = scene.beats
+    .filter((b) => ['alert', 'tts', 'duel', 'roulette', 'intro', 'outro'].includes(b.do))
+    .map((b) => [b.do === 'intro' ? -Infinity : b.at - 200, b.do === 'outro' ? Infinity : b.do === 'intro' ? b.end - 300 : b.end]);
+  spans = merged;
+  for (const [from, to] of blocks) {
+    spans = spans.flatMap(([a, b]): [number, number][] => {
+      if (to <= a || from >= b) return [[a, b]];
+      return [[a, Math.min(b, from)], [Math.max(a, to), b]];
+    });
+  }
+  const shots: DemoShot[] = [];
+  for (const [from, to] of spans.filter(([a, b]) => b - a >= SHOT_MIN_MS)) {
+    shots.push({ at: Math.round(from), focus: 'chat' }, { at: Math.round(to), focus: 'wide' });
+  }
+  return shots;
 }
 
 export function sceneCues(scene: DemoScene, ttsSrc: Record<string, string> = {}): DemoCue[] {
@@ -459,6 +599,11 @@ export function sceneJsonSchema(): Record<string, unknown> {
       $schema: { type: 'string' }, $comment: { type: 'string' },
       id: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,63}$' }, v: { const: DEMO_CONTRACT_VERSION },
       title: { ...text, description: 'Short feature name for labels (e.g. "Chat protection").' }, seed: { type: 'integer', minimum: 0 }, fps: { enum: [30, 60] },
+      crowd: { description: 'Background chat (short reactions from made-up viewers, irregular like real typing). On by default; false turns it off.', oneOf: [{ type: 'boolean' }, { type: 'object', additionalProperties: false, properties: {
+        every: { type: 'number', minimum: 400, maximum: 20000, description: 'Average gap between background lines in ms (default 1700).' },
+        lines: { type: 'array', minItems: 4, items: text, description: 'Your own reactions instead of the built-in ones.' },
+        users: { type: 'array', minItems: 4, items: { type: 'string' }, description: 'Your own made-up viewer names.' } } }] },
+      director: { enum: ['auto', 'off'], description: 'auto (default): the camera follows the action. off: the picture stays still.' },
       look: { enum: DEMO_LOOKS, description: 'Art direction: studio, site (the website\'s Live First design), paper (print), signal (kinetic type), broadcast (cinematic UI), night (black, one accent, technical labels).' },
       formats: { type: 'array', items: { enum: Object.keys(DEMO_FORMATS) } }, langs: { type: 'array', items: { enum: DEMO_LANGS } },
       channel: { type: 'object', additionalProperties: false, properties: { name: { type: 'string' }, title: text, game: text, viewers: { type: 'number', minimum: 0 } } },

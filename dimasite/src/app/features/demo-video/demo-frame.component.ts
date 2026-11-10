@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { BadgeCheck, Bot, Gem, Heart, Info, LucideAngularModule, LucideIconData, ShieldCheck, Star, Sword, Users, Video } from 'lucide-angular';
 import { DuelStageComponent } from '../widgets/duel/duel-stage.component';
@@ -13,8 +14,8 @@ import { DemoGameComponent } from './demo-game.component';
 import { DemoCamComponent } from './demo-cam.component';
 import { demoBattle, duelOutcome } from './demo-duel';
 import {
-  DEFAULT_ROULETTE_SPIN_MS, DEMO_FORMATS, ROULETTE_LEAD_MS, STAGE, beatSeed, captionSpans, seededRandom,
-  type DemoBeat, type DemoFormat, type DemoLook, type DemoScene
+  DEFAULT_ROULETTE_SPIN_MS, DEMO_FORMATS, ROULETTE_LEAD_MS, STAGE, beatSeed, captionSpans, directorShots, seededRandom,
+  type DemoAmbientLine, type DemoBeat, type DemoFormat, type DemoLook, type DemoScene, type DemoShotFocus
 } from './demo-scene';
 
 interface Rect { x: number; y: number; width: number; height: number }
@@ -43,6 +44,8 @@ const NAME_COLORS: Record<DemoLook, readonly string[]> = {
 };
 const BOT_COLOR: Record<DemoLook, string> = { studio: '#c4b5fd', broadcast: '#c9a8ff', paper: '#6d28d9', signal: '#c8ff2e', night: '#a970ff', site: '#c4b5fd' };
 const DRAW_EPOCH = 1_700_000_000_000;
+/** More than the tallest chat box can show (the rest is above its top edge). */
+const MAX_LINES = 32;
 
 const COPY = {
   en: { chat: 'Stream chat', first: 'First message', deleted: '<message deleted>', banned: '{user} has been permanently banned.', live: 'LIVE', tagline: 'A Twitch chatbot that grows with you', cta: 'Free to start', companion: 'Stream Companion' },
@@ -52,6 +55,8 @@ const COPY = {
 export interface ChatLine {
   key: string; kind: 'viewer' | 'bot' | 'event' | 'notice'; at: number;
   user: string; text: string; color: string; badges: LucideIconData[]; badgeTones: string[]; first: boolean;
+  /** Background chat (not part of the script). */
+  crowd: boolean;
   icon: LucideIconData | null; deletedAt: number | null;
   highlight: { at: number; end: number; label: string } | null;
 }
@@ -88,13 +93,39 @@ function nameColor(name: string, look: DemoLook): string {
 }
 const ease = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
 
+/** How long the last caption takes to fade under the closing card. */
+const CAPTION_FADE_MS = 300;
+/** How long a full-screen card takes to leave; the picture behind it settles into place over the same time. */
+const CARD_EXIT_MS = 420;
+
+/* The director's camera: where the whole picture (stream + chat) sits for each shot, per format.
+   Scale `k` around the anchor (ax, ay), in frame px. Landscape has room to push in on the chat for real (the chat
+   text is small there); a vertical frame is already as wide as the chat can get next to the app's own buttons, so
+   it only leans in. `settle` is the slightly closer view a card hands over from / to. */
+interface View { k: number; ax: number; ay: number }
+const VIEWS: Record<DemoFormat, Record<DemoShotFocus | 'settle', View>> = {
+  landscape: { wide: { k: 1, ax: 0, ay: 0 }, chat: { k: 1.25, ax: 960, ay: 540 }, settle: { k: 1.045, ax: 480, ay: 270 } },
+  vertical: { wide: { k: 1, ax: 0, ay: 0 }, chat: { k: 1.03, ax: 14, ay: 824 }, settle: { k: 1.045, ax: 270, ay: 480 } }
+};
+/** Spring stiffness (1/s). Critically damped: no bounce, settles in about 0.75 s. */
+const CAMERA_W = 8.5;
+/** A ban lands with a small push of the camera (scale per second, gone in half a second). */
+const KICK = 0.42;
+type Vec3 = [number, number, number];
+const pose = (v: View): Vec3 => [v.k, v.ax * (1 - v.k), v.ay * (1 - v.k)];
+/** Critically damped spring: position and speed `dt` seconds after (x, v), heading for `target`. */
+function spring(x: number, v: number, target: number, dt: number): [number, number] {
+  const a = x - target, b = v + CAMERA_W * a, e = Math.exp(-CAMERA_W * dt);
+  return [target + (a + b * dt) * e, (b - CAMERA_W * (a + b * dt)) * e];
+}
+
 /**
  * One video frame: a fake stream with the real overlay components on it, a Twitch-style chat, captions and brand
  * cards. Everything on screen is a function of the scene and `t` (ms), so any t renders the same frame.
  */
 @Component({
   selector: 'app-demo-frame',
-  imports: [LucideAngularModule, DemoClockDirective, DemoGameComponent, DemoCamComponent, DemoAlertComponent, DuelStageComponent, RouletteDisplayComponent, OverlaySceneRendererComponent],
+  imports: [NgTemplateOutlet, LucideAngularModule, DemoClockDirective, DemoGameComponent, DemoCamComponent, DemoAlertComponent, DuelStageComponent, RouletteDisplayComponent, OverlaySceneRendererComponent],
   templateUrl: './demo-frame.component.html',
   styleUrls: ['./demo-frame.component.css', './demo-looks.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -135,9 +166,17 @@ export class DemoFrameComponent {
   private readonly spans = computed(() => captionSpans(this.scene(), this.format()).filter((c) => c.end > c.beat.at));
   readonly captions = computed(() => {
     const t = this.t();
-    return this.spans()
-      .filter((c) => t >= c.beat.at && t < c.end)
-      .map((c) => ({ ...c, exit: Number.isFinite(c.end) ? Math.max(0, c.end - c.beat.at - 300) : 1e9, words: words(String(c.beat.props['text'])) }));
+    const spans = this.spans();
+    return spans
+      .map((c) => ({
+        ...c,
+        // Caption to caption is a cut inside the same band: the band stays, only the words change.
+        swap: spans.some((o) => o !== c && o.place === c.place && o.end === c.beat.at),
+        cut: spans.some((o) => o !== c && o.place === c.place && o.beat.at === c.end)
+      }))
+      // A caption replaced by a card keeps fading under it for a moment.
+      .filter((c) => t >= c.beat.at && t < (c.cut ? c.end : c.end + CAPTION_FADE_MS))
+      .map((c) => ({ ...c, exit: !c.cut && Number.isFinite(c.end) ? c.end - c.beat.at : 1e9, words: words(String(c.beat.props['text'])) }));
   });
   /** Landscape captions take the band under the stream, so the channel row fades out when the first one arrives. */
   readonly infoCoveredAt = computed(() => {
@@ -145,16 +184,71 @@ export class DemoFrameComponent {
     const starts = this.spans().filter((c) => c.place === 'bottom').map((c) => c.beat.at);
     return starts.length ? Math.min(...starts) : null;
   });
-  readonly cards = computed(() => [...this.active('intro'), ...this.active('outro')]);
+  /** The closing card stays to the last frame (a video shouldn't end by flashing the stream again). */
+  readonly cards = computed(() => { const t = this.t(); return [...this.active('intro'), ...this.beatsOf('outro').filter((b) => t >= b.at)]; });
+  readonly cardExitMs = CARD_EXIT_MS;
+  /** How long a deleted message takes to change into its "message deleted" wording (see .ln__roll). */
+  readonly rollMs = 320;
+
+  /** Camera moves over the scene: shots from the director, the hand-over from/to the cards, and ban kicks. */
+  private readonly cameraKeys = computed(() => {
+    const scene = this.scene(), views = VIEWS[this.format()];
+    if (scene.director === 'off') return null;
+    const keys: { at: number; to?: Vec3; kick?: boolean }[] = directorShots(scene).map((s) => ({ at: s.at, to: pose(views[s.focus]) }));
+    const intro = scene.beats.find((b) => b.do === 'intro' && b.at === 0);
+    if (intro) keys.push({ at: Math.max(0, intro.end - CARD_EXIT_MS), to: pose(views.wide) });
+    for (const b of scene.beats) {
+      if (b.do === 'outro') keys.push({ at: b.at, to: pose(views.settle) });
+      if (b.do === 'ban') keys.push({ at: b.at, kick: true });
+    }
+    return { start: pose(intro ? views.settle : views.wide), keys: keys.sort((a, b) => a.at - b.at) };
+  });
+  /** The picture's transform at t: every move is a spring that carries its speed into the next one. */
+  readonly world = computed(() => {
+    const camera = this.cameraKeys(), t = this.t();
+    if (!camera) return null;
+    const { width, height } = this.size();
+    let x = [...camera.start] as Vec3, v: Vec3 = [0, 0, 0], target = camera.start, at = 0;
+    const advance = (until: number) => {
+      const dt = Math.max(0, until - at) / 1000;
+      for (let i = 0; i < 3; i++) [x[i], v[i]] = spring(x[i], v[i], target[i], dt);
+      at = Math.max(at, until);
+    };
+    for (const key of camera.keys) {
+      if (key.at > t) break;
+      advance(key.at);
+      if (key.to) target = key.to;
+      // A kick pushes in around the middle of the frame.
+      if (key.kick) { v[0] += KICK; v[1] -= KICK * (width / 2); v[2] -= KICK * (height / 2); }
+    }
+    advance(t);
+    return `translate(${x[1].toFixed(3)}px, ${x[2].toFixed(3)}px) scale(${x[0].toFixed(5)})`;
+  });
   readonly ringTargets = computed(() => this.active('highlight').filter((b) => b.props['target'] === 'chat' || b.props['target'] === 'stream'));
+
+  /** Script beats and background chat in one time order (script first at the same ms). */
+  private readonly chatTimeline = computed(() => {
+    const scene = this.scene();
+    const entries: { at: number; order: number; beat?: DemoBeat; crowd?: DemoAmbientLine }[] = [
+      ...scene.beats.map((beat) => ({ at: beat.at, order: beat.index, beat })),
+      ...scene.ambient.map((crowd, i) => ({ at: crowd.at, order: 1e6 + i, crowd }))
+    ];
+    return entries.sort((a, b) => a.at - b.at || a.order - b.order);
+  });
 
   readonly lines = computed<ChatLine[]>(() => {
     const t = this.t(), scene = this.scene(), copy = this.copy();
     const byId = new Map<string, ChatLine>(), lines: ChatLine[] = [];
-    const ordered = [...scene.beats].sort((a, b) => a.at - b.at || a.index - b.index);
-    for (const beat of ordered) {
-      if (beat.at > t) break;
-      const p = beat.props;
+    const base = { crowd: false, first: false, icon: null, deletedAt: null, highlight: null };
+    for (const entry of this.chatTimeline()) {
+      if (entry.at > t) break;
+      if (entry.crowd) {
+        const c = entry.crowd;
+        lines.push({ ...base, key: c.key, kind: 'viewer', at: c.at, user: c.user, text: c.text, color: nameColor(c.user, scene.look), crowd: true,
+          badges: c.sub ? [BADGE_ICONS['sub'][0]] : [], badgeTones: c.sub ? [BADGE_ICONS['sub'][1]] : [] });
+        continue;
+      }
+      const beat = entry.beat!, p = beat.props;
       if (beat.do === 'chat' || beat.do === 'bot') {
         const bot = beat.do === 'bot';
         const badges = (bot ? ['bot'] : ((p['badges'] as string[]) ?? [])).filter((b) => BADGE_ICONS[b]);
@@ -162,16 +256,15 @@ export class DemoFrameComponent {
         const result = bot && typeof p['duel'] === 'string' ? this.duelResults().get(p['duel']) : undefined;
         const text = result ? String(p['text']).replaceAll('{winner}', result.winner).replaceAll('{loser}', result.loser).replaceAll('{hp}', String(result.hp)) : String(p['text']);
         const line: ChatLine = {
-          key: beat.id, kind: bot ? 'bot' : 'viewer', at: beat.at, user, text,
+          ...base, key: beat.id, kind: bot ? 'bot' : 'viewer', at: beat.at, user, text,
           color: bot ? BOT_COLOR[scene.look] : typeof p['color'] === 'string' ? p['color'] : nameColor(user, scene.look),
-          badges: badges.map((b) => BADGE_ICONS[b][0]), badgeTones: badges.map((b) => BADGE_ICONS[b][1]),
-          first: p['first'] === true, icon: null, deletedAt: null, highlight: null
+          badges: badges.map((b) => BADGE_ICONS[b][0]), badgeTones: badges.map((b) => BADGE_ICONS[b][1]), first: p['first'] === true
         };
         byId.set(beat.id, line);
         lines.push(line);
       } else if (beat.do === 'event') {
-        lines.push({ key: beat.id, kind: 'event', at: beat.at, user: '', text: String(p['text']), color: '', badges: [], badgeTones: [], first: false,
-          icon: EVENT_ICONS[(p['icon'] as string) ?? 'info'] ?? Info, deletedAt: null, highlight: null });
+        lines.push({ ...base, key: beat.id, kind: 'event', at: beat.at, user: '', text: String(p['text']), color: '', badges: [], badgeTones: [],
+          icon: EVENT_ICONS[(p['icon'] as string) ?? 'info'] ?? Info });
       } else if (beat.do === 'delete') {
         const target = byId.get(String(p['target']));
         if (target && target.deletedAt === null) target.deletedAt = beat.at;
@@ -180,14 +273,14 @@ export class DemoFrameComponent {
         if (!target) continue;
         for (const line of lines) if (line.kind === 'viewer' && line.user === target.user && line.deletedAt === null) line.deletedAt = beat.at;
         const notice = typeof p['notice'] === 'string' && p['notice'] ? p['notice'] : copy.banned.replace('{user}', target.user);
-        lines.push({ key: beat.id, kind: 'notice', at: beat.at, user: '', text: notice, color: '', badges: [], badgeTones: [], first: false, icon: null, deletedAt: null, highlight: null });
+        lines.push({ ...base, key: beat.id, kind: 'notice', at: beat.at, user: '', text: notice, color: '', badges: [], badgeTones: [] });
       } else if (beat.do === 'highlight') {
         const target = byId.get(String(p['target']));
         if (target) target.highlight = { at: beat.at, end: beat.end, label: String(p['label'] ?? '') };
       }
     }
     for (const line of lines) if (line.highlight && t >= line.highlight.end) line.highlight = null;
-    return lines.slice(-24);
+    return lines.slice(-MAX_LINES);
   });
 
   /** TTS cards go through the real renderer with a TTS widget, like an OBS source that doesn't own the audio. */

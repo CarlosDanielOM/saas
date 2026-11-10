@@ -1,6 +1,9 @@
 <div class="df" data-clock-origin="0" [demoClock]="t()" [attr.data-lang]="scene().lang">
   <div class="df-bg" data-clock-origin="0" aria-hidden="true"><i class="df-glow df-glow--a"></i><i class="df-glow df-glow--b"></i><i class="df-dots"></i><i class="df-stars"></i></div>
 
+  <!-- Everything a viewer of the stream would see. The director moves this layer (push in on the chat, pull back);
+       captions and cards sit above it and never move with it. -->
+  <div class="df-world" [style.transform]="world()">
   <!-- The stream: a stylised game, the streamer cam and the real overlay components on a 1920x1080 canvas. -->
   <section class="df-stream" data-clock-origin="0" [style.left.px]="streamBox().x" [style.top.px]="streamBox().y" [style.width.px]="streamBox().width" [style.height.px]="streamBox().height">
     <div class="df-stage" [style.width.px]="stage.width" [style.height.px]="stage.height" [style.transform]="'scale(' + streamScale() + ')'">
@@ -53,33 +56,48 @@
     <p class="df-chat__head">{{ copy().chat }}</p>
     <ul class="df-lines">
       @for (line of lines(); track line.key) {
-        <li class="ln" [attr.data-kind]="line.kind" [attr.data-clock-origin]="line.at" [attr.data-line]="line.key"
-          [class.ln--first]="line.first" [class.ln--deleted]="line.deletedAt !== null" [class.ln--hl]="!!line.highlight">
-          @if (line.first) { <span class="ln__first">{{ copy().first }}</span> }
-          @switch (line.kind) {
-            @case ('event') {
-              <span class="ln__event">@if (line.icon) { <lucide-icon [img]="line.icon" [size]="14" aria-hidden="true" /> }{{ line.text }}</span>
-            }
-            @case ('notice') {
-              <span class="ln__notice">{{ line.text }}</span>
-            }
-            @default {
-              <span class="ln__msg">
-                @for (badge of line.badges; track $index) {
-                  <span class="ln__badge" [attr.data-tone]="line.badgeTones[$index]"><lucide-icon [img]="badge" [size]="11" aria-hidden="true" /></span>
+        <li class="lnrow" [attr.data-clock-origin]="line.at" [attr.data-line]="line.key" [class.lnrow--crowd]="line.crowd">
+          <!-- A new line opens its own height, so the lines above glide up instead of jumping. -->
+          <div class="lnrow__clip">
+            <div class="ln" [attr.data-kind]="line.kind" [class.ln--first]="line.first" [class.ln--deleted]="line.deletedAt !== null" [class.ln--hl]="!!line.highlight">
+              @if (line.first) { <span class="ln__first">{{ copy().first }}</span> }
+              @switch (line.kind) {
+                @case ('event') {
+                  <span class="ln__event">@if (line.icon) { <lucide-icon [img]="line.icon" [size]="14" aria-hidden="true" /> }{{ line.text }}</span>
                 }
-                <span class="ln__who" [style.color]="line.color">{{ line.user }}</span><span class="ln__colon">:</span>
-                @if (line.deletedAt !== null) {
-                  <span class="ln__deleted" [attr.data-clock-origin]="line.deletedAt">{{ copy().deleted }}</span>
-                } @else {
-                  <span class="ln__text">{{ line.text }}</span>
+                @case ('notice') {
+                  <span class="ln__notice">{{ line.text }}</span>
                 }
-              </span>
-            }
-          }
+                @default {
+                  <ng-template #who>
+                    @for (badge of line.badges; track $index) {
+                      <span class="ln__badge" [attr.data-tone]="line.badgeTones[$index]"><lucide-icon [img]="badge" [size]="11" aria-hidden="true" /></span>
+                    }
+                    <span class="ln__who" [style.color]="line.color">{{ line.user }}</span><span class="ln__colon">:</span>
+                  </ng-template>
+                  @if (line.deletedAt === null) {
+                    <span class="ln__msg"><ng-container [ngTemplateOutlet]="who" /><span class="ln__text">{{ line.text }}</span></span>
+                  } @else {
+                    <!-- A deleted message can be shorter than what it replaces. The new wording opens in place while
+                         the old one closes under it, so the line changes height smoothly instead of snapping. -->
+                    <span class="ln__roll ln__roll--now" [attr.data-clock-origin]="line.deletedAt"><span class="ln__rollin">
+                      <span class="ln__msg"><ng-container [ngTemplateOutlet]="who" /><span class="ln__deleted">{{ copy().deleted }}</span></span>
+                    </span></span>
+                    @if (t() < line.deletedAt + rollMs) {
+                      <span class="ln__roll ln__roll--was" [attr.data-clock-origin]="line.deletedAt" aria-hidden="true"><span class="ln__rollin">
+                        <span class="ln__msg"><ng-container [ngTemplateOutlet]="who" /><span class="ln__text">{{ line.text }}</span></span>
+                      </span></span>
+                    }
+                  }
+                }
+              }
+            </div>
+          </div>
           @if (line.highlight; as hl) {
-            <span class="ln__ring" [attr.data-clock-origin]="hl.at" [style.--exit.ms]="hl.end - hl.at - 260" aria-hidden="true"></span>
-            @if (hl.label) { <span class="ln__label" [attr.data-clock-origin]="hl.at" [style.--exit.ms]="hl.end - hl.at - 260">{{ hl.label }}</span> }
+            <span class="lnrow__marks">
+              <span class="ln__ring" [attr.data-clock-origin]="hl.at" [style.--exit.ms]="hl.end - hl.at - 260" aria-hidden="true"></span>
+              @if (hl.label) { <span class="ln__label" [attr.data-clock-origin]="hl.at" [style.--exit.ms]="hl.end - hl.at - 260">{{ hl.label }}</span> }
+            </span>
           }
         </li>
       }
@@ -91,15 +109,16 @@
       @if (str(ring, 'label')) { <span class="df-ring__label">{{ str(ring, 'label') }}</span> }
     </div>
   }
+  </div>
 
   @for (cap of captions(); track cap.beat.id) {
-    <p class="df-caption" [attr.data-kicker]="scene().title || 'DomDimaBot'" [attr.data-place]="cap.place" [attr.data-clock-origin]="cap.beat.at" [style.--exit.ms]="cap.exit">
-      @for (w of cap.words; track $index) {@if (w.space) {<span class="sp">{{ ' ' }}</span>} @else {<span class="w" [class.em]="w.em" [style.--i]="w.i">{{ w.text }}</span>}}
+    <p class="df-caption" [class.df-caption--swap]="cap.swap" [attr.data-kicker]="scene().title || 'DomDimaBot'" [attr.data-place]="cap.place" [attr.data-clock-origin]="cap.beat.at" [style.--exit.ms]="cap.exit">
+      <span class="df-caption__text">@for (w of cap.words; track $index) {@if (w.space) {<span class="sp">{{ ' ' }}</span>} @else {<span class="w" [class.em]="w.em" [style.--i]="w.i">{{ w.text }}</span>}}</span>
     </p>
   }
 
   @for (card of cards(); track card.id) {
-    <div class="df-card" [attr.data-kind]="card.do" [attr.data-clock-origin]="card.at" [style.--exit.ms]="card.end - card.at - 320">
+    <div class="df-card" [attr.data-kind]="card.do" [attr.data-clock-origin]="card.at" [style.--exit.ms]="card.end - card.at - cardExitMs">
       <i class="df-glow df-glow--a"></i><i class="df-glow df-glow--b"></i>
       <img class="df-card__mark" [src]="mark()" alt="" />
       <p class="df-card__word">DomDimaBot<small>{{ copy().companion }}</small></p>

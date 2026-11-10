@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "$comment": "First-time chatter drops a scam link; DomDimaBot's first-message review bans them (spam.ts firstOffense = ban). Free plan uses the Lite model, no credits.",
   "id": "first-message-mod",
-  "v": 1,
+  "v": 2,
   "seed": 7,
   "look": "site",
   "title": { "en": "Chat protection", "es": "Protección del chat" },

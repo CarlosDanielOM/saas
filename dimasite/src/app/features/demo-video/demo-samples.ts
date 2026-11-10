@@ -11,7 +11,7 @@ export const DEMO_SAMPLES: readonly { id: string; label: Record<DemoLang, string
     id: 'tour',
     label: { en: 'Feature tour', es: 'Recorrido' },
     scene: {
-      id: 'tour', v: 1, seed: 11,
+      id: 'tour', v: 2, seed: 11,
       channel: { name: 'lunatica_v', title: { en: 'Cozy builds and chat games', es: 'Construcciones tranquilas y juegos con el chat' }, game: 'Minecraft', viewers: 87 },
       beats: [
         { do: 'intro', at: 0, dur: 1500, title: { en: 'Your stream, *upgraded*', es: 'Tu stream, *mejorado*' } },

@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "$comment": "Chat duel as the product runs it (dimabot/src/commands/duel.command.ts, dimabot/src/duel): !duel @user, the challenged viewer answers !duel accept, the bot simulates the fight and the duel overlay replays it, the bot posts the winner. Loser timeout 60 s is the default. Free on every plan. The overlay fight is a seeded local simulation with the same rules.",
   "id": "chat-duels",
-  "v": 1,
+  "v": 2,
   "seed": 23,
   "look": "site",
   "title": { "en": "Chat duels", "es": "Duelos del chat" },

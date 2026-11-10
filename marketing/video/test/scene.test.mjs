@@ -1,10 +1,10 @@
 // Scene rules shared by the player and the recorder.
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {captionSpans, normalizeScene, sceneCues, validateScene} from '../../../dimasite/src/app/features/demo-video/demo-scene.ts';
+import {ambientLines, captionSpans, directorShots, normalizeScene, sceneCues, validateScene} from '../../../dimasite/src/app/features/demo-video/demo-scene.ts';
 import {checkScene} from '../lib/scene.mjs';
 
-const scene = beats => ({id: 't', v: 1, beats});
+const scene = (beats, extra = {}) => ({id: 't', v: 2, beats, ...extra});
 const at = (raw, lang = 'en') => Object.fromEntries(normalizeScene(raw, lang, {duel: () => 9000}).scene.beats.map(b => [b.id, [b.at, b.end]]));
 
 test('+N counts from the end of the beat above; with/after anchor to a named beat', () => {
@@ -108,4 +108,78 @@ test('the sample scenes are valid', async () => {
   const {readdirSync, readFileSync} = await import('node:fs');
   const {SCENES} = await import('../lib/paths.mjs');
   for (const name of readdirSync(SCENES).filter(n => n.endsWith('.json'))) assert.deepEqual(checkScene(JSON.parse(readFileSync(`${SCENES}/${name}`, 'utf8'))), [], name);
+});
+
+const STORY = [
+  {do: 'intro', id: 'i', at: 0, dur: 1000},
+  {do: 'chat', id: 'hi', at: '+500', user: 'viewer_one', text: 'hi'},
+  {do: 'chat', id: 'spam', at: '+1500', user: 'promo_9', first: true, text: 'spam.example'},
+  {do: 'highlight', id: 'hl', with: 'spam', at: '+200', dur: 1500, target: 'spam'},
+  {do: 'ban', id: 'ban', after: 'hl', at: '+0', target: 'spam'},
+  {do: 'bot', id: 'bot', at: '+300', text: 'bye'},
+  {do: 'duel', id: 'd', at: '+4000', left: 'a', right: 'b'},
+  {do: 'bot', id: 'result', duel: 'd', text: '{winner} won'},
+  {do: 'outro', id: 'o', after: 'd', at: '+200'}
+];
+
+test('background chat: same lines every time, made-up viewers only, clear of the scripted lines, running before 0', () => {
+  const load = (extra, lang = 'en') => normalizeScene(scene(STORY, {seed: 9, ...extra}), lang, {duel: () => 9000}).scene;
+  const s = load();
+  assert.deepEqual(load().ambient, s.ambient, 'same seed, same chat');
+  assert.notDeepEqual(load({seed: 10}).ambient.map(l => l.text), s.ambient.map(l => l.text), 'another seed, another chat');
+  assert.ok(s.ambient.filter(l => l.at < 0).length >= 12, 'the chat is already full on the first frame');
+  assert.ok(s.ambient.some(l => l.at > 0), 'and keeps going');
+  assert.ok(s.ambient.every((l, i) => i === 0 || l.at > s.ambient[i - 1].at), 'in time order');
+  const scripted = new Set(['viewer_one', 'promo_9', 'a', 'b', 'DomDimaBot'].map(u => u.toLowerCase()));
+  assert.ok(s.ambient.every(l => !scripted.has(l.user.toLowerCase())), 'never a viewer from the script');
+  // Nothing lands on top of a scripted line or while one is being pointed at.
+  const beat = Object.fromEntries(s.beats.map(b => [b.id, b]));
+  for (const l of s.ambient) {
+    for (const id of ['hi', 'spam', 'bot', 'result']) assert.ok(l.at < beat[id].at - 450 || l.at >= beat[id].at + 700, `${l.key} at ${l.at} is too close to ${id}`);
+    assert.ok(l.at < beat.hl.at - 300 || l.at >= beat.ban.at + 1300, `${l.key} at ${l.at} moves the chat during the highlight/ban`);
+  }
+  assert.equal(new Set(s.ambient.map(l => l.key)).size, s.ambient.length, 'unique keys');
+  assert.deepEqual(load({crowd: false}).ambient, [], 'crowd: false turns it off');
+  assert.notDeepEqual(load({}, 'es').ambient.map(l => l.text), s.ambient.map(l => l.text), 'Spanish has its own reactions');
+  const own = load({crowd: {every: 900, lines: ['uno', 'dos', 'tres', 'cuatro'], users: ['v_a', 'v_b', 'v_c', 'v_d']}});
+  assert.ok(own.ambient.length > s.ambient.length, 'a shorter gap gives more lines');
+  assert.ok(own.ambient.every(l => ['uno', 'dos', 'tres', 'cuatro'].includes(l.text) && l.user.startsWith('v_')), 'own lines and viewers');
+  assert.ok(validateScene(scene(STORY, {crowd: {every: 5}})).some(e => e.includes('"every" must be')));
+  assert.ok(validateScene(scene(STORY, {crowd: {lines: ['one']}})).some(e => e.includes('at least 4 texts')));
+  assert.ok(validateScene(scene(STORY, {crowd: {nope: 1}})).some(e => e.includes('"crowd" must be')));
+  assert.equal(ambientLines({seed: 1, lang: 'en', durationMs: 5000, bot: 'Bot', beats: []}, {users: ['Bot', 'solo']}).length, 0, 'too few free names: no background chat');
+  // Review findings (Sol): rounding may not move a line into a quiet window or onto the last ms; NaN is not a gap;
+  // duel fighters and the streamer never chat in the background; "~" and "#" ids are reserved.
+  for (const seed of [1067, 725, 3, 44, 905]) {
+    const tight = normalizeScene({id: 't', v: 2, seed, end: 5000, crowd: {every: 400}, beats: [{do: 'chat', id: 'm', at: 1000, user: 'u', text: 'x'}]}, 'en').scene;
+    assert.ok(tight.ambient.every(l => Number.isInteger(l.at) && l.at < 5000 && (l.at < 550 || l.at >= 1700)), `seed ${seed}: ${tight.ambient.filter(l => l.at >= 550 && l.at < 1700 || l.at >= 5000).map(l => l.at)}`);
+  }
+  assert.ok(validateScene(scene(STORY, {crowd: {every: NaN}})).some(e => e.includes('"every" must be')));
+  const fighters = normalizeScene(scene([{do: 'duel', id: 'd', left: 'mika_plays', right: 'sofi_gg'}], {channel: {name: 'kiwi_bird'}}), 'en', {duel: () => 9000}).scene;
+  assert.ok(fighters.ambient.length > 5 && fighters.ambient.every(l => !['mika_plays', 'sofi_gg', 'kiwi_bird'].includes(l.user)), 'fighters and the streamer stay out of the background chat');
+  assert.ok(validateScene(scene([{do: 'chat', id: '~1', user: 'u', text: 'x'}])).some(e => e.includes('can\'t start with')));
+  assert.notDeepEqual(load({seed: 9007199254740991}).ambient, load({seed: 9007199254740990}).ambient, 'huge seeds still differ');
+});
+
+test('director: pushes in on the chat while it is the subject, stays wide for overlays and cards', () => {
+  const load = extra => normalizeScene(scene(STORY, extra), 'en', {duel: () => 9000}).scene;
+  const s = load();
+  const beat = Object.fromEntries(s.beats.map(b => [b.id, b]));
+  const shots = directorShots(s);
+  // One chat shot: from the first-time message through the highlight, the ban and the bot's answer.
+  assert.deepEqual(shots, [{at: beat.spam.at - 100, focus: 'chat'}, {at: beat.bot.at + 2600, focus: 'wide'}]);
+  assert.ok(shots[0].at >= beat.i.end - 300, 'not under the intro card');
+  // The duel result lands while the duel still plays: the camera stays wide rather than cutting in for a moment.
+  assert.ok(shots.every(shot => shot.at < beat.d.at - 200 || shot.at >= beat.o.at), 'no chat shot during the duel');
+  assert.deepEqual(directorShots(load({director: 'off'})), [], 'director: off keeps the picture still');
+  const own = normalizeScene(scene([...STORY.slice(0, 6), {do: 'shot', at: 1200, focus: 'chat'}, {do: 'shot', at: 2500, focus: 'wide'}]), 'en').scene;
+  assert.deepEqual(directorShots(own), [{at: 1200, focus: 'chat'}, {at: 2500, focus: 'wide'}], 'own shot beats replace the automatic ones');
+  assert.ok(validateScene(scene([{do: 'shot', focus: 'moon'}])).some(e => e.includes('"focus" must be one of: wide, chat')));
+  assert.ok(validateScene(scene(STORY, {director: 'sometimes'})).some(e => e.includes('"director" must be')));
+});
+
+test('60 fps unless the scene asks for 30', () => {
+  assert.equal(normalizeScene(scene(STORY), 'en', {duel: () => 9000}).scene.fps, 60);
+  assert.equal(normalizeScene(scene(STORY, {fps: 30}), 'en', {duel: () => 9000}).scene.fps, 30);
+  assert.ok(validateScene({id: 't', v: 1, beats: STORY}).some(e => e.includes('"v" must be 2')), 'scenes written for the old contract are refused');
 });

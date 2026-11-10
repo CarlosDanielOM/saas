@@ -5,7 +5,7 @@
 //
 //   <scene>              name in video/scenes/ (first-message-mod) or a path to a .json file
 //   --vertical           only 1080x1920 (TikTok/Reels/Shorts)      --landscape   only 1920x1080 (Twitter/YouTube)
-//   --lang en|es|all     languages (default: the scene's langs)    --fps 30|60   (default: scene fps or 30)
+//   --lang en|es|all     languages (default: the scene's langs)    --fps 30|60   (default: scene fps or 60)
 //   --preview            quick look: half size, 15 fps             --sheet       also write a contact sheet PNG
 //   --frames A-B         render only frames A..B (testing)          --validate    check the scene and stop
 //   --look NAME          site, studio, paper, signal, broadcast or night (default: the scene's "look")
@@ -29,7 +29,7 @@ import {bundleHash, checkBundle, serveBundle} from './lib/server.mjs';
 import {openPlayer, loadScene, captureFrames, warmFonts} from './lib/record.mjs';
 import {muxAudio, startEncoder, writeJpeg, writeSheet} from './lib/encode.mjs';
 import {CAPTURE_ARGS, chromium, playwrightVersion, probe, stopChildren} from './lib/tools.mjs';
-import {DEMO_FORMATS, DEMO_LANGS, DEMO_LOOKS, sceneJsonSchema} from '../../dimasite/src/app/features/demo-video/demo-scene.ts';
+import {DEFAULT_FPS, DEMO_FORMATS, DEMO_LANGS, DEMO_LOOKS, sceneJsonSchema} from '../../dimasite/src/app/features/demo-video/demo-scene.ts';
 
 const SCRIPT = fileURLToPath(import.meta.url);
 /** Set once Ctrl-C/SIGTERM starts the cleanup: errors after that are consequences, not news. */
@@ -75,7 +75,7 @@ async function main() {
   if (!formats.length) fail(`this scene has no ${opts.vertical ? 'vertical' : 'landscape'} format`);
   if (opts.look !== undefined && !DEMO_LOOKS.includes(opts.look)) fail(`--look must be one of: ${DEMO_LOOKS.join(', ')}`);
   const preview = !!opts.preview;
-  const fps = preview ? 15 : Number(opts.fps ?? raw.fps ?? 30);
+  const fps = preview ? 15 : Number(opts.fps ?? raw.fps ?? DEFAULT_FPS);
   if (!(preview || [30, 60].includes(fps))) fail('--fps must be 30 or 60');
   const frameRange = opts.frames ? opts.frames.split('-').map(Number) : null;
   if (frameRange && (frameRange.length !== 2 || frameRange.some(n => !Number.isInteger(n) || n < 0) || frameRange[1] <= frameRange[0])) fail('--frames must look like 0-90');
