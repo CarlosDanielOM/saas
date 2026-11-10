@@ -16,13 +16,13 @@
   },
   "beats": [
     { "do": "intro", "at": 0, "dur": 1700,
-      "title": { "en": "Scam links? *Gone.*", "es": "¿Links de estafa? *Fuera.*" },
-      "sub": { "en": "Before your chat even sees them", "es": "Antes de que tu chat los vea" } },
+      "title": { "en": "A scam bot just *joined your chat*", "es": "Un bot de estafas acaba de *entrar a tu chat*" },
+      "sub": { "en": "Here's what happens next", "es": "Mira lo que pasa" } },
 
     { "do": "chat", "id": "c1", "at": "+300", "user": "taco_fan", "text": { "en": "that clutch was insane", "es": "ese clutch estuvo increíble" }, "badges": ["sub"] },
     { "do": "chat", "id": "c2", "at": "+700", "user": "NovaPlays", "text": { "en": "GG", "es": "GG" } },
     { "do": "caption", "id": "cap1", "at": "+300", "dur": 3600,
-      "text": { "en": "A *first-time chatter* drops a scam link…", "es": "Alguien que *escribe por primera vez* deja un link de estafa…" } },
+      "text": { "en": "Their first message ever, and it's *a scam link*", "es": "Su primer mensaje en el canal, y es *un link de estafa*" } },
     { "do": "chat", "id": "spam", "with": "cap1", "at": "+600", "user": "xx_promo_77", "first": true, "sfx": { "src": "kit:pop", "gain": 0.7 },
       "text": { "en": "cheap viewers and followers at b00st-views.example", "es": "viewers y followers baratos en b00st-views.example" } },
     { "do": "highlight", "id": "hl", "with": "cap1", "at": "+900", "dur": 1700, "target": "spam",
@@ -36,14 +36,14 @@
         { "file": "dimabot/src/functions/moderation/execute_action.moderation.ts", "quote": "`@${username} ${reason}`", "inText": false }
       ] },
     { "do": "caption", "id": "cap2", "with": "ban", "at": "+0", "dur": 3400,
-      "text": { "en": "DomDimaBot's AI checks it and *bans the spammer*", "es": "La IA de DomDimaBot lo revisa y *banea al spammer*" } },
+      "text": { "en": "DomDimaBot read it and *banned them*", "es": "DomDimaBot lo leyó y *lo baneó*" } },
     { "do": "chat", "id": "c3", "with": "cap2", "at": "+1500", "user": "taco_fan", "text": { "en": "bot got him lol", "es": "jaja el bot lo sacó" }, "badges": ["sub"] },
     { "do": "chat", "id": "c4", "at": "+700", "user": "pixel_pancho", "text": { "en": "clean chat as always", "es": "chat limpio como siempre" }, "badges": ["vip"] },
 
     { "do": "caption", "id": "cap3", "after": "cap2", "at": "+200", "dur": 2600,
-      "text": { "en": "Included in *every plan*, Free too", "es": "Incluido en *todos los planes*, también el gratis" } },
+      "text": { "en": "It does this on *every plan*, the free one too", "es": "Lo hace en *todos los planes*, también en el gratis" } },
     { "do": "outro", "id": "outro", "at": "+300", "dur": 2600,
-      "title": { "en": "Your stream, *protected*", "es": "Tu stream, *protegido*" },
+      "title": { "en": "Try it on *your channel*", "es": "Pruébalo en *tu canal*" },
       "cta": { "en": "Free to start · domdimabot.com", "es": "Empieza gratis · domdimabot.com" } }
   ]
 }
