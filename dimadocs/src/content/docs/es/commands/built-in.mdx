@@ -8,6 +8,8 @@ sidebar:
 
 Los comandos integrados son herramientas listas que vienen con DomDimaBot. Los espectadores y los moderadores los escriben en el chat. Cada uno tiene un nivel predeterminado de **Quién puede usarlo** y un tiempo de espera, y puedes cambiar ambos. `!so` es un comando personalizado predeterminado que puedes editar; consulta [Comandos personalizados](/es/commands/overview/) para ver cómo cambiar su acceso y respuesta.
 
+Los comandos integrados necesitan acceso completo. Hasta que hagas clic en **Dar acceso completo**, la página **Comandos** los muestra con **Requiere acceso completo**. Tus propios comandos funcionan sin él. Consulta [Primeros pasos](/es/getting-started/).
+
 ## Activarlos o cambiar el acceso
 
 - **En el dashboard:** abre **Comandos**, busca la sección **Incluidos** y usa el interruptor **Activo en el chat**. Abre un comando para cambiar **Quién puede usarlo**.
@@ -15,7 +17,7 @@ Los comandos integrados son herramientas listas que vienen con DomDimaBot. Los e
 - **Los comandos integrados reservados no se pueden eliminar.** Las plantillas predeterminadas editables, como `!s` y `!followage`, sí se pueden editar o eliminar.
 - **Tiempos de espera:** la mayoría de los comandos integrados esperan 10 segundos entre usos. La espera es compartida por todo el canal. `!s` y `!vanish` no tienen espera.
 
-Los canales nuevos empiezan con `!s` activo para todos y `!clearchat` desactivado. Los canales existentes conservan su configuración guardada.
+Cuando das acceso completo, los canales nuevos reciben `!s` activo para todos y `!clearchat` desactivado. Si ya creaste tu propio comando con el mismo nombre, como `!s` o `!so`, el bot conserva el tuyo. Los canales existentes conservan su configuración guardada.
 
 En las tablas siguientes, **Cualquiera** significa cualquier persona en el chat, **Moderadores o más** incluye a moderadores, editores, admins y a ti, y **Editores o más** incluye a editores, admins y a ti.
 

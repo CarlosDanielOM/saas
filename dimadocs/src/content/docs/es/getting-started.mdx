@@ -1,49 +1,67 @@
 ---
 title: Primeros pasos
-description: Inicia sesión con Twitch, aprueba los permisos del bot, enciéndelo en tu chat y prueba tu primer comando en unos 10 minutos.
+description: Inicia sesión con Twitch, agrega el bot a tu chat, crea tu primer comando y da acceso completo cuando quieras los comandos integrados y las alertas.
 sidebar:
   order: 1
 ---
 
-import { Steps, Aside } from '@astrojs/starlight/components';
+import { Steps } from '@astrojs/starlight/components';
 
 Esta guía pone a DomDimaBot a funcionar en el chat de tu canal de Twitch. Necesitas la cuenta de Twitch que es dueña del canal y unos 10 minutos. Las cuentas nuevas empiezan con el plan **Gratis**, que basta para esta configuración.
 
-Solo el propietario del canal puede encender o apagar el bot. Los ayudantes solo pueden usar las páginas que el propietario les dio.
+Solo el dueño del canal puede agregar el bot al chat o darle acceso completo. Los ayudantes solo pueden usar las páginas que el dueño les dio.
 
 <Steps>
 
 1. **Inicia sesión con Twitch**
 
-   Ve a [domdimabot.com](https://domdimabot.com) y haz clic en **Iniciar sesion con Twitch**. Entra con la cuenta de Twitch que es dueña del canal.
+   Ve a [domdimabot.com](https://domdimabot.com) y haz clic en **Iniciar sesión con Twitch**. Entra con la cuenta de Twitch que es dueña del canal. Twitch te pide aprobar; apruébalo y volverás al panel.
 
    Terminas cuando se abre el panel.
 
-2. **Aprueba los permisos de Twitch del bot**
+2. **Agrega el bot a tu chat**
 
-   Si la barra superior muestra **Activar Bot**, haz clic en él. Twitch abre una pantalla de permisos. Apruébala y volverás al panel.
+   En la barra superior, haz clic en **Agregar bot al chat**. El botón cambia a **Bot en el chat · Quitar** y el encabezado del panel muestra **Bot en tu chat**.
 
-   Twitch muestra una lista larga porque el bot la necesita para leer y enviar mensajes del chat, moderar el chat, administrar las recompensas del canal y leer seguidores, suscripciones, bits y tu dirección de correo. Aprueba solo si quieres que DomDimaBot esté en tu canal.
+   Si el botón dice **Permitir en Twitch**, haz clic en él. Twitch te pide aprobar y el bot entra a tu chat justo después. Esto puede pasar en cuentas creadas antes de que existiera este botón.
 
-   <Aside type="note">
-   El botón de la barra superior cambia cuando falta un permiso o está desactualizado. Consulta la tabla de abajo. Tu plan no concede ni quita permisos de Twitch.
-   </Aside>
+   Para sacar el bot de tu chat, haz clic en **Quitar** y vuelve a hacer clic cuando diga **Toca otra vez para quitar**.
 
-3. **Enciende el bot**
+   Terminas cuando el encabezado del panel muestra **Bot en tu chat**.
 
-   En el panel, haz clic en **Encender el bot** en el encabezado del canal. El estado del bot indica que ya está en tu chat. El botón ahora dice **Apagar el bot**, que hace que el bot deje de responder en el chat.
-
-   Terminas cuando la línea de estado indica que el bot está en tu chat.
-
-4. **Agrega tu primer comando**
+3. **Agrega tu primer comando**
 
    Abre **Comandos** y haz clic en **Nuevo comando**. Escribe un nombre, como `hello`, una respuesta y guarda. Después, los espectadores escriben `!hello` en tu chat.
 
-   Terminas cuando tu comando de prueba responde en el chat. Si no responde, revisa que el bot esté encendido y que el comando esté habilitado, y espera a que termine su cooldown.
+   Para un comando de texto a voz, haz clic en **Comando de texto a voz** en la página **Comandos**. Abre el diálogo con `!tts` y esta respuesta ya escrita; guárdalo:
+
+   ```
+   $(tts $(user) dice: &t)
+   ```
+
+   Después, los espectadores escriben `!tts` y un mensaje, y se lee en voz alta en tu stream. La voz solo suena mientras el overlay de voz está en OBS; consulta [Texto a voz](/es/tts/).
+
+   Terminas cuando tu comando de prueba responde en el chat. Si no responde, revisa que la barra superior muestre **Bot en el chat** y que el comando esté habilitado, y espera a que termine su tiempo de espera.
 
    [![El diálogo de nuevo comando con el comando hello y una respuesta de ejemplo](/guides/commands/comandos-create-dark.png)](/guides/commands/comandos-create-dark.png)
 
    *Datos de ejemplo de DemoStreamer; el diálogo muestra dónde escribir el nombre y la respuesta del comando.*
+
+4. **Da acceso completo (opcional)**
+
+   Tus propios comandos y el texto a voz funcionan sin este paso. Haz clic en **Dar acceso completo** cuando quieras el resto. Lo encuentras en el menú de perfil (tu avatar en la computadora, el menú ☰ en el celular), en la tarjeta **Primeros pasos** del panel y junto a las funciones que lo necesitan. Twitch te pide aprobar más permisos y vuelves al panel.
+
+   El acceso completo activa:
+
+   - Los comandos integrados, como `!so`, `!poll`, `!title`, `!game`, `!clip` y las herramientas de mods y VIP.
+   - Los eventos de chat y las alertas de follows, subs, Bits, raids y cuando entras en vivo.
+   - El automod y la defensa contra follows.
+   - Las recompensas de puntos del canal.
+   - Las encuestas y predicciones en los overlays.
+   - Las metas de Twitch en el panel.
+   - Las estadísticas de seguidores y subs.
+
+   Mientras tanto, esas funciones muestran **Necesita acceso completo**.
 
 5. **Revisa los módulos (opcional)**
 
@@ -57,21 +75,25 @@ Solo el propietario del canal puede encender o apagar el bot. Los ayudantes solo
 
 | Botón | Qué significa | Qué hacer |
 |---|---|---|
-| **Activar Bot** | El canal todavía no está configurado. | Haz clic y aprueba los permisos de Twitch. |
-| **Reautenticar** | El bot ya no tiene el acceso de Twitch que necesita. | Haz clic y vuelve a aprobar. |
-| **Actualizar Permisos** | El bot ahora necesita permisos que antes no tenía. | Haz clic y aprueba la lista nueva. |
+| **Agregar bot al chat** | El bot no está en tu chat. | Haz clic para agregar el bot. |
+| **Bot en el chat · Quitar** | El bot está en tu chat. | Nada. Para sacarlo, haz clic en **Quitar** y otra vez para confirmar. |
+| **Permitir en Twitch** | Twitch necesita tu OK antes de que el bot entre a tu chat. | Haz clic y aprueba en Twitch. El bot entra justo después. |
+| **Reautenticar** | Diste acceso completo, pero el bot ya no tiene el acceso de Twitch que necesita. | Haz clic y vuelve a aprobar. |
+| **Actualizar permisos** | Diste acceso completo y el bot ahora necesita permisos que antes no tenía. | Haz clic y aprueba la lista nueva. |
 
-Si el botón vuelve a aparecer después de aprobar, recarga la página y revisa que hayas iniciado sesión con la cuenta de Twitch del propietario. El panel sigue funcionando mientras el botón está visible.
+**Dar acceso completo** no está en la barra superior. Lo encuentras en el menú de perfil, en la tarjeta **Primeros pasos** del panel o junto a una función que lo necesita.
+
+Si un botón vuelve a aparecer después de aprobar, recarga la página y revisa que hayas iniciado sesión con la cuenta de Twitch del dueño. El panel sigue funcionando mientras el botón está visible.
 
 ## Comprueba que la configuración funcionó
 
-- La barra superior no muestra ningún botón de permisos.
-- El estado del bot del panel indica que ya está en tu chat.
+- La barra superior muestra **Bot en el chat · Quitar**.
+- El encabezado del panel muestra **Bot en tu chat**.
 - Tu comando de prueba responde en el chat.
 
 ## Siguientes pasos
 
-- [Panel de control](/es/dashboard/): estado, control de encendido del bot, actividad y menús.
+- [Panel de control](/es/dashboard/): estado, tarjeta **Primeros pasos**, actividad y menús.
 - [Comandos](/es/commands/): comandos integrados y personalizados.
 - [Módulos](/es/modules/): todas las funciones, su plan y su estado.
 - [Planes](/es/plans/): compara Gratis, Premium y Pro.

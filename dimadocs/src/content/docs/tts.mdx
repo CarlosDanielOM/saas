@@ -16,7 +16,7 @@ Text to speech (TTS) reads messages aloud on your stream. Your viewers use the `
 1. Go to **Modules → Text to Speech** and turn on **Enable channel TTS**.
 2. In **Speech URL**, click **Copy URL**.
 3. In OBS, add a **Browser Source** with that URL. Keep the source active while you want speech to play.
-4. Check that the **Speech Chat** command (`!s`) is on under **Commands**. Then type `!s Hello chat!` in your chat to test it.
+4. Test it in your chat. With full access, check that the **Speech Chat** command (`!s`) is on under **Commands**, then type `!s Hello chat!`. Without full access, click **Text-to-speech command** on the **Commands** page to make a `!tts` command, then type `!tts Hello chat!`. Either way, the bot must be in your chat.
 
 If the browser source is not connected, new speech requests are refused with the message "Speech overlay is not connected." Queued speech waits until the source reconnects.
 
