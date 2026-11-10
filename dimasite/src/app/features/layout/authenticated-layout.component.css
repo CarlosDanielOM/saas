@@ -230,94 +230,6 @@
   background: linear-gradient(135deg, #7c3aed, #db2777);
 }
 
-/* Bot chat control (owner, own channel): add / in chat · remove (two taps) */
-.auth-navbar__chat {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 44px;
-  max-width: 100%;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 750;
-  white-space: nowrap;
-  cursor: pointer;
-  background: #7c3aed;
-  color: #fff;
-  box-shadow: var(--shadow);
-  transition: transform 160ms ease, filter 160ms ease, background-color 160ms ease;
-}
-
-.auth-navbar__chat:hover,
-.auth-navbar__chat:focus-visible {
-  filter: brightness(1.06);
-}
-
-.auth-navbar__chat:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 60%, #fff);
-  outline-offset: 2px;
-}
-
-.auth-navbar__chat-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.auth-navbar__chat-dot {
-  flex-shrink: 0;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
-}
-
-.auth-navbar__chat[data-state='in'],
-.auth-navbar__chat[data-state='busy'] {
-  background: var(--tile);
-  color: var(--fg);
-  border-color: var(--line);
-  box-shadow: none;
-}
-
-.auth-navbar__chat[data-state='in'] .auth-navbar__chat-dot {
-  background: var(--ok);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent);
-}
-
-.auth-navbar__chat[data-state='busy'] {
-  cursor: progress;
-}
-
-.auth-navbar__chat[data-state='busy'] .auth-navbar__chat-dot {
-  background: var(--muted);
-}
-
-.auth-navbar__chat-action {
-  padding-left: 0.5rem;
-  border-left: 1px solid var(--line);
-  color: var(--muted);
-  font-weight: 650;
-}
-
-.auth-navbar__chat[data-state='confirm'] {
-  background: var(--tile);
-  color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
-  box-shadow: none;
-}
-
-.auth-navbar__chat[data-state='confirm'] .auth-navbar__chat-dot {
-  background: var(--danger);
-}
-
-.auth-navbar__dropdown-item--access .auth-navbar__access-icon,
-.auth-navbar__mobile-link--access .auth-navbar__access-icon {
-  color: var(--accent);
-}
-
 .auth-navbar__cta-icon {
   width: 14px;
   height: 14px;
@@ -619,11 +531,6 @@
     font-size: 0.72rem;
   }
 
-  .auth-navbar__chat {
-    font-size: 0.8rem;
-    padding: 0.5rem 0.85rem;
-  }
-
   .auth-navbar__profile {
     display: none;
   }
@@ -641,10 +548,6 @@
   }
 
   .auth-navbar__cta-btn {
-    transition: none;
-  }
-
-  .auth-navbar__chat {
     transition: none;
   }
 

@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Log in with Twitch, add the bot to your chat, make your first command, and give full access when you want built-in commands and alerts.
+description: Log in with Twitch, turn the bot on from your dashboard, make your first command, and activate the bot when you want built-in commands and alerts.
 sidebar:
   order: 1
 ---
@@ -9,7 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 
 This guide gets DomDimaBot working in your Twitch chat. You need the Twitch account that owns the channel and about 10 minutes. New accounts start on the **Free** plan, which is enough for this setup.
 
-Only the channel owner can add the bot to chat or give it full access. Helpers can use only the pages the owner gave them.
+Only the channel owner can turn the bot on or off or activate it. Helpers can use only the pages the owner gave them.
 
 <Steps>
 
@@ -19,41 +19,35 @@ Only the channel owner can add the bot to chat or give it full access. Helpers c
 
    You are done when the dashboard opens.
 
-2. **Add the bot to your chat**
+2. **Turn the bot on**
 
-   In the top bar, click **Add bot to chat**. The button changes to **Bot in chat · Remove**, and the dashboard header shows **Bot in your chat**.
+   In the dashboard header, click **Turn the bot on**. The bot joins your chat, and the header shows **Bot in your chat**.
 
-   If the button says **Allow on Twitch** instead, click it. Twitch asks you to approve, and the bot joins your chat right after. This can happen on accounts made before this button existed.
+   If the button says **Allow on Twitch** instead, click it. Twitch asks you to sign in again, and the bot joins your chat right after. This can happen on accounts made before this button existed.
 
-   To take the bot out of your chat, click **Remove**, then click again when it says **Tap again to remove**.
+   To take the bot out of your chat, click **Turn the bot off**, then click again when it says **Tap again to turn off**.
 
    You are done when the dashboard header shows **Bot in your chat**.
 
 3. **Add your first command**
 
-   Open **Commands** and click **New command**. Enter a name such as `hello`, a response, and save. Viewers then type `!hello` in your chat.
+   Some built-in commands already work, such as `!commands` and `!s` (text to speech). `!s` reads a message aloud once the speech overlay is in OBS; see [Text to Speech](/tts/).
 
-   For a text-to-speech command, click **Text-to-speech command** on the **Commands** page. It opens the dialog with `!tts` and this reply filled in; save it:
+   To make your own, open **Commands** and click **New command**. Enter a name such as `hello`, a response, and save. Viewers then type `!hello` in your chat.
 
-   ```
-   $(tts $(user) says: &t)
-   ```
-
-   Viewers then type `!tts` and a message, and it is read aloud on stream. Speech plays only while the speech overlay is in OBS; see [Text to Speech](/tts/).
-
-   You are done when your test command replies in chat. If it does not, check that the top bar shows **Bot in chat** and the command is enabled, then wait for its cooldown to end.
+   You are done when your test command replies in chat. If it does not, check that the dashboard header shows **Bot in your chat** and the command is enabled, then wait for its cooldown to end.
 
    [![The new command dialog with a hello command and sample reply](/guides/commands/commands-create-dark.png)](/guides/commands/commands-create-dark.png)
 
    *Example data for DemoStreamer; the dialog shows where to enter a command name and reply.*
 
-4. **Give full access (optional)**
+4. **Activate Bot (optional)**
 
-   Your own commands and text to speech work without this step. Click **Give full access** when you want the rest. You find it in the profile menu (your avatar on a computer, the ☰ menu on a phone), on the dashboard **Get started** card, and next to the features that need it. Twitch asks you to approve, and you return to the dashboard.
+   Your own commands, text to speech, Triggers, Overlay Studio and more work without this step. Click **Activate Bot** when you want the rest. You find it in the top bar, on the dashboard **Get started** card, and next to the features that need it. Twitch asks you to approve, and you return to the dashboard.
 
-   Full access turns on:
+   Activating the bot turns on:
 
-   - Built-in commands, such as `!so`, `!poll`, `!title`, `!game`, `!clip`, and the mod and VIP tools.
+   - More built-in commands, such as `!so`, `!poll`, `!title`, `!game`, `!followage`, and the mod and VIP tools.
    - Chat events and alerts for follows, subs, Bits, raids, and going live.
    - Automod and follow-bot protection.
    - Channel point rewards.
@@ -75,25 +69,20 @@ Only the channel owner can add the bot to chat or give it full access. Helpers c
 
 | Button | What it means | What to do |
 |---|---|---|
-| **Add bot to chat** | The bot is not in your chat. | Click it to add the bot. |
-| **Bot in chat · Remove** | The bot is in your chat. | Nothing. To take it out, click **Remove** and click again to confirm. |
-| **Allow on Twitch** | Twitch needs your OK before the bot can join your chat. | Click it and approve on Twitch. The bot joins right after. |
-| **Reauthenticate** | You gave full access, but the bot no longer has the Twitch access it needs. | Click it and approve again. |
-| **Update Permissions** | You gave full access, and the bot now needs permissions it did not have before. | Click it and approve the new list. |
-
-**Give full access** is not in the top bar. Find it in the profile menu, on the dashboard **Get started** card, or next to a feature that needs it.
+| **Activate Bot** | The bot does not have full access yet. Your own commands still work. | Click it when you want the features that need full access, and approve on Twitch. |
+| **Reauthenticate** | You activated the bot, but it no longer has the Twitch access it needs. | Click it and approve again. |
+| **Update Permissions** | You activated the bot, and it now needs permissions it did not have before. | Click it and approve the new list. |
 
 If a button appears again after you approved, reload the page and check that you are signed in with the channel owner's Twitch account. The dashboard stays usable while the button is showing.
 
 ## Check that setup worked
 
-- The top bar shows **Bot in chat · Remove**.
 - The dashboard header shows **Bot in your chat**.
 - Your test command replies in chat.
 
 ## Where to go next
 
-- [Dashboard](/dashboard/): the status, the **Get started** card, activity, and menus.
+- [Dashboard](/dashboard/): the status, the bot on/off button, the **Get started** card, activity, and menus.
 - [Commands](/commands/): built-in and custom commands.
 - [Modules](/modules/): every feature, its plan, and its status.
 - [Plans](/plans/): compare Free, Premium, and Pro.

@@ -18,6 +18,8 @@ interface ReservedCommandDefinition {
     cooldown?: number;
     userLevel?: number;
     userLevelName?: string;
+    /** Needs the streamer's full Twitch approval (broadcaster scopes or the bot as moderator). */
+    requiresFullAccess?: boolean;
 }
 
 interface LocalizedReservedCommandDefinition extends Omit<ReservedCommandDefinition, 'description'> {
@@ -95,8 +97,13 @@ export function getReservedCommandsPayload(language?: string | null): ReservedCo
     };
 }
 
-export async function ensureReservedCommands(channelID: string, channelName: string): Promise<number> {
-    const commands = RESERVED_COMMANDS;
+/** Defaults that work with only the bot in chat (no Twitch API call that needs the streamer's approval). */
+const BASIC_RESERVED_COMMANDS = RESERVED_COMMANDS.filter((command) => !command.requiresFullAccess);
+/** Built-in (undeletable) basic defaults: all present means the basic set was added before. */
+const BASIC_RESERVED_MARKERS = BASIC_RESERVED_COMMANDS.filter((command) => command.reserved);
+
+export async function ensureReservedCommands(channelID: string, channelName: string, options: { basicOnly?: boolean } = {}): Promise<number> {
+    const commands = options.basicOnly ? BASIC_RESERVED_COMMANDS : RESERVED_COMMANDS;
     let createdCount = 0;
 
     for (const commandData of commands) {
@@ -171,4 +178,30 @@ export async function ensureReservedCommands(channelID: string, channelName: str
     }
 
     return createdCount;
+}
+
+/**
+ * Adds the defaults that work without full access (TTS `!s`, `!commands`, `!cc`, `!clip`, games...)
+ * for a channel that only added the bot to chat. Timers need stream start/end events, so their
+ * commands wait for full access like the other Twitch-dependent ones.
+ * Full access later adds the rest through `ensureReservedCommands`.
+ */
+export async function ensureBasicReservedCommands(channelID: string, channelName: string): Promise<number> {
+    // Complete when every undeletable basic default exists (or the streamer's own command took
+    // its name/job, which the seed skips too). An interrupted seed is finished on the next call;
+    // a finished one is never repeated, so editable defaults the streamer deleted stay deleted.
+    const present = await CommandsSchema.find({
+        channelID,
+        activation: { $ne: 'keyword' },
+        $or: [
+            { func: { $in: BASIC_RESERVED_MARKERS.map((command) => command.func) } },
+            { cmd: { $in: BASIC_RESERVED_MARKERS.map((command) => command.cmd) } }
+        ]
+    }).select('func cmd').lean();
+    const funcs = new Set(present.map((command) => command.func));
+    const cmds = new Set(present.map((command) => command.cmd));
+    if (BASIC_RESERVED_MARKERS.every((command) => funcs.has(command.func) || cmds.has(command.cmd))) {
+        return 0;
+    }
+    return ensureReservedCommands(channelID, channelName, { basicOnly: true });
 }

@@ -208,6 +208,12 @@
       } @else if (module.minTier === 'premium') {
         <span class="lf-chip lf-chip--xs lf-chip--gold">Premium</span>
       }
+      @if (needsFullAccess(module)) {
+        <span class="lf-chip lf-chip--xs lf-chip--access" data-full-access-chip>
+          <lucide-icon [name]="lockIcon" [size]="11" aria-hidden="true"></lucide-icon>
+          {{ t('featureAccess.needs') }}
+        </span>
+      }
     </span>
     <span class="lf-mod__tagline">{{ module.tagline }}</span>
     @if (lockedSubtext(module); as sub) {

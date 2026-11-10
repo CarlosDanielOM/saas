@@ -52,6 +52,8 @@ export interface ReservedCatalogCommand {
   userLevel?: number;
   userLevelName?: string;
   message?: string;
+  /** Needs the streamer's full Twitch approval; locked until then. */
+  requiresFullAccess?: boolean;
 }
 
 interface CacheEntry<T> {
@@ -146,6 +148,12 @@ export class CommandsApiService {
    * Get commands for a channel with pagination support.
    * By default loads up to 100 commands for client-side filtering.
    */
+  /**
+   * Whether each loaded channel gave the bot full access (from GET /commands). Without it the
+   * API only adds the defaults that need no Twitch approval; the rest are shown locked.
+   */
+  readonly fullAccessByChannel = signal<Record<string, boolean>>({});
+
   getCommands(channelID: string, options: { limit?: number; skip?: number; skipCache?: boolean; activation?: 'command' | 'keyword' | 'all' } = {}) {
     const { limit = 100, skip = 0, skipCache = false, activation = 'command' } = options;
     const language = this.languageService.getCurrentLanguage();
@@ -166,6 +174,12 @@ export class CommandsApiService {
         `${this.linksService.getApiUrl()}/commands/${channelID}?language=${encodeURIComponent(language)}&limit=${limit}&skip=${skip}&activation=${activation}`
       )
       .pipe(
+        tap((response) => {
+          const fullAccess = (response as { fullAccess?: unknown }).fullAccess;
+          if (typeof fullAccess === 'boolean' && this.fullAccessByChannel()[channelID] !== fullAccess) {
+            this.fullAccessByChannel.update((current) => ({ ...current, [channelID]: fullAccess }));
+          }
+        }),
         map((response) => this.extractCommands(response)),
         tap((commands) => {
           this.setCache(cacheKey, commands);

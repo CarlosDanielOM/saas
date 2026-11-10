@@ -114,8 +114,8 @@
                       <p>{{ t('commands.empty.customHint') }}</p>
                       @if (canManage()) {
                         <div class="lf-empty__actions">
-                          <button type="button" class="lf-btn lf-btn--primary" (click)="openCreate('command')">{{ t('commands.empty.customCta') }}</button>
-                          <button type="button" class="lf-btn" (click)="openTtsCommand()">
+                          <button type="button" class="lf-btn lf-btn--primary" (appThrottleClick)="openCreate('command')">{{ t('commands.empty.customCta') }}</button>
+                          <button type="button" class="lf-btn" (appThrottleClick)="openTtsCommand()">
                             <app-lf-icon name="audio" [size]="15"></app-lf-icon>{{ t('commands.quickStart.tts') }}
                           </button>
                         </div>
@@ -173,38 +173,38 @@
               </section>
             }
 
-            <!-- Built-in, grouped by what they're for -->
-            @if ((filter() === 'all' || filter() === 'builtin') && builtinSource().length) {
+            <!-- Built-in, grouped by what they're for; before full access the Twitch-dependent ones sit locked after the real rows -->
+            @if ((filter() === 'all' || filter() === 'builtin') && (builtinCount() || builtinsLocked())) {
               @let locked = builtinsLocked();
               <section class="lf-group" [class.lf-group--locked]="locked" aria-labelledby="commands-builtin-title">
                 <div class="lf-group__head">
-                  <h3 class="lf-h3" id="commands-builtin-title">{{ t('commands.sections.builtin') }} <span class="lf-count">{{ builtinSource().length }}</span></h3>
-                  @if (!locked) {
-                    <p class="lf-note">{{ t('commands.sections.builtinHint') }}</p>
-                  }
+                  <h3 class="lf-h3" id="commands-builtin-title">{{ t('commands.sections.builtin') }} <span class="lf-count">{{ builtinCount() }}</span></h3>
+                  <p class="lf-note">{{ t('commands.sections.builtinHint') }}</p>
                 </div>
                 @if (locked) {
-                  <app-full-access-note [title]="t('commands.locked.title')" [hint]="t('commands.locked.hint')"
+                  <app-full-access-note [title]="t('commands.partialAccess.title')" [hint]="t('commands.partialAccess.hint')"
                     [channelID]="channelID()" source="commands_builtins" />
                 }
                 @for (group of builtinGroups(); track group.group) {
                   <details class="lf-fold" [open]="filter() === 'builtin'">
                     <summary>
                       <span class="lf-fold__title">{{ groupLabel(group.group) }}</span>
-                      @if (locked) {
-                        <span class="lf-fold__meta lf-fold__meta--locked"><app-lf-icon name="lock" [size]="12"></app-lf-icon>{{ t('commands.locked.groupCount', { count: group.items.length }) }}</span>
-                      } @else {
+                      @if (group.items.length) {
                         <span class="lf-fold__meta">{{ t('commands.builtin.groupCount', { on: group.on, total: group.items.length }) }}</span>
                       }
-                      <code class="lf-fold__preview" aria-hidden="true">{{ groupPreview(group.items) }}</code>
+                      @if (group.locked.length) {
+                        <span class="lf-fold__meta lf-fold__meta--locked" [title]="t('commands.locked.chip')">
+                          <app-lf-icon name="lock" [size]="12"></app-lf-icon>{{ t('commands.partialAccess.groupLocked', { count: group.locked.length }) }}
+                        </span>
+                      }
+                      <code class="lf-fold__preview" aria-hidden="true">{{ groupPreview(group.items, group.locked) }}</code>
                     </summary>
                     <ul class="lf-item-list">
                       @for (command of group.items; track commandTrackId(command)) {
-                        @if (locked) {
-                          <ng-container *ngTemplateOutlet="lockedRow; context: { $implicit: command }"></ng-container>
-                        } @else {
-                          <ng-container *ngTemplateOutlet="row; context: { $implicit: command }"></ng-container>
-                        }
+                        <ng-container *ngTemplateOutlet="row; context: { $implicit: command }"></ng-container>
+                      }
+                      @for (command of group.locked; track commandTrackId(command)) {
+                        <ng-container *ngTemplateOutlet="lockedRow; context: { $implicit: command }"></ng-container>
                       }
                     </ul>
                   </details>
@@ -360,6 +360,7 @@
     [commands]="commands()"
     [existingTimerMinutes]="editingTimerMinutes()"
     [startAs]="newItemKind()"
+    [allowTimer]="allowTimers()"
     [channelID]="channelID()"
     [isOwner]="isOwner()"
     [resumeDraft]="resumeDraft()"

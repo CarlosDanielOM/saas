@@ -31,6 +31,8 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { UsageApiService } from '../../services/usage-api.service';
 import { LfIconComponent, LfIconName } from '../../shared/lf-icon/lf-icon.component';
+import { LoadingIndicatorComponent } from '../../components/loading';
+import { ThrottleClickDirective } from '../../shared/directives/throttle-click.directive';
 import { getRouteParam, watchRouteParam } from '../../shared/utils/route-param.util';
 import { creditDisplay, usageCreditDisplay } from '../../shared/utils/credit-display.util';
 import {
@@ -103,6 +105,8 @@ interface WeekFact {
     DashboardRaidCardComponent,
     DashboardUsageCardComponent,
     DashboardInsightsCardComponent,
+    LoadingIndicatorComponent,
+    ThrottleClickDirective,
     RouterLink
   ],
   templateUrl: './dashboard.component.html',
@@ -1224,14 +1228,53 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
 
-  /** Get started, step 1: the same action as the navbar's "Add bot to chat". */
-  addBotToChat(): void {
-    if (this.botAccess.chatBusy()) return;
-    if (this.botAccess.chatNeedsTwitchOk()) {
-      this.botAccess.allowChatOnTwitch();
-      return;
+  /**
+   * The header's bot button (own channel): turn on works without full access (only the chat
+   * approval from sign-in); turning off asks for a second tap. Clicks are throttled to 1 s.
+   */
+  readonly botButtonState = computed<'out' | 'needs-ok' | 'in' | 'confirm'>(() => {
+    if (!this.chatEnabled()) return this.botAccess.chatNeedsTwitchOk() ? 'needs-ok' : 'out';
+    return this.botLeaveConfirm() ? 'confirm' : 'in';
+  });
+  readonly botButtonLabel = computed(() => {
+    this.languageService.currentLanguage();
+    switch (this.botButtonState()) {
+      case 'needs-ok': return this.t('botAccess.chat.allow');
+      case 'in': return this.t('dashboard.quickActions.leaveChat');
+      case 'confirm': return this.t('botAccess.chat.confirmOff');
+      default: return this.t('dashboard.quickActions.joinBot');
     }
-    void this.botAccess.setChat(true);
+  });
+  private readonly botLeaveConfirm = signal(false);
+  private botLeaveConfirmTimer: ReturnType<typeof setTimeout> | null = null;
+
+  onBotButton(): void {
+    if (this.botAccess.chatBusy()) return;
+    switch (this.botButtonState()) {
+      case 'needs-ok':
+        this.botAccess.allowChatOnTwitch();
+        return;
+      case 'out':
+        void this.botAccess.setChat(true);
+        return;
+      case 'in':
+        this.botLeaveConfirm.set(true);
+        this.clearBotLeaveTimer();
+        this.botLeaveConfirmTimer = setTimeout(() => this.botLeaveConfirm.set(false), 4000);
+        return;
+      case 'confirm':
+        this.clearBotLeaveTimer();
+        this.botLeaveConfirm.set(false);
+        void this.botAccess.setChat(false);
+        return;
+    }
+  }
+
+  private clearBotLeaveTimer(): void {
+    if (this.botLeaveConfirmTimer) {
+      clearTimeout(this.botLeaveConfirmTimer);
+      this.botLeaveConfirmTimer = null;
+    }
   }
 
   giveFullAccess(): void {

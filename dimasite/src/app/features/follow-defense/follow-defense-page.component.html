@@ -19,7 +19,7 @@
     </header>
 
     @if (needsFullAccess()) {
-      <app-full-access-note class="lf-full-access" [title]="t('featureAccess.followDefense.title')" [hint]="t('featureAccess.followDefense.hint')"
+      <app-full-access-note class="lf-full-access" [title]="t('featureAccess.followDefense.title')" [hint]="t('featureAccess.preview.followDefenseHint')"
         [channelID]="channelID()" source="follow_defense" />
     }
 
@@ -54,7 +54,7 @@
               </p>
             }
 
-            @if (canManage()) {
+            @if (canEdit()) {
               <div class="lf-now__actions">
                 @if (!cfg.enabled) {
                   <button type="button" class="lf-btn lf-btn--primary" (click)="updateEnabled(true)">{{ t('followDefense.v2.turnOn') }}</button>
@@ -78,7 +78,7 @@
 
           @if (channelID(); as channel) {
             <div class="lf-order-2">
-              <app-raid-sessions [channelID]="channel" [canManage]="canManage()" (moderated)="refreshStatus()" />
+              <app-raid-sessions [channelID]="channel" [canManage]="canEdit()" (moderated)="refreshStatus()" />
             </div>
           }
 
@@ -123,7 +123,7 @@
                 <span class="lf-toggle-row__hint">{{ cfg.enabled ? t('followDefense.v2.rulesHint') : t('followDefense.enabledDisabledNote') }}</span>
               </span>
               <label class="lf-switch">
-                <input type="checkbox" [checked]="cfg.enabled" (change)="updateEnabled($any($event.target).checked)" [disabled]="!canManage()" [attr.aria-label]="t('followDefense.enabled')" />
+                <input type="checkbox" [checked]="cfg.enabled" (change)="updateEnabled($any($event.target).checked)" [disabled]="!canEdit()" [attr.aria-label]="t('followDefense.enabled')" />
                 <span class="lf-switch__track" aria-hidden="true"></span>
               </label>
             </div>
@@ -137,18 +137,18 @@
                     <span>{{ t('followDefense.v2.silentCopy') }}</span>
                   </span>
                   <label class="lf-switch">
-                    <input type="checkbox" [checked]="cfg.silentModeEnabled" (change)="updateSilentModeEnabled($any($event.target).checked)" [disabled]="!canManage() || !cfg.enabled" [attr.aria-label]="t('followDefense.silentMode')" />
+                    <input type="checkbox" [checked]="cfg.silentModeEnabled" (change)="updateSilentModeEnabled($any($event.target).checked)" [disabled]="!canEdit() || !cfg.enabled" [attr.aria-label]="t('followDefense.silentMode')" />
                     <span class="lf-switch__track" aria-hidden="true"></span>
                   </label>
                 </div>
                 <div class="lf-rung__fields">
                   <label class="lf-num">
                     <span>{{ t('followDefense.v2.followsLabel') }}</span>
-                    <input type="number" min="1" inputmode="numeric" [value]="cfg.silentThresholdX" (change)="updateSilentThreshold($any($event.target).value, 'silentThresholdX')" [disabled]="!canManage() || !cfg.enabled || !cfg.silentModeEnabled" />
+                    <input type="number" min="1" inputmode="numeric" [value]="cfg.silentThresholdX" (change)="updateSilentThreshold($any($event.target).value, 'silentThresholdX')" [disabled]="!canEdit() || !cfg.enabled || !cfg.silentModeEnabled" />
                   </label>
                   <label class="lf-num">
                     <span>{{ t('followDefense.v2.withinLabel') }}</span>
-                    <input type="number" min="1" inputmode="numeric" [value]="cfg.silentWindowYSeconds" (change)="updateSilentThreshold($any($event.target).value, 'silentWindowYSeconds')" [disabled]="!canManage() || !cfg.enabled || !cfg.silentModeEnabled" />
+                    <input type="number" min="1" inputmode="numeric" [value]="cfg.silentWindowYSeconds" (change)="updateSilentThreshold($any($event.target).value, 'silentWindowYSeconds')" [disabled]="!canEdit() || !cfg.enabled || !cfg.silentModeEnabled" />
                   </label>
                 </div>
                 <p class="lf-rung__rule">{{ silentRule() }}</p>
@@ -162,14 +162,14 @@
                     <span>{{ t('followDefense.v2.protectionCopy') }}</span>
                   </span>
                   <label class="lf-switch">
-                    <input type="checkbox" [checked]="cfg.protectionModeEnabled" (change)="updateProtectionModeEnabled($any($event.target).checked)" [disabled]="!canManage() || !cfg.enabled" [attr.aria-label]="t('followDefense.protectionMode')" />
+                    <input type="checkbox" [checked]="cfg.protectionModeEnabled" (change)="updateProtectionModeEnabled($any($event.target).checked)" [disabled]="!canEdit() || !cfg.enabled" [attr.aria-label]="t('followDefense.protectionMode')" />
                     <span class="lf-switch__track" aria-hidden="true"></span>
                   </label>
                 </div>
                 <div class="lf-rung__fields">
                   <label class="lf-num">
                     <span>{{ t('followDefense.v2.waveLabel') }}</span>
-                    <input type="number" min="1" inputmode="numeric" [value]="cfg.protectionThresholdB" (change)="updateProtectionThreshold($any($event.target).value)" [disabled]="!canManage() || !cfg.enabled || !cfg.protectionModeEnabled" />
+                    <input type="number" min="1" inputmode="numeric" [value]="cfg.protectionThresholdB" (change)="updateProtectionThreshold($any($event.target).value)" [disabled]="!canEdit() || !cfg.enabled || !cfg.protectionModeEnabled" />
                   </label>
                 </div>
                 <p class="lf-rung__rule">{{ protectionRule() }}</p>
@@ -183,14 +183,14 @@
                     <span>{{ t('followDefense.v2.attackCopy') }}</span>
                   </span>
                   <label class="lf-switch">
-                    <input type="checkbox" [checked]="cfg.attackModeEnabled" (change)="updateAttackModeEnabled($any($event.target).checked)" [disabled]="!canManage() || !cfg.enabled" [attr.aria-label]="t('followDefense.attackMode')" />
+                    <input type="checkbox" [checked]="cfg.attackModeEnabled" (change)="updateAttackModeEnabled($any($event.target).checked)" [disabled]="!canEdit() || !cfg.enabled" [attr.aria-label]="t('followDefense.attackMode')" />
                     <span class="lf-switch__track" aria-hidden="true"></span>
                   </label>
                 </div>
                 <div class="lf-rung__fields">
                   <label class="lf-num lf-num--wide">
                     <span>{{ t('followDefense.v2.attackLabel') }}</span>
-                    <input type="number" min="1" inputmode="numeric" [value]="cfg.attackThreshold ?? ''" [placeholder]="t('followDefense.dynamic.placeholder')" (change)="updateAttackThreshold($any($event.target).value)" [disabled]="!canManage() || !cfg.enabled || !cfg.attackModeEnabled" />
+                    <input type="number" min="1" inputmode="numeric" [value]="cfg.attackThreshold ?? ''" [placeholder]="t('followDefense.dynamic.placeholder')" (change)="updateAttackThreshold($any($event.target).value)" [disabled]="!canEdit() || !cfg.enabled || !cfg.attackModeEnabled" />
                   </label>
                 </div>
                 <div class="lf-sense" id="follow-defense-sensitivity">
@@ -209,7 +209,7 @@
                     <span>{{ t('raidSessions.resetOnRaidHint') }}</span>
                   </span>
                   <label class="lf-switch">
-                    <input type="checkbox" [checked]="cfg.resetAttackOnNewRaid !== false" (change)="updateResetAttackOnNewRaid($any($event.target).checked)" [disabled]="!canManage() || !cfg.enabled" [attr.aria-label]="t('raidSessions.resetOnRaid')" />
+                    <input type="checkbox" [checked]="cfg.resetAttackOnNewRaid !== false" (change)="updateResetAttackOnNewRaid($any($event.target).checked)" [disabled]="!canEdit() || !cfg.enabled" [attr.aria-label]="t('raidSessions.resetOnRaid')" />
                     <span class="lf-switch__track" aria-hidden="true"></span>
                   </label>
                 </div>
@@ -220,7 +220,7 @@
             <div class="lf-shared">
               <label class="lf-num">
                 <span>{{ t('followDefense.v2.durationLabel') }}</span>
-                <input type="number" min="1" inputmode="numeric" [value]="cfg.silentDurationSeconds" (change)="updateSilentThreshold($any($event.target).value, 'silentDurationSeconds')" [disabled]="!canManage() || !cfg.enabled" />
+                <input type="number" min="1" inputmode="numeric" [value]="cfg.silentDurationSeconds" (change)="updateSilentThreshold($any($event.target).value, 'silentDurationSeconds')" [disabled]="!canEdit() || !cfg.enabled" />
               </label>
               <p class="lf-rung__rule">{{ durationRule() }}</p>
             </div>
@@ -261,7 +261,7 @@
         </div>
       </div>
 
-      @if (canManage()) {
+      @if (canEdit()) {
         <div class="lf-save-bar" role="region" [attr.aria-label]="t('followDefense.v2.saveRegion')">
           <span class="lf-save-bar__status" role="status">{{ settingsDirty() ? t('followDefense.v2.unsaved') : t('followDefense.v2.saved') }}</span>
           <button type="button" class="lf-btn lf-btn--primary" (click)="saveSettings()" [disabled]="savingSettings() || !settingsDirty()">

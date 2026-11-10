@@ -3,6 +3,7 @@ import UsersSchema from "../../schemas/users.schema.js";
 import TwitchStreamers from "../../classes/twitch_streamers.class.js";
 import { getTwitchUserByLogin } from "../../functions/users/get_user_by_login.users.js";
 import { getScopes } from "../../functions/users/get_scopes.users.js";
+import { ensureBasicReservedCommands } from "../services/command_defaults.service.js";
 import { getDragonflyClient } from "../../utils/databases/dragonfly.database.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
 import { hasGlobalChannelOwnerAccess } from "../../middleware/admin.middleware.js";
@@ -422,6 +423,21 @@ router.post('/chat/:channelID', authMiddleware as any, async (req: UserRequest, 
             await cache.hSet(`accounts:twitch:${channelIdStr}:data`, 'chat_enabled', enabled ? 'true' : 'false');
 
             await TwitchStreamers.updateTwitchAccountsInCache();
+
+            if (enabled) {
+                // Without full access, add the defaults that need no Twitch approval
+                // (TTS `!s`, `!commands`, `!cc`, `!clip`...) so they answer right away.
+                const twitchAccount = user.accounts.find((account) => account.type === 'twitch' && account.id === channelIdStr);
+                if (twitchAccount && !twitchAccount.actived) {
+                    await ensureBasicReservedCommands(channelIdStr, twitchAccount.name || channelIdStr).catch((seedError) => {
+                        console.error('Error adding basic default commands after chat join:', {
+                            channelID: channelIdStr,
+                            error: seedError instanceof Error ? seedError.message : String(seedError),
+                            timestamp: new Date().toISOString()
+                        });
+                    });
+                }
+            }
 
             res.status(200).json({
                 message: `Chat ${enabled ? 'enabled' : 'disabled'} for channel`,

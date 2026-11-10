@@ -4,7 +4,7 @@ import { authMiddleware } from "../../middleware/auth.middleware.js";
 import { getChannelAccessContext } from "../../middleware/admin.middleware.js";
 import { CommandsSchema } from "../../schemas/commands.schema.js";
 import UsersSchema from "../../schemas/users.schema.js";
-import { ensureReservedCommands, getLocalizedReservedCommandDescription } from "../services/command_defaults.service.js";
+import { ensureBasicReservedCommands, ensureReservedCommands, getLocalizedReservedCommandDescription } from "../services/command_defaults.service.js";
 import { inspectExpression, LEGACY_USER_LEVEL_NAMES } from "../../utils/permissions/index.js";
 
 import { writeCommandWithCooldown, validateKeywordCooldown, CommandCooldownError } from '../../utils/command_cooldown_write.js';
@@ -114,6 +114,18 @@ router.get('/:channelID', async (req: Request, res: Response) => {
             const skip = parseInt((query.skip as string) || '0');
             const language = typeof query.language === 'string' ? query.language : undefined;
 
+            const owner = await UsersSchema.findOne({
+                accounts: { $elemMatch: { type: 'twitch', id: channelIdStr } }
+            }).select('accounts').lean();
+            const twitchAccount = owner?.accounts?.find((account) => account.type === 'twitch' && account.id === channelIdStr);
+            // Without full access only the defaults that need no Twitch approval are added
+            // (TTS `!s`, `!commands`, `!cc`, `!clip`...); the site shows the rest locked.
+            const fullAccess = twitchAccount ? Boolean(twitchAccount.actived) : undefined;
+
+            if (twitchAccount && !twitchAccount.actived && query.activation !== 'keyword') {
+                await ensureBasicReservedCommands(channelIdStr, twitchAccount.name || channelIdStr);
+            }
+
             let commands = await CommandsSchema.find({ channelID: channelIdStr, ...activationFilter(query.activation) })
                 .select('+blocks')
                 .sort({ reserved: -1, name: 1 })
@@ -121,30 +133,16 @@ router.get('/:channelID', async (req: Request, res: Response) => {
                 .limit(limit)
                 .lean();
 
-            if (commands.length === 0 && query.activation !== 'keyword') {
-                const user = await UsersSchema.findOne({
-                    accounts: {
-                        $elemMatch: {
-                            type: 'twitch',
-                            id: channelIdStr,
-                            actived: true
-                        }
-                    }
-                }).select('accounts').lean();
+            if (commands.length === 0 && query.activation !== 'keyword' && twitchAccount?.actived) {
+                const createdCount = await ensureReservedCommands(channelIdStr, twitchAccount.name || channelIdStr);
 
-                const twitchAccount = user?.accounts?.find((account) => account.type === 'twitch' && account.id === channelIdStr);
-
-                if (twitchAccount?.actived) {
-                    const createdCount = await ensureReservedCommands(channelIdStr, twitchAccount.name || channelIdStr);
-
-                    if (createdCount > 0) {
-                        commands = await CommandsSchema.find({ channelID: channelIdStr, ...activationFilter(query.activation) })
-                            .select('+blocks')
-                            .sort({ reserved: -1, name: 1 })
-                            .skip(skip)
-                            .limit(limit)
-                            .lean();
-                    }
+                if (createdCount > 0) {
+                    commands = await CommandsSchema.find({ channelID: channelIdStr, ...activationFilter(query.activation) })
+                        .select('+blocks')
+                        .sort({ reserved: -1, name: 1 })
+                        .skip(skip)
+                        .limit(limit)
+                        .lean();
                 }
             }
 
@@ -169,7 +167,8 @@ router.get('/:channelID', async (req: Request, res: Response) => {
                 message: 'Commands fetched from database',
                 commands: presented,
                 status: 200,
-                total: presented.length
+                total: presented.length,
+                ...(fullAccess === undefined ? {} : { fullAccess })
             });
         } catch (error) {
             console.error('Error in GET /:channelID:', {

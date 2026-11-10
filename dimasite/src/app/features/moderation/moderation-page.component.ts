@@ -168,7 +168,9 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   readonly channelID = computed(() => this.channelResolution().channelID);
   private readonly botAccess = inject(BotAccessService);
   /** Own channel without full access: the bot isn't a moderator yet, so this can't act. */
-  readonly needsFullAccess = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.hasFullAccess());
+  readonly needsFullAccess = computed(() => this.botAccess.needsFullAccess(this.channelID()));
+  /** Can change settings here: has the permission and the bot can moderate (full access given). */
+  readonly canEdit = computed(() => this.canManage() && !this.needsFullAccess());
   readonly modulePath = computed(() => {
     const streamer = this.streamer();
     return streamer ? ['/', streamer, 'modules'] : ['/'];
@@ -508,6 +510,8 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.canEdit()) return;
+
     if (currentSettings.rules.some((rule) =>
       rule.exemptExpression != null && this.ruleAccessDraft(rule).legacyCombined)) {
       this.errorMessage.set(this.t('moderation.access.chooseMethod'));
@@ -569,6 +573,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   updateEnabled(enabled: boolean): void {
+    if (!this.canEdit()) return;
     this.settings.update((s) => (s ? { ...s, enabled } : s));
   }
 
@@ -594,7 +599,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   updateSpamExemption(tag: SpamExemptTag, enabled: boolean): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.settings.update(settings => {
       if (!settings) return settings;
       const options = this.spamOptions(settings);
@@ -610,7 +615,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   updateSpamCategory(category: SpamCategory, enabled: boolean): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.settings.update(settings => {
       if (!settings) return settings;
       const options = this.spamOptions(settings);
@@ -621,7 +626,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   updateSpamThreshold(value: string): void {
-    if (!this.canManage() || !this.hasPaidModeration()) return;
+    if (!this.canEdit() || !this.hasPaidModeration()) return;
     this.settings.update(settings => settings ? { ...settings, spamProtection: {
       ...this.spamOptions(settings), thresholdPercent: value.trim() ? Number(value) : Number.NaN
     } } : settings);
@@ -634,7 +639,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   updateSpamProtection(field: 'enabled' | 'reviewAllMessages', enabled: boolean): void {
-    if (!this.canManage() || (field === 'reviewAllMessages' && enabled && !this.hasPaidModeration())) return;
+    if (!this.canEdit() || (field === 'reviewAllMessages' && enabled && !this.hasPaidModeration())) return;
     this.settings.update(settings => settings ? { ...settings, spamProtection: {
       ...this.spamOptions(settings),
       [field]: enabled
@@ -642,6 +647,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   updateOffenseWindow(value: string): void {
+    if (!this.canEdit()) return;
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed)) return;
     const clamped = Math.min(
@@ -685,7 +691,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   editVariationRegex(rule: ModerationRule, entry: GeneratedVariation, source: string): void {
-    if (!rule.variations || !this.canManage() || !this.hasPaidModeration()) return;
+    if (!rule.variations || !this.canEdit() || !this.hasPaidModeration()) return;
     const overrides = this.activeVariationOverrides(rule).filter(item => item.term !== entry.term);
     if (source !== entry.pattern.source) overrides.push({ term: entry.term, source });
     this.patchRule(rule.id, { variations: { ...rule.variations, overrides } });
@@ -706,7 +712,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   async previewVariations(ruleID: string, allowSpaces?: boolean): Promise<void> {
     const channelID = this.channelID();
     const rule = this.settings()?.rules.find(item => item.id === ruleID);
-    if (!channelID || !rule || !this.canManage() || !this.hasPaidModeration() || this.generatingRule() || this.savingSettings()) return;
+    if (!channelID || !rule || !this.canEdit() || !this.hasPaidModeration() || this.generatingRule() || this.savingSettings()) return;
     this.generatingRule.set(ruleID);
     this.errorMessage.set(null);
     try {
@@ -721,7 +727,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   addPattern(ruleID: string): void {
-    if (!this.hasPaidModeration() || !this.canManage()) return;
+    if (!this.hasPaidModeration() || !this.canEdit()) return;
     const rule = this.settings()?.rules.find(item => item.id === ruleID);
     if (!rule || (rule.patterns?.length ?? 0) >= 10) return;
     this.patchRule(ruleID, { patterns: [...(rule.patterns ?? []), { id: crypto.randomUUID(), source: '', boundary: 'whole_word', ignoreCase: true }] });
@@ -747,7 +753,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   updateSemanticThreshold(ruleID: string, value: string): void {
-    if (!this.canManage() || !this.hasPaidModeration()) return;
+    if (!this.canEdit() || !this.hasPaidModeration()) return;
     this.updateSemantic(ruleID, { thresholdPercent: value.trim() ? Number(value) : Number.NaN });
   }
 
@@ -803,7 +809,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   setRuleAccessMode(rule: ModerationRule, mode: 'level' | 'tags'): void {
-    if (!this.canManage() || mode === this.ruleAccessMode(rule)) return;
+    if (!this.canEdit() || mode === this.ruleAccessMode(rule)) return;
     this.accessGeneration += 1;
     this.accessLookupPending.set(null);
     this.clearRuleLookup(rule.id);
@@ -811,13 +817,13 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   resetRuleTags(ruleID: string): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.patchRule(ruleID, { exemptExpression: { not: { role: 'everyone' } } });
     this.accessLookupError.update((errors) => ({ ...errors, [ruleID]: '' }));
   }
 
   cycleRuleTag(rule: ModerationRule, tag: AccessTag): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     const draft = this.ruleAccessDraft(rule);
     if (!draft.editable) return;
     let next = cycleAccessTag(draft, tag);
@@ -852,7 +858,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   async addRuleAccount(rule: ModerationRule, kind: 'allow' | 'exclude'): Promise<void> {
-    if (!this.canManage() || this.accessLookupPending() || !this.canAddRuleAccount(rule, kind)) return;
+    if (!this.canEdit() || this.accessLookupPending() || !this.canAddRuleAccount(rule, kind)) return;
     const key = `${rule.id}:${kind}`;
     const input = this.ruleAccountInput(rule.id, kind);
     const generation = this.accessGeneration;
@@ -887,7 +893,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   removeRuleAccount(rule: ModerationRule, kind: 'allow' | 'exclude', user: TwitchAccountRef): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     const draft = this.ruleAccessDraft(rule);
     if (!draft.editable) return;
     const key = kind === 'allow' ? 'allowUsers' : 'excludeUsers';
@@ -943,11 +949,12 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   addRule(type: ModerationRuleType): void {
-    if (!this.canAddRule()) return;
+    if (!this.canEdit() || !this.canAddRule()) return;
     this.settings.update((s) => (s ? { ...s, rules: [...s.rules, buildNewModerationRule(type, this.t(`moderation.defaultReasons.${type}`))] } : s));
   }
 
   removeRule(ruleID: string): void {
+    if (!this.canEdit()) return;
     this.accessGeneration += 1;
     this.accessLookupPending.set(null);
     this.clearRuleLookup(ruleID);
@@ -961,6 +968,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   addListItems(ruleID: string, field: ListField, input: HTMLInputElement): void {
+    if (!this.canEdit()) return;
     const raw = input.value;
     input.value = '';
     this.pendingListInput.set(false);
@@ -998,6 +1006,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   removeListItem(ruleID: string, field: ListField, index: number): void {
+    if (!this.canEdit()) return;
     this.settings.update((s) => {
       if (!s) return s;
       return {
@@ -1012,6 +1021,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   private patchRule(ruleID: string, patch: Partial<ModerationRule>): void {
+    if (!this.canEdit()) return;
     this.settings.update((s) =>
       s
         ? { ...s, rules: s.rules.map((rule) => (rule.id === ruleID ? { ...rule, ...patch } : rule)) }
@@ -1024,6 +1034,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     stepKey: OffenseStepKey,
     patch: Partial<ModerationOffenseStep>
   ): void {
+    if (!this.canEdit()) return;
     this.settings.update((s) => {
       if (!s) return s;
       return {

@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { BotAccessService } from '../../services/bot-access.service';
 import { LanguageService } from '../../services/language.service';
 import { LfIconComponent } from '../lf-icon/lf-icon.component';
+import { ThrottleClickDirective } from '../directives/throttle-click.directive';
 
 /**
  * Calm "this needs full access" strip for features that only work after the long Twitch
@@ -11,7 +12,7 @@ import { LfIconComponent } from '../lf-icon/lf-icon.component';
  */
 @Component({
   selector: 'app-full-access-note',
-  imports: [LfIconComponent],
+  imports: [LfIconComponent, ThrottleClickDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="fa" [class.fa--compact]="compact()" [attr.aria-label]="title()">
@@ -26,8 +27,9 @@ import { LfIconComponent } from '../lf-icon/lf-icon.component';
         }
       </div>
       @if (isOwner()) {
-        <button type="button" class="fa__btn" (click)="give()">
-          <app-lf-icon name="zap" [size]="15"></app-lf-icon>{{ t('botAccess.fullAccess.cta') }}
+        <!-- Same action and label as the navbar's authenticate CTA -->
+        <button type="button" class="fa__btn" (appThrottleClick)="give()">
+          <app-lf-icon name="zap" [size]="15"></app-lf-icon>{{ t('navbar.activateBot') }}
         </button>
       }
     </section>

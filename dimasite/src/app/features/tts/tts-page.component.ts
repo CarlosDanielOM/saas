@@ -88,7 +88,7 @@ export class TtsPageComponent {
    * The owner hasn't given full access, so the built-in TTS command doesn't exist yet. TTS still works with
    * their own command (bot in chat + speech link in OBS), so point them there instead of "no command found".
    */
-  readonly ttsSetupMode = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.hasFullAccess());
+  readonly ttsSetupMode = computed(() => this.botAccess.needsFullAccess(this.channelID()));
   /** A command they made themselves that speaks, e.g. `!tts` with `$(tts $(user) says: &t)`. */
   readonly ownTtsCommand = computed(() => this.commands().find(command => /\$\(tts[\s.)]/.test(command.message || '')) ?? null);
   readonly showMakeTtsCommand = computed(() =>

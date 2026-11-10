@@ -170,6 +170,14 @@
   color: var(--alpha);
 }
 
+/* Calm violet, like the full-access note: a next step, not a warning. */
+.lf-chip--access {
+  gap: 0.25rem;
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--kicker) 35%, transparent);
+  color: var(--kicker);
+}
+
 /* Finder: search + goal filters */
 .lf-finder {
   display: grid;

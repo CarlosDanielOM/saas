@@ -127,7 +127,9 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   readonly channelID = computed(() => this.channelResolution().channelID);
   private readonly botAccess = inject(BotAccessService);
   /** Own channel without full access: the bot isn't a moderator yet, so this can't act. */
-  readonly needsFullAccess = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.hasFullAccess());
+  readonly needsFullAccess = computed(() => this.botAccess.needsFullAccess(this.channelID()));
+  /** Can change settings and act here: has the permission and the bot can moderate (full access given). */
+  readonly canEdit = computed(() => this.canManage() && !this.needsFullAccess());
   readonly modulePath = computed(() => {
     const streamer = this.streamer();
     return streamer ? ['/', streamer, 'modules'] : ['/'];
@@ -241,7 +243,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   readonly canActivateAttack = computed(() => {
     const settings = this.settings();
     return Boolean(
-      this.canManage() && settings?.enabled && settings.attackModeEnabled && !this.isAttackMode() && !this.activatingAttack()
+      this.canEdit() && settings?.enabled && settings.attackModeEnabled && !this.isAttackMode() && !this.activatingAttack()
     );
   });
 
@@ -415,7 +417,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
     const currentSettings = this.settings();
     const initialSettings = this.initialSettings();
 
-    if (!this.canManage() || !channelID || !currentSettings || !initialSettings || this.savingSettings() || !this.settingsDirty()) {
+    if (!this.canEdit() || !channelID || !currentSettings || !initialSettings || this.savingSettings() || !this.settingsDirty()) {
       return;
     }
 
@@ -466,27 +468,27 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   }
 
   updateEnabled(enabled: boolean): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.settings.update((s) => (s ? { ...s, enabled } : s));
   }
 
   updateSilentModeEnabled(enabled: boolean): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.settings.update((s) => (s ? { ...s, silentModeEnabled: enabled } : s));
   }
 
   updateProtectionModeEnabled(enabled: boolean): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.settings.update((s) => (s ? { ...s, protectionModeEnabled: enabled } : s));
   }
 
   updateResetAttackOnNewRaid(enabled: boolean): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.settings.update(s => s ? { ...s, resetAttackOnNewRaid: enabled } : s);
   }
 
   updateAttackModeEnabled(enabled: boolean): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.settings.update((s) => (s ? { ...s, attackModeEnabled: enabled } : s));
   }
 
@@ -494,21 +496,21 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
     value: string,
     field: 'silentThresholdX' | 'silentWindowYSeconds' | 'silentDurationSeconds'
   ): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || parsed < 0) return;
     this.settings.update((s) => (s ? { ...s, [field]: parsed } : s));
   }
 
   updateProtectionThreshold(value: string): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || parsed < 0) return;
     this.settings.update((s) => (s ? { ...s, protectionThresholdB: parsed } : s));
   }
 
   updateAttackThreshold(value: string): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     if (!value.trim()) {
       this.settings.update(s => s ? { ...s, attackThreshold: null } : s);
       return;
@@ -519,7 +521,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   }
 
   updateBaselineFollowsPerHour(value: string): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || parsed < 0) {
       this.settings.update((s) => (s ? { ...s, baselineFollowsPerHour: null } : s));
@@ -533,7 +535,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   }
 
   openAttackDialog(): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.attackOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.showAttackDialog.set(true);
     this.attackConfirmText.set('');
@@ -591,7 +593,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   }
 
   async activateAttackMode(): Promise<void> {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     const channelID = this.channelID();
     const status = this.status();
     const trackedCount = status?.trackedCount ?? 0;
@@ -626,7 +628,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   }
 
   async resetMode(): Promise<void> {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     const channelID = this.channelID();
     if (!channelID) return;
 

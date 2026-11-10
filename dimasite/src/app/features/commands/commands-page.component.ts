@@ -23,6 +23,7 @@ import { ToastService } from '../../services/toast.service';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
 import { FullAccessNoteComponent } from '../../shared/full-access-note/full-access-note.component';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
+import { ThrottleClickDirective } from '../../shared/directives/throttle-click.directive';
 import {
   BUILTIN_GROUP_ORDER,
   BuiltinGroup,
@@ -59,7 +60,7 @@ function readCommandPrefill(params: ParamMap): CommandPrefill | null {
 
 @Component({
   selector: 'app-commands-page',
-  imports: [ReactiveFormsModule, NgTemplateOutlet, RouterLink, ConfirmationModalComponent, CommandModalComponent, LfIconComponent, BlocksViewerDialogComponent, RandomUserSettingsComponent, FullAccessNoteComponent],
+  imports: [ReactiveFormsModule, NgTemplateOutlet, RouterLink, ConfirmationModalComponent, CommandModalComponent, LfIconComponent, BlocksViewerDialogComponent, RandomUserSettingsComponent, FullAccessNoteComponent, ThrottleClickDirective],
   templateUrl: './commands-page.component.html',
   styleUrl: './commands-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -212,20 +213,28 @@ export class CommandsPageComponent {
   readonly timerList = computed(() => this.customList().filter((command) => this.isTimerLinked(command)));
   readonly offList = computed(() => this.byName(this.commands().filter((command) => command.enabled === false)));
 
-  /** Built-ins to list: the real ones, or the locked catalog before full access. */
-  readonly builtinSource = computed<CommandListItem[]>(() => this.builtinsLocked() ? this.lockedBuiltins() : this.builtinList());
+  /** Built-in rows: the real ones plus, before full access, the locked ones. */
+  readonly builtinCount = computed(() => this.builtinList().length + this.lockedBuiltins().length);
 
+  /** Real built-ins first, then the locked ones of the same group. `on` counts real rows only. */
   readonly builtinGroups = computed(() => {
-    const groups = new Map<BuiltinGroup, CommandListItem[]>();
-    for (const command of this.builtinSource()) {
+    const groups = new Map<BuiltinGroup, { items: CommandListItem[]; locked: CommandListItem[] }>();
+    const slot = (command: CommandListItem) => {
       const group = builtinInfo(command).group;
-      groups.set(group, [...(groups.get(group) ?? []), command]);
-    }
+      let entry = groups.get(group);
+      if (!entry) groups.set(group, (entry = { items: [], locked: [] }));
+      return entry;
+    };
+    for (const command of this.builtinList()) slot(command).items.push(command);
+    for (const command of this.lockedBuiltins()) slot(command).locked.push(command);
+    const byCmd = (a: CommandListItem, b: CommandListItem) => a.cmd.localeCompare(b.cmd);
     return BUILTIN_GROUP_ORDER
       .filter((group) => groups.has(group))
       .map((group) => {
-        const items = [...(groups.get(group) ?? [])].sort((a, b) => a.cmd.localeCompare(b.cmd));
-        return { group, items, on: items.filter((c) => c.enabled !== false).length };
+        const { items, locked } = groups.get(group)!;
+        items.sort(byCmd);
+        locked.sort(byCmd);
+        return { group, items, locked, on: items.filter((c) => c.enabled !== false).length };
       });
   });
 
@@ -234,7 +243,7 @@ export class CommandsPageComponent {
     custom: this.customList().length,
     keyword: this.keywordList().length,
     timer: this.timerList().length,
-    builtin: this.builtinSource().length,
+    builtin: this.builtinCount(),
     off: this.offList().length
   }));
 
@@ -411,21 +420,26 @@ export class CommandsPageComponent {
 
   // ========== Built-ins before full access ==========
 
-  /** The bot's default commands (both kinds), shown locked until the channel gets full access. */
+  /** The bot's default commands; the ones that need the Twitch approval are shown locked until then. */
   private readonly reservedCatalog = signal<{ language: string; items: ReservedCatalogCommand[] } | null>(null);
   private catalogRequested: string | null = null;
 
-  /** The list loaded and has no built-in: full access never set this channel up. Works for managers too. */
-  readonly builtinsNeedFullAccess = computed(() => {
+  /**
+   * The API says this channel has no full access (owners and managers alike). Built-ins that need
+   * no Twitch approval are already real commands; only the rest show locked. Unknown counts as unlocked.
+   */
+  readonly builtinsLocked = computed(() => {
     const channelID = this.channelID();
-    return !!channelID && this.commandsLoadedFor() === channelID && !this.error()
-      && !this.commands().some((command) => command.activation !== 'keyword' && command.reserved);
+    return !!channelID && this.commandsApi.fullAccessByChannel()[channelID] === false;
   });
 
-  /** Catalog entries as read-only rows. Full access skips a default whose name or job the channel already has, so those stay hidden. */
+  /**
+   * Catalog entries that need full access, as read-only rows. Skips a default whose name or job the
+   * channel already has (full access won't add those either).
+   */
   readonly lockedBuiltins = computed<CommandListItem[]>(() => {
     const catalog = this.reservedCatalog();
-    if (!catalog || !this.builtinsNeedFullAccess()) return [];
+    if (!catalog || !this.builtinsLocked()) return [];
     const channelID = this.channelID() ?? '';
     const takenCmds = new Set<string>();
     const takenFuncs = new Set<string>();
@@ -435,7 +449,8 @@ export class CommandsPageComponent {
       if (command.func) takenFuncs.add(command.func);
     }
     return catalog.items
-      .filter((entry) => entry.func && entry.cmd && !takenCmds.has(entry.cmd.toLowerCase()) && !takenFuncs.has(entry.func))
+      .filter((entry) => entry.requiresFullAccess === true && entry.func && entry.cmd
+        && !takenCmds.has(entry.cmd.toLowerCase()) && !takenFuncs.has(entry.func))
       .map((entry): CommandListItem => ({
         id: `catalog:${entry.func}`,
         channel: '',
@@ -456,10 +471,8 @@ export class CommandsPageComponent {
       }));
   });
 
-  readonly builtinsLocked = computed(() => this.lockedBuiltins().length > 0);
-
   private readonly catalogEffect = effect(() => {
-    if (!this.builtinsNeedFullAccess()) return;
+    if (!this.builtinsLocked()) return;
     const language = this.languageService.currentLanguage();
     untracked(() => this.loadReservedCatalog(language));
   });
@@ -472,6 +485,12 @@ export class CommandsPageComponent {
       if (items.length) this.reservedCatalog.set({ language, items });
     });
   }
+
+  /** Timers start and stop with the stream (Twitch events), so they wait for full access. */
+  readonly allowTimers = computed(() => {
+    const channelID = this.channelID();
+    return !channelID || this.commandsApi.fullAccessByChannel()[channelID] !== false;
+  });
 
   /** Owner only: the bot isn't in their chat, so no command answers yet. */
   readonly showChatNote = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.chatEnabled());
@@ -1040,7 +1059,8 @@ export class CommandsPageComponent {
     return this.t(`commands.builtin.groups.${group}`);
   }
 
-  groupPreview(items: Command[]): string {
+  groupPreview(real: Command[], locked: Command[] = []): string {
+    const items = [...real, ...locked];
     return items.slice(0, 4).map((command) => `!${command.cmd}`).join(' ') + (items.length > 4 ? ' …' : '');
   }
 

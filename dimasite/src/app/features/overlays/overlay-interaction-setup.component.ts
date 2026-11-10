@@ -45,7 +45,7 @@ export class OverlayInteractionSetupComponent {
   private readonly links = inject(LinksService);
   private readonly botAccess = inject(BotAccessService);
   /** Owner hasn't given full access: polls and predictions can't reach the bot yet. Managers keep today's flow. */
-  readonly needsFullAccess = computed(() => this.botAccess.isOwnChannel(this.channel()) && !this.botAccess.hasFullAccess());
+  readonly needsFullAccess = computed(() => this.botAccess.needsFullAccess(this.channel()));
   readonly data = signal<InteractionReadinessSnapshot | null>(null);
   readonly checking = signal(false);
   readonly activating = signal<InteractionKind | null>(null);

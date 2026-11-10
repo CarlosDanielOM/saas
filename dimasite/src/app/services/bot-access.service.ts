@@ -49,9 +49,54 @@ export class BotAccessService {
   readonly chatNeedsTwitchOk = computed(() => Boolean(this.ownChannelID()) && this.needsOkChannel() === this.ownChannelID());
   /** When this tab last changed the bot's chat state; older snapshots must not undo it. */
   private chatChangedAt = 0;
+  private lastChatActionAt = 0;
 
   isOwnChannel(channelID: string | null | undefined): boolean {
     return Boolean(channelID) && channelID === this.ownChannelID();
+  }
+
+  /** Full-access state of channels the user manages (public GET /users/:channelID), by channel id. */
+  private readonly managedFullAccess = signal<Record<string, boolean>>({});
+  private readonly managedLookups = new Set<string>();
+
+  /**
+   * Whether the viewed channel still needs full access (the owner hasn't activated the bot).
+   * Own channel: the session flag. A managed channel: looked up once; until it loads, nothing
+   * is locked (the API still refuses what can't work).
+   */
+  needsFullAccess(channelID: string | null | undefined): boolean {
+    if (!channelID) {
+      return false;
+    }
+    if (this.isOwnChannel(channelID)) {
+      return !this.hasFullAccess();
+    }
+    const known = this.managedFullAccess()[channelID];
+    if (known === undefined) {
+      this.lookupChannel(channelID);
+      return false;
+    }
+    return !known;
+  }
+
+  private lookupChannel(channelID: string): void {
+    if (this.managedLookups.has(channelID)) {
+      return;
+    }
+    this.managedLookups.add(channelID);
+    // Outside the caller's reactive read; the answer updates the signal later.
+    queueMicrotask(() => {
+      this.http.get<{ error?: boolean; streamer?: { actived?: string | boolean } }>(
+        `${this.links.getApiUrl()}/users/${encodeURIComponent(channelID)}`
+      ).subscribe({
+        next: (response) => {
+          const actived = response?.streamer?.actived;
+          if (actived === undefined) return;
+          this.managedFullAccess.update((current) => ({ ...current, [channelID]: actived === true || actived === 'true' }));
+        },
+        error: () => this.managedLookups.delete(channelID)
+      });
+    });
   }
 
   /**
@@ -70,9 +115,12 @@ export class BotAccessService {
   /** Adds the bot to (or removes it from) the signed-in streamer's chat. */
   async setChat(enabled: boolean, options: { afterTwitchOk?: boolean } = {}): Promise<ChatJoinResult> {
     const channelID = this.ownChannelID();
-    if (!channelID || this.chatBusy()) {
+    // At most one add/remove per second (on top of the button's own click guard).
+    const now = Date.now();
+    if (!channelID || this.chatBusy() || now - this.lastChatActionAt < 1000) {
       return 'error';
     }
+    this.lastChatActionAt = now;
 
     this.chatBusy.set(true);
     try {

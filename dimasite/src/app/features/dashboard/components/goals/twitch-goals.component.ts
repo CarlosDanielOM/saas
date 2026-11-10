@@ -48,7 +48,7 @@ export class TwitchGoalsComponent {
    * The owner hasn't given full access: DomDimaBot can't read their Twitch goals yet, so "they show up on their own"
    * would not be true. Managers can't see the owner's flag: no change there.
    */
-  readonly needsFullAccess = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.hasFullAccess());
+  readonly needsFullAccess = computed(() => this.botAccess.needsFullAccess(this.channelID()));
   readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('twitchEditor');
   readonly types = TWITCH_GOAL_TYPES;
   readonly kinds = ['completion', 'failure'] as const;

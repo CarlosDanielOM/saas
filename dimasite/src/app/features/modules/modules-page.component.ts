@@ -1,7 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { catchError, forkJoin, of, switchMap } from 'rxjs';
+import { catchError, forkJoin, of, switchMap, tap } from 'rxjs';
 import {
   Bot,
   Brain,
@@ -33,6 +33,7 @@ import {
   type LucideIconData
 } from 'lucide-angular';
 
+import { BotAccessService } from '../../services/bot-access.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { UpgradeService } from '../../services/upgrade.service';
@@ -121,6 +122,22 @@ const GOALS: readonly GoalOption[] = [
   { id: 'insights', labelKey: 'modules.goals.insights', descriptionKey: 'modules.goals.insightsHint', icon: ChartColumn }
 ];
 
+/**
+ * Modules whose core only works once the owner gives the bot full access: they need Twitch
+ * events (follows, subs, raids, rewards) or the bot acting as a channel moderator.
+ * Everything else works with the bot just in chat.
+ */
+const FULL_ACCESS_MODULE_IDS: ReadonlySet<ModuleId> = new Set<ModuleId>([
+  'chat-events',
+  'redemptions',
+  'moderation',
+  'follow-defense',
+  'analytics',
+  // Built from Twitch stream start/end events, which only reach the bot with full access.
+  'stream-summaries',
+  'clip-recommendations'
+]);
+
 const RECENT_LIMIT = 4;
 const RECENT_STORAGE_PREFIX = 'dimasite.modules.recent.';
 
@@ -185,6 +202,7 @@ export class ModulesPageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly upgradeService = inject(UpgradeService);
+  private readonly botAccess = inject(BotAccessService);
   private readonly route = inject(ActivatedRoute);
 
   readonly userPlanTier = computed<PlanTier>(() => {
@@ -208,6 +226,11 @@ export class ModulesPageComponent {
     const streamer = this.streamer();
     return Boolean(current && streamer && streamer !== current.twitchUser.login?.toLowerCase() && streamer !== current.appUser.twitch_user_id);
   });
+
+  /** Channel id of the viewed hub (own or managed), once resolved. */
+  private readonly viewedChannelID = signal<string | null>(null);
+  /** The viewed channel hasn't given full access yet: some modules can't run yet. */
+  readonly setupMode = computed(() => this.botAccess.needsFullAccess(this.viewedChannelID()));
 
   readonly searchQuery = signal('');
   readonly selectedGoal = signal<GoalFilter>('all');
@@ -338,9 +361,11 @@ export class ModulesPageComponent {
       const current = untracked(this.sessionAuth.session);
       this.accessReady.set(false);
       this.allowedModules.set(new Set());
+      this.viewedChannelID.set(null);
       if (!current || !streamer) return;
 
       if (streamer === current.twitchUser.login?.toLowerCase() || streamer === current.appUser.twitch_user_id) {
+        this.viewedChannelID.set(current.appUser.twitch_user_id || null);
         this.allowedModules.set(new Set(Object.keys(MODULE_VIEW_PERMISSIONS) as ModuleId[]));
         this.accessReady.set(true);
         return;
@@ -348,6 +373,7 @@ export class ModulesPageComponent {
 
       const permissions = [...new Set(Object.values(MODULE_VIEW_PERMISSIONS).filter((value): value is string => Boolean(value)))];
       const subscription = untracked(() => this.sessionAuth.resolveChannelID(streamer).pipe(
+        tap((channelID) => this.viewedChannelID.set(channelID)),
         switchMap((channelID) => channelID
           ? forkJoin(permissions.map((permission) => this.sessionAuth.checkPermission(channelID, permission).pipe(catchError(() => of(false)))))
           : of(permissions.map(() => false))),
@@ -507,6 +533,11 @@ export class ModulesPageComponent {
     } catch {
       // Storage can be unavailable (private mode, quota); recents are best-effort.
     }
+  }
+
+  /** Shows the "Needs full access" chip; the card stays clickable and the page explains. */
+  needsFullAccess(module: ModuleDisplay): boolean {
+    return this.setupMode() && FULL_ACCESS_MODULE_IDS.has(module.id);
   }
 
   isPaidModule(module: ModuleDisplay): boolean {

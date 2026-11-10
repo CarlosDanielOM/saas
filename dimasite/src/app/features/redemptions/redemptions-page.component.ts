@@ -86,7 +86,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
    * The owner hasn't given full access yet: Twitch only lets the bot read, make or change
    * channel point rewards after it. Managers can't see the owner's flag: no change there.
    */
-  readonly needsFullAccess = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.hasFullAccess());
+  readonly needsFullAccess = computed(() => this.botAccess.needsFullAccess(this.channelID()));
 
   /** Can make and change rewards here (every change goes through Twitch). */
   readonly canEdit = computed(() => this.canManage() && !this.needsFullAccess());

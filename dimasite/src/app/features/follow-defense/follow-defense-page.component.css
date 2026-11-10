@@ -1077,7 +1077,9 @@
 /* Escalation ladder */
 
 .lf-ladder { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
-.lf-ladder--off { opacity: 0.6; }
+/* Protection off: quieter, without opacity (opacity broke text contrast). */
+.lf-ladder--off .lf-rung__copy strong { color: var(--muted); }
+.lf-ladder--off .lf-rung { border-style: dashed; }
 
 .lf-rung {
   position: relative;

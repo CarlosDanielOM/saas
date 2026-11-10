@@ -154,6 +154,8 @@
 .gh__avatar--live { box-shadow: 0 0 0 3px var(--tile), 0 0 0 5px #ef4444; }
 .gh__copy { display: grid; gap: 0.3rem; min-width: 0; }
 .gh__title { margin: 0; font-size: clamp(1.4rem, 5vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; overflow-wrap: anywhere; }
+.gh__bot { grid-column: 1 / -1; justify-self: start; min-height: 44px; }
+.gh__bot--confirm { color: var(--danger, #b91c1c); border-color: color-mix(in srgb, var(--danger, #b91c1c) 55%, transparent); }
 .gh__answer { grid-column: 1 / -1; display: grid; gap: 0.5rem; }
 .gh__warn {
   display: flex; align-items: flex-start; gap: 0.45rem; margin: 0; padding: 0.6rem 0.8rem;
@@ -389,6 +391,8 @@ button.bs__buy:hover { border-color: color-mix(in srgb, var(--accent) 40%, trans
 @media (min-width: 640px) {
   .lf-main { padding-top: 1.4rem; }
   .lf-tile { padding: 1.2rem; }
+  .gh { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .gh__bot { grid-column: 3; grid-row: 1; justify-self: end; }
   .gh__answer { grid-column: 2 / -1; }
   .gs { padding: 1.1rem 1.2rem; }
   .gs__step { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
@@ -431,4 +435,17 @@ button.bs__buy:hover { border-color: color-mix(in srgb, var(--accent) 40%, trans
 @media (prefers-reduced-motion: reduce) {
   .dot--pulse { animation: none; }
   .fold__chev { transition: none; }
+}
+
+/* Screen-reader-only text (e.g. the bot button label while it spins) */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }

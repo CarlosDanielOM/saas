@@ -73,26 +73,9 @@
           <span class="cta-particle"></span>
           <span class="cta-particle"></span>
         </div>
-        <button type="button" [class]="permissionCtaButtonClass()" (click)="openPermissionCta()">
+        <button type="button" [class]="permissionCtaButtonClass()" (appThrottleClick)="openPermissionCta()">
           <lucide-icon [name]="permissionCtaIcon()" [size]="14" class="auth-navbar__cta-icon"></lucide-icon>
           <span>{{ permissionCtaLabel() }}</span>
-        </button>
-      </div>
-    } @else if (showChatControl()) {
-      <div class="auth-navbar__cta">
-        <button
-          type="button"
-          class="auth-navbar__chat"
-          [attr.data-state]="chatControlState()"
-          [attr.aria-label]="chatControlAria()"
-          [attr.aria-busy]="chatControlState() === 'busy'"
-          (click)="onChatControl()"
-        >
-          <span class="auth-navbar__chat-dot" aria-hidden="true"></span>
-          <span class="auth-navbar__chat-label">{{ chatControlLabel() }}</span>
-          @if (chatControlState() === 'in') {
-            <span class="auth-navbar__chat-action" aria-hidden="true">{{ t('botAccess.chat.remove') }}</span>
-          }
         </button>
       </div>
     }
@@ -131,13 +114,6 @@
             <lucide-icon [name]="profileIcon" [size]="18" class="auth-navbar__profile-icon"></lucide-icon>
             <span>{{ t('navbar.profileSettings') }}</span>
           </a>
-
-          @if (showFullAccessMenuItem()) {
-            <button type="button" class="auth-navbar__dropdown-item auth-navbar__dropdown-item--access" role="menuitem" (click)="openFullAccessFromMenu()">
-              <lucide-icon [name]="activateIcon" [size]="18" class="auth-navbar__access-icon"></lucide-icon>
-              <span>{{ t('botAccess.fullAccess.menu') }}</span>
-            </button>
-          }
 
           <a
             class="auth-navbar__dropdown-item auth-navbar__dropdown-item--upgrade"
@@ -249,12 +225,6 @@
           <div class="auth-navbar__divider" aria-hidden="true"></div>
 
           <section class="auth-navbar__mobile-section">
-            @if (showFullAccessMenuItem()) {
-              <button type="button" class="auth-navbar__mobile-link auth-navbar__mobile-link--access" (click)="openFullAccessFromMenu()">
-                <lucide-icon [name]="activateIcon" [size]="18" class="auth-navbar__access-icon"></lucide-icon>
-                <span>{{ t('botAccess.fullAccess.menu') }}</span>
-              </button>
-            }
             <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'profile']" (click)="closeMobileMenu()">
               <lucide-icon [name]="profileIcon" [size]="18" class="auth-navbar__profile-icon"></lucide-icon>
               <span>{{ t('navbar.profileSettings') }}</span>

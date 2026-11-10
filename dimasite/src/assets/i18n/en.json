@@ -656,14 +656,8 @@
   },
   "botAccess": {
     "chat": {
-      "add": "Add bot to chat",
-      "adding": "Adding…",
-      "removing": "Removing…",
       "allow": "Allow on Twitch",
-      "inChat": "Bot in chat",
-      "remove": "Remove",
-      "inChatAria": "The bot is in your chat. Remove it",
-      "confirmRemove": "Tap again to remove"
+      "confirmOff": "Tap again to turn off"
     },
     "toast": {
       "joinedTitle": "The bot is in your chat",
@@ -681,19 +675,19 @@
       "refusedMessage": "This isn't something you need to approve. Please try again later or contact us on Discord."
     },
     "fullAccess": {
-      "cta": "Give full access",
-      "menu": "Give full access",
       "ownerOnly": "Only the channel owner can give the bot full access."
     }
   },
   "featureAccess": {
+    "preview": {
+      "moderationHint": "Below is what automod can do for your chat. You can turn it on and change the rules once the bot has full access.",
+      "followDefenseHint": "Below is how follow-bot protection keeps your channel safe. You can turn it on and change it once the bot has full access."
+    },
     "followDefense": {
-      "title": "Follow-bot protection needs full access",
-      "hint": "Follow-bot protection starts working once the bot has full access. You can set it up now."
+      "title": "Follow-bot protection needs full access"
     },
     "moderation": {
-      "title": "Automod needs full access",
-      "hint": "Your automod rules start working once the bot has full access. You can set them up now."
+      "title": "Automod needs full access"
     },
     "needs": "Needs full access",
     "chatEvents": {
@@ -3107,16 +3101,17 @@
       "optional": "Optional",
       "chat": {
         "title": "Add the bot to your chat",
+        "useButton": "Press {{button}} at the top of this page. It reads your chat and answers your commands.",
         "hint": "It reads your chat and answers your commands.",
         "done": "It reads your chat and answers your commands."
       },
       "command": {
         "title": "Make your first command",
-        "hint": "For example, a !tts command that reads chat messages aloud.",
+        "hint": "Built-ins like !s (text to speech) and !commands already work. Add your own too.",
         "cta": "Create a command"
       },
       "full": {
-        "title": "Give full access",
+        "title": "Full access",
         "hint": "Unlocks built-in commands, alerts and chat events, automod, channel points, polls and predictions, and follower and sub stats."
       },
       "health": {
@@ -3910,6 +3905,11 @@
     }
   },
   "commands": {
+    "partialAccess": {
+      "title": "Some built-in commands need full access",
+      "hint": "Shoutouts, polls and predictions, title and game, mod and VIP tools and timeouts turn on once the bot is activated. The rest already work.",
+      "groupLocked": "{{count}} locked"
+    },
     "chatNote": {
       "text": "The bot isn't in your chat yet. Add it with the button at the top and your commands start working."
     },
@@ -3921,10 +3921,7 @@
       "ttsLink": "Set up text to speech"
     },
     "locked": {
-      "chip": "Needs full access",
-      "title": "Built-in commands are off",
-      "hint": "They turn on once the bot has full access on Twitch: shoutouts, polls and predictions, title and game, clips, mod and VIP tools and more. Your own commands work without it.",
-      "groupCount": "{{count}} commands"
+      "chip": "Needs full access"
     },
     "homeLabel": "DomDimaBot home",
     "title": "Commands",

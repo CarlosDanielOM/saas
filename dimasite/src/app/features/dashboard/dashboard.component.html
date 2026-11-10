@@ -45,6 +45,25 @@
             }
           </div>
         </div>
+        @if (isOwnChannel()) {
+          <button
+            type="button"
+            class="btn btn--sm gh__bot"
+            [class.btn--primary]="botButtonState() === 'out' || botButtonState() === 'needs-ok'"
+            [class.gh__bot--confirm]="botButtonState() === 'confirm'"
+            [attr.data-state]="botButtonState()"
+            [disabled]="botAccess.chatBusy()"
+            [attr.aria-busy]="botAccess.chatBusy()"
+            (appThrottleClick)="onBotButton()"
+          >
+            @if (botAccess.chatBusy()) {
+              <loading-indicator [loading]="true" size="sm" variant="css" />
+              <span class="visually-hidden">{{ botButtonLabel() }}</span>
+            } @else {
+              {{ botButtonLabel() }}
+            }
+          </button>
+        }
         <div class="gh__answer">
           @if (!chatEnabled() && !setupMode()) {
             <p class="gh__warn" role="status"><app-lf-icon name="alert" [size]="16"></app-lf-icon>{{ t('dashboard.brief.botOffWarn') }}</p>
@@ -78,20 +97,12 @@
                   } @else if (botAccess.chatNeedsTwitchOk()) {
                     {{ t('botAccess.toast.needsOkMessage') }}
                   } @else {
-                    {{ t('dashboard.setup.chat.hint') }}
+                    {{ t('dashboard.setup.chat.useButton', { button: t('dashboard.quickActions.joinBot') }) }}
                   }
                 </p>
               </div>
               @if (chatEnabled()) {
                 <span class="gs__state"><app-lf-icon name="check" [size]="14"></app-lf-icon>{{ t('dashboard.setup.done') }}</span>
-              } @else {
-                <button type="button" class="btn btn--sm btn--primary gs__act" [disabled]="botAccess.chatBusy()" [attr.aria-busy]="botAccess.chatBusy()" (click)="addBotToChat()">
-                  @if (botAccess.chatBusy()) {
-                    {{ t('botAccess.chat.adding') }}
-                  } @else {
-                    <app-lf-icon name="plus" [size]="15"></app-lf-icon>{{ botAccess.chatNeedsTwitchOk() ? t('botAccess.chat.allow') : t('botAccess.chat.add') }}
-                  }
-                </button>
               }
             </li>
             <li class="gs__step" data-step="command">
@@ -110,8 +121,8 @@
                 <p class="gs__name">{{ t('dashboard.setup.full.title') }} <span class="gs__tag">{{ t('dashboard.setup.optional') }}</span></p>
                 <p class="gs__hint">{{ t('dashboard.setup.full.hint') }}</p>
               </div>
-              <button type="button" class="btn btn--sm gs__act gs__full" (click)="giveFullAccess()">
-                <app-lf-icon name="zap" [size]="15"></app-lf-icon>{{ t('botAccess.fullAccess.cta') }}
+              <button type="button" class="btn btn--sm gs__act gs__full" (appThrottleClick)="giveFullAccess()">
+                <app-lf-icon name="zap" [size]="15"></app-lf-icon>{{ t('navbar.activateBot') }}
               </button>
             </li>
           </ol>

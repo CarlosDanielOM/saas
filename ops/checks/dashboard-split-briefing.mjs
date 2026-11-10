@@ -407,7 +407,7 @@ try {
     await until(async () => visible(page, '#dash-bot'), `${label}: strip opens bot pane`);
     // tap targets
     const small = await page.evaluate(() =>
-      [...document.querySelectorAll('app-dashboard .tabs button, app-dashboard .topic, app-dashboard .gs__act, app-dashboard .hm__btn')]
+      [...document.querySelectorAll('app-dashboard .tabs button, app-dashboard .topic, app-dashboard .gh__bot, app-dashboard .gs__act, app-dashboard .hm__btn')]
         .filter((el) => el.getClientRects().length && el.getBoundingClientRect().height < 40)
         .map((el) => el.textContent.trim())
     );
@@ -423,7 +423,7 @@ try {
 
   // ---------------------------------------------------- 4. failure cases: bot out, automod off, events fail
   {
-    const { context, page, errors } = await newPage(browser, { width: 1366, height: 900 }, {
+    const { context, page, errors, state } = await newPage(browser, { width: 1366, height: 900 }, {
       chatEnabled: false, automodOn: false, eventsFail: true, overPace: false, theme: 'dark'
     });
     const label = 'desktop-bot-out';
@@ -435,11 +435,24 @@ try {
     assert.doesNotMatch(await text(page, '.answer'), /Automod/, `${label}: answer skips automod when off`);
     await page.screenshot({ path: `${shots}/${label}.png`, fullPage: false });
     await primaryButtonsPainted(page, label);
-    // The navbar owns add/remove now: no bot button in the dashboard header, just the status chip.
-    assert.equal(await page.locator('.gh__bot').count(), 0, `${label}: no header bot button`);
     assert.match(await text(page, '.gh .chips'), /Bot not in your chat/, `${label}: bot-out chip`);
     assert.equal(await page.locator('.gh .chip--warn').count(), 1, `${label}: bot-out chip is a warning with full access`);
     assert.equal(await page.locator('[data-testid="dashboard-setup"]').count(), 0, `${label}: no get-started card with full access`);
+    // The header button adds/removes the bot; a double-click sends one request (1 s click guard).
+    await page.locator('.gh__bot').dblclick();
+    await until(async () => (await text(page, '.gh .chips')).includes('Bot in your chat'), `${label}: join flips bot chip`);
+    await page.waitForTimeout(300);
+    assert.deepEqual(state.toggles, [true], `${label}: one join request for a double-click`);
+    assert.equal(await page.locator('.gh__warn').count(), 0, `${label}: warning gone after join`);
+    assert.match(await text(page, '.gh__bot'), /Turn the bot off/, `${label}: button now turns the bot off`);
+    await page.waitForTimeout(1100);
+    await page.locator('.gh__bot').click();
+    await until(async () => /Tap again to turn off/.test(await text(page, '.gh__bot')), `${label}: turning off asks again`);
+    assert.deepEqual(state.toggles, [true], `${label}: first tap doesn't turn off`);
+    await page.waitForTimeout(1100);
+    await page.locator('.gh__bot').click();
+    await until(async () => /Turn the bot on/.test(await text(page, '.gh__bot')), `${label}: bot turned off`);
+    assert.deepEqual(state.toggles, [true, false], `${label}: leave request after the second tap`);
     assert.deepEqual(errors, [], `${label}: page errors`);
     await context.close();
   }
@@ -488,7 +501,7 @@ try {
     assert.match(await card.innerText(), /Next step: add the bot to your chat/, `${label}: headline`);
     assert.equal(await card.locator('.gs__step').count(), 3, `${label}: three steps`);
     assert.equal(await card.locator('[data-step="command"] a').getAttribute('href'), '/test/commands', `${label}: command link`);
-    assert.match(await card.locator('[data-step="command"]').innerText(), /!tts/, `${label}: command hint`);
+    assert.match(await card.locator('[data-step="command"]').innerText(), /!s \(text to speech\) and !commands already work/, `${label}: command hint`);
     assert.match(await card.locator('[data-step="full"]').innerText(), /optional[\s\S]*Unlocks built-in commands/i, `${label}: full access step`);
     // No pre-consent explanations: Twitch's own approval page lists the permissions.
     assert.doesNotMatch(await card.innerText(), /Twitch will ask|approval needed/i, `${label}: no permission explainer`);
@@ -496,7 +509,9 @@ try {
 
     // Nothing orange for what only full access turns on
     assert.equal(await page.locator('.gh__warn').count(), 0, `${label}: no bot-off warning`);
-    assert.equal(await page.locator('.gh__bot').count(), 0, `${label}: no header bot button`);
+    assert.match(await text(page, '.gh__bot'), /Turn the bot on/, `${label}: header bot button works before full access`);
+    assert.equal(await page.locator('[data-step="chat"] button').count(), 0, `${label}: step 1 points to the header button`);
+    assert.match(await card.locator('[data-step="chat"]').innerText(), /Press Turn the bot on/, `${label}: step 1 hint`);
     assert.equal(await page.locator('app-dashboard .chip--warn').count(), 0, `${label}: no warning chip`);
     assert.match(await text(page, '.gh .chips'), /Bot not in your chat/, `${label}: neutral bot chip`);
     if (width >= 640) {
@@ -523,8 +538,8 @@ try {
     await axe(page, label);
     await page.screenshot({ path: `${shots}/${label}.png`, fullPage: width < 640 });
 
-    // Step 1 adds the bot (same request as the navbar) and the page follows
-    await card.locator('[data-step="chat"] .gs__act').click();
+    // The header button adds the bot (no full access needed) and the card follows
+    await page.locator('.gh__bot').click();
     await until(async () => (await card.innerText()).includes('Your bot is in chat. Next: make your first command'), `${label}: headline after join`);
     assert.deepEqual(state.toggles, [true], `${label}: one join request`);
     assert.match(await card.locator('[data-step="chat"]').innerText(), /Done/, `${label}: step 1 done`);
@@ -535,6 +550,7 @@ try {
 
     // Step 3 starts the full-access approval on Twitch
     if (width >= 640) {
+      assert.match(await card.locator('[data-step="full"] .gs__act').innerText(), /Activate Bot/, `${label}: same label as the navbar CTA`);
       const request = page.waitForRequest((r) => r.url().includes('/auth/authorize'));
       await card.locator('[data-step="full"] .gs__act').click();
       const url = new URL((await request).url());

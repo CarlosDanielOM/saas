@@ -656,14 +656,8 @@
   },
   "botAccess": {
     "chat": {
-      "add": "Agregar bot al chat",
-      "adding": "Agregando…",
-      "removing": "Quitando…",
       "allow": "Permitir en Twitch",
-      "inChat": "Bot en el chat",
-      "remove": "Quitar",
-      "inChatAria": "El bot está en tu chat. Quitarlo",
-      "confirmRemove": "Toca otra vez para quitar"
+      "confirmOff": "Toca otra vez para apagarlo"
     },
     "toast": {
       "joinedTitle": "El bot está en tu chat",
@@ -681,19 +675,19 @@
       "refusedMessage": "No es algo que tengas que aprobar tú. Inténtalo más tarde o escríbenos en Discord."
     },
     "fullAccess": {
-      "cta": "Dar acceso completo",
-      "menu": "Dar acceso completo",
       "ownerOnly": "Solo el dueño del canal puede darle acceso completo al bot."
     }
   },
   "featureAccess": {
+    "preview": {
+      "moderationHint": "Abajo ves lo que el automod puede hacer por tu chat. Podrás activarlo y cambiar las reglas cuando el bot tenga acceso completo.",
+      "followDefenseHint": "Abajo ves cómo la defensa contra follows protege tu canal. Podrás activarla y cambiarla cuando el bot tenga acceso completo."
+    },
     "followDefense": {
-      "title": "La defensa contra follows necesita acceso completo",
-      "hint": "La defensa contra follows empieza a funcionar cuando el bot tenga acceso completo. Puedes configurarla desde ahora."
+      "title": "La defensa contra follows necesita acceso completo"
     },
     "moderation": {
-      "title": "El automod necesita acceso completo",
-      "hint": "Tus reglas de automod empiezan a funcionar cuando el bot tenga acceso completo. Puedes configurarlas desde ahora."
+      "title": "El automod necesita acceso completo"
     },
     "needs": "Necesita acceso completo",
     "chatEvents": {
@@ -3107,16 +3101,17 @@
       "optional": "Opcional",
       "chat": {
         "title": "Agrega el bot a tu chat",
+        "useButton": "Toca {{button}} arriba en esta página. Lee tu chat y responde a tus comandos.",
         "hint": "Lee tu chat y responde a tus comandos.",
         "done": "Lee tu chat y responde a tus comandos."
       },
       "command": {
         "title": "Crea tu primer comando",
-        "hint": "Por ejemplo, un comando !tts que lee en voz alta los mensajes del chat.",
+        "hint": "Los integrados como !s (texto a voz) y !commands ya funcionan. Agrega también los tuyos.",
         "cta": "Crear un comando"
       },
       "full": {
-        "title": "Da acceso completo",
+        "title": "Acceso completo",
         "hint": "Desbloquea los comandos integrados, las alertas y los eventos de chat, el automod, los puntos del canal, las encuestas y predicciones, y las estadísticas de seguidores y suscripciones."
       },
       "health": {
@@ -3910,6 +3905,11 @@
     }
   },
   "commands": {
+    "partialAccess": {
+      "title": "Algunos comandos integrados necesitan acceso completo",
+      "hint": "Los shoutouts, encuestas y predicciones, el título y la categoría, las herramientas de mods y VIP y los timeouts se encienden cuando se active el bot. Los demás ya funcionan.",
+      "groupLocked": "{{count}} bloqueados"
+    },
     "chatNote": {
       "text": "El bot todavía no está en tu chat. Agrégalo con el botón de arriba y tus comandos empiezan a funcionar."
     },
@@ -3921,10 +3921,7 @@
       "ttsLink": "Configura el texto a voz"
     },
     "locked": {
-      "chip": "Requiere acceso completo",
-      "title": "Los comandos integrados están apagados",
-      "hint": "Se encienden cuando el bot tiene acceso completo en Twitch: shoutouts, encuestas y predicciones, título y categoría, clips, herramientas de mods y VIP y más. Tus propios comandos funcionan sin eso.",
-      "groupCount": "{{count}} comandos"
+      "chip": "Necesita acceso completo"
     },
     "homeLabel": "Inicio de DomDimaBot",
     "title": "Comandos",

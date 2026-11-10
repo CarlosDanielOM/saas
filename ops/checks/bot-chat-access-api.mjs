@@ -28,6 +28,7 @@ const ACTIVE = { id: '91003', login: 'active_fixture' };
 const BOTFAIL = { id: 'botfail91004', login: 'botfail_fixture' };
 const LATE = { id: '91005', login: 'late_fixture' };
 const SCOPEFAIL = { id: 'scopefail91006', login: 'scopefail_fixture' };
+const OWN_S = { id: '91007', login: 'owns_fixture' };
 const OUTSIDER = { id: '91099', login: 'outsider_fixture' }; // Twitch account with no DomDimaBot account
 await UsersSchema.create([
   { name: NEW.login, email: 'n@example.test', plan_tier: 'free', accounts: [account(NEW.id, NEW.login, { actived: false, chat: false, perms: false })] },
@@ -35,7 +36,8 @@ await UsersSchema.create([
   { name: ACTIVE.login, email: 'a@example.test', plan_tier: 'free', accounts: [account(ACTIVE.id, ACTIVE.login, { actived: true, chat: false, perms: true }, ['old-access', 'old-refresh'])] },
   { name: BOTFAIL.login, email: 'f@example.test', plan_tier: 'free', accounts: [account(BOTFAIL.id, BOTFAIL.login, { actived: false, chat: false, perms: false })] },
   { name: LATE.login, email: 'l@example.test', plan_tier: 'free', accounts: [account(LATE.id, LATE.login, { actived: false, chat: false, perms: false })] },
-  { name: SCOPEFAIL.login, email: 's@example.test', plan_tier: 'free', accounts: [account(SCOPEFAIL.id, SCOPEFAIL.login, { actived: false, chat: false, perms: false })] }
+  { name: SCOPEFAIL.login, email: 's@example.test', plan_tier: 'free', accounts: [account(SCOPEFAIL.id, SCOPEFAIL.login, { actived: false, chat: false, perms: false })] },
+  { name: OWN_S.login, email: 'o@example.test', plan_tier: 'free', accounts: [account(OWN_S.id, OWN_S.login, { actived: false, chat: false, perms: false })] }
 ]);
 
 const token = (u) => `tok-${u.id}-${u.login}`;
@@ -64,7 +66,16 @@ assert.equal(subscribeCalls[0].bearer, 'app-token-fixture', 'subscription create
 assert.deepEqual(subscribeCalls[0].body.condition, { broadcaster_user_id: NEW.id, user_id: BOT_ID });
 assert.equal(subscribeCalls[0].body.type, 'channel.chat.message');
 assert.ok(!callsSince(mark).some((c) => c.provider === 'twitch-id' && c.grant_type === 'refresh_token'), 'no broadcaster token refresh attempted');
-console.log('PASS signed-in-only streamer adds the bot to chat with the app token');
+const CATALOG = getReservedCommandsPayload().commands;
+const BASIC = CATALOG.filter((c) => !c.requiresFullAccess);
+assert.equal(CATALOG.filter((c) => c.requiresFullAccess).length, 24, 'catalog marks 24 Twitch-dependent defaults (incl. timers)');
+assert.ok(['createCommandTimer', 'editCommandTimer', 'deleteCommandTimer'].every((f) => CATALOG.find((c) => c.func === f)?.requiresFullAccess), 'timer commands wait for full access');
+const seededOnJoin = await CommandsSchema.find({ channelID: NEW.id }).lean();
+assert.equal(seededOnJoin.length, BASIC.length, 'joining chat adds the defaults that need no Twitch approval');
+assert.deepEqual(seededOnJoin.map((c) => c.func).sort(), BASIC.map((c) => c.func).sort());
+assert.ok(seededOnJoin.some((c) => c.func === 'speach' && c.cmd === 's' && c.enabled), 'TTS !s ready');
+assert.equal(await CommandsSchema.exists({ channelID: NEW.id, func: { $in: ['title', 'shoutout', 'poll', 'mod', 'duel'] } }), null, 'no Twitch-dependent defaults yet');
+console.log('PASS signed-in-only streamer adds the bot to chat with the app token; basic defaults added');
 
 // 2. Adding again is a no-op.
 mark = calls().length;
@@ -152,29 +163,48 @@ assert.equal(decrypt(active.access_token), token(ACTIVE), 'new token stored');
 console.log('PASS reauthenticate keeps chat off when the streamer removed the bot');
 
 // 8. Own commands work before full access, and win over the defaults later.
-let created = await fetch(`${API}/commands/${NEW.id}`, {
+let created = await fetch(`${API}/commands/${OWN_S.id}`, {
   method: 'POST',
-  headers: { 'content-type': 'application/json', authorization: `Bearer ${token(NEW)}` },
-  body: JSON.stringify({ name: 's', cmd: 's', func: 's', channel: NEW.login, message: '$(tts $(user) says: &t)', cooldown: 5, userLevel: 1 })
+  headers: { 'content-type': 'application/json', authorization: `Bearer ${token(OWN_S)}` },
+  body: JSON.stringify({ name: 's', cmd: 's', func: 's', channel: OWN_S.login, message: '$(tts $(user) says: &t)', cooldown: 5, userLevel: 1 })
 });
 assert.ok(created.status === 200 || created.status === 201, `create own command: ${created.status} ${await created.text()}`);
-const listed = await (await fetch(`${API}/commands/${NEW.id}?activation=all&limit=1000`)).json();
-assert.equal(listed.commands.length, 1, 'no defaults before full access');
-assert.equal(listed.commands[0].reserved, false);
-const catalog = getReservedCommandsPayload().commands;
-const seeded = await ensureReservedCommands(NEW.id, NEW.login);
-assert.equal(seeded, catalog.length - 1, 'every default except the taken `!s`');
-const named = await CommandsSchema.find({ channelID: NEW.id, cmd: 's' }).lean();
+let listed = await (await fetch(`${API}/commands/${OWN_S.id}?activation=all&limit=1000`)).json();
+assert.equal(listed.fullAccess, false, 'list says the channel has no full access');
+assert.equal(listed.commands.length, BASIC.length, 'own !s + basic defaults except the taken !s');
+assert.ok(!listed.commands.some((c) => c.func === 'speach'), 'default !s skipped: the streamer has one');
+assert.ok(!listed.commands.some((c) => CATALOG.find((d) => d.func === c.func)?.requiresFullAccess), 'no Twitch-dependent defaults');
+// Deleting an editable basic default sticks (the set is only added once).
+const memide = listed.commands.find((c) => c.func === 'memide');
+await CommandsSchema.deleteOne({ _id: memide._id });
+listed = await (await fetch(`${API}/commands/${OWN_S.id}?activation=all&limit=1000`)).json();
+assert.ok(!listed.commands.some((c) => c.func === 'memide'), 'deleted default not re-added');
+// An interrupted first seed (only some built-ins written) is finished on the next visit.
+const PARTIAL = { id: '91008', login: 'partial_fixture' };
+await UsersSchema.create({ name: PARTIAL.login, email: 'p@example.test', plan_tier: 'free', accounts: [account(PARTIAL.id, PARTIAL.login, { actived: false, chat: false, perms: false })] });
+const firstBasic = BASIC.find((c) => c.reserved);
+await CommandsSchema.create({ name: firstBasic.name, cmd: firstBasic.cmd, func: firstBasic.func, type: 'command', channel: PARTIAL.login, channelID: PARTIAL.id,
+  cooldown: 10, enabled: true, userLevel: 0, userLevelName: 'everyone', reserved: true, message: '', responses: [], paused: false, platform: 'twitch' });
+const partialList = await (await fetch(`${API}/commands/${PARTIAL.id}?activation=all&limit=1000`)).json();
+assert.equal(partialList.commands.length, BASIC.length, 'interrupted seed completed');
+assert.ok(partialList.commands.some((c) => c.func === 'speach'), '!s added after an interrupted seed');
+const seeded = await ensureReservedCommands(OWN_S.id, OWN_S.login);
+// Full access adds every missing default (as before this change): the 24 Twitch-dependent ones
+// plus the deleted !memide.
+assert.equal(seeded, CATALOG.length - BASIC.length + 1, 'full access adds the Twitch-dependent defaults');
+const named = await CommandsSchema.find({ channelID: OWN_S.id, cmd: 's' }).lean();
 assert.equal(named.length, 1, 'one `!s`');
 assert.equal(named[0].func, 's', 'the streamer’s own `!s` kept');
-assert.equal(await CommandsSchema.exists({ channelID: NEW.id, func: 'speach' }), null);
-console.log('PASS own commands before full access; activation skips defaults whose name is taken');
+const activeList = await (await fetch(`${API}/commands/${ACTIVE.id}?activation=all&limit=1000`)).json();
+assert.equal(activeList.fullAccess, true, 'activated channel reports full access');
+console.log('PASS basic defaults before full access; own commands win; full access adds the rest');
 
 // 9. The public catalog the site uses for the locked preview.
 const publicCatalog = await (await fetch(`${API}/config/commands/reserved?language=es`)).json();
 assert.equal(publicCatalog.error, false);
-assert.equal(publicCatalog.data.commands.length, catalog.length);
+assert.equal(publicCatalog.data.commands.length, CATALOG.length);
 assert.ok(publicCatalog.data.commands.every((c) => typeof c.description === 'string'), 'localized descriptions');
-console.log(`PASS reserved catalog lists ${catalog.length} defaults`);
+assert.equal(publicCatalog.data.commands.filter((c) => c.requiresFullAccess === true).length, 24, 'site can tell which defaults are locked');
+console.log(`PASS reserved catalog lists ${CATALOG.length} defaults, 24 marked as needing full access`);
 
 process.exit(0);

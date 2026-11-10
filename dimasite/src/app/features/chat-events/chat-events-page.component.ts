@@ -131,7 +131,7 @@ export class ChatEventsPageComponent implements OnInit {
    * The owner hasn't given full access yet: Twitch won't send follows, subs, bits or raids,
    * so turning an event on would only fail. Managers can't see the owner's flag: no change there.
    */
-  readonly needsFullAccess = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.hasFullAccess());
+  readonly needsFullAccess = computed(() => this.botAccess.needsFullAccess(this.channelID()));
 
   readonly enabledCount = computed(() => this.cards().filter((e) => e.enabled).length);
 
