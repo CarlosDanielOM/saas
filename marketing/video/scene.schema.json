@@ -1484,6 +1484,138 @@
           },
           {
             "type": "object",
+            "description": "Voice-over: a narrator line heard over the video. Nothing appears on screen (put the words in a caption) and the camera ignores it. Length follows the voice clip.",
+            "additionalProperties": false,
+            "required": [
+              "do",
+              "text"
+            ],
+            "properties": {
+              "do": {
+                "const": "voice"
+              },
+              "id": {
+                "type": "string",
+                "description": "Name this beat so others can target it or time from it."
+              },
+              "after": {
+                "type": "string",
+                "description": "Make \"+N\" count from the END of this beat instead of the previous one."
+              },
+              "with": {
+                "type": "string",
+                "description": "Make \"+N\" count from the START of this beat (run alongside it)."
+              },
+              "dur": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120000,
+                "description": "Length in ms (each block has a default)."
+              },
+              "sfx": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "src"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "src": {
+                        "type": "string"
+                      },
+                      "gain": {
+                        "type": "number"
+                      },
+                      "delay": {
+                        "type": "number"
+                      },
+                      "fadeIn": {
+                        "type": "number"
+                      },
+                      "fadeOut": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ],
+                "description": "Sound effect when this beat starts."
+              },
+              "$comment": {
+                "type": "string"
+              },
+              "at": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\+\\d{1,6}$"
+                  }
+                ],
+                "description": "Start: absolute ms (number) or \"+N\" = N ms after the previous beat ends. Default \"+0\"."
+              },
+              "text": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "What the narrator says."
+              },
+              "voice": {
+                "type": "string",
+                "description": "Voice name from marketing/video/voices.json. Defaults to the language default."
+              },
+              "clip": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "en",
+                      "es"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "en": {
+                        "type": "string"
+                      },
+                      "es": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ],
+                "description": "Use this audio file instead of synthesizing (path under marketing/video/sounds/)."
+              }
+            }
+          },
+          {
+            "type": "object",
             "description": "A chat duel in the real duel overlay. Length comes from the seeded battle; dur can only make it longer (holds the winner screen).",
             "additionalProperties": false,
             "required": [

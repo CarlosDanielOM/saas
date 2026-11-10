@@ -1,5 +1,30 @@
 {
-  "$comment": "TTS voices for demo videos. Fish Audio only. Add a voice, then point defaults.en / defaults.es at its name. Every voice needs its owner/source and a license that allows use in ads. s2.1-pro-free costs nothing until freeUntil; after that renders need --allow-paid-tts.",
-  "defaults": { "en": null, "es": null },
-  "voices": {}
+  "$comment": "TTS voices for demo videos. Fish Audio only. Add a voice, then point defaults.en / defaults.es at its name. Every voice needs its owner/source and a license that allows use in ads. s2.1-pro-free costs nothing until freeUntil; after that renders need --allow-paid-tts. Fish's terms: free-plan / free-model audio is for personal or test use; audio for published ads must come from a paid plan or paid model (fish.audio/terms, fish.audio/plan). The voices below are Fish Official designed voices (source voice_design), not clones of real people.",
+  "defaults": { "en": "kendall", "es": "aranza" },
+  "voices": {
+    "kendall": {
+      "engine": "fish", "reference_id": "606aa33cd0964bbeaddd77071e4ec8b8", "model": "s2.1-pro-free", "freeUntil": "2026-11-30",
+      "name": "Kendall (Fish Official, en-US, female, late 20s, friendly and relaxed)",
+      "license": "Fish Official voice_design (synthetic, no real person). s2.1-pro-free output is for review; re-render with a paid model on a paid account before publishing an ad.",
+      "source": "fish.audio/m/606aa33cd0964bbeaddd77071e4ec8b8"
+    },
+    "naomi": {
+      "engine": "fish", "reference_id": "cbc3add1f54546e6a4a1964bacb8b122", "model": "s2.1-pro-free", "freeUntil": "2026-11-30",
+      "name": "Naomi (Fish Official, en-US, female, late 20s, warm)",
+      "license": "Fish Official voice_design (synthetic, no real person). s2.1-pro-free output is for review; re-render with a paid model on a paid account before publishing an ad.",
+      "source": "fish.audio/m/cbc3add1f54546e6a4a1964bacb8b122"
+    },
+    "aranza": {
+      "engine": "fish", "reference_id": "114b0c8f492847cc8b190b8f9e560fa3", "model": "s2.1-pro-free", "freeUntil": "2026-11-30",
+      "name": "Aranza (Fish Official, es-MX, female, early 20s, casual)",
+      "license": "Fish Official voice_design (synthetic, no real person). s2.1-pro-free output is for review; re-render with a paid model on a paid account before publishing an ad.",
+      "source": "fish.audio/m/114b0c8f492847cc8b190b8f9e560fa3"
+    },
+    "fernanda": {
+      "engine": "fish", "reference_id": "65793e1ac2e545bb9c56e7ca777d806a", "model": "s2.1-pro-free", "freeUntil": "2026-11-30",
+      "name": "Fernanda (Fish Official, es-MX, female, young, brisk)",
+      "license": "Fish Official voice_design (synthetic, no real person). s2.1-pro-free output is for review; re-render with a paid model on a paid account before publishing an ad.",
+      "source": "fish.audio/m/65793e1ac2e545bb9c56e7ca777d806a"
+    }
+  }
 }

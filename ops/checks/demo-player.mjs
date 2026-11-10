@@ -23,7 +23,7 @@ const origin = new URL(base).origin;
 const started = Date.now();
 
 // Every building block, short. Times resolve to: intro 0-1200, m1 1400, a1 1600-4600 (+event, camera),
-// del 3000, t1 4800-6800, r1 7000-11000 (spin 7600-10600), spam 11200, ban 11800 (+bot 12100, announcement 12300), d1 13000-..., outro.
+// del 3000, t1 4800-6800, r1 7000-11000 (spin 7600-10600), spam 11200 (+voice-over), ban 11800 (+bot 12100, announcement 12300), d1 13000-..., outro.
 // The director's chat shot runs 11100-12800 (first-time message to just before the duel).
 const SCENE = {
   id: 'check', v: 2, seed: 5,
@@ -40,6 +40,7 @@ const SCENE = {
     { do: 'tts', id: 't1', with: 'a1', at: '+3200', dur: 2000, user: 'viewer_three', text: 'read this out loud' },
     { do: 'roulette', id: 'r1', after: 't1', at: '+200', title: 'Prize', items: ['Alpha', 'Beta', 'Gamma'], winner: 1, spin: 3000, dur: 4000 },
     { do: 'chat', id: 'spam', after: 'r1', at: '+200', user: 'promo_bot_9', first: true, text: 'cheap followers at spam.example', sfx: 'kit:pop' },
+    { do: 'voice', id: 'v1', with: 'spam', at: '+0', text: { en: 'a first-time chatter, watch this', es: 'alguien nuevo, miren esto' } },
     { do: 'highlight', with: 'spam', at: '+100', dur: 500, target: 'spam', label: 'First message' },
     { do: 'ban', id: 'ban', with: 'spam', at: '+600', target: 'spam', sfx: { src: 'kit:thud', gain: 0.9 } },
     { do: 'bot', with: 'ban', at: '+300', text: '@promo_bot_9 Selected unwanted chat behavior' },
@@ -233,6 +234,12 @@ async function recorder(format, lang, look) {
   assert.ok((await q('.df-card[data-kind="outro"]'))?.includes('domdimabot.com'), 'the closing card holds to the last frame');
   assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.df-card[data-kind="outro"]')).opacity), '1', 'and stays fully visible');
   assert.deepEqual(await page.evaluate(() => window.__demoPlays), [], 'no page audio');
+  // A voice-over draws nothing and takes its length from its clip; its sound is mixed like a TTS clip.
+  assert.equal(await page.locator('[data-line="v1"]').count(), 0, 'a voice-over adds nothing to the chat');
+  const voiced = await page.evaluate((scene) => window.__dimaDemo.load(scene, { format: 'vertical', lang: 'en', media: { tts: { v1: { src: '/__demo/media/tts/check.mp3', durationMs: 2345 } } } }), SCENE);
+  const v1 = voiced.beats.find((b) => b.id === 'v1');
+  assert.deepEqual([v1.at, v1.end], [11200, 13545], 'the voice-over lasts as long as its clip');
+  assert.ok(voiced.cues.some((c) => c.kind === 'tts' && c.src === '/__demo/media/tts/check.mp3' && c.at === 11200 && c.end === 13545), 'the voice-over is mixed in');
   const bad = await page.evaluate(() => window.__dimaDemo.load({ id: 'x', v: 1, beats: [{ do: 'nope' }] }, { format: 'vertical', lang: 'en' }));
   assert.equal(bad.ok, false, 'invalid scenes are rejected');
   await ctx.close();

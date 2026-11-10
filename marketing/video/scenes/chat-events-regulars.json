@@ -16,13 +16,13 @@
   },
   "beats": [
     { "do": "intro", "at": 0, "dur": 1900,
-      "title": { "en": "Shoutout to *the regulars*", "es": "Para los que *siempre están*" },
-      "sub": { "en": "my bot notices them for me", "es": "y mi bot está al pendiente" } },
+      "title": { "en": "Celebrate *your regulars*", "es": "Celebra a *los de siempre*" },
+      "sub": { "en": "Chat events on your stream", "es": "Eventos de chat en tu stream" } },
 
     { "do": "event", "id": "streak", "at": "+500", "icon": "sub", "sfx": { "src": "kit:pop", "gain": 0.6 },
       "text": { "en": "maple_moon watched 15 consecutive streams and sparked a watch streak!", "es": "¡maple_moon vio 15 streams seguidos y encendió una racha!" } },
     { "do": "caption", "id": "cap1", "with": "streak", "at": "+300", "dur": 3200,
-      "text": { "en": "Someone shares a watch streak, my bot *celebrates it*", "es": "Alguien comparte su racha y mi bot *la celebra*" } },
+      "text": { "en": "Shared watch streaks get *celebrated in chat*", "es": "Las rachas compartidas se *celebran en el chat*" } },
     { "do": "bot", "id": "streakthanks", "with": "streak", "at": "+700", "sfx": { "src": "kit:ding", "gain": 0.5 },
       "text": { "en": "15 streams in a row, maple_moon?! You're a legend 🔥", "es": "¿15 streams seguidos, maple_moon? ¡Eres leyenda! 🔥" },
       "refs": [ { "file": "dimabot/src/utils/ast_parser/functions/eventsub.functions.ts", "quote": "registerFunction('twitch.streak', watchStreakHandler", "inText": false } ] },
@@ -31,7 +31,7 @@
     { "do": "event", "id": "modiv", "after": "cap1", "at": "+200", "icon": "shield", "sfx": { "src": "kit:pop", "gain": 0.6 },
       "text": { "en": "sir_waffles has been a moderator for 24 months!", "es": "¡sir_waffles lleva 24 meses como moderador!" } },
     { "do": "caption", "id": "cap2", "with": "modiv", "at": "+200", "dur": 3200,
-      "text": { "en": "A mod shares their anniversary? *It thanks them too*", "es": "¿Un mod comparte su aniversario? *También lo celebra*" } },
+      "text": { "en": "So do your *mods' anniversaries*", "es": "Y también *los aniversarios de tus mods*" } },
     { "do": "bot", "id": "modthanks", "with": "modiv", "at": "+700", "sfx": { "src": "kit:ding", "gain": 0.5 },
       "text": {
         "en": "Happy mod anniversary, sir_waffles! Thank you for 24 months of moderating!",
@@ -52,10 +52,10 @@
         { "file": "dimabot/src/utils/chat_event_catalog.ts", "quote": "'$(shoutout.channel) has sent a shoutout to $(twitch.channel)!'", "inText": false }
       ] },
     { "do": "caption", "id": "cap3", "with": "shoutout", "at": "+0", "dur": 3000,
-      "text": { "en": "Another streamer shouts me out? *Chat hears about it*", "es": "¿Otro streamer me da shoutout? *Mi chat se entera*" } },
+      "text": { "en": "Got a shoutout? *Your chat finds out*", "es": "¿Te dieron shoutout? *Tu chat se entera*" } },
 
     { "do": "outro", "id": "outro", "after": "cap3", "at": "+200", "dur": 2600,
-      "title": { "en": "Nobody who shows up *goes unnoticed*", "es": "Aquí nadie *pasa desapercibido*" },
-      "cta": { "en": "Chat events are free · domdimabot.com", "es": "Los eventos de chat son gratis · domdimabot.com" } }
+      "title": { "en": "Make your regulars *feel seen*", "es": "Que los de siempre *se sientan vistos*" },
+      "cta": { "en": "Free on every plan · domdimabot.com", "es": "Gratis en todos los planes · domdimabot.com" } }
   ]
 }

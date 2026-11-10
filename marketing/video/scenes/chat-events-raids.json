@@ -16,8 +16,8 @@
   },
   "beats": [
     { "do": "intro", "at": 0, "dur": 1900,
-      "title": { "en": "Got raided *mid-game*", "es": "Me cayó un raid *en plena partida*" },
-      "sub": { "en": "this is what my chat saw", "es": "esto vio mi chat" } },
+      "title": { "en": "Give every raid *a real welcome*", "es": "Dale a cada raid *una buena bienvenida*" },
+      "sub": { "en": "Chat events on your stream", "es": "Eventos de chat en tu stream" } },
 
     { "do": "event", "id": "raid", "at": "+500", "icon": "raid", "sfx": { "src": "kit:pop", "gain": 0.6 },
       "text": { "en": "42 raiders from cozy_cactus have joined!", "es": "¡Llegaron 42 raiders de cozy_cactus!" } },
@@ -26,7 +26,7 @@
     { "do": "camera", "with": "alert", "at": "+0", "focus": "alert", "zoom": 1.7 },
     { "do": "camera", "after": "alert", "at": "+0", "dur": 500, "focus": "full" },
     { "do": "caption", "id": "cap1", "with": "raid", "at": "+300", "dur": 4200,
-      "text": { "en": "A raid comes in, my bot *welcomes them*", "es": "Llega un raid y mi bot *les da la bienvenida*" } },
+      "text": { "en": "A raid comes in, DomDimaBot *announces it*", "es": "Llega un raid y DomDimaBot *lo anuncia*" } },
     { "do": "chat", "with": "raid", "at": "+450", "user": "desert_rose", "text": { "en": "CACTUS RAID 🌵🌵", "es": "RAID DE CACTUS 🌵🌵" } },
     { "do": "chat", "with": "raid", "at": "+1500", "user": "spiny_boi", "badges": ["sub"], "text": { "en": "hiii from cactus's stream", "es": "holaaa, venimos de cactus" } },
     { "do": "bot", "id": "announce", "with": "raid", "at": "+900", "announce": "purple", "sfx": { "src": "kit:ding", "gain": 0.5 },
@@ -42,13 +42,13 @@
     { "do": "event", "id": "shoutout", "after": "alert", "at": "+700", "icon": "follow",
       "text": { "en": "Shoutout: cozy_cactus", "es": "Shoutout: cozy_cactus" } },
     { "do": "caption", "id": "cap2", "after": "cap1", "at": "+0", "dur": 2900,
-      "text": { "en": "and it gives them *a shoutout* for me", "es": "y le da *shoutout* por mí" } },
+      "text": { "en": "…and gives the raider *a shoutout*", "es": "…y le da *shoutout* al streamer que llegó" } },
     { "do": "chat", "with": "cap2", "at": "+1300", "user": "desert_rose", "text": { "en": "W shoutout 💜", "es": "gracias por el shoutout 💜" } },
 
     { "do": "caption", "id": "cap3", "after": "cap2", "at": "+0", "dur": 2400,
-      "text": { "en": "I didn't stop playing *once*", "es": "Y yo *ni dejé de jugar*" } },
+      "text": { "en": "Free on *every plan*", "es": "Gratis en *todos los planes*" } },
     { "do": "outro", "id": "outro", "after": "cap3", "at": "+200", "dur": 2600,
-      "title": { "en": "Raid welcomed, *still in the game*", "es": "Raid recibido y *sigo en la partida*" },
-      "cta": { "en": "Chat events are free · domdimabot.com", "es": "Los eventos de chat son gratis · domdimabot.com" } }
+      "title": { "en": "Welcome raids *the moment they land*", "es": "Recibe cada raid *en cuanto llega*" },
+      "cta": { "en": "Free to start · domdimabot.com", "es": "Empieza gratis · domdimabot.com" } }
   ]
 }

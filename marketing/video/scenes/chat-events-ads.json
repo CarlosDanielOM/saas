@@ -16,14 +16,14 @@
   },
   "beats": [
     { "do": "intro", "at": 0, "dur": 1900,
-      "title": { "en": "Ads just *kicked in*", "es": "Ya empezaron *los anuncios*" },
-      "sub": { "en": "and I don't have to say a thing", "es": "y no tengo que decir nada" } },
+      "title": { "en": "Ad break? *Your chat knows*", "es": "¿Anuncios? *Tu chat ya sabe*" },
+      "sub": { "en": "Chat events on your stream", "es": "Eventos de chat en tu stream" } },
 
     { "do": "bot", "id": "adstart", "at": "+500", "sfx": { "src": "kit:ding", "gain": 0.5 },
       "text": { "en": "Ads for 90 seconds! Grab some water, we'll be right back 💧", "es": "¡Anuncios por 90 segundos! Vayan por agua, ahorita volvemos 💧" },
       "refs": [ { "file": "dimabot/src/utils/ast_parser/functions/channel.functions.ts", "quote": "registerFunction('ad.time', adHandler", "inText": false } ] },
     { "do": "caption", "id": "cap1", "with": "adstart", "at": "+200", "dur": 3000,
-      "text": { "en": "Ads start, and chat knows *for how long*", "es": "Empiezan los anuncios y el chat sabe *cuánto duran*" } },
+      "text": { "en": "Ads start, DomDimaBot *says how long*", "es": "Empiezan los anuncios y DomDimaBot *dice cuánto duran*" } },
     { "do": "chat", "with": "adstart", "at": "+1300", "user": "agua_fresca", "text": { "en": "water break 💧", "es": "a tomar agua 💧" } },
     { "do": "chat", "with": "adstart", "at": "+2300", "user": "noodle_cat", "badges": ["sub"], "text": { "en": "brb snack", "es": "voy por botana, ahorita vengo" } },
 
@@ -33,11 +33,11 @@
       "text": { "en": "Ad break has ended!", "es": "¡Se acabaron los anuncios, ya volvimos! 🎮" },
       "refs": [ { "file": "dimabot/src/utils/eventsub.ts", "quote": "Ad break has ended!", "lang": "en" } ] },
     { "do": "caption", "id": "cap3", "after": "cap2", "at": "+0", "dur": 2800,
-      "text": { "en": "and tells chat *we're back*", "es": "y avisa en el chat *que ya volvimos*" } },
+      "text": { "en": "…and tells chat *you're back*", "es": "…y avisa en el chat *que ya volviste*" } },
     { "do": "chat", "with": "adend", "at": "+1300", "user": "noodle_cat", "badges": ["sub"], "text": { "en": "back 🙌", "es": "ya volví 🙌" } },
 
     { "do": "outro", "id": "outro", "after": "cap3", "at": "+200", "dur": 2600,
-      "title": { "en": "One less thing *to say out loud*", "es": "Una cosa menos *que decir en voz alta*" },
-      "cta": { "en": "Chat events are free · domdimabot.com", "es": "Los eventos de chat son gratis · domdimabot.com" } }
+      "title": { "en": "Let the bot *handle ad breaks*", "es": "Deja que el bot *avise los anuncios*" },
+      "cta": { "en": "Free on every plan · domdimabot.com", "es": "Gratis en todos los planes · domdimabot.com" } }
   ]
 }

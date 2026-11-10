@@ -75,6 +75,10 @@ export const DEMO_ACTORS: Readonly<Record<string, ActorSpec>> = {
     voice: { type: 'string', doc: 'Voice name from marketing/video/voices.json. Defaults to the language default.' },
     clip: { type: 'text', doc: 'Use this audio file instead of synthesizing (path under marketing/video/sounds/).' },
     showText: { type: 'boolean', doc: 'Show the text card (default true).' } } },
+  voice: { dur: 'auto', doc: 'Voice-over: a narrator line heard over the video. Nothing appears on screen (put the words in a caption) and the camera ignores it. Length follows the voice clip.', fields: {
+    text: { type: 'text', required: true, doc: 'What the narrator says.' },
+    voice: { type: 'string', doc: 'Voice name from marketing/video/voices.json. Defaults to the language default.' },
+    clip: { type: 'text', doc: 'Use this audio file instead of synthesizing (path under marketing/video/sounds/).' } } },
   duel: { dur: 'auto', doc: 'A chat duel in the real duel overlay. Length comes from the seeded battle; dur can only make it longer (holds the winner screen).', fields: {
     left: { type: 'string', required: true, doc: 'Left fighter.' },
     right: { type: 'string', required: true, doc: 'Right fighter.' } } },
@@ -348,7 +352,7 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
     const duelMs = kind === 'duel' ? (durations.duel ? durations.duel({ index, seed: beatSeed(seed, index) }) : 20000) : 0;
     if (kind === 'duel' && entry['dur'] !== undefined && dur < duelMs) errors.push(`${label}: "dur" can't be shorter than the fight (${duelMs} ms); leave it out`);
     if (entry['dur'] === undefined && spec.dur === 'auto') {
-      if (kind === 'tts') dur = durations.tts?.[id] ?? estimateSpeechMs(String(props['text'] ?? ''));
+      if (kind === 'tts' || kind === 'voice') dur = durations.tts?.[id] ?? estimateSpeechMs(String(props['text'] ?? ''));
       else if (kind === 'duel') dur = duelMs;
       else if (kind === 'roulette') dur = ROULETTE_LEAD_MS + (typeof props['spin'] === 'number' ? props['spin'] : DEFAULT_ROULETTE_SPIN_MS) + ROULETTE_HOLD_MS;
       else dur = 0; // music: until the end, resolved below
@@ -394,7 +398,8 @@ export function normalizeScene(input: unknown, lang: DemoLang, durations: DemoDu
   for (const beat of beats) if (beat.do === 'music' && raw.beats[beat.index]['dur'] === undefined) beat.end = durationMs;
   // The closing card covers everything, so nothing else may still be playing under it.
   for (const outro of beats.filter((b) => b.do === 'outro')) {
-    const under = beats.find((b) => b !== outro && !['music', 'sfx', 'camera'].includes(b.do) && b.end > outro.at && b.at < outro.at);
+    // A voice-over may finish over the closing card (nothing of it is on screen).
+    const under = beats.find((b) => b !== outro && !['music', 'sfx', 'camera', 'voice'].includes(b.do) && b.end > outro.at && b.at < outro.at);
     if (under) errors.push(`outro ${outro.id} starts at ${outro.at} ms while ${under.do} ${under.id} plays until ${under.end} ms; time it with "after": "${under.id}"`);
   }
   if (beats.some((b) => b.at >= durationMs)) errors.push(`a beat starts after the video ends (${durationMs} ms); raise "end" or remove it`);
@@ -565,7 +570,7 @@ export function sceneCues(scene: DemoScene, ttsSrc: Record<string, string> = {})
       const s = beat.props['sound'] as DemoSound;
       cues.push({ kind: 'alert', beat: beat.id, src: s.src, at: beat.at + s.delay, gain: s.gain, fadeIn: s.fadeIn, fadeOut: s.fadeOut, end: beat.end });
     }
-    if (beat.do === 'tts' && ttsSrc[beat.id]) cues.push({ kind: 'tts', beat: beat.id, src: ttsSrc[beat.id], at: beat.at, gain: 1, fadeIn: 0, fadeOut: 0, end: beat.end });
+    if ((beat.do === 'tts' || beat.do === 'voice') && ttsSrc[beat.id]) cues.push({ kind: 'tts', beat: beat.id, src: ttsSrc[beat.id], at: beat.at, gain: 1, fadeIn: 0, fadeOut: 0, end: beat.end });
     if (beat.do === 'music') cues.push({ kind: 'music', beat: beat.id, src: String(beat.props['src']), at: beat.at, gain: typeof beat.props['gain'] === 'number' ? beat.props['gain'] : 0.35, fadeIn: 0, fadeOut: typeof beat.props['fadeOut'] === 'number' ? beat.props['fadeOut'] : 1500, end: beat.end });
   }
   return cues.sort((a, b) => a.at - b.at);

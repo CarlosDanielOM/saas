@@ -55,6 +55,15 @@ test('free model: same request as the product, cached by text', async () => {
   assert.equal(again.media.t1.file, first.media.t1.file);
 });
 
+test('a voice-over line is synthesized the same way', async () => {
+  const before = requests.length;
+  const narration = {beats: [{do: 'voice', id: 'v1', text: {en: 'x', es: 'bueno chat, miren esto'}}]};
+  const {media} = await prepareTts(narration, 'es', {voices, env: env(), clipsDir: dir, today: new Date('2026-11-08T12:00:00Z')});
+  assert.equal(requests.length, before + 1);
+  assert.equal(requests.at(-1).body.text, 'bueno chat, miren esto');
+  assert.ok(existsSync(media.v1.file));
+});
+
 test('after the free period, synthesis needs --allow-paid-tts', async () => {
   const other = {beats: [{do: 'tts', id: 't2', user: 'u', text: {en: 'x', es: 'otra frase'}}]};
   await assert.rejects(prepareTts(other, 'es', {voices, env: env(), clipsDir: dir, today: new Date('2026-12-01')}), /costs money.*--allow-paid-tts/);

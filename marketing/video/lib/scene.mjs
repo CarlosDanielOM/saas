@@ -36,7 +36,7 @@ export function checkScene(raw) {
       try { if (src.startsWith('kit:')) { if (!KIT[src.slice(4)]) throw new Error(`unknown kit sound "${src}"`); } else soundPath(src); }
       catch (error) { errors.push(`${label}: ${error.message}`); }
     }
-    if (beat.do === 'tts' && beat.clip !== undefined) {
+    if ((beat.do === 'tts' || beat.do === 'voice') && beat.clip !== undefined) {
       for (const lang of DEMO_LANGS) {
         const clip = typeof beat.clip === 'string' ? beat.clip : beat.clip?.[lang];
         try { soundPath(clip); } catch (error) { errors.push(`${label}: clip (${lang}): ${error.message}`); }

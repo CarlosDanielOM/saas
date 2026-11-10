@@ -1,4 +1,4 @@
-// TTS clips for `tts` beats. Engines:
+// TTS clips for `tts` beats (a viewer message read on stream) and `voice` beats (voice-over). Engines:
 //   clip  - the beat names an audio file (e.g. made on the fish.audio site) under marketing/video/sounds/
 //   fish  - Fish Audio, the same request the product makes (POST /v1/tts with a `model` header and the voice's
 //           reference_id; s2.1 models get the product's tag reinforcement). Never falls back to another model.
@@ -69,7 +69,7 @@ async function fishSynthesize(voice, spoken, {fetchImpl = fetch, env = process.e
  */
 export async function prepareTts(raw, lang, {allowPaid = false, voices = loadVoices(), fetchImpl, env, clipsDir = TTS_CLIPS, today} = {}) {
   const media = {}, notes = [];
-  const beats = (raw.beats ?? []).map((beat, index) => ({beat, id: typeof beat.id === 'string' ? beat.id : `#${index + 1}`})).filter(({beat}) => beat.do === 'tts');
+  const beats = (raw.beats ?? []).map((beat, index) => ({beat, id: typeof beat.id === 'string' ? beat.id : `#${index + 1}`})).filter(({beat}) => beat.do === 'tts' || beat.do === 'voice');
   for (const {beat, id} of beats) {
     const text = resolveText(beat.text, lang);
     if (beat.clip !== undefined) {
@@ -79,9 +79,9 @@ export async function prepareTts(raw, lang, {allowPaid = false, voices = loadVoi
       continue;
     }
     const name = beat.voice ?? voices.defaults[lang];
-    if (!name) { notes.push(`tts ${id} (${lang}): no voice chosen yet, so it shows the text card without sound`); continue; }
+    if (!name) { notes.push(`${beat.do} ${id} (${lang}): no voice chosen yet, so it ${beat.do === 'tts' ? 'shows the text card' : 'stays silent'}`); continue; }
     const voice = voices.voices[name];
-    if (!voice) throw new Error(`tts ${id}: voice "${name}" is not in voices.json`);
+    if (!voice) throw new Error(`${beat.do} ${id}: voice "${name}" is not in voices.json`);
     const {key, spoken} = fishCacheKey(voice, text);
     const file = resolve(clipsDir, `${key}.mp3`);
     if (!existsSync(file)) {
@@ -96,7 +96,7 @@ export async function prepareTts(raw, lang, {allowPaid = false, voices = loadVoi
       const index = existsSync(indexFile) ? JSON.parse(readFileSync(indexFile, 'utf8')) : {};
       index[key] = {voice: name, model: voice.model, reference_id: voice.reference_id, lang, text: spoken, created: new Date().toISOString()};
       writeFileSync(indexFile, JSON.stringify(index, null, 2) + '\n');
-      notes.push(`tts ${id} (${lang}): synthesized with ${name} (${voice.model})`);
+      notes.push(`${beat.do} ${id} (${lang}): synthesized with ${name} (${voice.model})`);
     }
     media[id] = {src: `/__demo/media/tts/${key}.mp3`, durationMs: await audioMs(file), file};
   }

@@ -1,0 +1,82 @@
+{
+  "7e513d125921bb9ffd39ad0f": {
+    "voice": "kendall",
+    "model": "s2.1-pro-free",
+    "reference_id": "606aa33cd0964bbeaddd77071e4ec8b8",
+    "lang": "en",
+    "text": "Okay, so I just got raided in the middle of a round.",
+    "created": "2026-11-10T16:30:28.697Z"
+  },
+  "2703d59dbafb1a3a10a5de13": {
+    "voice": "kendall",
+    "model": "s2.1-pro-free",
+    "reference_id": "606aa33cd0964bbeaddd77071e4ec8b8",
+    "lang": "en",
+    "text": "Before I could even say anything, my bot already welcomed everyone in chat,",
+    "created": "2026-11-10T16:30:31.463Z"
+  },
+  "85df2f17ad65633ca6970612": {
+    "voice": "kendall",
+    "model": "s2.1-pro-free",
+    "reference_id": "606aa33cd0964bbeaddd77071e4ec8b8",
+    "lang": "en",
+    "text": "and gave Cozy Cactus a shoutout, so my chat can go follow them.",
+    "created": "2026-11-10T16:30:33.712Z"
+  },
+  "0842fc0a2c23898e0627dc36": {
+    "voice": "kendall",
+    "model": "s2.1-pro-free",
+    "reference_id": "606aa33cd0964bbeaddd77071e4ec8b8",
+    "lang": "en",
+    "text": "So when the round's over, I just get to say hi to everyone.",
+    "created": "2026-11-10T16:30:35.486Z"
+  },
+  "d7d8b1802890433e84a08453": {
+    "voice": "kendall",
+    "model": "s2.1-pro-free",
+    "reference_id": "606aa33cd0964bbeaddd77071e4ec8b8",
+    "lang": "en",
+    "text": "It's Dom Dima Bot, by the way.",
+    "created": "2026-11-10T16:30:36.784Z"
+  },
+  "08eeb90037dd5cf6f2b7e5f7": {
+    "voice": "aranza",
+    "model": "s2.1-pro-free",
+    "reference_id": "114b0c8f492847cc8b190b8f9e560fa3",
+    "lang": "es",
+    "text": "Bueno, me acaba de caer un raid a media partida.",
+    "created": "2026-11-10T16:30:39.075Z"
+  },
+  "fd0a2c303e6e6f9ef88590cc": {
+    "voice": "aranza",
+    "model": "s2.1-pro-free",
+    "reference_id": "114b0c8f492847cc8b190b8f9e560fa3",
+    "lang": "es",
+    "text": "Y antes de que yo dijera algo, mi bot ya les había dado la bienvenida en el chat,",
+    "created": "2026-11-10T16:30:41.629Z"
+  },
+  "09b9feca67da726f7f22e3ab": {
+    "voice": "aranza",
+    "model": "s2.1-pro-free",
+    "reference_id": "114b0c8f492847cc8b190b8f9e560fa3",
+    "lang": "es",
+    "text": "y le dio shoutout a Cozy Cactus, para que mi chat lo vaya a seguir.",
+    "created": "2026-11-10T16:30:43.866Z"
+  },
+  "5eff99d1d1aed64be197bfca": {
+    "voice": "aranza",
+    "model": "s2.1-pro-free",
+    "reference_id": "114b0c8f492847cc8b190b8f9e560fa3",
+    "lang": "es",
+    "text": "Así, cuando termina la ronda, nada más saludo a todos.",
+    "created": "2026-11-10T16:30:45.905Z"
+  },
+  "5eff9dc4d5f418e23fa00089": {
+    "voice": "aranza",
+    "model": "s2.1-pro-free",
+    "reference_id": "114b0c8f492847cc8b190b8f9e560fa3",
+    "lang": "es",
+    "text": "Es Dom Dima Bot, por cierto.",
+    "created": "2026-11-10T16:30:47.078Z"
+  }
+}

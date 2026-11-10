@@ -108,6 +108,7 @@ stream, so they never hide the webcam or the action.
 | `ban` | All of a user's messages disappear plus "has been permanently banned." | `target`, `notice` |
 | `alert` | Follow/sub/Bits/raid alert from the real Overlay Studio renderer, with its real motion presets. | `event`, `user`, `amount`, `message`, `sound` |
 | `tts` | A viewer message read on stream (real TTS card). Its length follows the voice clip. | `user`, `text`, `voice`, `clip`, `showText` |
+| `voice` | Voice-over: a narrator line heard over the video. Nothing is drawn (put the words in a caption) and the camera ignores it; its length follows the clip, so later beats can wait for it with `after`. It may finish over the closing card. | `text`, `voice`, `clip` |
 | `duel` | A chat duel in the real duel overlay; its length comes from the seeded battle. | `left`, `right` |
 | `roulette` | A spin in the real roulette overlay. | `items`, `winner`, `title`, `spin` |
 | `highlight` | Gold ring around the chat, the stream or one message. | `target`, `label` |
@@ -151,7 +152,8 @@ Every beat also takes `id`, `dur` (ms) and `sfx` (a sound when it starts).
   - **Cache:** clips are kept in `video/sounds/tts/`, keyed by model + voice + text. Commit them, so each line is
     synthesized once.
   - **Own clips:** a beat can also use your own clip: `"clip": { "en": "tts/hello-en.mp3", "es": "..." }`.
-  - **No voice yet:** without a voice, a TTS beat shows its text card silently.
+  - **No voice yet:** without a voice, a TTS beat shows its text card silently and a `voice` beat stays silent.
+  - **Voice-over** (`voice` beats) uses the same voices, cache and free/paid rules as `tts` beats.
 - A scene without sound gets no audio track.
 
 ## Adding a building block

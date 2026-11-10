@@ -102,6 +102,29 @@ test('cues follow the overlay rules: alert sound after its delay, cut when the a
   ]);
 });
 
+test('voice-over: timed by its clip, mixed like a TTS clip, ignored by the camera, may finish under the outro', () => {
+  const raw = scene([
+    {do: 'chat', id: 'm', at: 1000, user: 'u', text: 'hi'},
+    {do: 'voice', id: 'v', with: 'm', at: '+0', text: {en: 'okay so this happened', es: 'bueno, pasó esto'}},
+    {do: 'bot', id: 'b', after: 'v', at: '+100', text: 'hello'},
+    {do: 'voice', id: 'v2', after: 'b', at: '+2000', text: 'last line'},
+    {do: 'outro', id: 'o', with: 'v2', at: '+300', dur: 2000}
+  ]);
+  const {scene: s, errors} = normalizeScene(raw, 'en', {tts: {v: 2400, v2: 3000}});
+  assert.deepEqual(errors, []);
+  const t = Object.fromEntries(s.beats.map(b => [b.id, [b.at, b.end]]));
+  assert.deepEqual(t.v, [1000, 3400]);
+  assert.deepEqual(t.b, [3500, 3500], 'a beat can wait for the voice line to end');
+  assert.deepEqual(t.v2, [5500, 8500], 'the outro starts while the last line still plays');
+  assert.deepEqual(t.o, [5800, 7800]);
+  assert.deepEqual(sceneCues(s, {v: '/a.mp3', v2: '/b.mp3'}).map(c => [c.kind, c.src, c.at, c.end]), [['tts', '/a.mp3', 1000, 3400], ['tts', '/b.mp3', 5500, 8500]]);
+  // The bot line still gets its chat push-in: a voice-over is not an overlay.
+  assert.deepEqual(directorShots(s), [{at: 3400, focus: 'chat'}, {at: 5600, focus: 'wide'}]);
+  // Without a clip it falls back to a reading-time estimate.
+  assert.ok(normalizeScene(raw, 'es').scene.beats.find(b => b.id === 'v').end > 1000);
+  assert.deepEqual(validateScene(scene([{do: 'voice', at: 0}])), ['beat 1 (voice): "text" is required']);
+});
+
 test('the sample scenes are valid', async () => {
   const {DEMO_SAMPLES} = await import('../../../dimasite/src/app/features/demo-video/demo-samples.ts');
   for (const sample of DEMO_SAMPLES) assert.deepEqual(checkScene(sample.scene), [], sample.id);
