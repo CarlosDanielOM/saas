@@ -135,7 +135,7 @@ Every beat also takes `id`, `dur` (ms) and `sfx` (a sound when it starts).
 - **Your own files** go in `video/sounds/` and must be listed in `video/sounds/LICENSES.md` with source and license
   first. Music needs a license that allows ads.
 - **Alert sounds** follow the overlay rules: `delay`, `fadeIn`, `fadeOut` (ms), cut when the alert ends.
-- **TTS** uses Fish Audio for both languages. Add a voice to `video/voices.json` (who owns it, a license that allows
+- **TTS** uses Fish Audio voices for both languages, called directly or through OpenRouter (Drama 3). Add a voice to `video/voices.json` (who owns it, a license that allows
   ads), then point `defaults.en` / `defaults.es` at it:
 
   ```json
@@ -154,6 +154,12 @@ Every beat also takes `id`, `dur` (ms) and `sfx` (a sound when it starts).
   - **Own clips:** a beat can also use your own clip: `"clip": { "en": "tts/hello-en.mp3", "es": "..." }`.
   - **No voice yet:** without a voice, a TTS beat shows its text card silently and a `voice` beat stays silent.
   - **Voice-over** (`voice` beats) uses the same voices, cache and free/paid rules as `tts` beats.
+  - **Drama 3 through OpenRouter** (`"engine": "openrouter"`, `"model": "fish-audio/drama-3"`, `"voice": "<Fish voice id>"`):
+    the same request the product makes, with the DomDimaBot app-attribution headers. It is always paid, so render with
+    `--allow-paid-tts` and `OPENROUTER_API_KEY` in the environment (never saved). Direct the read with free-form tags
+    anywhere in the line, e.g. `[excited, a little out of breath] Okay okay, I just got raided [laughs] mid-round!`;
+    the tags shape the delivery and are not read aloud. Write names the way they should sound ("Cozy Cactus",
+    "Dom Dima Bot") and keep the handles in the captions.
 - A scene without sound gets no audio track.
 
 ## Adding a building block

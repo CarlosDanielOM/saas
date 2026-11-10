@@ -78,5 +78,95 @@
     "lang": "es",
     "text": "Es Dom Dima Bot, por cierto.",
     "created": "2026-11-10T16:30:47.078Z"
+  },
+  "be3fea6488c498d536d45788": {
+    "voice": "mia",
+    "engine": "openrouter",
+    "model": "fish-audio/drama-3",
+    "reference_id": "e7de86b388864b8cbd50d0d70a3494e5",
+    "lang": "en",
+    "text": "[excited, a little out of breath] Okay okay, so I just got raided [laughs] right in the middle of a round!",
+    "created": "2026-11-10T18:21:32.837Z"
+  },
+  "2b66c3d56080c51ed21e5e99": {
+    "voice": "mia",
+    "engine": "openrouter",
+    "model": "fish-audio/drama-3",
+    "reference_id": "e7de86b388864b8cbd50d0d70a3494e5",
+    "lang": "en",
+    "text": "[amazed] And before I could even say a word, my bot already welcomed everyone in chat,",
+    "created": "2026-11-10T18:21:33.681Z"
+  },
+  "4945f354e942c245d89b869c": {
+    "voice": "mia",
+    "engine": "openrouter",
+    "model": "fish-audio/drama-3",
+    "reference_id": "e7de86b388864b8cbd50d0d70a3494e5",
+    "lang": "en",
+    "text": "[grinning] and gave Cozy Cactus a shoutout, so my chat can go follow them!",
+    "created": "2026-11-10T18:21:34.421Z"
+  },
+  "0a2273d4614c65876b80eb90": {
+    "voice": "mia",
+    "engine": "openrouter",
+    "model": "fish-audio/drama-3",
+    "reference_id": "e7de86b388864b8cbd50d0d70a3494e5",
+    "lang": "en",
+    "text": "[relaxed, happy] So when the round's over, I just get to say hi to everyone. [chuckles]",
+    "created": "2026-11-10T18:21:35.155Z"
+  },
+  "1717c6abe97da73bc580b13a": {
+    "voice": "mia",
+    "engine": "openrouter",
+    "model": "fish-audio/drama-3",
+    "reference_id": "e7de86b388864b8cbd50d0d70a3494e5",
+    "lang": "en",
+    "text": "[playful, a bit proud] It's Dom Dima Bot, by the way.",
+    "created": "2026-11-10T18:21:35.553Z"
+  },
+  "ac3ce0e3b1c835c2f6eaea98": {
+    "voice": "fernanda-drama",
+    "engine": "openrouter",
+    "model": "fish-audio/drama-3",
+    "reference_id": "65793e1ac2e545bb9c56e7ca777d806a",
+    "lang": "es",
+    "text": "[excited, a little out of breath] ¡Bueno, bueno, me acaba de caer un raid [laughs] justo a media partida!",
+    "created": "2026-11-10T18:21:36.455Z"
+  },
+  "f71c3bde10135650fc8dca13": {
+    "voice": "fernanda-drama",
+    "engine": "openrouter",
+    "model": "fish-audio/drama-3",
+    "reference_id": "65793e1ac2e545bb9c56e7ca777d806a",
+    "lang": "es",
+    "text": "[amazed] Y antes de que pudiera decir algo, mi bot ya les había dado la bienvenida en el chat,",
+    "created": "2026-11-10T18:21:37.263Z"
+  },
+  "513b41955f17815344a85140": {
+    "voice": "fernanda-drama",
+    "engine": "openrouter",
+    "model": "fish-audio/drama-3",
+    "reference_id": "65793e1ac2e545bb9c56e7ca777d806a",
+    "lang": "es",
+    "text": "[grinning] y le dio shoutout a Cozy Cactus, ¡para que mi chat lo vaya a seguir!",
+    "created": "2026-11-10T18:21:38.176Z"
+  },
+  "1262f9ddfd2a7b6398b2044a": {
+    "voice": "fernanda-drama",
+    "engine": "openrouter",
+    "model": "fish-audio/drama-3",
+    "reference_id": "65793e1ac2e545bb9c56e7ca777d806a",
+    "lang": "es",
+    "text": "[relaxed, happy] Así, cuando termina la ronda, nada más saludo a todos. [chuckles]",
+    "created": "2026-11-10T18:21:39.008Z"
+  },
+  "195090ea0498721b9f18063b": {
+    "voice": "fernanda-drama",
+    "engine": "openrouter",
+    "model": "fish-audio/drama-3",
+    "reference_id": "65793e1ac2e545bb9c56e7ca777d806a",
+    "lang": "es",
+    "text": "[playful, a bit proud] Es Dom Dima Bot, por cierto.",
+    "created": "2026-11-10T18:21:39.541Z"
   }
 }

@@ -64,6 +64,27 @@ test('a voice-over line is synthesized the same way', async () => {
   assert.ok(existsSync(media.v1.file));
 });
 
+test('OpenRouter (Drama 3): paid only, same request as the product, DomDimaBot attribution', async () => {
+  const drama = {engine: 'openrouter', model: 'fish-audio/drama-3', voice: 'b'.repeat(32), license: 'test', source: 'test'};
+  const routed = {defaults: {en: 'drama'}, voices: {drama}};
+  const line = {beats: [{do: 'voice', id: 'v', text: '[excited] okay chat, look at this'}]};
+  const orEnv = {OPENROUTER_API_KEY: 'or-key', OPENROUTER_API_BASE: `http://127.0.0.1:${server.address().port}/api/v1`};
+  const before = requests.length;
+  await assert.rejects(prepareTts(line, 'en', {voices: routed, env: orEnv, clipsDir: dir}), /costs money.*--allow-paid-tts/);
+  await assert.rejects(prepareTts(line, 'en', {voices: routed, env: {}, clipsDir: dir, allowPaid: true}), /OPENROUTER_API_KEY/);
+  assert.equal(requests.length, before, 'nothing is sent without the paid flag and a key');
+  const {media} = await prepareTts(line, 'en', {voices: routed, env: orEnv, clipsDir: dir, allowPaid: true});
+  const request = requests.at(-1);
+  assert.equal(request.url, '/api/v1/audio/speech');
+  assert.equal(request.headers.authorization, 'Bearer or-key');
+  assert.equal(request.headers['x-openrouter-title'], 'DomDimaBot');
+  assert.equal(request.headers['http-referer'], 'https://domdimabot.com');
+  assert.deepEqual(request.body, {model: 'fish-audio/drama-3', input: '[excited] okay chat, look at this', voice: drama.voice, response_format: 'mp3'});
+  assert.ok(existsSync(media.v.file));
+  await prepareTts(line, 'en', {voices: routed, env: orEnv, clipsDir: dir, allowPaid: true});
+  assert.equal(requests.length, before + 1, 'a paid line is synthesized once, then cached');
+});
+
 test('after the free period, synthesis needs --allow-paid-tts', async () => {
   const other = {beats: [{do: 'tts', id: 't2', user: 'u', text: {en: 'x', es: 'otra frase'}}]};
   await assert.rejects(prepareTts(other, 'es', {voices, env: env(), clipsDir: dir, today: new Date('2026-12-01')}), /costs money.*--allow-paid-tts/);

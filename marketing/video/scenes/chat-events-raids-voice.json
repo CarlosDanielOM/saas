@@ -1,6 +1,6 @@
 {
   "$schema": "../scene.schema.json",
-  "$comment": "Voiced version of chat-events-raids: the streamer tells the story (voice-over, Fish Official voices from voices.json) and the captions carry the same words. Same facts: incoming raid -> the bot posts the raid message as a purple Twitch announcement and sends a Twitch shoutout (shoutout.command.ts; 120 s cooldown, raids under minViewers 2 skipped). English uses the signup default raid message (utils/eventsub.ts); Spanish channels write their own. Raider name is spoken as 'Cozy Cactus' and the brand as 'Dom Dima Bot' so the voice says them right.",
+  "$comment": "Voiced version of chat-events-raids: the streamer tells the story (voice-over: Fish Official voices through Drama 3 on OpenRouter, directed with [bracket] tags; render with --allow-paid-tts and OPENROUTER_API_KEY) and the captions carry the same words. Same facts: incoming raid -> the bot posts the raid message as a purple Twitch announcement and sends a Twitch shoutout (shoutout.command.ts; 120 s cooldown, raids under minViewers 2 skipped). English uses the signup default raid message (utils/eventsub.ts); Spanish channels write their own. Raider name is spoken as 'Cozy Cactus' and the brand as 'Dom Dima Bot' so the voice says them right.",
   "id": "chat-events-raids-voice",
   "v": 2,
   "seed": 37,
@@ -19,7 +19,7 @@
       "title": { "en": "Got raided *mid-round*", "es": "Me cayó un raid *a media partida*" },
       "sub": { "en": "here's what my chat saw", "es": "esto vio mi chat" } },
     { "do": "voice", "id": "v1", "at": 250,
-      "text": { "en": "Okay, so I just got raided in the middle of a round.", "es": "Bueno, me acaba de caer un raid a media partida." } },
+      "text": { "en": "[excited, a little out of breath] Okay okay, so I just got raided [laughs] right in the middle of a round!", "es": "[excited, a little out of breath] ¡Bueno, bueno, me acaba de caer un raid [laughs] justo a media partida!" } },
 
     { "do": "caption", "id": "cap0", "after": "intro", "at": "+0", "dur": 1000,
       "text": { "en": "Just got raided *mid-round*", "es": "Me cayó un raid *a media partida*" } },
@@ -41,13 +41,13 @@
     { "do": "chat", "with": "raid", "at": "+2400", "user": "pricklypete", "text": "🌵🌵🌵" },
 
     { "do": "voice", "id": "v2", "after": "v1", "at": "+350",
-      "text": { "en": "Before I could even say anything, my bot already welcomed everyone in chat,", "es": "Y antes de que yo dijera algo, mi bot ya les había dado la bienvenida en el chat," } },
+      "text": { "en": "[amazed] And before I could even say a word, my bot already welcomed everyone in chat,", "es": "[amazed] Y antes de que pudiera decir algo, mi bot ya les había dado la bienvenida en el chat," } },
     { "do": "caption", "id": "cap1", "with": "v2", "at": "+0", "dur": 1000,
       "text": { "en": "My bot *welcomed them* right away", "es": "Mi bot *les dio la bienvenida* al instante" } },
     { "do": "highlight", "after": "alert", "at": "+0", "dur": 1500, "target": "announce" },
 
     { "do": "voice", "id": "v3", "after": "v2", "at": "+150",
-      "text": { "en": "and gave Cozy Cactus a shoutout, so my chat can go follow them.", "es": "y le dio shoutout a Cozy Cactus, para que mi chat lo vaya a seguir." } },
+      "text": { "en": "[grinning] and gave Cozy Cactus a shoutout, so my chat can go follow them!", "es": "[grinning] y le dio shoutout a Cozy Cactus, ¡para que mi chat lo vaya a seguir!" } },
     { "do": "caption", "id": "cap2", "with": "v3", "at": "+0", "dur": 1000,
       "text": { "en": "…and gave them *a shoutout*", "es": "…y le dio *shoutout*" } },
     { "do": "event", "id": "shoutout", "with": "v3", "at": "+500", "icon": "follow",
@@ -55,7 +55,7 @@
     { "do": "chat", "with": "v3", "at": "+1700", "user": "desert_rose", "text": { "en": "W shoutout 💜", "es": "gracias por el shoutout 💜" } },
 
     { "do": "voice", "id": "v4", "after": "v3", "at": "+300",
-      "text": { "en": "So when the round's over, I just get to say hi to everyone.", "es": "Así, cuando termina la ronda, nada más saludo a todos." } },
+      "text": { "en": "[relaxed, happy] So when the round's over, I just get to say hi to everyone. [chuckles]", "es": "[relaxed, happy] Así, cuando termina la ronda, nada más saludo a todos. [chuckles]" } },
     { "do": "caption", "id": "cap3", "with": "v4", "at": "+0", "dur": 1000,
       "text": { "en": "After the round, *I just say hi*", "es": "Al terminar la ronda, *solo saludo*" } },
 
@@ -63,6 +63,6 @@
       "title": { "en": "Welcome every raid, *even mid-round*", "es": "Recibe cada raid, *aunque estés jugando*" },
       "cta": { "en": "Free to start · domdimabot.com", "es": "Empieza gratis · domdimabot.com" } },
     { "do": "voice", "id": "v5", "with": "outro", "at": "+300",
-      "text": { "en": "It's Dom Dima Bot, by the way.", "es": "Es Dom Dima Bot, por cierto." } }
+      "text": { "en": "[playful, a bit proud] It's Dom Dima Bot, by the way.", "es": "[playful, a bit proud] Es Dom Dima Bot, por cierto." } }
   ]
 }
