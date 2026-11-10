@@ -46,6 +46,7 @@ import { trackCommand } from "../utils/posthog_events.js";
 import { splitAiResponseForTwitch, removeAiReplyRecipientTag } from "../utils/twitch/chat_message_chunks.js";
 import { parseTimerFrequencyInput } from "../utils/timer_policy.js";
 import type { AstEffectContext } from '../utils/ast_parser/effects.js';
+import { TWITCH_BOT_ACCOUNT_ID } from '../utils/header.js';
 
 const modID = '698614112';
 const CHANNEL_INSTANCES = new Map<string, COOLDOWN>();
@@ -54,6 +55,8 @@ let isMod = false;
 let tries = 0;
 
 export const messageHandler = async (channelID: string, messageEventData: IChatMessage, effectContext?: AstEffectContext) => traced('chat', 'message', async () => {
+    // Our own messages can contain mentions or commands; never react to them.
+    if (messageEventData.chatter_user_id === TWITCH_BOT_ACCOUNT_ID) return;
     const receivedAt = Date.now();
     const metricTracker = startMessageHandlerMetric();
     let messageHandlerFailed = false;

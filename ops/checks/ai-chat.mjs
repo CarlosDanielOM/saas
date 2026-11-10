@@ -85,6 +85,20 @@ for (const [tier, expected] of [['free', 10], ['premium', 40], ['pro', 100]]) {
     assert.equal(request.tools.length, 8, 'all existing action tools remain available');
 
     if (tier === 'free') {
+        const mention = {
+            chatter_user_id: '698614112', chatter_user_login: 'domdimabot', chatter_user_name: 'DomDimaBot',
+            message_id: 'bot-mention', badges: [], message: { text: '@domdimabot has been challenged', fragments: [] }
+        };
+        let mentionOffset = calls().length;
+        await messageHandler(channelID, mention);
+        assert.equal(calls().slice(mentionOffset).length, 0, 'bot-authored mention triggers no provider or Twitch call');
+        mentionOffset = calls().length;
+        await messageHandler(channelID, { ...mention, chatter_user_id: 'viewer-id', chatter_user_login: 'viewer',
+            chatter_user_name: 'Viewer', message_id: 'viewer-mention', message: { text: '@DomDimaBot hello', fragments: [] } });
+        assert.equal(calls().slice(mentionOffset).filter(call => call.provider === 'openrouter').length, 1,
+            'viewer mentions still activate the AI');
+        assert.equal(calls().slice(mentionOffset).filter(call => call.provider === 'twitch' && call.method === 'POST').length, 1,
+            'viewer mention produces one Twitch response');
         let offset = calls().length;
         await chat({ ...options, message: 'REQUEST_TITLE_ACTION' });
         let actionCalls = calls().slice(offset);
