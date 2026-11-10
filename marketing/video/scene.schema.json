@@ -837,6 +837,16 @@
                 "type": "string",
                 "description": "id of a duel beat whose result fills {winner}, {loser} and {hp}."
               },
+              "announce": {
+                "enum": [
+                  "primary",
+                  "blue",
+                  "green",
+                  "orange",
+                  "purple"
+                ],
+                "description": "Post it as a Twitch announcement in this color (the bot announces incoming raids in purple)."
+              },
               "refs": {
                 "type": "array",
                 "items": {

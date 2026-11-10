@@ -1,0 +1,43 @@
+{
+  "$schema": "../scene.schema.json",
+  "$comment": "Ad break chat event (channel.ad_break.begin): the bot posts a message when ads start ($(ad.time) = ad length in seconds) and the end message after the ad's length (endMessage; channels get it switched on at sign-up with 'Ad break has ended!', utils/eventsub.ts). The start message and the Spanish end message are ones the streamer wrote. The video skips the 90 seconds between them (caption says so). Free on every plan.",
+  "id": "chat-events-ads",
+  "v": 2,
+  "seed": 43,
+  "look": "site",
+  "title": { "en": "Chat events", "es": "Eventos de chat" },
+  "formats": ["vertical", "landscape"],
+  "langs": ["en", "es"],
+  "channel": {
+    "name": "lunatica_v",
+    "title": { "en": "Building the big castle today", "es": "Hoy construimos el castillo grande" },
+    "game": "Minecraft",
+    "viewers": 158
+  },
+  "beats": [
+    { "do": "intro", "at": 0, "dur": 1900,
+      "title": { "en": "Ads just *kicked in*", "es": "Ya empezaron *los anuncios*" },
+      "sub": { "en": "and I don't have to say a thing", "es": "y no tengo que decir nada" } },
+
+    { "do": "bot", "id": "adstart", "at": "+500", "sfx": { "src": "kit:ding", "gain": 0.5 },
+      "text": { "en": "Ads for 90 seconds! Grab some water, we'll be right back 💧", "es": "¡Anuncios por 90 segundos! Vayan por agua, ahorita volvemos 💧" },
+      "refs": [ { "file": "dimabot/src/utils/ast_parser/functions/channel.functions.ts", "quote": "registerFunction('ad.time', adHandler", "inText": false } ] },
+    { "do": "caption", "id": "cap1", "with": "adstart", "at": "+200", "dur": 3000,
+      "text": { "en": "Ads start, and chat knows *for how long*", "es": "Empiezan los anuncios y el chat sabe *cuánto duran*" } },
+    { "do": "chat", "with": "adstart", "at": "+1300", "user": "agua_fresca", "text": { "en": "water break 💧", "es": "a tomar agua 💧" } },
+    { "do": "chat", "with": "adstart", "at": "+2300", "user": "noodle_cat", "badges": ["sub"], "text": { "en": "brb snack", "es": "voy por botana, ahorita vengo" } },
+
+    { "do": "caption", "id": "cap2", "after": "cap1", "at": "+0", "dur": 1700,
+      "text": { "en": "*90 seconds later…*", "es": "*90 segundos después…*" } },
+    { "do": "bot", "id": "adend", "with": "cap2", "at": "+900", "sfx": { "src": "kit:ding", "gain": 0.5 },
+      "text": { "en": "Ad break has ended!", "es": "¡Se acabaron los anuncios, ya volvimos! 🎮" },
+      "refs": [ { "file": "dimabot/src/utils/eventsub.ts", "quote": "Ad break has ended!", "lang": "en" } ] },
+    { "do": "caption", "id": "cap3", "after": "cap2", "at": "+0", "dur": 2800,
+      "text": { "en": "and tells chat *we're back*", "es": "y avisa en el chat *que ya volvimos*" } },
+    { "do": "chat", "with": "adend", "at": "+1300", "user": "noodle_cat", "badges": ["sub"], "text": { "en": "back 🙌", "es": "ya volví 🙌" } },
+
+    { "do": "outro", "id": "outro", "after": "cap3", "at": "+200", "dur": 2600,
+      "title": { "en": "One less thing *to say out loud*", "es": "Una cosa menos *que decir en voz alta*" },
+      "cta": { "en": "Chat events are free · domdimabot.com", "es": "Los eventos de chat son gratis · domdimabot.com" } }
+  ]
+}

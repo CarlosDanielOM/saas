@@ -30,6 +30,8 @@ const BADGES = ['broadcaster', 'mod', 'vip', 'sub', 'verified'] as const;
 const ALERT_KINDS = ['follow', 'sub', 'bits', 'raid'] as const;
 const FOCUS = ['full', 'stream', 'alert', 'tts', 'duel', 'roulette'] as const;
 const SHOTS = ['wide', 'chat'] as const;
+/** Twitch announcement colors (chat/announcements `color`). */
+const ANNOUNCE_COLORS = ['primary', 'blue', 'green', 'orange', 'purple'] as const;
 
 /** Every building block a scene can use. The JSON Schema for editors is generated from this table. */
 export const DEMO_ACTORS: Readonly<Record<string, ActorSpec>> = {
@@ -51,6 +53,7 @@ export const DEMO_ACTORS: Readonly<Record<string, ActorSpec>> = {
   bot: { dur: 0, doc: 'A DomDimaBot chat message. Use refs so the wording stays what the bot really says.', fields: {
     text: { type: 'text', required: true, doc: 'The message. With "duel", {winner}, {loser} and {hp} come from that duel\'s result.' },
     duel: { type: 'id', doc: 'id of a duel beat whose result fills {winner}, {loser} and {hp}.' },
+    announce: { type: 'enum', values: ANNOUNCE_COLORS, doc: 'Post it as a Twitch announcement in this color (the bot announces incoming raids in purple).' },
     refs: { type: 'refs', doc: 'Source quotes: [{ "file": "dimabot/...", "quote": "...", "inText": true, "lang": "en" }]. lang limits the text check to one language.' } } },
   event: { dur: 0, doc: 'A highlighted chat notice (follow, sub, cheer, raid, moderation).', fields: {
     text: { type: 'text', required: true, doc: 'Notice text.' },

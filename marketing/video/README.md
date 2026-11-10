@@ -102,7 +102,7 @@ stream, so they never hide the webcam or the action.
 | `intro` / `outro` | Full-screen brand card. The intro is complete on frame 0, which TikTok uses as the default cover; the outro stays to the last frame. | `title`, `sub` / `cta` |
 | `caption` | Big caption in its own band (above the stream on vertical, under it on landscape). It stays until the next caption in the same place or the outro replaces it, so slow readers get the whole gap; its `dur` only times the beats placed after it. | `text`, `place` |
 | `chat` | Viewer message. | `user`, `text`, `first`, `badges` (broadcaster, mod, vip, sub, verified), `color` |
-| `bot` | DomDimaBot message. | `text`, `refs` |
+| `bot` | DomDimaBot message; `announce` posts it as a Twitch announcement (raid welcomes are purple). | `text`, `refs`, `announce` |
 | `event` | Highlighted chat notice. | `text`, `icon` (follow, sub, bits, raid, shield, info) |
 | `delete` | A moderator deletes one message. | `target` |
 | `ban` | All of a user's messages disappear plus "has been permanently banned." | `target`, `notice` |

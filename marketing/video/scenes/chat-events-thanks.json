@@ -1,0 +1,58 @@
+{
+  "$schema": "../scene.schema.json",
+  "$comment": "Chat events: follow, new sub, shared resub and a cheer, each thanked by the bot as a normal chat message (send_message.chat.ts). The messages are ones the streamer wrote in Chat events (every event has an editable message); the variables render like the bot does: $(user) = display name, $(sub.tier) = 'Tier 1' (formatSubscriptionTier), $(sub.months) = cumulative months, $(cheer.amount) = Bits. Twitch notices use Twitch's own system wording (sub / resub). All chat events are free on every plan.",
+  "id": "chat-events-thanks",
+  "v": 2,
+  "seed": 31,
+  "look": "site",
+  "title": { "en": "Chat events", "es": "Eventos de chat" },
+  "formats": ["vertical", "landscape"],
+  "langs": ["en", "es"],
+  "channel": {
+    "name": "lunatica_v",
+    "title": { "en": "Boss rush, no hits (we'll see)", "es": "Boss rush sin daño (ya veremos)" },
+    "game": "Hollow Knight",
+    "viewers": 203
+  },
+  "beats": [
+    { "do": "intro", "at": 0, "dur": 1900,
+      "title": { "en": "I can't type *mid-fight*", "es": "No puedo escribir *en plena pelea*" },
+      "sub": { "en": "so my bot handles the thank-yous", "es": "así que mi bot da las gracias" } },
+
+    { "do": "bot", "id": "follow", "at": "+500", "sfx": { "src": "kit:ding", "gain": 0.5 },
+      "text": { "en": "Thanks for the follow, mapache_rojo! Grab a snack and stay a while 💜", "es": "¡Gracias por el follow, mapache_rojo! Agarra botana y quédate un rato 💜" },
+      "refs": [ { "file": "dimabot/src/utils/ast_parser/functions/user.functions.ts", "quote": "registerFunction('user', userHandler", "inText": false } ] },
+    { "do": "caption", "id": "cap1", "with": "follow", "at": "+0", "dur": 2800,
+      "text": { "en": "New follow mid-fight? *My bot says thanks*", "es": "¿Un follow en plena pelea? *Mi bot da las gracias*" } },
+    { "do": "chat", "with": "follow", "at": "+1300", "user": "mapache_rojo", "text": { "en": "hiii ty 💜", "es": "holaaa gracias 💜" } },
+
+    { "do": "event", "id": "sub", "after": "cap1", "at": "+0", "icon": "sub", "sfx": { "src": "kit:pop", "gain": 0.6 },
+      "text": { "en": "taco_fan subscribed at Tier 1.", "es": "taco_fan se suscribió con Nivel 1." } },
+    { "do": "caption", "id": "cap2", "with": "sub", "at": "+200", "dur": 2800,
+      "text": { "en": "Subs get the welcome *I wrote once*", "es": "Los subs reciben la bienvenida que *dejé escrita*" } },
+    { "do": "bot", "id": "subthanks", "with": "sub", "at": "+600", "sfx": { "src": "kit:ding", "gain": 0.5 },
+      "text": { "en": "taco_fan just subbed at Tier 1, welcome to the club! 💜", "es": "¡Bienvenido al club, taco_fan! Gracias por el sub de Tier 1 💜" },
+      "refs": [ { "file": "dimabot/src/utils/ast_parser/functions/eventsub.functions.ts", "quote": "Tier 1" } ] },
+    { "do": "chat", "with": "subthanks", "at": "+1200", "user": "taco_fan", "badges": ["sub"], "text": { "en": "first sub, had to 💜", "es": "mi primer sub, tenía que 💜" } },
+
+    { "do": "event", "id": "resub", "after": "cap2", "at": "+200", "icon": "sub", "sfx": { "src": "kit:pop", "gain": 0.6 },
+      "text": { "en": "NovaPlays subscribed at Tier 1. They've subscribed for 14 months!", "es": "NovaPlays se suscribió con Nivel 1. ¡Lleva 14 meses suscrito!" } },
+    { "do": "caption", "id": "cap3", "with": "resub", "at": "+200", "dur": 2800,
+      "text": { "en": "Resubs? It knows *how many months*", "es": "¿Resubs? Sabe *cuántos meses* llevan" } },
+    { "do": "bot", "id": "resubthanks", "with": "resub", "at": "+600", "sfx": { "src": "kit:ding", "gain": 0.5 },
+      "text": { "en": "14 months, NovaPlays?! Thanks for sticking around 💜", "es": "¿14 meses, NovaPlays? ¡Gracias por seguir aquí! 💜" },
+      "refs": [ { "file": "dimabot/src/utils/ast_parser/functions/eventsub.functions.ts", "quote": "registerFunction('sub.months', subMonthsHandler", "inText": false } ] },
+
+    { "do": "chat", "id": "cheer", "after": "cap3", "at": "+200", "user": "pixel_pancho", "badges": ["vip"], "sfx": { "src": "kit:pop", "gain": 0.6 },
+      "text": { "en": "Cheer500 one more try, you got this", "es": "Cheer500 otro intento, tú puedes" } },
+    { "do": "caption", "id": "cap4", "with": "cheer", "at": "+200", "dur": 3000,
+      "text": { "en": "Someone cheers? It says *how many Bits*", "es": "¿Alguien manda Bits? Dice *cuántos fueron*" } },
+    { "do": "bot", "id": "cheerthanks", "with": "cheer", "at": "+700", "sfx": { "src": "kit:ding", "gain": 0.5 },
+      "text": { "en": "pixel_pancho sent 500 Bits, you're the best 🙏", "es": "pixel_pancho mandó 500 Bits, ¡eres lo máximo! 🙏" },
+      "refs": [ { "file": "dimabot/src/utils/ast_parser/functions/eventsub.functions.ts", "quote": "registerFunction('cheer.amount', cheerAmountHandler", "inText": false } ] },
+
+    { "do": "outro", "id": "outro", "after": "cap4", "at": "+200", "dur": 2600,
+      "title": { "en": "And I *keep playing*", "es": "Y yo *sigo jugando*" },
+      "cta": { "en": "Chat events are free · domdimabot.com", "es": "Los eventos de chat son gratis · domdimabot.com" } }
+  ]
+}

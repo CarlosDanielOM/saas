@@ -23,7 +23,7 @@ const origin = new URL(base).origin;
 const started = Date.now();
 
 // Every building block, short. Times resolve to: intro 0-1200, m1 1400, a1 1600-4600 (+event, camera),
-// del 3000, t1 4800-6800, r1 7000-11000 (spin 7600-10600), spam 11200, ban 11800 (+bot 12100), d1 13000-..., outro.
+// del 3000, t1 4800-6800, r1 7000-11000 (spin 7600-10600), spam 11200, ban 11800 (+bot 12100, announcement 12300), d1 13000-..., outro.
 // The director's chat shot runs 11100-12800 (first-time message to just before the duel).
 const SCENE = {
   id: 'check', v: 2, seed: 5,
@@ -43,6 +43,7 @@ const SCENE = {
     { do: 'highlight', with: 'spam', at: '+100', dur: 500, target: 'spam', label: 'First message' },
     { do: 'ban', id: 'ban', with: 'spam', at: '+600', target: 'spam', sfx: { src: 'kit:thud', gain: 0.9 } },
     { do: 'bot', with: 'ban', at: '+300', text: '@promo_bot_9 Selected unwanted chat behavior' },
+    { do: 'bot', id: 'ann', with: 'ban', at: '+500', announce: 'purple', text: 'viewer_two is raiding with 3 viewers!' },
     { do: 'duel', id: 'd1', after: 'ban', at: '+1200', left: 'viewer_one', right: 'viewer_two' },
     { do: 'outro', after: 'd1', at: '+100', dur: 1200, cta: 'domdimabot.com' }
   ]
@@ -210,6 +211,18 @@ async function recorder(format, lang, look) {
   assert.ok((await q('[data-line="spam"]'))?.includes('<message deleted>'), 'ban removes the message');
   assert.ok(!(await q('[data-line="spam"]'))?.includes('spam.example'), '...and then the old wording is gone from the page');
   assert.ok((await q('[data-line="ban"]'))?.includes('promo_bot_9 has been permanently banned.'), 'ban notice');
+  // A bot line posted as a Twitch announcement: header + the bot's message, with the color's bar down the left edge.
+  await frame(12400);
+  const ann = await page.evaluate(() => {
+    const el = document.querySelector('[data-line="ann"] .ln');
+    return el && { cls: el.className, color: el.dataset.announce, head: el.querySelector('.ln__announce')?.textContent?.trim(), text: el.textContent,
+      bar: getComputedStyle(el, '::before').backgroundImage, bg: getComputedStyle(el).backgroundColor };
+  });
+  assert.ok(ann && ann.cls.includes('ln--announce') && ann.color === 'purple', `announcement line (${JSON.stringify(ann)})`);
+  assert.equal(ann.head, 'Announcement', 'announcement header');
+  assert.match(ann.text, /DomDimaBot: ?viewer_two is raiding with 3 viewers!/, 'announcement keeps the bot name and message');
+  assert.ok(ann.bar.includes('gradient') && ann.bg !== 'rgba(0, 0, 0, 0)', `announcement bar and background are drawn (${ann.bar} / ${ann.bg})`);
+  assert.equal(await page.locator('.ln__announce').count(), 1, 'only the announced line has the header');
   await frame(beat.d1.at + 3000);
   assert.equal(await visible('.df-duel'), true, 'duel on screen');
   assert.ok((await q('.df-caption'))?.includes('An alert, live'), 'caption still holds during the duel');
@@ -240,6 +253,8 @@ async function recorder(format, lang, look) {
   await frame(12200);
   const notice = await page.evaluate(() => document.querySelector('[data-line="ban"]')?.textContent?.trim());
   assert.equal(notice, 'promo_bot_9 fue baneado permanentemente.', 'Spanish ban notice');
+  await frame(12400);
+  assert.equal(await page.evaluate(() => document.querySelector('[data-line="ann"] .ln__announce')?.textContent?.trim()), 'Anuncio', 'Spanish announcement header');
   assert.ok((await page.evaluate(() => document.querySelector('[data-line="m1"]')?.textContent))?.includes('<mensaje eliminado>'), 'Spanish deleted message');
   // Landscape captions sit in the band under the stream (never over it); the channel row fades out for them.
   const box = (sel) => page.evaluate((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r ? { top: r.top, bottom: r.bottom } : null; }, sel);
@@ -286,6 +301,19 @@ async function recorder(format, lang, look) {
       await frame(2800); // caption + alert
       assert.equal(await page.evaluate(() => document.querySelector('app-demo-frame')?.getAttribute('data-look')), look, `${look} ${format}: look applied`);
       hashes.add(await shot());
+      await frame(12400); // announcement
+      // The announcement header stays readable on the look's own chat background (contrast >= 3, bold small caps).
+      const contrast = await page.evaluate(() => {
+        const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+        const lum = ([r, g, b]) => [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+        const head = document.querySelector('[data-line="ann"] .ln__announce');
+        let el = head?.closest('.ln'), bg = null;
+        for (; el && !bg; el = el.parentElement) { const c = rgb(getComputedStyle(el).backgroundColor); if (c.length >= 3 && (c[3] ?? 1) === 1) bg = c; }
+        if (!head || !bg) return null;
+        const [a, b] = [lum(rgb(getComputedStyle(head).color)), lum(bg)].sort((x, y) => y - x);
+        return (a + 0.05) / (b + 0.05);
+      });
+      assert.ok(contrast === null || contrast >= 3, `${look} ${format}: announcement header contrast ${contrast?.toFixed(2)}`);
       await frame(14400); // duel
       await ctx.close();
     }

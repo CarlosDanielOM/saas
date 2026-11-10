@@ -170,7 +170,8 @@
   box-shadow: inset 3px 0 0 var(--red);
 }
 
-:host([data-look='paper']) .ln__first { color: var(--red); }
+:host([data-look='paper']) .ln__first,
+:host([data-look='paper']) .ln__announce { color: var(--red); }
 :host([data-look='paper']) .ln__deleted,
 :host([data-look='paper']) .ln__notice { color: #847d70; }
 
@@ -359,7 +360,8 @@
   box-shadow: inset 4px 0 0 var(--lime);
 }
 
-:host([data-look='signal']) .ln__first { color: var(--lime); }
+:host([data-look='signal']) .ln__first,
+:host([data-look='signal']) .ln__announce { color: var(--lime); }
 :host([data-look='signal']) .ln__deleted { color: var(--dim); text-decoration: line-through; }
 :host([data-look='signal']) .ln__notice { color: var(--lime); font-style: normal; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8em; }
 :host([data-look='signal']) .ln__event { border-radius: 0; background: transparent; color: var(--lime); box-shadow: inset 0 0 0 1.5px var(--lime); }
@@ -561,7 +563,8 @@
 
 :host([data-look='broadcast']) .ln { border-radius: 4px; }
 :host([data-look='broadcast']) .ln--first { background: rgba(169, 112, 255, 0.12); box-shadow: inset 3px 0 0 var(--accent); }
-:host([data-look='broadcast']) .ln__first { color: #c9a8ff; }
+:host([data-look='broadcast']) .ln__first,
+:host([data-look='broadcast']) .ln__announce { color: #c9a8ff; }
 :host([data-look='broadcast']) .ln__event { background: #26262c; color: var(--fg); }
 
 :host([data-look='broadcast']) .ln__ring,
@@ -797,6 +800,7 @@
 :host([data-look='night']) .ln--first { background: transparent; box-shadow: inset 2px 0 0 var(--acc); }
 
 :host([data-look='night']) .ln__first,
+:host([data-look='night']) .ln__announce,
 :host([data-look='night']) .ln__notice,
 :host([data-look='night']) .ln__deleted {
   font-family: 'JetBrains Mono', monospace;
@@ -804,7 +808,8 @@
   letter-spacing: 0.06em;
 }
 
-:host([data-look='night']) .ln__first { color: var(--acc); font-size: 0.7em; }
+:host([data-look='night']) .ln__first,
+:host([data-look='night']) .ln__announce { color: var(--acc); font-size: 0.7em; }
 :host([data-look='night']) .ln__first::before { content: '▸ '; }
 :host([data-look='night']) .ln__deleted { color: var(--dim); font-size: 0.86em; }
 :host([data-look='night']) .ln__notice { color: var(--acc); font-size: 0.78em; text-transform: uppercase; }

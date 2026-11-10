@@ -59,8 +59,10 @@
         <li class="lnrow" [attr.data-clock-origin]="line.at" [attr.data-line]="line.key" [class.lnrow--crowd]="line.crowd">
           <!-- A new line opens its own height, so the lines above glide up instead of jumping. -->
           <div class="lnrow__clip">
-            <div class="ln" [attr.data-kind]="line.kind" [class.ln--first]="line.first" [class.ln--deleted]="line.deletedAt !== null" [class.ln--hl]="!!line.highlight">
+            <div class="ln" [attr.data-kind]="line.kind" [class.ln--first]="line.first" [class.ln--deleted]="line.deletedAt !== null" [class.ln--hl]="!!line.highlight"
+              [class.ln--announce]="!!line.announce" [attr.data-announce]="line.announce">
               @if (line.first) { <span class="ln__first">{{ copy().first }}</span> }
+              @if (line.announce) { <span class="ln__announce"><lucide-icon [img]="megaphone" [size]="13" aria-hidden="true" />{{ copy().announcement }}</span> }
               @switch (line.kind) {
                 @case ('event') {
                   <span class="ln__event">@if (line.icon) { <lucide-icon [img]="line.icon" [size]="14" aria-hidden="true" /> }{{ line.text }}</span>

@@ -1,6 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { BadgeCheck, Bot, Gem, Heart, Info, LucideAngularModule, LucideIconData, ShieldCheck, Star, Sword, Users, Video } from 'lucide-angular';
+import { BadgeCheck, Bot, Gem, Heart, Info, LucideAngularModule, LucideIconData, Megaphone, ShieldCheck, Star, Sword, Users, Video } from 'lucide-angular';
 import { DuelStageComponent } from '../widgets/duel/duel-stage.component';
 import { RouletteDisplayComponent } from '../roulette/roulette-display.component';
 import { slotsFor, type Roulette, type RouletteDraw } from '../roulette/roulette-api.service';
@@ -48,8 +48,8 @@ const DRAW_EPOCH = 1_700_000_000_000;
 const MAX_LINES = 32;
 
 const COPY = {
-  en: { chat: 'Stream chat', first: 'First message', deleted: '<message deleted>', banned: '{user} has been permanently banned.', live: 'LIVE', tagline: 'A Twitch chatbot that grows with you', cta: 'Free to start', companion: 'Stream Companion' },
-  es: { chat: 'Chat del stream', first: 'Primer mensaje', deleted: '<mensaje eliminado>', banned: '{user} fue baneado permanentemente.', live: 'EN VIVO', tagline: 'Un chatbot de Twitch que crece contigo', cta: 'Empieza gratis', companion: 'Stream Companion' }
+  en: { chat: 'Stream chat', first: 'First message', deleted: '<message deleted>', banned: '{user} has been permanently banned.', live: 'LIVE', announcement: 'Announcement', tagline: 'A Twitch chatbot that grows with you', cta: 'Free to start', companion: 'Stream Companion' },
+  es: { chat: 'Chat del stream', first: 'Primer mensaje', deleted: '<mensaje eliminado>', banned: '{user} fue baneado permanentemente.', live: 'EN VIVO', announcement: 'Anuncio', tagline: 'Un chatbot de Twitch que crece contigo', cta: 'Empieza gratis', companion: 'Stream Companion' }
 } as const;
 
 export interface ChatLine {
@@ -59,6 +59,8 @@ export interface ChatLine {
   crowd: boolean;
   icon: LucideIconData | null; deletedAt: number | null;
   highlight: { at: number; end: number; label: string } | null;
+  /** Twitch announcement color, for a bot line posted as an announcement. */
+  announce: string | null;
 }
 interface Segment { text: string; em: boolean }
 /** A caption word (or the space after it), numbered so kinetic looks can bring words in one by one. */
@@ -140,6 +142,7 @@ export class DemoFrameComponent {
   readonly icons = { bot: Bot };
   readonly size = computed(() => DEMO_FORMATS[this.format()]);
   readonly copy = computed(() => COPY[this.scene().lang]);
+  readonly megaphone = Megaphone;
   readonly segments = segments;
   readonly words = words;
   /** The logo in ink for the light (print) look, white everywhere else. */
@@ -239,7 +242,7 @@ export class DemoFrameComponent {
   readonly lines = computed<ChatLine[]>(() => {
     const t = this.t(), scene = this.scene(), copy = this.copy();
     const byId = new Map<string, ChatLine>(), lines: ChatLine[] = [];
-    const base = { crowd: false, first: false, icon: null, deletedAt: null, highlight: null };
+    const base = { crowd: false, first: false, icon: null, deletedAt: null, highlight: null, announce: null };
     for (const entry of this.chatTimeline()) {
       if (entry.at > t) break;
       if (entry.crowd) {
@@ -258,7 +261,8 @@ export class DemoFrameComponent {
         const line: ChatLine = {
           ...base, key: beat.id, kind: bot ? 'bot' : 'viewer', at: beat.at, user, text,
           color: bot ? BOT_COLOR[scene.look] : typeof p['color'] === 'string' ? p['color'] : nameColor(user, scene.look),
-          badges: badges.map((b) => BADGE_ICONS[b][0]), badgeTones: badges.map((b) => BADGE_ICONS[b][1]), first: p['first'] === true
+          badges: badges.map((b) => BADGE_ICONS[b][0]), badgeTones: badges.map((b) => BADGE_ICONS[b][1]), first: p['first'] === true,
+          announce: bot && typeof p['announce'] === 'string' ? p['announce'] : null
         };
         byId.set(beat.id, line);
         lines.push(line);

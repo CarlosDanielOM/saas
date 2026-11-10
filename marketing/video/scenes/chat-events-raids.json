@@ -1,0 +1,54 @@
+{
+  "$schema": "../scene.schema.json",
+  "$comment": "Incoming raid (raid.handler.ts -> handleShoutoutCommand in shoutout.command.ts): the bot posts the raid message as a purple Twitch announcement and sends a Twitch shoutout (120 s cooldown per raider; raids under minViewers, default 2, are skipped). English uses the signup default '$(raid.channel) is raiding with $(raid.viewers) viewers!' (utils/eventsub.ts); Spanish channels write their own message. The raid notice is Twitch's own raid wording; the shoutout line is a neutral stand-in for Twitch's shoutout card. The on-stream alert is Overlay Studio (separate module). Free on every plan.",
+  "id": "chat-events-raids",
+  "v": 2,
+  "seed": 37,
+  "look": "site",
+  "title": { "en": "Chat events", "es": "Eventos de chat" },
+  "formats": ["vertical", "landscape"],
+  "langs": ["en", "es"],
+  "channel": {
+    "name": "lunatica_v",
+    "title": { "en": "Ranked grind, chill vibes", "es": "Rankeds con calma, ven a pasar el rato" },
+    "game": "Valorant",
+    "viewers": 214
+  },
+  "beats": [
+    { "do": "intro", "at": 0, "dur": 1900,
+      "title": { "en": "Got raided *mid-game*", "es": "Me cayó un raid *en plena partida*" },
+      "sub": { "en": "this is what my chat saw", "es": "esto vio mi chat" } },
+
+    { "do": "event", "id": "raid", "at": "+500", "icon": "raid", "sfx": { "src": "kit:pop", "gain": 0.6 },
+      "text": { "en": "42 raiders from cozy_cactus have joined!", "es": "¡Llegaron 42 raiders de cozy_cactus!" } },
+    { "do": "alert", "id": "alert", "with": "raid", "at": "+0", "dur": 3200, "event": "raid", "user": "cozy_cactus", "amount": 42,
+      "sound": { "src": "kit:chime", "gain": 0.7, "fadeOut": 300 } },
+    { "do": "camera", "with": "alert", "at": "+0", "focus": "alert", "zoom": 1.7 },
+    { "do": "camera", "after": "alert", "at": "+0", "dur": 500, "focus": "full" },
+    { "do": "caption", "id": "cap1", "with": "raid", "at": "+300", "dur": 4200,
+      "text": { "en": "A raid comes in, my bot *welcomes them*", "es": "Llega un raid y mi bot *les da la bienvenida*" } },
+    { "do": "chat", "with": "raid", "at": "+450", "user": "desert_rose", "text": { "en": "CACTUS RAID 🌵🌵", "es": "RAID DE CACTUS 🌵🌵" } },
+    { "do": "chat", "with": "raid", "at": "+1500", "user": "spiny_boi", "badges": ["sub"], "text": { "en": "hiii from cactus's stream", "es": "holaaa, venimos de cactus" } },
+    { "do": "bot", "id": "announce", "with": "raid", "at": "+900", "announce": "purple", "sfx": { "src": "kit:ding", "gain": 0.5 },
+      "text": { "en": "cozy_cactus is raiding with 42 viewers!", "es": "¡cozy_cactus llegó en raid con 42 personas! Bienvenidos todos 🌵" },
+      "refs": [
+        { "file": "dimabot/src/utils/eventsub.ts", "quote": "is raiding with", "lang": "en" },
+        { "file": "dimabot/src/utils/eventsub.ts", "quote": "'$(raid.channel) is raiding with $(raid.viewers) viewers!'", "inText": false },
+        { "file": "dimabot/src/commands/shoutout.command.ts", "quote": "color: string = 'purple'", "inText": false }
+      ] },
+    { "do": "chat", "with": "raid", "at": "+2400", "user": "pricklypete", "text": "🌵🌵🌵" },
+    { "do": "highlight", "after": "alert", "at": "+0", "dur": 1500, "target": "announce" },
+
+    { "do": "event", "id": "shoutout", "after": "alert", "at": "+700", "icon": "follow",
+      "text": { "en": "Shoutout: cozy_cactus", "es": "Shoutout: cozy_cactus" } },
+    { "do": "caption", "id": "cap2", "after": "cap1", "at": "+0", "dur": 2900,
+      "text": { "en": "and it gives them *a shoutout* for me", "es": "y le da *shoutout* por mí" } },
+    { "do": "chat", "with": "cap2", "at": "+1300", "user": "desert_rose", "text": { "en": "W shoutout 💜", "es": "gracias por el shoutout 💜" } },
+
+    { "do": "caption", "id": "cap3", "after": "cap2", "at": "+0", "dur": 2400,
+      "text": { "en": "I didn't stop playing *once*", "es": "Y yo *ni dejé de jugar*" } },
+    { "do": "outro", "id": "outro", "after": "cap3", "at": "+200", "dur": 2600,
+      "title": { "en": "Raid welcomed, *still in the game*", "es": "Raid recibido y *sigo en la partida*" },
+      "cta": { "en": "Chat events are free · domdimabot.com", "es": "Los eventos de chat son gratis · domdimabot.com" } }
+  ]
+}
