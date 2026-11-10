@@ -428,6 +428,15 @@ export class SessionAuthService {
     this.syncLanguageFromSession(appUser.language);
   }
 
+  /** Updates the signed-in owner's own flags after an action changed them (e.g. bot joined chat). */
+  patchAppUser(patch: Partial<Pick<AppLoginData, 'chat_enabled'>>): void {
+    const current = this.getSessionSnapshot();
+    if (!current) {
+      return;
+    }
+    this.persistSession({ ...current, appUser: { ...current.appUser, ...patch } });
+  }
+
   clearSession(): void {
     this.session.set(null);
     this.lastViewedStreamer.set(null);

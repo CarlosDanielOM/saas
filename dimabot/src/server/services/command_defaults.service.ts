@@ -101,8 +101,10 @@ export async function ensureReservedCommands(channelID: string, channelName: str
 
     for (const commandData of commands) {
 
+        // Skip a default when the channel already has it, or already uses its chat name
+        // (streamers can make their own `!s` or `!so` before they turn the defaults on).
         const exists = await CommandsSchema.exists({
-            func: commandData.func,
+            $or: [{ func: commandData.func }, { cmd: commandData.cmd }],
             activation: { $ne: 'keyword' },
             channelID
         });

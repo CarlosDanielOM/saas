@@ -19,7 +19,7 @@
     } @else if (!bootstrap()) {
       <div class="empty" aria-live="polite"><p>{{ loading() ? t('dashboard.loading') : t('dashboard.empty') }}</p></div>
     } @else {
-      <!-- Header: who, live/last stream, the one bot control, the week in one sentence -->
+      <!-- Header: who, live/last stream, bot status, the week in one sentence (the navbar adds/removes the bot) -->
       <header class="gh">
         @if (avatarUrl()) {
           <img class="gh__avatar" [class.gh__avatar--live]="isLive()" [src]="avatarUrl()!" alt="" width="56" height="56" />
@@ -36,7 +36,7 @@
             } @else {
               <span class="chip">{{ t('dashboard.brief.noRecent') }}</span>
             }
-            <span class="chip" [class.chip--ok]="chatEnabled()" [class.chip--warn]="!chatEnabled()">
+            <span class="chip" [class.chip--ok]="chatEnabled()" [class.chip--warn]="!chatEnabled() && !setupMode()">
               <span class="dot" aria-hidden="true"></span>{{ chatEnabled() ? t('dashboard.brief.botIn') : t('dashboard.brief.botOut') }}
             </span>
             <span class="chip" [class.chip--gold]="planTier() !== 'free'">{{ planLabel() }}</span>
@@ -45,21 +45,8 @@
             }
           </div>
         </div>
-        <button
-          type="button"
-          class="btn btn--sm gh__bot"
-          [class.btn--primary]="!chatEnabled()"
-          [disabled]="isTogglingChat() || !channelID()"
-          (click)="toggleChatCompact()"
-        >
-          @if (isTogglingChat()) {
-            <loading-indicator [loading]="true" size="sm" variant="css" />
-          } @else {
-            {{ chatEnabled() ? t('dashboard.quickActions.leaveChat') : t('dashboard.quickActions.joinBot') }}
-          }
-        </button>
         <div class="gh__answer">
-          @if (!chatEnabled()) {
+          @if (!chatEnabled() && !setupMode()) {
             <p class="gh__warn" role="status"><app-lf-icon name="alert" [size]="16"></app-lf-icon>{{ t('dashboard.brief.botOffWarn') }}</p>
           }
           <p class="answer">
@@ -69,6 +56,67 @@
           </p>
         </div>
       </header>
+
+      <!-- New streamers (own channel, no full access yet): the next steps, calm -->
+      @if (setupMode()) {
+        <section class="lf-tile gs" aria-labelledby="dash-setup-title" data-testid="dashboard-setup">
+          <div class="gs__head">
+            <span class="gs__kicker">{{ t('dashboard.setup.kicker') }}</span>
+            <h2 class="gs__title" id="dash-setup-title">{{ chatEnabled() ? t('dashboard.setup.titleNext') : t('dashboard.setup.titleFirst') }}</h2>
+            <p class="gs__sub">{{ chatEnabled() ? t('dashboard.setup.subNext') : t('dashboard.setup.subFirst') }}</p>
+          </div>
+          <ol class="gs__steps">
+            <li class="gs__step" [class.gs__step--done]="chatEnabled()" data-step="chat">
+              <span class="gs__num" aria-hidden="true">
+                @if (chatEnabled()) { <app-lf-icon name="check" [size]="16"></app-lf-icon> } @else { 1 }
+              </span>
+              <div class="gs__body">
+                <p class="gs__name">{{ t('dashboard.setup.chat.title') }}</p>
+                <p class="gs__hint">
+                  @if (chatEnabled()) {
+                    {{ t('dashboard.setup.chat.done') }}
+                  } @else if (botAccess.chatNeedsTwitchOk()) {
+                    {{ t('botAccess.toast.needsOkMessage') }}
+                  } @else {
+                    {{ t('dashboard.setup.chat.hint') }}
+                  }
+                </p>
+              </div>
+              @if (chatEnabled()) {
+                <span class="gs__state"><app-lf-icon name="check" [size]="14"></app-lf-icon>{{ t('dashboard.setup.done') }}</span>
+              } @else {
+                <button type="button" class="btn btn--sm btn--primary gs__act" [disabled]="botAccess.chatBusy()" [attr.aria-busy]="botAccess.chatBusy()" (click)="addBotToChat()">
+                  @if (botAccess.chatBusy()) {
+                    {{ t('botAccess.chat.adding') }}
+                  } @else {
+                    <app-lf-icon name="plus" [size]="15"></app-lf-icon>{{ botAccess.chatNeedsTwitchOk() ? t('botAccess.chat.allow') : t('botAccess.chat.add') }}
+                  }
+                </button>
+              }
+            </li>
+            <li class="gs__step" data-step="command">
+              <span class="gs__num" aria-hidden="true">2</span>
+              <div class="gs__body">
+                <p class="gs__name">{{ t('dashboard.setup.command.title') }}</p>
+                <p class="gs__hint">{{ t('dashboard.setup.command.hint') }}</p>
+              </div>
+              <a class="btn btn--sm gs__act" [class.btn--primary]="chatEnabled()" [routerLink]="link('commands')">
+                <app-lf-icon name="terminal" [size]="15"></app-lf-icon>{{ t('dashboard.setup.command.cta') }}
+              </a>
+            </li>
+            <li class="gs__step gs__step--optional" data-step="full">
+              <span class="gs__num" aria-hidden="true">3</span>
+              <div class="gs__body">
+                <p class="gs__name">{{ t('dashboard.setup.full.title') }} <span class="gs__tag">{{ t('dashboard.setup.optional') }}</span></p>
+                <p class="gs__hint">{{ t('dashboard.setup.full.hint') }}</p>
+              </div>
+              <button type="button" class="btn btn--sm gs__act gs__full" (click)="giveFullAccess()">
+                <app-lf-icon name="zap" [size]="15"></app-lf-icon>{{ t('botAccess.fullAccess.cta') }}
+              </button>
+            </li>
+          </ol>
+        </section>
+      }
 
       @if (isLive()) {
         <section class="gl" [attr.aria-label]="t('dashboard.brief.liveLabel')">
@@ -93,10 +141,23 @@
 
       <!-- Bot health: always on top (full row from tablet up) -->
       <section class="bs" [attr.aria-label]="t('dashboard.brief.health')">
-        <div class="bs__item" [attr.data-tone]="chatEnabled() ? 'ok' : 'warn'">
-          <app-lf-icon [name]="chatEnabled() ? 'check' : 'alert'" [size]="16"></app-lf-icon>
-          <span><b>{{ chatEnabled() ? t('dashboard.brief.botIn') : t('dashboard.brief.botOut') }}</b>{{ chatEnabled() ? t('dashboard.brief.botInSub') : t('dashboard.brief.botOutSub') }}</span>
-        </div>
+        @if (setupMode()) {
+          <div class="bs__item" [attr.data-tone]="chatEnabled() ? 'ok' : 'calm'">
+            <app-lf-icon [name]="chatEnabled() ? 'check' : 'chat'" [size]="16"></app-lf-icon>
+            <span><b>{{ chatEnabled() ? t('dashboard.brief.botIn') : t('dashboard.brief.botOut') }}</b>{{ chatEnabled() ? t('dashboard.setup.health.botInSub') : t('dashboard.setup.health.botOutSub') }}</span>
+          </div>
+        } @else {
+          <div class="bs__item" [attr.data-tone]="chatEnabled() ? 'ok' : 'warn'">
+            <app-lf-icon [name]="chatEnabled() ? 'check' : 'alert'" [size]="16"></app-lf-icon>
+            <span><b>{{ chatEnabled() ? t('dashboard.brief.botIn') : t('dashboard.brief.botOut') }}</b>{{ chatEnabled() ? t('dashboard.brief.botInSub') : t('dashboard.brief.botOutSub') }}</span>
+          </div>
+        }
+        @if (setupMode()) {
+          <div class="bs__item" data-tone="calm">
+            <app-lf-icon name="lock" [size]="16"></app-lf-icon>
+            <span><b>{{ t('dashboard.brief.eventsTitle') }}</b>{{ t('dashboard.setup.health.eventsSub') }}</span>
+          </div>
+        } @else {
         <div class="bs__item" [attr.data-tone]="eventsState() === 'ready' && !eventsOn() ? 'warn' : 'ok'">
           <app-lf-icon [name]="eventsState() === 'ready' && !eventsOn() ? 'alert' : 'chat'" [size]="16"></app-lf-icon>
           <span>
@@ -108,6 +169,7 @@
           </span>
           <a class="bs__buy" [routerLink]="link('modules', 'chat-events')">{{ t('dashboard.brief.open') }}</a>
         </div>
+        }
         <div class="bs__item" [attr.data-tone]="creditsForecast().warn ? 'warn' : 'ok'">
           <app-lf-icon name="zap" [size]="16"></app-lf-icon>
           <span>
@@ -120,6 +182,12 @@
             <a class="bs__buy" [routerLink]="link('usage')">{{ t('dashboard.brief.usage') }}</a>
           }
         </div>
+        @if (setupMode()) {
+          <div class="bs__item" data-tone="calm">
+            <app-lf-icon name="lock" [size]="16"></app-lf-icon>
+            <span><b>{{ t('dashboard.brief.mod.automod.title') }}</b>{{ t('dashboard.setup.health.automodSub') }}</span>
+          </div>
+        } @else {
         <div class="bs__item" [attr.data-tone]="modEnabled() === false ? 'warn' : 'ok'">
           <app-lf-icon [name]="modEnabled() === false ? 'alert' : 'shield'" [size]="16"></app-lf-icon>
           <span>
@@ -132,6 +200,7 @@
             }
           </span>
         </div>
+        }
       </section>
 
       <!-- Phones: the same health as one line -->
@@ -139,16 +208,19 @@
         class="strip"
         href="#dash-bot"
         (click)="showBotPane($event)"
-        [class.strip--warn]="!chatEnabled() || creditsForecast().warn || modEnabled() === false"
+        [class.strip--warn]="stripTone() === 'warn'"
+        [class.strip--calm]="stripTone() === 'calm'"
       >
-        <span class="strip__item" [class.strip__item--warn]="!chatEnabled()"><span class="dot" aria-hidden="true"></span>{{ chatEnabled() ? t('dashboard.brief.botIn') : t('dashboard.brief.botOut') }}</span>
-        @if (eventsState() === 'ready') {
+        <span class="strip__item" [class.strip__item--warn]="!chatEnabled() && !setupMode()" [class.strip__item--off]="!chatEnabled() && setupMode()"><span class="dot" aria-hidden="true"></span>{{ chatEnabled() ? t('dashboard.brief.botIn') : t('dashboard.brief.botOut') }}</span>
+        @if (!setupMode() && eventsState() === 'ready') {
           <span class="strip__item">{{ t('dashboard.brief.eventsShort', { on: eventsOn(), total: eventsTotal() }) }}</span>
         }
         @if (aiCreditsAvailable()) {
           <span class="strip__item" [class.strip__item--warn]="creditsForecast().warn">{{ t('dashboard.brief.creditsShort', { pct: aiCreditsPercentLeft() }) }}</span>
         }
-        @if (modEnabled() === false) {
+        @if (setupMode()) {
+          <span class="strip__item strip__item--off"><app-lf-icon name="lock" [size]="13"></app-lf-icon>{{ t('dashboard.setup.health.stripLocked') }}</span>
+        } @else if (modEnabled() === false) {
           <span class="strip__item strip__item--warn">{{ t('dashboard.brief.mod.automod.off') }}</span>
         } @else if (modState() === 'ready') {
           <span class="strip__item">{{ t('dashboard.brief.automodShort', { count: automodCount() }) }}</span>
@@ -260,7 +332,7 @@
             <div class="br-grid br-grid--bot">
               @if (on('moderation')) {
                 <article class="lf-tile br-card" aria-labelledby="dash-automod">
-                  <app-dashboard-moderation-card kind="automod" headingId="dash-automod" [state]="modState()" [week]="automod()" [enabled]="modEnabled()" [link]="link('modules', 'moderation')" />
+                  <app-dashboard-moderation-card kind="automod" headingId="dash-automod" [state]="modState()" [week]="automod()" [enabled]="modEnabled()" [needsFullAccess]="setupMode()" [link]="link('modules', 'moderation')" />
                 </article>
                 <article class="lf-tile br-card" aria-labelledby="dash-sanctions">
                   <app-dashboard-moderation-card kind="sanctions" headingId="dash-sanctions" [state]="modState()" [week]="automod()" [logs]="modLogs()" [link]="link('modules', 'moderation')" />

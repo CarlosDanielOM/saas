@@ -998,6 +998,70 @@ code,
   font-weight: 700;
 }
 
+/* Owner without the bot in chat: calm one-liner under the header (not a warning). */
+.lf-chat-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 0.85rem;
+  color: var(--fg);
+  background: var(--tile);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.lf-chat-note app-lf-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--accent);
+}
+
+/* Empty "Your commands": make one, or start from text to speech */
+.lf-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 100%;
+  margin-top: 0.4rem;
+}
+
+.lf-empty .lf-empty__actions .lf-btn {
+  max-width: 100%;
+  margin-top: 0;
+  white-space: normal;
+}
+
+.lf-empty .lf-empty__hint {
+  font-size: 0.8rem;
+}
+
+.lf-empty__hint .lf-link {
+  font-size: inherit;
+}
+
+/* Built-ins before full access: read-only rows, dashed instead of dimmed */
+.lf-item--locked {
+  border-style: dashed;
+  background: transparent;
+}
+
+.lf-chip--locked {
+  gap: 0.25rem;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+
+.lf-fold__meta--locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
 @media (min-width: 640px) {
   .lf-main {
     padding: 1.5rem 1.25rem 2.5rem;

@@ -11,6 +11,7 @@ export type ModLoad = 'loading' | 'ready' | 'error';
 /**
  * Bot-side moderation cards on the dashboard: this week's automod summary
  * and the latest sanctions. Data is loaded by the page; tokens come from it.
+ * Without full access the automod card shows a calm "needs full access" line.
  */
 @Component({
   selector: 'app-dashboard-moderation-card',
@@ -25,7 +26,10 @@ export type ModLoad = 'loading' | 'ready' | 'error';
       <span class="hc__when">{{ t('dashboard.brief.mod.' + kind() + '.when') }}</span>
     </div>
 
-    @if (state() === 'loading') {
+    @if (kind() === 'automod' && needsFullAccess()) {
+      <p class="hc__say hc__say--locked"><app-lf-icon name="lock" [size]="16"></app-lf-icon>{{ t('dashboard.setup.automod.title') }}</p>
+      <p class="hc__line">{{ t('dashboard.setup.automod.text') }}</p>
+    } @else if (state() === 'loading') {
       <p class="hc__line">{{ t('dashboard.loading') }}</p>
     } @else if (state() === 'error') {
       <p class="hc__line">{{ t('dashboard.brief.mod.error') }}</p>
@@ -98,6 +102,8 @@ export type ModLoad = 'loading' | 'ready' | 'error';
     .hc__when { flex: none; color: var(--muted); font-size: 0.72rem; font-weight: 700; }
     .hc__say { margin: 0; font-size: 1rem; font-weight: 750; line-height: 1.35; }
     .hc__say--warn { color: var(--warn); }
+    .hc__say--locked { display: flex; align-items: center; gap: 0.45rem; }
+    .hc__say--locked app-lf-icon { flex: none; color: var(--accent); }
     .hc__line { margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
     .hc__note {
       display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.45rem; margin: 0;
@@ -156,6 +162,8 @@ export class DashboardModerationCardComponent {
   readonly week = input.required<AutomodWeek>();
   readonly logs = input<ModerationActionLogEntry[]>([]);
   readonly enabled = input<boolean | null>(null);
+  /** Own channel without full access: automod can't run yet, so say so calmly instead of "Automod is off". */
+  readonly needsFullAccess = input(false);
   readonly link = input.required<string[]>();
   readonly headingId = input('');
 

@@ -10,16 +10,18 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, convertToParamMap, type ParamMap } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, convertToParamMap, type ParamMap } from '@angular/router';
 import { catchError, combineLatest, map, of, switchMap } from 'rxjs';
 
 import { Command, CreateCommandRequest, UpdateCommandRequest, USER_LEVELS, USER_LEVEL_NAMES, whoCanUsePhrase } from '../../models/command.model';
-import { CommandsApiService, type CommandSaveError, type CommandSaveResult } from '../../services/commands-api.service';
+import { BotAccessService } from '../../services/bot-access.service';
+import { CommandsApiService, type CommandSaveError, type CommandSaveResult, type ReservedCatalogCommand } from '../../services/commands-api.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { TimersApiService } from '../../services/timers-api.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
+import { FullAccessNoteComponent } from '../../shared/full-access-note/full-access-note.component';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import {
   BUILTIN_GROUP_ORDER,
@@ -57,7 +59,7 @@ function readCommandPrefill(params: ParamMap): CommandPrefill | null {
 
 @Component({
   selector: 'app-commands-page',
-  imports: [ReactiveFormsModule, NgTemplateOutlet, ConfirmationModalComponent, CommandModalComponent, LfIconComponent, BlocksViewerDialogComponent, RandomUserSettingsComponent],
+  imports: [ReactiveFormsModule, NgTemplateOutlet, RouterLink, ConfirmationModalComponent, CommandModalComponent, LfIconComponent, BlocksViewerDialogComponent, RandomUserSettingsComponent, FullAccessNoteComponent],
   templateUrl: './commands-page.component.html',
   styleUrl: './commands-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -73,6 +75,7 @@ export class CommandsPageComponent {
   private readonly commandsApi = inject(CommandsApiService);
   private readonly timersApi = inject(TimersApiService);
   private readonly toastService = inject(ToastService);
+  readonly botAccess = inject(BotAccessService);
 
   // Route params - resolved to channelID
   readonly channelID = signal<string | null>(null);
@@ -209,9 +212,12 @@ export class CommandsPageComponent {
   readonly timerList = computed(() => this.customList().filter((command) => this.isTimerLinked(command)));
   readonly offList = computed(() => this.byName(this.commands().filter((command) => command.enabled === false)));
 
+  /** Built-ins to list: the real ones, or the locked catalog before full access. */
+  readonly builtinSource = computed<CommandListItem[]>(() => this.builtinsLocked() ? this.lockedBuiltins() : this.builtinList());
+
   readonly builtinGroups = computed(() => {
     const groups = new Map<BuiltinGroup, CommandListItem[]>();
-    for (const command of this.builtinList()) {
+    for (const command of this.builtinSource()) {
       const group = builtinInfo(command).group;
       groups.set(group, [...(groups.get(group) ?? []), command]);
     }
@@ -228,19 +234,29 @@ export class CommandsPageComponent {
     custom: this.customList().length,
     keyword: this.keywordList().length,
     timer: this.timerList().length,
-    builtin: this.builtinList().length,
+    builtin: this.builtinSource().length,
     off: this.offList().length
   }));
 
+  private readonly searchQuery = computed(() => this.searchInput().trim().toLowerCase().replace(/^!/, ''));
+
   /** Flat results while searching: name, trigger, reply or built-in description. */
   readonly searchResults = computed(() => {
-    const query = this.searchInput().trim().toLowerCase().replace(/^!/, '');
+    const query = this.searchQuery();
     if (!query) return [];
     return this.byName(this.commands().filter((command) =>
       [command.name, command.cmd, commandReplyText(command), command.reserved ? this.builtinDescription(command) : '']
         .join(' ')
         .toLowerCase()
         .includes(query)));
+  });
+
+  /** Locked built-ins that match the search (shown after the real results). */
+  readonly searchLockedResults = computed(() => {
+    const query = this.searchQuery();
+    if (!query) return [];
+    return this.byName(this.lockedBuiltins().filter((command) =>
+      [this.builtinTitle(command), command.cmd, this.builtinDescription(command)].join(' ').toLowerCase().includes(query)));
   });
 
   readonly isSearching = computed(() => this.searchInput().trim().length > 0);
@@ -392,6 +408,87 @@ export class CommandsPageComponent {
   /** Starting values for the create dialog, from a "Make a command" link (?new=command&cmd=…&message=…). */
   readonly modalPrefill = signal<CommandPrefill | null>(null);
   private readonly commandsLoadedFor = signal<string | null>(null);
+
+  // ========== Built-ins before full access ==========
+
+  /** The bot's default commands (both kinds), shown locked until the channel gets full access. */
+  private readonly reservedCatalog = signal<{ language: string; items: ReservedCatalogCommand[] } | null>(null);
+  private catalogRequested: string | null = null;
+
+  /** The list loaded and has no built-in: full access never set this channel up. Works for managers too. */
+  readonly builtinsNeedFullAccess = computed(() => {
+    const channelID = this.channelID();
+    return !!channelID && this.commandsLoadedFor() === channelID && !this.error()
+      && !this.commands().some((command) => command.activation !== 'keyword' && command.reserved);
+  });
+
+  /** Catalog entries as read-only rows. Full access skips a default whose name or job the channel already has, so those stay hidden. */
+  readonly lockedBuiltins = computed<CommandListItem[]>(() => {
+    const catalog = this.reservedCatalog();
+    if (!catalog || !this.builtinsNeedFullAccess()) return [];
+    const channelID = this.channelID() ?? '';
+    const takenCmds = new Set<string>();
+    const takenFuncs = new Set<string>();
+    for (const command of this.commands()) {
+      if (command.activation === 'keyword') continue;
+      takenCmds.add((command.cmd || '').toLowerCase());
+      if (command.func) takenFuncs.add(command.func);
+    }
+    return catalog.items
+      .filter((entry) => entry.func && entry.cmd && !takenCmds.has(entry.cmd.toLowerCase()) && !takenFuncs.has(entry.func))
+      .map((entry): CommandListItem => ({
+        id: `catalog:${entry.func}`,
+        channel: '',
+        channelID,
+        cmd: entry.cmd,
+        activation: 'command',
+        func: entry.func,
+        cooldown: Number(entry.cooldown) || 0,
+        createdAt: '',
+        description: typeof entry.description === 'string' ? entry.description : null,
+        enabled: false,
+        message: typeof entry.message === 'string' ? entry.message : '',
+        name: entry.name || entry.cmd,
+        // Shown as built-ins: catalog name, description and usage.
+        reserved: true,
+        userLevel: Number(entry.userLevel) || 0,
+        userLevelName: entry.userLevelName || 'everyone'
+      }));
+  });
+
+  readonly builtinsLocked = computed(() => this.lockedBuiltins().length > 0);
+
+  private readonly catalogEffect = effect(() => {
+    if (!this.builtinsNeedFullAccess()) return;
+    const language = this.languageService.currentLanguage();
+    untracked(() => this.loadReservedCatalog(language));
+  });
+
+  private loadReservedCatalog(language: string): void {
+    if (this.reservedCatalog()?.language === language || this.catalogRequested === language) return;
+    this.catalogRequested = language;
+    this.commandsApi.getReservedCatalog(language).subscribe((items) => {
+      if (this.catalogRequested === language) this.catalogRequested = null;
+      if (items.length) this.reservedCatalog.set({ language, items });
+    });
+  }
+
+  /** Owner only: the bot isn't in their chat, so no command answers yet. */
+  readonly showChatNote = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.chatEnabled());
+
+  readonly ttsPath = computed(() => ['/', this.streamer(), 'modules', 'tts']);
+
+  /** Quick start: a `!tts` command that reads the viewer's message aloud (nothing is saved until they save). */
+  openTtsCommand(): void {
+    const spanish = this.languageService.getCurrentLanguage() === 'es';
+    this.newItemKind.set('command');
+    this.openCreateModal({
+      cmd: 'tts',
+      name: this.t('commands.quickStart.ttsName'),
+      message: spanish ? '$(tts $(user) dice: &t)' : '$(tts $(user) says: &t)',
+      description: this.t('commands.quickStart.ttsDescription')
+    });
+  }
   private linkPrefill = readCommandPrefill(this.route.snapshot.queryParamMap);
   private readonly prefillEffect = effect(() => {
     const channelID = this.channelID();

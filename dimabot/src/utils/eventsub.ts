@@ -340,7 +340,16 @@ export async function subscribeTwitchEvent(
     version: string,
     condition: ICondition,
     config?: EventsubConfig,
-    options?: { ignoreExisting?: boolean }
+    options?: {
+        ignoreExisting?: boolean;
+        /**
+         * Create the subscription with the app token only, without first loading the
+         * broadcaster's stored token. Webhook subscriptions are always app-authorized;
+         * Twitch checks the broadcaster's grant (e.g. `channel:bot` for chat) itself.
+         * Lets a channel that only signed in (no stored broadcaster token) add the bot to chat.
+         */
+        appAuthOnly?: boolean;
+    }
 ): Promise<SubscribeTwitchEventResponse | SubscribeTwitchEventError> {
     if (!process.env.TWITCH_EVENTSUB_SECRET) {
         return {
@@ -365,13 +374,17 @@ export async function subscribeTwitchEvent(
         }
     }
 
-    const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
-    if (streamerHeaderResult.error || !streamerHeaderResult.header) {
-        return {
-            error: 'Failed to get streamer header',
-            message: streamerHeaderResult.message,
-            status: 500
-        };
+    let streamerHeader: Record<string, string> = {};
+    if (!options?.appAuthOnly) {
+        const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
+        if (streamerHeaderResult.error || !streamerHeaderResult.header) {
+            return {
+                error: 'Failed to get streamer header',
+                message: streamerHeaderResult.message,
+                status: 500
+            };
+        }
+        streamerHeader = streamerHeaderResult.header as unknown as Record<string, string>;
     }
 
     const appAccessToken = await getAppToken('twitch');
@@ -387,7 +400,9 @@ export async function subscribeTwitchEvent(
 
     // Twitch requires app authorization for EventSub webhook transport.
     const headers = {
-        ...streamerHeaderResult.header,
+        ...streamerHeader,
+        'Client-Id': process.env.CLIENT_ID,
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${appAccessToken}`
     };
 

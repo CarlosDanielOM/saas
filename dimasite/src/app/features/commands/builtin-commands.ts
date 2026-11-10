@@ -30,6 +30,7 @@ const BUILTINS: Record<string, BuiltinInfo> = {
   vanish: { group: 'fun' },
 
   shoutout: { group: 'stream', usage: '<user>' },
+  speach: { group: 'stream', usage: '<message>' },
   promo: { group: 'stream', usage: '<user>' },
   anuncio: { group: 'stream', usage: '<message>' },
   title: { group: 'stream', usage: '<title>' },

@@ -22,6 +22,7 @@ import {
 } from '../../models/dashboard.model';
 import type { ModerationActionLogEntry } from '../../models/moderation.model';
 import type { AiUsageSummaryData } from '../../models/usage.model';
+import { BotAccessService } from '../../services/bot-access.service';
 import { DashboardApiService } from '../../services/dashboard-api.service';
 import { DashboardChartConfigService } from '../../services/dashboard-chart-config.service';
 import { LanguageService } from '../../services/language.service';
@@ -32,7 +33,6 @@ import { UsageApiService } from '../../services/usage-api.service';
 import { LfIconComponent, LfIconName } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam, watchRouteParam } from '../../shared/utils/route-param.util';
 import { creditDisplay, usageCreditDisplay } from '../../shared/utils/credit-display.util';
-import { LoadingIndicatorComponent } from '../../components/loading';
 import {
   ReferralPromoBannerComponent,
   ReferralPromoReward
@@ -97,7 +97,6 @@ interface WeekFact {
   imports: [
     GoalsComponent,
     NgxEchartsDirective,
-    LoadingIndicatorComponent,
     ReferralPromoBannerComponent,
     LfIconComponent,
     DashboardModerationCardComponent,
@@ -126,6 +125,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly moderationApi = inject(ModerationApiService);
   private readonly usageApi = inject(UsageApiService);
   private readonly chatEvents = inject(ChatEventsService);
+  readonly botAccess = inject(BotAccessService);
   private get numberFormatter() { return new Intl.NumberFormat(this.getDashboardLocale()); }
   private get compactNumberFormatter() { return new Intl.NumberFormat(this.getDashboardLocale(), {
     notation: 'compact',
@@ -282,8 +282,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
   });
 
   // ----------------------------------------------------------- bot + automod
-  readonly chatEnabled = computed(() => this.bootstrap()?.channel.chatEnabled ?? false);
-  readonly isTogglingChat = signal<boolean>(false);
+  /** The signed-in streamer's own channel (not one they manage for someone else). */
+  readonly isOwnChannel = computed(() => this.botAccess.isOwnChannel(this.channelID()));
+  /** Own channel follows the navbar's add/remove control; other channels use the bootstrap. */
+  readonly chatEnabled = computed(() =>
+    this.isOwnChannel() ? this.botAccess.chatEnabled() : (this.bootstrap()?.channel.chatEnabled ?? false)
+  );
+  /**
+   * Own channel without full access yet: show the "Get started" card and keep the states
+   * that only full access turns on (chat events, automod) calm instead of orange.
+   */
+  readonly setupMode = computed(() => this.isOwnChannel() && !this.botAccess.hasFullAccess());
+  /** Phone strip colour: orange only for real problems. */
+  readonly stripTone = computed<'ok' | 'calm' | 'warn'>(() => {
+    const setup = this.setupMode();
+    if ((!this.chatEnabled() && !setup) || this.creditsForecast().warn || (!setup && this.modEnabled() === false)) return 'warn';
+    return this.chatEnabled() ? 'ok' : 'calm';
+  });
 
   readonly modState = signal<ModLoad>('loading');
   readonly modLogs = signal<ModerationActionLogEntry[]>([]);
@@ -346,7 +361,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } else if (lastStream) {
       parts.push(this.t('dashboard.brief.answer.last', { date: this.shortDate(lastStream) }));
     }
-    if (this.modState() === 'ready' && this.modEnabled() !== false) {
+    if (!this.setupMode() && this.modState() === 'ready' && this.modEnabled() !== false) {
       parts.push(
         this.automod().actions
           ? this.t('dashboard.brief.answer.automod', { count: this.automodCount() })
@@ -425,6 +440,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.startTimeContextClock();
     this.setupViewportTracking();
+    let bootstrapRequestedAt = 0;
 
     this.dashboardLoadSub = this.streamerParam$
       .pipe(
@@ -446,6 +462,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
               }
 
               this.channelID.set(channelID);
+              bootstrapRequestedAt = Date.now();
               return this.dashboardApi.getBootstrap(channelID);
             })
           );
@@ -464,6 +481,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
           }
 
           this.errorMessage.set(null);
+          if (this.botAccess.isOwnChannel(channelID)) {
+            // Ignored if the streamer added/removed the bot after this request started.
+            this.botAccess.syncChatEnabled(Boolean(response.data.channel.chatEnabled), bootstrapRequestedAt);
+          }
           this.dashboardApi.startLiveStatusPolling(channelID);
           this.dashboardApi.startAiCreditsPolling(channelID);
           this.loadExtras(channelID);
@@ -1203,28 +1224,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
 
-  toggleChatCompact(): void {
-    const channelID = this.channelID();
-    if (!channelID || this.isTogglingChat()) return;
+  /** Get started, step 1: the same action as the navbar's "Add bot to chat". */
+  addBotToChat(): void {
+    if (this.botAccess.chatBusy()) return;
+    if (this.botAccess.chatNeedsTwitchOk()) {
+      this.botAccess.allowChatOnTwitch();
+      return;
+    }
+    void this.botAccess.setChat(true);
+  }
 
-    const enabled = !this.chatEnabled();
-    this.isTogglingChat.set(true);
-
-    this.dashboardApi.toggleChat(channelID, enabled).subscribe({
-      next: (response) => {
-        this.isTogglingChat.set(false);
-        const current = this.dashboardApi.bootstrapData();
-        if (!response.error && current?.data) {
-          this.dashboardApi.bootstrapData.set({
-            ...current,
-            data: { ...current.data, channel: { ...current.data.channel, chatEnabled: enabled } }
-          });
-        }
-      },
-      error: () => {
-        this.isTogglingChat.set(false);
-      }
-    });
+  giveFullAccess(): void {
+    this.botAccess.startFullAccess('dashboard_setup');
   }
 
   /** Bot-side numbers: automod, chat events and the credits forecast. Each fails on its own. */

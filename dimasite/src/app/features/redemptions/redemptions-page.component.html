@@ -7,7 +7,7 @@
           <h1 class="lf-title">{{ t('redemptions.title') }}</h1>
           <p class="lf-copy">{{ t('redemptions.subtitle') }}</p>
         </div>
-        @if (canManage()) {
+        @if (canEdit()) {
           <div class="lf-head__actions">
             <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
               <app-lf-icon name="plus"></app-lf-icon> {{ t('redemptions.createRewardButton') }}
@@ -30,7 +30,7 @@
         @if (permissionLoaded() && !canManage()) {
           <span class="lf-chip lf-chip--warn"><app-lf-icon name="lock" [size]="12"></app-lf-icon>{{ t('redemptions.viewOnly') }}</span>
         }
-        @if (canManage() && !isLoading()) {
+        @if (canEdit() && !isLoading()) {
           @if (pausedRewards().length) {
             <button type="button" class="lf-chip lf-chip--button" [disabled]="bulkPausing()" (click)="setAllPaused(false)">
               <app-lf-icon name="play" [size]="12"></app-lf-icon>{{ t('redemptions.pause.resumeAll') }}
@@ -56,6 +56,15 @@
         <p class="lf-note">{{ t('redemptions.permission.readOnly') }}</p>
       }
     </header>
+
+    @if (needsFullAccess()) {
+      <app-full-access-note
+        [title]="t('featureAccess.redemptions.title')"
+        [hint]="t('featureAccess.redemptions.hint')"
+        [channelID]="channelID()"
+        source="redemptions"
+      />
+    }
 
     @if (loadFailed()) {
       <section class="lf-banner lf-banner--error" role="alert">
@@ -145,7 +154,7 @@
                       }
                     </p>
                   </div>
-                  @if (canManage()) {
+                  @if (canEdit()) {
                     <div class="lf-item__actions">
                       <button type="button" class="lf-btn lf-btn--compact" (click)="openEditModal(reward)"
                         [attr.aria-label]="t('redemptions.editNamed', { name: reward.title })">{{ t('common.edit') }}</button>
@@ -174,8 +183,8 @@
                   <li class="lf-empty">
                     <span class="lf-empty__icon" aria-hidden="true"><app-lf-icon name="star"></app-lf-icon></span>
                     <h3 class="lf-h3">{{ t('redemptions.emptyTitle') }}</h3>
-                    <p>{{ t('redemptions.noCustomRedemptions') }}</p>
-                    @if (canManage()) {
+                    <p>{{ needsFullAccess() ? t('featureAccess.redemptions.empty') : t('redemptions.noCustomRedemptions') }}</p>
+                    @if (canEdit()) {
                       <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">{{ t('redemptions.createFirstReward') }}</button>
                     }
                   </li>
@@ -206,6 +215,7 @@
           </dl>
         </section>
 
+        @if (!needsFullAccess()) {
         <section class="lf-tile lf-panel" aria-labelledby="rewards-twitch-title">
           <div class="lf-panel__head">
             <div>
@@ -236,12 +246,13 @@
             <a class="lf-btn lf-btn--compact" [href]="twitchDashboardUrl()" target="_blank" rel="noopener noreferrer">{{ t('redemptions.manageOnTwitch') }}</a>
           }
         </section>
+        }
       </div>
     </div>
   </main>
 </div>
 
-@if (canManage()) {
+@if (canEdit()) {
   <app-create-reward-modal
     [userPlan]="userPlan()"
     [isOpen]="isCreateModalOpen()"

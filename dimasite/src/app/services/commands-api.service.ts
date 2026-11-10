@@ -38,6 +38,22 @@ export interface BlocksImportResult {
   advancedCount: number;
 }
 
+/** One default from the bot's catalog (`GET /config/commands/reserved`). */
+export interface ReservedCatalogCommand {
+  name: string;
+  cmd: string;
+  func: string;
+  type?: string;
+  reserved: boolean;
+  /** Localized when the request names a language. */
+  description?: string | null;
+  enabled?: boolean;
+  cooldown?: number;
+  userLevel?: number;
+  userLevelName?: string;
+  message?: string;
+}
+
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
@@ -52,6 +68,8 @@ export class CommandsApiService {
   private readonly languageService = inject(LanguageService);
   private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
   private readonly cache = new Map<string, CacheEntry<unknown>>();
+
+  private readonly reservedCatalog = new Map<string, ReservedCatalogCommand[]>();
 
   readonly listLoading = signal(false);
   readonly listError = signal<string | null>(null);
@@ -303,6 +321,22 @@ export class CommandsApiService {
       map((response) => !response.error && Array.isArray(response.blacklist) ? response.blacklist : null),
       catchError(() => of(null))
     );
+  }
+
+  /** Every default command the bot can set up (public; kept in memory per language). Errors give an empty list. */
+  getReservedCatalog(language: string): Observable<ReservedCatalogCommand[]> {
+    const lang = language === 'es' ? 'es' : 'en';
+    const cached = this.reservedCatalog.get(lang);
+    if (cached) return of(cached);
+    return this.http
+      .get<ApiEnvelope<{ commands?: ReservedCatalogCommand[] }>>(`${this.linksService.getApiUrl()}/config/commands/reserved?language=${lang}`)
+      .pipe(
+        map((response) => (!response.error && Array.isArray(response.data?.commands) ? response.data.commands : [])),
+        tap((commands) => {
+          if (commands.length) this.reservedCatalog.set(lang, commands);
+        }),
+        catchError(() => of<ReservedCatalogCommand[]>([]))
+      );
   }
 
   clearAllCache(): void {

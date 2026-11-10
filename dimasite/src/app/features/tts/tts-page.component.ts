@@ -17,6 +17,7 @@ import {
   type TtsRole,
   type TtsSettings
 } from '../../models/tts-settings.model';
+import { BotAccessService } from '../../services/bot-access.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
@@ -80,8 +81,29 @@ export class TtsPageComponent {
   private readonly toastService = inject(ToastService);
 
   private readonly commandsApi = inject(CommandsApiService);
+  private readonly botAccess = inject(BotAccessService);
   readonly commands = signal<Command[]>([]);
   readonly speechCommand = computed(() => this.commands().find(command => ['speach', 'speech'].includes(command.func)) ?? null);
+  /**
+   * The owner hasn't given full access, so the built-in TTS command doesn't exist yet. TTS still works with
+   * their own command (bot in chat + speech link in OBS), so point them there instead of "no command found".
+   */
+  readonly ttsSetupMode = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.hasFullAccess());
+  /** A command they made themselves that speaks, e.g. `!tts` with `$(tts $(user) says: &t)`. */
+  readonly ownTtsCommand = computed(() => this.commands().find(command => /\$\(tts[\s.)]/.test(command.message || '')) ?? null);
+  readonly showMakeTtsCommand = computed(() =>
+    this.ttsSetupMode() && !this.speechCommand() && !this.ownTtsCommand() && this.canManageSpeechCommand());
+  /** Opens a ready-to-save `!tts` draft on the Commands page (nothing is saved until they save). */
+  readonly ttsCommandPrefill = computed(() => {
+    this.languageService.currentLanguage();
+    return {
+      new: 'command',
+      cmd: 'tts',
+      name: this.t('featureAccess.ttsCommand.name'),
+      message: this.t('featureAccess.ttsCommand.message'),
+      description: this.t('featureAccess.ttsCommand.description')
+    };
+  });
   readonly commandEditorOpen = signal(false);
   readonly commandSaving = signal(false);
   readonly commandsPath = computed(() => ['/', this.streamer(), 'commands']);

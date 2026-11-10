@@ -41,6 +41,14 @@
           <span class="lf-ev__state lf-ev__state--on" [attr.title]="t('chatEvents.tooltips.disableNotAllowed')">
             <app-lf-icon name="lock"></app-lf-icon> {{ t('chatEvents.status.alwaysOn') }}
           </span>
+        } @else if (canManage() && canToggle() && needsFullAccess()) {
+          <span class="lf-ev__state" [class.lf-ev__state--on]="event().enabled">
+            @if (event().enabled) {
+              {{ t('chatEvents.status.on') }}
+            } @else {
+              <app-lf-icon name="lock"></app-lf-icon> {{ t('featureAccess.needs') }}
+            }
+          </span>
         } @else if (canManage() && canToggle()) {
           <button
             type="button"

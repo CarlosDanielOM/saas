@@ -3,7 +3,9 @@
     <h3 id="tw-title"><span class="tw-mark" aria-hidden="true"></span>{{ t('title') }}</h3>
     <span class="chip chip--ok">{{ t('free') }}</span>
   </div>
-  @if (twitch().access === 'permission') {
+  @if (needsFullAccess() && !twitch().goals.length) {
+    <app-full-access-note [title]="language.translate('featureAccess.twitchGoals.title')" [hint]="language.translate('featureAccess.twitchGoals.hint')" [channelID]="channelID()" source="twitch_goals" [compact]="true" data-twitch-full-access />
+  } @else if (twitch().access === 'permission') {
     <div class="tw-callout" role="status" data-twitch-permission>
       <p>{{ t('permission') }}</p>
       @if (streamer()) { <a class="btn primary" [href]="reconnectUrl()">{{ t('reconnect') }}</a> }

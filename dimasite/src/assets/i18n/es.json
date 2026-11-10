@@ -654,6 +654,73 @@
     "itemLimit": "Puedes agregar hasta 12 opciones.",
     "needTwo": "Agrega al menos dos opciones antes de girar."
   },
+  "botAccess": {
+    "chat": {
+      "add": "Agregar bot al chat",
+      "adding": "Agregando…",
+      "removing": "Quitando…",
+      "allow": "Permitir en Twitch",
+      "inChat": "Bot en el chat",
+      "remove": "Quitar",
+      "inChatAria": "El bot está en tu chat. Quitarlo",
+      "confirmRemove": "Toca otra vez para quitar"
+    },
+    "toast": {
+      "joinedTitle": "El bot está en tu chat",
+      "joinedMessage": "Tus comandos ya funcionan. Prueba uno en el chat.",
+      "leftTitle": "El bot salió de tu chat",
+      "leftMessage": "Los comandos y respuestas quedan apagados hasta que lo vuelvas a agregar.",
+      "needsOkTitle": "Twitch necesita tu permiso primero",
+      "needsOkMessage": "Toca “Permitir en Twitch”, aprueba el acceso al chat y el bot entra justo después.",
+      "joinFailedTitle": "No se pudo agregar el bot",
+      "leaveFailedTitle": "No se pudo quitar el bot",
+      "failedMessage": "Inténtalo de nuevo en un momento.",
+      "stillNeedsOkTitle": "Twitch todavía no permitió el bot",
+      "stillNeedsOkMessage": "Asegúrate de aprobar el permiso del chat en Twitch. Si sigue pasando, escríbenos en Discord.",
+      "refusedTitle": "Twitch rechazó el bot en tu chat",
+      "refusedMessage": "No es algo que tengas que aprobar tú. Inténtalo más tarde o escríbenos en Discord."
+    },
+    "fullAccess": {
+      "cta": "Dar acceso completo",
+      "menu": "Dar acceso completo",
+      "ownerOnly": "Solo el dueño del canal puede darle acceso completo al bot."
+    }
+  },
+  "featureAccess": {
+    "followDefense": {
+      "title": "La defensa contra follows necesita acceso completo",
+      "hint": "La defensa contra follows empieza a funcionar cuando el bot tenga acceso completo. Puedes configurarla desde ahora."
+    },
+    "moderation": {
+      "title": "El automod necesita acceso completo",
+      "hint": "Tus reglas de automod empiezan a funcionar cuando el bot tenga acceso completo. Puedes configurarlas desde ahora."
+    },
+    "needs": "Necesita acceso completo",
+    "chatEvents": {
+      "title": "Los eventos de chat necesitan acceso completo",
+      "hint": "Los mensajes de follows, suscripciones, Bits, raids y de cuando entras en vivo se activan aquí cuando el bot tiene acceso completo."
+    },
+    "redemptions": {
+      "title": "Las recompensas de puntos del canal necesitan acceso completo",
+      "hint": "Crea, cambia y pausa recompensas de puntos del canal aquí cuando el bot tenga acceso completo.",
+      "empty": "Cuando des acceso completo, crea una recompensa aquí y aparecerá de inmediato en tu menú de puntos del canal en Twitch."
+    },
+    "overlayPolls": {
+      "title": "Las encuestas y predicciones necesitan acceso completo",
+      "hint": "Tus encuestas y predicciones de Twitch aparecen en vivo en este overlay cuando el bot tiene acceso completo."
+    },
+    "twitchGoals": {
+      "title": "Las metas de Twitch aparecen aquí con acceso completo",
+      "hint": "Las metas que creas en Twitch aparecen aquí cuando el bot tiene acceso completo."
+    },
+    "ttsCommand": {
+      "hint": "El texto a voz ya funciona: crea un comando de chat como !tts que lea en voz alta el mensaje del espectador. Responde en cuanto el bot esté en tu chat y el enlace de voz de abajo esté en OBS.",
+      "cta": "Crear un comando TTS",
+      "name": "Texto a voz",
+      "description": "Lee en voz alta el mensaje del espectador en el stream.",
+      "message": "$(tts $(user) dice: &t)"
+    }
+  },
   "navbar": {
     "dashboard": "Panel",
     "commands": "Comandos",
@@ -3030,6 +3097,40 @@
     }
   },
   "dashboard": {
+    "setup": {
+      "kicker": "Primeros pasos",
+      "titleFirst": "Siguiente paso: agrega el bot a tu chat",
+      "titleNext": "Tu bot ya está en el chat. Siguiente: crea tu primer comando",
+      "subFirst": "Con un toque tus propios comandos funcionan. El acceso completo es opcional y puede esperar.",
+      "subNext": "Tus propios comandos ya funcionan. Da acceso completo cuando quieras el resto.",
+      "done": "Listo",
+      "optional": "Opcional",
+      "chat": {
+        "title": "Agrega el bot a tu chat",
+        "hint": "Lee tu chat y responde a tus comandos.",
+        "done": "Lee tu chat y responde a tus comandos."
+      },
+      "command": {
+        "title": "Crea tu primer comando",
+        "hint": "Por ejemplo, un comando !tts que lee en voz alta los mensajes del chat.",
+        "cta": "Crear un comando"
+      },
+      "full": {
+        "title": "Da acceso completo",
+        "hint": "Desbloquea los comandos integrados, las alertas y los eventos de chat, el automod, los puntos del canal, las encuestas y predicciones, y las estadísticas de seguidores y suscripciones."
+      },
+      "health": {
+        "botInSub": "Tus propios comandos están funcionando",
+        "botOutSub": "Agrégalo para usar tus propios comandos",
+        "eventsSub": "Necesita acceso completo",
+        "automodSub": "Necesita acceso completo",
+        "stripLocked": "Eventos y automod necesitan acceso completo"
+      },
+      "automod": {
+        "title": "Necesita acceso completo",
+        "text": "Con acceso completo, el automod borra por ti el spam, los enlaces y las palabras bloqueadas."
+      }
+    },
     "brief": {
       "week": "Últimos 7 días · {{from}} – {{to}}",
       "weekShort": "Últimos 7 días",
@@ -3809,6 +3910,22 @@
     }
   },
   "commands": {
+    "chatNote": {
+      "text": "El bot todavía no está en tu chat. Agrégalo con el botón de arriba y tus comandos empiezan a funcionar."
+    },
+    "quickStart": {
+      "tts": "Comando de texto a voz",
+      "ttsName": "Texto a voz",
+      "ttsDescription": "Lee en voz alta el mensaje del espectador en el stream.",
+      "ttsHint": "Los espectadores escriben !tts y un mensaje, y se lee en voz alta con el overlay de texto a voz en OBS.",
+      "ttsLink": "Configura el texto a voz"
+    },
+    "locked": {
+      "chip": "Requiere acceso completo",
+      "title": "Los comandos integrados están apagados",
+      "hint": "Se encienden cuando el bot tiene acceso completo en Twitch: shoutouts, encuestas y predicciones, título y categoría, clips, herramientas de mods y VIP y más. Tus propios comandos funcionan sin eso.",
+      "groupCount": "{{count}} comandos"
+    },
     "homeLabel": "Inicio de DomDimaBot",
     "title": "Comandos",
     "subtitle": "Todo lo que tu bot responde en el chat: comandos que escriben tus espectadores, palabras a las que reacciona y las herramientas incluidas.",
@@ -4169,6 +4286,7 @@
         "wordN": "palabra {{n}}"
       },
       "name": {
+        "speach": "Texto a voz",
         "commands": "Lista de comandos",
         "followage": "Tiempo siguiendo",
         "amor": "Medidor de amor",
@@ -4209,6 +4327,7 @@
         "deleteCommandTimer": "Eliminar temporizador"
       },
       "desc": {
+        "speach": "Lee en voz alta el mensaje del espectador con tu overlay de texto a voz.",
         "commands": "Muestra los comandos que el espectador puede usar.",
         "followage": "Muestra cuánto tiempo lleva alguien siguiendo el canal.",
         "amor": "Una lectura de amor divertida entre espectadores.",

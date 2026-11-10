@@ -66,6 +66,8 @@ import { ToastService } from '../../services/toast.service';
 import { whoCanUsePhrase } from '../../models/command.model';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent, type LfIconName } from '../../shared/lf-icon/lf-icon.component';
+import { FullAccessNoteComponent } from '../../shared/full-access-note/full-access-note.component';
+import { BotAccessService } from '../../services/bot-access.service';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -89,7 +91,7 @@ type ListField = 'terms' | 'allowlistDomains';
 
 @Component({
   selector: 'app-moderation-page',
-  imports: [RouterLink, LfIconComponent],
+  imports: [RouterLink, LfIconComponent, FullAccessNoteComponent],
   templateUrl: './moderation-page.component.html',
   styleUrl: './moderation-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -164,6 +166,9 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   });
 
   readonly channelID = computed(() => this.channelResolution().channelID);
+  private readonly botAccess = inject(BotAccessService);
+  /** Own channel without full access: the bot isn't a moderator yet, so this can't act. */
+  readonly needsFullAccess = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.hasFullAccess());
   readonly modulePath = computed(() => {
     const streamer = this.streamer();
     return streamer ? ['/', streamer, 'modules'] : ['/'];

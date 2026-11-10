@@ -13,8 +13,12 @@
  *  - #goals links open the folded Goals section;
  *  - phone tabs between "Your channel" and "Your bot";
  *  - folded stream history (chart sizes once opened, one row per stream) and goals;
- *  - failure cases: bot out of chat (warning + join works), automod off,
- *    chat events failing to load, live stream strip;
+ *  - failure cases (full access): bot out of chat (orange warning, no header
+ *    bot button: the navbar owns add/remove), automod off, chat events failing
+ *    to load; live stream strip;
+ *  - setup mode (own channel without full access): one calm "Get started" card
+ *    (add bot → make a command → optional full access), nothing orange for
+ *    chat events / automod, adding the bot from the card flips the card + chip;
  *  - no horizontal overflow, no page errors, no serious axe violations in
  *    dark and light.
  */
@@ -152,14 +156,15 @@ function envelope(data) {
 }
 
 /**
- * @param {object} o scenario: chatEnabled, live, automodOn, eventsFail, overPace, theme, language
+ * @param {object} o scenario: chatEnabled, actived (default true), live, automodOn, eventsFail, overPace, theme, language
  */
 async function newPage(browser, viewport, o) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, timezoneId: 'UTC', colorScheme: o.theme });
   const state = { chatEnabled: o.chatEnabled, toggles: [] };
+  const actived = o.actived ?? true;
   const app = {
-    name: 'Test Streamer', email: 'test@example.invalid', language: o.language ?? 'en', plan_tier: 'premium', actived: true,
-    chat_enabled: o.chatEnabled, twitch_user_id: CHANNEL_ID, has_permissions: true, up_to_date_permissions: true, administrating: []
+    name: 'Test Streamer', email: 'test@example.invalid', language: o.language ?? 'en', plan_tier: 'premium', actived,
+    chat_enabled: o.chatEnabled, twitch_user_id: CHANNEL_ID, has_permissions: actived, up_to_date_permissions: actived, administrating: []
   };
   await context.addInitScript(({ twitch, app, theme, keepTopics }) => {
     localStorage.setItem('dimasite.session.v1', JSON.stringify({
@@ -402,7 +407,7 @@ try {
     await until(async () => visible(page, '#dash-bot'), `${label}: strip opens bot pane`);
     // tap targets
     const small = await page.evaluate(() =>
-      [...document.querySelectorAll('app-dashboard .tabs button, app-dashboard .topic, app-dashboard .gh__bot, app-dashboard .hm__btn')]
+      [...document.querySelectorAll('app-dashboard .tabs button, app-dashboard .topic, app-dashboard .gs__act, app-dashboard .hm__btn')]
         .filter((el) => el.getClientRects().length && el.getBoundingClientRect().height < 40)
         .map((el) => el.textContent.trim())
     );
@@ -418,7 +423,7 @@ try {
 
   // ---------------------------------------------------- 4. failure cases: bot out, automod off, events fail
   {
-    const { context, page, errors, state } = await newPage(browser, { width: 1366, height: 900 }, {
+    const { context, page, errors } = await newPage(browser, { width: 1366, height: 900 }, {
       chatEnabled: false, automodOn: false, eventsFail: true, overPace: false, theme: 'dark'
     });
     const label = 'desktop-bot-out';
@@ -430,11 +435,11 @@ try {
     assert.doesNotMatch(await text(page, '.answer'), /Automod/, `${label}: answer skips automod when off`);
     await page.screenshot({ path: `${shots}/${label}.png`, fullPage: false });
     await primaryButtonsPainted(page, label);
-    await page.locator('.gh__bot').click();
-    await until(async () => (await text(page, '.gh .chips')).includes('Bot in your chat'), `${label}: join flips bot chip`);
-    assert.deepEqual(state.toggles, [true], `${label}: one join request`);
-    assert.equal(await page.locator('.gh__warn').count(), 0, `${label}: warning gone after join`);
-    assert.match(await text(page, '.gh__bot'), /Turn the bot off/, `${label}: button now turns the bot off`);
+    // The navbar owns add/remove now: no bot button in the dashboard header, just the status chip.
+    assert.equal(await page.locator('.gh__bot').count(), 0, `${label}: no header bot button`);
+    assert.match(await text(page, '.gh .chips'), /Bot not in your chat/, `${label}: bot-out chip`);
+    assert.equal(await page.locator('.gh .chip--warn').count(), 1, `${label}: bot-out chip is a warning with full access`);
+    assert.equal(await page.locator('[data-testid="dashboard-setup"]').count(), 0, `${label}: no get-started card with full access`);
     assert.deepEqual(errors, [], `${label}: page errors`);
     await context.close();
   }
@@ -463,7 +468,7 @@ try {
   {
     const { context, page, errors } = await newPage(browser, { width: 390, height: 844 }, { chatEnabled: true, automodOn: true, overPace: true, theme: 'dark', language: 'es' });
     await until(async () => (await text(page, '.answer')).includes('El automod actuó 5 veces'), 'es: answer');
-    assert.match(await text(page, '.answer'), /3 directos/);
+    assert.match(await text(page, '.answer'), /3 streams, 9h 30m en vivo/); // es-MX wording since 2026-11-06
     assert.equal(await page.locator('.soon__chip').first().innerText(), 'MUY PRONTO');
     assert.equal(await page.evaluate(() => document.body.innerText.includes('dashboard.brief')), false, 'es: no missing keys');
     await noOverflow(page, 'es');
@@ -472,7 +477,75 @@ try {
     await context.close();
   }
 
-  console.log('PASS dashboard split + briefing: health, shortcuts, week, automod, coming soon, topics, tabs, history, failure cases, live, es');
+  // ---------------------------------------------------- 7. setup mode: own channel without full access
+  for (const [width, theme] of [[1366, 'dark'], [390, 'dark'], [320, 'light']]) {
+    const { context, page, errors, state } = await newPage(browser, { width, height: 900 }, {
+      chatEnabled: false, actived: false, automodOn: false, overPace: false, theme
+    });
+    const label = `setup-${width}-${theme}`;
+    const card = page.locator('[data-testid="dashboard-setup"]');
+    await card.waitFor();
+    assert.match(await card.innerText(), /Next step: add the bot to your chat/, `${label}: headline`);
+    assert.equal(await card.locator('.gs__step').count(), 3, `${label}: three steps`);
+    assert.equal(await card.locator('[data-step="command"] a').getAttribute('href'), '/test/commands', `${label}: command link`);
+    assert.match(await card.locator('[data-step="command"]').innerText(), /!tts/, `${label}: command hint`);
+    assert.match(await card.locator('[data-step="full"]').innerText(), /optional[\s\S]*Unlocks built-in commands/i, `${label}: full access step`);
+    // No pre-consent explanations: Twitch's own approval page lists the permissions.
+    assert.doesNotMatch(await card.innerText(), /Twitch will ask|approval needed/i, `${label}: no permission explainer`);
+    assert.equal(await page.locator('.bs__item[data-tone="calm"] button').count(), 0, `${label}: one Give full access (in the card)`);
+
+    // Nothing orange for what only full access turns on
+    assert.equal(await page.locator('.gh__warn').count(), 0, `${label}: no bot-off warning`);
+    assert.equal(await page.locator('.gh__bot').count(), 0, `${label}: no header bot button`);
+    assert.equal(await page.locator('app-dashboard .chip--warn').count(), 0, `${label}: no warning chip`);
+    assert.match(await text(page, '.gh .chips'), /Bot not in your chat/, `${label}: neutral bot chip`);
+    if (width >= 640) {
+      await until(async () => (await page.locator('.bs__item[data-tone="calm"]').count()) === 3, `${label}: three calm health tiles`);
+      assert.equal(await page.locator('.bs__item[data-tone="warn"]').count(), 0, `${label}: no warn health tiles`);
+      assert.match(await page.locator('.bs__item').nth(1).innerText(), /Chat events[\s\S]*Needs full access/, `${label}: events tile`);
+      assert.match(await page.locator('.bs__item').nth(3).innerText(), /Automod[\s\S]*Needs full access/, `${label}: automod tile`);
+      await until(async () => (await text(page, '[aria-labelledby="dash-automod"]')).includes('Needs full access'), `${label}: automod card`);
+      assert.doesNotMatch(await text(page, '[aria-labelledby="dash-automod"]'), /Automod is off/, `${label}: no automod-off`);
+      assert.doesNotMatch(await text(page, '.answer'), /Automod/, `${label}: answer skips automod`);
+    } else {
+      assert.equal(await page.locator('.strip--warn').count(), 0, `${label}: strip not orange`);
+      assert.equal(await page.locator('.strip__item--warn').count(), 0, `${label}: no warn strip items`);
+      assert.match(await text(page, '.strip'), /Bot not in your chat[\s\S]*Events and automod need full access/, `${label}: strip`);
+      const small = await page.evaluate(() =>
+        [...document.querySelectorAll('app-dashboard .gs__act')]
+          .filter((el) => el.getClientRects().length && el.getBoundingClientRect().height < 44)
+          .map((el) => el.textContent.trim())
+      );
+      assert.deepEqual(small, [], `${label}: get-started buttons under 44px`);
+    }
+    await noOverflow(page, label);
+    await primaryButtonsPainted(page, label);
+    await axe(page, label);
+    await page.screenshot({ path: `${shots}/${label}.png`, fullPage: width < 640 });
+
+    // Step 1 adds the bot (same request as the navbar) and the page follows
+    await card.locator('[data-step="chat"] .gs__act').click();
+    await until(async () => (await card.innerText()).includes('Your bot is in chat. Next: make your first command'), `${label}: headline after join`);
+    assert.deepEqual(state.toggles, [true], `${label}: one join request`);
+    assert.match(await card.locator('[data-step="chat"]').innerText(), /Done/, `${label}: step 1 done`);
+    await until(async () => (await text(page, '.gh .chips')).includes('Bot in your chat'), `${label}: chip follows the join`);
+    // Step 2's link turns primary; let the global .btn colour transition (200 ms) finish before axe.
+    await page.waitForTimeout(400);
+    await axe(page, `${label}-joined`);
+
+    // Step 3 starts the full-access approval on Twitch
+    if (width >= 640) {
+      const request = page.waitForRequest((r) => r.url().includes('/auth/authorize'));
+      await card.locator('[data-step="full"] .gs__act').click();
+      const url = new URL((await request).url());
+      assert.equal(url.searchParams.get('action'), 'activate', `${label}: full access action`);
+      assert.equal(url.searchParams.get('state'), 'test', `${label}: full access login`);
+    }
+    assert.deepEqual(errors, [], `${label}: page errors`);
+    await context.close();
+  }
+
+  console.log('PASS dashboard split + briefing: health, shortcuts, week, automod, coming soon, topics, tabs, history, failure cases, live, es, setup mode');
 } finally {
   await browser.close();
 }

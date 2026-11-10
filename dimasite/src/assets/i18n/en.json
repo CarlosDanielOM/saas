@@ -654,6 +654,73 @@
     "itemLimit": "You can add up to 12 items.",
     "needTwo": "Add at least two items before spinning."
   },
+  "botAccess": {
+    "chat": {
+      "add": "Add bot to chat",
+      "adding": "Adding…",
+      "removing": "Removing…",
+      "allow": "Allow on Twitch",
+      "inChat": "Bot in chat",
+      "remove": "Remove",
+      "inChatAria": "The bot is in your chat. Remove it",
+      "confirmRemove": "Tap again to remove"
+    },
+    "toast": {
+      "joinedTitle": "The bot is in your chat",
+      "joinedMessage": "Your commands work now. Try one in chat.",
+      "leftTitle": "The bot left your chat",
+      "leftMessage": "Commands and replies are off until you add it again.",
+      "needsOkTitle": "Twitch needs your OK first",
+      "needsOkMessage": "Tap “Allow on Twitch”, approve chat access, and the bot joins right after.",
+      "joinFailedTitle": "Couldn't add the bot",
+      "leaveFailedTitle": "Couldn't remove the bot",
+      "failedMessage": "Please try again in a moment.",
+      "stillNeedsOkTitle": "Twitch still didn't allow the bot",
+      "stillNeedsOkMessage": "Make sure you approve the chat permission on Twitch. If it keeps happening, contact us on Discord.",
+      "refusedTitle": "Twitch refused the bot for your chat",
+      "refusedMessage": "This isn't something you need to approve. Please try again later or contact us on Discord."
+    },
+    "fullAccess": {
+      "cta": "Give full access",
+      "menu": "Give full access",
+      "ownerOnly": "Only the channel owner can give the bot full access."
+    }
+  },
+  "featureAccess": {
+    "followDefense": {
+      "title": "Follow-bot protection needs full access",
+      "hint": "Follow-bot protection starts working once the bot has full access. You can set it up now."
+    },
+    "moderation": {
+      "title": "Automod needs full access",
+      "hint": "Your automod rules start working once the bot has full access. You can set them up now."
+    },
+    "needs": "Needs full access",
+    "chatEvents": {
+      "title": "Chat events need full access",
+      "hint": "Follow, sub, Bits, raid and going-live messages turn on here once the bot has full access."
+    },
+    "redemptions": {
+      "title": "Channel point rewards need full access",
+      "hint": "Make, change and pause channel point rewards here once the bot has full access.",
+      "empty": "After you give full access, make a reward here and it shows up in your Twitch channel points menu right away."
+    },
+    "overlayPolls": {
+      "title": "Polls and predictions need full access",
+      "hint": "Your Twitch polls and predictions show up live in this overlay once the bot has full access."
+    },
+    "twitchGoals": {
+      "title": "Twitch goals show up here after full access",
+      "hint": "Goals you make on Twitch show up here once the bot has full access."
+    },
+    "ttsCommand": {
+      "hint": "Text to speech already works: make a chat command like !tts that reads the viewer's message aloud. It answers as soon as the bot is in your chat and the speech link below is in OBS.",
+      "cta": "Make a TTS command",
+      "name": "Text to speech",
+      "description": "Reads the viewer's message aloud on stream.",
+      "message": "$(tts $(user) says: &t)"
+    }
+  },
   "navbar": {
     "dashboard": "Dashboard",
     "commands": "Commands",
@@ -3030,6 +3097,40 @@
     }
   },
   "dashboard": {
+    "setup": {
+      "kicker": "Get started",
+      "titleFirst": "Next step: add the bot to your chat",
+      "titleNext": "Your bot is in chat. Next: make your first command",
+      "subFirst": "One tap and your own commands work. Full access is optional and can wait.",
+      "subNext": "Your own commands work now. Give full access whenever you want the rest.",
+      "done": "Done",
+      "optional": "Optional",
+      "chat": {
+        "title": "Add the bot to your chat",
+        "hint": "It reads your chat and answers your commands.",
+        "done": "It reads your chat and answers your commands."
+      },
+      "command": {
+        "title": "Make your first command",
+        "hint": "For example, a !tts command that reads chat messages aloud.",
+        "cta": "Create a command"
+      },
+      "full": {
+        "title": "Give full access",
+        "hint": "Unlocks built-in commands, alerts and chat events, automod, channel points, polls and predictions, and follower and sub stats."
+      },
+      "health": {
+        "botInSub": "Your own commands are working",
+        "botOutSub": "Add it to use your own commands",
+        "eventsSub": "Needs full access",
+        "automodSub": "Needs full access",
+        "stripLocked": "Events and automod need full access"
+      },
+      "automod": {
+        "title": "Needs full access",
+        "text": "With full access, automod deletes spam, links and blocked words for you."
+      }
+    },
     "brief": {
       "week": "Last 7 days · {{from}} – {{to}}",
       "weekShort": "Last 7 days",
@@ -3809,6 +3910,22 @@
     }
   },
   "commands": {
+    "chatNote": {
+      "text": "The bot isn't in your chat yet. Add it with the button at the top and your commands start working."
+    },
+    "quickStart": {
+      "tts": "Text-to-speech command",
+      "ttsName": "Text to speech",
+      "ttsDescription": "Reads the viewer's message aloud on stream.",
+      "ttsHint": "Viewers type !tts and a message, and it's read aloud through the text-to-speech overlay in OBS.",
+      "ttsLink": "Set up text to speech"
+    },
+    "locked": {
+      "chip": "Needs full access",
+      "title": "Built-in commands are off",
+      "hint": "They turn on once the bot has full access on Twitch: shoutouts, polls and predictions, title and game, clips, mod and VIP tools and more. Your own commands work without it.",
+      "groupCount": "{{count}} commands"
+    },
     "homeLabel": "DomDimaBot home",
     "title": "Commands",
     "subtitle": "Everything your bot answers in chat: commands viewers type, words it reacts to, and the built-in tools.",
@@ -4169,6 +4286,7 @@
         "wordN": "word {{n}}"
       },
       "name": {
+        "speach": "Text to speech",
         "commands": "Command list",
         "followage": "Follow age",
         "amor": "Love meter",
@@ -4209,6 +4327,7 @@
         "deleteCommandTimer": "Delete timer"
       },
       "desc": {
+        "speach": "Reads the viewer's message aloud through your text-to-speech overlay.",
         "commands": "Lists the commands the viewer is allowed to use.",
         "followage": "Shows how long someone has followed the channel.",
         "amor": "A playful love reading between viewers.",

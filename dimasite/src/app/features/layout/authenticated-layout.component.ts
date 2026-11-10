@@ -5,6 +5,7 @@ import { catchError, distinctUntilChanged, forkJoin, map, of, switchMap } from '
 import { Coins, Gift, Languages, LogOut, LucideAngularModule, Moon, RefreshCw, ShieldAlert, Sparkles, Sun, User, Zap } from 'lucide-angular';
 
 import { AnalyticsService } from '../../services/analytics.service';
+import { BotAccessService } from '../../services/bot-access.service';
 import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -39,6 +40,7 @@ export class AuthenticatedLayoutComponent {
   private readonly toastService = inject(ToastService);
   private readonly upgradeService = inject(UpgradeService);
   private readonly pendingActionsQueue = inject(PendingActionsQueueService);
+  readonly botAccess = inject(BotAccessService);
   /** Full-screen pages such as Overlay Studio hide the navbar while they are open. */
   readonly focus = inject(LayoutFocusService).active;
   private readonly profileMenu = viewChild<ElementRef<HTMLElement>>('profileMenu');
@@ -105,14 +107,15 @@ export class AuthenticatedLayoutComponent {
   );
   readonly isProfileMenuOpen = signal(false);
   readonly isMobileMenuOpen = signal(false);
-  readonly permissionCtaState = computed<'activate' | 'reauthenticate' | 'update' | null>(() => {
+  /**
+   * Fix-it CTA for streamers who already gave full access and lost it. A new streamer
+   * (no full access yet) gets the chat control instead; full access is offered in the
+   * menu and next to the features that need it.
+   */
+  readonly permissionCtaState = computed<'reauthenticate' | 'update' | null>(() => {
     const appUser = this.session()?.appUser;
-    if (!appUser) {
+    if (!appUser || !appUser.actived) {
       return null;
-    }
-
-    if (!appUser.actived) {
-      return 'activate';
     }
 
     if (!appUser.has_permissions) {
@@ -130,10 +133,6 @@ export class AuthenticatedLayoutComponent {
     // Access currentLanguage to create dependency for re-computation
     this.languageService.currentLanguage();
     const state = this.permissionCtaState();
-    if (state === 'activate') {
-      return this.t('navbar.activateBot');
-    }
-
     if (state === 'reauthenticate') {
       return this.t('navbar.reauthenticate');
     }
@@ -147,10 +146,6 @@ export class AuthenticatedLayoutComponent {
   readonly permissionCtaButtonClass = computed(() => {
     const state = this.permissionCtaState();
 
-    if (state === 'activate') {
-      return 'auth-navbar__cta-btn auth-navbar__cta-btn--activate';
-    }
-
     if (state === 'reauthenticate') {
       return 'auth-navbar__cta-btn auth-navbar__cta-btn--reauthenticate';
     }
@@ -160,16 +155,44 @@ export class AuthenticatedLayoutComponent {
   readonly permissionCtaIcon = computed(() => {
     const state = this.permissionCtaState();
 
-    if (state === 'activate') {
-      return this.activateIcon;
-    }
-
     if (state === 'reauthenticate') {
       return this.reauthenticateIcon;
     }
 
     return this.updatePermissionsIcon;
   });
+  /** Owner on their own channel, nothing to fix: the navbar slot adds/removes the bot from chat. */
+  readonly showChatControl = computed(() =>
+    Boolean(this.session()) && !this.hasPermissionCta() && !this.isViewingManagedChannel() && Boolean(this.botAccess.ownChannelID())
+  );
+  /** "Remove" asks for a second tap: the bot stops answering chat right away. */
+  readonly chatLeaveConfirm = signal(false);
+  private chatLeaveConfirmTimer: ReturnType<typeof setTimeout> | null = null;
+  readonly chatControlState = computed<'out' | 'needs-ok' | 'in' | 'confirm' | 'busy'>(() => {
+    if (this.botAccess.chatBusy()) return 'busy';
+    if (!this.botAccess.chatEnabled()) return this.botAccess.chatNeedsTwitchOk() ? 'needs-ok' : 'out';
+    return this.chatLeaveConfirm() ? 'confirm' : 'in';
+  });
+  readonly chatControlLabel = computed(() => {
+    this.languageService.currentLanguage();
+    switch (this.chatControlState()) {
+      case 'busy': return this.t(this.botAccess.chatEnabled() ? 'botAccess.chat.removing' : 'botAccess.chat.adding');
+      case 'needs-ok': return this.t('botAccess.chat.allow');
+      case 'in': return this.t('botAccess.chat.inChat');
+      case 'confirm': return this.t('botAccess.chat.confirmRemove');
+      default: return this.t('botAccess.chat.add');
+    }
+  });
+  readonly chatControlAria = computed(() => {
+    this.languageService.currentLanguage();
+    const state = this.chatControlState();
+    if (state === 'in') return this.t('botAccess.chat.inChatAria');
+    return this.chatControlLabel();
+  });
+  /** Full access not given yet: offered in the menus instead of taking over the navbar. */
+  readonly showFullAccessMenuItem = computed(() =>
+    Boolean(this.session()) && !this.session()?.appUser.actived && !this.isViewingManagedChannel()
+  );
   readonly showUpgradeOption = computed(() => !this.isViewingManagedChannel() && this.planTier() !== 'pro');
   readonly upgradeMenuLabel = computed(() => {
     this.languageService.currentLanguage();
@@ -288,6 +311,8 @@ export class AuthenticatedLayoutComponent {
         this.toastService,
         this.languageService
       );
+      // Back from approving chat access on Twitch: add the bot as the streamer asked.
+      untracked(() => this.botAccess.resumePendingJoin());
     });
   }
 
@@ -413,6 +438,42 @@ export class AuthenticatedLayoutComponent {
     this.closeProfileMenu();
     this.closeMobileMenu();
     window.location.href = `${this.linksService.getApiUrl()}/auth/authorize?${params.toString()}`;
+  }
+
+  onChatControl(): void {
+    switch (this.chatControlState()) {
+      case 'busy':
+        return;
+      case 'needs-ok':
+        this.botAccess.allowChatOnTwitch();
+        return;
+      case 'out':
+        void this.botAccess.setChat(true);
+        return;
+      case 'in':
+        this.chatLeaveConfirm.set(true);
+        this.clearChatLeaveTimer();
+        this.chatLeaveConfirmTimer = setTimeout(() => this.chatLeaveConfirm.set(false), 4000);
+        return;
+      case 'confirm':
+        this.clearChatLeaveTimer();
+        this.chatLeaveConfirm.set(false);
+        void this.botAccess.setChat(false);
+        return;
+    }
+  }
+
+  openFullAccessFromMenu(): void {
+    this.closeProfileMenu();
+    this.closeMobileMenu();
+    this.botAccess.startFullAccess('navbar_menu');
+  }
+
+  private clearChatLeaveTimer(): void {
+    if (this.chatLeaveConfirmTimer) {
+      clearTimeout(this.chatLeaveConfirmTimer);
+      this.chatLeaveConfirmTimer = null;
+    }
   }
 
   openUpgradeFromMenu(): void {

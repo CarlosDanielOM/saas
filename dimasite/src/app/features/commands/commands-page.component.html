@@ -29,6 +29,11 @@
           <span [class.lf-spin]="loading()"><app-lf-icon name="refresh" [size]="13"></app-lf-icon></span>{{ t('common.refresh') }}
         </button>
       </div>
+      @if (showChatNote()) {
+        <p class="lf-chat-note" role="note">
+          <app-lf-icon name="chat" [size]="15"></app-lf-icon><span>{{ t('commands.chatNote.text') }}</span>
+        </p>
+      }
     </header>
 
     @if (publicUrl()) {
@@ -79,11 +84,15 @@
               <button type="button" class="lf-btn lf-btn--compact" (click)="hardRefreshCommands()">{{ t('common.retry') }}</button>
             </div>
           } @else if (isSearching()) {
-            <p class="lf-note" role="status">{{ t('commands.search.results', { count: searchResults().length, query: searchInput().trim() }) }}</p>
+            <p class="lf-note" role="status">{{ t('commands.search.results', { count: searchResults().length + searchLockedResults().length, query: searchInput().trim() }) }}</p>
             <ul class="lf-item-list">
               @for (command of searchResults(); track commandTrackId(command)) {
                 <ng-container *ngTemplateOutlet="row; context: { $implicit: command, showKind: true }"></ng-container>
-              } @empty {
+              }
+              @for (command of searchLockedResults(); track commandTrackId(command)) {
+                <ng-container *ngTemplateOutlet="lockedRow; context: { $implicit: command }"></ng-container>
+              }
+              @if (!searchResults().length && !searchLockedResults().length) {
                 <li class="lf-empty lf-empty--compact"><p>{{ t('commands.search.none') }}</p></li>
               }
             </ul>
@@ -104,7 +113,16 @@
                       <h4 class="lf-h3">{{ t('commands.empty.customTitle') }}</h4>
                       <p>{{ t('commands.empty.customHint') }}</p>
                       @if (canManage()) {
-                        <button type="button" class="lf-btn lf-btn--primary" (click)="openCreate('command')">{{ t('commands.empty.customCta') }}</button>
+                        <div class="lf-empty__actions">
+                          <button type="button" class="lf-btn lf-btn--primary" (click)="openCreate('command')">{{ t('commands.empty.customCta') }}</button>
+                          <button type="button" class="lf-btn" (click)="openTtsCommand()">
+                            <app-lf-icon name="audio" [size]="15"></app-lf-icon>{{ t('commands.quickStart.tts') }}
+                          </button>
+                        </div>
+                        <p class="lf-empty__hint">
+                          {{ t('commands.quickStart.ttsHint') }}
+                          <a class="lf-link" [routerLink]="ttsPath()">{{ t('commands.quickStart.ttsLink') }}</a>
+                        </p>
                       }
                     </li>
                   }
@@ -156,22 +174,37 @@
             }
 
             <!-- Built-in, grouped by what they're for -->
-            @if ((filter() === 'all' || filter() === 'builtin') && builtinList().length) {
-              <section class="lf-group" aria-labelledby="commands-builtin-title">
+            @if ((filter() === 'all' || filter() === 'builtin') && builtinSource().length) {
+              @let locked = builtinsLocked();
+              <section class="lf-group" [class.lf-group--locked]="locked" aria-labelledby="commands-builtin-title">
                 <div class="lf-group__head">
-                  <h3 class="lf-h3" id="commands-builtin-title">{{ t('commands.sections.builtin') }} <span class="lf-count">{{ builtinList().length }}</span></h3>
-                  <p class="lf-note">{{ t('commands.sections.builtinHint') }}</p>
+                  <h3 class="lf-h3" id="commands-builtin-title">{{ t('commands.sections.builtin') }} <span class="lf-count">{{ builtinSource().length }}</span></h3>
+                  @if (!locked) {
+                    <p class="lf-note">{{ t('commands.sections.builtinHint') }}</p>
+                  }
                 </div>
+                @if (locked) {
+                  <app-full-access-note [title]="t('commands.locked.title')" [hint]="t('commands.locked.hint')"
+                    [channelID]="channelID()" source="commands_builtins" />
+                }
                 @for (group of builtinGroups(); track group.group) {
                   <details class="lf-fold" [open]="filter() === 'builtin'">
                     <summary>
                       <span class="lf-fold__title">{{ groupLabel(group.group) }}</span>
-                      <span class="lf-fold__meta">{{ t('commands.builtin.groupCount', { on: group.on, total: group.items.length }) }}</span>
+                      @if (locked) {
+                        <span class="lf-fold__meta lf-fold__meta--locked"><app-lf-icon name="lock" [size]="12"></app-lf-icon>{{ t('commands.locked.groupCount', { count: group.items.length }) }}</span>
+                      } @else {
+                        <span class="lf-fold__meta">{{ t('commands.builtin.groupCount', { on: group.on, total: group.items.length }) }}</span>
+                      }
                       <code class="lf-fold__preview" aria-hidden="true">{{ groupPreview(group.items) }}</code>
                     </summary>
                     <ul class="lf-item-list">
                       @for (command of group.items; track commandTrackId(command)) {
-                        <ng-container *ngTemplateOutlet="row; context: { $implicit: command }"></ng-container>
+                        @if (locked) {
+                          <ng-container *ngTemplateOutlet="lockedRow; context: { $implicit: command }"></ng-container>
+                        } @else {
+                          <ng-container *ngTemplateOutlet="row; context: { $implicit: command }"></ng-container>
+                        }
                       }
                     </ul>
                   </details>
@@ -286,6 +319,26 @@
           }
         </div>
       }
+    </li>
+  </ng-template>
+
+  <!-- A built-in before full access: read-only, nothing to edit or switch, never calls the API -->
+  <ng-template #lockedRow let-command>
+    <li class="lf-item lf-cmd-row lf-item--locked" data-kind="reserved">
+      <div class="lf-item__body">
+        <div class="lf-item__name">
+          <code class="lf-trigger" data-kind="reserved">{{ activationLabel(command) }}</code>
+          <h4 [title]="builtinTitle(command)">{{ builtinTitle(command) }}</h4>
+          <span class="lf-chip lf-chip--xs lf-chip--locked"><app-lf-icon name="lock" [size]="11"></app-lf-icon>{{ t('commands.locked.chip') }}</span>
+        </div>
+        <p class="lf-item__what">{{ builtinDescription(command) }}</p>
+        <p class="lf-item__meta">
+          @if (usageLine(command); as usage) {
+            <span class="lf-usage"><span class="visually-hidden">{{ t('commands.usage') }}</span><code>{{ usage }}</code></span>
+          }
+          <span class="lf-tag"><app-lf-icon name="users" [size]="12"></app-lf-icon>{{ whoCanUse(command.userLevel) }}</span>
+        </p>
+      </div>
     </li>
   </ng-template>
 

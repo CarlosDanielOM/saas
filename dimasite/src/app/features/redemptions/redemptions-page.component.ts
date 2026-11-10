@@ -11,9 +11,11 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, firstValueFrom, forkJoin, map, of } from 'rxjs';
 
+import { BotAccessService } from '../../services/bot-access.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
+import { FullAccessNoteComponent } from '../../shared/full-access-note/full-access-note.component';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { TriggersService } from '../triggers/triggers.service';
@@ -33,7 +35,7 @@ const SEARCH_THRESHOLD = 6;
 
 @Component({
   selector: 'app-redemptions-page',
-  imports: [RouterLink, CreateRewardModalComponent, LfIconComponent],
+  imports: [RouterLink, CreateRewardModalComponent, LfIconComponent, FullAccessNoteComponent],
   styleUrl: './redemptions-page.component.css',
   templateUrl: './redemptions-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -48,6 +50,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   private readonly redemptionsService = inject(RedemptionsService);
   private readonly triggersService = inject(TriggersService);
   private readonly toastService = inject(ToastService);
+  private readonly botAccess = inject(BotAccessService);
 
   private cooldownTimer: number | null = null;
 
@@ -78,6 +81,15 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   readonly redemptionToEdit = signal<Redemption | null>(null);
   readonly redemptionToDelete = signal<Redemption | null>(null);
   readonly deleting = signal(false);
+
+  /**
+   * The owner hasn't given full access yet: Twitch only lets the bot read, make or change
+   * channel point rewards after it. Managers can't see the owner's flag: no change there.
+   */
+  readonly needsFullAccess = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.hasFullAccess());
+
+  /** Can make and change rewards here (every change goes through Twitch). */
+  readonly canEdit = computed(() => this.canManage() && !this.needsFullAccess());
 
   readonly userPlan = computed<PlanTier>(() => {
     const tier = this.sessionAuth.getPlanTierForStreamer(this.streamer());
@@ -163,7 +175,8 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     void this.loadPermission(resolvedChannelId);
     this.loadRedemptions(resolvedChannelId);
     // Live state (sold out, cooling down, paused) changes during a stream: always ask Twitch.
-    this.loadTwitchRedemptions(resolvedChannelId, true);
+    // Without full access Twitch would refuse, so don't ask (the page shows why instead).
+    if (!this.needsFullAccess()) this.loadTwitchRedemptions(resolvedChannelId, true);
     this.loadLinkedTriggers(resolvedChannelId);
     this.startCooldownTimer();
   }
@@ -250,7 +263,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     if (!channelId || this.refreshCooldown() > 0) return;
 
     this.loadRedemptions(channelId, true);
-    this.loadTwitchRedemptions(channelId, true);
+    if (!this.needsFullAccess()) this.loadTwitchRedemptions(channelId, true);
     this.loadLinkedTriggers(channelId);
     this.refreshCooldown.set(REFRESH_COOLDOWN_SECONDS);
   }
@@ -270,18 +283,18 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     const channelId = this.channelID();
     if (channelId) {
       this.loadRedemptions(channelId, true);
-      this.loadTwitchRedemptions(channelId, true);
+      if (!this.needsFullAccess()) this.loadTwitchRedemptions(channelId, true);
     }
   }
 
   openCreateModal(): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.redemptionToEdit.set(null);
     this.isCreateModalOpen.set(true);
   }
 
   openEditModal(redemption: Redemption): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.redemptionToEdit.set(redemption);
     this.isCreateModalOpen.set(true);
   }
@@ -299,7 +312,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   onRewardCreated(data: RedemptionCreateRequest): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     const channelId = this.channelID();
     if (!channelId) return;
 
@@ -314,7 +327,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   onRewardUpdated(event: { id: string; data: RedemptionUpdateRequest }): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     const channelId = this.channelID();
     if (!channelId) return;
 
@@ -339,7 +352,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
   /** Optimistic on/off with rollback. */
   toggleEnabled(redemption: Redemption, input?: HTMLInputElement): void {
-    if (!this.canManage() || this.togglingId()) return;
+    if (!this.canEdit() || this.togglingId()) return;
     const channelId = this.channelID();
     if (!channelId) return;
     const rewardId = redemption.rewardID || redemption.id;
@@ -382,7 +395,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
   /** Paused rewards stay on the menu but can't be redeemed. Optimistic with rollback. */
   togglePaused(reward: Redemption): void {
-    if (!this.canManage() || this.togglingId() || this.bulkPausing()) return;
+    if (!this.canEdit() || this.togglingId() || this.bulkPausing()) return;
     const channelId = this.channelID();
     if (!channelId) return;
     const rewardId = reward.rewardID || reward.id;
@@ -409,7 +422,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
   /** "Going on a break": pause (or resume) every reward DomDimaBot manages in one go. */
   setAllPaused(paused: boolean): void {
-    if (!this.canManage() || this.bulkPausing() || this.togglingId()) return;
+    if (!this.canEdit() || this.bulkPausing() || this.togglingId()) return;
     const channelId = this.channelID();
     const targets = paused ? this.pausableRewards() : this.pausedRewards();
     if (!channelId || !targets.length) return;
@@ -458,7 +471,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   deleteRedemption(redemption: Redemption): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     this.redemptionToDelete.set(redemption);
   }
 
@@ -468,7 +481,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   confirmDeleteRedemption(): void {
-    if (!this.canManage()) return;
+    if (!this.canEdit()) return;
     const redemption = this.redemptionToDelete();
     const channelId = this.channelID();
     if (!redemption || !channelId) {

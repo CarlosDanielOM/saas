@@ -1242,3 +1242,9 @@
   letter-spacing: 0.08em;
 }
 .lf-field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Own channel without full access: calm note under the header */
+.lf-full-access {
+  display: block;
+  margin: 0 0 1rem;
+}

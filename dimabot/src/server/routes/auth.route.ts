@@ -314,7 +314,12 @@ function buildSessionPayloadWithAuthenticatedUser(
     return payload;
 }
 
-async function resolveOAuthUser(accessToken: string, fallbackUsername?: string): Promise<{
+/**
+ * The account that owns the Twitch token. Only the verified Twitch user id counts: the OAuth
+ * `state` (a username) is not trusted, or one Twitch account's tokens could be saved onto
+ * another streamer's account.
+ */
+async function resolveOAuthUser(accessToken: string): Promise<{
     user: UserDocument | null;
     twitchUser: {
         id: string;
@@ -331,16 +336,6 @@ async function resolveOAuthUser(accessToken: string, fallbackUsername?: string):
         if (userById) {
             return {
                 user: userById,
-                twitchUser
-            };
-        }
-    }
-
-    if (fallbackUsername) {
-        const userByUsername = await getUserByUsername(fallbackUsername);
-        if (userByUsername) {
-            return {
-                user: userByUsername,
                 twitchUser
             };
         }
@@ -461,7 +456,14 @@ async function cleanupLegacyBitsSubscriptions(channelID: string): Promise<void> 
     }
 }
 
-async function updateUserDataTokens(userId: string, accessToken: string, refreshToken: string, activate: boolean = false, expiresIn?: number): Promise<UserDocument | StandardResponse | null> {
+async function updateUserDataTokens(
+    userId: string,
+    accessToken: string,
+    refreshToken: string,
+    activate: boolean = false,
+    expiresIn?: number,
+    options: { setChatEnabled?: boolean } = {}
+): Promise<UserDocument | StandardResponse | null> {
     if (!accessToken || !refreshToken) {
         return {
             error: true,
@@ -485,7 +487,10 @@ async function updateUserDataTokens(userId: string, accessToken: string, refresh
 
     if (activate) {
         updateData['accounts.$.actived'] = true;
-        updateData['accounts.$.chat_enabled'] = true;
+        // Only flows that also create the chat subscription may mark the bot as in chat.
+        if (options.setChatEnabled !== false) {
+            updateData['accounts.$.chat_enabled'] = true;
+        }
         updateData['accounts.$.up_to_date_permissions'] = true;
         updateData['accounts.$.has_permissions'] = true;
     }
@@ -495,6 +500,123 @@ async function updateUserDataTokens(userId: string, accessToken: string, refresh
         { $set: updateData },
         { new: true }
     );
+}
+
+/**
+ * Full access ("activation") after a successful Twitch approval: stores the broadcaster token,
+ * makes the bot a moderator, subscribes the Twitch events and adds the default commands.
+ * First activation also grants the free benefits, sends the welcome email and seeds automod.
+ * Shared by /register and by /reauthenticate when the verified account never activated.
+ */
+async function activateFromOAuth(
+    res: Response,
+    user: UserDocument,
+    twitchUser: Awaited<ReturnType<typeof resolveOAuthUser>>['twitchUser'],
+    access_token: string,
+    refresh_token: string,
+    expires_in: number
+): Promise<Response | void> {
+    const twitchAccountIndex = user.accounts.findIndex(acc => acc.type === 'twitch');
+    if (twitchAccountIndex === -1) {
+        return res.status(404).send('Twitch account not found');
+    }
+
+    const twitchAccount = user.accounts[twitchAccountIndex];
+    const channelID = twitchAccount.id;
+    const wasFirstActivation = !twitchAccount.actived;
+
+    const updatedUser = await updateUserDataTokens(
+        user._id.toString(),
+        access_token,
+        refresh_token,
+        true,
+        expires_in
+    );
+
+    if (!updatedUser) {
+        return res.status(500).send('Internal server error');
+    }
+
+    if (wasFirstActivation && (updatedUser as IUsers).polar_sh_customer_id) {
+        const ingestResult = await ingestPolarSHEvent({
+            customerId: (updatedUser as IUsers).polar_sh_customer_id,
+            cost: -25,
+            reason: 'Free benefits',
+            mode: 'immediate'
+        });
+
+        if (ingestResult.error) {
+            console.error('[AUTH/REGISTER] PolarSH ingest failed', {
+                error: ingestResult,
+                channelID,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    // Send welcome email on first activation
+    if (wasFirstActivation) {
+        const userEmail = (updatedUser as IUsers).email || twitchAccount.email;
+        if (userEmail) {
+            const streamerName = twitchAccount.name || (updatedUser as IUsers).name || 'Streamer';
+            const discountCode = DEFAULT_DISCOUNT_CODE || '';
+            const userLanguage = (updatedUser as IUsers).language === 'es' ? 'es' : 'en';
+            void sendEmail({
+                to: userEmail,
+                subject: getWelcomeEmailSubject(userLanguage),
+                emailComponent: WelcomeEmail({
+                    streamerName,
+                    discountCode: discountCode || undefined,
+                    dashboardLink: DASHBOARD_URL,
+                    language: userLanguage
+                })
+            }).catch((emailError) => {
+                console.error('[AUTH/REGISTER] Failed to send welcome email', {
+                    error: emailError instanceof Error ? emailError.message : String(emailError),
+                    userId: (updatedUser as IUsers)._id.toString(),
+                    email: userEmail,
+                    timestamp: new Date().toISOString()
+                });
+            });
+        }
+    }
+
+    // Seed before the bot cache / EventSub so chat cannot cache a
+    // 5-minute "no settings" miss ahead of the default-on document.
+    if (wasFirstActivation) {
+        await seedDefaultModerationSettings(channelID, twitchAccount.name || twitchUser?.login || '');
+    }
+
+    await TwitchStreamers.updateTwitchAccountsInCache();
+    await seedTwitchTokenCache(channelID, access_token, refresh_token, expires_in);
+
+    const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
+
+    if (streamer) {
+        const addedModerator = await addModerator(channelID, '698614112');
+
+        if (addedModerator.error && addedModerator.message !== 'user is already a mod') {
+            console.error('[AUTH/REGISTER] Add moderator failed', {
+                error: addedModerator,
+                channelID,
+                timestamp: new Date().toISOString()
+            });
+            return res.status(addedModerator.status).json(addedModerator);
+        }
+
+        await subscribeAllEventSubs(channelID);
+
+        await createReservedCommands(channelID, streamer.name);
+    }
+
+    if (twitchUser?.login && twitchAccount.name !== twitchUser.login) {
+        await syncAccountName(user._id, 'twitch', channelID, twitchUser.login, twitchAccount.name);
+        twitchAccount.name = twitchUser.login; // keep in-memory object consistent
+    }
+
+    await incrementSiteAnalytics('active', 1);
+
+    return res.redirect(`https://domdimabot.com/login`);
 }
 
 const router = express.Router();
@@ -552,113 +674,13 @@ router.get('/register', async (req: Request<{}, {}, {}, OAuthCallbackRequest>, r
 
             const { access_token, refresh_token, expires_in } = oauthResult;
 
-            const { user, twitchUser } = await resolveOAuthUser(access_token, username);
+            const { user, twitchUser } = await resolveOAuthUser(access_token);
 
             if (!user) {
                 return res.status(404).send('User not found');
             }
 
-            const twitchAccountIndex = user.accounts.findIndex(acc => acc.type === 'twitch');
-            if (twitchAccountIndex === -1) {
-                return res.status(404).send('Twitch account not found');
-            }
-
-            const twitchAccount = user.accounts[twitchAccountIndex];
-            const channelID = twitchAccount.id;
-            const wasFirstActivation = !twitchAccount.actived;
-
-            const updatedUser = await updateUserDataTokens(
-                user._id.toString(),
-                access_token,
-                refresh_token,
-                true,
-                expires_in
-            );
-
-            if (!updatedUser) {
-                return res.status(500).send('Internal server error');
-            }
-
-            if (wasFirstActivation && (updatedUser as IUsers).polar_sh_customer_id) {
-                const ingestResult = await ingestPolarSHEvent({
-                    customerId: (updatedUser as IUsers).polar_sh_customer_id,
-                    cost: -25,
-                    reason: 'Free benefits',
-                    mode: 'immediate'
-                });
-
-                if (ingestResult.error) {
-                    console.error('[AUTH/REGISTER] PolarSH ingest failed', {
-                        error: ingestResult,
-                        channelID,
-                        timestamp: new Date().toISOString()
-                    });
-                }
-            }
-
-            // Send welcome email on first activation
-            if (wasFirstActivation) {
-                const userEmail = (updatedUser as IUsers).email || twitchAccount.email;
-                if (userEmail) {
-                    const streamerName = twitchAccount.name || (updatedUser as IUsers).name || 'Streamer';
-                    const discountCode = DEFAULT_DISCOUNT_CODE || '';
-                    const userLanguage = (updatedUser as IUsers).language === 'es' ? 'es' : 'en';
-                    void sendEmail({
-                        to: userEmail,
-                        subject: getWelcomeEmailSubject(userLanguage),
-                        emailComponent: WelcomeEmail({
-                            streamerName,
-                            discountCode: discountCode || undefined,
-                            dashboardLink: DASHBOARD_URL,
-                            language: userLanguage
-                        })
-                    }).catch((emailError) => {
-                        console.error('[AUTH/REGISTER] Failed to send welcome email', {
-                            error: emailError instanceof Error ? emailError.message : String(emailError),
-                            userId: (updatedUser as IUsers)._id.toString(),
-                            email: userEmail,
-                            timestamp: new Date().toISOString()
-                        });
-                    });
-                }
-            }
-
-            // Seed before the bot cache / EventSub so chat cannot cache a
-            // 5-minute "no settings" miss ahead of the default-on document.
-            if (wasFirstActivation) {
-                await seedDefaultModerationSettings(channelID, twitchAccount.name || twitchUser?.login || '');
-            }
-
-            await TwitchStreamers.updateTwitchAccountsInCache();
-            await seedTwitchTokenCache(channelID, access_token, refresh_token, expires_in);
-
-            const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
-
-            if (streamer) {
-                const addedModerator = await addModerator(channelID, '698614112');
-
-                if (addedModerator.error && addedModerator.message !== 'user is already a mod') {
-                    console.error('[AUTH/REGISTER] Add moderator failed', {
-                        error: addedModerator,
-                        channelID,
-                        timestamp: new Date().toISOString()
-                    });
-                    return res.status(addedModerator.status).json(addedModerator);
-                }
-
-                await subscribeAllEventSubs(channelID);
-
-                await createReservedCommands(channelID, streamer.name);
-            }
-
-            if (twitchUser?.login && twitchAccount.name !== twitchUser.login) {
-                await syncAccountName(user._id, 'twitch', channelID, twitchUser.login, twitchAccount.name);
-                twitchAccount.name = twitchUser.login; // keep in-memory object consistent
-            }
-
-            await incrementSiteAnalytics('active', 1);
-
-            return res.redirect(`https://domdimabot.com/login`);
+            return await activateFromOAuth(res, user, twitchUser, access_token, refresh_token, expires_in);
 
         } catch (error) {
             console.error('Error in /auth/register:', {
@@ -696,10 +718,16 @@ router.get('/reauthenticate', async (req: Request<{}, {}, {}, OAuthCallbackReque
 
             const { access_token, refresh_token, expires_in } = oauthResult;
 
-            const { user, twitchUser } = await resolveOAuthUser(access_token, username);
+            const { user, twitchUser } = await resolveOAuthUser(access_token);
 
             if (!user) {
                 return res.status(404).send('User not found');
+            }
+
+            // A "Reconnect Twitch" link used before full access: the verified account never
+            // activated, so run the full activation instead of only storing tokens.
+            if (!user.accounts.find((acc) => acc.type === 'twitch')?.actived) {
+                return await activateFromOAuth(res, user, twitchUser, access_token, refresh_token, expires_in);
             }
 
             const updatedUser = await updateUserDataTokens(
@@ -707,7 +735,10 @@ router.get('/reauthenticate', async (req: Request<{}, {}, {}, OAuthCallbackReque
                 access_token,
                 refresh_token,
                 true,
-                expires_in
+                expires_in,
+                // Reauthentication refreshes tokens only; it doesn't join chat, so keep
+                // the streamer's own join/leave choice.
+                { setChatEnabled: false }
             );
 
             if (!updatedUser) {

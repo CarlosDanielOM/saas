@@ -11,6 +11,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
 
+import { BotAccessService } from '../../services/bot-access.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
@@ -27,6 +28,7 @@ import {
 import { ChatEventsService } from './chat-events.service';
 import { EventCardComponent } from './components/event-card.component';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
+import { FullAccessNoteComponent } from '../../shared/full-access-note/full-access-note.component';
 
 const CHAT_NOTIFICATION_TYPE = 'channel.chat.notification';
 
@@ -63,7 +65,7 @@ interface EventGroup {
 
 @Component({
   selector: 'app-chat-events-page',
-  imports: [RouterLink, EventCardComponent, LfIconComponent],
+  imports: [RouterLink, EventCardComponent, LfIconComponent, FullAccessNoteComponent],
   styleUrl: './chat-events-page.component.css',
   templateUrl: './chat-events-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -75,6 +77,7 @@ export class ChatEventsPageComponent implements OnInit {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly chatEventsService = inject(ChatEventsService);
   private readonly toastService = inject(ToastService);
+  private readonly botAccess = inject(BotAccessService);
 
   readonly streamer = toSignal(
     this.route.paramMap.pipe(map(() => getRouteParam(this.route, 'streamer'))),
@@ -123,6 +126,12 @@ export class ChatEventsPageComponent implements OnInit {
     const channel = this.channelID(), streamer = this.streamer();
     return channel && streamer && channel === this.sessionAuth.getPrimaryChannelID() ? ['/', streamer, 'modules', 'overlays'] : null;
   });
+
+  /**
+   * The owner hasn't given full access yet: Twitch won't send follows, subs, bits or raids,
+   * so turning an event on would only fail. Managers can't see the owner's flag: no change there.
+   */
+  readonly needsFullAccess = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.hasFullAccess());
 
   readonly enabledCount = computed(() => this.cards().filter((e) => e.enabled).length);
 
@@ -216,7 +225,7 @@ export class ChatEventsPageComponent implements OnInit {
   }
 
   toggleFeature(event: ChatEvent): void {
-    if (!this.canManage()) return;
+    if (!this.canManage() || this.needsFullAccess()) return;
     const channelId = this.channelID();
     if (!channelId) {
       return;

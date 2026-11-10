@@ -20,6 +20,11 @@
       </div>
     </header>
 
+    @if (needsFullAccess()) {
+      <app-full-access-note class="lf-full-access" [title]="t('featureAccess.moderation.title')" [hint]="t('featureAccess.moderation.hint')"
+        [channelID]="channelID()" source="moderation" />
+    }
+
     @if (errorMessage()) {
       <div class="lf-banner lf-banner--error" role="alert">
         <div>

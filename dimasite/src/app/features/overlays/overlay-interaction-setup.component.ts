@@ -1,14 +1,22 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { OverlayApi } from './overlay-api.service';
+import { BotAccessService } from '../../services/bot-access.service';
 import { LanguageService } from '../../services/language.service';
+import { FullAccessNoteComponent } from '../../shared/full-access-note/full-access-note.component';
 import { LinksService } from '../../services/links.service';
 import type { InteractionKind, InteractionReadinessSnapshot } from './overlay-interaction.model';
 
 @Component({
   selector: 'app-overlay-interaction-setup', changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FullAccessNoteComponent],
   styleUrl: './overlay-interaction-setup.component.css',
   template: `
     <section class="setup" [attr.aria-label]="t('interactionSetup')">
+      @if (needsFullAccess()) {
+        <!-- Owner without full access: Twitch won't send polls or predictions yet. Calm next step, not an error. -->
+        <div class="heading"><div><h2>{{ t('interactionSetup') }}</h2></div></div>
+        <div style="margin-top: 0.75rem"><app-full-access-note [title]="tr('featureAccess.overlayPolls.title')" [hint]="tr('featureAccess.overlayPolls.hint')" [channelID]="channel()" source="overlay_polls" [compact]="true" /></div>
+      } @else {
       <div class="heading"><div><h2>{{ t('interactionSetup') }}</h2><p>{{ t('interactionSetupHint') }}</p></div><button type="button" [disabled]="checking() || !!activating()" (click)="refresh()">{{ t('connectionsRefresh') }}</button></div>
       @if (error() || actionError()) { <p class="warning" role="alert">{{ t('interactionSetupError') }}</p> }
       <div class="kinds">
@@ -24,6 +32,7 @@ import type { InteractionKind, InteractionReadinessSnapshot } from './overlay-in
           </div>
         }
       </div>
+      }
     </section>
   `
 })
@@ -34,6 +43,9 @@ export class OverlayInteractionSetupComponent {
   private readonly api = inject(OverlayApi);
   private readonly language = inject(LanguageService);
   private readonly links = inject(LinksService);
+  private readonly botAccess = inject(BotAccessService);
+  /** Owner hasn't given full access: polls and predictions can't reach the bot yet. Managers keep today's flow. */
+  readonly needsFullAccess = computed(() => this.botAccess.isOwnChannel(this.channel()) && !this.botAccess.hasFullAccess());
   readonly data = signal<InteractionReadinessSnapshot | null>(null);
   readonly checking = signal(false);
   readonly activating = signal<InteractionKind | null>(null);
@@ -43,7 +55,7 @@ export class OverlayInteractionSetupComponent {
   readonly reconnectUrl = computed(() => `${this.links.getApiUrl()}/auth/authorize?${new URLSearchParams({ state: this.streamer(), action: 'reauthenticate' })}`);
   constructor() {
     effect(onCleanup => {
-      const channel = this.channel(); this.tick(); if (!channel) return;
+      const channel = this.channel(); this.tick(); if (!channel || this.needsFullAccess()) return;
       let valid = true, timer: ReturnType<typeof setTimeout> | undefined;
       this.checking.set(true);
       void this.api.twitchEvents(channel).then(data => { if (valid) { this.data.set(data); this.error.set(false); } })
@@ -59,10 +71,11 @@ export class OverlayInteractionSetupComponent {
     });
   }
   t(key: string): string { return this.language.translate('overlayStudio.' + key); }
+  tr(key: string): string { return this.language.translate(key); }
   status(kind: InteractionKind): string { return this.error() ? 'error' : this.data()?.[kind]?.state ?? 'checking'; }
   refresh(): void { this.tick.update(n => n + 1); }
   async activate(kind: InteractionKind): Promise<void> {
-    if (this.activating()) return;
+    if (this.activating() || this.needsFullAccess()) return;
     this.activating.set(kind); this.actionError.set(false);
     try { this.data.set(await this.api.activateTwitchEvents(this.channel(), kind)); }
     catch { this.actionError.set(true); }

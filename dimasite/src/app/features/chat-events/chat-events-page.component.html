@@ -18,6 +18,15 @@
       }
     </header>
 
+    @if (needsFullAccess()) {
+      <app-full-access-note
+        [title]="t('featureAccess.chatEvents.title')"
+        [hint]="t('featureAccess.chatEvents.hint')"
+        [channelID]="channelID()"
+        source="chat_events"
+      />
+    }
+
     @if (isLoading()) {
       <section class="lf-section" aria-busy="true">
         <div class="lf-tile lf-list">
@@ -41,6 +50,7 @@
                 [userPlan]="userPlan()"
                 [userAccess]="getUserAccess(event)"
                 [canManage]="canManage()"
+                [needsFullAccess]="needsFullAccess()"
                 [channelId]="channelID()"
                 [overlayLink]="overlayLink()"
                 [pendingAction]="getPendingAction(event.type)"

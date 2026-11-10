@@ -60,6 +60,8 @@ export class EventCardComponent {
   readonly userPlan = input.required<PlanTier>();
   readonly userAccess = input.required<UserAccess>();
   readonly canManage = input(false);
+  /** The owner hasn't given full access: Twitch can't send this event yet, so no switch. */
+  readonly needsFullAccess = input(false);
   readonly channelId = input<string | null>(null);
   readonly overlayLink = input<string[] | null>(null);
   readonly pendingAction = input<ChatEventPendingAction>('none');
@@ -259,7 +261,7 @@ export class EventCardComponent {
   }
 
   toggleFeature(): void {
-    if (!this.canManage()) return;
+    if (!this.canManage() || this.needsFullAccess()) return;
     if (this.event().enabled && !this.canDisable()) {
       this.toastService.info(
         this.t('chatEvents.toasts.disableNotAllowedTitle'),

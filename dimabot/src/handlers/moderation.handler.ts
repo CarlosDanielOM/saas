@@ -10,6 +10,7 @@ import { executeModerationAction } from '../functions/moderation/execute_action.
 import { inspectExpression, ruleExempt, shouldLogPermissionError, type UserIdentity } from '../utils/permissions/index.js';
 import { error as logError } from '../utils/logger.js';
 import { TWITCH_BOT_ACCOUNT_ID } from '../utils/header.js';
+import TwitchStreamers from '../classes/twitch_streamers.class.js';
 import type { IChatMessage } from '../interfaces/twitch/eventsub.interface.js';
 import Users from '../schemas/users.schema.js';
 import ChatHistory from '../classes/chat_history.js';
@@ -172,6 +173,13 @@ async function moderateMessage(channelID: string, messageEventData: IChatMessage
 
         // Never moderate the broadcaster or the bot itself.
         if (!chatterID || chatterID === channelID || chatterID === TWITCH_BOT_ACCOUNT_ID) {
+            return { actionTaken: false };
+        }
+
+        // The bot only becomes a channel moderator with full access. A channel that just added
+        // the bot to chat skips moderation: no paid spam reviews and no actions Twitch would refuse.
+        const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
+        if (streamer?.actived === 'false') {
             return { actionTaken: false };
         }
 

@@ -57,3 +57,32 @@ test('concurrent default-command seeding creates each command exactly once', {
     ]);
     assert.deepEqual(duplicateFunctions, []);
 });
+
+test('a command the streamer made before activation keeps its chat name', {
+    skip: mongoUri ? false : 'COMMAND_DEFAULTS_TEST_MONGO_URI is required'
+}, async (t) => {
+    assert.ok(mongoUri);
+    await mongoose.connect(mongoUri);
+    t.after(async () => {
+        await mongoose.connection.dropDatabase();
+        await mongoose.disconnect();
+    });
+
+    const channelID = `test-${randomUUID()}`;
+    const expectedCount = getReservedCommandsPayload().commands.length;
+    // A streamer who only joined the bot to chat made their own `!s` (custom func = cmd).
+    await new CommandsSchema({
+        name: 's', cmd: 's', func: 's', type: 'command', channel: 'own-s', channelID,
+        cooldown: 5, enabled: true, userLevel: 0, userLevelName: 'everyone', reserved: false,
+        message: '$(tts $(user): &t)', responses: [], paused: false, platform: 'twitch'
+    }).save();
+
+    const created = await ensureReservedCommands(channelID, 'own-s');
+
+    assert.equal(created, expectedCount - 1, 'the default `!s` is skipped');
+    const named = await CommandsSchema.find({ channelID, cmd: 's' }).lean();
+    assert.equal(named.length, 1);
+    assert.equal(named[0].func, 's');
+    assert.equal(await CommandsSchema.exists({ channelID, func: 'speach' }), null);
+    assert.equal(await CommandsSchema.countDocuments({ channelID }), expectedCount);
+});

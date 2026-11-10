@@ -18,6 +18,11 @@
       </div>
     </header>
 
+    @if (needsFullAccess()) {
+      <app-full-access-note class="lf-full-access" [title]="t('featureAccess.followDefense.title')" [hint]="t('featureAccess.followDefense.hint')"
+        [channelID]="channelID()" source="follow_defense" />
+    }
+
     @if (errorMessage()) {
       <div class="lf-banner" role="alert">
         <p class="lf-banner__title">{{ errorMessage() }}</p>

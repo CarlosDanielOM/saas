@@ -349,6 +349,9 @@ router.post('/chat/:channelID', authMiddleware as any, async (req: UserRequest, 
                 }).lean();
 
                 if (!existingChatEventsub) {
+                    // App token only: a streamer who just signed in has no stored broadcaster
+                    // token. Twitch accepts it when they granted `channel:bot` at sign-in (or the
+                    // bot is a moderator, which full activation sets up).
                     const response = await subscribeTwitchEvent(
                         channelIdStr,
                         'channel.chat.message',
@@ -356,8 +359,47 @@ router.post('/chat/:channelID', authMiddleware as any, async (req: UserRequest, 
                         {
                             broadcaster_user_id: channelIdStr,
                             user_id: '698614112'
-                        }
+                        },
+                        undefined,
+                        { appAuthOnly: true }
                     );
+
+                    if ((response as any)?.error && (response as any)?.status === 403) {
+                        // Twitch: "subscription missing proper authorization". Either the streamer
+                        // never approved `channel:bot`, or the bot account's own approval is
+                        // missing. Only the first can be fixed by the streamer signing in again.
+                        const grants = await getScopes(channelIdStr);
+                        if (grants.error || !Array.isArray(grants.data)) {
+                            // Can't tell which side is missing: don't send the streamer through sign-in again.
+                            return res.status(503).json({
+                                message: 'Could not check the Twitch approval, please try again',
+                                error: true,
+                                status: 503,
+                                code: 'chat_check_failed'
+                            });
+                        }
+                        const scopes: unknown = grants.data[0]?.scopes;
+                        if (Array.isArray(scopes) && scopes.includes('channel:bot')) {
+                            console.error('Error in POST /chat/:channelID: Twitch refused chat although channel:bot is granted', {
+                                channelID: channelIdStr,
+                                message: (response as any)?.message,
+                                timestamp: new Date().toISOString()
+                            });
+                            return res.status(502).json({
+                                message: 'Twitch refused the bot for this chat',
+                                error: true,
+                                status: 502,
+                                code: 'chat_join_failed'
+                            });
+                        }
+                        // The site asks the streamer to approve chat access on Twitch and tries again.
+                        return res.status(403).json({
+                            message: 'Twitch has not allowed the bot in this chat yet',
+                            error: true,
+                            status: 403,
+                            code: 'chat_permission_missing'
+                        });
+                    }
 
                     if ((response as any)?.error) {
                         return res.status(400).json({

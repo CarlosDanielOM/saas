@@ -314,7 +314,7 @@
               <h2 class="lf-h2" id="tts-command-title">{{ t('modules.tts.command.title') }}</h2>
               @if (speechCommand() && canManageSpeechCommand()) {
                 <button type="button" class="lf-btn lf-btn--compact" [disabled]="commandSaving()" (click)="openCommandEditor()">{{ t('modules.tts.command.edit') }}</button>
-              } @else if (canViewSpeechCommand()) {
+              } @else if (canViewSpeechCommand() && !showMakeTtsCommand()) {
                 <a class="lf-btn lf-btn--compact" [routerLink]="commandsPath()">{{ t('modules.tts.command.openCommands') }}</a>
               }
             </div>
@@ -331,6 +331,22 @@
               </div>
               <p class="lf-note lf-note--tight">{{ t('modules.tts.command.says') }}</p>
               <code class="lf-code">{{ command.message }}</code>
+            } @else if (ttsSetupMode() && ownTtsCommand(); as command) {
+              <div class="lf-command">
+                <span class="lf-command__cmd">!{{ command.cmd }}</span>
+                @if (!command.enabled) {
+                  <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('modules.tts.command.disabled') }}</span>
+                }
+              </div>
+              <p class="lf-note lf-note--tight">{{ t('modules.tts.command.says') }}</p>
+              <code class="lf-code">{{ command.message }}</code>
+            } @else if (ttsSetupMode()) {
+              <p class="lf-note" data-testid="tts-own-command">{{ t('featureAccess.ttsCommand.hint') }}</p>
+              @if (showMakeTtsCommand()) {
+                <a class="lf-btn lf-btn--compact lf-btn--primary" [routerLink]="commandsPath()" [queryParams]="ttsCommandPrefill()">
+                  <app-lf-icon name="plus" [size]="14"></app-lf-icon> {{ t('featureAccess.ttsCommand.cta') }}
+                </a>
+              }
             } @else {
               <p class="lf-note">{{ t('modules.tts.command.missing') }}</p>
             }

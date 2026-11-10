@@ -4,7 +4,9 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { BotAccessService } from '../../../../services/bot-access.service';
 import { LanguageService } from '../../../../services/language.service';
+import { FullAccessNoteComponent } from '../../../../shared/full-access-note/full-access-note.component';
 import { LinksService } from '../../../../services/links.service';
 
 export const TWITCH_GOAL_TYPES = ['follow', 'subscription_count', 'new_subscription_count', 'subscription', 'new_subscription', 'new_bit', 'new_cheerer'] as const;
@@ -24,7 +26,7 @@ export interface TwitchGoals { access: 'ok' | 'permission' | 'unknown'; goals: T
  */
 @Component({
   selector: 'app-twitch-goals',
-  imports: [ReactiveFormsModule, DecimalPipe, RouterLink],
+  imports: [ReactiveFormsModule, DecimalPipe, RouterLink, FullAccessNoteComponent],
   templateUrl: './twitch-goals.component.html', styleUrl: './twitch-goals.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -41,6 +43,12 @@ export class TwitchGoalsComponent {
   readonly language = inject(LanguageService);
   private readonly destroy = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
+  private readonly botAccess = inject(BotAccessService);
+  /**
+   * The owner hasn't given full access: DomDimaBot can't read their Twitch goals yet, so "they show up on their own"
+   * would not be true. Managers can't see the owner's flag: no change there.
+   */
+  readonly needsFullAccess = computed(() => this.botAccess.isOwnChannel(this.channelID()) && !this.botAccess.hasFullAccess());
   readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('twitchEditor');
   readonly types = TWITCH_GOAL_TYPES;
   readonly kinds = ['completion', 'failure'] as const;
