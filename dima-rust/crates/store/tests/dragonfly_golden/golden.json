@@ -1,0 +1,189 @@
+{
+ "recordedWith": {
+  "node": "v26.13.0",
+  "nodeRedis": "5.12.1"
+ },
+ "fixed": {
+  "nowIso": "2026-11-11T12:00:00.000Z",
+  "nowMs": 1794398400000
+ },
+ "prefix": "dima-test:golden:1794437701913-f7541253:",
+ "channelId": "dima-test-golden-1794437701913-f7541253-chan",
+ "cases": {
+  "cron_follow_ledger": {
+   "input": {
+    "job": "follow-ledger-sync",
+    "channelID": "123456",
+    "accountID": "123456",
+    "requestedBy": "golden",
+    "dedupeSeconds": 120,
+    "dedupeToken": "dima-test:golden:1794437701913-f7541253:follow-ledger:123456",
+    "data": {
+     "reason": "manual_request",
+     "type": "follow-ledger-sync"
+    },
+    "queueKey": "dima-test:golden:1794437701913-f7541253:cron-queue"
+   },
+   "result": 1,
+   "dedupeSecondsArg": "120",
+   "item": {
+    "base64": "eyJpZCI6IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMSIsImpvYiI6ImZvbGxvdy1sZWRnZXItc3luYyIsInJlcXVlc3RlZEF0IjoiMjAyNi0xMS0xMVQxMjowMDowMC4wMDBaIiwicmVxdWVzdGVkQnkiOiJnb2xkZW4iLCJhY2NvdW50SUQiOiIxMjM0NTYiLCJjaGFubmVsSUQiOiIxMjM0NTYiLCJkYXRhIjp7InJlYXNvbiI6Im1hbnVhbF9yZXF1ZXN0IiwidHlwZSI6ImZvbGxvdy1sZWRnZXItc3luYyJ9LCJkZWR1cGVLZXkiOiJjcm9uOmpvYnM6ZGVkdXBlOmRpbWEtdGVzdDpnb2xkZW46MTc5NDQzNzcwMTkxMy1mNzU0MTI1Mzpmb2xsb3ctbGVkZ2VyOjEyMzQ1NiJ9",
+    "text": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"follow-ledger-sync\",\"requestedAt\":\"2026-11-11T12:00:00.000Z\",\"requestedBy\":\"golden\",\"accountID\":\"123456\",\"channelID\":\"123456\",\"data\":{\"reason\":\"manual_request\",\"type\":\"follow-ledger-sync\"},\"dedupeKey\":\"cron:jobs:dedupe:dima-test:golden:1794437701913-f7541253:follow-ledger:123456\"}"
+   },
+   "marker": {
+    "base64": "MQ==",
+    "text": "1"
+   },
+   "markerTtl": 120,
+   "replay": 0
+  },
+  "cron_awkward": {
+   "item": {
+    "base64": "eyJpZCI6IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMiIsImpvYiI6InN1bW1hcnkiLCJyZXF1ZXN0ZWRBdCI6IjIwMjYtMTEtMTFUMTI6MDA6MDAuMDAwWiIsImNoYW5uZWxJRCI6IjQyIiwiZGF0YSI6eyJ0ZXh0cyI6WyJwbGFpbiIsImVtb2ppIPCfjokg8J+RqeKAjfCfkanigI3wn5GnIPCfh7Lwn4e9IOKdpO+4jyIsImNvbWJpbmluZyBlzIEgbsyDIGHMisyBIiwicnRsINmF2LHYrdio2Kcg2KjYp9mE2LnYp9mE2YUg16nXnNeV150iLCJxdW90ZXMgXCJkb3VibGVcIiAnc2luZ2xlJyBgYmFja2AgXFwgYmFja3NsYXNoIiwibGluZXNcbnNlY29uZFxyXG50aGlyZFx0dGFiIiwic2xhc2ggLyBhbmQg4oCoIHNlcGFyYXRvciBcdTAwMDciLCIiXSwib25lIjoxLCJiaWciOjFlKzIxLCJzbWFsbCI6MWUtNywic3VtIjowLjMwMDAwMDAwMDAwMDAwMDA0LCJuZWdaZXJvIjowLCJodWdlIjo5MDA3MTk5MjU0NzQwOTkyLCJuZXN0ZWQiOnsiMTAiOiJpbmRleCBrZXkiLCJiIjpbdHJ1ZSxudWxsLCLDqSJdfSwic291cmNlIjoic3RyZWFtX29mZmxpbmUiLCJzZXNzaW9uSUQiOiIgc2VzcyAifSwiZGVkdXBlS2V5IjoiY3Jvbjpqb2JzOmRlZHVwZTpkaW1hLXRlc3Q6Z29sZGVuOjE3OTQ0Mzc3MDE5MTMtZjc1NDEyNTM6YXdrd2FyZCJ9",
+    "text": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"job\":\"summary\",\"requestedAt\":\"2026-11-11T12:00:00.000Z\",\"channelID\":\"42\",\"data\":{\"texts\":[\"plain\",\"emoji 🎉 👩‍👩‍👧 🇲🇽 ❤️\",\"combining é ñ ǻ\",\"rtl مرحبا بالعالم שלום\",\"quotes \\\"double\\\" 'single' `back` \\\\ backslash\",\"lines\\nsecond\\r\\nthird\\ttab\",\"slash / and   separator \\u0007\",\"\"],\"one\":1,\"big\":1e+21,\"small\":1e-7,\"sum\":0.30000000000000004,\"negZero\":0,\"huge\":9007199254740992,\"nested\":{\"10\":\"index key\",\"b\":[true,null,\"é\"]},\"source\":\"stream_offline\",\"sessionID\":\" sess \"},\"dedupeKey\":\"cron:jobs:dedupe:dima-test:golden:1794437701913-f7541253:awkward\"}"
+   },
+   "acceptance": {
+    "base64": "MQ==",
+    "text": "1"
+   },
+   "acceptanceKeyByReference": "cron:jobs:accepted:summary:42:sess"
+  },
+  "lifo_order": [
+   "c",
+   "b",
+   "a"
+  ],
+  "cron_durable": {
+   "first": 1,
+   "second": 0,
+   "item": {
+    "base64": "eyJpZCI6IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsImpvYiI6InN0cmVhbS1tZW1vcnktc3VtbWFyeSIsInJlcXVlc3RlZEF0IjoiMjAyNi0xMS0xMVQxMjowMDowMC4wMDBaIiwiYWNjb3VudElEIjoiNDIiLCJjaGFubmVsSUQiOiI0MiIsImRhdGEiOnsicmVhc29uIjoic3RyZWFtX29mZmxpbmUiLCJzb3VyY2UiOiJzdHJlYW1fb2ZmbGluZSIsInNlc3Npb25JRCI6InMiLCJzdHJlYW1JRCI6InYiLCJub3RCZWZvcmVVbml4IjowfSwiZGVkdXBlS2V5IjoiY3Jvbjpqb2JzOmRlZHVwZTpzdHJlYW0tbWVtb3J5LXN1bW1hcnk6NDI6czp2In0=",
+    "text": "{\"id\":\"00000000-0000-4000-8000-000000000003\",\"job\":\"stream-memory-summary\",\"requestedAt\":\"2026-11-11T12:00:00.000Z\",\"accountID\":\"42\",\"channelID\":\"42\",\"data\":{\"reason\":\"stream_offline\",\"source\":\"stream_offline\",\"sessionID\":\"s\",\"streamID\":\"v\",\"notBeforeUnix\":0},\"dedupeKey\":\"cron:jobs:dedupe:stream-memory-summary:42:s:v\"}"
+   },
+   "length": 1,
+   "automatic": {
+    "base64": "MQ==",
+    "text": "1"
+   }
+  },
+  "fence": {
+   "channelSuffix": "chan",
+   "version": "1790000000000:evt-1",
+   "account": [
+    [
+     "id",
+     "dima-test-golden-1794437701913-f7541253-chan"
+    ],
+    [
+     "login",
+     "golden_user"
+    ],
+    [
+     "__polar_plan_version",
+     "1790000000000:evt-1"
+    ],
+    [
+     "display_name",
+     "Ñandú 🎉 مرحبا"
+    ],
+    [
+     "plan_tier",
+     "pro"
+    ]
+   ],
+   "written": 1,
+   "hashPairs": [
+    [
+     "id",
+     "dima-test-golden-1794437701913-f7541253-chan"
+    ],
+    [
+     "login",
+     "golden_user"
+    ],
+    [
+     "__polar_plan_version",
+     "1790000000000:evt-1"
+    ],
+    [
+     "display_name",
+     "Ñandú 🎉 مرحبا"
+    ],
+    [
+     "plan_tier",
+     "pro"
+    ]
+   ],
+   "checked": 1,
+   "aggregate": {
+    "base64": "W3siaWQiOiJkaW1hLXRlc3QtZ29sZGVuLTE3OTQ0Mzc3MDE5MTMtZjc1NDEyNTMtY2hhbiIsImxvZ2luIjoiZ29sZGVuX3VzZXIiLCJfX3BvbGFyX3BsYW5fdmVyc2lvbiI6IjE3OTAwMDAwMDAwMDA6ZXZ0LTEiLCJkaXNwbGF5X25hbWUiOiLDkWFuZMO6IPCfjokg2YXYsdit2KjYpyIsInBsYW5fdGllciI6InBybyJ9XQ==",
+    "text": "[{\"id\":\"dima-test-golden-1794437701913-f7541253-chan\",\"login\":\"golden_user\",\"__polar_plan_version\":\"1790000000000:evt-1\",\"display_name\":\"Ñandú 🎉 مرحبا\",\"plan_tier\":\"pro\"}]"
+   },
+   "accepted": 1,
+   "applied": 0,
+   "afterApply": {
+    "base64": "eyJ2ZXJzaW9uIjoyLCJiYWxhbmNlIjo3LCJ1c2VkIjo4LCJhdmFpbGFibGUiOnRydWUsInN0YXR1cyI6ImF2YWlsYWJsZSIsIm5vdGUiOiLDqVwv8J+OiSIsInVwZGF0ZWRBdCI6IjIwMjYtMTEtMTFUMTI6MDA6MDAuMDAwWiJ9",
+    "text": "{\"version\":2,\"balance\":7,\"used\":8,\"available\":true,\"status\":\"available\",\"note\":\"é\\/🎉\",\"updatedAt\":\"2026-11-11T12:00:00.000Z\"}"
+   },
+   "synced": 1,
+   "syncPayload": {
+    "base64": "eyJ2ZXJzaW9uIjoyLCJhdmFpbGFibGUiOnRydWUsInVzZWQiOjUsImJhbGFuY2UiOjEwLCJ1cGRhdGVkQXQiOiIyMDI2LTExLTExVDEyOjAwOjAwLjAwMFoiLCJzdGF0dXMiOiJhdmFpbGFibGUiLCJub3RlIjoiw6kv8J+OiSIsIl9fcG9sYXJfcGxhbl92ZXJzaW9uIjoiMTc5MDAwMDAwMDAwMDpldnQtMSJ9",
+    "text": "{\"version\":2,\"available\":true,\"used\":5,\"balance\":10,\"updatedAt\":\"2026-11-11T12:00:00.000Z\",\"status\":\"available\",\"note\":\"é/🎉\",\"__polar_plan_version\":\"1790000000000:evt-1\"}"
+   },
+   "afterSync": {
+    "base64": "eyJ2ZXJzaW9uIjoyLCJhdmFpbGFibGUiOnRydWUsInVzZWQiOjUsImJhbGFuY2UiOjEwLCJ1cGRhdGVkQXQiOiIyMDI2LTExLTExVDEyOjAwOjAwLjAwMFoiLCJzdGF0dXMiOiJhdmFpbGFibGUiLCJub3RlIjoiw6kv8J+OiSIsIl9fcG9sYXJfcGxhbl92ZXJzaW9uIjoiMTc5MDAwMDAwMDAwMDpldnQtMSJ9",
+    "text": "{\"version\":2,\"available\":true,\"used\":5,\"balance\":10,\"updatedAt\":\"2026-11-11T12:00:00.000Z\",\"status\":\"available\",\"note\":\"é/🎉\",\"__polar_plan_version\":\"1790000000000:evt-1\"}"
+   },
+   "exhaust": [
+    {
+     "base64": "dHJ1ZQ==",
+     "text": "true"
+    },
+    {
+     "base64": "dHJ1ZQ==",
+     "text": "true"
+    }
+   ],
+   "invalidated": 1,
+   "fenceAfterInvalidate": {
+    "base64": "MTgwMDAwMDAwMDAwMDpldnQtMg==",
+    "text": "1800000000000:evt-2"
+   },
+   "staleWrite": 0
+  },
+  "pubsub": {
+   "clip_request": {
+    "base64": "eyJjbGlwSUQiOiJBd2t3YXJkQ2xpcCIsInN0cmVhbWVyTG9naW4iOiJnb2xkZW4iLCJkdXJhdGlvbiI6MzAuNSwiY2xpcFVybCI6Imh0dHBzOi8vY2xpcHMudHdpdGNoLnR2L3g/YT0xJmI9MiIsInRpdGxlIjoiZW1vamkg8J+OiSDwn5Gp4oCN8J+RqeKAjfCfkacg8J+HsvCfh70g4p2k77iPIiwiZ2FtZSI6InJ0bCDZhdix2K3YqNinINio2KfZhNi52KfZhNmFINep15zXldedIiwic3RyZWFtZXIiOiJHw7ZsZGVuIiwicHJvZmlsZUltYWdlIjoiaHR0cHM6Ly94L3kucG5nIiwiZGVzY3JpcHRpb24iOiJsaW5lc1xuc2Vjb25kXHJcbnRoaXJkXHR0YWIiLCJzdHJlYW1lckNvbG9yIjoiI0ZGMDBGRiIsInRpbWVzdGFtcCI6MTc5NDM5ODQwMDAwMH0=",
+    "text": "{\"clipID\":\"AwkwardClip\",\"streamerLogin\":\"golden\",\"duration\":30.5,\"clipUrl\":\"https://clips.twitch.tv/x?a=1&b=2\",\"title\":\"emoji 🎉 👩‍👩‍👧 🇲🇽 ❤️\",\"game\":\"rtl مرحبا بالعالم שלום\",\"streamer\":\"Gölden\",\"profileImage\":\"https://x/y.png\",\"description\":\"lines\\nsecond\\r\\nthird\\ttab\",\"streamerColor\":\"#FF00FF\",\"timestamp\":1794398400000}"
+   },
+   "tts_session_ended": {
+    "base64": "eyJjaGFubmVsSUQiOiI0MiIsInNlc3Npb24iOiJzZXNzLcOpIiwidGltZXN0YW1wIjoxNzk0Mzk4NDAwMDAwfQ==",
+    "text": "{\"channelID\":\"42\",\"session\":\"sess-é\",\"timestamp\":1794398400000}"
+   },
+   "widget_feed": {
+    "base64": "eyJjaGFubmVsIjoiNDIiLCJ0eXBlIjoiY2hhdCIsImRhdGEiOnsiaWQiOiJtMSIsInVzZXIiOnsibG9naW4iOiJ1IiwiY29sb3IiOm51bGx9LCJ0ZXh0IjoiY29tYmluaW5nIGXMgSBuzIMgYcyKzIEiLCJlbW90ZXMiOltdLCJhdCI6MTc5NDM5ODQwMDAwMH0sInRpbWVzdGFtcCI6MTc5NDM5ODQwMDAwMH0=",
+    "text": "{\"channel\":\"42\",\"type\":\"chat\",\"data\":{\"id\":\"m1\",\"user\":{\"login\":\"u\",\"color\":null},\"text\":\"combining é ñ ǻ\",\"emotes\":[],\"at\":1794398400000},\"timestamp\":1794398400000}"
+   },
+   "keywords_changed": {
+    "base64": "eyJjaGFubmVsSUQiOiI0MiJ9",
+    "text": "{\"channelID\":\"42\"}"
+   }
+  },
+  "pubsub_inputs": {
+   "clipData": {
+    "clipID": "AwkwardClip",
+    "streamerLogin": "golden",
+    "duration": 30.5,
+    "clipUrl": "https://clips.twitch.tv/x?a=1&b=2",
+    "title": "emoji 🎉 👩‍👩‍👧 🇲🇽 ❤️",
+    "game": "rtl مرحبا بالعالم שלום",
+    "streamer": "Gölden",
+    "profileImage": "https://x/y.png",
+    "description": "lines\nsecond\r\nthird\ttab",
+    "streamerColor": "#FF00FF",
+    "timestamp": 1794398399995
+   },
+   "nowMs": 1794398400000
+  }
+ }
+}

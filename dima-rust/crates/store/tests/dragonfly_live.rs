@@ -1,0 +1,718 @@
+//! Live checks against the local Dragonfly: connection policy (reconnect after a killed
+//! connection, the response timeout, cancel-safe blocking pops), the subscriber (resubscribe
+//! after reconnect, overflow, unsubscribe on drop, the JSON handler), `NOSCRIPT` fallback, the
+//! typed reply helpers, the command hook, and what Dragonfly's Lua accepts.
+//!
+//! Logical database 10, a unique key prefix per test, everything deleted afterwards. Skipped
+//! with a message when `DIMA_TEST_DRAGONFLY` is not set.
+
+mod dragonfly_support;
+
+use anyhow::{Context, Result, bail, ensure};
+use dima_store::dragonfly::hooks::{
+    CacheLookup, CommandHook, CommandOutcome, ConnectionError, ErrorHook,
+};
+use dima_store::dragonfly::pubsub::envelope;
+use dima_store::dragonfly::{
+    Dragonfly, DragonflyError, Hooks, QueueItem, Script, SetCondition, SetExpiry, SetOptions,
+    SetOutcome, Topic, Ttl,
+};
+use dragonfly_support::{cleanup, config, prefix};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+const DB: u8 = 10;
+
+#[derive(Default)]
+struct Recorder {
+    commands: Mutex<Vec<(String, CommandOutcome)>>,
+    errors: Mutex<Vec<String>>,
+}
+
+impl CommandHook for Recorder {
+    fn finished(&self, method: &'static str, _elapsed: Duration, outcome: CommandOutcome) {
+        if let Ok(mut commands) = self.commands.lock() {
+            commands.push((method.to_owned(), outcome));
+        }
+    }
+}
+
+impl ErrorHook for Recorder {
+    fn connection_error(&self, error: &ConnectionError<'_>) {
+        if let Ok(mut errors) = self.errors.lock() {
+            errors.push(format!("{}:{}", error.caller, error.code));
+        }
+    }
+}
+
+async fn connect_recorded(
+    response_timeout: Option<Duration>,
+) -> Result<Option<(Dragonfly, Arc<Recorder>)>> {
+    let Some(mut config) = config(DB) else {
+        return Ok(None);
+    };
+    if let Some(timeout) = response_timeout {
+        config.response_timeout = timeout;
+    }
+    let recorder = Arc::new(Recorder::default());
+    let hooks = Hooks {
+        command: Some(recorder.clone()),
+        errors: Some(recorder.clone()),
+    };
+    Ok(Some((Dragonfly::connect(config, hooks).await?, recorder)))
+}
+
+async fn plain() -> Result<Option<Dragonfly>> {
+    dragonfly_support::connect(DB).await
+}
+
+#[tokio::test]
+async fn database_path_in_the_port_selects_the_logical_database() -> Result<()> {
+    let Some(df) = plain().await? else {
+        return Ok(());
+    };
+    let info: String = df.query(redis::cmd("CLIENT").arg("INFO")).await?;
+    ensure!(info.contains(&format!("db={DB}")), "CLIENT INFO: {info}");
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_killed_connection_fails_the_next_command_once_then_reconnects() -> Result<()> {
+    let Some((df, recorder)) = connect_recorded(None).await? else {
+        return Ok(());
+    };
+    let Some(killer) = plain().await? else {
+        return Ok(());
+    };
+    let p = prefix("reconnect");
+    let counter = format!("{p}counter");
+    df.set(&counter, b"0", SetOptions::default()).await?;
+    let old_id: i64 = df.query(redis::cmd("CLIENT").arg("ID")).await?;
+    let killed: i64 = killer
+        .query(redis::cmd("CLIENT").arg("KILL").arg("ID").arg(old_id))
+        .await?;
+    ensure!(killed == 1, "CLIENT KILL ID returned {killed}");
+
+    // The command that meets the dropped socket fails to its caller; it is not replayed.
+    let first = df.query::<i64>(redis::cmd("INCR").arg(&counter)).await;
+    let error = match first {
+        Ok(value) => bail!("INCR after the kill succeeded ({value}); expected a connection error"),
+        Err(error) => error,
+    };
+    ensure!(error.outcome_unknown(), "unexpected error kind: {error:?}");
+
+    // The handle reconnects on its own.
+    let mut value = None;
+    for _ in 0..50 {
+        match df.query::<i64>(redis::cmd("INCR").arg(&counter)).await {
+            Ok(v) => {
+                value = Some(v);
+                break;
+            }
+            Err(_) => tokio::time::sleep(Duration::from_millis(100)).await,
+        }
+    }
+    ensure!(
+        value == Some(1),
+        "the failed INCR must not have been applied or replayed: {value:?}"
+    );
+    let new_id: i64 = df.query(redis::cmd("CLIENT").arg("ID")).await?;
+    ensure!(new_id != old_id, "still on the killed connection");
+    ensure!(
+        !recorder.errors.lock().map(|e| e.is_empty()).unwrap_or(true),
+        "error hook not called"
+    );
+    cleanup(&killer, &p).await
+}
+
+/// A script that keeps the server busy for a bounded number of iterations (about a second).
+///
+/// Never loop on `TIME` here: Dragonfly freezes the clock inside a script, so a time-based loop
+/// never ends, and Dragonfly has no `SCRIPT KILL` and no Lua time limit: the thread spins until
+/// the server restarts. A counted loop always ends.
+static SLOW_SCRIPT: Script = Script::new(
+    "TEST_SLOW",
+    "local n = 0 for i = 1, tonumber(ARGV[1]) do n = n + 1 end return n",
+);
+
+/// Iterations for roughly one second on the local Dragonfly (30 million took 0.18 s).
+const SLOW_ITERATIONS: &str = "150000000";
+
+#[tokio::test]
+async fn the_response_timeout_fires_on_a_slow_script_and_no_stale_reply_follows() -> Result<()> {
+    let Some((df, recorder)) = connect_recorded(Some(Duration::from_millis(200))).await? else {
+        return Ok(());
+    };
+    let started = tokio::time::Instant::now();
+    let slow = SLOW_SCRIPT
+        .run_value(&df, &[] as &[&str], &[SLOW_ITERATIONS])
+        .await;
+    let elapsed = started.elapsed();
+    match slow {
+        Err(error) => ensure!(error.is_timeout() && error.outcome_unknown(), "{error:?}"),
+        Ok(value) => bail!("slow script returned {value:?} instead of timing out"),
+    }
+    ensure!(
+        elapsed < Duration::from_millis(900),
+        "timeout fired late: {elapsed:?}"
+    );
+    ensure!(
+        recorder
+            .commands
+            .lock()
+            .map(|c| c
+                .iter()
+                .any(|(m, o)| m == "eval" && *o == CommandOutcome::Error))
+            .unwrap_or(false),
+        "eval span not recorded as an error"
+    );
+    // Let the script finish on the server; then the same handle answers its own commands.
+    tokio::time::sleep(Duration::from_millis(1300)).await;
+    let echoed: String = df.query(redis::cmd("ECHO").arg("after-timeout")).await?;
+    ensure!(echoed == "after-timeout", "stale reply read: {echoed}");
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_cancelled_blocking_pop_leaves_no_waiter_and_the_connection_works_after() -> Result<()> {
+    let Some(df) = plain().await? else {
+        return Ok(());
+    };
+    let p = prefix("blocking");
+    let queue = format!("{p}queue");
+    let mut blocking = df.blocking();
+    blocking.connect().await?;
+    let first_id = blocking.connection_id().context("connection id")?;
+
+    // Cancel a pop that would wait forever.
+    let keys = [queue.as_str()];
+    tokio::select! {
+        result = blocking.blpop(&keys, Duration::ZERO) => bail!("BLPOP returned {result:?} on an empty list"),
+        () = tokio::time::sleep(Duration::from_millis(200)) => {}
+    }
+    // The next use opens a fresh connection and makes sure the abandoned waiter is gone.
+    blocking.connect().await?;
+    let second_id = blocking.connection_id().context("connection id")?;
+    ensure!(second_id != first_id, "abandoned connection was reused");
+    let clients: String = df.query(redis::cmd("CLIENT").arg("LIST")).await?;
+    ensure!(
+        !clients
+            .lines()
+            .any(|line| line.starts_with(&format!("id={first_id} "))),
+        "abandoned BLPOP connection still listed"
+    );
+
+    // An item pushed now reaches the live caller, not the abandoned one.
+    let item = QueueItem::encode(&serde_json::json!({"job": "after-cancel"}))?;
+    df.lpush(&queue, &[item.as_bytes()]).await?;
+    let popped = blocking
+        .blpop(&[queue.as_str()], Duration::from_secs(2))
+        .await?;
+    ensure!(
+        popped == Some((queue.clone(), item.clone())),
+        "popped {popped:?}"
+    );
+
+    // A timed-out pop returns None and keeps the connection.
+    let empty = blocking
+        .blpop(&[queue.as_str()], Duration::from_millis(100))
+        .await?;
+    ensure!(empty.is_none());
+    ensure!(
+        blocking.connection_id() == Some(second_id),
+        "connection replaced after a normal timeout"
+    );
+
+    // A server error reply keeps the connection too.
+    let string_key = format!("{p}string");
+    df.set(&string_key, b"x", SetOptions::default()).await?;
+    let wrong = blocking
+        .blpop(&[string_key.as_str()], Duration::from_millis(100))
+        .await;
+    ensure!(
+        matches!(&wrong, Err(e) if e.is_server_code("WRONGTYPE")),
+        "{wrong:?}"
+    );
+    ensure!(blocking.connection_id() == Some(second_id));
+    cleanup(&df, &p).await
+}
+
+#[tokio::test]
+async fn dragonfly_freezes_time_inside_a_script() -> Result<()> {
+    let Some(df) = plain().await? else {
+        return Ok(());
+    };
+    // Bounded by an iteration count: about 0.1 s of work between the two TIME calls.
+    static TWO_TIMES: Script = Script::new(
+        "TEST_TWO_TIMES",
+        "local a = redis.call('TIME') local n = 0 for i = 1, tonumber(ARGV[1]) do n = n + 1 end \
+         local b = redis.call('TIME') return {a[1], a[2], b[1], b[2], n}",
+    );
+    let value = TWO_TIMES
+        .run_value(&df, &[] as &[&str], &["20000000"])
+        .await?;
+    let (s1, us1, s2, us2, n): (String, String, String, String, i64) =
+        redis::from_redis_value(value).map_err(redis::RedisError::from)?;
+    ensure!(n == 20_000_000);
+    // The clock does not move inside a script: a loop waiting on TIME never ends.
+    ensure!((s1, us1) == (s2, us2), "TIME advanced inside the script");
+    Ok(())
+}
+
+#[tokio::test]
+async fn blmove_claims_into_a_processing_list() -> Result<()> {
+    let Some(df) = plain().await? else {
+        return Ok(());
+    };
+    let p = prefix("blmove");
+    let (queue, processing) = (format!("{p}queue"), format!("{p}processing"));
+    df.rpush(&queue, &[b"a", b"b"]).await?;
+    let mut blocking = df.blocking();
+    use dima_store::dragonfly::End;
+    let moved = blocking
+        .blmove(
+            &queue,
+            &processing,
+            End::Left,
+            End::Right,
+            Duration::from_secs(1),
+        )
+        .await?;
+    ensure!(moved.as_ref().map(QueueItem::as_bytes) == Some(b"a".as_slice()));
+    let in_processing: Vec<Vec<u8>> = df
+        .query(redis::cmd("LRANGE").arg(&processing).arg(0).arg(-1))
+        .await?;
+    ensure!(in_processing == vec![b"a".to_vec()]);
+    cleanup(&df, &p).await
+}
+
+#[tokio::test]
+async fn the_subscriber_resubscribes_after_its_connection_is_killed() -> Result<()> {
+    let Some(df) = plain().await? else {
+        return Ok(());
+    };
+    let channel = prefix("pubsub-channel");
+    let pattern_base = prefix("pubsub-pattern");
+    let subscriber = df.subscriber();
+    let mut by_channel = subscriber
+        .subscribe(Topic::Channel(channel.clone()))
+        .await?;
+    let mut by_pattern = subscriber
+        .subscribe(Topic::Pattern(format!("{pattern_base}*")))
+        .await?;
+    ensure!(by_channel.confirmed() && by_pattern.confirmed());
+
+    df.publish(&channel, b"one").await?;
+    df.publish(&format!("{pattern_base}x"), b"p-one").await?;
+    let got = tokio::time::timeout(Duration::from_secs(2), by_channel.recv()).await?;
+    ensure!(
+        got.as_ref().map(|m| m.payload.as_slice()) == Some(b"one".as_slice()),
+        "{got:?}"
+    );
+    let got = tokio::time::timeout(Duration::from_secs(2), by_pattern.recv())
+        .await?
+        .context("pattern message")?;
+    ensure!(got.payload == b"p-one" && got.channel == format!("{pattern_base}x").as_bytes());
+    ensure!(got.pattern.as_deref() == Some(format!("{pattern_base}*").as_str()));
+
+    let id = subscriber.connection_id();
+    ensure!(id > 0 && subscriber.connections() == 1);
+    let killed: i64 = df
+        .query(redis::cmd("CLIENT").arg("KILL").arg("ID").arg(id))
+        .await?;
+    ensure!(killed == 1);
+    let mut reconnected = false;
+    for _ in 0..100 {
+        if subscriber.connections() >= 2 && subscriber.connection_id() != 0 {
+            reconnected = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    ensure!(reconnected, "subscriber did not reconnect");
+    ensure!(subscriber.connection_id() != id);
+
+    df.publish(&channel, b"two").await?;
+    df.publish(&format!("{pattern_base}y"), b"p-two").await?;
+    let got = tokio::time::timeout(Duration::from_secs(2), by_channel.recv()).await?;
+    ensure!(
+        got.as_ref().map(|m| m.payload.as_slice()) == Some(b"two".as_slice()),
+        "{got:?}"
+    );
+    let got = tokio::time::timeout(Duration::from_secs(2), by_pattern.recv()).await?;
+    ensure!(
+        got.as_ref().map(|m| m.payload.as_slice()) == Some(b"p-two".as_slice()),
+        "{got:?}"
+    );
+
+    // Dropping a subscription unsubscribes; shutting down ends every stream.
+    drop(by_pattern);
+    let mut gone = false;
+    for _ in 0..40 {
+        let counts: i64 = df.query(redis::cmd("PUBSUB").arg("NUMPAT")).await?;
+        let receivers = df.publish(&format!("{pattern_base}z"), b"nobody").await?;
+        if receivers == 0 {
+            gone = true;
+            let _ = counts;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    ensure!(gone, "pattern subscription still active after drop");
+    subscriber.shutdown().await;
+    ensure!(
+        by_channel.recv().await.is_none(),
+        "stream did not end on shutdown"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_full_subscription_buffer_drops_and_counts() -> Result<()> {
+    let Some(mut config) = config(DB) else {
+        return Ok(());
+    };
+    config.subscription_buffer = 2;
+    let df = Dragonfly::connect(config, Hooks::default()).await?;
+    let channel = prefix("pubsub-overflow");
+    let subscriber = df.subscriber();
+    let mut subscription = subscriber
+        .subscribe(Topic::Channel(channel.clone()))
+        .await?;
+    for index in 0..5 {
+        df.publish(&channel, format!("m{index}").as_bytes()).await?;
+    }
+    let mut dropped = 0;
+    for _ in 0..40 {
+        dropped = subscription.dropped();
+        if dropped == 3 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    ensure!(dropped == 3, "dropped {dropped}");
+    let first = subscription.recv().await.context("first")?;
+    let second = subscription.recv().await.context("second")?;
+    ensure!(
+        first.payload == b"m0" && second.payload == b"m1",
+        "kept the oldest two"
+    );
+    // Delivery continues once there is room again.
+    df.publish(&channel, b"m5").await?;
+    let next = tokio::time::timeout(Duration::from_secs(2), subscription.recv())
+        .await?
+        .context("next")?;
+    ensure!(next.payload == b"m5");
+    Ok(())
+}
+
+#[tokio::test]
+async fn json_handler_receives_the_envelope() -> Result<()> {
+    let Some(df) = plain().await? else {
+        return Ok(());
+    };
+    let channel = prefix("pubsub-json");
+    let subscriber = df.subscriber();
+    let (sender, mut receiver) = tokio::sync::mpsc::channel(4);
+    #[derive(serde::Deserialize, Debug, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    struct Ended {
+        #[serde(rename = "channelID")]
+        channel_id: String,
+        session: String,
+        timestamp: f64,
+    }
+    let _guard = subscriber
+        .on_json(Topic::Channel(channel.clone()), move |value: Ended| {
+            let _ = sender.try_send(value);
+        })
+        .await?;
+    df.publish(&channel, b"not json").await?;
+    let data = serde_json::json!({"channelID": "123", "session": "s \u{1F600}"});
+    df.publish_envelope(&channel, &data, 1_794_000_000_000.0)
+        .await?;
+    let got = tokio::time::timeout(Duration::from_secs(2), receiver.recv())
+        .await?
+        .context("handler")?;
+    ensure!(
+        got == Ended {
+            channel_id: "123".into(),
+            session: "s \u{1F600}".into(),
+            timestamp: 1_794_000_000_000.0
+        }
+    );
+    ensure!(
+        envelope(&data, 1.0)? == r#"{"channelID":"123","session":"s 😀","timestamp":1}"#.as_bytes()
+    );
+    Ok(())
+}
+
+static ECHO_SCRIPT: Script = Script::new("TEST_ECHO", "return {KEYS[1], ARGV[1], 7}");
+
+#[tokio::test]
+async fn evalsha_falls_back_to_eval_after_script_flush() -> Result<()> {
+    let Some(df) = plain().await? else {
+        return Ok(());
+    };
+    let p = prefix("noscript");
+    let key = format!("{p}k");
+    let first = ECHO_SCRIPT.run_value(&df, &[key.as_str()], &["é"]).await?;
+    // Once, not in a loop: SCRIPT FLUSH empties the server's whole script cache.
+    let _: String = df.query(redis::cmd("SCRIPT").arg("FLUSH")).await?;
+    let exists: Vec<i64> = df
+        .query(redis::cmd("SCRIPT").arg("EXISTS").arg(ECHO_SCRIPT.sha1()))
+        .await?;
+    ensure!(exists == vec![0], "script still cached after SCRIPT FLUSH");
+    // The fence's pipelined EVALSHA batch reloads its script and replays once.
+    let fence = dima_store::dragonfly::plan_cache_fence::PlanCacheFence::new(df.clone());
+    let reads = fence
+        .read_accounts(&["dima-test-noscript-a", "dima-test-noscript-b"])
+        .await?;
+    ensure!(reads.len() == 2, "{reads:?}");
+    let second = ECHO_SCRIPT.run_value(&df, &[key.as_str()], &["é"]).await?;
+    ensure!(first == second, "{first:?} vs {second:?}");
+    let exists: Vec<i64> = df
+        .query(redis::cmd("SCRIPT").arg("EXISTS").arg(ECHO_SCRIPT.sha1()))
+        .await?;
+    ensure!(exists == vec![1], "EVAL fallback did not reload the script");
+    let typed: (String, String, i64) = ECHO_SCRIPT.run(&df, &[key.as_str()], &["é"]).await?;
+    ensure!(typed == (key, "é".to_owned(), 7));
+    Ok(())
+}
+
+#[tokio::test]
+async fn reply_shapes_match_what_node_redis_reports() -> Result<()> {
+    let Some((df, recorder)) = connect_recorded(None).await? else {
+        return Ok(());
+    };
+    let p = prefix("replies");
+    let key = |name: &str| format!("{p}{name}");
+
+    // GET: nil versus empty string.
+    ensure!(df.get(&key("missing")).await?.is_none());
+    df.set(&key("empty"), b"", SetOptions::default()).await?;
+    ensure!(df.get(&key("empty")).await? == Some(Vec::new()));
+
+    // SET: the three outcomes.
+    let lock = SetOptions::if_missing_ex(60);
+    ensure!(df.set(&key("lock"), b"owner-1", lock).await? == SetOutcome::Written);
+    ensure!(df.set(&key("lock"), b"owner-2", lock).await? == SetOutcome::NotWritten);
+    let get_nx = SetOptions {
+        condition: SetCondition::IfMissing,
+        expiry: SetExpiry::None,
+        get: true,
+    };
+    ensure!(
+        df.set(&key("lock"), b"owner-3", get_nx).await?
+            == SetOutcome::Previous(Some(b"owner-1".to_vec()))
+    );
+    ensure!(df.set(&key("fresh"), b"v", get_nx).await? == SetOutcome::Previous(None));
+    let xx = SetOptions {
+        condition: SetCondition::IfExists,
+        ..SetOptions::default()
+    };
+    ensure!(df.set(&key("absent"), b"v", xx).await? == SetOutcome::NotWritten);
+    ensure!(df.get(&key("lock")).await? == Some(b"owner-1".to_vec()));
+
+    // TTL codes.
+    ensure!(df.ttl(&key("missing")).await? == Ttl::Missing);
+    ensure!(df.ttl(&key("empty")).await? == Ttl::NoExpiry);
+    ensure!(matches!(df.ttl(&key("lock")).await?, Ttl::Seconds(59 | 60)));
+    let keep = SetOptions {
+        expiry: SetExpiry::KeepTtl,
+        ..SetOptions::default()
+    };
+    df.set(&key("lock"), b"owner-1", keep).await?;
+    ensure!(matches!(df.ttl(&key("lock")).await?, Ttl::Seconds(59 | 60)));
+
+    // HGETALL on a missing key, and field order.
+    ensure!(df.hgetall(&key("nohash")).await?.is_empty());
+    df.hset(
+        &key("hash"),
+        &[("z", b"1"), ("a", b"2"), ("m", "é".as_bytes())],
+    )
+    .await?;
+    let pairs = df.hgetall(&key("hash")).await?;
+    ensure!(
+        pairs
+            == [
+                ("z".into(), "1".into()),
+                ("a".into(), "2".into()),
+                ("m".into(), "é".into())
+            ],
+        "{pairs:?}"
+    );
+    ensure!(df.hget(&key("hash"), "nofield").await?.is_none());
+
+    // Integer replies.
+    ensure!(
+        df.exists(&[key("hash").as_str(), key("missing").as_str()])
+            .await?
+            == 1
+    );
+    ensure!(
+        df.del(&[key("fresh").as_str(), key("missing").as_str()])
+            .await?
+            == 1
+    );
+
+    // ZPOPMIN and scores written like JavaScript numbers.
+    ensure!(df.zpopmin(&key("zset")).await?.is_none());
+    df.zadd(
+        &key("zset"),
+        &[(1e21, b"big"), (1.5, b"frac"), (f64::INFINITY, b"inf")],
+    )
+    .await?;
+    let scores: Vec<String> = df
+        .query(
+            redis::cmd("ZRANGE")
+                .arg(key("zset"))
+                .arg(0)
+                .arg(-1)
+                .arg("WITHSCORES"),
+        )
+        .await?;
+    ensure!(
+        scores == ["frac", "1.5", "big", "1e+21", "inf", "inf"],
+        "{scores:?}"
+    );
+    ensure!(df.zpopmin(&key("zset")).await? == Some((b"frac".to_vec(), 1.5)));
+    ensure!(df.zcard(&key("zset")).await? == 2);
+    df.zpopmin(&key("zset")).await?;
+    ensure!(df.zpopmin(&key("zset")).await? == Some((b"inf".to_vec(), f64::INFINITY)));
+
+    // SCAN pages until the cursor returns to 0.
+    let mut scan = df.scan(&format!("{p}*"), Some(2));
+    let mut seen = Vec::new();
+    while let Some(page) = scan.next_page().await? {
+        seen.extend(page);
+    }
+    seen.sort();
+    seen.dedup();
+    // empty, lock, hash (fresh was deleted, the sorted set emptied and so removed).
+    ensure!(seen.len() == 3, "scan saw {} keys", seen.len());
+
+    // Lists: nil pops, non-UTF-8 values carried as bytes.
+    ensure!(df.lpop(&key("nolist")).await?.is_none());
+    df.rpush(&key("list"), &[&[0xff, 0x00, 0xfe]]).await?;
+    ensure!(df.rpop(&key("list")).await? == Some(vec![0xff, 0x00, 0xfe]));
+    ensure!(matches!(df.get_text(&key("nolist")).await, Ok(None)));
+    df.set(&key("binary"), &[0xc3, 0x28], SetOptions::default())
+        .await?;
+    ensure!(matches!(
+        df.get_text(&key("binary")).await,
+        Err(DragonflyError::NotUtf8)
+    ));
+
+    // The command hook saw get with hit/miss, and nothing for un-instrumented commands.
+    let commands = recorder
+        .commands
+        .lock()
+        .map(|c| c.clone())
+        .unwrap_or_default();
+    ensure!(commands.iter().any(|(m, o)| m == "get"
+        && *o
+            == CommandOutcome::Ok {
+                lookup: Some(CacheLookup::Miss)
+            }));
+    ensure!(commands.iter().any(|(m, o)| m == "get"
+        && *o
+            == CommandOutcome::Ok {
+                lookup: Some(CacheLookup::Hit)
+            }));
+    ensure!(
+        commands.iter().any(|(m, _)| m == "hGetAll")
+            && commands.iter().any(|(m, _)| m == "zPopMin")
+    );
+    ensure!(
+        !commands
+            .iter()
+            .any(|(m, _)| m == "ttl" || m == "scan" || m == "zRange")
+    );
+    cleanup(&df, &p).await
+}
+
+#[tokio::test]
+async fn dragonfly_lua_accepts_scan_and_keys_but_not_reading_what_they_return() -> Result<()> {
+    let Some(df) = plain().await? else {
+        return Ok(());
+    };
+    let p = prefix("lua-scan");
+    df.set(&format!("{p}a"), b"1", SetOptions::default())
+        .await?;
+    df.set(&format!("{p}b"), b"2", SetOptions::default())
+        .await?;
+    df.query::<i64>(redis::cmd("SADD").arg(format!("{p}set")).arg("x"))
+        .await?;
+
+    // SCAN inside a script pages like SCAN anywhere (COUNT is a hint, and with other tests'
+    // keys in the database one call can return a non-zero cursor and no match), so the cursor
+    // is iterated from Rust, bounded.
+    static SCAN: Script = Script::new(
+        "TEST_SCAN",
+        "return redis.call('SCAN', ARGV[2], 'MATCH', ARGV[1], 'COUNT', '1000')",
+    );
+    static KEYS: Script = Script::new("TEST_KEYS", "return redis.call('KEYS', ARGV[1])");
+    static SSCAN: Script = Script::new("TEST_SSCAN", "return redis.call('SSCAN', KEYS[1], '0')");
+    static SCAN_THEN_GET: Script = Script::new(
+        "TEST_SCAN_GET",
+        "local r = redis.call('SCAN', ARGV[2], 'MATCH', ARGV[1], 'COUNT', '1000') \
+         local out = {} for _, k in ipairs(r[2]) do table.insert(out, redis.call('GET', k)) end return {r[1], out}",
+    );
+    let pattern = format!("{p}?");
+    let mut cursor = "0".to_owned();
+    let mut keys: Vec<String> = Vec::new();
+    for _ in 0..10_000 {
+        let (next, page): (String, Vec<String>) = SCAN
+            .run(&df, &[] as &[&str], &[pattern.as_str(), cursor.as_str()])
+            .await?;
+        keys.extend(page);
+        cursor = next;
+        if cursor == "0" {
+            break;
+        }
+    }
+    keys.sort();
+    ensure!(
+        cursor == "0" && keys == [format!("{p}a"), format!("{p}b")],
+        "SCAN in Lua: {keys:?}"
+    );
+    let mut keys: Vec<String> = KEYS.run(&df, &[] as &[&str], &[pattern.as_str()]).await?;
+    keys.sort();
+    ensure!(
+        keys == [format!("{p}a"), format!("{p}b")],
+        "KEYS in Lua: {keys:?}"
+    );
+    let (_, members): (String, Vec<String>) = SSCAN
+        .run(&df, &[format!("{p}set").as_str()], &[] as &[&str])
+        .await?;
+    ensure!(members == ["x"]);
+    let mut cursor = "0".to_owned();
+    let mut refused = None;
+    for _ in 0..10_000 {
+        match SCAN_THEN_GET
+            .run_value(&df, &[] as &[&str], &[pattern.as_str(), cursor.as_str()])
+            .await
+        {
+            Err(error) => {
+                refused = Some(error.to_string());
+                break;
+            }
+            Ok(value) => {
+                let (next, _): (String, redis::Value) =
+                    redis::from_redis_value(value).map_err(redis::RedisError::from)?;
+                cursor = next;
+                if cursor == "0" {
+                    break;
+                }
+            }
+        }
+    }
+    ensure!(
+        refused
+            .as_deref()
+            .is_some_and(|e| e.contains("undeclared key")),
+        "reading a scanned key must be refused as undeclared: {refused:?}"
+    );
+    cleanup(&df, &p).await
+}
