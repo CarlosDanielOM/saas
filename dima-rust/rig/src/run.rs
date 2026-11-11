@@ -46,6 +46,8 @@ pub struct Settings {
     /// The rig's own environment (only `pass_env` names and PATH lookup read it).
     pub env: BTreeMap<String, String>,
     pub cargo_target_dir: String,
+    /// Dragonfly key globs whose values compare as exact text (`byte_sensitive.json`).
+    pub byte_sensitive: Vec<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -422,15 +424,17 @@ pub struct Rules<'a> {
     pub known: &'a Known,
     pub headers: &'a [String],
     pub as_text: &'a [crate::path::Pattern],
+    pub byte_sensitive: &'a [String],
 }
 
 impl<'a> Rules<'a> {
-    pub fn of(sc: &'a Scenario, patterns: &'a Patterns) -> Rules<'a> {
+    pub fn of(sc: &'a Scenario, patterns: &'a Patterns, byte_sensitive: &'a [String]) -> Rules<'a> {
         Rules {
             patterns,
             known: &sc.known,
             headers: &sc.headers,
             as_text: &sc.as_text,
+            byte_sensitive,
         }
     }
 }
@@ -449,14 +453,25 @@ pub fn normalise(run: &RawRun, rules: &Rules<'_>, allow: &Allowances) -> Capture
         names: run.run.names(),
         headers: rules.headers.to_vec(),
         as_text: rules.as_text.to_vec(),
+        byte_sensitive: rules.byte_sensitive.to_vec(),
     };
     let mut cap = detect::detect(&ctx, &run.raw);
     canon::canonicalise(&mut cap, allow);
     cap
 }
 
-fn normalise_sc(run: &RawRun, sc: &Scenario, allow: &Allowances, patterns: &Patterns) -> Capture {
-    normalise(run, &Rules::of(sc, patterns), allow)
+fn normalise_sc(
+    run: &RawRun,
+    sc: &Scenario,
+    allow: &Allowances,
+    patterns: &Patterns,
+    settings: &Settings,
+) -> Capture {
+    normalise(
+        run,
+        &Rules::of(sc, patterns, &settings.byte_sensitive),
+        allow,
+    )
 }
 
 /// A raw run through the capture file format and back, as `verify` reads a reference.
@@ -619,8 +634,8 @@ pub async fn compare_live(
                 let allow = sc.allowances();
                 // The reference goes through the file format, exactly as `verify` reads it.
                 let r = through_file(target_name, sc, &r)?;
-                let rc = normalise_sc(&r, sc, &allow, &p);
-                let cc = normalise_sc(&c, sc, &allow, &p);
+                let rc = normalise_sc(&r, sc, &allow, &p, settings);
+                let cc = normalise_sc(&c, sc, &allow, &p, settings);
                 let outcome = compare::compare(&rc, &cc, &allow, sc.tolerance_ms);
                 finish_scenario(&mut rep, outcome, &allow, Status::Match, Status::Differ);
             }
@@ -704,8 +719,8 @@ pub async fn verify(
                 Ok(c) => {
                     let allow = sc.allowances();
                     // The stored raw reference, normalised by the current code.
-                    let rc = normalise_sc(&r, sc, &allow, &p);
-                    let cc = normalise_sc(&c, sc, &allow, &p);
+                    let rc = normalise_sc(&r, sc, &allow, &p, settings);
+                    let cc = normalise_sc(&c, sc, &allow, &p, settings);
                     let outcome = compare::compare(&rc, &cc, &allow, sc.tolerance_ms);
                     finish_scenario(&mut rep, outcome, &allow, Status::Match, Status::Differ);
                 }
@@ -775,7 +790,7 @@ pub async fn record(
             }
         };
         let allow = sc.allowances();
-        let c1 = normalise_sc(&r1, sc, &allow, &p);
+        let c1 = normalise_sc(&r1, sc, &allow, &p, settings);
         match r2 {
             Some(Err(f)) => {
                 rep.status = Status::Error;
@@ -784,7 +799,7 @@ pub async fn record(
                 continue;
             }
             Some(Ok(r2)) => {
-                let c2 = normalise_sc(&r2, sc, &allow, &p);
+                let c2 = normalise_sc(&r2, sc, &allow, &p, settings);
                 let outcome = compare::compare(&c1, &c2, &allow, sc.tolerance_ms);
                 if !outcome.differences.is_empty() {
                     finish_scenario(
@@ -815,8 +830,8 @@ pub async fn record(
                     raw: old.raw,
                     run: old.run,
                 };
-                let oc = normalise_sc(&old, sc, &fresh, &p);
-                let nc = normalise_sc(&r1, sc, &fresh, &p);
+                let oc = normalise_sc(&old, sc, &fresh, &p, settings);
+                let nc = normalise_sc(&r1, sc, &fresh, &p, settings);
                 compare::compare(&oc, &nc, &fresh, sc.tolerance_ms)
                     .differences
                     .is_empty()
@@ -955,8 +970,8 @@ pub async fn diff_get(
     match (refr, cand) {
         (Ok(r), Ok(c)) => {
             let allow = sc.allowances();
-            let rc = normalise_sc(&r, &sc, &allow, &p);
-            let cc = normalise_sc(&c, &sc, &allow, &p);
+            let rc = normalise_sc(&r, &sc, &allow, &p, settings);
+            let cc = normalise_sc(&c, &sc, &allow, &p, settings);
             for (i, step) in sc.steps.iter().enumerate() {
                 let label = match &step.kind {
                     crate::scenario::StepKind::Http(h) => format!("{:03} GET {}", i, h.path),

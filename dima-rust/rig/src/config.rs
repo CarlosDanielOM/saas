@@ -19,6 +19,8 @@ pub struct Overrides {
     pub dragonfly_dbs: Option<String>,
     pub vars: Vec<String>,
     pub keep: bool,
+    /// The byte-sensitive key list [default: byte_sensitive.json in the rig crate].
+    pub byte_sensitive: Option<PathBuf>,
 }
 
 /// The rig crate's directory, fixed at build time.
@@ -110,7 +112,13 @@ pub fn settings(o: &Overrides, env: BTreeMap<String, String>) -> Result<Settings
             .unwrap_or_else(|| format!("{}/.cache", get("HOME").unwrap_or_default()));
         format!("{cache}/dima-rust/target")
     });
+    let byte_sensitive = crate::bytesens::load(
+        &o.byte_sensitive
+            .clone()
+            .unwrap_or_else(|| default_rig_dir().join("byte_sensitive.json")),
+    )?;
     Ok(Settings {
+        byte_sensitive,
         captures_dir: o
             .captures_dir
             .clone()

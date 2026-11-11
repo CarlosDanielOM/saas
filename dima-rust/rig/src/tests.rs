@@ -124,14 +124,19 @@ fn run_of(r: &RawCapture, w: Window, port: u16) -> RawRun {
     }
 }
 
+/// The byte-sensitive key globs the unit tests use.
+const BYTE_SENSITIVE: &[&str] = &["q:*", "cas:*"];
+
 fn norm_run(run: &RawRun, known: &Known, a: &Allowances) -> Capture {
     let p = Patterns::new().unwrap();
     let headers: Vec<String> = DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect();
+    let bs: Vec<String> = BYTE_SENSITIVE.iter().map(|s| s.to_string()).collect();
     let rules = Rules {
         patterns: &p,
         known,
         headers: &headers,
         as_text: &[],
+        byte_sensitive: &bs,
     };
     normalise(run, &rules, a)
 }
@@ -1120,4 +1125,77 @@ fn each_ttl_is_relative_to_its_own_reading() {
         "dragonfly.k.ttl",
         "TTL differs",
     );
+}
+
+#[test]
+fn byte_sensitive_values_compare_as_exact_text() {
+    let l = |key: &str, items: &[&str]| {
+        raw(
+            vec![],
+            vec![],
+            vec![RawEntry {
+                key: key.as_bytes().to_vec(),
+                kind: "list".into(),
+                value: RawValue::List(items.iter().map(|x| x.as_bytes().to_vec()).collect()),
+                pttl: -1,
+                pttl_at: START,
+            }],
+        )
+    };
+    // Same content, different key order: a difference under a byte-sensitive key ...
+    let a = r#"{"id":"j1","job":"memory","n":1}"#;
+    let b = r#"{"job":"memory","id":"j1","n":1}"#;
+    assert_one(
+        &diff(&l("q:jobs", &[a]), &l("q:jobs", &[b])),
+        "dragonfly[\"q:jobs\"].value[0]",
+        "text differs",
+    );
+    // ... and a note elsewhere.
+    let o = diff(&l("other", &[a]), &l("other", &[b]));
+    assert_match(&o);
+    assert_eq!(o.notes.len(), 1, "{:#?}", o.notes);
+    // Number text, escaping and whitespace count.
+    for (x, y) in [
+        (r#"{"n":1}"#, r#"{"n":1.0}"#),
+        (r#"{"u":"a/b"}"#, r#"{"u":"a\/b"}"#),
+        (r#"{"n":1}"#, r#"{"n": 1}"#),
+    ] {
+        assert!(
+            !diff(&l("q:x", &[x]), &l("q:x", &[y]))
+                .differences
+                .is_empty(),
+            "{x} vs {y}"
+        );
+    }
+    // Generated ids and times inside the text are still normalised.
+    let (i1, i2) = (oid_at(START + 10, 1), oid_at(START + 20, 2));
+    let t = |ms: i64| crate::timefmt::format_iso_ms(ms).unwrap();
+    assert_match(&diff(
+        &l(
+            "q:jobs",
+            &[&format!(r#"{{"id":"{i1}","at":"{}"}}"#, t(START + 100))],
+        ),
+        &l(
+            "q:jobs",
+            &[&format!(r#"{{"id":"{i2}","at":"{}"}}"#, t(START + 300))],
+        ),
+    ));
+    // A reply to a command on a byte-sensitive key is exact text too.
+    let reply = |key: &str, v: &str| {
+        raw(
+            vec![RawStep::Reply(crate::capture::RawReplyStep {
+                at: START + 10,
+                command: vec!["GET".into(), key.into()],
+                reply: crate::capture::RawReply::Bulk(v.as_bytes().to_vec()),
+            })],
+            vec![],
+            vec![],
+        )
+    };
+    assert_one(
+        &diff(&reply("cas:1", a), &reply("cas:1", b)),
+        "steps[0].reply",
+        "text differs",
+    );
+    assert_match(&diff(&reply("plain", a), &reply("plain", b)));
 }

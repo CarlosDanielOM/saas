@@ -29,6 +29,7 @@ enum Variant {
     Number,
     WrongRef,
     WritesOnGet,
+    JobKeyOrder,
 }
 
 impl Variant {
@@ -45,6 +46,7 @@ impl Variant {
             "number" => Variant::Number,
             "wrong-ref" => Variant::WrongRef,
             "writes-on-get" => Variant::WritesOnGet,
+            "job-key-order" => Variant::JobKeyOrder,
             other => bail!("unknown variant {other}"),
         })
     }
@@ -205,7 +207,12 @@ impl App {
         } else {
             id
         };
-        let cached = json!({"id": id.to_hex(), "name": name}).to_string();
+        // Key order differs in `equivalent`: this value is not byte-sensitive (a note only).
+        let cached = if self.v == Variant::Equivalent {
+            json!({"name": name, "id": id.to_hex()}).to_string()
+        } else {
+            json!({"id": id.to_hex(), "name": name}).to_string()
+        };
         let mut set = redis::cmd("SET");
         set.arg(format!("item:{}", key_id.to_hex())).arg(&cached);
         if self.v != Variant::NoTtl {
@@ -277,6 +284,26 @@ impl App {
     async fn queue_jobs(self: &Arc<Self>, body: &[u8]) -> Result<Response> {
         let input: Value = serde_json::from_slice(body)?;
         let item = ObjectId::parse_str(input.get("item").and_then(Value::as_str).unwrap_or(""))?;
+        // A queue item a reader removes by value (byte-sensitive: `cron:jobs:queue`).
+        let job = if self.v == Variant::JobKeyOrder {
+            format!(
+                r#"{{"job":"finish","id":"{}","requestedAt":{}}}"#,
+                item.to_hex(),
+                bson::DateTime::now().timestamp_millis()
+            )
+        } else {
+            format!(
+                r#"{{"id":"{}","job":"finish","requestedAt":{}}}"#,
+                item.to_hex(),
+                bson::DateTime::now().timestamp_millis()
+            )
+        };
+        let mut r = self.redis.clone();
+        redis::cmd("RPUSH")
+            .arg("cron:jobs:queue")
+            .arg(job)
+            .query_async::<i64>(&mut r)
+            .await?;
         let app = Arc::clone(self);
         tokio::spawn(async move {
             let delay = if app.v == Variant::Equivalent {

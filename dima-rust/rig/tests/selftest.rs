@@ -212,6 +212,9 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
         "wrong-ref" => assert_only(&run, variant, all, |p, w| {
             p.starts_with("dragonfly[\"item:<oid:") && w.contains("cross-reference differs")
         }),
+        "job-key-order" => assert_only(&run, variant, &["items/jobs"], |p, w| {
+            p == "dragonfly[\"cron:jobs:queue\"].value[0]" && w == "text differs"
+        }),
         "crash" => {
             assert_eq!(run.code, 1, "a crash fails the run\n{}", run.text);
             let create = run.scenario("items/create");
@@ -379,6 +382,7 @@ fn self_test_end_to_end() {
         "crash",
         "number",
         "wrong-ref",
+        "job-key-order",
     ];
     for chunk in variants.chunks(3) {
         std::thread::scope(|s| {
@@ -497,6 +501,37 @@ fn self_test_end_to_end() {
             writes.text
         );
     });
+
+    // Captures are raw: the recording above, re-verified with a different normalisation
+    // setting (a byte-sensitive list without cron:jobs:queue), is normalised again by the
+    // current code. The same candidate that differed now matches, its key order a note.
+    let other_list = work.join("byte_sensitive_other.json");
+    std::fs::write(
+        &other_list,
+        r#"{"rig_byte_sensitive": 1, "keys": [{"pattern": "unrelated:*", "why": "test list"}]}"#,
+    )
+    .unwrap();
+    let relaxed = rig(
+        &work,
+        &rd,
+        "job-key-order",
+        &[
+            "--byte-sensitive",
+            other_list.to_str().unwrap(),
+            "verify",
+            "selftest",
+            "items/jobs",
+        ],
+    );
+    pids.push(relaxed.pid);
+    assert_eq!(relaxed.code, 0, "{}", relaxed.text);
+    assert!(
+        relaxed.scenario("items/jobs")["notes"]
+            .to_string()
+            .contains("cron:jobs:queue"),
+        "{}",
+        relaxed.text
+    );
 
     // share_process (opt-in) carries in-memory state from one scenario into the next: recorded
     // after the others, items/memory counts their items too, and verified alone it does not.

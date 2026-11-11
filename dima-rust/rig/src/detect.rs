@@ -236,12 +236,16 @@ pub struct DetectCtx<'a> {
     pub headers: Vec<String>,
     /// Dragonfly strings at or below these paths stay exact text (not parsed as JSON).
     pub as_text: Vec<crate::path::Pattern>,
+    /// Dragonfly key globs whose values stay exact text (`byte_sensitive.json`).
+    pub byte_sensitive: Vec<String>,
 }
 
 struct Detector<'a, 'b> {
     ctx: &'b DetectCtx<'a>,
     extra: Option<Regex>,
     found: Vec<String>,
+    /// Inside the value of a byte-sensitive key (or the reply to a command on one).
+    exact_text: bool,
 }
 
 #[derive(Clone)]
@@ -588,11 +592,12 @@ impl Detector<'_, '_> {
         let Ok(s) = std::str::from_utf8(bytes) else {
             return Val::Bytes(bytes.to_vec());
         };
-        let as_text = self
-            .ctx
-            .as_text
-            .iter()
-            .any(|p| p.matches_self_or_ancestor(path));
+        let as_text = self.exact_text
+            || self
+                .ctx
+                .as_text
+                .iter()
+                .any(|p| p.matches_self_or_ancestor(path));
         if !as_text
             && (s.starts_with('{') || s.starts_with('['))
             && let Ok(parsed) = serde_json::from_str::<Value>(s)
@@ -656,7 +661,15 @@ impl Detector<'_, '_> {
             RawStep::Done(kind) => StepCap::Done(kind.clone()),
             RawStep::Reply(r) => {
                 path.push_key("reply");
-                StepCap::Reply(self.reply(&mut path, &r.reply))
+                // A reply about a byte-sensitive key is exact text too.
+                self.exact_text = r
+                    .command
+                    .iter()
+                    .skip(1)
+                    .any(|a| self.byte_sensitive_key(a.as_bytes()));
+                let v = self.reply(&mut path, &r.reply);
+                self.exact_text = false;
+                StepCap::Reply(v)
             }
             RawStep::Http(h) => {
                 let mut grouped: Vec<(String, Vec<Text>)> = Vec::new();
@@ -747,9 +760,15 @@ impl Detector<'_, '_> {
         }
     }
 
+    fn byte_sensitive_key(&self, key: &[u8]) -> bool {
+        let k = String::from_utf8_lossy(key);
+        self.ctx.byte_sensitive.iter().any(|g| name_glob(g, &k))
+    }
+
     fn entry(&mut self, e: &RawEntry) -> EntryCap {
         let root = Path::root("dragonfly");
         let key = self.bytes_text(&root, &e.key);
+        self.exact_text = self.byte_sensitive_key(&e.key);
         let mut vp = root.with_key(key.display()).with_key("value");
         let value = match &e.value {
             RawValue::Str(b) => self.df_string(&mut vp, b),
@@ -829,6 +848,7 @@ impl Detector<'_, '_> {
             ),
             RawValue::Other => Val::Unsupported(e.kind.clone()),
         };
+        self.exact_text = false;
         // Each TTL relative to the time it was read.
         let ttl = (e.pttl >= 0).then(|| self.moment(e.pttl_at + e.pttl));
         EntryCap {
@@ -867,6 +887,7 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         ctx,
         extra: None,
         found: Vec::new(),
+        exact_text: false,
     };
     let cap = first.run(raw);
     let mut found: Vec<String> = first
@@ -893,6 +914,7 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         ctx,
         extra: Some(extra),
         found: Vec::new(),
+        exact_text: false,
     };
     second.run(raw)
 }
@@ -925,6 +947,7 @@ pub(crate) mod tests {
             names: vec![("127.0.0.1:41234".into(), "port.http".into())],
             headers: DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect(),
             as_text: Vec::new(),
+            byte_sensitive: Vec::new(),
         }
     }
 
@@ -936,6 +959,7 @@ pub(crate) mod tests {
             ctx: &c,
             extra: None,
             found: Vec::new(),
+            exact_text: false,
         };
         d.text(&Path::root("x"), raw)
     }

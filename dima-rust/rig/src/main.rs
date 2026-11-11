@@ -45,6 +45,9 @@ struct Cli {
     /// Keep the side databases after the run (for inspection)
     #[arg(long, global = true)]
     keep: bool,
+    /// Dragonfly keys whose values compare as exact text [default: byte_sensitive.json in the rig crate]
+    #[arg(long, global = true, value_name = "FILE")]
+    byte_sensitive: Option<PathBuf>,
     #[command(subcommand)]
     cmd: Cmd,
 }
@@ -148,6 +151,7 @@ fn main() -> ExitCode {
         dragonfly_dbs: cli.dragonfly_dbs.clone(),
         vars: cli.set.clone(),
         keep: cli.keep,
+        byte_sensitive: cli.byte_sensitive.clone(),
     };
     let settings = match config::settings(&o, std::env::vars().collect()) {
         Ok(s) => s,
