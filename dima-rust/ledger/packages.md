@@ -57,12 +57,12 @@ Decisions behind the map:
 | F-WEB-01 | `dima-web`: router, request model, body parsing, responses, ETag, errors, CORS (225 golden cases from real Express) | xhigh | F-SKEL | merged; review done, fixes go into F-WEB-02 |
 | RIG-01 | Rig: targets, scenarios, capture, normalise, compare, record/verify/compare/diff-get (manual: `rig/README.md`) | xhigh then high | F-SKEL | merged; review done, fixes in RIG-01b |
 | RIG-01b | Rig hardening from the review, before any real capture is recorded: captures store raw observations and are normalised at compare time (so a better normaliser never needs the deleted reference); times inside the run window compare only relatively, with tight intra-document deltas and matching order/equality patterns (catches a missing `updatedAt` bump and a wrong lease length); all response headers compared except a noise list (so `Set-Cookie` counts); binary-safe Dragonfly names; stream fields as ordered pairs; allowances scoped and never masking seeded values; `listIndexes` errors fail the capture; value-aware binding of generated keys; TTL read with its own timestamp; one process per scenario by default; rendered Dragonfly commands validated; read-only credentials for `diff-get`; cleanup on every exit path; declared primary port; five more seeded defects in the self-test | xhigh | RIG-01 | planned |
-| F-CORE | `dima-core` | xhigh | F-TEXT | running |
+| F-CORE | `dima-core` (2,451 vectors from the production Node runtime) | high | F-TEXT | merged, in review |
 | F-STORE-MONGO | `dima-store::mongo`: client, BSON number and date rules, Mongoose-equivalent write helpers, JSON for HTTP | xhigh | F-TEXT | running |
 | F-STORE-DF | `dima-store::dragonfly`: client, subscriber, Lua wrapper, opaque queues, plan-cache fence, cron queue | xhigh | F-TEXT | running |
 | F-HTTP | `dima-http` | high | F-CORE | planned |
 | F-TELEMETRY | `dima-telemetry` (from the old `logger`, supervisor telemetry; TS `telemetry.ts`) | high | F-STORE | planned |
-| F-WEB-02 | `dima-web`: the twelve review fixes first (bounded qs arrays, compressed-input budget, linear header parsing, 16 KiB head limit, connection cap, date parsing through `dima-text`, integers above 2^53, panic path, tighter golden exceptions), then static files, `sendFile` ranges, multipart uploads, SSE, telemetry hook, Node-like listen address and 5 s keep-alive, one surrogate helper | xhigh | F-WEB-01 | planned |
+| F-WEB-02 | `dima-web`: the twelve review fixes first (bounded qs arrays, compressed-input budget, linear header parsing, 16 KiB head limit, connection cap, date parsing through `dima-text`, integers above 2^53, panic path, tighter golden exceptions), then static files, `sendFile` ranges, multipart uploads, SSE, telemetry hook, Node-like listen address and 5 s keep-alive, one surrogate helper | xhigh | F-WEB-01 | running |
 | F-MODEL-01..04 | `dima-model`: 104 models in four batches, with the real-data decode check | high | F-STORE | planned |
 | PILOT | `services/dimadb-server` ported and verified in the rig against the Node server | high | F-WEB-01, F-STORE, RIG-01 | planned |
 | RIG-02 | Rig: review fixes, byte-sensitive key patterns compared as exact text (from `dragonfly.json`), outside-service mock, outbound call comparison, webhook and Socket.IO steps, reference image for `dimabot` | xhigh | RIG-01 | planned |
@@ -103,6 +103,7 @@ count against that limit.
 | Finding | Where | Plan |
 |---|---|---|
 | `POST /eventsub` with a non-JSON content type crashes the bot process | `bot/eventsub.twitch.ts:280` | Rust rejects without crashing |
+| `POST /eventsub` with a non-ASCII signature header of the expected length makes `timingSafeEqual` throw and the bot process exit | `bot/eventsub.twitch.ts:288` | Rust returns false (403) |
 | `POST /auth/login` trusts the id in the body (returns email, renames account) | `server/routes/auth.route.ts:968` | Verify the Twitch token against the id if the site sends it; otherwise ask the owner |
 | `GET /auth/mock-register` has no guard | `server/routes/auth.route.ts` | Gate behind `MOCK_LOGIN_TOKEN` |
 | `POST /auth/mock-login` is live when `MOCK_LOGIN_TOKEN` is set (it is, in production) | `server/routes/auth.route.ts:1168` | Same gate kept; owner informed |
