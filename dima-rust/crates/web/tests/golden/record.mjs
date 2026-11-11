@@ -10,8 +10,18 @@
 // Keep the two fixtures identical when adding a case.
 
 import { createRequire } from 'node:module';
-import { existsSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import net from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
@@ -30,12 +40,90 @@ if (!existsSync(path.join(nodeModules, 'express'))) {
 const require = createRequire(path.join(nodeModules, 'noop.js'));
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
 
 // ---------------------------------------------------------------------------------------------
 // Fixture app. Mirrors the reference server's shape: raw webhook before the JSON parsers,
 // per-prefix limits, a router with its own CORS, global parsers, routers mounted before cors(),
 // cors(), then routes and routers (auth shadowing, mergeParams, error handlers, JSON 404s).
 // ---------------------------------------------------------------------------------------------
+
+// Files served by express.static and res.sendFile. The Rust test builds the same tree from the
+// `staticFiles` list written into express.json, with the same modification time (a half second
+// is exact both through libuv's float conversion and in Rust), so ETags and Last-Modified agree.
+const STATIC_MTIME_MS = 1767323045500;
+const pattern = (size) => Buffer.from(Array.from({ length: size }, (_, i) => i % 251));
+const STATIC_FILES = [
+  ['index.html', Buffer.from('<h1>root</h1>\n')],
+  ['hello.txt', Buffer.from('abcdefghijklmnopqrstuvwxyz0123456789')],
+  ['empty.txt', Buffer.alloc(0)],
+  ['noext', Buffer.from('no extension')],
+  ['data.json', Buffer.from('{"a":1}')],
+  ['script.js', Buffer.from('var a = 1;')],
+  ['styles/app.css', Buffer.from('body{}')],
+  ['dir/index.html', Buffer.from('<p>dir</p>')],
+  ['speech/chan1/one.wav', Buffer.concat([Buffer.from('RIFF'), pattern(60)])],
+  ['speech/chan1/one.mp3', Buffer.concat([Buffer.from('ID3'), pattern(40)])],
+  ['downloads/123-clip.mp4', pattern(300)],
+  ['.env', Buffer.from('SECRET=1')],
+  ['.well-known/thing.txt', Buffer.from('well known')],
+  ['café/menü.txt', Buffer.from('crème brûlée')],
+  ['😀/smile.txt', Buffer.from('smile 😀')],
+  ['emoji-😀.txt', Buffer.from('emoji')],
+  ['שלום.txt', Buffer.from('שלום עולם')],
+  ['with space.txt', Buffer.from('space')],
+  ['percent%.txt', Buffer.from('percent')],
+  ['UPPER.TXT', Buffer.from('upper')],
+  ['big.bin', pattern(70000)],
+];
+const STATIC_DIRS = ['empty-dir'];
+
+function makeStaticTree() {
+  const root = mkdtempSync(path.join(process.env.GOLDEN_TMPDIR ?? os.tmpdir(), 'dima-web-static-'));
+  for (const dir of STATIC_DIRS) mkdirSync(path.join(root, dir), { recursive: true });
+  for (const [name, bytes] of STATIC_FILES) {
+    const file = path.join(root, name);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, bytes);
+    utimesSync(file, STATIC_MTIME_MS / 1000, STATIC_MTIME_MS / 1000);
+  }
+  return root;
+}
+
+const staticRoot = makeStaticTree();
+// Uploads land here; every upload route empties it before answering.
+const uploadDir = mkdtempSync(path.join(process.env.GOLDEN_TMPDIR ?? os.tmpdir(), 'dima-web-uploads-'));
+const UPLOAD_TYPES = ['video/mp4', 'image/png', 'audio/mpeg', 'text/csv'];
+const describeError = (err) =>
+  err ? { name: err.name, code: err.code ?? null, field: err.field ?? null, message: err.message } : null;
+const describeFile = (file, content) =>
+  file
+    ? {
+        fieldname: file.fieldname,
+        originalname: file.originalname,
+        encoding: file.encoding,
+        mimetype: file.mimetype,
+        size: file.size,
+        content: content ? content.toString('base64') : null,
+      }
+    : null;
+const emptyUploads = () => {
+  const leftover = readdirSync(uploadDir).sort();
+  for (const name of leftover) rmSync(path.join(uploadDir, name), { force: true });
+  return leftover;
+};
+const diskStorage = () =>
+  multer.diskStorage({
+    destination: (_req, _file, done) => done(null, uploadDir),
+    filename: (_req, file, done) => done(null, `upload${path.extname(file.originalname || '').toLowerCase()}`),
+  });
+const fileTag = (name) => {
+  const size = STATIC_FILES.find(([n]) => n === name)[1].length;
+  return `W/"${size.toString(16)}-${STATIC_MTIME_MS.toString(16)}"`;
+};
+const lastModified = new Date(STATIC_MTIME_MS).toUTCString();
+const earlier = new Date(STATIC_MTIME_MS - 86400000).toUTCString();
+const later = new Date(STATIC_MTIME_MS + 86400000).toUTCString();
 
 class WidgetError extends Error {
   constructor(message, status) {
@@ -111,6 +199,8 @@ function buildApp() {
   app.use('/pre', pre);
   app.get('/early', (req, res) => res.json({ early: true }));
 
+  // As in the reference: static files after the parsers and the OAuth mounts, before cors().
+  app.use(express.static(staticRoot));
   app.use(cors());
 
   const where = (req) => ({ path: req.path, baseUrl: req.baseUrl, originalUrl: req.originalUrl, url: req.url });
@@ -178,6 +268,95 @@ function buildApp() {
     res.vary('Accept');
     res.json({ vary: true });
   });
+  app.get('/.well-known/thing', (req, res) => res.json({ wellKnown: true }));
+  app.get('/a.b/c', (req, res) => res.json({ dotted: 'segment' }));
+  app.get('/files.json', (req, res) => res.json({ dotted: 'file' }));
+  app.get('/speech/:channelID', (req, res) => res.json({ speechPage: req.params.channelID }));
+  app.get('/sendfile/text', (req, res) => res.sendFile(path.join(staticRoot, 'hello.txt')));
+  app.get('/sendfile/typed', (req, res) => {
+    res.set('Content-Type', 'audio/mpeg');
+    res.sendFile(path.join(staticRoot, 'speech', 'chan1', 'one.wav'));
+  });
+  app.get('/sendfile/status', (req, res) => res.status(200).sendFile(path.join(staticRoot, 'index.html')));
+  app.get('/sendfile/no-store', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(path.join(staticRoot, 'script.js'));
+  });
+  app.get('/sendfile/missing', (req, res) => res.sendFile(path.join(staticRoot, 'nope.txt')));
+  app.get('/sendfile/dir', (req, res) => res.sendFile(path.join(staticRoot, 'dir')));
+  app.get('/sendfile/dotfile', (req, res) => res.sendFile(path.join(staticRoot, '.env')));
+  app.get('/sendfile/relative', (req, res) => res.sendFile('hello.txt'));
+  app.get('/sendfile/emoji', (req, res) => res.sendFile(path.join(staticRoot, '😀', 'smile.txt')));
+  app.get('/sendfile/big', (req, res) => res.sendFile(path.join(staticRoot, 'big.bin')));
+  app.get('/type-unknown-ext', (req, res) => res.type('xyz').send(Buffer.from('x')));
+  app.get('/type-wav', (req, res) => res.type('wav').send(Buffer.from('RIFF')));
+  app.get('/set-manifest-json', (req, res) => {
+    res.set('Content-Type', 'application/manifest+json');
+    res.send(Buffer.from('{}'));
+  });
+  const filesRouter = express.Router();
+  filesRouter.get('/missing', (req, res) => res.sendFile(path.join(staticRoot, 'nope.txt')));
+  filesRouter.get('/range', (req, res) => res.sendFile(path.join(staticRoot, 'hello.txt')));
+  // eslint-disable-next-line no-unused-vars
+  filesRouter.use((err, req, res, next) =>
+    res.status(err.status || 500).json({ status: err.status, code: err.code ?? null, expose: err.expose }),
+  );
+  app.use('/files-router', filesRouter);
+  // multer as trigger.route.ts uses it: disk storage, a mimetype allowlist, a size limit.
+  app.post('/upload/disk', (req, res) => {
+    const upload = multer({
+      storage: diskStorage(),
+      fileFilter: (_req, file, done) => done(null, UPLOAD_TYPES.includes(file.mimetype)),
+      limits: { fileSize: 64 },
+    }).single('trigger');
+    upload(req, res, (err) => {
+      // After an error multer leaves req.file set, without the paths disk storage removed.
+      const content = req.file?.path ? readFileSync(req.file.path) : null;
+      const stored = req.file?.filename ?? null;
+      res.json({ error: describeError(err), file: describeFile(req.file, content), stored, body: req.body ?? null, leftover: emptyUploads() });
+    });
+  });
+  // multer as asset-library.route.ts uses it: a streaming storage engine and tight limits.
+  app.post('/upload/stream', (req, res) => {
+    const removed = [];
+    const storage = {
+      _handleFile(_req, file, done) {
+        const parts = [];
+        file.stream.on('data', (chunk) => parts.push(chunk));
+        file.stream.on('error', done);
+        file.stream.on('end', () => {
+          const content = Buffer.concat(parts);
+          done(null, { size: content.length, content });
+        });
+      },
+      _removeFile(_req, file, done) {
+        removed.push(file.originalname);
+        done(null);
+      },
+    };
+    const upload = multer({ storage, limits: { fileSize: 50, files: 1, fields: 0, parts: 2 } }).single('file');
+    upload(req, res, (err) =>
+      res.json({ error: describeError(err), file: describeFile(req.file, req.file?.content), removed, body: req.body ?? null }),
+    );
+  });
+  // Field limits.
+  app.post('/upload/fields', (req, res) => {
+    const upload = multer({
+      storage: diskStorage(),
+      limits: { fieldSize: 16, fields: 3, parts: 5, fieldNameSize: 12 },
+    }).single('doc');
+    upload(req, res, (err) => {
+      const file = req.file ? req.file.originalname : null;
+      res.json({ error: describeError(err), file, body: req.body ?? null, leftover: emptyUploads() });
+    });
+  });
+  // As middleware: errors take the default path.
+  app.post('/upload/middleware', multer({ storage: diskStorage(), limits: { fileSize: 64 } }).single('trigger'), (req, res) => {
+    res.json({ file: req.file ? req.file.originalname : null, body: req.body ?? null, leftover: emptyUploads() });
+  });
+  app.post('/raw-length', express.raw(), (req, res) =>
+    res.json({ isBuffer: Buffer.isBuffer(req.body), length: req.body.length }),
+  );
 
   const widgets = express.Router();
   widgets.use((req, res, next) => {
@@ -202,6 +381,7 @@ function buildApp() {
   const duel = express.Router({ mergeParams: true });
   duel.get('/state', (req, res) => res.json({ duel: true, params: req.params, ...where(req) }));
   duel.post('/fail', (req, res, next) => next(Object.assign(new Error('duel'), { status: 409 })));
+  duel.get('/item/:itemID', (req, res) => res.json({ item: req.params.itemID, params: req.params, ...where(req) }));
   widgets.use('/:channelID/duel', duel);
   const plain = express.Router();
   plain.get('/state', (req, res) => res.json({ plain: true, params: req.params, ...where(req) }));
@@ -533,7 +713,267 @@ add('raw-no-body', 'POST', '/hook', [JSON_CT]);
 add('raw-gzip', 'POST', '/hook', [JSON_CT, ['Content-Encoding', 'gzip']], b64(zlib.gzipSync('{"raw":1}')));
 add('raw-over-limit', 'POST', '/hook', [JSON_CT], { gen: { type: 'json-pad', size: 100 * 1024 + 1 } });
 
+// Dotted literals in paths ('.' is literal, not a wildcard).
+add('dotted-well-known', 'GET', '/.well-known/thing');
+add('dotted-well-known-miss', 'GET', '/xwell-known/thing');
+add('dotted-segment', 'GET', '/a.b/c');
+add('dotted-segment-miss', 'GET', '/aXb/c');
+add('dotted-file', 'GET', '/files.json');
+add('dotted-file-case', 'GET', '/FILES.JSON');
+add('dotted-file-miss', 'GET', '/filesXjson');
+
+// Encoded and malformed parameters through nested mounts.
+add('nested-param-encoded-slash', 'GET', '/widgets/a%2Fb/duel/state', [AUTH]);
+add('nested-param-emoji', 'GET', '/widgets/%F0%9F%98%80/duel/state', [AUTH]);
+add('nested-param-latin-no-merge', 'GET', '/widgets/caf%C3%A9/plain/state', [AUTH]);
+add('nested-param-malformed-mount', 'GET', '/widgets/%E0%A4%A/duel/state', [AUTH]);
+add('nested-param-malformed-no-auth', 'GET', '/widgets/%E0%A4%A/duel/state');
+add('nested-param-malformed-leaf', 'GET', '/widgets/chan/duel/item/%E0%A4%A', [AUTH]);
+add('nested-param-encoded-leaf', 'GET', '/widgets/Chan/duel/item/a%20b%2Bc', [AUTH]);
+add('nested-param-rtl-leaf', 'GET', '/widgets/%D7%A9%D7%9C%D7%95%D7%9D/duel/item/e%CC%81', [AUTH]);
+add('nested-pathless-malformed', 'GET', '/analytics/streams/%E0%A4%A');
+add('nested-pathless-encoded', 'GET', '/analytics/streams/%D7%A9%D7%9C%D7%95%D7%9D');
+
+// Numbers as JSON.parse holds them.
+add(
+  'json-numbers',
+  'POST',
+  '/echo',
+  [JSON_CT],
+  utf8('{"n":9007199254740993,"m":-9007199254740993,"big":18446744073709551615,"f":1.0,"e":1e2,"z":-0,"frac":0.1,"arr":[1.5e300,123456789012345678901234567890]}'),
+);
+add('json-number-infinity', 'POST', '/echo', [JSON_CT], utf8('{"n":1e400}'));
+
+// qs sparse indices (600 keys, each nested 32 times at index 599): cheap in V8 and here.
+add('form-sparse-nested', 'POST', '/echo', [FORM_CT], { gen: { type: 'form-sparse', keys: 600, index: 599, depth: 32 } });
+
+// Size boundaries: every body limit exactly at and one over.
+add('json-chunked-at-limit', 'POST', '/form-summary', [JSON_CT], { gen: { type: 'json-pad', size: 100 * 1024 } }, { chunked: true });
+add('json-chunked-over-by-one', 'POST', '/echo', [JSON_CT], { gen: { type: 'json-pad', size: 100 * 1024 + 1 } }, { chunked: true });
+add('json-gzip-inflates-at-limit', 'POST', '/form-summary', [JSON_CT, ['Content-Encoding', 'gzip']], b64(zlib.gzipSync(generate({ type: 'json-pad', size: 100 * 1024 }))));
+add('json-gzip-inflates-over-by-one', 'POST', '/echo', [JSON_CT, ['Content-Encoding', 'gzip']], b64(zlib.gzipSync(generate({ type: 'json-pad', size: 100 * 1024 + 1 }))));
+add('json-gzip-empty-members', 'POST', '/echo', [JSON_CT, ['Content-Encoding', 'gzip']], {
+  gen: { type: 'repeat', base64: zlib.gzipSync('').toString('base64'), count: 10000 },
+});
+add('form-at-limit', 'POST', '/form-summary', [FORM_CT], { gen: { type: 'form-pad', size: 100 * 1024 } });
+add('form-over-by-one', 'POST', '/form-summary', [FORM_CT], { gen: { type: 'form-pad', size: 100 * 1024 + 1 } });
+add('raw-at-limit', 'POST', '/raw-length', [['Content-Type', 'application/octet-stream']], { gen: { type: 'json-pad', size: 100 * 1024 } });
+add('raw-over-by-one', 'POST', '/raw-length', [['Content-Type', 'application/octet-stream']], { gen: { type: 'json-pad', size: 100 * 1024 + 1 } });
+add('raw-hook-at-limit', 'POST', '/hook', [JSON_CT], { gen: { type: 'json-pad', size: 100 * 1024 } });
+add('docs-at-limit', 'POST', '/docs/ask', [JSON_CT], { gen: { type: 'json-pad', size: 256 * 1024 } });
+add('docs-over-by-one', 'POST', '/docs/ask', [JSON_CT], { gen: { type: 'json-pad', size: 256 * 1024 + 1 } });
+add('json-four-route-at', 'POST', '/four/echo', [JSON_CT], { gen: { type: 'json-pad', size: 4 * 1024 * 1024 } });
+add('json-big-route-at', 'POST', '/big/echo', [JSON_CT], { gen: { type: 'json-pad', size: 5 * 1024 * 1024 } });
+add('json-mid-route-over-by-one-chunked', 'POST', '/mid/echo', [JSON_CT], { gen: { type: 'json-pad', size: 1024 * 1024 + 1 } }, { chunked: true });
+
+// express.static: files, index, directory redirect, fall-through, dotfiles, names.
+add('static-file', 'GET', '/hello.txt');
+add('static-head', 'HEAD', '/hello.txt');
+add('static-index', 'GET', '/');
+add('static-index-file', 'GET', '/index.html');
+add('static-dir-index', 'GET', '/dir/');
+add('static-dir-redirect', 'GET', '/dir');
+add('static-dir-redirect-query', 'GET', '/dir?x=1&y=%C3%A9');
+add('static-dir-redirect-head', 'HEAD', '/dir');
+add('static-dir-redirect-double-slash', 'GET', '//dir');
+add('static-dir-redirect-accept-json', 'GET', '/dir', [['Accept', 'application/json']]);
+add('static-empty-dir-redirect', 'GET', '/empty-dir');
+add('static-empty-dir-slash', 'GET', '/empty-dir/');
+add('static-speech-redirect', 'GET', '/speech/chan1');
+add('static-speech-slash', 'GET', '/speech/chan1/');
+add('static-speech-route', 'GET', '/speech/chan2');
+add('static-speech-wav', 'GET', '/speech/chan1/one.wav');
+add('static-speech-mp3', 'GET', '/speech/chan1/one.mp3');
+add('static-download', 'GET', '/downloads/123-clip.mp4');
+add('static-dotfile', 'GET', '/.env');
+add('static-dotfile-encoded', 'GET', '/%2eenv');
+add('static-dot-directory', 'GET', '/.well-known/thing.txt');
+add('static-latin-names', 'GET', '/caf%C3%A9/men%C3%BC.txt');
+add('static-emoji-directory', 'GET', '/%F0%9F%98%80/smile.txt');
+add('static-emoji-name', 'GET', '/emoji-%F0%9F%98%80.txt');
+add('static-rtl-name', 'GET', '/%D7%A9%D7%9C%D7%95%D7%9D.txt');
+add('static-space', 'GET', '/with%20space.txt');
+add('static-percent', 'GET', '/percent%25.txt');
+add('static-upper', 'GET', '/UPPER.TXT');
+add('static-upper-miss', 'GET', '/upper.txt');
+add('static-no-extension', 'GET', '/noext');
+add('static-css', 'GET', '/styles/app.css');
+add('static-js', 'GET', '/script.js');
+add('static-json', 'GET', '/data.json');
+add('static-empty-file', 'GET', '/empty.txt');
+add('static-big', 'GET', '/big.bin');
+add('static-post-falls-through', 'POST', '/hello.txt');
+add('static-options-cors', 'OPTIONS', '/hello.txt');
+add('static-traversal', 'GET', '/../hello.txt');
+add('static-traversal-encoded', 'GET', '/%2e%2e/hello.txt');
+add('static-traversal-nested', 'GET', '/dir/..%2f..%2fhello.txt');
+add('static-traversal-inside-root', 'GET', '/dir/%2e%2e/hello.txt');
+add('static-traversal-backslash', 'GET', '/dir%5c..%5chello.txt');
+add('static-null-byte', 'GET', '/hello.txt%00.png');
+add('static-malformed', 'GET', '/hello%E0%A4%A.txt');
+add('static-malformed-hex', 'GET', '/%zz');
+
+// Conditional requests.
+add('static-etag-match', 'GET', '/hello.txt', [['If-None-Match', fileTag('hello.txt')]]);
+add('static-etag-strong-form', 'GET', '/hello.txt', [['If-None-Match', fileTag('hello.txt').slice(2)]]);
+add('static-etag-head', 'HEAD', '/hello.txt', [['If-None-Match', fileTag('hello.txt')]]);
+add('static-etag-no-cache', 'GET', '/hello.txt', [['If-None-Match', fileTag('hello.txt')], ['Cache-Control', 'no-cache']]);
+add('static-ims-match', 'GET', '/hello.txt', [['If-Modified-Since', lastModified]]);
+add('static-ims-later', 'GET', '/hello.txt', [['If-Modified-Since', later]]);
+add('static-ims-earlier', 'GET', '/hello.txt', [['If-Modified-Since', earlier]]);
+add('static-ims-rfc850', 'GET', '/hello.txt', [['If-Modified-Since', 'Friday, 02-Jan-26 03:04:05 GMT']]);
+add('static-ims-asctime', 'GET', '/hello.txt', [['If-Modified-Since', 'Fri Jan  2 03:04:05 2026']]);
+add('static-ims-garbage', 'GET', '/hello.txt', [['If-Modified-Since', 'not a date']]);
+add('static-if-match', 'GET', '/hello.txt', [['If-Match', fileTag('hello.txt')]]);
+add('static-if-match-star', 'GET', '/hello.txt', [['If-Match', '*']]);
+add('static-if-match-fails', 'GET', '/hello.txt', [['If-Match', '"nope"']]);
+add('static-if-match-empty-list', 'GET', '/hello.txt', [['If-Match', ', ,']]);
+add('static-ius-fails', 'GET', '/hello.txt', [['If-Unmodified-Since', earlier]]);
+add('static-ius-holds', 'GET', '/hello.txt', [['If-Unmodified-Since', lastModified]]);
+
+// Ranges.
+add('static-range-first', 'GET', '/hello.txt', [['Range', 'bytes=0-4']]);
+add('static-range-suffix', 'GET', '/hello.txt', [['Range', 'bytes=-5']]);
+add('static-range-open', 'GET', '/hello.txt', [['Range', 'bytes=30-']]);
+add('static-range-one-byte', 'GET', '/hello.txt', [['Range', 'bytes=0-0']]);
+add('static-range-past-end', 'GET', '/hello.txt', [['Range', 'bytes=30-1000']]);
+add('static-range-multiple', 'GET', '/hello.txt', [['Range', 'bytes=0-4,10-14']]);
+add('static-range-overlap', 'GET', '/hello.txt', [['Range', 'bytes=0-4,3-8']]);
+add('static-range-adjacent', 'GET', '/hello.txt', [['Range', 'bytes=10-14,0-4,5-9']]);
+add('static-range-unsatisfiable', 'GET', '/hello.txt', [['Range', 'bytes=100-200']]);
+add('static-range-malformed', 'GET', '/hello.txt', [['Range', 'bytes=abc']]);
+add('static-range-reversed', 'GET', '/hello.txt', [['Range', 'bytes=5-2']]);
+add('static-range-suffix-zero', 'GET', '/hello.txt', [['Range', 'bytes=-0']]);
+add('static-range-no-equals', 'GET', '/hello.txt', [['Range', 'bytes']]);
+add('static-range-other-unit', 'GET', '/hello.txt', [['Range', 'items=0-4']]);
+add('static-range-empty-file', 'GET', '/empty.txt', [['Range', 'bytes=0-']]);
+add('static-range-head', 'HEAD', '/hello.txt', [['Range', 'bytes=0-4']]);
+add('static-range-if-range-tag', 'GET', '/hello.txt', [['Range', 'bytes=0-4'], ['If-Range', fileTag('hello.txt')]]);
+add('static-range-if-range-stale-tag', 'GET', '/hello.txt', [['Range', 'bytes=0-4'], ['If-Range', '"other"']]);
+add('static-range-if-range-date', 'GET', '/hello.txt', [['Range', 'bytes=0-4'], ['If-Range', lastModified]]);
+add('static-range-if-range-old-date', 'GET', '/hello.txt', [['Range', 'bytes=0-4'], ['If-Range', earlier]]);
+add('static-range-across-chunks', 'GET', '/big.bin', [['Range', 'bytes=65530-65545']]);
+add('static-range-not-modified', 'GET', '/hello.txt', [['Range', 'bytes=0-4'], ['If-None-Match', fileTag('hello.txt')]]);
+
+// res.sendFile.
+add('sendfile-text', 'GET', '/sendfile/text');
+add('sendfile-head', 'HEAD', '/sendfile/text');
+add('sendfile-range', 'GET', '/sendfile/text', [['Range', 'bytes=2-5']]);
+add('sendfile-range-unsatisfiable', 'GET', '/sendfile/text', [['Range', 'bytes=999-']]);
+add('sendfile-not-modified', 'GET', '/sendfile/text', [['If-None-Match', fileTag('hello.txt')]]);
+add('sendfile-typed', 'GET', '/sendfile/typed');
+add('sendfile-status', 'GET', '/sendfile/status');
+add('sendfile-no-store', 'GET', '/sendfile/no-store');
+add('sendfile-missing', 'GET', '/sendfile/missing');
+add('sendfile-directory', 'GET', '/sendfile/dir');
+add('sendfile-dotfile', 'GET', '/sendfile/dotfile');
+add('sendfile-relative', 'GET', '/sendfile/relative');
+add('sendfile-emoji', 'GET', '/sendfile/emoji');
+add('sendfile-big', 'GET', '/sendfile/big');
+add('sendfile-router-missing', 'GET', '/files-router/missing');
+add('sendfile-router-unsatisfiable', 'GET', '/files-router/range', [['Range', 'bytes=999-']]);
+
+// res.type and res.set with mime 1.6.
+add('type-unknown-ext', 'GET', '/type-unknown-ext');
+add('type-wav', 'GET', '/type-wav');
+add('set-manifest-json', 'GET', '/set-manifest-json');
+
+// multer (1.4.5-lts.2 over busboy 1.6.0). Bodies are built from `{ multipart }` specs (below).
+const B = 'XyZ-b0undary';
+const MP = ['Content-Type', `multipart/form-data; boundary=${B}`];
+const disposition = (name, filename) =>
+  `form-data${name === undefined ? '' : `; name="${name}"`}${filename === undefined ? '' : `; filename="${filename}"`}`;
+const field = (name, value) => ({ headers: [['Content-Disposition', disposition(name)]], data: { utf8: value } });
+const filePart = (name, filename, type, data) => ({
+  headers: [['Content-Disposition', disposition(name, filename)], ...(type ? [['Content-Type', type]] : [])],
+  data,
+});
+const mp = (parts, extra = {}) => ({ multipart: { boundary: B, parts, ...extra } });
+const pat = (size) => ({ gen: { type: 'pattern', size } });
+
+add('upload-disk-ok', 'POST', '/upload/disk', [MP], mp([field('name', 'Clip ✨'), field('triggerName', 'intro_1'), filePart('trigger', 'clip.mp4', 'video/mp4', pat(40))]));
+add('upload-disk-utf8-filename', 'POST', '/upload/disk', [MP], mp([filePart('trigger', '😀 clip.MP4', 'video/mp4', pat(10))]));
+add('upload-disk-filename-star', 'POST', '/upload/disk', [MP], mp([
+  { headers: [['Content-Disposition', `form-data; name="trigger"; filename="x.png"; filename*=utf-8''%F0%9F%98%80%20caf%C3%A9.png`], ['Content-Type', 'image/png']], data: pat(8) },
+]));
+add('upload-disk-filtered', 'POST', '/upload/disk', [MP], mp([field('name', 'n'), filePart('trigger', 'notes.txt', 'text/plain', { utf8: 'hello' })]));
+add('upload-disk-no-file', 'POST', '/upload/disk', [MP], mp([field('name', 'only fields'), field('triggerName', 't')]));
+add('upload-disk-other-field', 'POST', '/upload/disk', [MP], mp([filePart('other', 'clip.mp4', 'video/mp4', pat(4))]));
+add('upload-disk-two-files', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'a.mp4', 'video/mp4', pat(4)), filePart('trigger', 'b.mp4', 'video/mp4', pat(4))]));
+add('upload-disk-size-under', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'clip.mp4', 'video/mp4', pat(63))]));
+add('upload-disk-size-at', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'clip.mp4', 'video/mp4', pat(64))]));
+add('upload-disk-size-over', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'clip.mp4', 'video/mp4', pat(65)), field('after', 'x')]));
+add('upload-disk-empty-filename', 'POST', '/upload/disk', [MP], mp([filePart('trigger', '', 'application/octet-stream', { utf8: '' })]));
+add('upload-disk-empty-filename-typed', 'POST', '/upload/disk', [MP], mp([filePart('trigger', '', 'video/mp4', { utf8: 'becomes a field' })]));
+add('upload-disk-octet-without-filename', 'POST', '/upload/disk', [MP], mp([filePart('trigger', undefined, 'application/octet-stream', pat(4))]));
+add('upload-disk-windows-path', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'C:\\fakepath\\clip.mp4', 'video/mp4', pat(4))]));
+add('upload-disk-traversal-name', 'POST', '/upload/disk', [MP], mp([filePart('trigger', '../../etc/clip.mp4', 'video/mp4', pat(4))]));
+add('upload-disk-dotdot-name', 'POST', '/upload/disk', [MP], mp([filePart('trigger', '..', 'video/mp4', pat(4))]));
+add('upload-disk-missing-field-name', 'POST', '/upload/disk', [MP], mp([field(undefined, 'orphan')]));
+add('upload-disk-nameless-file', 'POST', '/upload/disk', [MP], mp([filePart(undefined, 'clip.mp4', 'video/mp4', pat(4))]));
+add('upload-disk-truncated', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'clip.mp4', 'video/mp4', pat(30))], { close: false, cut: 20 }));
+add('upload-disk-truncated-headers', 'POST', '/upload/disk', [MP], { multipart: { boundary: B, raw: `--${B}\r\nContent-Disposition: form-data; name="x"` } });
+add('upload-disk-malformed-header', 'POST', '/upload/disk', [MP], mp([{ headers: [['Content-Disposition', disposition('name')], ['Bad Header', 'x']], data: { utf8: 'v' } }]));
+add('upload-disk-no-boundary', 'POST', '/upload/disk', [['Content-Type', 'multipart/form-data']], mp([field('name', 'x')]));
+add('upload-disk-mixed', 'POST', '/upload/disk', [['Content-Type', `multipart/mixed; boundary=${B}`]], mp([field('name', 'x')]));
+add('upload-disk-json', 'POST', '/upload/disk', [JSON_CT], utf8('{"a":1}'));
+add('upload-disk-no-body', 'POST', '/upload/disk', [MP]);
+add('upload-disk-preamble-epilogue', 'POST', '/upload/disk', [MP], mp([field('name', 'x'), filePart('trigger', 'p.png', 'image/png', pat(5))], { preamble: 'This is the preamble.', epilogue: 'and an epilogue\r\n' }));
+add('upload-disk-upper-case-headers', 'POST', '/upload/disk', [MP], mp([
+  { headers: [['CONTENT-DISPOSITION', 'FORM-DATA; NAME="name"'], ['Content-Type', 'TEXT/PLAIN; CHARSET=LATIN1']], data: { base64: Buffer.from([0x63, 0x61, 0x66, 0xe9]).toString('base64') } },
+]));
+add('upload-disk-quoted-escapes', 'POST', '/upload/disk', [MP], mp([
+  { headers: [['Content-Disposition', 'form-data; name="a\\"b"']], data: { utf8: '1' } },
+  { headers: [['Content-Disposition', 'form-data; name="c\\\\d"']], data: { utf8: '2' } },
+  { headers: [['Content-Disposition', 'form-data; name="e\\f"']], data: { utf8: '3' } },
+]));
+add('upload-disk-nested-fields', 'POST', '/upload/disk', [MP], mp([
+  field('a[b]', '1'), field('a[c]', '2'), field('list[]', 'x'), field('list[]', 'y'), field('arr[1]', 'z'), field('dup', '1'), field('dup', '2'), field('2', 'two'), field('__proto__', 'p'),
+]));
+add('upload-disk-unicode-fields', 'POST', '/upload/disk', [MP], mp([field('ключ', 'שלום 😀 é'), field('emoji', '👍🏽'), field('rtl', 'مرحبا')]));
+add('upload-disk-folded-header', 'POST', '/upload/disk', [MP], mp([{ headers: [['Content-Disposition', 'form-data;\r\n name="folded"']], data: { utf8: 'v' } }]));
+add('upload-disk-crlf-in-data', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'c.csv', 'text/csv', { utf8: `a\r\n--${B.slice(0, 5)}\r\n--\r\nb` })]));
+add('upload-disk-quoted-boundary', 'POST', '/upload/disk', [['Content-Type', 'multipart/form-data; boundary="a b:c"']], { multipart: { boundary: 'a b:c', parts: [field('name', 'q')] } });
+add('upload-disk-chunked', 'POST', '/upload/disk', [MP], mp([field('name', 'chunked'), filePart('trigger', 'clip.mp4', 'video/mp4', pat(20))]), { chunked: true });
+add('upload-disk-stray-after-delimiter', 'POST', '/upload/disk', [MP], { multipart: { boundary: B, raw: `--${B}junk\r\nContent-Disposition: form-data; name="hidden"\r\n\r\nv\r\n--${B}\r\nContent-Disposition: form-data; name="seen"\r\n\r\nw\r\n--${B}--\r\n` } });
+add('upload-disk-no-disposition', 'POST', '/upload/disk', [MP], mp([{ headers: [['Content-Type', 'text/plain']], data: { utf8: 'skipped' } }, field('name', 'kept')]));
+add('upload-disk-transfer-encoding', 'POST', '/upload/disk', [MP], mp([{ headers: [['Content-Disposition', disposition('trigger', 't.png')], ['Content-Type', 'image/png'], ['Content-Transfer-Encoding', 'BINARY']], data: pat(3) }]));
+add('upload-stream-ok', 'POST', '/upload/stream', [MP], mp([filePart('file', 'design.png', 'image/png', pat(30))]));
+add('upload-stream-at-limit', 'POST', '/upload/stream', [MP], mp([filePart('file', 'design.png', 'image/png', pat(50))]));
+add('upload-stream-over-limit', 'POST', '/upload/stream', [MP], mp([filePart('file', 'design.png', 'image/png', pat(51))]));
+add('upload-stream-field', 'POST', '/upload/stream', [MP], mp([field('name', 'x'), filePart('file', 'design.png', 'image/png', pat(3))]));
+add('upload-stream-two-files', 'POST', '/upload/stream', [MP], mp([filePart('file', 'one.png', 'image/png', pat(3)), filePart('file', 'two.png', 'image/png', pat(3))]));
+add('upload-stream-two-parts', 'POST', '/upload/stream', [MP], mp([filePart('file', 'one.png', 'image/png', pat(3)), { headers: [['X-Nothing', '1']], data: { utf8: 'ignored' } }]));
+add('upload-fields-ok', 'POST', '/upload/fields', [MP], mp([field('one', 'a'), field('two', 'b'), field('three', 'c')]));
+add('upload-fields-value-under', 'POST', '/upload/fields', [MP], mp([field('v', 'x'.repeat(15))]));
+add('upload-fields-value-at', 'POST', '/upload/fields', [MP], mp([field('v', 'x'.repeat(16))]));
+add('upload-fields-value-over', 'POST', '/upload/fields', [MP], mp([field('v', 'x'.repeat(17))]));
+add('upload-fields-value-utf8-at', 'POST', '/upload/fields', [MP], mp([field('v', 'ü'.repeat(8))]));
+add('upload-fields-too-many', 'POST', '/upload/fields', [MP], mp([field('a', '1'), field('b', '2'), field('c', '3'), field('d', '4')]));
+add('upload-fields-name-at', 'POST', '/upload/fields', [MP], mp([field('n'.repeat(12), 'v')]));
+add('upload-fields-name-over', 'POST', '/upload/fields', [MP], mp([field('n'.repeat(13), 'v')]));
+add('upload-fields-name-utf8', 'POST', '/upload/fields', [MP], mp([field('ñ'.repeat(7), 'v')]));
+add('upload-fields-parts-under', 'POST', '/upload/fields', [MP], mp([field('a', '1'), field('b', '2'), filePart('x', undefined, 'application/octet-stream', pat(1)), filePart('y', undefined, 'application/octet-stream', pat(1))]));
+add('upload-fields-parts-at', 'POST', '/upload/fields', [MP], mp([field('a', '1'), field('b', '2'), filePart('x', undefined, 'application/octet-stream', pat(1)), filePart('y', undefined, 'application/octet-stream', pat(1)), filePart('z', undefined, 'application/octet-stream', pat(1))]));
+add('upload-fields-parts-after-file', 'POST', '/upload/fields', [MP], mp([field('a', '1'), filePart('doc', 'd.png', 'image/png', pat(2)), field('b', '2'), filePart('x', undefined, 'application/octet-stream', pat(1)), filePart('y', undefined, 'application/octet-stream', pat(1)), field('e', 'after the limit')]));
+add('upload-middleware-ok', 'POST', '/upload/middleware', [MP], mp([field('name', 'm'), filePart('trigger', 'm.mp4', 'video/mp4', pat(9))]));
+add('upload-middleware-error', 'POST', '/upload/middleware', [MP], mp([filePart('trigger', 'm.mp4', 'video/mp4', pat(65))]));
+
 // ---------------------------------------------------------------------------------------------
+
+function multipartBody(spec) {
+  if (spec.raw !== undefined) return Buffer.from(spec.raw);
+  const pieces = [];
+  if (spec.preamble !== undefined) pieces.push(Buffer.from(`${spec.preamble}\r\n`));
+  for (const part of spec.parts) {
+    const head = part.headers.map(([name, value]) => `${name}: ${value}\r\n`).join('');
+    pieces.push(Buffer.from(`--${spec.boundary}\r\n${head}\r\n`), bodyBytes(part.data), Buffer.from('\r\n'));
+  }
+  if (spec.close !== false) pieces.push(Buffer.from(`--${spec.boundary}--\r\n`));
+  if (spec.epilogue !== undefined) pieces.push(Buffer.from(spec.epilogue));
+  const body = Buffer.concat(pieces);
+  return spec.cut === undefined ? body : body.subarray(0, body.length - spec.cut);
+}
 
 function generate(spec) {
   switch (spec.type) {
@@ -547,6 +987,14 @@ function generate(spec) {
       return Buffer.from(Array.from({ length: spec.count }, (_, i) => `k${i}=${i}`).join('&'));
     case 'form-depth':
       return Buffer.from(`a${'[x]'.repeat(spec.depth)}=1`);
+    case 'form-sparse':
+      return Buffer.from(
+        Array.from({ length: spec.keys }, (_, i) => `k${i}${`[${spec.index}]`.repeat(spec.depth)}=v`).join('&'),
+      );
+    case 'pattern':
+      return pattern(spec.size);
+    case 'repeat':
+      return Buffer.concat(Array(spec.count).fill(Buffer.from(spec.base64, 'base64')));
     default:
       throw new Error(`unknown generator ${spec.type}`);
   }
@@ -556,6 +1004,7 @@ function bodyBytes(body) {
   if (!body) return null;
   if (body.utf8 !== undefined) return Buffer.from(body.utf8, 'utf8');
   if (body.base64 !== undefined) return Buffer.from(body.base64, 'base64');
+  if (body.multipart !== undefined) return multipartBody(body.multipart);
   return generate(body.gen);
 }
 
@@ -633,6 +1082,8 @@ for (const c of cases) {
   recorded.push({ ...c, response });
 }
 server.close();
+rmSync(staticRoot, { recursive: true, force: true });
+rmSync(uploadDir, { recursive: true, force: true });
 
 const out = {
   note: 'Generated by record.mjs; do not edit by hand.',
@@ -641,6 +1092,13 @@ const out = {
   bodyParser: require('body-parser/package.json').version,
   qs: require('qs/package.json').version,
   cors: require('cors/package.json').version,
+  serveStatic: require('serve-static/package.json').version,
+  send: require('send/package.json').version,
+  multer: require('multer/package.json').version,
+  busboy: require('busboy/package.json').version,
+  staticMtimeMs: STATIC_MTIME_MS,
+  staticDirs: STATIC_DIRS,
+  staticFiles: STATIC_FILES.map(([name, bytes]) => ({ path: name, base64: bytes.toString('base64') })),
   cases: recorded,
 };
 writeFileSync(path.join(here, 'express.json'), `${JSON.stringify(out, null, 1)}\n`);

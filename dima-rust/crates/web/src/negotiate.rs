@@ -1,6 +1,6 @@
 //! `Accept` negotiation as `accepts` 1.3 / `negotiator` 0.6.3 do it for `res.format`.
 
-use crate::mediatype::trim_js;
+use crate::mediatype::{MAX_PARAMS, trim_js};
 
 struct Spec {
     kind: String,
@@ -163,22 +163,34 @@ fn parse_media_type(value: &str, index: usize) -> Option<Spec> {
                 spec.q = value.as_deref().map(js_parse_float).unwrap_or(f64::NAN);
                 break;
             }
+            if spec.params.len() == MAX_PARAMS {
+                // More parameters than any client sends: the range is ignored as unparseable.
+                return None;
+            }
             spec.params.push((key, value.unwrap_or_default()));
         }
     }
     Some(spec)
 }
 
-/// Splits on `separator`, re-joining pieces while a piece holds an odd number of quotes.
+/// Splits on `separator`, re-joining pieces while a piece holds an odd number of quotes
+/// (negotiator's `splitMediaTypes` / `splitParameters`). The quote parity of the piece being
+/// built is carried along, so the work is linear in the header length.
 fn split_quoted(value: &str, separator: char) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
+    let mut open = false;
     for piece in value.split(separator) {
+        let odd = piece.bytes().filter(|&b| b == b'"').count() % 2 == 1;
         match out.last_mut() {
-            Some(last) if last.matches('"').count() % 2 == 1 => {
+            Some(last) if open => {
                 last.push(separator);
                 last.push_str(piece);
+                open ^= odd;
             }
-            _ => out.push(piece.to_owned()),
+            _ => {
+                out.push(piece.to_owned());
+                open = odd;
+            }
         }
     }
     out
@@ -262,6 +274,29 @@ mod tests {
             Some(0)
         );
         assert_eq!(preferred(Some("text/plain;q=0, */*"), &TYPES), Some(1));
+    }
+
+    /// Review finding: the quote count was recomputed over the growing piece at every comma.
+    #[test]
+    fn splitting_is_linear() {
+        let accept = format!("\"{}", ",a/b".repeat(200_000));
+        let started = std::time::Instant::now();
+        assert_eq!(split_quoted(&accept, ',').len(), 1);
+        assert_eq!(preferred(Some(&accept), &TYPES), None);
+        let many = "text/x;a=1,".repeat(100_000);
+        assert_eq!(preferred(Some(&many), &TYPES), None);
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
+        assert_eq!(split_quoted("a;b=\"x;y\";c", ';'), ["a", "b=\"x;y\"", "c"]);
+        assert_eq!(split_quoted("\"a,b\",c,\"d", ','), ["\"a,b\"", "c", "\"d"]);
+    }
+
+    #[test]
+    fn media_ranges_with_too_many_parameters_are_ignored() {
+        let params: String = (0..MAX_PARAMS).map(|i| format!(";p{i}=*")).collect();
+        let fits = format!("text/html{params}");
+        assert_eq!(preferred(Some(&fits), &TYPES), Some(1));
+        let over = format!("text/html{params};p=*, text/plain;q=0.1");
+        assert_eq!(preferred(Some(&over), &TYPES), Some(0));
     }
 
     #[test]

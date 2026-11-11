@@ -12,6 +12,7 @@ use futures_util::FutureExt as _;
 
 use crate::Body;
 use crate::error::{Error, RouteError};
+use crate::exchange::{Exchange, Observer, RequestStart};
 use crate::handler::BoxFuture;
 use crate::request::Req;
 use crate::response::final_response;
@@ -28,6 +29,7 @@ pub struct ConfigError(pub Vec<RouteError>);
 /// `X-Powered-By: Express` is not sent (a deliberate difference from the reference).
 pub struct App<S = ()> {
     inner: Arc<Inner<S>>,
+    observer: Option<Arc<dyn Observer>>,
 }
 
 struct Inner<S> {
@@ -39,6 +41,7 @@ impl<S> Clone for App<S> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
+            observer: self.observer.clone(),
         }
     }
 }
@@ -47,6 +50,7 @@ impl<S> std::fmt::Debug for App<S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("App")
             .field("router", &self.inner.router)
+            .field("observed", &self.observer.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -64,7 +68,18 @@ impl<S: Send + Sync + 'static> App<S> {
         }
         Ok(Self {
             inner: Arc::new(Inner { router, state }),
+            observer: None,
         })
+    }
+
+    /// Installs the telemetry seam: `observer` sees every request start and end (method, the
+    /// matched route, status, duration, bytes sent, whether the client went away) and may attach
+    /// a trace context to each request. Equivalent to the reference's first middleware
+    /// (`httpTelemetry`), which watches `res` for `finish` and `close`.
+    #[must_use]
+    pub fn observe(mut self, observer: impl Observer) -> Self {
+        self.observer = Some(Arc::new(observer));
+        self
     }
 
     /// The shared state.
@@ -81,14 +96,32 @@ impl<S: Send + Sync + 'static> App<S> {
     {
         let (parts, body) = request.into_parts();
         let mut req = Req::new(Arc::clone(&self.inner.state), parts, Body::new(body));
+        let trace = self.observer.as_ref().and_then(|observer| {
+            observer.on_request(&RequestStart {
+                method: req.method(),
+                url: req.original_url(),
+                headers: req.headers(),
+                peer: req.peer_addr(),
+            })
+        });
+        req.trace = trace.clone();
+        // Dropped with this future if the client goes away first; then it reports the abort.
+        let exchange = Exchange::start(
+            self.observer.clone(),
+            req.closed.clone(),
+            req.method().clone(),
+            req.original_url().to_owned(),
+            trace,
+        );
         let outcome = AssertUnwindSafe(self.inner.router.handle(&mut req))
             .catch_unwind()
             .await;
-        match outcome {
+        let response = match outcome {
             Ok(Exit::Responded(response)) => response,
             Ok(Exit::Fell(error)) => final_response(&mut req, error),
             Err(_) => final_response(&mut req, Some(Error::panicked())),
-        }
+        };
+        exchange.finish(response, req.route.take(), req.trace.take())
     }
 }
 

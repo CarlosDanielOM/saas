@@ -5,6 +5,8 @@
 //! different inputs, and requests that hit the difference behave differently in Express.
 //! Header values are handled as Node sees them: each byte is one character (latin1).
 
+use std::collections::HashMap;
+
 /// JavaScript `\s` / `String.prototype.trim` whitespace.
 pub(crate) fn is_js_whitespace(c: char) -> bool {
     matches!(
@@ -185,7 +187,12 @@ fn unescape(raw: &str, flavor: Flavor) -> String {
     out
 }
 
-/// A parsed media type: lower-case `type/subtype` and its parameters in first-seen order.
+/// Parameters one media type may carry. No client sends more; a header with more is treated as
+/// malformed (the packages accept any number), which keeps parsing linear and bounded.
+pub(crate) const MAX_PARAMS: usize = 128;
+
+/// A parsed media type: lower-case `type/subtype` and its parameters in first-seen order
+/// (a repeated key keeps its first position and takes the last value).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ContentType {
     pub(crate) essence: String,
@@ -198,6 +205,26 @@ impl ContentType {
             .iter()
             .find(|(k, _)| k == key)
             .map(|(_, v)| v.as_str())
+    }
+
+    /// Sets one parameter; `positions` indexes `params` by key while a header is parsed.
+    fn set_param_indexed(
+        &mut self,
+        positions: &mut HashMap<String, usize>,
+        key: String,
+        value: String,
+    ) {
+        match positions.get(&key) {
+            Some(&at) => {
+                if let Some(slot) = self.params.get_mut(at) {
+                    slot.1 = value;
+                }
+            }
+            None => {
+                positions.insert(key.clone(), self.params.len());
+                self.params.push((key, value));
+            }
+        }
     }
 
     fn set_param(&mut self, key: String, value: String) {
@@ -240,8 +267,12 @@ pub(crate) fn parse_content_type(header: &str) -> Option<ContentType> {
         params: Vec::new(),
     };
     if let Some(mut index) = semicolon {
+        let mut positions = HashMap::new();
         while let Some((key, value, next)) = match_param(&chars, index, Flavor::ContentType) {
-            parsed.set_param(key, value);
+            parsed.set_param_indexed(&mut positions, key, value);
+            if parsed.params.len() > MAX_PARAMS {
+                return None;
+            }
             index = next;
         }
         if index != chars.len() {
@@ -319,7 +350,12 @@ fn normalize_actual(value: &str) -> Option<String> {
     };
     let (kind, subtype, suffix) = split_media_type(&type_part.to_lowercase())?;
     if let Some(mut index) = semicolon {
+        let mut count = 0usize;
         while let Some((_, _, next)) = match_param(&chars, index, Flavor::MediaTyper) {
+            count += 1;
+            if count > MAX_PARAMS {
+                return None;
+            }
             index = next;
         }
         if index != chars.len() {
@@ -437,7 +473,8 @@ pub(crate) fn type_is(content_type: Option<&str>, types: &[String]) -> bool {
     })
 }
 
-/// `mime-types` `lookup(extension)` for the extensions handlers use with `res.type`.
+/// `mime-types` 2.1 `lookup(extension)`, as `type-is` resolves an extension given as a parser
+/// `type` option (the common extensions only; parsers here are configured with full types).
 pub(crate) fn lookup_extension(ext: &str) -> Option<&'static str> {
     let ext = ext.rsplit('.').next().unwrap_or(ext).to_ascii_lowercase();
     let mime = match ext.as_str() {
@@ -472,47 +509,34 @@ pub(crate) fn lookup_extension(ext: &str) -> Option<&'static str> {
     Some(mime)
 }
 
-/// `mime-types` `charsets.lookup(type)`.
-pub(crate) fn mime_charset(content_type: &str) -> Option<&'static str> {
-    // /^\s*([^;\s]*)(?:;|\s|$)/
-    let rest = content_type.trim_start_matches(is_js_whitespace);
-    let end = rest
-        .find(|c: char| c == ';' || is_js_whitespace(c))
-        .unwrap_or(rest.len());
-    let essence = rest.get(..end)?.to_lowercase();
-    let charset = match essence.as_str() {
-        "application/news-checkgroups" | "application/news-groupinfo" => "US-ASCII",
-        "application/prs.cyn" => "7-BIT",
-        "application/3gpdash-qoe-report+xml"
-        | "application/beep+xml"
-        | "application/elm+json"
-        | "application/emergencycalldata.cap+xml"
-        | "application/fhir+json"
-        | "application/fhir+xml"
-        | "application/im-iscomposing+xml"
-        | "application/javascript"
-        | "application/json"
-        | "application/manifest+json"
-        | "application/msc-ivr+xml"
-        | "application/msc-mixer+xml"
-        | "application/pidf+xml"
-        | "application/pidf-diff+xml"
-        | "application/poc-settings+xml"
-        | "application/vnd.hl7cda+xml"
-        | "application/vnd.hl7v2+xml"
-        | "application/vnd.omads-email+xml"
-        | "application/vnd.omads-file+xml"
-        | "application/vnd.omads-folder+xml"
-        | "application/vnd.syncml+xml"
-        | "application/vnd.syncml.dm+wbxml"
-        | "application/vnd.syncml.dm+xml"
-        | "application/vnd.syncml.dmddf+xml"
-        | "application/vnd.syncml.dmtnds+xml"
-        | "application/vnd.wap.wbxml" => "UTF-8",
-        other if other.starts_with("text/") => "UTF-8",
-        _ => return None,
+/// mime 1.6 `lookup(path)`, which Express 4 uses through `send.mime` (`res.type`, `sendFile`,
+/// `express.static`): the text after the last `.`, `/` or `\\` of the first line (the
+/// expression `^.*[./\\]` does not cross a line break), lower-cased, looked up in the generated
+/// table; anything unknown is `application/octet-stream`.
+pub(crate) fn mime_lookup(path: &str) -> &'static str {
+    let first_line_end = path
+        .find(['\n', '\r', '\u{2028}', '\u{2029}'])
+        .unwrap_or(path.len());
+    let first_line = path.get(..first_line_end).unwrap_or(path);
+    let extension = match first_line.rfind(['.', '/', '\\']) {
+        Some(at) => path.get(at + 1..).unwrap_or(""),
+        None => path,
     };
-    Some(charset)
+    let lower = dima_text::to_lower(extension);
+    crate::mime_table::TYPES
+        .binary_search_by(|(known, _)| known.as_bytes().cmp(lower.as_bytes()))
+        .ok()
+        .and_then(|at| crate::mime_table::TYPES.get(at))
+        .map_or("application/octet-stream", |(_, kind)| kind)
+}
+
+/// mime 1.6 `charsets.lookup(type)`: `/^text\/|^application\/(javascript|json)/`, case-sensitive
+/// and unanchored at the end (`application/json-seq` has one too).
+pub(crate) fn mime_charset(content_type: &str) -> Option<&'static str> {
+    let utf8 = content_type.starts_with("text/")
+        || content_type.starts_with("application/javascript")
+        || content_type.starts_with("application/json");
+    utf8.then_some("UTF-8")
 }
 
 /// `/;\s*charset\s*=/` as `res.set` tests it.
@@ -531,7 +555,7 @@ pub(crate) fn has_charset_param(value: &str) -> bool {
     false
 }
 
-/// The value `res.set('Content-Type', value)` stores: adds `; charset=…` from the mime table.
+/// The value `res.set('Content-Type', value)` stores: adds `; charset=…` from mime 1.6.
 pub(crate) fn express_content_type(value: &str) -> String {
     if has_charset_param(value) {
         return value.to_owned();
@@ -543,12 +567,12 @@ pub(crate) fn express_content_type(value: &str) -> String {
     }
 }
 
-/// `res.type(type)`: an extension goes through the mime table first.
+/// `res.type(type)`: without a `/` the value goes through mime 1.6 `lookup` first.
 pub(crate) fn express_type(value: &str) -> String {
     let resolved = if value.contains('/') {
         value.to_owned()
     } else {
-        lookup_extension(value).unwrap_or("false").to_owned()
+        mime_lookup(value).to_owned()
     };
     express_content_type(&resolved)
 }
@@ -642,6 +666,30 @@ mod tests {
         ));
     }
 
+    /// Review finding: each parameter searched all earlier names, quadratic in the header.
+    #[test]
+    fn parameter_parsing_is_linear_and_bounded() {
+        let params: String = (0..MAX_PARAMS).map(|i| format!("; p{i}=v")).collect();
+        let parsed = parse_content_type(&format!("text/plain{params}; p0=w")).expect("parses");
+        assert_eq!(parsed.params.len(), MAX_PARAMS);
+        assert_eq!(parsed.param("p0"), Some("w"));
+        assert_eq!(parsed.params.first().map(|(k, _)| k.as_str()), Some("p0"));
+        assert!(parse_content_type(&format!("text/plain{params}; extra=1")).is_none());
+        assert!(type_is(
+            Some(&format!("application/json{params}")),
+            &types(&["application/json"])
+        ));
+        assert!(!type_is(
+            Some(&format!("application/json{params}; extra=1")),
+            &types(&["application/json"])
+        ));
+        let huge: String = (0..200_000).map(|i| format!("; k{i}=v")).collect();
+        let started = std::time::Instant::now();
+        assert!(parse_content_type(&format!("text/plain{huge}")).is_none());
+        assert!(request_charset(Some(&format!("text/plain{huge}"))).is_none());
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
+    }
+
     #[test]
     fn detects_charset_parameter() {
         assert!(has_charset_param("text/html; charset=utf-8"));
@@ -649,5 +697,39 @@ mod tests {
         assert!(!has_charset_param("text/html"));
         assert_eq!(mime_charset("text/anything"), Some("UTF-8"));
         assert_eq!(mime_charset("image/svg+xml"), None);
+        // mime 1.6, not mime-db: no charset for +json types, one for any application/json… prefix.
+        assert_eq!(mime_charset("application/manifest+json"), None);
+        assert_eq!(mime_charset("application/json-seq"), Some("UTF-8"));
+        assert_eq!(mime_charset("Text/plain"), None);
+    }
+
+    /// Expectations from `require('send').mime` in the reference's node_modules.
+    #[test]
+    fn looks_up_types_like_mime_1() {
+        for (path, kind) in [
+            ("a.mp3", "audio/mpeg"),
+            ("/x/y/clip.MP4", "video/mp4"),
+            ("speech.wav", "audio/wav"),
+            ("voice.opus", "application/octet-stream"),
+            ("index.html", "text/html"),
+            ("html", "text/html"),
+            (".json", "application/json"),
+            ("README", "application/octet-stream"),
+            (".hidden", "application/octet-stream"),
+            ("dir\\file.css", "text/css"),
+            ("a.b\nc.txt", "application/octet-stream"),
+            ("file.\u{212A}ml", "application/vnd.google-earth.kml+xml"),
+            ("😀.png", "image/png"),
+            ("archive.tar.gz", "application/gzip"),
+        ] {
+            assert_eq!(mime_lookup(path), kind, "{path}");
+        }
+        assert_eq!(express_type("wav"), "audio/wav");
+        assert_eq!(express_type("unknownext"), "application/octet-stream");
+        assert_eq!(express_type("js"), "application/javascript; charset=utf-8");
+        assert_eq!(
+            express_content_type("application/manifest+json"),
+            "application/manifest+json"
+        );
     }
 }

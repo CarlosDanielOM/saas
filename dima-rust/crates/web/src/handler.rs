@@ -13,6 +13,7 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// What a layer does with the request: Express's `next()`, `next('route')`, `next('router')`,
 /// or answering. Errors are the `Err` side of the handler's `Result` (`next(err)`).
 #[derive(Debug)]
+#[must_use = "a Flow takes effect only when the handler returns it"]
 pub enum Flow {
     /// `next()`: continue with the next matching layer.
     Next,
@@ -101,8 +102,7 @@ where
     F: for<'a> HandlerFn<'a, S>,
 {
     fn call<'a>(&'a self, req: &'a mut Req<S>) -> BoxFuture<'a, Result<Flow, Error>> {
-        let future = self.0.invoke(req);
-        Box::pin(async move { future.await.into_flow() })
+        Box::pin(async move { self.0.invoke(req).await.into_flow() })
     }
 }
 
@@ -232,8 +232,7 @@ where
     F: for<'a> ErrorHandlerFn<'a, S>,
 {
     fn call<'a>(&'a self, error: Error, req: &'a mut Req<S>) -> BoxFuture<'a, Result<Flow, Error>> {
-        let future = self.invoke(error, req);
-        Box::pin(async move { future.await.into_flow() })
+        Box::pin(async move { self.invoke(error, req).await.into_flow() })
     }
 }
 
@@ -255,8 +254,8 @@ where
     F: Fn(&mut Req<S>) -> Result<Flow, Error> + Send + Sync + 'static,
 {
     fn call<'a>(&'a self, req: &'a mut Req<S>) -> BoxFuture<'a, Result<Flow, Error>> {
-        let outcome = (self.0)(req);
-        Box::pin(async move { outcome })
+        // Runs when polled, inside the router's panic guard.
+        Box::pin(async move { (self.0)(req) })
     }
 }
 
@@ -278,11 +277,11 @@ where
     S: Send + Sync + 'static,
 {
     fn call<'a>(&'a self, req: &'a mut Req<S>) -> BoxFuture<'a, Result<Flow, Error>> {
-        let outcome = self
-            .0
-            .iter()
-            .try_for_each(|(name, value)| req.set_header(name, value))
-            .map(|()| Flow::Next);
-        Box::pin(async move { outcome })
+        Box::pin(async move {
+            self.0
+                .iter()
+                .try_for_each(|(name, value)| req.set_header(name, value))
+                .map(|()| Flow::Next)
+        })
     }
 }

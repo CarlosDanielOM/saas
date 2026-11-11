@@ -8,6 +8,7 @@ use http::Method;
 
 use crate::Body;
 use crate::error::{Error, RouteError};
+use crate::exchange::MatchedRoute;
 use crate::handler::{BoxFuture, ErrorHandler, Flow, Handler, IntoHandler};
 use crate::path::{PathMatch, PathPattern};
 use crate::request::{Req, pathname};
@@ -221,6 +222,7 @@ impl<S: Send + Sync + 'static> Router<S> {
     async fn dispatch(&self, req: &mut Req<S>) -> Exit {
         let parent_params = req.params.clone();
         let parent_url = req.base_url.clone();
+        let parent_pattern = req.pattern_base.clone();
         let is_options = req.method() == Method::OPTIONS;
         let is_head = req.method() == Method::HEAD;
         let mut options: Vec<String> = Vec::new();
@@ -269,6 +271,12 @@ impl<S: Send + Sync + 'static> Router<S> {
             let outcome = match &layer.kind {
                 LayerKind::Route(route) => {
                     if route.handles(req.method()) {
+                        let path = layer.pattern.source().to_owned();
+                        req.route = Some(MatchedRoute {
+                            base_url: req.base_url.clone(),
+                            pattern: format!("{}{path}", req.pattern_base),
+                            path,
+                        });
                         call(route.handler.as_ref(), req).await
                     } else {
                         Outcome::Next(None)
@@ -294,6 +302,11 @@ impl<S: Send + Sync + 'static> Router<S> {
                         }
                         let trimmed = layer_path.strip_suffix('/').unwrap_or(&layer_path);
                         req.base_url = format!("{parent_url}{trimmed}");
+                        let source = layer.pattern.source();
+                        req.pattern_base = format!(
+                            "{parent_pattern}{}",
+                            source.strip_suffix('/').unwrap_or(source)
+                        );
                         removed = layer_path;
                     }
                     let outcome = match (error.take(), kind) {
@@ -315,6 +328,7 @@ impl<S: Send + Sync + 'static> Router<S> {
                     }
                     if !removed.is_empty() {
                         req.base_url.clone_from(&parent_url);
+                        req.pattern_base.clone_from(&parent_pattern);
                         req.url = format!("{removed}{}", req.url);
                     }
                     outcome
@@ -341,13 +355,15 @@ impl<S: Send + Sync + 'static> Router<S> {
     }
 }
 
-/// Runs a handler, turning panics into errors and answers into HTTP.
+/// Runs a handler, turning panics into errors and answers into HTTP. The call itself happens
+/// inside the guarded future: a handler that panics before its first `await` (or while building
+/// its future) reaches the router's error handlers like any other panic.
 async fn call<S: Send + Sync + 'static>(handler: &dyn Handler<S>, req: &mut Req<S>) -> Outcome {
-    let result = AssertUnwindSafe(handler.call(req))
+    let result = AssertUnwindSafe(async { handler.call(req).await })
         .catch_unwind()
         .await
         .unwrap_or_else(|_| Err(Error::panicked()));
-    settle(result, req)
+    settle(result, req).await
 }
 
 async fn call_error<S: Send + Sync + 'static>(
@@ -355,23 +371,21 @@ async fn call_error<S: Send + Sync + 'static>(
     error: Error,
     req: &mut Req<S>,
 ) -> Outcome {
-    let result = AssertUnwindSafe(handler.call(error, req))
+    let result = AssertUnwindSafe(async { handler.call(error, req).await })
         .catch_unwind()
         .await
         .unwrap_or_else(|_| Err(Error::panicked()));
-    settle(result, req)
+    settle(result, req).await
 }
 
-fn settle<S>(result: Result<Flow, Error>, req: &mut Req<S>) -> Outcome {
+async fn settle<S>(result: Result<Flow, Error>, req: &mut Req<S>) -> Outcome {
     match result {
         // `next('route')` outside a route behaves like `next()`.
         Ok(Flow::Next | Flow::NextRoute) => Outcome::Next(None),
         Ok(Flow::NextRouter) => Outcome::ExitRouter,
-        Ok(Flow::Respond(response)) => match response
-            .into_checked()
-            .and_then(|response| finalize(response, req))
-        {
-            Ok(response) => Outcome::Respond(response),
+        Ok(Flow::Respond(response)) => match finalize(response, req).await {
+            Ok(Some(response)) => Outcome::Respond(response),
+            Ok(None) => Outcome::Next(None),
             Err(send_error) => Outcome::Next(Some(send_error)),
         },
         Err(error) => Outcome::Next(Some(error)),

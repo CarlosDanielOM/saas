@@ -3,7 +3,10 @@
 //! Each parser skips a request another parser already read (`req._body`), leaves `{}` in
 //! `req.body` when the content type does not match, and sends failures down the error path:
 //! 400 malformed, 413 too large or too many parameters, 415 unsupported charset or encoding.
-//! Limits count bytes after `gzip`/`deflate` inflation, as raw-body does.
+//! Limits count bytes after `gzip`/`deflate` inflation, as raw-body does. Compressed bodies are
+//! also limited on the wire to [`wire_budget`] of the limit, so input that inflates to little or
+//! nothing (concatenated empty gzip members) cannot be streamed in forever; raw-body has no such
+//! bound and reads until the request deadline.
 
 use std::borrow::Cow;
 use std::io::Write as _;
@@ -15,7 +18,7 @@ use serde_json::{Map, Value};
 use crate::error::Error;
 use crate::handler::{BoxFuture, Flow, Handler};
 use crate::mediatype::{request_charset, type_is};
-use crate::qs::{self, QsOptions};
+use crate::qs::{self, QsError, QsOptions};
 use crate::request::{BodyState, Req};
 
 /// body-parser's default limit, `"100kb"`.
@@ -24,6 +27,13 @@ pub const DEFAULT_LIMIT: usize = 100 * 1024;
 /// How much of a rejected body is still read off the connection before answering, so the
 /// client sees the error response (body-parser reads all of it; this bounds that).
 const DRAIN_BUDGET: usize = 64 * 1024 * 1024;
+
+/// Compressed bytes accepted for a body whose inflated size may be `limit`: the limit plus an
+/// eighth (deflate's worst case for incompressible data is a few percent) plus 64 KiB for
+/// headers. Past it the body is refused as too large (413).
+pub const fn wire_budget(limit: usize) -> usize {
+    limit.saturating_add(limit / 8).saturating_add(64 * 1024)
+}
 
 /// `bytes.parse('<n>kb')`.
 pub const fn kb(n: usize) -> usize {
@@ -74,6 +84,7 @@ pub struct Urlencoded {
     common: Common,
     parameter_limit: usize,
     depth: usize,
+    node_limit: usize,
 }
 
 /// `express.urlencoded({ extended: true })`: 100 KB, 1000 parameters, depth 32.
@@ -82,6 +93,7 @@ pub fn urlencoded() -> Urlencoded {
         common: Common::new("application/x-www-form-urlencoded"),
         parameter_limit: 1000,
         depth: 32,
+        node_limit: qs::NODE_LIMIT,
     }
 }
 
@@ -151,6 +163,14 @@ impl Urlencoded {
     #[must_use]
     pub fn depth(mut self, depth: usize) -> Self {
         self.depth = depth;
+        self
+    }
+
+    /// Not in body-parser: the most nested values one body may build ([`qs::NODE_LIMIT`] by
+    /// default). Past it the body is refused like too many parameters (413).
+    #[must_use]
+    pub fn node_limit(mut self, nodes: usize) -> Self {
+        self.node_limit = nodes;
         self
     }
 }
@@ -223,6 +243,10 @@ impl<S: Send + Sync + 'static> Handler<S> for Urlencoded {
     }
 }
 
+fn too_many_parameters() -> Error {
+    Error::new(413, "too many parameters").with_kind("parameters.too.many")
+}
+
 impl Urlencoded {
     fn parse(&self, text: &str) -> Result<Value, Error> {
         if text.is_empty() {
@@ -230,12 +254,16 @@ impl Urlencoded {
         }
         let count = text.matches('&').count() + 1;
         if count > self.parameter_limit {
-            return Err(Error::new(413, "too many parameters").with_kind("parameters.too.many"));
+            return Err(too_many_parameters());
         }
-        let options = QsOptions::urlencoded(count, self.depth, self.parameter_limit);
-        qs::parse(text, &options).map_err(|_| {
-            Error::new(400, "The input exceeded the depth")
-                .with_kind("querystring.parse.rangeError")
+        let options = QsOptions {
+            node_limit: self.node_limit,
+            ..QsOptions::urlencoded(count, self.depth, self.parameter_limit)
+        };
+        qs::parse(text, &options).map_err(|error| match error {
+            QsError::DepthExceeded => Error::new(400, "The input exceeded the depth")
+                .with_kind("querystring.parse.rangeError"),
+            QsError::TooManyNodes => too_many_parameters(),
         })
     }
 }
@@ -368,11 +396,18 @@ async fn read<S>(req: &mut Req<S>, common: &Common, charset: Option<&str>) -> Re
     };
     let mut collected = BytesMut::new();
     let aborted = || Error::new(400, "request aborted").with_kind("request.aborted");
+    let budget = wire_budget(common.limit);
+    let mut wire = 0usize;
     while let Some(frame) = body.frame().await {
         let frame = frame.map_err(|_| aborted())?;
         let Ok(data) = frame.into_data() else {
             continue;
         };
+        wire = wire.saturating_add(data.len());
+        if inflater.is_some() && wire > budget {
+            drain(Some(&mut body)).await;
+            return Err(too_large());
+        }
         match inflater.as_mut() {
             None => {
                 if collected.len() + data.len() > common.limit {
@@ -529,81 +564,61 @@ fn parse_json(text: &str, strict: bool) -> Result<Value, Error> {
             )));
         }
     }
-    let text = replace_lone_surrogate_escapes(text);
-    let mut value: Value = serde_json::from_str(&text).map_err(|e| parse_failed(e.to_string()))?;
+    // MIGRATION.md text rule 3: a `\uD800`-`\uDFFF` escape outside a valid pair becomes U+FFFD
+    // (JavaScript keeps the lone surrogate; Rust text cannot hold one).
+    let text = dima_text::sanitize_lone_surrogates(text.as_bytes());
+    // A number beyond the double range (`1e400`) is a parse error here; `JSON.parse` makes it
+    // `Infinity`, which no client sends on purpose (allowed difference).
+    let mut value: Value =
+        serde_json::from_slice(&text).map_err(|e| parse_failed(e.to_string()))?;
     // `JSON.parse` key order: array-index keys first, ascending, then the others in source order.
     dima_text::js_key_order(&mut value);
+    javascript_numbers(&mut value);
     Ok(value)
 }
 
-/// MIGRATION.md text rule 3: a `\uD800`–`\uDFFF` escape that is not part of a valid pair is
-/// replaced with `\uFFFD` before parsing (JavaScript would keep the lone surrogate; Rust text
-/// cannot hold one, and `serde_json` would reject the body).
-pub fn replace_lone_surrogate_escapes(text: &str) -> Cow<'_, str> {
-    if !text.contains("\\u") && !text.contains("\\U") {
-        return Cow::Borrowed(text);
-    }
-    let bytes = text.as_bytes();
-    let mut out: Option<String> = None;
-    let mut copied = 0;
-    let mut in_string = false;
-    let mut i = 0;
-    let unit_at = |at: usize| -> Option<u16> {
-        if bytes.get(at) != Some(&b'\\') || bytes.get(at + 1) != Some(&b'u') {
-            return None;
-        }
-        let hex = text.get(at + 2..at + 6)?;
-        if !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
-            return None;
-        }
-        u16::from_str_radix(hex, 16).ok()
-    };
-    while let Some(&byte) = bytes.get(i) {
-        if !in_string {
-            if byte == b'"' {
-                in_string = true;
-            }
-            i += 1;
-            continue;
-        }
-        match byte {
-            b'"' => {
-                in_string = false;
-                i += 1;
-            }
-            b'\\' => match unit_at(i) {
-                Some(high @ 0xD800..=0xDBFF) => {
-                    if unit_at(i + 6).is_some_and(|low| (0xDC00..=0xDFFF).contains(&low)) {
-                        i += 12;
-                    } else {
-                        let buf = out.get_or_insert_with(|| String::with_capacity(text.len()));
-                        buf.push_str(text.get(copied..i).unwrap_or(""));
-                        buf.push_str("\\uFFFD");
-                        let _ = high;
-                        i += 6;
-                        copied = i;
-                    }
+/// 2^53: integers up to this magnitude are exact as doubles.
+const MAX_EXACT_INTEGER: u64 = 1 << 53;
+
+/// Makes every number the value `JSON.parse` would hold, so nothing downstream stores a value or
+/// a BSON type the reference never would: integers beyond 2^53 become the nearest double
+/// (`9007199254740993` is `9007199254740992`), and integral doubles within 2^53 (`1.0`, `1e2`)
+/// become integers, since JavaScript cannot tell them apart. `-0` stays a double.
+fn javascript_numbers(value: &mut Value) {
+    let mut pending = vec![value];
+    while let Some(value) = pending.pop() {
+        match value {
+            Value::Number(number) => {
+                if let Some(javascript) = javascript_number(number) {
+                    *number = javascript;
                 }
-                Some(0xDC00..=0xDFFF) => {
-                    let buf = out.get_or_insert_with(|| String::with_capacity(text.len()));
-                    buf.push_str(text.get(copied..i).unwrap_or(""));
-                    buf.push_str("\\uFFFD");
-                    i += 6;
-                    copied = i;
-                }
-                Some(_) => i += 6,
-                None => i += 2,
-            },
-            _ => i += 1,
+            }
+            Value::Array(items) => pending.extend(items.iter_mut()),
+            Value::Object(map) => pending.extend(map.values_mut()),
+            _ => {}
         }
     }
-    match out {
-        Some(mut buf) => {
-            buf.push_str(text.get(copied..).unwrap_or(""));
-            Cow::Owned(buf)
-        }
-        None => Cow::Borrowed(text),
+}
+
+/// The replacement for `number`, when it differs from what JavaScript holds.
+fn javascript_number(number: &serde_json::Number) -> Option<serde_json::Number> {
+    if let Some(integer) = number.as_i64() {
+        // `as` rounds to the nearest double, ties to even, as `JSON.parse` does.
+        return (integer.unsigned_abs() > MAX_EXACT_INTEGER)
+            .then(|| serde_json::Number::from_f64(integer as f64))
+            .flatten();
     }
+    if let Some(integer) = number.as_u64() {
+        return (integer > MAX_EXACT_INTEGER)
+            .then(|| serde_json::Number::from_f64(integer as f64))
+            .flatten();
+    }
+    let double = number.as_f64()?;
+    let integral = double.fract() == 0.0 && double.abs() <= MAX_EXACT_INTEGER as f64;
+    if !integral || (double == 0.0 && double.is_sign_negative()) {
+        return None;
+    }
+    Some(serde_json::Number::from(double as i64))
 }
 
 #[cfg(test)]
@@ -612,29 +627,24 @@ mod tests {
 
     use super::*;
 
+    /// Text rule 3, through the shared `dima_text::sanitize_lone_surrogates`.
     #[test]
     fn lone_surrogates_become_replacement_characters() {
-        let pair = r#"{"a":"\ud83d\ude00"}"#;
-        assert_eq!(replace_lone_surrogate_escapes(pair), pair);
+        let parse = |text: &str| parse_json(text, true).expect("parses");
+        assert_eq!(parse(r#"{"a":"\ud83d\ude00"}"#), json!({"a": "😀"}));
+        assert_eq!(parse(r#"{"a":"\ud83d"}"#), json!({"a": "\u{FFFD}"}));
+        assert_eq!(parse(r#"{"a":"\ude00x"}"#), json!({"a": "\u{FFFD}x"}));
         assert_eq!(
-            replace_lone_surrogate_escapes(r#"{"a":"\ud83d"}"#),
-            r#"{"a":"\uFFFD"}"#
+            parse(r#"{"a":"\uDE00\uD83D"}"#),
+            json!({"a": "\u{FFFD}\u{FFFD}"})
         );
+        // An escaped backslash before `u` is text, not an escape.
+        assert_eq!(parse(r#"{"a":"\\ud83d"}"#), json!({"a": "\\ud83d"}));
+        assert_eq!(parse(r#"{"\ud83d":"x"}"#), json!({"\u{FFFD}": "x"}));
         assert_eq!(
-            replace_lone_surrogate_escapes(r#"{"a":"\ude00x"}"#),
-            r#"{"a":"\uFFFDx"}"#
+            parse(r#"{"a":"x\ud800y","b":"\ud83d\ude00"}"#),
+            json!({"a": "x\u{FFFD}y", "b": "😀"})
         );
-        let escaped_backslash = r#"{"a":"\\ud83d"}"#;
-        assert_eq!(
-            replace_lone_surrogate_escapes(escaped_backslash),
-            escaped_backslash
-        );
-        assert_eq!(
-            replace_lone_surrogate_escapes(r#"{"\ud83d":"x"}"#),
-            r#"{"\uFFFD":"x"}"#
-        );
-        let parsed = parse_json(r#"{"a":"x\ud800y","b":"\ud83d\ude00"}"#, true).expect("parses");
-        assert_eq!(parsed, json!({"a": "x\u{FFFD}y", "b": "😀"}));
     }
 
     #[test]
@@ -659,6 +669,33 @@ mod tests {
             .map(|m| m.keys().collect())
             .unwrap_or_default();
         assert_eq!(keys, ["1", "2", "b", "a"]);
+    }
+
+    /// Review finding: integers above 2^53 kept full precision where `JSON.parse` rounds them.
+    /// Expectations from Node 26 `JSON.stringify(JSON.parse(text))`.
+    #[test]
+    fn numbers_are_what_javascript_holds() {
+        let text = r#"{"n":9007199254740993,"m":-9007199254740993,"big":18446744073709551615,"f":1.0,"e":1e2,"z":-0,"safe":9007199254740992,"frac":0.1,"neg":-5,"arr":[1.5e300,123456789012345678901234567890]}"#;
+        let value = parse_json(text, true).expect("parses");
+        assert_eq!(
+            dima_text::to_js_json(&value),
+            r#"{"n":9007199254740992,"m":-9007199254740992,"big":18446744073709552000,"f":1,"e":100,"z":0,"safe":9007199254740992,"frac":0.1,"neg":-5,"arr":[1.5e+300,1.2345678901234568e+29]}"#
+        );
+        assert!(value["n"].is_f64() && value["m"].is_f64() && value["big"].is_f64());
+        assert_eq!(value["n"].as_f64(), Some(9_007_199_254_740_992.0));
+        // Integral values are integers for typed handlers, as `Number.isInteger` sees them.
+        assert_eq!(value["f"].as_u64(), Some(1));
+        assert_eq!(value["e"].as_u64(), Some(100));
+        assert_eq!(value["safe"].as_u64(), Some(9_007_199_254_740_992));
+        assert_eq!(value["neg"].as_i64(), Some(-5));
+        assert!(
+            value["z"]
+                .as_f64()
+                .is_some_and(|z| z == 0.0 && z.is_sign_negative())
+        );
+        // `JSON.parse` gives Infinity; here it is refused (allowed difference).
+        let error = parse_json(r#"{"n":1e400}"#, true).expect_err("out of range");
+        assert_eq!(error.status(), Some(400));
     }
 
     #[test]
@@ -705,6 +742,83 @@ mod tests {
         );
         assert!(decode_text(b"{}", "utf-32").is_none());
         assert!(decode_text(b"{}", "utf-7").is_none());
+    }
+
+    #[test]
+    fn node_budget_is_refused_like_the_parameter_limit() {
+        let form = urlencoded().node_limit(5);
+        assert!(form.parse("a[b][c]=1&d[e]=2").is_ok());
+        let error = form.parse("a[b][c]=1&d[e][f]=2").expect_err("over budget");
+        assert_eq!(error.status(), Some(413));
+        assert_eq!(error.kind(), Some("parameters.too.many"));
+        assert_eq!(error.message(), "too many parameters");
+    }
+
+    fn request(headers: &[(&str, &str)], body: Vec<u8>) -> Req<()> {
+        let mut builder = http::Request::builder()
+            .method("POST")
+            .uri("/")
+            .header("content-length", body.len().to_string());
+        for (name, value) in headers {
+            builder = builder.header(*name, *value);
+        }
+        let (parts, ()) = builder.body(()).expect("request").into_parts();
+        Req::new(std::sync::Arc::new(()), parts, crate::Body::from(body))
+    }
+
+    fn gzip(data: &[u8]) -> Vec<u8> {
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(data).expect("compress");
+        encoder.finish().expect("compress")
+    }
+
+    /// Review finding: only the inflated output was bounded, so concatenated empty gzip members
+    /// were read without end. Each member is 20 bytes that inflate to nothing.
+    #[tokio::test]
+    async fn compressed_input_is_bounded_on_the_wire() {
+        let member = gzip(b"");
+        let members = wire_budget(DEFAULT_LIMIT) / member.len() + 1;
+        let body = member.repeat(members);
+        let mut req = request(
+            &[
+                ("content-type", "application/json"),
+                ("content-encoding", "gzip"),
+            ],
+            body,
+        );
+        let error = json()
+            .call(&mut req)
+            .await
+            .expect_err("over the wire budget");
+        assert_eq!(error.status(), Some(413));
+        assert_eq!(error.kind(), Some("entity.too.large"));
+
+        // Within the budget the same members are still an empty body, as in body-parser.
+        let mut req = request(
+            &[
+                ("content-type", "application/json"),
+                ("content-encoding", "gzip"),
+            ],
+            member.repeat(100),
+        );
+        assert!(matches!(json().call(&mut req).await, Ok(Flow::Next)));
+        assert_eq!(req.body(), &json!({}));
+
+        // A compressed body that inflates to exactly the limit still parses.
+        let shell = r#"{"pad":""}"#.len();
+        let text = format!(r#"{{"pad":"{}"}}"#, "a".repeat(DEFAULT_LIMIT - shell));
+        let mut req = request(
+            &[
+                ("content-type", "application/json"),
+                ("content-encoding", "gzip"),
+            ],
+            gzip(text.as_bytes()),
+        );
+        assert!(matches!(json().call(&mut req).await, Ok(Flow::Next)));
+        assert_eq!(
+            req.body()["pad"].as_str().map(str::len),
+            Some(DEFAULT_LIMIT - shell)
+        );
     }
 
     #[test]

@@ -44,6 +44,10 @@ enum Payload {
     Redirect(u16, String),
     /// A response built by hand (streams, files): sent with the pending headers merged under it.
     Http(http::Response<Body>),
+    /// `res.sendFile(path)`.
+    File(String),
+    /// `res.write(...)` as it comes: a streamed body.
+    Stream(Body),
 }
 
 /// The answer a handler gives, built like Express's chained `res` calls.
@@ -59,6 +63,7 @@ enum Payload {
 /// # let _ = (created, page, gone, moved);
 /// ```
 #[derive(Debug)]
+#[must_use = "a Response is sent only when the handler returns it"]
 pub struct Response {
     status: Option<u16>,
     ops: Vec<HeaderOp>,
@@ -91,14 +96,12 @@ impl Response {
     }
 
     /// `res.status(code)` on an existing builder.
-    #[must_use]
     pub fn with_status(mut self, code: u16) -> Self {
         self.status = Some(code);
         self
     }
 
     /// `res.setHeader(name, value)`: the value is sent as given.
-    #[must_use]
     pub fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.ops.push(HeaderOp::Raw(name.into(), value.into()));
         self
@@ -106,21 +109,18 @@ impl Response {
 
     /// `res.set(name, value)`: like [`Response::header`], but a `Content-Type` without a charset
     /// gains the charset the mime table lists (`application/json` → `; charset=utf-8`).
-    #[must_use]
     pub fn set(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.ops.push(HeaderOp::Express(name.into(), value.into()));
         self
     }
 
     /// `res.append(name, value)`.
-    #[must_use]
     pub fn append(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.ops.push(HeaderOp::Append(name.into(), value.into()));
         self
     }
 
     /// `res.type(type)`: a full media type, or an extension such as `"txt"` or `"html"`.
-    #[must_use]
     pub fn content_type(mut self, value: &str) -> Self {
         self.ops.push(HeaderOp::Raw(
             "Content-Type".to_owned(),
@@ -130,14 +130,12 @@ impl Response {
     }
 
     /// `res.vary(field)`.
-    #[must_use]
     pub fn vary(mut self, field: impl Into<String>) -> Self {
         self.ops.push(HeaderOp::Vary(field.into()));
         self
     }
 
     /// `res.removeHeader(name)`.
-    #[must_use]
     pub fn remove_header(mut self, name: impl Into<String>) -> Self {
         self.ops.push(HeaderOp::Remove(name.into()));
         self
@@ -150,28 +148,24 @@ impl Response {
     /// the value serialises them; clients parse the body, so that order is not a contract. A
     /// value whose exact bytes are compared somewhere is built with `dima_text::to_js_json`
     /// and sent with [`Response::bytes`].
-    #[must_use]
     pub fn json<T: Serialize + ?Sized>(mut self, value: &T) -> Self {
         self.payload = Payload::Json(dima_text::to_js_json_from(value).map_err(|e| e.to_string()));
         self
     }
 
     /// `res.send(string)`: `text/html; charset=utf-8` unless a type was set.
-    #[must_use]
     pub fn text(mut self, body: impl Into<String>) -> Self {
         self.payload = Payload::Text(body.into());
         self
     }
 
     /// `res.send(buffer)`: `application/octet-stream` unless a type was set.
-    #[must_use]
     pub fn bytes(mut self, body: impl Into<Bytes>) -> Self {
         self.payload = Payload::Bytes(body.into());
         self
     }
 
     /// `res.end()`: no body and no content headers.
-    #[must_use]
     pub fn end(mut self) -> Self {
         self.payload = Payload::End;
         self
@@ -196,6 +190,35 @@ impl Response {
             payload: Payload::Redirect(status, url.into()),
             ..Self::new()
         }
+    }
+
+    /// `res.sendFile(path)`, as every reference call site uses it (absolute path, no options):
+    /// `Content-Type` from the mime table unless one is set, `Accept-Ranges`, `Cache-Control:
+    /// public, max-age=0`, `Last-Modified` and a weak ETag from the file's size and time unless
+    /// set, conditional requests (304, 412), single byte ranges (206, 416) and HEAD. The file is
+    /// looked up when the response is sent, never cached.
+    ///
+    /// Outcomes as in Express: a missing file or a dotfile is a 404 error and any other failure a
+    /// 500 error on the error path (router error handlers see it, with the `std::io::Error` as
+    /// its source when there is one); a directory continues with the next layer (`next()`); a
+    /// relative path is a 500 error.
+    pub fn send_file(mut self, path: impl Into<String>) -> Self {
+        self.payload = Payload::File(path.into());
+        self
+    }
+
+    /// A streamed body (`res.flushHeaders()` then `res.write(...)` as data comes, `res.end()` when
+    /// the body ends): the status and headers set so far go out at once, the body chunk by chunk
+    /// with chunked transfer encoding, no ETag. Each chunk is flushed as soon as nothing else is
+    /// ready. Server-Sent Events are built with [`crate::sse::channel`]; [`crate::Req::closed`]
+    /// tells producers when the client is gone.
+    pub fn stream<B>(mut self, body: B) -> Self
+    where
+        B: axum::body::HttpBody<Data = Bytes> + Send + 'static,
+        B::Error: Into<axum::BoxError>,
+    {
+        self.payload = Payload::Stream(Body::new(body));
+        self
     }
 
     /// A response built by hand, for streams and other bodies the helpers do not cover. Headers
@@ -321,11 +344,13 @@ fn build(status: u16, headers: HeaderMap, body: Bytes) -> Result<http::Response<
 }
 
 /// Turns a handler's [`Response`] into HTTP, running Express's `res.send` rules against the
-/// headers set so far. An `Err` goes down the error path (Express would have thrown).
-pub(crate) fn finalize<S>(
+/// headers set so far. An `Err` goes down the error path (Express would have thrown); `Ok(None)`
+/// continues with the next layer (`res.sendFile` on a directory).
+pub(crate) async fn finalize<S>(
     response: Response,
     req: &mut Req<S>,
-) -> Result<http::Response<Body>, Error> {
+) -> Result<Option<http::Response<Body>>, Error> {
+    let response = response.into_checked()?;
     let Response {
         status,
         ops,
@@ -335,6 +360,18 @@ pub(crate) fn finalize<S>(
         req.res.status = status;
     }
     apply_ops(&mut req.res, ops)?;
+    if let Payload::File(path) = payload {
+        return match crate::send::send_file(req, &path).await {
+            crate::send::Sent::Response(response) => Ok(Some(response)),
+            crate::send::Sent::Next => Ok(None),
+            crate::send::Sent::Error(error) => Err(error),
+        };
+    }
+    finish(payload, req).map(Some)
+}
+
+/// The synchronous payloads.
+fn finish<S>(payload: Payload, req: &mut Req<S>) -> Result<http::Response<Body>, Error> {
     match payload {
         Payload::End => {
             let state = std::mem::take(&mut req.res);
@@ -396,6 +433,16 @@ pub(crate) fn finalize<S>(
             parts.headers = headers;
             Ok(http::Response::from_parts(parts, body))
         }
+        Payload::Stream(body) => {
+            let state = std::mem::take(&mut req.res);
+            let status = StatusCode::from_u16(state.status)
+                .map_err(|_| Error::msg(format!("Invalid status code: {}", state.status)))?;
+            let mut response = http::Response::new(body);
+            *response.status_mut() = status;
+            *response.headers_mut() = state.headers;
+            Ok(response)
+        }
+        Payload::File(_) => Err(Error::msg("file payloads are sent asynchronously")),
     }
 }
 
@@ -578,8 +625,9 @@ pub(crate) fn options_response<S>(
     methods: &[String],
 ) -> Result<http::Response<Body>, Error> {
     let body = methods.join(",");
-    let response = Response::new().set("Allow", body.clone()).text(body);
-    finalize(response, req)
+    let Response { ops, payload, .. } = Response::new().set("Allow", body.clone()).text(body);
+    apply_ops(&mut req.res, ops)?;
+    finish(payload, req)
 }
 
 #[cfg(test)]
