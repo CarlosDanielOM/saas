@@ -5,11 +5,12 @@ import { ThrottleClickDirective } from '../../../shared/directives/throttle-clic
 import { LfIconComponent } from '../../../shared/lf-icon/lf-icon.component';
 import { AssistantStore } from '../assistant.store';
 import { relativeTime } from '../assistant-view';
+import { AssistantPersonaComponent } from './assistant-persona.component';
 
 /** Chat list layer inside the panel: open, start new, delete (with an inline confirm). */
 @Component({
   selector: 'app-assistant-sessions',
-  imports: [LfIconComponent, ThrottleClickDirective],
+  imports: [LfIconComponent, ThrottleClickDirective, AssistantPersonaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="as-head">
@@ -22,6 +23,7 @@ import { relativeTime } from '../assistant-view';
       </button>
     </div>
     <p class="as-note">{{ t('assistant.sessions.kept') }}</p>
+    <app-assistant-persona class="as-persona" />
 
     @switch (store.sessionsState()) {
       @case ('loading') {

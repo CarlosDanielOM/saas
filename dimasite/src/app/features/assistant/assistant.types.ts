@@ -88,11 +88,21 @@ export interface TurnSnapshot {
   cursor: string;
 }
 
+export interface PersonaView {
+  /** The channel's plan allows it (Premium/Pro). */
+  available: boolean;
+  /** This person turned it on. */
+  on: boolean;
+  /** Active AI Personality profile name, if any. */
+  name: string | null;
+}
+
 export interface StatusView {
   enabled: boolean;
   role: 'owner' | 'admin';
   limits: LimitsView;
   contextLimit: number;
+  persona?: PersonaView;
 }
 
 export interface ChangeView {

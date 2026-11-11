@@ -11077,6 +11077,14 @@
     }
   },
   "assistant": {
+    "persona": {
+      "title": "Answer in my bot's personality",
+      "uses": "Uses your active AI Personality profile: {{name}}. Only the tone changes.",
+      "none": "Set up your AI Personality first to use it here.",
+      "locked": "With Premium or Pro, the assistant can talk like your bot.",
+      "upgrade": "See plans",
+      "failed": "Couldn't save that. Try again."
+    },
     "title": "Assistant",
     "close": "Close assistant",
     "retry": "Try again",

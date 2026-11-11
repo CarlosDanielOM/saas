@@ -141,3 +141,7 @@
 .as-btn--danger:hover:not(:disabled) { background: #991b1b; }
 
 .as-error { margin: 0.4rem 0 0; color: var(--danger); font-size: 0.82rem; font-weight: 600; }
+
+.as-persona {
+  margin: 0 0 0.75rem;
+}

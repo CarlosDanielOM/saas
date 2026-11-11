@@ -807,6 +807,24 @@ export class AssistantStore {
     return true;
   }
 
+  /** "Answer in my bot's personality" (Premium/Pro). Optimistic; reverts when the save fails. */
+  async setPersona(on: boolean): Promise<boolean> {
+    const channelId = this.channelId();
+    const current = this.status();
+    if (!channelId || !current?.persona?.available) return false;
+    this.status.set({ ...current, persona: { ...current.persona, on } });
+    try {
+      const persona = await this.api.setPersona(channelId, on);
+      const latest = this.status();
+      if (latest && channelId === this.channelId()) this.status.set({ ...latest, persona });
+      return true;
+    } catch {
+      const latest = this.status();
+      if (latest?.persona && channelId === this.channelId()) this.status.set({ ...latest, persona: { ...latest.persona, on: !on } });
+      return false;
+    }
+  }
+
   async refreshStatus(): Promise<void> {
     const channelId = this.channelId();
     if (!channelId) return;

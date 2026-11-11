@@ -11077,6 +11077,14 @@
     }
   },
   "assistant": {
+    "persona": {
+      "title": "Responder con la personalidad de mi bot",
+      "uses": "Usa tu perfil activo de Personalidad IA: {{name}}. Solo cambia el tono.",
+      "none": "Configura primero tu Personalidad IA para usarla aquí.",
+      "locked": "Con Premium o Pro, el asistente puede hablar como tu bot.",
+      "upgrade": "Ver planes",
+      "failed": "No se pudo guardar. Intenta otra vez."
+    },
     "title": "Asistente",
     "close": "Cerrar asistente",
     "retry": "Intentar de nuevo",

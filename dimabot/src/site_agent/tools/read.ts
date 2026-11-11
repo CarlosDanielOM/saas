@@ -17,12 +17,14 @@
  * |                  |                    | messages to admins with moderation:view. The only raw chat replay (Overlay |
  * |                  |                    | Studio) is owner-only because the whole Studio is; chat itself is public. |
  * | stream_stats     | dashboard:view     | GET /dashboard/:channelID/live-status (liveSession)                       |
+ * | get_referral_codes | referrals:view   | GET /referrals/codes (owner, or admins with referrals:view)               |
  */
 import type { AgentTool, Lang, ToolContext } from '../types.js';
 import { ToolInputError } from '../types.js';
 import { asObject, bool, int, oneOf, str, untrusted } from './util.js';
 import { CommandsSchema } from '../../schemas/commands.schema.js';
 import UsersSchema from '../../schemas/users.schema.js';
+import { getUserCodes } from '../../utils/referral.js';
 import { presentCommand } from '../../server/services/command_blocks.service.js';
 import { inspectExpression } from '../../utils/permissions/index.js';
 import { getCachedLiveStatus } from '../../utils/siteanalytics.js';
@@ -325,11 +327,12 @@ export const getCommandTool: AgentTool<GetCommandInput> = {
                 ...(command.activation === 'keyword' ? { matchMode: command.keywordSettings?.matchMode ?? 'start' } : {}),
                 authoring: blocks ? 'blocks' : 'text',
                 ...(builtInCode ? { note: 'Built-in behavior: the bot runs its own code; only name, enabled, access and cooldown can change.' } : {}),
-                ...(blocks ? { note: 'Made with blocks: the reply is edited in the block editor on the Commands page.' } : {}),
+                ...(blocks ? { note: 'Made with blocks. `reply` is the text the bot runs (compiled from the blocks). update_command with a body can replace the blocks with a text reply (undo puts the blocks back).' } : {}),
                 content: untrusted({
                     name: command.name ?? '',
                     description: command.reserved ? '' : String(command.description ?? ''),
-                    reply: blocks || builtInCode ? '' : String(shown.message ?? ''),
+                    // Block commands store the compiled text they run in `message`.
+                    reply: builtInCode ? '' : String(blocks ? command.message ?? '' : shown.message ?? ''),
                 }),
             },
         };
@@ -449,7 +452,43 @@ export const streamStatsTool: AgentTool<Record<string, never>> = {
     },
 };
 
+// ---------------------------------------------------------------------------
+// get_referral_codes
+// ---------------------------------------------------------------------------
+
+/** The channel owner's referral links (same data and access as Modules → Referrals). */
+export const getReferralCodesTool: AgentTool<Record<string, never>> = {
+    name: 'get_referral_codes',
+    description: 'The channel owner\'s DomDimaBot referral codes and their links (https://domdimabot.com/r/<code>), as shown on '
+        + 'Modules → Referrals. Use it whenever a command, timer or message should share the referral link: put the real link '
+        + 'in the body instead of asking the user to copy it.',
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+    kind: 'read',
+    permissions: ['referrals:view'],
+    label: (_input, lang) => l(lang, 'Reading your referral links…', 'Leyendo tus enlaces de referido…'),
+    validate: () => ({}),
+    async run(_input, ctx) {
+        const owner = await UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id: ctx.channelId } } }).select('_id').lean();
+        if (!owner) return { type: 'result', result: { codes: [], message: 'No account found for this channel.' } };
+        const codes = await getUserCodes(owner._id as never);
+        return {
+            type: 'result',
+            summary: l(ctx.lang, `${codes.length} referral link${codes.length === 1 ? '' : 's'}`, `${codes.length} enlace${codes.length === 1 ? '' : 's'} de referido`),
+            result: {
+                codes: codes.map((code) => ({
+                    code: code.code,
+                    label: untrusted(String(code.label ?? '')),
+                    link: `https://domdimabot.com/r/${String(code.code).toLowerCase()}`,
+                    signups: Number((code as { stats?: { conversions?: number } }).stats?.conversions ?? 0),
+                })),
+                ...(codes.length ? {} : { message: 'No referral codes yet: the owner can create one on Modules → Referrals.' }),
+            },
+        };
+    },
+};
+
 export const readTools: AgentTool[] = [
+    getReferralCodesTool,
     channelOverviewTool,
     listCommandsTool,
     getCommandTool,

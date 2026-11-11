@@ -147,6 +147,7 @@ function keys(lang: Lang, keyword: boolean) {
         cooldown: l(lang, 'Cooldown (seconds)', 'Tiempo de espera (segundos)'),
         enabled: l(lang, 'On', 'Activo'),
         description: l(lang, 'Description', 'Descripción'),
+        editor: l(lang, 'Editor', 'Editor'),
     };
 }
 
@@ -156,8 +157,10 @@ function displayCommand(command: LeanCommand, lang: Lang, only?: Set<string>): F
     const blocks = command.authoring === 'blocks';
     const fields: Fields = {
         [k.trigger]: triggerLabel(command),
-        [k.reply]: blocks ? l(lang, '(built with blocks)', '(hecho con bloques)')
-            : runsBuiltInCode(command) || command.reserved ? l(lang, '(built-in)', '(integrado)') : String(command.message ?? ''),
+        [k.reply]: runsBuiltInCode(command) || command.reserved ? l(lang, '(built-in)', '(integrado)')
+            : blocks && !command.message ? l(lang, '(built with blocks)', '(hecho con bloques)') : String(command.message ?? ''),
+        // Only worth showing for block commands (or when the editor changes).
+        ...(blocks || only?.has(k.editor) ? { [k.editor]: blocks ? l(lang, 'Blocks', 'Bloques') : l(lang, 'Text', 'Texto') } : {}),
         [k.access]: accessLabel(command, lang),
         [k.cooldown]: Number(command.cooldown ?? 0),
         [k.enabled]: command.enabled !== false,
@@ -190,8 +193,10 @@ function serviceError(error: unknown, label: string, lang: Lang): Error {
     return error instanceof Error ? error : new Error(plainMessage(error));
 }
 
-async function readById(channelId: string, id: string): Promise<LeanCommand | null> {
-    return await CommandsSchema.findOne({ channelID: channelId, _id: id }).lean() as unknown as LeanCommand | null;
+async function readById(channelId: string, id: string, withBlocks = false): Promise<LeanCommand | null> {
+    const query = CommandsSchema.findOne({ channelID: channelId, _id: id });
+    if (withBlocks) query.select('+blocks');
+    return await query.lean() as unknown as LeanCommand | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -376,7 +381,7 @@ export const createCommandTool: AgentTool<CreateInput> = {
 // update_command
 // ---------------------------------------------------------------------------
 
-interface UpdateChanges { body?: string; access?: AccessLevel; cooldown?: number; enabled?: boolean; description?: string; newName?: string }
+interface UpdateChanges { body?: string; access?: AccessLevel; cooldown?: number; enabled?: boolean; description?: string; newName?: string; /** Internal: the body replaces a block reply. */ fromBlocks?: boolean }
 interface UpdateInput extends UpdateChanges { name: string; kind?: 'command' | 'keyword' }
 
 /** Service request body that turns `current` into the requested state. */
@@ -388,6 +393,8 @@ function updateBody(current: LeanCommand, changes: UpdateChanges): CommandWriteB
         if (!current.name || current.name === current.cmd) body.name = changes.newName;
     }
     if (changes.body !== undefined) body.message = changes.body;
+    // A block command becomes a text command (the service drops its blocks).
+    if (changes.body !== undefined && changes.fromBlocks) body.authoring = 'text';
     if (changes.description !== undefined) body.description = changes.description;
     if (changes.cooldown !== undefined) body.cooldown = changes.cooldown;
     if (changes.enabled !== undefined) body.enabled = changes.enabled;
@@ -407,7 +414,11 @@ function restoreBody(previous: LeanCommand, changes: UpdateChanges): CommandWrit
         body.cmd = previous.cmd;
         if (!previous.name || previous.name === previous.cmd) body.name = previous.name ?? previous.cmd;
     }
-    if (changes.body !== undefined) body.message = String(previous.message ?? '');
+    if (changes.body !== undefined && changes.fromBlocks) {
+        // Put the blocks back (the service recompiles them into the text the bot runs).
+        body.authoring = 'blocks';
+        body.blocks = (previous as unknown as { blocks?: unknown }).blocks;
+    } else if (changes.body !== undefined) body.message = String(previous.message ?? '');
     if (changes.description !== undefined) body.description = String(previous.description ?? '');
     if (changes.cooldown !== undefined) body.cooldown = Number(previous.cooldown ?? 0);
     if (changes.enabled !== undefined) body.enabled = previous.enabled !== false;
@@ -430,7 +441,7 @@ export const updateCommandTool: AgentTool<UpdateInput> = {
         'Propose changes to an existing command or keyword: body (new reply), access, cooldown, enabled (turn it on '
         + 'or off), description, newName (rename the trigger). Send only what changes. The user approves a card '
         + 'showing before → after; nothing changes until then. Built-in commands: only enabled, access, cooldown and '
-        + 'newName. Commands made with blocks: settings only (the reply is edited in the block editor). Changing '
+        + 'newName. Commands made with blocks: get_command shows the text they run; a body replaces the blocks with a text reply (warned on the card, undo restores the blocks). Changing '
         + 'access replaces a custom access rule with a simple level. ' + COMMAND_LANGUAGE_BASICS,
     parameters: {
         type: 'object',
@@ -477,8 +488,12 @@ export const updateCommandTool: AgentTool<UpdateInput> = {
 
         if (input.body !== undefined) {
             if (current.reserved || runsBuiltInCode(current)) throw new ToolInputError(`${label} is built in: the bot runs its own code, so its reply can't be changed.`);
-            if (current.authoring === 'blocks') throw new ToolInputError(`${label} is made with blocks: its reply is edited in the block editor on the Commands page. Only its settings can change here.`);
-            if (input.body !== current.message) changes.body = input.body;
+            if (current.authoring === 'blocks') {
+                changes.body = input.body;
+                changes.fromBlocks = true;
+                warnings.push(l(ctx.lang, `${label} is made with blocks: this text reply replaces its blocks (it becomes a text command). Undo puts the blocks back.`,
+                    `${label} está hecho con bloques: esta respuesta de texto reemplaza sus bloques (pasa a ser un comando de texto). Deshacer regresa los bloques.`));
+            } else if (input.body !== current.message) changes.body = input.body;
         }
         if (input.description !== undefined) {
             if (current.reserved) throw new ToolInputError(`${label} is built in: its description can't be changed.`);
@@ -519,7 +534,7 @@ export const updateCommandTool: AgentTool<UpdateInput> = {
         if (Object.keys(changes).length === 0) throw new ToolInputError(`${label} already looks like that: nothing to change.`);
 
         const next = { ...current, ...(changes.newName !== undefined ? { cmd: changes.newName } : {}),
-            ...(changes.body !== undefined ? { message: changes.body } : {}),
+            ...(changes.body !== undefined ? { message: changes.body, ...(changes.fromBlocks ? { authoring: 'text' } : {}) } : {}),
             ...(changes.description !== undefined ? { description: changes.description } : {}),
             ...(changes.cooldown !== undefined ? { cooldown: changes.cooldown } : {}),
             ...(changes.enabled !== undefined ? { enabled: changes.enabled } : {}),
@@ -531,7 +546,7 @@ export const updateCommandTool: AgentTool<UpdateInput> = {
         shown.add(k.trigger);
 
         let effects: string[] = [];
-        const textBody = current.authoring !== 'blocks' && !current.reserved && !runsBuiltInCode(current);
+        const textBody = (current.authoring !== 'blocks' || changes.fromBlocks === true) && !current.reserved && !runsBuiltInCode(current);
         if (textBody && (changes.body !== undefined || changes.enabled === true)) {
             const described = await effectsFor(String(next.message ?? ''), ctx);
             effects = described.effects;
@@ -562,7 +577,7 @@ export const updateCommandTool: AgentTool<UpdateInput> = {
     async apply(proposal, ctx) {
         const { id, changes, expected } = proposal.payload as { id: string; changes: UpdateChanges; expected: CommandSnapshot };
         const label = proposal.target.label;
-        const current = await readById(ctx.channelId, id);
+        const current = await readById(ctx.channelId, id, changes.fromBlocks === true);
         if (!current) throw new ToolConflictError(l(ctx.lang, `${label} was deleted in the meantime. Nothing was changed.`, `${label} se borró mientras tanto. No se cambió nada.`));
         const fields = changedFields(expected, commandSnapshot(current), ctx.lang);
         if (fields.length) throw conflict(label, fields, ctx.lang);

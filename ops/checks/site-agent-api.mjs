@@ -66,22 +66,34 @@ await AdminSchema.create([
 ]);
 
 async function api(person, method, path, body, { channel = CHANNEL } = {}) {
-  const response = await fetch(`${API}/agent/${channel}${path}`, {
-    method,
-    headers: { Authorization: `Bearer ${people[person].token}`, ...(body ? { 'content-type': 'application/json' } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = await response.json().catch(() => ({}));
-  return { status: response.status, json, data: json.data };
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(`${API}/agent/${channel}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${people[person].token}`, ...(body ? { 'content-type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const json = await response.json().catch(() => ({}));
+    // The per-user request limit (60/min) is a real rule; this check is just faster than a person. Wait it out.
+    if (response.status === 429 && json.data?.code === 'rate_limited' && attempt < 3) {
+      await pause((Number(response.headers.get('retry-after')) || 5) * 1000 + 200);
+      continue;
+    }
+    return { status: response.status, json, data: json.data };
+  }
 }
 
 /** Reads a turn's SSE stream until `done`, a resync, or `stopAfter(event, all)` returns true. */
 async function events(person, turnId, { after, stopAfter, timeoutMs = 60_000 } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const response = await fetch(`${API}/agent/${CHANNEL}/turns/${turnId}/events${after ? `?after=${after}` : ''}`, {
-    headers: { Authorization: `Bearer ${people[person].token}` }, signal: controller.signal,
-  });
+  let response;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    response = await fetch(`${API}/agent/${CHANNEL}/turns/${turnId}/events${after ? `?after=${after}` : ''}`, {
+      headers: { Authorization: `Bearer ${people[person].token}` }, signal: controller.signal,
+    });
+    if (response.status !== 429) break;
+    await pause((Number(response.headers.get('retry-after')) || 5) * 1000 + 200);
+  }
   assert.equal(response.status, 200);
   assert.match(response.headers.get('content-type') ?? '', /text\/event-stream/);
   const all = [];
@@ -175,7 +187,7 @@ assert.match(user1.content, /Channel: cdom201 \(plan: free\)/);
 assert.match(user1.content, /Talking to: cdom201 \(owner\)/);
 assert.match(user1.content, /Current page: dashboard \(\/cdom201\/dashboard\)/);
 const ownerTools = request1.tools.map((tool) => tool.function.name).sort();
-for (const name of ['search_docs', 'read_docs', 'search_ast_functions', 'test_command', 'show_ui', 'navigate', 'create_command']) assert.ok(ownerTools.includes(name), `owner gets ${name}`);
+for (const name of ['search_docs', 'read_docs', 'search_ast_functions', 'test_command', 'show_ui', 'navigate', 'create_command', 'get_referral_codes']) assert.ok(ownerTools.includes(name), `owner gets ${name}`);
 console.log(`model request: luna xhigh, ${ownerTools.length} tools, turn note`);
 
 // Follow-up in the same session: byte-identical system prompt, history kept.
@@ -340,6 +352,23 @@ console.log('provider errors: failed + refunded; transient 503 retried');
 const resync = await events('owner', first.data.turnId, { after: '1-0' });
 assert.equal(resync.at(-1).type, 'resync');
 console.log('sse resync');
+
+// 15b. "Answer in my bot's personality": refused on Free; on Pro the voice block is appended after the cached prefix.
+assert.deepEqual((await api('owner', 'GET', '/status')).data.persona, { available: false, on: false, name: null });
+assert.equal((await api('owner', 'PATCH', '/prefs', { persona: true })).json.data.code, 'plan_required');
+await mongo.connection.db.collection('users').updateOne({ 'accounts.id': CHANNEL }, { $set: { plan_tier: 'pro' } });
+await mongo.connection.db.collection('channelaipersonalities').insertOne({ channelID: CHANNEL, activeProfileId: 'p1', personality: 'Talks like a pirate.',
+  profiles: [{ profileID: 'p1', name: 'Check Persona', personality: 'Talks like a pirate.' }] });
+assert.deepEqual((await api('owner', 'PATCH', '/prefs', { persona: true })).data.persona, { available: true, on: true, name: 'Check Persona' });
+const voiced = await send('owner', 'hello in my voice [[script:text]]');
+assert.equal((await events('owner', voiced.data.turnId)).at(-1).data.status, 'completed');
+const voicedSystem = modelCalls().at(-1).body.messages[0].content;
+assert.ok(voicedSystem.startsWith(request1.messages[0].content), 'same cached prefix plus the voice block');
+assert.match(voicedSystem, /# Your voice for this channel/);
+assert.match(voicedSystem, /Talks like a pirate/);
+assert.equal((await api('owner', 'PATCH', '/prefs', { persona: false })).data.persona.on, false);
+await mongo.connection.db.collection('users').updateOne({ 'accounts.id': CHANNEL }, { $set: { plan_tier: 'free' } });
+console.log('persona: locked on Free, voice block on Pro, prefix unchanged');
 
 // 16. Daily limit (free = 20/day per channel, shared by owner and admins).
 const day = new Date().toISOString().slice(0, 10);

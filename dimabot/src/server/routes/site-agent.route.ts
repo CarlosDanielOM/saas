@@ -13,6 +13,7 @@ import { permissionChecker, resolveAccess, type ChannelAccess } from '../../site
 import { ChangeError, listChanges, undoChange } from '../../site_agent/changes.js';
 import { isSiteAgentEnabled, PLAN_MODELS, SITE_AGENT_LIMITS } from '../../site_agent/config.js';
 import { readLimits } from '../../site_agent/limits.js';
+import { personaAvailable, personaView, writePrefs } from '../../site_agent/prefs.js';
 import {
     AgentRequestError, decideApproval, feedback, isTurnActive, retryTurn, stopTurn, submitMessage, submitUi,
 } from '../../site_agent/runner.js';
@@ -107,8 +108,22 @@ siteAgentRoute.get('/:channelID/status', async (req: AuthRequest, res) => {
             role: ctx.requester.id === ctx.access.channelId ? 'owner' : ctx.access.role,
             limits: await readLimits(ctx.access.channelId, ctx.access.plan),
             contextLimit: PLAN_MODELS[ctx.access.plan].contextLimit,
+            persona: enabled ? await personaView(ctx.access.channelId, ctx.requester.id, ctx.access.plan) : { available: false, on: false, name: null },
         });
     } catch (err) { return handleError(res, err, 'status'); }
+});
+
+/** Preferences of this person on this channel. `persona` (answer in the bot's personality) needs Premium/Pro. */
+siteAgentRoute.patch('/:channelID/prefs', async (req: AuthRequest, res) => {
+    try {
+        const ctx = await context(req, res);
+        if (!ctx) return;
+        const persona = req.body?.persona;
+        if (typeof persona !== 'boolean') return fail(res, 400, 'invalid_request', 'persona must be true or false');
+        if (persona && !personaAvailable(ctx.access.plan)) return fail(res, 403, 'plan_required', 'Answering in your bot\'s personality needs Premium or Pro');
+        await writePrefs(ctx.access.channelId, ctx.requester.id, { persona });
+        return ok(res, { persona: await personaView(ctx.access.channelId, ctx.requester.id, ctx.access.plan) });
+    } catch (err) { return handleError(res, err, 'prefs'); }
 });
 
 siteAgentRoute.get('/:channelID/sessions', async (req: AuthRequest, res) => {

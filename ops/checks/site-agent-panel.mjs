@@ -114,6 +114,7 @@ function createAgent(o = {}) {
       role: o.role ?? 'owner',
       limits: { plan: o.plan ?? 'free', used: o.used ?? 3, limit: 20, resetsAt: nextUtcMidnight() },
       contextLimit: 100_000,
+      persona: { available: (o.plan ?? 'free') !== 'free', on: false, name: 'Default Personality' },
     },
     sessions: new Map(),
     posts: [],
@@ -736,6 +737,10 @@ async function desktopFlow(browser) {
   const list = page.locator('app-assistant-sessions');
   await until(() => list.isVisible(), 'chat list');
   assert.match(await text(list), /kept for 3 days/);
+  // Free plan: the personality option is shown locked, with a way to see plans.
+  assert.match(await text(list), /Answer in my bot's personality/);
+  assert.equal(await list.getByRole('switch').count(), 0, 'no switch on Free');
+  assert.equal(await list.getByRole('button', { name: 'See plans' }).count(), 1);
   await list.getByRole('button', { name: 'Delete chat Old chat about timers' }).click();
   await list.getByRole('button', { name: 'Delete', exact: true }).click();
   await until(() => agent.deletes.includes('/sessions/s-old'), 'DELETE session');

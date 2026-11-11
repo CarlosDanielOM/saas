@@ -30,6 +30,8 @@ export async function deleteChannelSiteAgentData(channelId: string): Promise<{ s
     }
     const daily = await scanKeys(K.dailyCount(channelId, '*'));
     if (daily.length) await client.del(daily);
+    const prefs = [...new Set([...await scanKeys(K.prefs(channelId, '*')), ...await scanKeys(K.prefs('*', channelId))])];
+    if (prefs.length) await client.del(prefs);
     const result = await mongoose.connection.collection('site_agent_changes').deleteMany({ channelId });
     return { sessionsDeleted, changesDeleted: result.deletedCount ?? 0 };
 }

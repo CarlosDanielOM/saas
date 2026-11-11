@@ -33,6 +33,9 @@ export const MODEL_PRICES: Record<string, { input: number; cachedInput: number; 
     'openai/gpt-6-luna': { input: 0.10 / 1e6, cachedInput: 0.01 / 1e6, output: 0.50 / 1e6 },
 };
 
+/** Plans that can let the assistant answer in the channel's chat-bot personality (tone only). */
+export const PERSONA_PLANS: readonly PlanTier[] = ['premium', 'pro'];
+
 export const SITE_AGENT_LIMITS = {
     /** Per user message (turn). */
     maxModelSteps: 30,
@@ -68,4 +71,6 @@ export const SITE_AGENT_KEYS = {
     dailyCount: (channelId: string, day: string) => `site_agent:daily:${channelId}:${day}`,
     stats: (day: string) => `site_agent:stats:${day}`,
     reconcileQueue: 'site_agent:reconcile',
+    /** Per person per channel preferences (no expiry): persona. */
+    prefs: (channelId: string, userId: string) => `site_agent:prefs:${channelId}:${userId}`,
 } as const;

@@ -18,6 +18,7 @@ import { refundMessage, readLimits, takeMessage, utcDay } from './limits.js';
 import { estimateUsageCost } from './llm/cost.js';
 import { LlmError, streamChat } from './llm/openrouter.js';
 import { buildSystemPrompt, FINAL_STEP_NOTE, STEER_PREFIX, turnNote } from './prompt.js';
+import { loadPersona, personaAvailable, readPrefs } from './prefs.js';
 import * as store from './store.js';
 import { warmKnowledge } from './tools/knowledge.js';
 import { getTool, toLlmTools, toolResultText, toolsFor } from './tools/registry.js';
@@ -48,6 +49,8 @@ const running = new Map<string, RunState>();
 const scheduled = new Set<string>();
 const ACTIVE_STATUSES: TurnStatus[] = ['queued', 'running', 'awaiting_approval', 'awaiting_input'];
 const TOOL_TIMEOUT_MS = 90_000;
+/** Docs/read lookups per message before results start nudging the model to act. */
+const LOOKUP_NUDGE_AFTER = 8;
 const TEXT_FLUSH_MS = 120;
 
 const isActive = (status: TurnStatus) => ACTIVE_STATUSES.includes(status);
@@ -389,7 +392,10 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
     const can = permissionChecker(turn.userId, turn.channelId);
     const tools = await toolsFor((permissions) => can(permissions), turn.plan, turn.role);
     const llmTools = toLlmTools(tools);
-    const system = buildSystemPrompt(await getDocsPromptIndex(turn.lang));
+    // Premium/Pro, when the person turned it on: answer in the channel's chat-bot personality (tone only).
+    const usePersona = personaAvailable(turn.plan) && (await readPrefs(turn.channelId, turn.userId).catch(() => ({ persona: false }))).persona;
+    const persona = usePersona ? await loadPersona(turn.channelId).catch(() => null) : null;
+    const system = buildSystemPrompt(await getDocsPromptIndex(turn.lang), persona);
     const systemTokens = estimateTokens(system) + estimateTokens(JSON.stringify(llmTools));
 
     const fence: store.Fence = { sessionId: turn.sessionId, token };
@@ -704,7 +710,14 @@ async function runCall(ctx: LoopContext, callId: string, name: string, rawArgs: 
 
     switch (outcome.type) {
         case 'result': {
-            const text = toolResultText(outcome.result, tool.resultBytes);
+            let text = toolResultText(outcome.result, tool.resultBytes);
+            // Lookups past the budget still answer, with a nudge to act on what was already found.
+            if (tool.kind === 'knowledge' || tool.kind === 'read') {
+                const lookups = ctx.turn.calls.filter((call) => { const used = getTool(call.name); return used && (used.kind === 'knowledge' || used.kind === 'read'); }).length;
+                if (lookups > LOOKUP_NUDGE_AFTER) {
+                    text += `\n[Note: this is lookup ${lookups} for this message. You very likely know enough: act now (propose the changes, show a form, or answer) instead of searching more, unless one essential fact is still missing.]`;
+                }
+            }
             await fenced(turn.id, ctx.token, (current) => {
                 const entry = current.calls.find((item) => item.id === callId);
                 if (entry) { entry.state = 'done'; entry.result = text; entry.summary = outcome.summary; entry.endedAt = Date.now(); }

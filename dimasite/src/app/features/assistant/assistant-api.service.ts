@@ -14,6 +14,7 @@ import type {
   LimitsView,
   PageContext,
   SessionMeta,
+  PersonaView,
   StatusView,
   TurnSnapshot,
   TurnStatus,
@@ -88,6 +89,11 @@ export class AssistantApiService {
 
   status(channelId: string): Promise<StatusView> {
     return this.call(this.http.get<ApiEnvelope<StatusView>>(`${this.base(channelId)}/status`));
+  }
+
+  async setPersona(channelId: string, persona: boolean): Promise<PersonaView> {
+    const data = await this.call(this.http.patch<ApiEnvelope<{ persona: PersonaView }>>(`${this.base(channelId)}/prefs`, { persona }));
+    return data.persona;
   }
 
   async sessions(channelId: string): Promise<SessionMeta[]> {

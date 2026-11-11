@@ -151,6 +151,23 @@ test('create_command apply refuses when the name was taken after the proposal', 
 // update_command
 // ---------------------------------------------------------------------------
 
+test('update_command: a text body replaces a block reply (warned), and undo puts the blocks back', async () => {
+    const blocks = { type: 'root', children: [{ type: 'text', text: 'hi' }] };
+    db.seed({ name: 'b', cmd: 'b', func: 'b', message: 'compiled from blocks', authoring: 'blocks', blocks, cooldown: 10 });
+    const proposal = await propose(updateCommandTool, { name: '!b', body: 'Hello $(user)' });
+    assert.match(String(proposal.warnings?.join(' ')), /replaces its blocks/);
+    assert.deepEqual(proposal.before, { Command: '!b', Reply: 'compiled from blocks', Editor: 'Blocks' });
+    assert.deepEqual(proposal.after, { Command: '!b', Reply: 'Hello $(user)', Editor: 'Text' });
+    assert.equal((proposal.payload as { changes: { fromBlocks?: boolean } }).changes.fromBlocks, true);
+    const applied = await updateCommandTool.apply!(proposal, ctx());
+    const row = [...db.store.values()].find((raw) => raw.cmd === 'b')!;
+    assert.equal(row.authoring, 'text');
+    assert.equal(row.message, 'Hello $(user)');
+    const restore = (applied.change!.undo as { restore: Record<string, unknown> }).restore;
+    assert.equal(restore.authoring, 'blocks');
+    assert.deepEqual(restore.blocks, blocks, 'undo sends the original blocks back to the service');
+});
+
 test('update_command proposal shows only what changes and refuses what the page would not allow', async () => {
     db.seed({ name: 'dice', cmd: 'dice', func: 'dice', message: 'roll', cooldown: 10, userLevel: 1, description: 'Roll' });
     db.seed({ name: 'coin', cmd: 'coin', func: 'coin', message: 'flip', cooldown: 10 });
@@ -166,7 +183,6 @@ test('update_command proposal shows only what changes and refuses what the page 
     await assert.rejects(run({ name: '!commands', body: 'x' }), /built in/);
     await assert.rejects(run({ name: '!commands', description: 'x' }), /built in/);
     await assert.rejects(run({ name: '!game', body: 'x' }), /built in/);
-    await assert.rejects(run({ name: '!b', body: 'x' }), /blocks/);
     await assert.rejects(run({ name: '!dice', newName: 'coin' }), /already used/);
     await assert.rejects(run({ name: '!dice', newName: 'mod' }), /built-in command name/);
     await assert.rejects(run({ name: '!commands', cooldown: 0 }), /0-second/);
