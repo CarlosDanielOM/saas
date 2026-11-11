@@ -10,8 +10,9 @@
 // Keep the two fixtures identical when adding a case.
 
 import { createRequire } from 'node:module';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
@@ -36,6 +37,57 @@ const cors = require('cors');
 // per-prefix limits, a router with its own CORS, global parsers, routers mounted before cors(),
 // cors(), then routes and routers (auth shadowing, mergeParams, error handlers, JSON 404s).
 // ---------------------------------------------------------------------------------------------
+
+// Files served by express.static and res.sendFile. The Rust test builds the same tree from the
+// `staticFiles` list written into express.json, with the same modification time (a half second
+// is exact both through libuv's float conversion and in Rust), so ETags and Last-Modified agree.
+const STATIC_MTIME_MS = 1767323045500;
+const pattern = (size) => Buffer.from(Array.from({ length: size }, (_, i) => i % 251));
+const STATIC_FILES = [
+  ['index.html', Buffer.from('<h1>root</h1>\n')],
+  ['hello.txt', Buffer.from('abcdefghijklmnopqrstuvwxyz0123456789')],
+  ['empty.txt', Buffer.alloc(0)],
+  ['noext', Buffer.from('no extension')],
+  ['data.json', Buffer.from('{"a":1}')],
+  ['script.js', Buffer.from('var a = 1;')],
+  ['styles/app.css', Buffer.from('body{}')],
+  ['dir/index.html', Buffer.from('<p>dir</p>')],
+  ['speech/chan1/one.wav', Buffer.concat([Buffer.from('RIFF'), pattern(60)])],
+  ['speech/chan1/one.mp3', Buffer.concat([Buffer.from('ID3'), pattern(40)])],
+  ['downloads/123-clip.mp4', pattern(300)],
+  ['.env', Buffer.from('SECRET=1')],
+  ['.well-known/thing.txt', Buffer.from('well known')],
+  ['café/menü.txt', Buffer.from('crème brûlée')],
+  ['😀/smile.txt', Buffer.from('smile 😀')],
+  ['emoji-😀.txt', Buffer.from('emoji')],
+  ['שלום.txt', Buffer.from('שלום עולם')],
+  ['with space.txt', Buffer.from('space')],
+  ['percent%.txt', Buffer.from('percent')],
+  ['UPPER.TXT', Buffer.from('upper')],
+  ['big.bin', pattern(70000)],
+];
+const STATIC_DIRS = ['empty-dir'];
+
+function makeStaticTree() {
+  const root = mkdtempSync(path.join(process.env.GOLDEN_TMPDIR ?? os.tmpdir(), 'dima-web-static-'));
+  for (const dir of STATIC_DIRS) mkdirSync(path.join(root, dir), { recursive: true });
+  for (const [name, bytes] of STATIC_FILES) {
+    const file = path.join(root, name);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, bytes);
+    utimesSync(file, STATIC_MTIME_MS / 1000, STATIC_MTIME_MS / 1000);
+  }
+  return root;
+}
+
+const staticRoot = makeStaticTree();
+const fileTag = (name) => {
+  const size = STATIC_FILES.find(([n]) => n === name)[1].length;
+  return `W/"${size.toString(16)}-${STATIC_MTIME_MS.toString(16)}"`;
+};
+const lastModified = new Date(STATIC_MTIME_MS).toUTCString();
+const earlier = new Date(STATIC_MTIME_MS - 86400000).toUTCString();
+const later = new Date(STATIC_MTIME_MS + 86400000).toUTCString();
 
 class WidgetError extends Error {
   constructor(message, status) {
@@ -111,6 +163,8 @@ function buildApp() {
   app.use('/pre', pre);
   app.get('/early', (req, res) => res.json({ early: true }));
 
+  // As in the reference: static files after the parsers and the OAuth mounts, before cors().
+  app.use(express.static(staticRoot));
   app.use(cors());
 
   const where = (req) => ({ path: req.path, baseUrl: req.baseUrl, originalUrl: req.originalUrl, url: req.url });
@@ -181,6 +235,37 @@ function buildApp() {
   app.get('/.well-known/thing', (req, res) => res.json({ wellKnown: true }));
   app.get('/a.b/c', (req, res) => res.json({ dotted: 'segment' }));
   app.get('/files.json', (req, res) => res.json({ dotted: 'file' }));
+  app.get('/speech/:channelID', (req, res) => res.json({ speechPage: req.params.channelID }));
+  app.get('/sendfile/text', (req, res) => res.sendFile(path.join(staticRoot, 'hello.txt')));
+  app.get('/sendfile/typed', (req, res) => {
+    res.set('Content-Type', 'audio/mpeg');
+    res.sendFile(path.join(staticRoot, 'speech', 'chan1', 'one.wav'));
+  });
+  app.get('/sendfile/status', (req, res) => res.status(200).sendFile(path.join(staticRoot, 'index.html')));
+  app.get('/sendfile/no-store', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(path.join(staticRoot, 'script.js'));
+  });
+  app.get('/sendfile/missing', (req, res) => res.sendFile(path.join(staticRoot, 'nope.txt')));
+  app.get('/sendfile/dir', (req, res) => res.sendFile(path.join(staticRoot, 'dir')));
+  app.get('/sendfile/dotfile', (req, res) => res.sendFile(path.join(staticRoot, '.env')));
+  app.get('/sendfile/relative', (req, res) => res.sendFile('hello.txt'));
+  app.get('/sendfile/emoji', (req, res) => res.sendFile(path.join(staticRoot, '😀', 'smile.txt')));
+  app.get('/sendfile/big', (req, res) => res.sendFile(path.join(staticRoot, 'big.bin')));
+  app.get('/type-unknown-ext', (req, res) => res.type('xyz').send(Buffer.from('x')));
+  app.get('/type-wav', (req, res) => res.type('wav').send(Buffer.from('RIFF')));
+  app.get('/set-manifest-json', (req, res) => {
+    res.set('Content-Type', 'application/manifest+json');
+    res.send(Buffer.from('{}'));
+  });
+  const filesRouter = express.Router();
+  filesRouter.get('/missing', (req, res) => res.sendFile(path.join(staticRoot, 'nope.txt')));
+  filesRouter.get('/range', (req, res) => res.sendFile(path.join(staticRoot, 'hello.txt')));
+  // eslint-disable-next-line no-unused-vars
+  filesRouter.use((err, req, res, next) =>
+    res.status(err.status || 500).json({ status: err.status, code: err.code ?? null, expose: err.expose }),
+  );
+  app.use('/files-router', filesRouter);
   app.post('/raw-length', express.raw(), (req, res) =>
     res.json({ isBuffer: Buffer.isBuffer(req.body), length: req.body.length }),
   );
@@ -593,6 +678,118 @@ add('json-four-route-at', 'POST', '/four/echo', [JSON_CT], { gen: { type: 'json-
 add('json-big-route-at', 'POST', '/big/echo', [JSON_CT], { gen: { type: 'json-pad', size: 5 * 1024 * 1024 } });
 add('json-mid-route-over-by-one-chunked', 'POST', '/mid/echo', [JSON_CT], { gen: { type: 'json-pad', size: 1024 * 1024 + 1 } }, { chunked: true });
 
+// express.static: files, index, directory redirect, fall-through, dotfiles, names.
+add('static-file', 'GET', '/hello.txt');
+add('static-head', 'HEAD', '/hello.txt');
+add('static-index', 'GET', '/');
+add('static-index-file', 'GET', '/index.html');
+add('static-dir-index', 'GET', '/dir/');
+add('static-dir-redirect', 'GET', '/dir');
+add('static-dir-redirect-query', 'GET', '/dir?x=1&y=%C3%A9');
+add('static-dir-redirect-head', 'HEAD', '/dir');
+add('static-dir-redirect-double-slash', 'GET', '//dir');
+add('static-dir-redirect-accept-json', 'GET', '/dir', [['Accept', 'application/json']]);
+add('static-empty-dir-redirect', 'GET', '/empty-dir');
+add('static-empty-dir-slash', 'GET', '/empty-dir/');
+add('static-speech-redirect', 'GET', '/speech/chan1');
+add('static-speech-slash', 'GET', '/speech/chan1/');
+add('static-speech-route', 'GET', '/speech/chan2');
+add('static-speech-wav', 'GET', '/speech/chan1/one.wav');
+add('static-speech-mp3', 'GET', '/speech/chan1/one.mp3');
+add('static-download', 'GET', '/downloads/123-clip.mp4');
+add('static-dotfile', 'GET', '/.env');
+add('static-dotfile-encoded', 'GET', '/%2eenv');
+add('static-dot-directory', 'GET', '/.well-known/thing.txt');
+add('static-latin-names', 'GET', '/caf%C3%A9/men%C3%BC.txt');
+add('static-emoji-directory', 'GET', '/%F0%9F%98%80/smile.txt');
+add('static-emoji-name', 'GET', '/emoji-%F0%9F%98%80.txt');
+add('static-rtl-name', 'GET', '/%D7%A9%D7%9C%D7%95%D7%9D.txt');
+add('static-space', 'GET', '/with%20space.txt');
+add('static-percent', 'GET', '/percent%25.txt');
+add('static-upper', 'GET', '/UPPER.TXT');
+add('static-upper-miss', 'GET', '/upper.txt');
+add('static-no-extension', 'GET', '/noext');
+add('static-css', 'GET', '/styles/app.css');
+add('static-js', 'GET', '/script.js');
+add('static-json', 'GET', '/data.json');
+add('static-empty-file', 'GET', '/empty.txt');
+add('static-big', 'GET', '/big.bin');
+add('static-post-falls-through', 'POST', '/hello.txt');
+add('static-options-cors', 'OPTIONS', '/hello.txt');
+add('static-traversal', 'GET', '/../hello.txt');
+add('static-traversal-encoded', 'GET', '/%2e%2e/hello.txt');
+add('static-traversal-nested', 'GET', '/dir/..%2f..%2fhello.txt');
+add('static-traversal-inside-root', 'GET', '/dir/%2e%2e/hello.txt');
+add('static-traversal-backslash', 'GET', '/dir%5c..%5chello.txt');
+add('static-null-byte', 'GET', '/hello.txt%00.png');
+add('static-malformed', 'GET', '/hello%E0%A4%A.txt');
+add('static-malformed-hex', 'GET', '/%zz');
+
+// Conditional requests.
+add('static-etag-match', 'GET', '/hello.txt', [['If-None-Match', fileTag('hello.txt')]]);
+add('static-etag-strong-form', 'GET', '/hello.txt', [['If-None-Match', fileTag('hello.txt').slice(2)]]);
+add('static-etag-head', 'HEAD', '/hello.txt', [['If-None-Match', fileTag('hello.txt')]]);
+add('static-etag-no-cache', 'GET', '/hello.txt', [['If-None-Match', fileTag('hello.txt')], ['Cache-Control', 'no-cache']]);
+add('static-ims-match', 'GET', '/hello.txt', [['If-Modified-Since', lastModified]]);
+add('static-ims-later', 'GET', '/hello.txt', [['If-Modified-Since', later]]);
+add('static-ims-earlier', 'GET', '/hello.txt', [['If-Modified-Since', earlier]]);
+add('static-ims-rfc850', 'GET', '/hello.txt', [['If-Modified-Since', 'Friday, 02-Jan-26 03:04:05 GMT']]);
+add('static-ims-asctime', 'GET', '/hello.txt', [['If-Modified-Since', 'Fri Jan  2 03:04:05 2026']]);
+add('static-ims-garbage', 'GET', '/hello.txt', [['If-Modified-Since', 'not a date']]);
+add('static-if-match', 'GET', '/hello.txt', [['If-Match', fileTag('hello.txt')]]);
+add('static-if-match-star', 'GET', '/hello.txt', [['If-Match', '*']]);
+add('static-if-match-fails', 'GET', '/hello.txt', [['If-Match', '"nope"']]);
+add('static-if-match-empty-list', 'GET', '/hello.txt', [['If-Match', ', ,']]);
+add('static-ius-fails', 'GET', '/hello.txt', [['If-Unmodified-Since', earlier]]);
+add('static-ius-holds', 'GET', '/hello.txt', [['If-Unmodified-Since', lastModified]]);
+
+// Ranges.
+add('static-range-first', 'GET', '/hello.txt', [['Range', 'bytes=0-4']]);
+add('static-range-suffix', 'GET', '/hello.txt', [['Range', 'bytes=-5']]);
+add('static-range-open', 'GET', '/hello.txt', [['Range', 'bytes=30-']]);
+add('static-range-one-byte', 'GET', '/hello.txt', [['Range', 'bytes=0-0']]);
+add('static-range-past-end', 'GET', '/hello.txt', [['Range', 'bytes=30-1000']]);
+add('static-range-multiple', 'GET', '/hello.txt', [['Range', 'bytes=0-4,10-14']]);
+add('static-range-overlap', 'GET', '/hello.txt', [['Range', 'bytes=0-4,3-8']]);
+add('static-range-adjacent', 'GET', '/hello.txt', [['Range', 'bytes=10-14,0-4,5-9']]);
+add('static-range-unsatisfiable', 'GET', '/hello.txt', [['Range', 'bytes=100-200']]);
+add('static-range-malformed', 'GET', '/hello.txt', [['Range', 'bytes=abc']]);
+add('static-range-reversed', 'GET', '/hello.txt', [['Range', 'bytes=5-2']]);
+add('static-range-suffix-zero', 'GET', '/hello.txt', [['Range', 'bytes=-0']]);
+add('static-range-no-equals', 'GET', '/hello.txt', [['Range', 'bytes']]);
+add('static-range-other-unit', 'GET', '/hello.txt', [['Range', 'items=0-4']]);
+add('static-range-empty-file', 'GET', '/empty.txt', [['Range', 'bytes=0-']]);
+add('static-range-head', 'HEAD', '/hello.txt', [['Range', 'bytes=0-4']]);
+add('static-range-if-range-tag', 'GET', '/hello.txt', [['Range', 'bytes=0-4'], ['If-Range', fileTag('hello.txt')]]);
+add('static-range-if-range-stale-tag', 'GET', '/hello.txt', [['Range', 'bytes=0-4'], ['If-Range', '"other"']]);
+add('static-range-if-range-date', 'GET', '/hello.txt', [['Range', 'bytes=0-4'], ['If-Range', lastModified]]);
+add('static-range-if-range-old-date', 'GET', '/hello.txt', [['Range', 'bytes=0-4'], ['If-Range', earlier]]);
+add('static-range-across-chunks', 'GET', '/big.bin', [['Range', 'bytes=65530-65545']]);
+add('static-range-not-modified', 'GET', '/hello.txt', [['Range', 'bytes=0-4'], ['If-None-Match', fileTag('hello.txt')]]);
+
+// res.sendFile.
+add('sendfile-text', 'GET', '/sendfile/text');
+add('sendfile-head', 'HEAD', '/sendfile/text');
+add('sendfile-range', 'GET', '/sendfile/text', [['Range', 'bytes=2-5']]);
+add('sendfile-range-unsatisfiable', 'GET', '/sendfile/text', [['Range', 'bytes=999-']]);
+add('sendfile-not-modified', 'GET', '/sendfile/text', [['If-None-Match', fileTag('hello.txt')]]);
+add('sendfile-typed', 'GET', '/sendfile/typed');
+add('sendfile-status', 'GET', '/sendfile/status');
+add('sendfile-no-store', 'GET', '/sendfile/no-store');
+add('sendfile-missing', 'GET', '/sendfile/missing');
+add('sendfile-directory', 'GET', '/sendfile/dir');
+add('sendfile-dotfile', 'GET', '/sendfile/dotfile');
+add('sendfile-relative', 'GET', '/sendfile/relative');
+add('sendfile-emoji', 'GET', '/sendfile/emoji');
+add('sendfile-big', 'GET', '/sendfile/big');
+add('sendfile-router-missing', 'GET', '/files-router/missing');
+add('sendfile-router-unsatisfiable', 'GET', '/files-router/range', [['Range', 'bytes=999-']]);
+
+// res.type and res.set with mime 1.6.
+add('type-unknown-ext', 'GET', '/type-unknown-ext');
+add('type-wav', 'GET', '/type-wav');
+add('set-manifest-json', 'GET', '/set-manifest-json');
+
 // ---------------------------------------------------------------------------------------------
 
 function generate(spec) {
@@ -699,6 +896,7 @@ for (const c of cases) {
   recorded.push({ ...c, response });
 }
 server.close();
+rmSync(staticRoot, { recursive: true, force: true });
 
 const out = {
   note: 'Generated by record.mjs; do not edit by hand.',
@@ -707,6 +905,11 @@ const out = {
   bodyParser: require('body-parser/package.json').version,
   qs: require('qs/package.json').version,
   cors: require('cors/package.json').version,
+  serveStatic: require('serve-static/package.json').version,
+  send: require('send/package.json').version,
+  staticMtimeMs: STATIC_MTIME_MS,
+  staticDirs: STATIC_DIRS,
+  staticFiles: STATIC_FILES.map(([name, bytes]) => ({ path: name, base64: bytes.toString('base64') })),
   cases: recorded,
 };
 writeFileSync(path.join(here, 'express.json'), `${JSON.stringify(out, null, 1)}\n`);

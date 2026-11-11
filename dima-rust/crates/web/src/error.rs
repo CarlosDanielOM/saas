@@ -21,6 +21,7 @@ pub struct Error {
 
 struct Inner {
     status: Option<u16>,
+    expose: Option<bool>,
     kind: Option<Cow<'static, str>>,
     message: Cow<'static, str>,
     headers: Vec<(String, String)>,
@@ -51,6 +52,7 @@ impl Error {
         Self {
             inner: Box::new(Inner {
                 status,
+                expose: None,
                 kind: None,
                 message,
                 headers: Vec::new(),
@@ -100,9 +102,20 @@ impl Error {
         &self.inner.headers
     }
 
-    /// `err.expose` as `http-errors` defines it: client errors are safe to show.
+    /// Sets `err.expose` explicitly (http-errors' `{ expose: false }` option, which send uses for
+    /// errors wrapping a file-system error).
+    #[must_use]
+    pub fn with_expose(mut self, expose: bool) -> Self {
+        self.inner.expose = Some(expose);
+        self
+    }
+
+    /// `err.expose` as `http-errors` defines it: client errors are safe to show unless set
+    /// otherwise with [`Error::with_expose`].
     pub fn expose(&self) -> bool {
-        self.inner.status.is_some_and(|status| status < 500)
+        self.inner
+            .expose
+            .unwrap_or_else(|| self.inner.status.is_some_and(|status| status < 500))
     }
 
     /// The wrapped error value, when it is of type `T`.

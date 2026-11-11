@@ -67,7 +67,9 @@ impl Failure {
     /// `createError(status, err)` from http-errors.
     fn into_error(self) -> Error {
         let error = match self.source {
-            Some(source) => Error::from_source(source).with_status(self.status),
+            Some(source) => Error::from_source(source)
+                .with_status(self.status)
+                .with_expose(false),
             None => Error::new(
                 self.status,
                 crate::status::message(self.status).unwrap_or("Unknown Error"),

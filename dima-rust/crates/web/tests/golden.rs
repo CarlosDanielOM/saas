@@ -488,6 +488,97 @@ async fn raw_length(req: &mut Req) -> Response {
     ok(json!({ "isBuffer": length.is_some(), "length": length }))
 }
 
+/// The directory the static fixture tree lives in for this run.
+#[derive(Clone)]
+struct Files(std::sync::Arc<String>);
+
+impl Files {
+    fn path(&self, relative: &str) -> String {
+        format!("{}/{relative}", self.0)
+    }
+}
+
+fn files(req: &Req) -> Files {
+    req.extensions()
+        .get::<Files>()
+        .cloned()
+        .unwrap_or_else(|| Files(std::sync::Arc::new(String::new())))
+}
+
+async fn speech_page(req: &mut Req) -> Response {
+    ok(json!({ "speechPage": req.param("channelID") }))
+}
+
+async fn sendfile_text(req: &mut Req) -> Response {
+    Response::new().send_file(files(req).path("hello.txt"))
+}
+
+async fn sendfile_typed(req: &mut Req) -> Response {
+    Response::new()
+        .set("Content-Type", "audio/mpeg")
+        .send_file(files(req).path("speech/chan1/one.wav"))
+}
+
+async fn sendfile_status(req: &mut Req) -> Response {
+    Response::status(200).send_file(files(req).path("index.html"))
+}
+
+async fn sendfile_no_store(req: &mut Req) -> Response {
+    Response::new()
+        .header("Cache-Control", "no-store")
+        .send_file(files(req).path("script.js"))
+}
+
+async fn sendfile_missing(req: &mut Req) -> Response {
+    Response::new().send_file(files(req).path("nope.txt"))
+}
+
+async fn sendfile_dir(req: &mut Req) -> Response {
+    Response::new().send_file(files(req).path("dir"))
+}
+
+async fn sendfile_dotfile(req: &mut Req) -> Response {
+    Response::new().send_file(files(req).path(".env"))
+}
+
+async fn sendfile_relative(_req: &mut Req) -> Response {
+    Response::new().send_file("hello.txt")
+}
+
+async fn sendfile_emoji(req: &mut Req) -> Response {
+    Response::new().send_file(files(req).path("😀/smile.txt"))
+}
+
+async fn sendfile_big(req: &mut Req) -> Response {
+    Response::new().send_file(files(req).path("big.bin"))
+}
+
+async fn type_unknown_ext(_req: &mut Req) -> Response {
+    Response::new().content_type("xyz").bytes(&b"x"[..])
+}
+
+async fn type_wav(_req: &mut Req) -> Response {
+    Response::new().content_type("wav").bytes(&b"RIFF"[..])
+}
+
+async fn set_manifest_json(_req: &mut Req) -> Response {
+    Response::new()
+        .set("Content-Type", "application/manifest+json")
+        .bytes(&b"{}"[..])
+}
+
+async fn files_errors(error: Error, _req: &mut Req) -> Response {
+    let code = error
+        .downcast_ref::<std::io::Error>()
+        .map(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => "ENOENT",
+            std::io::ErrorKind::NotADirectory => "ENOTDIR",
+            _ => "EIO",
+        });
+    Response::status(error.status().unwrap_or(500))
+        .json(&json!({ "status": error.status(), "code": code, "expose": error.expose() }))
+}
+
 async fn email_a(_req: &mut Req) -> Response {
     ok(json!({ "email": "a" }))
 }
@@ -500,8 +591,13 @@ fn docs_origin(origin: Option<&str>) -> bool {
     origin.is_none_or(|o| o.is_empty() || o == "https://docs.example.com")
 }
 
-fn fixture() -> App {
+fn fixture(static_root: &str) -> App {
     let mut app = Router::new();
+    let root = Files(std::sync::Arc::new(static_root.to_owned()));
+    app.middleware(dima_web::from_fn(move |req: &mut Req| {
+        req.extensions_mut().insert(root.clone());
+        Ok(Flow::Next)
+    }));
 
     let mut hook = Router::new();
     hook.post(
@@ -546,6 +642,8 @@ fn fixture() -> App {
     app.mount("/pre", pre);
     app.get("/early", early);
 
+    // As in the reference: static files after the parsers and the OAuth mounts, before cors().
+    app.middleware(dima_web::serve_static(static_root));
     app.middleware(cors::cors());
 
     app.get("/users/:id", users_id);
@@ -592,6 +690,25 @@ fn fixture() -> App {
     app.get("/.well-known/thing", well_known);
     app.get("/a.b/c", dotted_segment);
     app.get("/files.json", dotted_file);
+    app.get("/speech/:channelID", speech_page);
+    app.get("/sendfile/text", sendfile_text);
+    app.get("/sendfile/typed", sendfile_typed);
+    app.get("/sendfile/status", sendfile_status);
+    app.get("/sendfile/no-store", sendfile_no_store);
+    app.get("/sendfile/missing", sendfile_missing);
+    app.get("/sendfile/dir", sendfile_dir);
+    app.get("/sendfile/dotfile", sendfile_dotfile);
+    app.get("/sendfile/relative", sendfile_relative);
+    app.get("/sendfile/emoji", sendfile_emoji);
+    app.get("/sendfile/big", sendfile_big);
+    app.get("/type-unknown-ext", type_unknown_ext);
+    app.get("/type-wav", type_wav);
+    app.get("/set-manifest-json", set_manifest_json);
+    let mut files_router = Router::new();
+    files_router.get("/missing", sendfile_missing);
+    files_router.get("/range", sendfile_text);
+    files_router.on_error(files_errors);
+    app.mount("/files-router", files_router);
     app.post("/raw-length", (body::raw(), raw_length));
 
     let mut widgets = Router::new();
@@ -823,19 +940,63 @@ fn expected_headers(response: &Value, status: u16) -> Vec<(String, String)> {
     comparable(&list, status)
 }
 
+/// The static fixture tree, built from the golden file's list with its modification time, and
+/// removed when the test ends.
+struct StaticTree(std::path::PathBuf);
+
+impl StaticTree {
+    fn build(golden: &Value) -> Self {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos());
+        let root =
+            std::env::temp_dir().join(format!("dima-web-static-{}-{nanos}", std::process::id()));
+        for dir in golden["staticDirs"].as_array().expect("staticDirs") {
+            std::fs::create_dir_all(root.join(dir.as_str().expect("dir"))).expect("dir");
+        }
+        let mtime = std::time::UNIX_EPOCH
+            + std::time::Duration::from_millis(golden["staticMtimeMs"].as_u64().expect("mtime"));
+        for file in golden["staticFiles"].as_array().expect("staticFiles") {
+            let path = root.join(file["path"].as_str().expect("path"));
+            std::fs::create_dir_all(path.parent().expect("parent")).expect("dir");
+            let bytes = base64::engine::general_purpose::STANDARD
+                .decode(file["base64"].as_str().expect("bytes"))
+                .expect("base64");
+            std::fs::write(&path, bytes).expect("write");
+            std::fs::File::options()
+                .write(true)
+                .open(&path)
+                .and_then(|f| f.set_modified(mtime))
+                .expect("mtime");
+        }
+        Self(root)
+    }
+
+    fn root(&self) -> String {
+        self.0.to_str().expect("UTF-8 temp dir").to_owned()
+    }
+}
+
+impl Drop for StaticTree {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn matches_express() {
     let golden: Value =
         serde_json::from_str(include_str!("golden/express.json")).expect("golden file");
     let cases = golden["cases"].as_array().expect("cases");
-    assert!(cases.len() >= 260, "golden file has {} cases", cases.len());
+    assert!(cases.len() >= 360, "golden file has {} cases", cases.len());
+    let tree = StaticTree::build(&golden);
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let addr = listener.local_addr().expect("address");
     let shutdown = CancellationToken::new();
     let server = tokio::spawn(serve(
         listener,
-        fixture(),
+        fixture(&tree.root()),
         shutdown.clone(),
         ServeOptions::default(),
     ));
