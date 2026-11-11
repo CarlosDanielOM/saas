@@ -163,7 +163,7 @@ pub fn prepare_update(
         Update::Document(mut doc) => {
             decorate_version_key(schema, &mut doc, options.upsert);
             apply_timestamps(schema, &mut doc, caster.ctx.now());
-            let mut cast = cast_update(schema, doc, options.upsert, filter, &mut caster)?;
+            let mut cast = cast_update(schema, doc, options.upsert, filter, &[], &mut caster)?;
             if cast.is_empty() {
                 return Ok(None);
             }
@@ -240,7 +240,7 @@ pub fn prepare_find_one_and_update(
         Update::Document(mut doc) => {
             decorate_version_key(schema, &mut doc, options.upsert);
             apply_timestamps(schema, &mut doc, caster.ctx.now());
-            let mut cast = cast_update(schema, doc, options.upsert, filter, &mut caster)?;
+            let mut cast = cast_update(schema, doc, options.upsert, filter, &[], &mut caster)?;
             if options.upsert && options.set_defaults_on_insert {
                 set_defaults_on_insert(schema, filter, &mut cast, &mut caster)?;
             }
@@ -293,16 +293,17 @@ pub fn prepare_bulk_update(
         }
         Update::Document(mut doc) => {
             let defaults = options.upsert && options.set_defaults_on_insert;
+            let mut precast = Vec::new();
             match kind {
                 BulkUpdate::UpdateOne => {
                     apply_timestamps(schema, &mut doc, caster.ctx.now());
                     if defaults {
-                        set_defaults_on_insert(schema, filter, &mut doc, &mut caster)?;
+                        precast = set_defaults_on_insert(schema, filter, &mut doc, &mut caster)?;
                     }
                 }
                 BulkUpdate::UpdateMany => {
                     if defaults {
-                        set_defaults_on_insert(schema, filter, &mut doc, &mut caster)?;
+                        precast = set_defaults_on_insert(schema, filter, &mut doc, &mut caster)?;
                     }
                     apply_timestamps(schema, &mut doc, caster.ctx.now());
                 }
@@ -313,6 +314,7 @@ pub fn prepare_bulk_update(
                 doc,
                 options.upsert,
                 filter,
+                &precast,
                 &mut caster,
             )?)
         }
@@ -404,6 +406,7 @@ fn cast_update(
     mut update: Document,
     upsert: bool,
     filter: &Document,
+    precast: &[String],
     caster: &mut Caster<'_>,
 ) -> Result<Document, PrepareError> {
     if upsert {
@@ -452,7 +455,8 @@ fn cast_update(
         let Bson::Document(body) = value else {
             return Err(PrepareError::InvalidOperatorValue { op });
         };
-        walk_update_path(schema, body, &op, "", caster)?;
+        let skip: &[String] = if op == "$setOnInsert" { precast } else { &[] };
+        walk_update_path(schema, body, &op, "", skip, caster)?;
         if op.starts_with('$') && body.is_empty() {
             ret.remove(&op);
         }
@@ -500,10 +504,15 @@ fn walk_update_path(
     obj: &mut Document,
     op: &str,
     prefix: &str,
+    precast: &[String],
     caster: &mut Caster<'_>,
 ) -> Result<(), PrepareError> {
     let keys: Vec<String> = obj.keys().cloned().collect();
     for key in keys.iter().rev() {
+        if precast.contains(key) {
+            // A default Mongoose inserted as an already cast value (bulkWrite): left as it is.
+            continue;
+        }
         let path = format!("{prefix}{key}");
         let Some(value) = obj.get(key).cloned() else {
             continue;
@@ -560,7 +569,7 @@ fn walk_update_path(
                     }
                     Some(_) => {
                         let mut inner = inner;
-                        walk_update_path(schema, &mut inner, op, &format!("{path}."), caster)?;
+                        walk_update_path(schema, &mut inner, op, &format!("{path}."), &[], caster)?;
                         obj.insert(key.clone(), inner);
                     }
                     None => {
@@ -707,7 +716,8 @@ fn set_defaults_on_insert(
     filter: &Document,
     update: &mut Document,
     caster: &mut Caster<'_>,
-) -> Result<(), PrepareError> {
+) -> Result<Vec<String>, PrepareError> {
+    let mut inserted = Vec::new();
     let has_dollar = update.keys().any(|k| k.starts_with('$'));
     let mut pinned: Vec<String> = Vec::new();
     for (path, condition) in filter {
@@ -735,12 +745,13 @@ fn set_defaults_on_insert(
         let already =
             get_path(update, &path).is_some_and(|v| !matches!(v, Bson::Null | Bson::Undefined));
         if !already {
-            put(update, "$setOnInsert", path, value);
+            put(update, "$setOnInsert", path.clone(), value);
+            inserted.push(path);
         } else if !update.contains_key("$setOnInsert") {
             update.insert("$setOnInsert", Document::new());
         }
     }
-    Ok(())
+    Ok(inserted)
 }
 
 fn is_modified(update: &Document, pinned: &[String], path: &str, has_dollar: bool) -> bool {
