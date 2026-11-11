@@ -346,8 +346,9 @@ pub trait Storage: Send + Sync + 'static {
         data: &'a mut FileStream<'_>,
     ) -> BoxFuture<'a, Result<StoredFile, Error>>;
 
-    /// Removes a stored file after the upload failed.
-    fn remove_file<'a>(&'a self, file: &'a UploadedFile) -> BoxFuture<'a, Result<(), Error>>;
+    /// Removes a stored file after the upload failed. Disk storage also clears the file's
+    /// `destination`, `filename` and `path`, as multer's does.
+    fn remove_file<'a>(&'a self, file: &'a mut UploadedFile) -> BoxFuture<'a, Result<(), Error>>;
 }
 
 type NameFn = dyn Fn(&FileInfo) -> String + Send + Sync;
@@ -425,15 +426,29 @@ impl Storage for DiskStorage {
             let filename = (self.filename)(file);
             let path = self.destination.join(&filename);
             let mut output = tokio::fs::File::create(&path).await?;
+            // Removes the file if this future is dropped half-way (deadline, client gone).
             let mut partial = Partial(Some(path.clone()));
-            let mut size = 0u64;
-            while let Some(chunk) = data.chunk().await {
-                let chunk = chunk?;
-                output.write_all(&chunk).await?;
-                size += chunk.len() as u64;
+            let written: Result<u64, Error> = async {
+                let mut size = 0u64;
+                while let Some(chunk) = data.chunk().await {
+                    let chunk = chunk?;
+                    output.write_all(&chunk).await?;
+                    size += chunk.len() as u64;
+                }
+                output.flush().await?;
+                Ok(size)
             }
-            output.flush().await?;
+            .await;
             partial.0 = None;
+            let size = match written {
+                Ok(size) => size,
+                Err(error) => {
+                    // multer leaves this partial file behind; it is removed before answering.
+                    drop(output);
+                    let _ = tokio::fs::remove_file(&path).await;
+                    return Err(error);
+                }
+            };
             Ok(StoredFile {
                 size,
                 destination: Some(self.destination.clone()),
@@ -443,9 +458,11 @@ impl Storage for DiskStorage {
         })
     }
 
-    fn remove_file<'a>(&'a self, file: &'a UploadedFile) -> BoxFuture<'a, Result<(), Error>> {
+    fn remove_file<'a>(&'a self, file: &'a mut UploadedFile) -> BoxFuture<'a, Result<(), Error>> {
         Box::pin(async move {
-            if let Some(path) = &file.stored.path {
+            file.stored.destination = None;
+            file.stored.filename = None;
+            if let Some(path) = file.stored.path.take() {
                 tokio::fs::remove_file(path).await?;
             }
             Ok(())
@@ -550,7 +567,9 @@ struct Tally {
 
 impl Single {
     /// Reads the upload: `Ok(Some(file))` for the stored file, `Ok(None)` when there was none (or
-    /// the request is not multipart). `req.body` holds the text fields afterwards.
+    /// the request is not multipart). `req.body` holds the text fields afterwards, and the file
+    /// is also in the request's extensions (`req.file`), where multer leaves it even after an
+    /// error (with the disk paths removed).
     pub async fn run<S>(&self, req: &mut Req<S>) -> Result<Option<UploadedFile>, UploadError> {
         let content_type = req.header("content-type").map(|v| v.into_owned());
         if !req.has_body() || !type_is(content_type.as_deref(), &["multipart".to_owned()]) {
@@ -567,10 +586,12 @@ impl Single {
             },
         )?;
         let mut scanner = Scanner::new(req.take_body_stream(), &boundary);
-        let mut fields = Value::Object(Map::new());
-        let mut stored: Vec<UploadedFile> = Vec::new();
+        let mut progress = Progress {
+            fields: Value::Object(Map::new()),
+            ..Progress::default()
+        };
         let outcome = {
-            let read = self.read(&mut scanner, &mut fields, &mut stored);
+            let read = self.read(&mut scanner, &mut progress);
             match self.multer.deadline {
                 Some(deadline) => tokio::time::timeout(deadline, read)
                     .await
@@ -578,29 +599,37 @@ impl Single {
                 None => read.await,
             }
         };
+        let mut fields = std::mem::take(&mut progress.fields);
         dima_text::js_key_order(&mut fields);
         req.body = BodyState::Value(fields);
-        match outcome {
-            Ok(file) => Ok(file),
-            Err(error) => {
-                for file in &stored {
-                    let _ = self.multer.storage.remove_file(file).await;
-                }
-                if !matches!(error, UploadError::Aborted | UploadError::TimedOut) {
-                    scanner.drain(DRAIN_BUDGET).await;
-                }
-                Err(error)
+        if let Err(error) = outcome {
+            for file in &mut progress.stored {
+                let _ = self.multer.storage.remove_file(file).await;
             }
+            if let Some(file) = progress.accepted.and_then(|at| progress.stored.get(at)) {
+                req.extensions_mut().insert(file.clone());
+            }
+            if !matches!(error, UploadError::Aborted | UploadError::TimedOut) {
+                scanner.drain(DRAIN_BUDGET).await;
+            }
+            return Err(error);
         }
+        let file = progress
+            .accepted
+            .and_then(|at| progress.stored.get(at))
+            .cloned();
+        if let Some(file) = &file {
+            req.extensions_mut().insert(file.clone());
+        }
+        Ok(file)
     }
 
     /// The form, part by part.
     async fn read(
         &self,
         scanner: &mut Scanner,
-        body: &mut Value,
-        stored: &mut Vec<UploadedFile>,
-    ) -> Result<Option<UploadedFile>, UploadError> {
+        progress: &mut Progress,
+    ) -> Result<(), UploadError> {
         let limits = &self.multer.limits;
         let mut tally = Tally {
             // busboy counts from -1 to account for the first delimiter.
@@ -609,22 +638,30 @@ impl Single {
             fields: 0,
             files_left: 1,
         };
-        let mut accepted: Option<UploadedFile> = None;
         loop {
-            match scanner.next().await.map_err(scan_error)? {
-                Item::End => return Ok(accepted),
+            let item = match scanner.next().await {
+                Ok(item) => item,
+                Err(error) => return Err(progress.settle(scan_error(error))),
+            };
+            match item {
+                Item::End => {
+                    return match progress.first_error.take() {
+                        Some(error) => Err(error),
+                        None => Ok(()),
+                    };
+                }
                 Item::Data(_) => {}
                 Item::Delimiter => {
                     tally.delimiters += 1;
                     if limits.parts.is_some_and(|parts| {
                         i64::try_from(parts).is_ok_and(|p| p == tally.delimiters)
                     }) {
-                        return Err(limit(MulterCode::LimitPartCount, None));
+                        progress.fail(limit(MulterCode::LimitPartCount, None))?;
                     }
                 }
                 Item::Headers(headers) => {
                     match parse::classify(&headers, self.multer.preserve_path) {
-                        Part::Skip => skip_part(scanner).await?,
+                        Part::Skip => skip_part(scanner, progress).await?,
                         Part::File {
                             name,
                             filename,
@@ -632,23 +669,29 @@ impl Single {
                             mime,
                         } => {
                             if limits.files == Some(tally.files) {
-                                return Err(limit(MulterCode::LimitFileCount, None));
+                                progress.fail(limit(MulterCode::LimitFileCount, None))?;
+                                skip_part(scanner, progress).await?;
+                                continue;
                             }
                             tally.files += 1;
                             let Some(filename) = filename.filter(|f| !f.is_empty()) else {
-                                skip_part(scanner).await?;
+                                skip_part(scanner, progress).await?;
                                 continue;
                             };
                             let fieldname = name.unwrap_or_default();
                             if let Some(max) = limits.field_name_size
                                 && dima_text::utf16_len(&fieldname) > max
                             {
-                                return Err(limit(MulterCode::LimitFieldKey, None));
+                                progress.fail(limit(MulterCode::LimitFieldKey, None))?;
+                                skip_part(scanner, progress).await?;
+                                continue;
                             }
                             if fieldname != self.field || tally.files_left == 0 {
                                 // `if (field) this.field = field`: no field for a nameless part.
                                 let field = Some(fieldname).filter(|f| !f.is_empty());
-                                return Err(limit(MulterCode::LimitUnexpectedFile, field));
+                                progress.fail(limit(MulterCode::LimitUnexpectedFile, field))?;
+                                skip_part(scanner, progress).await?;
+                                continue;
                             }
                             tally.files_left -= 1;
                             let info = FileInfo {
@@ -658,35 +701,42 @@ impl Single {
                                 mimetype: mime,
                             };
                             let keep = match &self.multer.filter {
-                                Some(filter) => filter(&info).map_err(UploadError::Handler)?,
+                                Some(filter) => filter(&info).map_err(|error| {
+                                    progress.settle(UploadError::Handler(error))
+                                })?,
                                 None => true,
                             };
                             if !keep {
-                                skip_part(scanner).await?;
+                                skip_part(scanner, progress).await?;
                                 continue;
                             }
-                            let file = self.store(scanner, info, stored).await?;
-                            accepted = Some(file);
+                            self.store(scanner, info, progress).await?;
                         }
                         Part::Field { name, charset } => {
                             if limits.fields == Some(tally.fields) {
-                                return Err(limit(MulterCode::LimitFieldCount, None));
+                                progress.fail(limit(MulterCode::LimitFieldCount, None))?;
+                                skip_part(scanner, progress).await?;
+                                continue;
                             }
                             tally.fields += 1;
-                            let (bytes, truncated) = read_field(scanner, limits.field_size).await?;
+                            let (bytes, truncated) =
+                                read_field(scanner, limits.field_size, progress).await?;
                             let Some(name) = name else {
-                                return Err(limit(MulterCode::MissingFieldName, None));
+                                progress.fail(limit(MulterCode::MissingFieldName, None))?;
+                                continue;
                             };
                             if truncated {
-                                return Err(limit(MulterCode::LimitFieldValue, Some(name)));
+                                progress.fail(limit(MulterCode::LimitFieldValue, Some(name)))?;
+                                continue;
                             }
                             if let Some(max) = limits.field_name_size
                                 && dima_text::utf16_len(&name) > max
                             {
-                                return Err(limit(MulterCode::LimitFieldKey, None));
+                                progress.fail(limit(MulterCode::LimitFieldKey, None))?;
+                                continue;
                             }
                             fields::append_field(
-                                body,
+                                &mut progress.fields,
                                 &name,
                                 parse::decode_bytes(&bytes, &charset),
                             );
@@ -702,8 +752,9 @@ impl Single {
         &self,
         scanner: &mut Scanner,
         info: FileInfo,
-        stored: &mut Vec<UploadedFile>,
-    ) -> Result<UploadedFile, UploadError> {
+        progress: &mut Progress,
+    ) -> Result<(), UploadError> {
+        progress.storage_used = true;
         let mut stream = FileStream {
             scanner,
             size: 0,
@@ -717,20 +768,52 @@ impl Single {
         stream.finish().await;
         if let Some(failure) = stream.failure.take() {
             if let Ok(file) = outcome {
-                stored.push(UploadedFile { info, stored: file });
+                progress.stored.push(UploadedFile { info, stored: file });
             }
-            return Err(scan_error(failure));
+            return Err(progress.settle(scan_error(failure)));
         }
-        let file = UploadedFile {
-            info,
-            stored: outcome.map_err(UploadError::Handler)?,
-        };
-        stored.push(file.clone());
+        let stored = outcome.map_err(|error| progress.settle(UploadError::Handler(error)))?;
+        let fieldname = info.fieldname.clone();
+        progress.stored.push(UploadedFile { info, stored });
         if stream.limited {
-            let field = file.info.fieldname.clone();
-            return Err(limit(MulterCode::LimitFileSize, Some(field)));
+            // The truncated file is removed later but never becomes `req.file`.
+            return progress.fail(limit(MulterCode::LimitFileSize, Some(fieldname)));
         }
-        Ok(file)
+        progress.accepted = Some(progress.stored.len() - 1);
+        Ok(())
+    }
+}
+
+/// What one upload has produced so far.
+#[derive(Default)]
+struct Progress {
+    fields: Value,
+    stored: Vec<UploadedFile>,
+    /// `req.file`, as an index into `stored`.
+    accepted: Option<usize>,
+    /// A file went to the storage. multer then gives up only once that write has finished, and
+    /// busboy reads on meanwhile: fields after a failure still reach `req.body`.
+    storage_used: bool,
+    /// The first limit error, while reading on.
+    first_error: Option<UploadError>,
+}
+
+impl Progress {
+    /// A limit error: fatal at once, or (once a file went to the storage) remembered while the
+    /// rest of the form is read, as multer only reports its first error.
+    fn fail(&mut self, error: UploadError) -> Result<(), UploadError> {
+        if !self.storage_used {
+            return Err(error);
+        }
+        if self.first_error.is_none() {
+            self.first_error = Some(error);
+        }
+        Ok(())
+    }
+
+    /// A fatal error, unless an earlier one is waiting to be reported.
+    fn settle(&mut self, error: UploadError) -> UploadError {
+        self.first_error.take().unwrap_or(error)
     }
 }
 
@@ -739,25 +822,34 @@ fn limit(code: MulterCode, field: Option<String>) -> UploadError {
 }
 
 /// Skips a part's data up to the next delimiter.
-async fn skip_part(scanner: &mut Scanner) -> Result<(), UploadError> {
+async fn skip_part(scanner: &mut Scanner, progress: &mut Progress) -> Result<(), UploadError> {
     loop {
-        match scanner.next().await.map_err(scan_error)? {
-            Item::Data(_) => {}
-            item => {
+        match scanner.next().await {
+            Ok(Item::Data(_)) => {}
+            Ok(item) => {
                 scanner.push_back(item);
                 return Ok(());
             }
+            Err(error) => return Err(progress.settle(scan_error(error))),
         }
     }
 }
 
 /// A text field's bytes, at most `limit` of them, and whether it reached the limit (busboy then
 /// marks the value truncated, even when it is exactly that long).
-async fn read_field(scanner: &mut Scanner, limit: u64) -> Result<(Vec<u8>, bool), UploadError> {
+async fn read_field(
+    scanner: &mut Scanner,
+    limit: u64,
+    progress: &mut Progress,
+) -> Result<(Vec<u8>, bool), UploadError> {
     let mut value: Vec<u8> = Vec::new();
     let mut truncated = false;
     loop {
-        match scanner.next().await.map_err(scan_error)? {
+        match scanner
+            .next()
+            .await
+            .map_err(|error| progress.settle(scan_error(error)))?
+        {
             Item::Data(data) => {
                 if truncated {
                     continue;
@@ -780,9 +872,7 @@ async fn read_field(scanner: &mut Scanner, limit: u64) -> Result<(Vec<u8>, bool)
 impl<S: Send + Sync + 'static> Handler<S> for Single {
     fn call<'a>(&'a self, req: &'a mut Req<S>) -> BoxFuture<'a, Result<Flow, Error>> {
         Box::pin(async move {
-            if let Some(file) = self.run(req).await? {
-                req.extensions_mut().insert(file);
-            }
+            self.run(req).await?;
             Ok(Flow::Next)
         })
     }

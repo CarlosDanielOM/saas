@@ -10,7 +10,16 @@
 // Keep the two fixtures identical when adding a case.
 
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,6 +40,7 @@ if (!existsSync(path.join(nodeModules, 'express'))) {
 const require = createRequire(path.join(nodeModules, 'noop.js'));
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
 
 // ---------------------------------------------------------------------------------------------
 // Fixture app. Mirrors the reference server's shape: raw webhook before the JSON parsers,
@@ -81,6 +91,32 @@ function makeStaticTree() {
 }
 
 const staticRoot = makeStaticTree();
+// Uploads land here; every upload route empties it before answering.
+const uploadDir = mkdtempSync(path.join(process.env.GOLDEN_TMPDIR ?? os.tmpdir(), 'dima-web-uploads-'));
+const UPLOAD_TYPES = ['video/mp4', 'image/png', 'audio/mpeg', 'text/csv'];
+const describeError = (err) =>
+  err ? { name: err.name, code: err.code ?? null, field: err.field ?? null, message: err.message } : null;
+const describeFile = (file, content) =>
+  file
+    ? {
+        fieldname: file.fieldname,
+        originalname: file.originalname,
+        encoding: file.encoding,
+        mimetype: file.mimetype,
+        size: file.size,
+        content: content ? content.toString('base64') : null,
+      }
+    : null;
+const emptyUploads = () => {
+  const leftover = readdirSync(uploadDir).sort();
+  for (const name of leftover) rmSync(path.join(uploadDir, name), { force: true });
+  return leftover;
+};
+const diskStorage = () =>
+  multer.diskStorage({
+    destination: (_req, _file, done) => done(null, uploadDir),
+    filename: (_req, file, done) => done(null, `upload${path.extname(file.originalname || '').toLowerCase()}`),
+  });
 const fileTag = (name) => {
   const size = STATIC_FILES.find(([n]) => n === name)[1].length;
   return `W/"${size.toString(16)}-${STATIC_MTIME_MS.toString(16)}"`;
@@ -266,6 +302,58 @@ function buildApp() {
     res.status(err.status || 500).json({ status: err.status, code: err.code ?? null, expose: err.expose }),
   );
   app.use('/files-router', filesRouter);
+  // multer as trigger.route.ts uses it: disk storage, a mimetype allowlist, a size limit.
+  app.post('/upload/disk', (req, res) => {
+    const upload = multer({
+      storage: diskStorage(),
+      fileFilter: (_req, file, done) => done(null, UPLOAD_TYPES.includes(file.mimetype)),
+      limits: { fileSize: 64 },
+    }).single('trigger');
+    upload(req, res, (err) => {
+      // After an error multer leaves req.file set, without the paths disk storage removed.
+      const content = req.file?.path ? readFileSync(req.file.path) : null;
+      const stored = req.file?.filename ?? null;
+      res.json({ error: describeError(err), file: describeFile(req.file, content), stored, body: req.body ?? null, leftover: emptyUploads() });
+    });
+  });
+  // multer as asset-library.route.ts uses it: a streaming storage engine and tight limits.
+  app.post('/upload/stream', (req, res) => {
+    const removed = [];
+    const storage = {
+      _handleFile(_req, file, done) {
+        const parts = [];
+        file.stream.on('data', (chunk) => parts.push(chunk));
+        file.stream.on('error', done);
+        file.stream.on('end', () => {
+          const content = Buffer.concat(parts);
+          done(null, { size: content.length, content });
+        });
+      },
+      _removeFile(_req, file, done) {
+        removed.push(file.originalname);
+        done(null);
+      },
+    };
+    const upload = multer({ storage, limits: { fileSize: 50, files: 1, fields: 0, parts: 2 } }).single('file');
+    upload(req, res, (err) =>
+      res.json({ error: describeError(err), file: describeFile(req.file, req.file?.content), removed, body: req.body ?? null }),
+    );
+  });
+  // Field limits.
+  app.post('/upload/fields', (req, res) => {
+    const upload = multer({
+      storage: diskStorage(),
+      limits: { fieldSize: 16, fields: 3, parts: 5, fieldNameSize: 12 },
+    }).single('doc');
+    upload(req, res, (err) => {
+      const file = req.file ? req.file.originalname : null;
+      res.json({ error: describeError(err), file, body: req.body ?? null, leftover: emptyUploads() });
+    });
+  });
+  // As middleware: errors take the default path.
+  app.post('/upload/middleware', multer({ storage: diskStorage(), limits: { fileSize: 64 } }).single('trigger'), (req, res) => {
+    res.json({ file: req.file ? req.file.originalname : null, body: req.body ?? null, leftover: emptyUploads() });
+  });
   app.post('/raw-length', express.raw(), (req, res) =>
     res.json({ isBuffer: Buffer.isBuffer(req.body), length: req.body.length }),
   );
@@ -790,7 +878,101 @@ add('type-unknown-ext', 'GET', '/type-unknown-ext');
 add('type-wav', 'GET', '/type-wav');
 add('set-manifest-json', 'GET', '/set-manifest-json');
 
+// multer (1.4.5-lts.2 over busboy 1.6.0). Bodies are built from `{ multipart }` specs (below).
+const B = 'XyZ-b0undary';
+const MP = ['Content-Type', `multipart/form-data; boundary=${B}`];
+const disposition = (name, filename) =>
+  `form-data${name === undefined ? '' : `; name="${name}"`}${filename === undefined ? '' : `; filename="${filename}"`}`;
+const field = (name, value) => ({ headers: [['Content-Disposition', disposition(name)]], data: { utf8: value } });
+const filePart = (name, filename, type, data) => ({
+  headers: [['Content-Disposition', disposition(name, filename)], ...(type ? [['Content-Type', type]] : [])],
+  data,
+});
+const mp = (parts, extra = {}) => ({ multipart: { boundary: B, parts, ...extra } });
+const pat = (size) => ({ gen: { type: 'pattern', size } });
+
+add('upload-disk-ok', 'POST', '/upload/disk', [MP], mp([field('name', 'Clip ✨'), field('triggerName', 'intro_1'), filePart('trigger', 'clip.mp4', 'video/mp4', pat(40))]));
+add('upload-disk-utf8-filename', 'POST', '/upload/disk', [MP], mp([filePart('trigger', '😀 clip.MP4', 'video/mp4', pat(10))]));
+add('upload-disk-filename-star', 'POST', '/upload/disk', [MP], mp([
+  { headers: [['Content-Disposition', `form-data; name="trigger"; filename="x.png"; filename*=utf-8''%F0%9F%98%80%20caf%C3%A9.png`], ['Content-Type', 'image/png']], data: pat(8) },
+]));
+add('upload-disk-filtered', 'POST', '/upload/disk', [MP], mp([field('name', 'n'), filePart('trigger', 'notes.txt', 'text/plain', { utf8: 'hello' })]));
+add('upload-disk-no-file', 'POST', '/upload/disk', [MP], mp([field('name', 'only fields'), field('triggerName', 't')]));
+add('upload-disk-other-field', 'POST', '/upload/disk', [MP], mp([filePart('other', 'clip.mp4', 'video/mp4', pat(4))]));
+add('upload-disk-two-files', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'a.mp4', 'video/mp4', pat(4)), filePart('trigger', 'b.mp4', 'video/mp4', pat(4))]));
+add('upload-disk-size-under', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'clip.mp4', 'video/mp4', pat(63))]));
+add('upload-disk-size-at', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'clip.mp4', 'video/mp4', pat(64))]));
+add('upload-disk-size-over', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'clip.mp4', 'video/mp4', pat(65)), field('after', 'x')]));
+add('upload-disk-empty-filename', 'POST', '/upload/disk', [MP], mp([filePart('trigger', '', 'application/octet-stream', { utf8: '' })]));
+add('upload-disk-empty-filename-typed', 'POST', '/upload/disk', [MP], mp([filePart('trigger', '', 'video/mp4', { utf8: 'becomes a field' })]));
+add('upload-disk-octet-without-filename', 'POST', '/upload/disk', [MP], mp([filePart('trigger', undefined, 'application/octet-stream', pat(4))]));
+add('upload-disk-windows-path', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'C:\\fakepath\\clip.mp4', 'video/mp4', pat(4))]));
+add('upload-disk-traversal-name', 'POST', '/upload/disk', [MP], mp([filePart('trigger', '../../etc/clip.mp4', 'video/mp4', pat(4))]));
+add('upload-disk-dotdot-name', 'POST', '/upload/disk', [MP], mp([filePart('trigger', '..', 'video/mp4', pat(4))]));
+add('upload-disk-missing-field-name', 'POST', '/upload/disk', [MP], mp([field(undefined, 'orphan')]));
+add('upload-disk-nameless-file', 'POST', '/upload/disk', [MP], mp([filePart(undefined, 'clip.mp4', 'video/mp4', pat(4))]));
+add('upload-disk-truncated', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'clip.mp4', 'video/mp4', pat(30))], { close: false, cut: 20 }));
+add('upload-disk-truncated-headers', 'POST', '/upload/disk', [MP], { multipart: { boundary: B, raw: `--${B}\r\nContent-Disposition: form-data; name="x"` } });
+add('upload-disk-malformed-header', 'POST', '/upload/disk', [MP], mp([{ headers: [['Content-Disposition', disposition('name')], ['Bad Header', 'x']], data: { utf8: 'v' } }]));
+add('upload-disk-no-boundary', 'POST', '/upload/disk', [['Content-Type', 'multipart/form-data']], mp([field('name', 'x')]));
+add('upload-disk-mixed', 'POST', '/upload/disk', [['Content-Type', `multipart/mixed; boundary=${B}`]], mp([field('name', 'x')]));
+add('upload-disk-json', 'POST', '/upload/disk', [JSON_CT], utf8('{"a":1}'));
+add('upload-disk-no-body', 'POST', '/upload/disk', [MP]);
+add('upload-disk-preamble-epilogue', 'POST', '/upload/disk', [MP], mp([field('name', 'x'), filePart('trigger', 'p.png', 'image/png', pat(5))], { preamble: 'This is the preamble.', epilogue: 'and an epilogue\r\n' }));
+add('upload-disk-upper-case-headers', 'POST', '/upload/disk', [MP], mp([
+  { headers: [['CONTENT-DISPOSITION', 'FORM-DATA; NAME="name"'], ['Content-Type', 'TEXT/PLAIN; CHARSET=LATIN1']], data: { base64: Buffer.from([0x63, 0x61, 0x66, 0xe9]).toString('base64') } },
+]));
+add('upload-disk-quoted-escapes', 'POST', '/upload/disk', [MP], mp([
+  { headers: [['Content-Disposition', 'form-data; name="a\\"b"']], data: { utf8: '1' } },
+  { headers: [['Content-Disposition', 'form-data; name="c\\\\d"']], data: { utf8: '2' } },
+  { headers: [['Content-Disposition', 'form-data; name="e\\f"']], data: { utf8: '3' } },
+]));
+add('upload-disk-nested-fields', 'POST', '/upload/disk', [MP], mp([
+  field('a[b]', '1'), field('a[c]', '2'), field('list[]', 'x'), field('list[]', 'y'), field('arr[1]', 'z'), field('dup', '1'), field('dup', '2'), field('2', 'two'), field('__proto__', 'p'),
+]));
+add('upload-disk-unicode-fields', 'POST', '/upload/disk', [MP], mp([field('ключ', 'שלום 😀 é'), field('emoji', '👍🏽'), field('rtl', 'مرحبا')]));
+add('upload-disk-folded-header', 'POST', '/upload/disk', [MP], mp([{ headers: [['Content-Disposition', 'form-data;\r\n name="folded"']], data: { utf8: 'v' } }]));
+add('upload-disk-crlf-in-data', 'POST', '/upload/disk', [MP], mp([filePart('trigger', 'c.csv', 'text/csv', { utf8: `a\r\n--${B.slice(0, 5)}\r\n--\r\nb` })]));
+add('upload-disk-quoted-boundary', 'POST', '/upload/disk', [['Content-Type', 'multipart/form-data; boundary="a b:c"']], { multipart: { boundary: 'a b:c', parts: [field('name', 'q')] } });
+add('upload-disk-chunked', 'POST', '/upload/disk', [MP], mp([field('name', 'chunked'), filePart('trigger', 'clip.mp4', 'video/mp4', pat(20))]), { chunked: true });
+add('upload-disk-stray-after-delimiter', 'POST', '/upload/disk', [MP], { multipart: { boundary: B, raw: `--${B}junk\r\nContent-Disposition: form-data; name="hidden"\r\n\r\nv\r\n--${B}\r\nContent-Disposition: form-data; name="seen"\r\n\r\nw\r\n--${B}--\r\n` } });
+add('upload-disk-no-disposition', 'POST', '/upload/disk', [MP], mp([{ headers: [['Content-Type', 'text/plain']], data: { utf8: 'skipped' } }, field('name', 'kept')]));
+add('upload-disk-transfer-encoding', 'POST', '/upload/disk', [MP], mp([{ headers: [['Content-Disposition', disposition('trigger', 't.png')], ['Content-Type', 'image/png'], ['Content-Transfer-Encoding', 'BINARY']], data: pat(3) }]));
+add('upload-stream-ok', 'POST', '/upload/stream', [MP], mp([filePart('file', 'design.png', 'image/png', pat(30))]));
+add('upload-stream-at-limit', 'POST', '/upload/stream', [MP], mp([filePart('file', 'design.png', 'image/png', pat(50))]));
+add('upload-stream-over-limit', 'POST', '/upload/stream', [MP], mp([filePart('file', 'design.png', 'image/png', pat(51))]));
+add('upload-stream-field', 'POST', '/upload/stream', [MP], mp([field('name', 'x'), filePart('file', 'design.png', 'image/png', pat(3))]));
+add('upload-stream-two-files', 'POST', '/upload/stream', [MP], mp([filePart('file', 'one.png', 'image/png', pat(3)), filePart('file', 'two.png', 'image/png', pat(3))]));
+add('upload-stream-two-parts', 'POST', '/upload/stream', [MP], mp([filePart('file', 'one.png', 'image/png', pat(3)), { headers: [['X-Nothing', '1']], data: { utf8: 'ignored' } }]));
+add('upload-fields-ok', 'POST', '/upload/fields', [MP], mp([field('one', 'a'), field('two', 'b'), field('three', 'c')]));
+add('upload-fields-value-under', 'POST', '/upload/fields', [MP], mp([field('v', 'x'.repeat(15))]));
+add('upload-fields-value-at', 'POST', '/upload/fields', [MP], mp([field('v', 'x'.repeat(16))]));
+add('upload-fields-value-over', 'POST', '/upload/fields', [MP], mp([field('v', 'x'.repeat(17))]));
+add('upload-fields-value-utf8-at', 'POST', '/upload/fields', [MP], mp([field('v', 'ü'.repeat(8))]));
+add('upload-fields-too-many', 'POST', '/upload/fields', [MP], mp([field('a', '1'), field('b', '2'), field('c', '3'), field('d', '4')]));
+add('upload-fields-name-at', 'POST', '/upload/fields', [MP], mp([field('n'.repeat(12), 'v')]));
+add('upload-fields-name-over', 'POST', '/upload/fields', [MP], mp([field('n'.repeat(13), 'v')]));
+add('upload-fields-name-utf8', 'POST', '/upload/fields', [MP], mp([field('ñ'.repeat(7), 'v')]));
+add('upload-fields-parts-under', 'POST', '/upload/fields', [MP], mp([field('a', '1'), field('b', '2'), filePart('x', undefined, 'application/octet-stream', pat(1)), filePart('y', undefined, 'application/octet-stream', pat(1))]));
+add('upload-fields-parts-at', 'POST', '/upload/fields', [MP], mp([field('a', '1'), field('b', '2'), filePart('x', undefined, 'application/octet-stream', pat(1)), filePart('y', undefined, 'application/octet-stream', pat(1)), filePart('z', undefined, 'application/octet-stream', pat(1))]));
+add('upload-middleware-ok', 'POST', '/upload/middleware', [MP], mp([field('name', 'm'), filePart('trigger', 'm.mp4', 'video/mp4', pat(9))]));
+add('upload-middleware-error', 'POST', '/upload/middleware', [MP], mp([filePart('trigger', 'm.mp4', 'video/mp4', pat(65))]));
+
 // ---------------------------------------------------------------------------------------------
+
+function multipartBody(spec) {
+  if (spec.raw !== undefined) return Buffer.from(spec.raw);
+  const pieces = [];
+  if (spec.preamble !== undefined) pieces.push(Buffer.from(`${spec.preamble}\r\n`));
+  for (const part of spec.parts) {
+    const head = part.headers.map(([name, value]) => `${name}: ${value}\r\n`).join('');
+    pieces.push(Buffer.from(`--${spec.boundary}\r\n${head}\r\n`), bodyBytes(part.data), Buffer.from('\r\n'));
+  }
+  if (spec.close !== false) pieces.push(Buffer.from(`--${spec.boundary}--\r\n`));
+  if (spec.epilogue !== undefined) pieces.push(Buffer.from(spec.epilogue));
+  const body = Buffer.concat(pieces);
+  return spec.cut === undefined ? body : body.subarray(0, body.length - spec.cut);
+}
 
 function generate(spec) {
   switch (spec.type) {
@@ -808,6 +990,8 @@ function generate(spec) {
       return Buffer.from(
         Array.from({ length: spec.keys }, (_, i) => `k${i}${`[${spec.index}]`.repeat(spec.depth)}=v`).join('&'),
       );
+    case 'pattern':
+      return pattern(spec.size);
     case 'repeat':
       return Buffer.concat(Array(spec.count).fill(Buffer.from(spec.base64, 'base64')));
     default:
@@ -819,6 +1003,7 @@ function bodyBytes(body) {
   if (!body) return null;
   if (body.utf8 !== undefined) return Buffer.from(body.utf8, 'utf8');
   if (body.base64 !== undefined) return Buffer.from(body.base64, 'base64');
+  if (body.multipart !== undefined) return multipartBody(body.multipart);
   return generate(body.gen);
 }
 
@@ -897,6 +1082,7 @@ for (const c of cases) {
 }
 server.close();
 rmSync(staticRoot, { recursive: true, force: true });
+rmSync(uploadDir, { recursive: true, force: true });
 
 const out = {
   note: 'Generated by record.mjs; do not edit by hand.',
@@ -907,6 +1093,8 @@ const out = {
   cors: require('cors/package.json').version,
   serveStatic: require('serve-static/package.json').version,
   send: require('send/package.json').version,
+  multer: require('multer/package.json').version,
+  busboy: require('busboy/package.json').version,
   staticMtimeMs: STATIC_MTIME_MS,
   staticDirs: STATIC_DIRS,
   staticFiles: STATIC_FILES.map(([name, bytes]) => ({ path: name, base64: bytes.toString('base64') })),

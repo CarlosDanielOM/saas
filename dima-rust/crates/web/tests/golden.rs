@@ -22,6 +22,10 @@
 use std::net::SocketAddr;
 
 use base64::Engine as _;
+use dima_web::multipart::{
+    DiskStorage, FileInfo, FileStream, Limits, Multer, Storage, StoredFile, UploadError,
+    UploadedFile,
+};
 use dima_web::{
     App, BodyState, Envelope, Error, Flow, Req, Response, Router, ServeOptions, body, cors, serve,
 };
@@ -49,7 +53,7 @@ const RAW_TARGET: &str = "hyper (http crate) refuses this raw byte in the reques
                           Browsers and HTTP clients percent-encode it";
 
 /// Cases where dima-web knowingly answers differently.
-const KNOWN_DIFFERENCES: [(&str, Expect, &str); 11] = [
+const KNOWN_DIFFERENCES: [(&str, Expect, &str); 12] = [
     (
         "json-lone-surrogate",
         Expect::Transformed(lone_surrogates_replaced),
@@ -78,7 +82,20 @@ const KNOWN_DIFFERENCES: [(&str, Expect, &str); 11] = [
         Expect::SameAs("json-over-limit"),
         "compressed input is bounded on the wire (body::wire_budget); raw-body reads it all",
     ),
+    (
+        "upload-disk-truncated",
+        Expect::Transformed(partial_upload_removed),
+        "multer leaves a partly written disk file behind when the form breaks off; \
+         DiskStorage removes it",
+    ),
 ];
+
+/// No leftover partial file in the upload directory.
+fn partial_upload_removed(body: &[u8]) -> Vec<u8> {
+    String::from_utf8_lossy(body)
+        .replace("\"leftover\":[\"upload.mp4\"]", "\"leftover\":[]")
+        .into_bytes()
+}
 
 /// `\ud800` and `\udc00` escapes as dima-web sends them: the replacement character, raw UTF-8.
 fn lone_surrogates_replaced(body: &[u8]) -> Vec<u8> {
@@ -579,6 +596,213 @@ async fn files_errors(error: Error, _req: &mut Req) -> Response {
         .json(&json!({ "status": error.status(), "code": code, "expose": error.expose() }))
 }
 
+/// The directory uploads land in for this run.
+#[derive(Clone)]
+struct Uploads(std::sync::Arc<std::path::PathBuf>);
+
+fn uploads(req: &Req) -> std::path::PathBuf {
+    req.extensions()
+        .get::<Uploads>()
+        .map(|u| u.0.as_ref().clone())
+        .unwrap_or_default()
+}
+
+const UPLOAD_TYPES: [&str; 4] = ["video/mp4", "image/png", "audio/mpeg", "text/csv"];
+
+/// Node's `path.extname` for a file name without directories.
+fn extname(name: &str) -> String {
+    match name.rfind('.') {
+        _ if name == ".." => String::new(),
+        Some(0) | None => String::new(),
+        Some(at) => name.get(at..).unwrap_or("").to_owned(),
+    }
+}
+
+fn describe_error(error: &UploadError) -> Value {
+    match error {
+        UploadError::Multer(multer) => json!({
+            "name": "MulterError",
+            "code": multer.code.as_str(),
+            "field": multer.field,
+            "message": multer.code.message(),
+        }),
+        other => {
+            json!({ "name": "Error", "code": null, "field": null, "message": other.to_string() })
+        }
+    }
+}
+
+fn describe_file(file: Option<&UploadedFile>, content: Option<Vec<u8>>) -> Value {
+    match file {
+        None => Value::Null,
+        Some(file) => json!({
+            "fieldname": file.fieldname,
+            "originalname": file.originalname,
+            "encoding": file.encoding,
+            "mimetype": file.mimetype,
+            "size": file.size(),
+            "content": content.map(|c| base64::engine::general_purpose::STANDARD.encode(c)),
+        }),
+    }
+}
+
+/// Lists and empties the upload directory.
+fn empty_uploads(dir: &std::path::Path) -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(dir)
+        .map(|entries| {
+            entries
+                .filter_map(Result::ok)
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .collect()
+        })
+        .unwrap_or_default();
+    names.sort();
+    for name in &names {
+        let _ = std::fs::remove_file(dir.join(name));
+    }
+    names
+}
+
+fn disk_storage(dir: &std::path::Path) -> DiskStorage {
+    DiskStorage::new(dir).filename(|file| {
+        format!(
+            "upload{}",
+            dima_text::to_lower(&extname(&file.originalname))
+        )
+    })
+}
+
+async fn upload_disk(req: &mut Req) -> Response {
+    let dir = uploads(req);
+    let multer = Multer::new(disk_storage(&dir))
+        .file_filter(|file| Ok(UPLOAD_TYPES.contains(&file.mimetype.as_str())))
+        .limits(Limits {
+            file_size: Some(64),
+            ..Limits::default()
+        });
+    let outcome = multer.single("trigger").run(req).await;
+    let file = req.extensions().get::<UploadedFile>().cloned();
+    let content = file
+        .as_ref()
+        .and_then(|f| f.path())
+        .and_then(|p| std::fs::read(p).ok());
+    let stored = file.as_ref().and_then(|f| f.stored.filename.clone());
+    ok(json!({
+        "error": outcome.as_ref().err().map(describe_error),
+        "file": describe_file(file.as_ref(), content),
+        "stored": stored,
+        "body": req.body(),
+        "leftover": empty_uploads(&dir),
+    }))
+}
+
+/// A storage engine keeping files in memory, like the asset library's streaming engine.
+#[derive(Default)]
+struct Memory {
+    contents: std::sync::Mutex<Vec<(String, Vec<u8>)>>,
+    removed: std::sync::Mutex<Vec<String>>,
+}
+
+struct MemoryStorage(std::sync::Arc<Memory>);
+
+impl Storage for MemoryStorage {
+    fn handle_file<'a>(
+        &'a self,
+        file: &'a FileInfo,
+        data: &'a mut FileStream<'_>,
+    ) -> dima_web::BoxFuture<'a, Result<StoredFile, Error>> {
+        Box::pin(async move {
+            let mut bytes = Vec::new();
+            while let Some(chunk) = data.chunk().await {
+                bytes.extend_from_slice(&chunk?);
+            }
+            let size = bytes.len() as u64;
+            self.0
+                .contents
+                .lock()
+                .unwrap()
+                .push((file.originalname.clone(), bytes));
+            Ok(StoredFile {
+                size,
+                ..StoredFile::default()
+            })
+        })
+    }
+
+    fn remove_file<'a>(
+        &'a self,
+        file: &'a mut UploadedFile,
+    ) -> dima_web::BoxFuture<'a, Result<(), Error>> {
+        Box::pin(async move {
+            self.0
+                .removed
+                .lock()
+                .unwrap()
+                .push(file.originalname.clone());
+            Ok(())
+        })
+    }
+}
+
+async fn upload_stream(req: &mut Req) -> Response {
+    let memory = std::sync::Arc::new(Memory::default());
+    let multer = Multer::new(MemoryStorage(std::sync::Arc::clone(&memory))).limits(Limits {
+        file_size: Some(50),
+        files: Some(1),
+        fields: Some(0),
+        parts: Some(2),
+        ..Limits::default()
+    });
+    let outcome = multer.single("file").run(req).await;
+    let file = req.extensions().get::<UploadedFile>().cloned();
+    let content = file.as_ref().and_then(|f| {
+        memory
+            .contents
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|(name, _)| *name == f.originalname)
+            .map(|(_, bytes)| bytes.clone())
+    });
+    let removed = memory.removed.lock().unwrap().clone();
+    ok(json!({
+        "error": outcome.as_ref().err().map(describe_error),
+        "file": describe_file(file.as_ref(), content),
+        "removed": removed,
+        "body": req.body(),
+    }))
+}
+
+async fn upload_fields(req: &mut Req) -> Response {
+    let dir = uploads(req);
+    let multer = Multer::new(disk_storage(&dir)).limits(Limits {
+        field_size: 16,
+        fields: Some(3),
+        parts: Some(5),
+        field_name_size: Some(12),
+        ..Limits::default()
+    });
+    let outcome = multer.single("doc").run(req).await;
+    let file = req
+        .extensions()
+        .get::<UploadedFile>()
+        .map(|f| f.originalname.clone());
+    ok(json!({
+        "error": outcome.as_ref().err().map(describe_error),
+        "file": file,
+        "body": req.body(),
+        "leftover": empty_uploads(&dir),
+    }))
+}
+
+async fn upload_middleware(req: &mut Req) -> Response {
+    let file = req
+        .extensions()
+        .get::<UploadedFile>()
+        .map(|f| f.originalname.clone());
+    ok(json!({ "file": file, "body": req.body(), "leftover": empty_uploads(&uploads(req)) }))
+}
+
 async fn email_a(_req: &mut Req) -> Response {
     ok(json!({ "email": "a" }))
 }
@@ -591,11 +815,13 @@ fn docs_origin(origin: Option<&str>) -> bool {
     origin.is_none_or(|o| o.is_empty() || o == "https://docs.example.com")
 }
 
-fn fixture(static_root: &str) -> App {
+fn fixture(static_root: &str, upload_dir: &std::path::Path) -> App {
     let mut app = Router::new();
     let root = Files(std::sync::Arc::new(static_root.to_owned()));
+    let upload = Uploads(std::sync::Arc::new(upload_dir.to_owned()));
     app.middleware(dima_web::from_fn(move |req: &mut Req| {
         req.extensions_mut().insert(root.clone());
+        req.extensions_mut().insert(upload.clone());
         Ok(Flow::Next)
     }));
 
@@ -709,6 +935,16 @@ fn fixture(static_root: &str) -> App {
     files_router.get("/range", sendfile_text);
     files_router.on_error(files_errors);
     app.mount("/files-router", files_router);
+    app.post("/upload/disk", upload_disk);
+    app.post("/upload/stream", upload_stream);
+    app.post("/upload/fields", upload_fields);
+    let middleware = Multer::new(disk_storage(upload_dir))
+        .limits(Limits {
+            file_size: Some(64),
+            ..Limits::default()
+        })
+        .single("trigger");
+    app.post("/upload/middleware", (middleware, upload_middleware));
     app.post("/raw-length", (body::raw(), raw_length));
 
     let mut widgets = Router::new();
@@ -787,6 +1023,7 @@ fn generate(spec: &Value) -> Vec<u8> {
                 .join("&")
                 .into_bytes()
         }
+        "pattern" => (0..n("size")).map(|i| (i % 251) as u8).collect(),
         "repeat" => base64::engine::general_purpose::STANDARD
             .decode(spec["base64"].as_str().unwrap_or_default())
             .expect("base64 piece")
@@ -795,9 +1032,51 @@ fn generate(spec: &Value) -> Vec<u8> {
     }
 }
 
+/// The same multipart bodies record.mjs builds.
+fn multipart_body(spec: &Value) -> Vec<u8> {
+    if let Some(raw) = spec["raw"].as_str() {
+        return raw.as_bytes().to_vec();
+    }
+    let boundary = spec["boundary"].as_str().unwrap_or_default();
+    let mut out = Vec::new();
+    if let Some(preamble) = spec["preamble"].as_str() {
+        out.extend_from_slice(format!("{preamble}\r\n").as_bytes());
+    }
+    for part in spec["parts"].as_array().into_iter().flatten() {
+        let head: String = part["headers"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|h| {
+                format!(
+                    "{}: {}\r\n",
+                    h[0].as_str().unwrap_or_default(),
+                    h[1].as_str().unwrap_or_default()
+                )
+            })
+            .collect();
+        out.extend_from_slice(format!("--{boundary}\r\n{head}\r\n").as_bytes());
+        out.extend_from_slice(&body_bytes(&part["data"]).unwrap_or_default());
+        out.extend_from_slice(b"\r\n");
+    }
+    if spec["close"].as_bool() != Some(false) {
+        out.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
+    }
+    if let Some(epilogue) = spec["epilogue"].as_str() {
+        out.extend_from_slice(epilogue.as_bytes());
+    }
+    if let Some(cut) = spec["cut"].as_u64() {
+        out.truncate(out.len().saturating_sub(cut as usize));
+    }
+    out
+}
+
 fn body_bytes(body: &Value) -> Option<Vec<u8>> {
     if body.is_null() {
         return None;
+    }
+    if !body["multipart"].is_null() {
+        return Some(multipart_body(&body["multipart"]));
     }
     if let Some(text) = body.get("utf8").and_then(Value::as_str) {
         return Some(text.as_bytes().to_vec());
@@ -990,13 +1269,15 @@ async fn matches_express() {
     let cases = golden["cases"].as_array().expect("cases");
     assert!(cases.len() >= 360, "golden file has {} cases", cases.len());
     let tree = StaticTree::build(&golden);
+    let upload_dir = tree.0.with_extension("uploads");
+    std::fs::create_dir_all(&upload_dir).expect("upload dir");
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let addr = listener.local_addr().expect("address");
     let shutdown = CancellationToken::new();
     let server = tokio::spawn(serve(
         listener,
-        fixture(&tree.root()),
+        fixture(&tree.root(), &upload_dir),
         shutdown.clone(),
         ServeOptions::default(),
     ));
@@ -1094,6 +1375,7 @@ async fn matches_express() {
     }
     shutdown.cancel();
     server.await.expect("server task").expect("server");
+    let _ = std::fs::remove_dir_all(&upload_dir);
     assert!(
         failures.is_empty(),
         "{} of {} cases differ:\n{}",
