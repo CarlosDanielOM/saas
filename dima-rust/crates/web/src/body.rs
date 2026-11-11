@@ -564,10 +564,13 @@ fn parse_json(text: &str, strict: bool) -> Result<Value, Error> {
             )));
         }
     }
-    let text = replace_lone_surrogate_escapes(text);
+    // MIGRATION.md text rule 3: a `\uD800`-`\uDFFF` escape outside a valid pair becomes U+FFFD
+    // (JavaScript keeps the lone surrogate; Rust text cannot hold one).
+    let text = dima_text::sanitize_lone_surrogates(text.as_bytes());
     // A number beyond the double range (`1e400`) is a parse error here; `JSON.parse` makes it
     // `Infinity`, which no client sends on purpose (allowed difference).
-    let mut value: Value = serde_json::from_str(&text).map_err(|e| parse_failed(e.to_string()))?;
+    let mut value: Value =
+        serde_json::from_slice(&text).map_err(|e| parse_failed(e.to_string()))?;
     // `JSON.parse` key order: array-index keys first, ascending, then the others in source order.
     dima_text::js_key_order(&mut value);
     javascript_numbers(&mut value);
@@ -618,105 +621,30 @@ fn javascript_number(number: &serde_json::Number) -> Option<serde_json::Number> 
     Some(serde_json::Number::from(double as i64))
 }
 
-/// MIGRATION.md text rule 3: a `\uD800`–`\uDFFF` escape that is not part of a valid pair is
-/// replaced with `\uFFFD` before parsing (JavaScript would keep the lone surrogate; Rust text
-/// cannot hold one, and `serde_json` would reject the body).
-pub fn replace_lone_surrogate_escapes(text: &str) -> Cow<'_, str> {
-    if !text.contains("\\u") && !text.contains("\\U") {
-        return Cow::Borrowed(text);
-    }
-    let bytes = text.as_bytes();
-    let mut out: Option<String> = None;
-    let mut copied = 0;
-    let mut in_string = false;
-    let mut i = 0;
-    let unit_at = |at: usize| -> Option<u16> {
-        if bytes.get(at) != Some(&b'\\') || bytes.get(at + 1) != Some(&b'u') {
-            return None;
-        }
-        let hex = text.get(at + 2..at + 6)?;
-        if !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
-            return None;
-        }
-        u16::from_str_radix(hex, 16).ok()
-    };
-    while let Some(&byte) = bytes.get(i) {
-        if !in_string {
-            if byte == b'"' {
-                in_string = true;
-            }
-            i += 1;
-            continue;
-        }
-        match byte {
-            b'"' => {
-                in_string = false;
-                i += 1;
-            }
-            b'\\' => match unit_at(i) {
-                Some(high @ 0xD800..=0xDBFF) => {
-                    if unit_at(i + 6).is_some_and(|low| (0xDC00..=0xDFFF).contains(&low)) {
-                        i += 12;
-                    } else {
-                        let buf = out.get_or_insert_with(|| String::with_capacity(text.len()));
-                        buf.push_str(text.get(copied..i).unwrap_or(""));
-                        buf.push_str("\\uFFFD");
-                        let _ = high;
-                        i += 6;
-                        copied = i;
-                    }
-                }
-                Some(0xDC00..=0xDFFF) => {
-                    let buf = out.get_or_insert_with(|| String::with_capacity(text.len()));
-                    buf.push_str(text.get(copied..i).unwrap_or(""));
-                    buf.push_str("\\uFFFD");
-                    i += 6;
-                    copied = i;
-                }
-                Some(_) => i += 6,
-                None => i += 2,
-            },
-            _ => i += 1,
-        }
-    }
-    match out {
-        Some(mut buf) => {
-            buf.push_str(text.get(copied..).unwrap_or(""));
-            Cow::Owned(buf)
-        }
-        None => Cow::Borrowed(text),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
     use super::*;
 
+    /// Text rule 3, through the shared `dima_text::sanitize_lone_surrogates`.
     #[test]
     fn lone_surrogates_become_replacement_characters() {
-        let pair = r#"{"a":"\ud83d\ude00"}"#;
-        assert_eq!(replace_lone_surrogate_escapes(pair), pair);
+        let parse = |text: &str| parse_json(text, true).expect("parses");
+        assert_eq!(parse(r#"{"a":"\ud83d\ude00"}"#), json!({"a": "😀"}));
+        assert_eq!(parse(r#"{"a":"\ud83d"}"#), json!({"a": "\u{FFFD}"}));
+        assert_eq!(parse(r#"{"a":"\ude00x"}"#), json!({"a": "\u{FFFD}x"}));
         assert_eq!(
-            replace_lone_surrogate_escapes(r#"{"a":"\ud83d"}"#),
-            r#"{"a":"\uFFFD"}"#
+            parse(r#"{"a":"\uDE00\uD83D"}"#),
+            json!({"a": "\u{FFFD}\u{FFFD}"})
         );
+        // An escaped backslash before `u` is text, not an escape.
+        assert_eq!(parse(r#"{"a":"\\ud83d"}"#), json!({"a": "\\ud83d"}));
+        assert_eq!(parse(r#"{"\ud83d":"x"}"#), json!({"\u{FFFD}": "x"}));
         assert_eq!(
-            replace_lone_surrogate_escapes(r#"{"a":"\ude00x"}"#),
-            r#"{"a":"\uFFFDx"}"#
+            parse(r#"{"a":"x\ud800y","b":"\ud83d\ude00"}"#),
+            json!({"a": "x\u{FFFD}y", "b": "😀"})
         );
-        let escaped_backslash = r#"{"a":"\\ud83d"}"#;
-        assert_eq!(
-            replace_lone_surrogate_escapes(escaped_backslash),
-            escaped_backslash
-        );
-        assert_eq!(
-            replace_lone_surrogate_escapes(r#"{"\ud83d":"x"}"#),
-            r#"{"\uFFFD":"x"}"#
-        );
-        let parsed = parse_json(r#"{"a":"x\ud800y","b":"\ud83d\ude00"}"#, true).expect("parses");
-        assert_eq!(parsed, json!({"a": "x\u{FFFD}y", "b": "😀"}));
     }
 
     #[test]
