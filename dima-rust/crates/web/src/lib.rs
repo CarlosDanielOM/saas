@@ -7,7 +7,8 @@
 //! with Express's path matching, `req.query` parsing (qs), body-parser middleware ([`body`]),
 //! `cors()` ([`cors`]), `res.send` / `res.json` headers (weak ETags, 304s, HEAD) and the default
 //! finalhandler pages. Handlers are `async fn(&mut Req<S>) -> impl IntoFlow`; `S` is the shared
-//! application state.
+//! application state. Each module's documentation lists where it knowingly differs from the
+//! Node package it reproduces, and why.
 //!
 //! ```
 //! use dima_web::{App, Envelope, Error, Flow, Req, Response, Router, body, cors};
@@ -102,9 +103,19 @@
 //! - **Headers after next()**: middleware that sets headers and continues uses
 //!   [`Req::set_header`]; a [`Response`] merges with those headers when it is sent.
 //!
-//! Not here yet (the second half of the package): static files and `sendFile` with ranges,
-//! multipart uploads, SSE helpers and telemetry middleware. [`Response::from_http`] and
-//! [`Req::take_body_stream`] are the seams they plug into.
+//! Beyond routing and bodies:
+//!
+//! - **Files**: [`serve_static`] is `express.static(dir)` and [`Response::send_file`] is
+//!   `res.sendFile(path)`, both on a port of `send` 0.19 (index, dotfiles, the directory
+//!   redirect, ETag and Last-Modified from the file, conditional requests, byte ranges, the
+//!   mime 1.6 table). Nothing is cached between requests.
+//! - **Streams**: [`Response::stream`] sends a body as it is produced; [`sse`] writes
+//!   Server-Sent Events with heartbeats; [`Req::closed`] tells spawned work when the exchange is
+//!   over, including when the client goes away.
+//! - **Uploads**: [`multipart`] is multer 1.4.5-lts.2 over busboy 1.6 (`single(field)`, disk and
+//!   streaming storage, limits with multer's codes, file filter, cleanup, deadline).
+//! - **Telemetry**: [`App::observe`] installs an [`Observer`] that sees every request start and
+//!   end (route, status, duration, bytes, aborts) and may attach a [`TraceContext`].
 #![forbid(unsafe_code)]
 
 mod app;
