@@ -463,6 +463,12 @@ async fn evalsha_falls_back_to_eval_after_script_flush() -> Result<()> {
         .query(redis::cmd("SCRIPT").arg("EXISTS").arg(ECHO_SCRIPT.sha1()))
         .await?;
     ensure!(exists == vec![0], "script still cached after SCRIPT FLUSH");
+    // The fence's pipelined EVALSHA batch reloads its script and replays once.
+    let fence = dima_store::dragonfly::plan_cache_fence::PlanCacheFence::new(df.clone());
+    let reads = fence
+        .read_accounts(&["dima-test-noscript-a", "dima-test-noscript-b"])
+        .await?;
+    ensure!(reads.len() == 2, "{reads:?}");
     let second = ECHO_SCRIPT.run_value(&df, &[key.as_str()], &["é"]).await?;
     ensure!(first == second, "{first:?} vs {second:?}");
     let exists: Vec<i64> = df
