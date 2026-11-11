@@ -14,7 +14,8 @@ use dima_rig::stores::Registry;
 #[derive(Parser)]
 #[command(
     name = "dima-rig",
-    version,
+    // The checkout it was built from: worktrees share one target directory.
+    version = concat!(env!("CARGO_PKG_VERSION"), " (built from ", env!("CARGO_MANIFEST_DIR"), ")"),
     about = "Run the reference and the Rust candidate on the same scenarios and compare what they did."
 )]
 struct Cli {
@@ -89,6 +90,10 @@ enum Cmd {
         /// Skip the before/after dbHash check that proves no side wrote to the database
         #[arg(long)]
         no_write_check: bool,
+        /// Give both sides the rig's own credentials instead of a read-only user (for a target
+        /// that must write at start-up); the report says that writes were possible
+        #[arg(long)]
+        allow_writes: bool,
     },
     /// Check the target and scenario files without running anything
     Check {
@@ -114,7 +119,8 @@ async fn dispatch(cmd: &Cmd, s: &Settings, reg: &Registry) -> Result<Option<Repo
             db,
             paths,
             no_write_check,
-        } => run::diff_get(s, reg, target, db, paths, !no_write_check).await?,
+            allow_writes,
+        } => run::diff_get(s, reg, target, db, paths, !no_write_check, *allow_writes).await?,
         Cmd::Check { target, scenarios } => run::check(s, target, scenarios)?,
         Cmd::Gc => {
             let dropped = dima_rig::stores::gc(&s.stores.mongo_uri).await?;

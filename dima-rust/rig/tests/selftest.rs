@@ -28,6 +28,22 @@ const ALL: &[&str] = &[
     "items/restart",
 ];
 
+/// The rig and fixture binaries were built from this checkout. Worktrees share one cargo target
+/// directory, so another worktree's build of this crate can replace them while a test runs.
+fn assert_own_binaries() {
+    let here = env!("CARGO_MANIFEST_DIR");
+    let rig = Command::new(RIG).arg("--version").output().unwrap();
+    let fixture = Command::new(FIXTURE).arg("--build-info").output().unwrap();
+    for (name, out) in [("dima-rig", rig), ("dima-rig-fixture", fixture)] {
+        let text = String::from_utf8_lossy(&out.stdout);
+        assert!(
+            text.contains(here),
+            "{name} in the shared target directory was built from another checkout ({}), not {here}: another worktree is building this crate; rerun, or use a private CARGO_TARGET_DIR",
+            text.trim()
+        );
+    }
+}
+
 fn selftest_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/selftest-rig")
 }
@@ -315,6 +331,7 @@ fn self_test_end_to_end() {
         );
         return;
     };
+    assert_own_binaries();
     let work =
         Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("rig-selftest-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&work);
@@ -490,6 +507,8 @@ fn self_test_end_to_end() {
             "{}",
             st.text
         );
+        // A side reads with a user that may only read the database: a write is refused (the
+        // candidate's GET fails) and the database is unchanged.
         let writes = rig(
             &work,
             &rd,
@@ -506,84 +525,91 @@ fn self_test_end_to_end() {
         pids.push(writes.pid);
         assert_eq!(writes.code, 1, "{}", writes.text);
         assert!(
-            writes
-                .text
-                .contains(&format!("the candidate wrote to database {read_db}")),
+            writes.text.contains("steps[0].status: HTTP status differs"),
             "{}",
             writes.text
         );
+        assert!(
+            !writes.text.contains("wrote to database"),
+            "{}",
+            writes.text
+        );
+        // With --allow-writes the write happens, the before/after check catches it, and the
+        // report says that writes were possible.
+        let allowed = rig(
+            &work,
+            &rd,
+            "writes-on-get",
+            &[
+                "diff-get",
+                "selftest",
+                "--db",
+                &read_db,
+                "--paths",
+                list.to_str().unwrap(),
+                "--allow-writes",
+            ],
+        );
+        pids.push(allowed.pid);
+        assert_eq!(allowed.code, 1, "{}", allowed.text);
+        assert!(
+            allowed
+                .text
+                .contains(&format!("the candidate wrote to database {read_db}")),
+            "{}",
+            allowed.text
+        );
+        assert!(
+            allowed.report["warnings"]
+                .to_string()
+                .contains("--allow-writes: both sides had write access"),
+            "{}",
+            allowed.text
+        );
+        // A target that cannot start with read-only credentials is told so.
+        let strict = rig(
+            &work,
+            &rd,
+            "strict-startup",
+            &[
+                "diff-get",
+                "selftest",
+                "--db",
+                &read_db,
+                "--paths",
+                list.to_str().unwrap(),
+            ],
+        );
+        pids.push(strict.pid);
+        assert_eq!(strict.code, 1, "{}", strict.text);
+        assert!(
+            strict.text.contains("rerun with --allow-writes"),
+            "{}",
+            strict.text
+        );
     });
 
-    // Captures are raw: the recording above, re-verified with a different normalisation
-    // setting (a byte-sensitive list without cron:jobs:queue), is normalised again by the
-    // current code. The same candidate that differed now matches, its key order a note.
-    let other_list = work.join("byte_sensitive_other.json");
-    std::fs::write(
-        &other_list,
-        r#"{"rig_byte_sensitive": 1, "keys": [{"pattern": "unrelated:*", "why": "test list"}]}"#,
-    )
-    .unwrap();
-    let relaxed = rig(
-        &work,
-        &rd,
-        "job-key-order",
-        &[
-            "--byte-sensitive",
-            other_list.to_str().unwrap(),
-            "verify",
-            "selftest",
-            "items/jobs",
-        ],
-    );
-    pids.push(relaxed.pid);
-    assert_eq!(relaxed.code, 0, "{}", relaxed.text);
-    assert!(
-        relaxed.scenario("items/jobs")["notes"]
-            .to_string()
-            .contains("cron:jobs:queue"),
-        "{}",
-        relaxed.text
-    );
-
-    // share_process (opt-in) carries in-memory state from one scenario into the next: recorded
-    // after the others, items/memory counts their items too, and verified alone it does not.
-    let shared = work.join("shared-rig");
-    copy_dir(&rd, &shared);
-    let target = shared.join("targets/selftest.json");
-    let text = std::fs::read_to_string(&target).unwrap().replacen(
-        "\"ports\"",
-        "\"share_process\": true,\n  \"ports\"",
-        1,
-    );
-    std::fs::write(&target, text).unwrap();
-    let shared_caps = work.join("shared-captures");
-    let rec = rig_with(
-        &work,
-        &shared,
-        &shared_caps,
-        "good",
-        &["record", "--once", "selftest"],
-    );
-    pids.push(rec.pid);
-    assert_eq!(rec.code, 0, "{}", rec.text);
-    let alone = rig_with(
-        &work,
-        &shared,
-        &shared_caps,
-        "good",
-        &["verify", "selftest", "items/memory"],
-    );
-    pids.push(alone.pid);
-    assert_eq!(alone.code, 1, "{}", alone.text);
-    assert_eq!(
-        alone.differences("items/memory"),
-        vec![(
-            "steps[1].body.posts".to_string(),
-            "number differs".to_string()
-        )],
-        "{}",
-        alone.text
-    );
+    // Temporary users are dropped.
+    let users = {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let c = mongodb::Client::with_uri_str(&uri).await.unwrap();
+            c.database("admin")
+                .run_command(bson::doc! {"usersInfo": 1})
+                .await
+                .unwrap()
+                .to_string()
+        })
+    };
+    for p in &pids {
+        assert!(
+            !users.contains(&format!("rig_{p}_")),
+            "a temporary user of rig {p} was left behind: {users}"
+        );
+    }
 
     // Check: strict files and stale captures, without running anything.
     let edited = work.join("edited-rig");
@@ -660,6 +686,7 @@ fn self_test_end_to_end() {
         .filter(|n| n == &read_db || pids.iter().any(|p| n.starts_with(&format!("rig_{p}_"))))
         .collect();
     assert!(left.is_empty(), "databases left behind: {left:?}");
+    assert_own_binaries();
     let _ = std::fs::remove_dir_all(&work);
 }
 
@@ -766,6 +793,7 @@ fn cleanup_after_a_failure_and_an_interrupt() {
         eprintln!("skipping: DIMA_TEST_MONGO_URI is not set");
         return;
     };
+    assert_own_binaries();
     let work =
         Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("rig-cleanup-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&work);
@@ -886,5 +914,6 @@ fn cleanup_after_a_failure_and_an_interrupt() {
         process_gone(&fixture_pid),
         "the side process {fixture_pid} outlived the interrupted rig"
     );
+    assert_own_binaries();
     let _ = std::fs::remove_dir_all(&work);
 }

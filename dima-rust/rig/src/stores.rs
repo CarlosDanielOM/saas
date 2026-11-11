@@ -44,6 +44,64 @@ pub struct StoreConfig {
     pub lock_wait: Duration,
 }
 
+/// The URI without credentials (options kept).
+fn without_credentials(uri: &str) -> String {
+    crate::capture::redact_uri(uri)
+}
+
+/// The URI with these credentials (defined in `admin`) and `db` as its path.
+pub fn uri_with_user(uri: &str, user: &str, password: &str, db: &str) -> String {
+    let base = uri_with_db(&without_credentials(uri), db);
+    let (scheme, rest) = base.split_once("://").unwrap_or(("mongodb", base.as_str()));
+    let (path, query) = rest.split_once('?').unwrap_or((rest, ""));
+    let mut params: Vec<&str> = query
+        .split('&')
+        .filter(|p| !p.is_empty() && !p.starts_with("authSource="))
+        .collect();
+    params.push("authSource=admin");
+    format!("{scheme}://{user}:{password}@{path}?{}", params.join("&"))
+}
+
+/// A temporary user, defined in `admin`, with the `read` role on `db` only. Registered for
+/// [`Registry::cleanup`] before it exists. Returns the URI a side connects with.
+pub async fn create_read_only_user(
+    cfg: &StoreConfig,
+    reg: &Registry,
+    label: &str,
+    db: &str,
+) -> Result<String> {
+    let name = format!(
+        "rig_{}_{}_{label}_ro",
+        std::process::id(),
+        SEQ.fetch_add(1, Ordering::Relaxed)
+    );
+    let password = uuid::Uuid::new_v4().simple().to_string();
+    let client = mongo_client(&cfg.mongo_uri).await?;
+    reg.add_user(&name);
+    timed(
+        "MongoDB createUser",
+        client.database("admin").run_command(doc! {
+            "createUser": &name,
+            "pwd": &password,
+            "roles": [{"role": "read", "db": db}],
+        }),
+    )
+    .await?;
+    Ok(uri_with_user(&cfg.mongo_uri, &name, &password, db))
+}
+
+/// Whether the server refuses a client without credentials, so a user's role is enforced.
+pub async fn auth_enforced(cfg: &StoreConfig) -> Result<bool> {
+    let client = mongo_client(&without_credentials(&cfg.mongo_uri)).await?;
+    match tokio::time::timeout(STORE_TIMEOUT, client.list_database_names()).await {
+        Ok(Ok(_)) => Ok(false),
+        // Unauthorized.
+        Ok(Err(e)) if command_code(&e) == Some(13) => Ok(true),
+        Ok(Err(e)) => Err(store("MongoDB authentication check", e)),
+        Err(_) => Err(store("MongoDB authentication check", "timed out")),
+    }
+}
+
 /// The URI with `db` as its path (credentials and options kept).
 pub fn uri_with_db(uri: &str, db: &str) -> String {
     let (scheme, rest) = uri.split_once("://").unwrap_or(("mongodb", uri));
@@ -330,6 +388,8 @@ pub struct SideStores {
     owned: bool,
     pub df_index: u8,
     pub redis: MultiplexedConnection,
+    /// The URI the side process gets instead of the rig's own (a read-only user).
+    pub side_uri: Option<String>,
 }
 
 fn redis_err(e: redis::RedisError) -> RigError {
@@ -430,13 +490,17 @@ impl SideStores {
             owned,
             df_index,
             redis,
+            side_uri: None,
         };
         s.reset_empty().await?;
         Ok(s)
     }
 
+    /// The MongoDB URI the side process gets.
     pub fn mongo_uri(&self) -> String {
-        uri_with_db(&self.cfg.mongo_uri, &self.db_name)
+        self.side_uri
+            .clone()
+            .unwrap_or_else(|| uri_with_db(&self.cfg.mongo_uri, &self.db_name))
     }
 
     pub fn dragonfly_url(&self) -> String {
@@ -1012,5 +1076,22 @@ mod tests {
             "mongodb://127.0.0.1:27017/x"
         );
         assert_eq!(uri_with_db("mongodb://h/old?w=1", "x"), "mongodb://h/x?w=1");
+    }
+
+    #[test]
+    fn uri_for_a_temporary_user() {
+        assert_eq!(
+            uri_with_user(
+                "mongodb://root:p@127.0.0.1:27017/?authSource=admin&directConnection=true",
+                "rig_1_ro",
+                "abc",
+                "domdimabot"
+            ),
+            "mongodb://rig_1_ro:abc@127.0.0.1:27017/domdimabot?directConnection=true&authSource=admin"
+        );
+        assert_eq!(
+            uri_with_user("mongodb://h:1", "u", "p", "d"),
+            "mongodb://u:p@h:1/d?authSource=admin"
+        );
     }
 }

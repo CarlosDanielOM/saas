@@ -116,9 +116,16 @@ impl<'s> SideRunner<'s> {
         target: &'s Target,
         which: Which,
         label: &str,
-        existing_db: Option<&str>,
+        existing: Option<&Existing>,
     ) -> Result<SideRunner<'s>> {
-        let stores = SideStores::allocate(&settings.stores, reg, label, existing_db).await?;
+        let mut stores = SideStores::allocate(
+            &settings.stores,
+            reg,
+            label,
+            existing.map(|e| e.db.as_str()),
+        )
+        .await?;
+        stores.side_uri = existing.and_then(|e| e.side_uri.clone());
         let http = reqwest::Client::builder()
             .no_proxy()
             .no_gzip()
@@ -403,6 +410,13 @@ impl<'s> SideRunner<'s> {
     }
 }
 
+/// An existing database a side reads (`diff-get`), and the URI it gets for it.
+pub struct Existing {
+    pub db: String,
+    /// A read-only user's URI; `None`: the rig's own credentials (`--allow-writes`).
+    pub side_uri: Option<String>,
+}
+
 /// Run every scenario on one side. The side's stores are registered in `reg` and released by
 /// the command's one cleanup path ([`Registry::cleanup`]), whatever happens here.
 async fn run_side(
@@ -412,9 +426,9 @@ async fn run_side(
     which: Which,
     label: &str,
     scenarios: &[Scenario],
-    existing_db: Option<&str>,
+    existing: Option<&Existing>,
 ) -> Result<Vec<SideOutcome>> {
-    let mut r = SideRunner::new(settings, reg, target, which, label, existing_db).await?;
+    let mut r = SideRunner::new(settings, reg, target, which, label, existing).await?;
     let mut out = Vec::with_capacity(scenarios.len());
     for sc in scenarios {
         out.push(r.run_scenario(sc).await);
@@ -598,7 +612,8 @@ pub fn check(settings: &Settings, target_name: &str, filters: &[String]) -> Resu
                 r.warnings.push("capture is stale: re-record it".into())
             }
             Ok(_) => {}
-            Err(_) => r.warnings.push("no capture recorded yet".into()),
+            Err(_) if !path.exists() => r.warnings.push("no capture recorded yet".into()),
+            Err(e) => r.warnings.push(format!("capture cannot be read: {e}")),
         }
         report.scenarios.push(r);
     }
@@ -884,6 +899,7 @@ pub async fn diff_get(
     db: &str,
     list_file: &FsPath,
     write_check: bool,
+    allow_writes: bool,
 ) -> Result<Report> {
     let mut report = Report::new("diff-get", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
@@ -930,6 +946,16 @@ pub async fn diff_get(
         seed_offsets: Vec::new(),
         known,
     };
+    if allow_writes {
+        report.warnings.push(format!(
+            "--allow-writes: both sides had write access to database {db}; only the before/after dbHash check{} stood between them and the data",
+            if write_check { "" } else { " (skipped with --no-write-check)" }
+        ));
+    } else if !stores::auth_enforced(&settings.stores).await? {
+        report.warnings.push(format!(
+            "the MongoDB server does not enforce authentication, so the read-only users could still write to {db}; only the before/after dbHash check protects it"
+        ));
+    }
     let mut runs = Vec::new();
     for (which, label) in [(Which::Reference, "ref"), (Which::Candidate, "cand")] {
         let client = stores::mongo_client(&settings.stores.mongo_uri).await?;
@@ -938,6 +964,17 @@ pub async fn diff_get(
         } else {
             None
         };
+        // Each side reads with a user that may only read this database, so it cannot change
+        // what the other side then reads.
+        let side_uri = if allow_writes {
+            None
+        } else {
+            Some(stores::create_read_only_user(&settings.stores, reg, label, db).await?)
+        };
+        let existing = Existing {
+            db: db.to_string(),
+            side_uri,
+        };
         let mut out = run_side(
             settings,
             reg,
@@ -945,9 +982,18 @@ pub async fn diff_get(
             which,
             label,
             std::slice::from_ref(&sc),
-            Some(db),
+            Some(&existing),
         )
         .await?;
+        if !allow_writes
+            && let Some(Err(f)) = out.last_mut()
+            && f.step.is_none()
+        {
+            f.message = format!(
+                "{} (it ran with a MongoDB user that may only read {db}; if it must write at start-up, for example to create indexes, rerun with --allow-writes, and the report will say that writes were possible)",
+                f.message
+            );
+        }
         let mut outcome = out
             .pop()
             .unwrap_or_else(|| Err(rig_failure(which.name(), "no result")));

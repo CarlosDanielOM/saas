@@ -32,6 +32,7 @@ enum Variant {
     JobKeyOrder,
     NoCookie,
     CookieAttr,
+    StrictStartup,
 }
 
 impl Variant {
@@ -51,6 +52,7 @@ impl Variant {
             "job-key-order" => Variant::JobKeyOrder,
             "no-cookie" => Variant::NoCookie,
             "cookie-attr" => Variant::CookieAttr,
+            "strict-startup" => Variant::StrictStartup,
             other => bail!("unknown variant {other}"),
         })
     }
@@ -428,6 +430,11 @@ async fn serve(app: Arc<App>, mut s: TcpStream) {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
+    // Which checkout built this binary (worktrees share one target directory).
+    if args.iter().any(|a| a == "--build-info") {
+        println!("{}", env!("CARGO_MANIFEST_DIR"));
+        return Ok(());
+    }
     let variant = match args
         .iter()
         .position(|a| a == "--variant")
@@ -442,8 +449,15 @@ async fn main() -> Result<()> {
     let redis = redis::Client::open(env("REDIS_URL")?)?
         .get_multiplexed_async_connection()
         .await?;
-    // Start-up writes, like Mongoose's autoIndex and a boot marker.
-    db.run_command(doc! {"createIndexes": "items", "indexes": [{"key": {"name": 1}, "name": "name_1", "unique": true}]}).await?;
+    // Start-up writes, like Mongoose's autoIndex (which logs a failure and carries on) and a
+    // boot marker. `strict-startup` exits instead, like a target that needs write access.
+    let created = db.run_command(doc! {"createIndexes": "items", "indexes": [{"key": {"name": 1}, "name": "name_1", "unique": true}]}).await;
+    if let Err(e) = created {
+        if variant == Variant::StrictStartup {
+            return Err(e.into());
+        }
+        println!("fixture: createIndexes failed: {e}");
+    }
     let mut r = redis.clone();
     redis::cmd("SET")
         .arg("fixture:boot")
