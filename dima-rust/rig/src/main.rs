@@ -59,6 +59,9 @@ enum Cmd {
         /// Run the reference once (skip the stability check)
         #[arg(long)]
         once: bool,
+        /// Stored in each capture's provenance: what was recorded, such as the reference's commit id
+        #[arg(long)]
+        label: Option<String>,
     },
     /// Run the candidate and compare it with the recorded captures
     Verify {
@@ -99,7 +102,8 @@ async fn dispatch(cmd: &Cmd, s: &Settings, reg: &Registry) -> Result<Option<Repo
             target,
             scenarios,
             once,
-        } => run::record(s, reg, target, scenarios, *once).await?,
+            label,
+        } => run::record(s, reg, target, scenarios, *once, label.as_deref()).await?,
         Cmd::Verify { target, scenarios } => run::verify(s, reg, target, scenarios).await?,
         Cmd::Compare { target, scenarios } => run::compare_live(s, reg, target, scenarios).await?,
         Cmd::DiffGet {

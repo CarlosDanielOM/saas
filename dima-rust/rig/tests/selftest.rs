@@ -310,7 +310,12 @@ fn self_test_end_to_end() {
     let mut pids = Vec::new();
 
     // Record: two reference runs agree, captures are written; a second record changes nothing.
-    let rec = rig(&work, &rd, "good", &["record", "selftest"]);
+    let rec = rig(
+        &work,
+        &rd,
+        "good",
+        &["record", "--label", "selftest-label", "selftest"],
+    );
     pids.push(rec.pid);
     assert_eq!(rec.code, 0, "record\n{}", rec.text);
     for name in ALL {
@@ -323,12 +328,24 @@ fn self_test_end_to_end() {
     }
     let capture =
         std::fs::read_to_string(work.join("captures/selftest/items/create.json")).unwrap();
+    // Raw: what was observed, with the run's metadata and provenance.
+    let parsed: Value = serde_json::from_str(&capture).unwrap();
+    assert_eq!(parsed["rig_capture"], 2, "{capture}");
+    assert_eq!(parsed["provenance"]["side"], "reference", "{capture}");
+    assert_eq!(parsed["provenance"]["label"], "selftest-label", "{capture}");
+    assert!(parsed["run"]["ports"]["http"].is_u64(), "{capture}");
     assert!(
-        capture.contains("\"rig_capture\": 1")
-            && capture.contains("<oid:1>")
-            && capture.contains("🍕 pizza"),
+        !parsed["run"]["mongo_uri"].as_str().unwrap().contains('@'),
+        "no credentials in a capture: {capture}"
+    );
+    assert!(
+        parsed["steps"][0]["http"]["body"]
+            .as_str()
+            .unwrap()
+            .contains("🍕 pizza"),
         "{capture}"
     );
+    assert!(capture.contains("\"$oid\""), "{capture}");
     let again = rig(&work, &rd, "good", &["record", "--once", "selftest"]);
     pids.push(again.pid);
     assert_eq!(again.code, 0, "{}", again.text);

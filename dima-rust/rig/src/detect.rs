@@ -234,8 +234,6 @@ pub struct DetectCtx<'a> {
     pub names: Vec<(String, String)>,
     /// Header name globs (lower case) to capture.
     pub headers: Vec<String>,
-    /// When the Dragonfly TTLs were read.
-    pub captured_at: i64,
     /// Dragonfly strings at or below these paths stay exact text (not parsed as JSON).
     pub as_text: Vec<crate::path::Pattern>,
 }
@@ -444,6 +442,19 @@ impl Detector<'_, '_> {
         Text::from_segs(segs)
     }
 
+    /// Bytes as text: UTF-8 runs are searched for run-time values like any text, other bytes
+    /// become [`Seg::Bytes`], which never equals a text.
+    fn bytes_text(&mut self, path: &Path, b: &[u8]) -> Text {
+        let mut segs = Vec::new();
+        for chunk in b.utf8_chunks() {
+            segs.extend(self.text(path, chunk.valid()).0);
+            if !chunk.invalid().is_empty() {
+                segs.push(Seg::Bytes(chunk.invalid().to_vec()));
+            }
+        }
+        Text::from_segs(segs)
+    }
+
     fn generated_whole(&mut self, path: &Path, s: &str) -> Option<Val> {
         if self.ctx.allow.generated_whole(path) {
             self.found.push(s.to_string());
@@ -645,27 +656,38 @@ impl Detector<'_, '_> {
             RawStep::Done(kind) => StepCap::Done(kind.clone()),
             RawStep::Reply(r) => {
                 path.push_key("reply");
-                StepCap::Reply(self.reply(&mut path, r))
+                StepCap::Reply(self.reply(&mut path, &r.reply))
             }
             RawStep::Http(h) => {
-                let mut headers: Vec<(String, Vec<Text>)> = Vec::new();
+                let mut grouped: Vec<(String, Vec<Text>)> = Vec::new();
                 for (name, value) in &h.headers {
                     if !self.ctx.headers.iter().any(|g| name_glob(g, name)) {
                         continue;
                     }
                     let hp = path.with_key("headers").with_key(name.clone());
-                    let t = self.text(&hp, value);
-                    match headers.iter_mut().find(|(n, _)| n == name) {
+                    let t = self.bytes_text(&hp, value);
+                    match grouped.iter_mut().find(|(n, _)| n == name) {
                         Some((_, vals)) => vals.push(t),
-                        None => headers.push((name.clone(), vec![t])),
+                        None => grouped.push((name.clone(), vec![t])),
                     }
                 }
-                headers.sort_by(|a, b| a.0.cmp(&b.0));
+                grouped.sort_by(|a, b| a.0.cmp(&b.0));
+                let headers = grouped
+                    .into_iter()
+                    .map(|(name, mut vals)| {
+                        let v = if vals.len() == 1 {
+                            Val::Str(vals.remove(0))
+                        } else {
+                            Val::Arr(vals.into_iter().map(Val::Str).collect())
+                        };
+                        (name, v)
+                    })
+                    .collect();
                 let content_type = h
                     .headers
                     .iter()
                     .find(|(n, _)| n == "content-type")
-                    .map(|(_, v)| v.to_ascii_lowercase())
+                    .map(|(_, v)| String::from_utf8_lossy(v).to_ascii_lowercase())
                     .unwrap_or_default();
                 let essence = content_type
                     .split(';')
@@ -727,23 +749,14 @@ impl Detector<'_, '_> {
 
     fn entry(&mut self, e: &RawEntry) -> EntryCap {
         let root = Path::root("dragonfly");
-        let key = match std::str::from_utf8(&e.key) {
-            Ok(s) => self.text(&root, s),
-            Err(_) => Text::lit(&format!(
-                "<bytes:{}>",
-                e.key.iter().map(|b| format!("{b:02x}")).collect::<String>()
-            )),
-        };
+        let key = self.bytes_text(&root, &e.key);
         let mut vp = root.with_key(key.display()).with_key("value");
         let value = match &e.value {
             RawValue::Str(b) => self.df_string(&mut vp, b),
             RawValue::Hash(pairs) => {
                 let mut kv = Vec::with_capacity(pairs.len());
                 for (f, v) in pairs {
-                    let field = match std::str::from_utf8(f) {
-                        Ok(s) => self.text(&vp, s),
-                        Err(_) => Text::lit(&String::from_utf8_lossy(f)),
-                    };
+                    let field = self.bytes_text(&vp, f);
                     vp.push_key(field.display());
                     let val = self.df_string(&mut vp, v);
                     vp.pop();
@@ -773,10 +786,11 @@ impl Detector<'_, '_> {
                         vp.push_key("member");
                         let member = self.df_string(&mut vp, m);
                         vp.pop();
-                        let score = Number::from_f64(*score)
-                            .map_or(Val::Str(Text::lit(&score.to_string())), |n| {
-                                self.json_number(&n)
-                            });
+                        let score = score
+                            .parse::<f64>()
+                            .ok()
+                            .and_then(Number::from_f64)
+                            .map_or_else(|| Val::str(score), |n| self.json_number(&n));
                         vp.pop();
                         Val::Obj(vec![
                             (Text::lit("member"), member),
@@ -785,6 +799,7 @@ impl Detector<'_, '_> {
                     })
                     .collect(),
             ),
+            // Fields stay ordered pairs: a stream entry may repeat a field name.
             RawValue::Stream(entries) => Val::Arr(
                 entries
                     .iter()
@@ -793,30 +808,29 @@ impl Detector<'_, '_> {
                         vp.push_index(i);
                         let idt = self.text(&vp, id);
                         vp.push_key("fields");
-                        let mut kv = Vec::new();
-                        for (f, v) in fields {
-                            let field = self.text(&vp, &String::from_utf8_lossy(f));
-                            vp.push_key(field.display());
+                        let mut pairs = Vec::with_capacity(fields.len());
+                        for (j, (f, v)) in fields.iter().enumerate() {
+                            vp.push_index(j);
+                            let field = self.bytes_text(&vp, f);
+                            vp.push_index(1);
                             let val = self.df_string(&mut vp, v);
                             vp.pop();
-                            kv.push((field, val));
+                            vp.pop();
+                            pairs.push(Val::Arr(vec![Val::Str(field), val]));
                         }
                         vp.pop();
                         vp.pop();
                         Val::Obj(vec![
                             (Text::lit("id"), Val::Str(idt)),
-                            (Text::lit("fields"), Val::Obj(kv)),
+                            (Text::lit("fields"), Val::Arr(pairs)),
                         ])
                     })
                     .collect(),
             ),
             RawValue::Other => Val::Unsupported(e.kind.clone()),
         };
-        let ttl = if e.pttl >= 0 {
-            Some(self.moment(self.ctx.captured_at + e.pttl))
-        } else {
-            None
-        };
+        // Each TTL relative to the time it was read.
+        let ttl = (e.pttl >= 0).then(|| self.moment(e.pttl_at + e.pttl));
         EntryCap {
             key,
             kind: e.kind.clone(),
@@ -910,7 +924,6 @@ pub(crate) mod tests {
             allow,
             names: vec![("127.0.0.1:41234".into(), "port.http".into())],
             headers: DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect(),
-            captured_at: START + 3000,
             as_text: Vec::new(),
         }
     }

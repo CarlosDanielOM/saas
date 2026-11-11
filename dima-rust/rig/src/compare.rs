@@ -105,6 +105,7 @@ pub fn mask(v: &Val) -> String {
                 Seg::Time { shape, .. } => s.push_str(&format!("<t|{shape}>")),
                 Seg::Day { .. } => s.push_str("<day>"),
                 Seg::Name(n) => s.push_str(&format!("<run:{n}>")),
+                Seg::Bytes(b) => s.push_str(&format!("<B:{}>", crate::value::hex(b))),
             }
         }
         serde_json::to_string(&s).unwrap_or(s)
@@ -326,6 +327,12 @@ impl<'a> Comparator<'a> {
                     }
                 }
                 (Seg::Name(p), Seg::Name(q)) if p == q => {}
+                (Seg::Bytes(p), Seg::Bytes(q)) if p == q => {}
+                (Seg::Bytes(_), _) | (_, Seg::Bytes(_)) => {
+                    return Err(
+                        "text differs (bytes that are not UTF-8 on one side or both)".into(),
+                    );
+                }
                 _ => return Err("text differs".into()),
             }
         }
@@ -765,36 +772,20 @@ impl<'a> Comparator<'a> {
                     let names: BTreeSet<&String> =
                         h1.iter().chain(h2.iter()).map(|(n, _)| n).collect();
                     for name in names {
-                        let hp = base.with_key("headers").with_key(name.clone());
+                        let mut hp = base.with_key("headers").with_key(name.clone());
                         if self.ignored(&hp) {
                             continue;
                         }
                         let x = h1.iter().find(|(n, _)| n == name).map(|(_, v)| v);
                         let y = h2.iter().find(|(n, _)| n == name).map(|(_, v)| v);
-                        let joined = |v: &Vec<Text>| {
-                            v.iter().map(Text::display).collect::<Vec<_>>().join(" | ")
-                        };
                         match (x, y) {
                             (Some(x), None) => {
-                                self.diff(&hp, "header missing in candidate", Some(joined(x)), None)
+                                self.diff(&hp, "header missing in candidate", Some(show(x)), None)
                             }
                             (None, Some(y)) => {
-                                self.diff(&hp, "header only in candidate", None, Some(joined(y)))
+                                self.diff(&hp, "header only in candidate", None, Some(show(y)))
                             }
-                            (Some(x), Some(y)) => {
-                                let ok = x.len() == y.len()
-                                    && x.iter()
-                                        .zip(y.iter())
-                                        .all(|(p, q)| self.text(&hp, p, q).is_ok());
-                                if !ok {
-                                    self.diff(
-                                        &hp,
-                                        "header differs",
-                                        Some(joined(x)),
-                                        Some(joined(y)),
-                                    );
-                                }
-                            }
+                            (Some(x), Some(y)) => self.val(&mut hp, x, y),
                             (None, None) => {}
                         }
                     }

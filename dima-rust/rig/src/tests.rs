@@ -7,28 +7,42 @@ use serde_json::{Value, json};
 
 use crate::allow::{AllowKind, Allowances};
 use crate::capture::{
-    self, Capture, CaptureMeta, RawCapture, RawColl, RawEntry, RawHttp, RawStep, RawValue,
+    self, Capture, CaptureFile, Hashes, Provenance, RawCapture, RawColl, RawEntry, RawHttp,
+    RawStep, RawValue, RunMeta,
 };
 use crate::compare::{self, Outcome};
 use crate::detect::tests::{START, oid_at, window};
 use crate::detect::{DEFAULT_HEADERS, Known, Patterns, Window};
 use crate::path::Pattern;
-use crate::run::{RawRun, normalise};
+use crate::run::{RawRun, Rules, normalise};
 
 const MIN: i64 = 60_000;
 const DAY: i64 = 86_400_000;
 
 fn http(status: u16, body: Value) -> RawStep {
     RawStep::Http(RawHttp {
+        at: START + 1000,
         status,
         headers: vec![
             (
                 "content-type".into(),
-                "application/json; charset=utf-8".into(),
+                b"application/json; charset=utf-8".to_vec(),
             ),
-            ("x-powered-by".into(), "whatever".into()),
+            ("x-powered-by".into(), b"whatever".to_vec()),
         ],
         body: serde_json::to_vec(&body).unwrap(),
+    })
+}
+
+fn http_h(status: u16, headers: &[(&str, &str)], body: &[u8]) -> RawStep {
+    RawStep::Http(RawHttp {
+        at: START + 1000,
+        status,
+        headers: headers
+            .iter()
+            .map(|(n, v)| (n.to_string(), v.as_bytes().to_vec()))
+            .collect(),
+        body: body.to_vec(),
     })
 }
 
@@ -51,6 +65,7 @@ fn entry(key: &str, value: &str, pttl: i64) -> RawEntry {
         kind: "string".into(),
         value: RawValue::Str(value.as_bytes().to_vec()),
         pttl,
+        pttl_at: START + 3000,
     }
 }
 
@@ -70,7 +85,6 @@ fn raw(steps: Vec<RawStep>, mongo: Vec<(&str, RawColl)>, dragonfly: Vec<RawEntry
             .map(|(n, c)| (n.to_string(), c))
             .collect::<BTreeMap<_, _>>(),
         dragonfly,
-        captured_at: START + 3000,
     }
 }
 
@@ -88,15 +102,71 @@ fn allow(list: &[(&str, AllowKind)]) -> Allowances {
     )
 }
 
-fn norm_w(r: &RawCapture, w: Window, known: &Known, a: &Allowances) -> Capture {
+fn meta(w: Window, port: u16) -> RunMeta {
+    RunMeta {
+        start: w.start,
+        end: w.end,
+        process_start: w.proc_start,
+        ports: [("http".to_string(), port)].into(),
+        mongo_db: "rig_1_0_ref".into(),
+        mongo_uri: "mongodb://127.0.0.1:27017/rig_1_0_ref".into(),
+        dragonfly_db: 3,
+        dragonfly_url: "redis://127.0.0.1:6379/3".into(),
+    }
+}
+
+fn run_of(r: &RawCapture, w: Window, port: u16) -> RawRun {
+    let mut raw = r.clone();
+    raw.sort();
+    RawRun {
+        raw,
+        run: meta(w, port),
+    }
+}
+
+fn norm_run(run: &RawRun, known: &Known, a: &Allowances) -> Capture {
     let p = Patterns::new().unwrap();
     let headers: Vec<String> = DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect();
-    let run = RawRun {
-        raw: r.clone(),
-        window: w,
-        names: vec![("127.0.0.1:41234".into(), "port.http".into())],
+    let rules = Rules {
+        patterns: &p,
+        known,
+        headers: &headers,
+        as_text: &[],
     };
-    normalise(&run, known, &headers, &[], a, &p)
+    normalise(run, &rules, a)
+}
+
+fn norm_w(r: &RawCapture, w: Window, known: &Known, a: &Allowances) -> Capture {
+    norm_run(&run_of(r, w, 41234), known, a)
+}
+
+fn file_of(run: &RawRun) -> CaptureFile {
+    CaptureFile {
+        provenance: Provenance {
+            target: "t".into(),
+            scenario: "s".into(),
+            side: "reference".into(),
+            label: None,
+            recorded_at: START + 5000,
+            rig_version: "test".into(),
+        },
+        hashes: Hashes {
+            scenario: "h".into(),
+            files: vec![],
+        },
+        run: run.run.clone(),
+        raw: run.raw.clone(),
+    }
+}
+
+/// A raw run through the capture file format and back, as `verify` reads the reference.
+fn through_file(run: &RawRun) -> RawRun {
+    let text = capture::to_file_string(&file_of(run));
+    let back = capture::from_file_json(&serde_json::from_str(&text).unwrap()).unwrap();
+    RawRun {
+        raw: back.raw,
+        run: back.run,
+    }
 }
 
 fn shifted(ms: i64) -> Window {
@@ -110,17 +180,9 @@ fn shifted(ms: i64) -> Window {
 
 fn diff_w(a: &RawCapture, wa: Window, b: &RawCapture, wb: Window, al: &Allowances) -> Outcome {
     let known = Known::default();
-    let ca = norm_w(a, wa, &known, al);
-    let cb = norm_w(b, wb, &known, al);
-    // Through the file format, as `verify` reads the reference.
-    let meta = CaptureMeta {
-        target: "t".into(),
-        scenario: "s".into(),
-        scenario_hash: "h".into(),
-    };
-    let ca = capture::from_file_json(&capture::to_file_json(&meta, &ca))
-        .unwrap()
-        .1;
+    // The reference through the raw file format, as `verify` reads it.
+    let ca = norm_run(&through_file(&run_of(a, wa, 41234)), &known, al);
+    let cb = norm_run(&run_of(b, wb, 41234), &known, al);
     compare::compare(&ca, &cb, al, compare::DEFAULT_TOLERANCE_MS)
 }
 
@@ -184,6 +246,7 @@ fn scenario_capture(ids: [&str; 3], flip: bool, t: i64) -> RawCapture {
                 ("ñandú".as_bytes().to_vec(), item2.as_bytes().to_vec()),
             ]),
             pttl: -1,
+            pttl_at: START + 3000,
         },
     ];
     if flip {
@@ -248,16 +311,12 @@ fn runs_that_differ_only_in_generated_values_produce_identical_captures() {
         &known,
         &none,
     );
-    let meta = CaptureMeta {
-        target: "t".into(),
-        scenario: "s".into(),
-        scenario_hash: "h".into(),
-    };
+    assert_eq!(ca, cb, "normalised captures differ");
     let (fa, fb) = (
-        capture::to_file_string(&meta, &ca),
-        capture::to_file_string(&meta, &cb),
+        capture::normalised_json(&ca).to_string(),
+        capture::normalised_json(&cb).to_string(),
     );
-    assert_eq!(fa, fb, "captures differ");
+    assert_eq!(fa, fb);
     assert!(
         fa.contains("<oid:1>") && fa.contains("item:<oid:2>"),
         "{fa}"
@@ -337,6 +396,7 @@ fn identifiers_inside_strings_and_key_names() {
                     kind: "hash".into(),
                     value: RawValue::Hash(vec![(format!("user:{id}").into_bytes(), b"1".to_vec())]),
                     pttl: -1,
+                    pttl_at: START + 3000,
                 },
             ],
         )
@@ -652,11 +712,7 @@ fn never_forgiven() {
     // A header.
     let h = |ct: &str| {
         raw(
-            vec![RawStep::Http(RawHttp {
-                status: 200,
-                headers: vec![("content-type".into(), ct.into())],
-                body: b"{}".to_vec(),
-            })],
+            vec![http_h(200, &[("content-type", ct)], b"{}")],
             vec![],
             vec![],
         )
@@ -667,27 +723,27 @@ fn never_forgiven() {
             &h("application/json"),
         ),
         "steps[0].headers.content-type",
-        "header differs",
+        "text differs",
     );
 }
 
 #[test]
 fn key_order_is_a_note_not_a_difference() {
     let a = raw(
-        vec![RawStep::Http(RawHttp {
-            status: 200,
-            headers: vec![("content-type".into(), "application/json".into())],
-            body: br#"{"a":1,"b":2}"#.to_vec(),
-        })],
+        vec![http_h(
+            200,
+            &[("content-type", "application/json")],
+            br#"{"a":1,"b":2}"#,
+        )],
         vec![],
         vec![],
     );
     let b = raw(
-        vec![RawStep::Http(RawHttp {
-            status: 200,
-            headers: vec![("content-type".into(), "application/json".into())],
-            body: br#"{"b":2,"a":1}"#.to_vec(),
-        })],
+        vec![http_h(
+            200,
+            &[("content-type", "application/json")],
+            br#"{"b":2,"a":1}"#,
+        )],
         vec![],
         vec![],
     );
@@ -721,6 +777,7 @@ fn arrays_are_ordered_unless_allowed_as_a_set() {
                 kind: "set".into(),
                 value: RawValue::Set(m.iter().map(|x| x.as_bytes().to_vec()).collect()),
                 pttl: -1,
+                pttl_at: START + 3000,
             }],
         )
     };
@@ -828,6 +885,7 @@ fn non_ascii_keys_values_and_paths() {
                 kind: "hash".into(),
                 value: RawValue::Hash(vec![("日本".as_bytes().to_vec(), v.as_bytes().to_vec())]),
                 pttl: -1,
+                pttl_at: START + 3000,
             }],
         )
     };
@@ -878,62 +936,188 @@ fn days_relative_to_the_run() {
 
 #[test]
 fn ports_and_database_names_are_masked() {
-    let mut a = raw(
-        vec![RawStep::Http(RawHttp {
-            status: 302,
-            headers: vec![("location".into(), "http://127.0.0.1:41234/next".into())],
-            body: vec![],
-        })],
-        vec![],
-        vec![],
-    );
-    let p = Patterns::new().unwrap();
-    let headers: Vec<String> = DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect();
+    let mk = |port: u16, db: &str| {
+        raw(
+            vec![http_h(
+                302,
+                &[
+                    ("location", &format!("http://127.0.0.1:{port}/next")),
+                    ("x-db", db),
+                ],
+                b"",
+            )],
+            vec![],
+            vec![],
+        )
+    };
     let none = Allowances::default();
-    let ra = RawRun {
-        raw: a.clone(),
-        window: window(),
-        names: vec![("127.0.0.1:41234".into(), "port.http".into())],
-    };
-    if let RawStep::Http(h) = &mut a.steps[0] {
-        h.headers[0].1 = "http://127.0.0.1:50999/next".into();
-    }
-    let rb = RawRun {
-        raw: a,
-        window: window(),
-        names: vec![("127.0.0.1:50999".into(), "port.http".into())],
-    };
-    let ca = normalise(&ra, &Known::default(), &headers, &[], &none, &p);
-    let cb = normalise(&rb, &Known::default(), &headers, &[], &none, &p);
-    assert_match(&compare::compare(&ca, &cb, &none, 2000));
+    let known = Known::default();
+    let ra = run_of(&mk(41234, "rig_1_0_ref"), window(), 41234);
+    let mut rb = run_of(&mk(50999, "rig_1_1_cand"), window(), 50999);
+    rb.run.mongo_db = "rig_1_1_cand".into();
+    let o = compare::compare(
+        &norm_run(&ra, &known, &none),
+        &norm_run(&rb, &known, &none),
+        &none,
+        2000,
+    );
+    assert_match(&o);
 }
 
 #[test]
 fn capture_files_round_trip() {
     let a = ids_a();
-    let cap = norm_w(
-        &scenario_capture(refs(&a), false, 50),
-        window(),
-        &Known::default(),
-        &Allowances::default(),
+    let run = run_of(&scenario_capture(refs(&a), false, 50), window(), 41234);
+    let f = file_of(&run);
+    let text = capture::to_file_string(&f);
+    let back = capture::from_file_json(&serde_json::from_str(&text).unwrap()).unwrap();
+    assert_eq!(back, f);
+    assert_eq!(capture::to_file_string(&back), text);
+    // The stored capture is raw: the generated ids are there as observed.
+    assert!(text.contains(&a[0]), "{text}");
+    // Normalising the stored run gives what normalising the live run gives.
+    let none = Allowances::default();
+    assert_eq!(
+        norm_run(&through_file(&run), &Known::default(), &none),
+        norm_run(&run, &Known::default(), &none)
     );
-    let meta = CaptureMeta {
-        target: "t".into(),
-        scenario: "s".into(),
-        scenario_hash: "h".into(),
+}
+
+fn hash_entry(key: &[u8], pairs: Vec<(Vec<u8>, Vec<u8>)>) -> RawEntry {
+    RawEntry {
+        key: key.to_vec(),
+        kind: "hash".into(),
+        value: RawValue::Hash(pairs),
+        pttl: -1,
+        pttl_at: START + 3000,
+    }
+}
+
+#[test]
+fn bytes_that_are_not_utf8_never_collide_with_text() {
+    let h = |field: Vec<u8>, v: &str| {
+        raw(
+            vec![],
+            vec![],
+            vec![hash_entry(b"h", vec![(field, v.as_bytes().to_vec())])],
+        )
     };
-    let text = capture::to_file_string(&meta, &cap);
-    let v: Value = serde_json::from_str(&text).unwrap();
-    let (m2, c2) = capture::from_file_json(&v).unwrap();
-    assert_eq!(m2, meta);
-    assert_eq!(c2, cap);
-    assert_eq!(capture::to_file_string(&m2, &c2), text);
-    // Unknown versions are refused with a hint.
-    let mut old = v.clone();
-    old["rig_capture"] = json!(0);
+    // A field with invalid bytes against the field its lossy decoding would give.
+    let o = diff(
+        &h(vec![b'a', 0xff], "1"),
+        &h("a\u{fffd}".as_bytes().to_vec(), "1"),
+    );
+    assert!(!o.differences.is_empty(), "lossy decoding collided");
+    // Two different invalid fields.
+    let o = diff(&h(vec![b'a', 0xff], "1"), &h(vec![b'a', 0xfe], "1"));
+    assert!(!o.differences.is_empty());
+    assert_match(&diff(&h(vec![b'a', 0xff], "1"), &h(vec![b'a', 0xff], "1")));
+    // A key name with invalid bytes against a key literally named like its marker.
+    let k = |key: &[u8]| raw(vec![], vec![], vec![entry_bytes(key)]);
+    let o = diff(&k(&[b'k', 0xff]), &k(b"k<bytes:ff>"));
+    assert!(!o.differences.is_empty(), "{:#?}", paths(&o));
+    // Ids are still found in the UTF-8 parts of such a key.
+    let (a, b) = (oid_at(START + 10, 1), oid_at(START + 20, 2));
+    let mk = |id: &str| {
+        let mut key = format!("lock:{id}:").into_bytes();
+        key.push(0xff);
+        raw(
+            vec![http(200, json!({"id": id}))],
+            vec![],
+            vec![entry_bytes(&key)],
+        )
+    };
+    assert_match(&diff(&mk(&a), &mk(&b)));
+    // And non-UTF-8 values are bytes, not text.
+    let v = |b: Vec<u8>| {
+        raw(
+            vec![],
+            vec![],
+            vec![RawEntry {
+                key: b"v".to_vec(),
+                kind: "string".into(),
+                value: RawValue::Str(b),
+                pttl: -1,
+                pttl_at: START,
+            }],
+        )
+    };
+    assert_one(
+        &diff(&v(vec![0xff]), &v("\u{fffd}".as_bytes().to_vec())),
+        "dragonfly.v.value",
+        "type differs",
+    );
+}
+
+fn entry_bytes(key: &[u8]) -> RawEntry {
+    RawEntry {
+        key: key.to_vec(),
+        kind: "string".into(),
+        value: RawValue::Str(b"1".to_vec()),
+        pttl: -1,
+        pttl_at: START + 3000,
+    }
+}
+
+#[test]
+fn stream_fields_are_ordered_pairs() {
+    let s = |fields: &[(&str, &str)]| {
+        raw(
+            vec![],
+            vec![],
+            vec![RawEntry {
+                key: b"events".to_vec(),
+                kind: "stream".into(),
+                value: RawValue::Stream(vec![(
+                    "1-0".into(),
+                    fields
+                        .iter()
+                        .map(|(f, v)| (f.as_bytes().to_vec(), v.as_bytes().to_vec()))
+                        .collect(),
+                )]),
+                pttl: -1,
+                pttl_at: START + 3000,
+            }],
+        )
+    };
+    let both = s(&[("tag", "a"), ("tag", "b")]);
+    assert_match(&diff(&both, &both));
+    let o = diff(&both, &s(&[("tag", "a")]));
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+    assert_one(
+        &o,
+        "dragonfly.events.value[0].fields[1]",
+        "array element missing in candidate",
+    );
+    // Field order is part of the entry.
     assert!(
-        capture::from_file_json(&old)
-            .unwrap_err()
-            .contains("re-record")
+        !diff(&s(&[("a", "1"), ("b", "2")]), &s(&[("b", "2"), ("a", "1")]))
+            .differences
+            .is_empty()
+    );
+}
+
+#[test]
+fn each_ttl_is_relative_to_its_own_reading() {
+    // The same expiry, read 5 s apart: equal. With one reading time for every key it would
+    // look 5 s shorter.
+    let e = |pttl: i64, at: i64| {
+        raw(
+            vec![],
+            vec![],
+            vec![RawEntry {
+                key: b"k".to_vec(),
+                kind: "string".into(),
+                value: RawValue::Str(b"v".to_vec()),
+                pttl,
+                pttl_at: at,
+            }],
+        )
+    };
+    assert_match(&diff(&e(60_000, START + 3000), &e(55_000, START + 8000)));
+    assert_one(
+        &diff(&e(60_000, START + 3000), &e(55_000, START + 3000)),
+        "dragonfly.k.ttl",
+        "TTL differs",
     );
 }

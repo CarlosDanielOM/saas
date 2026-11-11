@@ -13,7 +13,9 @@ use std::time::Duration;
 
 use crate::allow::Allowances;
 use crate::canon;
-use crate::capture::{self, Capture, CaptureMeta, RawCapture, StepCap};
+use crate::capture::{
+    self, Capture, CaptureFile, Hashes, Provenance, RawCapture, RunMeta, StepCap,
+};
 use crate::compare;
 use crate::detect::{self, DetectCtx, Known, Patterns, Window};
 use crate::error::{Result, config};
@@ -61,11 +63,11 @@ impl Which {
     }
 }
 
-/// What one side did in one scenario, before normalisation.
+/// What one side did in one scenario, before normalisation: what a capture file stores.
+#[derive(Debug, Clone)]
 pub struct RawRun {
     pub raw: RawCapture,
-    pub window: Window,
-    pub names: Vec<(String, String)>,
+    pub run: RunMeta,
 }
 
 type SideOutcome = std::result::Result<RawRun, SideFailure>;
@@ -288,23 +290,6 @@ impl<'s> SideRunner<'s> {
         Ok(())
     }
 
-    fn names(&self) -> Vec<(String, String)> {
-        let mut out = Vec::new();
-        if let Some(p) = &self.proc {
-            for (n, port) in &p.ports {
-                for host in ["127.0.0.1", "localhost", "[::1]"] {
-                    out.push((format!("{host}:{port}"), format!("port.{n}")));
-                }
-            }
-        }
-        out.push((self.stores.dragonfly_url(), "dragonfly_url".into()));
-        if self.stores.db_name.starts_with("rig_") {
-            out.push((self.stores.db_name.clone(), "mongo_db".into()));
-        }
-        out.sort_by_key(|(l, _)| std::cmp::Reverse(l.len()));
-        out
-    }
-
     async fn run_scenario(&mut self, sc: &Scenario) -> SideOutcome {
         let start = timefmt::now_ms();
         let own_process = !self.target.share_process || sc.restart;
@@ -366,13 +351,25 @@ impl<'s> SideRunner<'s> {
             .capture_mongo(&sc.mongo)
             .await
             .map_err(|e| self.fail(format!("reading MongoDB: {e}")))?;
-        let captured_at = timefmt::now_ms();
         let dragonfly = self
             .stores
             .capture_dragonfly(&sc.dragonfly)
             .await
             .map_err(|e| self.fail(format!("reading Dragonfly: {e}")))?;
-        let names = self.names();
+        let run = RunMeta {
+            start,
+            end,
+            process_start: proc_start,
+            ports: self
+                .proc
+                .as_ref()
+                .map(|p| p.ports.clone())
+                .unwrap_or_default(),
+            mongo_db: self.stores.db_name.clone(),
+            mongo_uri: capture::redact_uri(&self.stores.mongo_uri()),
+            dragonfly_db: self.stores.df_index,
+            dragonfly_url: self.stores.dragonfly_url(),
+        };
         if let Some(p) = self.proc.as_mut()
             && let Err(why) = p.check_alive()
         {
@@ -384,20 +381,13 @@ impl<'s> SideRunner<'s> {
         if own_process && let Some(why) = self.stop_process().await {
             return Err(self.fail(format!("{why} before the rig stopped it")));
         }
-        Ok(RawRun {
-            raw: RawCapture {
-                steps,
-                mongo,
-                dragonfly,
-                captured_at,
-            },
-            window: Window {
-                start,
-                end,
-                proc_start,
-            },
-            names,
-        })
+        let mut raw = RawCapture {
+            steps,
+            mongo,
+            dragonfly,
+        };
+        raw.sort();
+        Ok(RawRun { raw, run })
     }
 
     /// Stop the process; the stores stay claimed until [`Registry::cleanup`].
@@ -426,24 +416,39 @@ async fn run_side(
     Ok(out)
 }
 
-/// Detect, order and number one side's capture.
-pub fn normalise(
-    run: &RawRun,
-    known: &Known,
-    headers: &[String],
-    as_text: &[crate::path::Pattern],
-    allow: &Allowances,
-    patterns: &Patterns,
-) -> Capture {
+/// What normalisation needs besides the raw run: the scenario's known inputs and rules.
+pub struct Rules<'a> {
+    pub patterns: &'a Patterns,
+    pub known: &'a Known,
+    pub headers: &'a [String],
+    pub as_text: &'a [crate::path::Pattern],
+}
+
+impl<'a> Rules<'a> {
+    pub fn of(sc: &'a Scenario, patterns: &'a Patterns) -> Rules<'a> {
+        Rules {
+            patterns,
+            known: &sc.known,
+            headers: &sc.headers,
+            as_text: &sc.as_text,
+        }
+    }
+}
+
+/// Detect, order and number one side's raw run with the current normaliser.
+pub fn normalise(run: &RawRun, rules: &Rules<'_>, allow: &Allowances) -> Capture {
     let ctx = DetectCtx {
-        patterns,
-        window: run.window,
-        known,
+        patterns: rules.patterns,
+        window: Window {
+            start: run.run.start,
+            end: run.run.end,
+            proc_start: run.run.process_start,
+        },
+        known: rules.known,
         allow,
-        names: run.names.clone(),
-        headers: headers.to_vec(),
-        captured_at: run.raw.captured_at,
-        as_text: as_text.to_vec(),
+        names: run.run.names(),
+        headers: rules.headers.to_vec(),
+        as_text: rules.as_text.to_vec(),
     };
     let mut cap = detect::detect(&ctx, &run.raw);
     canon::canonicalise(&mut cap, allow);
@@ -451,7 +456,36 @@ pub fn normalise(
 }
 
 fn normalise_sc(run: &RawRun, sc: &Scenario, allow: &Allowances, patterns: &Patterns) -> Capture {
-    normalise(run, &sc.known, &sc.headers, &sc.as_text, allow, patterns)
+    normalise(run, &Rules::of(sc, patterns), allow)
+}
+
+/// A raw run through the capture file format and back, as `verify` reads a reference.
+fn through_file(target: &str, sc: &Scenario, r: &RawRun) -> Result<RawRun> {
+    let f = capture_file(target, sc, r, None);
+    let back = capture::from_file_json(&capture::to_file_json(&f)).map_err(config)?;
+    Ok(RawRun {
+        raw: back.raw,
+        run: back.run,
+    })
+}
+
+fn capture_file(target: &str, sc: &Scenario, r: &RawRun, label: Option<&str>) -> CaptureFile {
+    CaptureFile {
+        provenance: Provenance {
+            target: target.into(),
+            scenario: sc.name.clone(),
+            side: Which::Reference.name().into(),
+            label: label.map(str::to_string),
+            recorded_at: timefmt::now_ms(),
+            rig_version: env!("CARGO_PKG_VERSION").into(),
+        },
+        hashes: Hashes {
+            scenario: sc.hash.clone(),
+            files: sc.files.clone(),
+        },
+        run: r.run.clone(),
+        raw: r.raw.clone(),
+    }
 }
 
 fn finish_scenario(
@@ -516,7 +550,7 @@ pub fn capture_path(settings: &Settings, target: &str, scenario: &str) -> PathBu
         .join(format!("{scenario}.json"))
 }
 
-fn read_capture(path: &FsPath) -> std::result::Result<(CaptureMeta, Capture), String> {
+fn read_capture(path: &FsPath) -> std::result::Result<CaptureFile, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let v: serde_json::Value =
         serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -534,7 +568,7 @@ pub fn check(settings: &Settings, target_name: &str, filters: &[String]) -> Resu
         r.status = Status::Checked;
         let path = capture_path(settings, target_name, &sc.name);
         match read_capture(&path) {
-            Ok((meta, _)) if meta.scenario_hash != sc.hash => {
+            Ok(f) if f.hashes.scenario != sc.hash => {
                 r.warnings.push("capture is stale: re-record it".into())
             }
             Ok(_) => {}
@@ -583,17 +617,10 @@ pub async fn compare_live(
         match (r, c) {
             (Ok(r), Ok(c)) => {
                 let allow = sc.allowances();
+                // The reference goes through the file format, exactly as `verify` reads it.
+                let r = through_file(target_name, sc, &r)?;
                 let rc = normalise_sc(&r, sc, &allow, &p);
                 let cc = normalise_sc(&c, sc, &allow, &p);
-                // Go through the file format, exactly as `verify` does.
-                let meta = CaptureMeta {
-                    target: target_name.into(),
-                    scenario: sc.name.clone(),
-                    scenario_hash: sc.hash.clone(),
-                };
-                let rc = capture::from_file_json(&capture::to_file_json(&meta, &rc))
-                    .map(|(_, c)| c)
-                    .map_err(config)?;
                 let outcome = compare::compare(&rc, &cc, &allow, sc.tolerance_ms);
                 finish_scenario(&mut rep, outcome, &allow, Status::Match, Status::Differ);
             }
@@ -631,19 +658,22 @@ pub async fn verify(
                 sc.name
             )),
             Err(e) => Err(e),
-            Ok((meta, _)) if meta.scenario_hash != sc.hash => Err(format!(
+            Ok(f) if f.hashes.scenario != sc.hash => Err(format!(
                 "capture is stale: the scenario or a seed it includes changed after recording; run `dima-rig record {target_name} {}`",
                 sc.name
             )),
-            Ok((meta, _)) if meta.target != target_name || meta.scenario != sc.name => {
+            Ok(f) if f.provenance.target != target_name || f.provenance.scenario != sc.name => {
                 Err(format!(
                     "capture {} belongs to {}/{}",
                     path.display(),
-                    meta.target,
-                    meta.scenario
+                    f.provenance.target,
+                    f.provenance.scenario
                 ))
             }
-            Ok((_, cap)) => Ok(cap),
+            Ok(f) => Ok(RawRun {
+                raw: f.raw,
+                run: f.run,
+            }),
         };
         match problem {
             Ok(cap) => {
@@ -668,11 +698,13 @@ pub async fn verify(
             None,
         )
         .await?;
-        for ((sc, rc), c) in runnable.iter().zip(recorded).zip(cands) {
+        for ((sc, r), c) in runnable.iter().zip(recorded).zip(cands) {
             let mut rep = ScenarioReport::new(&sc.name, &sc.description);
             match c {
                 Ok(c) => {
                     let allow = sc.allowances();
+                    // The stored raw reference, normalised by the current code.
+                    let rc = normalise_sc(&r, sc, &allow, &p);
                     let cc = normalise_sc(&c, sc, &allow, &p);
                     let outcome = compare::compare(&rc, &cc, &allow, sc.tolerance_ms);
                     finish_scenario(&mut rep, outcome, &allow, Status::Match, Status::Differ);
@@ -697,6 +729,7 @@ pub async fn record(
     target_name: &str,
     filters: &[String],
     once: bool,
+    label: Option<&str>,
 ) -> Result<Report> {
     let mut report = Report::new("record", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
@@ -769,15 +802,22 @@ pub async fn record(
             }
             None => {}
         }
-        let meta = CaptureMeta {
-            target: target_name.into(),
-            scenario: sc.name.clone(),
-            scenario_hash: sc.hash.clone(),
-        };
         let path = capture_path(settings, target_name, &sc.name);
+        // Unchanged: the stored capture, normalised by the current code, still matches.
         let unchanged = match read_capture(&path) {
-            Ok((m, old)) if m == meta => {
-                compare::compare(&old, &c1, &Allowances::default(), sc.tolerance_ms)
+            Ok(old)
+                if old.hashes.scenario == sc.hash
+                    && old.provenance.target == target_name
+                    && old.provenance.scenario == sc.name =>
+            {
+                let fresh = sc.allowances();
+                let old = RawRun {
+                    raw: old.raw,
+                    run: old.run,
+                };
+                let oc = normalise_sc(&old, sc, &fresh, &p);
+                let nc = normalise_sc(&r1, sc, &fresh, &p);
+                compare::compare(&oc, &nc, &fresh, sc.tolerance_ms)
                     .differences
                     .is_empty()
             }
@@ -786,7 +826,7 @@ pub async fn record(
         if unchanged {
             rep.status = Status::Unchanged;
         } else {
-            let text = capture::to_file_string(&meta, &c1);
+            let text = capture::to_file_string(&capture_file(target_name, sc, &r1, label));
             if let Some(dir) = path.parent() {
                 std::fs::create_dir_all(dir)
                     .map_err(|e| crate::error::io(&dir.display().to_string(), e))?;
@@ -860,6 +900,7 @@ pub async fn diff_get(
         allow: list.allow.clone(),
         tolerance_ms: list.tolerance_ms,
         hash: String::new(),
+        files: Vec::new(),
         known,
     };
     let mut runs = Vec::new();

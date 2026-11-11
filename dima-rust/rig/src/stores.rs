@@ -621,13 +621,14 @@ impl SideStores {
                                     redis::Value::BulkString(b) => b.clone(),
                                     other => format!("{other:?}").into_bytes(),
                                 };
+                                // The score as the server wrote it.
                                 let score = match s {
                                     redis::Value::BulkString(b) => {
-                                        String::from_utf8_lossy(b).parse().unwrap_or(f64::NAN)
+                                        String::from_utf8_lossy(b).to_string()
                                     }
-                                    redis::Value::Double(f) => *f,
-                                    redis::Value::Int(i) => *i as f64,
-                                    _ => f64::NAN,
+                                    redis::Value::Double(f) => f.to_string(),
+                                    redis::Value::Int(i) => i.to_string(),
+                                    other => format!("{other:?}"),
                                 };
                                 pairs.push((member, score));
                             }
@@ -667,10 +668,13 @@ impl SideStores {
                 }
                 _ => RawValue::Other,
             };
+            // Each TTL with the time of its own reading (the middle of the round trip).
+            let before = crate::timefmt::now_ms();
             let pttl = match self.q(redis::cmd("PTTL").arg(&key)).await? {
                 redis::Value::Int(i) => i,
                 _ => -1,
             };
+            let pttl_at = before + (crate::timefmt::now_ms() - before) / 2;
             if pttl == -2 {
                 continue;
             }
@@ -679,6 +683,7 @@ impl SideStores {
                 kind,
                 value,
                 pttl,
+                pttl_at,
             });
         }
         Ok(out)

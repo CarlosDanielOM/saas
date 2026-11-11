@@ -337,6 +337,8 @@ pub struct Scenario {
     pub allow: Vec<(Pattern, AllowKind, String)>,
     pub tolerance_ms: i64,
     pub hash: String,
+    /// Each input file (the scenario, then every seed it includes) with its own hash.
+    pub files: Vec<(String, String)>,
     pub known: Known,
 }
 
@@ -564,12 +566,25 @@ pub fn resolve_filter(
 // ---------------------------------------------------------------------------------------------
 // Loading.
 
+/// A file's name relative to the target's scenario directory (`items/create.json`,
+/// `_seeds/users.json`), or its full path when it lies elsewhere.
+fn relative_name(root: &FsPath, file: &FsPath) -> String {
+    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    file.strip_prefix(&root)
+        .unwrap_or(file)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
 struct Loader<'a> {
     patterns: &'a Patterns,
     allow_scripts: bool,
     known: Known,
     hash_input: String,
     seen_files: HashSet<PathBuf>,
+    /// The scenario directory of the target: file hashes are named relative to it.
+    root: PathBuf,
+    files: Vec<(String, String)>,
     mongo: Vec<(String, Vec<Value>)>,
     dragonfly: Vec<Vec<Arg>>,
 }
@@ -689,6 +704,10 @@ impl Loader<'_> {
             }
             let v = read_json(&canon)?;
             self.hash_input.push_str(&v.to_string());
+            self.files.push((
+                relative_name(&self.root, &canon),
+                format!("fnv1a64:{:016x}", fnv1a64(v.to_string().as_bytes())),
+            ));
             let sf: SeedFile = parse(&canon, &v)?;
             if sf.rig_seed != SEED_VERSION {
                 return Err(config(format!(
@@ -1099,6 +1118,11 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         known: Known::default(),
         hash_input: v.to_string(),
         seen_files: HashSet::new(),
+        root: rig_dir.join("scenarios").join(target),
+        files: vec![(
+            format!("{name}.json"),
+            format!("fnv1a64:{:016x}", fnv1a64(v.to_string().as_bytes())),
+        )],
         mongo: Vec::new(),
         dragonfly: Vec::new(),
     };
@@ -1227,6 +1251,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         allow: allowances(f.allow, &at)?,
         tolerance_ms,
         hash: format!("fnv1a64:{:016x}", fnv1a64(loader.hash_input.as_bytes())),
+        files: loader.files,
         known: loader.known,
     })
 }

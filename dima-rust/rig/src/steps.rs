@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use serde_json::Value;
 
-use crate::capture::{RawHttp, RawStep};
+use crate::capture::{RawHttp, RawReplyStep, RawStep};
 use crate::path::Seg as PSeg;
 use crate::scenario::{self, ReqBody, SaveFrom, Step, StepKind, WaitCond};
 use crate::side::SideProcess;
@@ -136,18 +136,10 @@ impl Runner<'_> {
             }
         };
         let status = resp.status().as_u16();
-        let headers: Vec<(String, String)> = resp
+        let headers: Vec<(String, Vec<u8>)> = resp
             .headers()
             .iter()
-            .map(|(k, v)| {
-                (
-                    k.as_str().to_ascii_lowercase(),
-                    v.to_str().map_or_else(
-                        |_| String::from_utf8_lossy(v.as_bytes()).to_string(),
-                        str::to_string,
-                    ),
-                )
-            })
+            .map(|(k, v)| (k.as_str().to_ascii_lowercase(), v.as_bytes().to_vec()))
             .collect();
         let mut resp = resp;
         let mut body = Vec::new();
@@ -184,7 +176,10 @@ impl Runner<'_> {
         for (name, from) in &h.save {
             let v = match from {
                 SaveFrom::Status => Some(status.to_string()),
-                SaveFrom::Header(n) => headers.iter().find(|(k, _)| k == n).map(|(_, v)| v.clone()),
+                SaveFrom::Header(n) => headers
+                    .iter()
+                    .find(|(k, _)| k == n)
+                    .map(|(_, v)| String::from_utf8_lossy(v).to_string()),
                 SaveFrom::Body(segs) => {
                     serde_json::from_slice::<Value>(&body)
                         .ok()
@@ -213,6 +208,7 @@ impl Runner<'_> {
             }
         }
         Ok(RawStep::Http(RawHttp {
+            at: timefmt::now_ms(),
             status,
             headers,
             body,
@@ -343,12 +339,16 @@ impl Runner<'_> {
                     // The rendered command: a saved value can become a command name or option.
                     crate::dfcmd::check(&rendered, self.allow_scripts)
                         .map_err(|e| err(i, format!("dragonfly {rendered:?}: {e}")))?;
-                    RawStep::Reply(
-                        self.stores
-                            .command(&rendered)
-                            .await
-                            .map_err(|e| err(i, e.to_string()))?,
-                    )
+                    let reply = self
+                        .stores
+                        .command(&rendered)
+                        .await
+                        .map_err(|e| err(i, e.to_string()))?;
+                    RawStep::Reply(RawReplyStep {
+                        at: timefmt::now_ms(),
+                        command: rendered,
+                        reply,
+                    })
                 }
                 StepKind::Pause(ms) => {
                     self.sleep_watching(i, *ms).await?;
