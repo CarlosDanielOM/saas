@@ -1,0 +1,45 @@
+[package]
+name = "dimadb-server"
+description = "Drop-in replacement for the dimadb console backend (dimadb/server/*.mjs)."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "dimadb-server"
+path = "src/main.rs"
+
+[dependencies]
+dima-core = { workspace = true }
+dima-store = { workspace = true }
+dima-text = { workspace = true, features = ["collation"] }
+dima-web = { workspace = true }
+aes-gcm = { workspace = true }
+anyhow = { workspace = true }
+bson = { workspace = true }
+bytes = { workspace = true }
+futures-util = { workspace = true }
+http = { workspace = true }
+http-body-util = { workspace = true }
+mongodb = { workspace = true }
+percent-encoding = { workspace = true }
+redis = { workspace = true, features = ["tokio-rustls-comp", "tls-rustls-webpki-roots"] }
+rustls = { workspace = true }
+scrypt = { workspace = true }
+serde_json = { workspace = true }
+subtle = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+url = { workspace = true }
+
+[dev-dependencies]
+hex = { workspace = true }
+tokio = { workspace = true, features = ["test-util"] }
