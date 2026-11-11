@@ -69,7 +69,7 @@ impl Runner<'_> {
         let port_name = h
             .port
             .clone()
-            .unwrap_or_else(|| self.proc.ports.keys().next().cloned().unwrap_or_default());
+            .unwrap_or_else(|| self.proc.primary_port.clone());
         let port = self
             .proc
             .port(&port_name)

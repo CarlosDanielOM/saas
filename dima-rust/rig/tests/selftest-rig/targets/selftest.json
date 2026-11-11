@@ -1,7 +1,7 @@
 {
   "rig_target": 1,
-  "description": "Self-test: the fixture server on both sides. Pass --set fixture=<path to dima-rig-fixture> --set variant=<candidate variant>.",
-  "ports": ["http"],
+  "description": "Self-test: the fixture server on both sides. The second port, admin, sorts before http but is not the primary port: requests without a port go to http, the first one declared. Pass --set fixture=<path to dima-rig-fixture> --set variant=<candidate variant>.",
+  "ports": ["http", "admin"],
   "reference": {
     "command": ["{var.fixture}", "--variant", "good"],
     "env": {

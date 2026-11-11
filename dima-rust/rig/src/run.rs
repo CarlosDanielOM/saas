@@ -229,6 +229,7 @@ impl<'s> SideRunner<'s> {
             env,
             log_path,
             ports,
+            primary_port: self.target.ports.first().cloned().unwrap_or_default(),
             ready: spec.ready.clone(),
             stop_signal: spec.stop_signal,
             grace_ms: spec.grace_ms,
