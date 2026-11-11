@@ -108,4 +108,4 @@ pub use path::Params;
 pub use request::{BodyState, PeerAddr, Req, ResponseState};
 pub use response::Response;
 pub use router::Router;
-pub use server::{ServeOptions, serve};
+pub use server::{MAX_HEAD_BYTES, MAX_HEADER_LINES, ServeOptions, bind, bind_to, serve};

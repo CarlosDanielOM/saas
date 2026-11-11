@@ -362,3 +362,191 @@ async fn slow_bodies_hit_the_request_deadline() {
     token.cancel();
     server.await.expect("join").expect("serve");
 }
+
+/// Reads one response off a kept-alive connection: the head, then `Content-Length` body bytes
+/// (none for HEAD).
+async fn read_response(stream: &mut TcpStream, head_request: bool) -> (String, Vec<u8>) {
+    let mut head = Vec::new();
+    while !head.ends_with(b"\r\n\r\n") {
+        let mut byte = [0u8; 1];
+        stream.read_exact(&mut byte).await.expect("response head");
+        head.push(byte[0]);
+    }
+    let head = String::from_utf8_lossy(&head).into_owned();
+    let length = head
+        .lines()
+        .find_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            name.eq_ignore_ascii_case("content-length")
+                .then(|| value.trim().parse::<usize>().ok())
+                .flatten()
+        })
+        .unwrap_or(0);
+    let mut body = vec![0u8; if head_request { 0 } else { length }];
+    stream.read_exact(&mut body).await.expect("response body");
+    (head, body)
+}
+
+#[tokio::test]
+async fn the_connection_cap_stops_accepting_until_a_slot_frees() {
+    let options = ServeOptions {
+        max_connections: 1,
+        ..ServeOptions::default()
+    };
+    let (addr, token, server) = start(options).await;
+    let request = b"GET /who HTTP/1.1\r\nHost: x\r\n\r\n";
+
+    let mut first = TcpStream::connect(addr).await.expect("connect");
+    first.write_all(request).await.expect("write");
+    let (head, _) = read_response(&mut first, false).await;
+    assert!(head.starts_with("HTTP/1.1 200"), "{head}");
+
+    // The kernel completes the handshake (backlog) but the server does not accept it yet.
+    let mut second = TcpStream::connect(addr).await.expect("connect");
+    second.write_all(request).await.expect("write");
+    let mut byte = [0u8; 1];
+    let waited = tokio::time::timeout(Duration::from_millis(300), second.read(&mut byte)).await;
+    assert!(waited.is_err(), "answered while at the cap");
+
+    drop(first);
+    let (head, body) =
+        tokio::time::timeout(Duration::from_secs(5), read_response(&mut second, false))
+            .await
+            .expect("answered once the first connection closed");
+    assert!(head.starts_with("HTTP/1.1 200"), "{head}");
+    assert!(String::from_utf8_lossy(&body).contains("\"ip\""));
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+#[tokio::test]
+async fn request_heads_are_limited_like_node() {
+    let (addr, token, server) = start(ServeOptions::default()).await;
+    let with_header = |size: usize| {
+        format!(
+            "GET /who HTTP/1.1\r\nHost: x\r\nConnection: close\r\nX-Big: {}\r\n\r\n",
+            "a".repeat(size)
+        )
+    };
+    let fits = roundtrip(addr, &with_header(15 * 1024)).await;
+    assert!(
+        fits.starts_with("HTTP/1.1 200"),
+        "{}",
+        fits.lines().next().unwrap_or_default()
+    );
+    let too_big = roundtrip(addr, &with_header(16 * 1024)).await;
+    assert!(too_big.starts_with("HTTP/1.1 431"), "{too_big}");
+    let long_path = format!(
+        "GET /who?{} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n",
+        "q".repeat(17 * 1024)
+    );
+    assert!(
+        roundtrip(addr, &long_path)
+            .await
+            .starts_with("HTTP/1.1 431")
+    );
+
+    let with_lines = |count: usize| {
+        let lines: String = (0..count).map(|i| format!("X-H{i}: v\r\n")).collect();
+        format!("GET /who HTTP/1.1\r\nHost: x\r\nConnection: close\r\n{lines}\r\n")
+    };
+    assert!(
+        roundtrip(addr, &with_lines(90))
+            .await
+            .starts_with("HTTP/1.1 200")
+    );
+    assert!(
+        roundtrip(addr, &with_lines(100))
+            .await
+            .starts_with("HTTP/1.1 431")
+    );
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+#[tokio::test]
+async fn keep_alive_reuses_connections_and_closes_idle_ones() {
+    let options = ServeOptions {
+        keep_alive_timeout: Duration::from_millis(300),
+        ..ServeOptions::default()
+    };
+    let (addr, token, server) = start(options).await;
+    let mut stream = TcpStream::connect(addr).await.expect("connect");
+    // A fresh connection is not subject to the keep-alive timer, only to the header timeout.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    for _ in 0..2 {
+        stream
+            .write_all(b"GET /who HTTP/1.1\r\nHost: x\r\n\r\n")
+            .await
+            .expect("write");
+        let (head, body) = read_response(&mut stream, false).await;
+        assert!(head.starts_with("HTTP/1.1 200"), "{head}");
+        assert!(!body.is_empty());
+        // Shorter than the idle timeout: the connection stays usable.
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    // A slow handler is in progress, not idle.
+    stream
+        .write_all(b"GET /slow HTTP/1.1\r\nHost: x\r\n\r\n")
+        .await
+        .expect("write");
+    let (head, body) = read_response(&mut stream, false).await;
+    assert!(head.starts_with("HTTP/1.1 200"), "{head}");
+    assert_eq!(body, b"done");
+    let mut rest = Vec::new();
+    let closed = tokio::time::timeout(Duration::from_secs(5), stream.read_to_end(&mut rest)).await;
+    assert!(
+        matches!(closed, Ok(Ok(0))),
+        "idle connection closed: {closed:?}"
+    );
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+#[tokio::test]
+async fn head_responses_carry_no_body_on_the_wire() {
+    let (addr, token, server) = start(ServeOptions::default()).await;
+    let mut stream = TcpStream::connect(addr).await.expect("connect");
+    stream
+        .write_all(b"HEAD /who HTTP/1.1\r\nHost: x\r\n\r\nGET /who HTTP/1.1\r\nHost: x\r\n\r\n")
+        .await
+        .expect("write");
+    let (head, _) = read_response(&mut stream, true).await;
+    assert!(head.starts_with("HTTP/1.1 200"), "{head}");
+    assert!(
+        head.to_ascii_lowercase().contains("content-length: 37"),
+        "{head}"
+    );
+    // The next bytes on the wire are the second response, not a HEAD body.
+    let (head, body) = read_response(&mut stream, false).await;
+    assert!(head.starts_with("HTTP/1.1 200"), "{head}");
+    assert_eq!(body, br#"{"ip":"127.0.0.1","upgradable":false}"#);
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+#[tokio::test]
+async fn bind_listens_dual_stack_like_node() {
+    let listener = dima_web::bind(0).expect("bind");
+    let local = listener.local_addr().expect("address");
+    let mut root = Router::new();
+    root.get("/who", who);
+    let app = App::new(root, ()).expect("app");
+    let token = CancellationToken::new();
+    let server = tokio::spawn(serve(listener, app, token.clone(), ServeOptions::default()));
+    let v4 = std::net::SocketAddr::from(([127, 0, 0, 1], local.port()));
+    let response = roundtrip(
+        v4,
+        "GET /who HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n",
+    )
+    .await;
+    let expected = if local.is_ipv6() {
+        r#"{"ip":"::ffff:127.0.0.1","upgradable":false}"#
+    } else {
+        // No IPv6 on this machine: Node falls back to 0.0.0.0 too.
+        r#"{"ip":"127.0.0.1","upgradable":false}"#
+    };
+    assert!(response.ends_with(expected), "{response}");
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
