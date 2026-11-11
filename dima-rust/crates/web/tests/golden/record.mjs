@@ -955,6 +955,7 @@ add('upload-fields-name-over', 'POST', '/upload/fields', [MP], mp([field('n'.rep
 add('upload-fields-name-utf8', 'POST', '/upload/fields', [MP], mp([field('ñ'.repeat(7), 'v')]));
 add('upload-fields-parts-under', 'POST', '/upload/fields', [MP], mp([field('a', '1'), field('b', '2'), filePart('x', undefined, 'application/octet-stream', pat(1)), filePart('y', undefined, 'application/octet-stream', pat(1))]));
 add('upload-fields-parts-at', 'POST', '/upload/fields', [MP], mp([field('a', '1'), field('b', '2'), filePart('x', undefined, 'application/octet-stream', pat(1)), filePart('y', undefined, 'application/octet-stream', pat(1)), filePart('z', undefined, 'application/octet-stream', pat(1))]));
+add('upload-fields-parts-after-file', 'POST', '/upload/fields', [MP], mp([field('a', '1'), filePart('doc', 'd.png', 'image/png', pat(2)), field('b', '2'), filePart('x', undefined, 'application/octet-stream', pat(1)), filePart('y', undefined, 'application/octet-stream', pat(1)), field('e', 'after the limit')]));
 add('upload-middleware-ok', 'POST', '/upload/middleware', [MP], mp([field('name', 'm'), filePart('trigger', 'm.mp4', 'video/mp4', pat(9))]));
 add('upload-middleware-error', 'POST', '/upload/middleware', [MP], mp([filePart('trigger', 'm.mp4', 'video/mp4', pat(65))]));
 

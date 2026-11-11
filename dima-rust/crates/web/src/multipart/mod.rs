@@ -659,6 +659,15 @@ impl Single {
                         progress.fail(limit(MulterCode::LimitPartCount, None))?;
                     }
                 }
+                // Past the parts limit busboy no longer parses part headers: nothing after it
+                // reaches req.body or the storage, even while multer reads on.
+                Item::Headers(_)
+                    if limits.parts.is_some_and(|parts| {
+                        i64::try_from(parts).is_ok_and(|p| tally.delimiters >= p)
+                    }) =>
+                {
+                    skip_part(scanner, progress).await?;
+                }
                 Item::Headers(headers) => {
                     match parse::classify(&headers, self.multer.preserve_path) {
                         Part::Skip => skip_part(scanner, progress).await?,
