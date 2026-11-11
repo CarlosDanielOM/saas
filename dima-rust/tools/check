@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# The gate every package must pass: format, lint (warnings are errors), tests.
+#
+#   tools/check dima-text dima-core     the named crates
+#   tools/check --all                   every new crate (not the pre-existing root crate)
+#
+# Runs through tools/cargo, so the build caps apply.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+if [[ $# -eq 0 ]]; then
+    echo "usage: tools/check <crate>... | --all" >&2
+    exit 2
+fi
+
+if [[ "$1" == "--all" ]]; then
+    select=(--workspace --exclude dima-rust)
+    fmt=(--all)
+else
+    select=()
+    fmt=()
+    for crate in "$@"; do
+        select+=(-p "$crate")
+        fmt+=(-p "$crate")
+    done
+fi
+
+./tools/cargo fmt "${fmt[@]}" -- --check
+./tools/cargo clippy "${select[@]}" --all-targets -- -D warnings
+./tools/cargo test "${select[@]}"

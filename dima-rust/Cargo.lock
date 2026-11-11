@@ -1393,6 +1393,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-core"
+version = "0.1.0"
+
+[[package]]
+name = "dima-http"
+version = "0.1.0"
+
+[[package]]
+name = "dima-model"
+version = "0.1.0"
+
+[[package]]
 name = "dima-rust"
 version = "0.1.0"
 dependencies = [
@@ -1431,6 +1443,22 @@ dependencies = [
  "unicode-normalization",
  "uuid",
 ]
+
+[[package]]
+name = "dima-store"
+version = "0.1.0"
+
+[[package]]
+name = "dima-telemetry"
+version = "0.1.0"
+
+[[package]]
+name = "dima-text"
+version = "0.1.0"
+
+[[package]]
+name = "dima-web"
+version = "0.1.0"
 
 [[package]]
 name = "dispatch2"

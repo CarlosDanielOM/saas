@@ -1,0 +1,12 @@
+[package]
+name = "dima-store"
+description = "MongoDB and Dragonfly access: connections, BSON rules, queues, pub/sub, Lua."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

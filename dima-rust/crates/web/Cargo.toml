@@ -1,0 +1,12 @@
+[package]
+name = "dima-web"
+description = "Inbound HTTP edge that behaves like the Express app it replaces."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

@@ -22,7 +22,12 @@ reference, and the TypeScript backend source is removed.
 | Existing `dima-rust` workers and library (converted to UTF-8) | Browser code: overlay HTML/JS under `server/routes/public`, `dimafx` client |
 | `dimafx/server`, `dima-hoststats`, `dima-analytics`, `dimadb/server` | Python sidecars (`lfm2.5-embeddings`, `piper-tts`), `marketing/`, ops tooling in Python |
 
-External programs the backend shells out to (ffmpeg, yt-dlp, deno) stay external programs.
+External programs the backend shells out to (ffmpeg, ffprobe, yt-dlp, piper) stay external programs.
+
+**Not ported (deprecated by the owner):** the AI `code_execution` tool and its Deno sandbox
+(`utils/ai/tools/code_execution.tool.ts`, `utils/ai/sandbox/**`). The Rust AI chat does not offer the
+tool, and Deno is not installed in the Rust images. Stored settings and usage records that mention it
+stay readable; they simply have no effect.
 `origin/rust-migration` (the earlier attempt) is reference reading only. Never merge or copy from it
 wholesale: it was built on JavaScript-emulation layers this charter forbids.
 
@@ -177,8 +182,8 @@ database and cache effects, outbound calls and socket emissions. Allowed differe
 allow-list with a reason.
 
 - *Real-data mode* uses the local `domdimabot` copy: read endpoints are diffed over real documents, and
-  every model is round-tripped over every real document of its collection (decode then encode must give
-  equal BSON).
+  every model must decode every real document of its collection without error (fields already hold a
+  mix of int32, int64 and double, legacy fields and missing fields).
 - *Synthetic mode*: each implementation gets its own fresh database and cache, seeded identically from
   fixtures, runs the scenario, and the whole database and key space are compared afterwards: typed BSON,
   missing versus null, TTLs and deadlines relative to the scenario clock, generated ids mapped consistently.
@@ -246,6 +251,7 @@ not part of any package.
 - 2026-11-11: The production `SECRET_KEY` is not available here. Token encryption is verified by
   TypeScript and Rust encrypting and decrypting each other's output with a test key, not by decrypting
   stored tokens. Local Dragonfly and Qdrant are used without authentication; production auth stays in production.
+- 2026-11-11: The owner declared AI code execution (Deno sandbox) deprecated: it is not ported.
 - 2026-11-11: After the reviewer's second view (GPT-6.1 Sol): the compatibility rule now also covers the
   rollback release; the reference is named per responsibility; text rules gained the purpose table so
   that money counts, identity inputs, mirrored outside limits and stored positions keep today's values;

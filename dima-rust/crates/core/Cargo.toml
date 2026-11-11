@@ -1,0 +1,12 @@
+[package]
+name = "dima-core"
+description = "Configuration parsing, errors, clock and randomness, shutdown, crypto."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
