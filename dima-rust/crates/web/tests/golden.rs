@@ -13,7 +13,7 @@
 //! - `content-length` on 204 responses only: hyper never sends it (RFC 9110 section 8.6 forbids
 //!   it); Node sends `Content-Length: 0` where `cors()` sets it on preflight answers.
 //!
-//! Cases in `KNOWN_DIFFERENCES` are checked as described there; each has its reason.
+//! Cases in `KNOWN_DIFFERENCES` are checked exactly as described there; each has its reason.
 
 // Test code may unwrap, expect and panic (see clippy.toml); helpers outside `#[test]`
 // functions need the allowance spelled out.
@@ -32,23 +32,27 @@ use tokio_util::sync::CancellationToken;
 
 const EXCLUDED_HEADERS: [&str; 4] = ["date", "connection", "keep-alive", "x-powered-by"];
 
-/// How a known difference is checked.
+/// What dima-web answers instead of the recorded response.
 #[derive(Clone, Copy)]
 enum Expect {
-    /// Same status; headers and body may differ.
-    SameStatus,
-    /// hyper refuses the request line with a bare 400 before the application sees it.
+    /// Express's body with this change; `Content-Length` and the ETag follow the new body, every
+    /// other header is compared as usual.
+    Transformed(fn(&[u8]) -> Vec<u8>),
+    /// hyper refuses the request target before the application sees it: exactly
+    /// `400 Bad Request` with `Connection: close`, `Content-Length: 0` and no body.
     Rejected,
+    /// Exactly what Express answered for the named case (status, headers and body).
+    SameAs(&'static str),
 }
 
 const RAW_TARGET: &str = "hyper (http crate) refuses this raw byte in the request target; Node routes it. \
                           Browsers and HTTP clients percent-encode it";
 
 /// Cases where dima-web knowingly answers differently.
-const KNOWN_DIFFERENCES: [(&str, Expect, &str); 9] = [
+const KNOWN_DIFFERENCES: [(&str, Expect, &str); 11] = [
     (
         "json-lone-surrogate",
-        Expect::SameStatus,
+        Expect::Transformed(lone_surrogates_replaced),
         "MIGRATION.md text rule 3: lone surrogate escapes become U+FFFD instead of a lone surrogate",
     ),
     ("unmatched-with-query", Expect::Rejected, RAW_TARGET),
@@ -60,11 +64,36 @@ const KNOWN_DIFFERENCES: [(&str, Expect, &str); 9] = [
     ("raw-char-path-backtick", Expect::Rejected, RAW_TARGET),
     (
         "raw-char-path-hash",
-        Expect::SameStatus,
+        Expect::Transformed(fragment_dropped),
         "the http crate drops a '#fragment' from the request target, so req.url and \
          req.originalUrl lack it; Node keeps it (clients never send fragments)",
     ),
+    (
+        "json-number-infinity",
+        Expect::SameAs("json-malformed"),
+        "a number beyond the double range is a parse error (400) where JSON.parse gives Infinity",
+    ),
+    (
+        "json-gzip-empty-members",
+        Expect::SameAs("json-over-limit"),
+        "compressed input is bounded on the wire (body::wire_budget); raw-body reads it all",
+    ),
 ];
+
+/// `\ud800` and `\udc00` escapes as dima-web sends them: the replacement character, raw UTF-8.
+fn lone_surrogates_replaced(body: &[u8]) -> Vec<u8> {
+    String::from_utf8_lossy(body)
+        .replace("\\ud800", "\u{FFFD}")
+        .replace("\\udc00", "\u{FFFD}")
+        .into_bytes()
+}
+
+/// `req.url` and `req.originalUrl` without the `#b` fragment.
+fn fragment_dropped(body: &[u8]) -> Vec<u8> {
+    String::from_utf8_lossy(body)
+        .replace("/users/a#b\"", "/users/a\"")
+        .into_bytes()
+}
 
 // ------------------------------------------------------------------------------------------
 // The fixture, in the same order as record.mjs.
@@ -435,6 +464,30 @@ async fn v1_me(_req: &mut Req) -> Response {
     ok(json!({ "me": true }))
 }
 
+async fn duel_item(req: &mut Req) -> Response {
+    ok(located(
+        req,
+        fields(json!({ "item": req.param("itemID"), "params": req.params().to_json() })),
+    ))
+}
+
+async fn well_known(_req: &mut Req) -> Response {
+    ok(json!({ "wellKnown": true }))
+}
+
+async fn dotted_segment(_req: &mut Req) -> Response {
+    ok(json!({ "dotted": "segment" }))
+}
+
+async fn dotted_file(_req: &mut Req) -> Response {
+    ok(json!({ "dotted": "file" }))
+}
+
+async fn raw_length(req: &mut Req) -> Response {
+    let length = req.body_bytes().map(|bytes| bytes.len());
+    ok(json!({ "isBuffer": length.is_some(), "length": length }))
+}
+
 async fn email_a(_req: &mut Req) -> Response {
     ok(json!({ "email": "a" }))
 }
@@ -536,6 +589,10 @@ fn fixture() -> App {
     app.get("/next-route", second);
     app.all("/any", any_method);
     app.get("/vary", vary);
+    app.get("/.well-known/thing", well_known);
+    app.get("/a.b/c", dotted_segment);
+    app.get("/files.json", dotted_file);
+    app.post("/raw-length", (body::raw(), raw_length));
 
     let mut widgets = Router::new();
     widgets.middleware(no_store);
@@ -545,6 +602,7 @@ fn fixture() -> App {
     let mut duel = Router::with_merge_params();
     duel.get("/state", duel_state);
     duel.post("/fail", duel_fail);
+    duel.get("/item/:itemID", duel_item);
     widgets.mount("/:channelID/duel", duel);
     let mut plain = Router::new();
     plain.get("/state", plain_state);
@@ -604,6 +662,18 @@ fn generate(spec: &Value) -> Vec<u8> {
             .join("&")
             .into_bytes(),
         "form-depth" => format!("a{}=1", "[x]".repeat(n("depth"))).into_bytes(),
+        "form-sparse" => {
+            let tail = format!("[{}]", n("index")).repeat(n("depth"));
+            (0..n("keys"))
+                .map(|i| format!("k{i}{tail}=v"))
+                .collect::<Vec<_>>()
+                .join("&")
+                .into_bytes()
+        }
+        "repeat" => base64::engine::general_purpose::STANDARD
+            .decode(spec["base64"].as_str().unwrap_or_default())
+            .expect("base64 piece")
+            .repeat(n("count")),
         other => panic!("unknown generator {other}"),
     }
 }
@@ -737,6 +807,12 @@ fn comparable(headers: &[(String, String)], status: u16) -> Vec<(String, String)
     list
 }
 
+fn recorded_body(response: &Value) -> Vec<u8> {
+    base64::engine::general_purpose::STANDARD
+        .decode(response["bodyBase64"].as_str().unwrap_or_default())
+        .expect("golden body")
+}
+
 fn expected_headers(response: &Value, status: u16) -> Vec<(String, String)> {
     let mut list = Vec::new();
     for (name, values) in response["headers"].as_object().into_iter().flatten() {
@@ -752,7 +828,7 @@ async fn matches_express() {
     let golden: Value =
         serde_json::from_str(include_str!("golden/express.json")).expect("golden file");
     let cases = golden["cases"].as_array().expect("cases");
-    assert!(cases.len() >= 200, "golden file has {} cases", cases.len());
+    assert!(cases.len() >= 260, "golden file has {} cases", cases.len());
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let addr = listener.local_addr().expect("address");
@@ -776,56 +852,85 @@ async fn matches_express() {
         let actual = parse_response(&raw, method);
         let expected = &case["response"];
         let expected_status = expected["status"].as_u64().unwrap_or(0) as u16;
-        match KNOWN_DIFFERENCES
+        let known = KNOWN_DIFFERENCES
             .iter()
             .find(|(known, _, _)| *known == name)
-        {
-            Some((_, Expect::Rejected, _)) => {
-                if actual.status != 400 || expected_status == 400 {
+            .map(|(_, expect, _)| *expect);
+        let (expected_status, expected_headers, expected_body) = match known {
+            Some(Expect::Rejected) => {
+                let wanted = vec![
+                    ("connection".to_owned(), "close".to_owned()),
+                    ("content-length".to_owned(), "0".to_owned()),
+                ];
+                let raw_headers: Vec<(String, String)> = actual
+                    .headers
+                    .iter()
+                    .filter(|(name, _)| name != "date")
+                    .cloned()
+                    .collect();
+                if actual.status != 400 || !actual.body.is_empty() || raw_headers != wanted {
                     failures.push(format!(
-                        "{name}: expected hyper's 400, got {} (express {expected_status})",
-                        actual.status
+                        "{name}: expected hyper's bare 400, got {} {raw_headers:?} {:?} (express {expected_status})",
+                        actual.status,
+                        String::from_utf8_lossy(&actual.body)
                     ));
                 }
                 continue;
             }
-            Some((_, Expect::SameStatus, _)) => {
-                if actual.status != expected_status {
-                    failures.push(format!(
-                        "{name}: status {} != express {expected_status}",
-                        actual.status
-                    ));
-                }
-                continue;
+            Some(Expect::SameAs(other)) => {
+                let other = cases
+                    .iter()
+                    .find(|c| c["name"] == other)
+                    .unwrap_or_else(|| panic!("{name}: no golden case {other}"));
+                let response = &other["response"];
+                let status = response["status"].as_u64().unwrap_or(0) as u16;
+                (
+                    status,
+                    expected_headers(response, status),
+                    recorded_body(response),
+                )
             }
-            None => {}
-        }
+            Some(Expect::Transformed(change)) => {
+                let body = change(&recorded_body(expected));
+                let mut headers: Vec<(String, String)> =
+                    expected_headers(expected, expected_status)
+                        .into_iter()
+                        .map(|(name, value)| match name.as_str() {
+                            "content-length" => (name, body.len().to_string()),
+                            "etag" => (name, dima_web::conditional::weak_etag(&body)),
+                            _ => (name, value),
+                        })
+                        .collect();
+                headers.sort();
+                (expected_status, headers, body)
+            }
+            None => (
+                expected_status,
+                expected_headers(expected, expected_status),
+                recorded_body(expected),
+            ),
+        };
         if actual.status != expected_status {
             failures.push(format!(
-                "{name}: status {} != express {expected_status}",
+                "{name}: status {} != expected {expected_status}",
                 actual.status
             ));
             continue;
         }
-        let expected_headers = expected_headers(expected, expected_status);
         let actual_headers = comparable(&actual.headers, actual.status);
         if actual_headers != expected_headers {
             failures.push(format!(
-                "{name}: headers\n  dima-web: {actual_headers:?}\n  express:  {expected_headers:?}"
+                "{name}: headers\n  dima-web: {actual_headers:?}\n  expected: {expected_headers:?}"
             ));
         }
-        let expected_body = base64::engine::general_purpose::STANDARD
-            .decode(expected["bodyBase64"].as_str().unwrap_or_default())
-            .expect("golden body");
         if actual.body != expected_body {
             failures.push(format!(
-                "{name}: body\n  dima-web: {}\n  express:  {}",
+                "{name}: body\n  dima-web: {}\n  expected: {}",
                 String::from_utf8_lossy(&actual.body),
                 String::from_utf8_lossy(&expected_body)
             ));
         }
     }
-
     shutdown.cancel();
     server.await.expect("server task").expect("server");
     assert!(

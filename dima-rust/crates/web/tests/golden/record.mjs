@@ -178,6 +178,12 @@ function buildApp() {
     res.vary('Accept');
     res.json({ vary: true });
   });
+  app.get('/.well-known/thing', (req, res) => res.json({ wellKnown: true }));
+  app.get('/a.b/c', (req, res) => res.json({ dotted: 'segment' }));
+  app.get('/files.json', (req, res) => res.json({ dotted: 'file' }));
+  app.post('/raw-length', express.raw(), (req, res) =>
+    res.json({ isBuffer: Buffer.isBuffer(req.body), length: req.body.length }),
+  );
 
   const widgets = express.Router();
   widgets.use((req, res, next) => {
@@ -202,6 +208,7 @@ function buildApp() {
   const duel = express.Router({ mergeParams: true });
   duel.get('/state', (req, res) => res.json({ duel: true, params: req.params, ...where(req) }));
   duel.post('/fail', (req, res, next) => next(Object.assign(new Error('duel'), { status: 409 })));
+  duel.get('/item/:itemID', (req, res) => res.json({ item: req.params.itemID, params: req.params, ...where(req) }));
   widgets.use('/:channelID/duel', duel);
   const plain = express.Router();
   plain.get('/state', (req, res) => res.json({ plain: true, params: req.params, ...where(req) }));
@@ -533,6 +540,59 @@ add('raw-no-body', 'POST', '/hook', [JSON_CT]);
 add('raw-gzip', 'POST', '/hook', [JSON_CT, ['Content-Encoding', 'gzip']], b64(zlib.gzipSync('{"raw":1}')));
 add('raw-over-limit', 'POST', '/hook', [JSON_CT], { gen: { type: 'json-pad', size: 100 * 1024 + 1 } });
 
+// Dotted literals in paths ('.' is literal, not a wildcard).
+add('dotted-well-known', 'GET', '/.well-known/thing');
+add('dotted-well-known-miss', 'GET', '/xwell-known/thing');
+add('dotted-segment', 'GET', '/a.b/c');
+add('dotted-segment-miss', 'GET', '/aXb/c');
+add('dotted-file', 'GET', '/files.json');
+add('dotted-file-case', 'GET', '/FILES.JSON');
+add('dotted-file-miss', 'GET', '/filesXjson');
+
+// Encoded and malformed parameters through nested mounts.
+add('nested-param-encoded-slash', 'GET', '/widgets/a%2Fb/duel/state', [AUTH]);
+add('nested-param-emoji', 'GET', '/widgets/%F0%9F%98%80/duel/state', [AUTH]);
+add('nested-param-latin-no-merge', 'GET', '/widgets/caf%C3%A9/plain/state', [AUTH]);
+add('nested-param-malformed-mount', 'GET', '/widgets/%E0%A4%A/duel/state', [AUTH]);
+add('nested-param-malformed-no-auth', 'GET', '/widgets/%E0%A4%A/duel/state');
+add('nested-param-malformed-leaf', 'GET', '/widgets/chan/duel/item/%E0%A4%A', [AUTH]);
+add('nested-param-encoded-leaf', 'GET', '/widgets/Chan/duel/item/a%20b%2Bc', [AUTH]);
+add('nested-param-rtl-leaf', 'GET', '/widgets/%D7%A9%D7%9C%D7%95%D7%9D/duel/item/e%CC%81', [AUTH]);
+add('nested-pathless-malformed', 'GET', '/analytics/streams/%E0%A4%A');
+add('nested-pathless-encoded', 'GET', '/analytics/streams/%D7%A9%D7%9C%D7%95%D7%9D');
+
+// Numbers as JSON.parse holds them.
+add(
+  'json-numbers',
+  'POST',
+  '/echo',
+  [JSON_CT],
+  utf8('{"n":9007199254740993,"m":-9007199254740993,"big":18446744073709551615,"f":1.0,"e":1e2,"z":-0,"frac":0.1,"arr":[1.5e300,123456789012345678901234567890]}'),
+);
+add('json-number-infinity', 'POST', '/echo', [JSON_CT], utf8('{"n":1e400}'));
+
+// qs sparse indices (600 keys, each nested 32 times at index 599): cheap in V8 and here.
+add('form-sparse-nested', 'POST', '/echo', [FORM_CT], { gen: { type: 'form-sparse', keys: 600, index: 599, depth: 32 } });
+
+// Size boundaries: every body limit exactly at and one over.
+add('json-chunked-at-limit', 'POST', '/form-summary', [JSON_CT], { gen: { type: 'json-pad', size: 100 * 1024 } }, { chunked: true });
+add('json-chunked-over-by-one', 'POST', '/echo', [JSON_CT], { gen: { type: 'json-pad', size: 100 * 1024 + 1 } }, { chunked: true });
+add('json-gzip-inflates-at-limit', 'POST', '/form-summary', [JSON_CT, ['Content-Encoding', 'gzip']], b64(zlib.gzipSync(generate({ type: 'json-pad', size: 100 * 1024 }))));
+add('json-gzip-inflates-over-by-one', 'POST', '/echo', [JSON_CT, ['Content-Encoding', 'gzip']], b64(zlib.gzipSync(generate({ type: 'json-pad', size: 100 * 1024 + 1 }))));
+add('json-gzip-empty-members', 'POST', '/echo', [JSON_CT, ['Content-Encoding', 'gzip']], {
+  gen: { type: 'repeat', base64: zlib.gzipSync('').toString('base64'), count: 10000 },
+});
+add('form-at-limit', 'POST', '/form-summary', [FORM_CT], { gen: { type: 'form-pad', size: 100 * 1024 } });
+add('form-over-by-one', 'POST', '/form-summary', [FORM_CT], { gen: { type: 'form-pad', size: 100 * 1024 + 1 } });
+add('raw-at-limit', 'POST', '/raw-length', [['Content-Type', 'application/octet-stream']], { gen: { type: 'json-pad', size: 100 * 1024 } });
+add('raw-over-by-one', 'POST', '/raw-length', [['Content-Type', 'application/octet-stream']], { gen: { type: 'json-pad', size: 100 * 1024 + 1 } });
+add('raw-hook-at-limit', 'POST', '/hook', [JSON_CT], { gen: { type: 'json-pad', size: 100 * 1024 } });
+add('docs-at-limit', 'POST', '/docs/ask', [JSON_CT], { gen: { type: 'json-pad', size: 256 * 1024 } });
+add('docs-over-by-one', 'POST', '/docs/ask', [JSON_CT], { gen: { type: 'json-pad', size: 256 * 1024 + 1 } });
+add('json-four-route-at', 'POST', '/four/echo', [JSON_CT], { gen: { type: 'json-pad', size: 4 * 1024 * 1024 } });
+add('json-big-route-at', 'POST', '/big/echo', [JSON_CT], { gen: { type: 'json-pad', size: 5 * 1024 * 1024 } });
+add('json-mid-route-over-by-one-chunked', 'POST', '/mid/echo', [JSON_CT], { gen: { type: 'json-pad', size: 1024 * 1024 + 1 } }, { chunked: true });
+
 // ---------------------------------------------------------------------------------------------
 
 function generate(spec) {
@@ -547,6 +607,12 @@ function generate(spec) {
       return Buffer.from(Array.from({ length: spec.count }, (_, i) => `k${i}=${i}`).join('&'));
     case 'form-depth':
       return Buffer.from(`a${'[x]'.repeat(spec.depth)}=1`);
+    case 'form-sparse':
+      return Buffer.from(
+        Array.from({ length: spec.keys }, (_, i) => `k${i}${`[${spec.index}]`.repeat(spec.depth)}=v`).join('&'),
+      );
+    case 'repeat':
+      return Buffer.concat(Array(spec.count).fill(Buffer.from(spec.base64, 'base64')));
     default:
       throw new Error(`unknown generator ${spec.type}`);
   }
