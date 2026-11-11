@@ -1578,6 +1578,7 @@ name = "dima-store"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "bson",
  "dima-text",
  "futures-util",

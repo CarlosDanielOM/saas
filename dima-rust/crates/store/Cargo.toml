@@ -26,3 +26,5 @@ tokio = { workspace = true }
 # MongoDB tests (tests/mongo_*.rs).
 anyhow = { workspace = true }
 tokio = { workspace = true }
+# Dragonfly golden tests (tests/dragonfly_*.rs): recorded values are base64.
+base64 = { workspace = true }
