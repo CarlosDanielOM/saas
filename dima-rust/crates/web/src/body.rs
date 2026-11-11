@@ -565,10 +565,57 @@ fn parse_json(text: &str, strict: bool) -> Result<Value, Error> {
         }
     }
     let text = replace_lone_surrogate_escapes(text);
+    // A number beyond the double range (`1e400`) is a parse error here; `JSON.parse` makes it
+    // `Infinity`, which no client sends on purpose (allowed difference).
     let mut value: Value = serde_json::from_str(&text).map_err(|e| parse_failed(e.to_string()))?;
     // `JSON.parse` key order: array-index keys first, ascending, then the others in source order.
     dima_text::js_key_order(&mut value);
+    javascript_numbers(&mut value);
     Ok(value)
+}
+
+/// 2^53: integers up to this magnitude are exact as doubles.
+const MAX_EXACT_INTEGER: u64 = 1 << 53;
+
+/// Makes every number the value `JSON.parse` would hold, so nothing downstream stores a value or
+/// a BSON type the reference never would: integers beyond 2^53 become the nearest double
+/// (`9007199254740993` is `9007199254740992`), and integral doubles within 2^53 (`1.0`, `1e2`)
+/// become integers, since JavaScript cannot tell them apart. `-0` stays a double.
+fn javascript_numbers(value: &mut Value) {
+    let mut pending = vec![value];
+    while let Some(value) = pending.pop() {
+        match value {
+            Value::Number(number) => {
+                if let Some(javascript) = javascript_number(number) {
+                    *number = javascript;
+                }
+            }
+            Value::Array(items) => pending.extend(items.iter_mut()),
+            Value::Object(map) => pending.extend(map.values_mut()),
+            _ => {}
+        }
+    }
+}
+
+/// The replacement for `number`, when it differs from what JavaScript holds.
+fn javascript_number(number: &serde_json::Number) -> Option<serde_json::Number> {
+    if let Some(integer) = number.as_i64() {
+        // `as` rounds to the nearest double, ties to even, as `JSON.parse` does.
+        return (integer.unsigned_abs() > MAX_EXACT_INTEGER)
+            .then(|| serde_json::Number::from_f64(integer as f64))
+            .flatten();
+    }
+    if let Some(integer) = number.as_u64() {
+        return (integer > MAX_EXACT_INTEGER)
+            .then(|| serde_json::Number::from_f64(integer as f64))
+            .flatten();
+    }
+    let double = number.as_f64()?;
+    let integral = double.fract() == 0.0 && double.abs() <= MAX_EXACT_INTEGER as f64;
+    if !integral || (double == 0.0 && double.is_sign_negative()) {
+        return None;
+    }
+    Some(serde_json::Number::from(double as i64))
 }
 
 /// MIGRATION.md text rule 3: a `\uD800`–`\uDFFF` escape that is not part of a valid pair is
@@ -694,6 +741,33 @@ mod tests {
             .map(|m| m.keys().collect())
             .unwrap_or_default();
         assert_eq!(keys, ["1", "2", "b", "a"]);
+    }
+
+    /// Review finding: integers above 2^53 kept full precision where `JSON.parse` rounds them.
+    /// Expectations from Node 26 `JSON.stringify(JSON.parse(text))`.
+    #[test]
+    fn numbers_are_what_javascript_holds() {
+        let text = r#"{"n":9007199254740993,"m":-9007199254740993,"big":18446744073709551615,"f":1.0,"e":1e2,"z":-0,"safe":9007199254740992,"frac":0.1,"neg":-5,"arr":[1.5e300,123456789012345678901234567890]}"#;
+        let value = parse_json(text, true).expect("parses");
+        assert_eq!(
+            dima_text::to_js_json(&value),
+            r#"{"n":9007199254740992,"m":-9007199254740992,"big":18446744073709552000,"f":1,"e":100,"z":0,"safe":9007199254740992,"frac":0.1,"neg":-5,"arr":[1.5e+300,1.2345678901234568e+29]}"#
+        );
+        assert!(value["n"].is_f64() && value["m"].is_f64() && value["big"].is_f64());
+        assert_eq!(value["n"].as_f64(), Some(9_007_199_254_740_992.0));
+        // Integral values are integers for typed handlers, as `Number.isInteger` sees them.
+        assert_eq!(value["f"].as_u64(), Some(1));
+        assert_eq!(value["e"].as_u64(), Some(100));
+        assert_eq!(value["safe"].as_u64(), Some(9_007_199_254_740_992));
+        assert_eq!(value["neg"].as_i64(), Some(-5));
+        assert!(
+            value["z"]
+                .as_f64()
+                .is_some_and(|z| z == 0.0 && z.is_sign_negative())
+        );
+        // `JSON.parse` gives Infinity; here it is refused (allowed difference).
+        let error = parse_json(r#"{"n":1e400}"#, true).expect_err("out of range");
+        assert_eq!(error.status(), Some(400));
     }
 
     #[test]
