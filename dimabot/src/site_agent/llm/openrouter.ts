@@ -10,6 +10,7 @@
  * - Key and base URL are read from the environment at call time. The key is never logged or
  *   put in error messages. `OPENROUTER_BASE_URL` exists for the isolated checks (fake server).
  */
+import { OPENROUTER_APP_HEADERS } from '../../utils/ai/openrouter/app_attribution.util.js';
 import type { LlmErrorKind, LlmRequest, LlmStepResult, LlmStreamHandlers, LlmUsage, ToolCallRequest } from '../types.js';
 
 const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
@@ -57,12 +58,12 @@ function config(): Config {
     return { base, key };
 }
 
+/** Same app identity as every other OpenRouter call ("DomDimaBot" in the OpenRouter logs). */
 function headers(key: string): Record<string, string> {
     return {
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://domdimabot.com',
-        'X-Title': 'DomDimaBot assistant',
+        ...OPENROUTER_APP_HEADERS,
     };
 }
 
@@ -575,7 +576,7 @@ async function lookupGeneration(base: string, key: string, generationId: string,
     const timer = setTimeout(() => controller.abort(), 15_000);
     try {
         const response = await fetch(`${base}/generation?id=${encodeURIComponent(generationId)}`, {
-            headers: { Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://domdimabot.com', 'X-Title': 'DomDimaBot assistant' },
+            headers: { Authorization: `Bearer ${key}`, ...OPENROUTER_APP_HEADERS },
             signal: controller.signal,
         });
         if (response.status === 401 || response.status === 403) return 'auth';

@@ -127,7 +127,8 @@ test('fragmented CRLF stream: text, reasoning, several tool calls, usage and the
     assert.equal(seen[0].url, '/api/v1/chat/completions');
     assert.equal(seen[0].headers.authorization, `Bearer ${KEY}`);
     assert.equal(seen[0].headers['http-referer'], 'https://domdimabot.com');
-    assert.equal(seen[0].headers['x-title'], 'DomDimaBot assistant');
+    assert.equal(seen[0].headers['x-openrouter-title'], 'DomDimaBot');
+    assert.equal(seen[0].headers['x-title'], undefined);
     assert.equal(seen[0].headers['content-type'], 'application/json');
     assert.deepEqual(JSON.parse(seen[0].body), {
         model: 'openai/gpt-6-luna',
