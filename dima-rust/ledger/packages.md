@@ -1,0 +1,104 @@
+# Work packages and status
+
+The lead keeps this file current. Rules are in [`../MIGRATION.md`](../MIGRATION.md). Inventories that
+define the contract are next to this file: `modules.*` (file graph and the per-file package proposal),
+`http.*`, `mongo.*`, `dragonfly.*`, `outbound.*`, `env.json` + `runtime.md`, `existing-rust.md`,
+`satellites.md`, `tests.*`.
+
+Status values: `planned`, `running`, `review`, `merged`.
+
+## Crate map (decided)
+
+Dependencies point downward only. Library crates take typed configuration structs; only binaries read
+the environment.
+
+| Layer | Crate (path) | Holds |
+|---|---|---|
+| 0 | `dima-text` (`crates/text`) | Text rules, JavaScript-visible formatting, canonical JSON, ordering |
+| 1 | `dima-core` (`crates/core`) | Environment parsing helpers, errors, clock and randomness, shutdown, crypto, ids |
+| 1 | `dima-store` (`crates/store`) | MongoDB and Dragonfly connections, BSON rules, JSON for HTTP, Lua, queues, pub/sub, fences |
+| 2 | `dima-telemetry` (`crates/telemetry`) | Logger, trace context, metrics, span and log export |
+| 2 | `dima-http` (`crates/http`) | Outbound HTTP: timeouts, retries, SSRF guard, provider base URLs |
+| 2 | `dima-web` (`crates/web`) | Inbound HTTP edge with Express semantics |
+| 2 | `dima-socketio` (`crates/socketio`) | Socket.IO server with connection state recovery, on `engineioxide` |
+| 3 | `dima-model` (`crates/model`) | Document types, collections, indexes, write helpers (timestamps, `__v`, defaults) |
+| 4 | `dima-twitch`, `dima-events`, `dima-billing`, `dima-email` | As in `modules.md` |
+| 5 | `dima-analytics`, `dima-tts`, `dima-ai`, `dima-commands`, `dima-platform` | As in `modules.md` |
+| 6 | `dima-engine` (`crates/engine`) | The command language, pure: syntax, evaluator, blocks, pure functions, host trait |
+| 7 | `dima-actions` (`crates/actions`) | Command effects, chat delivery, special parser, AI chat and tools (the rest of the engine cycle) |
+| 8 | `dima-realtime`, `dima-chat`, `dima-services`, `dima-event-handlers`, `dima-site-agent` | As in `modules.md` |
+| 9 | `api/`, `bot/`, `cron/`, `services/*` | Binaries: wiring only |
+| - | `rig/` | Side-by-side rig and service mocks (development tool) |
+
+Decisions behind the map:
+
+- **No vendor SDK crates.** Twitch, OpenRouter, Polar, Resend, PostHog, OTLP logs, Qdrant (REST, as the
+  TypeScript does), S3 and the rest are thin clients on `dima-http`. One HTTP stack, one TLS provider,
+  small binaries, and every call can be pointed at the rig's mock by configuration.
+- **Own router.** `dima-web` implements Express's ordered dispatch (registration order, case-insensitive
+  paths, optional trailing slash, mounts, pathless middleware, error handlers), so route tables are
+  ported one to one. axum/hyper are used underneath.
+- **Own Socket.IO layer.** `socketioxide` 0.18 has no connection state recovery (checked in its source),
+  and overlays rely on missed events being replayed after a reconnect. `dima-socketio` implements the
+  Socket.IO protocol (namespaces including dynamic ones, acks, recovery) on top of `engineioxide`.
+- **The engine cycle is split in two.** The 61-file TypeScript import cycle becomes a pure engine crate
+  with a host trait, and an actions crate that implements the host.
+- **Reference captures.** The rig records the frozen reference once and stores the captures; candidates
+  are verified against them. The captures remain the regression suite after the TypeScript is deleted.
+- **Time is epoch milliseconds** (JavaScript `Date` semantics) end to end; calendar and time-zone maths
+  use a library only where the reference does such maths.
+
+## Phase 1: foundation
+
+| Package | Scope | Effort | Depends on | Status |
+|---|---|---|---|---|
+| F-SKEL | Workspace root, lints, profiles, stub crates, `tools/check`, `tools/test-env` | lead | - | merged |
+| F-TEXT | `dima-text` | xhigh | F-SKEL | running |
+| F-WEB-01 | `dima-web`: router, request model, body parsing, responses, ETag, errors, CORS | xhigh | F-SKEL | running |
+| RIG-01 | Rig: targets, scenarios, capture, normalise, compare, record/verify | xhigh | F-SKEL | running |
+| F-CORE | `dima-core` | xhigh | F-TEXT | planned |
+| F-STORE | `dima-store` (from the old `mongo`, `redis`, `bson_compat`, `cron_queue`, `plan_cache_fence`) | xhigh | F-TEXT | planned |
+| F-HTTP | `dima-http` | high | F-CORE | planned |
+| F-TELEMETRY | `dima-telemetry` (from the old `logger`, supervisor telemetry; TS `telemetry.ts`) | high | F-STORE | planned |
+| F-WEB-02 | `dima-web`: static files, `sendFile` ranges, multipart uploads, SSE, telemetry middleware | high | F-WEB-01 | planned |
+| F-MODEL-01..04 | `dima-model`: 104 models in four batches, with the real-data decode check | high | F-STORE | planned |
+| PILOT | `services/dimadb-server` ported and verified in the rig against the Node server | high | F-WEB-01, F-STORE, RIG-01 | planned |
+| RIG-02 | Rig: outside-service mock, outbound call comparison, webhook and Socket.IO steps, reference image for `dimabot` | xhigh | RIG-01 | planned |
+| F-SOCKETIO | `dima-socketio` | xhigh | F-WEB-01 | planned |
+
+## Later phases
+
+Feature packages follow `modules.md` (124 proposed packages), re-homed to the crate map above. They are
+added to this table, with status, when their phase starts. Order of work is by crate layer; the cron
+binary links nearly every library crate, so most of the shared code lands during Phase 3.
+
+| Phase | Packages | Status |
+|---|---|---|
+| 2 | Old crate drained into the workspace: engine (UTF-8 conversion, brought up to the current reference: `effects.ts` has drifted), permissions, keywords, policies, the seven workers, supervisor replaced | planned |
+| 3 | Cron: three end-to-end slices first, then the remaining shared crates and all workers | planned |
+| 4 | Bot: `dima-chat`, EventSub ingress, bot binary | planned |
+| 5 | API: services, routes, site agent, Socket.IO namespaces, API binary | planned |
+| 6 | `dimafx-server`, `dima-hoststats`, `dima-analytics` | planned |
+| 7 | Retire TypeScript, images, ops tooling (`saas-ops` checker container), docs | planned |
+
+## Baseline (2026-11-11)
+
+- Reference commit: `0c71108e`.
+- Old crate on this machine: all-features build 3m25s, peak 5.6 GB; 541 tests pass, 2 fail (source-drift
+  guards for `dimabot/src/utils/ast_parser/effects.ts`), 10 ignored (need services).
+- Not ported: AI code execution (Deno sandbox), about 30 unreachable files listed in `modules.md`
+  (confirmed dead before each is skipped).
+
+## Known reference bugs and security findings (do not fix silently; decide per package)
+
+| Finding | Where | Plan |
+|---|---|---|
+| `POST /eventsub` with a non-JSON content type crashes the bot process | `bot/eventsub.twitch.ts:280` | Rust rejects without crashing |
+| `POST /auth/login` trusts the id in the body (returns email, renames account) | `server/routes/auth.route.ts:968` | Verify the Twitch token against the id if the site sends it; otherwise ask the owner |
+| `GET /auth/mock-register` has no guard | `server/routes/auth.route.ts` | Gate behind `MOCK_LOGIN_TOKEN` |
+| `POST /auth/mock-login` is live when `MOCK_LOGIN_TOKEN` is set (it is, in production) | `server/routes/auth.route.ts:1168` | Same gate kept; owner informed |
+| Activation JWT falls back to a hardcoded secret when `EMAIL_AUTH_JWT_SECRET` is unset | `utils/email/email-activation-token.ts:8` | Same fallback kept with the warning; owner informed |
+| `extensionwallettransactions.twitchTransactionID` is not unique in the data | index diff in `mongo.md` | Owner informed; Rust does not rely on the index |
+| DimaFX server re-sends purchase/redeem to the public API after an internal failure | `outbound.md` | Preserve; listed for a deliberate fix |
+| yt-dlp run through a shell with the URL interpolated | `utils/video.ts:29` | Rust passes arguments without a shell |
+| DimaFX service token compared with `!==` | `runtime.md` | Constant-time comparison |
