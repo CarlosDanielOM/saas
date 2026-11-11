@@ -263,6 +263,11 @@ not part of any package.
   lenient legacy parser accepts (for example `2026-11-11 15:04:05` or `11/11/2026`) is rejected. No
   Twitch, Polar or stored format needs it; a client that sent such a cursor to the stream timeline
   route would now get the invalid-date answer. Allowed difference.
+- 2026-11-11: Stricter than Node on malformed input, on purpose (allowed differences): hex and base64
+  text containing non-ASCII characters is rejected (Node decodes it using the low byte of each UTF-16
+  unit); a JSON number beyond the double range (`1e400`) is a parse error in request bodies, JWT claims
+  and environment JSON (JavaScript reads `Infinity`); a PEM public key is never accepted as an HMAC
+  secret because no asymmetric keys exist in this system.
 - 2026-11-11: `parseInt` is offered for no radix, 2, 8, 10 and 16 only (the reference uses none, 10
   and 8); other radices are implementation-dependent above 2^53 by specification.
 - 2026-11-11: After the reviewer's second view (GPT-6.1 Sol): the compatibility rule now also covers the
