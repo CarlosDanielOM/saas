@@ -11086,6 +11086,11 @@
       "failed": "No se pudo guardar. Intenta otra vez."
     },
     "title": "Asistente",
+    "experimental": {
+      "badge": "Experimental",
+      "hint": "Todavía está en pruebas: puede equivocarse.",
+      "note": "Todavía está en pruebas, así que puede equivocarse. Revisa cada tarjeta de cambio antes de tocar Aplicar; para deshacer, ve a Cambios."
+    },
     "close": "Cerrar asistente",
     "retry": "Intentar de nuevo",
     "cancel": "Cancelar",

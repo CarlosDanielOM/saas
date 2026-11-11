@@ -11086,6 +11086,11 @@
       "failed": "Couldn't save that. Try again."
     },
     "title": "Assistant",
+    "experimental": {
+      "badge": "Experimental",
+      "hint": "Still being tested: it can make mistakes.",
+      "note": "Still being tested, so it can get things wrong. Check every change card before you press Apply; Undo is in Changes."
+    },
     "close": "Close assistant",
     "retry": "Try again",
     "cancel": "Cancel",

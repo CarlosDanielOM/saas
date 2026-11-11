@@ -16,7 +16,9 @@ through OpenRouter on the owner's OpenAI key (BYOK). Free for now: no AI credits
 - Every change needs approval. The owner sees all assistant changes on the channel (who, what they asked,
   before → after) and can undo any; an admin sees and undoes their own. Change log kept 90 days (Mongo).
 - Never: ban/timeout/raid/mod/vip, editors, billing, account deletion (only navigate there), bot on/off.
-- Published only when everything is done; until then `SITE_AGENT_CHANNELS` (config.ts) limits it to the owner's channel.
+- Published to every channel on 2026-11-11 (`SITE_AGENT_CHANNELS = '*'` in config.ts), labelled "Experimental" in the
+  panel (pill in the header, lab-gradient line on top, a note on the welcome screen). Setting a list there pulls it
+  back to those channels (dark launch was the owner's channel, 533538623).
 
 ## Phase 0 facts (OpenRouter, `openai/gpt-6-luna`)
 

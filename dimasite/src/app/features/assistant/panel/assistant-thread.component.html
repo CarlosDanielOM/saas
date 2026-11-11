@@ -14,6 +14,10 @@
   <div class="at-empty" data-assistant-empty>
     <h3 class="at-empty__title">{{ t('assistant.empty.title') }}</h3>
     <p class="at-empty__copy">{{ t('assistant.empty.copy') }}</p>
+    <p class="at-lab-note" data-assistant-experimental-note>
+      <span class="at-lab-note__tag">{{ t('assistant.experimental.badge') }}</span>
+      <span>{{ t('assistant.experimental.note') }}</span>
+    </p>
     <ul class="at-examples" [attr.aria-label]="t('assistant.empty.examplesLabel')">
       @for (key of examples; track key) {
         <li>

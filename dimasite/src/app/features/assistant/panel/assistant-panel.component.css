@@ -24,6 +24,13 @@
   --panel-shadow: 0 -16px 44px rgba(15, 17, 21, 0.16);
   --side-shadow: -14px 0 36px rgba(15, 17, 21, 0.1);
   --font: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+  /* "Experimental" look: a violet → pink → amber lab gradient (decoration only, never behind small text). */
+  --lab-a: #8b5cf6;
+  --lab-b: #ec4899;
+  --lab-c: #f59e0b;
+  --lab-fg: #6d28d9;
+  --lab-fill: color-mix(in srgb, #7c3aed 8%, #ffffff);
+  --lab-glow: rgba(139, 92, 246, 0.28);
 }
 
 :host-context(html.dark) {
@@ -49,6 +56,9 @@
   --code-bg: #11141a;
   --panel-shadow: 0 -18px 48px rgba(0, 0, 0, 0.5);
   --side-shadow: -18px 0 40px rgba(0, 0, 0, 0.4);
+  --lab-fg: #ddd6fe;
+  --lab-fill: color-mix(in srgb, #8b5cf6 16%, #171a21);
+  --lab-glow: rgba(167, 139, 250, 0.4);
 }
 
 /* Phone / tablet: bottom sheet */
@@ -75,6 +85,21 @@
 }
 
 .ap[hidden] { display: none; }
+
+/* Experimental: a thin lab-gradient line along the top edge, slowly flowing, with a soft glow under it. */
+.ap::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 3px;
+  background: linear-gradient(90deg, var(--lab-a), var(--lab-b), var(--lab-c), var(--lab-a)) 0 0 / 300% 100%;
+  box-shadow: 0 0 14px 1px var(--lab-glow);
+  content: '';
+  pointer-events: none;
+  animation: ap-lab-flow 7s linear infinite;
+}
 .ap--dragging { transition: none; }
 
 /* Same animation name in both modes, so leaving the peek bar doesn't replay the opening fade. */
@@ -123,6 +148,54 @@
 .ap-head__text {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.ap-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+/* "Experimental" pill: gradient ring (flowing like the top line), tinted fill, readable violet text. */
+.ap-lab {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.12rem 0.5rem 0.12rem 0.42rem;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  background:
+    linear-gradient(var(--lab-fill), var(--lab-fill)) padding-box,
+    linear-gradient(90deg, var(--lab-a), var(--lab-b), var(--lab-c), var(--lab-a)) 0 0 / 300% 100% border-box;
+  box-shadow: 0 0 10px -2px var(--lab-glow);
+  color: var(--lab-fg);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  cursor: help;
+  animation: ap-lab-ring 7s linear infinite;
+}
+
+.ap-lab__spark {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--lab-a), var(--lab-b));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--lab-b) 22%, transparent);
+  animation: ap-lab-spark 2.4s ease-in-out infinite;
+}
+
+.ap-lab--tiny {
+  margin-left: 0.35rem;
+  padding: 0 0.38rem;
+  border-width: 1px;
+  font-size: 0.6rem;
+  vertical-align: 0.1em;
+  cursor: inherit;
 }
 
 .ap-title {
@@ -303,6 +376,18 @@
   from { opacity: 0; }
 }
 
+@keyframes ap-lab-flow {
+  to { background-position: 300% 0; }
+}
+
+@keyframes ap-lab-ring {
+  to { background-position: 0 0, 300% 0; }
+}
+
+@keyframes ap-lab-spark {
+  50% { transform: scale(0.72); box-shadow: 0 0 0 4px color-mix(in srgb, var(--lab-b) 8%, transparent); }
+}
+
 @keyframes ap-pulse {
   50% { box-shadow: 0 0 0 6px transparent; }
 }
@@ -310,6 +395,9 @@
 @media (prefers-reduced-motion: reduce) {
   .ap,
   .ap-backdrop,
-  .ap-peek__dot--on { animation: none; }
+  .ap-peek__dot--on,
+  .ap::before,
+  .ap-lab,
+  .ap-lab__spark { animation: none; }
   .ap { transition: none; }
 }

@@ -453,6 +453,18 @@ async function desktopFlow(browser) {
   // Empty state + messages left.
   await until(() => page.locator('[data-assistant-empty]').isVisible(), 'empty state');
   assert.equal(await page.locator('.at-example').count(), 4, 'four example prompts');
+  // Published as experimental: a pill next to the title (with a hover hint) and a plain warning on the welcome screen.
+  const lab = page.locator('[data-assistant-experimental]');
+  assert.equal((await lab.innerText()).trim().toLowerCase(), 'experimental');
+  assert.match(await lab.getAttribute('title'), /can make mistakes/);
+  assert.equal(await page.locator('#assistant-panel-title').innerText(), 'Assistant', 'the panel name stays "Assistant"');
+  assert.match(await text(page.locator('[data-assistant-experimental-note]')), /^experimental\s*Still being tested, so it can get things wrong\. Check every change card before you press Apply/i);
+  const labLine = await page.evaluate(() => {
+    const style = getComputedStyle(document.querySelector('[data-assistant-panel]'), '::before');
+    return { height: style.height, image: style.backgroundImage, animation: style.animationName };
+  });
+  // (Angular prefixes component animation names, e.g. `_ngcontent-…_ap-lab-flow`.)
+  assert.ok(labLine.height === '3px' && /linear-gradient/.test(labLine.image) && /ap-lab-flow$/.test(labLine.animation), `lab line on top of the panel (${JSON.stringify(labLine)})`);
   assert.match(await text(page.locator('[data-assistant-left]')), /17 of 20 messages left today · resets/);
   await noOverflow(page, 'desktop empty');
   await shot(page, 'desktop-dark-empty');
@@ -980,6 +992,7 @@ async function phoneSpanish(browser) {
   await until(async () => /Te quedan 17 de 20 mensajes hoy/.test(await text(page.locator('[data-assistant-left]'))), 'Spanish messages left');
   assert.equal(await page.locator('#assistant-panel-title').innerText(), 'Asistente');
   assert.match(await text(page.locator('[data-assistant-empty]')), /Solo cambio algo cuando tú lo apruebas/);
+  assert.match(await text(page.locator('[data-assistant-experimental-note]')), /Experimental\s*Todavía está en pruebas, así que puede equivocarse\..*antes de tocar Aplicar/i);
   await shot(page, 'phone-dark-es-empty');
   await axe(page, 'phone dark es');
   await page.locator('[data-assistant-changes-tab]').click();

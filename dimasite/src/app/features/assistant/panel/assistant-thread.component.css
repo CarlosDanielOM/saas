@@ -201,6 +201,32 @@
   line-height: 1.45;
 }
 
+/* Experimental notice on the welcome screen: lab-tinted card, plain-language warning. */
+.at-lab-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.45rem;
+  margin: 0 0 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--lab-b, #ec4899) 30%, var(--line));
+  border-radius: 0.85rem;
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--lab-a, #8b5cf6) 9%, transparent), color-mix(in srgb, var(--lab-c, #f59e0b) 7%, transparent)),
+    var(--tile);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.at-lab-note__tag {
+  color: var(--lab-fg, var(--kicker));
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .at-examples {
   display: grid;
   gap: 0.45rem;

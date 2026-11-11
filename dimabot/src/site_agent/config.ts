@@ -1,10 +1,11 @@
 import type { PlanTier } from './types.js';
 
 /**
- * Channels that see the assistant before it is published. Publishing = set to '*'.
- * Kept in code (not env) so turning it on for everyone is a reviewed code release.
+ * Channels that have the assistant. '*' = everyone (published 2026-11-11, labelled "Experimental" in
+ * the panel). A list limits it to those channels again (dark launch), e.g. to pull it back.
+ * Kept in code (not env) so the switch is a reviewed code release.
  */
-export const SITE_AGENT_CHANNELS: readonly string[] | '*' = ['533538623'];
+export const SITE_AGENT_CHANNELS: readonly string[] | '*' = '*';
 
 export function isSiteAgentEnabled(channelId: string): boolean {
     return SITE_AGENT_CHANNELS === '*' || SITE_AGENT_CHANNELS.includes(channelId);

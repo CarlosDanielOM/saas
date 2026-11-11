@@ -22,7 +22,7 @@ import { AdminSchema } from '/app/dist/schemas/admin.schema.js';
 
 const API = 'http://127.0.0.1:3000';
 const CHANNEL = '533538623'; // the only channel enabled before publishing (config.ts)
-const OTHER_CHANNEL = '99004101'; // not enabled
+const OTHER_CHANNEL = '99004101'; // another streamer's channel (published: every channel has it)
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const calls = () => {
   try { return fs.readFileSync('/tmp/saas-fixtures/calls.jsonl', 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse); } catch { return []; }
@@ -134,14 +134,18 @@ const ownerStatus = await api('owner', 'GET', '/status');
 assert.equal(ownerStatus.status, 200);
 assert.deepEqual({ enabled: ownerStatus.data.enabled, role: ownerStatus.data.role, limit: ownerStatus.data.limits.limit, used: ownerStatus.data.limits.used, contextLimit: ownerStatus.data.contextLimit },
   { enabled: true, role: 'owner', limit: 20, used: 0, contextLimit: 100_000 });
+// Published for everyone: any streamer gets it on their own channel, with their own plan's limits.
 const otherStatus = await api('other', 'GET', '/status', undefined, { channel: OTHER_CHANNEL });
-assert.equal(otherStatus.data.enabled, false, 'channels outside the pre-publish list see enabled:false');
-const notEnabled = await api('other', 'GET', '/sessions', undefined, { channel: OTHER_CHANNEL });
-assert.equal(notEnabled.status, 404);
-assert.equal(notEnabled.json.data.code, 'not_enabled');
+assert.equal(otherStatus.status, 200);
+assert.deepEqual({ enabled: otherStatus.data.enabled, role: otherStatus.data.role, limit: otherStatus.data.limits.limit }, { enabled: true, role: 'owner', limit: 400 },
+  'every channel has the assistant (published), with its own plan limit');
+const otherSessions = await api('other', 'GET', '/sessions', undefined, { channel: OTHER_CHANNEL });
+assert.equal(otherSessions.status, 200);
+assert.deepEqual(otherSessions.data.sessions, [], 'and sees none of the owner channel\'s chats');
+assert.equal((await api('other', 'GET', '/status')).status, 403, 'but no access to a channel it does not manage');
 assert.equal((await send('outsider', 'hi')).status, 403, 'outsiders cannot send');
 assert.equal((await api('viewer', 'GET', '/status')).data.role, 'admin');
-console.log('access: owner, admin, outsider, not-enabled channel');
+console.log('access: owner, admin, outsider, every channel published');
 
 // 4. A plain answer streams in order with consistent offsets; snapshot matches.
 const first = await send('owner', 'How do I make the bot read chat aloud? [[script:text]] [[chunks:6]] [[delay:250]]');

@@ -42,7 +42,7 @@
         <button type="button" class="ap-peek__open" (click)="expand()">
           <span class="ap-peek__dot" [class.ap-peek__dot--on]="store.running()" aria-hidden="true"></span>
           <span class="ap-peek__text">
-            <span class="ap-peek__title" id="assistant-panel-title">{{ t('assistant.title') }}</span>
+            <span class="ap-peek__title"><span id="assistant-panel-title">{{ t('assistant.title') }}</span> <span class="ap-lab ap-lab--tiny">{{ t('assistant.experimental.badge') }}</span></span>
             <span class="ap-peek__status">{{ peekText() }}</span>
           </span>
           <span class="ap-peek__cta">{{ t('assistant.sheet.open') }}</span>
@@ -54,7 +54,12 @@
     } @else {
       <header class="ap-head">
         <div class="ap-head__text">
-          <h2 class="ap-title" id="assistant-panel-title" tabindex="-1">{{ t('assistant.title') }}</h2>
+          <div class="ap-title-row">
+            <h2 class="ap-title" id="assistant-panel-title" tabindex="-1">{{ t('assistant.title') }}</h2>
+            <span class="ap-lab" [title]="t('assistant.experimental.hint')" data-assistant-experimental>
+              <span class="ap-lab__spark" aria-hidden="true"></span>{{ t('assistant.experimental.badge') }}
+            </span>
+          </div>
           <p class="ap-sub">{{ subtitle() }}</p>
         </div>
         <button type="button" class="ap-icon" [attr.aria-label]="t('assistant.sessions.new')" [title]="t('assistant.sessions.new')" (appThrottleClick)="newChat()" data-assistant-new>
