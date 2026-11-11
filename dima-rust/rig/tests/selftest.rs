@@ -20,6 +20,14 @@ const FIXTURE: &str = env!("CARGO_BIN_EXE_dima-rig-fixture");
 
 static N: AtomicU32 = AtomicU32::new(0);
 
+/// Every scenario of the self-test target.
+const ALL: &[&str] = &[
+    "items/create",
+    "items/jobs",
+    "items/memory",
+    "items/restart",
+];
+
 fn selftest_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/selftest-rig")
 }
@@ -62,12 +70,16 @@ impl Run {
 
 /// Run `dima-rig` with the self-test directories and parse its JSON report.
 fn rig(work: &Path, rig_dir: &Path, variant: &str, args: &[&str]) -> Run {
+    rig_with(work, rig_dir, &work.join("captures"), variant, args)
+}
+
+fn rig_with(work: &Path, rig_dir: &Path, captures: &Path, variant: &str, args: &[&str]) -> Run {
     let report = work.join(format!("report-{}.json", N.fetch_add(1, Ordering::SeqCst)));
     let child = Command::new(RIG)
         .arg("--rig-dir")
         .arg(rig_dir)
         .arg("--captures-dir")
-        .arg(work.join("captures"))
+        .arg(captures)
         .arg("--out-dir")
         .arg(work.join("out"))
         .arg("--report")
@@ -116,7 +128,7 @@ fn copy_dir(from: &Path, to: &Path) {
 /// Every difference of every scenario satisfies `expected`, and each scenario named in `hit` has at least one.
 fn assert_only(run: &Run, variant: &str, hit: &[&str], expected: impl Fn(&str, &str) -> bool) {
     assert_eq!(run.code, 1, "variant {variant}: exit code\n{}", run.text);
-    for name in ["items/create", "items/jobs", "items/restart"] {
+    for name in ALL {
         let diffs = run.differences(name);
         for (p, w) in &diffs {
             assert!(
@@ -125,7 +137,7 @@ fn assert_only(run: &Run, variant: &str, hit: &[&str], expected: impl Fn(&str, &
                 run.text
             );
         }
-        if hit.contains(&name) {
+        if hit.contains(name) {
             assert_eq!(
                 run.status(name),
                 "differ",
@@ -151,7 +163,7 @@ fn assert_only(run: &Run, variant: &str, hit: &[&str], expected: impl Fn(&str, &
 fn check_variant(work: &Path, variant: &str) -> u32 {
     let rd = selftest_dir();
     let run = rig(work, &rd, variant, &["verify", "selftest"]);
-    let all = ["items/create", "items/jobs", "items/restart"];
+    let all = ALL;
     match variant {
         "equivalent" => {
             assert_eq!(run.code, 0, "equivalent must match\n{}", run.text);
@@ -165,17 +177,17 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
                 .len();
             assert!(notes > 0, "key order notes expected\n{}", run.text);
         }
-        "int64" => assert_only(&run, variant, &all, |p, w| {
+        "int64" => assert_only(&run, variant, all, |p, w| {
             p.starts_with("mongo.items[")
                 && p.ends_with("].qty")
                 && w.contains("reference int32, candidate int64")
         }),
-        "null-field" => assert_only(&run, variant, &all, |p, w| {
+        "null-field" => assert_only(&run, variant, all, |p, w| {
             p.starts_with("mongo.items[")
                 && p.ends_with("].note")
                 && w.contains("missing in reference, null in candidate")
         }),
-        "no-ttl" => assert_only(&run, variant, &all, |p, w| {
+        "no-ttl" => assert_only(&run, variant, all, |p, w| {
             p.starts_with("dragonfly[\"item:<oid:")
                 && p.ends_with("].ttl")
                 && w.contains("candidate has none")
@@ -184,7 +196,7 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
             p == "steps[4].status" && w.contains("HTTP status differs")
         }),
         "extra-doc" => {
-            assert_only(&run, variant, &all, |p, w| {
+            assert_only(&run, variant, all, |p, w| {
                 p.starts_with("mongo.events[") && w.contains("document only in candidate")
             });
             assert_eq!(
@@ -194,10 +206,10 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
                 run.text
             );
         }
-        "number" => assert_only(&run, variant, &all, |p, w| {
+        "number" => assert_only(&run, variant, all, |p, w| {
             p.ends_with(".body.total") && w == "number differs"
         }),
-        "wrong-ref" => assert_only(&run, variant, &all, |p, w| {
+        "wrong-ref" => assert_only(&run, variant, all, |p, w| {
             p.starts_with("dragonfly[\"item:<oid:") && w.contains("cross-reference differs")
         }),
         "crash" => {
@@ -227,8 +239,9 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
                 run.text
             );
             // The next scenarios get a fresh process and match.
-            assert_eq!(run.status("items/jobs"), "match", "{}", run.text);
-            assert_eq!(run.status("items/restart"), "match", "{}", run.text);
+            for name in ALL.iter().filter(|n| **n != "items/create") {
+                assert_eq!(run.status(name), "match", "{name}\n{}", run.text);
+            }
         }
         other => panic!("no expectation for variant {other}"),
     }
@@ -300,7 +313,7 @@ fn self_test_end_to_end() {
     let rec = rig(&work, &rd, "good", &["record", "selftest"]);
     pids.push(rec.pid);
     assert_eq!(rec.code, 0, "record\n{}", rec.text);
-    for name in ["items/create", "items/jobs", "items/restart"] {
+    for name in ALL {
         assert_eq!(rec.status(name), "recorded", "{}", rec.text);
         assert!(
             work.join("captures/selftest")
@@ -319,7 +332,7 @@ fn self_test_end_to_end() {
     let again = rig(&work, &rd, "good", &["record", "--once", "selftest"]);
     pids.push(again.pid);
     assert_eq!(again.code, 0, "{}", again.text);
-    for name in ["items/create", "items/jobs", "items/restart"] {
+    for name in ALL {
         assert_eq!(
             again.status(name),
             "unchanged",
@@ -327,6 +340,16 @@ fn self_test_end_to_end() {
             again.text
         );
     }
+
+    // One process per scenario: a scenario verified alone gives what it gave after the others.
+    let alone = rig(
+        &work,
+        &rd,
+        "equivalent",
+        &["verify", "selftest", "items/memory"],
+    );
+    pids.push(alone.pid);
+    assert_eq!(alone.code, 0, "{}", alone.text);
 
     // Verify every candidate variant, a few at a time.
     let variants = [
@@ -457,6 +480,46 @@ fn self_test_end_to_end() {
             writes.text
         );
     });
+
+    // share_process (opt-in) carries in-memory state from one scenario into the next: recorded
+    // after the others, items/memory counts their items too, and verified alone it does not.
+    let shared = work.join("shared-rig");
+    copy_dir(&rd, &shared);
+    let target = shared.join("targets/selftest.json");
+    let text = std::fs::read_to_string(&target).unwrap().replacen(
+        "\"ports\"",
+        "\"share_process\": true,\n  \"ports\"",
+        1,
+    );
+    std::fs::write(&target, text).unwrap();
+    let shared_caps = work.join("shared-captures");
+    let rec = rig_with(
+        &work,
+        &shared,
+        &shared_caps,
+        "good",
+        &["record", "--once", "selftest"],
+    );
+    pids.push(rec.pid);
+    assert_eq!(rec.code, 0, "{}", rec.text);
+    let alone = rig_with(
+        &work,
+        &shared,
+        &shared_caps,
+        "good",
+        &["verify", "selftest", "items/memory"],
+    );
+    pids.push(alone.pid);
+    assert_eq!(alone.code, 1, "{}", alone.text);
+    assert_eq!(
+        alone.differences("items/memory"),
+        vec![(
+            "steps[1].body.posts".to_string(),
+            "number differs".to_string()
+        )],
+        "{}",
+        alone.text
+    );
 
     // Check: strict files and stale captures, without running anything.
     let edited = work.join("edited-rig");

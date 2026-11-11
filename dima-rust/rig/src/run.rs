@@ -1,10 +1,11 @@
 //! The commands: `record`, `verify`, `compare`, `diff-get`, `check`.
 //!
 //! Sides never run at the same time: every scenario runs on the reference first, then every
-//! scenario on the candidate (pub/sub channels are global in Dragonfly). Scenarios of a target
-//! share one process per side; between scenarios the stores go back to the snapshot taken right
-//! after the process started, then the next seed is written. `restart: true` gives a scenario its
-//! own process, started after its seed.
+//! scenario on the candidate (pub/sub channels are global in Dragonfly). Each scenario gets its
+//! own process, started after the stores were emptied and seeded, so nothing an earlier scenario
+//! left in memory can change a later one. A target may opt in to `share_process`: then the
+//! scenarios share one process per side, the stores go back to the snapshot taken right after it
+//! started, the next seed is written, and `restart: true` gives one scenario its own process.
 
 use std::collections::BTreeMap;
 use std::path::{Path as FsPath, PathBuf};
@@ -306,7 +307,8 @@ impl<'s> SideRunner<'s> {
 
     async fn run_scenario(&mut self, sc: &Scenario) -> SideOutcome {
         let start = timefmt::now_ms();
-        if sc.restart {
+        let own_process = !self.target.share_process || sc.restart;
+        if own_process {
             let _ = self.stop_process().await;
             self.baseline = None;
             self.stores
@@ -318,6 +320,7 @@ impl<'s> SideRunner<'s> {
                 .await
                 .map_err(|e| self.fail(format!("seed: {e}")))?;
             self.launch().await?;
+            self.settle().await;
         } else {
             self.ensure_shared().await?;
             if let Some(b) = self.baseline.clone() {
@@ -377,9 +380,7 @@ impl<'s> SideRunner<'s> {
             self.baseline = None;
             return Err(f);
         }
-        if sc.restart
-            && let Some(why) = self.stop_process().await
-        {
+        if own_process && let Some(why) = self.stop_process().await {
             return Err(self.fail(format!("{why} before the rig stopped it")));
         }
         Ok(RawRun {
