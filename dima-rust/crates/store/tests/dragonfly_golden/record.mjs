@@ -329,7 +329,12 @@ async function peer() {
     const lines = createInterface({ input: process.stdin });
     for await (const line of lines) {
         if (!line.trim()) continue;
-        const { op, args } = JSON.parse(line);
+        let request;
+        try { request = JSON.parse(line); } catch (error) {
+            process.stdout.write(JSON.stringify({ ok: false, error: `bad request line: ${error.message}` }) + '\n');
+            continue;
+        }
+        const { op, args } = request;
         if (op === 'quit') break;
         try {
             const result = await ops[op](args ?? {});
