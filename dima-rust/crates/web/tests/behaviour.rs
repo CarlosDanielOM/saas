@@ -611,3 +611,100 @@ async fn bind_listens_dual_stack_like_node() {
     token.cancel();
     server.await.expect("join").expect("serve");
 }
+
+/// A temporary directory removed when dropped.
+struct TempDir(std::path::PathBuf);
+
+impl TempDir {
+    fn new(label: &str) -> Self {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos());
+        let path =
+            std::env::temp_dir().join(format!("dima-web-{label}-{}-{nanos}", std::process::id()));
+        std::fs::create_dir_all(&path).expect("temp dir");
+        Self(path)
+    }
+
+    fn path(&self) -> &str {
+        self.0.to_str().expect("UTF-8 temp dir")
+    }
+}
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+async fn speech_audio(req: &mut Req<String>) -> Response {
+    let file = format!(
+        "{}/speech/chan/{}.wav",
+        req.state(),
+        req.param("id").unwrap_or("")
+    );
+    Response::new().send_file(file)
+}
+
+async fn speech_page(req: &mut Req<String>) -> Response {
+    Response::new().json(&json!({ "page": req.param("channel") }))
+}
+
+/// Generated audio and clips appear and disappear while the server runs: nothing about a file
+/// may be remembered between requests.
+#[tokio::test]
+async fn files_changing_between_requests_are_seen() {
+    let dir = TempDir::new("changing");
+    let mut root = Router::new();
+    root.middleware(dima_web::serve_static(dir.path()));
+    root.get("/speech/audio/:id", speech_audio);
+    root.get("/speech/:channel", speech_page);
+    let app = App::new(root, dir.path().to_owned()).expect("app");
+    let file = dir.0.join("speech/chan/one.wav");
+
+    let (status, _, _) = call(&app, "GET", "/speech/chan/one.wav", "", &[]).await;
+    assert_eq!(status, 404);
+    let (status, body, _) = call(&app, "GET", "/speech/chan", "", &[]).await;
+    assert_eq!((status, body.as_str()), (200, r#"{"page":"chan"}"#));
+
+    std::fs::create_dir_all(file.parent().expect("parent")).expect("mkdir");
+    std::fs::write(&file, b"first").expect("write");
+    let (status, body, headers) = call(&app, "GET", "/speech/chan/one.wav", "", &[]).await;
+    assert_eq!((status, body.as_str()), (200, "first"));
+    assert_eq!(headers["content-type"], "audio/wav");
+    let first_tag = headers["etag"].to_str().expect("etag").to_owned();
+    // The directory now exists: the page path redirects, as serve-static does in production.
+    let (status, _, headers) = call(&app, "GET", "/speech/chan", "", &[]).await;
+    assert_eq!(status, 301);
+    assert_eq!(headers["location"], "/speech/chan/");
+    let (status, body, _) = call(&app, "GET", "/speech/audio/one", "", &[]).await;
+    assert_eq!((status, body.as_str()), (200, "first"));
+
+    std::fs::write(&file, b"second, longer").expect("rewrite");
+    let (status, body, headers) = call(
+        &app,
+        "GET",
+        "/speech/chan/one.wav",
+        "",
+        &[("if-none-match", &first_tag)],
+    )
+    .await;
+    assert_eq!((status, body.as_str()), (200, "second, longer"));
+    assert_ne!(headers["etag"].to_str().expect("etag"), first_tag);
+    let (status, body, _) = call(
+        &app,
+        "GET",
+        "/speech/audio/one",
+        "",
+        &[("range", "bytes=0-5")],
+    )
+    .await;
+    assert_eq!((status, body.as_str()), (206, "second"));
+
+    std::fs::remove_file(&file).expect("remove");
+    let (status, _, _) = call(&app, "GET", "/speech/chan/one.wav", "", &[]).await;
+    assert_eq!(status, 404);
+    let (status, body, _) = call(&app, "GET", "/speech/audio/one", "", &[]).await;
+    assert_eq!(status, 404);
+    assert!(body.contains("<pre>Not Found</pre>"), "{body}");
+}
