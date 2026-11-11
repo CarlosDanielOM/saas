@@ -250,11 +250,11 @@ impl<'a> Comparator<'a> {
                 match (self.fwd.get(&(*k1, *n1)), self.back.get(&(*k2, *n2))) {
                     (Some(m), _) if m == n2 => Ok(()),
                     (Some(m), _) => Err(format!(
-                        "cross-reference differs: reference <{0}:{n1}> already corresponds to candidate <{0}:{m}>",
+                        "cross-reference differs: reference <{0}:{n1}> is candidate <{0}:{m}> elsewhere, but here candidate has <{0}:{n2}>",
                         k1.tag()
                     )),
                     (None, Some(m)) => Err(format!(
-                        "cross-reference differs: candidate <{0}:{n2}> already corresponds to reference <{0}:{m}>",
+                        "cross-reference differs: candidate <{0}:{n2}> is reference <{0}:{m}> elsewhere, but here reference has <{0}:{n1}>",
                         k1.tag()
                     )),
                     (None, None) => {

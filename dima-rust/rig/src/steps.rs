@@ -122,7 +122,11 @@ impl Runner<'_> {
         let resp = match req.send().await {
             Ok(r) => r,
             Err(e) => {
-                self.alive(i, "while handling the request")?;
+                // A process that dies mid-request closes the connection before it is reaped.
+                for _ in 0..50 {
+                    self.alive(i, "while handling the request")?;
+                    tokio::time::sleep(POLL).await;
+                }
                 return Err(err(
                     i,
                     format!("{} {}: request failed: {e}", h.method, h.path),

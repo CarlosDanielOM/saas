@@ -98,6 +98,8 @@ struct SideRunner<'s> {
     proc: Option<SideProcess>,
     baseline: Option<Baseline>,
     launches: u32,
+    /// Log file of the latest process (kept after it stopped, for failure reports).
+    last_log: Option<PathBuf>,
     http: reqwest::Client,
     run_id: String,
 }
@@ -129,6 +131,7 @@ impl<'s> SideRunner<'s> {
             proc: None,
             baseline: None,
             launches: 0,
+            last_log: None,
             http,
             run_id: run_id(),
         })
@@ -143,6 +146,16 @@ impl<'s> SideRunner<'s> {
 
     fn fail(&self, msg: impl Into<String>) -> SideFailure {
         rig_failure(self.which.name(), msg)
+    }
+
+    /// A failure with the tail of the latest process log.
+    fn fail_with_log(&self, msg: impl Into<String>) -> SideFailure {
+        let log = self.last_log.as_ref();
+        SideFailure {
+            log: log.map(|l| l.display().to_string()),
+            log_tail: log.map(|l| side::log_tail(l)).unwrap_or_default(),
+            ..self.fail(msg)
+        }
     }
 
     async fn launch(&mut self) -> std::result::Result<(), SideFailure> {
@@ -208,6 +221,7 @@ impl<'s> SideRunner<'s> {
             "{}-{}-{}.log",
             self.run_id, self.label, self.launches
         ));
+        self.last_log = Some(log_path.clone());
         let ls = LaunchSpec {
             side: self.which.name().into(),
             command,
@@ -330,15 +344,14 @@ impl<'s> SideRunner<'s> {
         let steps = match result {
             Ok(s) => s,
             Err(e) => {
-                let failure = match self.proc.as_ref() {
-                    Some(p) => p.failure(Some(e.step), e.message),
-                    None => self.fail(e.message),
+                // A failed scenario leaves the process in an unknown state (half-done work,
+                // or dead): the next scenario gets a fresh one.
+                let _ = self.stop_process().await;
+                self.baseline = None;
+                let failure = SideFailure {
+                    step: Some(e.step),
+                    ..self.fail_with_log(e.message)
                 };
-                let dead = self.proc.as_mut().is_some_and(|p| p.check_alive().is_err());
-                if sc.restart || dead {
-                    let _ = self.stop_process().await;
-                    self.baseline = None;
-                }
                 return Err(failure);
             }
         };

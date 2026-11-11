@@ -735,6 +735,24 @@ pub async fn db_hash(client: &Client, db: &str) -> Result<BTreeMap<String, Strin
             out.insert(k.clone(), v.as_str().unwrap_or("").to_string());
         }
     }
+    // dbHash covers documents only: index changes (an application's start-up createIndexes)
+    // are writes too.
+    let names: Vec<String> = out.keys().cloned().collect();
+    for name in names {
+        let reply = timed(
+            "MongoDB listIndexes",
+            client
+                .database(db)
+                .run_command(doc! {"listIndexes": name.clone(), "cursor": {"batchSize": 100_000}}),
+        )
+        .await;
+        let mut specs: Vec<String> = match reply {
+            Ok(r) => first_batch(&r).iter().map(|d| d.to_string()).collect(),
+            Err(_) => Vec::new(),
+        };
+        specs.sort();
+        out.insert(format!("{name} (indexes)"), specs.join(";"));
+    }
     Ok(out)
 }
 

@@ -77,8 +77,9 @@ fn json_resp(status: u16, v: &Value) -> Response {
     }
 }
 
+/// `Date.prototype.toISOString` shape: always three fraction digits.
 fn iso(dt: bson::DateTime) -> String {
-    dt.try_to_rfc3339_string().unwrap_or_default()
+    dima_rig::timefmt::format_iso_ms(dt.timestamp_millis()).unwrap_or_default()
 }
 
 fn env(name: &str) -> Result<String> {
