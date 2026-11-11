@@ -9,6 +9,7 @@ use dima_rig::config::{self, Overrides};
 use dima_rig::error::RigError;
 use dima_rig::report::Report;
 use dima_rig::run::{self, Settings};
+use dima_rig::stores::Registry;
 
 #[derive(Parser)]
 #[command(
@@ -92,21 +93,21 @@ enum Cmd {
     Gc,
 }
 
-async fn dispatch(cmd: &Cmd, s: &Settings) -> Result<Option<Report>, RigError> {
+async fn dispatch(cmd: &Cmd, s: &Settings, reg: &Registry) -> Result<Option<Report>, RigError> {
     Ok(Some(match cmd {
         Cmd::Record {
             target,
             scenarios,
             once,
-        } => run::record(s, target, scenarios, *once).await?,
-        Cmd::Verify { target, scenarios } => run::verify(s, target, scenarios).await?,
-        Cmd::Compare { target, scenarios } => run::compare_live(s, target, scenarios).await?,
+        } => run::record(s, reg, target, scenarios, *once).await?,
+        Cmd::Verify { target, scenarios } => run::verify(s, reg, target, scenarios).await?,
+        Cmd::Compare { target, scenarios } => run::compare_live(s, reg, target, scenarios).await?,
         Cmd::DiffGet {
             target,
             db,
             paths,
             no_write_check,
-        } => run::diff_get(s, target, db, paths, !no_write_check).await?,
+        } => run::diff_get(s, reg, target, db, paths, !no_write_check).await?,
         Cmd::Check { target, scenarios } => run::check(s, target, scenarios)?,
         Cmd::Gc => {
             let dropped = dima_rig::stores::gc(&s.stores.mongo_uri).await?;
@@ -161,19 +162,31 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let result = rt.block_on(async {
-        tokio::select! {
-            r = dispatch(&cli.cmd, &settings) => r,
-            _ = tokio::signal::ctrl_c() => {
-                // Dropping the command stopped the side processes (SIGKILL to their groups).
-                match run::drop_own(&settings).await {
-                    Ok(d) if !d.is_empty() => eprintln!("dima-rig: dropped {}", d.join(", ")),
-                    Ok(_) => {}
-                    Err(e) => eprintln!("dima-rig: cleanup after interrupt failed: {e}; run `dima-rig gc`"),
-                }
-                Err(RigError::Interrupted)
-            }
-        }
+    let reg = Registry::default();
+    let (result, cleanup) = rt.block_on(async {
+        let result = tokio::select! {
+            r = dispatch(&cli.cmd, &settings, &reg) => r,
+            _ = tokio::signal::ctrl_c() => Err(RigError::Interrupted),
+        };
+        // One cleanup path for success, error and interruption. When interrupted, dropping the
+        // command above already killed the side processes (SIGKILL to their groups).
+        let cleanup = reg.cleanup(&settings.stores, settings.keep).await;
+        (result, cleanup)
+    });
+    if let Some(line) = cleanup.summary() {
+        eprintln!("dima-rig: {line}");
+    }
+    for e in &cleanup.errors {
+        eprintln!("dima-rig: cleanup failed: {e}; run `dima-rig gc`");
+    }
+    let result = result.map(|r| {
+        r.map(|mut report| {
+            report
+                .errors
+                .extend(cleanup.errors.iter().map(|e| format!("cleanup: {e}")));
+            report.finish();
+            report
+        })
     });
     match result {
         Ok(None) => ExitCode::SUCCESS,

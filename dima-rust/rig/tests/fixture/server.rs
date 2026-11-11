@@ -375,7 +375,8 @@ async fn main() -> Result<()> {
         .await?;
     let listener = TcpListener::bind(("127.0.0.1", port)).await?;
     println!(
-        "fixture: listening on {port}, variant {variant:?}, PATH set: {}",
+        "fixture: listening on {port}, variant {variant:?}, pid {}, PATH set: {}",
+        std::process::id(),
         std::env::var_os("PATH").is_some()
     );
     let app = Arc::new(App {

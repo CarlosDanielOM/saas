@@ -15,13 +15,13 @@ use crate::canon;
 use crate::capture::{self, Capture, CaptureMeta, RawCapture, StepCap};
 use crate::compare;
 use crate::detect::{self, DetectCtx, Known, Patterns, Window};
-use crate::error::{Result, RigError, config};
+use crate::error::{Result, config};
 use crate::getlist;
 use crate::report::{Report, ScenarioReport, SideFailure, Status};
 use crate::scenario::{self, Scenario, Selection};
 use crate::side::{self, LaunchSpec, SideProcess};
 use crate::steps::Runner;
-use crate::stores::{self, Baseline, SideStores, StoreConfig};
+use crate::stores::{self, Baseline, Registry, SideStores, StoreConfig};
 use crate::target::{self, SideSpec, Target};
 use crate::template;
 use crate::timefmt;
@@ -107,12 +107,13 @@ struct SideRunner<'s> {
 impl<'s> SideRunner<'s> {
     async fn new(
         settings: &'s Settings,
+        reg: &Registry,
         target: &'s Target,
         which: Which,
         label: &str,
         existing_db: Option<&str>,
     ) -> Result<SideRunner<'s>> {
-        let stores = SideStores::allocate(&settings.stores, label, existing_db).await?;
+        let stores = SideStores::allocate(&settings.stores, reg, label, existing_db).await?;
         let http = reqwest::Client::builder()
             .no_proxy()
             .no_gzip()
@@ -397,41 +398,30 @@ impl<'s> SideRunner<'s> {
         })
     }
 
-    /// Stop the process; the stores stay claimed until [`SideStores::cleanup`].
-    async fn finish(mut self) -> SideStores {
+    /// Stop the process; the stores stay claimed until [`Registry::cleanup`].
+    async fn finish(mut self) {
         let _ = self.stop_process().await;
-        self.stores
     }
 }
 
+/// Run every scenario on one side. The side's stores are registered in `reg` and released by
+/// the command's one cleanup path ([`Registry::cleanup`]), whatever happens here.
 async fn run_side(
     settings: &Settings,
+    reg: &Registry,
     target: &Target,
     which: Which,
     label: &str,
     scenarios: &[Scenario],
     existing_db: Option<&str>,
-) -> Result<(Vec<SideOutcome>, SideStores)> {
-    let mut r = SideRunner::new(settings, target, which, label, existing_db).await?;
+) -> Result<Vec<SideOutcome>> {
+    let mut r = SideRunner::new(settings, reg, target, which, label, existing_db).await?;
     let mut out = Vec::with_capacity(scenarios.len());
     for sc in scenarios {
         out.push(r.run_scenario(sc).await);
     }
-    Ok((out, r.finish().await))
-}
-
-async fn cleanup(settings: &Settings, mut stores: Vec<SideStores>, report: &mut Report) {
-    for s in stores.iter_mut() {
-        if let Err(e) = s.cleanup(settings.keep).await {
-            report.errors.push(format!("cleanup of {}: {e}", s.db_name));
-        }
-        if settings.keep {
-            eprintln!(
-                "kept: MongoDB database {} and Dragonfly logical database {} (flushed by the next run that claims it)",
-                s.db_name, s.df_index
-            );
-        }
-    }
+    r.finish().await;
+    Ok(out)
 }
 
 /// Detect, order and number one side's capture.
@@ -558,6 +548,7 @@ pub fn check(settings: &Settings, target_name: &str, filters: &[String]) -> Resu
 /// `dima-rig compare`: run the reference and the candidate live and compare.
 pub async fn compare_live(
     settings: &Settings,
+    reg: &Registry,
     target_name: &str,
     filters: &[String],
 ) -> Result<Report> {
@@ -565,24 +556,26 @@ pub async fn compare_live(
     let target = target::load(&settings.rig_dir, target_name)?;
     let p = patterns()?;
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
-    let (refs, ref_stores) =
-        run_side(settings, &target, Which::Reference, "ref", &scenarios, None).await?;
+    let refs = run_side(
+        settings,
+        reg,
+        &target,
+        Which::Reference,
+        "ref",
+        &scenarios,
+        None,
+    )
+    .await?;
     let cands = run_side(
         settings,
+        reg,
         &target,
         Which::Candidate,
         "cand",
         &scenarios,
         None,
     )
-    .await;
-    let (cands, cand_stores) = match cands {
-        Ok(v) => v,
-        Err(e) => {
-            cleanup(settings, vec![ref_stores], &mut report).await;
-            return Err(e);
-        }
-    };
+    .await?;
     for ((sc, r), c) in scenarios.iter().zip(refs).zip(cands) {
         let mut rep = ScenarioReport::new(&sc.name, &sc.description);
         match (r, c) {
@@ -610,14 +603,18 @@ pub async fn compare_live(
         }
         report.scenarios.push(rep);
     }
-    cleanup(settings, vec![ref_stores, cand_stores], &mut report).await;
     report.scenarios.sort_by(|a, b| a.scenario.cmp(&b.scenario));
     report.finish();
     Ok(report)
 }
 
 /// `dima-rig verify`: run the candidate and compare with the recorded reference captures.
-pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) -> Result<Report> {
+pub async fn verify(
+    settings: &Settings,
+    reg: &Registry,
+    target_name: &str,
+    filters: &[String],
+) -> Result<Report> {
     let mut report = Report::new("verify", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
     let p = patterns()?;
@@ -659,8 +656,16 @@ pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) 
         }
     }
     if !runnable.is_empty() {
-        let (cands, cand_stores) =
-            run_side(settings, &target, Which::Candidate, "cand", &runnable, None).await?;
+        let cands = run_side(
+            settings,
+            reg,
+            &target,
+            Which::Candidate,
+            "cand",
+            &runnable,
+            None,
+        )
+        .await?;
         for ((sc, rc), c) in runnable.iter().zip(recorded).zip(cands) {
             let mut rep = ScenarioReport::new(&sc.name, &sc.description);
             match c {
@@ -677,7 +682,6 @@ pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) 
             }
             report.scenarios.push(rep);
         }
-        cleanup(settings, vec![cand_stores], &mut report).await;
     }
     report.scenarios.sort_by(|a, b| a.scenario.cmp(&b.scenario));
     report.finish();
@@ -687,6 +691,7 @@ pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) 
 /// `dima-rig record`: run the reference (twice unless `once`), check it is stable, write captures.
 pub async fn record(
     settings: &Settings,
+    reg: &Registry,
     target_name: &str,
     filters: &[String],
     once: bool,
@@ -695,31 +700,31 @@ pub async fn record(
     let target = target::load(&settings.rig_dir, target_name)?;
     let p = patterns()?;
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
-    let (first, s1) =
-        run_side(settings, &target, Which::Reference, "ref", &scenarios, None).await?;
-    let mut all_stores = vec![s1];
+    let first = run_side(
+        settings,
+        reg,
+        &target,
+        Which::Reference,
+        "ref",
+        &scenarios,
+        None,
+    )
+    .await?;
     let second = if once {
         None
     } else {
-        match run_side(
-            settings,
-            &target,
-            Which::Reference,
-            "ref2",
-            &scenarios,
-            None,
+        Some(
+            run_side(
+                settings,
+                reg,
+                &target,
+                Which::Reference,
+                "ref2",
+                &scenarios,
+                None,
+            )
+            .await?,
         )
-        .await
-        {
-            Ok((v, s2)) => {
-                all_stores.push(s2);
-                Some(v)
-            }
-            Err(e) => {
-                cleanup(settings, all_stores, &mut report).await;
-                return Err(e);
-            }
-        }
     };
     let mut second = second.map(Vec::into_iter);
     for (sc, r1) in scenarios.iter().zip(first) {
@@ -798,7 +803,6 @@ pub async fn record(
         rep.capture = Some(path.display().to_string());
         report.scenarios.push(rep);
     }
-    cleanup(settings, all_stores, &mut report).await;
     report.scenarios.sort_by(|a, b| a.scenario.cmp(&b.scenario));
     report.finish();
     Ok(report)
@@ -807,6 +811,7 @@ pub async fn record(
 /// `dima-rig diff-get`: GET requests against an existing database on both sides.
 pub async fn diff_get(
     settings: &Settings,
+    reg: &Registry,
     target_name: &str,
     db: &str,
     list_file: &FsPath,
@@ -862,8 +867,9 @@ pub async fn diff_get(
         } else {
             None
         };
-        let (mut out, mut st) = run_side(
+        let mut out = run_side(
             settings,
+            reg,
             &target,
             which,
             label,
@@ -871,9 +877,6 @@ pub async fn diff_get(
             Some(db),
         )
         .await?;
-        if let Err(e) = st.cleanup(false).await {
-            report.errors.push(format!("cleanup: {e}"));
-        }
         let mut outcome = out
             .pop()
             .unwrap_or_else(|| Err(rig_failure(which.name(), "no result")));
@@ -965,26 +968,4 @@ pub async fn diff_get(
     }
     report.finish();
     Ok(report)
-}
-
-/// Drop this process's own `rig_` databases (after an interruption).
-pub async fn drop_own(settings: &Settings) -> Result<Vec<String>> {
-    let client = stores::mongo_client(&settings.stores.mongo_uri).await?;
-    let prefix = format!("rig_{}_", std::process::id());
-    let mut dropped = Vec::new();
-    for n in client
-        .list_database_names()
-        .await
-        .map_err(|e| RigError::Store(e.to_string()))?
-    {
-        if n.starts_with(&prefix) {
-            client
-                .database(&n)
-                .drop()
-                .await
-                .map_err(|e| RigError::Store(e.to_string()))?;
-            dropped.push(n);
-        }
-    }
-    Ok(dropped)
 }

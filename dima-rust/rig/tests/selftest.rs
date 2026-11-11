@@ -500,3 +500,229 @@ fn self_test_end_to_end() {
     assert!(left.is_empty(), "databases left behind: {left:?}");
     let _ = std::fs::remove_dir_all(&work);
 }
+
+/// The rig's settings as it computes them (lock directory, stores) from this environment.
+fn rig_settings() -> dima_rig::run::Settings {
+    dima_rig::config::settings(
+        &dima_rig::config::Overrides::default(),
+        std::env::vars().collect(),
+    )
+    .unwrap()
+}
+
+/// The logical databases a rig run says it flushed (from its stderr).
+fn flushed_indexes(text: &str) -> Vec<u8> {
+    text.lines()
+        .filter_map(|l| l.split("flushed Dragonfly logical databases ").nth(1))
+        .flat_map(|rest| {
+            rest.split(';')
+                .next()
+                .unwrap_or("")
+                .split(',')
+                .filter_map(|n| n.trim().parse::<u8>().ok())
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+/// After the rig released logical database `idx`, it is empty (checked under its lock; when
+/// another rig run has claimed it since, the lock is busy and the content is theirs).
+fn assert_flushed(idx: u8) {
+    let s = rig_settings();
+    let path = dima_rig::stores::lock_path(&s.stores, idx);
+    let f = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(&path)
+        .unwrap();
+    if f.try_lock().is_err() {
+        eprintln!("logical database {idx} was claimed by another rig run since; not checked");
+        return;
+    }
+    let url = format!(
+        "redis://{}:{}/{idx}",
+        s.stores.dragonfly_host, s.stores.dragonfly_port
+    );
+    let mut c = redis::Client::open(url).unwrap().get_connection().unwrap();
+    let n: i64 = redis::cmd("DBSIZE").query(&mut c).unwrap();
+    assert_eq!(n, 0, "logical database {idx} was not flushed");
+}
+
+fn assert_no_databases_of(uri: &str, pid: u32) {
+    let left: Vec<String> = mongo_names(uri)
+        .into_iter()
+        .filter(|n| n.starts_with(&format!("rig_{pid}_")))
+        .collect();
+    assert!(left.is_empty(), "databases left behind: {left:?}");
+}
+
+/// Wait until a process is gone (or a zombie nobody has reaped yet).
+fn process_gone(pid: &str) -> bool {
+    for _ in 0..250 {
+        match std::fs::read_to_string(format!("/proc/{pid}/stat")) {
+            Err(_) => return true,
+            Ok(stat)
+                if stat
+                    .rsplit(')')
+                    .next()
+                    .is_some_and(|t| t.trim_start().starts_with('Z')) =>
+            {
+                return true;
+            }
+            Ok(_) => std::thread::sleep(std::time::Duration::from_millis(20)),
+        }
+    }
+    false
+}
+
+fn find_in_logs(dir: &Path, needle: &str) -> Option<String> {
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in std::fs::read_dir(&d).ok()?.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if let Ok(text) = std::fs::read_to_string(&p)
+                && let Some(line) = text.lines().find(|l| l.contains(needle))
+            {
+                return Some(line.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// One cleanup path: after an error of the rig itself and after Ctrl-C, the side databases are
+/// dropped, the claimed logical databases flushed, the locks released and the processes gone.
+#[test]
+fn cleanup_after_a_failure_and_an_interrupt() {
+    let Some(uri) = std::env::var("DIMA_TEST_MONGO_URI")
+        .ok()
+        .filter(|s| !s.is_empty())
+    else {
+        eprintln!("skipping: DIMA_TEST_MONGO_URI is not set");
+        return;
+    };
+    let work =
+        Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("rig-cleanup-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&work);
+    std::fs::create_dir_all(&work).unwrap();
+    let rd = work.join("rig");
+    copy_dir(&selftest_dir(), &rd);
+    std::fs::write(
+        rd.join("scenarios/selftest/items/slow.json"),
+        serde_json::to_string_pretty(&json!({
+            "rig_scenario": 1,
+            "description": "Create an item, then wait long enough to be interrupted.",
+            "seed": { "include": ["../_seeds/users.json"] },
+            "steps": [
+                { "http": { "method": "POST", "path": "/items", "json": { "name": "slow", "qty": 1, "owner": "650000000000000000000001" } } },
+                { "pause_ms": 60000 }
+            ]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    // An error of the rig itself after the sides ran: the captures directory cannot be created.
+    let blocker = work.join("not-a-directory");
+    std::fs::write(&blocker, "x").unwrap();
+    let failed = Command::new(RIG)
+        .arg("--rig-dir")
+        .arg(&rd)
+        .arg("--captures-dir")
+        .arg(blocker.join("captures"))
+        .arg("--out-dir")
+        .arg(work.join("out-failure"))
+        .args([
+            "--set",
+            &format!("fixture={FIXTURE}"),
+            "--set",
+            "variant=good",
+        ])
+        .args(["record", "--once", "selftest", "items/create"])
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&failed.stderr).to_string();
+    assert_eq!(failed.status.code(), Some(2), "{text}");
+    assert!(
+        text.contains("cleanup: dropped MongoDB databases rig_"),
+        "{text}"
+    );
+    let flushed = flushed_indexes(&text);
+    assert_eq!(flushed.len(), 1, "{text}");
+    flushed.iter().for_each(|i| assert_flushed(*i));
+    // The rig process is gone, so its pid cannot be reused for a check; the databases it named are.
+    for name in text
+        .split("dropped MongoDB databases ")
+        .nth(1)
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .split(", ")
+    {
+        assert!(
+            !mongo_names(&uri).contains(&name.trim().to_string()),
+            "{name} left behind"
+        );
+    }
+
+    // Ctrl-C in the middle of a scenario.
+    let logs = work.join("out-interrupt");
+    let child = Command::new(RIG)
+        .arg("--rig-dir")
+        .arg(&rd)
+        .arg("--captures-dir")
+        .arg(work.join("captures"))
+        .arg("--out-dir")
+        .arg(&logs)
+        .args([
+            "--set",
+            &format!("fixture={FIXTURE}"),
+            "--set",
+            "variant=good",
+        ])
+        .args(["record", "--once", "selftest", "items/slow"])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let rig_pid = child.id();
+    let mut fixture_pid = None;
+    for _ in 0..500 {
+        if find_in_logs(&logs, "POST /items -> 201").is_some() {
+            fixture_pid = find_in_logs(&logs, "fixture: listening on").and_then(|l| {
+                l.split(", pid ")
+                    .nth(1)
+                    .and_then(|r| r.split(',').next())
+                    .map(str::to_string)
+            });
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let fixture_pid = fixture_pid.expect("the scenario did not start");
+    nix::sys::signal::kill(
+        nix::unistd::Pid::from_raw(i32::try_from(rig_pid).unwrap()),
+        nix::sys::signal::Signal::SIGINT,
+    )
+    .unwrap();
+    let out = child.wait_with_output().unwrap();
+    let text = String::from_utf8_lossy(&out.stderr).to_string();
+    assert_eq!(out.status.code(), Some(130), "{text}");
+    assert!(
+        text.contains("cleanup: dropped MongoDB databases rig_"),
+        "{text}"
+    );
+    let flushed = flushed_indexes(&text);
+    assert_eq!(flushed.len(), 1, "{text}");
+    flushed.iter().for_each(|i| assert_flushed(*i));
+    assert_no_databases_of(&uri, rig_pid);
+    assert!(
+        process_gone(&fixture_pid),
+        "the side process {fixture_pid} outlived the interrupted rig"
+    );
+    let _ = std::fs::remove_dir_all(&work);
+}
