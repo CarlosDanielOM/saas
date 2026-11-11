@@ -80,6 +80,27 @@ async fn panics_become_500_and_the_app_keeps_serving() {
     assert_eq!((status, body.as_str()), (200, r#"{"greeting":"hi"}"#));
 }
 
+/// Review finding: an absurd `If-Modified-Since` year overflowed the date arithmetic (a panic,
+/// so a 500) on every GET that sent a body.
+#[tokio::test]
+async fn absurd_conditional_dates_are_just_stale() {
+    let mut root = Router::new();
+    root.get("/hello", greet);
+    let app = App::new(root, State { greeting: "hi" }).expect("app");
+    for date in [
+        "Sun, 06 Nov 99999999999999999 08:49:37 GMT",
+        "Sun, 06 Nov 9223372036854775807 23:59:59 GMT",
+    ] {
+        let (status, body, _) =
+            call(&app, "GET", "/hello", "", &[("if-modified-since", date)]).await;
+        assert_eq!(
+            (status, body.as_str()),
+            (200, r#"{"greeting":"hi"}"#),
+            "{date}"
+        );
+    }
+}
+
 #[tokio::test]
 async fn panics_reach_router_error_handlers() {
     let mut widgets = Router::new();

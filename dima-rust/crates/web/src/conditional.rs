@@ -89,52 +89,11 @@ fn parse_token_list(value: &str) -> Vec<&str> {
     list
 }
 
-/// Milliseconds since the epoch for an IMF-fixdate (`Sun, 06 Nov 1994 08:49:37 GMT`), the form
-/// browsers echo back in `If-Modified-Since`. JavaScript's `Date.parse` accepts more forms; any
-/// other form is treated as unparseable (`NaN`), which makes the response stale.
+/// `Date.parse(value)` as `fresh` and `send` use it (`NaN` as `None`): the IMF-fixdate browsers
+/// echo back, the obsolete RFC 850 and asctime forms, and ISO dates, with range-checked
+/// arithmetic on any year a client sends.
 pub(crate) fn parse_http_date(value: &str) -> Option<i64> {
-    let parts: Vec<&str> = value.split(' ').collect();
-    let [_, day, month, year, time, "GMT"] = parts.as_slice() else {
-        return None;
-    };
-    let day: i64 = day.parse().ok()?;
-    let month = match *month {
-        "Jan" => 1,
-        "Feb" => 2,
-        "Mar" => 3,
-        "Apr" => 4,
-        "May" => 5,
-        "Jun" => 6,
-        "Jul" => 7,
-        "Aug" => 8,
-        "Sep" => 9,
-        "Oct" => 10,
-        "Nov" => 11,
-        "Dec" => 12,
-        _ => return None,
-    };
-    let year: i64 = year.parse().ok()?;
-    let mut clock = time.split(':').map(str::parse::<i64>);
-    let (Some(Ok(h)), Some(Ok(m)), Some(Ok(s)), None) =
-        (clock.next(), clock.next(), clock.next(), clock.next())
-    else {
-        return None;
-    };
-    if !(1..=31).contains(&day) || h > 23 || m > 59 || s > 59 {
-        return None;
-    }
-    Some((days_from_civil(year, month, day) * 86_400 + h * 3600 + m * 60 + s) * 1000)
-}
-
-/// Days since 1970-01-01 for a proleptic Gregorian date (Howard Hinnant's algorithm).
-fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
-    let y = if month <= 2 { year - 1 } else { year };
-    let era = y.div_euclid(400);
-    let yoe = y - era * 400;
-    let mp = (month + 9) % 12;
-    let doy = (153 * mp + 2) / 5 + day - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    era * 146_097 + doe - 719_468
+    dima_text::parse_date(value)
 }
 
 #[cfg(test)]
@@ -185,5 +144,41 @@ mod tests {
         assert_eq!(parse_http_date(date), Some(784_111_777_000));
         assert!(fresh(None, Some(date), None, None, Some(date)));
         assert!(!fresh(None, Some(date), None, None, None));
+    }
+
+    /// Review finding: the hand-written parser did unchecked arithmetic on the client's year and
+    /// knew only the IMF-fixdate form.
+    #[test]
+    fn dates_parse_like_date_parse() {
+        let modified = "Sun, 06 Nov 1994 08:49:37 GMT";
+        for huge in [
+            "Sun, 06 Nov 99999999999999999 08:49:37 GMT",
+            "Sun, 06 Nov 9223372036854775807 08:49:37 GMT",
+            "Sun, 06 Nov -99999999999999999 08:49:37 GMT",
+        ] {
+            assert_eq!(parse_http_date(huge), None, "{huge}");
+            assert!(!fresh(None, Some(huge), None, None, Some(modified)));
+        }
+        // The obsolete forms Express accepts through Date.parse.
+        for obsolete in [
+            "Sunday, 06-Nov-94 08:49:37 GMT",
+            "Sun Nov  6 08:49:37 1994",
+            "1994-11-06T08:49:37Z",
+        ] {
+            assert_eq!(
+                parse_http_date(obsolete),
+                Some(784_111_777_000),
+                "{obsolete}"
+            );
+            assert!(fresh(None, Some(obsolete), None, None, Some(modified)));
+        }
+        assert!(!fresh(
+            None,
+            Some("Sun, 06 Nov 1994 08:49:36 GMT"),
+            None,
+            None,
+            Some(modified)
+        ));
+        assert!(!fresh(None, Some("garbage"), None, None, Some(modified)));
     }
 }
