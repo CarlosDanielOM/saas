@@ -8,9 +8,12 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod crypto;
 pub mod env;
+pub mod random;
 pub mod secret;
 pub mod time;
 
+pub use random::{Random, RandomError, SeededRandom, SystemRandom};
 pub use secret::{SecretBytes, SecretString};
 pub use time::{Clock, ManualClock, SystemClock};

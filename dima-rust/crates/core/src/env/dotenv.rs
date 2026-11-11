@@ -167,15 +167,15 @@ fn strip_quotes(value: &str) -> String {
         // Greedy `[\s\S]*`: the last closing quote that is followed by a line end.
         let close = value
             .char_indices()
+            .rev()
             .filter(|(index, ch)| *index >= body_start && *ch == quote)
             .map(|(index, _)| index)
-            .filter(|index| {
+            .find(|index| {
                 sub(value, index + 1, value.len())
                     .chars()
                     .next()
                     .is_none_or(is_line_terminator)
-            })
-            .last();
+            });
         if let Some(close) = close {
             out.push_str(sub(value, copied, start));
             out.push_str(sub(value, body_start, close));
