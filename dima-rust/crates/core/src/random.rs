@@ -116,8 +116,8 @@ pub trait Random: Send + Sync + fmt::Debug {
     /// rejection above the largest multiple of the range.
     fn int(&self, min: i64, max: i64) -> Result<i64, RandomError> {
         const RAND_MAX: i64 = 0xffff_ffff_ffff;
-        const MAX_SAFE: i64 = 9_007_199_254_740_991;
-        if min.abs() > MAX_SAFE || max.abs() > MAX_SAFE {
+        const MAX_SAFE: u64 = 9_007_199_254_740_991;
+        if min.unsigned_abs() > MAX_SAFE || max.unsigned_abs() > MAX_SAFE {
             return Err(RandomError::InvalidRange("bounds must be safe integers"));
         }
         if max <= min {
@@ -178,7 +178,8 @@ pub trait Random: Send + Sync + fmt::Debug {
         }
         let limit = 65_536 - 65_536 % count;
         let mut out = String::with_capacity(len);
-        while out.chars().count() < len {
+        let mut produced = 0;
+        while produced < len {
             let mut b = [0_u8; 2];
             self.fill(&mut b)?;
             let x = usize::from(u16::from_be_bytes(b));
@@ -186,6 +187,7 @@ pub trait Random: Send + Sync + fmt::Debug {
                 && let Some(symbol) = symbols.get(x % count)
             {
                 out.push(*symbol);
+                produced += 1;
             }
         }
         Ok(out)
@@ -352,6 +354,7 @@ mod tests {
             assert!(random.ticket(7).unwrap() < 7);
         }
         assert!(random.int(5, 5).is_err());
+        assert!(random.int(i64::MIN, 0).is_err());
         assert!(random.int(0, 1 << 48).is_err());
         assert!(random.int(0, (1 << 48) - 1).is_ok());
         assert!(random.ticket(0).is_err());
