@@ -1628,3 +1628,111 @@ fn seeded_times_compare_by_their_seed_offset() {
         "seed",
     );
 }
+
+#[test]
+fn generated_values_spread_only_as_whole_tokens_and_never_onto_inputs() {
+    let al = allow(&[("steps[*].body.token", AllowKind::Generated(None))]);
+    let mk = |tok: &str, other: &str| {
+        raw(
+            vec![http(200, json!({"token": tok, "other": other}))],
+            vec![],
+            vec![],
+        )
+    };
+    // The same token elsewhere, whole or at clear boundaries: followed.
+    assert_match(&diff_w(
+        &mk("abc12345", "abc12345"),
+        window(),
+        &mk("zzz98765", "zzz98765"),
+        window(),
+        &al,
+    ));
+    assert_match(&diff_w(
+        &mk("abc12345", "session:abc12345/x"),
+        window(),
+        &mk("zzz98765", "session:zzz98765/x"),
+        window(),
+        &al,
+    ));
+    // Glued to letters or digits it is not that token: compared as text.
+    assert_one(
+        &diff_w(
+            &mk("abc12345", "Xabc12345"),
+            window(),
+            &mk("zzz98765", "Xzzz98765"),
+            window(),
+            &al,
+        ),
+        "steps[0].body.other",
+        "text differs",
+    );
+    // A value known from the inputs is never generated, not even at the named path.
+    let mut known = Known::default();
+    known.texts.insert("seed-token-0001".into());
+    let ca = norm_w(&mk("seed-token-0001", "-"), window(), &known, &al);
+    let cb = norm_w(&mk("other-token-002", "-"), window(), &known, &al);
+    assert_one(
+        &compare::compare(&ca, &cb, &al, compare::Tolerances::default()),
+        "steps[0].body.token",
+        "text differs",
+    );
+    // By pattern too.
+    let pat = allow(&[(
+        "**",
+        AllowKind::Generated(Some(regex::Regex::new("tok_[a-z0-9]+").unwrap())),
+    )]);
+    let ca = norm_w(&mk("tok_seed01", "-"), window(), &Known::default(), &pat);
+    let mut known = Known::default();
+    known.texts.insert("Bearer tok_seed01".into());
+    let ca2 = norm_w(&mk("tok_seed01", "-"), window(), &known, &pat);
+    let cb = norm_w(&mk("tok_other1", "-"), window(), &known, &pat);
+    assert_match(&compare::compare(
+        &ca,
+        &cb,
+        &pat,
+        compare::Tolerances::default(),
+    ));
+    assert!(
+        !compare::compare(&ca2, &cb, &pat, compare::Tolerances::default())
+            .differences
+            .is_empty()
+    );
+}
+
+#[test]
+fn generated_object_keys_bind_by_key_and_value() {
+    let (a1, a2) = (oid_at(START + 10, 1), oid_at(START + 20, 2));
+    let (b1, b2) = (oid_at(START + 30, 3), oid_at(START + 40, 4));
+    let body = |pairs: &[(&str, &str)]| {
+        let text = format!(
+            "{{{}}}",
+            pairs
+                .iter()
+                .map(|(k, v)| format!(r#""{k}":{{"name":"{v}"}}"#))
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        raw(
+            vec![http_h(
+                200,
+                &[("content-type", "application/json")],
+                text.as_bytes(),
+            )],
+            vec![],
+            vec![],
+        )
+    };
+    // The same objects keyed by fresh ids, written in the other order: a match (order is a note).
+    let o = diff(
+        &body(&[(&a1, "pizza"), (&a2, "ñandú")]),
+        &body(&[(&b2, "ñandú"), (&b1, "pizza")]),
+    );
+    assert_match(&o);
+    // Not equivalent: one value differs. Reported once, at that value.
+    let o = diff(
+        &body(&[(&a1, "pizza"), (&a2, "ñandú")]),
+        &body(&[(&b2, "ñandu"), (&b1, "pizza")]),
+    );
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+    assert!(o.differences[0].path.ends_with(".name"), "{:#?}", paths(&o));
+}

@@ -73,6 +73,8 @@ pub struct Known {
     pub ids: HashSet<String>,
     pub times: HashSet<i64>,
     pub days: HashSet<String>,
+    /// Every input string: a `generated` value never lands on one of them.
+    pub texts: HashSet<String>,
 }
 
 /// The fixed patterns the rig looks for inside strings.
@@ -97,8 +99,11 @@ impl Patterns {
         })
     }
 
-    /// Record every id, time and day that appears in an input string.
+    /// Record every id, time and day that appears in an input string, and the string itself.
     pub fn collect_known(&self, s: &str, known: &mut Known) {
+        if !s.is_empty() {
+            known.texts.insert(s.to_string());
+        }
         for m in self.oid.find_iter(s) {
             if bounded(s, m.start(), m.end(), |c| c.is_ascii_alphanumeric()) {
                 known.ids.insert(m.as_str().to_string());
@@ -277,6 +282,14 @@ struct Cand {
 }
 
 impl Detector<'_, '_> {
+    /// The value is known from the scenario's inputs: equal to an input string, or (when long
+    /// enough to mean something) part of one.
+    fn known_text(&self, v: &str) -> bool {
+        let texts = &self.ctx.known.texts;
+        texts.contains(v)
+            || (v.chars().count() >= MIN_GENERATED_LEN && texts.iter().any(|t| t.contains(v)))
+    }
+
     fn moment(&self, ms: i64) -> Moment {
         let w = &self.ctx.window;
         for (seed, secs) in &self.ctx.seed_offsets {
@@ -358,7 +371,12 @@ impl Detector<'_, '_> {
             }
         }
         if let Some(re) = &self.extra {
+            // A generated value found elsewhere, here only as a whole token (never glued to
+            // letters or digits on either side).
             for m in re.find_iter(s) {
+                if !bounded(s, m.start(), m.end(), char::is_alphanumeric) {
+                    continue;
+                }
                 cands.push(Cand {
                     start: m.start(),
                     end: m.end(),
@@ -369,7 +387,7 @@ impl Detector<'_, '_> {
         }
         for (idx, re) in self.ctx.allow.generated_patterns(path) {
             for m in re.find_iter(s) {
-                if m.as_str().is_empty() {
+                if m.as_str().is_empty() || self.known_text(m.as_str()) {
                     continue;
                 }
                 self.ctx.allow.mark_used(idx);
@@ -507,7 +525,7 @@ impl Detector<'_, '_> {
     }
 
     fn generated_whole(&mut self, path: &Path, s: &str) -> Option<Val> {
-        if self.ctx.allow.generated_whole(path) {
+        if self.ctx.allow.generated_whole(path) && !s.is_empty() && !self.known_text(s) {
             self.found.push(s.to_string());
             return Some(Val::Str(Text(vec![Seg::Id(Id::Raw(
                 IdKind::Gen,
@@ -1048,6 +1066,11 @@ impl Detector<'_, '_> {
     }
 }
 
+fn first_known(ctx: &DetectCtx<'_>, v: &str) -> bool {
+    let texts = &ctx.known.texts;
+    texts.contains(v) || texts.iter().any(|t| t.contains(v))
+}
+
 /// Detect run-time values in a raw capture. The result still holds `Id::Raw` atoms; pass it to
 /// [`crate::canon::canonicalise`] to order and number it.
 pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
@@ -1063,11 +1086,13 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         .into_iter()
         .filter(|s| s.chars().count() >= MIN_GENERATED_LEN)
         .collect();
+    found.retain(|s| !first_known(ctx, s));
     if found.is_empty() {
         return cap;
     }
-    // A generated value found at one path is also generated wherever else it appears (inside
-    // other strings and key names), so cross-references are checked.
+    // A generated value found at one path is also generated wherever else it appears as a whole
+    // value or a whole token (inside other strings and key names), so cross-references are
+    // checked; never as a bare substring, and never a value known from the inputs.
     found.sort_by_key(|s| std::cmp::Reverse(s.len()));
     found.dedup();
     let alternation = found

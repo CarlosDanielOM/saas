@@ -631,50 +631,61 @@ impl<'a> Comparator<'a> {
 
     fn obj(&mut self, path: &mut Path, a: &[(Text, Val)], b: &[(Text, Val)]) {
         let mut b_used = vec![false; b.len()];
-        let mut pairs: Vec<(usize, usize)> = Vec::new();
-        let mut missing: Vec<usize> = Vec::new();
+        let mut a_pair: Vec<Option<usize>> = vec![None; a.len()];
         let plain_b: HashMap<&str, usize> = b
             .iter()
             .enumerate()
             .filter_map(|(j, (k, _))| k.as_plain().map(|p| (p, j)))
             .collect();
+        // 1. Plain keys by name.
         for (i, (ka, _)) in a.iter().enumerate() {
-            let found = match ka.as_plain() {
-                Some(p) => plain_b
-                    .get(p)
-                    .copied()
-                    .filter(|j| !b_used.get(*j).copied().unwrap_or(true)),
-                None => {
-                    let mut hit = None;
-                    for (j, (kb, _)) in b.iter().enumerate() {
-                        if b_used.get(j).copied().unwrap_or(true) || kb.as_plain().is_some() {
-                            continue;
-                        }
-                        let kb = kb.clone();
-                        let ka = ka.clone();
-                        let p2 = path.clone();
-                        if self.probe_with(true, |s| {
-                            if s.text(&p2, &ka, &kb).is_err() {
-                                s.failed = true;
-                            }
-                        }) {
-                            hit = Some(j);
-                            break;
-                        }
-                    }
-                    hit
-                }
-            };
-            match found {
-                Some(j) => {
-                    if let Some(u) = b_used.get_mut(j) {
-                        *u = true;
-                    }
-                    pairs.push((i, j));
-                }
-                None => missing.push(i),
+            if let Some(p) = ka.as_plain()
+                && let Some(j) = plain_b.get(p).copied()
+                && !b_used.get(j).copied().unwrap_or(true)
+            {
+                b_used[j] = true;
+                a_pair[i] = Some(j);
             }
         }
+        // 2. Keys holding generated values: bound by key and value together, so equivalent
+        //    objects whose generated keys come in another order pair correctly ...
+        // 3. ... then by key alone (the values' differences are reported).
+        for whole in [true, false] {
+            for (i, (ka, va)) in a.iter().enumerate() {
+                if ka.as_plain().is_some() || a_pair.get(i).copied().flatten().is_some() {
+                    continue;
+                }
+                for (j, (kb, vb)) in b.iter().enumerate() {
+                    if b_used.get(j).copied().unwrap_or(true) || kb.as_plain().is_some() {
+                        continue;
+                    }
+                    let p2 = path.clone();
+                    let hit = self.probe_with(true, |s| {
+                        if s.text(&p2, ka, kb).is_err() {
+                            s.failed = true;
+                        } else if whole {
+                            s.val(&mut p2.with_key(ka.display()), va, vb);
+                        }
+                    });
+                    if hit {
+                        b_used[j] = true;
+                        a_pair[i] = Some(j);
+                        break;
+                    }
+                }
+            }
+        }
+        let pairs: Vec<(usize, usize)> = a_pair
+            .iter()
+            .enumerate()
+            .filter_map(|(i, p)| p.map(|j| (i, j)))
+            .collect();
+        let missing: Vec<usize> = a_pair
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p.is_none())
+            .map(|(i, _)| i)
+            .collect();
         for (i, j) in &pairs {
             if let (Some((k, x)), Some((_, y))) = (a.get(*i), b.get(*j)) {
                 path.push_key(k.display());
