@@ -33,7 +33,15 @@ pub fn truncate_bytes(text: &str, max_bytes: usize) -> &str {
     prefix(text, text.floor_char_boundary(max_bytes))
 }
 
-/// `text.padStart(width, fill)` with `width` counted in characters (JavaScript counts UTF-16 units).
+/// The widest result [`pad_start`] and [`pad_end`] produce, in characters.
+///
+/// A width above it is treated as this value, so a width that came from a user can never ask
+/// for an unbounded allocation. Callers that accept a user-supplied width should still apply
+/// their own, smaller limit and report it.
+pub const MAX_PAD_WIDTH: usize = 65_536;
+
+/// `text.padStart(width, fill)` with `width` counted in characters (JavaScript counts UTF-16
+/// units) and capped at [`MAX_PAD_WIDTH`].
 ///
 /// Borrows when no padding is needed or `fill` is empty.
 pub fn pad_start<'a>(text: &'a str, width: usize, fill: &str) -> Cow<'a, str> {
@@ -43,7 +51,8 @@ pub fn pad_start<'a>(text: &'a str, width: usize, fill: &str) -> Cow<'a, str> {
     }
 }
 
-/// `text.padEnd(width, fill)` with `width` counted in characters (JavaScript counts UTF-16 units).
+/// `text.padEnd(width, fill)` with `width` counted in characters (JavaScript counts UTF-16
+/// units) and capped at [`MAX_PAD_WIDTH`].
 ///
 /// Borrows when no padding is needed or `fill` is empty.
 pub fn pad_end<'a>(text: &'a str, width: usize, fill: &str) -> Cow<'a, str> {
@@ -55,7 +64,7 @@ pub fn pad_end<'a>(text: &'a str, width: usize, fill: &str) -> Cow<'a, str> {
 
 /// The `fill` repetitions (cut to whole characters) that bring `text` to `width` characters.
 fn padding(text: &str, width: usize, fill: &str) -> Option<String> {
-    let missing = width.saturating_sub(char_len(text));
+    let missing = width.min(MAX_PAD_WIDTH).saturating_sub(char_len(text));
     if missing == 0 || fill.is_empty() {
         return None;
     }
@@ -107,6 +116,9 @@ mod tests {
         assert_eq!(pad_start("abc", 10, "123"), "1231231abc");
         assert_eq!(pad_end("abc", 6, "😀ab"), "abc😀ab");
         assert_eq!(pad_end("😀", 3, "-"), "😀--");
+        // An absurd width is capped instead of allocating without bound.
+        assert_eq!(char_len(&pad_start("", usize::MAX, "😀")), MAX_PAD_WIDTH);
+        assert_eq!(char_len(&pad_end("ab", usize::MAX, "-")), MAX_PAD_WIDTH);
         assert!(matches!(pad_start("abc", 10, ""), Cow::Borrowed("abc")));
         assert!(matches!(pad_end("abc", 2, "x"), Cow::Borrowed("abc")));
     }

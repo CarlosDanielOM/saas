@@ -161,7 +161,10 @@ for everything you touch. These rules apply everywhere:
 6. **Byte-compared values are opaque.** A queue item removed by value, JSON compared inside Lua, or a
    payload that was hashed is carried as the bytes received through claim, completion and requeue; never
    parse and re-serialise it. A value Rust creates that TypeScript or Lua will compare byte-wise is
-   written with the shared canonical JSON writer, which reproduces the reference's bytes.
+   written with the shared canonical JSON writer (`dima_text::to_js_json`), from a value shaped as the
+   TypeScript producer's object looks after JavaScript's own conversion: absent properties omitted (not
+   `null`), keys in the producer's order, dates as the producer serialises them. Each such producer gets
+   a fixture recorded from the reference in the package that ports it.
 7. Lua scripts are reused verbatim from one shared source file per script.
 8. Leases, fences, revisions, status vocabularies and compare-and-set predicates are ported exactly.
 
@@ -252,6 +255,12 @@ not part of any package.
   TypeScript and Rust encrypting and decrypting each other's output with a test key, not by decrypting
   stored tokens. Local Dragonfly and Qdrant are used without authentication; production auth stays in production.
 - 2026-11-11: The owner declared AI code execution (Deno sandbox) deprecated: it is not ported.
+- 2026-11-11: `Date.parse` is reproduced for ISO 8601 and HTTP date forms only. Text that only V8's
+  lenient legacy parser accepts (for example `2026-11-11 15:04:05` or `11/11/2026`) is rejected. No
+  Twitch, Polar or stored format needs it; a client that sent such a cursor to the stream timeline
+  route would now get the invalid-date answer. Allowed difference.
+- 2026-11-11: `parseInt` is offered for no radix, 2, 8, 10 and 16 only (the reference uses none, 10
+  and 8); other radices are implementation-dependent above 2^53 by specification.
 - 2026-11-11: After the reviewer's second view (GPT-6.1 Sol): the compatibility rule now also covers the
   rollback release; the reference is named per responsibility; text rules gained the purpose table so
   that money counts, identity inputs, mirrored outside limits and stored positions keep today's values;

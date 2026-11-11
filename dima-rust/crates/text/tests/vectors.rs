@@ -161,19 +161,30 @@ fn number_coercion_matches_node() {
 fn parse_int_matches_node() {
     let file = load("numbers.json");
     let mut check = Check::new("parseInt");
+    let mut compared = 0;
     for row in rows(&file, "parse_int") {
-        let (input, radix, expected) = (text(&row[0]), int(&row[1]) as u32, double(&row[2]));
+        let (input, number, expected) = (text(&row[0]), int(&row[1]), double(&row[2]));
+        // `Radix` offers only the radices ECMAScript defines exactly; the generator also records
+        // others (3, 5, 7, 36, ...), which engines may approximate above 2^53. Those rows have
+        // no Rust function to compare with.
+        let radix = match number {
+            0 => Radix::Auto,
+            2 => Radix::Binary,
+            8 => Radix::Octal,
+            10 => Radix::Decimal,
+            16 => Radix::Hex,
+            _ => continue,
+        };
+        compared += 1;
         let actual = parse_int(input, radix);
-        // Above 2^53, radices other than 2, 4, 8, 10, 16 and 32 may be approximate (ECMAScript
-        // allows it): V8 folds 32-bit chunks into a double, and a Node built with fused
-        // multiply-add (this laptop's distribution build) rounds once per chunk instead of twice.
-        let approximate =
-            !matches!(radix, 0 | 2 | 4 | 8 | 10 | 16 | 32) && expected.abs() > 2f64.powi(53);
-        let close = approximate && ((actual - expected) / expected).abs() < 1e-14;
-        check.expect(same(actual, expected) || close, || {
-            format!("{input:?} radix {radix}: {actual:e} != {expected:e}")
+        check.expect(same(actual, expected), || {
+            format!("{input:?} radix {number}: {actual:e} != {expected:e}")
         });
     }
+    assert!(
+        compared >= 250,
+        "only {compared} parseInt vectors were compared"
+    );
     check.finish();
 }
 
@@ -412,6 +423,20 @@ fn en_us_locale_strings_match_node() {
     for row in rows(&file, "locale_string") {
         let (ms, expected) = (int(&row[0]), row[1].as_str());
         let actual = to_locale_string_en_us_utc(ms);
+        check.expect(actual.as_deref() == expected, || {
+            format!("{ms}: {actual:?} != {expected:?}")
+        });
+    }
+    check.finish();
+}
+
+#[test]
+fn date_strings_match_node() {
+    let file = load("dates.json");
+    let mut check = Check::new("toDateString UTC");
+    for row in rows(&file, "date_string") {
+        let (ms, expected) = (int(&row[0]), row[1].as_str());
+        let actual = to_date_string_utc(ms);
         check.expect(actual.as_deref() == expected, || {
             format!("{ms}: {actual:?} != {expected:?}")
         });

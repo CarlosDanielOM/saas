@@ -34,43 +34,59 @@ pub fn parse_number(text: &str) -> f64 {
     }
 }
 
-/// `parseInt(text, radix)`; `radix` 0 means "not given" (base 10, or 16 after `0x`).
+/// The radix argument of [`parse_int`].
 ///
-/// Radix 10 and powers of two are correctly rounded; other radices reproduce V8's chunked
-/// arithmetic, which JavaScript allows to be approximate above 2^53.
-pub fn parse_int(text: &str, radix: u32) -> f64 {
+/// Only the radices whose result ECMAScript defines exactly are offered. For any other radix
+/// the specification lets an engine approximate above 2^53, and V8's answer then depends on
+/// how it was built, so there is no single value to reproduce.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Radix {
+    /// No radix given (`parseInt(text)`): base 16 after a `0x` prefix, otherwise base 10.
+    Auto,
+    /// `parseInt(text, 2)`.
+    Binary,
+    /// `parseInt(text, 8)`.
+    Octal,
+    /// `parseInt(text, 10)`.
+    Decimal,
+    /// `parseInt(text, 16)`; a `0x` prefix is skipped.
+    Hex,
+}
+
+/// `parseInt(text, radix)`, correctly rounded for every length of input.
+pub fn parse_int(text: &str, radix: Radix) -> f64 {
     let bytes = trim_start(text).as_bytes();
     let (negative, mut digits) = match bytes {
         [b'-', rest @ ..] => (true, rest),
         [b'+', rest @ ..] => (false, rest),
         _ => (false, bytes),
     };
-    let mut radix = radix;
-    if radix == 0 || radix == 16 {
-        if let [b'0', b'x' | b'X', rest @ ..] = digits {
-            digits = rest;
-            radix = 16;
-        } else if radix == 0 {
-            radix = 10;
-        }
-    }
-    if !(2..=36).contains(&radix) {
-        return f64::NAN;
+    let mut base: u32 = match radix {
+        Radix::Auto | Radix::Decimal => 10,
+        Radix::Binary => 2,
+        Radix::Octal => 8,
+        Radix::Hex => 16,
+    };
+    if matches!(radix, Radix::Auto | Radix::Hex)
+        && let [b'0', b'x' | b'X', rest @ ..] = digits
+    {
+        digits = rest;
+        base = 16;
     }
     let used = digits
         .iter()
-        .take_while(|byte| digit_value(**byte) < radix)
+        .take_while(|byte| digit_value(**byte) < base)
         .count();
     let Some(digits) = digits.get(..used).filter(|digits| !digits.is_empty()) else {
         return f64::NAN;
     };
-    let magnitude = match radix {
-        10 => std::str::from_utf8(digits)
+    let magnitude = if base == 10 {
+        std::str::from_utf8(digits)
             .ok()
             .and_then(|digits| digits.parse().ok())
-            .unwrap_or(f64::NAN),
-        2 | 4 | 8 | 16 | 32 => power_of_two_radix(digits, radix.trailing_zeros()).0,
-        _ => v8_generic_radix(digits, radix),
+            .unwrap_or(f64::NAN)
+    } else {
+        power_of_two_radix(digits, base.trailing_zeros()).0
     };
     if negative { -magnitude } else { magnitude }
 }
@@ -185,28 +201,6 @@ fn power_of_two_radix(digits: &[u8], bits: u32) -> (f64, usize) {
     (value, used)
 }
 
-/// V8's `parseInt` for radices other than 2, 4, 8, 10, 16 and 32: digits are gathered in
-/// 32-bit chunks and folded into a double, rounding at every chunk.
-fn v8_generic_radix(digits: &[u8], radix: u32) -> f64 {
-    const MAX_MULTIPLIER: u32 = u32::MAX / 36;
-    let mut result = 0.0;
-    let mut part = 0;
-    let mut multiplier = 1;
-    for byte in digits {
-        let digit = digit_value(*byte);
-        let next = multiplier * radix;
-        if next > MAX_MULTIPLIER {
-            result = result * f64::from(multiplier) + f64::from(part);
-            part = digit;
-            multiplier = radix;
-        } else {
-            part = part * radix + digit;
-            multiplier = next;
-        }
-    }
-    result * f64::from(multiplier) + f64::from(part)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -237,15 +231,17 @@ mod tests {
 
     #[test]
     fn parse_int_handles_prefixes_and_radices() {
-        assert_eq!(parse_int("  -0x1F", 0), -31.0);
-        assert_eq!(parse_int("0x1F", 10), 0.0);
-        assert_eq!(parse_int("0x1F", 16), 31.0);
-        assert_eq!(parse_int("12.9px", 0), 12.0);
-        assert_eq!(parse_int("zz", 36), 1295.0);
-        assert!(parse_int("11", 37).is_nan());
-        assert!(parse_int("11", 1).is_nan());
-        assert!(parse_int("-0", 0).is_sign_negative());
-        assert!(parse_int("0x", 0).is_nan());
+        assert_eq!(parse_int("  -0x1F", Radix::Auto), -31.0);
+        assert_eq!(parse_int("0x1F", Radix::Decimal), 0.0);
+        assert_eq!(parse_int("0x1F", Radix::Hex), 31.0);
+        assert_eq!(parse_int("1F", Radix::Hex), 31.0);
+        assert_eq!(parse_int("12.9px", Radix::Auto), 12.0);
+        assert_eq!(parse_int("0755", Radix::Octal), 493.0);
+        assert_eq!(parse_int("0789", Radix::Octal), 7.0);
+        assert_eq!(parse_int("1012", Radix::Binary), 5.0);
+        assert!(parse_int("9", Radix::Octal).is_nan());
+        assert!(parse_int("-0", Radix::Auto).is_sign_negative());
+        assert!(parse_int("0x", Radix::Auto).is_nan());
     }
 
     #[test]

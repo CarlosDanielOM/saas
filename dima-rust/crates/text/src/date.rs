@@ -48,9 +48,33 @@ pub fn utc_fields(ms: i64) -> Option<UtcFields> {
     })
 }
 
-/// Start of the UTC day containing `ms` (floors before the epoch too).
-pub fn utc_day_start(ms: i64) -> i64 {
-    ms.div_euclid(MS_PER_DAY) * MS_PER_DAY
+/// Start of the UTC day containing `ms` (floors before the epoch too), or `None` outside the
+/// JavaScript `Date` range.
+pub fn utc_day_start(ms: i64) -> Option<i64> {
+    if !(-MAX_TIME_MS..=MAX_TIME_MS).contains(&ms) {
+        return None;
+    }
+    Some(ms.div_euclid(MS_PER_DAY) * MS_PER_DAY)
+}
+
+/// `new Date(ms).toDateString()` in UTC (the services run in UTC): `Wed Nov 11 2026`.
+///
+/// Years print with at least four digits and a minus sign before year 0 (`0001`, `-0001`,
+/// `275760`). `None` where JavaScript prints `Invalid Date` (outside the `Date` range).
+pub fn to_date_string_utc(ms: i64) -> Option<String> {
+    const DAYS: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const NAMES: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    let f = utc_fields(ms)?;
+    let weekday = DAYS.get(f.weekday as usize)?;
+    let month = NAMES.get(f.month as usize)?;
+    let sign = if f.year < 0 { "-" } else { "" };
+    Some(format!(
+        "{weekday} {month} {:02} {sign}{:04}",
+        f.day,
+        f.year.unsigned_abs()
+    ))
 }
 
 /// `new Date(ms).toISOString()`, including `+YYYYYY`/`-YYYYYY` years; `None` where JavaScript
@@ -545,12 +569,30 @@ mod tests {
             (MS_PER_DAY - 1, 0),
             (MS_PER_DAY, MS_PER_DAY),
         ] {
-            assert_eq!(utc_day_start(ms), start);
+            assert_eq!(utc_day_start(ms), Some(start));
         }
         assert_eq!(
             parse_date("2024-02-29T00:00:00Z"),
-            parse_date("2024-03-01T23:45:00Z").map(|ms| utc_day_start(ms) - MS_PER_DAY)
+            parse_date("2024-03-01T23:45:00Z")
+                .and_then(utc_day_start)
+                .map(|start| start - MS_PER_DAY)
         );
+        // Outside the Date range there is no day to floor to (and the product would overflow).
+        assert_eq!(utc_day_start(i64::MIN), None);
+        assert_eq!(utc_day_start(i64::MAX), None);
+        assert_eq!(utc_day_start(MAX_TIME_MS), Some(MAX_TIME_MS));
+        assert_eq!(utc_day_start(-MAX_TIME_MS), Some(-MAX_TIME_MS));
+    }
+
+    #[test]
+    fn date_strings_print_the_utc_day() {
+        assert_eq!(to_date_string_utc(0).as_deref(), Some("Thu Jan 01 1970"));
+        assert_eq!(to_date_string_utc(-1).as_deref(), Some("Wed Dec 31 1969"));
+        assert_eq!(
+            to_date_string_utc(-62_198_755_200_000).as_deref(),
+            Some("Fri Jan 01 -0001")
+        );
+        assert_eq!(to_date_string_utc(MAX_TIME_MS + 1), None);
     }
 
     // Ported from `dashboard_insights::weekday` (JavaScript getUTCDay numbering).

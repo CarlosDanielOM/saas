@@ -324,7 +324,12 @@ const localeTimes = [0, 1794355200000, 1794355200999, 1794398400000, 17943983999
 for (let i = 0; i < 25; i++) localeTimes.push(randInt(2 ** 31) * 2048 + randInt(2048));
 const localeString = localeTimes.map((ms) => [ms, Math.abs(ms) <= MAX_TIME ? new Date(ms).toLocaleString('en-US', { timeZone: 'UTC' }) : null]);
 
-write('dates.json', { iso, parse, parse_unsupported: parseUnsupported, utc, fields, locale_string: localeString });
+// `toDateString()` prints local time. The services run in UTC, so pin the zone for this section
+// (everything above is zone-independent, and nothing below formats dates).
+process.env.TZ = 'UTC';
+const dateString = localeTimes.map((ms) => [ms, Math.abs(ms) <= MAX_TIME ? new Date(ms).toDateString() : null]);
+
+write('dates.json', { iso, parse, parse_unsupported: parseUnsupported, utc, fields, locale_string: localeString, date_string: dateString });
 
 // ---------------------------------------------------------------- ordering
 
