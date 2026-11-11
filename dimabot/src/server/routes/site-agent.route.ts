@@ -18,7 +18,7 @@ import {
     AgentRequestError, decideApproval, feedback, isTurnActive, retryTurn, stopTurn, submitMessage, submitUi,
 } from '../../site_agent/runner.js';
 import * as store from '../../site_agent/store.js';
-import { getTool } from '../../site_agent/tools/registry.js';
+import { getUndoTool } from '../../site_agent/tools/registry.js';
 import { ToolConflictError, type InputMode, type Lang, type PageContext, type Requester } from '../../site_agent/types.js';
 
 export const siteAgentRoute = express.Router();
@@ -326,7 +326,7 @@ siteAgentRoute.post('/:channelID/changes/:changeId/undo', async (req: AuthReques
         const { access, requester } = ctx;
         const role = requester.id === access.channelId ? 'owner' : access.role;
         const can = permissionChecker(requester.id, access.channelId, 0);
-        const change = await undoChange(access.channelId, String(req.params.changeId), { id: requester.id, role }, getTool, () => ({
+        const change = await undoChange(access.channelId, String(req.params.changeId), { id: requester.id, role }, getUndoTool, () => ({
             channelId: access.channelId, channelLogin: access.channelLogin, requester, role, plan: access.plan,
             lang: access.savedLang ?? 'en', sessionId: '', turnId: '', userMessage: '', page: null,
             signal: new AbortController().signal, can: (permissions) => can(permissions, true),

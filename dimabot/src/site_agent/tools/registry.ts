@@ -9,7 +9,7 @@ import { knowledgeTools } from './knowledge.js';
 import { readTools } from './read.js';
 import { settingsReadTools } from './settings_read.js';
 import { commandTools } from './write/commands.js';
-import { timerTools } from './write/timers.js';
+import { retiredTimerTools, timerTools } from './write/timers.js';
 import { settingsTools } from './write/settings/index.js';
 import { streamTools } from './stream.js';
 import { uiTools } from './ui.js';
@@ -31,6 +31,17 @@ export function allTools(): Map<string, AgentTool> {
 
 export function getTool(name: string): AgentTool | undefined {
     return allTools().get(name);
+}
+
+/**
+ * Tools nobody is offered any more (not in `allTools`, so the runner refuses calls and applies).
+ * Kept only for `getUndoTool`: a change one of them made must stay undoable from the Changes list.
+ */
+const retired = new Map<string, AgentTool>(retiredTimerTools.map((tool) => [tool.name, tool]));
+
+/** The tool whose `undo` reverses a logged change: a current tool, or a retired one. */
+export function getUndoTool(name: string): AgentTool | undefined {
+    return allTools().get(name) ?? retired.get(name);
 }
 
 export function planAllows(tool: AgentTool, plan: PlanTier): boolean {

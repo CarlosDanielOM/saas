@@ -64,7 +64,17 @@ async function checkTimerLimit(channelID: string, tier: string): Promise<{ allow
     return { allowed: count < limit, count, limit };
 }
 
-export async function createTimer(channelID: string, name: string, frequency: number, message: string): Promise<ITimerCommandResult> {
+/** Unique (channel, name) index hit: someone created that name between our check and the write. */
+const isDuplicateKey = (error: unknown) => (error as { code?: number } | null)?.code === 11000;
+
+export interface CreateTimerOptions {
+    /** `false` creates it switched off: it does not count against the plan's limit of enabled timers and is not scheduled. Default on. */
+    active?: boolean;
+    /** Putting back a timer that existed (site assistant undo): its interval is accepted even if the plan no longer offers it. */
+    restore?: boolean;
+}
+
+export async function createTimer(channelID: string, name: string, frequency: number, message: string, options: CreateTimerOptions = {}): Promise<ITimerCommandResult> {
     try {
         const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
         if (!streamer) {
@@ -78,7 +88,9 @@ export async function createTimer(channelID: string, name: string, frequency: nu
             return { error: true, message: String(nameValidation.error), status: 400 };
         }
 
-        const frequencyValidation = validateTimerInterval(frequency, tier);
+        const frequencyValidation = options.restore
+            ? (Number.isInteger(frequency) && frequency > 0 ? { valid: true } : { valid: false, error: 'Frequency must be a positive whole number of minutes' })
+            : validateTimerInterval(frequency, tier);
         if (!frequencyValidation.valid) {
             return { error: true, message: String(frequencyValidation.error), status: 400 };
         }
@@ -93,13 +105,16 @@ export async function createTimer(channelID: string, name: string, frequency: nu
             return { error: true, message: `Timer "${name}" already exists`, status: 409 };
         }
 
-        const limitCheck = await checkTimerLimit(channelID, tier);
-        if (!limitCheck.allowed) {
-            return {
-                error: true,
-                message: `Timer limit reached (${limitCheck.limit} for ${tier} plan). Upgrade for more timers.`,
-                status: 403
-            };
+        const active = options.active !== false;
+        if (active) {
+            const limitCheck = await checkTimerLimit(channelID, tier);
+            if (!limitCheck.allowed) {
+                return {
+                    error: true,
+                    message: `Timer limit reached (${limitCheck.limit} for ${tier} plan). Upgrade for more timers.`,
+                    status: 403
+                };
+            }
         }
 
         const timer = await CustomTimerSchema.create({
@@ -109,8 +124,12 @@ export async function createTimer(channelID: string, name: string, frequency: nu
             frequencyUnit: TIMER_FREQUENCY_UNIT,
             channel: streamer.name,
             channelID,
-            active: true
+            active
         });
+
+        if (!active) {
+            return { error: false, message: `Timer "${name}" created. It is off.`, timer: timer.toObject(), status: 201 };
+        }
 
         const cache = await getDragonflyClient('timerManager');
 
@@ -144,6 +163,7 @@ export async function createTimer(channelID: string, name: string, frequency: nu
             status: 201
         };
     } catch (error) {
+        if (isDuplicateKey(error)) return { error: true, message: `Timer "${name}" already exists`, status: 409 };
         console.error('Error in createTimer:', {
             channelID,
             name,
@@ -409,6 +429,25 @@ async function dropTimerFromCache(channelID: string, timerID: string): Promise<v
     await cache.del(`timer:channel:${channelID}:heartbeat-unit:${timerID}`);
 }
 
+/**
+ * Brings the live-timer cache in line with what is stored for one timer. For a caller whose write
+ * landed but whose cache step failed (the site assistant reads the timer back after a 5xx): without
+ * it the worker, which reads only the cache while live, keeps posting a deleted timer or never
+ * starts a new one until the stream ends. Throws when the cache cannot be reached.
+ */
+export async function syncTimerCache(channelID: string, timerID: string): Promise<void> {
+    const timer = await CustomTimerSchema.findOne({ channelID, _id: timerID });
+    if (!timer || !timer.active) {
+        await dropTimerFromCache(channelID, timerID);
+        return;
+    }
+    if (!(await isChannelLiveForTimers(channelID))) return;
+    const cache = await getDragonflyClient('timerManager');
+    await cache.hSet(`timer:channel:${channelID}:timers`, String(timer._id), JSON.stringify(timer.toObject()));
+    await cache.set(`timer:channel:${channelID}:heartbeat:${timer._id}`, '0');
+    await cache.set(`timer:channel:${channelID}:heartbeat-unit:${timer._id}`, TIMER_FREQUENCY_UNIT);
+}
+
 /** Guard failed: 404 when the timer is gone, 409 `changed` when it is there but different. */
 async function guardMiss(channelID: string, name: string): Promise<ITimerCommandResult> {
     if (await CustomTimerSchema.exists({ channelID, name: name.toLowerCase() })) {
@@ -422,10 +461,12 @@ export interface TimerChanges {
     frequency?: number;
     message?: string;
     active?: boolean;
+    /** New name (same rules as a new timer's name). 409 when another timer already has it. */
+    name?: string;
 }
 
 /**
- * Compare-and-set edit for the site assistant: interval, message and on/off in ONE write, applied only
+ * Compare-and-set edit for the site assistant: interval, message, on/off and name in ONE write, applied only
  * while the stored timer still equals `guard` (stored field → value, e.g. `{ _id, message, frequency,
  * frequencyUnit, active }`; `null` = missing). Same checks as editTimer (plan interval, grandfathered
  * intervals, message) when the interval or message changes; on/off alone needs none, like toggleTimer.
@@ -434,11 +475,17 @@ export interface TimerChanges {
 export async function updateTimerIfUnchanged(channelID: string, name: string, guard: Record<string, unknown>, changes: TimerChanges): Promise<ITimerCommandResult> {
     try {
         const edits = changes.frequency !== undefined || changes.message !== undefined;
-        if (!edits && changes.active === undefined) return { error: true, message: 'Nothing to change', status: 400 };
+        const renames = changes.name !== undefined && changes.name.toLowerCase() !== name.toLowerCase();
+        if (!edits && changes.active === undefined && !renames) return { error: true, message: 'Nothing to change', status: 400 };
         const timer = await CustomTimerSchema.findOne({ channelID, name: name.toLowerCase(), ...guard }).lean();
         if (!timer) return await guardMiss(channelID, name);
 
         const $set: Record<string, unknown> = {};
+        if (renames) {
+            const nameValidation = validateName(changes.name!);
+            if (!nameValidation.valid) return { error: true, message: String(nameValidation.error), status: 400 };
+            $set.name = changes.name!.toLowerCase();
+        }
         if (edits) {
             const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
             if (!streamer) return { error: true, message: 'Streamer not found', status: 404 };
@@ -478,11 +525,12 @@ export async function updateTimerIfUnchanged(channelID: string, name: string, gu
         const minutes = getTimerIntervalMinutes(updated);
         return {
             error: false,
-            message: `Timer "${name}" updated. ${updated.active ? `Sends every ${minutes} minute${minutes !== 1 ? 's' : ''} when live.` : 'It is off.'}`,
+            message: `Timer "${updated.name}" updated. ${updated.active ? `Sends every ${minutes} minute${minutes !== 1 ? 's' : ''} when live.` : 'It is off.'}`,
             timer: updated.toObject(),
             status: 200
         };
     } catch (error) {
+        if (isDuplicateKey(error)) return { error: true, message: `Timer "${changes.name ?? name}" already exists`, status: 409 };
         console.error('Error in updateTimerIfUnchanged:', {
             channelID,
             name,

@@ -237,13 +237,15 @@ async function installRoutes(context, agent, o) {
     else if (p === '/billing/ai-credits') data = { used: 0, limit: 100, balance: 100, meterId: 'm', updatedAt: new Date().toISOString(), available: true };
     else if (/^\/moderation\/[^/]+\/logs$/.test(p)) data = { logs: [], total: 0, limit: 100, skip: 0 };
     else if (/^\/moderation\/[^/]+\/settings$/.test(p)) data = { channelID: CHANNEL_ID, channel: LOGIN, enabled: true, offenseWindowSeconds: 600, rules: [], settingsVersion: 1 };
-    else if (p === '/site/events' || p.startsWith('/eventsubs/') || p.startsWith('/timers/')) data = [];
+    else if (p.startsWith('/timers/')) data = agent.pageTimers ?? [];
+    else if (p === '/site/events' || p.startsWith('/eventsubs/')) data = [];
     else if (p.startsWith('/goals/')) data = { plan: 'free', limit: 1, metrics: ['follows'], revision: 1, goals: [], canManage: true };
     else if (p === '/users') data = { id: CHANNEL_ID, username: LOGIN, profile_image_url: '' };
     else if (p === `/users/${CHANNEL_ID}`) return route.fulfill({ status: 200, json: { error: false, streamer: { id: CHANNEL_ID, name: LOGIN, actived: 'true', chat_enabled: 'true' } } });
     else if (p === '/config/commands/reserved') data = { commands: [] };
     else if (p.startsWith(`/commands/${CHANNEL_ID}`) && method === 'GET') {
-      return route.fulfill({ status: 200, json: { error: false, status: 200, message: 'ok', commands: [], total: 0, fullAccess: true } });
+      const commands = agent.pageCommands ?? [];
+      return route.fulfill({ status: 200, json: { error: false, status: 200, message: 'ok', commands, total: commands.length, fullAccess: true } });
     }
     if (method !== 'GET') agent.otherWrites = [...(agent.otherWrites ?? []), `${method} ${p}`];
     return route.fulfill({ status: 200, json: envelope(data) });
@@ -610,6 +612,40 @@ async function desktopFlow(browser) {
   await emit(page, agent, S, T, { type: 'item', item: { kind: 'navigate', id: 'nav3', turnId: T, callId: 'call-nav3', at, action: { mode: 'go', route: 'not-a-route', label: 'Nowhere' } } });
   await until(() => page.getByRole('button', { name: 'Open Settings' }).isVisible(), 'offer button');
   assert.equal(new URL(page.url()).pathname, `/${LOGIN}/commands`, 'unknown route key ignored');
+
+  // A change applied by the assistant shows on the page behind the panel without a reload: here a
+  // repeating command, which the Commands page lists as the command plus the timer named like it.
+  assert.equal(await page.locator('.lf-cmd-row', { hasText: 'referral' }).count(), 0, 'not on the page yet');
+  agent.pageCommands = [{ _id: 'cmd-ref', id: 'cmd-ref', name: 'referral', cmd: 'referral', func: 'referral', message: 'Use my code: domdimabot.com/r/dimatest', activation: 'command', enabled: true, reserved: false, cooldown: 10, userLevel: 1, userLevelName: 'everyone', count: 0, description: '' }];
+  agent.pageTimers = [{ name: 'referral', minutes: 20, frequency: 20, frequencyUnit: 'minutes', active: true, message: 'Use my code: domdimabot.com/r/dimatest' }];
+  const repeatCard = {
+    kind: 'approval', id: 'ap-repeat', turnId: T, callId: 'call-ap-repeat', state: 'pending', expiresAt: at + 15 * 60_000, at,
+    proposal: { tool: 'create_command', title: 'Create command !referral', area: 'commands', target: { type: 'command', id: null, label: '!referral' }, before: null, after: { Command: '!referral', Repeats: 'Every 20 minutes' }, effects: ['Posts by itself every 20 minutes while you are live'] },
+  };
+  await emit(page, agent, S, T, { type: 'item', item: repeatCard });
+  await sleep(300);
+  assert.equal(await page.locator('.lf-cmd-row', { hasText: 'referral' }).count(), 0, 'a card that is only proposed changes nothing on the page');
+  await emit(page, agent, S, T, { type: 'update', item: { ...repeatCard, state: 'applied', changeId: 'c-repeat' } });
+  const newRow = page.locator('.lf-cmd-row', { hasText: 'referral' });
+  await until(() => newRow.count().then((count) => count === 1), 'the new command appears on the Commands page');
+  await until(async () => /20 min/.test(await text(newRow)), 'with its repeat');
+  assert.equal(await page.evaluate(() => window.__noReload), 42, 'still no full page load');
+
+  // A change made while another page is open is not lost behind a later change to something else:
+  // coming back to Commands shows it, not the list this page had cached.
+  await emit(page, agent, S, T, { type: 'item', item: { kind: 'navigate', id: 'nav-away', turnId: T, callId: 'call-nav-away', at, action: { mode: 'go', route: 'settings', label: 'Settings' } } });
+  await until(() => new URL(page.url()).pathname === `/${LOGIN}/settings`, 'left the Commands page');
+  agent.pageCommands = [...agent.pageCommands, { ...agent.pageCommands[0], _id: 'cmd-lurk', id: 'cmd-lurk', name: 'lurkcheck', cmd: 'lurkcheck', func: 'lurkcheck', message: 'Thanks for lurking' }];
+  const elsewhere = (id, area, title) => ({
+    kind: 'approval', id, turnId: T, callId: `call-${id}`, state: 'applied', changeId: `c-${id}`, expiresAt: at + 15 * 60_000, at,
+    proposal: { tool: 'x', title, area, target: { type: area, id: null, label: title }, before: null, after: { Done: true }, effects: [] },
+  });
+  await emit(page, agent, S, T, { type: 'item', item: elsewhere('ap-lurk', 'commands', 'Create command !lurkcheck') });
+  await emit(page, agent, S, T, { type: 'item', item: elsewhere('ap-mod', 'moderation', 'Update moderation') });
+  await emit(page, agent, S, T, { type: 'item', item: { kind: 'navigate', id: 'nav-back', turnId: T, callId: 'call-nav-back', at, action: { mode: 'go', route: 'commands', label: 'Commands' } } });
+  await until(() => new URL(page.url()).pathname === `/${LOGIN}/commands`, 'back on Commands');
+  await until(() => page.locator('.lf-cmd-row', { hasText: 'lurkcheck' }).count().then((count) => count === 1), 'the command made while away is listed');
+  assert.equal(await page.evaluate(() => window.__noReload), 42, 'still no full page load');
   await page.getByRole('button', { name: 'Open Settings' }).click();
   await until(() => new URL(page.url()).pathname === `/${LOGIN}/settings`, 'offer navigates');
   assert.equal(await page.evaluate(() => window.__noReload), 42, 'offer: no full page load');

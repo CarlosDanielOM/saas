@@ -18,6 +18,28 @@ export class AssistantPresenceService {
   readonly bubble = signal<string | null>(null);
   /** Unread finished answer while the panel is closed. */
   readonly unread = signal(false);
+  /**
+   * Per area ('commands', 'timers', 'moderation', …): a number that grows each time the assistant
+   * changes (or undoes a change to) that area's data on the channel. Kept per area, so a later change
+   * somewhere else does not hide an earlier one from the page that shows it.
+   */
+  private readonly dataRevisions = signal<Readonly<Record<string, number>>>({});
+  private revision = 0;
+
+  notifyDataChanged(area: string): void {
+    const next = ++this.revision;
+    this.dataRevisions.update((map) => ({ ...map, [area]: next }));
+  }
+
+  /**
+   * Latest change among these areas (0 = none since the app loaded). A page that shows them keeps
+   * the number it last loaded and reloads past its cache when this one is higher: the change then
+   * shows without a reload, and a list cached before it is not shown again.
+   */
+  changedAt(...areas: string[]): number {
+    const map = this.dataRevisions();
+    return Math.max(0, ...areas.map((area) => map[area] ?? 0));
+  }
 
   toggle(): void {
     this.open.update((value) => !value);

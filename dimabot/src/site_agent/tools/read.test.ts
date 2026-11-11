@@ -174,12 +174,26 @@ test('get_command: by trigger (any case), keyword phrase or id; blocks show the 
 });
 
 test('timers, recent chat and stream stats', async () => {
+    // A timer named like a custom command is that command's repeat; one without a command is stand-alone.
+    db.seed({ name: 'Discord', cmd: 'Discord', func: 'Discord', message: 'Join the Discord!', cooldown: 10 });
+    db.seed({ name: 'legacy', cmd: 'legacy', func: 'legacy', reserved: true });
     const timers = await result(listTimersTool);
     assert.deepEqual(timers, { count: 2, timers: { untrusted_data: [
-        { name: 'discord', minutes: 20, enabled: true, message: 'Join the Discord!' },
-        { name: 'legacy', minutes: 10, enabled: false, message: 'Old one' },
+        { name: 'discord', minutes: 20, enabled: true, message: 'Join the Discord!', command: '!Discord' },
+        { name: 'legacy', minutes: 10, enabled: false, message: 'Old one', command: null },
     ] } });
-    assert.deepEqual(await result(getTimerTool, { name: 'discord' }), { found: true, timer: { untrusted_data: { name: 'discord', minutes: 20, enabled: true, message: 'Join the Discord!' } } });
+    assert.deepEqual(await result(getTimerTool, { name: 'discord' }), { found: true, timer: { untrusted_data: { name: 'discord', minutes: 20, enabled: true, message: 'Join the Discord!', command: '!Discord' } } });
+    // …and the command side shows it: list_commands and get_command say how often it repeats.
+    const listed = (await result(listCommandsTool, { kind: 'command' })).commands.untrusted_data;
+    assert.equal(listed.find((row: any) => row.trigger === '!Discord').repeatsEveryMinutes, 20);
+    assert.equal(listed.find((row: any) => row.trigger === '!legacy').repeatsEveryMinutes, undefined, 'built-in commands have no repeat');
+    assert.deepEqual((await result(getCommandTool, { name: '!Discord' })).repeat, { everyMinutes: 20, enabled: true });
+    db.seed({ name: 'dice', cmd: 'dice', func: 'dice', message: 'roll' });
+    assert.equal((await result(getCommandTool, { name: '!dice' })).repeat, null);
+    // Older data: a timer named like a command's display name is that command's repeat too (as the page links them).
+    db.seed({ name: 'legacy', cmd: 'oldone', func: 'oldone', message: 'Old one' });
+    assert.deepEqual((await result(getCommandTool, { name: '!oldone' })).repeat, { everyMinutes: 10, enabled: false });
+    assert.equal((await result(listTimersTool)).timers.untrusted_data.find((row: any) => row.name === 'legacy').command, '!oldone');
     assert.equal((await result(getTimerTool, { name: 'nope' })).found, false);
 
     const chat = await result(recentChatTool, { limit: 2 });

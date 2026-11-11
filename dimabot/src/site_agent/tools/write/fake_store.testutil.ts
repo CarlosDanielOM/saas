@@ -184,6 +184,10 @@ export function installFakeModel(model: any, options: { defaults?: Raw; base?: R
         runHook('findOneAndUpdate', filter, update);
         const raw = find(filter)[0];
         if (!raw) return writeOptions?.upsert ? out(insertFrom(filter, update), opts) : null;
+        // Like MongoDB: an update that would repeat a unique key writes nothing and throws.
+        const next = clone(raw);
+        applyUpdate(next, update);
+        checkUnique(next);
         applyUpdate(raw, update);
         return out(raw, opts);
     }));

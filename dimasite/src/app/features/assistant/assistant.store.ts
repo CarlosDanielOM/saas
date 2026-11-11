@@ -81,6 +81,9 @@ function asError(error: unknown): AssistantApiError {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/** Approval states that no longer change (anything else is still waiting or being applied). */
+const SETTLED_APPROVALS: ReadonlySet<string> = new Set(['applied', 'skipped', 'expired', 'failed', 'superseded']);
+
 /**
  * State of the assistant panel for one channel: status/limits, chats, the open chat's
  * transcript and its live turn (SSE with cursor resume), approvals, forms, changes, and the
@@ -132,6 +135,8 @@ export class AssistantStore {
   readonly changesNext = signal<string | null>(null);
   readonly changesState = signal<LoadState>('idle');
   readonly changesLoadingMore = signal(false);
+  /** Approval cards already announced to the page as applied (see noteApplied). */
+  private readonly announcedChanges = new Set<string>();
   readonly undoing = signal<string | null>(null);
   readonly undoErrors = signal<Readonly<Record<string, StoreError>>>({});
 
@@ -399,7 +404,11 @@ export class AssistantStore {
   }
 
   private applySnapshot(snapshot: SessionSnapshot, gen: number): void {
+    // A card this panel showed as waiting came back applied (the live update was missed, e.g. the
+    // phone slept): the page still has to hear about it. Cards of an older chat are not news.
+    const waiting = new Set(this.items().filter((item) => item.kind === 'approval' && !SETTLED_APPROVALS.has(item.state)).map((item) => item.id));
     this.items.set(snapshot.items);
+    for (const item of snapshot.items) if (waiting.has(item.id)) this.noteApplied(item);
     this.prunePending(snapshot.items);
     if (snapshot.session) {
       this.sessions.update((list) => {
@@ -560,6 +569,7 @@ export class AssistantStore {
       }
       case 'item': {
         this.items.update((items) => upsertItem(items, event.item));
+        this.noteApplied(event.item);
         if (event.item.kind === 'user') this.prunePending([event.item]);
         if (event.item.kind === 'assistant' && event.item.text) this.markSpeaking();
         if (live && event.item.kind === 'navigate' && event.item.action.mode === 'go' && !this.navigated.has(event.item.id)) {
@@ -596,6 +606,7 @@ export class AssistantStore {
       }
       case 'update':
         this.items.update((items) => upsertItem(items, event.item));
+        this.noteApplied(event.item);
         break;
       case 'limits':
         this.limits.set(event.limits);
@@ -861,6 +872,18 @@ export class AssistantStore {
     }
   }
 
+  /**
+   * An approval card just became applied (or failed with an unknown outcome): tell the page behind
+   * the panel that this area's data changed. Once per card, since events can be replayed.
+   */
+  private noteApplied(item: DisplayItem): void {
+    if (item.kind !== 'approval') return;
+    const changed = item.state === 'applied' || (item.state === 'failed' && item.error === 'outcome_unknown');
+    if (!changed || this.announcedChanges.has(item.id)) return;
+    this.announcedChanges.add(item.id);
+    this.presence.notifyDataChanged(item.proposal.area);
+  }
+
   async undo(changeId: string): Promise<boolean> {
     const channelId = this.channelId();
     if (!channelId || this.undoing()) return false;
@@ -872,6 +895,8 @@ export class AssistantStore {
     try {
       const change = await this.api.undo(channelId, changeId);
       if (change) this.changes.update((list) => list.map((existing) => (existing.id === changeId ? change : existing)));
+      const area = change?.area ?? this.changes().find((existing) => existing.id === changeId)?.area;
+      if (area) this.presence.notifyDataChanged(area);
       return true;
     } catch (error) {
       const failure = asError(error);

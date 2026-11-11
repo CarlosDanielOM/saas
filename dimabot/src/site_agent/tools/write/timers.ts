@@ -1,8 +1,13 @@
 /**
- * Timer write tools: create, update (message, interval, on/off) and delete timers, the messages
- * the bot posts by itself every N minutes while the stream is live. Same two-phase rules as the
- * command tools (proposal → approval → compare-and-set apply → undo when unchanged since), through
- * the functions the timers route uses (`commands/timer_manager.command.ts`).
+ * Timer write tools: change (interval, on/off, message of a stand-alone timer) and delete timers, the
+ * messages the bot posts by itself every N minutes while the stream is live. Same two-phase rules as
+ * the command tools (proposal → approval → compare-and-set apply → undo when unchanged since),
+ * through the functions the timers route uses (`commands/timer_manager.command.ts`).
+ *
+ * There is no create tool on purpose: the website lists a repeating message only as a command with
+ * a repeat (see `repeat.ts`), so a new one is `create_command` / `update_command` with
+ * `repeatMinutes`. These tools cover what is left: pausing or re-timing a repeat, and editing or
+ * removing stand-alone timers made in chat with `!cct`.
  *
  * Permissions mirror `server/routes/timer.route.ts`: every write needs `commands:manage`.
  */
@@ -10,50 +15,23 @@ import type { AgentTool, ChangeProposal, ChangeRecordInput, Lang, ToolContext } 
 import { ToolConflictError, ToolInputError } from '../../types.js';
 import { asObject, bool, int, str, stableJson } from '../util.js';
 import { describeCommandEffects } from '../effects.js';
-import { CustomTimerSchema } from '../../../schemas/custom_timer.schema.js';
-import { createTimer, deleteTimerIfUnchanged, updateTimerIfUnchanged } from '../../../commands/timer_manager.command.js';
-import { getTimerIntervalMinutes, validateTimerEditInterval, validateTimerInterval } from '../../../utils/timer_policy.js';
-import { COMMAND_LANGUAGE_BASICS } from './commands.js';
+import { deleteTimerIfUnchanged, updateTimerIfUnchanged } from '../../../commands/timer_manager.command.js';
+import { validateTimerEditInterval } from '../../../utils/timer_policy.js';
+import {
+    checkGuarded, MAX_TIMER_MESSAGE, MAX_TIMER_NAME, moveRepeat, readTimer, REPEAT_RULES, RepeatRefused, timerChangedFields, timerCommand,
+    timerConflict, timerGuard, timerLabel as label, timerSnapshot, type TimerRow, type TimerSnapshot,
+} from './repeat.js';
+
+export { timerSnapshot } from './repeat.js';
 
 const PERMISSIONS = ['commands:manage'] as const;
 const AREA = 'timers';
-const MAX_NAME = 30;
-const MAX_MESSAGE = 350;
-/** Enabled timers per plan (timer_manager.command.ts getTierTimerLimit). */
-const TIMER_LIMITS: Record<string, number> = { free: 5, premium: 15, pro: 50 };
+const MAX_NAME = MAX_TIMER_NAME;
+const MAX_MESSAGE = MAX_TIMER_MESSAGE;
 
 const l = (lang: Lang, en: string, es: string) => (lang === 'es' ? es : en);
-
-const PLAN_RULES =
-    'Plan rules: Free up to 5 enabled timers at 10, 20, 30, 40, 50 or 60 minutes; Premium up to 15 at 5-180 minutes '
-    + 'in steps of 5; Pro up to 50 at 1-180 minutes. The message is at most 350 characters and runs like a command '
-    + 'body (functions work; there is no viewer who typed it, so avoid $(user)/&p1). Timers only post while live.';
-
-interface TimerRow { _id?: unknown; name: string; message: string; frequency: number; frequencyUnit?: string; active: boolean }
-
-export function timerSnapshot(timer: TimerRow) {
-    return { id: String(timer._id ?? ''), name: timer.name, message: timer.message, minutes: getTimerIntervalMinutes(timer), active: Boolean(timer.active) };
-}
-type TimerSnapshot = ReturnType<typeof timerSnapshot>;
-
-const FIELD_NAMES: Record<keyof TimerSnapshot, [string, string]> = {
-    id: ['id', 'id'], name: ['name', 'nombre'], message: ['message', 'mensaje'], minutes: ['interval', 'intervalo'], active: ['on/off', 'activado'],
-};
-
-function changedFields(expected: TimerSnapshot, current: TimerSnapshot, lang: Lang): string[] {
-    return (Object.keys(FIELD_NAMES) as Array<keyof TimerSnapshot>)
-        .filter((key) => stableJson(expected[key]) !== stableJson(current[key]))
-        .map((key) => FIELD_NAMES[key][lang === 'es' ? 1 : 0]);
-}
-
-function conflict(label: string, fields: string[], lang: Lang, after = false): ToolConflictError {
-    const list = fields.join(', ');
-    return new ToolConflictError(after
-        ? l(lang, `${label} changed after the assistant's change (${list}), so it was left as it is now.`,
-            `${label} cambió después del cambio del asistente (${list}), así que se dejó como está ahora.`)
-        : l(lang, `${label} changed since this was proposed (${list}). Nothing was changed; read it again and propose the change again.`,
-            `${label} cambió desde que se propuso esto (${list}). No se cambió nada; vuelve a leerlo y propón el cambio otra vez.`));
-}
+const changedFields = timerChangedFields;
+const conflict = timerConflict;
 
 function display(timer: { name: string; minutes: number; message: string; active: boolean }, lang: Lang, only?: Set<string>): Record<string, unknown> {
     const fields: Record<string, unknown> = {
@@ -66,22 +44,8 @@ function display(timer: { name: string; minutes: number; message: string; active
     return Object.fromEntries(Object.entries(fields).filter(([key]) => only.has(key)));
 }
 
-const label = (name: string) => `"${name}"`;
-
-/**
- * Write filter for compare-and-set: the stored fields the snapshot is made of, exactly as read
- * (`null` = missing). A write with it changes nothing if the timer was edited after that read.
- */
-function timerGuard(timer: TimerRow): Record<string, unknown> {
-    return { _id: timer._id, message: timer.message, frequency: timer.frequency, frequencyUnit: timer.frequencyUnit ?? null, active: timer.active ?? null };
-}
-
-async function readTimer(channelId: string, name: string): Promise<TimerRow | null> {
-    return await CustomTimerSchema.findOne({ channelID: channelId, name: name.toLowerCase() }).lean() as unknown as TimerRow | null;
-}
-
 function normalizeName(raw: string): string {
-    const name = raw.trim().toLowerCase();
+    const name = raw.trim().toLowerCase().replace(/^!/, '');
     if (!name || name.length > MAX_NAME || !/^\w+$/.test(name)) {
         throw new ToolInputError(`name must be 1-${MAX_NAME} letters, numbers or underscores`);
     }
@@ -100,113 +64,15 @@ async function effectsFor(message: string, ctx: ToolContext) {
     return { effects: described.effects, warnings: described.problems.map((problem) => l(ctx.lang, `Test run: ${problem}`, `Prueba: ${problem}`)) };
 }
 
-/** timer_manager results → nothing / conflict (target changed) / plain failure. */
-function check(result: { error: boolean; status: number; message: string }, name: string, lang: Lang): void {
-    if (!result.error) return;
-    if (result.status === 404) throw new ToolConflictError(l(lang, `The timer ${label(name)} no longer exists. Nothing was changed.`, `El temporizador ${label(name)} ya no existe. No se cambió nada.`));
-    if (result.status === 409) throw new ToolConflictError(l(lang, `${result.message}. Nothing was changed.`, `${result.message}. No se cambió nada.`));
-    throw new Error(result.message);
+/** The command this timer is the repeat of (as the commands page links them), or null for a stand-alone timer. */
+async function linkedCommand(ctx: ToolContext, name: string): Promise<string | null> {
+    const command = await timerCommand(ctx.channelId, name);
+    return command ? `!${command.cmd}` : null;
 }
 
-/**
- * A guarded write's result. When the guard missed (edited between our read and the write), the
- * conflict names what changed compared with `snapshot`.
- */
-async function checkGuarded(result: { error: boolean; status: number; message: string; code?: string }, ctx: { channelId: string; lang: Lang }, name: string, snapshot: TimerSnapshot, after = false): Promise<void> {
-    if (result.error && result.code === 'changed') {
-        const now = await readTimer(ctx.channelId, name);
-        const fields = now ? changedFields(snapshot, timerSnapshot(now), ctx.lang) : [];
-        throw conflict(label(name), fields.length ? fields : [l(ctx.lang, 'edited while saving', 'editado mientras se guardaba')], ctx.lang, after);
-    }
-    check(result, name, ctx.lang);
-}
-
-// ---------------------------------------------------------------------------
-// create_timer
-// ---------------------------------------------------------------------------
-
-interface CreateInput { name: string; minutes: number; message: string }
-
-export const createTimerTool: AgentTool<CreateInput> = {
-    name: 'create_timer',
-    description:
-        'Propose a new timer: a message the bot posts every `minutes` while the stream is live. It starts enabled. '
-        + 'The user approves a card first. ' + PLAN_RULES + ' Test the message with test_command first. ' + COMMAND_LANGUAGE_BASICS,
-    parameters: {
-        type: 'object',
-        properties: {
-            name: { type: 'string', maxLength: MAX_NAME, description: 'Letters, numbers, underscores (e.g. "discord").' },
-            minutes: { type: 'integer', minimum: 1, maximum: 180, description: 'How often it posts, in minutes (plan rules apply).' },
-            message: { type: 'string', maxLength: MAX_MESSAGE, description: 'What it posts (command language).' },
-        },
-        required: ['name', 'minutes', 'message'],
-        additionalProperties: false,
-    },
-    kind: 'write',
-    permissions: PERMISSIONS,
-    label: (input, lang) => l(lang, `Preparing timer ${input.name}…`, `Preparando el temporizador ${input.name}…`),
-    validate(raw) {
-        const input = asObject(raw);
-        return {
-            name: normalizeName(str(input, 'name', { required: true, max: MAX_NAME + 5 })!),
-            minutes: int(input, 'minutes', { required: true, min: 1, max: 1440 })!,
-            message: checkMessage(str(input, 'message', { required: true }))!,
-        };
-    },
-    async run(input, ctx) {
-        const interval = validateTimerInterval(input.minutes, ctx.plan);
-        if (!interval.valid) throw new ToolInputError(String(interval.error));
-        if (await readTimer(ctx.channelId, input.name)) throw new ToolInputError(`Timer "${input.name}" already exists. Use update_timer to change it.`);
-        const limit = TIMER_LIMITS[ctx.plan] ?? 5;
-        const enabledCount = await CustomTimerSchema.countDocuments({ channelID: ctx.channelId, active: true });
-        if (enabledCount >= limit) throw new ToolInputError(`Timer limit reached (${limit} enabled timers on the ${ctx.plan} plan). Turn one off or delete one first, or upgrade.`);
-        const { effects, warnings } = await effectsFor(input.message, ctx);
-        const proposal: ChangeProposal = {
-            tool: 'create_timer',
-            title: l(ctx.lang, `Create timer ${label(input.name)}`, `Crear temporizador ${label(input.name)}`),
-            area: AREA,
-            target: { type: 'timer', id: null, label: label(input.name) },
-            before: null,
-            after: display({ ...input, active: true }, ctx.lang),
-            effects,
-            ...(warnings.length ? { warnings } : {}),
-            permissions: [...PERMISSIONS],
-            payload: { input, expected: null },
-        };
-        return { type: 'approval', proposal };
-    },
-    async apply(proposal, ctx) {
-        const input = (proposal.payload as { input: CreateInput }).input;
-        if (await readTimer(ctx.channelId, input.name)) {
-            throw new ToolConflictError(l(ctx.lang, `A timer ${label(input.name)} was created in the meantime. Nothing was changed.`, `Se creó un temporizador ${label(input.name)} mientras tanto. No se cambió nada.`));
-        }
-        const result = await createTimer(ctx.channelId, input.name, input.minutes, input.message);
-        // The unique (channel, name) index refuses a timer created in between; createTimer reports it as a failure.
-        if (result.error && result.status >= 500 && await readTimer(ctx.channelId, input.name)) {
-            throw new ToolConflictError(l(ctx.lang, `A timer ${label(input.name)} was created in the meantime. Nothing was changed.`, `Se creó un temporizador ${label(input.name)} mientras tanto. No se cambió nada.`));
-        }
-        check(result, input.name, ctx.lang);
-        const timer = result.timer as TimerRow;
-        const change: ChangeRecordInput = {
-            area: AREA,
-            target: { type: 'timer', id: String(timer._id ?? ''), label: label(timer.name) },
-            before: null,
-            after: proposal.after,
-            undo: { op: 'create', name: timer.name, expected: timerSnapshot(timer) },
-            summary: `Created timer ${timer.name}`,
-        };
-        return { result: { created: true, name: timer.name, message: result.message }, change };
-    },
-    async undo(change, ctx) {
-        const data = change.undo as { name: string; expected: TimerSnapshot } | null;
-        if (!data?.name) throw new ToolConflictError('Nothing to undo');
-        const current = await readTimer(ctx.channelId, data.name);
-        if (!current) throw new ToolConflictError(l(ctx.lang, `The timer ${label(data.name)} was already deleted.`, `El temporizador ${label(data.name)} ya se había borrado.`));
-        const fields = changedFields(data.expected, timerSnapshot(current), ctx.lang);
-        if (fields.length) throw conflict(label(data.name), fields, ctx.lang, true);
-        await checkGuarded(await deleteTimerIfUnchanged(ctx.channelId, data.name, timerGuard(current)), ctx, data.name, data.expected, true);
-    },
-};
+const standAloneNote = (lang: Lang) => l(lang,
+    'This timer was made in chat and has no command, so the Commands page does not list it.',
+    'Este temporizador se hizo en el chat y no tiene comando, así que la página de Comandos no lo muestra.');
 
 // ---------------------------------------------------------------------------
 // update_timer
@@ -221,9 +87,11 @@ const writeChanges = (changes: UpdateChanges) => ({ frequency: changes.minutes, 
 export const updateTimerTool: AgentTool<UpdateInput> = {
     name: 'update_timer',
     description:
-        'Propose changes to a timer: minutes (interval), message, enabled (turn it on or off). Send only what '
-        + 'changes; the user approves a card first. ' + PLAN_RULES + ' A timer whose interval no longer fits the plan '
-        + 'keeps running but needs a valid interval before any other edit.',
+        'Propose changes to a timer from list_timers: minutes (interval), enabled (pause or resume it), and message '
+        + '(stand-alone timers only: a command\'s repeat posts the command\'s reply, so change that with update_command). '
+        + 'Send only what changes; the user approves a card first. To start or stop a command\'s repeat use '
+        + 'update_command repeatMinutes; this tool cannot create timers. ' + REPEAT_RULES + ' A timer whose interval no '
+        + 'longer fits the plan keeps running but needs a valid interval before any other edit.',
     parameters: {
         type: 'object',
         properties: {
@@ -253,8 +121,12 @@ export const updateTimerTool: AgentTool<UpdateInput> = {
     },
     async run(input, ctx) {
         const current = await readTimer(ctx.channelId, input.name);
-        if (!current) throw new ToolInputError(`No timer "${input.name}". Use list_timers.`);
+        if (!current) throw new ToolInputError(`No timer "${input.name}". Use list_timers. To make a command repeat, use update_command (or create_command) with repeatMinutes.`);
         const before = timerSnapshot(current);
+        const command = await linkedCommand(ctx, before.name);
+        if (command && input.message !== undefined && input.message !== before.message) {
+            throw new ToolInputError(`"${before.name}" is the repeat of ${command}: it posts that command's reply. Change the reply with update_command (the repeat follows it).`);
+        }
         const changes: UpdateChanges = {};
         if (input.minutes !== undefined && input.minutes !== before.minutes) changes.minutes = input.minutes;
         if (input.message !== undefined && input.message !== before.message) changes.message = input.message;
@@ -277,18 +149,23 @@ export const updateTimerTool: AgentTool<UpdateInput> = {
         shown.add(l(ctx.lang, 'Timer', 'Temporizador'));
 
         let effects: string[] = [];
-        const warnings: string[] = [];
+        const warnings: string[] = command ? [] : [standAloneNote(ctx.lang)];
         if (changes.message !== undefined || changes.enabled === true) {
             const described = await effectsFor(after.message, ctx);
             effects = described.effects;
             warnings.push(...described.warnings);
         }
+        const onlyOnOff = changes.enabled !== undefined && Object.keys(changes).length === 1;
+        const title = command
+            ? (onlyOnOff ? (changes.enabled ? l(ctx.lang, `Resume the repeat of ${command}`, `Reanudar la repetición de ${command}`)
+                : l(ctx.lang, `Pause the repeat of ${command}`, `Pausar la repetición de ${command}`))
+                : l(ctx.lang, `Change the repeat of ${command}`, `Cambiar la repetición de ${command}`))
+            : (onlyOnOff ? (changes.enabled ? l(ctx.lang, `Turn on timer ${label(before.name)}`, `Activar temporizador ${label(before.name)}`)
+                : l(ctx.lang, `Turn off timer ${label(before.name)}`, `Desactivar temporizador ${label(before.name)}`))
+                : l(ctx.lang, `Update timer ${label(before.name)}`, `Editar temporizador ${label(before.name)}`));
         const proposal: ChangeProposal = {
             tool: 'update_timer',
-            title: changes.enabled !== undefined && Object.keys(changes).length === 1
-                ? (changes.enabled ? l(ctx.lang, `Turn on timer ${label(before.name)}`, `Activar temporizador ${label(before.name)}`)
-                    : l(ctx.lang, `Turn off timer ${label(before.name)}`, `Desactivar temporizador ${label(before.name)}`))
-                : l(ctx.lang, `Update timer ${label(before.name)}`, `Editar temporizador ${label(before.name)}`),
+            title,
             area: AREA,
             target: { type: 'timer', id: before.id, label: label(before.name) },
             before: display({ ...before }, ctx.lang, shown),
@@ -341,7 +218,8 @@ export const updateTimerTool: AgentTool<UpdateInput> = {
 
 export const deleteTimerTool: AgentTool<{ name: string }> = {
     name: 'delete_timer',
-    description: 'Propose deleting a timer. The user approves a card first; it can be undone from the Changes list. To pause it instead, use update_timer enabled=false.',
+    description: 'Propose deleting a timer from list_timers (for a command\'s repeat this stops the repeating and keeps the command). '
+        + 'The user approves a card first; it can be undone from the Changes list. To pause it instead, use update_timer enabled=false.',
     parameters: {
         type: 'object',
         properties: { name: { type: 'string', maxLength: MAX_NAME, description: 'Timer name from list_timers.' } },
@@ -358,14 +236,17 @@ export const deleteTimerTool: AgentTool<{ name: string }> = {
         const current = await readTimer(ctx.channelId, input.name);
         if (!current) throw new ToolInputError(`No timer "${input.name}". Use list_timers.`);
         const snapshot = timerSnapshot(current);
+        const command = await linkedCommand(ctx, snapshot.name);
         const proposal: ChangeProposal = {
             tool: 'delete_timer',
-            title: l(ctx.lang, `Delete timer ${label(snapshot.name)}`, `Borrar temporizador ${label(snapshot.name)}`),
+            title: command ? l(ctx.lang, `Stop repeating ${command}`, `Dejar de repetir ${command}`)
+                : l(ctx.lang, `Delete timer ${label(snapshot.name)}`, `Borrar temporizador ${label(snapshot.name)}`),
             area: AREA,
             target: { type: 'timer', id: snapshot.id, label: label(snapshot.name) },
             before: display(snapshot, ctx.lang),
             after: null,
             effects: [],
+            warnings: [command ? l(ctx.lang, `${command} itself stays; it just stops posting by itself.`, `${command} se queda; solo deja de publicarse solo.`) : standAloneNote(ctx.lang)],
             permissions: [...PERMISSIONS],
             payload: { name: snapshot.name, expected: snapshot },
         };
@@ -395,14 +276,47 @@ export const deleteTimerTool: AgentTool<{ name: string }> = {
         if (await readTimer(ctx.channelId, name)) {
             throw new ToolConflictError(l(ctx.lang, `A timer ${label(name)} exists again, so the deleted one was not restored.`, `Ya existe otra vez un temporizador ${label(name)}, así que no se restauró el borrado.`));
         }
-        const created = await createTimer(ctx.channelId, name, minutes, message);
-        if (created.error) {
-            throw new ToolConflictError(l(ctx.lang, `The timer ${label(name)} can't be restored: ${created.message}`, `El temporizador ${label(name)} no se puede restaurar: ${created.message}`));
+        // One write, already on or off as it was (and with its old interval even if the plan no longer offers it).
+        try {
+            await moveRepeat(ctx, null, { name, minutes, message, active }, true);
+        } catch (error) {
+            if (!(error instanceof RepeatRefused)) throw error;
+            throw new ToolConflictError(l(ctx.lang, `The timer ${label(name)} can't be restored: ${error.message}`, `El temporizador ${label(name)} no se puede restaurar: ${error.message}`));
         }
-        // Turn it off only if nobody touched the timer we just created.
-        const row = created.timer as TimerRow;
-        if (!active) await checkGuarded(await updateTimerIfUnchanged(ctx.channelId, name, timerGuard(row), { active: false }), ctx, name, timerSnapshot(row), true);
     },
 };
 
-export const timerTools: AgentTool[] = [createTimerTool, updateTimerTool, deleteTimerTool] as unknown as AgentTool[];
+export const timerTools: AgentTool[] = [updateTimerTool, deleteTimerTool] as unknown as AgentTool[];
+
+// ---------------------------------------------------------------------------
+// create_timer (retired)
+// ---------------------------------------------------------------------------
+
+const RETIRED = 'create_timer was retired: make a repeating message with create_command (or update_command) and repeatMinutes.';
+
+/**
+ * Retired 2026-11-11: it made timers without a command, which the Commands page does not list. The
+ * model is never offered it and it proposes nothing; it stays only so the changes it already made
+ * can be undone from the Changes list (`registry.getUndoTool`).
+ */
+export const retiredCreateTimerTool: AgentTool<Record<string, never>> = {
+    name: 'create_timer',
+    description: 'Retired. Use create_command with repeatMinutes.',
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+    kind: 'write',
+    permissions: PERMISSIONS,
+    label: (_input, lang) => l(lang, 'Preparing…', 'Preparando…'),
+    validate() { throw new ToolInputError(RETIRED); },
+    async run() { throw new ToolInputError(RETIRED); },
+    async undo(change, ctx) {
+        const data = change.undo as { name: string; expected: TimerSnapshot } | null;
+        if (!data?.name) throw new ToolConflictError('Nothing to undo');
+        const current = await readTimer(ctx.channelId, data.name);
+        if (!current) throw new ToolConflictError(l(ctx.lang, `The timer ${label(data.name)} was already deleted.`, `El temporizador ${label(data.name)} ya se había borrado.`));
+        const fields = changedFields(data.expected, timerSnapshot(current), ctx.lang);
+        if (fields.length) throw conflict(label(data.name), fields, ctx.lang, true);
+        await checkGuarded(await deleteTimerIfUnchanged(ctx.channelId, data.name, timerGuard(current)), ctx, data.name, data.expected, true);
+    },
+};
+
+export const retiredTimerTools: AgentTool[] = [retiredCreateTimerTool] as unknown as AgentTool[];

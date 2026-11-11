@@ -22,10 +22,13 @@ mock.module('../../../utils/ai/tools/stream_stats.tool.js', { namedExports: { ex
 mock.module('../../../classes/chat_history.js', { defaultExport: { getRecentMessages: async () => [] } });
 
 const { CustomTimerSchema } = await import('../../../schemas/custom_timer.schema.js');
+const { CommandsSchema } = await import('../../../schemas/commands.schema.js');
 const { ToolConflictError, ToolInputError } = await import('../../types.js');
-const { createTimerTool, updateTimerTool, deleteTimerTool } = await import('./timers.js');
+const { updateTimerTool, deleteTimerTool, timerTools, retiredCreateTimerTool, retiredTimerTools } = await import('./timers.js');
 
 const db = installFakeModel(CustomTimerSchema, { base: { channelID: OWNER, channel: 'owner_login', frequencyUnit: 'minutes', active: true }, unique: [['channelID', 'name']] });
+/** Commands of the channel: a timer named like one is that command's repeat. */
+const commands = installFakeModel(CommandsSchema, { defaults: { activation: 'command' }, base: { channelID: OWNER, channel: 'owner_login' } });
 
 function ctx(overrides: Partial<ToolContext> = {}): ToolContext {
     return {
@@ -42,50 +45,45 @@ async function propose(tool: any, raw: unknown, context = ctx()): Promise<Change
 }
 const find = (name: string) => [...db.store.values()].find((raw) => raw.name === name);
 
-beforeEach(() => { db.store.clear(); redis.reset(); plan.tier = 'free'; });
+beforeEach(() => { db.store.clear(); commands.store.clear(); redis.reset(); plan.tier = 'free'; });
 
-test('timer tools validate names, messages and that something changes', () => {
-    assert.equal(createTimerTool.validate({ name: 'Discord', minutes: 10, message: 'Join!' }).name, 'discord');
-    for (const raw of [{ name: 'two words', minutes: 10, message: 'x' }, { name: 'a-b', minutes: 10, message: 'x' }, { name: 'ok', minutes: 0, message: 'x' },
-        { name: 'ok', minutes: 10, message: '' }, { name: 'ok', minutes: 10, message: 'x'.repeat(351) }, { name: 'ok', message: 'x' }]) {
-        assert.throws(() => createTimerTool.validate(raw), ToolInputError, JSON.stringify(raw));
+test('timer tools validate names, messages and that something changes; there is no create tool', () => {
+    assert.equal(updateTimerTool.validate({ name: '!Discord', minutes: 10 }).name, 'discord');
+    for (const raw of [{ name: 'two words', minutes: 10 }, { name: 'a-b', minutes: 10 }, { name: 'ok', minutes: 0 }, { name: 'ok', message: '' }, { name: 'ok', message: 'x'.repeat(351) }]) {
+        assert.throws(() => updateTimerTool.validate(raw), ToolInputError, JSON.stringify(raw));
     }
     assert.throws(() => updateTimerTool.validate({ name: 'ok' }), /Nothing to change/);
-    assert.deepEqual(createTimerTool.permissions, ['commands:manage']);
     assert.deepEqual(updateTimerTool.permissions, ['commands:manage']);
     assert.deepEqual(deleteTimerTool.permissions, ['commands:manage']);
+    // The website lists a repeating message only as a command, so new ones are made by the command tools.
+    assert.deepEqual(timerTools.map((tool) => tool.name), ['update_timer', 'delete_timer']);
 });
 
-test('create_timer: plan intervals and limits, no side effects, apply, undo only when unchanged', async () => {
-    await assert.rejects(createTimerTool.run(createTimerTool.validate({ name: 'a', minutes: 15, message: 'x' }), ctx()), /Free timers/);
-    await propose(createTimerTool, { name: 'a', minutes: 15, message: 'x' }, ctx({ plan: 'premium' }));
-    for (let i = 0; i < 5; i++) db.seed({ name: `t${i}`, message: 'm', frequency: 10 });
-    await assert.rejects(createTimerTool.run(createTimerTool.validate({ name: 'a', minutes: 10, message: 'x' }), ctx()), /limit reached \(5/);
-    db.store.clear();
-    db.seed({ name: 'discord', message: 'm', frequency: 10 });
-    await assert.rejects(createTimerTool.run(createTimerTool.validate({ name: 'Discord', minutes: 10, message: 'x' }), ctx()), /already exists/);
-    db.store.clear();
+test('a command\'s repeat: cards speak about the command, its text follows the command, stand-alone timers say they are unlisted', async () => {
+    commands.seed({ cmd: 'Discord', name: 'Discord', func: 'Discord', message: 'Join' });
+    commands.seed({ cmd: 'commands', name: 'commands', func: 'commands', message: '', reserved: true });
+    db.seed({ name: 'discord', message: 'Join', frequency: 10 });
+    db.seed({ name: 'commands', message: 'made in chat', frequency: 10 });
+    db.seed({ name: 'promo', message: 'Buy', frequency: 10 });
+    const run = (raw: object) => updateTimerTool.run(updateTimerTool.validate(raw), ctx());
 
-    const proposal = await propose(createTimerTool, { name: 'discord', minutes: 20, message: 'Join $(tts hi)' });
-    assert.equal(db.store.size, 0);
-    assert.equal(proposal.title, 'Create timer "discord"');
-    assert.deepEqual(proposal.after, { Timer: 'discord', 'Every (minutes)': 20, Message: 'Join $(tts hi)', On: true });
-    assert.deepEqual(proposal.effects, ['Speaks on stream with TTS']);
+    await assert.rejects(run({ name: 'discord', message: 'Other text' }), /repeat of !Discord.*update_command/);
+    const pause = await propose(updateTimerTool, { name: 'discord', enabled: false });
+    assert.equal(pause.title, 'Pause the repeat of !Discord');
+    assert.equal(pause.warnings, undefined);
+    assert.equal((await propose(updateTimerTool, { name: 'discord', minutes: 20 })).title, 'Change the repeat of !Discord');
+    const stop = await propose(deleteTimerTool, { name: 'discord' });
+    assert.equal(stop.title, 'Stop repeating !Discord');
+    assert.match(stop.warnings![0], /!Discord itself stays/);
 
-    const applied = await createTimerTool.apply!(proposal, ctx());
-    const stored = find('discord')!;
-    assert.equal(stored.frequency, 20);
-    assert.equal(stored.frequencyUnit, 'minutes');
-    assert.equal(stored.active, true);
-    assert.equal((applied.result as { created: boolean }).created, true);
-    await assert.rejects(createTimerTool.apply!(proposal, ctx()), ToolConflictError);
-
-    const change = json(applied.change!);
-    stored.message = 'edited';
-    await assert.rejects(createTimerTool.undo!(change, ctx()), (error: unknown) => error instanceof ToolConflictError && /message/.test(error.message));
-    stored.message = 'Join $(tts hi)';
-    await createTimerTool.undo!(change, ctx());
-    assert.equal(find('discord'), undefined);
+    // No command (or only a built-in one) with that name: a stand-alone timer, editable in full.
+    for (const name of ['promo', 'commands']) {
+        const edit = await propose(updateTimerTool, { name, message: 'New text' });
+        assert.equal(edit.title, `Update timer "${name}"`);
+        assert.match(edit.warnings![0], /Commands page does not list it/);
+    }
+    assert.match((await propose(deleteTimerTool, { name: 'promo' })).warnings![0], /Commands page does not list it/);
+    await assert.rejects(run({ name: 'missing', enabled: false }), /No timer.*repeatMinutes/);
 });
 
 test('update_timer: only changes shown, grandfathered intervals, compare-and-set, undo', async () => {
@@ -97,6 +95,7 @@ test('update_timer: only changes shown, grandfathered intervals, compare-and-set
 
     const off = await propose(updateTimerTool, { name: 'discord', enabled: false });
     assert.equal(off.title, 'Turn off timer "discord"');
+    assert.match(off.warnings![0], /made in chat/);
     assert.deepEqual(off.before, { Timer: 'discord', On: true });
     assert.deepEqual(off.after, { Timer: 'discord', On: false });
 
@@ -169,32 +168,60 @@ test('update_timer: interval, message and on/off land in one guarded write; an e
     assert.deepEqual([timer.frequency, timer.message, timer.active], [40, 'Join us', false], 'undo wrote nothing');
 });
 
-test('delete_timer and create_timer undo delete only the timer they checked', async () => {
+test('delete_timer deletes only the timer it checked', async () => {
     const timer = db.seed({ name: 'discord', message: 'Join', frequency: 20 });
     const proposal = await propose(deleteTimerTool, { name: 'discord' });
     db.beforeNextWrite(() => { timer.message = 'new text'; });
     await assert.rejects(deleteTimerTool.apply!(proposal, ctx()), ToolConflictError);
     assert.equal(find('discord')?.message, 'new text', 'the edited timer was not deleted');
-
-    db.store.clear();
-    const created = json((await createTimerTool.apply!(await propose(createTimerTool, { name: 'promo', minutes: 20, message: 'Buy' }), ctx())).change!);
-    db.beforeNextWrite(() => { find('promo')!.active = false; });
-    await assert.rejects(createTimerTool.undo!(created, ctx()), (error: unknown) => error instanceof ToolConflictError && /on\/off/.test(error.message));
-    assert.equal(find('promo')?.active, false, 'the timer someone edited stays');
 });
 
-test('create_timer: a timer with the same name created in between is a conflict, not an error', async () => {
-    const proposal = await propose(createTimerTool, { name: 'discord', minutes: 20, message: 'Join' });
-    db.beforeNextWrite(() => { db.seed({ name: 'discord', message: 'made on the page', frequency: 10 }); }, (op) => op === 'create');
-    await assert.rejects(createTimerTool.apply!(proposal, ctx()), (error: unknown) => error instanceof ToolConflictError && /created in the meantime/.test(error.message));
-    assert.equal(db.store.size, 1);
-    assert.equal(find('discord')?.message, 'made on the page');
+test('delete_timer undo puts the timer back in one write: off stays off at the plan limit, an old interval is kept', async () => {
+    db.seed({ name: 'old', message: 'Join', frequency: 7, active: false }); // 7 minutes: not a Free interval any more
+    const change = json((await deleteTimerTool.apply!(await propose(deleteTimerTool, { name: 'old' }), ctx())).change!);
+    for (let i = 0; i < 5; i++) db.seed({ name: `t${i}`, message: 'm', frequency: 10 }); // the plan's 5 enabled timers
+    let writes = 0;
+    db.beforeNextWrite(() => { writes++; }, () => { writes++; return false; });
+    await deleteTimerTool.undo!(change, ctx());
+    assert.equal(writes, 1, 'created already switched off: no second write that could fail after the first');
+    assert.deepEqual([find('old')!.frequency, find('old')!.active], [7, false]);
+
+    // An enabled timer needs room again: refused before anything is written.
+    db.seed({ name: 'promo', message: 'Buy', frequency: 10 });
+    find('t0')!.active = false;
+    const enabled = json((await deleteTimerTool.apply!(await propose(deleteTimerTool, { name: 'promo' }), ctx())).change!);
+    find('t0')!.active = true;
+    await assert.rejects(deleteTimerTool.undo!(enabled, ctx()), (error: unknown) => error instanceof ToolConflictError && /can't be restored: Timer limit reached/.test(error.message));
+    assert.equal(find('promo'), undefined);
 });
 
-test('delete_timer undo turns the restored timer off only if nobody touched it', async () => {
-    db.seed({ name: 'discord', message: 'Join', frequency: 20, active: false });
-    const change = json((await deleteTimerTool.apply!(await propose(deleteTimerTool, { name: 'discord' }), ctx())).change!);
-    db.beforeNextWrite(() => { find('discord')!.message = 'edited right away'; }, (op) => op === 'findOneAndUpdate');
-    await assert.rejects(deleteTimerTool.undo!(change, ctx()), ToolConflictError);
-    assert.equal(find('discord')?.message, 'edited right away');
+test('a timer named like a display name is stand-alone when that command has a repeat under its own trigger', async () => {
+    commands.seed({ cmd: 'mycode', name: 'legacy', func: 'mycode', message: 'Use my code' });
+    db.seed({ name: 'mycode', message: 'Use my code', frequency: 10 });
+    db.seed({ name: 'legacy', message: 'made in chat', frequency: 10 });
+    const edit = await propose(updateTimerTool, { name: 'legacy', message: 'New text' });
+    assert.equal(edit.title, 'Update timer "legacy"');
+    assert.match(edit.warnings![0], /Commands page does not list it/);
+    await assert.rejects(updateTimerTool.run(updateTimerTool.validate({ name: 'mycode', message: 'x' }), ctx()), /repeat of !mycode/);
+    // Without the trigger-named timer, the display-name one is the command's repeat (older data).
+    db.store.delete(String(find('mycode')!._id));
+    await assert.rejects(updateTimerTool.run(updateTimerTool.validate({ name: 'legacy', message: 'x' }), ctx()), /repeat of !mycode/);
+});
+
+test('create_timer is retired: never offered or run, but a change it made before can still be undone', async () => {
+    // Offered tools come from timerTools; the registry keeps retired ones for undo only (checked end to end in ops/checks/site-agent-api.mjs).
+    assert.ok(!timerTools.includes(retiredCreateTimerTool as never));
+    assert.deepEqual(retiredTimerTools.map((tool) => tool.name), ['create_timer']);
+    assert.throws(() => retiredCreateTimerTool.validate({ name: 'a', minutes: 10, message: 'x' }), /retired.*repeatMinutes/);
+    assert.equal(retiredCreateTimerTool.apply, undefined);
+
+    // The undo data of a record written while the tool existed.
+    const stored = db.seed({ name: 'referral', message: 'Use my code', frequency: 20 });
+    const change = json({ undo: { op: 'create', name: 'referral', expected: { id: String(stored._id), name: 'referral', message: 'Use my code', minutes: 20, active: true } }, after: null, target: { type: 'timer', id: String(stored._id), label: '"referral"' } });
+    stored.message = 'edited since';
+    await assert.rejects(retiredCreateTimerTool.undo!(change, ctx()), (error: unknown) => error instanceof ToolConflictError && /message/.test(error.message));
+    stored.message = 'Use my code';
+    await retiredCreateTimerTool.undo!(change, ctx());
+    assert.equal(find('referral'), undefined);
+    await assert.rejects(retiredCreateTimerTool.undo!(change, ctx()), /already deleted/);
 });

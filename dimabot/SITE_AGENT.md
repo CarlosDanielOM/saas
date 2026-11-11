@@ -145,6 +145,38 @@ the same context. Events are saved before they are sent; reconnect = snapshot + 
   predictions) have no conditional form, and a chat-event delete unsubscribes on Twitch before removing the row.
 - Effects: for anything holding a command body (commands, timers, roulette winner actions, chat events), run it
   through `utils/ast_parser/simulate.ts` and list recorded actions in plain words on the proposal.
+- Repeating messages follow the website's model (`tools/write/repeat.ts`), since 2026-11-11: the Commands page
+  lists a repeat only as a command plus the timer named like it (message = a copy of the reply, `#(name)` for
+  block commands; dimasite `syncCommandTimer`). So there is no `create_timer` any more: `create_command` /
+  `update_command` take `repeatMinutes` (0 = stop), and a rename, a new reply or a delete moves the timer in the
+  same change. First real use had created a stand-alone "referral" timer the owner could not find on the page.
+  - Linking is resolved like the page (`commandRepeat` / `timerCommand`, and `repeatLinks` in read.ts): the timer
+    named like the trigger, else (older data) like the display name unless that word is another command's
+    trigger. Keywords and built-in commands have no repeat.
+  - `moveRepeat(from → to)` is ONE guarded write: create (already on or off), edit in place (interval, message,
+    on/off and name together) or delete. `timer_manager` got additive options for that (`createTimer`
+    `{active, restore}`, `updateTimerIfUnchanged` `name`). A ToolConflictError from it means it wrote nothing; any
+    other error means unknown. A write that fails after landing (stored, then the live cache fails) is recognised
+    by reading the timer back; it counts as done only after `syncTimerCache` repaired the cache (the timer worker
+    reads only that cache while live), otherwise the outcome stays unknown.
+  - Order in apply and undo (`changeWithRepeat`): the repeat first, then the command write. If the service
+    refuses the command write, the repeat is moved back with a guarded write and the refusal is passed on, so
+    "Not applied" always means nothing changed. If it cannot be moved back, or the command write's outcome is
+    unknown, the error is a plain one (the card shows "outcome unknown"). Never roll the command back instead:
+    that write could cover someone's edit.
+  - A proposal that depends on the repeat (new reply, new name, delete) records what it saw, also "none", and
+    Apply refuses if that changed, including which timer is the command's repeat now (`assertRepeatLink`).
+    Timers are compared by content, not by id (undoing a removal re-creates the timer); the write is still
+    guarded by the row just read.
+  - A change that only moves the repeat has no command write to carry a guard, so the command is read again
+    after the repeat was written (`unchangedCommand`); a command deleted or edited in between moves the repeat back.
+  - Undo data keeps the command's repeat as the change left it (`repeatAfter`, also "none"). An undo that
+    deletes, renames or re-words the command is refused while the repeat differs from that (a later change added
+    or changed it): undo the newer change first. Records from before this was stored are refused while the
+    command has a repeat. An undo of only cooldown, access, on/off or description does not look at the repeat.
+  - `update_timer` / `delete_timer` remain for pausing or re-timing a repeat and for stand-alone timers made in
+    chat (`!cct`), which the Commands page does not list: reads mark them (`command: null`), their cards say so.
+    `create_timer` is kept undo-only (`registry.getUndoTool`) for changes already in the log.
 
 ## Frontend (dimasite `src/app/features/assistant/`)
 
@@ -171,6 +203,12 @@ the same context. Events are saved before they are sent; reconnect = snapshot + 
   frame tags in `show_ui` HTML. Cards carry a native "Made by the assistant" label outside the frame.
 - Navigation: Angular Router, keys from `assistant-routes.ts` (mirror of `navigation.ts`), always under the current
   streamer.
+- Pages hear about changes: when a card becomes applied (or its outcome is unknown) or a change is undone, the
+  store calls `AssistantPresenceService.notifyDataChanged(area)`, which bumps a per-area revision. A page that
+  shows that area compares `changedAt(...areas)` with the revision it last loaded and reloads past its cache
+  (Commands page: `commands` and `timers`; it waits while one of its own saves is pending and keeps pending
+  rows when a fresh list arrives). Other pages still need a manual reload; add the same effect when one is
+  reported.
 - en + es-MX, dark first, mobile first, Live First, `appThrottleClick` on action buttons.
 
 ## Host rules for anyone building this

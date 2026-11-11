@@ -305,6 +305,51 @@ assert.equal(skipped.at(-1).data.status, 'completed');
 assert.equal(await commands.countDocuments({ channelID: CHANNEL, name: 'dicecheck' }), 0, 'skip changes nothing');
 console.log('approvals: apply → change log → undo; skip changes nothing');
 
+// 11b. A repeating message is a command with a repeat (what the Commands page lists under "Repeating"):
+// one card makes the command and the timer named like it, and Undo removes both. There is no tool that
+// makes a timer without a command (the page would not show it).
+assert.ok(!ownerTools.includes('create_timer'), 'no stand-alone timer tool');
+const repeatArgs = JSON.stringify({ name: 'referralcheck', body: 'Use my code: https://domdimabot.com/r/cdom201', repeatMinutes: 20 });
+const repeatTurn = await send('owner', `A command with my code every 20 minutes [[call:create_command ${repeatArgs}]]`);
+const repeatPending = await events('owner', repeatTurn.data.turnId, { stopAfter: (e) => e.type === 'item' && e.data.item.kind === 'approval' });
+const repeatCard = repeatPending.find((e) => e.type === 'item' && e.data.item.kind === 'approval').data.item;
+assert.equal(repeatCard.proposal.after.Repeats, 'Every 20 minutes');
+assert.ok(repeatCard.proposal.effects.some((line) => /by itself every 20 minutes/.test(line)));
+const timers = mongo.connection.db.collection('custom_timers');
+assert.equal(await timers.countDocuments({ channelID: CHANNEL, name: 'referralcheck' }), 0, 'nothing changes before Apply');
+assert.equal((await api('owner', 'POST', `/turns/${repeatTurn.data.turnId}/approvals/${repeatCard.callId}`, { decision: 'apply' })).data.state, 'approved');
+const repeatApplied = await events('owner', repeatTurn.data.turnId, { after: repeatPending.at(-1).id });
+const repeatDone = repeatApplied.filter((e) => e.type === 'update' && e.data.item.kind === 'approval').at(-1).data.item;
+assert.equal(repeatDone.state, 'applied', JSON.stringify(repeatDone));
+assert.equal(await commands.countDocuments({ channelID: CHANNEL, cmd: 'referralcheck' }), 1, 'the command exists');
+const savedTimer = await timers.findOne({ channelID: CHANNEL, name: 'referralcheck' });
+assert.ok(savedTimer, 'its repeat is the timer named like the command');
+assert.equal(savedTimer.frequency, 20);
+assert.equal(savedTimer.message, 'Use my code: https://domdimabot.com/r/cdom201');
+assert.equal(savedTimer.active, true);
+assert.equal((await api('owner', 'POST', `/changes/${repeatDone.changeId}/undo`)).status, 200);
+assert.equal(await commands.countDocuments({ channelID: CHANNEL, cmd: 'referralcheck' }), 0, 'undo removed the command');
+assert.equal(await timers.countDocuments({ channelID: CHANNEL, name: 'referralcheck' }), 0, 'and its repeat');
+// This step's chat goes away again, so the check stays under the 10-chats-per-person limit (the oldest is dropped past it).
+assert.equal((await api('owner', 'DELETE', `/sessions/${repeatTurn.data.sessionId}`)).data.deleted, true);
+
+// A change made by the retired create_timer tool (a timer without a command) is still undoable from the Changes list.
+const oldTimer = await timers.insertOne({ channelID: CHANNEL, channel: 'cdom201', name: 'oldtimercheck', message: 'made before', frequency: 20, frequencyUnit: 'minutes', active: true });
+const changeLog = mongo.connection.db.collection('site_agent_changes');
+const template = await changeLog.findOne({ channelId: CHANNEL, tool: 'create_command', undoOf: null });
+assert.ok(template, 'a logged change to copy the record shape from');
+const { _id: _templateId, ...shape } = template;
+const oldChange = await changeLog.insertOne({
+  ...shape, tool: 'create_timer', title: 'Create timer "oldtimercheck"', area: 'timers', callId: null, undoneAt: null, undoneBy: null, undoLockUntil: null, undoable: true,
+  target: { type: 'timer', id: String(oldTimer.insertedId), label: '"oldtimercheck"' }, before: null, after: { Timer: 'oldtimercheck' },
+  undo: { op: 'create', name: 'oldtimercheck', expected: { id: String(oldTimer.insertedId), name: 'oldtimercheck', message: 'made before', minutes: 20, active: true } },
+  at: new Date(),
+});
+const oldUndo = await api('owner', 'POST', `/changes/${oldChange.insertedId}/undo`);
+assert.equal(oldUndo.status, 200, JSON.stringify(oldUndo.json));
+assert.equal(await timers.countDocuments({ channelID: CHANNEL, name: 'oldtimercheck' }), 0, 'the old stand-alone timer was removed');
+console.log('repeating command: one card → command + repeat; undo removes both; old create_timer changes still undo');
+
 // 12. Permissions: a view-only admin is never offered write tools; a commands admin is, and sees only own changes.
 const viewerTurn = await send('viewer', 'hello [[script:text]]');
 await events('viewer', viewerTurn.data.turnId);

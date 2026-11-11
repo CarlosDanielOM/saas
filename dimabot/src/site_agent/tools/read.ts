@@ -205,8 +205,9 @@ export const listCommandsTool: AgentTool<ListCommandsInput> = {
     name: 'list_commands',
     description:
         'List the channel\'s chat commands (!name) and keywords (words the bot reacts to without !), built-in ones '
-        + 'included. Each row: trigger, id, kind, builtIn, enabled, who can use it, cooldown in seconds, and a short '
-        + 'preview of the reply. Filter with query (matches trigger, name or description), enabled, kind. '
+        + 'included. Each row: trigger, id, kind, builtIn, enabled, who can use it, cooldown in seconds, a short '
+        + 'preview of the reply, and repeatsEveryMinutes when the command also posts by itself (a "Repeating" command '
+        + 'on the Commands page). Filter with query (matches trigger, name or description), enabled, kind. '
         + 'Pages of up to 50; pass `next` back as cursor. Use get_command for the full reply.',
     parameters: {
         type: 'object',
@@ -250,9 +251,11 @@ export const listCommandsTool: AgentTool<ListCommandsInput> = {
             .limit(input.limit + 1)
             .lean() as unknown as LeanCommand[];
         const page = rows.slice(0, input.limit);
+        const links = await repeatLinks(ctx.channelId);
         const commands = page.map((command) => {
             const shown = presentCommand(command as never) as Record<string, any>;
             const blocks = shown.authoring === 'blocks';
+            const repeat = links.byCommand.get(String(command._id));
             return {
                 trigger: triggerLabel(command),
                 id: String(command._id),
@@ -263,6 +266,7 @@ export const listCommandsTool: AgentTool<ListCommandsInput> = {
                 cooldown: Number(command.cooldown ?? 0),
                 ...(command.name && command.name !== command.cmd ? { name: command.name } : {}),
                 reply: blocks ? '(built with blocks)' : runsBuiltInCode(command) ? '(built-in behavior)' : preview(String(shown.message ?? '')),
+                ...(repeat ? { repeatsEveryMinutes: repeat.minutes, ...(repeat.enabled ? {} : { repeatPaused: true }) } : {}),
             };
         });
         return {
@@ -283,7 +287,8 @@ export const getCommandTool: AgentTool<GetCommandInput> = {
     name: 'get_command',
     description:
         'One command or keyword in full: trigger, display name, enabled, who can use it, cooldown, description, '
-        + 'uses so far and the whole reply body (command language). name = what people type ("!dice", "dice", '
+        + 'uses so far, its repeat (posts by itself every N minutes; null = it does not repeat) and the whole reply '
+        + 'body (command language). name = what people type ("!dice", "dice", '
         + 'a keyword phrase) or the id from list_commands. Built-in commands run the bot\'s own code: their reply '
         + 'can\'t be changed. Commands made with blocks can\'t be read or edited here (only their settings).',
     parameters: {
@@ -311,6 +316,7 @@ export const getCommandTool: AgentTool<GetCommandInput> = {
         const blocks = shown.authoring === 'blocks';
         const builtInCode = runsBuiltInCode(command);
         const mode = inspectExpression(command.permissionExpression).mode;
+        const repeat = (await repeatLinks(ctx.channelId)).byCommand.get(String(command._id));
         return {
             type: 'result',
             summary: triggerLabel(command),
@@ -325,6 +331,7 @@ export const getCommandTool: AgentTool<GetCommandInput> = {
                 cooldown: Number(command.cooldown ?? 0),
                 uses: Number(command.count ?? 0),
                 ...(command.activation === 'keyword' ? { matchMode: command.keywordSettings?.matchMode ?? 'start' } : {}),
+                ...(command.activation === 'keyword' || command.reserved ? {} : { repeat: repeat ? { everyMinutes: repeat.minutes, enabled: repeat.enabled } : null }),
                 authoring: blocks ? 'blocks' : 'text',
                 ...(builtInCode ? { note: 'Built-in behavior: the bot runs its own code; only name, enabled, access and cooldown can change.' } : {}),
                 ...(blocks ? { note: 'Made with blocks. `reply` is the text the bot runs (compiled from the blocks). update_command with a body can replace the blocks with a text reply (undo puts the blocks back).' } : {}),
@@ -349,12 +356,46 @@ export function timerView(timer: TimerRow) {
     return { name: timer.name, minutes: getTimerIntervalMinutes(timer), enabled: Boolean(timer.active), message: timer.message };
 }
 
+/**
+ * Which timer is which command's repeat, resolved like the commands page (and `commandRepeat` in
+ * write/repeat.ts): the timer named like a custom command's trigger; else (older data) like its
+ * display name, unless that word is another command's trigger. Keywords and built-in commands have none.
+ */
+async function repeatLinks(channelId: string) {
+    const listed = await listTimers(channelId);
+    const timers = new Map((listed.error ? [] : (listed.timers ?? []) as TimerRow[]).map((row) => [String(row.name).toLowerCase(), timerView(row)]));
+    const commands = timers.size === 0 ? [] : await CommandsSchema.find({ channelID: channelId, activation: { $ne: 'keyword' }, reserved: { $ne: true } })
+        .select('cmd name').lean() as unknown as Array<{ _id: unknown; cmd?: string; name?: string }>;
+    const lower = (value: unknown) => String(value ?? '').trim().toLowerCase();
+    /** Timer name → the command it repeats. */
+    const byTimer = new Map<string, { id: string; trigger: string }>();
+    for (const command of commands) {
+        if (timers.has(lower(command.cmd)) && !byTimer.has(lower(command.cmd))) byTimer.set(lower(command.cmd), { id: String(command._id), trigger: `!${command.cmd}` });
+    }
+    const triggers = new Set(commands.map((command) => lower(command.cmd)));
+    for (const command of commands) {
+        const name = lower(command.name);
+        if (!name || triggers.has(name) || !timers.has(name) || byTimer.has(name) || byTimer.get(lower(command.cmd))?.id === String(command._id)) continue;
+        byTimer.set(name, { id: String(command._id), trigger: `!${command.cmd}` });
+    }
+    /** Command id → its repeat. */
+    const byCommand = new Map<string, ReturnType<typeof timerView>>();
+    for (const [name, owner] of byTimer) byCommand.set(owner.id, timers.get(name)!);
+    return { byTimer, byCommand };
+}
+
+const TIMER_KINDS =
+    'Each timer is either the repeat of a command (`command` = that command; the Commands page shows it under '
+    + '"Repeating") or stand-alone (`command` = null: made in chat with !cct, it posts fine but the Commands page '
+    + 'does not list it). New repeating messages are made with create_command / update_command repeatMinutes.';
+
 export const listTimersTool: AgentTool<Record<string, never>> = {
     name: 'list_timers',
     description:
-        'List the channel\'s timers: messages the bot posts by itself every N minutes while the stream is live '
-        + '(the message runs like a command body). Each: name, minutes, enabled, message. Plan limits: Free 5 '
-        + 'enabled timers at 10/20/30/40/50/60 min; Premium 15 at 5–180 min in steps of 5; Pro 50 at 1–180 min.',
+        'List the channel\'s timers (repeating messages): what the bot posts by itself every N minutes while the '
+        + 'stream is live (the message runs like a command body). Each: name, minutes, enabled, message, command. '
+        + TIMER_KINDS + ' Plan limits: Free 5 enabled at 10/20/30/40/50/60 min; Premium 15 at 5–180 min in steps of '
+        + '5; Pro 50 at 1–180 min.',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     kind: 'read',
     permissions: ['commands:view'],
@@ -363,7 +404,8 @@ export const listTimersTool: AgentTool<Record<string, never>> = {
     async run(_input, ctx) {
         const result = await listTimers(ctx.channelId);
         if (result.error) throw new Error(result.message);
-        const timers = ((result.timers ?? []) as TimerRow[]).map(timerView);
+        const links = await repeatLinks(ctx.channelId);
+        const timers = ((result.timers ?? []) as TimerRow[]).map((row) => ({ ...timerView(row), command: links.byTimer.get(String(row.name).toLowerCase())?.trigger ?? null }));
         return {
             type: 'result',
             summary: l(ctx.lang, `${timers.length} timers`, `${timers.length} temporizadores`),
@@ -374,7 +416,7 @@ export const listTimersTool: AgentTool<Record<string, never>> = {
 
 export const getTimerTool: AgentTool<{ name: string }> = {
     name: 'get_timer',
-    description: 'One timer in full: name, minutes, enabled and the whole message.',
+    description: 'One timer in full: name, minutes, enabled, the whole message and its command. ' + TIMER_KINDS,
     parameters: {
         type: 'object',
         properties: { name: { type: 'string', maxLength: 40, description: 'Timer name from list_timers.' } },
@@ -391,7 +433,9 @@ export const getTimerTool: AgentTool<{ name: string }> = {
         const result = await getTimer(ctx.channelId, input.name);
         if (result.status === 404) return { type: 'result', summary: l(ctx.lang, 'Not found', 'No encontrado'), result: { found: false, message: `No timer "${input.name}". Use list_timers.` } };
         if (result.error) throw new Error(result.message);
-        return { type: 'result', summary: input.name, result: { found: true, timer: untrusted(timerView(result.timer as TimerRow)) } };
+        const row = result.timer as TimerRow;
+        const command = (await repeatLinks(ctx.channelId)).byTimer.get(String(row.name).toLowerCase())?.trigger ?? null;
+        return { type: 'result', summary: input.name, result: { found: true, timer: untrusted({ ...timerView(row), command }) } };
     },
 };
 

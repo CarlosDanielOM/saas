@@ -19,6 +19,7 @@ import { CommandsApiService, type CommandSaveError, type CommandSaveResult, type
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { TimersApiService } from '../../services/timers-api.service';
+import { AssistantPresenceService } from '../assistant/assistant-presence.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
 import { FullAccessNoteComponent } from '../../shared/full-access-note/full-access-note.component';
@@ -75,6 +76,13 @@ export class CommandsPageComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly commandsApi = inject(CommandsApiService);
   private readonly timersApi = inject(TimersApiService);
+  private readonly assistantPresence = inject(AssistantPresenceService);
+  /** The assistant change (AssistantPresenceService.changedAt) this page has already loaded. */
+  private assistantRevisionLoaded = 0;
+  /** Counts list loads, so an answer that arrives after a newer load started is ignored. */
+  private commandsLoadSeq = 0;
+  /** Same for the repeat (timer) names: an older answer must not replace what a newer load showed. */
+  private timersLoadSeq = 0;
   private readonly toastService = inject(ToastService);
   readonly botAccess = inject(BotAccessService);
 
@@ -310,6 +318,24 @@ export class CommandsPageComponent {
     });
   });
 
+  /**
+   * The assistant created, changed, deleted or undid a command or a repeat on this channel: read the
+   * list again (past the cache), so it shows up here without a reload. Also runs when the page opens
+   * after such a change, so a list cached before it is not what the streamer sees.
+   */
+  private readonly assistantChangeEffect = effect(() => {
+    const revision = this.assistantPresence.changedAt('commands', 'timers');
+    // While a save made on this page is still on its way, wait: the effect runs again when it settles.
+    const saving = this.commands().some((command) => !!command.pendingOperation);
+    const channelID = this.channelID();
+    if (revision <= this.assistantRevisionLoaded || saving || !channelID) return;
+    untracked(() => {
+      this.assistantRevisionLoaded = revision;
+      this.loadCommands(channelID, { skipCache: true });
+      this.loadTimerNames(channelID);
+    });
+  });
+
   ngOnDestroy(): void {
     this.clearAllCommandFeedbackTimers();
   }
@@ -335,9 +361,11 @@ export class CommandsPageComponent {
   // ========== Loading Commands ==========
 
   loadCommands(channelID: string, options: { skipCache?: boolean } = {}): void {
+    const seq = ++this.commandsLoadSeq;
     this.commandsApi.getCommands(channelID, { skipCache: options.skipCache, activation: 'all', limit: 1000 }).subscribe({
       next: (cmds) => {
-        this.commands.set(this.normalizeCommands(cmds));
+        if (seq !== this.commandsLoadSeq) return;
+        this.commands.set(this.keepPendingRows(this.normalizeCommands(cmds)));
         this.commandsLoadedFor.set(channelID);
         this.syncCurrentPage();
       },
@@ -356,6 +384,18 @@ export class CommandsPageComponent {
 
     this.loadCommands(channelID, { skipCache: true });
     this.toastService.success(this.t('commands.toast.refreshSuccessTitle'), this.languageService.translate('commands.toast.refreshSuccessMessage', { count: 0 }));
+  }
+
+  /**
+   * A fresh list must not drop what is being saved on this page right now: rows with a pending
+   * operation (a new command still being created, an edit, a toggle, a delete) stay as they are
+   * shown, so the save's own answer still finds its row.
+   */
+  private keepPendingRows(fresh: CommandListItem[]): CommandListItem[] {
+    const pending = this.commands().filter((command) => !!command.pendingOperation);
+    if (pending.length === 0) return fresh;
+    const ids = new Set(pending.map((command) => this.getCommandId(command)));
+    return [...fresh.filter((command) => !ids.has(this.getCommandId(command))), ...pending];
   }
 
   private normalizeCommands(commands: Command[]): CommandListItem[] {
@@ -927,12 +967,16 @@ export class CommandsPageComponent {
 
   private replaceCommandItem(commandId: string, command: Command): void {
     const normalizedCommand = this.normalizeCommand(command);
+    const savedId = this.getCommandId(normalizedCommand);
 
-    this.commands.update((commands) =>
-      commands.map((currentCommand) =>
-        this.matchesCommand(currentCommand, commandId) ? normalizedCommand : currentCommand
-      )
-    );
+    this.commands.update((commands) => {
+      if (!commands.some((currentCommand) => this.matchesCommand(currentCommand, commandId))) return commands;
+      // A list refresh can bring the saved command in under its real id while its row here still has
+      // the temporary one: keep a single row for it, the one this save's answer replaces.
+      return commands
+        .filter((currentCommand) => this.matchesCommand(currentCommand, commandId) || this.getCommandId(currentCommand) !== savedId)
+        .map((currentCommand) => (this.matchesCommand(currentCommand, commandId) ? normalizedCommand : currentCommand));
+    });
   }
 
   private normalizeCommand(command: Command): CommandListItem {
@@ -1091,8 +1135,10 @@ export class CommandsPageComponent {
   }
 
   private loadTimerNames(channelID: string): void {
+    const seq = ++this.timersLoadSeq;
     this.timersApi.listTimers(channelID).subscribe({
       next: (rows) => {
+        if (seq !== this.timersLoadSeq) return;
         const names = new Set<string>();
         const minutes = new Map<string, number>();
         for (const row of rows) {
@@ -1113,6 +1159,7 @@ export class CommandsPageComponent {
         this.timerMinutesByName.set(minutes);
       },
       error: () => {
+        if (seq !== this.timersLoadSeq) return;
         this.timerNames.set(new Set());
         this.timerMinutesByName.set(new Map());
       }
