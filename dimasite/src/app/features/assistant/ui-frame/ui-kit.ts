@@ -40,7 +40,13 @@ export function assistantUiKit(win: any, boot: UiKitBoot, chartMarkup: any, char
   const themeListeners: any[] = [];
   const charts: any[] = [];
 
-  const post = (message: any) => { try { parent.postMessage(Object.assign({ dimaUi: 1, token }, message), '*'); } catch { /* page gone */ } };
+  // One object literal (no Object.assign, no property sets): card code that patches built-ins or adds setters to
+  // Object.prototype never gets to see the token.
+  const post = (message: any) => {
+    try {
+      parent.postMessage({ dimaUi: 1, token, type: message.type, values: message.values, route: message.route, height: message.height, errors: message.errors }, '*');
+    } catch { /* page gone */ }
+  };
 
   // The bridge token is written in this <script>: take it out of the document before the card's code can read it.
   try { if (doc.currentScript) doc.currentScript.remove(); } catch { /* ignore */ }
@@ -55,13 +61,16 @@ export function assistantUiKit(win: any, boot: UiKitBoot, chartMarkup: any, char
   };
   const create = win.Document.prototype.createElement;
   const createNS = win.Document.prototype.createElementNS;
+  // The tag is turned into text once, and that same text is checked and used (an object can't change its answer).
   lock(win.Document.prototype, 'createElement', function (this: any, tag: any, options?: any) {
-    if (FRAME.test(String(tag))) refuse();
-    return create.call(this, tag, options);
+    const name = String(tag);
+    if (FRAME.test(name.trim())) refuse();
+    return create.call(this, name, options);
   });
   lock(win.Document.prototype, 'createElementNS', function (this: any, ns: any, tag: any, options?: any) {
-    if (FRAME.test(String(tag).split(':').pop() || '')) refuse();
-    return createNS.call(this, ns, tag, options);
+    const name = String(tag);
+    if (FRAME.test((name.split(':').pop() || '').trim())) refuse();
+    return createNS.call(this, ns, name, options);
   });
   lock(win.Element.prototype, 'attachShadow', function () { refuse(); });
   if (win.Element.prototype.setHTMLUnsafe) lock(win.Element.prototype, 'setHTMLUnsafe', function () { refuse(); });
@@ -87,11 +96,13 @@ export function assistantUiKit(win: any, boot: UiKitBoot, chartMarkup: any, char
     records.forEach((record: any) => record.addedNodes && record.addedNodes.forEach(purge));
   }).observe(doc, { childList: true, subtree: true });
 
-  // Sending and opening pages only happen while the person is actually clicking or typing in this card.
-  const activated = () => {
-    const activation = win.navigator && win.navigator.userActivation;
-    return !activation || activation.isActive === true;
-  };
+  // Sending and opening pages only happen while the person is actually clicking or typing in this card. The real
+  // getter is kept now, before the card's code could replace navigator.userActivation or its prototype.
+  const activation = win.navigator && win.navigator.userActivation;
+  const activeDesc = activation && win.UserActivation ? Object.getOwnPropertyDescriptor(win.UserActivation.prototype, 'isActive') : null;
+  const isActive = activeDesc && activeDesc.get ? activeDesc.get : null;
+  const reflectApply = Reflect.apply;
+  const activated = () => (isActive ? reflectApply(isActive, activation, []) === true : !activation);
 
   // Links never leave the card (in-page #anchors still work). Scripted navigation is refused by the relay frame's
   // policy (see ui-relay.ts); this only keeps a stray link click from ending the card.

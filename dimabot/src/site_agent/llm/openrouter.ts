@@ -251,8 +251,9 @@ class StepAssembler {
     constructor(private readonly handlers: LlmStreamHandlers, private readonly key: string) {}
 
     chunk(chunk: Json): void {
-        if (chunk.error) throw chunkError(chunk.error, this.key);
+        // Keep the generation id even when this very chunk is an error: it may still be billed.
         if (typeof chunk.id === 'string' && !this.generationId) this.generationId = chunk.id;
+        if (chunk.error) throw chunkError(chunk.error, this.key);
         if (typeof chunk.provider === 'string' && !this.provider) this.provider = chunk.provider;
         if (chunk.usage && typeof chunk.usage === 'object') this.usage = mapStreamUsage(chunk.usage);
         const choice = Array.isArray(chunk.choices) ? (chunk.choices[0] as Json | undefined) : undefined;

@@ -62,9 +62,19 @@ try { void top.document.title; out.pageDoc = 'open'; } catch (e) { out.pageDoc =
 try { void parent.document.title; out.relayDoc = 'open'; } catch (e) { out.relayDoc = 'blocked'; }
 try { void document.cookie; out.cookie = 'open'; } catch (e) { out.cookie = 'blocked'; }
 out.rtc = typeof RTCPeerConnection;
-// Bridge actions need a real click: these run on load, without one.
+// Bridge actions need a real click: these run on load, without one, after trying to fake activation and to
+// fish the bridge token out of the kit (patched built-ins, a setter on Object.prototype).
+let leaked = null;
+try { Object.defineProperty(UserActivation.prototype, 'isActive', { get() { return true; }, configurable: true }); } catch (e) { /* ignore */ }
+try { Object.defineProperty(navigator, 'userActivation', { value: { isActive: true }, configurable: true }); } catch (e) { /* ignore */ }
+const realAssign = Object.assign;
+Object.assign = function (...args) { for (const arg of args) if (arg && arg.token) leaked = arg.token; return realAssign.apply(this, args); };
+Object.defineProperty(Object.prototype, 'type', { set(value) { if (this && this.token) leaked = this.token; }, configurable: true });
 out.autoSubmit = dima.submit({ auto: 1 });
 out.autoNavigate = dima.navigate('modules.tts');
+delete Object.prototype.type;
+Object.assign = realAssign;
+out.leak = leaked ? 'leaked' : 'none';
 // The kit's script (it holds the bridge token) is gone before this code runs.
 out.kitScript = [...document.scripts].some((s) => s.textContent.includes('dima' + 'Ui')) ? 'visible' : 'gone';
 // No nested frame, whichever way: each would be a fresh realm with WebRTC.
@@ -232,7 +242,7 @@ try {
     await until(async () => (await frame.locator('#probe').innerText()).startsWith('{'), 'probes ran');
     const probe = JSON.parse(await frame.locator('#probe').innerText());
     assert.deepEqual(probe, { origin: 'null', storage: 'blocked', pageStorage: 'blocked', pageDoc: 'blocked', relayDoc: 'blocked', cookie: 'blocked', rtc: 'undefined',
-      autoSubmit: false, autoNavigate: false, kitScript: 'gone', createFrame: 'blocked', shadow: 'blocked', fetch: 'blocked', frames: 0 }, 'sandbox probes');
+      autoSubmit: false, autoNavigate: false, leak: 'none', kitScript: 'gone', createFrame: 'blocked', shadow: 'blocked', fetch: 'blocked', frames: 0 }, 'sandbox probes');
     assert.equal(state.submits.length, 0, 'nothing was submitted without a click');
     await frame.locator('.dima-note').waitFor(); // the model's error shows inside the card only
     assert.deepEqual(await page.evaluate(() => window.__pageErrors), [], 'card errors never reach the page');

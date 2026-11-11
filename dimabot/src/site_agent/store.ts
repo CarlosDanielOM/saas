@@ -93,7 +93,8 @@ return 1`;
 /** Thrown by fenced writes when this process no longer holds the session lease. */
 export class LeaseLostError extends Error {}
 
-export interface Fence { sessionId: string; token: string }
+/** Lease fence: writes succeed only while the session lease holds `token` (session defaults to the turn's). */
+export interface Fence { sessionId?: string; token: string }
 
 export async function createTurn(turn: TurnRecord): Promise<void> {
     const client = await redis();
@@ -122,7 +123,7 @@ export async function updateTurn(id: string, mutate: (turn: TurnRecord) => boole
         if (mutate(next) === false) return current;
         next.revision = current.revision + 1;
         const ok = Number(await client.eval(CAS, {
-            keys: fence ? [K.turn(id), K.lease(fence.sessionId)] : [K.turn(id)],
+            keys: fence ? [K.turn(id), K.lease(fence.sessionId ?? current.sessionId)] : [K.turn(id)],
             arguments: [String(current.revision), String(next.revision), JSON.stringify(next), String(TURN_TTL_SECONDS), fence?.token ?? ''],
         }));
         if (ok === 1) return next;
@@ -269,7 +270,7 @@ const SET_IF_LEASE = `if redis.call('GET', KEYS[2]) ~= ARGV[2] then return 0 end
 export async function setContext(sessionId: string, items: ContextItem[], fence?: Fence): Promise<void> {
     const client = await redis();
     if (!fence) { await client.set(K.sessionContext(sessionId), JSON.stringify(items), { EX: L.sessionTtlSeconds }); return; }
-    const ok = Number(await client.eval(SET_IF_LEASE, { keys: [K.sessionContext(sessionId), K.lease(fence.sessionId)], arguments: [JSON.stringify(items), fence.token, String(L.sessionTtlSeconds)] }));
+    const ok = Number(await client.eval(SET_IF_LEASE, { keys: [K.sessionContext(sessionId), K.lease(fence.sessionId ?? sessionId)], arguments: [JSON.stringify(items), fence.token, String(L.sessionTtlSeconds)] }));
     if (ok !== 1) throw new LeaseLostError();
 }
 

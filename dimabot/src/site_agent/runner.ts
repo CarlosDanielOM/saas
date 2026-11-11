@@ -166,13 +166,18 @@ export async function submitMessage(input: SubmitInput): Promise<{ sessionId: st
 
         // Claim the session for this turn only if nobody else did since we looked (two quick sends).
         const turn = newTurn({ sessionId, access, requester, lang: input.lang, page: input.page, text, userItemId: itemId, mode: 'send', countedDay: day });
+        // The turn exists before the session points at it, so nobody can mistake the new id for a stale one.
         const seen = session.activeTurnId;
+        await store.createTurn(turn);
         const claimed = await store.updateSession(sessionId, (meta) => {
             if (meta.activeTurnId !== seen) return false;
             meta.activeTurnId = turn.id;
         });
-        if (claimed?.activeTurnId !== turn.id) throw new AgentRequestError('turn_active', 409, 'The assistant is still working on this chat', { turnId: claimed?.activeTurnId ?? null });
-        await store.createTurn(turn);
+        if (claimed?.activeTurnId !== turn.id) {
+            await store.updateTurn(turn.id, (current) => { current.status = 'cancelled'; current.endedAt = Date.now(); }).catch(() => null);
+            await store.finishActive(turn.id).catch(() => {});
+            throw new AgentRequestError('turn_active', 409, 'The assistant is still working on this chat', { turnId: claimed?.activeTurnId ?? null });
+        }
         await addItem(sessionId, turn.id, { kind: 'user', id: itemId, turnId: turn.id, text, mode: 'send', at: Date.now() });
         await emit(turn.id, { type: 'turn', turnId: turn.id, sessionId, status: 'queued', inputRevision: 0 });
         await emit(turn.id, { type: 'limits', limits: taken.limits });
@@ -341,7 +346,7 @@ async function runTurn(turnId: string): Promise<void> {
         if (turn && isActive(turn.status) && turn.fence === token && !leaseLost) {
             const code = err instanceof LlmError ? `model_${err.kind}` : err instanceof LeaseLost ? 'lease_lost' : 'internal_error';
             if (!(err instanceof LlmError)) await logError({ function: 'siteAgent.loop', turnId, error: err instanceof Error ? err.stack ?? err.message : String(err) }, { destination: 'both' });
-            await finishTurn(turn, turn.stopRequested ? 'cancelled' : 'failed', code);
+            await finishTurn(turn, turn.stopRequested ? 'cancelled' : 'failed', code, { token });
         }
     } finally {
         clearInterval(heartbeat);
@@ -355,9 +360,10 @@ async function runTurn(turnId: string): Promise<void> {
 async function fenced(turnId: string, token: string, mutate: (turn: store.TurnRecord) => boolean | void, sessionId?: string): Promise<store.TurnRecord> {
     let lost = false;
     const updated = await store.updateTurn(turnId, (turn) => {
+        lost = false;
         if (turn.fence !== token || !isActive(turn.status)) { lost = true; return false; }
         return mutate(turn);
-    }, sessionId ? { sessionId, token } : undefined);
+    }, { sessionId, token });
     if (!updated || lost) throw new LeaseLost();
     return updated;
 }
@@ -378,7 +384,7 @@ interface LoopContext {
 async function loop(initial: store.TurnRecord, state: RunState, token: string): Promise<void> {
     let turn = initial;
     const access = await resolveAccess(turn.userId, turn.channelId);
-    if (!access) { await finishTurn(turn, 'failed', 'access_revoked'); return; }
+    if (!access) { await finishTurn(turn, 'failed', 'access_revoked', { token }); return; }
     const cfg = PLAN_MODELS[turn.plan];
     const can = permissionChecker(turn.userId, turn.channelId);
     const tools = await toolsFor((permissions) => can(permissions), turn.plan, turn.role);
@@ -414,7 +420,7 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
     for (;;) {
         turn = ctx.turn = (await store.getTurn(turn.id))!;
         if (turn.fence !== token || !isActive(turn.status)) throw new LeaseLost();
-        if (turn.stopRequested || state.abort.signal.aborted) { await finishTurn(turn, 'cancelled', undefined, ctx); return; }
+        if (turn.stopRequested || state.abort.signal.aborted) { await finishTurn(turn, 'cancelled', undefined, ctx.fence); return; }
 
         // 1. Steering inputs.
         const pending = turn.inputs.filter((input) => !input.applied);
@@ -465,7 +471,7 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
             state.abort.signal.removeEventListener('abort', onRunAbort);
             state.step = null;
             if (err instanceof LlmError && err.kind === 'aborted') {
-                if (state.abort.signal.aborted) { await finishTurn((await store.getTurn(turn.id))!, 'cancelled', undefined, ctx); return; }
+                if (state.abort.signal.aborted) { await finishTurn((await store.getTurn(turn.id))!, 'cancelled', undefined, ctx.fence); return; }
                 continue; // steered before the stream started
             }
             // A started generation is billed even when the stream failed.
@@ -501,7 +507,7 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
                     await store.setContext(turn.sessionId, items, fence);
                     await updateItem(turn.sessionId, turn.id, { ...textItem, final: true });
                 }
-                await finishTurn(turn, 'cancelled', undefined, ctx);
+                await finishTurn(turn, 'cancelled', undefined, ctx.fence);
                 return;
             }
             continue; // steered: drop this response (its tool calls never run) and take the new message into account
@@ -517,7 +523,7 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
             if (textItem && textItem.kind === 'assistant') await updateItem(turn.sessionId, turn.id, { ...textItem, final: true });
             else await addItem(turn.sessionId, turn.id, { kind: 'notice', id: randomUUID(), turnId: turn.id, code: final ? 'step_limit' : 'empty_answer', at: Date.now() });
             // A steer that landed after the stream ended is answered too (finishTurn refuses while inputs are pending).
-            if (await finishTurn(turn, 'completed', undefined, ctx)) return;
+            if (await finishTurn(turn, 'completed', undefined, ctx.fence)) return;
             continue;
         }
 
@@ -532,6 +538,9 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
             } else if (turn.inputRevision !== inputRevision) {
                 resultText = JSON.stringify({ error: 'superseded_by_input', message: 'Not run: the user sent a new message first. Read it and decide again.' });
                 await recordCall(ctx, call.id, call.name, call.arguments, inputRevision, 'superseded', resultText);
+            } else if (activeNow() >= L.activeMs) {
+                resultText = JSON.stringify({ error: 'time_budget', message: 'Not run: this message has used its working time. Answer with what you have.' });
+                await recordCall(ctx, call.id, call.name, call.arguments, inputRevision, 'error', resultText);
             } else if (turn.toolCallCount >= L.maxToolCalls) {
                 resultText = JSON.stringify({ error: 'tool_budget', message: `Not run: the limit of ${L.maxToolCalls} tool calls for one message was reached. Answer with what you have.` });
                 await recordCall(ctx, call.id, call.name, call.arguments, inputRevision, 'error', resultText);
@@ -806,13 +815,14 @@ async function runApproval(ctx: LoopContext, tool: AgentTool, callId: string, na
         return settle('failed', 'denied', errorText('permission_denied', 'Not applied: this user no longer has permission for this change.'), { error: 'permission_denied' });
     }
     // Claim the approval atomically: a steer or Stop that landed meanwhile wins, and nothing is applied.
-    let claimed = false;
     const latest = await store.updateTurn(turn.id, (current) => {
         const entry = current.calls.find((call) => call.id === callId);
         if (current.fence !== ctx.token || !isActive(current.status) || current.stopRequested || current.inputRevision !== inputRevision || entry?.approval?.state !== 'approved') return false;
         entry.approval = { ...entry.approval, state: 'applying' };
-        claimed = true;
-    }, ctx.fence);
+    }, ctx.fence).catch(() => null);
+    // Claimed only if the stored turn now says so (the update callback may run several times).
+    const claimed = latest?.calls.find((call) => call.id === callId)?.approval?.state === 'applying'
+        && !latest.stopRequested && latest.inputRevision === inputRevision && latest.fence === ctx.token;
     if (!claimed) {
         const stopped = Boolean(latest?.stopRequested);
         return settle(stopped ? 'expired' : 'superseded', stopped ? 'interrupted' : 'superseded',
@@ -845,8 +855,9 @@ async function runApproval(ctx: LoopContext, tool: AgentTool, callId: string, na
             void applying.then((late) => (late.change ? record(late.change) : undefined)).catch(() => {});
             return settle('failed', 'error', errorText('outcome_unknown', 'This change took too long: it may or may not have been applied. Check the current state before trying again.'), { error: 'outcome_unknown' });
         }
+        // The write may have happened before the error (e.g. a cache refresh after saving failed).
         await logError({ function: 'siteAgent.apply', tool: name, turnId: turn.id, error: err instanceof Error ? err.stack ?? err.message : String(err) }, { destination: 'both' });
-        return settle('failed', 'error', errorText('apply_failed', 'Not applied: something went wrong while saving. Check the current state before trying again.'), { error: 'apply_failed' });
+        return settle('failed', 'error', errorText('outcome_unknown', 'Something went wrong while saving: this change may or may not have been applied. Check the current state before trying again.'), { error: 'outcome_unknown' });
     }
 }
 
@@ -854,7 +865,8 @@ async function runApproval(ctx: LoopContext, tool: AgentTool, callId: string, na
 // Finishing, queue, recovery
 // ---------------------------------------------------------------------------
 
-async function finishTurn(turn: store.TurnRecord, status: TurnStatus, errorCode?: string, _ctx?: LoopContext): Promise<boolean> {
+async function finishTurn(turn: store.TurnRecord, status: TurnStatus, errorCode?: string, fence?: store.Fence): Promise<boolean> {
+    // From the loop: only while this process still holds the lease. Recovery/Stop of a queued turn: unfenced.
     const ended = await store.updateTurn(turn.id, (current) => {
         if (!isActive(current.status)) return false;
         if (status === 'completed' && current.inputs.some((input) => !input.applied)) return false;
@@ -865,7 +877,7 @@ async function finishTurn(turn: store.TurnRecord, status: TurnStatus, errorCode?
         for (const call of current.calls) {
             if (['running', 'awaiting_approval', 'awaiting_input', 'pending'].includes(call.state)) call.state = status === 'cancelled' ? 'interrupted' : call.state === 'running' ? 'interrupted' : 'expired';
         }
-    });
+    }, fence).catch((err) => { if (err instanceof store.LeaseLostError) return null; throw err; });
     if (!ended || ended.status !== status) return false;
     // Cards still waiting (approval/form) close.
     for (const call of ended.calls) {
