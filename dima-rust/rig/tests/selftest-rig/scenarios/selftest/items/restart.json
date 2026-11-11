@@ -1,0 +1,31 @@
+{
+  "rig_scenario": 1,
+  "description": "A fresh process started after the seed: a seeded item is readable and a new one is written next to it.",
+  "restart": true,
+  "seed": {
+    "include": ["../_seeds/users.json"],
+    "mongo": {
+      "items": [
+        {
+          "_id": { "$oid": "650000000000000000000010" },
+          "name": "seeded",
+          "qty": { "$numberInt": "7" },
+          "owner": { "$oid": "650000000000000000000001" },
+          "createdAt": { "$date": "2026-01-02T03:04:05.678Z" },
+          "leaseUntil": { "$rigNow": "+60s", "as": "double" }
+        }
+      ]
+    }
+  },
+  "steps": [
+    { "http": { "method": "GET", "path": "/items/650000000000000000000010", "expect": { "status": 200 } } },
+    {
+      "http": {
+        "method": "POST",
+        "path": "/items",
+        "json": { "name": "after restart", "qty": 2, "owner": "650000000000000000000001" },
+        "expect": { "status": 201 }
+      }
+    }
+  ]
+}

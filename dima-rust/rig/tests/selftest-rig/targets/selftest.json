@@ -1,0 +1,27 @@
+{
+  "rig_target": 1,
+  "description": "Self-test: the fixture server on both sides. Pass --set fixture=<path to dima-rig-fixture> --set variant=<candidate variant>.",
+  "ports": ["http"],
+  "reference": {
+    "command": ["{var.fixture}", "--variant", "good"],
+    "env": {
+      "PORT": "{port}",
+      "MONGO_URI": "{mongo_uri}",
+      "MONGO_DB": "{mongo_db}",
+      "REDIS_URL": "{dragonfly_url}"
+    },
+    "ready": { "http": "/health", "timeout_ms": 15000 },
+    "stop": { "signal": "SIGTERM", "grace_ms": 3000 }
+  },
+  "candidate": {
+    "command": ["{var.fixture}", "--variant", "{var.variant}"],
+    "env": {
+      "PORT": "{port}",
+      "MONGO_URI": "{mongo_uri}",
+      "MONGO_DB": "{mongo_db}",
+      "REDIS_URL": "{dragonfly_url}"
+    },
+    "ready": { "http": "/health", "timeout_ms": 15000 },
+    "stop": { "signal": "SIGTERM", "grace_ms": 3000 }
+  }
+}

@@ -1,0 +1,38 @@
+[package]
+name = "dima-rig"
+description = "Side-by-side rig: runs the reference and the Rust candidate on the same scenario and compares what each one did."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "dima-rig"
+path = "src/main.rs"
+
+# Test fixture: a tiny HTTP server with deliberate defect variants, launched by
+# the self-test target (tests/selftest-rig). Not part of any image.
+[[bin]]
+name = "dima-rig-fixture"
+path = "tests/fixture/server.rs"
+test = false
+
+[dependencies]
+anyhow = { workspace = true }
+base64 = { workspace = true }
+bson = { workspace = true }
+clap = { workspace = true }
+futures-util = { workspace = true }
+mongodb = { workspace = true }
+nix = { workspace = true }
+redis = { workspace = true }
+regex = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }

@@ -1,0 +1,14 @@
+{
+  "rig_seed": 1,
+  "description": "One user who owns the items.",
+  "mongo": {
+    "users": [
+      {
+        "_id": { "$oid": "650000000000000000000001" },
+        "name": "Ada 👩‍💻",
+        "credits": { "$numberInt": "10" },
+        "createdAt": { "$date": "2026-01-01T00:00:00.000Z" }
+      }
+    ]
+  }
+}
