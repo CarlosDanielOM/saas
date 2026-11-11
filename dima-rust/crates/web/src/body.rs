@@ -3,7 +3,10 @@
 //! Each parser skips a request another parser already read (`req._body`), leaves `{}` in
 //! `req.body` when the content type does not match, and sends failures down the error path:
 //! 400 malformed, 413 too large or too many parameters, 415 unsupported charset or encoding.
-//! Limits count bytes after `gzip`/`deflate` inflation, as raw-body does.
+//! Limits count bytes after `gzip`/`deflate` inflation, as raw-body does. Compressed bodies are
+//! also limited on the wire to [`wire_budget`] of the limit, so input that inflates to little or
+//! nothing (concatenated empty gzip members) cannot be streamed in forever; raw-body has no such
+//! bound and reads until the request deadline.
 
 use std::borrow::Cow;
 use std::io::Write as _;
@@ -24,6 +27,13 @@ pub const DEFAULT_LIMIT: usize = 100 * 1024;
 /// How much of a rejected body is still read off the connection before answering, so the
 /// client sees the error response (body-parser reads all of it; this bounds that).
 const DRAIN_BUDGET: usize = 64 * 1024 * 1024;
+
+/// Compressed bytes accepted for a body whose inflated size may be `limit`: the limit plus an
+/// eighth (deflate's worst case for incompressible data is a few percent) plus 64 KiB for
+/// headers. Past it the body is refused as too large (413).
+pub const fn wire_budget(limit: usize) -> usize {
+    limit.saturating_add(limit / 8).saturating_add(64 * 1024)
+}
 
 /// `bytes.parse('<n>kb')`.
 pub const fn kb(n: usize) -> usize {
@@ -386,11 +396,18 @@ async fn read<S>(req: &mut Req<S>, common: &Common, charset: Option<&str>) -> Re
     };
     let mut collected = BytesMut::new();
     let aborted = || Error::new(400, "request aborted").with_kind("request.aborted");
+    let budget = wire_budget(common.limit);
+    let mut wire = 0usize;
     while let Some(frame) = body.frame().await {
         let frame = frame.map_err(|_| aborted())?;
         let Ok(data) = frame.into_data() else {
             continue;
         };
+        wire = wire.saturating_add(data.len());
+        if inflater.is_some() && wire > budget {
+            drain(Some(&mut body)).await;
+            return Err(too_large());
+        }
         match inflater.as_mut() {
             None => {
                 if collected.len() + data.len() > common.limit {
@@ -733,6 +750,73 @@ mod tests {
         assert_eq!(error.status(), Some(413));
         assert_eq!(error.kind(), Some("parameters.too.many"));
         assert_eq!(error.message(), "too many parameters");
+    }
+
+    fn request(headers: &[(&str, &str)], body: Vec<u8>) -> Req<()> {
+        let mut builder = http::Request::builder()
+            .method("POST")
+            .uri("/")
+            .header("content-length", body.len().to_string());
+        for (name, value) in headers {
+            builder = builder.header(*name, *value);
+        }
+        let (parts, ()) = builder.body(()).expect("request").into_parts();
+        Req::new(std::sync::Arc::new(()), parts, crate::Body::from(body))
+    }
+
+    fn gzip(data: &[u8]) -> Vec<u8> {
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(data).expect("compress");
+        encoder.finish().expect("compress")
+    }
+
+    /// Review finding: only the inflated output was bounded, so concatenated empty gzip members
+    /// were read without end. Each member is 20 bytes that inflate to nothing.
+    #[tokio::test]
+    async fn compressed_input_is_bounded_on_the_wire() {
+        let member = gzip(b"");
+        let members = wire_budget(DEFAULT_LIMIT) / member.len() + 1;
+        let body = member.repeat(members);
+        let mut req = request(
+            &[
+                ("content-type", "application/json"),
+                ("content-encoding", "gzip"),
+            ],
+            body,
+        );
+        let error = json()
+            .call(&mut req)
+            .await
+            .expect_err("over the wire budget");
+        assert_eq!(error.status(), Some(413));
+        assert_eq!(error.kind(), Some("entity.too.large"));
+
+        // Within the budget the same members are still an empty body, as in body-parser.
+        let mut req = request(
+            &[
+                ("content-type", "application/json"),
+                ("content-encoding", "gzip"),
+            ],
+            member.repeat(100),
+        );
+        assert!(matches!(json().call(&mut req).await, Ok(Flow::Next)));
+        assert_eq!(req.body(), &json!({}));
+
+        // A compressed body that inflates to exactly the limit still parses.
+        let shell = r#"{"pad":""}"#.len();
+        let text = format!(r#"{{"pad":"{}"}}"#, "a".repeat(DEFAULT_LIMIT - shell));
+        let mut req = request(
+            &[
+                ("content-type", "application/json"),
+                ("content-encoding", "gzip"),
+            ],
+            gzip(text.as_bytes()),
+        );
+        assert!(matches!(json().call(&mut req).await, Ok(Flow::Next)));
+        assert_eq!(
+            req.body()["pad"].as_str().map(str::len),
+            Some(DEFAULT_LIMIT - shell)
+        );
     }
 
     #[test]
