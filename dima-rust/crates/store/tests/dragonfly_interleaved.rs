@@ -215,6 +215,8 @@ async fn node_pushes_and_rust_pops_acknowledges_and_requeues() -> Result<()> {
     );
 
     node.call("cleanup", json!({"prefix": p})).await?;
+    // Dedupe markers live under cron:jobs:dedupe:<token>, outside the prefix.
+    cleanup(&df, &format!("cron:jobs:dedupe:{p}")).await?;
     cleanup(&df, &p).await
 }
 
@@ -288,6 +290,8 @@ async fn rust_pushes_and_node_claims_and_acknowledges_by_value() -> Result<()> {
     ensure!(reply["removed"] == 1 && unb64(&reply["base64"])? == item.as_bytes());
 
     node.call("cleanup", json!({"prefix": p})).await?;
+    // Dedupe markers live under cron:jobs:dedupe:<token>, outside the prefix.
+    cleanup(&df, &format!("cron:jobs:dedupe:{p}")).await?;
     cleanup(&df, &p).await
 }
 
@@ -417,6 +421,8 @@ async fn both_race_the_fence_scripts() -> Result<()> {
     df.del(&keys.iter().map(String::as_str).collect::<Vec<_>>())
         .await?;
     node.call("cleanup", json!({"prefix": p})).await?;
+    // Dedupe markers live under cron:jobs:dedupe:<token>, outside the prefix.
+    cleanup(&df, &format!("cron:jobs:dedupe:{p}")).await?;
     cleanup(&df, &p).await
 }
 
