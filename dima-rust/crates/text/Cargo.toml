@@ -9,4 +9,17 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
+[features]
+# `localeCompare` through ICU. Off by default so crates that never sort for
+# users do not compile ICU.
+collation = ["dep:icu_collator", "dep:thiserror"]
+
 [dependencies]
+serde_json = { workspace = true }
+unicode-normalization = { workspace = true }
+icu_collator = { workspace = true, optional = true }
+thiserror = { workspace = true, optional = true }
+
+[dev-dependencies]
+# Tests always cover the collation feature, including under `tools/check`.
+dima-text = { path = ".", features = ["collation"] }
