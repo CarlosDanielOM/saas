@@ -6,7 +6,7 @@
 //!
 //! Skipped with a message when `DIMA_TEST_MONGO_URI` is not set or `domdimabot` is absent.
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use bson::{Bson, Document, doc};
 use dima_store::mongo::date::{JsDate, read_time};
 use dima_store::mongo::id::DocId;
