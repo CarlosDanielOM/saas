@@ -156,7 +156,11 @@ for everything you touch. These rules apply everywhere:
    or double, exactly as the ledger records per field. Do not improve them.
 4. **The reference for a write is what the reference operation actually stores**, observed in the rig,
    not what the schema file suggests. Mongoose adds and omits things per operation (timestamps, `__v`,
-   sub-document `_id`, defaults on upsert). Hooks are part of the write.
+   sub-document `_id`, defaults on upsert). Hooks are part of the write. Every write to a collection
+   that has a Mongoose schema goes through the `dima_store::mongo` write helpers, which were derived
+   from recordings of Mongoose itself (`crates/store/tests/mongo_golden`); where a recording and the
+   prose rules in `ledger/mongo.md` disagree, the recording is right. A field the helpers report as
+   dropped (unknown to the schema) is a mistake in the caller: tests fail on it, production logs it.
 5. Indexes are created only where the reference creates them, with the same definitions.
 6. **Byte-compared values are opaque.** A queue item removed by value, JSON compared inside Lua, or a
    payload that was hashed is carried as the bytes received through claim, completion and requeue; never
