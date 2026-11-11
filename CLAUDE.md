@@ -2,6 +2,10 @@
 
 **This is the root navigation document for the entire monorepo.** All agents must read this file first.
 
+## Rust Migration (in progress since 2026-11-11)
+
+All server-side TypeScript is being ported to Rust under [`dima-rust/MIGRATION.md`](dima-rust/MIGRATION.md). For any work under `dima-rust/` or on branch `rust-v2`, read that file first: it overrides the delivery workflow below (migration work is build-and-verify only, never deploy), sets the native UTF-8 text rules, and requires every cargo command to go through `dima-rust/tools/cargo`. Package status lives in [`dima-rust/ledger/`](dima-rust/ledger/). `dimabot/src` is frozen as the reference and rollback target: do not add features there.
+
 ## Production Host & Delivery Workflow
 
 **This checkout, `/root/saas`, is on the actual production server.** Docker and live services are available here. Do not assume this is a development-only machine or that Docker is unavailable. Confirm current container mounts and Compose ownership before acting; the paths below describe this host.

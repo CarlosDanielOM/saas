@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Capped cargo for the Rust migration. Every cargo command on a development
+# machine goes through this wrapper (see dima-rust/MIGRATION.md, "Machine limits").
+#
+# - One systemd slice holds every cargo process from every agent and worktree,
+#   so the TOTAL stays under the cap however many builds are queued.
+# - One shared target directory, so worktrees reuse compiled dependencies and
+#   cargo's own build lock serialises compilation.
+#
+# Overrides: DIMA_BUILD_CPUS (default 8), DIMA_BUILD_MEM (default 8G),
+# DIMA_BUILD_SLICE (default dima-build.slice), CARGO_TARGET_DIR.
+# The production host does not use this file; it builds through scripts/saas-ops.
+set -euo pipefail
+
+cpus="${DIMA_BUILD_CPUS:-8}"
+mem="${DIMA_BUILD_MEM:-8G}"
+slice="${DIMA_BUILD_SLICE:-dima-build.slice}"
+
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/dima-rust/target}"
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-$cpus}"
+mkdir -p "$CARGO_TARGET_DIR"
+
+# A clean in the shared target directory throws away everyone's build.
+if [[ "${1:-}" == "clean" && "${DIMA_ALLOW_CLEAN:-0}" != "1" ]]; then
+    echo "tools/cargo: 'clean' is disabled for the shared target directory (set DIMA_ALLOW_CLEAN=1 to override)" >&2
+    exit 2
+fi
+
+if command -v systemd-run >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+    systemctl --user set-property --runtime "$slice" \
+        "CPUQuota=$((cpus * 100))%" "MemoryMax=$mem" "MemorySwapMax=0" >/dev/null 2>&1 || true
+    exec systemd-run --user --scope --quiet --collect --slice="$slice" -- cargo "$@"
+fi
+
+echo "tools/cargo: systemd user session not available, running cargo without the cgroup cap" >&2
+exec cargo "$@"
