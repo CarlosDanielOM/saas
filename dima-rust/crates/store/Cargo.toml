@@ -18,6 +18,9 @@ mongodb = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+# Dragonfly (src/dragonfly).
+redis = { workspace = true }
+tokio = { workspace = true }
 
 [dev-dependencies]
 # MongoDB tests (tests/mongo_*.rs).
