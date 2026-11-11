@@ -341,9 +341,11 @@ impl<S: Send + Sync + 'static> Router<S> {
     }
 }
 
-/// Runs a handler, turning panics into errors and answers into HTTP.
+/// Runs a handler, turning panics into errors and answers into HTTP. The call itself happens
+/// inside the guarded future: a handler that panics before its first `await` (or while building
+/// its future) reaches the router's error handlers like any other panic.
 async fn call<S: Send + Sync + 'static>(handler: &dyn Handler<S>, req: &mut Req<S>) -> Outcome {
-    let result = AssertUnwindSafe(handler.call(req))
+    let result = AssertUnwindSafe(async { handler.call(req).await })
         .catch_unwind()
         .await
         .unwrap_or_else(|_| Err(Error::panicked()));
@@ -355,7 +357,7 @@ async fn call_error<S: Send + Sync + 'static>(
     error: Error,
     req: &mut Req<S>,
 ) -> Outcome {
-    let result = AssertUnwindSafe(handler.call(error, req))
+    let result = AssertUnwindSafe(async { handler.call(error, req).await })
         .catch_unwind()
         .await
         .unwrap_or_else(|_| Err(Error::panicked()));

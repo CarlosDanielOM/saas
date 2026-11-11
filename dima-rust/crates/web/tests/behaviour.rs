@@ -115,6 +115,46 @@ async fn panics_reach_router_error_handlers() {
     assert_eq!(body, r#"{"caught":"handler panicked","status":null}"#);
 }
 
+/// A handler that panics while building its future, before any `await`.
+fn eager_panic(_req: &mut Req<State>) -> std::future::Ready<Response> {
+    panic!("before the future");
+}
+
+/// An error handler that panics the same way.
+fn eager_error_panic(_error: Error, _req: &mut Req<State>) -> std::future::Ready<Response> {
+    panic!("error handler bug");
+}
+
+/// Review finding: the handler was invoked before the panic guard was installed, and `from_fn`
+/// ran synchronously, so these panics skipped the router's error handlers and lost the route's
+/// JSON error shape.
+#[tokio::test]
+async fn panics_before_the_first_await_reach_router_error_handlers() {
+    let mut widgets = Router::new();
+    widgets.middleware_at(
+        "/sync",
+        from_fn(|_req: &mut Req<State>| -> Result<Flow, Error> { panic!("middleware bug") }),
+    );
+    widgets.get("/eager", eager_panic);
+    let mut nested = Router::new();
+    nested.get("/boom", panics);
+    nested.on_error(eager_error_panic);
+    widgets.mount("/nested", nested);
+    widgets.on_error(report_error);
+    let mut root = Router::new();
+    root.mount("/widgets", widgets);
+    let app = App::new(root, State { greeting: "hi" }).expect("app");
+
+    for path in ["/widgets/sync", "/widgets/eager", "/widgets/nested/boom"] {
+        let (status, body, _) = call(&app, "GET", path, "", &[]).await;
+        assert_eq!(status, 500, "{path}");
+        assert_eq!(
+            body, r#"{"caught":"handler panicked","status":null}"#,
+            "{path}"
+        );
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct Rename {
     name: String,
