@@ -1,0 +1,27 @@
+{
+  "rig_scenario": 1,
+  "description": "Create two items (emoji and non-ASCII names), read one back, list the name index, miss one.",
+  "seed": {
+    "include": ["../_seeds/users.json"],
+    "dragonfly": [["SET", "config:greeting", "héllo 👋"]]
+  },
+  "steps": [
+    {
+      "name": "create pizza",
+      "http": {
+        "method": "POST",
+        "path": "/items",
+        "json": { "name": "🍕 pizza", "qty": 3, "owner": "650000000000000000000001" },
+        "expect": { "status": 201 },
+        "save": { "item_id": "body.id" }
+      }
+    },
+    {
+      "name": "create ñandú",
+      "http": { "method": "POST", "path": "/items", "json": { "name": "ñandú", "qty": 5, "owner": "650000000000000000000001" } }
+    },
+    { "name": "read pizza", "http": { "method": "GET", "path": "/items/${item_id}", "expect": { "status": 200 } } },
+    { "dragonfly": ["HGETALL", "items:by-name"] },
+    { "name": "missing item", "http": { "method": "GET", "path": "/items/650000000000000000000099" } }
+  ]
+}

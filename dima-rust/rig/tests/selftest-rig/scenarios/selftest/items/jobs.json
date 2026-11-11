@@ -1,0 +1,20 @@
+{
+  "rig_scenario": 1,
+  "description": "A job finishes in the background: wait for its documents, then for the stores to settle.",
+  "seed": { "include": ["../_seeds/users.json"] },
+  "steps": [
+    {
+      "http": {
+        "method": "POST",
+        "path": "/items",
+        "json": { "name": "job item", "qty": 1, "owner": "650000000000000000000001" },
+        "expect": { "status": 201 },
+        "save": { "item": "body.id" }
+      }
+    },
+    { "http": { "method": "POST", "path": "/jobs", "json": { "item": "${item}" }, "expect": { "status": 202 } } },
+    { "wait_for": { "mongo": { "collection": "jobs", "filter": { "item": { "$oid": "${item}" }, "step": 2 } }, "timeout_ms": 5000 } },
+    { "wait_quiet": { "quiet_ms": 300, "timeout_ms": 5000 } },
+    { "dragonfly": ["LRANGE", "jobs:done", "0", "-1"] }
+  ]
+}
