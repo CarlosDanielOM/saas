@@ -5,6 +5,8 @@
 //! different inputs, and requests that hit the difference behave differently in Express.
 //! Header values are handled as Node sees them: each byte is one character (latin1).
 
+use std::collections::HashMap;
+
 /// JavaScript `\s` / `String.prototype.trim` whitespace.
 pub(crate) fn is_js_whitespace(c: char) -> bool {
     matches!(
@@ -185,7 +187,12 @@ fn unescape(raw: &str, flavor: Flavor) -> String {
     out
 }
 
-/// A parsed media type: lower-case `type/subtype` and its parameters in first-seen order.
+/// Parameters one media type may carry. No client sends more; a header with more is treated as
+/// malformed (the packages accept any number), which keeps parsing linear and bounded.
+pub(crate) const MAX_PARAMS: usize = 128;
+
+/// A parsed media type: lower-case `type/subtype` and its parameters in first-seen order
+/// (a repeated key keeps its first position and takes the last value).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ContentType {
     pub(crate) essence: String,
@@ -198,6 +205,26 @@ impl ContentType {
             .iter()
             .find(|(k, _)| k == key)
             .map(|(_, v)| v.as_str())
+    }
+
+    /// Sets one parameter; `positions` indexes `params` by key while a header is parsed.
+    fn set_param_indexed(
+        &mut self,
+        positions: &mut HashMap<String, usize>,
+        key: String,
+        value: String,
+    ) {
+        match positions.get(&key) {
+            Some(&at) => {
+                if let Some(slot) = self.params.get_mut(at) {
+                    slot.1 = value;
+                }
+            }
+            None => {
+                positions.insert(key.clone(), self.params.len());
+                self.params.push((key, value));
+            }
+        }
     }
 
     fn set_param(&mut self, key: String, value: String) {
@@ -240,8 +267,12 @@ pub(crate) fn parse_content_type(header: &str) -> Option<ContentType> {
         params: Vec::new(),
     };
     if let Some(mut index) = semicolon {
+        let mut positions = HashMap::new();
         while let Some((key, value, next)) = match_param(&chars, index, Flavor::ContentType) {
-            parsed.set_param(key, value);
+            parsed.set_param_indexed(&mut positions, key, value);
+            if parsed.params.len() > MAX_PARAMS {
+                return None;
+            }
             index = next;
         }
         if index != chars.len() {
@@ -319,7 +350,12 @@ fn normalize_actual(value: &str) -> Option<String> {
     };
     let (kind, subtype, suffix) = split_media_type(&type_part.to_lowercase())?;
     if let Some(mut index) = semicolon {
+        let mut count = 0usize;
         while let Some((_, _, next)) = match_param(&chars, index, Flavor::MediaTyper) {
+            count += 1;
+            if count > MAX_PARAMS {
+                return None;
+            }
             index = next;
         }
         if index != chars.len() {
@@ -640,6 +676,30 @@ mod tests {
             Some(" application/json "),
             &types(&["application/json"])
         ));
+    }
+
+    /// Review finding: each parameter searched all earlier names, quadratic in the header.
+    #[test]
+    fn parameter_parsing_is_linear_and_bounded() {
+        let params: String = (0..MAX_PARAMS).map(|i| format!("; p{i}=v")).collect();
+        let parsed = parse_content_type(&format!("text/plain{params}; p0=w")).expect("parses");
+        assert_eq!(parsed.params.len(), MAX_PARAMS);
+        assert_eq!(parsed.param("p0"), Some("w"));
+        assert_eq!(parsed.params.first().map(|(k, _)| k.as_str()), Some("p0"));
+        assert!(parse_content_type(&format!("text/plain{params}; extra=1")).is_none());
+        assert!(type_is(
+            Some(&format!("application/json{params}")),
+            &types(&["application/json"])
+        ));
+        assert!(!type_is(
+            Some(&format!("application/json{params}; extra=1")),
+            &types(&["application/json"])
+        ));
+        let huge: String = (0..200_000).map(|i| format!("; k{i}=v")).collect();
+        let started = std::time::Instant::now();
+        assert!(parse_content_type(&format!("text/plain{huge}")).is_none());
+        assert!(request_charset(Some(&format!("text/plain{huge}"))).is_none());
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
     }
 
     #[test]
