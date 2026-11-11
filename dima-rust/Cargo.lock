@@ -1568,6 +1568,7 @@ version = "0.1.0"
 dependencies = [
  "dima-text",
  "icu_collator",
+ "serde",
  "serde_json",
  "thiserror 2.0.21",
  "unicode-normalization",

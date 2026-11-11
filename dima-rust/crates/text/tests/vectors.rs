@@ -300,6 +300,13 @@ fn json_stringify_matches_node() {
                 format!("stored order {input}: {actual} != {expected}")
             });
         }
+        // The one-pass writer for any `Serialize` type produces the same bytes.
+        let one_pass = to_js_json_from(&ordered)
+            .ok()
+            .and_then(|bytes| String::from_utf8(bytes).ok());
+        check.expect(one_pass.as_deref() == Some(expected), || {
+            format!("one pass {input}: {one_pass:?} != {expected}")
+        });
         for (order, key) in [
             (SortedKeys::Plain, "sorted"),
             (SortedKeys::Rebuilt, "rebuilt"),

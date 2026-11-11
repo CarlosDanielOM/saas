@@ -20,6 +20,51 @@ pub fn to_js_json(value: &Value) -> String {
     write(value, None)
 }
 
+/// [`to_js_json`] bytes for any serialisable value, written in one pass with no intermediate tree.
+///
+/// Object keys go out in the order the type serialises them, so a struct declares its fields in
+/// the order the TypeScript builds the object, and skips absent optional fields itself
+/// (`#[serde(skip_serializing_if = "Option::is_none")]`). Array-index keys are not moved to the
+/// front: build a `Value` and use [`js_key_order`] with [`to_js_json`] where a map has such keys.
+pub fn to_js_json_from<T: serde::Serialize + ?Sized>(
+    value: &T,
+) -> Result<Vec<u8>, serde_json::Error> {
+    let mut out = Vec::with_capacity(256);
+    let mut serializer = serde_json::Serializer::with_formatter(&mut out, JsFormatter);
+    value.serialize(&mut serializer)?;
+    Ok(out)
+}
+
+/// `serde_json` output with JavaScript number text. Its string escaping already matches
+/// `JSON.stringify` (the vector tests compare both writers with Node).
+struct JsFormatter;
+
+impl serde_json::ser::Formatter for JsFormatter {
+    fn write_i64<W: ?Sized + std::io::Write>(
+        &mut self,
+        writer: &mut W,
+        value: i64,
+    ) -> std::io::Result<()> {
+        writer.write_all(number_text(&Number::from(value)).as_bytes())
+    }
+
+    fn write_u64<W: ?Sized + std::io::Write>(
+        &mut self,
+        writer: &mut W,
+        value: u64,
+    ) -> std::io::Result<()> {
+        writer.write_all(number_text(&Number::from(value)).as_bytes())
+    }
+
+    fn write_f64<W: ?Sized + std::io::Write>(
+        &mut self,
+        writer: &mut W,
+        value: f64,
+    ) -> std::io::Result<()> {
+        writer.write_all(number_to_string(value).as_bytes())
+    }
+}
+
 /// How [`to_js_json_sorted`] orders each object's keys; both sort with the default `sort()`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SortedKeys {

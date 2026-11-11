@@ -14,27 +14,6 @@ use crate::request::{Req, ResponseState, header_name, header_value};
 use crate::uri::{encode_url, escape_html};
 use crate::{negotiate, status};
 
-/// `serde_json` output with JavaScript number text for doubles.
-struct JsNumbers;
-
-impl serde_json::ser::Formatter for JsNumbers {
-    fn write_f64<W: ?Sized + std::io::Write>(
-        &mut self,
-        writer: &mut W,
-        value: f64,
-    ) -> std::io::Result<()> {
-        writer.write_all(dima_text::number_to_string(value).as_bytes())
-    }
-}
-
-/// Serialises `value` for a response body: one pass, no intermediate tree.
-fn json_bytes<T: Serialize + ?Sized>(value: &T) -> serde_json::Result<Vec<u8>> {
-    let mut out = Vec::with_capacity(256);
-    let mut serializer = serde_json::Serializer::with_formatter(&mut out, JsNumbers);
-    value.serialize(&mut serializer)?;
-    Ok(out)
-}
-
 #[derive(Debug)]
 enum HeaderOp {
     /// `res.setHeader(name, value)`.
@@ -173,7 +152,7 @@ impl Response {
     /// and sent with [`Response::bytes`].
     #[must_use]
     pub fn json<T: Serialize + ?Sized>(mut self, value: &T) -> Self {
-        self.payload = Payload::Json(json_bytes(value).map_err(|e| e.to_string()));
+        self.payload = Payload::Json(dima_text::to_js_json_from(value).map_err(|e| e.to_string()));
         self
     }
 
