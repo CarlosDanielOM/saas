@@ -191,7 +191,7 @@ fn diff_w(a: &RawCapture, wa: Window, b: &RawCapture, wb: Window, al: &Allowance
     // The reference through the raw file format, as `verify` reads it.
     let ca = norm_run(&through_file(&run_of(a, wa, 41234)), &known, al);
     let cb = norm_run(&run_of(b, wb, 41234), &known, al);
-    compare::compare(&ca, &cb, al, compare::DEFAULT_TOLERANCE_MS)
+    compare::compare(&ca, &cb, al, compare::Tolerances::default())
 }
 
 fn diff(a: &RawCapture, b: &RawCapture) -> Outcome {
@@ -438,7 +438,7 @@ fn seeded_identifiers_compare_exactly() {
     let p = Allowances::default();
     let ca = norm_w(&mk(&seeded), window(), &known, &p);
     let cb = norm_w(&mk(&other), window(), &known, &p);
-    let o = compare::compare(&ca, &cb, &p, 2000);
+    let o = compare::compare(&ca, &cb, &p, compare::Tolerances::default());
     assert_one(&o, "steps[0].body.owner", "text differs");
 }
 
@@ -516,9 +516,10 @@ fn times_inside_and_outside_the_window() {
 }
 
 #[test]
-fn constant_dates_near_the_run_match_across_days() {
-    // A fixed date ten days ahead (from configuration, not from "now"): recorded today, verified
-    // five days later. The absolute value is kept for times outside the run window.
+fn constant_dates_near_the_run_need_an_exact_allowance() {
+    // A fixed date ten days ahead (from configuration, not from "now"), recorded today and
+    // verified five days later. A time near the run is compared relative to each side's run
+    // start, never by absolute equality, so this is a difference ...
     let fixed = START + 10 * DAY;
     let mk = || {
         raw(
@@ -530,13 +531,245 @@ fn constant_dates_near_the_run_match_across_days() {
             vec![],
         )
     };
-    assert_match(&diff_w(
-        &mk(),
+    assert_one(
+        &diff_w(
+            &mk(),
+            window(),
+            &mk(),
+            shifted(5 * DAY),
+            &Allowances::default(),
+        ),
+        "steps[0].body.launch",
+        "run-relative times differ",
+    );
+    // ... until the path is declared not a time.
+    let al = allow(&[("steps[*].body.launch", AllowKind::Exact)]);
+    assert_match(&diff_w(&mk(), window(), &mk(), shifted(5 * DAY), &al));
+    assert_eq!(al.unused().count(), 0);
+}
+
+#[test]
+fn a_replayed_absolute_time_is_not_a_match() {
+    // The candidate runs five minutes later and writes the reference's absolute lease deadline.
+    let d = |created: i64, lease: i64| {
+        raw(
+            vec![],
+            vec![(
+                "t",
+                coll(vec![
+                    doc! {"_id": "a", "createdAt": date(created), "leaseUntil": lease as f64},
+                ]),
+            )],
+            vec![],
+        )
+    };
+    let later = shifted(5 * MIN);
+    let o = diff_w(
+        &d(START + 100, START + 100 + MIN),
         window(),
-        &mk(),
-        shifted(5 * DAY),
+        &d(later.start + 100, START + 100 + MIN),
+        later,
         &Allowances::default(),
+    );
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+    assert_one(&o, "mongo.t[0].leaseUntil", "run-relative times differ");
+    // Alone in its document too (no relation to fall back on).
+    let alone = |lease: i64| {
+        raw(
+            vec![],
+            vec![(
+                "t",
+                coll(vec![doc! {"_id": "a", "leaseUntil": lease as f64}]),
+            )],
+            vec![],
+        )
+    };
+    assert_one(
+        &diff_w(
+            &alone(START + MIN),
+            window(),
+            &alone(START + MIN),
+            later,
+            &Allowances::default(),
+        ),
+        "mongo.t[0].leaseUntil",
+        "run-relative times differ",
+    );
+}
+
+/// A document with created, updated and lease times (offsets from the run start, ms).
+fn timed_doc(created: i64, updated: i64, lease: i64) -> RawCapture {
+    raw(
+        vec![],
+        vec![(
+            "t",
+            coll(vec![doc! {
+                "_id": "a",
+                "createdAt": date(START + created),
+                "updatedAt": date(START + updated),
+                "leaseUntil": (START + lease) as f64,
+            }]),
+        )],
+        vec![],
+    )
+}
+
+#[test]
+fn relations_between_times_of_one_document() {
+    let ok = |a: &RawCapture, b: &RawCapture| assert_match(&diff(a, b));
+    // Reference: created, updated 150 ms later by a second operation, lease = updated + 60 s.
+    let reference = timed_doc(100, 250, 250 + MIN);
+    ok(&reference, &timed_doc(110, 280, 280 + MIN));
+    // updatedAt not bumped by the second operation: within the window tolerance, caught by the
+    // relation, reported once at updatedAt.
+    let o = diff(&reference, &timed_doc(100, 100, 250 + MIN));
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+    assert_one(
+        &o,
+        "mongo.t[0].updatedAt",
+        "time relation to mongo.t[0].createdAt differs",
+    );
+    // A lease one second too long: within the window tolerance, caught as a fixed duration.
+    let o = diff(&reference, &timed_doc(100, 250, 250 + MIN + 1000));
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+    assert_one(&o, "mongo.t[0].leaseUntil", "a fixed duration");
+    // Within the relation tolerance (50 ms) it matches.
+    ok(&reference, &timed_doc(100, 250, 250 + MIN + 30));
+    // One clock reading used twice must stay one.
+    let same = timed_doc(100, 100, 100 + MIN);
+    ok(&same, &timed_doc(300, 300, 300 + MIN));
+    assert_one(
+        &diff(&same, &timed_doc(100, 104, 104 + MIN)),
+        "mongo.t[0].updatedAt",
+        "one clock reading",
+    );
+    // Order reversed.
+    assert_one(
+        &diff(
+            &timed_doc(100, 700, 700 + MIN),
+            &timed_doc(700, 100, 100 + MIN),
+        ),
+        "mongo.t[0].updatedAt",
+        "time relation",
+    );
+    // Two readings a few milliseconds apart may become one reading on a faster candidate.
+    ok(
+        &timed_doc(100, 103, 103 + MIN),
+        &timed_doc(100, 100, 100 + MIN),
+    );
+    // A larger relation tolerance (per path) loosens the duration check.
+    let al = allow(&[("mongo.t[*].leaseUntil", AllowKind::Tolerance(1500))]);
+    assert_match(&diff_w(
+        &reference,
+        window(),
+        &timed_doc(100, 250, 250 + MIN + 1000),
+        window(),
+        &al,
     ));
+}
+
+#[test]
+fn relations_inside_a_response_and_with_coarse_times() {
+    let iso = |ms: i64| crate::timefmt::format_iso_ms(START + ms).unwrap();
+    let body = |c: i64, e: i64| {
+        raw(
+            vec![http(200, json!({"createdAt": iso(c), "expiresAt": iso(e)}))],
+            vec![],
+            vec![],
+        )
+    };
+    assert_match(&diff(&body(100, 100 + DAY), &body(400, 400 + DAY)));
+    assert_one(
+        &diff(&body(100, 100 + DAY), &body(100, 100 + DAY - 1000)),
+        "steps[0].body.expiresAt",
+        "a fixed duration",
+    );
+    // Epoch seconds (declared): second precision, only the order counts.
+    let secs = |a: i64, b: i64| {
+        raw(
+            vec![http(
+                200,
+                json!({"iat": (START + a) / 1000, "exp": (START + b) / 1000}),
+            )],
+            vec![],
+            vec![],
+        )
+    };
+    let al = allow(&[
+        ("steps[*].body.iat", AllowKind::Time { seconds: true }),
+        ("steps[*].body.exp", AllowKind::Time { seconds: true }),
+    ]);
+    assert_match(&diff_w(
+        &secs(0, 3_600_000),
+        window(),
+        &secs(900, 3_600_900),
+        window(),
+        &al,
+    ));
+    assert_one(
+        &diff_w(
+            &secs(0, 3_600_000),
+            window(),
+            &secs(3_600_000, 0),
+            window(),
+            &al,
+        ),
+        "steps[0].body.exp",
+        "run-relative times differ",
+    );
+}
+
+#[test]
+fn time_and_exact_allowances() {
+    let n = |v: i64| raw(vec![http(200, json!({"v": v}))], vec![], vec![]);
+    // An epoch-ms number near the run is a time by magnitude ...
+    assert_match(&diff(&n(START + 100), &n(START + 900)));
+    // ... unless the path is declared not a time.
+    let exact = allow(&[("steps[*].body.v", AllowKind::Exact)]);
+    assert_one(
+        &diff_w(&n(START + 100), window(), &n(START + 900), window(), &exact),
+        "steps[0].body.v",
+        "number differs",
+    );
+    // Epoch seconds are not detected by magnitude ...
+    let s = |v: i64| raw(vec![http(200, json!({"v": v}))], vec![], vec![]);
+    assert_one(
+        &diff(&s(START / 1000), &s(START / 1000 + 1)),
+        "steps[0].body.v",
+        "number differs",
+    );
+    // ... unless declared.
+    let secs = allow(&[("steps[*].body.v", AllowKind::Time { seconds: true })]);
+    assert_match(&diff_w(
+        &s(START / 1000),
+        window(),
+        &s(START / 1000 + 1),
+        window(),
+        &secs,
+    ));
+    // A declared time keeps its representation: epoch seconds against epoch milliseconds differ.
+    let ms = allow(&[("steps[*].body.v", AllowKind::Time { seconds: false })]);
+    let ca = norm_w(&s(START / 1000), window(), &Known::default(), &secs);
+    let cb = norm_w(&s(START), window(), &Known::default(), &ms);
+    assert!(
+        !compare::compare(&ca, &cb, &secs, compare::Tolerances::default())
+            .differences
+            .is_empty()
+    );
+    // A BSON date declared exact compares by its absolute value.
+    let d = |ms: i64| {
+        raw(
+            vec![],
+            vec![("c", coll(vec![doc! {"_id": "a", "at": date(ms)}]))],
+            vec![],
+        )
+    };
+    let exact = allow(&[("mongo.c[*].at", AllowKind::Exact)]);
+    assert_one(
+        &diff_w(&d(START + 100), window(), &d(START + 200), window(), &exact),
+        "mongo.c[0].at",
+        "times differ",
+    );
 }
 
 #[test]
@@ -967,7 +1200,7 @@ fn ports_and_database_names_are_masked() {
         &norm_run(&ra, &known, &none),
         &norm_run(&rb, &known, &none),
         &none,
-        2000,
+        compare::Tolerances::default(),
     );
     assert_match(&o);
 }

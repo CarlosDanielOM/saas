@@ -7,8 +7,19 @@
 //!
 //! Forgiven by default: JSON object key order (reported as a note), JSON numbers that are equal
 //! by value (`5` and `5.0`), run-relative times within the tolerance. Nothing else.
+//!
+//! Times are compared twice. Each run-relative time against its counterpart, relative to its own
+//! side's run start, within the window tolerance (2 s): the coarse check. Then the relations
+//! between the times of one unit (a document, a response, a Dragonfly entry, a reply) must match
+//! the reference: where the reference shows one clock reading used twice (a difference of zero),
+//! the candidate must too; where it shows a whole number of seconds of at least one second (a
+//! lease or expiry computed as now plus a constant), the candidate's difference must be the same
+//! within the relation tolerance (50 ms); otherwise the order must be the same (a difference
+//! within the relation tolerance may become zero, never reversed). Times with one-second
+//! precision (epoch seconds, HTTP dates, ISO without milliseconds, TTLs) take part only by order,
+//! and only when more than a second apart.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use serde::Serialize;
 use serde_json::Number;
@@ -21,6 +32,40 @@ use crate::value::{Id, IdKind, Moment, Seg, Text, Val};
 
 /// Time tolerance when the scenario sets none.
 pub const DEFAULT_TOLERANCE_MS: i64 = 2000;
+/// Tolerance of a fixed duration between two times of one unit, when the scenario sets none.
+pub const DEFAULT_RELATION_TOLERANCE_MS: i64 = 50;
+/// Units with more times than this check the order of neighbours only (and each fixed
+/// duration and equality between neighbours), not every pair.
+const ALL_PAIRS_LIMIT: usize = 64;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Tolerances {
+    /// A run-relative time against its counterpart.
+    pub window_ms: i64,
+    /// A fixed duration between two times of one unit.
+    pub relation_ms: i64,
+}
+
+impl Default for Tolerances {
+    fn default() -> Self {
+        Tolerances {
+            window_ms: DEFAULT_TOLERANCE_MS,
+            relation_ms: DEFAULT_RELATION_TOLERANCE_MS,
+        }
+    }
+}
+
+/// One time of a unit, on both sides: milliseconds relative to each side's run start.
+#[derive(Debug, Clone)]
+struct TimeObs {
+    path: Path,
+    /// Which time inside a string (strings may hold several).
+    label: String,
+    r: i64,
+    c: i64,
+    /// Millisecond precision on both sides.
+    fine: bool,
+}
 const SHOW: usize = 240;
 /// Above this many reference × candidate items, skip the quadratic matching passes.
 const QUADRATIC_LIMIT: usize = 250_000;
@@ -52,6 +97,11 @@ struct State {
 pub struct Comparator<'a> {
     allow: &'a Allowances,
     tolerance: i64,
+    relation: i64,
+    /// Times of the current unit, in the reference's order.
+    unit: Vec<TimeObs>,
+    /// Paths with a difference in the current unit (their relations are not checked again).
+    flagged: HashSet<String>,
     fwd: HashMap<(IdKind, u32), u32>,
     back: HashMap<(IdKind, u32), u32>,
     journal: Vec<(IdKind, u32, u32)>,
@@ -157,10 +207,13 @@ fn order_matters(path: &Path) -> bool {
 }
 
 impl<'a> Comparator<'a> {
-    pub fn new(allow: &'a Allowances, tolerance: i64) -> Comparator<'a> {
+    pub fn new(allow: &'a Allowances, tol: Tolerances) -> Comparator<'a> {
         Comparator {
             allow,
-            tolerance,
+            tolerance: tol.window_ms,
+            relation: tol.relation_ms,
+            unit: Vec::new(),
+            flagged: HashSet::new(),
             fwd: HashMap::new(),
             back: HashMap::new(),
             journal: Vec::new(),
@@ -177,6 +230,7 @@ impl<'a> Comparator<'a> {
             self.failed = true;
             return;
         }
+        self.flagged.insert(path.to_string());
         self.out.differences.push(Finding {
             path: path.to_string(),
             what: what.into(),
@@ -286,9 +340,11 @@ impl<'a> Comparator<'a> {
                     Err(format!("times differ by {}", human_duration(y - x)))
                 }
             }
-            (Moment::Rel { off: x, abs: ax }, Moment::Rel { off: y, abs: ay }) => {
+            // Relative to each side's own run start only: the same absolute time on both sides
+            // (a candidate replaying the reference's timestamp) is not a match.
+            (Moment::Rel { off: x, .. }, Moment::Rel { off: y, .. }) => {
                 let tol = self.tol(path);
-                if (x - y).abs() <= tol || (ax.is_some() && ax == ay) {
+                if (x - y).abs() <= tol {
                     Ok(())
                 } else {
                     Err(format!(
@@ -341,8 +397,8 @@ impl<'a> Comparator<'a> {
                     }
                     self.moments(path, p, q)?;
                 }
-                (Seg::Day { off: p, abs: ap }, Seg::Day { off: q, abs: aq }) => {
-                    if p != q && !(ap.is_some() && ap == aq) {
+                (Seg::Day { off: p, .. }, Seg::Day { off: q, .. }) => {
+                    if p != q {
                         return Err(format!("days differ by {}", q - p));
                     }
                 }
@@ -429,6 +485,7 @@ impl<'a> Comparator<'a> {
                 } else if let Err(why) = self.moments(path, m1, m2) {
                     self.diff(path, why, Some(show(a)), Some(show(b)));
                 }
+                self.observe(path, String::new(), m1, m2, r1.fine() && r2.fine());
             }
             (Val::Oid(x), Val::Oid(y)) | (Val::Uuid(x), Val::Uuid(y)) => {
                 if let Err(why) = self.ids(x, y) {
@@ -443,6 +500,23 @@ impl<'a> Comparator<'a> {
                         why
                     };
                     self.diff(path, what, Some(show(a)), Some(show(b)));
+                } else {
+                    let times = x.0.iter().zip(&y.0).filter_map(|p| match p {
+                        (Seg::Time { at: m1, shape: s1 }, Seg::Time { at: m2, .. }) => {
+                            Some((*m1, *m2, shape_is_fine(s1)))
+                        }
+                        _ => None,
+                    });
+                    let times: Vec<_> = times.collect();
+                    let several = times.len() > 1;
+                    for (k, (m1, m2, fine)) in times.into_iter().enumerate() {
+                        let label = if several {
+                            format!(" (time {} in the text)", k + 1)
+                        } else {
+                            String::new()
+                        };
+                        self.observe(path, label, &m1, &m2, fine);
+                    }
                 }
             }
             (Val::Bytes(x), Val::Bytes(y)) => {
@@ -472,6 +546,77 @@ impl<'a> Comparator<'a> {
             (Val::Unsupported(x), Val::Unsupported(y)) if x == y => {}
             _ => type_diff(self, path),
         }
+    }
+
+    /// Note a time of the current unit (only while really comparing, not while probing).
+    fn observe(&mut self, path: &Path, label: String, a: &Moment, b: &Moment, fine: bool) {
+        if self.probe {
+            return;
+        }
+        if let (Some(r), Some(c)) = (a.run_offset(), b.run_offset()) {
+            self.unit.push(TimeObs {
+                path: path.clone(),
+                label,
+                r,
+                c,
+                fine,
+            });
+        }
+    }
+
+    fn begin_unit(&mut self) {
+        self.unit.clear();
+        self.flagged.clear();
+    }
+
+    /// Check the relations between the times of the unit just compared.
+    fn end_unit(&mut self) {
+        let obs = std::mem::take(&mut self.unit);
+        let n = obs.len();
+        if n < 2 {
+            self.flagged.clear();
+            return;
+        }
+        let pairs: Vec<(usize, usize)> = if n <= ALL_PAIRS_LIMIT {
+            (0..n)
+                .flat_map(|i| (i + 1..n).map(move |j| (i, j)))
+                .collect()
+        } else {
+            // Neighbours in the reference's time order: the order of all follows from them.
+            let mut idx: Vec<usize> = (0..n).collect();
+            idx.sort_by_key(|i| obs.get(*i).map_or(0, |o| o.r));
+            idx.windows(2)
+                .filter_map(|w| match w {
+                    [a, b] => Some(((*a).min(*b), (*a).max(*b))),
+                    _ => None,
+                })
+                .collect()
+        };
+        for (i, j) in pairs {
+            let (Some(a), Some(b)) = (obs.get(i), obs.get(j)) else {
+                continue;
+            };
+            let (ka, kb) = (a.path.to_string(), b.path.to_string());
+            if self.flagged.contains(&ka) || self.flagged.contains(&kb) {
+                continue;
+            }
+            let tol = self
+                .allow
+                .tolerance(&a.path, false)
+                .into_iter()
+                .chain(self.allow.tolerance(&b.path, false))
+                .fold(self.relation, i64::max);
+            if let Some(why) = relation_problem(b.r - a.r, b.c - a.c, a.fine && b.fine, tol) {
+                let what = format!("time relation to {ka}{} differs: {why}", a.label);
+                self.diff(
+                    &b.path,
+                    format!("{what}{}", b.label),
+                    Some(format!("{} after it", human_signed(b.r - a.r))),
+                    Some(format!("{} after it", human_signed(b.c - a.c))),
+                );
+            }
+        }
+        self.flagged.clear();
     }
 
     fn int(&mut self, path: &Path, x: i64, y: i64, a: &Val, b: &Val) {
@@ -766,8 +911,16 @@ impl<'a> Comparator<'a> {
 
     fn steps(&mut self, a: &[StepCap], b: &[StepCap]) {
         for i in 0..a.len().max(b.len()) {
+            self.begin_unit();
+            self.step(i, a.get(i), b.get(i));
+            self.end_unit();
+        }
+    }
+
+    fn step(&mut self, i: usize, a: Option<&StepCap>, b: Option<&StepCap>) {
+        {
             let base = Path::root("steps").with_index(i);
-            match (a.get(i), b.get(i)) {
+            match (a, b) {
                 (
                     Some(StepCap::Http {
                         status: s1,
@@ -811,7 +964,7 @@ impl<'a> Comparator<'a> {
                     }
                     let mut bp = base.with_key("body");
                     if self.ignored(&bp) {
-                        continue;
+                        return;
                     }
                     match (b1, b2) {
                         (Body::Json(x), Body::Json(y)) => self.val(&mut bp, x, y),
@@ -1050,7 +1203,9 @@ impl<'a> Comparator<'a> {
         for (i, j) in sorted {
             if let (Some(x), Some(y)) = (a.docs.get(i), b.docs.get(j)) {
                 self.context = doc_context(x);
+                self.begin_unit();
                 self.val(&mut base.with_index(i), x, y);
+                self.end_unit();
             }
         }
         for i in lone_a {
@@ -1131,6 +1286,8 @@ impl<'a> Comparator<'a> {
                             Some(fmt(&y.ttl)),
                         );
                     }
+                    // Measured, not written: one-second precision for relations.
+                    self.observe(&tp, String::new(), p, q, false);
                 }
             }
         }
@@ -1184,7 +1341,9 @@ impl<'a> Comparator<'a> {
         sorted.sort();
         for (i, j) in sorted {
             if let (Some(x), Some(y)) = (a.get(i), b.get(j)) {
+                self.begin_unit();
                 self.entry(x, y);
+                self.end_unit();
             }
         }
         for i in lone_a {
@@ -1251,7 +1410,65 @@ impl<'a> Comparator<'a> {
     }
 }
 
-/// Compare two captures with the given allowances and default tolerance.
-pub fn compare(a: &Capture, b: &Capture, allow: &Allowances, tolerance_ms: i64) -> Outcome {
-    Comparator::new(allow, tolerance_ms).compare(a, b)
+/// A time written with milliseconds (ISO with `.ddd`, a 13-digit epoch-ms run).
+fn shape_is_fine(shape: &str) -> bool {
+    shape == "ms" || shape.contains(".ddd")
+}
+
+fn human_signed(ms: i64) -> String {
+    if ms > 0 {
+        format!("+{}", human_duration(ms))
+    } else {
+        human_duration(ms)
+    }
+}
+
+/// Why the candidate's difference `dc` between two times breaks the reference's relation `dr`.
+fn relation_problem(dr: i64, dc: i64, fine: bool, tol: i64) -> Option<String> {
+    if !fine {
+        // One-second precision: only an order more than a second apart is meaningful.
+        return (dr.abs() > 1000 && dc.signum() != dr.signum()).then(|| {
+            format!(
+                "reference {} after it, candidate {} (order reversed)",
+                human_signed(dr),
+                human_signed(dc)
+            )
+        });
+    }
+    if dr == 0 {
+        return (dc != 0).then(|| {
+            format!(
+                "reference has the same time (one clock reading), candidate {} after it",
+                human_signed(dc)
+            )
+        });
+    }
+    if dr.abs() >= 1000 && dr % 1000 == 0 {
+        return ((dc - dr).abs() > tol).then(|| {
+            format!(
+                "reference exactly {} after it (a fixed duration), candidate {} (tolerance {})",
+                human_signed(dr),
+                human_signed(dc),
+                human_duration(tol)
+            )
+        });
+    }
+    let reversed = dc.signum() == -dr.signum();
+    let collapsed = dc == 0 && dr.abs() > tol;
+    (reversed || collapsed).then(|| {
+        format!(
+            "reference {} after it, candidate {}",
+            human_signed(dr),
+            if dc == 0 {
+                "the same time".to_string()
+            } else {
+                format!("{} after it", human_signed(dc))
+            }
+        )
+    })
+}
+
+/// Compare two captures with the given allowances and tolerances.
+pub fn compare(a: &Capture, b: &Capture, allow: &Allowances, tol: Tolerances) -> Outcome {
+    Comparator::new(allow, tol).compare(a, b)
 }

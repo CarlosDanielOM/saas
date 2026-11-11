@@ -51,6 +51,8 @@ struct ScenarioFile {
     allow: Vec<AllowFile>,
     #[serde(default)]
     tolerance_ms: Option<u64>,
+    #[serde(default)]
+    relation_tolerance_ms: Option<u64>,
 }
 
 #[derive(Deserialize, Default)]
@@ -198,6 +200,8 @@ pub(crate) struct AllowFile {
     ms: Option<u64>,
     #[serde(default)]
     pattern: Option<String>,
+    #[serde(default)]
+    unit: Option<String>,
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -333,7 +337,7 @@ pub struct Scenario {
     pub skip_headers: Vec<String>,
     pub as_text: Vec<Pattern>,
     pub allow: Vec<(Pattern, AllowKind, String)>,
-    pub tolerance_ms: i64,
+    pub tolerances: crate::compare::Tolerances,
     pub hash: String,
     /// Each input file (the scenario, then every seed it includes) with its own hash.
     pub files: Vec<(String, String)>,
@@ -1079,12 +1083,23 @@ pub(crate) fn allowances(
                 )),
                 None => AllowKind::Generated(None),
             },
+            "exact" => AllowKind::Exact,
+            "time" => match a.unit.as_deref() {
+                None | Some("ms") => AllowKind::Time { seconds: false },
+                Some("s") => AllowKind::Time { seconds: true },
+                Some(other) => {
+                    return Err(config(format!("{here}.unit: `{other}` (use ms or s)")));
+                }
+            },
             other => {
                 return Err(config(format!(
-                    "{here}.kind: `{other}` (use ignore, set, tolerance or generated)"
+                    "{here}.kind: `{other}` (use ignore, set, tolerance, generated, exact or time)"
                 )));
             }
         };
+        if a.unit.is_some() && !matches!(kind, AllowKind::Time { .. }) {
+            return Err(config(format!("{here}: \"unit\" only goes with kind time")));
+        }
         if a.ms.is_some() && !matches!(kind, AllowKind::Tolerance(_)) {
             return Err(config(format!(
                 "{here}: \"ms\" only goes with kind tolerance"
@@ -1098,6 +1113,28 @@ pub(crate) fn allowances(
         out.push((path, kind, a.reason));
     }
     Ok(out)
+}
+
+/// `tolerance_ms` (default 2000) and `relation_tolerance_ms` (default 50).
+pub(crate) fn tolerances(
+    window: Option<u64>,
+    relation: Option<u64>,
+    at: &str,
+) -> Result<crate::compare::Tolerances> {
+    let d = crate::compare::Tolerances::default();
+    let ms = |v: Option<u64>, default: i64, name: &str| -> Result<i64> {
+        match v {
+            None => Ok(default),
+            Some(v) if v <= 86_400_000 => {
+                i64::try_from(v).map_err(|_| config(format!("{at}: {name} too large")))
+            }
+            Some(_) => Err(config(format!("{at}: {name} at most 86400000"))),
+        }
+    };
+    Ok(crate::compare::Tolerances {
+        window_ms: ms(window, d.window_ms, "tolerance_ms")?,
+        relation_ms: ms(relation, d.relation_ms, "relation_tolerance_ms")?,
+    })
 }
 
 /// Read and check one scenario.
@@ -1242,8 +1279,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         .iter()
         .map(|p| Pattern::parse(p).map_err(|e| config(format!("{at}: compare.as_text: {e}"))))
         .collect::<Result<Vec<_>>>()?;
-    let tolerance_ms = i64::try_from(f.tolerance_ms.unwrap_or(2000))
-        .map_err(|_| config(format!("{at}: tolerance_ms too large")))?;
+    let tolerances = tolerances(f.tolerance_ms, f.relation_tolerance_ms, &at)?;
     Ok(Scenario {
         name: name.to_string(),
         file,
@@ -1258,7 +1294,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         skip_headers: headers(compare.headers, &format!("{at}: compare.headers"))?,
         as_text,
         allow: allowances(f.allow, &at)?,
-        tolerance_ms,
+        tolerances,
         hash: format!("fnv1a64:{:016x}", fnv1a64(loader.hash_input.as_bytes())),
         files: loader.files,
         seed_offsets: {

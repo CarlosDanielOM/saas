@@ -40,6 +40,8 @@ struct GetListFile {
     allow: Vec<AllowFile>,
     #[serde(default)]
     tolerance_ms: Option<u64>,
+    #[serde(default)]
+    relation_tolerance_ms: Option<u64>,
 }
 
 #[derive(Deserialize)]
@@ -58,7 +60,7 @@ pub struct GetList {
     /// Response headers not compared.
     pub skip_headers: Vec<String>,
     pub allow: Vec<(Pattern, AllowKind, String)>,
-    pub tolerance_ms: i64,
+    pub tolerances: crate::compare::Tolerances,
 }
 
 impl GetList {
@@ -129,7 +131,6 @@ pub fn load(file: &FsPath) -> Result<GetList> {
         steps,
         skip_headers: crate::scenario::headers(compare.headers, &format!("{at}: compare.headers"))?,
         allow: crate::scenario::allowances(f.allow, &at)?,
-        tolerance_ms: i64::try_from(f.tolerance_ms.unwrap_or(2000))
-            .map_err(|_| config(format!("{at}: tolerance_ms too large")))?,
+        tolerances: crate::scenario::tolerances(f.tolerance_ms, f.relation_tolerance_ms, &at)?,
     })
 }

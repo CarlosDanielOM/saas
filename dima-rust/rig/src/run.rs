@@ -647,7 +647,7 @@ pub async fn compare_live(
                 let r = through_file(target_name, sc, &r)?;
                 let rc = normalise_sc(&r, sc, &allow, &p, settings);
                 let cc = normalise_sc(&c, sc, &allow, &p, settings);
-                let outcome = compare::compare(&rc, &cc, &allow, sc.tolerance_ms);
+                let outcome = compare::compare(&rc, &cc, &allow, sc.tolerances);
                 finish_scenario(&mut rep, outcome, &allow, Status::Match, Status::Differ);
             }
             (r, c) => {
@@ -732,7 +732,7 @@ pub async fn verify(
                     // The stored raw reference, normalised by the current code.
                     let rc = normalise_sc(&r, sc, &allow, &p, settings);
                     let cc = normalise_sc(&c, sc, &allow, &p, settings);
-                    let outcome = compare::compare(&rc, &cc, &allow, sc.tolerance_ms);
+                    let outcome = compare::compare(&rc, &cc, &allow, sc.tolerances);
                     finish_scenario(&mut rep, outcome, &allow, Status::Match, Status::Differ);
                 }
                 Err(f) => {
@@ -811,7 +811,7 @@ pub async fn record(
             }
             Some(Ok(r2)) => {
                 let c2 = normalise_sc(&r2, sc, &allow, &p, settings);
-                let outcome = compare::compare(&c1, &c2, &allow, sc.tolerance_ms);
+                let outcome = compare::compare(&c1, &c2, &allow, sc.tolerances);
                 if !outcome.differences.is_empty() {
                     finish_scenario(
                         &mut rep,
@@ -843,7 +843,7 @@ pub async fn record(
                 };
                 let oc = normalise_sc(&old, sc, &fresh, &p, settings);
                 let nc = normalise_sc(&r1, sc, &fresh, &p, settings);
-                compare::compare(&oc, &nc, &fresh, sc.tolerance_ms)
+                compare::compare(&oc, &nc, &fresh, sc.tolerances)
                     .differences
                     .is_empty()
             }
@@ -924,7 +924,7 @@ pub async fn diff_get(
         skip_headers: list.skip_headers.clone(),
         as_text: Vec::new(),
         allow: list.allow.clone(),
-        tolerance_ms: list.tolerance_ms,
+        tolerances: list.tolerances,
         hash: String::new(),
         files: Vec::new(),
         seed_offsets: Vec::new(),
@@ -1005,7 +1005,7 @@ pub async fn diff_get(
                     ..Capture::default()
                 };
                 let mut rep = ScenarioReport::new(&label, step.name.as_deref().unwrap_or(""));
-                let outcome = compare::compare(&only(&rc), &only(&cc), &allow, sc.tolerance_ms);
+                let outcome = compare::compare(&only(&rc), &only(&cc), &allow, sc.tolerances);
                 rep.differences = outcome.differences;
                 rep.notes = outcome.notes;
                 rep.status = if rep.differences.is_empty() {

@@ -330,6 +330,18 @@ impl Detector<'_, '_> {
         if s.is_empty() {
             return Text::default();
         }
+        // A string of digits declared a time.
+        if let Some(secs) = self.ctx.allow.time_unit(path)
+            && s.bytes().all(|b| b.is_ascii_digit())
+            && let Ok(v) = s.parse::<i64>()
+        {
+            let ms = if secs { v.saturating_mul(1000) } else { v };
+            return Text(vec![Seg::Time {
+                at: self.declared_moment(v, ms),
+                shape: if secs { "s" } else { "ms" }.into(),
+            }]);
+        }
+        let times = !self.ctx.allow.exact(path);
         let p = self.ctx.patterns;
         let mut cands: Vec<Cand> = Vec::new();
         for (lit, name) in &self.ctx.names {
@@ -395,7 +407,7 @@ impl Detector<'_, '_> {
             }
         }
         for m in p.iso.find_iter(s) {
-            if !bounded(s, m.start(), m.end(), |c| c.is_ascii_digit()) {
+            if !times || !bounded(s, m.start(), m.end(), |c| c.is_ascii_digit()) {
                 continue;
             }
             let txt = m.as_str();
@@ -441,7 +453,7 @@ impl Detector<'_, '_> {
             }
         }
         for m in p.ms13.find_iter(s) {
-            if !bounded(s, m.start(), m.end(), |c| c.is_ascii_alphanumeric()) {
+            if !times || !bounded(s, m.start(), m.end(), |c| c.is_ascii_alphanumeric()) {
                 continue;
             }
             if let Ok(ms) = m.as_str().parse::<i64>()
@@ -505,11 +517,38 @@ impl Detector<'_, '_> {
         None
     }
 
-    fn json_number(&self, n: &Number) -> Val {
-        match integral(n) {
-            Some(ms) if self.time_number(ms) => Val::Time(NumRepr::Json, self.moment(ms)),
-            _ => Val::Num(n.clone()),
+    /// A declared time: relative to the run unless it is known from the inputs or far away.
+    fn declared_moment(&self, v: i64, ms: i64) -> Moment {
+        let known = self.ctx.known.times.contains(&v) || self.ctx.known.times.contains(&ms);
+        if known || !self.ctx.window.in_horizon(ms) {
+            Moment::Abs(ms)
+        } else {
+            self.moment(ms)
         }
+    }
+
+    /// How an integral number at this path is read: exactly (`exact` allowance), as a declared
+    /// time (`time` allowance), or as epoch milliseconds when its magnitude is near the run.
+    fn num_time(&self, path: &Path, v: i64, ms_repr: NumRepr, s_repr: NumRepr) -> Option<Val> {
+        if self.ctx.allow.exact(path) {
+            return None;
+        }
+        match self.ctx.allow.time_unit(path) {
+            Some(true) => Some(Val::Time(
+                s_repr,
+                self.declared_moment(v, v.saturating_mul(1000)),
+            )),
+            Some(false) => Some(Val::Time(ms_repr, self.declared_moment(v, v))),
+            None => self
+                .time_number(v)
+                .then(|| Val::Time(ms_repr, self.moment(v))),
+        }
+    }
+
+    fn json_number(&self, path: &Path, n: &Number) -> Val {
+        integral(n)
+            .and_then(|v| self.num_time(path, v, NumRepr::Json, NumRepr::JsonSecs))
+            .unwrap_or_else(|| Val::Num(n.clone()))
     }
 
     fn json(&mut self, path: &mut Path, v: &Value) -> Val {
@@ -521,7 +560,7 @@ impl Detector<'_, '_> {
         match v {
             Value::Null => Val::Null,
             Value::Bool(b) => Val::Bool(*b),
-            Value::Number(n) => self.json_number(n),
+            Value::Number(n) => self.json_number(path, n),
             Value::String(s) => Val::Str(self.text(path, s)),
             Value::Array(items) => Val::Arr(
                 items
@@ -570,13 +609,20 @@ impl Detector<'_, '_> {
         match b {
             Bson::Null => Val::Null,
             Bson::Boolean(x) => Val::Bool(*x),
-            Bson::Int32(i) => Val::Int32(*i),
-            Bson::Int64(i) if self.time_number(*i) => Val::Time(NumRepr::Int64, self.moment(*i)),
-            Bson::Int64(i) => Val::Int64(*i),
-            Bson::Double(f) => match f64_integral(*f) {
-                Some(ms) if self.time_number(ms) => Val::Time(NumRepr::Double, self.moment(ms)),
-                _ => Val::Double(*f),
+            // An int32 cannot hold epoch milliseconds; as epoch seconds only when declared.
+            Bson::Int32(i) => match self.ctx.allow.time_unit(path) {
+                Some(true) if !self.ctx.allow.exact(path) => {
+                    let v = i64::from(*i);
+                    Val::Time(NumRepr::Int32Secs, self.declared_moment(v, v * 1000))
+                }
+                _ => Val::Int32(*i),
             },
+            Bson::Int64(i) => self
+                .num_time(path, *i, NumRepr::Int64, NumRepr::Int64Secs)
+                .unwrap_or(Val::Int64(*i)),
+            Bson::Double(f) => f64_integral(*f)
+                .and_then(|v| self.num_time(path, v, NumRepr::Double, NumRepr::DoubleSecs))
+                .unwrap_or(Val::Double(*f)),
             Bson::Decimal128(d) => Val::Dec(d.to_string()),
             Bson::String(s) => Val::Str(self.text(path, s)),
             Bson::Array(items) => Val::Arr(
@@ -602,7 +648,7 @@ impl Detector<'_, '_> {
             }
             Bson::DateTime(d) => {
                 let ms = d.timestamp_millis();
-                if self.time_number(ms) {
+                if !self.ctx.allow.exact(path) && self.time_number(ms) {
                     Val::Time(NumRepr::Date, self.moment(ms))
                 } else {
                     Val::Time(NumRepr::Date, Moment::Abs(ms))
@@ -649,7 +695,7 @@ impl Detector<'_, '_> {
     fn reply(&mut self, path: &mut Path, r: &RawReply) -> Val {
         match r {
             RawReply::Nil => Val::Null,
-            RawReply::Int(i) => self.json_number(&Number::from(*i)),
+            RawReply::Int(i) => self.json_number(path, &Number::from(*i)),
             RawReply::Bulk(b) => self.df_string(path, b),
             RawReply::Status(s) => {
                 Val::Obj(vec![(Text::lit("status"), Val::Str(self.text(path, s)))])
@@ -659,7 +705,7 @@ impl Detector<'_, '_> {
             }
             RawReply::Double(f) => Number::from_f64(*f)
                 .map_or(Val::Str(Text::lit(&f.to_string())), |n| {
-                    self.json_number(&n)
+                    self.json_number(path, &n)
                 }),
             RawReply::Bool(b) => Val::Bool(*b),
             RawReply::Array(items) => Val::Arr(
@@ -798,9 +844,9 @@ impl Detector<'_, '_> {
 
     /// An HTTP date (`Expires`, `Last-Modified`, a cookie's `Expires`) as a time with a
     /// one-second precision, or `None` when the text is not one or is not near the run.
-    fn http_date(&self, s: &str) -> Option<Text> {
+    fn http_date(&self, path: &Path, s: &str) -> Option<Text> {
         let ms = timefmt::parse_http_date(s.trim())?;
-        if !self.time_number(ms) {
+        if self.ctx.allow.exact(path) || !self.time_number(ms) {
             return None;
         }
         let shape = if s.contains('-') {
@@ -820,7 +866,7 @@ impl Detector<'_, '_> {
             return Val::str(etag_form(value));
         }
         if let Ok(s) = std::str::from_utf8(value)
-            && let Some(t) = self.http_date(s)
+            && let Some(t) = self.http_date(hp, s)
         {
             return Val::Str(t);
         }
@@ -868,7 +914,7 @@ impl Detector<'_, '_> {
                 let ap = cp.with_key(k.clone());
                 let val = match v {
                     None => Val::Bool(true),
-                    Some(v) => match self.http_date(v) {
+                    Some(v) => match self.http_date(&ap, v) {
                         Some(t) if k == "expires" => Val::Str(t),
                         _ => Val::Str(self.text(&ap, v)),
                     },
@@ -925,11 +971,13 @@ impl Detector<'_, '_> {
                         vp.push_key("member");
                         let member = self.df_string(&mut vp, m);
                         vp.pop();
+                        vp.push_key("score");
                         let score = score
                             .parse::<f64>()
                             .ok()
                             .and_then(Number::from_f64)
-                            .map_or_else(|| Val::str(score), |n| self.json_number(&n));
+                            .map_or_else(|| Val::str(score), |n| self.json_number(&vp, &n));
+                        vp.pop();
                         vp.pop();
                         Val::Obj(vec![
                             (Text::lit("member"), member),
