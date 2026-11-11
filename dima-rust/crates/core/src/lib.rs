@@ -11,9 +11,11 @@
 pub mod crypto;
 pub mod env;
 pub mod random;
+pub mod runtime;
 pub mod secret;
 pub mod time;
 
 pub use random::{Random, RandomError, SeededRandom, SystemRandom};
+pub use runtime::{Shutdown, run_with_deadline};
 pub use secret::{SecretBytes, SecretString};
 pub use time::{Clock, ManualClock, SystemClock};
