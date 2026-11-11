@@ -1,0 +1,164 @@
+:host {
+  display: block;
+  flex: 0 0 auto;
+  padding: 0.55rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line);
+  background: var(--tile);
+}
+
+.cp-wrap { display: grid; gap: 0.4rem; }
+
+.cp-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.cp-limit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+  border-radius: 0.8rem;
+  background: var(--gold-soft);
+  color: var(--fg);
+  font-size: 0.84rem;
+}
+
+.cp-limit p { margin: 0; }
+
+.cp-link {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gold);
+  font: inherit;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.cp-link:focus-visible { outline: 2px solid var(--kicker); outline-offset: 2px; border-radius: 4px; }
+
+.cp-box {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  padding: 0.3rem 0.3rem 0.3rem 0.8rem;
+  border: 1px solid var(--btn-border);
+  border-radius: 1.3rem;
+  background: var(--input-bg);
+}
+
+.cp-box:focus-within { border-color: color-mix(in srgb, var(--accent) 60%, transparent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cp-box--off { border-style: dashed; }
+
+.cp-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 2.6rem;
+  max-height: 10.5rem;
+  padding: 0.6rem 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 1rem; /* ≥16px: no zoom on iOS */
+  line-height: 1.4;
+}
+
+.cp-input::placeholder { color: var(--muted); }
+.cp-input:disabled { cursor: not-allowed; }
+
+.cp-buttons { display: flex; align-items: center; gap: 0.3rem; padding-bottom: 0.1rem; }
+
+.cp-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 40px;
+  min-width: 44px;
+  padding: 0.35rem 0.85rem 0.35rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: #7c3aed;
+  color: #fff;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.cp-send:hover:not(:disabled) { background: #6d28d9; }
+.cp-send:disabled { background: var(--btn); color: var(--muted); cursor: not-allowed; }
+.cp-send:focus-visible,
+.cp-stop:focus-visible,
+.cp-queue:focus-visible { outline: 2px solid var(--kicker); outline-offset: 2px; }
+
+.cp-stop {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: var(--btn);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.cp-stop:hover:not(:disabled) { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.cp-stop:disabled { cursor: progress; color: var(--muted); }
+
+.cp-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.7rem;
+  min-height: 1.5rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.cp-queue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 32px;
+  padding: 0.15rem 0.6rem 0.15rem 0.45rem;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: var(--btn);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cp-queue__box {
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 1.5px solid var(--muted);
+  border-radius: 0.25rem;
+}
+
+.cp-queue[aria-pressed='true'] { border-color: #7c3aed; }
+
+.cp-queue[aria-pressed='true'] .cp-queue__box {
+  border-color: #7c3aed;
+  background: #7c3aed url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12 5 5 9-10' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 80% no-repeat;
+}
+
+.cp-hint { flex: 1 1 12rem; min-width: 0; }
+.cp-left { margin-left: auto; font-variant-numeric: tabular-nums; }
+.cp-left--low { color: var(--warn); font-weight: 700; }
+.cp-count { font-variant-numeric: tabular-nums; }
+.cp-count--over { color: var(--danger); font-weight: 700; }

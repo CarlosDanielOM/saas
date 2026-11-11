@@ -11052,5 +11052,298 @@
     "description": "Descarga Dima App para Windows o Linux y conecta tu equipo de streaming.",
     "tagline": "Descargas de Dima App",
     "back": "Volver a módulos"
+  },
+  "assistantMascot": {
+    "ask": "Pregúntame",
+    "open": "Abrir el asistente",
+    "openUnread": "Abrir el asistente, hay una respuesta nueva",
+    "close": "Cerrar el asistente",
+    "unreadBubble": "Respuesta nueva",
+    "pointing": "Mira aquí: {{label}}",
+    "frame": {
+      "sent": "Enviado",
+      "closed": "Cerrado",
+      "stopped": "Esta tarjeta se detuvo porque intentó abrir otra página.",
+      "error": "Una parte de esta tarjeta no funcionó.",
+      "chartError": "No se pudo dibujar esta gráfica.",
+      "needsClick": "Presiona un botón de esta tarjeta para enviarla.",
+      "madeBy": "Hecho por el asistente",
+      "table": "Ver como tabla",
+      "other": "Otros",
+      "total": "Total",
+      "series": "Serie",
+      "label": "Elemento",
+      "fallbackTitle": "Tarjeta del asistente"
+    }
+  },
+  "assistant": {
+    "title": "Asistente",
+    "close": "Cerrar asistente",
+    "retry": "Intentar de nuevo",
+    "cancel": "Cancelar",
+    "tabs": {
+      "label": "Vistas del asistente",
+      "chat": "Chat",
+      "changes": "Cambios"
+    },
+    "sheet": {
+      "expand": "Ver todo el chat",
+      "shrink": "Reducir a una barra",
+      "open": "Abrir"
+    },
+    "peek": {
+      "needsYou": "Necesita tu OK para seguir",
+      "working": "Trabajando…",
+      "idle": "Toca para seguir el chat"
+    },
+    "bubble": {
+      "working": "Trabajando…",
+      "needsYou": "Necesita tu OK"
+    },
+    "announce": {
+      "ready": "El asistente respondió.",
+      "failed": "El asistente tuvo un problema.",
+      "stopped": "Detenido.",
+      "approval": "El asistente necesita tu OK para un cambio.",
+      "input": "El asistente espera tu respuesta."
+    },
+    "markdown": {
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "copyFailed": "No se pudo copiar"
+    },
+    "diff": {
+      "before": "Antes",
+      "after": "Después",
+      "removed": "Se quita",
+      "new": "Nuevo",
+      "empty": "(vacío)",
+      "to": "cambia a",
+      "none": "No hay cambios visibles.",
+      "on": "Activado",
+      "off": "Desactivado"
+    },
+    "approval": {
+      "expiresIn": "Vence en {{time}}",
+      "kind": {
+        "create": "Nuevo",
+        "delete": "Borrar",
+        "change": "Cambio"
+      },
+      "state": {
+        "pending": "Esperando",
+        "applied": "Aplicado",
+        "skipped": "Omitido",
+        "expired": "Venció",
+        "failed": "No se aplicó",
+        "superseded": "Reemplazado",
+        "unknown": "Resultado desconocido"
+      },
+      "effects": "Lo que esto puede hacer en el stream",
+      "skip": "Omitir",
+      "apply": "Aplicar",
+      "applying": "Aplicando…",
+      "appliedNote": "Listo. Puedes deshacerlo después.",
+      "seeChanges": "Ver en Cambios",
+      "openChanges": "Abrir Cambios",
+      "problem": {
+        "outcome_unknown": "Resultado desconocido: es posible que este cambio ya se haya aplicado. Revisa la configuración antes de intentarlo otra vez.",
+        "apply_failed": "Algo salió mal al guardar. Una parte pudo haberse guardado, así que revisa la configuración antes de intentarlo otra vez.",
+        "permission_denied": "Ya no tienes permiso para este cambio, así que no se cambió nada.",
+        "other": "Este cambio no se completó. Revisa la configuración antes de intentarlo otra vez."
+      },
+      "note": {
+        "skipped": "Omitido. No se cambió nada.",
+        "expired": "Esperó demasiado, así que no se cambió nada. Pídelo otra vez si todavía lo quieres.",
+        "superseded": "Mandaste un mensaje nuevo, así que esto no se aplicó.",
+        "failed": "No se cambió nada."
+      }
+    },
+    "errors": {
+      "unknown": "Algo salió mal. Intenta de nuevo en un momento.",
+      "network": "No podemos conectar con DomDimaBot ahorita. Revisa tu conexión e intenta de nuevo.",
+      "turn_active": "Todavía está trabajando en tu último mensaje. Envíalo ahora para guiarlo o marca “Para después”.",
+      "limit_reached": "Ya usaste los mensajes de hoy.",
+      "daily_limit": "Ya usaste los mensajes de hoy.",
+      "rate_limited": "Demasiadas solicitudes a la vez. Espera unos segundos e intenta de nuevo.",
+      "unavailable": "El asistente tiene problemas ahorita. Intenta en un minuto.",
+      "request_failed": "Eso no funcionó. Intenta de nuevo.",
+      "not_found": "Este chat ya no existe (los chats se guardan 3 días).",
+      "forbidden": "Ya no tienes acceso a esto.",
+      "expired": "Esto esperó demasiado y venció.",
+      "superseded": "Esto se reemplazó por tu mensaje más nuevo.",
+      "message_too_long": "Ese mensaje es muy largo (máximo 4,000 caracteres).",
+      "timeout": "Tardó demasiado en responder. Intenta de nuevo.",
+      "overloaded": "El servicio de IA está ocupado. Intenta en un minuto.",
+      "upstream": "El servicio de IA tuvo un problema. Intenta de nuevo.",
+      "context_too_long": "Este chat ya es muy largo. Empieza un chat nuevo.",
+      "config": "El asistente no está disponible ahorita.",
+      "incomplete": "La respuesta se cortó. Intenta de nuevo.",
+      "bad_request": "El asistente no pudo con eso. Intenta preguntarlo de otra forma.",
+      "aborted": "Detenido.",
+      "queue_full": "Ya tienes 5 mensajes esperando. Espera a que se envíen primero.",
+      "concurrent_limit": "Ya tienes chats trabajando. Espera a que uno termine.",
+      "invalid_request": "No se pudo enviar ese mensaje. Revísalo e intenta de nuevo.",
+      "session_not_found": "Este chat ya no existe (los chats se guardan 3 días).",
+      "turn_not_found": "Esa respuesta ya no está disponible. Abre el chat otra vez.",
+      "turn_not_active": "Esa respuesta ya terminó. Envíalo como un mensaje nuevo.",
+      "too_many_inputs": "Demasiados mensajes para esta respuesta. Espera a que termine.",
+      "not_retryable": "Esta respuesta no se puede reintentar. Envíala otra vez como mensaje nuevo.",
+      "approval_not_found": "Esta solicitud de cambio ya no está disponible.",
+      "permission_denied": "Ya no tienes permiso para este cambio.",
+      "apply_failed": "Algo salió mal al guardar. Revisa la configuración antes de intentarlo otra vez.",
+      "outcome_unknown": "Resultado desconocido: es posible que este cambio ya se haya aplicado. Revisa la configuración antes de intentarlo otra vez.",
+      "internal_error": "Algo salió mal de nuestro lado. Intenta de nuevo.",
+      "lease_lost": "Algo salió mal de nuestro lado. Intenta de nuevo."
+    },
+    "tools": {
+      "docsPagesOne": "Revisó 1 página de la documentación",
+      "docsPages": "Revisó {{count}} páginas de la documentación",
+      "docsSearched": "Buscó en la documentación",
+      "steps": "{{count}} pasos",
+      "problems": "{{count}} fallaron",
+      "state": {
+        "pending": "En espera",
+        "running": "Trabajando…",
+        "awaiting_approval": "Necesita tu OK",
+        "awaiting_input": "Necesita tu respuesta",
+        "done": "Listo",
+        "error": "Falló",
+        "denied": "No permitido",
+        "declined": "Omitido",
+        "superseded": "Reemplazado",
+        "interrupted": "Interrumpido",
+        "expired": "Venció"
+      }
+    },
+    "status": {
+      "stopping": "Deteniendo…",
+      "reconnecting": "Reconectando…",
+      "waiting": "Esperándote",
+      "tool": "Trabajando…",
+      "compacting": "Resumiendo la conversación…",
+      "thinking": "Pensando…",
+      "seconds": "{{count}} s"
+    },
+    "thread": {
+      "loading": "Cargando el chat…",
+      "loadFailed": "No se pudo cargar este chat.",
+      "label": "Conversación",
+      "you": "Tú",
+      "note": "Nota de avance",
+      "assistant": "Asistente",
+      "mode": {
+        "steer": "Agregado mientras trabajaba",
+        "queue": "Enviado después de la respuesta anterior"
+      }
+    },
+    "empty": {
+      "title": "¡Hola! ¿Qué necesitas?",
+      "copy": "Conozco la documentación y tu canal. Puedo escribir comandos, encontrar configuraciones y explicar funciones. Solo cambio algo cuando tú lo apruebas.",
+      "examplesLabel": "Ejemplos",
+      "kinds": {
+        "command": "Escribir un comando",
+        "setting": "Encontrar una configuración",
+        "explain": "Explicar una función",
+        "overview": "Empezar"
+      },
+      "examples": {
+        "command": "Escribe un comando !dado que tire un número del 1 al 6",
+        "setting": "¿Dónde cambio la voz del TTS?",
+        "explain": "¿Cómo protege mi canal la Defensa contra follows?",
+        "overview": "¿Qué debo configurar primero en mi canal?"
+      }
+    },
+    "feedback": {
+      "question": "¿Te sirvió?",
+      "helpful": "Me sirvió",
+      "unhelpful": "No me sirvió",
+      "thanks": "Gracias por tu opinión."
+    },
+    "navigate": {
+      "opened": "Se abrió {{label}}",
+      "offer": "Página sugerida",
+      "again": "Abrir otra vez",
+      "open": "Abrir {{label}}"
+    },
+    "notice": {
+      "limit_reached": "Llegaste al límite de mensajes de hoy.",
+      "interrupted": "Esta respuesta se interrumpió (el servicio se reinició). Intenta de nuevo.",
+      "stopped": "Detenido.",
+      "cancelled": "Detenido.",
+      "superseded": "Reemplazado por tu mensaje más nuevo.",
+      "compacted": "Los mensajes anteriores se resumieron para que el chat pueda seguir.",
+      "queued": "Esperando a que termine la respuesta actual.",
+      "step_limit": "Usó demasiados pasos, así que se detuvo aquí.",
+      "max_steps": "Usó demasiados pasos, así que se detuvo aquí.",
+      "tool_limit": "Usó demasiadas herramientas, así que se detuvo aquí.",
+      "time_limit": "Trabajó 10 minutos, así que se detuvo aquí.",
+      "result_unknown": "Un paso pudo haber terminado o no (el servicio se reinició). Revisa antes de intentar de nuevo.",
+      "error": "Algo salió mal.",
+      "failed": "Algo salió mal.",
+      "unknown": "Pasó algo inesperado.",
+      "access_revoked": "Ya no tienes acceso al asistente de este canal.",
+      "empty_answer": "No encontró una respuesta. Intenta preguntarlo de otra forma.",
+      "internal_error": "Algo salió mal de nuestro lado. Intenta de nuevo.",
+      "lease_lost": "Algo salió mal de nuestro lado. Intenta de nuevo."
+    },
+    "pending": {
+      "sending": "Enviando…",
+      "queued": "En cola: se envía al terminar esta respuesta",
+      "steer": "Enviado: lo lee en su siguiente paso",
+      "sent": "Enviado"
+    },
+    "composer": {
+      "send": "Enviar",
+      "steer": "Enviar ahora",
+      "queue": "Poner en cola",
+      "label": "Mensaje para el asistente",
+      "placeholder": "Pregunta sobre tu canal…",
+      "placeholderRunning": "Agrega un mensaje…",
+      "stop": "Detener",
+      "queueToggle": "Para después",
+      "hint": {
+        "steer": "Lo lee antes de su siguiente paso.",
+        "queue": "Lo responde cuando termine la respuesta actual."
+      }
+    },
+    "limits": {
+      "left": "Te quedan {{left}} de {{limit}} mensajes hoy · se reinicia a las {{time}}",
+      "reached": "Ya usaste los {{limit}} mensajes de hoy. Más a las {{time}}.",
+      "upgradePremium": "Premium da 80 al día",
+      "upgradePro": "Pro da 400 al día"
+    },
+    "sessions": {
+      "title": "Chats",
+      "new": "Chat nuevo",
+      "close": "Cerrar chats",
+      "kept": "Los chats se guardan 3 días después del último mensaje.",
+      "loading": "Cargando chats…",
+      "loadFailed": "No se pudieron cargar tus chats.",
+      "empty": "Todavía no hay chats.",
+      "deleteConfirm": "¿Borrar “{{title}}”?",
+      "delete": "Borrar",
+      "working": "Trabajando",
+      "deleteLabel": "Borrar el chat {{title}}",
+      "deleteFailed": "No se pudo borrar ese chat. Intenta de nuevo.",
+      "untitled": "Chat nuevo"
+    },
+    "changes": {
+      "you": "Tú",
+      "undoneBy": "Deshecho {{when}} · {{who}}",
+      "conflict": "No se puede deshacer: esto se volvió a cambiar después del cambio del asistente.",
+      "conflictNow": "Cómo está ahora:",
+      "introOwner": "Cada cambio que hizo el asistente en este canal, de cualquier persona. Se guardan 90 días.",
+      "introAdmin": "Los cambios que el asistente hizo por ti en este canal. Se guardan 90 días.",
+      "loading": "Cargando cambios…",
+      "loadFailed": "No se pudieron cargar los cambios.",
+      "empty": "Todavía no hay cambios. Cuando apruebes un cambio, aparece aquí y lo puedes deshacer.",
+      "details": "Antes → después",
+      "undoConfirm": "¿Deshacer este cambio? Vuelve a como estaba antes.",
+      "undoing": "Deshaciendo…",
+      "undo": "Deshacer",
+      "undoLabel": "Deshacer {{title}}",
+      "more": "Ver anteriores"
+    }
   }
 }

@@ -278,4 +278,10 @@
   <main class="auth-layout__content">
     <router-outlet />
   </main>
+  @if (!focus()) {
+    <!-- Loaded after the page is idle: the assistant never slows down the first paint. -->
+    @defer (on idle) {
+      <app-assistant-root [streamer]="streamer()" />
+    }
+  }
 </div>

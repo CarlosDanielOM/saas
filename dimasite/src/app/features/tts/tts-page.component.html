@@ -53,7 +53,7 @@
                 <h2 class="lf-h2" id="tts-voice-title">{{ t('modules.tts.voice.title') }}</h2>
                 <p class="lf-toggle-row__hint">{{ tts.enabled ? t('modules.tts.voice.onHint') : t('modules.tts.voice.offHint') }}</p>
               </div>
-              <label class="lf-switch">
+              <label class="lf-switch" data-assistant-anchor="tts.enable">
                 <input
                   type="checkbox"
                   [attr.aria-label]="t('modules.tts.fields.enabledLabel')"
@@ -65,7 +65,7 @@
               </label>
             </div>
 
-            <fieldset class="lf-engines" [disabled]="ttsReadOnly() || ttsSaving()">
+            <fieldset class="lf-engines" data-assistant-anchor="tts.voice" [disabled]="ttsReadOnly() || ttsSaving()">
               <legend class="lf-label">{{ t('modules.tts.voice.engineLabel') }}</legend>
               <label class="lf-engine" [class.lf-engine--on]="tts.provider === 'piper'">
                 <input type="radio" name="tts-provider" value="piper" [checked]="tts.provider === 'piper'" (change)="updateTtsProvider('piper')" />
@@ -362,7 +362,7 @@
           </section>
 
           @if (speechApiUrl()) {
-            <section class="lf-tile lf-card" aria-labelledby="tts-url-title">
+            <section class="lf-tile lf-card" data-assistant-anchor="tts.speech-url" aria-labelledby="tts-url-title">
               <h2 class="lf-h3" id="tts-url-title">{{ t('modules.tts.urlSection.label') }}</h2>
               <p class="lf-note lf-note--tight">{{ t('modules.tts.urlSection.hint') }}</p>
               <div class="lf-url">

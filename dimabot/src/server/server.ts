@@ -45,6 +45,7 @@ import { getReservedCommandsPayload } from "./services/command_defaults.service.
 import { oauthRoute, oauthApiRoute, oauthMetadata } from './oauth/routes.js';
 import { petRoute } from './routes/pet.route.js';
 import { docsAssistantRoute } from './routes/docs-assistant.route.js';
+import { siteAgentRoute } from './routes/site-agent.route.js';
 
 const __dirname = getDirname(import.meta.url);
 
@@ -108,6 +109,9 @@ export const server = async (): Promise<Express.Application> => {
 
         // Setup command routes
         app.use('/commands', commandRoute);
+
+        // Site agent (dimasite assistant): sessions, turns (SSE), approvals, change log.
+        app.use('/agent', siteAgentRoute);
 
         // Setup eventsub routes
         app.use('/eventsubs', eventsubRoute);

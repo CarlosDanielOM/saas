@@ -1,0 +1,55 @@
+@if (presence.enabled()) {
+  <div
+    class="am-dock"
+    [class.am-dock--open]="presence.open()"
+    [class.am-dock--tucked]="tucked()"
+    [class.am-dock--away]="away()"
+    [attr.data-am-state]="mood()"
+    [attr.data-am-greeting]="greeting()"
+    [attr.data-seen]="seen()"
+    [style.--am-lift.px]="lift()"
+    [style.--am-shift.px]="shift()"
+  >
+    <button
+      #dockButton
+      type="button"
+      class="am-trigger"
+      [attr.aria-label]="triggerLabel()"
+      [attr.aria-expanded]="presence.open()"
+      [throttleMs]="500"
+      (appThrottleClick)="toggle()"
+      (pointerenter)="greet()"
+      (focus)="greet()"
+    >
+      <span
+        class="am-bubble"
+        [class.am-bubble--default]="!customBubble()"
+        [class.am-bubble--error]="mood() === 'error'"
+        [class.am-bubble--happy]="mood() === 'happy'"
+        aria-hidden="true"
+      >
+        <span class="am-bubble__text">{{ bubbleText() }}</span>
+        @if (busy()) {
+          <span class="am-bubble__dots"><i></i><i></i><i></i></span>
+        }
+      </span>
+      <span class="am-art" #dockArt>
+        <app-mascot-figure />
+        @if (presence.unread() && !presence.open()) {
+          <span class="am-unread" aria-hidden="true"></span>
+        }
+      </span>
+    </button>
+    <span class="am-sr" aria-live="polite">{{ liveText() }}</span>
+  </div>
+
+  @if (phase() !== 'off') {
+    <div class="am-guide" #layer [attr.data-phase]="phase()" data-am-pose="point" aria-hidden="true">
+      <div class="am-ring" #ring></div>
+      <div class="am-guide__fig" #guideFig>
+        <div class="am-guide__art" [class.am-guide__art--flip]="guideFlip()"><app-mascot-figure /></div>
+      </div>
+      <p class="am-guide__label" #label>{{ guideLabel() }}</p>
+    </div>
+  }
+}

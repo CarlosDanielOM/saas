@@ -1,0 +1,16 @@
+# DomDimaBot documentation
+
+> Official guides for DomDimaBot, a Twitch bot with custom commands, AST scripting, TTS, rewards, triggers, AI personality, and follow defense.
+
+These public Markdown documents are generated from the same source as the website on every build. Fetch the relevant pages before composing a command. Use the Source URL in each document for citations. The .txt files contain UTF-8 Markdown, served as text/plain for web extraction tools; no JavaScript or login is required.
+
+DomDimaBot has its own command language. Do not substitute JavaScript or another bot's placeholders. Variables are user-created; functions, arguments, permissions, storage, and plan limits are documented separately. When requirements or a function's behavior are unclear, ask the user instead of inventing syntax. Distinguish a response body from a complete !cc chat instruction, and describe expected results without claiming an untested command was run.
+
+## Documentation
+
+- [AST Syntax & Data](https://docs.domdimabot.com/commands/advanced/syntax/index.txt): AST syntax reference: expression prefixes, variables and storage, arguments, escaping, arrays, operators, conditionals, loops, delete, command references, and timers.
+- [Built-in commands](https://docs.domdimabot.com/commands/built-in/index.txt): Default access, syntax, and behavior of DomDimaBot's built-in chat commands, such as !poll, !duel, and !vip.
+- [Follow Defense](https://docs.domdimabot.com/follow-defense/index.txt): Detect bursts of follows from bots or hate raids, pause follow alerts, and ban tracked followers only when a wave becomes an attack.
+- [DomDimaBot Docs](https://docs.domdimabot.com/index.txt): Guides for DomDimaBot: set up the bot, commands, alerts, text to speech, channel points, AI and stream protection.
+- [Plans](https://docs.domdimabot.com/plans/index.txt): Compare the Free, Premium, and Pro plans, including monthly AI credits, command cooldowns, upload and storage limits, and which modules each plan unlocks.
+- [Text to Speech](https://docs.domdimabot.com/tts/index.txt): Set up the speech overlay, pick a voice engine, use the !s command and AST speech functions, and manage filters, queue limits, and AI credits.

@@ -98,7 +98,7 @@
                 <span class="lf-field__label">{{ t('modules.aiPersonality.fields.profileName') }}</span>
                 <input [value]="profile.name" [disabled]="saving() || !canManage()" (input)="updateActiveProfileField('name', $any($event.target).value)" />
               </label>
-              <label class="lf-field">
+              <label class="lf-field" data-assistant-anchor="ai-personality.profile">
                 <span class="lf-field__label">{{ t('modules.aiPersonality.v2.promptLabel') }}</span>
                 <textarea rows="8" [value]="profile.personality" [disabled]="saving() || !canManage()" aria-describedby="ai-prompt-hint" [placeholder]="t('modules.aiPersonality.v2.promptPlaceholder')" (input)="updateActiveProfileField('personality', $any($event.target).value)"></textarea>
                 <span class="lf-field__hint" id="ai-prompt-hint">{{ t('modules.aiPersonality.v2.promptHint') }}</span>

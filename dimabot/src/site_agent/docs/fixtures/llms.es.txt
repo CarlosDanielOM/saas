@@ -1,0 +1,16 @@
+# DomDimaBot documentation — Español
+
+> Official guides for DomDimaBot, a Twitch bot with custom commands, AST scripting, TTS, rewards, triggers, AI personality, and follow defense.
+
+These public Markdown documents are generated from the same source as the website on every build. Fetch the relevant pages before composing a command. Use the Source URL in each document for citations. The .txt files contain UTF-8 Markdown, served as text/plain for web extraction tools; no JavaScript or login is required.
+
+DomDimaBot has its own command language. Do not substitute JavaScript or another bot's placeholders. Variables are user-created; functions, arguments, permissions, storage, and plan limits are documented separately. When requirements or a function's behavior are unclear, ask the user instead of inventing syntax. Distinguish a response body from a complete !cc chat instruction, and describe expected results without claiming an untested command was run.
+
+## Documentation
+
+- [Sintaxis y Datos de AST](https://docs.domdimabot.com/es/commands/advanced/syntax/index.txt): Referencia de sintaxis AST: prefijos, variables y almacenamiento, argumentos, escapes, arrays, operadores, condicionales, bucles, borrado, referencias a comandos y timers.
+- [Docs de DomDimaBot](https://docs.domdimabot.com/es/index.txt): Guías de DomDimaBot: configura el bot, comandos, alertas, texto a voz, puntos del canal, IA y protección del stream.
+- [Comandos integrados](https://docs.domdimabot.com/es/commands/built-in/index.txt): Acceso predeterminado, sintaxis y comportamiento de los comandos integrados del chat de DomDimaBot, como !poll, !duel y !vip.
+- [Follow Defense](https://docs.domdimabot.com/es/follow-defense/index.txt): Detecta ráfagas de follows de bots o hate raids, pausa las alertas de follow y banea a los seguidores registrados solo cuando una oleada se convierte en ataque.
+- [Planes](https://docs.domdimabot.com/es/plans/index.txt): Compara los planes Gratis, Premium y Pro, con créditos de IA mensuales, enfriamientos de comandos, límites de carga y almacenamiento, y los módulos que desbloquea cada plan.
+- [Texto a voz](https://docs.domdimabot.com/es/tts/index.txt): Configura la superposición de voz, elige un motor de voz, usa el comando !s y las funciones AST de voz, y administra filtros, límites de cola y créditos de IA.

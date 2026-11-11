@@ -11,7 +11,7 @@
             <button type="button" class="lf-btn" (click)="openCreate('keyword')">
               <app-lf-icon name="chat" [size]="15"></app-lf-icon> {{ t('commands.newKeyword') }}
             </button>
-            <button type="button" class="lf-btn lf-btn--primary" (click)="openCreate('command')">
+            <button type="button" class="lf-btn lf-btn--primary" data-assistant-anchor="commands.create" (click)="openCreate('command')">
               <app-lf-icon name="plus"></app-lf-icon> {{ t('commands.newCommand') }}
             </button>
           </div>
@@ -65,7 +65,7 @@
               (input)="onSearchInput($any($event.target).value)" />
             <div class="lf-filter-tabs" role="group" [attr.aria-label]="t('commands.filters.label')">
               @for (option of visibleFilters(); track option) {
-                <button type="button" class="lf-filter-tab" [attr.data-kind]="option"
+                <button type="button" class="lf-filter-tab" [attr.data-kind]="option" [attr.data-assistant-anchor]="option === 'timer' ? 'commands.timers' : null"
                   [class.lf-filter-tab--active]="!isSearching() && filter() === option"
                   [attr.aria-pressed]="!isSearching() && filter() === option" (click)="setFilter(option)">
                   {{ t('commands.filters.' + option) }} <span class="lf-filter-tab__n">{{ filterCounts()[option] }}</span>

@@ -1,0 +1,58 @@
+<div class="cp-wrap" data-assistant-composer>
+  @if (errorText()) {
+    <p class="cp-error" role="alert" data-assistant-send-error>{{ errorText() }}</p>
+  }
+  @if (store.atLimit()) {
+    <div class="cp-limit" role="note" data-assistant-limit>
+      <p>{{ t('assistant.limits.reached', { limit: store.limits()?.limit ?? 0, time: resetAt() }) }}</p>
+      @if (canUpgrade()) {
+        <button type="button" class="cp-link" (appThrottleClick)="openUpgrade()">{{ upgradeText() }}</button>
+      }
+    </div>
+  }
+
+  <div class="cp-box" [class.cp-box--off]="store.atLimit()">
+    <label class="sr-only" for="assistant-input">{{ t('assistant.composer.label') }}</label>
+    <textarea
+      #input
+      id="assistant-input"
+      class="cp-input"
+      rows="1"
+      [attr.maxlength]="max"
+      [disabled]="store.atLimit()"
+      [placeholder]="store.running() ? t('assistant.composer.placeholderRunning') : t('assistant.composer.placeholder')"
+      [attr.aria-describedby]="'assistant-composer-meta'"
+      [value]="draft()"
+      (input)="onInput($event)"
+      (keydown)="onKeydown($event)"
+      enterkeyhint="send"
+      autocomplete="off"
+    ></textarea>
+    <div class="cp-buttons">
+      @if (store.running()) {
+        <button type="button" class="cp-stop" [disabled]="store.stopping()" [attr.aria-label]="t('assistant.composer.stop')" [title]="t('assistant.composer.stop')" (appThrottleClick)="stop()" data-assistant-stop>
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor"/></svg>
+        </button>
+      }
+      <button type="button" class="cp-send" [disabled]="!canSend()" (appThrottleClick)="submit()" [attr.data-mode]="mode()" data-assistant-send>
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 19V5m0 0-6 6m6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>{{ sendLabel() }}</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="cp-meta" id="assistant-composer-meta">
+    @if (store.running()) {
+      <button type="button" class="cp-queue" [attr.aria-pressed]="queueMode()" (click)="toggleQueue()" data-assistant-queue>
+        <span class="cp-queue__box" aria-hidden="true"></span>{{ t('assistant.composer.queueToggle') }}
+      </button>
+      <span class="cp-hint">{{ hint() }}</span>
+    }
+    @if (leftText() && !store.atLimit()) {
+      <span class="cp-left" [class.cp-left--low]="lowOnMessages()" data-assistant-left>{{ leftText() }}</span>
+    }
+    @if (draft().length > max - 500) {
+      <span class="cp-count" [class.cp-count--over]="tooLong()">{{ draft().length }}/{{ max }}</span>
+    }
+  </div>
+</div>

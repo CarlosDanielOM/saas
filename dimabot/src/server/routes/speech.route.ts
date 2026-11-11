@@ -11,16 +11,14 @@ import { AdminSchema } from '../../schemas/admin.schema.js';
 import { addFishVoiceFavorite, getFishVoiceFavorites, removeFishVoiceFavorite, renameFishVoiceFavorite, FavoriteAliasError, MAX_FISH_VOICE_FAVORITES } from '../../schemas/channel_fish_voice_favorites.schema.js';
 import {
     getChannelTtsSettings,
-    normalizeChannelTtsSettings,
-    upsertChannelTtsSettings,
     type ChannelTtsSettingsData,
     type TtsProvider,
     type TtsLanguage,
     type TtsMode
 } from '../../schemas/channel_tts_settings.schema.js';
 import { KOKORO_VOICES, resolveKokoroVoice } from '../../utils/tts/kokoro_voices.util.js';
-import { FISH_VOICES } from '../services/tts/fish_tts.service.js';
 import { resolveFishVoice, getFishVoice, searchFishVoices, parseVoiceSearch, VoiceRequestError } from '../services/tts/fish_voice_catalog.service.js';
+import { saveChannelTtsSettings } from '../services/tts_settings.service.js';
 import { createPreviewTicket } from '../services/tts/voice_preview.service.js';
 import type { RuntimeTtsProvider } from '../services/tts/tts_provider.interface.js';
 import { getDirname } from '../../utils/pollyfills.js';
@@ -198,18 +196,9 @@ router.put('/settings/:channelID', authMiddleware as any, async (req: AuthReques
             });
         }
 
-        if (req.body?.voices?.kokoroDefault !== undefined && !resolveKokoroVoice(req.body.voices.kokoroDefault)) {
-            return res.status(400).json({ error: true, message: 'Invalid Kokoro voice', status: 400 });
-        }
-        const nextSettings = normalizeChannelTtsSettings(req.body as Partial<ChannelTtsSettingsData>, channelID, streamer.name);
-        const previous = await getChannelTtsSettings(channelID, streamer.name);
-        const selected = nextSettings.voices.cloneDefault!;
-        if (selected !== previous.voices.cloneDefault) {
-            const voiceId = resolveFishVoice(selected);
-            if (!voiceId) return res.status(400).json({ error: true, status: 400, code: 'invalid_voice', message: 'Invalid Fish voice' });
-            if (!Object.hasOwn(FISH_VOICES, selected)) await getFishVoice(voiceId);
-        }
-        const savedSettings = await upsertChannelTtsSettings(channelID, nextSettings, streamer.name);
+        const saved = await saveChannelTtsSettings(channelID, streamer.name, req.body as Partial<ChannelTtsSettingsData>);
+        if (!saved.ok) return res.status(saved.status).json(saved.body);
+        const savedSettings = saved.settings;
 
         return res.status(200).json({
             error: false,

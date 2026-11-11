@@ -49,6 +49,7 @@
           <button
             type="button"
             class="btn btn--sm gh__bot"
+            data-assistant-anchor="dashboard.bot-toggle"
             [class.btn--primary]="botButtonState() === 'out' || botButtonState() === 'needs-ok'"
             [class.gh__bot--confirm]="botButtonState() === 'confirm'"
             [attr.data-state]="botButtonState()"
@@ -181,7 +182,7 @@
           <a class="bs__buy" [routerLink]="link('modules', 'chat-events')">{{ t('dashboard.brief.open') }}</a>
         </div>
         }
-        <div class="bs__item" [attr.data-tone]="creditsForecast().warn ? 'warn' : 'ok'">
+        <div class="bs__item" data-assistant-anchor="dashboard.credits" [attr.data-tone]="creditsForecast().warn ? 'warn' : 'ok'">
           <app-lf-icon name="zap" [size]="16"></app-lf-icon>
           <span>
             <b>{{ aiCreditsAvailable() ? t('dashboard.brief.creditsLeft', { pct: aiCreditsPercentLeft() }) : t('dashboard.brief.creditsTitle') }}</b>
@@ -227,7 +228,7 @@
           <span class="strip__item">{{ t('dashboard.brief.eventsShort', { on: eventsOn(), total: eventsTotal() }) }}</span>
         }
         @if (aiCreditsAvailable()) {
-          <span class="strip__item" [class.strip__item--warn]="creditsForecast().warn">{{ t('dashboard.brief.creditsShort', { pct: aiCreditsPercentLeft() }) }}</span>
+          <span class="strip__item" data-assistant-anchor="dashboard.credits" [class.strip__item--warn]="creditsForecast().warn">{{ t('dashboard.brief.creditsShort', { pct: aiCreditsPercentLeft() }) }}</span>
         }
         @if (setupMode()) {
           <span class="strip__item strip__item--off"><app-lf-icon name="lock" [size]="13"></app-lf-icon>{{ t('dashboard.setup.health.stripLocked') }}</span>

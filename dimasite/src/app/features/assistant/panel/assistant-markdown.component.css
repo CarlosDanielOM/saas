@@ -1,0 +1,172 @@
+/* Assistant answer Markdown. Unencapsulated (content comes from innerHTML): every rule is under .am. */
+
+.am {
+  display: block;
+  min-width: 0;
+  color: var(--fg);
+  font-size: 0.94rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.am > :first-child { margin-top: 0; }
+.am > :last-child { margin-bottom: 0; }
+
+.am p,
+.am ul,
+.am ol,
+.am blockquote,
+.am .am-code,
+.am .am-table {
+  margin: 0 0 0.65rem;
+}
+
+.am h4,
+.am h5,
+.am h6 {
+  margin: 0.9rem 0 0.35rem;
+  color: var(--fg);
+  font-size: 0.95rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.am h5,
+.am h6 {
+  font-size: 0.88rem;
+  color: var(--muted);
+  text-transform: none;
+}
+
+.am ul,
+.am ol {
+  padding-left: 1.25rem;
+}
+
+.am ul { list-style: disc; }
+.am ol { list-style: decimal; }
+.am li { margin: 0.15rem 0; }
+.am li > ul,
+.am li > ol { margin: 0.2rem 0 0.1rem; }
+
+.am strong { font-weight: 750; }
+.am em { font-style: italic; }
+
+.am a {
+  color: var(--kicker);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.am a:focus-visible {
+  outline: 2px solid var(--kicker);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.am code {
+  padding: 0.08rem 0.32rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: var(--code-bg);
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.84em;
+}
+
+.am blockquote {
+  padding: 0.1rem 0 0.1rem 0.75rem;
+  border-left: 3px solid var(--accent-soft);
+  color: var(--muted);
+}
+
+.am hr {
+  margin: 0.8rem 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.am .am-code {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--code-bg);
+}
+
+.am .am-code__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2rem;
+  padding: 0 0.25rem 0 0.7rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.am .am-code__lang {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.am .am-copy {
+  min-height: 32px;
+  padding: 0.2rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--kicker);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.am .am-copy:hover { background: var(--accent-soft); }
+.am .am-copy:focus-visible { outline: 2px solid var(--kicker); outline-offset: -2px; }
+
+.am pre {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  overflow-x: auto;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.am pre code {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.am .am-table {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+}
+
+.am table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.am th,
+.am td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: normal;
+}
+
+.am th {
+  background: var(--code-bg);
+  font-weight: 700;
+}
+
+.am tr:last-child td { border-bottom: 0; }

@@ -1,0 +1,82 @@
+<p class="ch-intro">{{ owner() ? t('assistant.changes.introOwner') : t('assistant.changes.introAdmin') }}</p>
+
+@switch (store.changesState()) {
+  @case ('loading') {
+    <p class="ch-state" role="status">{{ t('assistant.changes.loading') }}</p>
+  }
+  @case ('error') {
+    <div class="ch-state" role="alert">
+      <p>{{ t('assistant.changes.loadFailed') }}</p>
+      <button type="button" class="ch-btn" (appThrottleClick)="store.loadChanges()">{{ t('assistant.retry') }}</button>
+    </div>
+  }
+  @default {
+    @if (!store.changes().length) {
+      <p class="ch-state">{{ t('assistant.changes.empty') }}</p>
+    } @else {
+      <ul class="ch-list">
+        @for (change of store.changes(); track change.id) {
+          <li class="ch-row" [class.ch-row--undone]="!!change.undone" [attr.data-change-id]="change.id" data-assistant-change>
+            <div class="ch-top">
+              <h3 class="ch-title" tabindex="-1">{{ change.title }}</h3>
+              <span class="ch-when">{{ when(change.at) }}</span>
+            </div>
+            <p class="ch-who">
+              <span class="ch-actor">{{ actor(change) }}</span>@if (change.request) {: <q class="ch-quote">{{ change.request }}</q>}
+            </p>
+            @if (change.target.label) {
+              <p class="ch-target">{{ change.target.label }}</p>
+            }
+            <details class="ch-more">
+              <summary>{{ t('assistant.changes.details') }}</summary>
+              <div class="ch-diff">
+                <app-assistant-diff [before]="change.before" [after]="change.after" />
+                @if (change.effects.length) {
+                  <ul class="ch-effects">
+                    @for (effect of change.effects; track $index) {
+                      <li>{{ effect }}</li>
+                    }
+                  </ul>
+                }
+              </div>
+            </details>
+
+            @if (change.undone) {
+              <p class="ch-chip">{{ undoneText(change) }}</p>
+            } @else if (change.canUndo) {
+              @if (confirming() === change.id) {
+                <div class="ch-confirm" role="group" [attr.aria-label]="t('assistant.changes.undoConfirm')">
+                  <p>{{ t('assistant.changes.undoConfirm') }}</p>
+                  <div class="ch-confirm__actions">
+                    <button type="button" class="ch-btn" (click)="confirming.set(null)">{{ t('assistant.cancel') }}</button>
+                    <button type="button" class="ch-btn ch-btn--danger" [disabled]="store.undoing() === change.id" (appThrottleClick)="undo(change)" data-assistant-undo-confirm>
+                      {{ store.undoing() === change.id ? t('assistant.changes.undoing') : t('assistant.changes.undo') }}
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <button type="button" class="ch-btn" (click)="confirming.set(change.id)" [attr.aria-label]="t('assistant.changes.undoLabel', { title: change.title })" data-assistant-undo>
+                  {{ t('assistant.changes.undo') }}
+                </button>
+              }
+            }
+            @if (undoError(change)) {
+              <div class="ch-error" role="alert">
+                <p>{{ undoError(change) }}</p>
+                @if (conflictNow(change); as now) {
+                  <p class="ch-error__sub">{{ t('assistant.changes.conflictNow') }}</p>
+                  <app-assistant-diff [before]="change.after" [after]="now" />
+                }
+              </div>
+            }
+          </li>
+        }
+      </ul>
+      @if (store.changesNext()) {
+        <button type="button" class="ch-btn ch-more-btn" [disabled]="store.changesLoadingMore()" (appThrottleClick)="store.loadChanges(true)">
+          {{ store.changesLoadingMore() ? t('assistant.changes.loading') : t('assistant.changes.more') }}
+        </button>
+      }
+    }
+  }
+}

@@ -13,6 +13,7 @@ import { ThemeService } from '../../services/theme.service';
 import { ToastService } from '../../services/toast.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { LayoutFocusService } from '../../services/layout-focus.service';
+import { AssistantRootComponent } from '../assistant/assistant-root.component';
 import { PendingActionsQueueService } from '../../services/pending-actions-queue.service';
 import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
 import { ToastContainerComponent } from '../../shared/toast-container/toast-container.component';
@@ -21,7 +22,7 @@ import { ThrottleClickDirective } from '../../shared/directives/throttle-click.d
 
 @Component({
   selector: 'app-authenticated-layout',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, LucideAngularModule, ToastContainerComponent, UpgradeModalComponent, BrandLogoComponent, ThrottleClickDirective],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, LucideAngularModule, ToastContainerComponent, UpgradeModalComponent, BrandLogoComponent, ThrottleClickDirective, AssistantRootComponent],
   templateUrl: './authenticated-layout.component.html',
   styleUrl: './authenticated-layout.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

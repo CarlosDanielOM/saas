@@ -550,3 +550,37 @@ export async function grantPolarAiCredits(
     };
   }
 }
+
+export interface PolarNamedEvent {
+  /** Any event name except `ai_usage` (that one is the AI-credits meter). */
+  name: string;
+  customerId: string;
+  /** Stable ID; Polar skips duplicates, so retries are safe. */
+  externalId: string;
+  metadata: Record<string, string | number | boolean>;
+}
+
+/**
+ * Sends events under their own name, e.g. the site assistant's free `ai_assistant` usage.
+ * Unlike `ingestPolarSHEvent` there are no credits, no local credit projection and no usage
+ * receipts, so meters that count `ai_usage` never see these events. Throws if Polar fails.
+ */
+export async function ingestPolarNamedEvents(
+  events: PolarNamedEvent[],
+): Promise<{ inserted: number; duplicates: number }> {
+  if (events.length === 0) return { inserted: 0, duplicates: 0 };
+  for (const event of events) {
+    if (event.name === "ai_usage" || "credits" in event.metadata) {
+      throw new Error("ingestPolarNamedEvents must not send AI credit usage");
+    }
+    if (!event.name || !event.customerId || !event.externalId) {
+      throw new Error("name, customerId and externalId are required");
+    }
+  }
+  const client = await getPolarShClient("ingestPolarNamedEvents");
+  const result = (await client.events.ingest({ events })) as { inserted?: number; duplicates?: number };
+  if (!isIngestComplete(result, events.length)) {
+    throw new Error(`PolarSH ingest incomplete (${result?.inserted ?? 0} inserted, ${result?.duplicates ?? 0} duplicates of ${events.length})`);
+  }
+  return { inserted: result.inserted ?? 0, duplicates: result.duplicates ?? 0 };
+}

@@ -77,6 +77,14 @@
   overflow-x: clip;
 }
 
+/* Desktop: the open assistant panel (420px, right edge) gets its own room instead of covering the page. */
+@media (min-width: 1024px) {
+  :host-context(html[data-assistant-docked]) .auth-layout__content {
+    width: auto;
+    margin-right: 420px;
+  }
+}
+
 /* Navbar — fixed to viewport so horizontal page/table scroll cannot drag it */
 .auth-navbar {
   position: sticky;

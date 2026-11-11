@@ -18,6 +18,7 @@ import UsersSchema from '../schemas/users.schema.js';
 import { unsubscribeTwitchEvent } from './eventsub.js';
 import { cleanupChannelMediaOwnership } from './media_cleanup.js';
 import { deleteChannelDimafxData, type IDeleteChannelDimafxResult } from './dimafx_data.js';
+import { deleteChannelSiteAgentData } from '../site_agent/cleanup.js';
 import { decrementSiteAnalytics } from './siteanalytics.js';
 import { deleteChannelMemoryEmbeddingsByChannel } from './qdrant/functions/memory/sync_memory.qdrant.js';
 import { revokeUserOAuth } from '../server/oauth/service.js';
@@ -151,7 +152,8 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         personalitiesDelete,
         memoriesDelete,
         streamSummariesDelete,
-        dimafxDelete
+        dimafxDelete,
+        siteAgentDelete
     ] = await Promise.all([
         cleanupChannelMediaOwnership({ channelID, userID }),
         TriggerFileSchema.deleteMany({ channelID }),
@@ -163,13 +165,19 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         ChannelAIPersonalitySchema.deleteMany({ channelID }),
         ChannelAIMemorySchema.deleteMany({ channelID }),
         ChannelStreamSummarySchema.deleteMany({ channelID }),
-        deleteChannelDimafxData(channelID)
+        deleteChannelDimafxData(channelID),
+        deleteChannelSiteAgentData(channelID).catch((err: unknown) => {
+            console.error('[ACCOUNT_DELETION] Site agent cleanup failed', { channelID, error: err instanceof Error ? err.message : String(err) });
+            return { sessionsDeleted: 0, changesDeleted: 0 };
+        })
     ]);
 
     console.log('[ACCOUNT_DELETION] Phase 2 complete - additional deletions', {
         channelID,
         triggerFilesDeleted: triggerFilesDelete.deletedCount ?? 0,
         personalitiesDeleted: personalitiesDelete.deletedCount ?? 0,
+        assistantSessionsDeleted: siteAgentDelete.sessionsDeleted,
+        assistantChangesDeleted: siteAgentDelete.changesDeleted,
         ...dimafxDelete
     });
 

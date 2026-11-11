@@ -11052,5 +11052,298 @@
     "description": "Download Dima App for Windows or Linux to connect your streaming setup.",
     "tagline": "Dima App downloads",
     "back": "Back to modules"
+  },
+  "assistantMascot": {
+    "ask": "Ask",
+    "open": "Open the assistant",
+    "openUnread": "Open the assistant, new answer",
+    "close": "Close the assistant",
+    "unreadBubble": "New answer",
+    "pointing": "Look here: {{label}}",
+    "frame": {
+      "sent": "Sent",
+      "closed": "Closed",
+      "stopped": "This card stopped because it tried to open another page.",
+      "error": "Part of this card didn't work.",
+      "chartError": "This chart couldn't be drawn.",
+      "needsClick": "Press a button in this card to send it.",
+      "madeBy": "Made by the assistant",
+      "table": "Show as a table",
+      "other": "Other",
+      "total": "Total",
+      "series": "Series",
+      "label": "Item",
+      "fallbackTitle": "Assistant card"
+    }
+  },
+  "assistant": {
+    "title": "Assistant",
+    "close": "Close assistant",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "tabs": {
+      "label": "Assistant views",
+      "chat": "Chat",
+      "changes": "Changes"
+    },
+    "sheet": {
+      "expand": "Show the whole chat",
+      "shrink": "Shrink to a bar",
+      "open": "Open"
+    },
+    "peek": {
+      "needsYou": "Needs your OK to continue",
+      "working": "Working on it…",
+      "idle": "Tap to continue the chat"
+    },
+    "bubble": {
+      "working": "Working…",
+      "needsYou": "Needs your OK"
+    },
+    "announce": {
+      "ready": "The assistant answered.",
+      "failed": "The assistant ran into a problem.",
+      "stopped": "Stopped.",
+      "approval": "The assistant needs your OK for a change.",
+      "input": "The assistant is waiting for your answer."
+    },
+    "markdown": {
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Couldn't copy"
+    },
+    "diff": {
+      "before": "Before",
+      "after": "After",
+      "removed": "Removed",
+      "new": "New",
+      "empty": "(empty)",
+      "to": "changes to",
+      "none": "Nothing visible changes.",
+      "on": "On",
+      "off": "Off"
+    },
+    "approval": {
+      "expiresIn": "Expires in {{time}}",
+      "kind": {
+        "create": "New",
+        "delete": "Delete",
+        "change": "Change"
+      },
+      "state": {
+        "pending": "Waiting",
+        "applied": "Applied",
+        "skipped": "Skipped",
+        "expired": "Expired",
+        "failed": "Didn't apply",
+        "superseded": "Replaced",
+        "unknown": "Result unknown"
+      },
+      "effects": "What this can do on stream",
+      "skip": "Skip",
+      "apply": "Apply",
+      "applying": "Applying…",
+      "appliedNote": "Done. You can undo it later.",
+      "seeChanges": "See it in Changes",
+      "openChanges": "Open Changes",
+      "problem": {
+        "outcome_unknown": "Result unknown — this change may already be applied. Check the setting before trying again.",
+        "apply_failed": "Something went wrong while saving. Part of it may be saved, so check the setting before trying again.",
+        "permission_denied": "You don't have permission for this change anymore, so nothing was changed.",
+        "other": "This change didn't go through. Check the setting before trying again."
+      },
+      "note": {
+        "skipped": "Skipped. Nothing was changed.",
+        "expired": "This waited too long, so nothing was changed. Ask again if you still want it.",
+        "superseded": "You sent a new message, so this wasn't applied.",
+        "failed": "Nothing was changed."
+      }
+    },
+    "errors": {
+      "unknown": "Something went wrong. Try again in a moment.",
+      "network": "Can't reach DomDimaBot right now. Check your connection and try again.",
+      "turn_active": "It's still working on your last message. Send this now to steer it, or tick “Queue for after”.",
+      "limit_reached": "You've used today's messages.",
+      "daily_limit": "You've used today's messages.",
+      "rate_limited": "Too many requests at once. Wait a few seconds and try again.",
+      "unavailable": "The assistant is having trouble right now. Try again in a minute.",
+      "request_failed": "That didn't work. Try again.",
+      "not_found": "This chat is gone (chats are kept for 3 days).",
+      "forbidden": "You don't have access to this anymore.",
+      "expired": "This waited too long and expired.",
+      "superseded": "This was replaced by your newer message.",
+      "message_too_long": "That message is too long (4,000 characters max).",
+      "timeout": "It took too long to answer. Try again.",
+      "overloaded": "The AI service is busy. Try again in a minute.",
+      "upstream": "The AI service had a problem. Try again.",
+      "context_too_long": "This chat got too long. Start a new chat.",
+      "config": "The assistant isn't available right now.",
+      "incomplete": "The answer was cut off. Try again.",
+      "bad_request": "The assistant couldn't handle that. Try asking it differently.",
+      "aborted": "Stopped.",
+      "queue_full": "You already have 5 messages waiting. Wait for them to go out first.",
+      "concurrent_limit": "You already have chats working. Wait for one to finish.",
+      "invalid_request": "That message couldn't be sent. Check it and try again.",
+      "session_not_found": "This chat is gone (chats are kept for 3 days).",
+      "turn_not_found": "That answer isn't available anymore. Open the chat again.",
+      "turn_not_active": "That answer already finished. Send it as a new message.",
+      "too_many_inputs": "Too many messages for this answer. Wait for it to finish.",
+      "not_retryable": "This answer can't be retried. Send it again as a new message.",
+      "approval_not_found": "This change request isn't available anymore.",
+      "permission_denied": "You don't have permission for this change anymore.",
+      "apply_failed": "Something went wrong while saving. Check the setting before trying again.",
+      "outcome_unknown": "Result unknown — this change may already be applied. Check the setting before trying again.",
+      "internal_error": "Something went wrong on our side. Try again.",
+      "lease_lost": "Something went wrong on our side. Try again."
+    },
+    "tools": {
+      "docsPagesOne": "Checked 1 docs page",
+      "docsPages": "Checked {{count}} docs pages",
+      "docsSearched": "Searched the docs",
+      "steps": "{{count}} steps",
+      "problems": "{{count}} didn't work",
+      "state": {
+        "pending": "Waiting",
+        "running": "Working…",
+        "awaiting_approval": "Needs your OK",
+        "awaiting_input": "Needs your answer",
+        "done": "Done",
+        "error": "Failed",
+        "denied": "Not allowed",
+        "declined": "Skipped",
+        "superseded": "Replaced",
+        "interrupted": "Interrupted",
+        "expired": "Expired"
+      }
+    },
+    "status": {
+      "stopping": "Stopping…",
+      "reconnecting": "Reconnecting…",
+      "waiting": "Waiting for you",
+      "tool": "Working…",
+      "compacting": "Tidying up the conversation…",
+      "thinking": "Thinking…",
+      "seconds": "{{count}} s"
+    },
+    "thread": {
+      "loading": "Loading the chat…",
+      "loadFailed": "Couldn't load this chat.",
+      "label": "Conversation",
+      "you": "You",
+      "note": "Progress note",
+      "assistant": "Assistant",
+      "mode": {
+        "steer": "Added while it worked",
+        "queue": "Sent after the last answer"
+      }
+    },
+    "empty": {
+      "title": "Hi! What do you need?",
+      "copy": "I know the docs and your channel. I can write commands, find settings and explain features. I only change things after you approve.",
+      "examplesLabel": "Examples",
+      "kinds": {
+        "command": "Write a command",
+        "setting": "Find a setting",
+        "explain": "Explain a feature",
+        "overview": "Get started"
+      },
+      "examples": {
+        "command": "Write a !dice command that rolls a number from 1 to 6",
+        "setting": "Where do I change the TTS voice?",
+        "explain": "How does Follow defense protect my channel?",
+        "overview": "What should I set up first on my channel?"
+      }
+    },
+    "feedback": {
+      "question": "Helpful?",
+      "helpful": "Helpful",
+      "unhelpful": "Not helpful",
+      "thanks": "Thanks for the feedback."
+    },
+    "navigate": {
+      "opened": "Opened {{label}}",
+      "offer": "Suggested page",
+      "again": "Open again",
+      "open": "Open {{label}}"
+    },
+    "notice": {
+      "limit_reached": "You've reached today's message limit.",
+      "interrupted": "This answer was interrupted (the service restarted). Try again.",
+      "stopped": "Stopped.",
+      "cancelled": "Stopped.",
+      "superseded": "Replaced by your newer message.",
+      "compacted": "Older messages were summarized so the chat can keep going.",
+      "queued": "Waiting for the current answer to finish.",
+      "step_limit": "It took too many steps, so it stopped here.",
+      "max_steps": "It took too many steps, so it stopped here.",
+      "tool_limit": "It used too many tools, so it stopped here.",
+      "time_limit": "It worked for 10 minutes, so it stopped here.",
+      "result_unknown": "A step may or may not have finished (the service restarted). Check before trying again.",
+      "error": "Something went wrong.",
+      "failed": "Something went wrong.",
+      "unknown": "Something unexpected happened.",
+      "access_revoked": "You don't have access to this channel's assistant anymore.",
+      "empty_answer": "It didn't come up with an answer. Try asking it differently.",
+      "internal_error": "Something went wrong on our side. Try again.",
+      "lease_lost": "Something went wrong on our side. Try again."
+    },
+    "pending": {
+      "sending": "Sending…",
+      "queued": "Queued: sends after this answer",
+      "steer": "Sent: it reads this at its next step",
+      "sent": "Sent"
+    },
+    "composer": {
+      "send": "Send",
+      "steer": "Steer",
+      "queue": "Queue",
+      "label": "Message the assistant",
+      "placeholder": "Ask about your channel…",
+      "placeholderRunning": "Add a message…",
+      "stop": "Stop",
+      "queueToggle": "Queue for after",
+      "hint": {
+        "steer": "It reads this before its next step.",
+        "queue": "It answers this after the current answer."
+      }
+    },
+    "limits": {
+      "left": "{{left}} of {{limit}} messages left today · resets {{time}}",
+      "reached": "You've used all {{limit}} messages for today. More at {{time}}.",
+      "upgradePremium": "Premium gives 80 a day",
+      "upgradePro": "Pro gives 400 a day"
+    },
+    "sessions": {
+      "title": "Chats",
+      "new": "New chat",
+      "close": "Close chats",
+      "kept": "Chats are kept for 3 days after the last message.",
+      "loading": "Loading chats…",
+      "loadFailed": "Couldn't load your chats.",
+      "empty": "No chats yet.",
+      "deleteConfirm": "Delete “{{title}}”?",
+      "delete": "Delete",
+      "working": "Working",
+      "deleteLabel": "Delete chat {{title}}",
+      "deleteFailed": "Couldn't delete that chat. Try again.",
+      "untitled": "New chat"
+    },
+    "changes": {
+      "you": "You",
+      "undoneBy": "Undone {{when}} · {{who}}",
+      "conflict": "Can't undo: this was changed again after the assistant's change.",
+      "conflictNow": "What it is now:",
+      "introOwner": "Every change the assistant made on this channel, by anyone. Kept for 90 days.",
+      "introAdmin": "Changes the assistant made for you on this channel. Kept for 90 days.",
+      "loading": "Loading changes…",
+      "loadFailed": "Couldn't load the changes.",
+      "empty": "No changes yet. When you approve a change, it shows up here and you can undo it.",
+      "details": "Before → after",
+      "undoConfirm": "Undo this change? It goes back to how it was before.",
+      "undoing": "Undoing…",
+      "undo": "Undo",
+      "undoLabel": "Undo {{title}}",
+      "more": "Show older"
+    }
   }
 }

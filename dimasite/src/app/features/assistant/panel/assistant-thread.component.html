@@ -1,0 +1,137 @@
+@if (store.sessionState() === 'loading') {
+  <div class="at-loading" role="status">
+    <span class="at-skel at-skel--short"></span>
+    <span class="at-skel"></span>
+    <span class="at-skel at-skel--mid"></span>
+    <span class="sr-only">{{ t('assistant.thread.loading') }}</span>
+  </div>
+} @else if (store.sessionState() === 'error') {
+  <div class="at-problem" role="alert">
+    <p>{{ t('assistant.thread.loadFailed') }}</p>
+    <button type="button" class="at-btn" (appThrottleClick)="reopen()">{{ t('assistant.retry') }}</button>
+  </div>
+} @else if (store.isEmpty()) {
+  <div class="at-empty" data-assistant-empty>
+    <h3 class="at-empty__title">{{ t('assistant.empty.title') }}</h3>
+    <p class="at-empty__copy">{{ t('assistant.empty.copy') }}</p>
+    <ul class="at-examples" [attr.aria-label]="t('assistant.empty.examplesLabel')">
+      @for (key of examples; track key) {
+        <li>
+          <button type="button" class="at-example" [disabled]="store.atLimit()" (appThrottleClick)="example.emit(exampleText(key))">
+            <span class="at-example__kind">{{ t('assistant.empty.kinds.' + key) }}</span>
+            <span class="at-example__text">{{ exampleText(key) }}</span>
+          </button>
+        </li>
+      }
+    </ul>
+  </div>
+}
+
+@if (store.sessionState() !== 'loading' && store.sessionState() !== 'error' && !store.isEmpty()) {
+  <ol class="at-list" [attr.aria-label]="t('assistant.thread.label')">
+    @for (turn of store.turns(); track turn.turnId) {
+      @for (block of turn.blocks; track block.key) {
+        <li class="at-item" [attr.data-kind]="block.type">
+          @switch (block.type) {
+            @case ('user') {
+              <div class="at-user">
+                <span class="sr-only">{{ t('assistant.thread.you') }}:</span>
+                <p class="at-bubble">{{ block.item.text }}</p>
+                @if (block.item.mode !== 'send') {
+                  <span class="at-tag">{{ t('assistant.thread.mode.' + block.item.mode) }}</span>
+                }
+              </div>
+            }
+            @case ('note') {
+              <div class="at-note">
+                <span class="sr-only">{{ t('assistant.thread.note') }}:</span>
+                <app-assistant-markdown [text]="block.item.text" />
+              </div>
+            }
+            @case ('answer') {
+              <div class="at-answer" data-assistant-answer [attr.data-final]="block.item.final">
+                <span class="sr-only">{{ t('assistant.thread.assistant') }}:</span>
+                <app-assistant-markdown [text]="block.item.text" [streaming]="!block.item.final && store.running()" />
+                @if (block.item.final && showFeedback(turn.turnId)) {
+                  <div class="at-feedback">
+                    @if (feedbackGiven(turn.turnId) !== undefined) {
+                      <p class="at-feedback__thanks" role="status">{{ t('assistant.feedback.thanks') }}</p>
+                    } @else {
+                      <span class="at-feedback__q">{{ t('assistant.feedback.question') }}</span>
+                      <button type="button" class="at-thumb" [attr.aria-label]="t('assistant.feedback.helpful')" [title]="t('assistant.feedback.helpful')" (appThrottleClick)="store.feedback(turn.turnId, true)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M7 10v11M15 5.9 14 10h5.8a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 18.4 21H7V10l4-8a3 3 0 0 1 4 3.9Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </button>
+                      <button type="button" class="at-thumb" [attr.aria-label]="t('assistant.feedback.unhelpful')" [title]="t('assistant.feedback.unhelpful')" (appThrottleClick)="store.feedback(turn.turnId, false)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M17 14V3M9 18.1 10 14H4.2a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 5.6 3H17v11l-4 8a3 3 0 0 1-4-3.9Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+            @case ('tools') {
+              <app-assistant-tool-group [items]="block.items" />
+            }
+            @case ('approval') {
+              <app-assistant-approval-card [item]="block.item" (openChanges)="openChanges.emit()" />
+            }
+            @case ('ui') {
+              <div class="at-ui" data-assistant-ui>
+                <app-assistant-ui-frame
+                  [block]="block.item.block"
+                  [state]="block.item.state"
+                  (submitted)="submitUi(block.item, $event)"
+                  (navigateRequest)="frameNavigate($event)" />
+                @if (uiError(block.item)) {
+                  <p class="at-inline-error" role="alert">{{ uiError(block.item) }}</p>
+                }
+              </div>
+            }
+            @case ('navigate') {
+              @if (knownRoute(block.item)) {
+                <div class="at-nav" data-assistant-navigate>
+                  <span class="at-nav__icon" aria-hidden="true"><app-lf-icon name="forward" [size]="15" /></span>
+                  <p class="at-nav__text">
+                    {{ block.item.action.mode === 'go' ? t('assistant.navigate.opened', { label: block.item.action.label }) : t('assistant.navigate.offer', { label: block.item.action.label }) }}
+                  </p>
+                  <button type="button" class="at-btn" [class.at-btn--primary]="block.item.action.mode === 'offer'" (appThrottleClick)="openRoute(block.item)">
+                    {{ block.item.action.mode === 'go' ? t('assistant.navigate.again') : t('assistant.navigate.open', { label: block.item.action.label }) }}
+                  </button>
+                </div>
+              }
+            }
+            @case ('notice') {
+              <div class="at-notice" [class.at-notice--calm]="noticeCalm(block.item)" role="note" [attr.data-code]="block.item.code">
+                <app-lf-icon [name]="noticeCalm(block.item) ? 'pause' : 'alert'" [size]="15" />
+                <p>{{ noticeText(block.item) }}</p>
+              </div>
+            }
+          }
+        </li>
+      }
+      @if (turn.turnId === store.retryableTurnId()) {
+        <li class="at-item at-retry">
+          <button type="button" class="at-btn" [disabled]="store.retrying()" (appThrottleClick)="store.retry(turn.turnId)" data-assistant-retry>
+            <app-lf-icon name="refresh" [size]="15" />{{ t('assistant.retry') }}
+          </button>
+        </li>
+      }
+    }
+    @for (entry of store.pending(); track entry.id) {
+      <li class="at-item" data-kind="pending">
+        <div class="at-user at-user--pending">
+          <p class="at-bubble">{{ entry.text }}</p>
+          <span class="at-tag">{{ pendingNote(entry.mode, entry.state) }}</span>
+        </div>
+      </li>
+    }
+  </ol>
+}
+
+<p class="at-status" [class.at-status--on]="!!statusText()">
+  @if (statusText()) {
+    <span class="at-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+  }
+  <span role="status" aria-live="polite" class="at-status__text" data-assistant-status>{{ statusText() }}</span>
+  <span class="at-status__time" aria-hidden="true">{{ elapsed() }}</span>
+</p>

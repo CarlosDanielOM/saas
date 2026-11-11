@@ -1,0 +1,740 @@
+# DomDimaBot — es
+
+# Docs de DomDimaBot
+
+Guías de DomDimaBot: configura el bot, comandos, alertas, texto a voz, puntos del canal, IA y protección del stream.
+
+Source: https://docs.domdimabot.com/es/
+Language: es
+Documentation index: https://docs.domdimabot.com/llms.txt
+
+&#x20;Documentación
+# ¿En qué te ayudamos?
+Guías paso a paso para configurar DomDimaBot en tu canal de Twitch, escritas para streamers, no para programadores.
+
+Si eres nuevo
+## Pon el bot en marcha en 3 pasos
+
+1. Inicia sesión con Twitch
+   En domdimabot.com, inicia sesión con la cuenta de Twitch dueña del canal.
+2. Enciende el bot
+   En tu panel, haz clic en **Encender el bot** en el encabezado.
+3. Crea tu primer comando
+   Abre **Comandos** y agrega uno. Opcional: haz clic en **Activar bot** para más comandos integrados y las alertas.
+
+[Leer la guía completa](https://docs.domdimabot.com/es/getting-started/index.txt)
+
+¿Ya lo configuraste?
+## Encuentra la guía que necesitas
+
+### Chat y comandos
+
+Responde al chat automáticamente y dale comandos divertidos a tu audiencia.
+
+* [¿Qué página de comandos?](https://docs.domdimabot.com/es/commands/index.txt)
+* [Comandos integrados](https://docs.domdimabot.com/es/commands/built-in/index.txt)
+* [Comandos personalizados y temporizadores](https://docs.domdimabot.com/es/commands/overview/index.txt)
+* [Comandos avanzados (AST)](https://docs.domdimabot.com/es/commands/advanced/index.txt)
+* [Eventos del chat](https://docs.domdimabot.com/es/chat-events/index.txt)
+
+### Alertas, sonido y overlays
+
+Muestra alertas, reproduce medios y lee mensajes en voz alta en el stream.
+
+* [Disparadores y medios](https://docs.domdimabot.com/es/triggers/index.txt)
+* [Biblioteca de medios](https://docs.domdimabot.com/es/media-library/index.txt)
+* [Texto a voz](https://docs.domdimabot.com/es/tts/index.txt)
+* [Estudio de overlays](https://docs.domdimabot.com/es/overlay-studio/index.txt)
+* [Extensión DimaFX](https://docs.domdimabot.com/es/dimafx/index.txt)
+
+### Puntos del canal
+
+Convierte las recompensas de puntos de canal de Twitch en acciones.
+
+* [Recompensas del canal](https://docs.domdimabot.com/es/rewards/index.txt)
+* [Canjes](https://docs.domdimabot.com/es/redemptions/index.txt)
+
+### Funciones de IA
+
+Dale una personalidad al bot y recibe resúmenes de tus transmisiones.
+
+* [Personalidad IA](https://docs.domdimabot.com/es/ai-personality/index.txt)
+* [Memorias](https://docs.domdimabot.com/es/memories/index.txt)
+* [Resúmenes de transmisiones](https://docs.domdimabot.com/es/stream-summaries/index.txt)
+* [Recomendaciones de clips](https://docs.domdimabot.com/es/clip-recommendations/index.txt)
+
+### Seguridad
+
+Protege tu chat y tus seguidores de bots y spam.
+
+* [Defensa de follows](https://docs.domdimabot.com/es/follow-defense/index.txt)
+* [Moderación del chat](https://docs.domdimabot.com/es/moderation/index.txt)
+
+### Crecimiento y estadísticas
+
+Mira cómo va tu canal e invita a otros streamers.
+
+* [Analíticas y registro de seguidores](https://docs.domdimabot.com/es/analytics/index.txt)
+* [Clips](https://docs.domdimabot.com/es/clips/index.txt)
+* [Referidos](https://docs.domdimabot.com/es/referrals/index.txt)
+
+Nuevo · Alfa
+---
+# Sintaxis y Datos de AST
+
+Referencia de sintaxis AST: prefijos, variables y almacenamiento, argumentos, escapes, arrays, operadores, condicionales, bucles, borrado, referencias a comandos y timers.
+
+Source: https://docs.domdimabot.com/es/commands/advanced/syntax/
+Language: es
+Documentation index: https://docs.domdimabot.com/llms.txt
+
+Esta página es la referencia para escribir comandos AST. ¿Es tu primera vez con AST? Lee primero la [guía general de AST](https://docs.domdimabot.com/es/commands/advanced/index.txt).
+
+## Cómo se lee un mensaje
+
+Solo se ejecutan las partes que empiezan con un prefijo. Todo lo demás se copia tal como lo escribes, incluidas las comillas, la puntuación y los emoticonos.
+
+```bash
+Hola $(user)! Bienvenido a "el stream" :)
+→ Hola Carlos! Bienvenido a "el stream" :)
+```
+
+Dentro de un prefijo, las reglas son distintas:
+
+* Un prefijo se ejecuta hasta su `)` correspondiente.
+* Las comillas dobles, `${ }` y los arrays `%[ ]` solo funcionan **dentro** de un prefijo.
+
+> caution:
+>
+> Escribir `"$(user) tiene 2 wins!"` también imprime las comillas. Escribe `$(user) tiene 2 wins!` en su lugar.
+
+## Argumentos
+
+Cuando un viewer ejecuta un comando, sus palabras están disponibles como placeholders. La palabra 1 es la primera palabra después del nombre del comando.
+
+| Placeholder            | Significado                           | Ejemplo                     |
+| ---------------------- | ------------------------------------- | --------------------------- |
+| `&p1`, `&p2`, `&p3`... | Palabra número 1, 2, 3...             | `&p1` = primera palabra     |
+| `&t`                   | Todo desde la última palabra numerada | `&t` = el resto del mensaje |
+
+### Reglas
+
+* Una palabra que no se escribió queda vacía.
+* `&t` toma las palabras que siguen al `&pN` más alto que aparece antes.
+* Puedes reutilizar un `&pN` después de `&t`, pero un `&pN` **nuevo** después de `&t` es un error: `[Parser error: cannot create new &pN after &t]`.
+* En los comandos de chat, lo que escribe el viewer es texto plano. No puede ejecutar código AST.
+
+### Ejemplos
+
+```bash
+Comando: !greet Hello World
+Mensaje: Hello &p1 and &p2!
+→ Hello Hello and World!
+```
+
+```bash
+Comando: !echo lots of args here
+Mensaje: &p1 &p2 &t
+→ lots of args here
+```
+
+```bash
+Mensaje: &t &p1
+→ [Parser error: cannot create new &pN after &t]
+```
+
+## Arrays
+
+Una lista guarda varios valores. Se puede leer, cambiar y contar.
+
+### Agregar y leer listas
+
+```bash
+%(items[] extra)
+%(items)
+→ ["extra"]
+```
+
+Al leer una lista completa se imprime como JSON, por ejemplo `["a","b"]`.
+
+### Listas literales
+
+Una lista literal escribe sus valores directamente. Solo funciona dentro de un prefijo. Usa `[]` para agregar sus elementos a una lista. Una asignación normal guarda los elementos como un solo texto separado por comas, no como lista.
+
+```bash
+%(colors[] %[red, green, blue]) %(colors)
+→ ["red","green","blue"]
+
+%(pick %[1, 2, 3][random]) %(pick)
+→ 2 (un 1, 2 o 3 al azar)
+```
+
+### Accesores
+
+| Sintaxis          | Significado                            | Ejemplo                          |
+| ----------------- | -------------------------------------- | -------------------------------- |
+| `%(arr[0])`       | Elemento por posición, empezando en 0  | `%(items[0])`                    |
+| `%(arr[-1])`      | Elemento contado desde el final        | `%(items[-1])` = último elemento |
+| `%(arr[random])`  | Elemento aleatorio                     | `%(items[random])`               |
+| `%(arr[].length)` | Cantidad de elementos                  | `%(items[].length)`              |
+| `%(arr[] value)`  | Agregar un elemento al final           | `%(items[] extra)`               |
+| `%(arr[2] value)` | Reemplazar el elemento de una posición | `%(items[2] updated)`            |
+| `%del(arr[1])`    | Quitar el elemento de una posición     | `%del(items[1])`                 |
+| `%del(arr[])`     | Vaciar toda la lista                   | `%del(items[])`                  |
+
+Una posición que no existe se lee vacía. Reemplazar una posición que no existe no hace nada.
+
+### Ejemplos
+
+```bash
+%(items[0])
+%(items[random])
+%(items[].length)
+%(items[] extra)
+%(items[1] replacement)
+%(pick %[1, 2, 3][random]) %(pick)
+```
+
+## Referencias a comandos
+
+Puedes ejecutar un comando dentro de otro:
+
+```bash
+#(othercmd arg1 arg2)
+```
+
+Las palabras que siguen al nombre del comando se convierten en su argumento. La referencia no imprime nada en tu mensaje.
+
+### Reglas
+
+* Los comandos pueden llamar a otros comandos hasta 5 niveles de profundidad.
+* Un comando no puede aparecer dos veces en la misma cadena. Los ciclos se bloquean.
+* Se pueden ejecutar hasta 50 referencias por mensaje.
+* Primero se envía tu mensaje. Las referencias del mismo nivel se ejecutan en el orden escrito; las referencias anidadas de cada una terminan antes de pasar a la siguiente.
+* Cada comando referenciado envía su propia respuesta. Esa respuesta no se vuelve a interpretar.
+* Un comando referenciado que no puede ejecutarse se omite, por ejemplo porque está en cooldown o desactivado.
+
+---
+# Comandos integrados
+
+Acceso predeterminado, sintaxis y comportamiento de los comandos integrados del chat de DomDimaBot, como !poll, !duel y !vip.
+
+Source: https://docs.domdimabot.com/es/commands/built-in/
+Language: es
+Documentation index: https://docs.domdimabot.com/llms.txt
+
+Los comandos integrados son herramientas listas que vienen con DomDimaBot. Los espectadores y los moderadores los escriben en el chat. Cada uno tiene un nivel predeterminado de **Quién puede usarlo** y un tiempo de espera, y puedes cambiar ambos. `!so` es un comando personalizado predeterminado que puedes editar; consulta [Comandos personalizados](https://docs.domdimabot.com/es/commands/overview/index.txt) para ver cómo cambiar su acceso y respuesta.
+
+Algunos comandos integrados funcionan en cuanto el bot está encendido, y el bot los agrega por ti: `!s` (texto a voz), `!commands`, `!cc`, `!ec`, `!dc`, `!enable`, `!disable`, `!clip`, `!promo`, `!amor`, `!sumimetro`, `!memide`, `!ponerla` y `!mecabe`.
+
+Los demás necesitan acceso completo, como `!so`, `!poll`, `!endpoll`, las predicciones, `!title`, `!game`, `!followage`, `!onlyemotes`, las herramientas `!vip` y `!mod`, `!clearchat`, `!vanish`, `!ruletarusa`, `!duel`, `!anuncio` y los comandos de temporizadores `!cct`, `!ect` y `!dct` (los temporizadores empiezan y terminan con tu stream). Hasta que hagas clic en **Activar bot**, la página **Comandos** los muestra bloqueados con **Necesita acceso completo**. Consulta [Primeros pasos](https://docs.domdimabot.com/es/getting-started/index.txt).
+
+## Activarlos o cambiar el acceso
+
+* **En el dashboard:** abre **Comandos**, busca la sección **Incluidos** y usa el interruptor **Activo en el chat**. Abre un comando para cambiar **Quién puede usarlo**.
+* **En el chat:** los moderadores pueden usar `!enable <nombre>` y `!disable <nombre>`. El nombre funciona con o sin `!`.
+* **Los comandos integrados reservados no se pueden eliminar.** Las plantillas predeterminadas editables, como `!s` y `!followage`, sí se pueden editar o eliminar.
+* **Tiempos de espera:** la mayoría de los comandos integrados esperan 10 segundos entre usos. La espera es compartida por todo el canal. `!s` y `!vanish` no tienen espera.
+
+Los canales nuevos reciben `!s` activo para todos. Cuando activas el bot, `!clearchat` se agrega desactivado. Si ya creaste tu propio comando con el mismo nombre, como `!s` o `!so`, el bot conserva el tuyo. Los canales existentes conservan su configuración guardada.
+
+En las tablas siguientes, **Cualquiera** significa cualquier persona en el chat, **Moderadores o más** incluye a moderadores, editores, admins y a ti, y **Editores o más** incluye a editores, admins y a ti.
+
+## Información
+
+| Comando      | Uso          | Quién puede usarlo | Qué hace                                                                                                                                                                                |
+| ------------ | ------------ | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `!commands`  | `!commands`  | Cualquiera         | Muestra los comandos que la persona puede usar. No incluye palabras clave ni mensajes que se repiten.                                                                                   |
+| `!followage` | `!followage` | Cualquiera         | La respuesta predeterminada muestra cuánto tiempo lleva siguiendo el canal quien escribe, en años, meses, días y horas. Su plantilla editable no usa el nombre indicado como argumento. |
+
+## Diversión y juegos
+
+| Comando       | Uso                                                       | Quién puede usarlo | Qué hace                                                                                                                                                                                            |
+| ------------- | --------------------------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `!sumimetro`  | `!sumimetro [usuario]`                                    | Cualquiera         | Da una lectura aleatoria de sumiso y dominante. Cada espectador recibe una lectura, que se recuerda durante 20 horas. Si indicas un nombre, muestra la lectura guardada de esa persona.             |
+| `!amor`       | `!amor <usuario>` o `!amor <usuario1> <usuario2>`         | Cualquiera         | Da un porcentaje de amor aleatorio. Con un nombre, compara a quien escribe con esa persona.                                                                                                         |
+| `!memide`     | `!memide`                                                 | Cualquiera         | Da una medida aleatoria en tono de broma.                                                                                                                                                           |
+| `!ponerla`    | `!ponerla`                                                | Cualquiera         | Da un porcentaje aleatorio en tono de broma.                                                                                                                                                        |
+| `!mecabe`     | `!mecabe`                                                 | Cualquiera         | Da una medida aleatoria en tono de broma.                                                                                                                                                           |
+| `!ruletarusa` | `!ruletarusa`                                             | Cualquiera         | Aprieta el gatillo. Los detalles están abajo.                                                                                                                                                       |
+| `!duel`       | `!duel <usuario>`, luego `!duel accept` o `!duel decline` | Cualquiera         | Reta a un espectador a un duelo. Los detalles están abajo.                                                                                                                                          |
+| `!vanish`     | `!vanish`                                                 | Cualquiera         | Aplica un timeout de 3 segundos a quien escribe, para que sus mensajes desaparezcan. Los moderadores pierden el rol de mod durante 10 segundos y luego lo recuperan. Los editores no pueden usarlo. |
+
+## Texto a voz
+
+| Comando | Uso            | Quién puede usarlo | Qué hace                                                                                                                                                                                                              |
+| ------- | -------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `!s`    | `!s <mensaje>` | Cualquiera         | Lee el mensaje en voz alta con texto a voz. Usa créditos de TTS. La respuesta es una plantilla editable, `$(tts $(user) dice: &t)` por defecto. Consulta [Texto a voz](https://docs.domdimabot.com/es/tts/index.txt). |
+
+## Stream y shoutouts
+
+| Comando       | Uso                         | Quién puede usarlo                          | Qué hace                                                                                                                                                                                                                      |
+| ------------- | --------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `!clip`       | `!clip [segundos] [título]` | Cualquiera                                  | Crea un clip y publica su enlace. Si la primera palabra es un número del 5 al 60, define la duración. Cualquier otra primera palabra inicia el título. Los números fuera de 5–60 usan 30 segundos.                            |
+| `!promo`      | `!promo <usuario>`          | Moderadores o más                           | Muestra un clip del canal indicado cuando hay uno disponible.                                                                                                                                                                 |
+| `!anuncio`    | `!anuncio <mensaje>`        | Moderadores o más                           | Publica un anuncio de Twitch. El mensaje puede tener hasta 300 caracteres.                                                                                                                                                    |
+| `!game`       | `!game <nombre>`            | Moderadores o más                           | Cambia la categoría del stream. Si ninguna categoría coincide exactamente con el nombre, el bot usa el primer resultado de búsqueda. Sin nombre, responde con la categoría actual. Primero se comprueba el acceso al comando. |
+| `!title`      | `!title <título>`           | Moderadores o más                           | Cambia el título del stream. Sin título, responde con el título actual. Primero se comprueba el acceso al comando.                                                                                                            |
+| `!onlyemotes` | `!onlyemotes [segundos]`    | Moderadores o más                           | Activa o desactiva el chat solo con emotes. Cada uso cambia el modo. Agrega segundos para activarlo durante ese tiempo.                                                                                                       |
+| `!clearchat`  | `!clearchat`                | Moderadores o más (desactivado por defecto) | Limpia el chat.                                                                                                                                                                                                               |
+
+## Encuestas y predicciones
+
+| Comando        | Uso                                                    | Quién puede usarlo | Qué hace                                                                         |
+| -------------- | ------------------------------------------------------ | ------------------ | -------------------------------------------------------------------------------- |
+| `!poll`        | `!poll <título>;<opción1>/<opción2>;<segundos>`        | Moderadores o más  | Inicia una encuesta de Twitch.                                                   |
+| `!endpoll`     | `!endpoll`                                             | Moderadores o más  | Termina la encuesta activa.                                                      |
+| `!cancelpoll`  | `!cancelpoll`                                          | Moderadores o más  | Cancela la encuesta activa.                                                      |
+| `!predi`       | `!predi <título>;<resultado1>/<resultado2>;<segundos>` | Moderadores o más  | Inicia una predicción de Twitch.                                                 |
+| `!lockpredi`   | `!lockpredi`                                           | Moderadores o más  | Cierra las apuestas de la predicción activa.                                     |
+| `!endpredi`    | `!endpredi <número>`                                   | Moderadores o más  | Termina la predicción y elige al ganador por número. `1` es el primer resultado. |
+| `!cancelpredi` | `!cancelpredi`                                         | Moderadores o más  | Cancela una predicción activa o bloqueada.                                       |
+
+## Mods y VIPs
+
+| Comando  | Uso                     | Quién puede usarlo | Qué hace                                                                                                                                                                                                                                   |
+| -------- | ----------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `!mod`   | `!mod <usuario>`        | Editores o más     | Agrega un moderador.                                                                                                                                                                                                                       |
+| `!unmod` | `!unmod <usuario>`      | Editores o más     | Quita un moderador.                                                                                                                                                                                                                        |
+| `!vip`   | `!vip <usuario> [días]` | Editores o más     | Agrega un VIP. Con días (`1`–`365`), el bot programa la retirada después de ese plazo. El VIP se añade antes de validar la duración, por lo que una duración inválida puede dejar al usuario como VIP. Sin días, dura hasta que lo quites. |
+| `!unvip` | `!unvip <usuario>`      | Editores o más     | Quita un VIP.                                                                                                                                                                                                                              |
+
+## Gestionar comandos desde el chat
+
+| Comando    | Uso                                        | Quién puede usarlo | Qué hace                                                                                                                       |
+| ---------- | ------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `!cc`      | `!cc <nombre> <respuesta>`                 | Moderadores o más  | Crea un comando personalizado. Consulta [Comandos personalizados](https://docs.domdimabot.com/es/commands/overview/index.txt). |
+| `!ec`      | `!ec <nombre> <respuesta>`                 | Moderadores o más  | Edita la respuesta, la espera o el acceso de un comando personalizado.                                                         |
+| `!dc`      | `!dc <nombre>`                             | Moderadores o más  | Elimina un comando personalizado.                                                                                              |
+| `!enable`  | `!enable <nombre>`                         | Moderadores o más  | Activa un comando.                                                                                                             |
+| `!disable` | `!disable <nombre>`                        | Moderadores o más  | Desactiva un comando.                                                                                                          |
+| `!cct`     | `!cct <nombre> <minutos> <mensaje>`        | Moderadores o más  | Crea un mensaje que se repite. Consulta [Comandos personalizados](https://docs.domdimabot.com/es/commands/overview/index.txt). |
+| `!ect`     | `!ect <nombre> [minutos] [mensaje]`        | Moderadores o más  | Edita un mensaje que se repite.                                                                                                |
+| `!dct`     | `!dct <nombre>`                            | Moderadores o más  | Elimina un mensaje que se repite.                                                                                              |
+| `!timer`   | `!timer create`, `edit`, `delete` o `list` | Moderadores o más  | Hace lo mismo que `!cct`, `!ect` y `!dct` en un solo comando. `!timers` también funciona.                                      |
+
+## Detalles
+
+### Ruleta rusa
+
+* Cada jalón tiene 1 posibilidad en 3 de disparar.
+* La primera pérdida normalmente da un timeout de 10 segundos. Cada pérdida siguiente suma 10 segundos: 20, luego 30, y así sucesivamente. Un canal tiene un mínimo de 300 segundos. El conteo se reinicia 10 minutos después de la primera pérdida.
+* Los editores y el dueño del canal no pueden jugar.
+* Un moderador que pierde deja de ser moderador durante el timeout y luego vuelve a serlo.
+
+### Duelos
+
+* `!duel <usuario>` reta a un espectador. Tiene 30 segundos para responder con `!duel accept` o `!duel decline`.
+* Retar al streamer no requiere respuesta. El streamer pelea de inmediato, con mejores probabilidades.
+* Quien pierde recibe un timeout cuando los timeouts están activados. El valor predeterminado es 60 segundos. Cámbialo en **Widgets** → **Duel**.
+* El streamer y los editores nunca reciben timeout. Un moderador que pierde deja de ser moderador durante el timeout y luego vuelve a serlo.
+* En Premium y Pro, los mensajes del duelo usan el idioma configurado para el widget Duel. En Gratis, usan el idioma de la cuenta del streamer hasta que se guarde un idioma para Duel; después, usan el idioma guardado en el widget.
+
+### Encuestas y predicciones
+
+* Separa el título, las opciones y la duración con `;`. Separa las opciones con `/`. La duración va en segundos.
+
+  ```text
+  !poll ¿Ganará el streamer?;Sí/No;60
+  !predi ¿Ganará el streamer?;Sí/No;60
+  ```
+
+* Twitch define los límites de longitud del título, la cantidad de opciones y la duración. Si Twitch rechaza una solicitud, el bot responde con el error de Twitch.
+
+* `!endpredi` usa el número del resultado. `1` es el primer resultado. El número debe corresponder a un resultado existente.
+
+* Cada comando necesita una encuesta o predicción activa. Si no hay ninguna, el bot lo indica.
+
+### Cambiar la configuración de un comando integrado con `!ec`
+
+Los moderadores pueden cambiar la espera o el acceso de un comando integrado sin usar el dashboard:
+
+```text
+!ec -cd=30 ruletarusa
+!ec -ul=mod duel
+```
+
+Pon las opciones antes del nombre. Los límites de acceso y de espera de [Comandos personalizados](https://docs.domdimabot.com/es/commands/overview/index.txt) también aplican aquí.
+
+
+---
+
+# Follow Defense
+
+Detecta ráfagas de follows de bots o hate raids, pausa las alertas de follow y banea a los seguidores registrados solo cuando una oleada se convierte en ataque.
+
+Source: https://docs.domdimabot.com/es/follow-defense/
+Language: es
+Documentation index: https://docs.domdimabot.com/llms.txt
+
+Follow Defense vigila las ráfagas repentinas de follows, como las de bots de follows o los hate raids. Cuando empieza una ráfaga, pausa las alertas de follow y registra quién siguió. Solo banea seguidores cuando una oleada llega al modo Ataque. Funciona en segundo plano y está disponible en todos los planes.
+
+Para ver Follow Defense necesitas el permiso `moderation:view`. Para cambiar la configuración, activar el modo Ataque o banear seguidores de una raid necesitas `moderation:manage`. La persona propietaria del canal tiene ambos.
+
+**Necesita acceso completo:** Follow Defense empieza a funcionar cuando activas el bot. Puedes configurarlo antes; la página muestra un aviso **Necesita acceso completo** con un botón **Activar bot**. Consulta [Primeros pasos](https://docs.domdimabot.com/es/getting-started/index.txt).
+
+## Configurarlo
+
+1. Abre **Módulos → Follow Defense** en el panel de tu canal. Revisa el modo actual y los follows registrados.
+2. Mantén los valores predeterminados durante un periodo inicial de observación. Desactiva **Habilitar Follow Defense** solo si otra herramienta ya se encarga de las avalanchas de follows.
+3. Configura los umbrales de **Silencio** y **Protección** por encima de tus ráfagas normales. Deja vacío **Umbral de ataque** para usar sensibilidad dinámica, o escribe un número.
+4. Decide si debe seguir activado **Cambiar de modo Ataque a Protección con una nueva raid**. Viene activado por defecto.
+5. Si añades un comando `!defmode`, limítalo a moderadores de confianza, porque puede poner baneos en cola.
+6. Después de un incidente, revisa **Oleadas anteriores** y las sesiones de raid, y ajusta los números.
+
+[![Ajustes y estado actual de Follow Defense para DemoStreamer](https://docs.domdimabot.com/guides/growth/follow-defense-es.png)](https://docs.domdimabot.com/guides/growth/follow-defense-es.png)
+
+*Umbrales de ejemplo y un canal de muestra tranquilo; no hay acciones de moderación activas.*
+
+## Modos
+
+| Modo           | Empieza cuando (predeterminados)                                            | Qué hace                                                                                                                      | ¿Banea?        |
+| -------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| **Normal**     | No hay ninguna ráfaga activa                                                | Nada.                                                                                                                         | No             |
+| **Silencio**   | 10 follows en 5 segundos                                                    | Pausa las alertas de follow y registra la oleada.                                                                             | No             |
+| **Protección** | 100 follows en la ventana de 5 segundos, o la oleada registrada llega a 100 | Pausa las alertas de follow y registra a cada seguidor. Fuera de una raid, envía un aviso en el chat. Puede escalar a Ataque. | No             |
+| **Ataque**     | Se alcanza el umbral de ataque o lo activa un moderador                     | Banea a todos los registrados en la oleada y a cada nuevo follow mientras Ataque esté activo.                                 | Sí, permanente |
+
+De forma predeterminada, cada modo se mantiene activo 60 segundos después de que una ráfaga de follows renueva la oleada. Puedes cambiar esta duración compartida en la configuración. A medida que crece una oleada activa, su conteo de follows registrados puede alcanzar el umbral de Protección o Ataque aunque no hayan llegado todos dentro de una misma ventana de 5 segundos. Cada modo se evalúa por separado y gana el más alto que se cumpla: Ataque gana a Protección, y Protección gana a Silencio.
+
+> caution:
+>
+> Los baneos de Ataque son baneos permanentes de Twitch, no timeouts. Fuera de una raid, solo Ataque banea seguidores. Protección y Silencio nunca banean. Una ráfaga es una señal de actividad inusual, no una prueba de que todos los seguidores sean abusivos. Ajusta los umbrales a tu canal y revisa la oleada registrada antes de confiar en el modo Ataque automático.
+
+## Umbral de ataque
+
+Deja vacío **Umbral de ataque** para usar sensibilidad dinámica. El umbral se calcula con los últimos 30 días de follows y de streams completados. Solo se usa cuando el canal tiene al menos 7 días de actividad de follows y 3 streams completados. Nunca es menor de 500, y puede ser mayor en canales con un volumen normal más alto.
+
+Mientras no haya historial suficiente, el modo Ataque automático no tiene umbral y no se activa por una ráfaga. Silencio y Protección siguen funcionando.
+
+Para fijar un umbral, escribe un número entero positivo. Usa un número fijo solo si tienes una razón clara.
+
+## Alertas de follow
+
+Mientras Silencio, Protección o Ataque estén activos, el bot retiene los mensajes de alerta de follow en el chat. Cada follow retenido se cuenta.
+
+Cuando termina el modo, el bot publica un resumen, pero solo si las alertas de follow están activadas en el canal:
+
+* Silencio o Protección: `Recibimos N follows adicionales mientras los anuncios estaban en pausa. ¡Gracias por seguir el canal!`
+* Ataque: cuántos anuncios se bloquearon y cuántas cuentas se han baneado hasta ahora.
+
+Follow Defense no cambia los overlays ni otras integraciones. Revísalos por separado si también muestran alertas de follow.
+
+Una ráfaga por sí sola no demuestra intención maliciosa. El historial de ataques registra el modo, si hubo una raid, los totales de follows y los resultados de los baneos.
+
+## Raids
+
+Una sesión de raid empieza a registrar los follows asociados durante 5 minutos; cada follow registrado puede ampliar ese periodo otros 5 minutos. Las sesiones permanecen disponibles en el panel hasta 72 horas. El mínimo de espectadores se aplica a los anuncios de raid; no decide si Follow Defense registra una sesión.
+
+Durante una raid:
+
+* Los follows de una raid no activan Ataque automático ni se banean por defecto. Si desactivas **Cambiar de modo Ataque a Protección con una nueva raid**, un Ataque que ya estaba activo continúa y puede banear los follows de la nueva raid.
+* Los follows quedan registrados en el panel de sesiones de raid. En Free puedes revisar las sesiones y los seguidores. Banear una sesión completa del historial requiere Premium o Pro; banear a un seguidor histórico individual requiere Pro. En Free también puedes activar Ataque mientras la protección en vivo está activa.
+* Protección todavía puede activarse.
+
+**Cambiar de modo Ataque a Protección con una nueva raid** viene activado por defecto. Una nueva raid cambia un Ataque activo a Protección. Si lo desactivas, un Ataque activo continúa en la nueva raid y sus follows pueden ser baneados.
+
+Un Ataque manual durante una raid marca la raid como posible hate raid y pone en revisión los follows registrados de esa raid. No garantiza baneos inmediatos. El canal que hizo la raid puede aparecer en **Fuentes de Hate Raid**. Esa etiqueta no demuestra intención.
+
+## Controles manuales
+
+* **Activar Modo Ataque** inicia el modo Ataque. Debes escribir `ATTACK` para confirmar.
+* **Detener Modo Ataque** reinicia el modo actual a Normal.
+* En el chat, `$(bot.mode attack)` pone en cola el modo Ataque, y `$(bot.mode status)` muestra el modo actual y los segundos restantes. Cuando los llama la personalidad del bot mediante el chat de IA, ambos requieren nivel de moderador (7) o superior. En un comando personalizado, su configuración de acceso determina quién puede invocarlos. Por ejemplo, un comando `!defmode` puede responder con `$(bot.mode attack)`; considera limitarlo a moderadores de confianza.
+
+## Historial
+
+**Oleadas anteriores** muestra cada vez que se activó un modo, la más reciente primero. Para cada oleada puedes ver el modo, qué la inició, los follows totales y su ritmo, si hubo una raid y cuántos fueron baneados.
+
+## Desactivarlo
+
+Desactivar **Habilitar Follow Defense** detiene las nuevas decisiones y deja de retener las alertas de follow. El historial existente se conserva. Desactivar Ataque o Protección también cancela las acciones de defensa que sigan pendientes.
+
+Si dependes de otro bot o servicio para las alertas de follow o la moderación, confirma cómo se comporta esa herramienta antes de cambiar de sistema.
+
+
+---
+
+# Planes
+
+Compara los planes Gratis, Premium y Pro, con créditos de IA mensuales, enfriamientos de comandos, límites de carga y almacenamiento, y los módulos que desbloquea cada plan.
+
+Source: https://docs.domdimabot.com/es/plans/
+Language: es
+Documentation index: https://docs.domdimabot.com/llms.txt
+
+DomDimaBot tiene tres planes: Gratis, Premium y Pro. El plan del propietario del canal define los créditos de IA, los límites y los módulos del canal, incluidos los enfriamientos de comandos para todos los espectadores. Consulta la sección **Precios** del sitio público para confirmar la oferta actual antes de suscribirte.
+
+## Planes mensuales
+
+| Plan    | Precio mostrado en el sitio | Créditos de IA al mes |
+| ------- | --------------------------: | --------------------: |
+| Gratis  |                          $0 |                25 000 |
+| Premium |                      $6/mes |               200 000 |
+| Pro     |                     $15/mes |               800 000 |
+
+La asignación de créditos de los planes de pago sigue el periodo de facturación activo. Las recargas mensuales Gratis restauran los créditos usados en el periodo anterior, hasta 25 000; la asignación no utilizada no añade créditos extra. Los paquetes de créditos comprados sí se acumulan; las recargas para planes de pago vencen al final del periodo de facturación aplicable. Tu saldo y la fecha de reinicio aparecen en **Uso de créditos** del panel. Las funciones de IA, como el chat con IA, el procesamiento de memoria y las herramientas de voz o clips, usan los créditos del canal. El consumo varía según la función y su configuración. Para añadir créditos sin cambiar de plan, usa **Comprar créditos de IA** en el menú de perfil.
+
+Consulta [Asistentes de IA](https://docs.domdimabot.com/es/ai-assistants/index.txt), [Texto a voz](https://docs.domdimabot.com/es/tts/index.txt) y [Personalidad de IA](https://docs.domdimabot.com/es/ai-personality/index.txt) para ver las funciones que usan créditos.
+
+## Límites
+
+| Límite                                                  | Gratis     | Premium    | Pro       |
+| ------------------------------------------------------- | ---------- | ---------- | --------- |
+| Enfriamiento de comando más corto que puedes configurar | 5 segundos | 3 segundos | 1 segundo |
+| Almacenamiento privado de la Biblioteca de medios       | Ninguno    | 250 MB     | 1 GB      |
+| Archivo más grande por carga                            | 5 MB       | 25 MB      | 100 MB    |
+| Disponibilidad de la Cronología del stream              | 90 días    | 90 días    | 90 días   |
+| Retención de instantáneas de espectadores               | 90 días    | 90 días    | 90 días   |
+
+* Un comando editable por canal puede tener un enfriamiento de `0`. En los demás casos, usa al menos el mínimo de tu plan. Los comandos reservados no pueden cambiarse a `0`, pero los valores predeterminados sin enfriamiento, como `!vanish`, conservan ese ajuste.
+* Los medios públicos no usan almacenamiento privado. Solo los archivos privados cuentan para el límite de almacenamiento.
+* Los proveedores de texto a voz están disponibles en todos los planes. La voz con IA consume créditos.
+* La comparación pública de Precios muestra actualmente otras cifras de retención. Para la Cronología y las instantáneas de espectadores, usa los límites de 90 días de arriba. Las memorias guardadas no tienen un calendario de eliminación garantizado según el plan. Consulta [Analíticas](https://docs.domdimabot.com/es/analytics/index.txt) y [Memorias](https://docs.domdimabot.com/es/memories/index.txt).
+
+## Acceso a módulos
+
+La mayoría de los módulos están disponibles en Gratis. La tabla de abajo muestra algunos módulos y sus requisitos de acceso. La [guía de módulos](https://docs.domdimabot.com/es/modules/index.txt) tiene el catálogo completo.
+
+| Módulo                              | Plan mínimo                  | Estado                                              |
+| ----------------------------------- | ---------------------------- | --------------------------------------------------- |
+| Analíticas y Registro de seguidores | Premium (Pro también cumple) | Estable                                             |
+| Hub de widgets y Duel               | Gratis                       | Alpha                                               |
+| Widget de Dead by Daylight          | Premium (Pro también cumple) | Alpha                                               |
+| Mascota                             | Premium (Pro también cumple) | Alpha. Solo el propietario del canal puede abrirla. |
+| Ruleta                              | Gratis                       | Alpha                                               |
+| Estudio de overlays                 | Gratis                       | Alpha. Solo el propietario del canal puede abrirlo. |
+
+Un plan desbloquea un módulo, pero no concede todos los roles del panel ni los permisos de Twitch que una función necesita. Consulta [Panel de control](https://docs.domdimabot.com/es/dashboard/index.txt) si falta un módulo que esperabas ver.
+
+Para la oferta vigente, revisa **Precios** en el sitio público. Los precios mostrados pueden diferir de las ofertas del checkout; revisa el checkout antes de pagar.
+
+
+---
+
+# Texto a voz
+
+Configura la superposición de voz, elige un motor de voz, usa el comando !s y las funciones AST de voz, y administra filtros, límites de cola y créditos de IA.
+
+Source: https://docs.domdimabot.com/es/tts/
+Language: es
+Documentation index: https://docs.domdimabot.com/llms.txt
+
+El texto a voz (TTS) lee mensajes en voz alta durante tu stream. Tus espectadores usan el comando de chat `!s`, y tus comandos y recompensas de puntos del canal pueden usar funciones AST. El audio se reproduce desde una fuente de navegador en OBS, así que el stream lo escucha.
+
+**Quién puede cambiarlo:** el propietario del canal, o un administrador con `tts:manage`. Los administradores con `tts:view` pueden ver la configuración, pero no cambiarla.
+
+**Planes:** todos los planes incluyen todos los motores de voz. El uso sale de tus [créditos de IA](https://docs.domdimabot.com/es/tts/index.txt#cr%C3%A9ditos-de-ia-y-respaldos) mensuales.
+
+## Configurar la superposición de voz
+
+1. Ve a **Módulos → Texto a voz** y activa **Habilitar TTS del canal**.
+2. En **URL de voz**, haz clic en **Copiar URL**.
+3. En OBS, agrega una **Fuente de navegador** con esa URL. Mantén la fuente activa mientras quieras que se reproduzca la voz.
+4. Revisa que el bot esté encendido (el encabezado del panel muestra **Bot en tu chat**) y que el comando **Speech Chat** (`!s`) esté activado en **Comandos**. Luego escribe `!s Hola chat!` en tu chat para probarlo. `!s` funciona sin activar el bot.
+
+Si la fuente de navegador no está conectada, las nuevas solicitudes de voz se rechazan con el mensaje "Speech overlay is not connected" (la superposición de voz no está conectada). Los mensajes en cola esperan hasta que la fuente se vuelva a conectar.
+
+## Elegir un motor de voz
+
+Elige el motor en **Módulos → Texto a voz → Voz**. El motor que elijas es el predeterminado para `!s` y para `$(tts ...)`.
+
+[![Configuración, TTS activo, Kokoro seleccionado, controles de voz en español y barra para guardar.](https://docs.domdimabot.com/guides/alerts/tts-es.png)](https://docs.domdimabot.com/guides/alerts/tts-es.png)
+
+*Configuración de Texto a voz en español, con Kokoro seleccionado. Datos de ejemplo de DemoStreamer.*
+
+| Motor          | Voces                                                                                       | Costo                                                      | Etiquetas de voz |
+| -------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------- |
+| **Piper**      | Una voz en inglés (Ryan, `en_US-ryan-medium`) y una en español (Ald, `es_MX-ald-medium`).   | 1 crédito por cada 50 caracteres, redondeado hacia arriba. | Se quitan.       |
+| **Kokoro**     | Voces predefinidas, por ejemplo `af_heart` (inglés) y `ef_dora` (español).                  | 1 crédito por cada 15 caracteres, redondeado hacia arriba. | Se quitan.       |
+| **Fish Audio** | Voces clonadas. Cuatro voces integradas, más cualquier voz que encuentres en el explorador. | 1.5 créditos por carácter, redondeado hacia arriba.        | Funcionan.       |
+
+**Dima Voice** aparece en la lista como "Próximamente". Todavía no puedes seleccionarlo.
+
+### Piper
+
+Piper usa la voz de Ryan para inglés y la de Ald para español. El panel usa el idioma predeterminado del canal para elegir entre ellas.
+
+Piper sigue funcionando cuando se acaban tus créditos. Su uso puede dejar tu saldo de créditos en negativo.
+
+### Kokoro
+
+Usa Kokoro si quieres un conjunto de voces predefinidas. Elige una voz de Kokoro predeterminada en el panel, o elige una por comando con `$(tts.kokoro voz_name texto)`.
+
+### Fish Audio
+
+Fish Audio ofrece voces clonadas. Las cuatro voces integradas son:
+
+* `gojo` (Gojo)
+* `rias_gremory` (Rias Gremory)
+* `toji_fushiguro` (Toji Fushiguro)
+* `carlos_bodoque` (Carlos Bodoque)
+
+Fish Audio es el único motor que lee las [etiquetas de voz](https://docs.domdimabot.com/es/tts/index.txt#etiquetas-de-voz-solo-fish-audio).
+
+### Buscar y guardar voces de Fish
+
+Abre **Buscar voz** en la sección de Fish Audio para explorar la biblioteca de voces. Las muestras de Fish se reproducen gratis. Generar una vista previa usa créditos.
+
+Haz clic en la estrella de una voz para guardarla como **favorita**. Un canal puede tener hasta 20 favoritas. Después, dale un **apodo** a la favorita para usarla en los comandos:
+
+* Usa de 1 a 40 letras, números o guiones bajos. Empieza con una letra.
+* Los apodos no distinguen mayúsculas. Se guardan en minúsculas.
+* Los apodos deben ser únicos. No puedes usar los nombres de las cuatro voces integradas.
+* Si no le pones apodo, DomDimaBot crea uno a partir del nombre de la voz. Por ejemplo, **Pinky Pie** se convierte en `pinky_pie`. Si ese nombre ya está en uso, se agrega un número, como `pinky_pie_2`.
+
+Solo los propietarios y los administradores con `tts:manage` pueden guardar, renombrar o quitar favoritas.
+
+### Usar una voz de Fish en un comando
+
+En `$(tts.clone ...)` y su alias `$(tts.fish ...)`, el primer argumento es una sola clave de voz. Usa una clave integrada, el apodo de una favorita o el ID de una voz de Fish. Los nombres con espacios no funcionan aquí.
+
+```text
+$(tts.fish carlos_bodoque &t)
+$(tts.fish bodoquin &t)
+```
+
+En la primera línea, `&t` es el texto que escribió el espectador. En la segunda, `bodoquin` es el apodo de una favorita guardada.
+
+`$(set.voice ...)` también acepta el nombre visible completo de una favorita, incluidos los espacios.
+
+## Comando de chat: `!s`
+
+**Uso:** `!s <mensaje>`
+
+`!s` funciona como un comando AST normal. Lee el mensaje con el motor y la voz predeterminados del canal. El comando **Speech Chat** viene activado para todos, sin enfriamiento.
+
+La plantilla predeterminada es:
+
+```text
+$(tts $(user) dice: &t)
+```
+
+Entonces el chat escucha el nombre del espectador, después `dice:` y luego el mensaje. Para cambiar la redacción, edita el comando **Speech Chat** en **Comandos** o desde la página de TTS. El idioma cambia la voz, no el texto de la plantilla.
+
+```text
+!s Hola chat, bienvenidos al stream!
+```
+
+Los mensajes del chat pasan por los [filtros de mensajes](https://docs.domdimabot.com/es/tts/index.txt#filtros-y-l%C3%ADmites-de-mensajes) antes de leerse. Si después del filtrado no queda texto legible, la solicitud se rechaza.
+
+**Enfriamientos:** el comando Speech Chat tiene un enfriamiento de 0 segundos. Cada canal puede tener solo un comando editable con enfriamiento de 0 segundos. Los demás comandos deben esperar al menos 5 segundos en Free, 3 segundos en Premium o 1 segundo en Pro.
+
+## Funciones AST
+
+Úsalas en comandos personalizados, temporizadores y recompensas de puntos del canal. Consulta [Comandos avanzados](https://docs.domdimabot.com/es/commands/advanced/index.txt) para entender cómo funciona AST.
+
+| Función                         | Qué hace                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$(tts <mensaje>)`              | Habla con el motor y la voz predeterminados del canal.                                                                                                                                                                                                                                                                                                                                                                                          |
+| `$(tts.ai <mensaje>)`           | Igual que `$(tts ...)`.                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `$(tts.speak <mensaje>)`        | Habla con Piper, aunque otro motor sea el predeterminado.                                                                                                                                                                                                                                                                                                                                                                                       |
+| `$(tts.piper <mensaje>)`        | Igual que `$(tts.speak ...)`.                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `$(tts.kokoro <voz> <mensaje>)` | Habla con una voz predefinida de Kokoro, como `ef_dora`.                                                                                                                                                                                                                                                                                                                                                                                        |
+| `$(tts.clone <voz> <mensaje>)`  | Habla con una voz de Fish Audio. El primer argumento es una clave integrada, el apodo de una favorita o el ID de una voz de Fish.                                                                                                                                                                                                                                                                                                               |
+| `$(tts.fish <voz> <mensaje>)`   | Igual que `$(tts.clone ...)`.                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `$(set.voice <voz>)`            | Cambia la voz predeterminada de Fish del canal y convierte a Fish en el motor predeterminado. Acepta una clave integrada, el apodo de una favorita o su nombre visible. Después, el bot publica "TTS voice changed to …" en el chat. En el chat de personalidad de IA requiere acceso de moderador. En un comando creado por el streamer, este elige quién puede ejecutarlo; configura el acceso con cuidado porque cambia el ajuste del canal. |
+
+```text
+$(tts Hola chat!)
+$(tts.speak Esto usa Piper.)
+$(tts.kokoro ef_dora ¡Hola chat!)
+$(tts.clone gojo ¡Hola desde Gojo!)
+$(tts.fish carlos_bodoque &t)
+$(set.voice mi_favorita)
+```
+
+Las funciones que leen texto del espectador, como `&t`, funcionan mejor en recompensas de puntos del canal con **El espectador debe escribir algo** activado. Consulta [Recompensas del canal](https://docs.domdimabot.com/es/rewards/index.txt).
+
+Para `$(tts.status)`, `$(tts.connected)`, `$(tts.queue.length)` y los controles para omitir, vaciar y reconectar, consulta [Estado y controles de TTS](https://docs.domdimabot.com/es/commands/advanced/functions/index.txt#estado-y-controles-de-tts).
+
+### Comportamiento de la cola y de la superposición
+
+* La voz se reproduce en orden, de un mensaje a la vez, por canal.
+* La opción **Máximo de mensajes en espera** cuenta el mensaje que se está reproduciendo. Con el valor predeterminado de 5, uno se reproduce y cuatro esperan.
+* Si la fuente de navegador se desconecta, las nuevas solicitudes se rechazan. Los mensajes que ya esperan siguen en la cola y se reproducen cuando la fuente vuelve a conectarse.
+* Un mensaje interrumpido por una desconexión no se vuelve a reproducir.
+
+## Filtros y límites de mensajes
+
+Configúralos en **Módulos → Texto a voz → Límites de mensajes**:
+
+| Opción                               | Predeterminado | Rango  | Qué hace                                                    |
+| ------------------------------------ | -------------- | ------ | ----------------------------------------------------------- |
+| **Máximo de caracteres por mensaje** | 280            | 30–500 | Los mensajes más largos se cortan a este largo.             |
+| **Máximo de mensajes en espera**     | 5              | 1–20   | El tamaño de la cola, incluido el mensaje que se reproduce. |
+| **Omitir emotes**                    | Activado       |        | Quita los nombres de los emotes antes de leer.              |
+| **Enlaces como \[link]**             | Activado       |        | Sustituye los enlaces por `[link]` antes de la lectura.     |
+| **Quitar espacios extra**            | Activado       |        | Une los espacios repetidos.                                 |
+
+Los filtros se aplican a los mensajes del chat y a la voz de AST. Las etiquetas se filtran antes de aplicar el límite de longitud.
+
+## Etiquetas de voz (solo Fish Audio)
+
+Fish Audio puede cambiar el tono de una línea si agregas una etiqueta entre corchetes:
+
+```text
+!s [happy] ¡Gran stream hoy!
+!s [whisper] [pause] ¿Puedes guardar un secreto?
+$(tts.clone gojo [excited] ¡Vamos!)
+```
+
+Los propietarios y los administradores con `tts:manage` pueden activar o desactivar etiquetas en **Módulos → Texto a voz → Etiquetas de voz**. Todas las etiquetas vienen activadas. Una etiqueta desactivada, o que el bot no reconoce, se quita antes de generar la voz. Piper y Kokoro quitan todas las etiquetas y leen el resto del mensaje.
+
+Las etiquetas son:
+
+### Emociones
+
+`[happy]` `[sad]` `[angry]` `[excited]` `[calm]` `[nervous]` `[confident]` `[surprised]` `[scared]` `[worried]` `[disappointed]` `[curious]` `[sarcastic]` `[satisfied]` `[delighted]` `[upset]` `[frustrated]` `[depressed]` `[empathetic]` `[embarrassed]` `[disgusted]` `[moved]` `[proud]` `[relaxed]` `[grateful]` `[disdainful]` `[unhappy]` `[anxious]` `[hysterical]` `[indifferent]` `[uncertain]` `[doubtful]` `[confused]` `[regretful]` `[guilty]` `[ashamed]` `[jealous]` `[envious]` `[hopeful]` `[optimistic]` `[pessimistic]` `[nostalgic]` `[lonely]` `[bored]` `[contemptuous]` `[sympathetic]` `[compassionate]` `[determined]` `[resigned]`
+
+### Voz y expresión
+
+`[whisper]` `[shouting]` `[soft]` `[singing]` `[slow]` `[fast]` `[emphasis]` `[screaming]`
+
+### Sonidos vocales
+
+`[laugh]` `[chuckle]` `[giggle]` `[cry]` `[sigh]` `[gasp]` `[inhale]` `[exhale]` `[sobbing]` `[groaning]` `[panting]` `[yawning]` `[snoring]` `[clear throat]`
+
+### Pausas y efectos
+
+`[pause]` `[long-pause]` `[audience laughing]` `[background laughter]`
+
+Algunas formas cortas también funcionan. Por ejemplo, `[anger]` equivale a `[angry]`, `[whispering]` a `[whisper]`, `[laughing]` a `[laugh]` y `[crowd laughing]` a `[audience laughing]`. Desactivar una etiqueta también desactiva sus formas cortas.
+
+## Acceso de administradores del canal
+
+Los propietarios del canal siempre tienen acceso a TTS. Para los administradores, los permisos son independientes:
+
+* `tts:view` permite ver la configuración de TTS.
+* `tts:manage` permite cambiar la configuración, guardar o renombrar favoritas y previsualizar voces. Incluye `tts:view`.
+* `commands:manage` permite editar el comando **Speech Chat** (`!s`). No da acceso a la configuración de TTS.
+* `*` da acceso completo a TTS y a los comandos.
+
+Puedes combinarlos con `chat:admin`. Por ejemplo, un administrador puede moderar el chat y solo ver la configuración de TTS.
+
+## Créditos de IA y respaldos
+
+Los créditos de IA los comparten todas las funciones de IA del canal. Cada plan incluye esta cantidad de créditos al mes:
+
+| Plan    | Créditos mensuales de IA |
+| ------- | -----------------------: |
+| Free    |                   25,000 |
+| Premium |                  200,000 |
+| Pro     |                  800,000 |
+
+Créditos por mensaje:
+
+* **Piper:** 1 crédito por cada 50 caracteres, redondeado hacia arriba.
+* **Kokoro:** 1 crédito por cada 15 caracteres, redondeado hacia arriba.
+* **Fish Audio:** 1.5 créditos por carácter, redondeado hacia arriba en cada mensaje.
+* **Las vistas previas de voz** usan créditos igual que el motor que previsualizan.
+
+Si se acaban los créditos o no se puede generar una voz, TTS cambia a una voz de respaldo para que la lectura siga funcionando:
+
+* **Se acaban los créditos y se pidió Fish Audio o Kokoro:** los planes Free cambian a Piper. Los planes Premium y Pro usan Kokoro.
+* **Fish Audio o Kokoro no logran generar el audio:** el mensaje se lee con Piper.
+* **No se puede verificar el estado de los créditos:** el mensaje se lee con Piper.
+
+La voz que elegiste sigue guardada. Solo el mensaje que necesitó el respaldo usa la voz de respaldo.
+
+Para la configuración general de tu canal, consulta la guía del [panel](https://docs.domdimabot.com/es/dashboard/index.txt).

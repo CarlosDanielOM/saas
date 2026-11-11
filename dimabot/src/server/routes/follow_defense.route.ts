@@ -4,8 +4,8 @@ import TwitchStreamers from '../../classes/twitch_streamers.class.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
 import { FollowAttackLogSchema } from '../../schemas/follow_attack_log.schema.js';
-import { FollowDefenseSettingsSchema, type FollowDefenseLanguage, type IFollowDefenseSettings } from '../../schemas/follow_defense_settings.schema.js';
 import { cancelFollowDefenseActions, getFollowDefenseActionCounts } from '../../utils/follow_defense_actions.js';
+import { getOrCreateSettings, updateFollowDefenseSettings } from '../services/follow_defense_settings.service.js';
 import { FollowHateRaidSourceSchema } from '../../schemas/follow_hate_raid_source.schema.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
 import {
@@ -25,57 +25,7 @@ interface FollowDefenseRequest extends Request {
     };
 }
 
-interface FollowDefenseSettingsResponse {
-    channelID: string;
-    channel: string;
-    enabled: boolean;
-    silentModeEnabled: boolean;
-    protectionModeEnabled: boolean;
-    attackModeEnabled: boolean;
-    resetAttackOnNewRaid: boolean;
-    silentThresholdX: number;
-    silentWindowYSeconds: number;
-    protectionThresholdB: number;
-    attackThreshold: number | null;
-    silentDurationSeconds: number;
-    baselineFollowsPerHour: number | null;
-    language: FollowDefenseLanguage;
-    settingsVersion: number;
-}
-
 const router = express.Router();
-
-const DEFAULT_SETTINGS = {
-    enabled: true,
-    silentModeEnabled: true,
-    protectionModeEnabled: true,
-    attackModeEnabled: true,
-    resetAttackOnNewRaid: true,
-    silentThresholdX: 10,
-    silentWindowYSeconds: 5,
-    protectionThresholdB: 100,
-    attackThreshold: null as number | null,
-    silentDurationSeconds: 60,
-    baselineFollowsPerHour: null as number | null,
-    language: 'en' as FollowDefenseLanguage,
-    settingsVersion: 1
-};
-
-const BOOLEAN_FIELDS = new Set([
-    'enabled',
-    'silentModeEnabled',
-    'protectionModeEnabled',
-    'attackModeEnabled', 'resetAttackOnNewRaid'
-]);
-
-const NUMBER_FIELDS = new Set([
-    'silentThresholdX',
-    'silentWindowYSeconds',
-    'protectionThresholdB',
-    'attackThreshold',
-    'silentDurationSeconds',
-    'baselineFollowsPerHour'
-]);
 
 function getParam(value: string | string[] | undefined): string {
     return Array.isArray(value) ? value[0] : value || '';
@@ -127,83 +77,6 @@ async function validateAccess(req: FollowDefenseRequest, res: Response, channelI
         role: access.role === 'owner' ? 'owner' : 'admin',
         channelName: streamer.name || ''
     };
-}
-
-function toSettingsResponse(settings: IFollowDefenseSettings | FollowDefenseSettingsResponse): FollowDefenseSettingsResponse {
-    return {
-        channelID: settings.channelID,
-        channel: settings.channel || '',
-        enabled: settings.enabled ?? DEFAULT_SETTINGS.enabled,
-        silentModeEnabled: settings.silentModeEnabled ?? DEFAULT_SETTINGS.silentModeEnabled,
-        protectionModeEnabled: settings.protectionModeEnabled ?? DEFAULT_SETTINGS.protectionModeEnabled,
-        attackModeEnabled: settings.attackModeEnabled ?? DEFAULT_SETTINGS.attackModeEnabled,
-        resetAttackOnNewRaid: settings.resetAttackOnNewRaid ?? true,
-        silentThresholdX: settings.silentThresholdX || DEFAULT_SETTINGS.silentThresholdX,
-        silentWindowYSeconds: settings.silentWindowYSeconds || DEFAULT_SETTINGS.silentWindowYSeconds,
-        protectionThresholdB: settings.protectionThresholdB || DEFAULT_SETTINGS.protectionThresholdB,
-        attackThreshold: settings.attackThreshold ?? null,
-        silentDurationSeconds: settings.silentDurationSeconds || DEFAULT_SETTINGS.silentDurationSeconds,
-        baselineFollowsPerHour: settings.baselineFollowsPerHour ?? null,
-        language: settings.language === 'es' ? 'es' : 'en',
-        settingsVersion: settings.settingsVersion || DEFAULT_SETTINGS.settingsVersion
-    };
-}
-
-async function cacheSettings(settings: FollowDefenseSettingsResponse): Promise<void> {
-    const cache = await getDragonflyClient('followDefenseRoute.cacheSettings');
-    await cache.set(followDefenseKeys(settings.channelID).settings, JSON.stringify(settings));
-}
-
-async function getOrCreateSettings(channelID: string, channelName: string): Promise<FollowDefenseSettingsResponse> {
-    const settings = await FollowDefenseSettingsSchema.findOneAndUpdate({
-        channelID
-    }, {
-        $setOnInsert: {
-            channelID,
-            channel: channelName,
-            ...DEFAULT_SETTINGS
-        }
-    }, {
-        new: true,
-        upsert: true,
-        setDefaultsOnInsert: true
-    });
-
-    const response = toSettingsResponse(settings.toObject() as IFollowDefenseSettings);
-    await cacheSettings(response);
-    return response;
-}
-
-function buildSettingsPatch(body: Record<string, unknown>): Partial<IFollowDefenseSettings> {
-    const patch: Partial<IFollowDefenseSettings> = {};
-
-    for (const [key, value] of Object.entries(body)) {
-        if (BOOLEAN_FIELDS.has(key)) {
-            if (typeof value === 'boolean') {
-                (patch as Record<string, unknown>)[key] = value;
-            }
-            continue;
-        }
-
-        if (NUMBER_FIELDS.has(key)) {
-            if ((key === 'baselineFollowsPerHour' || key === 'attackThreshold') && (value === null || (typeof value === 'string' && value.trim() === ''))) {
-                patch[key] = null;
-                continue;
-            }
-
-            const parsed = Number(value);
-            if (Number.isFinite(parsed) && parsed >= 0) {
-                (patch as Record<string, unknown>)[key] = Math.round(parsed);
-            }
-            continue;
-        }
-
-        if (key === 'language' && (value === 'en' || value === 'es')) {
-            patch.language = value;
-        }
-    }
-
-    return patch;
 }
 
 async function getTrackedCount(channelID: string): Promise<number> {
@@ -277,45 +150,10 @@ router.patch('/:channelID/settings', authMiddleware as any, async (req: FollowDe
         const access = await validateAccess(req, res, channelID);
         if (!access) return;
 
-        await getOrCreateSettings(channelID, access.channelName);
-        if (Object.hasOwn(req.body, 'attackThreshold')) {
-            const value = req.body.attackThreshold;
-            if (value !== null && value !== '' && !(typeof value === 'string' && value.trim() === '')
-                && ((typeof value !== 'number' && typeof value !== 'string') || !Number.isSafeInteger(Number(value)) || Number(value) < 1)) {
-                return res.status(400).json({ error: true, message: 'Attack threshold must be a positive integer or empty for dynamic sensitivity', status: 400 });
-            }
-        }
-        const patch = buildSettingsPatch(req.body as Record<string, unknown>);
-        if (patch.resetAttackOnNewRaid !== undefined && !(await getChannelAccessContext(req.user!.id, channelID, 'moderation:manage')).allowed) {
-            return res.status(403).json({ error: true, message: 'Moderation permission required' });
-        }
-
-        if (Object.keys(patch).length === 0) {
-            return res.status(400).json({
-                error: true,
-                message: 'No valid settings fields provided',
-                status: 400
-            });
-        }
-
-        const updated = await FollowDefenseSettingsSchema.findOneAndUpdate({
-            channelID
-        }, {
-            $set: {
-                ...patch,
-                channel: access.channelName
-            }
-        }, {
-            new: true,
-            upsert: true,
-            setDefaultsOnInsert: true
-        });
-
-        const settings = toSettingsResponse(updated.toObject() as IFollowDefenseSettings);
-        if (patch.enabled === false || patch.attackModeEnabled === false || patch.protectionModeEnabled === false) {
-            await cancelFollowDefenseActions(channelID);
-        }
-        await cacheSettings(settings);
+        const result = await updateFollowDefenseSettings(channelID, access.channelName, req.body as Record<string, unknown>,
+            async () => (await getChannelAccessContext(req.user!.id, channelID, 'moderation:manage')).allowed);
+        if (!result.ok) return res.status(result.status).json(result.body);
+        const settings = result.settings;
 
         return res.status(200).json({
             error: false,

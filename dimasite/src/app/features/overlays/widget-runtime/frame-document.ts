@@ -33,7 +33,7 @@ export function restrictedPolicy(boot: Pick<FrameBoot, 'origin' | 'apiOrigin'>):
     "form-action 'none'", "object-src 'none'", `base-uri ${origin(boot.origin) || "'none'"}`].join('; ');
 }
 /** Runs before anything else in a restricted frame: peer connections (WebRTC) aren't covered by the policy. */
-const RESTRICT = "(function(w){['RTCPeerConnection','webkitRTCPeerConnection','RTCDataChannel','RTCSessionDescription','RTCIceCandidate']"
+export const RESTRICT = "(function(w){['RTCPeerConnection','webkitRTCPeerConnection','RTCDataChannel','RTCSessionDescription','RTCIceCandidate']"
   + ".forEach(function(k){try{delete w[k]}catch(e){}try{Object.defineProperty(w,k,{value:undefined,configurable:false,writable:false})}catch(e){}})})(window);"
 
 
@@ -60,8 +60,8 @@ export function rewriteValues(values: JsonObject, media: Readonly<Record<string,
   return walk(values) as JsonObject;
 }
 // Text placed inside <script>/<style> must not close them early.
-const safeScript = (text: string) => text.replace(/<\/(script)/gi, '<\\/$1').replace(/<!--/g, '<\\!--');
-const safeStyle = (text: string) => text.replace(/<\/(style)/gi, '<\\/$1');
+export const safeScript = (text: string) => text.replace(/<\/(script)/gi, '<\\/$1').replace(/<!--/g, '<\\!--');
+export const safeStyle = (text: string) => text.replace(/<\/(style)/gi, '<\\/$1');
 
 /**
  * Inline `onerror="fn(this)"` handlers in the widget's HTML can fire (e.g. `<img src="">`) before the widget's script at
