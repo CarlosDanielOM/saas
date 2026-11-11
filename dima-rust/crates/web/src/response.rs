@@ -44,6 +44,8 @@ enum Payload {
     Redirect(u16, String),
     /// A response built by hand (streams, files): sent with the pending headers merged under it.
     Http(http::Response<Body>),
+    /// `res.sendFile(path)`.
+    File(String),
 }
 
 /// The answer a handler gives, built like Express's chained `res` calls.
@@ -188,6 +190,21 @@ impl Response {
         }
     }
 
+    /// `res.sendFile(path)`, as every reference call site uses it (absolute path, no options):
+    /// `Content-Type` from the mime table unless one is set, `Accept-Ranges`, `Cache-Control:
+    /// public, max-age=0`, `Last-Modified` and a weak ETag from the file's size and time unless
+    /// set, conditional requests (304, 412), single byte ranges (206, 416) and HEAD. The file is
+    /// looked up when the response is sent, never cached.
+    ///
+    /// Outcomes as in Express: a missing file or a dotfile is a 404 error and any other failure a
+    /// 500 error on the error path (router error handlers see it, with the `std::io::Error` as
+    /// its source when there is one); a directory continues with the next layer (`next()`); a
+    /// relative path is a 500 error.
+    pub fn send_file(mut self, path: impl Into<String>) -> Self {
+        self.payload = Payload::File(path.into());
+        self
+    }
+
     /// A response built by hand, for streams and other bodies the helpers do not cover. Headers
     /// set earlier by middleware are kept unless this response sets the same name.
     pub fn from_http(response: http::Response<Body>) -> Self {
@@ -311,11 +328,13 @@ fn build(status: u16, headers: HeaderMap, body: Bytes) -> Result<http::Response<
 }
 
 /// Turns a handler's [`Response`] into HTTP, running Express's `res.send` rules against the
-/// headers set so far. An `Err` goes down the error path (Express would have thrown).
-pub(crate) fn finalize<S>(
+/// headers set so far. An `Err` goes down the error path (Express would have thrown); `Ok(None)`
+/// continues with the next layer (`res.sendFile` on a directory).
+pub(crate) async fn finalize<S>(
     response: Response,
     req: &mut Req<S>,
-) -> Result<http::Response<Body>, Error> {
+) -> Result<Option<http::Response<Body>>, Error> {
+    let response = response.into_checked()?;
     let Response {
         status,
         ops,
@@ -325,6 +344,18 @@ pub(crate) fn finalize<S>(
         req.res.status = status;
     }
     apply_ops(&mut req.res, ops)?;
+    if let Payload::File(path) = payload {
+        return match crate::send::send_file(req, &path).await {
+            crate::send::Sent::Response(response) => Ok(Some(response)),
+            crate::send::Sent::Next => Ok(None),
+            crate::send::Sent::Error(error) => Err(error),
+        };
+    }
+    finish(payload, req).map(Some)
+}
+
+/// The synchronous payloads.
+fn finish<S>(payload: Payload, req: &mut Req<S>) -> Result<http::Response<Body>, Error> {
     match payload {
         Payload::End => {
             let state = std::mem::take(&mut req.res);
@@ -386,6 +417,7 @@ pub(crate) fn finalize<S>(
             parts.headers = headers;
             Ok(http::Response::from_parts(parts, body))
         }
+        Payload::File(_) => Err(Error::msg("file payloads are sent asynchronously")),
     }
 }
 
@@ -568,8 +600,9 @@ pub(crate) fn options_response<S>(
     methods: &[String],
 ) -> Result<http::Response<Body>, Error> {
     let body = methods.join(",");
-    let response = Response::new().set("Allow", body.clone()).text(body);
-    finalize(response, req)
+    let Response { ops, payload, .. } = Response::new().set("Allow", body.clone()).text(body);
+    apply_ops(&mut req.res, ops)?;
+    finish(payload, req)
 }
 
 #[cfg(test)]

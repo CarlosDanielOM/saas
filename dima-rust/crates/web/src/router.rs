@@ -349,7 +349,7 @@ async fn call<S: Send + Sync + 'static>(handler: &dyn Handler<S>, req: &mut Req<
         .catch_unwind()
         .await
         .unwrap_or_else(|_| Err(Error::panicked()));
-    settle(result, req)
+    settle(result, req).await
 }
 
 async fn call_error<S: Send + Sync + 'static>(
@@ -361,19 +361,17 @@ async fn call_error<S: Send + Sync + 'static>(
         .catch_unwind()
         .await
         .unwrap_or_else(|_| Err(Error::panicked()));
-    settle(result, req)
+    settle(result, req).await
 }
 
-fn settle<S>(result: Result<Flow, Error>, req: &mut Req<S>) -> Outcome {
+async fn settle<S>(result: Result<Flow, Error>, req: &mut Req<S>) -> Outcome {
     match result {
         // `next('route')` outside a route behaves like `next()`.
         Ok(Flow::Next | Flow::NextRoute) => Outcome::Next(None),
         Ok(Flow::NextRouter) => Outcome::ExitRouter,
-        Ok(Flow::Respond(response)) => match response
-            .into_checked()
-            .and_then(|response| finalize(response, req))
-        {
-            Ok(response) => Outcome::Respond(response),
+        Ok(Flow::Respond(response)) => match finalize(response, req).await {
+            Ok(Some(response)) => Outcome::Respond(response),
+            Ok(None) => Outcome::Next(None),
             Err(send_error) => Outcome::Next(Some(send_error)),
         },
         Err(error) => Outcome::Next(Some(error)),

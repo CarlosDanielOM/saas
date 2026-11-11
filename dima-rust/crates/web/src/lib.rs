@@ -122,7 +122,9 @@ pub mod qs;
 mod request;
 mod response;
 mod router;
+mod send;
 mod server;
+mod static_files;
 pub mod status;
 pub mod uri;
 
@@ -141,3 +143,4 @@ pub use request::{BodyState, PeerAddr, Req, ResponseState};
 pub use response::Response;
 pub use router::Router;
 pub use server::{MAX_HEAD_BYTES, MAX_HEADER_LINES, ServeOptions, bind, bind_to, serve};
+pub use static_files::{ServeStatic, serve_static};
