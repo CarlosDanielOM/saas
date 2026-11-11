@@ -645,20 +645,33 @@ async fn dragonfly_lua_accepts_scan_and_keys_but_not_reading_what_they_return() 
     df.query::<i64>(redis::cmd("SADD").arg(format!("{p}set")).arg("x"))
         .await?;
 
+    // SCAN inside a script pages like SCAN anywhere (COUNT is a hint, and with other tests'
+    // keys in the database one call can return a non-zero cursor and no match), so the cursor
+    // is iterated from Rust, bounded.
     static SCAN: Script = Script::new(
         "TEST_SCAN",
-        "return redis.call('SCAN', '0', 'MATCH', ARGV[1], 'COUNT', '1000')",
+        "return redis.call('SCAN', ARGV[2], 'MATCH', ARGV[1], 'COUNT', '1000')",
     );
     static KEYS: Script = Script::new("TEST_KEYS", "return redis.call('KEYS', ARGV[1])");
     static SSCAN: Script = Script::new("TEST_SSCAN", "return redis.call('SSCAN', KEYS[1], '0')");
     static SCAN_THEN_GET: Script = Script::new(
         "TEST_SCAN_GET",
-        "local r = redis.call('SCAN', '0', 'MATCH', ARGV[1], 'COUNT', '1000') \
-         local out = {} for _, k in ipairs(r[2]) do table.insert(out, redis.call('GET', k)) end return out",
+        "local r = redis.call('SCAN', ARGV[2], 'MATCH', ARGV[1], 'COUNT', '1000') \
+         local out = {} for _, k in ipairs(r[2]) do table.insert(out, redis.call('GET', k)) end return {r[1], out}",
     );
     let pattern = format!("{p}?");
-    let (cursor, mut keys): (String, Vec<String>) =
-        SCAN.run(&df, &[] as &[&str], &[pattern.as_str()]).await?;
+    let mut cursor = "0".to_owned();
+    let mut keys: Vec<String> = Vec::new();
+    for _ in 0..10_000 {
+        let (next, page): (String, Vec<String>) = SCAN
+            .run(&df, &[] as &[&str], &[pattern.as_str(), cursor.as_str()])
+            .await?;
+        keys.extend(page);
+        cursor = next;
+        if cursor == "0" {
+            break;
+        }
+    }
     keys.sort();
     ensure!(
         cursor == "0" && keys == [format!("{p}a"), format!("{p}b")],
@@ -674,11 +687,31 @@ async fn dragonfly_lua_accepts_scan_and_keys_but_not_reading_what_they_return() 
         .run(&df, &[format!("{p}set").as_str()], &[] as &[&str])
         .await?;
     ensure!(members == ["x"]);
-    let refused = SCAN_THEN_GET
-        .run_value(&df, &[] as &[&str], &[pattern.as_str()])
-        .await;
+    let mut cursor = "0".to_owned();
+    let mut refused = None;
+    for _ in 0..10_000 {
+        match SCAN_THEN_GET
+            .run_value(&df, &[] as &[&str], &[pattern.as_str(), cursor.as_str()])
+            .await
+        {
+            Err(error) => {
+                refused = Some(error.to_string());
+                break;
+            }
+            Ok(value) => {
+                let (next, _): (String, redis::Value) =
+                    redis::from_redis_value(value).map_err(redis::RedisError::from)?;
+                cursor = next;
+                if cursor == "0" {
+                    break;
+                }
+            }
+        }
+    }
     ensure!(
-        matches!(&refused, Err(e) if e.to_string().contains("undeclared key")),
+        refused
+            .as_deref()
+            .is_some_and(|e| e.contains("undeclared key")),
         "reading a scanned key must be refused as undeclared: {refused:?}"
     );
     cleanup(&df, &p).await
