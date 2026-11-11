@@ -23,11 +23,16 @@ pub enum Status {
     Unchanged,
     /// `record`: two runs of the reference disagree; nothing written.
     Unstable,
+    /// `check`: the scenario file is valid.
+    Checked,
 }
 
 impl Status {
     pub fn ok(self) -> bool {
-        matches!(self, Status::Match | Status::Recorded | Status::Unchanged)
+        matches!(
+            self,
+            Status::Match | Status::Recorded | Status::Unchanged | Status::Checked
+        )
     }
 
     fn label(self) -> &'static str {
@@ -38,6 +43,7 @@ impl Status {
             Status::Recorded => "RECORDED",
             Status::Unchanged => "UNCHANGED",
             Status::Unstable => "UNSTABLE",
+            Status::Checked => "CHECKED",
         }
     }
 }
@@ -186,6 +192,7 @@ impl Report {
             Status::Recorded,
             Status::Unchanged,
             Status::Unstable,
+            Status::Checked,
         ] {
             let n = count(st);
             if n > 0 {

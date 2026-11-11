@@ -13,7 +13,7 @@
       }
     },
     { "http": { "method": "POST", "path": "/jobs", "json": { "item": "${item}" }, "expect": { "status": 202 } } },
-    { "wait_for": { "mongo": { "collection": "jobs", "filter": { "step": 2 } }, "timeout_ms": 5000 } },
+    { "wait_for": { "mongo": { "collection": "jobs", "filter": { "item": { "$oid": "${item}" }, "step": 2 } }, "timeout_ms": 5000 } },
     { "wait_quiet": { "quiet_ms": 300, "timeout_ms": 5000 } },
     { "dragonfly": ["LRANGE", "jobs:done", "0", "-1"] }
   ]

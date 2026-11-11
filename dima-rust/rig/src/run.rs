@@ -538,6 +538,7 @@ pub fn check(settings: &Settings, target_name: &str, filters: &[String]) -> Resu
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
     for sc in scenarios {
         let mut r = ScenarioReport::new(&sc.name, &sc.description);
+        r.status = Status::Checked;
         let path = capture_path(settings, target_name, &sc.name);
         match read_capture(&path) {
             Ok((meta, _)) if meta.scenario_hash != sc.hash => {

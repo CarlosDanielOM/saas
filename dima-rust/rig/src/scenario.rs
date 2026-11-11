@@ -828,6 +828,17 @@ fn check_json_body(v: &Value, saved: &BTreeSet<String>, at: &str) -> Result<()> 
     }
 }
 
+/// Some string in the value holds a `${...}` expression.
+fn has_interp(v: &Value) -> bool {
+    match v {
+        Value::String(s) => template::parse_interp(s)
+            .is_ok_and(|p| p.iter().any(|x| !matches!(x, template::Piece::Lit(_)))),
+        Value::Array(items) => items.iter().any(has_interp),
+        Value::Object(m) => m.values().any(has_interp),
+        _ => false,
+    }
+}
+
 fn timeout(ms: u64, at: &str) -> Result<u64> {
     if ms == 0 || ms > MAX_TIMEOUT_MS {
         return Err(config(format!("{at}: between 1 and {MAX_TIMEOUT_MS} ms")));
@@ -1156,13 +1167,17 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
             let cond = match (w.mongo, w.key) {
                 (Some(m), None) => {
                     let filter = m.filter.unwrap_or(Value::Object(Map::new()));
-                    to_doc(
-                        &filter,
-                        ExtMode::Filter,
-                        0,
-                        &format!("{here}.wait_for.mongo.filter"),
-                    )
-                    .map_err(config)?;
+                    // With `${...}` inside (such as `{"$oid": "${item}"}`) the filter is
+                    // only valid once filled in; it is converted again when the step runs.
+                    if !has_interp(&filter) {
+                        to_doc(
+                            &filter,
+                            ExtMode::Filter,
+                            0,
+                            &format!("{here}.wait_for.mongo.filter"),
+                        )
+                        .map_err(config)?;
+                    }
                     check_json_body(&filter, &saved, &format!("{here}.wait_for.mongo.filter"))?;
                     collect_inputs(patterns, &filter, &mut loader.known);
                     WaitCond::Mongo {
@@ -1335,6 +1350,19 @@ mod tests {
         )
         .unwrap();
         assert_eq!(j, json!({"t": 1_001_000, "s": "id=7"}));
+    }
+
+    #[test]
+    fn filters_with_saved_values_are_converted_when_filled() {
+        let filter = json!({"item": {"$oid": "${item}"}, "n": {"$gte": 2}});
+        assert!(has_interp(&filter));
+        assert!(to_doc(&filter, ExtMode::Filter, 0, "f").is_err());
+        let saved: BTreeMap<String, String> =
+            [("item".to_string(), "650000000000000000000010".to_string())].into();
+        let d = resolve_filter(&filter, &saved, 0, "f").unwrap();
+        assert!(d.get_object_id("item").is_ok(), "{d}");
+        assert!(has_interp(&json!(["${now_ms+5s}"])));
+        assert!(!has_interp(&json!({"n": 1, "s": "plain $ text"})));
     }
 
     #[test]
