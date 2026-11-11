@@ -38,6 +38,9 @@ thiserror = "2.0.21"
 anyhow = "1.0.104"
 # Stores.
 mongodb = { version = "3.9.1", default-features = false, features = ["compat-3-3-0", "bson-3", "rustls-tls", "dns-resolver"] }
+# The same bson 3 the driver uses (re-exported as `mongodb::bson`), named directly for its
+# extended JSON support (`serde_json-1`), which dima-store needs for DBPointer and test fixtures.
+bson = { version = "3.1.0", features = ["serde", "serde_json-1"] }
 redis = { version = "1.7.1", default-features = false, features = ["tokio-comp", "aio", "script", "connection-manager"] }
 # HTTP, outbound and inbound.
 reqwest = { version = "0.12.28", default-features = false, features = ["json", "stream", "gzip", "brotli", "deflate", "rustls-tls-native-roots"] }

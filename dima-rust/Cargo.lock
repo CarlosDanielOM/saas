@@ -718,6 +718,7 @@ dependencies = [
  "rand 0.9.5",
  "serde",
  "serde_bytes",
+ "serde_json",
  "simdutf8",
  "thiserror 2.0.21",
  "time",
@@ -1453,6 +1454,17 @@ dependencies = [
 [[package]]
 name = "dima-store"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bson",
+ "dima-text",
+ "futures-util",
+ "mongodb",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
 
 [[package]]
 name = "dima-telemetry"

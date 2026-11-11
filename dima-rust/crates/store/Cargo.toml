@@ -10,3 +10,16 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+# MongoDB (src/mongo).
+bson = { workspace = true }
+dima-text = { workspace = true }
+futures-util = { workspace = true }
+mongodb = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+# MongoDB tests (tests/mongo_*.rs).
+anyhow = { workspace = true }
+tokio = { workspace = true }
