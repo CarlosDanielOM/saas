@@ -555,6 +555,41 @@ fn self_test_end_to_end() {
     assert_eq!(ver.code, 1, "{}", ver.text);
     assert!(ver.text.contains("capture is stale"), "{}", ver.text);
 
+    // The Dragonfly allow-list applies to the rendered command: a saved value that becomes a
+    // command name outside the list is refused when the step runs (CONFIG GET is harmless even
+    // if this check were broken).
+    std::fs::write(
+        edited.join("scenarios/selftest/items/rendered.json"),
+        serde_json::to_string_pretty(&json!({
+            "rig_scenario": 1,
+            "description": "A command name that comes from a response.",
+            "steps": [
+                { "http": { "method": "GET", "path": "/word/CONFIG", "save": { "cmd": "body.word" } } },
+                { "dragonfly": ["${cmd}", "GET", "maxmemory"] }
+            ]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let refused = rig(
+        &work,
+        &edited,
+        "good",
+        &["compare", "selftest", "items/rendered"],
+    );
+    pids.push(refused.pid);
+    assert_eq!(refused.code, 1, "{}", refused.text);
+    let e = &refused.scenario("items/rendered")["errors"][0];
+    assert_eq!(e["step"], 1, "{}", refused.text);
+    assert!(
+        e["message"]
+            .as_str()
+            .unwrap()
+            .contains("CONFIG is not allowed in scenarios"),
+        "{}",
+        refused.text
+    );
+
     // Nothing left behind.
     let left: Vec<String> = mongo_names(&uri)
         .into_iter()

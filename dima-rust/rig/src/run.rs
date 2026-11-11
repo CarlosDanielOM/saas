@@ -343,6 +343,7 @@ impl<'s> SideRunner<'s> {
             proc,
             http: &self.http,
             saved: BTreeMap::new(),
+            allow_scripts: sc.allow_scripts,
         };
         let result = runner.run(&sc.steps).await;
         let end = timefmt::now_ms();
@@ -842,6 +843,7 @@ pub async fn diff_get(
         file: list_file.to_path_buf(),
         description: list.description.clone(),
         restart: false,
+        allow_scripts: false,
         seed_mongo: Vec::new(),
         seed_dragonfly: Vec::new(),
         steps: list.steps.clone(),

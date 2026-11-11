@@ -28,6 +28,8 @@ pub struct Runner<'a> {
     pub proc: &'a mut SideProcess,
     pub http: &'a reqwest::Client,
     pub saved: BTreeMap<String, String>,
+    /// The scenario's `allow_scripts`.
+    pub allow_scripts: bool,
 }
 
 fn err(step: usize, message: impl Into<String>) -> StepError {
@@ -338,6 +340,9 @@ impl Runner<'_> {
                         .map(|a| a.render(&self.saved, now))
                         .collect::<Result<Vec<_>, _>>()
                         .map_err(|e| err(i, e))?;
+                    // The rendered command: a saved value can become a command name or option.
+                    crate::dfcmd::check(&rendered, self.allow_scripts)
+                        .map_err(|e| err(i, format!("dragonfly {rendered:?}: {e}")))?;
                     RawStep::Reply(
                         self.stores
                             .command(&rendered)

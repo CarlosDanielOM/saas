@@ -10,6 +10,7 @@ pub mod capture;
 pub mod compare;
 pub mod config;
 pub mod detect;
+pub mod dfcmd;
 pub mod error;
 pub mod getlist;
 pub mod path;

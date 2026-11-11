@@ -41,6 +41,8 @@ struct ScenarioFile {
     #[serde(default)]
     restart: bool,
     #[serde(default)]
+    allow_scripts: bool,
+    #[serde(default)]
     seed: Option<SeedBody>,
     steps: Vec<StepFile>,
     #[serde(default)]
@@ -322,6 +324,8 @@ pub struct Scenario {
     pub file: PathBuf,
     pub description: String,
     pub restart: bool,
+    /// `EVAL`, `EVALSHA` and `SCRIPT LOAD|EXISTS` may run in steps and seeds.
+    pub allow_scripts: bool,
     /// Collection → documents (Extended JSON, `$rigNow` resolved at seed time).
     pub seed_mongo: Vec<(String, Vec<Value>)>,
     pub seed_dragonfly: Vec<Vec<Arg>>,
@@ -562,6 +566,7 @@ pub fn resolve_filter(
 
 struct Loader<'a> {
     patterns: &'a Patterns,
+    allow_scripts: bool,
     known: Known,
     hash_input: String,
     seen_files: HashSet<PathBuf>,
@@ -594,52 +599,14 @@ fn collect_inputs(p: &Patterns, v: &Value, known: &mut Known) {
     }
 }
 
-const DENIED_COMMANDS: &[&str] = &[
-    "SELECT",
-    "SWAPDB",
-    "MOVE",
-    "FLUSHALL",
-    "CONFIG",
-    "SHUTDOWN",
-    "DEBUG",
-    "REPLICAOF",
-    "SLAVEOF",
-    "MIGRATE",
-    "MONITOR",
-    "SUBSCRIBE",
-    "PSUBSCRIBE",
-    "SSUBSCRIBE",
-    "UNSUBSCRIBE",
-    "PUNSUBSCRIBE",
-    "CLIENT",
-    "SAVE",
-    "BGSAVE",
-    "BGREWRITEAOF",
-    "FAILOVER",
-    "FUNCTION",
-    "ACL",
-    "CLUSTER",
-    "MODULE",
-    "RESET",
-    "QUIT",
-    "HELLO",
-    "WAIT",
-    "BLPOP",
-    "BRPOP",
-    "BLMOVE",
-    "BRPOPLPUSH",
-    "BZPOPMIN",
-    "BZPOPMAX",
-    "BLMPOP",
-    "BZMPOP",
-    "XREAD",
-    "XREADGROUP",
-    "DFLY",
-    "DFLYCLUSTER",
-    "SCRIPT",
-];
-
-fn command(args: &[Value], at: &str, saved: &BTreeSet<String>) -> Result<Vec<Arg>> {
+/// A command of a step or seed. Checked against [`crate::dfcmd`] here when its words are
+/// written literally, and always again once rendered, when it runs.
+fn command(
+    args: &[Value],
+    at: &str,
+    saved: &BTreeSet<String>,
+    allow_scripts: bool,
+) -> Result<Vec<Arg>> {
     let mut out = Vec::with_capacity(args.len());
     for (i, a) in args.iter().enumerate() {
         let here = format!("{at}[{i}]");
@@ -666,28 +633,37 @@ fn command(args: &[Value], at: &str, saved: &BTreeSet<String>) -> Result<Vec<Arg
             _ => return Err(config(format!("{here}: command arguments are strings, numbers or {{\"$rigNow\": ...}}"))),
         });
     }
-    let name = match out.first() {
-        Some(Arg::Text(t)) => t.to_ascii_uppercase(),
-        _ => {
-            return Err(config(format!(
-                "{at}: a command starts with its name, such as [\"SET\", \"key\", \"value\"]"
-            )));
+    if !matches!(out.first(), Some(Arg::Text(_))) {
+        return Err(config(format!(
+            "{at}: a command starts with its name, such as [\"SET\", \"key\", \"value\"]"
+        )));
+    }
+    // Literal words (no `${...}`) can be checked now; the rest is checked once rendered.
+    let literal: Option<Vec<String>> = out
+        .iter()
+        .map(|a| match a {
+            Arg::Text(t) if !t.contains("${") => Some(t.clone()),
+            Arg::Now { .. } => Some("0".into()),
+            Arg::Text(_) => None,
+        })
+        .collect();
+    let name_literal = matches!(out.first(), Some(Arg::Text(t)) if !t.contains("${"));
+    let checked = match literal {
+        Some(words) => crate::dfcmd::check(&words, allow_scripts),
+        None if name_literal => {
+            // Check the name with its literal words; templated words are checked when rendered.
+            let words: Vec<String> = out
+                .iter()
+                .map(|a| match a {
+                    Arg::Text(t) => t.clone(),
+                    Arg::Now { .. } => "0".into(),
+                })
+                .collect();
+            crate::dfcmd::check(&words, allow_scripts)
         }
+        None => Ok(()),
     };
-    if DENIED_COMMANDS.contains(&name.as_str()) {
-        return Err(config(format!(
-            "{at}: {name} is not allowed in scenarios (it reaches outside the side's logical database or blocks)"
-        )));
-    }
-    if name == "COPY"
-        && out
-            .iter()
-            .any(|a| matches!(a, Arg::Text(t) if t.eq_ignore_ascii_case("DB")))
-    {
-        return Err(config(format!(
-            "{at}: COPY ... DB is not allowed (it reaches another logical database)"
-        )));
-    }
+    checked.map_err(|e| config(format!("{at}: {e}")))?;
     Ok(out)
 }
 
@@ -766,7 +742,12 @@ impl Loader<'_> {
             }
         }
         for (i, c) in body.dragonfly.iter().enumerate() {
-            let cmd = command(c, &format!("{at}: seed.dragonfly[{i}]"), &BTreeSet::new())?;
+            let cmd = command(
+                c,
+                &format!("{at}: seed.dragonfly[{i}]"),
+                &BTreeSet::new(),
+                self.allow_scripts,
+            )?;
             c.iter()
                 .for_each(|v| collect_inputs(self.patterns, v, &mut self.known));
             self.dragonfly.push(cmd);
@@ -1114,6 +1095,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
     }
     let mut loader = Loader {
         patterns,
+        allow_scripts: f.allow_scripts,
         known: Known::default(),
         hash_input: v.to_string(),
         seen_files: HashSet::new(),
@@ -1159,7 +1141,12 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         } else if let Some(c) = s.dragonfly {
             c.iter()
                 .for_each(|x| collect_inputs(patterns, x, &mut loader.known));
-            StepKind::Dragonfly(command(&c, &format!("{here}.dragonfly"), &saved)?)
+            StepKind::Dragonfly(command(
+                &c,
+                &format!("{here}.dragonfly"),
+                &saved,
+                f.allow_scripts,
+            )?)
         } else if let Some(ms) = s.pause_ms {
             StepKind::Pause(timeout(ms, &format!("{here}.pause_ms"))?)
         } else if let Some(w) = s.wait_for {
@@ -1229,6 +1216,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         file,
         description: f.description,
         restart: f.restart,
+        allow_scripts: f.allow_scripts,
         seed_mongo: loader.mongo,
         seed_dragonfly: loader.dragonfly,
         steps,
@@ -1368,12 +1356,12 @@ mod tests {
     #[test]
     fn commands_are_checked() {
         assert!(
-            command(&[json!("SELECT"), json!("2")], "c", &BTreeSet::new())
+            command(&[json!("SELECT"), json!("2")], "c", &BTreeSet::new(), false)
                 .unwrap_err()
                 .to_string()
                 .contains("not allowed")
         );
-        assert!(command(&[json!("flushall")], "c", &BTreeSet::new()).is_err());
+        assert!(command(&[json!("flushall")], "c", &BTreeSet::new(), false).is_err());
         assert!(
             command(
                 &[
@@ -1384,12 +1372,59 @@ mod tests {
                     json!("3")
                 ],
                 "c",
-                &BTreeSet::new()
+                &BTreeSet::new(),
+                false
             )
             .is_err()
         );
-        assert!(command(&[json!("SET"), json!("k"), json!(5)], "c", &BTreeSet::new()).is_ok());
-        assert!(command(&[json!("GET"), json!("${missing}")], "c", &BTreeSet::new()).is_err());
+        assert!(
+            command(
+                &[json!("SET"), json!("k"), json!(5)],
+                "c",
+                &BTreeSet::new(),
+                false
+            )
+            .is_ok()
+        );
+        assert!(
+            command(
+                &[json!("GET"), json!("${missing}")],
+                "c",
+                &BTreeSet::new(),
+                false
+            )
+            .is_err()
+        );
+        // A saved value as the name is checked when the step runs.
+        let saved: BTreeSet<String> = ["cmd".to_string()].into();
+        assert!(
+            command(
+                &[json!("${cmd}"), json!("GET"), json!("x")],
+                "c",
+                &saved,
+                false
+            )
+            .is_ok()
+        );
+        // Scripts need the flag.
+        assert!(
+            command(
+                &[json!("EVAL"), json!("return 1"), json!("0")],
+                "c",
+                &saved,
+                false
+            )
+            .is_err()
+        );
+        assert!(
+            command(
+                &[json!("EVAL"), json!("return 1"), json!("0")],
+                "c",
+                &saved,
+                true
+            )
+            .is_ok()
+        );
     }
 
     #[test]

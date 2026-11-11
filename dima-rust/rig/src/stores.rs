@@ -780,6 +780,8 @@ impl SideStores {
                 .map(|a| a.render(&empty, now))
                 .collect::<std::result::Result<Vec<_>, _>>()
                 .map_err(|e| config(format!("seed.dragonfly[{i}]: {e}")))?;
+            crate::dfcmd::check(&args, s.allow_scripts)
+                .map_err(|e| config(format!("seed.dragonfly[{i}] {args:?}: {e}")))?;
             match self.command(&args).await? {
                 RawReply::Error(e) => {
                     return Err(config(format!("seed.dragonfly[{i}] {args:?} failed: {e}")));

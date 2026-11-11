@@ -327,6 +327,8 @@ impl App {
             ("POST", ["items"]) => self.create_item(&req.body).await,
             ("GET", ["items", id]) => self.get_item(id).await,
             ("POST", ["jobs"]) => self.queue_jobs(&req.body).await,
+            // Echo one word (a scenario saves it and uses it in a later step).
+            ("GET", ["word", w]) => Ok(json_resp(200, &json!({"word": w}))),
             // In-memory state of this process: how many items it created.
             ("GET", ["memory"]) => Ok(json_resp(
                 200,
