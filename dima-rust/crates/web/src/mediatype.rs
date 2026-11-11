@@ -473,7 +473,8 @@ pub(crate) fn type_is(content_type: Option<&str>, types: &[String]) -> bool {
     })
 }
 
-/// `mime-types` `lookup(extension)` for the extensions handlers use with `res.type`.
+/// `mime-types` 2.1 `lookup(extension)`, as `type-is` resolves an extension given as a parser
+/// `type` option (the common extensions only; parsers here are configured with full types).
 pub(crate) fn lookup_extension(ext: &str) -> Option<&'static str> {
     let ext = ext.rsplit('.').next().unwrap_or(ext).to_ascii_lowercase();
     let mime = match ext.as_str() {
@@ -508,47 +509,34 @@ pub(crate) fn lookup_extension(ext: &str) -> Option<&'static str> {
     Some(mime)
 }
 
-/// `mime-types` `charsets.lookup(type)`.
-pub(crate) fn mime_charset(content_type: &str) -> Option<&'static str> {
-    // /^\s*([^;\s]*)(?:;|\s|$)/
-    let rest = content_type.trim_start_matches(is_js_whitespace);
-    let end = rest
-        .find(|c: char| c == ';' || is_js_whitespace(c))
-        .unwrap_or(rest.len());
-    let essence = rest.get(..end)?.to_lowercase();
-    let charset = match essence.as_str() {
-        "application/news-checkgroups" | "application/news-groupinfo" => "US-ASCII",
-        "application/prs.cyn" => "7-BIT",
-        "application/3gpdash-qoe-report+xml"
-        | "application/beep+xml"
-        | "application/elm+json"
-        | "application/emergencycalldata.cap+xml"
-        | "application/fhir+json"
-        | "application/fhir+xml"
-        | "application/im-iscomposing+xml"
-        | "application/javascript"
-        | "application/json"
-        | "application/manifest+json"
-        | "application/msc-ivr+xml"
-        | "application/msc-mixer+xml"
-        | "application/pidf+xml"
-        | "application/pidf-diff+xml"
-        | "application/poc-settings+xml"
-        | "application/vnd.hl7cda+xml"
-        | "application/vnd.hl7v2+xml"
-        | "application/vnd.omads-email+xml"
-        | "application/vnd.omads-file+xml"
-        | "application/vnd.omads-folder+xml"
-        | "application/vnd.syncml+xml"
-        | "application/vnd.syncml.dm+wbxml"
-        | "application/vnd.syncml.dm+xml"
-        | "application/vnd.syncml.dmddf+xml"
-        | "application/vnd.syncml.dmtnds+xml"
-        | "application/vnd.wap.wbxml" => "UTF-8",
-        other if other.starts_with("text/") => "UTF-8",
-        _ => return None,
+/// mime 1.6 `lookup(path)`, which Express 4 uses through `send.mime` (`res.type`, `sendFile`,
+/// `express.static`): the text after the last `.`, `/` or `\\` of the first line (the
+/// expression `^.*[./\\]` does not cross a line break), lower-cased, looked up in the generated
+/// table; anything unknown is `application/octet-stream`.
+pub(crate) fn mime_lookup(path: &str) -> &'static str {
+    let first_line_end = path
+        .find(['\n', '\r', '\u{2028}', '\u{2029}'])
+        .unwrap_or(path.len());
+    let first_line = path.get(..first_line_end).unwrap_or(path);
+    let extension = match first_line.rfind(['.', '/', '\\']) {
+        Some(at) => path.get(at + 1..).unwrap_or(""),
+        None => path,
     };
-    Some(charset)
+    let lower = dima_text::to_lower(extension);
+    crate::mime_table::TYPES
+        .binary_search_by(|(known, _)| known.as_bytes().cmp(lower.as_bytes()))
+        .ok()
+        .and_then(|at| crate::mime_table::TYPES.get(at))
+        .map_or("application/octet-stream", |(_, kind)| kind)
+}
+
+/// mime 1.6 `charsets.lookup(type)`: `/^text\/|^application\/(javascript|json)/`, case-sensitive
+/// and unanchored at the end (`application/json-seq` has one too).
+pub(crate) fn mime_charset(content_type: &str) -> Option<&'static str> {
+    let utf8 = content_type.starts_with("text/")
+        || content_type.starts_with("application/javascript")
+        || content_type.starts_with("application/json");
+    utf8.then_some("UTF-8")
 }
 
 /// `/;\s*charset\s*=/` as `res.set` tests it.
@@ -567,7 +555,7 @@ pub(crate) fn has_charset_param(value: &str) -> bool {
     false
 }
 
-/// The value `res.set('Content-Type', value)` stores: adds `; charset=…` from the mime table.
+/// The value `res.set('Content-Type', value)` stores: adds `; charset=…` from mime 1.6.
 pub(crate) fn express_content_type(value: &str) -> String {
     if has_charset_param(value) {
         return value.to_owned();
@@ -579,12 +567,12 @@ pub(crate) fn express_content_type(value: &str) -> String {
     }
 }
 
-/// `res.type(type)`: an extension goes through the mime table first.
+/// `res.type(type)`: without a `/` the value goes through mime 1.6 `lookup` first.
 pub(crate) fn express_type(value: &str) -> String {
     let resolved = if value.contains('/') {
         value.to_owned()
     } else {
-        lookup_extension(value).unwrap_or("false").to_owned()
+        mime_lookup(value).to_owned()
     };
     express_content_type(&resolved)
 }
@@ -709,5 +697,39 @@ mod tests {
         assert!(!has_charset_param("text/html"));
         assert_eq!(mime_charset("text/anything"), Some("UTF-8"));
         assert_eq!(mime_charset("image/svg+xml"), None);
+        // mime 1.6, not mime-db: no charset for +json types, one for any application/json… prefix.
+        assert_eq!(mime_charset("application/manifest+json"), None);
+        assert_eq!(mime_charset("application/json-seq"), Some("UTF-8"));
+        assert_eq!(mime_charset("Text/plain"), None);
+    }
+
+    /// Expectations from `require('send').mime` in the reference's node_modules.
+    #[test]
+    fn looks_up_types_like_mime_1() {
+        for (path, kind) in [
+            ("a.mp3", "audio/mpeg"),
+            ("/x/y/clip.MP4", "video/mp4"),
+            ("speech.wav", "audio/wav"),
+            ("voice.opus", "application/octet-stream"),
+            ("index.html", "text/html"),
+            ("html", "text/html"),
+            (".json", "application/json"),
+            ("README", "application/octet-stream"),
+            (".hidden", "application/octet-stream"),
+            ("dir\\file.css", "text/css"),
+            ("a.b\nc.txt", "application/octet-stream"),
+            ("file.\u{212A}ml", "application/vnd.google-earth.kml+xml"),
+            ("😀.png", "image/png"),
+            ("archive.tar.gz", "application/gzip"),
+        ] {
+            assert_eq!(mime_lookup(path), kind, "{path}");
+        }
+        assert_eq!(express_type("wav"), "audio/wav");
+        assert_eq!(express_type("unknownext"), "application/octet-stream");
+        assert_eq!(express_type("js"), "application/javascript; charset=utf-8");
+        assert_eq!(
+            express_content_type("application/manifest+json"),
+            "application/manifest+json"
+        );
     }
 }

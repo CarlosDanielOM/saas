@@ -115,6 +115,7 @@ mod envelope;
 mod error;
 mod handler;
 mod mediatype;
+mod mime_table;
 mod negotiate;
 pub mod path;
 pub mod qs;
