@@ -113,6 +113,7 @@ pub mod conditional;
 pub mod cors;
 mod envelope;
 mod error;
+mod exchange;
 mod handler;
 mod mediatype;
 mod mime_table;
@@ -124,6 +125,7 @@ mod response;
 mod router;
 mod send;
 mod server;
+pub mod sse;
 mod static_files;
 pub mod status;
 pub mod uri;
@@ -134,6 +136,7 @@ pub type Body = axum::body::Body;
 pub use app::{App, ConfigError};
 pub use envelope::Envelope;
 pub use error::{Error, Result, RouteError};
+pub use exchange::{MatchedRoute, Observer, RequestEnd, RequestStart, TraceContext};
 pub use handler::{
     BoxFuture, ErrorHandler, ErrorHandlerFn, Flow, FnHandler, FromFn, Handler, HandlerFn, IntoFlow,
     IntoHandler, Seq, SetHeaders, ViaFn, ViaHandler, from_fn, set_headers,

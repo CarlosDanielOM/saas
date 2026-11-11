@@ -46,6 +46,8 @@ enum Payload {
     Http(http::Response<Body>),
     /// `res.sendFile(path)`.
     File(String),
+    /// `res.write(...)` as it comes: a streamed body.
+    Stream(Body),
 }
 
 /// The answer a handler gives, built like Express's chained `res` calls.
@@ -202,6 +204,20 @@ impl Response {
     /// relative path is a 500 error.
     pub fn send_file(mut self, path: impl Into<String>) -> Self {
         self.payload = Payload::File(path.into());
+        self
+    }
+
+    /// A streamed body (`res.flushHeaders()` then `res.write(...)` as data comes, `res.end()` when
+    /// the body ends): the status and headers set so far go out at once, the body chunk by chunk
+    /// with chunked transfer encoding, no ETag. Each chunk is flushed as soon as nothing else is
+    /// ready. Server-Sent Events are built with [`crate::sse::channel`]; [`crate::Req::closed`]
+    /// tells producers when the client is gone.
+    pub fn stream<B>(mut self, body: B) -> Self
+    where
+        B: axum::body::HttpBody<Data = Bytes> + Send + 'static,
+        B::Error: Into<axum::BoxError>,
+    {
+        self.payload = Payload::Stream(Body::new(body));
         self
     }
 
@@ -416,6 +432,15 @@ fn finish<S>(payload: Payload, req: &mut Req<S>) -> Result<http::Response<Body>,
             }
             parts.headers = headers;
             Ok(http::Response::from_parts(parts, body))
+        }
+        Payload::Stream(body) => {
+            let state = std::mem::take(&mut req.res);
+            let status = StatusCode::from_u16(state.status)
+                .map_err(|_| Error::msg(format!("Invalid status code: {}", state.status)))?;
+            let mut response = http::Response::new(body);
+            *response.status_mut() = status;
+            *response.headers_mut() = state.headers;
+            Ok(response)
         }
         Payload::File(_) => Err(Error::msg("file payloads are sent asynchronously")),
     }

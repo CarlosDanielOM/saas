@@ -10,8 +10,11 @@ use http::{Extensions, Method, Version};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
+use tokio_util::sync::CancellationToken;
+
 use crate::Body;
 use crate::error::Error;
+use crate::exchange::{MatchedRoute, TraceContext};
 use crate::path::Params;
 use crate::qs;
 
@@ -147,6 +150,13 @@ pub struct Req<S = ()> {
     pub(crate) body_parsed: bool,
     incoming: Mutex<Option<Body>>,
     pub(crate) res: ResponseState,
+    /// Cancelled when the exchange ends (response sent, or the client went away).
+    pub(crate) closed: CancellationToken,
+    pub(crate) trace: Option<TraceContext>,
+    /// The last route that ran (`req.route`).
+    pub(crate) route: Option<MatchedRoute>,
+    /// The mount patterns stripped so far (the pattern form of `base_url`).
+    pub(crate) pattern_base: String,
 }
 
 impl<S> Req<S> {
@@ -174,7 +184,34 @@ impl<S> Req<S> {
             body_parsed: false,
             incoming: Mutex::new(Some(body)),
             res: ResponseState::default(),
+            closed: CancellationToken::new(),
+            trace: None,
+            route: None,
+            pattern_base: String::new(),
         }
+    }
+
+    /// Cancelled when the exchange is over: the response was handed to the connection in full,
+    /// or the client went away first (Node's `res.on('close')`). Work a handler spawns on behalf
+    /// of the request (an SSE producer, a long upstream call) waits on this to stop. The handler
+    /// itself needs nothing: when the client goes away before the answer, its future is dropped.
+    pub fn closed(&self) -> CancellationToken {
+        self.closed.clone()
+    }
+
+    /// The trace context the [`crate::Observer`] or a middleware attached.
+    pub fn trace_context(&self) -> Option<&TraceContext> {
+        self.trace.as_ref()
+    }
+
+    /// Attaches a trace context (it reaches [`crate::RequestEnd::trace`]).
+    pub fn set_trace_context(&mut self, context: TraceContext) {
+        self.trace = Some(context);
+    }
+
+    /// The last route that ran (`req.route` with `req.baseUrl`), if any.
+    pub fn route(&self) -> Option<&MatchedRoute> {
+        self.route.as_ref()
     }
 
     /// The shared application state.
