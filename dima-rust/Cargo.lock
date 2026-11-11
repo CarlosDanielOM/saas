@@ -1600,6 +1600,7 @@ dependencies = [
  "axum 0.8.9",
  "base64 0.22.1",
  "bytes",
+ "dima-core",
  "dima-text",
  "flate2",
  "futures-util",

@@ -117,6 +117,7 @@ mod exchange;
 mod handler;
 mod mediatype;
 mod mime_table;
+pub mod multipart;
 mod negotiate;
 pub mod path;
 pub mod qs;
