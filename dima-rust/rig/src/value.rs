@@ -1,0 +1,628 @@
+//! The normalised value model and its encoding in capture files.
+//!
+//! A capture holds values in canonical Extended JSON (MongoDB) or plain JSON (HTTP bodies),
+//! with run-time values replaced by markers:
+//!
+//! | Value | Encoding |
+//! |---|---|
+//! | generated ObjectId / UUID / allowance-generated token | `{"$oid": "<oid:1>"}`, `{"$uuid": "<uuid:2>"}`, inside text `<gen:3>` |
+//! | BSON date relative to the scenario start | `{"$date": "<t+153ms>"}`; outside the run window also the absolute time: `<t+60153ms@2026-11-11T10:01:00.153Z>` |
+//! | epoch-millisecond number in the time horizon | `{"$numberLong": "<t+...>"}`, `{"$numberDouble": "<t+...>"}`, JSON: `{"$rigNumber": "<t+...>"}` |
+//! | string containing any of the above | `{"$rigText": "item:<oid:1>:lock"}` (`<<` is a literal `<`); times keep their shape: `<t+5ms|dddd-dd-ddTdd:dd:dd.dddZ>`, days: `<day+0>`, run-time names: `<run:port.http>` |
+//! | object key containing any of the above | the key `"$rigText:item:<oid:1>"`; a literal key starting with `$` is written `"$rigLiteral:$key"` |
+//! | Dragonfly string holding JSON | `{"$rigJson": ...}`; bytes that are not UTF-8: `{"$rigBytes": "<base64>"}` |
+
+use base64::Engine as _;
+use serde_json::{Map, Number, Value};
+
+use crate::timefmt;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum IdKind {
+    Oid,
+    Uuid,
+    Gen,
+}
+
+impl IdKind {
+    pub fn tag(self) -> &'static str {
+        match self {
+            IdKind::Oid => "oid",
+            IdKind::Uuid => "uuid",
+            IdKind::Gen => "gen",
+        }
+    }
+
+    fn from_tag(s: &str) -> Option<IdKind> {
+        match s {
+            "oid" => Some(IdKind::Oid),
+            "uuid" => Some(IdKind::Uuid),
+            "gen" => Some(IdKind::Gen),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Id {
+    /// Seen in the scenario's inputs or not generated during this run: compared exactly.
+    Lit(String),
+    /// Generated during the run, before numbering (only between detection and canonicalisation).
+    Raw(IdKind, String),
+    /// Generated during the run: the n-th distinct value of this kind in the capture.
+    Gen(IdKind, u32),
+}
+
+/// A time. `Abs` compares exactly; `Rel` is relative to the scenario start and compares with a
+/// tolerance (or exactly by `abs`, which is kept for times outside the run window).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Moment {
+    Abs(i64),
+    Rel { off: i64, abs: Option<i64> },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Seg {
+    Lit(String),
+    Id(Id),
+    /// A time written inside a string; `shape` is the original text with digits replaced by `d`
+    /// (`ms` for a 13-digit epoch-millisecond run).
+    Time { at: Moment, shape: String },
+    /// A `YYYY-MM-DD` day relative to the scenario start's UTC day.
+    Day { off: i64, abs: Option<String> },
+    /// A run-time name such as the side's port or database name.
+    Name(String),
+}
+
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct Text(pub Vec<Seg>);
+
+impl Text {
+    pub fn lit(s: &str) -> Text {
+        if s.is_empty() { Text(Vec::new()) } else { Text(vec![Seg::Lit(s.to_string())]) }
+    }
+
+    /// Merge neighbouring literals and drop empty ones.
+    pub fn from_segs(segs: Vec<Seg>) -> Text {
+        let mut out: Vec<Seg> = Vec::with_capacity(segs.len());
+        for s in segs {
+            match s {
+                Seg::Lit(l) if l.is_empty() => {}
+                Seg::Lit(l) => match out.last_mut() {
+                    Some(Seg::Lit(prev)) => prev.push_str(&l),
+                    _ => out.push(Seg::Lit(l)),
+                },
+                other => out.push(other),
+            }
+        }
+        Text(out)
+    }
+
+    /// The text when it holds no markers.
+    pub fn as_plain(&self) -> Option<&str> {
+        match self.0.as_slice() {
+            [] => Some(""),
+            [Seg::Lit(s)] => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn has_atoms(&self) -> bool {
+        self.as_plain().is_none()
+    }
+
+    /// The text as written in a capture: literal `<` doubled, markers in angle brackets.
+    pub fn encode(&self) -> String {
+        let mut out = String::new();
+        for s in &self.0 {
+            match s {
+                Seg::Lit(l) => out.push_str(&l.replace('<', "<<")),
+                Seg::Id(id) => out.push_str(&encode_id(id)),
+                Seg::Time { at, shape } => {
+                    out.push('<');
+                    out.push_str(&encode_moment(at));
+                    out.push('|');
+                    out.push_str(shape);
+                    out.push('>');
+                }
+                Seg::Day { off, abs } => {
+                    out.push_str("<day");
+                    out.push_str(&signed(*off));
+                    if let Some(a) = abs {
+                        out.push('@');
+                        out.push_str(a);
+                    }
+                    out.push('>');
+                }
+                Seg::Name(n) => {
+                    out.push_str("<run:");
+                    out.push_str(n);
+                    out.push('>');
+                }
+            }
+        }
+        out
+    }
+
+    /// Readable form for reports: the plain text, or the encoded form when it has markers.
+    pub fn display(&self) -> String {
+        match self.as_plain() {
+            Some(s) => s.to_string(),
+            None => self.encode(),
+        }
+    }
+
+    pub fn decode(s: &str) -> Result<Text, String> {
+        let mut segs = Vec::new();
+        let mut lit = String::new();
+        let mut rest = s;
+        while let Some(pos) = rest.find('<') {
+            let (before, after) = rest.split_at(pos);
+            lit.push_str(before);
+            if let Some(tail) = after.strip_prefix("<<") {
+                lit.push('<');
+                rest = tail;
+                continue;
+            }
+            let inner_and_tail = after.strip_prefix('<').unwrap_or(after);
+            let end = inner_and_tail.find('>').ok_or_else(|| format!("unclosed `<` in marker text `{s}`"))?;
+            let (inner, tail) = inner_and_tail.split_at(end);
+            segs.push(Seg::Lit(std::mem::take(&mut lit)));
+            segs.push(decode_atom(inner).map_err(|e| format!("{e} in `{s}`"))?);
+            rest = tail.strip_prefix('>').unwrap_or(tail);
+        }
+        lit.push_str(rest);
+        segs.push(Seg::Lit(lit));
+        Ok(Text::from_segs(segs))
+    }
+}
+
+fn signed(n: i64) -> String {
+    if n < 0 { n.to_string() } else { format!("+{n}") }
+}
+
+fn encode_id(id: &Id) -> String {
+    match id {
+        Id::Lit(v) => v.replace('<', "<<"),
+        Id::Raw(k, v) => format!("<{}={}>", k.tag(), v),
+        Id::Gen(k, n) => format!("<{}:{}>", k.tag(), n),
+    }
+}
+
+/// `t+153ms`, `t+60153ms@2026-...Z`, `t@2026-...Z` (without the angle brackets).
+pub fn encode_moment(m: &Moment) -> String {
+    let iso = |ms: i64| timefmt::format_iso_ms(ms).unwrap_or_else(|| ms.to_string());
+    match m {
+        Moment::Abs(ms) => format!("t@{}", iso(*ms)),
+        Moment::Rel { off, abs: None } => format!("t{}", timefmt::format_offset(*off)),
+        Moment::Rel { off, abs: Some(a) } => format!("t{}@{}", timefmt::format_offset(*off), iso(*a)),
+    }
+}
+
+fn parse_abs(s: &str) -> Result<i64, String> {
+    timefmt::parse_iso(s)
+        .or_else(|| s.parse::<i64>().ok())
+        .ok_or_else(|| format!("bad absolute time `{s}`"))
+}
+
+pub fn decode_moment(s: &str) -> Result<Moment, String> {
+    let body = s.strip_prefix('t').ok_or_else(|| format!("bad time marker `{s}`"))?;
+    if let Some(abs) = body.strip_prefix('@') {
+        return Ok(Moment::Abs(parse_abs(abs)?));
+    }
+    let (off, abs) = match body.split_once('@') {
+        Some((o, a)) => (o, Some(parse_abs(a)?)),
+        None => (body, None),
+    };
+    let off = timefmt::parse_offset(off).ok_or_else(|| format!("bad time offset in `{s}`"))?;
+    Ok(Moment::Rel { off, abs })
+}
+
+fn decode_atom(inner: &str) -> Result<Seg, String> {
+    if let Some(name) = inner.strip_prefix("run:") {
+        return Ok(Seg::Name(name.to_string()));
+    }
+    if let Some(rest) = inner.strip_prefix("day") {
+        let (off, abs) = match rest.split_once('@') {
+            Some((o, a)) => (o, Some(a.to_string())),
+            None => (rest, None),
+        };
+        let off: i64 = off.trim_start_matches('+').parse().map_err(|_| format!("bad day marker `<{inner}>`"))?;
+        return Ok(Seg::Day { off, abs });
+    }
+    if inner.starts_with('t') {
+        let (m, shape) = inner.split_once('|').ok_or_else(|| format!("time marker `<{inner}>` needs a `|shape`"))?;
+        return Ok(Seg::Time { at: decode_moment(m)?, shape: shape.to_string() });
+    }
+    if let Some((tag, n)) = inner.split_once(':')
+        && let Some(kind) = IdKind::from_tag(tag) {
+            let n: u32 = n.parse().map_err(|_| format!("bad id marker `<{inner}>`"))?;
+            return Ok(Seg::Id(Id::Gen(kind, n)));
+        }
+    if let Some((tag, v)) = inner.split_once('=')
+        && let Some(kind) = IdKind::from_tag(tag) {
+            return Ok(Seg::Id(Id::Raw(kind, v.to_string())));
+        }
+    Err(format!("unknown marker `<{inner}>`"))
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NumRepr {
+    /// BSON date.
+    Date,
+    /// BSON int64 holding epoch milliseconds.
+    Int64,
+    /// BSON double holding epoch milliseconds.
+    Double,
+    /// JSON number holding epoch milliseconds.
+    Json,
+}
+
+impl NumRepr {
+    pub fn describe(self) -> &'static str {
+        match self {
+            NumRepr::Date => "BSON date",
+            NumRepr::Int64 => "int64 epoch-ms",
+            NumRepr::Double => "double epoch-ms",
+            NumRepr::Json => "JSON number epoch-ms",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Val {
+    Null,
+    Bool(bool),
+    /// A JSON number (HTTP bodies, Dragonfly JSON, replies): compared by value.
+    Num(Number),
+    Int32(i32),
+    Int64(i64),
+    Double(f64),
+    Dec(String),
+    Time(NumRepr, Moment),
+    Oid(Id),
+    Uuid(Id),
+    Str(Text),
+    Bytes(Vec<u8>),
+    /// A Dragonfly string that holds JSON (stored in its compact form).
+    Json(Box<Val>),
+    Arr(Vec<Val>),
+    Obj(Vec<(Text, Val)>),
+    /// Any other BSON type, in canonical Extended JSON, compared exactly.
+    Ext(Value),
+    /// A Dragonfly type the rig does not read yet.
+    Unsupported(String),
+}
+
+impl Val {
+    pub fn str(s: &str) -> Val {
+        Val::Str(Text::lit(s))
+    }
+
+    /// A short type name for reports.
+    pub fn type_name(&self) -> String {
+        match self {
+            Val::Null => "null".into(),
+            Val::Bool(_) => "boolean".into(),
+            Val::Num(_) => "number".into(),
+            Val::Int32(_) => "int32".into(),
+            Val::Int64(_) => "int64".into(),
+            Val::Double(_) => "double".into(),
+            Val::Dec(_) => "decimal128".into(),
+            Val::Time(r, _) => r.describe().into(),
+            Val::Oid(_) => "ObjectId".into(),
+            Val::Uuid(_) => "UUID".into(),
+            Val::Str(_) => "string".into(),
+            Val::Bytes(_) => "bytes".into(),
+            Val::Json(_) => "JSON text".into(),
+            Val::Arr(_) => "array".into(),
+            Val::Obj(_) => "object".into(),
+            Val::Ext(v) => match v.as_object().and_then(|o| o.keys().next()) {
+                Some(k) => format!("BSON {}", k.trim_start_matches('$')),
+                None => "BSON value".into(),
+            },
+            Val::Unsupported(t) => format!("unsupported {t}"),
+        }
+    }
+
+    /// Compact capture encoding, cut to `max` characters for reports.
+    pub fn short(&self, max: usize) -> String {
+        let s = match self {
+            Val::Str(t) => serde_json::to_string(&t.display()).unwrap_or_default(),
+            other => serde_json::to_string(&encode(other)).unwrap_or_default(),
+        };
+        cut(&s, max)
+    }
+}
+
+/// Cut text to `max` characters, marking the cut.
+pub fn cut(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        return s.to_string();
+    }
+    let mut out: String = s.chars().take(max).collect();
+    out.push('…');
+    out
+}
+
+fn fmt_double(f: f64) -> String {
+    if f.is_nan() {
+        "NaN".into()
+    } else if f.is_infinite() {
+        if f > 0.0 { "Infinity".into() } else { "-Infinity".into() }
+    } else {
+        format!("{f:?}")
+    }
+}
+
+fn parse_double(s: &str) -> Result<f64, String> {
+    match s {
+        "NaN" => Ok(f64::NAN),
+        "Infinity" => Ok(f64::INFINITY),
+        "-Infinity" => Ok(f64::NEG_INFINITY),
+        _ => s.parse().map_err(|_| format!("bad $numberDouble `{s}`")),
+    }
+}
+
+fn single(key: &str, v: Value) -> Value {
+    let mut m = Map::new();
+    m.insert(key.to_string(), v);
+    Value::Object(m)
+}
+
+fn marker(m: &Moment) -> String {
+    format!("<{}>", encode_moment(m))
+}
+
+pub fn encode_key(k: &Text) -> String {
+    match k.as_plain() {
+        Some(p) if p.starts_with('$') => format!("$rigLiteral:{p}"),
+        Some(p) => p.to_string(),
+        None => format!("$rigText:{}", k.encode()),
+    }
+}
+
+pub fn decode_key(k: &str) -> Result<Text, String> {
+    if let Some(t) = k.strip_prefix("$rigText:") {
+        Text::decode(t)
+    } else if let Some(l) = k.strip_prefix("$rigLiteral:") {
+        Ok(Text::lit(l))
+    } else if k.starts_with('$') {
+        Err(format!("unescaped key `{k}` (literal keys starting with $ are written \"$rigLiteral:{k}\")"))
+    } else {
+        Ok(Text::lit(k))
+    }
+}
+
+pub fn encode_text_value(t: &Text) -> Value {
+    match t.as_plain() {
+        Some(p) => Value::String(p.to_string()),
+        None => single("$rigText", Value::String(t.encode())),
+    }
+}
+
+fn encode_id_value(id: &Id) -> Value {
+    match id {
+        Id::Lit(v) => Value::String(v.clone()),
+        other => Value::String(encode_id(other)),
+    }
+}
+
+/// Encode a value for a capture file.
+pub fn encode(v: &Val) -> Value {
+    match v {
+        Val::Null => Value::Null,
+        Val::Bool(b) => Value::Bool(*b),
+        Val::Num(n) => Value::Number(n.clone()),
+        Val::Int32(i) => single("$numberInt", Value::String(i.to_string())),
+        Val::Int64(i) => single("$numberLong", Value::String(i.to_string())),
+        Val::Double(f) => single("$numberDouble", Value::String(fmt_double(*f))),
+        Val::Dec(s) => single("$numberDecimal", Value::String(s.clone())),
+        Val::Time(NumRepr::Date, Moment::Abs(ms)) => match timefmt::format_iso_ms(*ms) {
+            Some(iso) => single("$date", Value::String(iso)),
+            None => single("$date", single("$numberLong", Value::String(ms.to_string()))),
+        },
+        Val::Time(NumRepr::Date, m) => single("$date", Value::String(marker(m))),
+        Val::Time(NumRepr::Int64, m) => single("$numberLong", Value::String(marker(m))),
+        Val::Time(NumRepr::Double, m) => single("$numberDouble", Value::String(marker(m))),
+        Val::Time(NumRepr::Json, m) => single("$rigNumber", Value::String(marker(m))),
+        Val::Oid(id) => single("$oid", encode_id_value(id)),
+        Val::Uuid(id) => single("$uuid", encode_id_value(id)),
+        Val::Str(t) => encode_text_value(t),
+        Val::Bytes(b) => single("$rigBytes", Value::String(base64::engine::general_purpose::STANDARD.encode(b))),
+        Val::Json(inner) => single("$rigJson", encode(inner)),
+        Val::Arr(items) => Value::Array(items.iter().map(encode).collect()),
+        Val::Obj(kv) => {
+            let mut m = Map::new();
+            for (k, v) in kv {
+                m.insert(encode_key(k), encode(v));
+            }
+            Value::Object(m)
+        }
+        Val::Ext(e) => e.clone(),
+        Val::Unsupported(t) => single("$rigUnsupported", Value::String(t.clone())),
+    }
+}
+
+const EXT_KEYS: &[&str] = &[
+    "$binary", "$timestamp", "$regularExpression", "$minKey", "$maxKey", "$code", "$scope", "$symbol", "$undefined", "$dbPointer",
+];
+
+fn decode_id(s: &str, kind: IdKind) -> Result<Id, String> {
+    if s.starts_with('<') {
+        match Text::decode(s)?.0.as_slice() {
+            [Seg::Id(id)] => Ok(id.clone()),
+            _ => Err(format!("bad {} marker `{s}`", kind.tag())),
+        }
+    } else {
+        Ok(Id::Lit(s.to_string()))
+    }
+}
+
+fn time_marker(s: &str) -> Option<Result<Moment, String>> {
+    let inner = s.strip_prefix('<')?.strip_suffix('>')?;
+    Some(decode_moment(inner))
+}
+
+fn want_str<'a>(v: &'a Value, key: &str) -> Result<&'a str, String> {
+    v.as_str().ok_or_else(|| format!("`{key}` needs a string"))
+}
+
+/// Decode a value from a capture file.
+pub fn decode(v: &Value) -> Result<Val, String> {
+    Ok(match v {
+        Value::Null => Val::Null,
+        Value::Bool(b) => Val::Bool(*b),
+        Value::Number(n) => Val::Num(n.clone()),
+        Value::String(s) => Val::Str(Text::lit(s)),
+        Value::Array(items) => Val::Arr(items.iter().map(decode).collect::<Result<_, _>>()?),
+        Value::Object(m) => {
+            let dollar: Vec<&String> = m.keys().filter(|k| k.starts_with('$') && !is_escaped_key(k)).collect();
+            if dollar.is_empty() {
+                let mut kv = Vec::with_capacity(m.len());
+                for (k, v) in m {
+                    kv.push((decode_key(k)?, decode(v)?));
+                }
+                return Ok(Val::Obj(kv));
+            }
+            if m.len() != 1 {
+                if m.keys().all(|k| EXT_KEYS.contains(&k.as_str())) {
+                    return Ok(Val::Ext(v.clone()));
+                }
+                return Err(format!("object mixes markers and keys: {}", cut(&v.to_string(), 120)));
+            }
+            let (key, inner) = m.iter().next().ok_or("empty marker")?;
+            match key.as_str() {
+                "$numberInt" => Val::Int32(want_str(inner, key)?.parse().map_err(|_| format!("bad $numberInt {inner}"))?),
+                "$numberLong" => {
+                    let s = want_str(inner, key)?;
+                    match time_marker(s) {
+                        Some(m) => Val::Time(NumRepr::Int64, m?),
+                        None => Val::Int64(s.parse().map_err(|_| format!("bad $numberLong `{s}`"))?),
+                    }
+                }
+                "$numberDouble" => {
+                    let s = want_str(inner, key)?;
+                    match time_marker(s) {
+                        Some(m) => Val::Time(NumRepr::Double, m?),
+                        None => Val::Double(parse_double(s)?),
+                    }
+                }
+                "$numberDecimal" => Val::Dec(want_str(inner, key)?.to_string()),
+                "$rigNumber" => match time_marker(want_str(inner, key)?) {
+                    Some(m) => Val::Time(NumRepr::Json, m?),
+                    None => return Err(format!("bad $rigNumber {inner}")),
+                },
+                "$date" => match inner {
+                    Value::String(s) => match time_marker(s) {
+                        Some(m) => Val::Time(NumRepr::Date, m?),
+                        None => Val::Time(NumRepr::Date, Moment::Abs(parse_abs(s)?)),
+                    },
+                    Value::Object(o) => {
+                        let s = o.get("$numberLong").and_then(Value::as_str).ok_or("bad $date")?;
+                        Val::Time(NumRepr::Date, Moment::Abs(s.parse().map_err(|_| format!("bad $date {s}"))?))
+                    }
+                    _ => return Err(format!("bad $date {inner}")),
+                },
+                "$oid" => Val::Oid(decode_id(want_str(inner, key)?, IdKind::Oid)?),
+                "$uuid" => Val::Uuid(decode_id(want_str(inner, key)?, IdKind::Uuid)?),
+                "$rigText" => Val::Str(Text::decode(want_str(inner, key)?)?),
+                "$rigBytes" => Val::Bytes(
+                    base64::engine::general_purpose::STANDARD
+                        .decode(want_str(inner, key)?)
+                        .map_err(|e| format!("bad $rigBytes: {e}"))?,
+                ),
+                "$rigJson" => Val::Json(Box::new(decode(inner)?)),
+                "$rigUnsupported" => Val::Unsupported(want_str(inner, key)?.to_string()),
+                k if EXT_KEYS.contains(&k) => Val::Ext(v.clone()),
+                k => return Err(format!("unknown marker `{k}`")),
+            }
+        }
+    })
+}
+
+fn is_escaped_key(k: &str) -> bool {
+    k.starts_with("$rigText:") || k.starts_with("$rigLiteral:")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn round_trip(v: &Val) {
+        let enc = encode(v);
+        let back = decode(&enc).unwrap_or_else(|e| panic!("decode {enc}: {e}"));
+        assert_eq!(&back, v, "round trip of {enc}");
+    }
+
+    #[test]
+    fn every_kind_round_trips() {
+        let text = Text::from_segs(vec![
+            Seg::Lit("item:".into()),
+            Seg::Id(Id::Gen(IdKind::Oid, 1)),
+            Seg::Lit(":<lock> 🍕".into()),
+            Seg::Time { at: Moment::Rel { off: 153, abs: None }, shape: "dddd-dd-ddTdd:dd:dd.dddZ".into() },
+            Seg::Day { off: -1, abs: Some("2026-11-10".into()) },
+            Seg::Name("port.http".into()),
+        ]);
+        let vals = vec![
+            Val::Null,
+            Val::Bool(true),
+            Val::Num(Number::from(5)),
+            Val::Num(Number::from_f64(5.0).unwrap()),
+            Val::Int32(-3),
+            Val::Int64(1 << 40),
+            Val::Double(5.0),
+            Val::Double(-0.0),
+            Val::Double(f64::INFINITY),
+            Val::Dec("1.50".into()),
+            Val::Time(NumRepr::Date, Moment::Abs(1_700_000_000_123)),
+            Val::Time(NumRepr::Date, Moment::Abs(-80_000_000_000_000)),
+            Val::Time(NumRepr::Date, Moment::Rel { off: 153, abs: None }),
+            Val::Time(NumRepr::Double, Moment::Rel { off: 60_153, abs: Some(1_794_400_000_000) }),
+            Val::Time(NumRepr::Int64, Moment::Rel { off: -20, abs: None }),
+            Val::Time(NumRepr::Json, Moment::Rel { off: 0, abs: None }),
+            Val::Oid(Id::Lit("650000000000000000000001".into())),
+            Val::Oid(Id::Gen(IdKind::Oid, 2)),
+            Val::Uuid(Id::Gen(IdKind::Uuid, 1)),
+            Val::Str(Text::lit("plain <not a marker> ñ 😀")),
+            Val::Str(Text::lit("")),
+            Val::Str(text.clone()),
+            Val::Bytes(vec![0xff, 0x00, 0x80]),
+            Val::Json(Box::new(Val::Obj(vec![(Text::lit("a"), Val::Num(Number::from(1)))]))),
+            Val::Arr(vec![Val::Null, Val::Int32(1)]),
+            Val::Obj(vec![
+                (Text::lit("$set"), Val::Null),
+                (text.clone(), Val::Bool(false)),
+                (Text::lit("ключ 🔑"), Val::str("значение")),
+            ]),
+            Val::Ext(json!({"$binary": {"base64": "AAE=", "subType": "00"}})),
+            Val::Ext(json!({"$timestamp": {"t": 1, "i": 2}})),
+            Val::Unsupported("ReJSON-RL".into()),
+        ];
+        for v in &vals {
+            round_trip(v);
+        }
+    }
+
+    #[test]
+    fn readable_encodings() {
+        assert_eq!(encode(&Val::Oid(Id::Gen(IdKind::Oid, 1))), json!({"$oid": "<oid:1>"}));
+        assert_eq!(
+            encode(&Val::Time(NumRepr::Date, Moment::Rel { off: 60_000, abs: Some(0) })),
+            json!({"$date": "<t+60000ms@1970-01-01T00:00:00.000Z>"})
+        );
+        assert_eq!(encode(&Val::Double(5.0)), json!({"$numberDouble": "5.0"}));
+        assert_eq!(encode(&Val::str("a<b")), json!("a<b"));
+        let t = Text::from_segs(vec![Seg::Lit("a<b ".into()), Seg::Id(Id::Gen(IdKind::Gen, 3))]);
+        assert_eq!(encode(&Val::Str(t)), json!({"$rigText": "a<<b <gen:3>"}));
+    }
+
+    #[test]
+    fn decode_rejects_unknown_markers_and_unescaped_keys() {
+        assert!(decode(&json!({"$nope": 1})).unwrap_err().contains("unknown marker"));
+        assert!(decode(&json!({"a": 1, "$oid": "x"})).is_err());
+        assert!(decode(&json!({"$rigText": "<what:1>"})).is_err());
+    }
+}

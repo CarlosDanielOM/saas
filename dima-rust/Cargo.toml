@@ -5,7 +5,7 @@
 # is removed. New code never depends on it and never goes into it.
 [workspace]
 resolver = "3"
-members = [".", "crates/*"]
+members = [".", "crates/*", "rig"]
 
 [workspace.package]
 version = "0.1.0"
@@ -69,6 +69,10 @@ uuid = { version = "1.28.0", features = ["v4"] }
 regex = "1.13.1"
 unicode-normalization = "0.1.26"
 icu_collator = "2.3.0"
+# Side-by-side rig (rig/): command line, process-group signals, Extended JSON for captures.
+clap = { version = "4.6.6", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "suggestions"] }
+nix = { version = "0.31.3", default-features = false, features = ["signal"] }
+bson = { version = "3.1.0", features = ["serde_json-1"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
