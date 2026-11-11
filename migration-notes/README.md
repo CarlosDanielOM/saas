@@ -2,7 +2,7 @@
 
 This directory indexes Rust worker migrations, their source reuse, remaining TypeScript ownership, validation evidence, and rollback limits. The current deployment status is summarized in the table; detailed release evidence lives in each migration record.
 
-**Migration status:** The ongoing Rust migration is paused until further notice; accepted deployed Rust workers continue running. Rust remains a long-term goal, while new work chooses TypeScript or Rust case by case based on cost, scope, and delivery needs. See the root [Rust migration status](../AGENTS.md#rust-migration-status).
+**Migration status:** Resumed on 2026-11-11 under [`dima-rust/MIGRATION.md`](../dima-rust/MIGRATION.md); current package status is in [`dima-rust/ledger/`](../dima-rust/ledger/). The records below are the history of the earlier worker migrations (paused 2026-10-31) and remain the release evidence for the Rust workers deployed today. See the root [Rust migration status](../AGENTS.md#rust-migration-status).
 
 | Migration | Status | Canonical record | Technical reference |
 | --- | --- | --- | --- |

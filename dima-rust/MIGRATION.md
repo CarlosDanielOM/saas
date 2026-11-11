@@ -12,7 +12,7 @@ package and its state. Read that to see what is done and what is next.
 Replace all server-side TypeScript/JavaScript with Rust as a **drop-in replacement** for what runs in
 production: less memory, less CPU, more throughput, tighter security. Done means: the three `dimabot`
 processes and the four small services run from Rust binaries, pass the side-by-side rig against the
-TypeScript version, and the TypeScript backend source is removed.
+reference, and the TypeScript backend source is removed.
 
 ## 2. Scope
 
@@ -23,9 +23,14 @@ TypeScript version, and the TypeScript backend source is removed.
 | `dimafx/server`, `dima-hoststats`, `dima-analytics`, `dimadb/server` | Python sidecars (`lfm2.5-embeddings`, `piper-tts`), `marketing/`, ops tooling in Python |
 
 External programs the backend shells out to (ffmpeg, yt-dlp, deno) stay external programs.
-TypeScript is frozen for the whole migration; `dimabot/` is the reference implementation and the
-rollback target. `origin/rust-migration` (the earlier attempt) is reference reading only. Never merge
-or copy from it wholesale: it was built on JavaScript-emulation layers this charter forbids.
+`origin/rust-migration` (the earlier attempt) is reference reading only. Never merge or copy from it
+wholesale: it was built on JavaScript-emulation layers this charter forbids.
+
+**The reference.** Behaviour is defined by what runs in production at baseline commit `0c71108e`:
+the TypeScript in `dimabot/src` (frozen for the whole migration), except for the seven cron workers
+that are already native (stream activity, raid analytics, follow-defense baseline, roulette completion,
+AI usage receipts, raid sessions, dashboard activity). Their reference is the existing Rust in
+`dima-rust/src` at that commit; the archived TypeScript for them is history, not the reference.
 
 ## 3. Drop-in contract
 
@@ -40,32 +45,42 @@ These may not change. A difference here is a bug unless section 4 or the decisio
 - **Operations**: environment variable names and defaults, ports (3000 API, 3333 EventSub), container
   names, networks, volumes, files on disk.
 
-**Rollback rule.** Until the TypeScript process for a role is retired, the Rust process writes only
-data the TypeScript code can read, in MongoDB and in Dragonfly. Processes are switched one at a time
-(cron, then bot, then API), so a Rust process must interoperate with TypeScript processes.
+**Compatibility rule.** Roles are switched one at a time (cron, then bot, then API). A Rust process
+must interoperate with every process that can run beside it **and** with the release it would be
+rolled back to: it writes only data those readers handle, in MongoDB and Dragonfly, and it handles
+everything they write. This holds until the lead closes the rollback window for that role in the
+decision log, which happens only once the TypeScript for that role is retired. Switching a role
+includes its handoff: queues drained or safely shared, leases expired or honoured, one owner per job.
 
-**Behaviour-preserving port.** Port what the code does, including odd behaviour users may depend on.
+**Behaviour-preserving port.** Port what the reference does, including odd behaviour users may depend on.
 Do not fix bugs silently: record them under "quirks" in the package report. Exceptions: the text rules
-in section 4, and security holes (fix, and say so in the report).
+in section 4, and security holes (fix, and say so in the report). Every pause, polling interval, batch
+size, backoff and lease duration is ported as it is and listed in the package report.
 
 ## 4. Text rules (UTF-8)
 
 1. All text is `String` / `&str`. No UTF-16 storage, no `Vec<u16>` text, no JavaScript string emulation.
-2. **Length** of user-facing text means Unicode scalar values (`chars().count()`). It equals the
-   JavaScript count for ordinary text and is smaller for emoji, so nothing valid today becomes invalid.
-3. **Slicing and truncation** happen on character boundaries. Byte-index slicing of strings
-   (`&s[a..b]`) is denied by lint; use the helpers in the `dima-text` crate or `str::get`.
-4. Command-language functions that count or cut text (`len`, substring, index, padding) follow rules 2 and 3.
-   This is the one intended user-visible change (an emoji counts as 1, never gets cut in half).
-5. A UTF-16 **number** (never UTF-16 data) is computed only at an edge whose contract is defined that way:
-   a position sent to a JavaScript client that indexes its own string, and the chat splitter's
-   450 budget, which keeps today's counting (an astral character costs 2) because Twitch splits past 500.
-   Use `dima_text::utf16_len` / `utf16_offset` and name the contract in a comment.
-6. Unpaired surrogate escapes in inbound JSON are replaced with U+FFFD at the edge.
-7. Ordering is code-point order unless the user sees a locale-sorted list; then use ICU collation.
-8. Things that are JavaScript behaviour but **not** UTF-16 (the `trim` whitespace set, number-to-text
-   formatting in chat output, `Number()` coercion in the command language) are visible behaviour and
-   stay. Implement each once in `dima-text` or the command engine, with tests; do not scatter copies.
+2. Cuts always land on a character boundary. Byte-index slicing of strings (`&s[a..b]`) is denied by
+   lint; use the helpers in the `dima-text` crate or `str::get`.
+3. Unpaired surrogate escapes in inbound JSON are replaced with U+FFFD at the edge.
+4. What a length, a cut or an ordering must match depends on what it is **for**. Classify every one in
+   the code you port:
+
+| Purpose | Rule |
+|---|---|
+| Our own limit on user text (names, messages, command bodies) and the command language's text functions (`len`, substring, index, padding) | Unicode scalar values (`chars().count()`). Same as JavaScript for ordinary text; an emoji counts 1, so nothing valid today becomes invalid. This is the intended user-visible change. |
+| **Money**: a count that feeds credits or cost (for example Fish TTS characters) | Exactly today's number. Where the reference uses `.length`, compute `dima_text::utf16_len`; where it uses `Array.from(x).length`, count scalars. Charges do not change. |
+| **Identity**: text that is cut, normalised or sorted before it is hashed, fingerprinted, used as a key, or compared for dedupe | Today's result. Cut with `dima_text::truncate_utf16_budget` (same position as JavaScript, never inside a character); sort the way the reference sorts (ICU collation where it uses `localeCompare`, UTF-16 code-unit order where it uses the default sort); serialise with the canonical JSON writer. |
+| A limit that mirrors an outside API's limit (Twitch reward title, announcement text, the chat splitter's 450) | Today's count, cut on a character boundary. Twitch splits chat past 500, so the splitter keeps its 450 budget with an astral character costing 2. |
+| A position stored in MongoDB or sent to a client (moderation match start/end, editor error positions, streaming offsets) | The unit the contract already has. Convert at the edge with `dima_text::utf16_offset` and name the contract in a comment, including whether the end is inclusive. |
+| Ordering the user sees as a sorted list | ICU collation. |
+| Everything else (internal) | Whatever is natural (bytes, scalars, code-point order); never exposed. |
+
+5. A UTF-16 **number** may be computed for the rows above. UTF-16 **data** is never built or stored.
+6. JavaScript behaviour that is not about UTF-16 (the `trim` whitespace set, number-to-text formatting
+   in chat output, `Number()` coercion in the command language, `Date` to ISO text) is visible behaviour
+   and stays. Implement each once in `dima-text` or the command engine, with tests; no scattered copies.
+7. List in the package report every length, cut or ordering that is not in the first or last row.
 
 ## 5. Layout
 
@@ -82,6 +97,10 @@ dima-rust/
   ledger/           inventories and package status
 ```
 
+Dependencies point one way: text and core types, then the data layer and outside-service clients, then
+the command engine and feature crates, then the binaries. Binaries only wire things together. A crate
+never depends on a crate above it or on a binary; pure logic does not pull in network or database crates.
+
 `dimabot/` keeps the Compose file, the `.env`, the sidecar Dockerfiles and the feature documents; it
 stays the deployment home after its TypeScript source is deleted at the end.
 
@@ -91,11 +110,15 @@ stays the deployment home after its TypeScript source is deleted at the end.
 - Lints come from the workspace (`[workspace.lints]`): clippy warnings are errors; `unwrap`, `expect`,
   `panic!`, `todo!`, `dbg!` and string byte-slicing are denied outside tests.
 - Errors: `thiserror` enums in libraries, `anyhow` only in binaries and tests. Expected failures never panic.
-- Async on tokio. No blocking calls on the runtime (`spawn_blocking` for CPU work and child processes
-  that block). Every task has an owner and stops on the shutdown token.
-- Every network call has a timeout. Every queue, channel, cache and buffer has a bound.
-- Configuration is read from the environment **once** at startup into typed structs with the same names
-  and defaults as the TypeScript. No `std::env::var` anywhere else.
+- Async on tokio. No blocking calls on the runtime (`spawn_blocking` for CPU work; child programs through
+  the async process API). Every task has an owner and stops on the shutdown token.
+- Every network call has a timeout: the reference's value where it has one; where it has none, a generous
+  one that only fires on a real hang, listed in the package report.
+- Every queue, channel, cache and buffer has a bound. When a bound is hit: telemetry and cache writes are
+  dropped and counted; requests are refused the way an overload is today; money, moderation and
+  journaled work is never dropped, it waits or fails loudly.
+- Configuration is read from the environment **once** at startup into typed structs with the same names,
+  defaults and parsing as the reference. No `std::env::var` anywhere else.
 - Time and randomness are injected where logic depends on them, so tests are deterministic.
 - Dependencies are declared in `[workspace.dependencies]` only. A new external crate needs a line in the
   package report saying why; rustls only (no OpenSSL); `default-features = false` where practical.
@@ -105,10 +128,37 @@ stays the deployment home after its TypeScript source is deleted at the end.
   (promise chains, `any`-shaped maps, exceptions as control flow).
 - No new documents beyond the package report and ledger updates. No "evidence" directories.
 
+**Single-process cron.** Each worker is a supervised task in `dima-cron`. The reference sometimes relies
+on killing a process to stop work whose lease is about to expire. The replacement: every unit of work
+runs under its deadline; on expiry the task is aborted **and joined** before anything else may take that
+work; if it has not stopped within a short grace period the whole process exits non-zero and the
+container restarts it. Completion writes are fenced by the lease. A worker that fails or panics is
+restarted alone, with backoff. CPU-heavy work and child programs run under explicit concurrency, output
+and size limits so one worker cannot starve the others. Blocking Redis commands and subscriptions use
+their own connections.
+
 ## 7. Data rules
 
-Filled in from `ledger/mongo.md` and `ledger/dragonfly.md` when the data layer lands (Phase 1). Until
-then: read the ledger entry for every collection and key you touch and match it exactly.
+The per-collection and per-key facts are in `ledger/mongo.md` and `ledger/dragonfly.md`. Read the entry
+for everything you touch. These rules apply everywhere:
+
+1. **Write only your fields.** Use targeted updates (`$set`, `$inc`, `$push`...) for the fields the
+   operation owns, as Mongoose does for a save. Never write back a whole document that was read earlier:
+   fields the Rust model does not know must survive.
+2. **Missing, null and default are three different states.** Model them and write `null` only where the
+   reference writes `null`; queries with `$exists` and sparse unique indexes depend on it.
+3. **BSON types are contract**: ObjectId or string ids, Date or epoch-millisecond numbers, int32, int64
+   or double, exactly as the ledger records per field. Do not improve them.
+4. **The reference for a write is what the reference operation actually stores**, observed in the rig,
+   not what the schema file suggests. Mongoose adds and omits things per operation (timestamps, `__v`,
+   sub-document `_id`, defaults on upsert). Hooks are part of the write.
+5. Indexes are created only where the reference creates them, with the same definitions.
+6. **Byte-compared values are opaque.** A queue item removed by value, JSON compared inside Lua, or a
+   payload that was hashed is carried as the bytes received through claim, completion and requeue; never
+   parse and re-serialise it. A value Rust creates that TypeScript or Lua will compare byte-wise is
+   written with the shared canonical JSON writer, which reproduces the reference's bytes.
+7. Lua scripts are reused verbatim from one shared source file per script.
+8. Leases, fences, revisions, status vocabularies and compare-and-set predicates are ported exactly.
 
 ## 8. Verification
 
@@ -116,14 +166,29 @@ A package is done when all of these hold:
 
 1. `tools/cargo fmt --check`, `tools/cargo clippy -- -D warnings` and `tools/cargo test` pass for the
    crates it touches (the lead re-runs them, plus the whole workspace, before merging).
-2. The TypeScript test cases for its files are ported as Rust tests (same case names where practical),
+2. The reference's test cases for its files are ported as Rust tests (same case names where practical),
    plus cases with emoji, combining marks and right-to-left text wherever it handles text.
-3. Externally visible behaviour is covered by rig scenarios once the rig exists (Phase 1): the same
-   requests and events go to the TypeScript process and the Rust process, and responses, database and
-   cache effects, outbound calls and socket emissions are compared. Allowed differences are listed in
-   the rig's allow-list with a reason.
+3. Externally visible behaviour is covered by rig scenarios once the rig exists (Phase 1).
 4. The ledger marks its files and contract items done, and the package report lists deviations,
-   quirks and open questions.
+   quirks, pauses and timeouts, non-default text classifications, and open questions.
+
+**The rig** runs the reference and the Rust candidate on the same inputs and compares responses,
+database and cache effects, outbound calls and socket emissions. Allowed differences are listed in its
+allow-list with a reason.
+
+- *Real-data mode* uses the local `domdimabot` copy: read endpoints are diffed over real documents, and
+  every model is round-tripped over every real document of its collection (decode then encode must give
+  equal BSON).
+- *Synthetic mode*: each implementation gets its own fresh database and cache, seeded identically from
+  fixtures, runs the scenario, and the whole database and key space are compared afterwards: typed BSON,
+  missing versus null, TTLs and deadlines relative to the scenario clock, generated ids mapped consistently.
+- Scenarios are classified by what they really write, not by HTTP method. Workers that scan everything
+  run in synthetic mode only.
+- Every outside service is a local, stateful mock (pagination, retries, injected failures). Rig
+  processes have no route to the internet, and a request the mock does not expect fails the scenario.
+- Money, authentication, moderation and data-integrity packages add fault scenarios: duplicate delivery,
+  restart in the middle of an operation, timeout after commit, lost lease, and a TypeScript writer racing
+  a Rust writer on the same data.
 
 Rigour by risk: money (billing, credits), authentication and tokens, moderation actions, and data
 integrity (journals, queues, account deletion) get the highest effort and always a second review.
@@ -149,8 +214,8 @@ integrity (journals, queues, account deletion) get the highest effort and always
 |---|---|---|
 | 0 | Charter and ledger | Inventories written, packages cut, second view from the reviewer taken |
 | 1 | Foundation: workspace, text, config, logging, data layer, clients, rig, one small service as pilot | Pilot passes the rig end to end |
-| 2 | Existing Rust converted to UTF-8 and moved into the workspace | Existing tests pass; only emoji/surrogate expectations changed |
-| 3 | Cron: all workers in one `dima-cron` binary; shared command engine complete | Rig green; release-ready |
+| 2 | Existing Rust converted to UTF-8 and moved into the workspace | Existing tests pass; only emoji/surrogate expectations changed; moved code passes integration checks |
+| 3 | Cron: all workers in one `dima-cron` binary; shared command engine complete. Starts with three thin end-to-end slices (timer to engine to chat delivery; journal to consumer to effect; usage to receipt to dashboard) before the rest fans out | Rig green; release-ready |
 | 4 | Bot | Rig green; release-ready |
 | 5 | API | Rig green; release-ready |
 | 6 | Remaining small services | Each rig green |
@@ -181,3 +246,9 @@ not part of any package.
 - 2026-11-11: The production `SECRET_KEY` is not available here. Token encryption is verified by
   TypeScript and Rust encrypting and decrypting each other's output with a test key, not by decrypting
   stored tokens. Local Dragonfly and Qdrant are used without authentication; production auth stays in production.
+- 2026-11-11: After the reviewer's second view (GPT-6.1 Sol): the compatibility rule now also covers the
+  rollback release; the reference is named per responsibility; text rules gained the purpose table so
+  that money counts, identity inputs, mirrored outside limits and stored positions keep today's values;
+  data rules 1 to 8 added; single-process cron semantics defined; the rig gained real-data and synthetic
+  modes and fault scenarios; Phase 3 starts with end-to-end slices. Set aside: comparing full causal
+  histories for every package (kept for the high-risk ones only).
