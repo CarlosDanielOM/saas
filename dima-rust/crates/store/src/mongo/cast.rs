@@ -13,8 +13,11 @@
 //! 4. function defaults (`Date.now`, `() => …`, document-array `[]`) in schema path order.
 //!
 //! Hydration of a stored document (`init`) instead keeps the stored keys and adds missing
-//! defaults: for the top level, literal defaults before the stored values and function defaults
-//! after; for a single nested sub-document, function defaults first and then literal ones.
+//! defaults: for the top level and for each element of a document array, literal defaults
+//! before the stored values and function defaults after; for a single nested sub-document, the
+//! stored values, then function defaults, then literal ones. A save writes these defaults back
+//! (top level and single nested ones as their own paths; array elements only when the whole
+//! array is `$set`).
 
 use crate::mongo::schema::{Field, Kind, Leaf, Schema, Target, TargetKind};
 use bson::oid::ObjectId;
@@ -407,9 +410,10 @@ impl<'c> Caster<'c> {
         Ok((doc, added))
     }
 
-    /// Hydrates a stored top-level document: literal defaults into the skeleton, the stored
-    /// values over them, then function defaults. Returns the document and the default paths in
-    /// the order Mongoose marks them (paths inside single nested sub-documents included).
+    /// Hydrates a stored top-level document (or a document array element): literal defaults
+    /// into the skeleton, the stored values over them, then function defaults. Returns the
+    /// document and the default paths in the order Mongoose marks them (paths inside single
+    /// nested sub-documents included).
     pub fn hydrate(
         &mut self,
         schema: &Schema,
@@ -460,9 +464,11 @@ impl<'c> Caster<'c> {
                 let hydrated: Vec<Bson> = items
                     .into_iter()
                     .map(|item| match item {
-                        Bson::Document(given) => {
-                            self.init_subdocument(sub, &given).map(Bson::Document)
-                        }
+                        // Array elements hydrate like a top-level document (literal
+                        // defaults before the stored keys); their defaults are not reported.
+                        Bson::Document(given) => self
+                            .hydrate(sub, &given)
+                            .map(|(doc, _)| Bson::Document(doc)),
                         other => Ok(other),
                     })
                     .collect::<Result<_, _>>()?;

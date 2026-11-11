@@ -63,7 +63,7 @@ const { Schema } = mongoose;
 // on and off, ObjectId and string `_id`, `minimize` on and off, literal and computed defaults,
 // nested objects, arrays of sub-documents with and without `_id`, single nested sub-documents,
 // Map and Mixed fields, `trim` setters and `immutable` paths. The Rust tests declare the same
-// collections with `dima_store::mongo::CollectionSpec` (see `tests/mongo_golden.rs`).
+// collections with `dima_store::mongo::schema::Schema` (see `tests/mongo_golden.rs`).
 
 const ItemSub = new Schema({
     label: { type: String, trim: true },
@@ -374,6 +374,8 @@ const cases = [
     { name: 'save_minimize_nested_empty', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, changes: [{ set: 'meta', value: { a: {}, b: 1 } }, { set: 'blob', value: { c: {} } }] },
     { name: 'save_set_text_and_trim', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, changes: [{ set: 'name', value: ` ${TEXT} ` }, { set: 'items.0.label', value: ` ${TEXT} ` }] },
     { name: 'save_hand_written_timestamps', schema: 'hand', seed: [handSeed()], op: 'save', id: oid1, changes: [{ set: 'name', value: 'x' }] },
+    { name: 'save_push_then_set_element', schema: 'camel', seed: [camelSubdocSparseSeed()], op: 'save', id: oid3, changes: [{ push: 'items', values: [{ label: 'p' }] }, { set: 'items.0.label', value: 'q' }] },
+    { name: 'save_set_default_path_to_default', schema: 'camel', seed: [camelSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'count', value: 0 }, { set: 'flag', value: null }] },
     { name: 'save_snake_push_account', schema: 'snake', seed: [snakeSeed()], op: 'save', id: oid1, changes: [{ push: 'accounts', values: [{ id: '9', type: 'kick' }] }] },
 ];
 
