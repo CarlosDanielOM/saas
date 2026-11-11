@@ -1,0 +1,27 @@
+{
+  "rig_scenario": 1,
+  "description": "First run: setup status, setup validation (username rules, password length counted in UTF-16 units), the admin account with an emoji password, setup closed afterwards, login with case and spaces in the name, bad credentials, /api/me, logout and the cleared cookie.",
+  "restart": true,
+  "steps": [
+    { "name": "health", "http": { "method": "GET", "path": "/api/health" } },
+    { "name": "status before", "http": { "method": "GET", "path": "/api/setup/status", "headers": { "x-dimadb": "1" } } },
+    { "name": "username too short", "http": { "method": "POST", "path": "/api/setup", "headers": { "x-dimadb": "1" }, "json": { "username": "a", "password": "long enough" } } },
+    { "name": "username not ascii", "http": { "method": "POST", "path": "/api/setup", "headers": { "x-dimadb": "1" }, "json": { "username": "ñandú", "password": "long enough" } } },
+    { "name": "three emoji are six UTF-16 units", "http": { "method": "POST", "path": "/api/setup", "headers": { "x-dimadb": "1" }, "json": { "username": "admin", "password": "🍕🍕🍕" } } },
+    { "name": "missing password", "http": { "method": "POST", "path": "/api/setup", "headers": { "x-dimadb": "1" }, "json": { "username": "admin" } } },
+    { "name": "setup", "http": { "method": "POST", "path": "/api/setup", "headers": { "x-dimadb": "1", "x-forwarded-proto": "https, http" }, "json": { "username": "  Admin.Root ", "password": "🍕🍕🍕🍕" }, "expect": { "status": 200 }, "save": { "cookie": "headers.set-cookie" } } },
+    { "name": "setup again", "http": { "method": "POST", "path": "/api/setup", "headers": { "x-dimadb": "1" }, "json": { "username": "other", "password": "long enough" } } },
+    { "name": "status after", "http": { "method": "GET", "path": "/api/setup/status", "headers": { "x-dimadb": "1" } } },
+    { "name": "me with the setup cookie", "http": { "method": "GET", "path": "/api/me", "headers": { "x-dimadb": "1", "cookie": "${cookie}" } } },
+    { "name": "wrong password", "http": { "method": "POST", "path": "/api/login", "headers": { "x-dimadb": "1" }, "json": { "username": "admin.root", "password": "🍕🍕🍕🍔" } } },
+    { "name": "unknown user", "http": { "method": "POST", "path": "/api/login", "headers": { "x-dimadb": "1" }, "json": { "username": "nobody", "password": "🍕🍕🍕🍕" } } },
+    { "name": "login", "http": { "method": "POST", "path": "/api/login", "headers": { "x-dimadb": "1" }, "json": { "username": " ADMIN.root", "password": "🍕🍕🍕🍕" }, "expect": { "status": 200 }, "save": { "second": "headers.set-cookie" } } },
+    { "name": "me", "http": { "method": "GET", "path": "/api/me", "headers": { "x-dimadb": "1", "cookie": "theme=dark; ${second}" } } },
+    { "name": "logout", "http": { "method": "POST", "path": "/api/logout", "headers": { "x-dimadb": "1", "cookie": "${second}", "x-forwarded-proto": "https" } } },
+    { "name": "me after logout", "http": { "method": "GET", "path": "/api/me", "headers": { "x-dimadb": "1", "cookie": "${second}" } } },
+    { "name": "the first session still works", "http": { "method": "GET", "path": "/api/me", "headers": { "x-dimadb": "1", "cookie": "${cookie}" } } },
+    { "name": "logout without a cookie", "http": { "method": "POST", "path": "/api/logout", "headers": { "x-dimadb": "1" } } },
+    { "name": "me without a cookie", "http": { "method": "GET", "path": "/api/me", "headers": { "x-dimadb": "1" } } }
+  ],
+  "compare": { "headers": { "add": ["set-cookie"] } }
+}
