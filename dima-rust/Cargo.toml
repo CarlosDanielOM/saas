@@ -45,6 +45,11 @@ axum = { version = "0.8.9", default-features = false, features = ["http1", "json
 tower = { version = "0.5.3", default-features = false, features = ["util"] }
 http = "1.5.0"
 http-body-util = "0.1.5"
+# dima-web: the inbound server loop (HTTP/1.1 connections with upgrades and graceful
+# shutdown) and request-body inflation (body-parser accepts gzip and deflate bodies).
+hyper = { version = "1.12.0", default-features = false, features = ["http1", "server"] }
+hyper-util = { version = "0.1.21", default-features = false, features = ["tokio", "service", "http1", "server"] }
+flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
 url = "2.5.8"
 percent-encoding = "2.3.2"
 mime = "0.3.17"
