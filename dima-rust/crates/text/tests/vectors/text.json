@@ -1,5 +1,5 @@
 {
- "meta": {"node":"v26.13.0","icu":"78.3","unicode":"17.0","cldr":"48.0"},
+ "meta": {"node":"v24.22.2","icu":"78.3","unicode":"17.0","cldr":"48.0"},
  "utf16": [
   {"text":"","chars":0,"utf16":0,"boundaries":[[0,0]],"budgets":[[0,""],[1,""]]},
   {"text":"a","chars":1,"utf16":1,"boundaries":[[0,0],[1,1]],"budgets":[[0,""],[1,"a"],[2,"a"]]},

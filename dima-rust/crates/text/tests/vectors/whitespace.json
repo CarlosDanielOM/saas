@@ -1,5 +1,5 @@
 {
- "meta": {"node":"v26.13.0","icu":"78.3","unicode":"17.0","cldr":"48.0"},
+ "meta": {"node":"v24.22.2","icu":"78.3","unicode":"17.0","cldr":"48.0"},
  "whitespace": [
   9,
   10,
