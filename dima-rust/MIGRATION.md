@@ -169,7 +169,10 @@ for everything you touch. These rules apply everywhere:
    TypeScript producer's object looks after JavaScript's own conversion: absent properties omitted (not
    `null`), keys in the producer's order, dates as the producer serialises them. Each such producer gets
    a fixture recorded from the reference in the package that ports it.
-7. Lua scripts are reused verbatim from one shared source file per script.
+7. Lua scripts are reused verbatim from one shared source file per script. Any new or test script
+   must be bounded by an iteration count: Dragonfly has no `SCRIPT KILL` and no Lua time limit, and
+   `TIME` is frozen inside a script, so a loop that never ends hangs its shard until the server is
+   restarted (this happened to the local server during testing on 2026-11-11).
 8. Leases, fences, revisions, status vocabularies and compare-and-set predicates are ported exactly.
 
 ## 8. Verification
