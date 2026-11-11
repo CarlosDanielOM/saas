@@ -3,21 +3,30 @@
 # machine goes through this wrapper (see dima-rust/MIGRATION.md, "Machine limits").
 #
 # - One systemd slice holds every cargo process from every agent and worktree,
-#   so the TOTAL stays under the cap however many builds are queued.
+#   so the TOTAL stays under the caps however many builds are queued:
+#   soft cap 6 GB (the kernel throttles and reclaims above it), hard cap 8 GB
+#   (processes are killed above it), 8 CPUs, no swap.
+# - Each invocation also gets its own cap sized to what the machine has free
+#   right now, minus a reserve, so a build never pushes the laptop itself out
+#   of memory. If there is too little free memory it waits instead of starting.
 # - One shared target directory, so worktrees reuse compiled dependencies and
 #   cargo's own build lock serialises compilation.
 #
-# Overrides: DIMA_BUILD_CPUS (default 8), DIMA_BUILD_MEM (default 8G),
-# DIMA_BUILD_SLICE (default dima-build.slice), CARGO_TARGET_DIR.
+# Overrides: DIMA_BUILD_CPUS (8), DIMA_BUILD_MEM_SOFT_MB (6144),
+# DIMA_BUILD_MEM_HARD_MB (8192), DIMA_BUILD_RESERVE_MB (1500),
+# DIMA_BUILD_WAIT_SECS (900), DIMA_BUILD_SLICE, CARGO_TARGET_DIR, CARGO_BUILD_JOBS.
 # The production host does not use this file; it builds through scripts/saas-ops.
 set -euo pipefail
 
 cpus="${DIMA_BUILD_CPUS:-8}"
-mem="${DIMA_BUILD_MEM:-8G}"
+soft_mb="${DIMA_BUILD_MEM_SOFT_MB:-6144}"
+hard_mb="${DIMA_BUILD_MEM_HARD_MB:-8192}"
+reserve_mb="${DIMA_BUILD_RESERVE_MB:-1500}"
+min_scope_mb=1536
+wait_secs="${DIMA_BUILD_WAIT_SECS:-900}"
 slice="${DIMA_BUILD_SLICE:-dima-build.slice}"
 
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/dima-rust/target}"
-export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-$cpus}"
 mkdir -p "$CARGO_TARGET_DIR"
 
 # A clean in the shared target directory throws away everyone's build.
@@ -26,10 +35,48 @@ if [[ "${1:-}" == "clean" && "${DIMA_ALLOW_CLEAN:-0}" != "1" ]]; then
     exit 2
 fi
 
+# Commands that do not compile need no memory guard.
+case "${1:-}" in
+    ""|-V|--version|help|--help|-h|fmt|metadata|tree|fetch|update|generate-lockfile|locate-project|pkgid|search|login|logout)
+        exec cargo "$@" ;;
+esac
+
+mem_available_mb() { awk '/^MemAvailable:/ { print int($2 / 1024) }' /proc/meminfo; }
+
+# Wait until the machine has room for a build, then size this run to that room.
+waited=0
+while :; do
+    scope_hard=$(( $(mem_available_mb) - reserve_mb ))
+    (( scope_hard >= min_scope_mb )) && break
+    if (( waited == 0 )); then
+        echo "tools/cargo: $(mem_available_mb) MB free; waiting for $(( min_scope_mb + reserve_mb )) MB before building" >&2
+    fi
+    if (( waited >= wait_secs )); then
+        echo "tools/cargo: still not enough free memory after ${wait_secs}s; not starting the build" >&2
+        exit 75
+    fi
+    sleep 10
+    waited=$(( waited + 10 ))
+done
+(( scope_hard > hard_mb )) && scope_hard=$hard_mb
+scope_soft=$(( scope_hard * 3 / 4 ))
+(( scope_soft > soft_mb )) && scope_soft=$soft_mb
+
+# About one rustc per GB of this run's room, between 2 and the CPU cap.
+if [[ -z "${CARGO_BUILD_JOBS:-}" ]]; then
+    jobs=$(( scope_hard / 1024 ))
+    (( jobs < 2 )) && jobs=2
+    (( jobs > cpus )) && jobs=$cpus
+    export CARGO_BUILD_JOBS="$jobs"
+fi
+
 if command -v systemd-run >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
     systemctl --user set-property --runtime "$slice" \
-        "CPUQuota=$((cpus * 100))%" "MemoryMax=$mem" "MemorySwapMax=0" >/dev/null 2>&1 || true
-    exec systemd-run --user --scope --quiet --collect --slice="$slice" -- cargo "$@"
+        "CPUQuota=$(( cpus * 100 ))%" "MemoryHigh=${soft_mb}M" "MemoryMax=${hard_mb}M" "MemorySwapMax=0" \
+        >/dev/null 2>&1 || true
+    exec systemd-run --user --scope --quiet --collect --slice="$slice" \
+        -p "MemoryHigh=${scope_soft}M" -p "MemoryMax=${scope_hard}M" -p "MemorySwapMax=0" \
+        -- cargo "$@"
 fi
 
 echo "tools/cargo: systemd user session not available, running cargo without the cgroup cap" >&2

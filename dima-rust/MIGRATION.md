@@ -162,15 +162,22 @@ not part of any package.
 ## 11. Machine limits (development laptop)
 
 - **Always** run cargo through `dima-rust/tools/cargo` (same arguments as cargo). It puts every build in
-  one cgroup capped at 8 CPUs and 8 GB with no swap, and uses one shared target directory so worktrees
-  reuse compiled dependencies. Never run plain `cargo`. Never run `cargo clean`.
+  one cgroup with a 6 GB soft cap, an 8 GB hard cap, 8 CPUs and no swap, sizes each run to the memory
+  that is actually free (and waits when there is too little), and uses one shared target directory so
+  worktrees reuse compiled dependencies. Never run plain `cargo`. Never run `cargo clean`.
 - Implementation agents run `check`, `clippy` and `test` scoped to their crates (`-p <crate>`). Release
   builds and whole-workspace runs are the lead's.
-- The laptop has 16 GB in total. Do not start extra database containers; MongoDB, Dragonfly, Qdrant and
-  Postgres are already running on loopback. Do not run the embeddings or Piper containers.
+- The laptop has 16 GB in total and is the owner's working machine: it must never run out of memory.
+  Do not start extra database containers; MongoDB, Dragonfly, Qdrant and Postgres are already running
+  on loopback without authentication needs for tests. Do not run the embeddings or Piper containers.
+  Anything else that is memory-hungry (a Node build, a test container) is started only by the lead.
 
 ## 12. Decision log
 
 - 2026-11-11: Scope, staged cutover order, TypeScript freeze, text rules, layout approved by the owner.
 - 2026-11-11: Chat splitter keeps the 450 budget with today's counting (astral characters cost 2).
 - 2026-11-11: Local `domdimabot` database is used directly as test data; no copy is made.
+- 2026-11-11: Build memory is a 6 GB soft cap and an 8 GB hard cap; the laptop must not run out of memory.
+- 2026-11-11: The production `SECRET_KEY` is not available here. Token encryption is verified by
+  TypeScript and Rust encrypting and decrypting each other's output with a test key, not by decrypting
+  stored tokens. Local Dragonfly and Qdrant are used without authentication; production auth stays in production.
