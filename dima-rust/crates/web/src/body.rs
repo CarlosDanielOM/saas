@@ -15,7 +15,7 @@ use serde_json::{Map, Value};
 use crate::error::Error;
 use crate::handler::{BoxFuture, Flow, Handler};
 use crate::mediatype::{request_charset, type_is};
-use crate::qs::{self, QsOptions};
+use crate::qs::{self, QsError, QsOptions};
 use crate::request::{BodyState, Req};
 
 /// body-parser's default limit, `"100kb"`.
@@ -74,6 +74,7 @@ pub struct Urlencoded {
     common: Common,
     parameter_limit: usize,
     depth: usize,
+    node_limit: usize,
 }
 
 /// `express.urlencoded({ extended: true })`: 100 KB, 1000 parameters, depth 32.
@@ -82,6 +83,7 @@ pub fn urlencoded() -> Urlencoded {
         common: Common::new("application/x-www-form-urlencoded"),
         parameter_limit: 1000,
         depth: 32,
+        node_limit: qs::NODE_LIMIT,
     }
 }
 
@@ -151,6 +153,14 @@ impl Urlencoded {
     #[must_use]
     pub fn depth(mut self, depth: usize) -> Self {
         self.depth = depth;
+        self
+    }
+
+    /// Not in body-parser: the most nested values one body may build ([`qs::NODE_LIMIT`] by
+    /// default). Past it the body is refused like too many parameters (413).
+    #[must_use]
+    pub fn node_limit(mut self, nodes: usize) -> Self {
+        self.node_limit = nodes;
         self
     }
 }
@@ -223,6 +233,10 @@ impl<S: Send + Sync + 'static> Handler<S> for Urlencoded {
     }
 }
 
+fn too_many_parameters() -> Error {
+    Error::new(413, "too many parameters").with_kind("parameters.too.many")
+}
+
 impl Urlencoded {
     fn parse(&self, text: &str) -> Result<Value, Error> {
         if text.is_empty() {
@@ -230,12 +244,16 @@ impl Urlencoded {
         }
         let count = text.matches('&').count() + 1;
         if count > self.parameter_limit {
-            return Err(Error::new(413, "too many parameters").with_kind("parameters.too.many"));
+            return Err(too_many_parameters());
         }
-        let options = QsOptions::urlencoded(count, self.depth, self.parameter_limit);
-        qs::parse(text, &options).map_err(|_| {
-            Error::new(400, "The input exceeded the depth")
-                .with_kind("querystring.parse.rangeError")
+        let options = QsOptions {
+            node_limit: self.node_limit,
+            ..QsOptions::urlencoded(count, self.depth, self.parameter_limit)
+        };
+        qs::parse(text, &options).map_err(|error| match error {
+            QsError::DepthExceeded => Error::new(400, "The input exceeded the depth")
+                .with_kind("querystring.parse.rangeError"),
+            QsError::TooManyNodes => too_many_parameters(),
         })
     }
 }
@@ -705,6 +723,16 @@ mod tests {
         );
         assert!(decode_text(b"{}", "utf-32").is_none());
         assert!(decode_text(b"{}", "utf-7").is_none());
+    }
+
+    #[test]
+    fn node_budget_is_refused_like_the_parameter_limit() {
+        let form = urlencoded().node_limit(5);
+        assert!(form.parse("a[b][c]=1&d[e]=2").is_ok());
+        let error = form.parse("a[b][c]=1&d[e][f]=2").expect_err("over budget");
+        assert_eq!(error.status(), Some(413));
+        assert_eq!(error.kind(), Some("parameters.too.many"));
+        assert_eq!(error.message(), "too many parameters");
     }
 
     #[test]
