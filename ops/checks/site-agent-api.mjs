@@ -7,7 +7,7 @@
  *     --check ops/checks/site-agent-api.mjs
  *
  * Covers: unit suites in the exact image; access (owner, scoped admin, outsider, channel not enabled);
- * streaming order + text offsets; the exact model request (Luna, xhigh, tools by permission, byte-stable
+ * streaming order + text offsets; the exact model request (Luna, high, tools by permission, byte-stable
  * system prompt, turn note); multi-step tools with reasoning echoed; steer, queue, stop, retry, 409s;
  * idempotent requests; approvals (apply/skip) with the change log + undo; UI forms; navigation; daily
  * limits (20/day free) with refunds on our own failures; provider errors; SSE reconnect + resync; Polar
@@ -173,7 +173,7 @@ console.log('plain answer: streamed in order, offsets contiguous, snapshot match
 // 5. The model request.
 const request1 = modelCalls().at(-1).body;
 assert.equal(request1.model, 'openai/gpt-6-luna');
-assert.deepEqual(request1.reasoning, { effort: 'xhigh' });
+assert.deepEqual(request1.reasoning, { effort: 'high' });
 assert.equal(request1.stream, true);
 assert.equal(request1.session_id, sessionId);
 assert.equal(request1.messages[0].role, 'system');
@@ -188,7 +188,7 @@ assert.match(user1.content, /Talking to: cdom201 \(owner\)/);
 assert.match(user1.content, /Current page: dashboard \(\/cdom201\/dashboard\)/);
 const ownerTools = request1.tools.map((tool) => tool.function.name).sort();
 for (const name of ['search_docs', 'read_docs', 'search_ast_functions', 'test_command', 'show_ui', 'navigate', 'create_command', 'get_referral_codes']) assert.ok(ownerTools.includes(name), `owner gets ${name}`);
-console.log(`model request: luna xhigh, ${ownerTools.length} tools, turn note`);
+console.log(`model request: luna high, ${ownerTools.length} tools, turn note`);
 
 // Follow-up in the same session: byte-identical system prompt, history kept.
 const second = await send('owner', 'And in Spanish? [[script:text]]', { sessionId });

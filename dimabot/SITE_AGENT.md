@@ -1,7 +1,7 @@
 # Site agent ("Dima assistant")
 
 An AI assistant inside dimasite's logged-in pages (`/:streamer/...`). It answers from the docs, knows the channel,
-and can change things for the streamer after they approve. Opened from the mascot. Model: GPT-6 Luna (`xhigh`)
+and can change things for the streamer after they approve. Opened from the mascot. Model: GPT-6 Luna (`high`; was `xhigh` until 2026-11-11)
 through OpenRouter on the owner's OpenAI key (BYOK). Free for now: no AI credits; usage goes to Polar as
 `ai_assistant` events. Contracts: `src/site_agent/types.ts`, `config.ts`, `navigation.ts`.
 

@@ -21,11 +21,14 @@ export interface PlanModelConfig {
     dailyMessages: number;
 }
 
-/** The same model for every plan for now; pro may move to another model later. */
+/**
+ * The same model for every plan for now (pro may move to another model later). Effort `high` since
+ * 2026-11-11: as good as `xhigh` on normal requests and ~5× faster on big setups (owner's comparison).
+ */
 export const PLAN_MODELS: Record<PlanTier, PlanModelConfig> = {
-    free: { model: 'openai/gpt-6-luna', effort: 'xhigh', contextLimit: 100_000, compactAt: 0.9, dailyMessages: 20 },
-    premium: { model: 'openai/gpt-6-luna', effort: 'xhigh', contextLimit: 256_000, compactAt: 0.9, dailyMessages: 80 },
-    pro: { model: 'openai/gpt-6-luna', effort: 'xhigh', contextLimit: 256_000, compactAt: 0.9, dailyMessages: 400 },
+    free: { model: 'openai/gpt-6-luna', effort: 'high', contextLimit: 100_000, compactAt: 0.9, dailyMessages: 20 },
+    premium: { model: 'openai/gpt-6-luna', effort: 'high', contextLimit: 256_000, compactAt: 0.9, dailyMessages: 80 },
+    pro: { model: 'openai/gpt-6-luna', effort: 'high', contextLimit: 256_000, compactAt: 0.9, dailyMessages: 400 },
 };
 
 /** Fallback prices (USD per token) when OpenRouter reports no upstream cost. */
