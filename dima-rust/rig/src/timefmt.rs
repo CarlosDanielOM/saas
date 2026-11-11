@@ -233,6 +233,62 @@ pub fn human_duration(ms: i64) -> String {
     }
 }
 
+const WEEKDAYS: [&str; 7] = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"];
+const MONTHS: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/// An HTTP date (IMF-fixdate, RFC 9110): `Sun, 06 Nov 1994 08:49:37 GMT`. Seconds precision.
+pub fn format_http_date(ms: i64) -> Option<String> {
+    let days = ms.div_euclid(MS_PER_DAY);
+    let rem = ms.rem_euclid(MS_PER_DAY);
+    let (y, mo, d) = civil_from_days(days);
+    if !(0..=9999).contains(&y) {
+        return None;
+    }
+    let wd = WEEKDAYS.get(usize::try_from(days.rem_euclid(7)).ok()?)?;
+    let mon = MONTHS.get(usize::try_from(mo).ok()?.checked_sub(1)?)?;
+    Some(format!(
+        "{wd}, {d:02} {mon} {y:04} {:02}:{:02}:{:02} GMT",
+        rem / 3_600_000,
+        (rem / 60_000) % 60,
+        (rem / 1000) % 60
+    ))
+}
+
+/// Milliseconds of an HTTP date: IMF-fixdate (`Sun, 06 Nov 1994 08:49:37 GMT`) or the
+/// cookie form with dashes (`Sun, 06-Nov-1994 08:49:37 GMT`). The weekday must be one of
+/// the seven names; anything else is `None`.
+pub fn parse_http_date(s: &str) -> Option<i64> {
+    let (wd, rest) = s.split_once(", ")?;
+    if !WEEKDAYS.contains(&wd) {
+        return None;
+    }
+    let parts: Vec<&str> = rest.split([' ', '-']).collect();
+    let [d, mon, y, hms, zone] = parts.as_slice() else {
+        return None;
+    };
+    if *zone != "GMT" || d.len() != 2 || y.len() != 4 {
+        return None;
+    }
+    let m = MONTHS.iter().position(|x| x == mon)?;
+    let (d, y): (u32, i64) = (d.parse().ok()?, y.parse().ok()?);
+    let m = u32::try_from(m).ok()? + 1;
+    let day = parse_day(&format!("{y:04}-{m:02}-{d:02}"))?;
+    let t: Vec<&str> = hms.split(':').collect();
+    let [h, mi, sec] = t.as_slice() else {
+        return None;
+    };
+    if h.len() != 2 || mi.len() != 2 || sec.len() != 2 {
+        return None;
+    }
+    let (h, mi, sec): (i64, i64, i64) = (h.parse().ok()?, mi.parse().ok()?, sec.parse().ok()?);
+    if h > 23 || mi > 59 || sec > 60 {
+        return None;
+    }
+    Some(day * MS_PER_DAY + ((h * 60 + mi) * 60 + sec) * 1000)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,5 +343,24 @@ mod tests {
         assert_eq!(parse_offset("5w"), None);
         assert_eq!(format_offset(-20), "-20ms");
         assert_eq!(format_offset(0), "+0ms");
+    }
+
+    #[test]
+    fn http_dates() {
+        let ms = 784_111_777_000; // Sun, 06 Nov 1994 08:49:37 GMT
+        assert_eq!(
+            format_http_date(ms).as_deref(),
+            Some("Sun, 06 Nov 1994 08:49:37 GMT")
+        );
+        assert_eq!(parse_http_date("Sun, 06 Nov 1994 08:49:37 GMT"), Some(ms));
+        assert_eq!(parse_http_date("Sun, 06-Nov-1994 08:49:37 GMT"), Some(ms));
+        assert_eq!(parse_http_date("Sun, 06 Nov 1994 08:49:37 UTC"), None);
+        assert_eq!(parse_http_date("Sunday, 06 Nov 1994 08:49:37 GMT"), None);
+        assert_eq!(parse_http_date("Sun, 31 Feb 1994 08:49:37 GMT"), None);
+        let now = 1_794_400_000_123;
+        assert_eq!(
+            parse_http_date(&format_http_date(now).unwrap()),
+            Some(now - 123)
+        );
     }
 }

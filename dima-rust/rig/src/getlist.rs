@@ -6,7 +6,7 @@
 //!   "description": "Public read endpoints over the local production copy",
 //!   "headers": { "accept": "application/json" },
 //!   "requests": ["/api/health", { "path": "/api/streamers/foo", "headers": { "x-test": "1" } }],
-//!   "compare": { "headers": { "add": ["etag"] } },
+//!   "compare": { "headers": { "include": ["content-length"] } },
 //!   "allow": [{ "path": "steps[*].body.uptime", "kind": "ignore", "reason": "Process uptime differs between runs." }]
 //! }
 //! ```
@@ -55,7 +55,8 @@ struct RequestFile {
 pub struct GetList {
     pub description: String,
     pub steps: Vec<Step>,
-    pub headers: Vec<String>,
+    /// Response headers not compared.
+    pub skip_headers: Vec<String>,
     pub allow: Vec<(Pattern, AllowKind, String)>,
     pub tolerance_ms: i64,
 }
@@ -126,7 +127,7 @@ pub fn load(file: &FsPath) -> Result<GetList> {
     Ok(GetList {
         description: f.description,
         steps,
-        headers: crate::scenario::headers(compare.headers, &format!("{at}: compare.headers"))?,
+        skip_headers: crate::scenario::headers(compare.headers, &format!("{at}: compare.headers"))?,
         allow: crate::scenario::allowances(f.allow, &at)?,
         tolerance_ms: i64::try_from(f.tolerance_ms.unwrap_or(2000))
             .map_err(|_| config(format!("{at}: tolerance_ms too large")))?,

@@ -32,17 +32,23 @@ pub const MIN_GENERATED_LEN: usize = 6;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Window {
-    /// Scenario start (before reset and seed), rig clock.
+    /// The run start: just before the first step (rig clock). Run times are relative to it.
     pub start: i64,
     /// After the last step.
     pub end: i64,
     /// When the side's process was started.
     pub proc_start: i64,
+    /// The `$rigNow` of the seed (before the stores were reset and seeded).
+    pub seeded_at: i64,
 }
 
 impl Window {
+    fn first(&self) -> i64 {
+        self.start.min(self.seeded_at).min(self.proc_start)
+    }
+
     fn in_window(&self, ms: i64) -> bool {
-        ms >= self.start - WINDOW_SLACK_MS && ms <= self.end + WINDOW_SLACK_MS
+        ms >= self.first() - WINDOW_SLACK_MS && ms <= self.end + WINDOW_SLACK_MS
     }
 
     fn in_horizon(&self, ms: i64) -> bool {
@@ -57,7 +63,7 @@ impl Window {
     }
 
     fn generated_time(&self, ms: i64) -> bool {
-        ms >= self.proc_start.min(self.start) - OID_SLACK_MS && ms <= self.end + OID_SLACK_MS
+        ms >= self.first() - OID_SLACK_MS && ms <= self.end + OID_SLACK_MS
     }
 }
 
@@ -212,17 +218,28 @@ fn uuid_string(subtype: &BinarySubtype, bytes: &[u8]) -> Option<String> {
     ))
 }
 
-/// Header names compared by default.
-pub const DEFAULT_HEADERS: &[&str] = &[
-    "content-type",
-    "location",
-    "cache-control",
-    "www-authenticate",
-    "retry-after",
-    "access-control-*",
-    "content-security-policy",
-    "x-content-type-options",
+/// Response headers not compared unless a scenario includes them: transport details that
+/// differ between servers without any client relying on them. Every other header is compared.
+pub const NOISE_HEADERS: &[&str] = &[
+    "date",
+    "connection",
+    "keep-alive",
+    "transfer-encoding",
+    "content-length",
+    "x-powered-by",
 ];
+
+/// An ETag compares by presence and weak/strong form only: its value derives from a body that
+/// holds generated values.
+fn etag_form(v: &[u8]) -> &'static str {
+    if v.starts_with(b"W/") {
+        "W/\"…\""
+    } else if v.starts_with(b"\"") {
+        "\"…\""
+    } else {
+        "… (not quoted)"
+    }
+}
 
 /// Everything detection needs to know about one side's run of one scenario.
 pub struct DetectCtx<'a> {
@@ -232,12 +249,15 @@ pub struct DetectCtx<'a> {
     pub allow: &'a Allowances,
     /// Run-time names to mask: (literal text, name). Example: ("127.0.0.1:41234", "port.http").
     pub names: Vec<(String, String)>,
-    /// Header name globs (lower case) to capture.
-    pub headers: Vec<String>,
+    /// Response headers not compared (lower case).
+    pub skip_headers: Vec<String>,
     /// Dragonfly strings at or below these paths stay exact text (not parsed as JSON).
     pub as_text: Vec<crate::path::Pattern>,
     /// Dragonfly key globs whose values stay exact text (`byte_sensitive.json`).
     pub byte_sensitive: Vec<String>,
+    /// The `$rigNow` offsets of the seed (with `true` for epoch seconds): a value equal to the
+    /// seed time plus one of them is that seeded time, compared by its offset.
+    pub seed_offsets: Vec<(i64, bool)>,
 }
 
 struct Detector<'a, 'b> {
@@ -258,7 +278,22 @@ struct Cand {
 
 impl Detector<'_, '_> {
     fn moment(&self, ms: i64) -> Moment {
-        self.ctx.window.moment(ms)
+        let w = &self.ctx.window;
+        for (seed, secs) in &self.ctx.seed_offsets {
+            let at = w.seeded_at + seed;
+            let at = if *secs {
+                at.div_euclid(1000) * 1000
+            } else {
+                at
+            };
+            if at == ms {
+                return Moment::Seed {
+                    seed: *seed,
+                    off: ms - w.start,
+                };
+            }
+        }
+        w.moment(ms)
     }
 
     fn oid_is_generated(&self, hex: &str) -> bool {
@@ -672,26 +707,27 @@ impl Detector<'_, '_> {
                 StepCap::Reply(v)
             }
             RawStep::Http(h) => {
-                let mut grouped: Vec<(String, Vec<Text>)> = Vec::new();
+                let mut grouped: Vec<(String, Vec<&[u8]>)> = Vec::new();
                 for (name, value) in &h.headers {
-                    if !self.ctx.headers.iter().any(|g| name_glob(g, name)) {
+                    if self.ctx.skip_headers.iter().any(|n| n == name) {
                         continue;
                     }
-                    let hp = path.with_key("headers").with_key(name.clone());
-                    let t = self.bytes_text(&hp, value);
                     match grouped.iter_mut().find(|(n, _)| n == name) {
-                        Some((_, vals)) => vals.push(t),
-                        None => grouped.push((name.clone(), vec![t])),
+                        Some((_, vals)) => vals.push(value),
+                        None => grouped.push((name.clone(), vec![value])),
                     }
                 }
                 grouped.sort_by(|a, b| a.0.cmp(&b.0));
                 let headers = grouped
                     .into_iter()
-                    .map(|(name, mut vals)| {
-                        let v = if vals.len() == 1 {
-                            Val::Str(vals.remove(0))
+                    .map(|(name, vals)| {
+                        let hp = path.with_key("headers").with_key(name.clone());
+                        let v = if name == "set-cookie" {
+                            self.cookies(&hp, &vals)
+                        } else if let [one] = vals.as_slice() {
+                            self.header(&hp, &name, one)
                         } else {
-                            Val::Arr(vals.into_iter().map(Val::Str).collect())
+                            Val::Arr(vals.iter().map(|v| self.header(&hp, &name, v)).collect())
                         };
                         (name, v)
                     })
@@ -758,6 +794,90 @@ impl Detector<'_, '_> {
             indexes,
             docs,
         }
+    }
+
+    /// An HTTP date (`Expires`, `Last-Modified`, a cookie's `Expires`) as a time with a
+    /// one-second precision, or `None` when the text is not one or is not near the run.
+    fn http_date(&self, s: &str) -> Option<Text> {
+        let ms = timefmt::parse_http_date(s.trim())?;
+        if !self.time_number(ms) {
+            return None;
+        }
+        let shape = if s.contains('-') {
+            "http-date-dashes"
+        } else {
+            "http-date"
+        };
+        Some(Text(vec![Seg::Time {
+            at: self.moment(ms),
+            shape: shape.into(),
+        }]))
+    }
+
+    /// One response header value.
+    fn header(&mut self, hp: &Path, name: &str, value: &[u8]) -> Val {
+        if name == "etag" {
+            return Val::str(etag_form(value));
+        }
+        if let Ok(s) = std::str::from_utf8(value)
+            && let Some(t) = self.http_date(s)
+        {
+            return Val::Str(t);
+        }
+        if let Ok(s) = std::str::from_utf8(value)
+            && let Some(g) = self.generated_whole(hp, s)
+        {
+            return g;
+        }
+        Val::Str(self.bytes_text(hp, value))
+    }
+
+    /// `Set-Cookie` headers, compared attribute by attribute: an object keyed by cookie name
+    /// (a repeated name gets `#2`, `#3`), holding `value` and each attribute by its lower-case
+    /// name (`true` for flags such as `httponly`).
+    fn cookies(&mut self, hp: &Path, vals: &[&[u8]]) -> Val {
+        let mut out: Vec<(Text, Val)> = Vec::new();
+        for raw in vals {
+            let text = String::from_utf8_lossy(raw);
+            let mut parts = text.split(';');
+            let first = parts.next().unwrap_or("");
+            let (name, value) = first.split_once('=').unwrap_or(("", first));
+            let mut key = name.trim().to_string();
+            let mut n = 1;
+            while out.iter().any(|(k, _)| k.as_plain() == Some(key.as_str())) {
+                n += 1;
+                key = format!("{}#{n}", name.trim());
+            }
+            let cp = hp.with_key(key.clone());
+            let vp = cp.with_key("value");
+            let value = value.trim();
+            let v = match self.generated_whole(&vp, value) {
+                Some(g) => g,
+                None => Val::Str(self.text(&vp, value)),
+            };
+            let mut fields = vec![(Text::lit("value"), v)];
+            for attr in parts {
+                let attr = attr.trim();
+                if attr.is_empty() {
+                    continue;
+                }
+                let (k, v) = match attr.split_once('=') {
+                    Some((k, v)) => (k.trim().to_ascii_lowercase(), Some(v.trim())),
+                    None => (attr.to_ascii_lowercase(), None),
+                };
+                let ap = cp.with_key(k.clone());
+                let val = match v {
+                    None => Val::Bool(true),
+                    Some(v) => match self.http_date(v) {
+                        Some(t) if k == "expires" => Val::Str(t),
+                        _ => Val::Str(self.text(&ap, v)),
+                    },
+                };
+                fields.push((Text::lit(&k), val));
+            }
+            out.push((Text::lit(&key), Val::Obj(fields)));
+        }
+        Val::Obj(out)
     }
 
     fn byte_sensitive_key(&self, key: &[u8]) -> bool {
@@ -930,6 +1050,7 @@ pub(crate) mod tests {
             start: START,
             end: START + 3000,
             proc_start: START - 60_000,
+            seeded_at: START - 1000,
         }
     }
 
@@ -945,9 +1066,10 @@ pub(crate) mod tests {
             known,
             allow,
             names: vec![("127.0.0.1:41234".into(), "port.http".into())],
-            headers: DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect(),
+            skip_headers: NOISE_HEADERS.iter().map(|s| s.to_string()).collect(),
             as_text: Vec::new(),
             byte_sensitive: Vec::new(),
+            seed_offsets: Vec::new(),
         }
     }
 

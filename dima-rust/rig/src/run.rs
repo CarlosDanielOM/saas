@@ -293,7 +293,8 @@ impl<'s> SideRunner<'s> {
     }
 
     async fn run_scenario(&mut self, sc: &Scenario) -> SideOutcome {
-        let start = timefmt::now_ms();
+        let seeded_at = timefmt::now_ms();
+        let start = seeded_at;
         let own_process = !self.target.share_process || sc.restart;
         if own_process {
             let _ = self.stop_process().await;
@@ -325,6 +326,9 @@ impl<'s> SideRunner<'s> {
             return Err(self.fail("no process"));
         };
         let proc_start = proc.started_at;
+        // Run times are relative to the first step, not to the seed: the time the process takes
+        // to start (which varies between runs) does not move them.
+        let start = timefmt::now_ms().max(start);
         let mut runner = Runner {
             stores: &mut self.stores,
             proc,
@@ -359,6 +363,7 @@ impl<'s> SideRunner<'s> {
             .await
             .map_err(|e| self.fail(format!("reading Dragonfly: {e}")))?;
         let run = RunMeta {
+            seeded_at,
             start,
             end,
             process_start: proc_start,
@@ -422,9 +427,12 @@ async fn run_side(
 pub struct Rules<'a> {
     pub patterns: &'a Patterns,
     pub known: &'a Known,
-    pub headers: &'a [String],
+    /// Response headers not compared.
+    pub skip_headers: &'a [String],
     pub as_text: &'a [crate::path::Pattern],
     pub byte_sensitive: &'a [String],
+    /// The `$rigNow` offsets of the seed (`true`: epoch seconds).
+    pub seed_offsets: &'a [(i64, bool)],
 }
 
 impl<'a> Rules<'a> {
@@ -432,9 +440,10 @@ impl<'a> Rules<'a> {
         Rules {
             patterns,
             known: &sc.known,
-            headers: &sc.headers,
+            skip_headers: &sc.skip_headers,
             as_text: &sc.as_text,
             byte_sensitive,
+            seed_offsets: &sc.seed_offsets,
         }
     }
 }
@@ -447,13 +456,15 @@ pub fn normalise(run: &RawRun, rules: &Rules<'_>, allow: &Allowances) -> Capture
             start: run.run.start,
             end: run.run.end,
             proc_start: run.run.process_start,
+            seeded_at: run.run.seeded_at,
         },
         known: rules.known,
         allow,
         names: run.run.names(),
-        headers: rules.headers.to_vec(),
+        skip_headers: rules.skip_headers.to_vec(),
         as_text: rules.as_text.to_vec(),
         byte_sensitive: rules.byte_sensitive.to_vec(),
+        seed_offsets: rules.seed_offsets.to_vec(),
     };
     let mut cap = detect::detect(&ctx, &run.raw);
     canon::canonicalise(&mut cap, allow);
@@ -910,12 +921,13 @@ pub async fn diff_get(
             only: Some(Vec::new()),
             exclude: Vec::new(),
         },
-        headers: list.headers.clone(),
+        skip_headers: list.skip_headers.clone(),
         as_text: Vec::new(),
         allow: list.allow.clone(),
         tolerance_ms: list.tolerance_ms,
         hash: String::new(),
         files: Vec::new(),
+        seed_offsets: Vec::new(),
         known,
     };
     let mut runs = Vec::new();

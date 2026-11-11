@@ -114,6 +114,7 @@ pub fn mask(v: &Val) -> String {
         Val::Oid(Id::Lit(x)) | Val::Uuid(Id::Lit(x)) => format!("I{x}"),
         Val::Oid(_) | Val::Uuid(_) => "I<id>".into(),
         Val::Time(r, Moment::Abs(ms)) => format!("T{r:?}{ms}"),
+        Val::Time(r, Moment::Seed { seed, .. }) => format!("T{r:?}seed{seed}"),
         Val::Time(r, _) => format!("T{r:?}"),
         Val::Str(t) => format!("S{}", text(t)),
         Val::Json(inner) => format!("J{}", mask(inner)),
@@ -303,6 +304,25 @@ impl<'a> Comparator<'a> {
             {
                 Ok(())
             }
+            (Moment::Seed { seed: x, .. }, Moment::Seed { seed: y, .. }) => {
+                if x == y {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "seeded times differ: reference seed{}, candidate seed{}",
+                        crate::timefmt::format_offset(*x),
+                        crate::timefmt::format_offset(*y)
+                    ))
+                }
+            }
+            (Moment::Seed { seed, .. }, _) => Err(format!(
+                "reference keeps the seeded time seed{}, candidate has another time",
+                crate::timefmt::format_offset(*seed)
+            )),
+            (_, Moment::Seed { seed, .. }) => Err(format!(
+                "candidate has the seeded time seed{}, reference another time",
+                crate::timefmt::format_offset(*seed)
+            )),
             _ => Err("one side has a fixed time, the other a time relative to the run".into()),
         }
     }
@@ -1147,12 +1167,17 @@ impl<'a> Comparator<'a> {
                     }
                 })
             },
-            |_, x, y| {
-                if mask_text(&x.key) == mask_text(&y.key) {
-                    1.0
-                } else {
-                    0.0
+            // Keys alike, then the more alike values: entries named after the wrong id still
+            // pair with the entry that holds the same content.
+            |s, x, y| {
+                if mask_text(&x.key) != mask_text(&y.key) || x.kind != y.kind {
+                    return 0.0;
                 }
+                let unwrap = |v: &Val| match v {
+                    Val::Json(inner) => (**inner).clone(),
+                    other => other.clone(),
+                };
+                0.5 + 0.5 * s.top_level_similarity(&unwrap(&x.value), &unwrap(&y.value))
             },
         );
         let mut sorted = pairs;

@@ -16,7 +16,7 @@ use serde_json::{Map, Value};
 
 use crate::allow::{AllowKind, Allowances};
 use crate::canon::fnv1a64;
-use crate::detect::{DEFAULT_HEADERS, Known, Patterns};
+use crate::detect::{Known, NOISE_HEADERS, Patterns};
 use crate::error::{Result, config};
 use crate::path::{Pattern, Seg as PSeg, name_glob};
 use crate::template::{self, NowFmt};
@@ -183,12 +183,9 @@ struct SelFile {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct HeaderSelFile {
+    /// Names from the noise list to compare after all.
     #[serde(default)]
-    only: Option<Vec<String>>,
-    #[serde(default)]
-    add: Vec<String>,
-    #[serde(default)]
-    remove: Vec<String>,
+    include: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -332,13 +329,16 @@ pub struct Scenario {
     pub steps: Vec<Step>,
     pub mongo: Selection,
     pub dragonfly: Selection,
-    pub headers: Vec<String>,
+    /// Response headers not compared (the noise list minus `compare.headers.include`).
+    pub skip_headers: Vec<String>,
     pub as_text: Vec<Pattern>,
     pub allow: Vec<(Pattern, AllowKind, String)>,
     pub tolerance_ms: i64,
     pub hash: String,
     /// Each input file (the scenario, then every seed it includes) with its own hash.
     pub files: Vec<(String, String)>,
+    /// Every `$rigNow` offset of the seed (`true`: written as epoch seconds).
+    pub seed_offsets: Vec<(i64, bool)>,
     pub known: Known,
 }
 
@@ -585,6 +585,7 @@ struct Loader<'a> {
     /// The scenario directory of the target: file hashes are named relative to it.
     root: PathBuf,
     files: Vec<(String, String)>,
+    seed_offsets: Vec<(i64, bool)>,
     mongo: Vec<(String, Vec<Value>)>,
     dragonfly: Vec<Vec<Arg>>,
 }
@@ -597,6 +598,20 @@ fn read_json(file: &FsPath) -> Result<Value> {
 
 fn parse<T: for<'de> Deserialize<'de>>(file: &FsPath, v: &Value) -> Result<T> {
     T::deserialize(v).map_err(|e| config(format!("{}: {e}", file.display())))
+}
+
+/// The `$rigNow` offsets inside a seed document.
+fn seed_offsets(v: &Value, out: &mut Vec<(i64, bool)>) {
+    match v {
+        Value::Object(m) if m.contains_key("$rigNow") => {
+            if let Ok((off, fmt)) = rig_now(m, "") {
+                out.push((off, fmt == "s"));
+            }
+        }
+        Value::Object(m) => m.values().for_each(|x| seed_offsets(x, out)),
+        Value::Array(items) => items.iter().for_each(|x| seed_offsets(x, out)),
+        _ => {}
+    }
 }
 
 /// Known values of an input, skipping `$rigNow` (those are run-time values).
@@ -754,6 +769,7 @@ impl Loader<'_> {
                     )));
                 }
                 collect_inputs(self.patterns, d, &mut self.known);
+                seed_offsets(d, &mut self.seed_offsets);
             }
             match self.mongo.iter_mut().find(|(c, _)| *c == coll) {
                 Some((_, list)) => list.extend(docs),
@@ -769,6 +785,11 @@ impl Loader<'_> {
             )?;
             c.iter()
                 .for_each(|v| collect_inputs(self.patterns, v, &mut self.known));
+            for a in &cmd {
+                if let Arg::Now { offset_ms, fmt } = a {
+                    self.seed_offsets.push((*offset_ms, *fmt == NowFmt::S));
+                }
+            }
             self.dragonfly.push(cmd);
         }
         Ok(())
@@ -1010,36 +1031,23 @@ fn selection(s: Option<SelFile>) -> Selection {
     .unwrap_or_default()
 }
 
+/// The response headers not compared: the noise list minus `compare.headers.include`. Every
+/// other header is compared (ignore one with an allowance, which needs a reason).
 pub(crate) fn headers(h: Option<HeaderSelFile>, at: &str) -> Result<Vec<String>> {
-    let Some(h) = h else {
-        return Ok(DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect());
-    };
-    for n in h.only.iter().flatten().chain(&h.add).chain(&h.remove) {
-        if n.is_empty() || *n != n.to_ascii_lowercase() {
-            return Err(config(format!("{at}: header names are lower case (`{n}`)")));
-        }
-    }
-    if h.only.is_some() && (!h.add.is_empty() || !h.remove.is_empty()) {
-        return Err(config(format!("{at}: use either only, or add/remove")));
-    }
-    let mut list: Vec<String> = h
-        .only
-        .unwrap_or_else(|| DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect());
-    for a in h.add {
-        if !list.contains(&a) {
-            list.push(a);
-        }
-    }
-    for r in &h.remove {
-        if !list.contains(r) {
+    let include = h.map(|h| h.include).unwrap_or_default();
+    for n in &include {
+        if !NOISE_HEADERS.contains(&n.as_str()) {
             return Err(config(format!(
-                "{at}: remove `{r}`: not in the list ({})",
-                list.join(", ")
+                "{at}.include: `{n}` is compared already; include names only from the noise list ({})",
+                NOISE_HEADERS.join(", ")
             )));
         }
     }
-    list.retain(|x| !h.remove.contains(x));
-    Ok(list)
+    Ok(NOISE_HEADERS
+        .iter()
+        .filter(|n| !include.iter().any(|i| i == *n))
+        .map(|n| n.to_string())
+        .collect())
 }
 
 pub(crate) fn allowances(
@@ -1119,6 +1127,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         hash_input: v.to_string(),
         seen_files: HashSet::new(),
         root: rig_dir.join("scenarios").join(target),
+        seed_offsets: Vec::new(),
         files: vec![(
             format!("{name}.json"),
             format!("fnv1a64:{:016x}", fnv1a64(v.to_string().as_bytes())),
@@ -1246,12 +1255,18 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         steps,
         mongo: selection(compare.mongo),
         dragonfly: selection(compare.dragonfly),
-        headers: headers(compare.headers, &format!("{at}: compare.headers"))?,
+        skip_headers: headers(compare.headers, &format!("{at}: compare.headers"))?,
         as_text,
         allow: allowances(f.allow, &at)?,
         tolerance_ms,
         hash: format!("fnv1a64:{:016x}", fnv1a64(loader.hash_input.as_bytes())),
         files: loader.files,
+        seed_offsets: {
+            let mut o = loader.seed_offsets;
+            o.sort_unstable();
+            o.dedup();
+            o
+        },
         known: loader.known,
     })
 }

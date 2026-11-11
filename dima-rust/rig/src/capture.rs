@@ -154,7 +154,10 @@ impl RawCapture {
 /// normaliser needs besides the scenario itself.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunMeta {
-    /// Scenario start (before the stores were reset and seeded), rig clock, epoch ms.
+    /// The `$rigNow` of the seed: before the stores were reset and seeded (rig clock, epoch ms).
+    pub seeded_at: i64,
+    /// The run start: just before the first step. Run times are relative to it, so the time a
+    /// process takes to start does not move them.
     pub start: i64,
     /// After the last step.
     pub end: i64,
@@ -667,6 +670,7 @@ pub fn to_file_json(f: &CaptureFile) -> Value {
         },
         "hashes": { "scenario": f.hashes.scenario, "files": files },
         "run": {
+            "seeded_at": r.seeded_at,
             "start": r.start,
             "end": r.end,
             "process_start": r.process_start,
@@ -739,6 +743,7 @@ pub fn from_file_json(v: &Value) -> Result<CaptureFile, String> {
     };
     let r = obj(field(o, "run", "capture")?, "run")?;
     let run = RunMeta {
+        seeded_at: int(field(r, "seeded_at", "run")?, "run.seeded_at")?,
         start: int(field(r, "start", "run")?, "run.start")?,
         end: int(field(r, "end", "run")?, "run.end")?,
         process_start: int(field(r, "process_start", "run")?, "run.process_start")?,
@@ -926,6 +931,7 @@ mod tests {
                 files: vec![("a/b.json".into(), "fnv1a64:1".into())],
             },
             run: RunMeta {
+                seeded_at: 1_794_399_999_000,
                 start: 1_794_400_000_000,
                 end: 1_794_400_000_900,
                 process_start: 1_794_400_000_050,

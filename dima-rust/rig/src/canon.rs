@@ -64,6 +64,10 @@ fn render_text(t: &Text, ctx: &Ctx<'_>) -> String {
                 at: Moment::Abs(ms),
                 shape,
             } => s.push_str(&format!("<T@{ms}|{shape}>")),
+            Seg::Time {
+                at: Moment::Seed { seed, .. },
+                shape,
+            } => s.push_str(&format!("<Tseed{seed}|{shape}>")),
             Seg::Time { shape, .. } => s.push_str(&format!("<T|{shape}>")),
             Seg::Day { .. } => s.push_str("<D>"),
             Seg::Name(n) => s.push_str(&format!("<run:{n}>")),
@@ -96,6 +100,7 @@ fn render(v: &Val, path: &mut Path, ctx: &Ctx<'_>, top_is_set: bool) -> String {
         Val::Double(f) => format!("d{f:?}"),
         Val::Dec(s) => format!("m{s}"),
         Val::Time(r, Moment::Abs(ms)) => format!("T{r:?}@{ms}"),
+        Val::Time(r, Moment::Seed { seed, .. }) => format!("T{r:?}seed{seed}"),
         Val::Time(r, _) => format!("T{r:?}~"),
         Val::Oid(id) => format!("O{}", id_label(id, ctx)),
         Val::Uuid(id) => format!("U{}", id_label(id, ctx)),

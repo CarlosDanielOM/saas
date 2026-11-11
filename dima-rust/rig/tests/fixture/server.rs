@@ -30,6 +30,8 @@ enum Variant {
     WrongRef,
     WritesOnGet,
     JobKeyOrder,
+    NoCookie,
+    CookieAttr,
 }
 
 impl Variant {
@@ -47,6 +49,8 @@ impl Variant {
             "wrong-ref" => Variant::WrongRef,
             "writes-on-get" => Variant::WritesOnGet,
             "job-key-order" => Variant::JobKeyOrder,
+            "no-cookie" => Variant::NoCookie,
+            "cookie-attr" => Variant::CookieAttr,
             other => bail!("unknown variant {other}"),
         })
     }
@@ -69,6 +73,7 @@ struct Response {
     status: u16,
     content_type: &'static str,
     body: Vec<u8>,
+    headers: Vec<(&'static str, String)>,
 }
 
 fn json_resp(status: u16, v: &Value) -> Response {
@@ -76,6 +81,7 @@ fn json_resp(status: u16, v: &Value) -> Response {
         status,
         content_type: "application/json; charset=utf-8",
         body: serde_json::to_vec(v).unwrap_or_default(),
+        headers: Vec::new(),
     }
 }
 
@@ -129,7 +135,7 @@ async fn read_request(s: &mut TcpStream) -> Result<Request> {
     Ok(Request { method, path, body })
 }
 
-async fn write_response(s: &mut TcpStream, r: Response) -> Result<()> {
+async fn write_response(s: &mut TcpStream, v: Variant, r: Response) -> Result<()> {
     let reason = match r.status {
         200 => "OK",
         201 => "Created",
@@ -137,12 +143,27 @@ async fn write_response(s: &mut TcpStream, r: Response) -> Result<()> {
         404 => "Not Found",
         _ => "Status",
     };
-    let head = format!(
-        "HTTP/1.1 {} {reason}\r\ncontent-type: {}\r\ncontent-length: {}\r\nx-content-type-options: nosniff\r\nconnection: close\r\n\r\n",
+    let now = dima_rig::timefmt::now_ms();
+    let mut head = format!(
+        "HTTP/1.1 {} {reason}\r\ncontent-type: {}\r\ncontent-length: {}\r\nx-content-type-options: nosniff\r\nconnection: close\r\ndate: {}\r\n",
         r.status,
         r.content_type,
-        r.body.len()
+        r.body.len(),
+        dima_rig::timefmt::format_http_date(now).unwrap_or_default(),
     );
+    // Noise the rig does not compare: only the reference says who it is.
+    if v != Variant::Equivalent {
+        head.push_str("x-powered-by: Fixture\r\n");
+    }
+    // A weak ETag from the body, which holds generated values: compared by form only.
+    let hash = r.body.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
+        (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3)
+    });
+    head.push_str(&format!("etag: W/\"{:x}-{hash:x}\"\r\n", r.body.len()));
+    for (k, val) in &r.headers {
+        head.push_str(&format!("{k}: {val}\r\n"));
+    }
+    head.push_str("\r\n");
     s.write_all(head.as_bytes()).await?;
     s.write_all(&r.body).await?;
     s.flush().await?;
@@ -239,7 +260,28 @@ impl App {
         } else {
             json!({"id": id.to_hex(), "uuid": uuid, "name": name, "qty": qty, "createdAt": iso(now), "total": total})
         };
-        Ok(json_resp(201, &resp))
+        let mut r = json_resp(201, &resp);
+        // A session cookie with a generated value and an expiry an hour after now.
+        let expires = dima_rig::timefmt::format_http_date(now.timestamp_millis() + 3_600_000)
+            .unwrap_or_default();
+        let sid = uuid::Uuid::new_v4();
+        let cookie = match self.v {
+            Variant::NoCookie => None,
+            Variant::CookieAttr => Some(format!(
+                "sid={sid}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600; Expires={expires}"
+            )),
+            // Attribute order differs: a note, not a difference.
+            Variant::Equivalent => Some(format!(
+                "sid={sid}; Path=/; SameSite=Lax; Max-Age=3600; Expires={expires}; HttpOnly"
+            )),
+            _ => Some(format!(
+                "sid={sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600; Expires={expires}"
+            )),
+        };
+        if let Some(c) = cookie {
+            r.headers.push(("set-cookie", c));
+        }
+        Ok(r)
     }
 
     async fn get_item(&self, hex: &str) -> Result<Response> {
@@ -350,6 +392,7 @@ impl App {
                 status: 200,
                 content_type: "text/plain; charset=utf-8",
                 body: b"ok".to_vec(),
+                headers: Vec::new(),
             }),
             ("POST", ["items"]) => self.create_item(&req.body).await,
             ("GET", ["items", id]) => self.get_item(id).await,
@@ -379,7 +422,7 @@ async fn serve(app: Arc<App>, mut s: TcpStream) {
         }
         Err(e) => json_resp(400, &json!({"error": e.to_string()})),
     };
-    let _ = write_response(&mut s, res).await;
+    let _ = write_response(&mut s, app.v, res).await;
 }
 
 #[tokio::main]

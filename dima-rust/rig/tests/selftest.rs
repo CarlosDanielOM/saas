@@ -212,6 +212,16 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
         "wrong-ref" => assert_only(&run, variant, all, |p, w| {
             p.starts_with("dragonfly[\"item:<oid:") && w.contains("cross-reference differs")
         }),
+        "no-cookie" => assert_only(&run, variant, all, |p, w| {
+            p.starts_with("steps[")
+                && p.ends_with("].headers.set-cookie")
+                && w == "header missing in candidate"
+        }),
+        "cookie-attr" => assert_only(&run, variant, all, |p, w| {
+            p.starts_with("steps[")
+                && p.ends_with("].headers.set-cookie.sid.samesite")
+                && w == "text differs"
+        }),
         "job-key-order" => assert_only(&run, variant, &["items/jobs"], |p, w| {
             p == "dragonfly[\"cron:jobs:queue\"].value[0]" && w == "text differs"
         }),
@@ -383,6 +393,8 @@ fn self_test_end_to_end() {
         "number",
         "wrong-ref",
         "job-key-order",
+        "no-cookie",
+        "cookie-attr",
     ];
     for chunk in variants.chunks(3) {
         std::thread::scope(|s| {

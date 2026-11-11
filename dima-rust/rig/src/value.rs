@@ -45,12 +45,31 @@ pub enum Id {
     Gen(IdKind, u32),
 }
 
-/// A time. `Abs` compares exactly; `Rel` is relative to the scenario start and compares with a
-/// tolerance (or exactly by `abs`, which is kept for times outside the run window).
+/// A time. `Abs` compares exactly; `Rel` is relative to the run start (the first step) and
+/// compares with a tolerance (`abs` is kept for reports when the time lies outside the run);
+/// `Seed` is a `$rigNow` value the seed wrote, compared exactly by its seed offset.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Moment {
     Abs(i64),
-    Rel { off: i64, abs: Option<i64> },
+    Rel {
+        off: i64,
+        abs: Option<i64>,
+    },
+    /// `seed` is the `$rigNow` offset; `off` where it lies relative to the run start.
+    Seed {
+        seed: i64,
+        off: i64,
+    },
+}
+
+impl Moment {
+    /// Milliseconds relative to the run start, for relations between times of one side.
+    pub fn run_offset(&self) -> Option<i64> {
+        match self {
+            Moment::Abs(_) => None,
+            Moment::Rel { off, .. } | Moment::Seed { off, .. } => Some(*off),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -193,6 +212,7 @@ pub fn encode_moment(m: &Moment) -> String {
         Moment::Rel { off, abs: Some(a) } => {
             format!("t{}@{}", timefmt::format_offset(*off), iso(*a))
         }
+        Moment::Seed { seed, .. } => format!("seed{}", timefmt::format_offset(*seed)),
     }
 }
 

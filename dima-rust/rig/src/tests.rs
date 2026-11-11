@@ -12,7 +12,7 @@ use crate::capture::{
 };
 use crate::compare::{self, Outcome};
 use crate::detect::tests::{START, oid_at, window};
-use crate::detect::{DEFAULT_HEADERS, Known, Patterns, Window};
+use crate::detect::{Known, NOISE_HEADERS, Patterns, Window};
 use crate::path::Pattern;
 use crate::run::{RawRun, Rules, normalise};
 
@@ -104,6 +104,7 @@ fn allow(list: &[(&str, AllowKind)]) -> Allowances {
 
 fn meta(w: Window, port: u16) -> RunMeta {
     RunMeta {
+        seeded_at: w.seeded_at,
         start: w.start,
         end: w.end,
         process_start: w.proc_start,
@@ -129,14 +130,15 @@ const BYTE_SENSITIVE: &[&str] = &["q:*", "cas:*"];
 
 fn norm_run(run: &RawRun, known: &Known, a: &Allowances) -> Capture {
     let p = Patterns::new().unwrap();
-    let headers: Vec<String> = DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect();
+    let skip: Vec<String> = NOISE_HEADERS.iter().map(|s| s.to_string()).collect();
     let bs: Vec<String> = BYTE_SENSITIVE.iter().map(|s| s.to_string()).collect();
     let rules = Rules {
         patterns: &p,
         known,
-        headers: &headers,
+        skip_headers: &skip,
         as_text: &[],
         byte_sensitive: &bs,
+        seed_offsets: &[(60_000, false)],
     };
     normalise(run, &rules, a)
 }
@@ -180,6 +182,7 @@ fn shifted(ms: i64) -> Window {
         start: w.start + ms,
         end: w.end + ms,
         proc_start: w.proc_start + ms,
+        seeded_at: w.seeded_at + ms,
     }
 }
 
@@ -1198,4 +1201,197 @@ fn byte_sensitive_values_compare_as_exact_text() {
         "text differs",
     );
     assert_match(&diff(&reply("plain", a), &reply("plain", b)));
+}
+
+#[test]
+fn every_header_but_the_noise_is_compared() {
+    let h = |hs: &[(&str, &str)]| raw(vec![http_h(200, hs, b"ok")], vec![], vec![]);
+    // Noise: date, connection, content-length, x-powered-by.
+    assert_match(&diff(
+        &h(&[
+            ("date", "Wed, 11 Nov 2026 12:00:00 GMT"),
+            ("x-powered-by", "Express"),
+            ("content-length", "2"),
+            ("connection", "keep-alive"),
+        ]),
+        &h(&[
+            ("date", "Wed, 11 Nov 2026 12:00:05 GMT"),
+            ("connection", "close"),
+        ]),
+    ));
+    // Anything else, including headers nobody listed.
+    assert_one(
+        &diff(&h(&[("vary", "Origin")]), &h(&[])),
+        "steps[0].headers.vary",
+        "header missing in candidate",
+    );
+    assert_one(
+        &diff(&h(&[]), &h(&[("x-request-id", "abc")])),
+        "steps[0].headers.x-request-id",
+        "header only in candidate",
+    );
+    assert_one(
+        &diff(
+            &h(&[("access-control-allow-origin", "*")]),
+            &h(&[("access-control-allow-origin", "https://dima.example")]),
+        ),
+        "steps[0].headers.access-control-allow-origin",
+        "text differs",
+    );
+    // A repeated header keeps its values in order.
+    assert!(
+        !diff(
+            &h(&[("link", "a"), ("link", "b")]),
+            &h(&[("link", "b"), ("link", "a")])
+        )
+        .differences
+        .is_empty()
+    );
+    // ETag: presence and weak/strong form only.
+    assert_match(&diff(
+        &h(&[("etag", "W/\"1a-abc\"")]),
+        &h(&[("etag", "W/\"1a-xyz\"")]),
+    ));
+    assert_one(
+        &diff(
+            &h(&[("etag", "W/\"1a-abc\"")]),
+            &h(&[("etag", "\"1a-abc\"")]),
+        ),
+        "steps[0].headers.etag",
+        "text differs",
+    );
+    assert_one(
+        &diff(&h(&[("etag", "W/\"1a-abc\"")]), &h(&[])),
+        "steps[0].headers.etag",
+        "header missing",
+    );
+    // An HTTP date near the run is a time relative to the run.
+    let at = |ms: i64| crate::timefmt::format_http_date(ms).unwrap();
+    assert_match(&diff(
+        &h(&[("last-modified", &at(START + 1000))]),
+        &h(&[("last-modified", &at(START + 2000))]),
+    ));
+}
+
+#[test]
+fn set_cookie_is_compared_attribute_by_attribute() {
+    let at = |ms: i64| crate::timefmt::format_http_date(ms).unwrap();
+    let cookie = |sid: &str, extra: &str, expires: i64| {
+        format!(
+            "sid={sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600; Expires={}{extra}",
+            at(expires)
+        )
+    };
+    let h = |cookies: &[String]| {
+        let hs: Vec<(&str, &str)> = cookies.iter().map(|c| ("set-cookie", c.as_str())).collect();
+        raw(vec![http_h(201, &hs, b"ok")], vec![], vec![])
+    };
+    let (u1, u2) = (
+        "0b6f2a4c-1d2e-4f3a-8b9c-0123456789ab",
+        "f1e2d3c4-b5a6-4978-8a6b-5c4d3e2f1a0b",
+    );
+    let r = h(&[cookie(u1, "", START + 3_600_000), "theme=dark".into()]);
+    // Generated value and expiry relative to the run: a match.
+    assert_match(&diff(
+        &r,
+        &h(&[cookie(u2, "", START + 3_601_000), "theme=dark".into()]),
+    ));
+    // Attribute order is a note, not a difference.
+    let reordered = format!(
+        "sid={u2}; HttpOnly; Path=/; SameSite=Lax; Max-Age=3600; Expires={}",
+        at(START + 3_600_000)
+    );
+    assert_match(&diff(&r, &h(&[reordered, "theme=dark".into()])));
+    // A changed attribute.
+    let o = diff(
+        &r,
+        &h(&[
+            cookie(u2, "", START + 3_600_000).replace("Lax", "Strict"),
+            "theme=dark".into(),
+        ]),
+    );
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+    assert_one(
+        &o,
+        "steps[0].headers.set-cookie.sid.samesite",
+        "text differs",
+    );
+    // A missing flag, an extra attribute.
+    let o = diff(
+        &r,
+        &h(&[
+            cookie(u2, "; Secure", START + 3_600_000).replace("HttpOnly; ", ""),
+            "theme=dark".into(),
+        ]),
+    );
+    assert_one(
+        &o,
+        "steps[0].headers.set-cookie.sid.httponly",
+        "missing in candidate",
+    );
+    assert_one(
+        &o,
+        "steps[0].headers.set-cookie.sid.secure",
+        "only in candidate",
+    );
+    // A cookie that is not set, and no Set-Cookie at all.
+    assert_one(
+        &diff(&r, &h(&[cookie(u2, "", START + 3_600_000)])),
+        "steps[0].headers.set-cookie.theme",
+        "missing in candidate",
+    );
+    assert_one(
+        &diff(&r, &h(&[])),
+        "steps[0].headers.set-cookie",
+        "header missing in candidate",
+    );
+    // A different lifetime.
+    assert_one(
+        &diff(
+            &r,
+            &h(&[cookie(u2, "", START + 60_000), "theme=dark".into()]),
+        ),
+        "steps[0].headers.set-cookie.sid.expires",
+        "run-relative times differ",
+    );
+}
+
+#[test]
+fn seeded_times_compare_by_their_seed_offset() {
+    // A `$rigNow: +60s` value written by the seed stays that value; the process start between
+    // the seed and the first step (different on each side) does not move it.
+    let d = |at: i64| {
+        raw(
+            vec![],
+            vec![(
+                "c",
+                coll(vec![doc! {"_id": "a", "leaseUntil": (at + MIN) as f64}]),
+            )],
+            vec![],
+        )
+    };
+    let w = window();
+    let slow = Window {
+        start: w.start + 1800,
+        ..w
+    };
+    assert_match(&diff_w(
+        &d(w.seeded_at),
+        w,
+        &d(slow.seeded_at),
+        slow,
+        &Allowances::default(),
+    ));
+    // The candidate rewrote it with its own clock: a run time, not the seeded one.
+    assert_one(
+        &diff_w(
+            &d(w.seeded_at),
+            w,
+            &d(slow.start),
+            slow,
+            &Allowances::default(),
+        ),
+        "mongo.c[0].leaseUntil",
+        "seed",
+    );
 }
