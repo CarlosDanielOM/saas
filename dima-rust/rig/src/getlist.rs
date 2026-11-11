@@ -80,14 +80,21 @@ pub fn load(file: &FsPath) -> Result<GetList> {
     let text = std::fs::read_to_string(file).map_err(|e| config(format!("{at}: {e}")))?;
     let f: GetListFile = serde_json::from_str(&text).map_err(|e| config(format!("{at}: {e}")))?;
     if f.rig_get_list != GET_LIST_VERSION {
-        return Err(config(format!("{at}: rig_get_list {} is not supported; this rig reads version {GET_LIST_VERSION}", f.rig_get_list)));
+        return Err(config(format!(
+            "{at}: rig_get_list {} is not supported; this rig reads version {GET_LIST_VERSION}",
+            f.rig_get_list
+        )));
     }
     let common = header_pairs(&f.headers, &format!("{at}: headers"))?;
     let mut steps = Vec::new();
     for (i, r) in f.requests.iter().enumerate() {
         let here = format!("{at}: requests[{i}]");
         let req: RequestFile = match r {
-            Value::String(p) => RequestFile { path: p.clone(), headers: Map::new(), name: None },
+            Value::String(p) => RequestFile {
+                path: p.clone(),
+                headers: Map::new(),
+                name: None,
+            },
             other => RequestFile::deserialize(other).map_err(|e| config(format!("{here}: {e}")))?,
         };
         if !req.path.starts_with('/') {
@@ -121,6 +128,7 @@ pub fn load(file: &FsPath) -> Result<GetList> {
         steps,
         headers: crate::scenario::headers(compare.headers, &format!("{at}: compare.headers"))?,
         allow: crate::scenario::allowances(f.allow, &at)?,
-        tolerance_ms: i64::try_from(f.tolerance_ms.unwrap_or(2000)).map_err(|_| config(format!("{at}: tolerance_ms too large")))?,
+        tolerance_ms: i64::try_from(f.tolerance_ms.unwrap_or(2000))
+            .map_err(|_| config(format!("{at}: tolerance_ms too large")))?,
     })
 }

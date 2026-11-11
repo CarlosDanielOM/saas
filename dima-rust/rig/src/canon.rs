@@ -44,7 +44,11 @@ fn id_label(id: &Id, ctx: &Ctx<'_>) -> String {
             if ctx.focus == Some(&key) {
                 "<SELF>".into()
             } else {
-                format!("<{}:{}>", k.tag(), ctx.labels.get(&key).map_or("?", String::as_str))
+                format!(
+                    "<{}:{}>",
+                    k.tag(),
+                    ctx.labels.get(&key).map_or("?", String::as_str)
+                )
             }
         }
     }
@@ -56,7 +60,10 @@ fn render_text(t: &Text, ctx: &Ctx<'_>) -> String {
         match seg {
             Seg::Lit(l) => s.push_str(l),
             Seg::Id(id) => s.push_str(&id_label(id, ctx)),
-            Seg::Time { at: Moment::Abs(ms), shape } => s.push_str(&format!("<T@{ms}|{shape}>")),
+            Seg::Time {
+                at: Moment::Abs(ms),
+                shape,
+            } => s.push_str(&format!("<T@{ms}|{shape}>")),
             Seg::Time { shape, .. } => s.push_str(&format!("<T|{shape}>")),
             Seg::Day { .. } => s.push_str("<D>"),
             Seg::Name(n) => s.push_str(&format!("<run:{n}>")),
@@ -92,7 +99,10 @@ fn render(v: &Val, path: &mut Path, ctx: &Ctx<'_>, top_is_set: bool) -> String {
         Val::Oid(id) => format!("O{}", id_label(id, ctx)),
         Val::Uuid(id) => format!("U{}", id_label(id, ctx)),
         Val::Str(t) => format!("S{}", render_text(t, ctx)),
-        Val::Bytes(b) => format!("B{}", b.iter().map(|x| format!("{x:02x}")).collect::<String>()),
+        Val::Bytes(b) => format!(
+            "B{}",
+            b.iter().map(|x| format!("{x:02x}")).collect::<String>()
+        ),
         Val::Json(inner) => format!("J{}", render(inner, path, ctx, false)),
         Val::Ext(e) => format!("X{e}"),
         Val::Unsupported(t) => format!("?{t}"),
@@ -199,11 +209,26 @@ impl Item<'_> {
 
     fn render(&self, ctx: &Ctx<'_>) -> String {
         match self {
-            Item::Step(i, StepCap::Http { status, headers, body }) => {
+            Item::Step(
+                i,
+                StepCap::Http {
+                    status,
+                    headers,
+                    body,
+                },
+            ) => {
                 let mut p = Path::root("steps").with_index(*i);
                 let h: Vec<String> = headers
                     .iter()
-                    .map(|(n, vals)| format!("{n}={}", vals.iter().map(|t| render_text(t, ctx)).collect::<Vec<_>>().join(",")))
+                    .map(|(n, vals)| {
+                        format!(
+                            "{n}={}",
+                            vals.iter()
+                                .map(|t| render_text(t, ctx))
+                                .collect::<Vec<_>>()
+                                .join(",")
+                        )
+                    })
                     .collect();
                 let b = match body {
                     Body::Json(v) => {
@@ -215,15 +240,43 @@ impl Item<'_> {
                 };
                 format!("{status}|{}|{b}", h.join(";"))
             }
-            Item::Step(i, StepCap::Reply(v)) => render(v, &mut Path::root("steps").with_index(*i).with_key("reply"), ctx, false),
+            Item::Step(i, StepCap::Reply(v)) => render(
+                v,
+                &mut Path::root("steps").with_index(*i).with_key("reply"),
+                ctx,
+                false,
+            ),
             Item::Step(_, StepCap::Done(k)) => k.clone(),
-            Item::Options(c, v) => render(v, &mut Path::root("mongo").with_key(*c).with_key("options"), ctx, false),
+            Item::Options(c, v) => render(
+                v,
+                &mut Path::root("mongo").with_key(*c).with_key("options"),
+                ctx,
+                false,
+            ),
             Item::Indexes(c, specs) => specs
                 .iter()
-                .map(|(n, v)| format!("{n}={}", render(v, &mut Path::root("mongo").with_key(*c).with_key("indexes").with_key(n.clone()), ctx, false)))
+                .map(|(n, v)| {
+                    format!(
+                        "{n}={}",
+                        render(
+                            v,
+                            &mut Path::root("mongo")
+                                .with_key(*c)
+                                .with_key("indexes")
+                                .with_key(n.clone()),
+                            ctx,
+                            false
+                        )
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(";"),
-            Item::Doc(c, i, v) => render(v, &mut Path::root("mongo").with_key(*c).with_index(*i), ctx, false),
+            Item::Doc(c, i, v) => render(
+                v,
+                &mut Path::root("mongo").with_key(*c).with_index(*i),
+                ctx,
+                false,
+            ),
             Item::Entry(e) => entry_render(e, ctx),
         }
     }
@@ -234,17 +287,34 @@ fn entry_is_set(e: &EntryCap) -> bool {
 }
 
 fn entry_render(e: &EntryCap, ctx: &Ctx<'_>) -> String {
-    let mut p = Path::root("dragonfly").with_key(e.key.display()).with_key("value");
+    let mut p = Path::root("dragonfly")
+        .with_key(e.key.display())
+        .with_key("value");
     let ttl = if e.ttl.is_some() { "ttl" } else { "-" };
-    format!("{}|{}|{ttl}|{}", render_text(&e.key, ctx), e.kind, render(&e.value, &mut p, ctx, entry_is_set(e)))
+    format!(
+        "{}|{}|{ttl}|{}",
+        render_text(&e.key, ctx),
+        e.kind,
+        render(&e.value, &mut p, ctx, entry_is_set(e))
+    )
 }
 
 fn items(cap: &Capture) -> Vec<Item<'_>> {
-    let mut out: Vec<Item<'_>> = cap.steps.iter().enumerate().map(|(i, s)| Item::Step(i, s)).collect();
+    let mut out: Vec<Item<'_>> = cap
+        .steps
+        .iter()
+        .enumerate()
+        .map(|(i, s)| Item::Step(i, s))
+        .collect();
     for (name, c) in &cap.mongo {
         out.push(Item::Options(name, &c.options));
         out.push(Item::Indexes(name, &c.indexes));
-        out.extend(c.docs.iter().enumerate().map(|(i, d)| Item::Doc(name, i, d)));
+        out.extend(
+            c.docs
+                .iter()
+                .enumerate()
+                .map(|(i, d)| Item::Doc(name, i, d)),
+        );
     }
     out.extend(cap.dragonfly.iter().map(Item::Entry));
     out
@@ -276,15 +346,27 @@ fn compute_labels(cap: &Capture, allow: &Allowances) -> HashMap<Key, String> {
         for (it, ids) in items.iter().zip(&item_ids) {
             let group = it.group();
             if ids.len() > SELF_RENDER_LIMIT {
-                let plain = it.render(&Ctx { allow, labels: &labels, focus: None });
+                let plain = it.render(&Ctx {
+                    allow,
+                    labels: &labels,
+                    focus: None,
+                });
                 for (pos, k) in ids.iter().enumerate() {
-                    sigs.entry(k.clone()).or_default().push(format!("{group}|{plain}#{pos}"));
+                    sigs.entry(k.clone())
+                        .or_default()
+                        .push(format!("{group}|{plain}#{pos}"));
                 }
                 continue;
             }
             for k in ids {
-                let r = it.render(&Ctx { allow, labels: &labels, focus: Some(k) });
-                sigs.entry(k.clone()).or_default().push(format!("{group}|{r}"));
+                let r = it.render(&Ctx {
+                    allow,
+                    labels: &labels,
+                    focus: Some(k),
+                });
+                sigs.entry(k.clone())
+                    .or_default()
+                    .push(format!("{group}|{r}"));
             }
         }
         let next: HashMap<Key, String> = sigs
@@ -369,7 +451,11 @@ impl Numbering {
             Val::Arr(items) => items.iter().for_each(|x| self.val(x, ctx)),
             Val::Obj(kv) => {
                 // Key order does not matter for numbering: visit keys in sorted order.
-                let mut order: Vec<(String, usize)> = kv.iter().enumerate().map(|(i, (k, _))| (render_text(k, ctx), i)).collect();
+                let mut order: Vec<(String, usize)> = kv
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (k, _))| (render_text(k, ctx), i))
+                    .collect();
                 order.sort();
                 for (_, i) in order {
                     if let Some((k, x)) = kv.get(i) {
@@ -386,9 +472,10 @@ impl Numbering {
 fn apply_text(t: &mut Text, map: &HashMap<Key, u32>) {
     for s in &mut t.0 {
         if let Seg::Id(Id::Raw(k, v)) = s
-            && let Some(n) = map.get(&(*k, v.clone())) {
-                *s = Seg::Id(Id::Gen(*k, *n));
-            }
+            && let Some(n) = map.get(&(*k, v.clone()))
+        {
+            *s = Seg::Id(Id::Gen(*k, *n));
+        }
     }
 }
 
@@ -396,9 +483,10 @@ fn apply(v: &mut Val, map: &HashMap<Key, u32>) {
     match v {
         Val::Oid(id) | Val::Uuid(id) => {
             if let Id::Raw(k, x) = id
-                && let Some(n) = map.get(&(*k, x.clone())) {
-                    *id = Id::Gen(*k, *n);
-                }
+                && let Some(n) = map.get(&(*k, x.clone()))
+            {
+                *id = Id::Gen(*k, *n);
+            }
         }
         Val::Str(t) => apply_text(t, map),
         Val::Json(inner) => apply(inner, map),
@@ -416,13 +504,20 @@ fn apply(v: &mut Val, map: &HashMap<Key, u32>) {
 /// Order and number a detected capture in place.
 pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
     let labels = compute_labels(cap, allow);
-    let ctx = Ctx { allow, labels: &labels, focus: None };
+    let ctx = Ctx {
+        allow,
+        labels: &labels,
+        focus: None,
+    };
 
     // Set-like arrays first: document and key order depend on their sorted form.
     for (i, s) in cap.steps.iter_mut().enumerate() {
         let mut p = Path::root("steps").with_index(i);
         match s {
-            StepCap::Http { body: Body::Json(v), .. } => sort_sets(v, &mut p.with_key("body"), &ctx, false),
+            StepCap::Http {
+                body: Body::Json(v),
+                ..
+            } => sort_sets(v, &mut p.with_key("body"), &ctx, false),
             StepCap::Reply(v) => sort_sets(v, &mut p.with_key("reply"), &ctx, false),
             _ => {}
         }
@@ -430,12 +525,19 @@ pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
     }
     for (name, c) in cap.mongo.iter_mut() {
         for (i, d) in c.docs.iter_mut().enumerate() {
-            sort_sets(d, &mut Path::root("mongo").with_key(name.clone()).with_index(i), &ctx, false);
+            sort_sets(
+                d,
+                &mut Path::root("mongo").with_key(name.clone()).with_index(i),
+                &ctx,
+                false,
+            );
         }
     }
     for e in cap.dragonfly.iter_mut() {
         let set = entry_is_set(e);
-        let mut p = Path::root("dragonfly").with_key(e.key.display()).with_key("value");
+        let mut p = Path::root("dragonfly")
+            .with_key(e.key.display())
+            .with_key("value");
         sort_sets(&mut e.value, &mut p, &ctx, set);
     }
 
@@ -448,11 +550,17 @@ pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
         keyed.sort_by(|a, b| a.0.cmp(&b.0));
         c.docs = keyed.into_iter().map(|(_, d)| d).collect();
     }
-    let mut keyed: Vec<(String, EntryCap)> = std::mem::take(&mut cap.dragonfly).into_iter().map(|e| (entry_render(&e, &ctx), e)).collect();
+    let mut keyed: Vec<(String, EntryCap)> = std::mem::take(&mut cap.dragonfly)
+        .into_iter()
+        .map(|e| (entry_render(&e, &ctx), e))
+        .collect();
     keyed.sort_by(|a, b| a.0.cmp(&b.0));
     cap.dragonfly = keyed.into_iter().map(|(_, e)| e).collect();
 
-    let mut num = Numbering { next: HashMap::new(), map: HashMap::new() };
+    let mut num = Numbering {
+        next: HashMap::new(),
+        map: HashMap::new(),
+    };
     for s in &cap.steps {
         match s {
             StepCap::Http { headers, body, .. } => {

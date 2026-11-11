@@ -49,7 +49,9 @@ impl Path {
 
 /// A key that can be written as `.key` rather than `["key"]`.
 fn is_plain_key(k: &str) -> bool {
-    !k.is_empty() && k.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    !k.is_empty()
+        && k.chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
 }
 
 fn quote(k: &str) -> String {
@@ -117,7 +119,9 @@ impl Glob {
 fn glob_match(parts: &[GlobPart], s: &str) -> bool {
     match parts.split_first() {
         None => s.is_empty(),
-        Some((GlobPart::Lit(l), rest)) => s.strip_prefix(l.as_str()).is_some_and(|tail| glob_match(rest, tail)),
+        Some((GlobPart::Lit(l), rest)) => s
+            .strip_prefix(l.as_str())
+            .is_some_and(|tail| glob_match(rest, tail)),
         Some((GlobPart::Star, rest)) => {
             if rest.is_empty() {
                 return true;
@@ -187,13 +191,13 @@ impl Pattern {
                 if inner_t == "*" {
                     segs.push(PatSeg::AnyIndex);
                 } else if inner_t.starts_with('"') {
-                    let key: String =
-                        serde_json::from_str(inner_t).map_err(|e| err(&format!("bad quoted key: {e}"), i))?;
+                    let key: String = serde_json::from_str(inner_t)
+                        .map_err(|e| err(&format!("bad quoted key: {e}"), i))?;
                     segs.push(PatSeg::Key(Glob::parse(&key, true)));
                 } else {
-                    let n: usize = inner_t
-                        .parse()
-                        .map_err(|_| err("expected a number, `*` or a quoted key inside `[...]`", i))?;
+                    let n: usize = inner_t.parse().map_err(|_| {
+                        err("expected a number, `*` or a quoted key inside `[...]`", i)
+                    })?;
                     segs.push(PatSeg::Index(n));
                 }
                 i = close + 1;
@@ -209,7 +213,10 @@ impl Pattern {
             let start = i;
             while i < chars.len() && !matches!(chars.get(i), Some('.' | '[')) {
                 if matches!(chars.get(i), Some(']' | '"')) {
-                    return Err(err("unexpected character in a key; quote it as [\"...\"]", i));
+                    return Err(err(
+                        "unexpected character in a key; quote it as [\"...\"]",
+                        i,
+                    ));
                 }
                 i += 1;
             }
@@ -227,7 +234,10 @@ impl Pattern {
         if segs.is_empty() {
             return Err(format!("bad path `{src}`: empty"));
         }
-        Ok(Pattern { segs, source: src.to_string() })
+        Ok(Pattern {
+            segs,
+            source: src.to_string(),
+        })
     }
 
     /// The pattern matches this exact path.
@@ -289,7 +299,8 @@ fn seg_matches(p: &PatSeg, s: &Seg) -> bool {
 fn match_segs(pat: &[PatSeg], path: &[Seg], allow_prefix: bool) -> bool {
     match pat.split_first() {
         None => path.is_empty() || allow_prefix,
-        Some((PatSeg::AnyDepth, rest)) => (0..=path.len()).any(|skip| match_segs(rest, path.get(skip..).unwrap_or(&[]), allow_prefix)),
+        Some((PatSeg::AnyDepth, rest)) => (0..=path.len())
+            .any(|skip| match_segs(rest, path.get(skip..).unwrap_or(&[]), allow_prefix)),
         Some((p, rest)) => match path.split_first() {
             None => false,
             Some((s, tail)) => seg_matches(p, s) && match_segs(rest, tail, allow_prefix),
@@ -315,7 +326,13 @@ mod tests {
         assert_eq!(p.to_string(), "mongo.items[2].qty");
         let p = path(&[k("dragonfly"), k("item:<oid:1>"), k("ttl")]);
         assert_eq!(p.to_string(), "dragonfly[\"item:<oid:1>\"].ttl");
-        let p = path(&[k("steps"), Seg::Index(0), k("body"), k("ñandú"), k("🍕 pizza")]);
+        let p = path(&[
+            k("steps"),
+            Seg::Index(0),
+            k("body"),
+            k("ñandú"),
+            k("🍕 pizza"),
+        ]);
         assert_eq!(p.to_string(), "steps[0].body.ñandú[\"🍕 pizza\"]");
     }
 
@@ -330,32 +347,76 @@ mod tests {
     #[test]
     fn wildcards() {
         let doc = path(&[k("mongo"), k("items"), Seg::Index(3), k("createdAt")]);
-        assert!(Pattern::parse("mongo.items[*].createdAt").unwrap().matches(&doc));
+        assert!(
+            Pattern::parse("mongo.items[*].createdAt")
+                .unwrap()
+                .matches(&doc)
+        );
         assert!(Pattern::parse("mongo.*[*].created*").unwrap().matches(&doc));
         assert!(Pattern::parse("**.createdAt").unwrap().matches(&doc));
         assert!(Pattern::parse("mongo.**").unwrap().matches(&doc));
-        assert!(!Pattern::parse("mongo.items[2].createdAt").unwrap().matches(&doc));
-        assert!(!Pattern::parse("mongo.items.createdAt").unwrap().matches(&doc));
+        assert!(
+            !Pattern::parse("mongo.items[2].createdAt")
+                .unwrap()
+                .matches(&doc)
+        );
+        assert!(
+            !Pattern::parse("mongo.items.createdAt")
+                .unwrap()
+                .matches(&doc)
+        );
         let key = path(&[k("dragonfly"), k("timer:<oid:1>:lock"), k("ttl")]);
-        assert!(Pattern::parse("dragonfly[\"timer:*\"].ttl").unwrap().matches(&key));
-        assert!(!Pattern::parse("dragonfly[\"timer:\\\\*\"].ttl").unwrap().matches(&key));
+        assert!(
+            Pattern::parse("dragonfly[\"timer:*\"].ttl")
+                .unwrap()
+                .matches(&key)
+        );
+        assert!(
+            !Pattern::parse("dragonfly[\"timer:\\\\*\"].ttl")
+                .unwrap()
+                .matches(&key)
+        );
         let star = path(&[k("dragonfly"), k("a*b"), k("ttl")]);
-        assert!(Pattern::parse("dragonfly[\"a\\\\*b\"].ttl").unwrap().matches(&star));
+        assert!(
+            Pattern::parse("dragonfly[\"a\\\\*b\"].ttl")
+                .unwrap()
+                .matches(&star)
+        );
     }
 
     #[test]
     fn ancestor_matching() {
         let deep = path(&[k("dragonfly"), k("x"), k("value"), k("a")]);
-        assert!(Pattern::parse("dragonfly").unwrap().matches_self_or_ancestor(&deep));
+        assert!(
+            Pattern::parse("dragonfly")
+                .unwrap()
+                .matches_self_or_ancestor(&deep)
+        );
         assert!(!Pattern::parse("dragonfly").unwrap().matches(&deep));
-        assert!(!Pattern::parse("mongo").unwrap().matches_self_or_ancestor(&deep));
+        assert!(
+            !Pattern::parse("mongo")
+                .unwrap()
+                .matches_self_or_ancestor(&deep)
+        );
     }
 
     #[test]
     fn parse_errors_are_specific() {
-        assert!(Pattern::parse("mongo.items[").unwrap_err().contains("unclosed"));
-        assert!(Pattern::parse("mongo..x").unwrap_err().contains("empty key"));
-        assert!(Pattern::parse("mongo[x]").unwrap_err().contains("expected a number"));
+        assert!(
+            Pattern::parse("mongo.items[")
+                .unwrap_err()
+                .contains("unclosed")
+        );
+        assert!(
+            Pattern::parse("mongo..x")
+                .unwrap_err()
+                .contains("empty key")
+        );
+        assert!(
+            Pattern::parse("mongo[x]")
+                .unwrap_err()
+                .contains("expected a number")
+        );
         assert!(Pattern::parse("").is_err());
     }
 
@@ -370,7 +431,15 @@ mod tests {
     #[test]
     fn literal_segments_for_save() {
         let p = Pattern::parse("body.items[0].id").unwrap();
-        assert_eq!(p.literal_segments().unwrap(), vec![k("body"), k("items"), Seg::Index(0), k("id")]);
-        assert!(Pattern::parse("body.*").unwrap().literal_segments().is_none());
+        assert_eq!(
+            p.literal_segments().unwrap(),
+            vec![k("body"), k("items"), Seg::Index(0), k("id")]
+        );
+        assert!(
+            Pattern::parse("body.*")
+                .unwrap()
+                .literal_segments()
+                .is_none()
+        );
     }
 }

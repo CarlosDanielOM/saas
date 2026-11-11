@@ -67,9 +67,15 @@ pub enum Seg {
     Id(Id),
     /// A time written inside a string; `shape` is the original text with digits replaced by `d`
     /// (`ms` for a 13-digit epoch-millisecond run).
-    Time { at: Moment, shape: String },
+    Time {
+        at: Moment,
+        shape: String,
+    },
     /// A `YYYY-MM-DD` day relative to the scenario start's UTC day.
-    Day { off: i64, abs: Option<String> },
+    Day {
+        off: i64,
+        abs: Option<String>,
+    },
     /// A run-time name such as the side's port or database name.
     Name(String),
 }
@@ -79,7 +85,11 @@ pub struct Text(pub Vec<Seg>);
 
 impl Text {
     pub fn lit(s: &str) -> Text {
-        if s.is_empty() { Text(Vec::new()) } else { Text(vec![Seg::Lit(s.to_string())]) }
+        if s.is_empty() {
+            Text(Vec::new())
+        } else {
+            Text(vec![Seg::Lit(s.to_string())])
+        }
     }
 
     /// Merge neighbouring literals and drop empty ones.
@@ -165,7 +175,9 @@ impl Text {
                 continue;
             }
             let inner_and_tail = after.strip_prefix('<').unwrap_or(after);
-            let end = inner_and_tail.find('>').ok_or_else(|| format!("unclosed `<` in marker text `{s}`"))?;
+            let end = inner_and_tail
+                .find('>')
+                .ok_or_else(|| format!("unclosed `<` in marker text `{s}`"))?;
             let (inner, tail) = inner_and_tail.split_at(end);
             segs.push(Seg::Lit(std::mem::take(&mut lit)));
             segs.push(decode_atom(inner).map_err(|e| format!("{e} in `{s}`"))?);
@@ -178,7 +190,11 @@ impl Text {
 }
 
 fn signed(n: i64) -> String {
-    if n < 0 { n.to_string() } else { format!("+{n}") }
+    if n < 0 {
+        n.to_string()
+    } else {
+        format!("+{n}")
+    }
 }
 
 fn encode_id(id: &Id) -> String {
@@ -195,7 +211,9 @@ pub fn encode_moment(m: &Moment) -> String {
     match m {
         Moment::Abs(ms) => format!("t@{}", iso(*ms)),
         Moment::Rel { off, abs: None } => format!("t{}", timefmt::format_offset(*off)),
-        Moment::Rel { off, abs: Some(a) } => format!("t{}@{}", timefmt::format_offset(*off), iso(*a)),
+        Moment::Rel { off, abs: Some(a) } => {
+            format!("t{}@{}", timefmt::format_offset(*off), iso(*a))
+        }
     }
 }
 
@@ -206,7 +224,9 @@ fn parse_abs(s: &str) -> Result<i64, String> {
 }
 
 pub fn decode_moment(s: &str) -> Result<Moment, String> {
-    let body = s.strip_prefix('t').ok_or_else(|| format!("bad time marker `{s}`"))?;
+    let body = s
+        .strip_prefix('t')
+        .ok_or_else(|| format!("bad time marker `{s}`"))?;
     if let Some(abs) = body.strip_prefix('@') {
         return Ok(Moment::Abs(parse_abs(abs)?));
     }
@@ -227,22 +247,34 @@ fn decode_atom(inner: &str) -> Result<Seg, String> {
             Some((o, a)) => (o, Some(a.to_string())),
             None => (rest, None),
         };
-        let off: i64 = off.trim_start_matches('+').parse().map_err(|_| format!("bad day marker `<{inner}>`"))?;
+        let off: i64 = off
+            .trim_start_matches('+')
+            .parse()
+            .map_err(|_| format!("bad day marker `<{inner}>`"))?;
         return Ok(Seg::Day { off, abs });
     }
     if inner.starts_with('t') {
-        let (m, shape) = inner.split_once('|').ok_or_else(|| format!("time marker `<{inner}>` needs a `|shape`"))?;
-        return Ok(Seg::Time { at: decode_moment(m)?, shape: shape.to_string() });
+        let (m, shape) = inner
+            .split_once('|')
+            .ok_or_else(|| format!("time marker `<{inner}>` needs a `|shape`"))?;
+        return Ok(Seg::Time {
+            at: decode_moment(m)?,
+            shape: shape.to_string(),
+        });
     }
     if let Some((tag, n)) = inner.split_once(':')
-        && let Some(kind) = IdKind::from_tag(tag) {
-            let n: u32 = n.parse().map_err(|_| format!("bad id marker `<{inner}>`"))?;
-            return Ok(Seg::Id(Id::Gen(kind, n)));
-        }
+        && let Some(kind) = IdKind::from_tag(tag)
+    {
+        let n: u32 = n
+            .parse()
+            .map_err(|_| format!("bad id marker `<{inner}>`"))?;
+        return Ok(Seg::Id(Id::Gen(kind, n)));
+    }
     if let Some((tag, v)) = inner.split_once('=')
-        && let Some(kind) = IdKind::from_tag(tag) {
-            return Ok(Seg::Id(Id::Raw(kind, v.to_string())));
-        }
+        && let Some(kind) = IdKind::from_tag(tag)
+    {
+        return Ok(Seg::Id(Id::Raw(kind, v.to_string())));
+    }
     Err(format!("unknown marker `<{inner}>`"))
 }
 
@@ -349,7 +381,11 @@ fn fmt_double(f: f64) -> String {
     if f.is_nan() {
         "NaN".into()
     } else if f.is_infinite() {
-        if f > 0.0 { "Infinity".into() } else { "-Infinity".into() }
+        if f > 0.0 {
+            "Infinity".into()
+        } else {
+            "-Infinity".into()
+        }
     } else {
         format!("{f:?}")
     }
@@ -388,7 +424,9 @@ pub fn decode_key(k: &str) -> Result<Text, String> {
     } else if let Some(l) = k.strip_prefix("$rigLiteral:") {
         Ok(Text::lit(l))
     } else if k.starts_with('$') {
-        Err(format!("unescaped key `{k}` (literal keys starting with $ are written \"$rigLiteral:{k}\")"))
+        Err(format!(
+            "unescaped key `{k}` (literal keys starting with $ are written \"$rigLiteral:{k}\")"
+        ))
     } else {
         Ok(Text::lit(k))
     }
@@ -420,7 +458,10 @@ pub fn encode(v: &Val) -> Value {
         Val::Dec(s) => single("$numberDecimal", Value::String(s.clone())),
         Val::Time(NumRepr::Date, Moment::Abs(ms)) => match timefmt::format_iso_ms(*ms) {
             Some(iso) => single("$date", Value::String(iso)),
-            None => single("$date", single("$numberLong", Value::String(ms.to_string()))),
+            None => single(
+                "$date",
+                single("$numberLong", Value::String(ms.to_string())),
+            ),
         },
         Val::Time(NumRepr::Date, m) => single("$date", Value::String(marker(m))),
         Val::Time(NumRepr::Int64, m) => single("$numberLong", Value::String(marker(m))),
@@ -429,7 +470,10 @@ pub fn encode(v: &Val) -> Value {
         Val::Oid(id) => single("$oid", encode_id_value(id)),
         Val::Uuid(id) => single("$uuid", encode_id_value(id)),
         Val::Str(t) => encode_text_value(t),
-        Val::Bytes(b) => single("$rigBytes", Value::String(base64::engine::general_purpose::STANDARD.encode(b))),
+        Val::Bytes(b) => single(
+            "$rigBytes",
+            Value::String(base64::engine::general_purpose::STANDARD.encode(b)),
+        ),
         Val::Json(inner) => single("$rigJson", encode(inner)),
         Val::Arr(items) => Value::Array(items.iter().map(encode).collect()),
         Val::Obj(kv) => {
@@ -445,7 +489,16 @@ pub fn encode(v: &Val) -> Value {
 }
 
 const EXT_KEYS: &[&str] = &[
-    "$binary", "$timestamp", "$regularExpression", "$minKey", "$maxKey", "$code", "$scope", "$symbol", "$undefined", "$dbPointer",
+    "$binary",
+    "$timestamp",
+    "$regularExpression",
+    "$minKey",
+    "$maxKey",
+    "$code",
+    "$scope",
+    "$symbol",
+    "$undefined",
+    "$dbPointer",
 ];
 
 fn decode_id(s: &str, kind: IdKind) -> Result<Id, String> {
@@ -477,7 +530,10 @@ pub fn decode(v: &Value) -> Result<Val, String> {
         Value::String(s) => Val::Str(Text::lit(s)),
         Value::Array(items) => Val::Arr(items.iter().map(decode).collect::<Result<_, _>>()?),
         Value::Object(m) => {
-            let dollar: Vec<&String> = m.keys().filter(|k| k.starts_with('$') && !is_escaped_key(k)).collect();
+            let dollar: Vec<&String> = m
+                .keys()
+                .filter(|k| k.starts_with('$') && !is_escaped_key(k))
+                .collect();
             if dollar.is_empty() {
                 let mut kv = Vec::with_capacity(m.len());
                 for (k, v) in m {
@@ -489,16 +545,25 @@ pub fn decode(v: &Value) -> Result<Val, String> {
                 if m.keys().all(|k| EXT_KEYS.contains(&k.as_str())) {
                     return Ok(Val::Ext(v.clone()));
                 }
-                return Err(format!("object mixes markers and keys: {}", cut(&v.to_string(), 120)));
+                return Err(format!(
+                    "object mixes markers and keys: {}",
+                    cut(&v.to_string(), 120)
+                ));
             }
             let (key, inner) = m.iter().next().ok_or("empty marker")?;
             match key.as_str() {
-                "$numberInt" => Val::Int32(want_str(inner, key)?.parse().map_err(|_| format!("bad $numberInt {inner}"))?),
+                "$numberInt" => Val::Int32(
+                    want_str(inner, key)?
+                        .parse()
+                        .map_err(|_| format!("bad $numberInt {inner}"))?,
+                ),
                 "$numberLong" => {
                     let s = want_str(inner, key)?;
                     match time_marker(s) {
                         Some(m) => Val::Time(NumRepr::Int64, m?),
-                        None => Val::Int64(s.parse().map_err(|_| format!("bad $numberLong `{s}`"))?),
+                        None => {
+                            Val::Int64(s.parse().map_err(|_| format!("bad $numberLong `{s}`"))?)
+                        }
                     }
                 }
                 "$numberDouble" => {
@@ -519,8 +584,14 @@ pub fn decode(v: &Value) -> Result<Val, String> {
                         None => Val::Time(NumRepr::Date, Moment::Abs(parse_abs(s)?)),
                     },
                     Value::Object(o) => {
-                        let s = o.get("$numberLong").and_then(Value::as_str).ok_or("bad $date")?;
-                        Val::Time(NumRepr::Date, Moment::Abs(s.parse().map_err(|_| format!("bad $date {s}"))?))
+                        let s = o
+                            .get("$numberLong")
+                            .and_then(Value::as_str)
+                            .ok_or("bad $date")?;
+                        Val::Time(
+                            NumRepr::Date,
+                            Moment::Abs(s.parse().map_err(|_| format!("bad $date {s}"))?),
+                        )
                     }
                     _ => return Err(format!("bad $date {inner}")),
                 },
@@ -562,8 +633,17 @@ mod tests {
             Seg::Lit("item:".into()),
             Seg::Id(Id::Gen(IdKind::Oid, 1)),
             Seg::Lit(":<lock> 🍕".into()),
-            Seg::Time { at: Moment::Rel { off: 153, abs: None }, shape: "dddd-dd-ddTdd:dd:dd.dddZ".into() },
-            Seg::Day { off: -1, abs: Some("2026-11-10".into()) },
+            Seg::Time {
+                at: Moment::Rel {
+                    off: 153,
+                    abs: None,
+                },
+                shape: "dddd-dd-ddTdd:dd:dd.dddZ".into(),
+            },
+            Seg::Day {
+                off: -1,
+                abs: Some("2026-11-10".into()),
+            },
             Seg::Name("port.http".into()),
         ]);
         let vals = vec![
@@ -579,9 +659,27 @@ mod tests {
             Val::Dec("1.50".into()),
             Val::Time(NumRepr::Date, Moment::Abs(1_700_000_000_123)),
             Val::Time(NumRepr::Date, Moment::Abs(-80_000_000_000_000)),
-            Val::Time(NumRepr::Date, Moment::Rel { off: 153, abs: None }),
-            Val::Time(NumRepr::Double, Moment::Rel { off: 60_153, abs: Some(1_794_400_000_000) }),
-            Val::Time(NumRepr::Int64, Moment::Rel { off: -20, abs: None }),
+            Val::Time(
+                NumRepr::Date,
+                Moment::Rel {
+                    off: 153,
+                    abs: None,
+                },
+            ),
+            Val::Time(
+                NumRepr::Double,
+                Moment::Rel {
+                    off: 60_153,
+                    abs: Some(1_794_400_000_000),
+                },
+            ),
+            Val::Time(
+                NumRepr::Int64,
+                Moment::Rel {
+                    off: -20,
+                    abs: None,
+                },
+            ),
             Val::Time(NumRepr::Json, Moment::Rel { off: 0, abs: None }),
             Val::Oid(Id::Lit("650000000000000000000001".into())),
             Val::Oid(Id::Gen(IdKind::Oid, 2)),
@@ -590,7 +688,10 @@ mod tests {
             Val::Str(Text::lit("")),
             Val::Str(text.clone()),
             Val::Bytes(vec![0xff, 0x00, 0x80]),
-            Val::Json(Box::new(Val::Obj(vec![(Text::lit("a"), Val::Num(Number::from(1)))]))),
+            Val::Json(Box::new(Val::Obj(vec![(
+                Text::lit("a"),
+                Val::Num(Number::from(1)),
+            )]))),
             Val::Arr(vec![Val::Null, Val::Int32(1)]),
             Val::Obj(vec![
                 (Text::lit("$set"), Val::Null),
@@ -608,20 +709,36 @@ mod tests {
 
     #[test]
     fn readable_encodings() {
-        assert_eq!(encode(&Val::Oid(Id::Gen(IdKind::Oid, 1))), json!({"$oid": "<oid:1>"}));
         assert_eq!(
-            encode(&Val::Time(NumRepr::Date, Moment::Rel { off: 60_000, abs: Some(0) })),
+            encode(&Val::Oid(Id::Gen(IdKind::Oid, 1))),
+            json!({"$oid": "<oid:1>"})
+        );
+        assert_eq!(
+            encode(&Val::Time(
+                NumRepr::Date,
+                Moment::Rel {
+                    off: 60_000,
+                    abs: Some(0)
+                }
+            )),
             json!({"$date": "<t+60000ms@1970-01-01T00:00:00.000Z>"})
         );
         assert_eq!(encode(&Val::Double(5.0)), json!({"$numberDouble": "5.0"}));
         assert_eq!(encode(&Val::str("a<b")), json!("a<b"));
-        let t = Text::from_segs(vec![Seg::Lit("a<b ".into()), Seg::Id(Id::Gen(IdKind::Gen, 3))]);
+        let t = Text::from_segs(vec![
+            Seg::Lit("a<b ".into()),
+            Seg::Id(Id::Gen(IdKind::Gen, 3)),
+        ]);
         assert_eq!(encode(&Val::Str(t)), json!({"$rigText": "a<<b <gen:3>"}));
     }
 
     #[test]
     fn decode_rejects_unknown_markers_and_unescaped_keys() {
-        assert!(decode(&json!({"$nope": 1})).unwrap_err().contains("unknown marker"));
+        assert!(
+            decode(&json!({"$nope": 1}))
+                .unwrap_err()
+                .contains("unknown marker")
+        );
         assert!(decode(&json!({"a": 1, "$oid": "x"})).is_err());
         assert!(decode(&json!({"$rigText": "<what:1>"})).is_err());
     }

@@ -74,7 +74,11 @@ fn exact_int(n: &Number) -> Option<i128> {
         return Some(i128::from(u));
     }
     let f = n.as_f64()?;
-    if f.is_finite() && f.fract() == 0.0 && f.abs() < 9.2e18 { Some(f as i128) } else { None }
+    if f.is_finite() && f.fract() == 0.0 && f.abs() < 9.2e18 {
+        Some(f as i128)
+    } else {
+        None
+    }
 }
 
 fn json_num_eq(a: &Number, b: &Number) -> bool {
@@ -114,11 +118,18 @@ pub fn mask(v: &Val) -> String {
         Val::Json(inner) => format!("J{}", mask(inner)),
         Val::Arr(items) => format!("[{}]", items.iter().map(mask).collect::<Vec<_>>().join(",")),
         Val::Obj(kv) => {
-            let mut parts: Vec<String> = kv.iter().map(|(k, x)| format!("{}:{}", text(k), mask(x))).collect();
+            let mut parts: Vec<String> = kv
+                .iter()
+                .map(|(k, x)| format!("{}:{}", text(k), mask(x)))
+                .collect();
             parts.sort();
             format!("{{{}}}", parts.join(","))
         }
-        Val::Num(n) => format!("N{}", n.as_f64().map_or_else(|| n.to_string(), |f| format!("{f:?}"))),
+        Val::Num(n) => format!(
+            "N{}",
+            n.as_f64()
+                .map_or_else(|| n.to_string(), |f| format!("{f:?}"))
+        ),
         other => serde_json::to_string(&crate::value::encode(other)).unwrap_or_default(),
     }
 }
@@ -129,7 +140,10 @@ fn mask_text(t: &Text) -> String {
 
 fn doc_id(v: &Val) -> Option<&Val> {
     match v {
-        Val::Obj(kv) => kv.iter().find(|(k, _)| k.as_plain() == Some("_id")).map(|(_, x)| x),
+        Val::Obj(kv) => kv
+            .iter()
+            .find(|(k, _)| k.as_plain() == Some("_id"))
+            .map(|(_, x)| x),
         _ => None,
     }
 }
@@ -161,12 +175,24 @@ impl<'a> Comparator<'a> {
             self.failed = true;
             return;
         }
-        self.out.differences.push(Finding { path: path.to_string(), what: what.into(), reference: r, candidate: c, context: self.context.clone() });
+        self.out.differences.push(Finding {
+            path: path.to_string(),
+            what: what.into(),
+            reference: r,
+            candidate: c,
+            context: self.context.clone(),
+        });
     }
 
     fn note(&mut self, path: &Path, what: impl Into<String>, r: Option<String>, c: Option<String>) {
         if !self.probe {
-            self.out.notes.push(Finding { path: path.to_string(), what: what.into(), reference: r, candidate: c, context: self.context.clone() });
+            self.out.notes.push(Finding {
+                path: path.to_string(),
+                what: what.into(),
+                reference: r,
+                candidate: c,
+                context: self.context.clone(),
+            });
         }
     }
 
@@ -175,11 +201,17 @@ impl<'a> Comparator<'a> {
     }
 
     fn tol(&self, path: &Path) -> i64 {
-        self.allow.tolerance(path, !self.probe).unwrap_or(self.tolerance)
+        self.allow
+            .tolerance(path, !self.probe)
+            .unwrap_or(self.tolerance)
     }
 
     fn save(&mut self) -> State {
-        State { probe: self.probe, failed: self.failed, journal: self.journal.len() }
+        State {
+            probe: self.probe,
+            failed: self.failed,
+            journal: self.journal.len(),
+        }
     }
 
     fn rollback(&mut self, to: usize) {
@@ -233,8 +265,12 @@ impl<'a> Comparator<'a> {
                     }
                 }
             }
-            (Id::Lit(_), Id::Gen(..)) => Err("reference has a fixed identifier, candidate a generated one".into()),
-            (Id::Gen(..), Id::Lit(_)) => Err("reference has a generated identifier, candidate a fixed one".into()),
+            (Id::Lit(_), Id::Gen(..)) => {
+                Err("reference has a fixed identifier, candidate a generated one".into())
+            }
+            (Id::Gen(..), Id::Lit(_)) => {
+                Err("reference has a generated identifier, candidate a fixed one".into())
+            }
             _ => Err("internal: identifier was not numbered".into()),
         }
     }
@@ -242,17 +278,30 @@ impl<'a> Comparator<'a> {
     fn moments(&self, path: &Path, a: &Moment, b: &Moment) -> Result<(), String> {
         match (a, b) {
             (Moment::Abs(x), Moment::Abs(y)) => {
-                if x == y { Ok(()) } else { Err(format!("times differ by {}", human_duration(y - x))) }
+                if x == y {
+                    Ok(())
+                } else {
+                    Err(format!("times differ by {}", human_duration(y - x)))
+                }
             }
             (Moment::Rel { off: x, abs: ax }, Moment::Rel { off: y, abs: ay }) => {
                 let tol = self.tol(path);
                 if (x - y).abs() <= tol || (ax.is_some() && ax == ay) {
                     Ok(())
                 } else {
-                    Err(format!("run-relative times differ by {} (tolerance {})", human_duration(y - x), human_duration(tol)))
+                    Err(format!(
+                        "run-relative times differ by {} (tolerance {})",
+                        human_duration(y - x),
+                        human_duration(tol)
+                    ))
                 }
             }
-            (Moment::Abs(x), Moment::Rel { abs: Some(y), .. }) | (Moment::Rel { abs: Some(y), .. }, Moment::Abs(x)) if x == y => Ok(()),
+            (Moment::Abs(x), Moment::Rel { abs: Some(y), .. })
+            | (Moment::Rel { abs: Some(y), .. }, Moment::Abs(x))
+                if x == y =>
+            {
+                Ok(())
+            }
             _ => Err("one side has a fixed time, the other a time relative to the run".into()),
         }
     }
@@ -291,7 +340,16 @@ impl<'a> Comparator<'a> {
             return;
         }
         let type_diff = |s: &mut Self, path: &Path| {
-            s.diff(path, format!("type differs: reference {}, candidate {}", a.type_name(), b.type_name()), Some(show(a)), Some(show(b)))
+            s.diff(
+                path,
+                format!(
+                    "type differs: reference {}, candidate {}",
+                    a.type_name(),
+                    b.type_name()
+                ),
+                Some(show(a)),
+                Some(show(b)),
+            )
         };
         match (a, b) {
             (Val::Null, Val::Null) => {}
@@ -307,9 +365,19 @@ impl<'a> Comparator<'a> {
                     _ => json_num_eq(x, y),
                 };
                 if !equal {
-                    self.diff(path, "number differs", Some(x.to_string()), Some(y.to_string()));
+                    self.diff(
+                        path,
+                        "number differs",
+                        Some(x.to_string()),
+                        Some(y.to_string()),
+                    );
                 } else if self.in_json_text && x.is_f64() != y.is_f64() {
-                    self.note(path, "same number written differently in stored JSON", Some(x.to_string()), Some(y.to_string()));
+                    self.note(
+                        path,
+                        "same number written differently in stored JSON",
+                        Some(x.to_string()),
+                        Some(y.to_string()),
+                    );
                 }
             }
             (Val::Int32(x), Val::Int32(y)) => self.int(path, i64::from(*x), i64::from(*y), a, b),
@@ -342,7 +410,11 @@ impl<'a> Comparator<'a> {
             }
             (Val::Str(x), Val::Str(y)) => {
                 if let Err(why) = self.text(path, x, y) {
-                    let what = if x.as_plain() == Some("") || y.as_plain() == Some("") { format!("{why} (one side is empty)") } else { why };
+                    let what = if x.as_plain() == Some("") || y.as_plain() == Some("") {
+                        format!("{why} (one side is empty)")
+                    } else {
+                        why
+                    };
                     self.diff(path, what, Some(show(a)), Some(show(b)));
                 }
             }
@@ -389,10 +461,17 @@ impl<'a> Comparator<'a> {
         let mut b_used = vec![false; b.len()];
         let mut pairs: Vec<(usize, usize)> = Vec::new();
         let mut missing: Vec<usize> = Vec::new();
-        let plain_b: HashMap<&str, usize> = b.iter().enumerate().filter_map(|(j, (k, _))| k.as_plain().map(|p| (p, j))).collect();
+        let plain_b: HashMap<&str, usize> = b
+            .iter()
+            .enumerate()
+            .filter_map(|(j, (k, _))| k.as_plain().map(|p| (p, j)))
+            .collect();
         for (i, (ka, _)) in a.iter().enumerate() {
             let found = match ka.as_plain() {
-                Some(p) => plain_b.get(p).copied().filter(|j| !b_used.get(*j).copied().unwrap_or(true)),
+                Some(p) => plain_b
+                    .get(p)
+                    .copied()
+                    .filter(|j| !b_used.get(*j).copied().unwrap_or(true)),
                 None => {
                     let mut hit = None;
                     for (j, (kb, _)) in b.iter().enumerate() {
@@ -435,7 +514,11 @@ impl<'a> Comparator<'a> {
             if let Some((k, x)) = a.get(i) {
                 path.push_key(k.display());
                 if !self.ignored(path) {
-                    let what = if matches!(x, Val::Null) { "field is null in reference, missing in candidate" } else { "field missing in candidate" };
+                    let what = if matches!(x, Val::Null) {
+                        "field is null in reference, missing in candidate"
+                    } else {
+                        "field missing in candidate"
+                    };
                     self.diff(path, what, Some(show(x)), None);
                 }
                 path.pop();
@@ -447,19 +530,37 @@ impl<'a> Comparator<'a> {
             }
             path.push_key(k.display());
             if !self.ignored(path) {
-                let what = if matches!(y, Val::Null) { "field missing in reference, null in candidate" } else { "field only in candidate" };
+                let what = if matches!(y, Val::Null) {
+                    "field missing in reference, null in candidate"
+                } else {
+                    "field only in candidate"
+                };
                 self.diff(path, what, None, Some(show(y)));
             }
             path.pop();
         }
-        let reordered = pairs.len() == a.len() && pairs.len() == b.len() && pairs.windows(2).any(|w| matches!(w, [(_, j1), (_, j2)] if j1 > j2));
+        let reordered = pairs.len() == a.len()
+            && pairs.len() == b.len()
+            && pairs
+                .windows(2)
+                .any(|w| matches!(w, [(_, j1), (_, j2)] if j1 > j2));
         if reordered {
             let ra: Vec<String> = a.iter().map(|(k, _)| k.display()).collect();
             let rb: Vec<String> = b.iter().map(|(k, _)| k.display()).collect();
             if order_matters(path) {
-                self.diff(path, "index key order differs", Some(ra.join(", ")), Some(rb.join(", ")));
+                self.diff(
+                    path,
+                    "index key order differs",
+                    Some(ra.join(", ")),
+                    Some(rb.join(", ")),
+                );
             } else {
-                self.note(path, "object key order differs", Some(ra.join(", ")), Some(rb.join(", ")));
+                self.note(
+                    path,
+                    "object key order differs",
+                    Some(ra.join(", ")),
+                    Some(rb.join(", ")),
+                );
             }
         }
     }
@@ -472,7 +573,12 @@ impl<'a> Comparator<'a> {
                     (Some(x), Some(y)) => self.val(path, x, y),
                     (Some(x), None) => {
                         if !self.ignored(path) {
-                            self.diff(path, "array element missing in candidate", Some(show(x)), None);
+                            self.diff(
+                                path,
+                                "array element missing in candidate",
+                                Some(show(x)),
+                                None,
+                            );
                         }
                     }
                     (None, Some(y)) => {
@@ -499,7 +605,11 @@ impl<'a> Comparator<'a> {
         for i in (0..n).rev() {
             for j in (0..m).rev() {
                 let v = if ma.get(i) == mb.get(j) {
-                    lcs.get(i + 1).and_then(|r| r.get(j + 1)).copied().unwrap_or(0) + 1
+                    lcs.get(i + 1)
+                        .and_then(|r| r.get(j + 1))
+                        .copied()
+                        .unwrap_or(0)
+                        + 1
                 } else {
                     let down = lcs.get(i + 1).and_then(|r| r.get(j)).copied().unwrap_or(0);
                     let right = lcs.get(i).and_then(|r| r.get(j + 1)).copied().unwrap_or(0);
@@ -525,7 +635,12 @@ impl<'a> Comparator<'a> {
                 path.push_index(j);
                 if !self.ignored(path) {
                     let y = b.get(j).map(show);
-                    self.diff(path, format!("array element only in candidate (candidate index {j})"), None, y);
+                    self.diff(
+                        path,
+                        format!("array element only in candidate (candidate index {j})"),
+                        None,
+                        y,
+                    );
                 }
                 path.pop();
                 j += 1;
@@ -581,7 +696,10 @@ impl<'a> Comparator<'a> {
         for i in left {
             let Some(x) = a.get(i) else { continue };
             let mx = mask(x);
-            let partner = (0..b.len()).find(|j| !b_used.get(*j).copied().unwrap_or(true) && b.get(*j).map(mask).as_deref() == Some(mx.as_str()));
+            let partner = (0..b.len()).find(|j| {
+                !b_used.get(*j).copied().unwrap_or(true)
+                    && b.get(*j).map(mask).as_deref() == Some(mx.as_str())
+            });
             path.push_index(i);
             match partner.and_then(|j| b.get(j).map(|y| (j, y))) {
                 Some((j, y)) => {
@@ -592,7 +710,12 @@ impl<'a> Comparator<'a> {
                 }
                 None => {
                     if !self.ignored(path) {
-                        self.diff(path, "set element missing in candidate", Some(show(x)), None);
+                        self.diff(
+                            path,
+                            "set element missing in candidate",
+                            Some(show(x)),
+                            None,
+                        );
                     }
                 }
             }
@@ -602,7 +725,12 @@ impl<'a> Comparator<'a> {
             if !b_used.get(j).copied().unwrap_or(true) {
                 path.push_index(j);
                 if !self.ignored(path) {
-                    self.diff(path, format!("set element only in candidate (candidate index {j})"), None, Some(show(y)));
+                    self.diff(
+                        path,
+                        format!("set element only in candidate (candidate index {j})"),
+                        None,
+                        Some(show(y)),
+                    );
                 }
                 path.pop();
             }
@@ -613,12 +741,29 @@ impl<'a> Comparator<'a> {
         for i in 0..a.len().max(b.len()) {
             let base = Path::root("steps").with_index(i);
             match (a.get(i), b.get(i)) {
-                (Some(StepCap::Http { status: s1, headers: h1, body: b1 }), Some(StepCap::Http { status: s2, headers: h2, body: b2 })) => {
+                (
+                    Some(StepCap::Http {
+                        status: s1,
+                        headers: h1,
+                        body: b1,
+                    }),
+                    Some(StepCap::Http {
+                        status: s2,
+                        headers: h2,
+                        body: b2,
+                    }),
+                ) => {
                     let sp = base.with_key("status");
                     if s1 != s2 && !self.ignored(&sp) {
-                        self.diff(&sp, "HTTP status differs", Some(s1.to_string()), Some(s2.to_string()));
+                        self.diff(
+                            &sp,
+                            "HTTP status differs",
+                            Some(s1.to_string()),
+                            Some(s2.to_string()),
+                        );
                     }
-                    let names: BTreeSet<&String> = h1.iter().chain(h2.iter()).map(|(n, _)| n).collect();
+                    let names: BTreeSet<&String> =
+                        h1.iter().chain(h2.iter()).map(|(n, _)| n).collect();
                     for name in names {
                         let hp = base.with_key("headers").with_key(name.clone());
                         if self.ignored(&hp) {
@@ -626,14 +771,28 @@ impl<'a> Comparator<'a> {
                         }
                         let x = h1.iter().find(|(n, _)| n == name).map(|(_, v)| v);
                         let y = h2.iter().find(|(n, _)| n == name).map(|(_, v)| v);
-                        let joined = |v: &Vec<Text>| v.iter().map(Text::display).collect::<Vec<_>>().join(" | ");
+                        let joined = |v: &Vec<Text>| {
+                            v.iter().map(Text::display).collect::<Vec<_>>().join(" | ")
+                        };
                         match (x, y) {
-                            (Some(x), None) => self.diff(&hp, "header missing in candidate", Some(joined(x)), None),
-                            (None, Some(y)) => self.diff(&hp, "header only in candidate", None, Some(joined(y))),
+                            (Some(x), None) => {
+                                self.diff(&hp, "header missing in candidate", Some(joined(x)), None)
+                            }
+                            (None, Some(y)) => {
+                                self.diff(&hp, "header only in candidate", None, Some(joined(y)))
+                            }
                             (Some(x), Some(y)) => {
-                                let ok = x.len() == y.len() && x.iter().zip(y.iter()).all(|(p, q)| self.text(&hp, p, q).is_ok());
+                                let ok = x.len() == y.len()
+                                    && x.iter()
+                                        .zip(y.iter())
+                                        .all(|(p, q)| self.text(&hp, p, q).is_ok());
                                 if !ok {
-                                    self.diff(&hp, "header differs", Some(joined(x)), Some(joined(y)));
+                                    self.diff(
+                                        &hp,
+                                        "header differs",
+                                        Some(joined(x)),
+                                        Some(joined(y)),
+                                    );
                                 }
                             }
                             (None, None) => {}
@@ -647,12 +806,22 @@ impl<'a> Comparator<'a> {
                         (Body::Json(x), Body::Json(y)) => self.val(&mut bp, x, y),
                         (Body::Text(x), Body::Text(y)) => {
                             if let Err(why) = self.text(&bp, x, y) {
-                                self.diff(&bp, format!("body {why}"), Some(Val::Str(x.clone()).short(SHOW)), Some(Val::Str(y.clone()).short(SHOW)));
+                                self.diff(
+                                    &bp,
+                                    format!("body {why}"),
+                                    Some(Val::Str(x.clone()).short(SHOW)),
+                                    Some(Val::Str(y.clone()).short(SHOW)),
+                                );
                             }
                         }
                         (Body::Bytes(x), Body::Bytes(y)) => {
                             if x != y {
-                                self.diff(&bp, "body bytes differ", Some(format!("{} bytes", x.len())), Some(format!("{} bytes", y.len())));
+                                self.diff(
+                                    &bp,
+                                    "body bytes differ",
+                                    Some(format!("{} bytes", x.len())),
+                                    Some(format!("{} bytes", y.len())),
+                                );
                             }
                         }
                         (x, y) => {
@@ -661,11 +830,22 @@ impl<'a> Comparator<'a> {
                                 Body::Text(_) => "text",
                                 Body::Bytes(_) => "binary",
                             };
-                            self.diff(&bp, format!("body is {} in reference, {} in candidate", kind(x), kind(y)), None, None);
+                            self.diff(
+                                &bp,
+                                format!(
+                                    "body is {} in reference, {} in candidate",
+                                    kind(x),
+                                    kind(y)
+                                ),
+                                None,
+                                None,
+                            );
                         }
                     }
                 }
-                (Some(StepCap::Reply(x)), Some(StepCap::Reply(y))) => self.val(&mut base.with_key("reply"), x, y),
+                (Some(StepCap::Reply(x)), Some(StepCap::Reply(y))) => {
+                    self.val(&mut base.with_key("reply"), x, y)
+                }
                 (Some(StepCap::Done(_)), Some(StepCap::Done(_))) => {}
                 (x, y) => self.diff(
                     &base,
@@ -704,7 +884,9 @@ impl<'a> Comparator<'a> {
                 }
                 let Some(x) = a.get(i) else { continue };
                 for j in 0..b.len() {
-                    if b_used.get(j).copied().unwrap_or(true) || (pass == 0 && ma.get(i) != mb.get(j)) {
+                    if b_used.get(j).copied().unwrap_or(true)
+                        || (pass == 0 && ma.get(i) != mb.get(j))
+                    {
                         continue;
                     }
                     let Some(y) = b.get(j) else { continue };
@@ -758,9 +940,23 @@ impl<'a> Comparator<'a> {
                 }
             }
         }
-        let pairs = a_pair.iter().enumerate().filter_map(|(i, p)| p.map(|j| (i, j))).collect();
-        let lone_a = a_pair.iter().enumerate().filter(|(_, p)| p.is_none()).map(|(i, _)| i).collect();
-        let lone_b = b_used.iter().enumerate().filter(|(_, u)| !**u).map(|(j, _)| j).collect();
+        let pairs = a_pair
+            .iter()
+            .enumerate()
+            .filter_map(|(i, p)| p.map(|j| (i, j)))
+            .collect();
+        let lone_a = a_pair
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p.is_none())
+            .map(|(i, _)| i)
+            .collect();
+        let lone_b = b_used
+            .iter()
+            .enumerate()
+            .filter(|(_, u)| !**u)
+            .map(|(j, _)| j)
+            .collect();
         (pairs, lone_a, lone_b)
     }
 
@@ -775,9 +971,10 @@ impl<'a> Comparator<'a> {
         let mut same = 0usize;
         for (k, v) in p {
             if let Some((_, w)) = q.iter().find(|(kk, _)| kk.display() == k.display())
-                && self.probe_with(false, |s| s.val(&mut Path::root("similarity"), v, w)) {
-                    same += 1;
-                }
+                && self.probe_with(false, |s| s.val(&mut Path::root("similarity"), v, w))
+            {
+                same += 1;
+            }
         }
         same as f64 / keys.len() as f64
     }
@@ -785,10 +982,20 @@ impl<'a> Comparator<'a> {
     fn collection(&mut self, name: &str, a: &CollCap, b: &CollCap) {
         let base = Path::root("mongo").with_key(name);
         if a.kind != b.kind {
-            self.diff(&base.with_key("type"), "collection type differs", Some(a.kind.clone()), Some(b.kind.clone()));
+            self.diff(
+                &base.with_key("type"),
+                "collection type differs",
+                Some(a.kind.clone()),
+                Some(b.kind.clone()),
+            );
         }
         self.val(&mut base.with_key("options"), &a.options, &b.options);
-        let names: BTreeSet<&String> = a.indexes.iter().chain(b.indexes.iter()).map(|(n, _)| n).collect();
+        let names: BTreeSet<&String> = a
+            .indexes
+            .iter()
+            .chain(b.indexes.iter())
+            .map(|(n, _)| n)
+            .collect();
         for n in names {
             let ip = base.with_key("indexes").with_key(n.clone());
             let x = a.indexes.iter().find(|(m, _)| m == n).map(|(_, v)| v);
@@ -815,7 +1022,8 @@ impl<'a> Comparator<'a> {
             |s, x, y| s.val(&mut base.with_index(0), x, y),
             |s, x, y| match (doc_id(x), doc_id(y)) {
                 (Some(p), Some(q)) => match (p, q) {
-                    (Val::Oid(Id::Gen(k1, n1)), Val::Oid(Id::Gen(k2, n2))) | (Val::Uuid(Id::Gen(k1, n1)), Val::Uuid(Id::Gen(k2, n2))) => {
+                    (Val::Oid(Id::Gen(k1, n1)), Val::Oid(Id::Gen(k2, n2)))
+                    | (Val::Uuid(Id::Gen(k1, n1)), Val::Uuid(Id::Gen(k2, n2))) => {
                         k1 == k2 && s.fwd.get(&(*k1, *n1)) == Some(n2)
                     }
                     (Val::Oid(Id::Gen(..)), _) | (_, Val::Oid(Id::Gen(..))) => false,
@@ -848,7 +1056,12 @@ impl<'a> Comparator<'a> {
                 self.context = doc_context(y);
                 let p = base.with_index(j);
                 if !self.ignored(&p) {
-                    self.diff(&p, format!("document only in candidate (candidate index {j})"), None, Some(show(y)));
+                    self.diff(
+                        &p,
+                        format!("document only in candidate (candidate index {j})"),
+                        None,
+                        Some(show(y)),
+                    );
                 }
             }
         }
@@ -865,10 +1078,20 @@ impl<'a> Comparator<'a> {
             return;
         }
         if let Err(why) = self.text(&base, &x.key, &y.key) {
-            self.diff(&base, format!("key name differs: {why}"), Some(x.key.display()), Some(y.key.display()));
+            self.diff(
+                &base,
+                format!("key name differs: {why}"),
+                Some(x.key.display()),
+                Some(y.key.display()),
+            );
         }
         if x.kind != y.kind {
-            self.diff(&base.with_key("type"), "Dragonfly type differs", Some(x.kind.clone()), Some(y.kind.clone()));
+            self.diff(
+                &base.with_key("type"),
+                "Dragonfly type differs",
+                Some(x.kind.clone()),
+                Some(y.kind.clone()),
+            );
             return;
         }
         let tp = base.with_key("ttl");
@@ -876,11 +1099,26 @@ impl<'a> Comparator<'a> {
             let fmt = |t: &Option<Moment>| crate::capture::encode_ttl(t).to_string();
             match (&x.ttl, &y.ttl) {
                 (None, None) => {}
-                (Some(_), None) => self.diff(&tp, "TTL: reference has one, candidate has none", Some(fmt(&x.ttl)), Some("no TTL".into())),
-                (None, Some(_)) => self.diff(&tp, "TTL: reference has none, candidate has one", Some("no TTL".into()), Some(fmt(&y.ttl))),
+                (Some(_), None) => self.diff(
+                    &tp,
+                    "TTL: reference has one, candidate has none",
+                    Some(fmt(&x.ttl)),
+                    Some("no TTL".into()),
+                ),
+                (None, Some(_)) => self.diff(
+                    &tp,
+                    "TTL: reference has none, candidate has one",
+                    Some("no TTL".into()),
+                    Some(fmt(&y.ttl)),
+                ),
                 (Some(p), Some(q)) => {
                     if let Err(why) = self.moments(&tp, p, q) {
-                        self.diff(&tp, format!("TTL differs: {why}"), Some(fmt(&x.ttl)), Some(fmt(&y.ttl)));
+                        self.diff(
+                            &tp,
+                            format!("TTL differs: {why}"),
+                            Some(fmt(&x.ttl)),
+                            Some(fmt(&y.ttl)),
+                        );
                     }
                 }
             }
@@ -890,7 +1128,9 @@ impl<'a> Comparator<'a> {
             return;
         }
         match (&x.value, &y.value) {
-            (Val::Arr(p), Val::Arr(q)) if x.kind == "set" || x.kind == "zset" => self.set(&mut vp, p, q),
+            (Val::Arr(p), Val::Arr(q)) if x.kind == "set" || x.kind == "zset" => {
+                self.set(&mut vp, p, q)
+            }
             (p, q) => self.val(&mut vp, p, q),
         }
     }
@@ -899,7 +1139,15 @@ impl<'a> Comparator<'a> {
         let (pairs, lone_a, lone_b) = self.pair(
             a,
             b,
-            |e| format!("{}|{}|{}|{}", mask_text(&e.key), e.kind, e.ttl.is_some(), mask(&e.value)),
+            |e| {
+                format!(
+                    "{}|{}|{}|{}",
+                    mask_text(&e.key),
+                    e.kind,
+                    e.ttl.is_some(),
+                    mask(&e.value)
+                )
+            },
             |s, x, y| s.entry(x, y),
             |s, x, y| {
                 s.probe_with(true, |s2| {
@@ -908,7 +1156,13 @@ impl<'a> Comparator<'a> {
                     }
                 })
             },
-            |_, x, y| if mask_text(&x.key) == mask_text(&y.key) { 1.0 } else { 0.0 },
+            |_, x, y| {
+                if mask_text(&x.key) == mask_text(&y.key) {
+                    1.0
+                } else {
+                    0.0
+                }
+            },
         );
         let mut sorted = pairs;
         sorted.sort();
@@ -921,7 +1175,12 @@ impl<'a> Comparator<'a> {
             if let Some(x) = a.get(i) {
                 let p = Self::entry_path(x);
                 if !self.ignored(&p) {
-                    self.diff(&p, "key missing in candidate", Some(format!("{} {}", x.kind, x.value.short(SHOW))), None);
+                    self.diff(
+                        &p,
+                        "key missing in candidate",
+                        Some(format!("{} {}", x.kind, x.value.short(SHOW))),
+                        None,
+                    );
                 }
             }
         }
@@ -929,7 +1188,12 @@ impl<'a> Comparator<'a> {
             if let Some(y) = b.get(j) {
                 let p = Self::entry_path(y);
                 if !self.ignored(&p) {
-                    self.diff(&p, "key only in candidate", None, Some(format!("{} {}", y.kind, y.value.short(SHOW))));
+                    self.diff(
+                        &p,
+                        "key only in candidate",
+                        None,
+                        Some(format!("{} {}", y.kind, y.value.short(SHOW))),
+                    );
                 }
             }
         }
@@ -945,12 +1209,22 @@ impl<'a> Comparator<'a> {
                 (Some(x), Some(y)) => self.collection(name, x, y),
                 (Some(x), None) => {
                     if !self.ignored(&p) {
-                        self.diff(&p, "collection missing in candidate", Some(format!("{} documents", x.docs.len())), None);
+                        self.diff(
+                            &p,
+                            "collection missing in candidate",
+                            Some(format!("{} documents", x.docs.len())),
+                            None,
+                        );
                     }
                 }
                 (None, Some(y)) => {
                     if !self.ignored(&p) {
-                        self.diff(&p, "collection only in candidate", None, Some(format!("{} documents", y.docs.len())));
+                        self.diff(
+                            &p,
+                            "collection only in candidate",
+                            None,
+                            Some(format!("{} documents", y.docs.len())),
+                        );
                     }
                 }
                 (None, None) => {}

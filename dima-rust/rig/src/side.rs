@@ -61,30 +61,48 @@ pub fn log_tail(path: &FsPath) -> Vec<String> {
     let text = String::from_utf8_lossy(&buf);
     let lines: Vec<&str> = text.lines().collect();
     let from = lines.len().saturating_sub(TAIL_LINES);
-    lines.get(from..).unwrap_or(&[]).iter().map(|l| crate::value::cut(l, 400)).collect()
+    lines
+        .get(from..)
+        .unwrap_or(&[])
+        .iter()
+        .map(|l| crate::value::cut(l, 400))
+        .collect()
 }
 
 fn describe(st: &ExitStatus) -> String {
     use std::os::unix::process::ExitStatusExt;
     match (st.code(), st.signal()) {
         (Some(c), _) => format!("exit code {c}"),
-        (None, Some(s)) => format!("signal {}", Signal::try_from(s).map_or_else(|_| s.to_string(), |sig| sig.as_str().to_string())),
+        (None, Some(s)) => format!(
+            "signal {}",
+            Signal::try_from(s).map_or_else(|_| s.to_string(), |sig| sig.as_str().to_string())
+        ),
         _ => "unknown exit".into(),
     }
 }
 
 /// Find a bare program name in the side's PATH (or the rig's when the side has none).
-fn resolve_program(program: &str, side_path: Option<&str>, rig_path: Option<&str>, cwd: &FsPath) -> Option<PathBuf> {
+fn resolve_program(
+    program: &str,
+    side_path: Option<&str>,
+    rig_path: Option<&str>,
+    cwd: &FsPath,
+) -> Option<PathBuf> {
     if program.contains('/') {
         let p = PathBuf::from(program);
         return Some(if p.is_absolute() { p } else { cwd.join(p) });
     }
     let search = side_path.or(rig_path)?;
-    std::env::split_paths(search).map(|d| d.join(program)).find(|p| p.is_file())
+    std::env::split_paths(search)
+        .map(|d| d.join(program))
+        .find(|p| p.is_file())
 }
 
 impl SideProcess {
-    pub async fn launch(spec: LaunchSpec, rig_path: Option<&str>) -> Result<SideProcess, SideFailure> {
+    pub async fn launch(
+        spec: LaunchSpec,
+        rig_path: Option<&str>,
+    ) -> Result<SideProcess, SideFailure> {
         let fail = |msg: String, log: &FsPath| SideFailure {
             side: spec.side.clone(),
             step: None,
@@ -95,16 +113,29 @@ impl SideProcess {
         if let Some(dir) = spec.log_path.parent() {
             let _ = std::fs::create_dir_all(dir);
         }
-        let mut log = match std::fs::OpenOptions::new().create(true).append(true).open(&spec.log_path) {
+        let mut log = match std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&spec.log_path)
+        {
             Ok(f) => f,
             Err(e) => return Err(fail(format!("cannot open log file: {e}"), &spec.log_path)),
         };
         let Some((program, args)) = spec.command.split_first() else {
             return Err(fail("empty command".into(), &spec.log_path));
         };
-        let side_path = spec.env.iter().find(|(k, _)| k == "PATH").map(|(_, v)| v.as_str());
+        let side_path = spec
+            .env
+            .iter()
+            .find(|(k, _)| k == "PATH")
+            .map(|(_, v)| v.as_str());
         let Some(resolved) = resolve_program(program, side_path, rig_path, &spec.cwd) else {
-            return Err(fail(format!("program `{program}` not found on PATH (add PATH to pass_env or use an absolute path)"), &spec.log_path));
+            return Err(fail(
+                format!(
+                    "program `{program}` not found on PATH (add PATH to pass_env or use an absolute path)"
+                ),
+                &spec.log_path,
+            ));
         };
         let names: Vec<&str> = spec.env.iter().map(|(k, _)| k.as_str()).collect();
         let _ = writeln!(
@@ -119,7 +150,12 @@ impl SideProcess {
         );
         let (out, err) = match (log.try_clone(), log.try_clone()) {
             (Ok(a), Ok(b)) => (a, b),
-            _ => return Err(fail("cannot share the log file with the process".into(), &spec.log_path)),
+            _ => {
+                return Err(fail(
+                    "cannot share the log file with the process".into(),
+                    &spec.log_path,
+                ));
+            }
         };
         let mut cmd = Command::new(&resolved);
         cmd.args(args)
@@ -134,7 +170,12 @@ impl SideProcess {
         let started_at = timefmt::now_ms();
         let child = match cmd.spawn() {
             Ok(c) => c,
-            Err(e) => return Err(fail(format!("cannot start {}: {e}", resolved.display()), &spec.log_path)),
+            Err(e) => {
+                return Err(fail(
+                    format!("cannot start {}: {e}", resolved.display()),
+                    &spec.log_path,
+                ));
+            }
         };
         let pgid = child.id().and_then(|id| i32::try_from(id).ok());
         let mut p = SideProcess {
@@ -153,7 +194,13 @@ impl SideProcess {
     }
 
     pub fn failure(&self, step: Option<usize>, message: impl Into<String>) -> SideFailure {
-        SideFailure { side: self.side.clone(), step, message: message.into(), log: Some(self.log_path.display().to_string()), log_tail: log_tail(&self.log_path) }
+        SideFailure {
+            side: self.side.clone(),
+            step,
+            message: message.into(),
+            log: Some(self.log_path.display().to_string()),
+            log_tail: log_tail(&self.log_path),
+        }
     }
 
     /// `Err` with a description when the process has exited.
@@ -180,7 +227,11 @@ impl SideProcess {
             return Err(self.failure(None, format!("no port named {}", ready.port)));
         };
         let deadline = tokio::time::Instant::now() + Duration::from_millis(ready.timeout_ms);
-        let client = reqwest::Client::builder().no_proxy().timeout(Duration::from_secs(2)).redirect(reqwest::redirect::Policy::none()).build();
+        let client = reqwest::Client::builder()
+            .no_proxy()
+            .timeout(Duration::from_secs(2))
+            .redirect(reqwest::redirect::Policy::none())
+            .build();
         let mut last = String::from("no answer yet");
         loop {
             if let Err(why) = self.check_alive() {
@@ -207,7 +258,13 @@ impl SideProcess {
                 }
             }
             if tokio::time::Instant::now() >= deadline {
-                return Err(self.failure(None, format!("not ready after {} ms (last probe: {last})", ready.timeout_ms)));
+                return Err(self.failure(
+                    None,
+                    format!(
+                        "not ready after {} ms (last probe: {last})",
+                        ready.timeout_ms
+                    ),
+                ));
             }
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
@@ -232,7 +289,9 @@ impl SideProcess {
                 StopSignal::Hup => Signal::SIGHUP,
             };
             self.signal_group(sig);
-            match tokio::time::timeout(Duration::from_millis(self.grace_ms), self.child.wait()).await {
+            match tokio::time::timeout(Duration::from_millis(self.grace_ms), self.child.wait())
+                .await
+            {
                 Ok(Ok(st)) => self.exited = Some(st),
                 _ => {
                     self.signal_group(Signal::SIGKILL);
@@ -244,9 +303,18 @@ impl SideProcess {
         }
         // Anything the process started in its group goes too.
         self.signal_group(Signal::SIGKILL);
-        let _ = std::fs::OpenOptions::new().append(true).open(&self.log_path).map(|mut f| {
-            let _ = writeln!(f, "=== dima-rig: stopped ({})", self.exited.as_ref().map_or_else(|| "unknown".into(), describe));
-        });
+        let _ = std::fs::OpenOptions::new()
+            .append(true)
+            .open(&self.log_path)
+            .map(|mut f| {
+                let _ = writeln!(
+                    f,
+                    "=== dima-rig: stopped ({})",
+                    self.exited
+                        .as_ref()
+                        .map_or_else(|| "unknown".into(), describe)
+                );
+            });
         died
     }
 }

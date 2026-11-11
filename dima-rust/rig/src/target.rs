@@ -121,14 +121,17 @@ pub const PLACEHOLDERS: &[&str] = &[
 ];
 
 fn valid_name(s: &str) -> bool {
-    !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    !s.is_empty()
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
 fn check_template(tpl: &str, ports: &[String], where_: &str) -> Result<()> {
     let names = template::placeholders(tpl).map_err(|e| config(format!("{where_}: {e}")))?;
     for n in names {
         let ok = PLACEHOLDERS.contains(&n.as_str())
-            || n.strip_prefix("port.").is_some_and(|p| ports.iter().any(|x| x == p))
+            || n.strip_prefix("port.")
+                .is_some_and(|p| ports.iter().any(|x| x == p))
             || n.strip_prefix("var.").is_some_and(valid_name);
         if !ok {
             return Err(config(format!(
@@ -143,7 +146,9 @@ fn check_template(tpl: &str, ports: &[String], where_: &str) -> Result<()> {
 
 fn side(f: SideFile, ports: &[String], where_: &str) -> Result<SideSpec> {
     if f.command.is_empty() {
-        return Err(config(format!("{where_}.command: needs at least the program")));
+        return Err(config(format!(
+            "{where_}.command: needs at least the program"
+        )));
     }
     for (i, c) in f.command.iter().enumerate() {
         check_template(c, ports, &format!("{where_}.command[{i}]"))?;
@@ -159,41 +164,71 @@ fn side(f: SideFile, ports: &[String], where_: &str) -> Result<SideSpec> {
     }
     for k in &f.pass_env {
         if k.is_empty() || k.contains('=') {
-            return Err(config(format!("{where_}.pass_env: bad variable name `{k}`")));
+            return Err(config(format!(
+                "{where_}.pass_env: bad variable name `{k}`"
+            )));
         }
         if f.env.contains_key(k) {
-            return Err(config(format!("{where_}.pass_env: `{k}` is also set in env; keep one")));
+            return Err(config(format!(
+                "{where_}.pass_env: `{k}` is also set in env; keep one"
+            )));
         }
     }
     let probe = match (f.ready.http, f.ready.tcp) {
         (Some(path), None | Some(false)) => {
             if !path.starts_with('/') {
-                return Err(config(format!("{where_}.ready.http: a path starting with /, such as /health")));
+                return Err(config(format!(
+                    "{where_}.ready.http: a path starting with /, such as /health"
+                )));
             }
-            Probe::Http { path, status: f.ready.status }
+            Probe::Http {
+                path,
+                status: f.ready.status,
+            }
         }
         (None, Some(true)) => {
             if f.ready.status.is_some() {
-                return Err(config(format!("{where_}.ready.status: only with an http probe")));
+                return Err(config(format!(
+                    "{where_}.ready.status: only with an http probe"
+                )));
             }
             Probe::Tcp
         }
-        _ => return Err(config(format!("{where_}.ready: needs exactly one of \"http\": \"/path\" or \"tcp\": true"))),
+        _ => {
+            return Err(config(format!(
+                "{where_}.ready: needs exactly one of \"http\": \"/path\" or \"tcp\": true"
+            )));
+        }
     };
-    let port = f.ready.port.unwrap_or_else(|| ports.first().cloned().unwrap_or_default());
+    let port = f
+        .ready
+        .port
+        .unwrap_or_else(|| ports.first().cloned().unwrap_or_default());
     if !ports.contains(&port) {
-        return Err(config(format!("{where_}.ready.port: `{port}` is not one of the target's ports ({})", ports.join(", "))));
+        return Err(config(format!(
+            "{where_}.ready.port: `{port}` is not one of the target's ports ({})",
+            ports.join(", ")
+        )));
     }
     if f.ready.timeout_ms == 0 || f.ready.timeout_ms > 600_000 {
-        return Err(config(format!("{where_}.ready.timeout_ms: between 1 and 600000")));
+        return Err(config(format!(
+            "{where_}.ready.timeout_ms: between 1 and 600000"
+        )));
     }
-    let stop = f.stop.unwrap_or(StopFile { signal: None, grace_ms: None });
+    let stop = f.stop.unwrap_or(StopFile {
+        signal: None,
+        grace_ms: None,
+    });
     let stop_signal = match stop.signal.as_deref().unwrap_or("SIGTERM") {
         "SIGTERM" => StopSignal::Term,
         "SIGINT" => StopSignal::Int,
         "SIGQUIT" => StopSignal::Quit,
         "SIGHUP" => StopSignal::Hup,
-        other => return Err(config(format!("{where_}.stop.signal: `{other}` (use SIGTERM, SIGINT, SIGQUIT or SIGHUP)"))),
+        other => {
+            return Err(config(format!(
+                "{where_}.stop.signal: `{other}` (use SIGTERM, SIGINT, SIGQUIT or SIGHUP)"
+            )));
+        }
     };
     let grace_ms = stop.grace_ms.unwrap_or(5000);
     if grace_ms > 120_000 {
@@ -204,7 +239,11 @@ fn side(f: SideFile, ports: &[String], where_: &str) -> Result<SideSpec> {
         cwd: f.cwd,
         env: f.env,
         pass_env: f.pass_env,
-        ready: Ready { probe, port, timeout_ms: f.ready.timeout_ms },
+        ready: Ready {
+            probe,
+            port,
+            timeout_ms: f.ready.timeout_ms,
+        },
         stop_signal,
         grace_ms,
     })
@@ -213,14 +252,21 @@ fn side(f: SideFile, ports: &[String], where_: &str) -> Result<SideSpec> {
 /// Read and check `<rig_dir>/targets/<name>.json`.
 pub fn load(rig_dir: &FsPath, name: &str) -> Result<Target> {
     if !valid_name(name) {
-        return Err(config(format!("bad target name `{name}` (letters, digits, - and _)")));
+        return Err(config(format!(
+            "bad target name `{name}` (letters, digits, - and _)"
+        )));
     }
     let file = rig_dir.join("targets").join(format!("{name}.json"));
-    let text = std::fs::read_to_string(&file).map_err(|e| config(format!("{}: {e}", file.display())))?;
-    let f: TargetFile = serde_json::from_str(&text).map_err(|e| config(format!("{}: {e}", file.display())))?;
+    let text =
+        std::fs::read_to_string(&file).map_err(|e| config(format!("{}: {e}", file.display())))?;
+    let f: TargetFile =
+        serde_json::from_str(&text).map_err(|e| config(format!("{}: {e}", file.display())))?;
     let at = file.display().to_string();
     if f.rig_target != TARGET_VERSION {
-        return Err(config(format!("{at}: rig_target {} is not supported; this rig reads version {TARGET_VERSION}", f.rig_target)));
+        return Err(config(format!(
+            "{at}: rig_target {} is not supported; this rig reads version {TARGET_VERSION}",
+            f.rig_target
+        )));
     }
     let ports = f.ports.unwrap_or_else(|| vec!["http".to_string()]);
     if ports.is_empty() {
@@ -233,5 +279,12 @@ pub fn load(rig_dir: &FsPath, name: &str) -> Result<Target> {
     }
     let reference = side(f.reference, &ports, &format!("{at}: reference"))?;
     let candidate = side(f.candidate, &ports, &format!("{at}: candidate"))?;
-    Ok(Target { name: name.to_string(), file, description: f.description, ports, reference, candidate })
+    Ok(Target {
+        name: name.to_string(),
+        file,
+        description: f.description,
+        ports,
+        reference,
+        candidate,
+    })
 }

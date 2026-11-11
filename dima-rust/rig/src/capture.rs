@@ -98,7 +98,11 @@ pub struct Capture {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StepCap {
-    Http { status: u16, headers: Vec<(String, Vec<Text>)>, body: Body },
+    Http {
+        status: u16,
+        headers: Vec<(String, Vec<Text>)>,
+        body: Body,
+    },
     Reply(Val),
     Done(String),
 }
@@ -156,13 +160,19 @@ pub fn encode_body(b: &Body) -> Value {
     match b {
         Body::Json(v) => json!({ "json": value::encode(v) }),
         Body::Text(t) => json!({ "text": value::encode_text_value(t) }),
-        Body::Bytes(bytes) => json!({ "base64": base64::engine::general_purpose::STANDARD.encode(bytes) }),
+        Body::Bytes(bytes) => {
+            json!({ "base64": base64::engine::general_purpose::STANDARD.encode(bytes) })
+        }
     }
 }
 
 pub fn encode_step(s: &StepCap) -> Value {
     match s {
-        StepCap::Http { status, headers, body } => {
+        StepCap::Http {
+            status,
+            headers,
+            body,
+        } => {
             let mut h = Map::new();
             for (name, vals) in headers {
                 h.insert(name.clone(), encode_texts(vals));
@@ -231,17 +241,24 @@ fn field<'a>(o: &'a Map<String, Value>, k: &str, ctx: &str) -> Result<&'a Value,
 }
 
 fn obj<'a>(v: &'a Value, ctx: &str) -> Result<&'a Map<String, Value>, String> {
-    v.as_object().ok_or_else(|| format!("{ctx}: expected an object"))
+    v.as_object()
+        .ok_or_else(|| format!("{ctx}: expected an object"))
 }
 
 fn string(v: &Value, ctx: &str) -> Result<String, String> {
-    v.as_str().map(str::to_string).ok_or_else(|| format!("{ctx}: expected a string"))
+    v.as_str()
+        .map(str::to_string)
+        .ok_or_else(|| format!("{ctx}: expected a string"))
 }
 
 fn decode_step(v: &Value, i: usize) -> Result<StepCap, String> {
     let ctx = format!("steps[{i}]");
     let o = obj(v, &ctx)?;
-    let (kind, inner) = o.iter().next().filter(|_| o.len() == 1).ok_or_else(|| format!("{ctx}: expected one key"))?;
+    let (kind, inner) = o
+        .iter()
+        .next()
+        .filter(|_| o.len() == 1)
+        .ok_or_else(|| format!("{ctx}: expected one key"))?;
     match kind.as_str() {
         "http" => {
             let h = obj(inner, &ctx)?;
@@ -252,7 +269,10 @@ fn decode_step(v: &Value, i: usize) -> Result<StepCap, String> {
             let mut headers = Vec::new();
             for (name, vals) in obj(field(h, "headers", &ctx)?, &ctx)? {
                 let texts = match vals {
-                    Value::Array(items) => items.iter().map(decode_text_value).collect::<Result<Vec<_>, _>>()?,
+                    Value::Array(items) => items
+                        .iter()
+                        .map(decode_text_value)
+                        .collect::<Result<Vec<_>, _>>()?,
                     one => vec![decode_text_value(one)?],
                 };
                 headers.push((name.clone(), texts));
@@ -271,9 +291,17 @@ fn decode_step(v: &Value, i: usize) -> Result<StepCap, String> {
             } else {
                 return Err(format!("{ctx}: body needs json, text or base64"));
             };
-            Ok(StepCap::Http { status, headers, body })
+            Ok(StepCap::Http {
+                status,
+                headers,
+                body,
+            })
         }
-        "dragonfly" => Ok(StepCap::Reply(value::decode(field(obj(inner, &ctx)?, "reply", &ctx)?)?)),
+        "dragonfly" => Ok(StepCap::Reply(value::decode(field(
+            obj(inner, &ctx)?,
+            "reply",
+            &ctx,
+        )?)?)),
         other => Ok(StepCap::Done(other.to_string())),
     }
 }
@@ -325,13 +353,21 @@ pub fn from_file_json(v: &Value) -> Result<(CaptureMeta, Capture), String> {
         );
     }
     let mut dragonfly = Vec::new();
-    for (i, e) in field(o, "dragonfly", "capture")?.as_array().ok_or("dragonfly: expected an array")?.iter().enumerate() {
+    for (i, e) in field(o, "dragonfly", "capture")?
+        .as_array()
+        .ok_or("dragonfly: expected an array")?
+        .iter()
+        .enumerate()
+    {
         let ctx = format!("dragonfly[{i}]");
         let eo = obj(e, &ctx)?;
         let ttl = match field(eo, "ttl", &ctx)? {
             Value::Null => None,
             Value::String(s) => {
-                let inner = s.strip_prefix('<').and_then(|x| x.strip_suffix('>')).ok_or_else(|| format!("{ctx}: bad ttl"))?;
+                let inner = s
+                    .strip_prefix('<')
+                    .and_then(|x| x.strip_suffix('>'))
+                    .ok_or_else(|| format!("{ctx}: bad ttl"))?;
                 Some(value::decode_moment(inner)?)
             }
             _ => return Err(format!("{ctx}: bad ttl")),
@@ -343,7 +379,14 @@ pub fn from_file_json(v: &Value) -> Result<(CaptureMeta, Capture), String> {
             value: value::decode(field(eo, "value", &ctx)?)?,
         });
     }
-    Ok((meta, Capture { steps, mongo, dragonfly }))
+    Ok((
+        meta,
+        Capture {
+            steps,
+            mongo,
+            dragonfly,
+        },
+    ))
 }
 
 /// Pretty JSON with a trailing newline, as stored on disk.

@@ -70,12 +70,22 @@ pub struct RawRun {
 type SideOutcome = std::result::Result<RawRun, SideFailure>;
 
 fn rig_failure(side: &str, message: impl Into<String>) -> SideFailure {
-    SideFailure { side: side.into(), step: None, message: message.into(), log: None, log_tail: Vec::new() }
+    SideFailure {
+        side: side.into(),
+        step: None,
+        message: message.into(),
+        log: None,
+        log_tail: Vec::new(),
+    }
 }
 
 fn run_id() -> String {
     let iso = timefmt::format_iso_ms(timefmt::now_ms()).unwrap_or_default();
-    let compact: String = iso.chars().filter(|c| c.is_ascii_digit() || *c == 'T').take(15).collect();
+    let compact: String = iso
+        .chars()
+        .filter(|c| c.is_ascii_digit() || *c == 'T')
+        .take(15)
+        .collect();
     format!("{compact}-{}", std::process::id())
 }
 
@@ -93,7 +103,13 @@ struct SideRunner<'s> {
 }
 
 impl<'s> SideRunner<'s> {
-    async fn new(settings: &'s Settings, target: &'s Target, which: Which, label: &str, existing_db: Option<&str>) -> Result<SideRunner<'s>> {
+    async fn new(
+        settings: &'s Settings,
+        target: &'s Target,
+        which: Which,
+        label: &str,
+        existing_db: Option<&str>,
+    ) -> Result<SideRunner<'s>> {
         let stores = SideStores::allocate(&settings.stores, label, existing_db).await?;
         let http = reqwest::Client::builder()
             .no_proxy()
@@ -104,7 +120,18 @@ impl<'s> SideRunner<'s> {
             .pool_max_idle_per_host(0)
             .build()
             .map_err(|e| config(format!("HTTP client: {e}")))?;
-        Ok(SideRunner { settings, target, which, label: label.into(), stores, proc: None, baseline: None, launches: 0, http, run_id: run_id() })
+        Ok(SideRunner {
+            settings,
+            target,
+            which,
+            label: label.into(),
+            stores,
+            proc: None,
+            baseline: None,
+            launches: 0,
+            http,
+            run_id: run_id(),
+        })
     }
 
     fn spec(&self) -> &'s SideSpec {
@@ -147,12 +174,23 @@ impl<'s> SideRunner<'s> {
         for (k, v) in &s.vars {
             vars.insert(format!("var.{k}"), v.clone());
         }
-        let render = |t: &str| template::render(t, &vars).map_err(|e| self.fail(format!("{e} (pass var.<name> with --set name=value)")));
-        let command = spec.command.iter().map(|c| render(c)).collect::<std::result::Result<Vec<_>, _>>()?;
+        let render = |t: &str| {
+            template::render(t, &vars)
+                .map_err(|e| self.fail(format!("{e} (pass var.<name> with --set name=value)")))
+        };
+        let command = spec
+            .command
+            .iter()
+            .map(|c| render(c))
+            .collect::<std::result::Result<Vec<_>, _>>()?;
         let cwd = match &spec.cwd {
             Some(c) => {
                 let p = PathBuf::from(render(c)?);
-                if p.is_absolute() { p } else { s.repo_dir.join(p) }
+                if p.is_absolute() {
+                    p
+                } else {
+                    s.repo_dir.join(p)
+                }
             }
             None => s.repo_dir.clone(),
         };
@@ -166,7 +204,10 @@ impl<'s> SideRunner<'s> {
             }
         }
         self.launches += 1;
-        let log_path = s.out_dir.join("logs").join(&self.target.name).join(format!("{}-{}-{}.log", self.run_id, self.label, self.launches));
+        let log_path = s.out_dir.join("logs").join(&self.target.name).join(format!(
+            "{}-{}-{}.log",
+            self.run_id, self.label, self.launches
+        ));
         let ls = LaunchSpec {
             side: self.which.name().into(),
             command,
@@ -194,7 +235,9 @@ impl<'s> SideRunner<'s> {
         let mut since = tokio::time::Instant::now();
         let deadline = since + Duration::from_secs(3);
         while tokio::time::Instant::now() < deadline {
-            let Ok(fp) = self.stores.fingerprint(&[], &[]).await else { return };
+            let Ok(fp) = self.stores.fingerprint(&[], &[]).await else {
+                return;
+            };
             let t = tokio::time::Instant::now();
             if last != Some(fp) {
                 last = Some(fp);
@@ -213,10 +256,17 @@ impl<'s> SideRunner<'s> {
         }
         let _ = self.stop_process().await;
         self.baseline = None;
-        self.stores.reset_empty().await.map_err(|e| self.fail(e.to_string()))?;
+        self.stores
+            .reset_empty()
+            .await
+            .map_err(|e| self.fail(e.to_string()))?;
         self.launch().await?;
         self.settle().await;
-        let b = self.stores.snapshot().await.map_err(|e| self.fail(format!("snapshot after start-up: {e}")))?;
+        let b = self
+            .stores
+            .snapshot()
+            .await
+            .map_err(|e| self.fail(format!("snapshot after start-up: {e}")))?;
         self.baseline = Some(b);
         Ok(())
     }
@@ -243,21 +293,38 @@ impl<'s> SideRunner<'s> {
         if sc.restart {
             let _ = self.stop_process().await;
             self.baseline = None;
-            self.stores.reset_empty().await.map_err(|e| self.fail(e.to_string()))?;
-            self.stores.seed(sc, start).await.map_err(|e| self.fail(format!("seed: {e}")))?;
+            self.stores
+                .reset_empty()
+                .await
+                .map_err(|e| self.fail(e.to_string()))?;
+            self.stores
+                .seed(sc, start)
+                .await
+                .map_err(|e| self.fail(format!("seed: {e}")))?;
             self.launch().await?;
         } else {
             self.ensure_shared().await?;
             if let Some(b) = self.baseline.clone() {
-                self.stores.restore(&b).await.map_err(|e| self.fail(format!("reset to the start-up snapshot: {e}")))?;
+                self.stores
+                    .restore(&b)
+                    .await
+                    .map_err(|e| self.fail(format!("reset to the start-up snapshot: {e}")))?;
             }
-            self.stores.seed(sc, start).await.map_err(|e| self.fail(format!("seed: {e}")))?;
+            self.stores
+                .seed(sc, start)
+                .await
+                .map_err(|e| self.fail(format!("seed: {e}")))?;
         }
         let Some(proc) = self.proc.as_mut() else {
             return Err(self.fail("no process"));
         };
         let proc_start = proc.started_at;
-        let mut runner = Runner { stores: &mut self.stores, proc, http: &self.http, saved: BTreeMap::new() };
+        let mut runner = Runner {
+            stores: &mut self.stores,
+            proc,
+            http: &self.http,
+            saved: BTreeMap::new(),
+        };
         let result = runner.run(&sc.steps).await;
         let end = timefmt::now_ms();
         let steps = match result {
@@ -275,22 +342,45 @@ impl<'s> SideRunner<'s> {
                 return Err(failure);
             }
         };
-        let mongo = self.stores.capture_mongo(&sc.mongo).await.map_err(|e| self.fail(format!("reading MongoDB: {e}")))?;
+        let mongo = self
+            .stores
+            .capture_mongo(&sc.mongo)
+            .await
+            .map_err(|e| self.fail(format!("reading MongoDB: {e}")))?;
         let captured_at = timefmt::now_ms();
-        let dragonfly = self.stores.capture_dragonfly(&sc.dragonfly).await.map_err(|e| self.fail(format!("reading Dragonfly: {e}")))?;
+        let dragonfly = self
+            .stores
+            .capture_dragonfly(&sc.dragonfly)
+            .await
+            .map_err(|e| self.fail(format!("reading Dragonfly: {e}")))?;
         let names = self.names();
         if let Some(p) = self.proc.as_mut()
-            && let Err(why) = p.check_alive() {
-                let f = p.failure(None, format!("{why} after the last step"));
-                let _ = self.stop_process().await;
-                self.baseline = None;
-                return Err(f);
-            }
+            && let Err(why) = p.check_alive()
+        {
+            let f = p.failure(None, format!("{why} after the last step"));
+            let _ = self.stop_process().await;
+            self.baseline = None;
+            return Err(f);
+        }
         if sc.restart
-            && let Some(why) = self.stop_process().await {
-                return Err(self.fail(format!("{why} before the rig stopped it")));
-            }
-        Ok(RawRun { raw: RawCapture { steps, mongo, dragonfly, captured_at }, window: Window { start, end, proc_start }, names })
+            && let Some(why) = self.stop_process().await
+        {
+            return Err(self.fail(format!("{why} before the rig stopped it")));
+        }
+        Ok(RawRun {
+            raw: RawCapture {
+                steps,
+                mongo,
+                dragonfly,
+                captured_at,
+            },
+            window: Window {
+                start,
+                end,
+                proc_start,
+            },
+            names,
+        })
     }
 
     /// Stop the process; the stores stay claimed until [`SideStores::cleanup`].
@@ -300,7 +390,14 @@ impl<'s> SideRunner<'s> {
     }
 }
 
-async fn run_side(settings: &Settings, target: &Target, which: Which, label: &str, scenarios: &[Scenario], existing_db: Option<&str>) -> Result<(Vec<SideOutcome>, SideStores)> {
+async fn run_side(
+    settings: &Settings,
+    target: &Target,
+    which: Which,
+    label: &str,
+    scenarios: &[Scenario],
+    existing_db: Option<&str>,
+) -> Result<(Vec<SideOutcome>, SideStores)> {
     let mut r = SideRunner::new(settings, target, which, label, existing_db).await?;
     let mut out = Vec::with_capacity(scenarios.len());
     for sc in scenarios {
@@ -315,13 +412,23 @@ async fn cleanup(settings: &Settings, mut stores: Vec<SideStores>, report: &mut 
             report.errors.push(format!("cleanup of {}: {e}", s.db_name));
         }
         if settings.keep {
-            eprintln!("kept: MongoDB database {} and Dragonfly logical database {} (flushed by the next run that claims it)", s.db_name, s.df_index);
+            eprintln!(
+                "kept: MongoDB database {} and Dragonfly logical database {} (flushed by the next run that claims it)",
+                s.db_name, s.df_index
+            );
         }
     }
 }
 
 /// Detect, order and number one side's capture.
-pub fn normalise(run: &RawRun, known: &Known, headers: &[String], as_text: &[crate::path::Pattern], allow: &Allowances, patterns: &Patterns) -> Capture {
+pub fn normalise(
+    run: &RawRun,
+    known: &Known,
+    headers: &[String],
+    as_text: &[crate::path::Pattern],
+    allow: &Allowances,
+    patterns: &Patterns,
+) -> Capture {
     let ctx = DetectCtx {
         patterns,
         window: run.window,
@@ -341,11 +448,22 @@ fn normalise_sc(run: &RawRun, sc: &Scenario, allow: &Allowances, patterns: &Patt
     normalise(run, &sc.known, &sc.headers, &sc.as_text, allow, patterns)
 }
 
-fn finish_scenario(rep: &mut ScenarioReport, outcome: compare::Outcome, allow: &Allowances, ok: Status, bad: Status) {
+fn finish_scenario(
+    rep: &mut ScenarioReport,
+    outcome: compare::Outcome,
+    allow: &Allowances,
+    ok: Status,
+    bad: Status,
+) {
     rep.differences = outcome.differences;
     rep.notes = outcome.notes;
     rep.warnings.extend(allow.unused().map(|a| {
-        format!("allowance `{}` ({}) matched nothing; remove it if it is stale. Reason given: {}", a.path.source(), a.kind.name(), a.reason)
+        format!(
+            "allowance `{}` ({}) matched nothing; remove it if it is stale. Reason given: {}",
+            a.path.source(),
+            a.kind.name(),
+            a.reason
+        )
     }));
     rep.status = if rep.differences.is_empty() { ok } else { bad };
 }
@@ -355,7 +473,13 @@ fn patterns() -> Result<Patterns> {
 }
 
 /// Load the selected scenarios; invalid ones become error entries.
-fn load_scenarios(settings: &Settings, target: &str, filters: &[String], p: &Patterns, report: &mut Report) -> Result<Vec<Scenario>> {
+fn load_scenarios(
+    settings: &Settings,
+    target: &str,
+    filters: &[String],
+    p: &Patterns,
+    report: &mut Report,
+) -> Result<Vec<Scenario>> {
     let all = scenario::discover(&settings.rig_dir, target)?;
     let names = scenario::select(&all, filters);
     if names.is_empty() {
@@ -369,19 +493,27 @@ fn load_scenarios(settings: &Settings, target: &str, filters: &[String], p: &Pat
     for n in names {
         match scenario::load(&settings.rig_dir, target, &n, p) {
             Ok(s) => out.push(s),
-            Err(e) => report.scenarios.push(ScenarioReport::error(&n, "", rig_failure("scenario", e.to_string()))),
+            Err(e) => report.scenarios.push(ScenarioReport::error(
+                &n,
+                "",
+                rig_failure("scenario", e.to_string()),
+            )),
         }
     }
     Ok(out)
 }
 
 pub fn capture_path(settings: &Settings, target: &str, scenario: &str) -> PathBuf {
-    settings.captures_dir.join(target).join(format!("{scenario}.json"))
+    settings
+        .captures_dir
+        .join(target)
+        .join(format!("{scenario}.json"))
 }
 
 fn read_capture(path: &FsPath) -> std::result::Result<(CaptureMeta, Capture), String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let v: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+    let v: serde_json::Value =
+        serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
     capture::from_file_json(&v).map_err(|e| format!("{}: {e}", path.display()))
 }
 
@@ -395,7 +527,9 @@ pub fn check(settings: &Settings, target_name: &str, filters: &[String]) -> Resu
         let mut r = ScenarioReport::new(&sc.name, &sc.description);
         let path = capture_path(settings, target_name, &sc.name);
         match read_capture(&path) {
-            Ok((meta, _)) if meta.scenario_hash != sc.hash => r.warnings.push("capture is stale: re-record it".into()),
+            Ok((meta, _)) if meta.scenario_hash != sc.hash => {
+                r.warnings.push("capture is stale: re-record it".into())
+            }
             Ok(_) => {}
             Err(_) => r.warnings.push("no capture recorded yet".into()),
         }
@@ -407,13 +541,26 @@ pub fn check(settings: &Settings, target_name: &str, filters: &[String]) -> Resu
 }
 
 /// `dima-rig compare`: run the reference and the candidate live and compare.
-pub async fn compare_live(settings: &Settings, target_name: &str, filters: &[String]) -> Result<Report> {
+pub async fn compare_live(
+    settings: &Settings,
+    target_name: &str,
+    filters: &[String],
+) -> Result<Report> {
     let mut report = Report::new("compare", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
     let p = patterns()?;
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
-    let (refs, ref_stores) = run_side(settings, &target, Which::Reference, "ref", &scenarios, None).await?;
-    let cands = run_side(settings, &target, Which::Candidate, "cand", &scenarios, None).await;
+    let (refs, ref_stores) =
+        run_side(settings, &target, Which::Reference, "ref", &scenarios, None).await?;
+    let cands = run_side(
+        settings,
+        &target,
+        Which::Candidate,
+        "cand",
+        &scenarios,
+        None,
+    )
+    .await;
     let (cands, cand_stores) = match cands {
         Ok(v) => v,
         Err(e) => {
@@ -429,8 +576,14 @@ pub async fn compare_live(settings: &Settings, target_name: &str, filters: &[Str
                 let rc = normalise_sc(&r, sc, &allow, &p);
                 let cc = normalise_sc(&c, sc, &allow, &p);
                 // Go through the file format, exactly as `verify` does.
-                let meta = CaptureMeta { target: target_name.into(), scenario: sc.name.clone(), scenario_hash: sc.hash.clone() };
-                let rc = capture::from_file_json(&capture::to_file_json(&meta, &rc)).map(|(_, c)| c).map_err(config)?;
+                let meta = CaptureMeta {
+                    target: target_name.into(),
+                    scenario: sc.name.clone(),
+                    scenario_hash: sc.hash.clone(),
+                };
+                let rc = capture::from_file_json(&capture::to_file_json(&meta, &rc))
+                    .map(|(_, c)| c)
+                    .map_err(config)?;
                 let outcome = compare::compare(&rc, &cc, &allow, sc.tolerance_ms);
                 finish_scenario(&mut rep, outcome, &allow, Status::Match, Status::Differ);
             }
@@ -459,14 +612,22 @@ pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) 
     for sc in scenarios {
         let path = capture_path(settings, target_name, &sc.name);
         let problem = match read_capture(&path) {
-            Err(e) if !path.exists() => Err(format!("no capture recorded ({e}); run `dima-rig record {target_name} {}`", sc.name)),
+            Err(e) if !path.exists() => Err(format!(
+                "no capture recorded ({e}); run `dima-rig record {target_name} {}`",
+                sc.name
+            )),
             Err(e) => Err(e),
             Ok((meta, _)) if meta.scenario_hash != sc.hash => Err(format!(
                 "capture is stale: the scenario or a seed it includes changed after recording; run `dima-rig record {target_name} {}`",
                 sc.name
             )),
             Ok((meta, _)) if meta.target != target_name || meta.scenario != sc.name => {
-                Err(format!("capture {} belongs to {}/{}", path.display(), meta.target, meta.scenario))
+                Err(format!(
+                    "capture {} belongs to {}/{}",
+                    path.display(),
+                    meta.target,
+                    meta.scenario
+                ))
             }
             Ok((_, cap)) => Ok(cap),
         };
@@ -475,11 +636,16 @@ pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) 
                 recorded.push(cap);
                 runnable.push(sc);
             }
-            Err(msg) => report.scenarios.push(ScenarioReport::error(&sc.name, &sc.description, rig_failure("reference", msg))),
+            Err(msg) => report.scenarios.push(ScenarioReport::error(
+                &sc.name,
+                &sc.description,
+                rig_failure("reference", msg),
+            )),
         }
     }
     if !runnable.is_empty() {
-        let (cands, cand_stores) = run_side(settings, &target, Which::Candidate, "cand", &runnable, None).await?;
+        let (cands, cand_stores) =
+            run_side(settings, &target, Which::Candidate, "cand", &runnable, None).await?;
         for ((sc, rc), c) in runnable.iter().zip(recorded).zip(cands) {
             let mut rep = ScenarioReport::new(&sc.name, &sc.description);
             match c {
@@ -504,17 +670,32 @@ pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) 
 }
 
 /// `dima-rig record`: run the reference (twice unless `once`), check it is stable, write captures.
-pub async fn record(settings: &Settings, target_name: &str, filters: &[String], once: bool) -> Result<Report> {
+pub async fn record(
+    settings: &Settings,
+    target_name: &str,
+    filters: &[String],
+    once: bool,
+) -> Result<Report> {
     let mut report = Report::new("record", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
     let p = patterns()?;
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
-    let (first, s1) = run_side(settings, &target, Which::Reference, "ref", &scenarios, None).await?;
+    let (first, s1) =
+        run_side(settings, &target, Which::Reference, "ref", &scenarios, None).await?;
     let mut all_stores = vec![s1];
     let second = if once {
         None
     } else {
-        match run_side(settings, &target, Which::Reference, "ref2", &scenarios, None).await {
+        match run_side(
+            settings,
+            &target,
+            Which::Reference,
+            "ref2",
+            &scenarios,
+            None,
+        )
+        .await
+        {
             Ok((v, s2)) => {
                 all_stores.push(s2);
                 Some(v)
@@ -551,7 +732,13 @@ pub async fn record(settings: &Settings, target_name: &str, filters: &[String], 
                 let c2 = normalise_sc(&r2, sc, &allow, &p);
                 let outcome = compare::compare(&c1, &c2, &allow, sc.tolerance_ms);
                 if !outcome.differences.is_empty() {
-                    finish_scenario(&mut rep, outcome, &allow, Status::Recorded, Status::Unstable);
+                    finish_scenario(
+                        &mut rep,
+                        outcome,
+                        &allow,
+                        Status::Recorded,
+                        Status::Unstable,
+                    );
                     rep.warnings.push("two runs of the reference disagree (\"reference\" = run 1, \"candidate\" = run 2); fix the scenario or add allowances; nothing written".into());
                     report.scenarios.push(rep);
                     continue;
@@ -560,10 +747,18 @@ pub async fn record(settings: &Settings, target_name: &str, filters: &[String], 
             }
             None => {}
         }
-        let meta = CaptureMeta { target: target_name.into(), scenario: sc.name.clone(), scenario_hash: sc.hash.clone() };
+        let meta = CaptureMeta {
+            target: target_name.into(),
+            scenario: sc.name.clone(),
+            scenario_hash: sc.hash.clone(),
+        };
         let path = capture_path(settings, target_name, &sc.name);
         let unchanged = match read_capture(&path) {
-            Ok((m, old)) if m == meta => compare::compare(&old, &c1, &Allowances::default(), sc.tolerance_ms).differences.is_empty(),
+            Ok((m, old)) if m == meta => {
+                compare::compare(&old, &c1, &Allowances::default(), sc.tolerance_ms)
+                    .differences
+                    .is_empty()
+            }
             _ => false,
         };
         if unchanged {
@@ -571,12 +766,20 @@ pub async fn record(settings: &Settings, target_name: &str, filters: &[String], 
         } else {
             let text = capture::to_file_string(&meta, &c1);
             if let Some(dir) = path.parent() {
-                std::fs::create_dir_all(dir).map_err(|e| crate::error::io(&dir.display().to_string(), e))?;
+                std::fs::create_dir_all(dir)
+                    .map_err(|e| crate::error::io(&dir.display().to_string(), e))?;
             }
-            std::fs::write(&path, text).map_err(|e| crate::error::io(&path.display().to_string(), e))?;
+            std::fs::write(&path, text)
+                .map_err(|e| crate::error::io(&path.display().to_string(), e))?;
             rep.status = Status::Recorded;
         }
-        rep.warnings.extend(allow.unused().map(|a| format!("allowance `{}` ({}) matched nothing; remove it if it is stale", a.path.source(), a.kind.name())));
+        rep.warnings.extend(allow.unused().map(|a| {
+            format!(
+                "allowance `{}` ({}) matched nothing; remove it if it is stale",
+                a.path.source(),
+                a.kind.name()
+            )
+        }));
         rep.capture = Some(path.display().to_string());
         report.scenarios.push(rep);
     }
@@ -587,7 +790,13 @@ pub async fn record(settings: &Settings, target_name: &str, filters: &[String], 
 }
 
 /// `dima-rig diff-get`: GET requests against an existing database on both sides.
-pub async fn diff_get(settings: &Settings, target_name: &str, db: &str, list_file: &FsPath, write_check: bool) -> Result<Report> {
+pub async fn diff_get(
+    settings: &Settings,
+    target_name: &str,
+    db: &str,
+    list_file: &FsPath,
+    write_check: bool,
+) -> Result<Report> {
     let mut report = Report::new("diff-get", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
     let p = patterns()?;
@@ -599,19 +808,30 @@ pub async fn diff_get(settings: &Settings, target_name: &str, db: &str, list_fil
     for s in &list.steps {
         if let crate::scenario::StepKind::Http(h) = &s.kind {
             p.collect_known(&h.path, &mut known);
-            h.headers.iter().for_each(|(_, v)| p.collect_known(v, &mut known));
+            h.headers
+                .iter()
+                .for_each(|(_, v)| p.collect_known(v, &mut known));
         }
     }
     let sc = Scenario {
-        name: list_file.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default(),
+        name: list_file
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default(),
         file: list_file.to_path_buf(),
         description: list.description.clone(),
         restart: false,
         seed_mongo: Vec::new(),
         seed_dragonfly: Vec::new(),
         steps: list.steps.clone(),
-        mongo: Selection { only: Some(Vec::new()), exclude: Vec::new() },
-        dragonfly: Selection { only: Some(Vec::new()), exclude: Vec::new() },
+        mongo: Selection {
+            only: Some(Vec::new()),
+            exclude: Vec::new(),
+        },
+        dragonfly: Selection {
+            only: Some(Vec::new()),
+            exclude: Vec::new(),
+        },
         headers: list.headers.clone(),
         as_text: Vec::new(),
         allow: list.allow.clone(),
@@ -622,25 +842,54 @@ pub async fn diff_get(settings: &Settings, target_name: &str, db: &str, list_fil
     let mut runs = Vec::new();
     for (which, label) in [(Which::Reference, "ref"), (Which::Candidate, "cand")] {
         let client = stores::mongo_client(&settings.stores.mongo_uri).await?;
-        let before = if write_check { Some(stores::db_hash(&client, db).await?) } else { None };
-        let (mut out, mut st) = run_side(settings, &target, which, label, std::slice::from_ref(&sc), Some(db)).await?;
+        let before = if write_check {
+            Some(stores::db_hash(&client, db).await?)
+        } else {
+            None
+        };
+        let (mut out, mut st) = run_side(
+            settings,
+            &target,
+            which,
+            label,
+            std::slice::from_ref(&sc),
+            Some(db),
+        )
+        .await?;
         if let Err(e) = st.cleanup(false).await {
             report.errors.push(format!("cleanup: {e}"));
         }
-        let mut outcome = out.pop().unwrap_or_else(|| Err(rig_failure(which.name(), "no result")));
+        let mut outcome = out
+            .pop()
+            .unwrap_or_else(|| Err(rig_failure(which.name(), "no result")));
         if let Some(before) = before {
             let after = stores::db_hash(&client, db).await?;
-            let changed: Vec<&String> = before.keys().chain(after.keys()).filter(|k| before.get(*k) != after.get(*k)).collect();
+            let changed: Vec<&String> = before
+                .keys()
+                .chain(after.keys())
+                .filter(|k| before.get(*k) != after.get(*k))
+                .collect();
             if !changed.is_empty() {
                 let mut names: Vec<String> = changed.into_iter().cloned().collect();
                 names.dedup();
-                outcome = Err(rig_failure(which.name(), format!("the {} wrote to database {db} (changed collections: {})", which.name(), names.join(", "))));
+                outcome = Err(rig_failure(
+                    which.name(),
+                    format!(
+                        "the {} wrote to database {db} (changed collections: {})",
+                        which.name(),
+                        names.join(", ")
+                    ),
+                ));
             }
         }
         runs.push(outcome);
     }
-    let cand = runs.pop().unwrap_or_else(|| Err(rig_failure("candidate", "no result")));
-    let refr = runs.pop().unwrap_or_else(|| Err(rig_failure("reference", "no result")));
+    let cand = runs
+        .pop()
+        .unwrap_or_else(|| Err(rig_failure("candidate", "no result")));
+    let refr = runs
+        .pop()
+        .unwrap_or_else(|| Err(rig_failure("reference", "no result")));
     match (refr, cand) {
         (Ok(r), Ok(c)) => {
             let allow = sc.allowances();
@@ -652,17 +901,41 @@ pub async fn diff_get(settings: &Settings, target_name: &str, db: &str, list_fil
                     _ => format!("{i:03}"),
                 };
                 let only = |cap: &Capture| Capture {
-                    steps: cap.steps.iter().enumerate().map(|(j, s)| if j == i { s.clone() } else { StepCap::Done("other".into()) }).collect(),
+                    steps: cap
+                        .steps
+                        .iter()
+                        .enumerate()
+                        .map(|(j, s)| {
+                            if j == i {
+                                s.clone()
+                            } else {
+                                StepCap::Done("other".into())
+                            }
+                        })
+                        .collect(),
                     ..Capture::default()
                 };
                 let mut rep = ScenarioReport::new(&label, step.name.as_deref().unwrap_or(""));
                 let outcome = compare::compare(&only(&rc), &only(&cc), &allow, sc.tolerance_ms);
                 rep.differences = outcome.differences;
                 rep.notes = outcome.notes;
-                rep.status = if rep.differences.is_empty() { Status::Match } else { Status::Differ };
+                rep.status = if rep.differences.is_empty() {
+                    Status::Match
+                } else {
+                    Status::Differ
+                };
                 report.scenarios.push(rep);
             }
-            let stale: Vec<String> = allow.unused().map(|a| format!("allowance `{}` ({}) matched nothing; remove it if it is stale", a.path.source(), a.kind.name())).collect();
+            let stale: Vec<String> = allow
+                .unused()
+                .map(|a| {
+                    format!(
+                        "allowance `{}` ({}) matched nothing; remove it if it is stale",
+                        a.path.source(),
+                        a.kind.name()
+                    )
+                })
+                .collect();
             if let Some(first) = report.scenarios.first_mut() {
                 first.warnings.extend(stale);
             }
@@ -684,9 +957,17 @@ pub async fn drop_own(settings: &Settings) -> Result<Vec<String>> {
     let client = stores::mongo_client(&settings.stores.mongo_uri).await?;
     let prefix = format!("rig_{}_", std::process::id());
     let mut dropped = Vec::new();
-    for n in client.list_database_names().await.map_err(|e| RigError::Store(e.to_string()))? {
+    for n in client
+        .list_database_names()
+        .await
+        .map_err(|e| RigError::Store(e.to_string()))?
+    {
         if n.starts_with(&prefix) {
-            client.database(&n).drop().await.map_err(|e| RigError::Store(e.to_string()))?;
+            client
+                .database(&n)
+                .drop()
+                .await
+                .map_err(|e| RigError::Store(e.to_string()))?;
             dropped.push(n);
         }
     }

@@ -70,7 +70,11 @@ struct Response {
 }
 
 fn json_resp(status: u16, v: &Value) -> Response {
-    Response { status, content_type: "application/json; charset=utf-8", body: serde_json::to_vec(v).unwrap_or_default() }
+    Response {
+        status,
+        content_type: "application/json; charset=utf-8",
+        body: serde_json::to_vec(v).unwrap_or_default(),
+    }
 }
 
 fn iso(dt: bson::DateTime) -> String {
@@ -150,8 +154,15 @@ impl App {
             std::process::exit(3);
         }
         let input: Value = serde_json::from_slice(body)?;
-        let name = input.get("name").and_then(Value::as_str).ok_or_else(|| anyhow!("name"))?.to_string();
-        let qty = input.get("qty").and_then(Value::as_i64).ok_or_else(|| anyhow!("qty"))?;
+        let name = input
+            .get("name")
+            .and_then(Value::as_str)
+            .ok_or_else(|| anyhow!("name"))?
+            .to_string();
+        let qty = input
+            .get("qty")
+            .and_then(Value::as_i64)
+            .ok_or_else(|| anyhow!("qty"))?;
         let owner = ObjectId::parse_str(input.get("owner").and_then(Value::as_str).unwrap_or(""))?;
         if self.v == Variant::Equivalent {
             tokio::time::sleep(Duration::from_millis(150)).await;
@@ -159,7 +170,11 @@ impl App {
         let id = ObjectId::new();
         let uuid = uuid::Uuid::new_v4().to_string();
         let now = bson::DateTime::now();
-        let qty_bson = if self.v == Variant::Int64 { Bson::Int64(qty) } else { Bson::Int32(i32::try_from(qty)?) };
+        let qty_bson = if self.v == Variant::Int64 {
+            Bson::Int64(qty)
+        } else {
+            Bson::Int32(i32::try_from(qty)?)
+        };
         let lease = Bson::Double((now.timestamp_millis() + 60_000) as f64);
         let mut item = if self.v == Variant::Equivalent {
             doc! {"_id": id, "owner": owner, "uuid": &uuid, "tags": ["new"], "leaseUntil": lease, "createdAt": now, "qty": qty_bson, "name": &name}
@@ -169,15 +184,26 @@ impl App {
         if self.v == Variant::NullField {
             item.insert("note", Bson::Null);
         }
-        self.db.collection::<Document>("items").insert_one(item).await?;
+        self.db
+            .collection::<Document>("items")
+            .insert_one(item)
+            .await?;
         let event_id = ObjectId::new();
-        let mut events = vec![doc! {"_id": event_id, "type": "item.created", "item": id, "at": now}];
+        let mut events =
+            vec![doc! {"_id": event_id, "type": "item.created", "item": id, "at": now}];
         if self.v == Variant::ExtraDoc {
             events.push(doc! {"_id": ObjectId::new(), "type": "item.debug", "item": id, "at": now});
         }
-        self.db.collection::<Document>("events").insert_many(events).await?;
+        self.db
+            .collection::<Document>("events")
+            .insert_many(events)
+            .await?;
         let mut r = self.redis.clone();
-        let key_id = if self.v == Variant::WrongRef { event_id } else { id };
+        let key_id = if self.v == Variant::WrongRef {
+            event_id
+        } else {
+            id
+        };
         let cached = json!({"id": id.to_hex(), "name": name}).to_string();
         let mut set = redis::cmd("SET");
         set.arg(format!("item:{}", key_id.to_hex())).arg(&cached);
@@ -185,9 +211,21 @@ impl App {
             set.arg("EX").arg(3600);
         }
         set.query_async::<()>(&mut r).await?;
-        redis::cmd("HSET").arg("items:by-name").arg(&name).arg(id.to_hex()).query_async::<i64>(&mut r).await?;
-        let total: i64 = redis::cmd("INCR").arg("items:count").query_async(&mut r).await?;
-        let total = if self.v == Variant::Number { total + 1 } else { total };
+        redis::cmd("HSET")
+            .arg("items:by-name")
+            .arg(&name)
+            .arg(id.to_hex())
+            .query_async::<i64>(&mut r)
+            .await?;
+        let total: i64 = redis::cmd("INCR")
+            .arg("items:count")
+            .query_async(&mut r)
+            .await?;
+        let total = if self.v == Variant::Number {
+            total + 1
+        } else {
+            total
+        };
         let resp = if self.v == Variant::Equivalent {
             json!({"total": total, "createdAt": iso(now), "qty": qty, "name": name, "uuid": uuid, "id": id.to_hex()})
         } else {
@@ -197,7 +235,12 @@ impl App {
     }
 
     async fn get_item(&self, hex: &str) -> Result<Response> {
-        let missing = |s: &App| json_resp(if s.v == Variant::Status { 200 } else { 404 }, &json!({"error": "not found"}));
+        let missing = |s: &App| {
+            json_resp(
+                if s.v == Variant::Status { 200 } else { 404 },
+                &json!({"error": "not found"}),
+            )
+        };
         let Ok(id) = ObjectId::parse_str(hex) else {
             return Ok(missing(self));
         };
@@ -206,7 +249,12 @@ impl App {
             return Ok(missing(self));
         };
         if self.v == Variant::WritesOnGet {
-            items.update_one(doc! {"_id": id}, doc! {"$set": {"lastReadAt": bson::DateTime::now()}}).await?;
+            items
+                .update_one(
+                    doc! {"_id": id},
+                    doc! {"$set": {"lastReadAt": bson::DateTime::now()}},
+                )
+                .await?;
         }
         let qty = match d.get("qty") {
             Some(Bson::Int32(i)) => i64::from(*i),
@@ -230,7 +278,11 @@ impl App {
         let item = ObjectId::parse_str(input.get("item").and_then(Value::as_str).unwrap_or(""))?;
         let app = Arc::clone(self);
         tokio::spawn(async move {
-            let delay = if app.v == Variant::Equivalent { 600 } else { 300 };
+            let delay = if app.v == Variant::Equivalent {
+                600
+            } else {
+                300
+            };
             tokio::time::sleep(Duration::from_millis(delay)).await;
             if let Err(e) = app.finish_jobs(item).await {
                 println!("fixture: job failed: {e}");
@@ -242,7 +294,10 @@ impl App {
     async fn finish_jobs(&self, item: ObjectId) -> Result<()> {
         let (a, b) = (ObjectId::new(), ObjectId::new());
         let now = bson::DateTime::now();
-        let mut docs = vec![doc! {"_id": a, "item": item, "step": 1, "doneAt": now}, doc! {"_id": b, "item": item, "step": 2, "doneAt": now}];
+        let mut docs = vec![
+            doc! {"_id": a, "item": item, "step": 1, "doneAt": now},
+            doc! {"_id": b, "item": item, "step": 2, "doneAt": now},
+        ];
         if self.v == Variant::Equivalent {
             docs.reverse();
         }
@@ -251,14 +306,23 @@ impl App {
             jobs.insert_one(d).await?;
         }
         let mut r = self.redis.clone();
-        redis::cmd("RPUSH").arg("jobs:done").arg(a.to_hex()).arg(b.to_hex()).query_async::<i64>(&mut r).await?;
+        redis::cmd("RPUSH")
+            .arg("jobs:done")
+            .arg(a.to_hex())
+            .arg(b.to_hex())
+            .query_async::<i64>(&mut r)
+            .await?;
         Ok(())
     }
 
     async fn route(self: &Arc<Self>, req: Request) -> Result<Response> {
         let segs: Vec<&str> = req.path.trim_start_matches('/').split('/').collect();
         match (req.method.as_str(), segs.as_slice()) {
-            ("GET", ["health"]) => Ok(Response { status: 200, content_type: "text/plain; charset=utf-8", body: b"ok".to_vec() }),
+            ("GET", ["health"]) => Ok(Response {
+                status: 200,
+                content_type: "text/plain; charset=utf-8",
+                body: b"ok".to_vec(),
+            }),
             ("POST", ["items"]) => self.create_item(&req.body).await,
             ("GET", ["items", id]) => self.get_item(id).await,
             ("POST", ["jobs"]) => self.queue_jobs(&req.body).await,
@@ -286,21 +350,39 @@ async fn serve(app: Arc<App>, mut s: TcpStream) {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    let variant = match args.iter().position(|a| a == "--variant").and_then(|i| args.get(i + 1)) {
+    let variant = match args
+        .iter()
+        .position(|a| a == "--variant")
+        .and_then(|i| args.get(i + 1))
+    {
         Some(v) => Variant::parse(v)?,
         None => Variant::Good,
     };
     let port: u16 = env("PORT")?.parse()?;
     let client = mongodb::Client::with_uri_str(env("MONGO_URI")?).await?;
     let db = client.database(&env("MONGO_DB")?);
-    let redis = redis::Client::open(env("REDIS_URL")?)?.get_multiplexed_async_connection().await?;
+    let redis = redis::Client::open(env("REDIS_URL")?)?
+        .get_multiplexed_async_connection()
+        .await?;
     // Start-up writes, like Mongoose's autoIndex and a boot marker.
     db.run_command(doc! {"createIndexes": "items", "indexes": [{"key": {"name": 1}, "name": "name_1", "unique": true}]}).await?;
     let mut r = redis.clone();
-    redis::cmd("SET").arg("fixture:boot").arg("1").query_async::<()>(&mut r).await?;
+    redis::cmd("SET")
+        .arg("fixture:boot")
+        .arg("1")
+        .query_async::<()>(&mut r)
+        .await?;
     let listener = TcpListener::bind(("127.0.0.1", port)).await?;
-    println!("fixture: listening on {port}, variant {variant:?}, PATH set: {}", std::env::var_os("PATH").is_some());
-    let app = Arc::new(App { v: variant, db, redis, posts: AtomicU32::new(0) });
+    println!(
+        "fixture: listening on {port}, variant {variant:?}, PATH set: {}",
+        std::env::var_os("PATH").is_some()
+    );
+    let app = Arc::new(App {
+        v: variant,
+        db,
+        redis,
+        posts: AtomicU32::new(0),
+    });
     let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     loop {
         tokio::select! {

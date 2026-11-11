@@ -212,7 +212,10 @@ pub struct Selection {
 
 impl Selection {
     pub fn includes(&self, name: &str) -> bool {
-        self.only.as_ref().is_none_or(|o| o.iter().any(|g| name_glob(g, name))) && !self.exclude.iter().any(|g| name_glob(g, name))
+        self.only
+            .as_ref()
+            .is_none_or(|o| o.iter().any(|g| name_glob(g, name)))
+            && !self.exclude.iter().any(|g| name_glob(g, name))
     }
 }
 
@@ -221,11 +224,18 @@ impl Selection {
 pub enum Arg {
     /// Text with `${...}` expressions.
     Text(String),
-    Now { offset_ms: i64, fmt: NowFmt },
+    Now {
+        offset_ms: i64,
+        fmt: NowFmt,
+    },
 }
 
 impl Arg {
-    pub fn render(&self, saved: &BTreeMap<String, String>, now: i64) -> std::result::Result<String, String> {
+    pub fn render(
+        &self,
+        saved: &BTreeMap<String, String>,
+        now: i64,
+    ) -> std::result::Result<String, String> {
         match self {
             Arg::Text(t) => template::interpolate(t, saved, now),
             Arg::Now { offset_ms, fmt } => Ok(template::format_now(now, *offset_ms, *fmt)),
@@ -263,7 +273,11 @@ pub struct HttpStep {
 
 #[derive(Debug, Clone)]
 pub enum WaitCond {
-    Mongo { collection: String, filter: Value, count: Option<u64> },
+    Mongo {
+        collection: String,
+        filter: Value,
+        count: Option<u64>,
+    },
     Key(String),
 }
 
@@ -362,11 +376,18 @@ const TYPE_KEYS: &[&str] = &[
 fn rig_now(m: &Map<String, Value>, at: &str) -> std::result::Result<(i64, String), String> {
     for k in m.keys() {
         if k != "$rigNow" && k != "as" {
-            return Err(format!("{at}: unexpected key `{k}` next to $rigNow (allowed: $rigNow, as)"));
+            return Err(format!(
+                "{at}: unexpected key `{k}` next to $rigNow (allowed: $rigNow, as)"
+            ));
         }
     }
-    let off = m.get("$rigNow").and_then(Value::as_str).ok_or_else(|| format!("{at}: $rigNow needs an offset string such as \"+60s\" or \"0\""))?;
-    let offset = timefmt::parse_offset(off).ok_or_else(|| format!("{at}: bad $rigNow offset `{off}` (use +60s, -5m, 150ms, +2d, 0)"))?;
+    let off = m
+        .get("$rigNow")
+        .and_then(Value::as_str)
+        .ok_or_else(|| format!("{at}: $rigNow needs an offset string such as \"+60s\" or \"0\""))?;
+    let offset = timefmt::parse_offset(off).ok_or_else(|| {
+        format!("{at}: bad $rigNow offset `{off}` (use +60s, -5m, 150ms, +2d, 0)")
+    })?;
     let fmt = match m.get("as") {
         None => String::new(),
         Some(Value::String(s)) => s.clone(),
@@ -387,9 +408,12 @@ pub fn to_bson(v: &Value, mode: ExtMode, now: i64, at: &str) -> std::result::Res
             )),
             ExtMode::Filter => Bson::try_from(v.clone()).map_err(|e| format!("{at}: {e}")),
         },
-        Value::Array(items) => {
-            items.iter().enumerate().map(|(i, x)| to_bson(x, mode, now, &format!("{at}[{i}]"))).collect::<std::result::Result<Vec<_>, _>>().map(Bson::Array)
-        }
+        Value::Array(items) => items
+            .iter()
+            .enumerate()
+            .map(|(i, x)| to_bson(x, mode, now, &format!("{at}[{i}]")))
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map(Bson::Array),
         Value::Object(m) => {
             if m.contains_key("$rigNow") {
                 let (offset, fmt) = rig_now(m, at)?;
@@ -398,32 +422,49 @@ pub fn to_bson(v: &Value, mode: ExtMode, now: i64, at: &str) -> std::result::Res
                     "" | "date" => Ok(Bson::DateTime(bson::DateTime::from_millis(t))),
                     "long" => Ok(Bson::Int64(t)),
                     "double" => Ok(Bson::Double(t as f64)),
-                    "s" => Ok(i32::try_from(t.div_euclid(1000)).map_or(Bson::Int64(t.div_euclid(1000)), Bson::Int32)),
+                    "s" => Ok(i32::try_from(t.div_euclid(1000))
+                        .map_or(Bson::Int64(t.div_euclid(1000)), Bson::Int32)),
                     "iso" => Ok(Bson::String(template::format_now(now, offset, NowFmt::Iso))),
-                    other => Err(format!("{at}: $rigNow `as` is `{other}`; in MongoDB values use date (default), long, double, s or iso")),
+                    other => Err(format!(
+                        "{at}: $rigNow `as` is `{other}`; in MongoDB values use date (default), long, double, s or iso"
+                    )),
                 };
             }
             if let Some(first) = m.keys().next()
-                && TYPE_KEYS.contains(&first.as_str()) {
-                    return Bson::try_from(v.clone()).map_err(|e| format!("{at}: bad {first} value: {e}"));
-                }
+                && TYPE_KEYS.contains(&first.as_str())
+            {
+                return Bson::try_from(v.clone())
+                    .map_err(|e| format!("{at}: bad {first} value: {e}"));
+            }
             to_doc_map(m, mode, now, at).map(Bson::Document)
         }
     }
 }
 
-fn to_doc_map(m: &Map<String, Value>, mode: ExtMode, now: i64, at: &str) -> std::result::Result<Document, String> {
+fn to_doc_map(
+    m: &Map<String, Value>,
+    mode: ExtMode,
+    now: i64,
+    at: &str,
+) -> std::result::Result<Document, String> {
     let mut d = Document::new();
     for (k, x) in m {
         if mode == ExtMode::Seed && k.starts_with('$') {
-            return Err(format!("{at}: field `{k}`: unknown type wrapper or a field name starting with $ (not allowed in seed documents)"));
+            return Err(format!(
+                "{at}: field `{k}`: unknown type wrapper or a field name starting with $ (not allowed in seed documents)"
+            ));
         }
         d.insert(k.clone(), to_bson(x, mode, now, &format!("{at}.{k}"))?);
     }
     Ok(d)
 }
 
-pub fn to_doc(v: &Value, mode: ExtMode, now: i64, at: &str) -> std::result::Result<Document, String> {
+pub fn to_doc(
+    v: &Value,
+    mode: ExtMode,
+    now: i64,
+    at: &str,
+) -> std::result::Result<Document, String> {
     match v {
         Value::Object(m) => to_doc_map(m, mode, now, at),
         _ => Err(format!("{at}: expected an object")),
@@ -431,11 +472,22 @@ pub fn to_doc(v: &Value, mode: ExtMode, now: i64, at: &str) -> std::result::Resu
 }
 
 /// Fill `${...}` in strings and `$rigNow` objects of a JSON request body.
-pub fn resolve_json(v: &Value, saved: &BTreeMap<String, String>, now: i64, at: &str) -> std::result::Result<Value, String> {
+pub fn resolve_json(
+    v: &Value,
+    saved: &BTreeMap<String, String>,
+    now: i64,
+    at: &str,
+) -> std::result::Result<Value, String> {
     Ok(match v {
-        Value::String(s) => Value::String(template::interpolate(s, saved, now).map_err(|e| format!("{at}: {e}"))?),
+        Value::String(s) => {
+            Value::String(template::interpolate(s, saved, now).map_err(|e| format!("{at}: {e}"))?)
+        }
         Value::Array(items) => Value::Array(
-            items.iter().enumerate().map(|(i, x)| resolve_json(x, saved, now, &format!("{at}[{i}]"))).collect::<std::result::Result<_, _>>()?,
+            items
+                .iter()
+                .enumerate()
+                .map(|(i, x)| resolve_json(x, saved, now, &format!("{at}[{i}]")))
+                .collect::<std::result::Result<_, _>>()?,
         ),
         Value::Object(m) if m.contains_key("$rigNow") => {
             let (offset, fmt) = rig_now(m, at)?;
@@ -443,13 +495,20 @@ pub fn resolve_json(v: &Value, saved: &BTreeMap<String, String>, now: i64, at: &
                 "" | "ms" => Value::from(now + offset),
                 "s" => Value::from((now + offset).div_euclid(1000)),
                 "iso" => Value::String(template::format_now(now, offset, NowFmt::Iso)),
-                other => return Err(format!("{at}: $rigNow `as` is `{other}`; in JSON use ms (default), s or iso")),
+                other => {
+                    return Err(format!(
+                        "{at}: $rigNow `as` is `{other}`; in JSON use ms (default), s or iso"
+                    ));
+                }
             }
         }
         Value::Object(m) => {
             let mut out = Map::new();
             for (k, x) in m {
-                out.insert(k.clone(), resolve_json(x, saved, now, &format!("{at}.{k}"))?);
+                out.insert(
+                    k.clone(),
+                    resolve_json(x, saved, now, &format!("{at}.{k}"))?,
+                );
             }
             Value::Object(out)
         }
@@ -458,15 +517,36 @@ pub fn resolve_json(v: &Value, saved: &BTreeMap<String, String>, now: i64, at: &
 }
 
 /// Fill `${...}` in the strings of a MongoDB filter (keeps `$rigNow` for [`to_bson`]).
-pub fn resolve_filter(v: &Value, saved: &BTreeMap<String, String>, now: i64, at: &str) -> std::result::Result<Document, String> {
-    fn strings(v: &Value, saved: &BTreeMap<String, String>, now: i64) -> std::result::Result<Value, String> {
+pub fn resolve_filter(
+    v: &Value,
+    saved: &BTreeMap<String, String>,
+    now: i64,
+    at: &str,
+) -> std::result::Result<Document, String> {
+    fn strings(
+        v: &Value,
+        saved: &BTreeMap<String, String>,
+        now: i64,
+    ) -> std::result::Result<Value, String> {
         Ok(match v {
             Value::String(s) => Value::String(template::interpolate(s, saved, now)?),
-            Value::Array(items) => Value::Array(items.iter().map(|x| strings(x, saved, now)).collect::<std::result::Result<_, _>>()?),
+            Value::Array(items) => Value::Array(
+                items
+                    .iter()
+                    .map(|x| strings(x, saved, now))
+                    .collect::<std::result::Result<_, _>>()?,
+            ),
             Value::Object(m) => {
                 let mut out = Map::new();
                 for (k, x) in m {
-                    out.insert(k.clone(), if k == "$rigNow" || k == "as" { x.clone() } else { strings(x, saved, now)? });
+                    out.insert(
+                        k.clone(),
+                        if k == "$rigNow" || k == "as" {
+                            x.clone()
+                        } else {
+                            strings(x, saved, now)?
+                        },
+                    );
                 }
                 Value::Object(out)
             }
@@ -490,7 +570,8 @@ struct Loader<'a> {
 }
 
 fn read_json(file: &FsPath) -> Result<Value> {
-    let text = std::fs::read_to_string(file).map_err(|e| config(format!("{}: {e}", file.display())))?;
+    let text =
+        std::fs::read_to_string(file).map_err(|e| config(format!("{}: {e}", file.display())))?;
     serde_json::from_str(&text).map_err(|e| config(format!("{}: {e}", file.display())))
 }
 
@@ -514,10 +595,48 @@ fn collect_inputs(p: &Patterns, v: &Value, known: &mut Known) {
 }
 
 const DENIED_COMMANDS: &[&str] = &[
-    "SELECT", "SWAPDB", "MOVE", "FLUSHALL", "CONFIG", "SHUTDOWN", "DEBUG", "REPLICAOF", "SLAVEOF", "MIGRATE", "MONITOR", "SUBSCRIBE",
-    "PSUBSCRIBE", "SSUBSCRIBE", "UNSUBSCRIBE", "PUNSUBSCRIBE", "CLIENT", "SAVE", "BGSAVE", "BGREWRITEAOF", "FAILOVER", "FUNCTION",
-    "ACL", "CLUSTER", "MODULE", "RESET", "QUIT", "HELLO", "WAIT", "BLPOP", "BRPOP", "BLMOVE", "BRPOPLPUSH", "BZPOPMIN", "BZPOPMAX",
-    "BLMPOP", "BZMPOP", "XREAD", "XREADGROUP", "DFLY", "DFLYCLUSTER", "SCRIPT",
+    "SELECT",
+    "SWAPDB",
+    "MOVE",
+    "FLUSHALL",
+    "CONFIG",
+    "SHUTDOWN",
+    "DEBUG",
+    "REPLICAOF",
+    "SLAVEOF",
+    "MIGRATE",
+    "MONITOR",
+    "SUBSCRIBE",
+    "PSUBSCRIBE",
+    "SSUBSCRIBE",
+    "UNSUBSCRIBE",
+    "PUNSUBSCRIBE",
+    "CLIENT",
+    "SAVE",
+    "BGSAVE",
+    "BGREWRITEAOF",
+    "FAILOVER",
+    "FUNCTION",
+    "ACL",
+    "CLUSTER",
+    "MODULE",
+    "RESET",
+    "QUIT",
+    "HELLO",
+    "WAIT",
+    "BLPOP",
+    "BRPOP",
+    "BLMOVE",
+    "BRPOPLPUSH",
+    "BZPOPMIN",
+    "BZPOPMAX",
+    "BLMPOP",
+    "BZMPOP",
+    "XREAD",
+    "XREADGROUP",
+    "DFLY",
+    "DFLYCLUSTER",
+    "SCRIPT",
 ];
 
 fn command(args: &[Value], at: &str, saved: &BTreeSet<String>) -> Result<Vec<Arg>> {
@@ -549,13 +668,25 @@ fn command(args: &[Value], at: &str, saved: &BTreeSet<String>) -> Result<Vec<Arg
     }
     let name = match out.first() {
         Some(Arg::Text(t)) => t.to_ascii_uppercase(),
-        _ => return Err(config(format!("{at}: a command starts with its name, such as [\"SET\", \"key\", \"value\"]"))),
+        _ => {
+            return Err(config(format!(
+                "{at}: a command starts with its name, such as [\"SET\", \"key\", \"value\"]"
+            )));
+        }
     };
     if DENIED_COMMANDS.contains(&name.as_str()) {
-        return Err(config(format!("{at}: {name} is not allowed in scenarios (it reaches outside the side's logical database or blocks)")));
+        return Err(config(format!(
+            "{at}: {name} is not allowed in scenarios (it reaches outside the side's logical database or blocks)"
+        )));
     }
-    if name == "COPY" && out.iter().any(|a| matches!(a, Arg::Text(t) if t.eq_ignore_ascii_case("DB"))) {
-        return Err(config(format!("{at}: COPY ... DB is not allowed (it reaches another logical database)")));
+    if name == "COPY"
+        && out
+            .iter()
+            .any(|a| matches!(a, Arg::Text(t) if t.eq_ignore_ascii_case("DB")))
+    {
+        return Err(config(format!(
+            "{at}: COPY ... DB is not allowed (it reaches another logical database)"
+        )));
     }
     Ok(out)
 }
@@ -563,37 +694,69 @@ fn command(args: &[Value], at: &str, saved: &BTreeSet<String>) -> Result<Vec<Arg
 impl Loader<'_> {
     fn seed(&mut self, file: &FsPath, body: SeedBody, depth: usize) -> Result<()> {
         if depth > 8 {
-            return Err(config(format!("{}: includes nested too deep", file.display())));
+            return Err(config(format!(
+                "{}: includes nested too deep",
+                file.display()
+            )));
         }
         let dir = file.parent().unwrap_or(FsPath::new("."));
         for inc in &body.include {
             let path = dir.join(inc);
-            let canon = path.canonicalize().map_err(|e| config(format!("{}: include `{inc}`: {e}", file.display())))?;
+            let canon = path
+                .canonicalize()
+                .map_err(|e| config(format!("{}: include `{inc}`: {e}", file.display())))?;
             if !self.seen_files.insert(canon.clone()) {
-                return Err(config(format!("{}: include `{inc}` is included twice or in a cycle", file.display())));
+                return Err(config(format!(
+                    "{}: include `{inc}` is included twice or in a cycle",
+                    file.display()
+                )));
             }
             let v = read_json(&canon)?;
             self.hash_input.push_str(&v.to_string());
             let sf: SeedFile = parse(&canon, &v)?;
             if sf.rig_seed != SEED_VERSION {
-                return Err(config(format!("{}: rig_seed {} is not supported; this rig reads version {SEED_VERSION}", canon.display(), sf.rig_seed)));
+                return Err(config(format!(
+                    "{}: rig_seed {} is not supported; this rig reads version {SEED_VERSION}",
+                    canon.display(),
+                    sf.rig_seed
+                )));
             }
-            self.seed(&canon, SeedBody { include: sf.include, mongo: sf.mongo, dragonfly: sf.dragonfly }, depth + 1)?;
+            self.seed(
+                &canon,
+                SeedBody {
+                    include: sf.include,
+                    mongo: sf.mongo,
+                    dragonfly: sf.dragonfly,
+                },
+                depth + 1,
+            )?;
         }
         let at = file.display().to_string();
         for (coll, docs) in body.mongo {
-            if coll.is_empty() || coll.starts_with("system.") || coll.contains('$') || coll.contains('\0') {
-                return Err(config(format!("{at}: seed.mongo: bad collection name `{coll}`")));
+            if coll.is_empty()
+                || coll.starts_with("system.")
+                || coll.contains('$')
+                || coll.contains('\0')
+            {
+                return Err(config(format!(
+                    "{at}: seed.mongo: bad collection name `{coll}`"
+                )));
             }
             let docs = match docs {
                 Value::Array(d) => d,
-                _ => return Err(config(format!("{at}: seed.mongo.{coll}: a list of documents"))),
+                _ => {
+                    return Err(config(format!(
+                        "{at}: seed.mongo.{coll}: a list of documents"
+                    )));
+                }
             };
             for (i, d) in docs.iter().enumerate() {
                 let here = format!("{at}: seed.mongo.{coll}[{i}]");
                 let doc = to_doc(d, ExtMode::Seed, 0, &here).map_err(config)?;
                 if !doc.contains_key("_id") {
-                    return Err(config(format!("{here}: seed documents need an explicit _id so both sides start identical")));
+                    return Err(config(format!(
+                        "{here}: seed documents need an explicit _id so both sides start identical"
+                    )));
                 }
                 collect_inputs(self.patterns, d, &mut self.known);
             }
@@ -604,7 +767,8 @@ impl Loader<'_> {
         }
         for (i, c) in body.dragonfly.iter().enumerate() {
             let cmd = command(c, &format!("{at}: seed.dragonfly[{i}]"), &BTreeSet::new())?;
-            c.iter().for_each(|v| collect_inputs(self.patterns, v, &mut self.known));
+            c.iter()
+                .for_each(|v| collect_inputs(self.patterns, v, &mut self.known));
             self.dragonfly.push(cmd);
         }
         Ok(())
@@ -612,19 +776,30 @@ impl Loader<'_> {
 }
 
 fn status_list(v: &Value, at: &str) -> Result<Vec<u16>> {
-    let one = |x: &Value| x.as_u64().and_then(|n| u16::try_from(n).ok()).filter(|n| (100..=599).contains(n));
+    let one = |x: &Value| {
+        x.as_u64()
+            .and_then(|n| u16::try_from(n).ok())
+            .filter(|n| (100..=599).contains(n))
+    };
     match v {
-        Value::Array(items) if !items.is_empty() => {
-            items.iter().map(|x| one(x).ok_or_else(|| config(format!("{at}: status codes are numbers 100-599")))).collect()
-        }
-        x => one(x).map(|n| vec![n]).ok_or_else(|| config(format!("{at}: a status code or a list of them"))),
+        Value::Array(items) if !items.is_empty() => items
+            .iter()
+            .map(|x| {
+                one(x).ok_or_else(|| config(format!("{at}: status codes are numbers 100-599")))
+            })
+            .collect(),
+        x => one(x)
+            .map(|n| vec![n])
+            .ok_or_else(|| config(format!("{at}: a status code or a list of them"))),
     }
 }
 
 fn check_interp(s: &str, saved: &BTreeSet<String>, at: &str) -> Result<()> {
     for n in template::saved_names(s).map_err(|e| config(format!("{at}: {e}")))? {
         if !saved.contains(&n) {
-            return Err(config(format!("{at}: `${{{n}}}` is not saved by an earlier step")));
+            return Err(config(format!(
+                "{at}: `${{{n}}}` is not saved by an earlier step"
+            )));
         }
     }
     Ok(())
@@ -633,15 +808,22 @@ fn check_interp(s: &str, saved: &BTreeSet<String>, at: &str) -> Result<()> {
 fn check_json_body(v: &Value, saved: &BTreeSet<String>, at: &str) -> Result<()> {
     match v {
         Value::String(s) => check_interp(s, saved, at),
-        Value::Array(items) => items.iter().enumerate().try_for_each(|(i, x)| check_json_body(x, saved, &format!("{at}[{i}]"))),
+        Value::Array(items) => items
+            .iter()
+            .enumerate()
+            .try_for_each(|(i, x)| check_json_body(x, saved, &format!("{at}[{i}]"))),
         Value::Object(m) if m.contains_key("$rigNow") => {
             let (_, fmt) = rig_now(m, at).map_err(config)?;
             if !matches!(fmt.as_str(), "" | "ms" | "s" | "iso") {
-                return Err(config(format!("{at}: $rigNow `as` is `{fmt}`; in JSON use ms (default), s or iso")));
+                return Err(config(format!(
+                    "{at}: $rigNow `as` is `{fmt}`; in JSON use ms (default), s or iso"
+                )));
             }
             Ok(())
         }
-        Value::Object(m) => m.iter().try_for_each(|(k, x)| check_json_body(x, saved, &format!("{at}.{k}"))),
+        Value::Object(m) => m
+            .iter()
+            .try_for_each(|(k, x)| check_json_body(x, saved, &format!("{at}.{k}"))),
         _ => Ok(()),
     }
 }
@@ -655,31 +837,59 @@ fn timeout(ms: u64, at: &str) -> Result<u64> {
 
 const METHODS: &[&str] = &["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
-fn http_step(h: HttpFile, at: &str, saved: &mut BTreeSet<String>, p: &Patterns, known: &mut Known) -> Result<HttpStep> {
+fn http_step(
+    h: HttpFile,
+    at: &str,
+    saved: &mut BTreeSet<String>,
+    p: &Patterns,
+    known: &mut Known,
+) -> Result<HttpStep> {
     let method = h.method.to_ascii_uppercase();
     if !METHODS.contains(&method.as_str()) {
-        return Err(config(format!("{at}.method: `{}` (use one of {})", h.method, METHODS.join(", "))));
+        return Err(config(format!(
+            "{at}.method: `{}` (use one of {})",
+            h.method,
+            METHODS.join(", ")
+        )));
     }
     if !h.path.starts_with('/') {
-        return Err(config(format!("{at}.path: starts with / (the rig adds http://127.0.0.1:<port>)")));
+        return Err(config(format!(
+            "{at}.path: starts with / (the rig adds http://127.0.0.1:<port>)"
+        )));
     }
     check_interp(&h.path, saved, &format!("{at}.path"))?;
     p.collect_known(&h.path, known);
     let mut headers = Vec::new();
     for (k, v) in &h.headers {
         let Value::String(s) = v else {
-            return Err(config(format!("{at}.headers.{k}: header values are strings")));
+            return Err(config(format!(
+                "{at}.headers.{k}: header values are strings"
+            )));
         };
-        if k.is_empty() || !k.bytes().all(|b| b.is_ascii_alphanumeric() || b"-_!#$%&'*+.^`|~".contains(&b)) {
+        if k.is_empty()
+            || !k
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"-_!#$%&'*+.^`|~".contains(&b))
+        {
             return Err(config(format!("{at}.headers: bad header name `{k}`")));
         }
         check_interp(s, saved, &format!("{at}.headers.{k}"))?;
         p.collect_known(s, known);
         headers.push((k.to_ascii_lowercase(), s.clone()));
     }
-    let kinds = [h.json.is_some(), h.form.is_some(), h.text.is_some(), h.body_base64.is_some()].iter().filter(|x| **x).count();
+    let kinds = [
+        h.json.is_some(),
+        h.form.is_some(),
+        h.text.is_some(),
+        h.body_base64.is_some(),
+    ]
+    .iter()
+    .filter(|x| **x)
+    .count();
     if kinds > 1 {
-        return Err(config(format!("{at}: at most one of json, form, text, body_base64")));
+        return Err(config(format!(
+            "{at}: at most one of json, form, text, body_base64"
+        )));
     }
     let body = if let Some(j) = h.json {
         check_json_body(&j, saved, &format!("{at}.json"))?;
@@ -699,12 +909,20 @@ fn http_step(h: HttpFile, at: &str, saved: &mut BTreeSet<String>, p: &Patterns, 
                 .map(|x| match x {
                     Value::Array(pair) => match pair.as_slice() {
                         [Value::String(k), Value::String(v)] => Ok((k.clone(), v.clone())),
-                        _ => Err(config(format!("{at}.form: pairs are [\"name\", \"value\"]"))),
+                        _ => Err(config(format!(
+                            "{at}.form: pairs are [\"name\", \"value\"]"
+                        ))),
                     },
-                    _ => Err(config(format!("{at}.form: pairs are [\"name\", \"value\"]"))),
+                    _ => Err(config(format!(
+                        "{at}.form: pairs are [\"name\", \"value\"]"
+                    ))),
                 })
                 .collect::<Result<_>>()?,
-            _ => return Err(config(format!("{at}.form: an object of strings or a list of [name, value] pairs"))),
+            _ => {
+                return Err(config(format!(
+                    "{at}.form: an object of strings or a list of [name, value] pairs"
+                )));
+            }
         };
         for (k, v) in &pairs {
             check_interp(k, saved, &format!("{at}.form"))?;
@@ -717,7 +935,9 @@ fn http_step(h: HttpFile, at: &str, saved: &mut BTreeSet<String>, p: &Patterns, 
         p.collect_known(&t, known);
         ReqBody::Text(t)
     } else if let Some(b) = h.body_base64 {
-        let bytes = base64::engine::general_purpose::STANDARD.decode(&b).map_err(|e| config(format!("{at}.body_base64: {e}")))?;
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(&b)
+            .map_err(|e| config(format!("{at}.body_base64: {e}")))?;
         p.collect_known(&String::from_utf8_lossy(&bytes), known);
         ReqBody::Bytes(bytes)
     } else {
@@ -730,19 +950,31 @@ fn http_step(h: HttpFile, at: &str, saved: &mut BTreeSet<String>, p: &Patterns, 
     let mut save = Vec::new();
     for (name, from) in h.save {
         let mut chars = name.chars();
-        if !chars.next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_') || !chars.all(|c| c.is_ascii_alphanumeric() || c == '_') || name.starts_with("now") {
-            return Err(config(format!("{at}.save: bad name `{name}` (letters, digits, _; not starting with now)")));
+        if !chars
+            .next()
+            .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+            || !chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+            || name.starts_with("now")
+        {
+            return Err(config(format!(
+                "{at}.save: bad name `{name}` (letters, digits, _; not starting with now)"
+            )));
         }
         let src = if from == "status" {
             SaveFrom::Status
         } else if let Some(hn) = from.strip_prefix("headers.") {
             SaveFrom::Header(hn.to_ascii_lowercase())
         } else if from == "body" || from.starts_with("body.") || from.starts_with("body[") {
-            let pat = Pattern::parse(&from).map_err(|e| config(format!("{at}.save.{name}: {e}")))?;
-            let segs = pat.literal_segments().ok_or_else(|| config(format!("{at}.save.{name}: no wildcards in a save path")))?;
+            let pat =
+                Pattern::parse(&from).map_err(|e| config(format!("{at}.save.{name}: {e}")))?;
+            let segs = pat
+                .literal_segments()
+                .ok_or_else(|| config(format!("{at}.save.{name}: no wildcards in a save path")))?;
             SaveFrom::Body(segs.into_iter().skip(1).collect())
         } else {
-            return Err(config(format!("{at}.save.{name}: `{from}` (use status, headers.<name>, body or body.<path>)")));
+            return Err(config(format!(
+                "{at}.save.{name}: `{from}` (use status, headers.<name>, body or body.<path>)"
+            )));
         };
         saved.insert(name.clone());
         save.push((name, src));
@@ -760,7 +992,11 @@ fn http_step(h: HttpFile, at: &str, saved: &mut BTreeSet<String>, p: &Patterns, 
 }
 
 fn selection(s: Option<SelFile>) -> Selection {
-    s.map(|f| Selection { only: f.only, exclude: f.exclude }).unwrap_or_default()
+    s.map(|f| Selection {
+        only: f.only,
+        exclude: f.exclude,
+    })
+    .unwrap_or_default()
 }
 
 pub(crate) fn headers(h: Option<HeaderSelFile>, at: &str) -> Result<Vec<String>> {
@@ -775,7 +1011,9 @@ pub(crate) fn headers(h: Option<HeaderSelFile>, at: &str) -> Result<Vec<String>>
     if h.only.is_some() && (!h.add.is_empty() || !h.remove.is_empty()) {
         return Err(config(format!("{at}: use either only, or add/remove")));
     }
-    let mut list: Vec<String> = h.only.unwrap_or_else(|| DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect());
+    let mut list: Vec<String> = h
+        .only
+        .unwrap_or_else(|| DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect());
     for a in h.add {
         if !list.contains(&a) {
             list.push(a);
@@ -783,39 +1021,60 @@ pub(crate) fn headers(h: Option<HeaderSelFile>, at: &str) -> Result<Vec<String>>
     }
     for r in &h.remove {
         if !list.contains(r) {
-            return Err(config(format!("{at}: remove `{r}`: not in the list ({})", list.join(", "))));
+            return Err(config(format!(
+                "{at}: remove `{r}`: not in the list ({})",
+                list.join(", ")
+            )));
         }
     }
     list.retain(|x| !h.remove.contains(x));
     Ok(list)
 }
 
-pub(crate) fn allowances(list: Vec<AllowFile>, at: &str) -> Result<Vec<(Pattern, AllowKind, String)>> {
+pub(crate) fn allowances(
+    list: Vec<AllowFile>,
+    at: &str,
+) -> Result<Vec<(Pattern, AllowKind, String)>> {
     let mut out = Vec::new();
     for (i, a) in list.into_iter().enumerate() {
         let here = format!("{at}: allow[{i}]");
         let path = Pattern::parse(&a.path).map_err(|e| config(format!("{here}.path: {e}")))?;
         if a.reason.trim().chars().count() < 8 {
-            return Err(config(format!("{here}.reason: say why this difference is acceptable (a sentence a reviewer can check)")));
+            return Err(config(format!(
+                "{here}.reason: say why this difference is acceptable (a sentence a reviewer can check)"
+            )));
         }
         let kind = match a.kind.as_str() {
             "ignore" => AllowKind::Ignore,
             "set" => AllowKind::Set,
             "tolerance" => {
-                let ms = a.ms.ok_or_else(|| config(format!("{here}: tolerance needs \"ms\"")))?;
-                AllowKind::Tolerance(i64::try_from(ms).map_err(|_| config(format!("{here}.ms: too large")))?)
+                let ms =
+                    a.ms.ok_or_else(|| config(format!("{here}: tolerance needs \"ms\"")))?;
+                AllowKind::Tolerance(
+                    i64::try_from(ms).map_err(|_| config(format!("{here}.ms: too large")))?,
+                )
             }
             "generated" => match &a.pattern {
-                Some(p) => AllowKind::Generated(Some(Regex::new(p).map_err(|e| config(format!("{here}.pattern: {e}")))?)),
+                Some(p) => AllowKind::Generated(Some(
+                    Regex::new(p).map_err(|e| config(format!("{here}.pattern: {e}")))?,
+                )),
                 None => AllowKind::Generated(None),
             },
-            other => return Err(config(format!("{here}.kind: `{other}` (use ignore, set, tolerance or generated)"))),
+            other => {
+                return Err(config(format!(
+                    "{here}.kind: `{other}` (use ignore, set, tolerance or generated)"
+                )));
+            }
         };
         if a.ms.is_some() && !matches!(kind, AllowKind::Tolerance(_)) {
-            return Err(config(format!("{here}: \"ms\" only goes with kind tolerance")));
+            return Err(config(format!(
+                "{here}: \"ms\" only goes with kind tolerance"
+            )));
         }
         if a.pattern.is_some() && !matches!(kind, AllowKind::Generated(_)) {
-            return Err(config(format!("{here}: \"pattern\" only goes with kind generated")));
+            return Err(config(format!(
+                "{here}: \"pattern\" only goes with kind generated"
+            )));
         }
         out.push((path, kind, a.reason));
     }
@@ -824,15 +1083,23 @@ pub(crate) fn allowances(list: Vec<AllowFile>, at: &str) -> Result<Vec<(Pattern,
 
 /// Read and check one scenario.
 pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> Result<Scenario> {
-    let file = rig_dir.join("scenarios").join(target).join(format!("{name}.json"));
+    let file = rig_dir
+        .join("scenarios")
+        .join(target)
+        .join(format!("{name}.json"));
     let v = read_json(&file)?;
     let f: ScenarioFile = parse(&file, &v)?;
     let at = file.display().to_string();
     if f.rig_scenario != SCENARIO_VERSION {
-        return Err(config(format!("{at}: rig_scenario {} is not supported; this rig reads version {SCENARIO_VERSION}", f.rig_scenario)));
+        return Err(config(format!(
+            "{at}: rig_scenario {} is not supported; this rig reads version {SCENARIO_VERSION}",
+            f.rig_scenario
+        )));
     }
     if f.description.trim().is_empty() {
-        return Err(config(format!("{at}: description: say what the scenario checks")));
+        return Err(config(format!(
+            "{at}: description: say what the scenario checks"
+        )));
     }
     let mut loader = Loader {
         patterns,
@@ -863,13 +1130,24 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         if given.len() != 1 {
             return Err(config(format!(
                 "{here}: a step has exactly one of http, dragonfly, pause_ms, wait_for, wait_quiet (found: {})",
-                if given.is_empty() { "none".to_string() } else { given.join(", ") }
+                if given.is_empty() {
+                    "none".to_string()
+                } else {
+                    given.join(", ")
+                }
             )));
         }
         let kind = if let Some(h) = s.http {
-            StepKind::Http(http_step(h, &format!("{here}.http"), &mut saved, patterns, &mut loader.known)?)
+            StepKind::Http(http_step(
+                h,
+                &format!("{here}.http"),
+                &mut saved,
+                patterns,
+                &mut loader.known,
+            )?)
         } else if let Some(c) = s.dragonfly {
-            c.iter().for_each(|x| collect_inputs(patterns, x, &mut loader.known));
+            c.iter()
+                .for_each(|x| collect_inputs(patterns, x, &mut loader.known));
             StepKind::Dragonfly(command(&c, &format!("{here}.dragonfly"), &saved)?)
         } else if let Some(ms) = s.pause_ms {
             StepKind::Pause(timeout(ms, &format!("{here}.pause_ms"))?)
@@ -878,25 +1156,46 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
             let cond = match (w.mongo, w.key) {
                 (Some(m), None) => {
                     let filter = m.filter.unwrap_or(Value::Object(Map::new()));
-                    to_doc(&filter, ExtMode::Filter, 0, &format!("{here}.wait_for.mongo.filter")).map_err(config)?;
+                    to_doc(
+                        &filter,
+                        ExtMode::Filter,
+                        0,
+                        &format!("{here}.wait_for.mongo.filter"),
+                    )
+                    .map_err(config)?;
                     check_json_body(&filter, &saved, &format!("{here}.wait_for.mongo.filter"))?;
                     collect_inputs(patterns, &filter, &mut loader.known);
-                    WaitCond::Mongo { collection: m.collection, filter, count: m.count }
+                    WaitCond::Mongo {
+                        collection: m.collection,
+                        filter,
+                        count: m.count,
+                    }
                 }
                 (None, Some(k)) => {
                     check_interp(&k, &saved, &format!("{here}.wait_for.key"))?;
                     patterns.collect_known(&k, &mut loader.known);
                     WaitCond::Key(k)
                 }
-                _ => return Err(config(format!("{here}.wait_for: exactly one of mongo or key"))),
+                _ => {
+                    return Err(config(format!(
+                        "{here}.wait_for: exactly one of mongo or key"
+                    )));
+                }
             };
             StepKind::WaitFor { cond, timeout_ms }
         } else if let Some(q) = s.wait_quiet {
             let timeout_ms = timeout(q.timeout_ms, &format!("{here}.wait_quiet.timeout_ms"))?;
             if q.quiet_ms == 0 || q.quiet_ms >= timeout_ms {
-                return Err(config(format!("{here}.wait_quiet: quiet_ms must be above 0 and below timeout_ms")));
+                return Err(config(format!(
+                    "{here}.wait_quiet: quiet_ms must be above 0 and below timeout_ms"
+                )));
             }
-            StepKind::WaitQuiet(WaitQuiet { quiet_ms: q.quiet_ms, timeout_ms, ignore_keys: q.ignore_keys, ignore_collections: q.ignore_collections })
+            StepKind::WaitQuiet(WaitQuiet {
+                quiet_ms: q.quiet_ms,
+                timeout_ms,
+                ignore_keys: q.ignore_keys,
+                ignore_collections: q.ignore_collections,
+            })
         } else {
             return Err(config(format!("{here}: empty step")));
         };
@@ -908,7 +1207,8 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         .iter()
         .map(|p| Pattern::parse(p).map_err(|e| config(format!("{at}: compare.as_text: {e}"))))
         .collect::<Result<Vec<_>>>()?;
-    let tolerance_ms = i64::try_from(f.tolerance_ms.unwrap_or(2000)).map_err(|_| config(format!("{at}: tolerance_ms too large")))?;
+    let tolerance_ms = i64::try_from(f.tolerance_ms.unwrap_or(2000))
+        .map_err(|_| config(format!("{at}: tolerance_ms too large")))?;
     Ok(Scenario {
         name: name.to_string(),
         file,
@@ -949,8 +1249,16 @@ pub fn discover(rig_dir: &FsPath, target: &str) -> Result<Vec<String>> {
             if path.is_dir() {
                 stack.push(path);
             } else if let Some(stem) = name.strip_suffix(".json") {
-                let rel = path.parent().and_then(|p| p.strip_prefix(&root).ok()).map(|p| p.to_string_lossy().replace('\\', "/")).unwrap_or_default();
-                out.push(if rel.is_empty() { stem.to_string() } else { format!("{rel}/{stem}") });
+                let rel = path
+                    .parent()
+                    .and_then(|p| p.strip_prefix(&root).ok())
+                    .map(|p| p.to_string_lossy().replace('\\', "/"))
+                    .unwrap_or_default();
+                out.push(if rel.is_empty() {
+                    stem.to_string()
+                } else {
+                    format!("{rel}/{stem}")
+                });
             }
         }
     }
@@ -1001,30 +1309,80 @@ mod tests {
     fn rig_now_values() {
         let now = 1_000_000;
         let d = to_doc(&json!({"a": {"$rigNow": "+60s"}, "b": {"$rigNow": "-1s", "as": "double"}, "c": {"$rigNow": "0", "as": "iso"}}), ExtMode::Seed, now, "d").unwrap();
-        assert_eq!(d.get("a"), Some(&Bson::DateTime(bson::DateTime::from_millis(now + 60_000))));
+        assert_eq!(
+            d.get("a"),
+            Some(&Bson::DateTime(bson::DateTime::from_millis(now + 60_000)))
+        );
         assert_eq!(d.get("b"), Some(&Bson::Double((now - 1000) as f64)));
-        assert_eq!(d.get("c"), Some(&Bson::String("1970-01-01T00:16:40.000Z".into())));
-        assert!(to_doc(&json!({"a": {"$rigNow": "+60s", "as": "ms"}}), ExtMode::Seed, now, "d").is_err());
-        let j = resolve_json(&json!({"t": {"$rigNow": "+1s"}, "s": "id=${x}"}), &[("x".to_string(), "7".to_string())].into(), now, "j").unwrap();
+        assert_eq!(
+            d.get("c"),
+            Some(&Bson::String("1970-01-01T00:16:40.000Z".into()))
+        );
+        assert!(
+            to_doc(
+                &json!({"a": {"$rigNow": "+60s", "as": "ms"}}),
+                ExtMode::Seed,
+                now,
+                "d"
+            )
+            .is_err()
+        );
+        let j = resolve_json(
+            &json!({"t": {"$rigNow": "+1s"}, "s": "id=${x}"}),
+            &[("x".to_string(), "7".to_string())].into(),
+            now,
+            "j",
+        )
+        .unwrap();
         assert_eq!(j, json!({"t": 1_001_000, "s": "id=7"}));
     }
 
     #[test]
     fn commands_are_checked() {
-        assert!(command(&[json!("SELECT"), json!("2")], "c", &BTreeSet::new()).unwrap_err().to_string().contains("not allowed"));
+        assert!(
+            command(&[json!("SELECT"), json!("2")], "c", &BTreeSet::new())
+                .unwrap_err()
+                .to_string()
+                .contains("not allowed")
+        );
         assert!(command(&[json!("flushall")], "c", &BTreeSet::new()).is_err());
-        assert!(command(&[json!("COPY"), json!("a"), json!("b"), json!("db"), json!("3")], "c", &BTreeSet::new()).is_err());
+        assert!(
+            command(
+                &[
+                    json!("COPY"),
+                    json!("a"),
+                    json!("b"),
+                    json!("db"),
+                    json!("3")
+                ],
+                "c",
+                &BTreeSet::new()
+            )
+            .is_err()
+        );
         assert!(command(&[json!("SET"), json!("k"), json!(5)], "c", &BTreeSet::new()).is_ok());
         assert!(command(&[json!("GET"), json!("${missing}")], "c", &BTreeSet::new()).is_err());
     }
 
     #[test]
     fn selection_and_filters() {
-        let all: Vec<String> = ["items/create", "items/jobs", "users/list"].iter().map(|s| s.to_string()).collect();
-        assert_eq!(select(&all, &["items".into()]), vec!["items/create", "items/jobs"]);
+        let all: Vec<String> = ["items/create", "items/jobs", "users/list"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        assert_eq!(
+            select(&all, &["items".into()]),
+            vec!["items/create", "items/jobs"]
+        );
         assert_eq!(select(&all, &["*/list".into()]), vec!["users/list"]);
-        assert_eq!(select(&all, &["items/create.json".into()]), vec!["items/create"]);
-        let s = Selection { only: None, exclude: vec!["logs*".into()] };
+        assert_eq!(
+            select(&all, &["items/create.json".into()]),
+            vec!["items/create"]
+        );
+        let s = Selection {
+            only: None,
+            exclude: vec!["logs*".into()],
+        };
         assert!(s.includes("items") && !s.includes("logs_2026"));
     }
 }

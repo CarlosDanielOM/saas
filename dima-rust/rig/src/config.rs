@@ -28,12 +28,19 @@ pub fn default_rig_dir() -> PathBuf {
 
 /// `1-9` or `3,4,7`. Index 0 is never allowed.
 pub fn parse_dbs(s: &str) -> Result<Vec<u8>> {
-    let bad = || config(format!("--dragonfly-dbs `{s}`: use a range such as 1-9 or a list such as 3,4 (1 to 15; never 0)"));
+    let bad = || {
+        config(format!(
+            "--dragonfly-dbs `{s}`: use a range such as 1-9 or a list such as 3,4 (1 to 15; never 0)"
+        ))
+    };
     let mut out = Vec::new();
     for part in s.split(',') {
         let part = part.trim();
         let (a, b) = match part.split_once('-') {
-            Some((a, b)) => (a.trim().parse::<u8>().map_err(|_| bad())?, b.trim().parse::<u8>().map_err(|_| bad())?),
+            Some((a, b)) => (
+                a.trim().parse::<u8>().map_err(|_| bad())?,
+                b.trim().parse::<u8>().map_err(|_| bad())?,
+            ),
             None => {
                 let n = part.parse::<u8>().map_err(|_| bad())?;
                 (n, n)
@@ -55,14 +62,30 @@ pub fn parse_dbs(s: &str) -> Result<Vec<u8>> {
 /// Build the settings from command-line options and a snapshot of the environment.
 pub fn settings(o: &Overrides, env: BTreeMap<String, String>) -> Result<Settings> {
     let get = |k: &str| env.get(k).filter(|v| !v.is_empty()).cloned();
-    let rig_dir = o.rig_dir.clone().or_else(|| get("DIMA_RIG_DIR").map(PathBuf::from)).unwrap_or_else(default_rig_dir);
-    let repo_dir = default_rig_dir().join("../..").canonicalize().unwrap_or_else(|_| default_rig_dir().join("../.."));
+    let rig_dir = o
+        .rig_dir
+        .clone()
+        .or_else(|| get("DIMA_RIG_DIR").map(PathBuf::from))
+        .unwrap_or_else(default_rig_dir);
+    let repo_dir = default_rig_dir()
+        .join("../..")
+        .canonicalize()
+        .unwrap_or_else(|_| default_rig_dir().join("../.."));
     let mongo_uri = o.mongo_uri.clone().or_else(|| get("DIMA_RIG_MONGO_URI")).or_else(|| get("DIMA_TEST_MONGO_URI")).ok_or_else(|| {
         config("no MongoDB URI: run `eval \"$(dima-rust/tools/test-env)\"` (sets DIMA_TEST_MONGO_URI) or pass --mongo-uri")
     })?;
-    let df = o.dragonfly.clone().or_else(|| get("DIMA_RIG_DRAGONFLY")).or_else(|| get("DIMA_TEST_DRAGONFLY")).unwrap_or_else(|| "127.0.0.1:6379".into());
-    let (host, port) = df.rsplit_once(':').ok_or_else(|| config(format!("Dragonfly address `{df}`: use host:port")))?;
-    let port: u16 = port.parse().map_err(|_| config(format!("Dragonfly address `{df}`: bad port")))?;
+    let df = o
+        .dragonfly
+        .clone()
+        .or_else(|| get("DIMA_RIG_DRAGONFLY"))
+        .or_else(|| get("DIMA_TEST_DRAGONFLY"))
+        .unwrap_or_else(|| "127.0.0.1:6379".into());
+    let (host, port) = df
+        .rsplit_once(':')
+        .ok_or_else(|| config(format!("Dragonfly address `{df}`: use host:port")))?;
+    let port: u16 = port
+        .parse()
+        .map_err(|_| config(format!("Dragonfly address `{df}`: bad port")))?;
     let dbs = parse_dbs(o.dragonfly_dbs.as_deref().unwrap_or("1-9"))?;
     let lock_dir = get("DIMA_RIG_LOCK_DIR")
         .map(PathBuf::from)
@@ -70,18 +93,28 @@ pub fn settings(o: &Overrides, env: BTreeMap<String, String>) -> Result<Settings
         .unwrap_or_else(|| PathBuf::from("/tmp/dima-rig-locks"));
     let mut vars = BTreeMap::new();
     for kv in &o.vars {
-        let (k, v) = kv.split_once('=').ok_or_else(|| config(format!("--set `{kv}`: use name=value")))?;
-        if k.is_empty() || !k.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+        let (k, v) = kv
+            .split_once('=')
+            .ok_or_else(|| config(format!("--set `{kv}`: use name=value")))?;
+        if k.is_empty()
+            || !k
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
             return Err(config(format!("--set `{kv}`: bad name")));
         }
         vars.insert(k.to_string(), v.to_string());
     }
     let cargo_target_dir = get("CARGO_TARGET_DIR").unwrap_or_else(|| {
-        let cache = get("XDG_CACHE_HOME").unwrap_or_else(|| format!("{}/.cache", get("HOME").unwrap_or_default()));
+        let cache = get("XDG_CACHE_HOME")
+            .unwrap_or_else(|| format!("{}/.cache", get("HOME").unwrap_or_default()));
         format!("{cache}/dima-rust/target")
     });
     Ok(Settings {
-        captures_dir: o.captures_dir.clone().unwrap_or_else(|| rig_dir.join("captures")),
+        captures_dir: o
+            .captures_dir
+            .clone()
+            .unwrap_or_else(|| rig_dir.join("captures")),
         out_dir: o.out_dir.clone().unwrap_or_else(|| rig_dir.join("out")),
         rig_dir,
         repo_dir,
@@ -115,10 +148,20 @@ mod tests {
 
     #[test]
     fn needs_a_mongo_uri() {
-        let e = settings(&Overrides::default(), BTreeMap::new()).unwrap_err().to_string();
+        let e = settings(&Overrides::default(), BTreeMap::new())
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("test-env"), "{e}");
-        let env: BTreeMap<String, String> = [("DIMA_TEST_MONGO_URI".to_string(), "mongodb://x".to_string())].into();
-        let s = settings(&Overrides { vars: vec!["fixture=/bin/x".into()], ..Overrides::default() }, env).unwrap();
+        let env: BTreeMap<String, String> =
+            [("DIMA_TEST_MONGO_URI".to_string(), "mongodb://x".to_string())].into();
+        let s = settings(
+            &Overrides {
+                vars: vec!["fixture=/bin/x".into()],
+                ..Overrides::default()
+            },
+            env,
+        )
+        .unwrap();
         assert_eq!(s.vars.get("fixture").map(String::as_str), Some("/bin/x"));
         assert_eq!(s.stores.dragonfly_dbs, (1..=9).collect::<Vec<u8>>());
     }

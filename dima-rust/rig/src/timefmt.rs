@@ -37,7 +37,11 @@ pub fn civil_from_days(z: i64) -> (i64, u32, u32) {
     let d = doy - (153 * mp + 2) / 5 + 1;
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = yoe + era * 400 + i64::from(m <= 2);
-    (y, u32::try_from(m).unwrap_or(1), u32::try_from(d).unwrap_or(1))
+    (
+        y,
+        u32::try_from(m).unwrap_or(1),
+        u32::try_from(d).unwrap_or(1),
+    )
 }
 
 /// `YYYY-MM-DDTHH:MM:SS.sssZ`, as JavaScript's `Date.prototype.toISOString` (years 0 to 9999).
@@ -53,7 +57,9 @@ pub fn format_iso_ms(ms: i64) -> Option<String> {
     let mi = (rem / 60_000) % 60;
     let s = (rem / 1000) % 60;
     let frac = rem % 1000;
-    Some(format!("{y:04}-{mo:02}-{d:02}T{h:02}:{mi:02}:{s:02}.{frac:03}Z"))
+    Some(format!(
+        "{y:04}-{mo:02}-{d:02}T{h:02}:{mi:02}:{s:02}.{frac:03}Z"
+    ))
 }
 
 /// `YYYY-MM-DD` of a day number.
@@ -98,7 +104,11 @@ pub fn parse_day(s: &str) -> Option<i64> {
     if !valid_date(y, m, d) {
         return None;
     }
-    Some(days_from_civil(y, u32::try_from(m).ok()?, u32::try_from(d).ok()?))
+    Some(days_from_civil(
+        y,
+        u32::try_from(m).ok()?,
+        u32::try_from(d).ok()?,
+    ))
 }
 
 /// Milliseconds since the epoch of an ISO 8601 date-time:
@@ -244,7 +254,10 @@ mod tests {
         assert_eq!(parse_iso("2026-11-11 10:00"), Some(base));
         assert_eq!(parse_iso("2026-11-11T11:00:00+01:00"), Some(base));
         assert_eq!(parse_iso("2026-11-11T09:30:00-0030"), Some(base));
-        assert_eq!(parse_iso("2026-11-11T10:00:00.123456789Z"), Some(base + 123));
+        assert_eq!(
+            parse_iso("2026-11-11T10:00:00.123456789Z"),
+            Some(base + 123)
+        );
         assert_eq!(parse_iso("2026-11-11T10:00:00.5Z"), Some(base + 500));
         assert_eq!(parse_iso("2026-02-30T10:00:00Z"), None);
         assert_eq!(parse_iso("2026-11-11T25:00:00Z"), None);
@@ -255,7 +268,10 @@ mod tests {
     #[test]
     fn days() {
         assert_eq!(parse_day("1970-01-01"), Some(0));
-        assert_eq!(parse_day("2024-02-29").map(format_day).as_deref(), Some("2024-02-29"));
+        assert_eq!(
+            parse_day("2024-02-29").map(format_day).as_deref(),
+            Some("2024-02-29")
+        );
         assert_eq!(parse_day("2023-02-29"), None);
     }
 

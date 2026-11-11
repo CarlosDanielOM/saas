@@ -20,7 +20,10 @@ pub fn render(tpl: &str, vars: &BTreeMap<String, String>) -> Result<String, Stri
                 Some(v) => out.push_str(v),
                 None => {
                     let known: Vec<&str> = vars.keys().map(String::as_str).collect();
-                    return Err(format!("unknown placeholder {{{name}}} in `{tpl}`; known: {}", known.join(", ")));
+                    return Err(format!(
+                        "unknown placeholder {{{name}}} in `{tpl}`; known: {}",
+                        known.join(", ")
+                    ));
                 }
             },
         }
@@ -63,8 +66,14 @@ fn braces(tpl: &str) -> Result<Vec<Brace>, String> {
                 loop {
                     match chars.next() {
                         Some('}') => break,
-                        Some(c) if c.is_alphanumeric() || matches!(c, '_' | '.' | '-') => name.push(c),
-                        Some(c) => return Err(format!("unexpected `{c}` inside a placeholder in `{tpl}` (write `{{{{` for a literal brace)")),
+                        Some(c) if c.is_alphanumeric() || matches!(c, '_' | '.' | '-') => {
+                            name.push(c)
+                        }
+                        Some(c) => {
+                            return Err(format!(
+                                "unexpected `{c}` inside a placeholder in `{tpl}` (write `{{{{` for a literal brace)"
+                            ));
+                        }
                         None => return Err(format!("unclosed placeholder in `{tpl}`")),
                     }
                 }
@@ -76,7 +85,11 @@ fn braces(tpl: &str) -> Result<Vec<Brace>, String> {
                 }
                 out.push(Brace::Var(name));
             }
-            '}' => return Err(format!("unmatched `}}` in `{tpl}` (write `}}}}` for a literal brace)")),
+            '}' => {
+                return Err(format!(
+                    "unmatched `}}` in `{tpl}` (write `}}}}` for a literal brace)"
+                ));
+            }
             c => lit.push(c),
         }
     }
@@ -112,7 +125,9 @@ pub fn parse_interp(s: &str) -> Result<Vec<Piece>, String> {
             lit.push_str("${");
             rest = tail;
         } else if let Some(tail) = after.strip_prefix("${") {
-            let end = tail.find('}').ok_or_else(|| format!("unclosed `${{` in `{s}`"))?;
+            let end = tail
+                .find('}')
+                .ok_or_else(|| format!("unclosed `${{` in `{s}`"))?;
             let (expr, tail2) = tail.split_at(end);
             if !lit.is_empty() {
                 out.push(Piece::Lit(std::mem::take(&mut lit)));
@@ -133,19 +148,26 @@ pub fn parse_interp(s: &str) -> Result<Vec<Piece>, String> {
 
 fn parse_expr(expr: &str) -> Result<Piece, String> {
     let e = expr.trim();
-    for (name, fmt) in [("now_ms", NowFmt::Ms), ("now_s", NowFmt::S), ("now_iso", NowFmt::Iso)] {
+    for (name, fmt) in [
+        ("now_ms", NowFmt::Ms),
+        ("now_s", NowFmt::S),
+        ("now_iso", NowFmt::Iso),
+    ] {
         if let Some(rest) = e.strip_prefix(name) {
             if rest.is_empty() {
                 return Ok(Piece::Now { offset_ms: 0, fmt });
             }
             if rest.starts_with('+') || rest.starts_with('-') {
-                let offset_ms = timefmt::parse_offset(rest).ok_or_else(|| format!("bad offset `{rest}` (use +60s, -5m, 150ms, +2d)"))?;
+                let offset_ms = timefmt::parse_offset(rest)
+                    .ok_or_else(|| format!("bad offset `{rest}` (use +60s, -5m, 150ms, +2d)"))?;
                 return Ok(Piece::Now { offset_ms, fmt });
             }
         }
     }
     let mut chars = e.chars();
-    let ok_first = chars.next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_');
+    let ok_first = chars
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_');
     if !ok_first || !chars.all(|c| c.is_ascii_alphanumeric() || c == '_') || e.starts_with("now") {
         return Err(format!(
             "bad expression `${{{expr}}}`: use a saved name (letters, digits, _) or now_ms / now_s / now_iso with an optional offset such as +60s"
@@ -176,14 +198,22 @@ pub fn format_now(now_ms: i64, offset_ms: i64, fmt: NowFmt) -> String {
 }
 
 /// Fill in a scenario string.
-pub fn interpolate(s: &str, saved: &BTreeMap<String, String>, now_ms: i64) -> Result<String, String> {
+pub fn interpolate(
+    s: &str,
+    saved: &BTreeMap<String, String>,
+    now_ms: i64,
+) -> Result<String, String> {
     let mut out = String::new();
     for p in parse_interp(s)? {
         match p {
             Piece::Lit(l) => out.push_str(&l),
             Piece::Saved(n) => match saved.get(&n) {
                 Some(v) => out.push_str(v),
-                None => return Err(format!("`${{{n}}}` has no saved value (save it in an earlier step with \"save\")")),
+                None => {
+                    return Err(format!(
+                        "`${{{n}}}` has no saved value (save it in an earlier step with \"save\")"
+                    ));
+                }
             },
             Piece::Now { offset_ms, fmt } => out.push_str(&format_now(now_ms, offset_ms, fmt)),
         }
@@ -196,17 +226,26 @@ mod tests {
     use super::*;
 
     fn vars(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
-        pairs.iter().map(|(a, b)| (a.to_string(), b.to_string())).collect()
+        pairs
+            .iter()
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .collect()
     }
 
     #[test]
     fn target_templates() {
         let v = vars(&[("port", "4100"), ("var.fixture", "/bin/fx")]);
-        assert_eq!(render("http://127.0.0.1:{port}/x", &v).unwrap(), "http://127.0.0.1:4100/x");
+        assert_eq!(
+            render("http://127.0.0.1:{port}/x", &v).unwrap(),
+            "http://127.0.0.1:4100/x"
+        );
         assert_eq!(render("{var.fixture}", &v).unwrap(), "/bin/fx");
         assert_eq!(render("{{literal}} {port}", &v).unwrap(), "{literal} 4100");
         let e = render("{prot}", &v).unwrap_err();
-        assert!(e.contains("unknown placeholder {prot}") && e.contains("port"), "{e}");
+        assert!(
+            e.contains("unknown placeholder {prot}") && e.contains("port"),
+            "{e}"
+        );
         assert!(render("{port", &v).is_err());
         assert!(render("a}b", &v).is_err());
         assert_eq!(placeholders("{a}-{b.c}").unwrap(), vec!["a", "b.c"]);
@@ -215,16 +254,32 @@ mod tests {
     #[test]
     fn scenario_interpolation() {
         let saved = vars(&[("item_id", "65f0"), ("ñ", "x")]);
-        assert_eq!(interpolate("/items/${item_id}", &saved, 0).unwrap(), "/items/65f0");
-        assert_eq!(interpolate("cost $5 and $${literal}", &saved, 0).unwrap(), "cost $5 and ${literal}");
+        assert_eq!(
+            interpolate("/items/${item_id}", &saved, 0).unwrap(),
+            "/items/65f0"
+        );
+        assert_eq!(
+            interpolate("cost $5 and $${literal}", &saved, 0).unwrap(),
+            "cost $5 and ${literal}"
+        );
         assert_eq!(interpolate("${now_ms+60s}", &saved, 1000).unwrap(), "61000");
         assert_eq!(interpolate("${now_s-1s}", &saved, 5500).unwrap(), "4");
-        assert_eq!(interpolate("${now_iso}", &saved, 0).unwrap(), "1970-01-01T00:00:00.000Z");
-        assert!(interpolate("${missing}", &saved, 0).unwrap_err().contains("no saved value"));
+        assert_eq!(
+            interpolate("${now_iso}", &saved, 0).unwrap(),
+            "1970-01-01T00:00:00.000Z"
+        );
+        assert!(
+            interpolate("${missing}", &saved, 0)
+                .unwrap_err()
+                .contains("no saved value")
+        );
         assert!(parse_interp("${now_ms+5w}").is_err());
         assert!(parse_interp("${ñ}").is_err());
         assert!(parse_interp("${now}").is_err());
         assert!(parse_interp("${oops").is_err());
-        assert_eq!(saved_names("/a/${x}/${now_ms}/${y}").unwrap(), vec!["x", "y"]);
+        assert_eq!(
+            saved_names("/a/${x}/${now_ms}/${y}").unwrap(),
+            vec!["x", "y"]
+        );
     }
 }

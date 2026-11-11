@@ -54,7 +54,10 @@ pub fn uri_with_db(uri: &str, db: &str) -> String {
     format!("{scheme}://{hosts}/{db}{query}")
 }
 
-async fn timed<T, E: std::fmt::Display>(what: &str, f: impl std::future::IntoFuture<Output = std::result::Result<T, E>>) -> Result<T> {
+async fn timed<T, E: std::fmt::Display>(
+    what: &str,
+    f: impl std::future::IntoFuture<Output = std::result::Result<T, E>>,
+) -> Result<T> {
     match tokio::time::timeout(STORE_TIMEOUT, f.into_future()).await {
         Ok(Ok(v)) => Ok(v),
         Ok(Err(e)) => Err(store(what, e)),
@@ -70,22 +73,37 @@ pub async fn mongo_client(uri: &str) -> Result<Client> {
 }
 
 async fn lock_index(cfg: &StoreConfig) -> Result<(u8, File)> {
-    std::fs::create_dir_all(&cfg.lock_dir).map_err(|e| crate::error::io(&cfg.lock_dir.display().to_string(), e))?;
+    std::fs::create_dir_all(&cfg.lock_dir)
+        .map_err(|e| crate::error::io(&cfg.lock_dir.display().to_string(), e))?;
     let deadline = tokio::time::Instant::now() + cfg.lock_wait;
     loop {
         for idx in &cfg.dragonfly_dbs {
-            let path = cfg.lock_dir.join(format!("dragonfly-{}-{}-db{idx}.lock", cfg.dragonfly_host.replace(['/', ':'], "_"), cfg.dragonfly_port));
-            let f = OpenOptions::new().create(true).truncate(false).write(true).open(&path).map_err(|e| crate::error::io(&path.display().to_string(), e))?;
+            let path = cfg.lock_dir.join(format!(
+                "dragonfly-{}-{}-db{idx}.lock",
+                cfg.dragonfly_host.replace(['/', ':'], "_"),
+                cfg.dragonfly_port
+            ));
+            let f = OpenOptions::new()
+                .create(true)
+                .truncate(false)
+                .write(true)
+                .open(&path)
+                .map_err(|e| crate::error::io(&path.display().to_string(), e))?;
             match f.try_lock() {
                 Ok(()) => return Ok((*idx, f)),
                 Err(TryLockError::WouldBlock) => {}
-                Err(TryLockError::Error(e)) => return Err(crate::error::io(&path.display().to_string(), e)),
+                Err(TryLockError::Error(e)) => {
+                    return Err(crate::error::io(&path.display().to_string(), e));
+                }
             }
         }
         if tokio::time::Instant::now() >= deadline {
             return Err(store(
                 "Dragonfly",
-                format!("every allowed logical database ({:?}) is held by another rig run; try again later", cfg.dragonfly_dbs),
+                format!(
+                    "every allowed logical database ({:?}) is held by another rig run; try again later",
+                    cfg.dragonfly_dbs
+                ),
             ));
         }
         tokio::time::sleep(Duration::from_millis(200)).await;
@@ -123,14 +141,22 @@ fn to_raw_reply(v: redis::Value) -> RawReply {
         V::Array(a) | V::Set(a) => RawReply::Array(a.into_iter().map(to_raw_reply).collect()),
         V::SimpleString(s) => RawReply::Status(s),
         V::Okay => RawReply::Status("OK".into()),
-        V::Map(m) => RawReply::Map(m.into_iter().map(|(k, v)| (to_raw_reply(k), to_raw_reply(v))).collect()),
+        V::Map(m) => RawReply::Map(
+            m.into_iter()
+                .map(|(k, v)| (to_raw_reply(k), to_raw_reply(v)))
+                .collect(),
+        ),
         V::Attribute { data, .. } => to_raw_reply(*data),
         V::Double(f) => RawReply::Double(f),
         V::Boolean(b) => RawReply::Bool(b),
         V::VerbatimString { text, .. } => RawReply::Bulk(text.into_bytes()),
         V::BigNumber(n) => RawReply::Bulk(format!("{n:?}").into_bytes()),
         V::Push { data, .. } => RawReply::Array(data.into_iter().map(to_raw_reply).collect()),
-        V::ServerError(e) => RawReply::Error(format!("{} {}", e.code(), e.details().unwrap_or("")).trim().to_string()),
+        V::ServerError(e) => RawReply::Error(
+            format!("{} {}", e.code(), e.details().unwrap_or(""))
+                .trim()
+                .to_string(),
+        ),
         other => RawReply::Bulk(format!("{other:?}").into_bytes()),
     }
 }
@@ -163,17 +189,39 @@ fn first_batch(reply: &Document) -> Vec<Document> {
 impl SideStores {
     /// Claim a logical database and name a fresh MongoDB database (or use `existing_db`, which
     /// the rig never drops or writes).
-    pub async fn allocate(cfg: &StoreConfig, label: &str, existing_db: Option<&str>) -> Result<SideStores> {
+    pub async fn allocate(
+        cfg: &StoreConfig,
+        label: &str,
+        existing_db: Option<&str>,
+    ) -> Result<SideStores> {
         let (df_index, lock) = lock_index(cfg).await?;
         let client = mongo_client(&cfg.mongo_uri).await?;
         let (db_name, owned) = match existing_db {
             Some(db) => (db.to_string(), false),
-            None => (format!("rig_{}_{}_{label}", std::process::id(), SEQ.fetch_add(1, Ordering::Relaxed)), true),
+            None => (
+                format!(
+                    "rig_{}_{}_{label}",
+                    std::process::id(),
+                    SEQ.fetch_add(1, Ordering::Relaxed)
+                ),
+                true,
+            ),
         };
-        let url = format!("redis://{}:{}/{df_index}", cfg.dragonfly_host, cfg.dragonfly_port);
+        let url = format!(
+            "redis://{}:{}/{df_index}",
+            cfg.dragonfly_host, cfg.dragonfly_port
+        );
         let rc = redis::Client::open(url).map_err(redis_err)?;
         let redis = timed("Dragonfly connect", rc.get_multiplexed_async_connection()).await?;
-        let mut s = SideStores { cfg: cfg.clone(), client, db_name, owned, df_index, redis, _lock: lock };
+        let mut s = SideStores {
+            cfg: cfg.clone(),
+            client,
+            db_name,
+            owned,
+            df_index,
+            redis,
+            _lock: lock,
+        };
         s.reset_empty().await?;
         Ok(s)
     }
@@ -183,7 +231,10 @@ impl SideStores {
     }
 
     pub fn dragonfly_url(&self) -> String {
-        format!("redis://{}:{}/{}", self.cfg.dragonfly_host, self.cfg.dragonfly_port, self.df_index)
+        format!(
+            "redis://{}:{}/{}",
+            self.cfg.dragonfly_host, self.cfg.dragonfly_port, self.df_index
+        )
     }
 
     fn db(&self) -> mongodb::Database {
@@ -191,7 +242,11 @@ impl SideStores {
     }
 
     async fn flushdb(&mut self) -> Result<()> {
-        timed("Dragonfly FLUSHDB", redis::cmd("FLUSHDB").query_async::<()>(&mut self.redis)).await
+        timed(
+            "Dragonfly FLUSHDB",
+            redis::cmd("FLUSHDB").query_async::<()>(&mut self.redis),
+        )
+        .await
     }
 
     /// Empty both stores (the MongoDB database only when the rig owns it).
@@ -207,20 +262,43 @@ impl SideStores {
         if keep {
             return Ok(());
         }
-        let r = if self.owned { timed("MongoDB drop", self.db().drop()).await } else { Ok(()) };
+        let r = if self.owned {
+            timed("MongoDB drop", self.db().drop()).await
+        } else {
+            Ok(())
+        };
         let f = self.flushdb().await;
         r.and(f)
     }
 
     async fn collections(&self) -> Result<Vec<Document>> {
-        let reply = timed("MongoDB listCollections", self.db().run_command(doc! {"listCollections": 1, "cursor": {"batchSize": 100_000}})).await?;
-        let mut out: Vec<Document> = first_batch(&reply).into_iter().filter(|c| !c.get_str("name").unwrap_or("system.").starts_with("system.")).collect();
-        out.sort_by(|a, b| a.get_str("name").unwrap_or("").cmp(b.get_str("name").unwrap_or("")));
+        let reply = timed(
+            "MongoDB listCollections",
+            self.db()
+                .run_command(doc! {"listCollections": 1, "cursor": {"batchSize": 100_000}}),
+        )
+        .await?;
+        let mut out: Vec<Document> = first_batch(&reply)
+            .into_iter()
+            .filter(|c| {
+                !c.get_str("name")
+                    .unwrap_or("system.")
+                    .starts_with("system.")
+            })
+            .collect();
+        out.sort_by(|a, b| {
+            a.get_str("name")
+                .unwrap_or("")
+                .cmp(b.get_str("name").unwrap_or(""))
+        });
         Ok(out)
     }
 
     async fn indexes(&self, coll: &str) -> Result<Vec<Document>> {
-        let reply = self.db().run_command(doc! {"listIndexes": coll, "cursor": {"batchSize": 100_000}}).await;
+        let reply = self
+            .db()
+            .run_command(doc! {"listIndexes": coll, "cursor": {"batchSize": 100_000}})
+            .await;
         match reply {
             Ok(r) => Ok(first_batch(&r)),
             // Views have no indexes.
@@ -237,9 +315,19 @@ impl SideStores {
         let cursor = timed("MongoDB find", coll.find(doc! {}).limit(MAX_DOCS + 1)).await?;
         let docs: Vec<Document> = timed("MongoDB read", cursor.try_collect()).await?;
         if i64::try_from(docs.len()).unwrap_or(i64::MAX) > MAX_DOCS {
-            return Err(config(format!("collection {name} has more than {MAX_DOCS} documents; narrow compare.mongo")));
+            return Err(config(format!(
+                "collection {name} has more than {MAX_DOCS} documents; narrow compare.mongo"
+            )));
         }
-        Ok((name, RawColl { kind, options, indexes, docs }))
+        Ok((
+            name,
+            RawColl {
+                kind,
+                options,
+                indexes,
+                docs,
+            },
+        ))
     }
 
     pub async fn capture_mongo(&self, sel: &Selection) -> Result<BTreeMap<String, RawColl>> {
@@ -259,11 +347,20 @@ impl SideStores {
         let mut out = Vec::new();
         let mut cursor: u64 = 0;
         loop {
-            let (next, batch): (u64, Vec<Vec<u8>>) =
-                timed("Dragonfly SCAN", redis::cmd("SCAN").arg(cursor).arg("COUNT").arg(1000).query_async(&mut self.redis)).await?;
+            let (next, batch): (u64, Vec<Vec<u8>>) = timed(
+                "Dragonfly SCAN",
+                redis::cmd("SCAN")
+                    .arg(cursor)
+                    .arg("COUNT")
+                    .arg(1000)
+                    .query_async(&mut self.redis),
+            )
+            .await?;
             out.extend(batch);
             if out.len() > MAX_KEYS {
-                return Err(config(format!("more than {MAX_KEYS} Dragonfly keys; narrow compare.dragonfly")));
+                return Err(config(format!(
+                    "more than {MAX_KEYS} Dragonfly keys; narrow compare.dragonfly"
+                )));
             }
             if next == 0 {
                 break;
@@ -276,7 +373,11 @@ impl SideStores {
     }
 
     async fn q(&mut self, cmd: &mut redis::Cmd) -> Result<redis::Value> {
-        timed("Dragonfly", cmd.query_async::<redis::Value>(&mut self.redis)).await
+        timed(
+            "Dragonfly",
+            cmd.query_async::<redis::Value>(&mut self.redis),
+        )
+        .await
     }
 
     pub async fn capture_dragonfly(&mut self, sel: &Selection) -> Result<Vec<RawEntry>> {
@@ -300,15 +401,28 @@ impl SideStores {
                 },
                 "hash" => {
                     let flat = bulk_list(self.q(redis::cmd("HGETALL").arg(&key)).await?);
-                    RawValue::Hash(flat.chunks(2).filter_map(|c| match c {
-                        [k, v] => Some((k.clone(), v.clone())),
-                        _ => None,
-                    }).collect())
+                    RawValue::Hash(
+                        flat.chunks(2)
+                            .filter_map(|c| match c {
+                                [k, v] => Some((k.clone(), v.clone())),
+                                _ => None,
+                            })
+                            .collect(),
+                    )
                 }
-                "list" => RawValue::List(bulk_list(self.q(redis::cmd("LRANGE").arg(&key).arg(0).arg(-1)).await?)),
+                "list" => RawValue::List(bulk_list(
+                    self.q(redis::cmd("LRANGE").arg(&key).arg(0).arg(-1))
+                        .await?,
+                )),
                 "set" => RawValue::Set(bulk_list(self.q(redis::cmd("SMEMBERS").arg(&key)).await?)),
                 "zset" => {
-                    let reply = self.q(redis::cmd("ZRANGE").arg(&key).arg(0).arg(-1).arg("WITHSCORES")).await?;
+                    let reply = self
+                        .q(redis::cmd("ZRANGE")
+                            .arg(&key)
+                            .arg(0)
+                            .arg(-1)
+                            .arg("WITHSCORES"))
+                        .await?;
                     let mut pairs = Vec::new();
                     if let redis::Value::Array(items) = reply {
                         let mut flat: Vec<redis::Value> = Vec::new();
@@ -325,7 +439,9 @@ impl SideStores {
                                     other => format!("{other:?}").into_bytes(),
                                 };
                                 let score = match s {
-                                    redis::Value::BulkString(b) => String::from_utf8_lossy(b).parse().unwrap_or(f64::NAN),
+                                    redis::Value::BulkString(b) => {
+                                        String::from_utf8_lossy(b).parse().unwrap_or(f64::NAN)
+                                    }
                                     redis::Value::Double(f) => *f,
                                     redis::Value::Int(i) => *i as f64,
                                     _ => f64::NAN,
@@ -337,22 +453,29 @@ impl SideStores {
                     RawValue::ZSet(pairs)
                 }
                 "stream" => {
-                    let reply = self.q(redis::cmd("XRANGE").arg(&key).arg("-").arg("+")).await?;
+                    let reply = self
+                        .q(redis::cmd("XRANGE").arg(&key).arg("-").arg("+"))
+                        .await?;
                     let mut entries = Vec::new();
                     if let redis::Value::Array(items) = reply {
                         for it in items {
                             if let redis::Value::Array(parts) = it {
                                 let mut parts = parts.into_iter();
                                 let id = match parts.next() {
-                                    Some(redis::Value::BulkString(b)) => String::from_utf8_lossy(&b).to_string(),
+                                    Some(redis::Value::BulkString(b)) => {
+                                        String::from_utf8_lossy(&b).to_string()
+                                    }
                                     Some(redis::Value::SimpleString(s)) => s,
                                     _ => continue,
                                 };
                                 let fields = parts.next().map(bulk_list).unwrap_or_default();
-                                let pairs = fields.chunks(2).filter_map(|c| match c {
-                                    [k, v] => Some((k.clone(), v.clone())),
-                                    _ => None,
-                                }).collect();
+                                let pairs = fields
+                                    .chunks(2)
+                                    .filter_map(|c| match c {
+                                        [k, v] => Some((k.clone(), v.clone())),
+                                        _ => None,
+                                    })
+                                    .collect();
                                 entries.push((id, pairs));
                             }
                         }
@@ -368,7 +491,12 @@ impl SideStores {
             if pttl == -2 {
                 continue;
             }
-            out.push(RawEntry { key, kind, value, pttl });
+            out.push(RawEntry {
+                key,
+                kind,
+                value,
+                pttl,
+            });
         }
         Ok(out)
     }
@@ -417,15 +545,28 @@ impl SideStores {
                 })
                 .collect();
             if !specs.is_empty() {
-                timed("MongoDB createIndexes", db.run_command(doc! {"createIndexes": name.clone(), "indexes": specs})).await?;
+                timed(
+                    "MongoDB createIndexes",
+                    db.run_command(doc! {"createIndexes": name.clone(), "indexes": specs}),
+                )
+                .await?;
             }
             if !c.docs.is_empty() && c.kind == "collection" {
-                timed("MongoDB insert", db.collection::<Document>(name).insert_many(c.docs.clone())).await?;
+                timed(
+                    "MongoDB insert",
+                    db.collection::<Document>(name).insert_many(c.docs.clone()),
+                )
+                .await?;
             }
         }
         for (key, dump, pttl) in &b.keys {
             let ttl = if *pttl > 0 { *pttl } else { 0 };
-            self.q(redis::cmd("RESTORE").arg(key).arg(ttl).arg(dump).arg("REPLACE")).await?;
+            self.q(redis::cmd("RESTORE")
+                .arg(key)
+                .arg(ttl)
+                .arg(dump)
+                .arg("REPLACE"))
+                .await?;
         }
         Ok(())
     }
@@ -436,17 +577,30 @@ impl SideStores {
         for (coll, docs) in &s.seed_mongo {
             let mut converted = Vec::with_capacity(docs.len());
             for (i, d) in docs.iter().enumerate() {
-                converted.push(scenario::to_doc(d, ExtMode::Seed, now, &format!("seed.mongo.{coll}[{i}]")).map_err(config)?);
+                converted.push(
+                    scenario::to_doc(d, ExtMode::Seed, now, &format!("seed.mongo.{coll}[{i}]"))
+                        .map_err(config)?,
+                );
             }
             if !converted.is_empty() {
-                timed(&format!("seeding {coll}"), db.collection::<Document>(coll).insert_many(converted)).await?;
+                timed(
+                    &format!("seeding {coll}"),
+                    db.collection::<Document>(coll).insert_many(converted),
+                )
+                .await?;
             }
         }
         let empty = BTreeMap::new();
         for (i, cmd) in s.seed_dragonfly.iter().enumerate() {
-            let args = cmd.iter().map(|a| a.render(&empty, now)).collect::<std::result::Result<Vec<_>, _>>().map_err(|e| config(format!("seed.dragonfly[{i}]: {e}")))?;
+            let args = cmd
+                .iter()
+                .map(|a| a.render(&empty, now))
+                .collect::<std::result::Result<Vec<_>, _>>()
+                .map_err(|e| config(format!("seed.dragonfly[{i}]: {e}")))?;
             match self.command(&args).await? {
-                RawReply::Error(e) => return Err(config(format!("seed.dragonfly[{i}] {args:?} failed: {e}"))),
+                RawReply::Error(e) => {
+                    return Err(config(format!("seed.dragonfly[{i}] {args:?} failed: {e}")));
+                }
                 _ => continue,
             }
         }
@@ -462,28 +616,64 @@ impl SideStores {
         for a in rest {
             cmd.arg(a);
         }
-        match tokio::time::timeout(STORE_TIMEOUT, cmd.query_async::<redis::Value>(&mut self.redis)).await {
+        match tokio::time::timeout(
+            STORE_TIMEOUT,
+            cmd.query_async::<redis::Value>(&mut self.redis),
+        )
+        .await
+        {
             Err(_) => Err(store("Dragonfly command", "timed out")),
             Ok(Ok(v)) => Ok(to_raw_reply(v)),
-            Ok(Err(e)) if e.is_io_error() || e.is_connection_dropped() || e.is_connection_refusal() || e.is_timeout() => Err(redis_err(e)),
-            Ok(Err(e)) => Ok(RawReply::Error(format!("{} {}", e.code().unwrap_or("ERR"), e.detail().unwrap_or("")).trim().to_string())),
+            Ok(Err(e))
+                if e.is_io_error()
+                    || e.is_connection_dropped()
+                    || e.is_connection_refusal()
+                    || e.is_timeout() =>
+            {
+                Err(redis_err(e))
+            }
+            Ok(Err(e)) => Ok(RawReply::Error(
+                format!("{} {}", e.code().unwrap_or("ERR"), e.detail().unwrap_or(""))
+                    .trim()
+                    .to_string(),
+            )),
         }
     }
 
     pub async fn count(&self, collection: &str, filter: Document) -> Result<u64> {
-        timed("MongoDB count", self.db().collection::<Document>(collection).count_documents(filter)).await
+        timed(
+            "MongoDB count",
+            self.db()
+                .collection::<Document>(collection)
+                .count_documents(filter),
+        )
+        .await
     }
 
     pub async fn key_exists(&mut self, pattern: &str) -> Result<bool> {
         if !pattern.contains(['*', '?', '[']) {
-            let n: i64 = timed("Dragonfly EXISTS", redis::cmd("EXISTS").arg(pattern).query_async(&mut self.redis)).await?;
+            let n: i64 = timed(
+                "Dragonfly EXISTS",
+                redis::cmd("EXISTS")
+                    .arg(pattern)
+                    .query_async(&mut self.redis),
+            )
+            .await?;
             return Ok(n > 0);
         }
-        Ok(self.keys().await?.iter().any(|k| name_glob(pattern, &String::from_utf8_lossy(k))))
+        Ok(self
+            .keys()
+            .await?
+            .iter()
+            .any(|k| name_glob(pattern, &String::from_utf8_lossy(k))))
     }
 
     /// A hash of everything stored (TTL presence, not TTL values), for "wait until quiet".
-    pub async fn fingerprint(&mut self, ignore_keys: &[String], ignore_collections: &[String]) -> Result<u64> {
+    pub async fn fingerprint(
+        &mut self,
+        ignore_keys: &[String],
+        ignore_collections: &[String],
+    ) -> Result<u64> {
         let mut acc = String::new();
         if self.owned || !ignore_collections.iter().any(|c| c == "*") {
             let names: Vec<String> = self
@@ -501,12 +691,20 @@ impl SideStores {
             }
             if !names.is_empty() {
                 let list: Vec<Bson> = names.iter().map(|n| Bson::String(n.clone())).collect();
-                let h = timed("MongoDB dbHash", self.db().run_command(doc! {"dbHash": 1, "collections": list})).await?;
+                let h = timed(
+                    "MongoDB dbHash",
+                    self.db()
+                        .run_command(doc! {"dbHash": 1, "collections": list}),
+                )
+                .await?;
                 acc.push_str(h.get_str("md5").unwrap_or(""));
             }
         }
         for key in self.keys().await? {
-            if ignore_keys.iter().any(|g| name_glob(g, &String::from_utf8_lossy(&key))) {
+            if ignore_keys
+                .iter()
+                .any(|g| name_glob(g, &String::from_utf8_lossy(&key)))
+            {
                 continue;
             }
             let dump = match self.q(redis::cmd("DUMP").arg(&key)).await? {
@@ -514,7 +712,11 @@ impl SideStores {
                 _ => Vec::new(),
             };
             let ttl = matches!(self.q(redis::cmd("PTTL").arg(&key)).await?, redis::Value::Int(i) if i >= 0);
-            acc.push_str(&format!("{}|{}|{ttl};", String::from_utf8_lossy(&key), fnv1a64(&dump)));
+            acc.push_str(&format!(
+                "{}|{}|{ttl};",
+                String::from_utf8_lossy(&key),
+                fnv1a64(&dump)
+            ));
         }
         Ok(fnv1a64(acc.as_bytes()))
     }
@@ -522,7 +724,11 @@ impl SideStores {
 
 /// Per-collection content hashes of a database (to prove a read-only run did not write).
 pub async fn db_hash(client: &Client, db: &str) -> Result<BTreeMap<String, String>> {
-    let reply = timed("MongoDB dbHash", client.database(db).run_command(doc! {"dbHash": 1})).await?;
+    let reply = timed(
+        "MongoDB dbHash",
+        client.database(db).run_command(doc! {"dbHash": 1}),
+    )
+    .await?;
     let mut out = BTreeMap::new();
     if let Ok(c) = reply.get_document("collections") {
         for (k, v) in c {
@@ -538,8 +744,12 @@ pub async fn gc(mongo_uri: &str) -> Result<Vec<String>> {
     let names = timed("MongoDB listDatabases", client.list_database_names()).await?;
     let mut dropped = Vec::new();
     for n in names {
-        let Some(rest) = n.strip_prefix("rig_") else { continue };
-        let Some(pid) = rest.split('_').next().and_then(|p| p.parse::<u32>().ok()) else { continue };
+        let Some(rest) = n.strip_prefix("rig_") else {
+            continue;
+        };
+        let Some(pid) = rest.split('_').next().and_then(|p| p.parse::<u32>().ok()) else {
+            continue;
+        };
         if std::path::Path::new(&format!("/proc/{pid}")).exists() {
             continue;
         }
@@ -556,10 +766,16 @@ mod tests {
     #[test]
     fn uri_gets_the_database() {
         assert_eq!(
-            uri_with_db("mongodb://u:p@127.0.0.1:27017/?authSource=admin&directConnection=true", "rig_1"),
+            uri_with_db(
+                "mongodb://u:p@127.0.0.1:27017/?authSource=admin&directConnection=true",
+                "rig_1"
+            ),
             "mongodb://u:p@127.0.0.1:27017/rig_1?authSource=admin&directConnection=true"
         );
-        assert_eq!(uri_with_db("mongodb://127.0.0.1:27017", "x"), "mongodb://127.0.0.1:27017/x");
+        assert_eq!(
+            uri_with_db("mongodb://127.0.0.1:27017", "x"),
+            "mongodb://127.0.0.1:27017/x"
+        );
         assert_eq!(uri_with_db("mongodb://h/old?w=1", "x"), "mongodb://h/x?w=1");
     }
 }

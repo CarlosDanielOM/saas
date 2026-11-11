@@ -13,7 +13,9 @@ use regex::Regex;
 use serde_json::{Number, Value};
 
 use crate::allow::Allowances;
-use crate::capture::{Body, Capture, CollCap, EntryCap, RawCapture, RawEntry, RawReply, RawStep, RawValue, StepCap};
+use crate::capture::{
+    Body, Capture, CollCap, EntryCap, RawCapture, RawEntry, RawReply, RawStep, RawValue, StepCap,
+};
 use crate::path::{Path, name_glob};
 use crate::timefmt::{self, MS_PER_DAY};
 use crate::value::{Id, IdKind, Moment, NumRepr, Seg, Text, Val};
@@ -48,7 +50,10 @@ impl Window {
     }
 
     fn moment(&self, ms: i64) -> Moment {
-        Moment::Rel { off: ms - self.start, abs: if self.in_window(ms) { None } else { Some(ms) } }
+        Moment::Rel {
+            off: ms - self.start,
+            abs: if self.in_window(ms) { None } else { Some(ms) },
+        }
     }
 
     fn generated_time(&self, ms: i64) -> bool {
@@ -76,7 +81,9 @@ impl Patterns {
     pub fn new() -> Result<Patterns, regex::Error> {
         Ok(Patterns {
             oid: Regex::new("[0-9a-f]{24}")?,
-            uuid: Regex::new("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")?,
+            uuid: Regex::new(
+                "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+            )?,
             iso: Regex::new(
                 "[0-9]{4}-[0-9]{2}-[0-9]{2}(?:[T ][0-9]{2}:[0-9]{2}(?::[0-9]{2}(?:\\.[0-9]{1,9})?)?(?:Z|[+-][0-9]{2}:?[0-9]{2})?)?",
             )?,
@@ -108,9 +115,10 @@ impl Patterns {
         }
         for m in self.ms13.find_iter(s) {
             if bounded(s, m.start(), m.end(), |c| c.is_ascii_alphanumeric())
-                && let Ok(ms) = m.as_str().parse::<i64>() {
-                    known.times.insert(ms);
-                }
+                && let Ok(ms) = m.as_str().parse::<i64>()
+            {
+                known.times.insert(ms);
+            }
         }
     }
 }
@@ -177,7 +185,11 @@ pub fn collect_known_bson(p: &Patterns, b: &Bson, known: &mut Known) {
 }
 
 fn f64_integral(f: f64) -> Option<i64> {
-    if f.is_finite() && f.fract() == 0.0 && f.abs() < 9.0e15 { Some(f as i64) } else { None }
+    if f.is_finite() && f.fract() == 0.0 && f.abs() < 9.0e15 {
+        Some(f as i64)
+    } else {
+        None
+    }
 }
 
 fn integral(n: &Number) -> Option<i64> {
@@ -190,7 +202,14 @@ fn uuid_string(subtype: &BinarySubtype, bytes: &[u8]) -> Option<String> {
     }
     let h: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
     let part = |a: usize, b: usize| h.get(a..b).unwrap_or("");
-    Some(format!("{}-{}-{}-{}-{}", part(0, 8), part(8, 12), part(12, 16), part(16, 20), part(20, 32)))
+    Some(format!(
+        "{}-{}-{}-{}-{}",
+        part(0, 8),
+        part(8, 12),
+        part(12, 16),
+        part(16, 20),
+        part(20, 32)
+    ))
 }
 
 /// Header names compared by default.
@@ -245,7 +264,10 @@ impl Detector<'_, '_> {
             return false;
         }
         let secs = hex.get(0..8).and_then(|h| i64::from_str_radix(h, 16).ok());
-        secs.is_some_and(|s| self.ctx.window.generated_time(s * 1000) || self.ctx.window.generated_time(s * 1000 + 999))
+        secs.is_some_and(|s| {
+            self.ctx.window.generated_time(s * 1000)
+                || self.ctx.window.generated_time(s * 1000 + 999)
+        })
     }
 
     fn uuid_is_generated(&self, u: &str) -> bool {
@@ -278,12 +300,22 @@ impl Detector<'_, '_> {
                 continue;
             }
             for (i, _) in s.match_indices(lit.as_str()) {
-                cands.push(Cand { start: i, end: i + lit.len(), prio: 0, seg: Seg::Name(name.clone()) });
+                cands.push(Cand {
+                    start: i,
+                    end: i + lit.len(),
+                    prio: 0,
+                    seg: Seg::Name(name.clone()),
+                });
             }
         }
         if let Some(re) = &self.extra {
             for m in re.find_iter(s) {
-                cands.push(Cand { start: m.start(), end: m.end(), prio: 1, seg: Seg::Id(Id::Raw(IdKind::Gen, m.as_str().to_string())) });
+                cands.push(Cand {
+                    start: m.start(),
+                    end: m.end(),
+                    prio: 1,
+                    seg: Seg::Id(Id::Raw(IdKind::Gen, m.as_str().to_string())),
+                });
             }
         }
         for (idx, re) in self.ctx.allow.generated_patterns(path) {
@@ -293,17 +325,36 @@ impl Detector<'_, '_> {
                 }
                 self.ctx.allow.mark_used(idx);
                 self.found.push(m.as_str().to_string());
-                cands.push(Cand { start: m.start(), end: m.end(), prio: 2, seg: Seg::Id(Id::Raw(IdKind::Gen, m.as_str().to_string())) });
+                cands.push(Cand {
+                    start: m.start(),
+                    end: m.end(),
+                    prio: 2,
+                    seg: Seg::Id(Id::Raw(IdKind::Gen, m.as_str().to_string())),
+                });
             }
         }
         for m in p.oid.find_iter(s) {
-            if bounded(s, m.start(), m.end(), |c| c.is_ascii_alphanumeric()) && self.oid_is_generated(m.as_str()) {
-                cands.push(Cand { start: m.start(), end: m.end(), prio: 3, seg: Seg::Id(Id::Raw(IdKind::Oid, m.as_str().to_string())) });
+            if bounded(s, m.start(), m.end(), |c| c.is_ascii_alphanumeric())
+                && self.oid_is_generated(m.as_str())
+            {
+                cands.push(Cand {
+                    start: m.start(),
+                    end: m.end(),
+                    prio: 3,
+                    seg: Seg::Id(Id::Raw(IdKind::Oid, m.as_str().to_string())),
+                });
             }
         }
         for m in p.uuid.find_iter(s) {
-            if bounded(s, m.start(), m.end(), |c| c.is_ascii_alphanumeric()) && self.uuid_is_generated(m.as_str()) {
-                cands.push(Cand { start: m.start(), end: m.end(), prio: 4, seg: Seg::Id(Id::Raw(IdKind::Uuid, m.as_str().to_string())) });
+            if bounded(s, m.start(), m.end(), |c| c.is_ascii_alphanumeric())
+                && self.uuid_is_generated(m.as_str())
+            {
+                cands.push(Cand {
+                    start: m.start(),
+                    end: m.end(),
+                    prio: 4,
+                    seg: Seg::Id(Id::Raw(IdKind::Uuid, m.as_str().to_string())),
+                });
             }
         }
         for m in p.iso.find_iter(s) {
@@ -313,8 +364,19 @@ impl Detector<'_, '_> {
             let txt = m.as_str();
             if let Some(ms) = timefmt::parse_iso(txt) {
                 if self.time_number(ms) {
-                    let shape: String = txt.chars().map(|c| if c.is_ascii_digit() { 'd' } else { c }).collect();
-                    cands.push(Cand { start: m.start(), end: m.end(), prio: 5, seg: Seg::Time { at: self.moment(ms), shape } });
+                    let shape: String = txt
+                        .chars()
+                        .map(|c| if c.is_ascii_digit() { 'd' } else { c })
+                        .collect();
+                    cands.push(Cand {
+                        start: m.start(),
+                        end: m.end(),
+                        prio: 5,
+                        seg: Seg::Time {
+                            at: self.moment(ms),
+                            shape,
+                        },
+                    });
                 }
             } else if let Some(day) = timefmt::parse_day(txt) {
                 if self.ctx.known.days.contains(txt) {
@@ -324,8 +386,20 @@ impl Detector<'_, '_> {
                 let start_day = w.start.div_euclid(MS_PER_DAY);
                 let end_day = w.end.div_euclid(MS_PER_DAY);
                 if (day - start_day).abs() <= HORIZON_MS / MS_PER_DAY {
-                    let abs = if day >= start_day && day <= end_day { None } else { Some(txt.to_string()) };
-                    cands.push(Cand { start: m.start(), end: m.end(), prio: 5, seg: Seg::Day { off: day - start_day, abs } });
+                    let abs = if day >= start_day && day <= end_day {
+                        None
+                    } else {
+                        Some(txt.to_string())
+                    };
+                    cands.push(Cand {
+                        start: m.start(),
+                        end: m.end(),
+                        prio: 5,
+                        seg: Seg::Day {
+                            off: day - start_day,
+                            abs,
+                        },
+                    });
                 }
             }
         }
@@ -334,14 +408,28 @@ impl Detector<'_, '_> {
                 continue;
             }
             if let Ok(ms) = m.as_str().parse::<i64>()
-                && self.time_number(ms) {
-                    cands.push(Cand { start: m.start(), end: m.end(), prio: 6, seg: Seg::Time { at: self.moment(ms), shape: "ms".into() } });
-                }
+                && self.time_number(ms)
+            {
+                cands.push(Cand {
+                    start: m.start(),
+                    end: m.end(),
+                    prio: 6,
+                    seg: Seg::Time {
+                        at: self.moment(ms),
+                        shape: "ms".into(),
+                    },
+                });
+            }
         }
         if cands.is_empty() {
             return Text::lit(s);
         }
-        cands.sort_by(|a, b| a.start.cmp(&b.start).then((b.end - b.start).cmp(&(a.end - a.start))).then(a.prio.cmp(&b.prio)));
+        cands.sort_by(|a, b| {
+            a.start
+                .cmp(&b.start)
+                .then((b.end - b.start).cmp(&(a.end - a.start)))
+                .then(a.prio.cmp(&b.prio))
+        });
         let mut segs = Vec::new();
         let mut at = 0;
         for c in cands {
@@ -359,7 +447,10 @@ impl Detector<'_, '_> {
     fn generated_whole(&mut self, path: &Path, s: &str) -> Option<Val> {
         if self.ctx.allow.generated_whole(path) {
             self.found.push(s.to_string());
-            return Some(Val::Str(Text(vec![Seg::Id(Id::Raw(IdKind::Gen, s.to_string()))])));
+            return Some(Val::Str(Text(vec![Seg::Id(Id::Raw(
+                IdKind::Gen,
+                s.to_string(),
+            ))])));
         }
         None
     }
@@ -373,9 +464,10 @@ impl Detector<'_, '_> {
 
     fn json(&mut self, path: &mut Path, v: &Value) -> Val {
         if let Value::String(s) = v
-            && let Some(g) = self.generated_whole(path, s) {
-                return g;
-            }
+            && let Some(g) = self.generated_whole(path, s)
+        {
+            return g;
+        }
         match v {
             Value::Null => Val::Null,
             Value::Bool(b) => Val::Bool(*b),
@@ -421,9 +513,10 @@ impl Detector<'_, '_> {
 
     fn bson(&mut self, path: &mut Path, b: &Bson) -> Val {
         if let Bson::String(s) = b
-            && let Some(g) = self.generated_whole(path, s) {
-                return g;
-            }
+            && let Some(g) = self.generated_whole(path, s)
+        {
+            return g;
+        }
         match b {
             Bson::Null => Val::Null,
             Bson::Boolean(x) => Val::Bool(*x),
@@ -451,15 +544,27 @@ impl Detector<'_, '_> {
             Bson::Document(d) => self.doc(path, d),
             Bson::ObjectId(o) => {
                 let hex = o.to_hex();
-                if self.oid_is_generated(&hex) { Val::Oid(Id::Raw(IdKind::Oid, hex)) } else { Val::Oid(Id::Lit(hex)) }
+                if self.oid_is_generated(&hex) {
+                    Val::Oid(Id::Raw(IdKind::Oid, hex))
+                } else {
+                    Val::Oid(Id::Lit(hex))
+                }
             }
             Bson::DateTime(d) => {
                 let ms = d.timestamp_millis();
-                if self.time_number(ms) { Val::Time(NumRepr::Date, self.moment(ms)) } else { Val::Time(NumRepr::Date, Moment::Abs(ms)) }
+                if self.time_number(ms) {
+                    Val::Time(NumRepr::Date, self.moment(ms))
+                } else {
+                    Val::Time(NumRepr::Date, Moment::Abs(ms))
+                }
             }
             Bson::Binary(bin) => match uuid_string(&bin.subtype, &bin.bytes) {
                 Some(u) if matches!(bin.subtype, BinarySubtype::Uuid) => {
-                    if self.uuid_is_generated(&u) { Val::Uuid(Id::Raw(IdKind::Uuid, u)) } else { Val::Uuid(Id::Lit(u)) }
+                    if self.uuid_is_generated(&u) {
+                        Val::Uuid(Id::Raw(IdKind::Uuid, u))
+                    } else {
+                        Val::Uuid(Id::Lit(u))
+                    }
                 }
                 _ => Val::Ext(b.clone().into_canonical_extjson()),
             },
@@ -472,12 +577,18 @@ impl Detector<'_, '_> {
         let Ok(s) = std::str::from_utf8(bytes) else {
             return Val::Bytes(bytes.to_vec());
         };
-        let as_text = self.ctx.as_text.iter().any(|p| p.matches_self_or_ancestor(path));
-        if !as_text && (s.starts_with('{') || s.starts_with('['))
+        let as_text = self
+            .ctx
+            .as_text
+            .iter()
+            .any(|p| p.matches_self_or_ancestor(path));
+        if !as_text
+            && (s.starts_with('{') || s.starts_with('['))
             && let Ok(parsed) = serde_json::from_str::<Value>(s)
-                && serde_json::to_string(&parsed).is_ok_and(|c| c == s) {
-                    return Val::Json(Box::new(self.json(path, &parsed)));
-                }
+            && serde_json::to_string(&parsed).is_ok_and(|c| c == s)
+        {
+            return Val::Json(Box::new(self.json(path, &parsed)));
+        }
         if let Some(g) = self.generated_whole(path, s) {
             return g;
         }
@@ -489,9 +600,16 @@ impl Detector<'_, '_> {
             RawReply::Nil => Val::Null,
             RawReply::Int(i) => self.json_number(&Number::from(*i)),
             RawReply::Bulk(b) => self.df_string(path, b),
-            RawReply::Status(s) => Val::Obj(vec![(Text::lit("status"), Val::Str(self.text(path, s)))]),
-            RawReply::Error(s) => Val::Obj(vec![(Text::lit("error"), Val::Str(self.text(path, s)))]),
-            RawReply::Double(f) => Number::from_f64(*f).map_or(Val::Str(Text::lit(&f.to_string())), |n| self.json_number(&n)),
+            RawReply::Status(s) => {
+                Val::Obj(vec![(Text::lit("status"), Val::Str(self.text(path, s)))])
+            }
+            RawReply::Error(s) => {
+                Val::Obj(vec![(Text::lit("error"), Val::Str(self.text(path, s)))])
+            }
+            RawReply::Double(f) => Number::from_f64(*f)
+                .map_or(Val::Str(Text::lit(&f.to_string())), |n| {
+                    self.json_number(&n)
+                }),
             RawReply::Bool(b) => Val::Bool(*b),
             RawReply::Array(items) => Val::Arr(
                 items
@@ -549,15 +667,28 @@ impl Detector<'_, '_> {
                     .find(|(n, _)| n == "content-type")
                     .map(|(_, v)| v.to_ascii_lowercase())
                     .unwrap_or_default();
-                let essence = content_type.split(';').next().unwrap_or("").trim().to_string();
+                let essence = content_type
+                    .split(';')
+                    .next()
+                    .unwrap_or("")
+                    .trim()
+                    .to_string();
                 let is_json = essence == "application/json" || essence.ends_with("+json");
                 let mut bp = path.with_key("body");
-                let body = match (is_json, serde_json::from_slice::<Value>(&h.body), std::str::from_utf8(&h.body)) {
+                let body = match (
+                    is_json,
+                    serde_json::from_slice::<Value>(&h.body),
+                    std::str::from_utf8(&h.body),
+                ) {
                     (true, Ok(v), _) => Body::Json(self.json(&mut bp, &v)),
                     (_, _, Ok(text)) => Body::Text(self.text(&bp, text)),
                     _ => Body::Bytes(h.body.clone()),
                 };
-                StepCap::Http { status: h.status, headers, body }
+                StepCap::Http {
+                    status: h.status,
+                    headers,
+                    body,
+                }
             }
         }
     }
@@ -586,14 +717,22 @@ impl Detector<'_, '_> {
                 self.doc(&mut dp, d)
             })
             .collect();
-        CollCap { kind: c.kind.clone(), options, indexes, docs }
+        CollCap {
+            kind: c.kind.clone(),
+            options,
+            indexes,
+            docs,
+        }
     }
 
     fn entry(&mut self, e: &RawEntry) -> EntryCap {
         let root = Path::root("dragonfly");
         let key = match std::str::from_utf8(&e.key) {
             Ok(s) => self.text(&root, s),
-            Err(_) => Text::lit(&format!("<bytes:{}>", e.key.iter().map(|b| format!("{b:02x}")).collect::<String>())),
+            Err(_) => Text::lit(&format!(
+                "<bytes:{}>",
+                e.key.iter().map(|b| format!("{b:02x}")).collect::<String>()
+            )),
         };
         let mut vp = root.with_key(key.display()).with_key("value");
         let value = match &e.value {
@@ -634,9 +773,15 @@ impl Detector<'_, '_> {
                         vp.push_key("member");
                         let member = self.df_string(&mut vp, m);
                         vp.pop();
-                        let score = Number::from_f64(*score).map_or(Val::Str(Text::lit(&score.to_string())), |n| self.json_number(&n));
+                        let score = Number::from_f64(*score)
+                            .map_or(Val::Str(Text::lit(&score.to_string())), |n| {
+                                self.json_number(&n)
+                            });
                         vp.pop();
-                        Val::Obj(vec![(Text::lit("member"), member), (Text::lit("score"), score)])
+                        Val::Obj(vec![
+                            (Text::lit("member"), member),
+                            (Text::lit("score"), score),
+                        ])
                     })
                     .collect(),
             ),
@@ -658,30 +803,63 @@ impl Detector<'_, '_> {
                         }
                         vp.pop();
                         vp.pop();
-                        Val::Obj(vec![(Text::lit("id"), Val::Str(idt)), (Text::lit("fields"), Val::Obj(kv))])
+                        Val::Obj(vec![
+                            (Text::lit("id"), Val::Str(idt)),
+                            (Text::lit("fields"), Val::Obj(kv)),
+                        ])
                     })
                     .collect(),
             ),
             RawValue::Other => Val::Unsupported(e.kind.clone()),
         };
-        let ttl = if e.pttl >= 0 { Some(self.moment(self.ctx.captured_at + e.pttl)) } else { None };
-        EntryCap { key, kind: e.kind.clone(), ttl, value }
+        let ttl = if e.pttl >= 0 {
+            Some(self.moment(self.ctx.captured_at + e.pttl))
+        } else {
+            None
+        };
+        EntryCap {
+            key,
+            kind: e.kind.clone(),
+            ttl,
+            value,
+        }
     }
 
     fn run(&mut self, raw: &RawCapture) -> Capture {
-        let steps = raw.steps.iter().enumerate().map(|(i, s)| self.step(i, s)).collect();
-        let mongo = raw.mongo.iter().map(|(n, c)| (n.clone(), self.coll(n, c))).collect();
+        let steps = raw
+            .steps
+            .iter()
+            .enumerate()
+            .map(|(i, s)| self.step(i, s))
+            .collect();
+        let mongo = raw
+            .mongo
+            .iter()
+            .map(|(n, c)| (n.clone(), self.coll(n, c)))
+            .collect();
         let dragonfly = raw.dragonfly.iter().map(|e| self.entry(e)).collect();
-        Capture { steps, mongo, dragonfly }
+        Capture {
+            steps,
+            mongo,
+            dragonfly,
+        }
     }
 }
 
 /// Detect run-time values in a raw capture. The result still holds `Id::Raw` atoms; pass it to
 /// [`crate::canon::canonicalise`] to order and number it.
 pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
-    let mut first = Detector { ctx, extra: None, found: Vec::new() };
+    let mut first = Detector {
+        ctx,
+        extra: None,
+        found: Vec::new(),
+    };
     let cap = first.run(raw);
-    let mut found: Vec<String> = first.found.into_iter().filter(|s| s.chars().count() >= MIN_GENERATED_LEN).collect();
+    let mut found: Vec<String> = first
+        .found
+        .into_iter()
+        .filter(|s| s.chars().count() >= MIN_GENERATED_LEN)
+        .collect();
     if found.is_empty() {
         return cap;
     }
@@ -689,11 +867,19 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
     // other strings and key names), so cross-references are checked.
     found.sort_by_key(|s| std::cmp::Reverse(s.len()));
     found.dedup();
-    let alternation = found.iter().map(|s| regex::escape(s)).collect::<Vec<_>>().join("|");
+    let alternation = found
+        .iter()
+        .map(|s| regex::escape(s))
+        .collect::<Vec<_>>()
+        .join("|");
     let Ok(extra) = Regex::new(&alternation) else {
         return cap;
     };
-    let mut second = Detector { ctx, extra: Some(extra), found: Vec::new() };
+    let mut second = Detector {
+        ctx,
+        extra: Some(extra),
+        found: Vec::new(),
+    };
     second.run(raw)
 }
 
@@ -704,7 +890,11 @@ pub(crate) mod tests {
     pub const START: i64 = 1_794_400_000_000; // 2026-11-11T12:26:40.000Z
 
     pub fn window() -> Window {
-        Window { start: START, end: START + 3000, proc_start: START - 60_000 }
+        Window {
+            start: START,
+            end: START + 3000,
+            proc_start: START - 60_000,
+        }
     }
 
     /// An ObjectId generated at `ms`.
@@ -729,7 +919,11 @@ pub(crate) mod tests {
         let p = Patterns::new().unwrap();
         let allow = Allowances::default();
         let c = ctx(&p, known, &allow);
-        let mut d = Detector { ctx: &c, extra: None, found: Vec::new() };
+        let mut d = Detector {
+            ctx: &c,
+            extra: None,
+            found: Vec::new(),
+        };
         d.text(&Path::root("x"), raw)
     }
 
@@ -741,7 +935,10 @@ pub(crate) mod tests {
         assert!(matches!(&t.0[1], Seg::Id(Id::Raw(IdKind::Oid, v)) if *v == id));
         // An old ObjectId (outside the side's lifetime) and a hex run that is too long stay literal.
         let old = oid_at(START - 86_400_000, 1);
-        assert_eq!(text_of(&format!("x:{old}"), &Known::default()).as_plain(), Some(format!("x:{old}").as_str()));
+        assert_eq!(
+            text_of(&format!("x:{old}"), &Known::default()).as_plain(),
+            Some(format!("x:{old}").as_str())
+        );
         let long = format!("{id}ab");
         assert!(text_of(&long, &Known::default()).as_plain().is_some());
         // A known (seeded) id stays literal even when fresh.
@@ -762,7 +959,9 @@ pub(crate) mod tests {
     fn times_and_days_inside_strings() {
         let iso = timefmt::format_iso_ms(START + 1500).unwrap();
         let t = text_of(&format!("at {iso} ok"), &Known::default());
-        assert!(matches!(&t.0[1], Seg::Time { at: Moment::Rel { off: 1500, abs: None }, shape } if shape == "dddd-dd-ddTdd:dd:dd.dddZ"));
+        assert!(
+            matches!(&t.0[1], Seg::Time { at: Moment::Rel { off: 1500, abs: None }, shape } if shape == "dddd-dd-ddTdd:dd:dd.dddZ")
+        );
         let far = "1999-01-01T00:00:00.000Z";
         assert!(text_of(far, &Known::default()).as_plain().is_some());
         let day = timefmt::format_day(START.div_euclid(MS_PER_DAY));

@@ -102,11 +102,20 @@ pub struct Report {
 
 impl Report {
     pub fn new(command: &str, target: &str) -> Report {
-        Report { rig_report: REPORT_VERSION, command: command.into(), target: target.into(), ok: false, scenarios: Vec::new(), errors: Vec::new() }
+        Report {
+            rig_report: REPORT_VERSION,
+            command: command.into(),
+            target: target.into(),
+            ok: false,
+            scenarios: Vec::new(),
+            errors: Vec::new(),
+        }
     }
 
     pub fn finish(&mut self) {
-        self.ok = self.errors.is_empty() && !self.scenarios.is_empty() && self.scenarios.iter().all(|s| s.status.ok());
+        self.ok = self.errors.is_empty()
+            && !self.scenarios.is_empty()
+            && self.scenarios.iter().all(|s| s.status.ok());
     }
 
     pub fn find(&self, scenario: &str) -> Option<&ScenarioReport> {
@@ -120,15 +129,27 @@ impl Report {
         for s in &self.scenarios {
             let mut tail = Vec::new();
             if !s.differences.is_empty() {
-                tail.push(format!("{} difference{}", s.differences.len(), plural(s.differences.len())));
+                tail.push(format!(
+                    "{} difference{}",
+                    s.differences.len(),
+                    plural(s.differences.len())
+                ));
             }
             if !s.notes.is_empty() {
                 tail.push(format!("{} note{}", s.notes.len(), plural(s.notes.len())));
             }
             if !s.warnings.is_empty() {
-                tail.push(format!("{} warning{}", s.warnings.len(), plural(s.warnings.len())));
+                tail.push(format!(
+                    "{} warning{}",
+                    s.warnings.len(),
+                    plural(s.warnings.len())
+                ));
             }
-            let extra = if tail.is_empty() { String::new() } else { format!(" ({})", tail.join(", ")) };
+            let extra = if tail.is_empty() {
+                String::new()
+            } else {
+                format!(" ({})", tail.join(", "))
+            };
             let _ = writeln!(o, "\n{:<9} {}{}", s.status.label(), s.scenario, extra);
             for e in &s.errors {
                 let at = e.step.map(|n| format!(" at step {n}")).unwrap_or_default();
@@ -158,7 +179,14 @@ impl Report {
         }
         let count = |st: Status| self.scenarios.iter().filter(|s| s.status == st).count();
         let mut parts = Vec::new();
-        for st in [Status::Match, Status::Differ, Status::Error, Status::Recorded, Status::Unchanged, Status::Unstable] {
+        for st in [
+            Status::Match,
+            Status::Differ,
+            Status::Error,
+            Status::Recorded,
+            Status::Unchanged,
+            Status::Unstable,
+        ] {
             let n = count(st);
             if n > 0 {
                 parts.push(format!("{n} {}", st.label().to_lowercase()));
