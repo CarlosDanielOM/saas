@@ -13,6 +13,7 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// What a layer does with the request: Express's `next()`, `next('route')`, `next('router')`,
 /// or answering. Errors are the `Err` side of the handler's `Result` (`next(err)`).
 #[derive(Debug)]
+#[must_use = "a Flow takes effect only when the handler returns it"]
 pub enum Flow {
     /// `next()`: continue with the next matching layer.
     Next,

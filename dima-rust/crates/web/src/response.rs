@@ -59,6 +59,7 @@ enum Payload {
 /// # let _ = (created, page, gone, moved);
 /// ```
 #[derive(Debug)]
+#[must_use = "a Response is sent only when the handler returns it"]
 pub struct Response {
     status: Option<u16>,
     ops: Vec<HeaderOp>,
@@ -91,14 +92,12 @@ impl Response {
     }
 
     /// `res.status(code)` on an existing builder.
-    #[must_use]
     pub fn with_status(mut self, code: u16) -> Self {
         self.status = Some(code);
         self
     }
 
     /// `res.setHeader(name, value)`: the value is sent as given.
-    #[must_use]
     pub fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.ops.push(HeaderOp::Raw(name.into(), value.into()));
         self
@@ -106,21 +105,18 @@ impl Response {
 
     /// `res.set(name, value)`: like [`Response::header`], but a `Content-Type` without a charset
     /// gains the charset the mime table lists (`application/json` → `; charset=utf-8`).
-    #[must_use]
     pub fn set(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.ops.push(HeaderOp::Express(name.into(), value.into()));
         self
     }
 
     /// `res.append(name, value)`.
-    #[must_use]
     pub fn append(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.ops.push(HeaderOp::Append(name.into(), value.into()));
         self
     }
 
     /// `res.type(type)`: a full media type, or an extension such as `"txt"` or `"html"`.
-    #[must_use]
     pub fn content_type(mut self, value: &str) -> Self {
         self.ops.push(HeaderOp::Raw(
             "Content-Type".to_owned(),
@@ -130,14 +126,12 @@ impl Response {
     }
 
     /// `res.vary(field)`.
-    #[must_use]
     pub fn vary(mut self, field: impl Into<String>) -> Self {
         self.ops.push(HeaderOp::Vary(field.into()));
         self
     }
 
     /// `res.removeHeader(name)`.
-    #[must_use]
     pub fn remove_header(mut self, name: impl Into<String>) -> Self {
         self.ops.push(HeaderOp::Remove(name.into()));
         self
@@ -150,28 +144,24 @@ impl Response {
     /// the value serialises them; clients parse the body, so that order is not a contract. A
     /// value whose exact bytes are compared somewhere is built with `dima_text::to_js_json`
     /// and sent with [`Response::bytes`].
-    #[must_use]
     pub fn json<T: Serialize + ?Sized>(mut self, value: &T) -> Self {
         self.payload = Payload::Json(dima_text::to_js_json_from(value).map_err(|e| e.to_string()));
         self
     }
 
     /// `res.send(string)`: `text/html; charset=utf-8` unless a type was set.
-    #[must_use]
     pub fn text(mut self, body: impl Into<String>) -> Self {
         self.payload = Payload::Text(body.into());
         self
     }
 
     /// `res.send(buffer)`: `application/octet-stream` unless a type was set.
-    #[must_use]
     pub fn bytes(mut self, body: impl Into<Bytes>) -> Self {
         self.payload = Payload::Bytes(body.into());
         self
     }
 
     /// `res.end()`: no body and no content headers.
-    #[must_use]
     pub fn end(mut self) -> Self {
         self.payload = Payload::End;
         self
