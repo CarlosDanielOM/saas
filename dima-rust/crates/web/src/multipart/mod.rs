@@ -19,7 +19,7 @@
 //!         Err(_) => Envelope::fail(400, "Error uploading file").reply(),
 //!         Ok(None) => Envelope::fail(400, "No file uploaded or invalid file type").reply(),
 //!         Ok(Some(file)) => Envelope::ok("Uploaded")
-//!             .data(json!({ "name": req.body()["name"], "size": file.size }))
+//!             .data(json!({ "name": req.body()["name"], "size": file.size() }))
 //!             .reply(),
 //!     }
 //! }
