@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Prints the environment for tests that need the local stores (development machine only).
+#
+#   eval "$(dima-rust/tools/test-env)"
+#
+# Exports:
+#   DIMA_TEST_MONGO_URI     root URI of the local MongoDB container (no database in the path)
+#   DIMA_TEST_DRAGONFLY     host:port of the local Dragonfly container (no authentication)
+#   DIMA_TEST_QDRANT_URL    base URL of the local Qdrant container (no authentication)
+#   DIMA_TEST_POSTGRES_URI  URI of the local Postgres container
+#
+# Credentials are read from the running containers and never written to disk.
+# Tests create their own databases named dima_test_<crate>_<random> and drop them;
+# the only test that reads `domdimabot` is the model crate's read-only decode check.
+set -euo pipefail
+
+from_container() { docker exec "$1" printenv "$2" 2>/dev/null || true; }
+urlencode() { python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"; }
+
+mongo_user="$(from_container mongodb MONGO_INITDB_ROOT_USERNAME)"
+mongo_pass="$(from_container mongodb MONGO_INITDB_ROOT_PASSWORD)"
+if [[ -n "$mongo_user" ]]; then
+    printf 'export DIMA_TEST_MONGO_URI=%q\n' \
+        "mongodb://$(urlencode "$mongo_user"):$(urlencode "$mongo_pass")@127.0.0.1:27017/?authSource=admin&directConnection=true"
+else
+    printf 'export DIMA_TEST_MONGO_URI=%q\n' "mongodb://127.0.0.1:27017/?directConnection=true"
+fi
+
+printf 'export DIMA_TEST_DRAGONFLY=%q\n' "127.0.0.1:6379"
+printf 'export DIMA_TEST_QDRANT_URL=%q\n' "http://127.0.0.1:6333"
+
+pg_user="$(from_container postgres POSTGRES_USER)"
+pg_pass="$(from_container postgres POSTGRES_PASSWORD)"
+pg_db="$(from_container postgres POSTGRES_DB)"
+if [[ -n "$pg_user" ]]; then
+    printf 'export DIMA_TEST_POSTGRES_URI=%q\n' \
+        "postgres://$(urlencode "$pg_user"):$(urlencode "$pg_pass")@127.0.0.1:5432/${pg_db:-$pg_user}"
+fi
