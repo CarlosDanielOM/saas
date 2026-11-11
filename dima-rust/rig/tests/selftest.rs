@@ -24,6 +24,7 @@ static N: AtomicU32 = AtomicU32::new(0);
 const ALL: &[&str] = &[
     "items/create",
     "items/jobs",
+    "items/lease",
     "items/memory",
     "items/restart",
 ];
@@ -104,6 +105,8 @@ fn rig_with(work: &Path, rig_dir: &Path, captures: &Path, variant: &str, args: &
         .arg(format!("fixture={FIXTURE}"))
         .arg("--set")
         .arg(format!("variant={variant}"))
+        .arg("--set")
+        .arg(format!("captures={}", captures.display()))
         .args(args)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -238,6 +241,45 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
                 && p.ends_with("].headers.set-cookie.sid.samesite")
                 && w == "text differs"
         }),
+        // A lease deadline replayed from the reference's recording (an absolute time).
+        "lease-replay" => assert_only(&run, variant, &["items/lease"], |p, w| {
+            p == "mongo.items[0].leaseUntil"
+                && (w.contains("run-relative times differ") || w.contains("time relation"))
+        }),
+        // updatedAt not bumped by the second operation: only the relation sees it.
+        "no-bump" => assert_only(&run, variant, &["items/lease"], |p, w| {
+            p == "mongo.items[0].updatedAt"
+                && w.contains("time relation to mongo.items[0].createdAt differs")
+        }),
+        // A lease of 61 s instead of 60 s: within the window tolerance, a fixed duration broken.
+        "lease-length" => assert_only(&run, variant, &["items/lease"], |p, w| {
+            p == "mongo.items[0].leaseUntil" && w.contains("a fixed duration")
+        }),
+        "date-as-string" => assert_only(&run, variant, all, |p, w| {
+            p.starts_with("mongo.items[")
+                && p.ends_with("].createdAt")
+                && w == "type differs: reference BSON date, candidate string"
+        }),
+        "date-as-number" => assert_only(&run, variant, all, |p, w| {
+            p.starts_with("mongo.items[")
+                && p.ends_with("].createdAt")
+                && w == "type differs: reference BSON date, candidate double epoch-ms"
+        }),
+        "index-order" => assert_only(&run, variant, all, |p, w| {
+            p == "mongo.items.indexes.owner_1_createdAt_-1.key" && w == "index key order differs"
+        }),
+        "index-option" => assert_only(&run, variant, all, |p, w| {
+            p == "mongo.items.indexes.owner_1_createdAt_-1.sparse" && w == "field only in candidate"
+        }),
+        "stream-field" => assert_only(&run, variant, all, |p, w| {
+            p.starts_with("dragonfly[\"items:events\"].value[")
+                && p.ends_with("].fields[2]")
+                && w == "array element missing in candidate"
+        }),
+        "hash-bytes" => assert_only(&run, variant, all, |p, w| {
+            p.starts_with("dragonfly[\"fixture:bin\"].value[\"<bytes:ff>")
+                && (w == "field missing in candidate" || w == "field only in candidate")
+        }),
         "job-key-order" => assert_only(&run, variant, &["items/jobs"], |p, w| {
             p == "dragonfly[\"cron:jobs:queue\"].value[0]" && w == "text differs"
         }),
@@ -307,8 +349,11 @@ fn with_read_db<T>(uri: &str, name: &str, f: impl FnOnce() -> T) -> T {
             ])
             .await
             .unwrap();
-        // The index the fixture creates at start-up, so its start-up is not a write.
-        db.run_command(bson::doc! {"createIndexes": "items", "indexes": [{"key": {"name": 1}, "name": "name_1", "unique": true}]})
+        // The indexes the fixture creates at start-up, so its start-up is not a write.
+        db.run_command(bson::doc! {"createIndexes": "items", "indexes": [
+            {"key": {"name": 1}, "name": "name_1", "unique": true},
+            {"key": {"owner": 1, "createdAt": -1}, "name": "owner_1_createdAt_-1"},
+        ]})
             .await
             .unwrap();
     });
@@ -412,6 +457,15 @@ fn self_test_end_to_end() {
         "job-key-order",
         "no-cookie",
         "cookie-attr",
+        "lease-replay",
+        "no-bump",
+        "lease-length",
+        "date-as-string",
+        "date-as-number",
+        "index-order",
+        "index-option",
+        "stream-field",
+        "hash-bytes",
     ];
     for chunk in variants.chunks(3) {
         std::thread::scope(|s| {

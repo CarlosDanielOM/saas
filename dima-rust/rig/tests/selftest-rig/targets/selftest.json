@@ -1,6 +1,6 @@
 {
   "rig_target": 1,
-  "description": "Self-test: the fixture server on both sides. The second port, admin, sorts before http but is not the primary port: requests without a port go to http, the first one declared. Pass --set fixture=<path to dima-rig-fixture> --set variant=<candidate variant>.",
+  "description": "Self-test: the fixture server on both sides. The second port, admin, sorts before http but is not the primary port: requests without a port go to http, the first one declared. Pass --set fixture=<path to dima-rig-fixture> --set variant=<candidate variant> --set captures=<captures directory> (the lease-replay variant reads the reference's recording).",
   "ports": ["http", "admin"],
   "reference": {
     "command": ["{var.fixture}", "--variant", "good"],
@@ -19,7 +19,8 @@
       "PORT": "{port}",
       "MONGO_URI": "{mongo_uri}",
       "MONGO_DB": "{mongo_db}",
-      "REDIS_URL": "{dragonfly_url}"
+      "REDIS_URL": "{dragonfly_url}",
+      "FIXTURE_CAPTURES": "{var.captures}"
     },
     "ready": { "http": "/health", "timeout_ms": 15000 },
     "stop": { "signal": "SIGTERM", "grace_ms": 3000 }

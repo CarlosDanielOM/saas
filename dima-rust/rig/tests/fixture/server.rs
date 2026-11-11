@@ -33,6 +33,15 @@ enum Variant {
     NoCookie,
     CookieAttr,
     StrictStartup,
+    LeaseReplay,
+    NoBump,
+    LeaseLength,
+    DateAsString,
+    DateAsNumber,
+    IndexOrder,
+    IndexOption,
+    StreamField,
+    HashBytes,
 }
 
 impl Variant {
@@ -53,6 +62,15 @@ impl Variant {
             "no-cookie" => Variant::NoCookie,
             "cookie-attr" => Variant::CookieAttr,
             "strict-startup" => Variant::StrictStartup,
+            "lease-replay" => Variant::LeaseReplay,
+            "no-bump" => Variant::NoBump,
+            "lease-length" => Variant::LeaseLength,
+            "date-as-string" => Variant::DateAsString,
+            "date-as-number" => Variant::DateAsNumber,
+            "index-order" => Variant::IndexOrder,
+            "index-option" => Variant::IndexOption,
+            "stream-field" => Variant::StreamField,
+            "hash-bytes" => Variant::HashBytes,
             other => bail!("unknown variant {other}"),
         })
     }
@@ -94,6 +112,23 @@ fn iso(dt: bson::DateTime) -> String {
 
 fn env(name: &str) -> Result<String> {
     std::env::var(name).with_context(|| format!("{name} is not set"))
+}
+
+/// The lease deadline the reference wrote in `items/lease`, from its recording
+/// (`FIXTURE_CAPTURES`): a candidate that replays an absolute time.
+fn replayed_lease() -> Result<f64> {
+    let dir = std::env::var("FIXTURE_CAPTURES").context("FIXTURE_CAPTURES is not set")?;
+    let text = std::fs::read_to_string(format!("{dir}/selftest/items/lease.json"))?;
+    let v: Value = serde_json::from_str(&text)?;
+    let docs = v["mongo"]["items"]["documents"]
+        .as_array()
+        .ok_or_else(|| anyhow!("no items in the recording"))?;
+    let lease = docs
+        .iter()
+        .find(|d| d["name"] == "leased")
+        .and_then(|d| d["leaseUntil"]["$numberDouble"].as_str())
+        .ok_or_else(|| anyhow!("no leaseUntil in the recording"))?;
+    Ok(lease.parse()?)
 }
 
 async fn read_request(s: &mut TcpStream) -> Result<Request> {
@@ -201,11 +236,17 @@ impl App {
         } else {
             Bson::Int32(i32::try_from(qty)?)
         };
+        // One clock reading for createdAt and updatedAt; the lease is exactly 60 s after it.
         let lease = Bson::Double((now.timestamp_millis() + 60_000) as f64);
+        let created = match self.v {
+            Variant::DateAsString => Bson::String(iso(now)),
+            Variant::DateAsNumber => Bson::Double(now.timestamp_millis() as f64),
+            _ => Bson::DateTime(now),
+        };
         let mut item = if self.v == Variant::Equivalent {
-            doc! {"_id": id, "owner": owner, "uuid": &uuid, "tags": ["new"], "leaseUntil": lease, "createdAt": now, "qty": qty_bson, "name": &name}
+            doc! {"_id": id, "owner": owner, "uuid": &uuid, "tags": ["new"], "leaseUntil": lease, "updatedAt": now, "createdAt": created, "qty": qty_bson, "name": &name}
         } else {
-            doc! {"_id": id, "name": &name, "qty": qty_bson, "owner": owner, "uuid": &uuid, "createdAt": now, "leaseUntil": lease, "tags": ["new"]}
+            doc! {"_id": id, "name": &name, "qty": qty_bson, "owner": owner, "uuid": &uuid, "createdAt": created, "updatedAt": now, "leaseUntil": lease, "tags": ["new"]}
         };
         if self.v == Variant::NullField {
             item.insert("note", Bson::Null);
@@ -252,6 +293,18 @@ impl App {
             .arg("items:count")
             .query_async(&mut r)
             .await?;
+        // A stream entry that repeats a field name.
+        let mut xadd = redis::cmd("XADD");
+        xadd.arg("items:events")
+            .arg("*")
+            .arg("item")
+            .arg(id.to_hex())
+            .arg("tag")
+            .arg("new");
+        if self.v != Variant::StreamField {
+            xadd.arg("tag").arg("created");
+        }
+        xadd.query_async::<String>(&mut r).await?;
         let total = if self.v == Variant::Number {
             total + 1
         } else {
@@ -284,6 +337,28 @@ impl App {
             r.headers.push(("set-cookie", c));
         }
         Ok(r)
+    }
+
+    /// Renew an item's lease in a second operation: updatedAt moves to now and the lease is now
+    /// plus exactly 60 s.
+    async fn touch_item(&self, hex: &str) -> Result<Response> {
+        let id = ObjectId::parse_str(hex)?;
+        let now = bson::DateTime::now();
+        let lease = match self.v {
+            Variant::LeaseLength => (now.timestamp_millis() + 61_000) as f64,
+            // The reference's absolute deadline, read from its recording.
+            Variant::LeaseReplay => replayed_lease()?,
+            _ => (now.timestamp_millis() + 60_000) as f64,
+        };
+        let mut set = doc! {"leaseUntil": lease};
+        if self.v != Variant::NoBump {
+            set.insert("updatedAt", now);
+        }
+        self.db
+            .collection::<Document>("items")
+            .update_one(doc! {"_id": id}, doc! {"$set": set})
+            .await?;
+        Ok(json_resp(200, &json!({"ok": true})))
     }
 
     async fn get_item(&self, hex: &str) -> Result<Response> {
@@ -320,7 +395,12 @@ impl App {
                 "name": d.get_str("name").unwrap_or(""),
                 "qty": qty,
                 "owner": d.get_object_id("owner").map(|o| o.to_hex()).unwrap_or_default(),
-                "createdAt": d.get_datetime("createdAt").map(|t| iso(*t)).unwrap_or_default(),
+                "createdAt": match d.get("createdAt") {
+                    Some(Bson::DateTime(t)) => iso(*t),
+                    Some(Bson::String(s)) => s.clone(),
+                    Some(Bson::Double(f)) => iso(bson::DateTime::from_millis(*f as i64)),
+                    _ => String::new(),
+                },
             }),
         ))
     }
@@ -377,6 +457,15 @@ impl App {
         for d in docs {
             jobs.insert_one(d).await?;
         }
+        // An object keyed by generated ids; `equivalent` writes its keys in the other order.
+        let mut steps = doc! {a.to_hex(): {"step": 1}, b.to_hex(): {"step": 2}};
+        if self.v == Variant::Equivalent {
+            steps = doc! {b.to_hex(): {"step": 2}, a.to_hex(): {"step": 1}};
+        }
+        self.db
+            .collection::<Document>("batches")
+            .insert_one(doc! {"_id": ObjectId::new(), "item": item, "steps": steps})
+            .await?;
         let mut r = self.redis.clone();
         redis::cmd("RPUSH")
             .arg("jobs:done")
@@ -398,6 +487,7 @@ impl App {
             }),
             ("POST", ["items"]) => self.create_item(&req.body).await,
             ("GET", ["items", id]) => self.get_item(id).await,
+            ("POST", ["items", id, "touch"]) => self.touch_item(id).await,
             ("POST", ["jobs"]) => self.queue_jobs(&req.body).await,
             // Echo one word (a scenario saves it and uses it in a later step).
             ("GET", ["word", w]) => Ok(json_resp(200, &json!({"word": w}))),
@@ -458,7 +548,37 @@ async fn main() -> Result<()> {
         }
         println!("fixture: createIndexes failed: {e}");
     }
+    let compound = match variant {
+        Variant::IndexOrder => {
+            doc! {"key": {"createdAt": -1, "owner": 1}, "name": "owner_1_createdAt_-1"}
+        }
+        Variant::IndexOption => {
+            doc! {"key": {"owner": 1, "createdAt": -1}, "name": "owner_1_createdAt_-1", "sparse": true}
+        }
+        _ => doc! {"key": {"owner": 1, "createdAt": -1}, "name": "owner_1_createdAt_-1"},
+    };
+    if let Err(e) = db
+        .run_command(doc! {"createIndexes": "items", "indexes": [compound]})
+        .await
+    {
+        if variant == Variant::StrictStartup {
+            return Err(e.into());
+        }
+        println!("fixture: createIndexes failed: {e}");
+    }
     let mut r = redis.clone();
+    // A hash field that is not UTF-8.
+    let field: &[u8] = if variant == Variant::HashBytes {
+        b"\xff\x02"
+    } else {
+        b"\xff\x01"
+    };
+    redis::cmd("HSET")
+        .arg("fixture:bin")
+        .arg(field)
+        .arg("1")
+        .query_async::<i64>(&mut r)
+        .await?;
     redis::cmd("SET")
         .arg("fixture:boot")
         .arg("1")
