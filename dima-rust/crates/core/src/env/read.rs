@@ -227,8 +227,9 @@ pub fn comma_list<'a>(raw: Option<&'a str>, def: &'a str) -> Vec<&'a str> {
 
 /// `JSON.parse(x)` in a `try`: `None` when unset or not JSON (the caller's fallback applies).
 ///
-/// Lone surrogate escapes become U+FFFD (text rule 3). A number beyond the double range, which
-/// JavaScript reads as an infinity, is rejected here.
+/// Lone surrogate escapes become U+FFFD (text rule 3). Numbers keep their JSON literal; read
+/// them with `as_f64` for the double JavaScript holds (`9007199254740993` is 2^53 there). A
+/// number beyond the double range, which JavaScript reads as an infinity, is rejected here.
 pub fn json_value(raw: Option<&str>) -> Option<Value> {
     let text = raw?;
     let bytes = dima_text::sanitize_lone_surrogates(text.as_bytes());
