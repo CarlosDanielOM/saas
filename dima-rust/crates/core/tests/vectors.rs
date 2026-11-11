@@ -169,11 +169,13 @@ fn env_idioms() {
             "not_false_ignore_case" => json!(read::not_false_ignore_case(x)),
             "truthy" => json!(read::truthy(x)),
             "string_or" => json!(read::string_or(x, "def")),
+            "string_nullish" => json!(read::string_nullish(x, "def")),
             "non_empty" => json!(read::non_empty(x)),
             "trimmed" => json!(read::trimmed(x)),
             "trimmed_or" => json!(read::trimmed_or(x, "def")),
             "or_undefined_text" => json!(read::or_undefined_text(x)),
             "strip_trailing_slashes" => json!(read::strip_trailing_slashes(x.unwrap_or(""))),
+            "strip_one_trailing_slash" => json!(read::strip_one_trailing_slash(x.unwrap_or(""))),
             "comma_list" => json!(read::comma_list(x, "a.com,www.a.com")),
             // Compared as JavaScript writes the value: a JSON number is a double there (`-0`,
             // `1e3` and 2^53 + 1 are 0, 1000 and 2^53), while serde_json keeps the literal.

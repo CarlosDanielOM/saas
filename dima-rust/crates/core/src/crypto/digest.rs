@@ -11,6 +11,7 @@ use sha2::{Digest as _, Sha256};
 use subtle::ConstantTimeEq;
 
 /// A digest or MAC value with Node's text encodings (`digest('hex')`, `'base64'`, `'base64url'`).
+/// `==` is not constant-time: compare a MAC with a received value through [`constant_time_eq`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Hash<const N: usize>(pub [u8; N]);
 

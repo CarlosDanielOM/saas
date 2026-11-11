@@ -217,7 +217,9 @@ async fn supervise(factory: TaskFactory, token: Shutdown, slot: Arc<Slot>, delay
             return;
         }
         slot.update(|state| state.status = TaskStatus::Running);
-        let handle = tokio::spawn(factory(token.clone()));
+        // The factory runs inside the task, so a panic while building the future is a task panic.
+        let (build, child) = (Arc::clone(&factory), token.clone());
+        let handle = tokio::spawn(async move { build(child).await });
         slot.set_current(Some(handle.abort_handle()));
         let exit = match handle.await {
             Ok(Ok(())) => TaskExit::Finished,
@@ -410,6 +412,33 @@ mod tests {
         assert_eq!(handle.snapshot()[0].last_exit, Some(TaskExit::Finished));
         assert_eq!(handle.snapshot()[0].restarts, 2);
         handle.stop().await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_panicking_factory_is_a_task_panic() {
+        let (builds, seen) = counter();
+        let mut supervisor = Supervisor::new(config());
+        supervisor.add("factory", move |token: Shutdown| {
+            assert!(
+                builds.fetch_add(1, Ordering::SeqCst) > 0,
+                "first build fails"
+            );
+            async move {
+                token.wait().await;
+                Ok::<(), String>(())
+            }
+        });
+        let handle = supervisor.start(&Shutdown::new());
+        sleep(Duration::from_millis(1500)).await;
+        let state = &handle.snapshot()[0];
+        assert_eq!(seen.load(Ordering::SeqCst), 2);
+        assert_eq!(state.status, TaskStatus::Running);
+        assert_eq!(state.restarts, 1);
+        assert_eq!(
+            state.last_exit,
+            Some(TaskExit::Panicked("first build fails".to_owned()))
+        );
+        assert!(handle.stop().await.unstoppable.is_empty());
     }
 
     #[tokio::test(start_paused = true)]

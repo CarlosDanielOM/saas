@@ -135,11 +135,13 @@ const idioms = {
     not_false_ignore_case: (x) => x?.toLowerCase() !== 'false',
     truthy: (x) => !!x,
     string_or: (x) => String(x || 'def'),
+    string_nullish: (x) => x ?? 'def',
     non_empty: (x) => x || null,
     trimmed: (x) => x?.trim() ?? null,
     trimmed_or: (x) => x?.trim() || 'def',
     or_undefined_text: (x) => `${x}`,
     strip_trailing_slashes: (x) => (x ?? '').replace(/\/+$/, ''),
+    strip_one_trailing_slash: (x) => (x ?? '').replace(/\/$/, ''),
     comma_list: (x) => (x || 'a.com,www.a.com').split(',').map((v) => v.trim()),
     json_value: (x) => { try { return { value: JSON.parse(x) }; } catch { return null; } },
 };

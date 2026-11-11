@@ -28,11 +28,14 @@
 //! | `x?.toLowerCase() !== 'false'` | [`not_false_ignore_case`] |
 //! | `!!x`, `Boolean(x)`, `if (x)` | [`truthy`] |
 //! | `x \|\| def`, `String(x \|\| def)` | [`string_or`] |
+//! | `x ?? def` | [`string_nullish`] |
 //! | `x \|\| null`, `x \|\| undefined` | [`non_empty`] |
 //! | `x?.trim()` | [`trimmed`] |
 //! | `x?.trim() \|\| def` | [`trimmed_or`] |
 //! | `` `${x!}` `` (non-null assertion into text) | [`or_undefined_text`] |
 //! | `.replace(/\/+$/, '')` | [`strip_trailing_slashes`] |
+//! | `.replace(/\/$/, '')` | [`strip_one_trailing_slash`] |
+//! | `x === 'literal'` (`NODE_ENV === 'production'`, `POLARSH_ENVIRONMENT === 'sandbox'`) | `raw == Some("literal")` |
 //! | `(x \|\| def).split(',').map(v => v.trim())` (add `.filter(\|s\| !s.is_empty())` for `.filter(Boolean)`) | [`comma_list`] |
 //! | `JSON.parse(x)` inside `try`, falling back on error | [`json_value`] |
 //! | `setTimeout`/`setInterval` coercion of the delay | [`timer_delay_ms`] |
@@ -192,6 +195,11 @@ pub fn string_or<'a>(raw: Option<&'a str>, def: &'a str) -> &'a str {
     non_empty(raw).unwrap_or(def)
 }
 
+/// `x ?? def`: unset gives `def`; an empty value stays empty.
+pub fn string_nullish<'a>(raw: Option<&'a str>, def: &'a str) -> &'a str {
+    raw.unwrap_or(def)
+}
+
 /// `x || null`: the value when set and not empty.
 pub fn non_empty(raw: Option<&str>) -> Option<&str> {
     raw.filter(|text| !text.is_empty())
@@ -215,6 +223,11 @@ pub fn or_undefined_text(raw: Option<&str>) -> &str {
 /// `text.replace(/\/+$/, '')`.
 pub fn strip_trailing_slashes(text: &str) -> &str {
     text.trim_end_matches('/')
+}
+
+/// `text.replace(/\/$/, '')`: at most one slash.
+pub fn strip_one_trailing_slash(text: &str) -> &str {
+    text.strip_suffix('/').unwrap_or(text)
 }
 
 /// `(x || def).split(',').map(v => v.trim())`.

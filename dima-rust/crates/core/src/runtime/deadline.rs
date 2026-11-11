@@ -95,7 +95,7 @@ pub async fn run_with_deadline<T, F, Fut>(
     work: F,
 ) -> Result<T, DeadlineError>
 where
-    F: FnOnce(WorkScope) -> Fut,
+    F: FnOnce(WorkScope) -> Fut + Send + 'static,
     Fut: Future<Output = T> + Send + 'static,
     T: Send + 'static,
 {
@@ -105,7 +105,8 @@ where
         token: token.clone(),
         tracker: tracker.clone(),
     };
-    let mut handle = tracker.spawn(work(scope));
+    // `work` is called inside the task, so a panic while building the future is contained too.
+    let mut handle = tracker.spawn(async move { work(scope).await });
     let abort = handle.abort_handle();
     tracker.close();
 

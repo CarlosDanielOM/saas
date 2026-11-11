@@ -2,9 +2,10 @@
 
 use std::fmt;
 
-/// Secret bytes (keys, shared secrets). `Debug` prints a placeholder; the bytes are
-/// overwritten with zeros when the value is dropped (best effort, no `unsafe`).
-#[derive(Clone, PartialEq, Eq, Default)]
+/// Secret bytes (keys, shared secrets). `Debug` prints a placeholder; equality is constant-time
+/// for equal lengths; the bytes are overwritten with zeros when the value is dropped (best
+/// effort, no `unsafe`).
+#[derive(Clone, Eq, Default)]
 pub struct SecretBytes(Vec<u8>);
 
 impl SecretBytes {
@@ -29,6 +30,12 @@ impl SecretBytes {
     }
 }
 
+impl PartialEq for SecretBytes {
+    fn eq(&self, other: &Self) -> bool {
+        crate::crypto::digest::constant_time_eq(&self.0, &other.0)
+    }
+}
+
 impl fmt::Debug for SecretBytes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("SecretBytes(<redacted>)")
@@ -41,8 +48,9 @@ impl Drop for SecretBytes {
     }
 }
 
-/// A secret text value (for example `SECRET_KEY`). `Debug` prints a placeholder.
-#[derive(Clone, PartialEq, Eq, Default)]
+/// A secret text value (for example `SECRET_KEY`). `Debug` prints a placeholder; equality is
+/// constant-time for equal lengths.
+#[derive(Clone, Eq, Default)]
 pub struct SecretString(String);
 
 impl SecretString {
@@ -70,6 +78,12 @@ impl SecretString {
 impl From<&str> for SecretString {
     fn from(text: &str) -> Self {
         Self(text.to_owned())
+    }
+}
+
+impl PartialEq for SecretString {
+    fn eq(&self, other: &Self) -> bool {
+        crate::crypto::digest::constant_time_eq(self.0.as_bytes(), other.0.as_bytes())
     }
 }
 
