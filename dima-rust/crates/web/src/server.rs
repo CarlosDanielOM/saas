@@ -24,6 +24,10 @@
 //! - **Time**: 60 s for a request head, 300 s from the head to the end of the body, and 5 s of
 //!   keep-alive idleness between requests (Node's `headersTimeout`, `requestTimeout` and
 //!   `keepAliveTimeout`).
+//! - **Slow readers**: a write to the client that stays pending without progress for 60 s
+//!   ([`ServeOptions::write_stall_timeout`]) closes the connection, for ordinary responses,
+//!   event streams and upgraded sockets alike. Node has no such bound: a client that stops
+//!   reading kept its socket until the kernel gave up.
 
 use std::convert::Infallible;
 use std::future::Future as _;
@@ -94,6 +98,14 @@ pub struct ServeOptions {
     /// After shutdown is requested, how long open connections may finish their requests, and
     /// upgraded connections may close, before they are closed.
     pub drain_timeout: Duration,
+    /// How long a write to the client may stay pending without making progress before the
+    /// connection is closed (60 s by default; `Duration::ZERO` turns the deadline off). It
+    /// covers ordinary responses, event streams and upgraded sockets: a client that stops
+    /// reading would otherwise hold its connection (or stream) slot for ever, since an answer in
+    /// progress is never idle. Only a write that is waiting counts: a stream that has nothing to
+    /// send for a while is not stalled. On an upgraded socket the stalled write fails with
+    /// `TimedOut` and every later read and write with `ConnectionAborted`.
+    pub write_stall_timeout: Duration,
 }
 
 impl Default for ServeOptions {
@@ -105,6 +117,7 @@ impl Default for ServeOptions {
             max_connections: 10_000,
             max_streams: 10_000,
             drain_timeout: Duration::from_secs(10),
+            write_stall_timeout: Duration::from_secs(60),
         }
     }
 }
@@ -372,8 +385,9 @@ impl UpgradeGuard {
 
 /// The connection's socket: notes reads for the keep-alive watcher, holds the connection's slot
 /// for as long as the socket lives (an upgrade takes the socket, and the slot with it), keeps
-/// shutdown waiting, and fails every read and write once shutdown forces it closed or its
-/// upgrade owner aborts it.
+/// shutdown waiting, fails every read and write once shutdown forces it closed or its upgrade
+/// owner aborts it, and gives up on a write that stays pending without progress for
+/// [`ServeOptions::write_stall_timeout`].
 struct ConnectionIo {
     stream: TcpStream,
     activity: Arc<Activity>,
@@ -382,15 +396,74 @@ struct ConnectionIo {
     /// Two waiters, so a reader and a writer on different tasks are both woken.
     forced_read: Pin<Box<WaitForCancellationFutureOwned>>,
     forced_write: Pin<Box<WaitForCancellationFutureOwned>>,
+    /// This connection's abort: cancelled when a write stalls, so reads fail too.
+    abort: CancellationToken,
+    stall: WriteStall,
+}
+
+/// The write-stall deadline of one socket: armed when a write first returns `Pending`, disarmed
+/// by any write that makes progress.
+struct WriteStall {
+    timeout: Duration,
+    /// Created on the first stall and reset afterwards.
+    timer: Option<Pin<Box<tokio::time::Sleep>>>,
+    armed: bool,
+}
+
+impl WriteStall {
+    fn new(timeout: Duration) -> Self {
+        Self {
+            timeout,
+            timer: None,
+            armed: false,
+        }
+    }
+
+    /// Notes the outcome of a write; `true` when it has now been pending for too long.
+    fn stalled<T>(&mut self, polled: &Poll<io::Result<T>>, cx: &mut Context<'_>) -> bool {
+        if !polled.is_pending() {
+            self.armed = false;
+            return false;
+        }
+        if self.timeout.is_zero() {
+            return false;
+        }
+        let deadline = Instant::now() + self.timeout;
+        let timer = self
+            .timer
+            .get_or_insert_with(|| Box::pin(tokio::time::sleep_until(deadline)));
+        if !self.armed {
+            self.armed = true;
+            timer.as_mut().reset(deadline);
+        }
+        timer.as_mut().poll(cx).is_ready()
+    }
 }
 
 fn forced() -> io::Error {
     io::Error::new(io::ErrorKind::ConnectionAborted, "server shut down")
 }
 
+fn write_stalled() -> io::Error {
+    io::Error::new(io::ErrorKind::TimedOut, "write stalled")
+}
+
 impl ConnectionIo {
     fn forced_write(&mut self, cx: &mut Context<'_>) -> bool {
         self.forced_write.as_mut().poll(cx).is_ready()
+    }
+
+    /// A write's outcome, failed (and the connection aborted) once it stalled for too long.
+    fn checked<T>(
+        &mut self,
+        polled: Poll<io::Result<T>>,
+        cx: &mut Context<'_>,
+    ) -> Poll<io::Result<T>> {
+        if self.stall.stalled(&polled, cx) {
+            self.abort.cancel();
+            return Poll::Ready(Err(write_stalled()));
+        }
+        polled
     }
 }
 
@@ -421,14 +494,16 @@ impl AsyncWrite for ConnectionIo {
         if self.forced_write(cx) {
             return Poll::Ready(Err(forced()));
         }
-        Pin::new(&mut self.stream).poll_write(cx, buf)
+        let polled = Pin::new(&mut self.stream).poll_write(cx, buf);
+        self.checked(polled, cx)
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         if self.forced_write(cx) {
             return Poll::Ready(Err(forced()));
         }
-        Pin::new(&mut self.stream).poll_flush(cx)
+        let polled = Pin::new(&mut self.stream).poll_flush(cx);
+        self.checked(polled, cx)
     }
 
     fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
@@ -443,7 +518,8 @@ impl AsyncWrite for ConnectionIo {
         if self.forced_write(cx) {
             return Poll::Ready(Err(forced()));
         }
-        Pin::new(&mut self.stream).poll_write_vectored(cx, bufs)
+        let polled = Pin::new(&mut self.stream).poll_write_vectored(cx, bufs);
+        self.checked(polled, cx)
     }
 
     fn is_write_vectored(&self) -> bool {
@@ -577,6 +653,8 @@ async fn connection<T, B>(
         _tracked: shared.sockets.token(),
         forced_read: Box::pin(abort.clone().cancelled_owned()),
         forced_write: Box::pin(abort.clone().cancelled_owned()),
+        abort: abort.clone(),
+        stall: WriteStall::new(options.write_stall_timeout),
     };
     let tracker = Arc::clone(&activity);
     let shutdown = shared.shutdown.clone();
