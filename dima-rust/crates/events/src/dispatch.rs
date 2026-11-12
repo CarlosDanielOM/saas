@@ -11,8 +11,8 @@
 //! (every second, or sooner on a wakeup) redoes the batch: the upserts find the deliveries that
 //! were made and make the rest.
 //!
-//! The consumer runtime (claims, leases, retries, checkpoints, replay) is the next package; it
-//! reuses [`ensure_delivery`] and [`finish_policy_delivery`].
+//! The consumer runtime ([`crate::consumer`]) reuses [`ensure_delivery`] and the policy
+//! settlement, claimed or not.
 
 use crate::contracts::policy::{
     ConsumerDefinition, PolicyDecision, PolicyEvent, evaluate, is_schema_compatible,
@@ -22,7 +22,7 @@ use bson::{Bson, Document, doc, oid::ObjectId};
 use dima_core::Clock;
 use dima_model::domain_event_deliveries as deliveries;
 use dima_model::domain_events as events;
-use dima_model::index::{IndexStatus, RequiredIndexError};
+use dima_model::index::RequiredIndexError;
 use dima_model::{IndexReport, ModelError, StrEnum};
 use dima_store::mongo::update::{Returned, UpdateOptions};
 use dima_store::mongo::{MongoStore, WriteContext};
@@ -96,35 +96,10 @@ impl DispatchEvent {
     }
 }
 
-/// `Ok` when the report of `domain_event_deliveries` shows its unique indexes in place.
+/// `Ok` when the report of `domain_event_deliveries` shows its unique indexes in place
+/// ([`crate::indexes::require_unique`]).
 pub fn require_unique_delivery_index(indexes: &IndexReport) -> Result<(), RequiredIndexError> {
-    let missing: Vec<String> = if indexes.collection != deliveries::COLLECTION {
-        vec![format!("no index report (got {})", indexes.collection)]
-    } else {
-        deliveries::INDEXES
-            .iter()
-            .filter(|spec| spec.unique)
-            .filter_map(|spec| {
-                let name = spec.name();
-                match indexes.outcomes.iter().find(|o| o.index == name) {
-                    Some(outcome) if !matches!(outcome.status, IndexStatus::Failed(_)) => None,
-                    Some(outcome) => Some(match &outcome.status {
-                        IndexStatus::Failed(error) => format!("{name}: {error}"),
-                        _ => name,
-                    }),
-                    None => Some(format!("{name}: not in the report")),
-                }
-            })
-            .collect()
-    };
-    if missing.is_empty() {
-        Ok(())
-    } else {
-        Err(RequiredIndexError {
-            collection: deliveries::COLLECTION,
-            missing,
-        })
-    }
+    crate::indexes::require_unique(indexes, deliveries::COLLECTION, deliveries::INDEXES)
 }
 
 /// `{w: 1, j: true}`.
@@ -222,6 +197,29 @@ pub async fn finish_policy_delivery(
     delivery: &Document,
     decision: &PolicyDecision,
 ) -> Result<PolicyOutcome, DispatchError> {
+    finish_policy(store, deadline, now_ms, delivery, decision, None).await
+}
+
+/// The lease of a delivery a consumer claimed, for [`finish_policy`].
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct HeldLease<'a> {
+    /// The claim's `leaseToken`.
+    pub token: &'a str,
+    /// `lastAttemptDurationMs`.
+    pub duration_ms: i64,
+}
+
+/// `finishPolicyDelivery(delivery, decision, claimed, durationMs)`: unclaimed (`held` is
+/// `None`), only a delivery nobody leases and no retry waits on is settled; claimed, only under
+/// the caller's unexpired lease, and the claim's attempt is given back.
+pub(crate) async fn finish_policy(
+    store: &MongoStore,
+    deadline: Duration,
+    now_ms: i64,
+    delivery: &Document,
+    decision: &PolicyDecision,
+    held: Option<HeldLease<'_>>,
+) -> Result<PolicyOutcome, DispatchError> {
     let (dead, reason) = match decision {
         PolicyDecision::Eligible => return Ok(PolicyOutcome::Deferred),
         PolicyDecision::Dead(reason) => (true, reason.as_str()),
@@ -235,13 +233,21 @@ pub async fn finish_policy_delivery(
         .get("lastDeadLetterError")
         .cloned()
         .unwrap_or_else(|| Bson::String(String::new()));
-    let filter = doc! {
-        "_id": id,
-        "status": { "$in": ["pending", "processing", "retry"] },
-        "$and": [
-            { "$or": [{ "lockedUntil": Bson::Null }, { "lockedUntil": { "$lte": now } }] },
-            { "$or": [{ "nextAttemptAt": Bson::Null }, { "nextAttemptAt": { "$lte": now } }] },
-        ],
+    let filter = match held {
+        Some(held) => doc! {
+            "_id": id,
+            "status": "processing",
+            "leaseToken": held.token,
+            "lockedUntil": { "$gt": now },
+        },
+        None => doc! {
+            "_id": id,
+            "status": { "$in": ["pending", "processing", "retry"] },
+            "$and": [
+                { "$or": [{ "lockedUntil": Bson::Null }, { "lockedUntil": { "$lte": now } }] },
+                { "$or": [{ "nextAttemptAt": Bson::Null }, { "nextAttemptAt": { "$lte": now } }] },
+            ],
+        },
     };
     let mut set = doc! {
         "status": if dead { "dead" } else { "skipped" },
@@ -250,7 +256,9 @@ pub async fn finish_policy_delivery(
         "lastError": if dead { reason } else { "" },
         "lastErrorCode": if dead { "policy_rejected" } else { "" },
         "lastPrerequisiteKind": "",
-        "lastAttemptDurationMs": Bson::Null,
+        "lastAttemptDurationMs": held.map_or(Bson::Null, |held| {
+            dima_store::mongo::number::js_number(held.duration_ms as f64)
+        }),
     };
     if dead {
         set.insert("lastDeadLetterError", reason);
@@ -268,13 +276,13 @@ pub async fn finish_policy_delivery(
     set.insert("lockedUntil", Bson::Null);
     set.insert("leaseToken", Bson::Null);
     set.insert("nextAttemptAt", Bson::Null);
+    let mut update = doc! { "$set": set };
+    if held.is_some() {
+        update.insert("$inc", doc! { "attempts": -1 });
+    }
     let mut ctx = WriteContext::new(now_ms);
-    let prepared = deliveries::INFO.prepare_update(
-        &filter,
-        doc! { "$set": set },
-        UpdateOptions::default(),
-        &mut ctx,
-    )?;
+    let prepared =
+        deliveries::INFO.prepare_update(&filter, update, UpdateOptions::default(), &mut ctx)?;
     let mut writes = store
         .writes(deliveries::COLLECTION)
         .write_concern(journaled());

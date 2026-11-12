@@ -59,8 +59,9 @@ impl fmt::Debug for TwitchConfig {
 ///
 /// | Field | Value | Source |
 /// |---|---|---|
-/// | `refresh_lock_ttl` | 5 s | `REFRESH_LOCK_TTL_MS` (`twitch_streamers.class.ts`) |
-/// | `refresh_wait` | 4.5 s | `REFRESH_WAIT_TIMEOUT_MS` |
+/// | `refresh_lock_ttl` | 5 s | `REFRESH_LOCK_TTL_MS` (`twitch_streamers.class.ts`); renewed every third of it while the holder works (Rust only) |
+/// | `exchange_marker_ttl` | 30 s | Rust only: how long a refresh whose outcome is unknown (lost answer, dead holder) blocks the next exchange of that streamer; renewed while the holder lives |
+/// | `refresh_wait` | 4.5 s | `REFRESH_WAIT_TIMEOUT_MS`; a hard bound here (the reference's wait can overrun by its cache commands) |
 /// | `refresh_wait_poll` | 150 ms | `REFRESH_WAIT_POLL_MS` |
 /// | `token_expiry_skew_secs` | 300 | `TOKEN_EXPIRY_SKEW_SECONDS` |
 /// | `waiter_expiry_skew_secs` | 60 | the literal `60` of `waitForRefreshedToken` and `refreshTwitchToken` |
@@ -70,11 +71,19 @@ impl fmt::Debug for TwitchConfig {
 /// | `helix_refresh_deadline` | 15 s | none in the reference; covers the 4.5 s lock wait plus a slow refresh, well under the HTTP crate's 60 s |
 /// | `store_deadline` | 10 s | none in the reference (Mongoose without `maxTimeMS`); one MongoDB operation |
 /// | `emote_timeout` | 3 s | `AbortSignal.timeout(3000)` (`twitch_emotes.ts`) |
-/// | `shutdown_grace` | 10 s | Rust only: how long [`crate::Twitch::shutdown`] waits for refreshes in flight |
+/// | `exchange_drain` | 15 s | Rust only: how long an exchange already sent, and the write of its answer, go on after shutdown (one 10 s attempt plus 5 s to write); see `crate::drain` |
+/// | `park_grace` | 2 s | Rust only: after the drain, how long a rotation MongoDB has not taken may take to be parked in Dragonfly |
+/// | `persist_retry` | 200 ms doubling to 2 s | Rust only: the pause between writes of a rotation MongoDB refused (never a new exchange) |
+/// | `park_ttl` | 30 days | Rust only: how long a parked rotation waits for the next refresh of its streamer |
+/// | `directory_read` | 500 ms | Rust only: the default deadline of a directory read ([`crate::Twitch::streamer`]); the chat path uses it. A read is one Dragonfly script round trip (well under a millisecond on the host), a miss adds one MongoDB read and one write (a few milliseconds), so it fires only when a store is unhealthy; a hydration it started goes on in the background |
+/// | `unhelpful_refresh_window` | 60 s | Rust only: after a 401-driven refresh of the app or bot token, how long a 401 for the token it produced (or for the one it could not replace) does not refresh again |
+/// | `permission_recheck` | 30 s | Rust only: how long a "no permissions" confirmed by MongoDB is not checked again (per streamer and cached generation) |
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Timings {
-    /// Lease of the cross-process refresh lock (`SET NX PX`).
+    /// Lease of the cross-process refresh lock (`SET NX PX`), renewed while it is held.
     pub refresh_lock_ttl: Duration,
+    /// Lifetime of the exchange marker (see [`crate::tokens`]), renewed while its holder lives.
+    pub exchange_marker_ttl: Duration,
     /// How long a caller that lost the lock waits for the winner's token.
     pub refresh_wait: Duration,
     /// How often it looks.
@@ -95,8 +104,24 @@ pub struct Timings {
     pub store_deadline: Duration,
     /// Deadline of the channel emote request.
     pub emote_timeout: Duration,
-    /// How long shutdown waits for refreshes that are still running.
-    pub shutdown_grace: Duration,
+    /// How long exchanges already sent, and the writes of their answers, go on after shutdown.
+    pub exchange_drain: Duration,
+    /// How long, after the drain, a rotation not yet in MongoDB may take to be parked.
+    pub park_grace: Duration,
+    /// The first pause between writes of a rotation MongoDB refused (it doubles).
+    pub persist_retry: Duration,
+    /// The longest such pause.
+    pub persist_retry_max: Duration,
+    /// How long a parked rotation is kept.
+    pub park_ttl: Duration,
+    /// How long a cached "no permissions" that MongoDB confirmed is trusted without asking
+    /// MongoDB again.
+    pub permission_recheck: Duration,
+    /// The default deadline of a directory read.
+    pub directory_read: Duration,
+    /// How long a 401 for a token a refresh just produced (or could not replace) does not
+    /// refresh the app or bot token again.
+    pub unhelpful_refresh_window: Duration,
 }
 
 impl Timings {
@@ -104,6 +129,7 @@ impl Timings {
     pub fn reference() -> Self {
         Self {
             refresh_lock_ttl: Duration::from_millis(5000),
+            exchange_marker_ttl: Duration::from_secs(30),
             refresh_wait: Duration::from_millis(4500),
             refresh_wait_poll: Duration::from_millis(150),
             token_expiry_skew_secs: 300,
@@ -114,7 +140,14 @@ impl Timings {
             helix_refresh_deadline: Duration::from_secs(15),
             store_deadline: Duration::from_secs(10),
             emote_timeout: Duration::from_secs(3),
-            shutdown_grace: Duration::from_secs(10),
+            exchange_drain: Duration::from_secs(15),
+            park_grace: Duration::from_secs(2),
+            persist_retry: Duration::from_millis(200),
+            persist_retry_max: Duration::from_secs(2),
+            park_ttl: Duration::from_secs(30 * 24 * 3600),
+            permission_recheck: Duration::from_secs(30),
+            directory_read: Duration::from_millis(500),
+            unhelpful_refresh_window: Duration::from_secs(60),
         }
     }
 

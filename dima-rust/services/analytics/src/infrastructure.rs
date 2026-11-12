@@ -270,7 +270,7 @@ pub async fn series(s: &State, minutes: i32, container: Option<&str>, now: i64) 
             point.1 += 1;
             point.2 = point.2.max(r["max"].as_f64().unwrap_or(0.));
         }
-        let round = |v: f64| format!("{v:.3e}").parse::<f64>().ok();
+        let round = round_trend;
         for (service, name, points) in buckets {
             series.push(json!({"service":service,"name":name,"detail":detail,"points":points.into_iter().map(|(at,(sum,n,max))|json!([at,round(sum/n as f64),round(max)])).collect::<Vec<_>>()}));
         }
@@ -287,4 +287,45 @@ pub async fn series(s: &State, minutes: i32, container: Option<&str>, now: i64) 
         value.clone(),
     ));
     Ok(value)
+}
+
+// Number(v.toPrecision(4)): exact decimal rounding chooses the larger magnitude on ties.
+// Rust's scientific formatter uses ties-to-even. Print enough digits for every binary64
+// value's exact decimal expansion before selecting the first four significant digits.
+fn round_trend(value: f64) -> Option<f64> {
+    if !value.is_finite() {
+        return None;
+    }
+    if value == 0. {
+        return Some(0.);
+    }
+    let exact = format!("{:.1074e}", value.abs());
+    let (mantissa, exponent) = exact.split_once('e')?;
+    let exponent: i32 = exponent.parse().ok()?;
+    let mut digits = mantissa.bytes().filter(u8::is_ascii_digit);
+    let mut kept = 0_u32;
+    for _ in 0..4 {
+        kept = kept * 10 + u32::from(digits.next()? - b'0');
+    }
+    if digits.next()? >= b'5' {
+        kept += 1;
+    }
+    let sign = if value < 0. { "-" } else { "" };
+    format!("{sign}{kept}e{}", exponent - 3).parse().ok()
+}
+
+#[cfg(test)]
+mod rounding_tests {
+    #[test]
+    fn node_four_significant_digit_rounding() {
+        for (value, expected) in [
+            (12345., 12350.),
+            (-12345., -12350.),
+            (1.2345, 1.234),
+            (0., 0.),
+        ] {
+            assert_eq!(super::round_trend(value), Some(expected));
+        }
+        assert_eq!(super::round_trend(f64::INFINITY), None);
+    }
 }

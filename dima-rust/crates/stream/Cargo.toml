@@ -1,0 +1,36 @@
+[package]
+name = "dima-stream"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+test-util = []
+
+[dependencies]
+dima-core.workspace = true
+dima-model.workspace = true
+dima-store.workspace = true
+dima-text.workspace = true
+dima-http.workspace = true
+dima-twitch.workspace = true
+bson.workspace = true
+mongodb.workspace = true
+redis.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+futures-util.workspace = true
+
+[dev-dependencies]
+dima-stream = { path = ".", features = ["test-util"] }
+anyhow.workspace = true
+dima-http = { workspace = true, features = ["test-util"] }
+# The fault test kills a child process at each write and reads its output.
+tokio = { workspace = true, features = ["io-util", "process"] }
+uuid.workspace = true

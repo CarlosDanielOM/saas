@@ -76,6 +76,7 @@ async fn timeouts_and_dropped_connections_never_escape_or_retry() -> Result<()> 
             config,
             TwitchDeps {
                 http: HttpClient::builder().shutdown(shutdown.clone()).build()?,
+                exchange_http: dima_twitch::exchange_client(HttpClient::builder())?,
                 helix: server.provider(
                     dima_twitch::helix_provider(CLIENT_ID)
                         .timeout(Duration::from_millis(25))

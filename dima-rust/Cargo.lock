@@ -1724,6 +1724,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-platform"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "bytes",
+ "dima-core",
+ "dima-http",
+ "dima-text",
+ "futures-util",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "dima-rig"
 version = "0.1.0"
 dependencies = [
@@ -1837,12 +1853,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-stream"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bson",
+ "dima-core",
+ "dima-http",
+ "dima-model",
+ "dima-store",
+ "dima-stream",
+ "dima-text",
+ "dima-twitch",
+ "futures-util",
+ "mongodb",
+ "redis",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "dima-telemetry"
 version = "0.1.0"
 dependencies = [
  "dima-core",
  "dima-http",
  "dima-store",
+ "dima-text",
  "dima-web",
  "futures-util",
  "http",
@@ -1896,6 +1936,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bson",
+ "bytes",
  "dima-core",
  "dima-http",
  "dima-model",
@@ -1913,6 +1954,7 @@ dependencies = [
  "tokio-util",
  "unicode-normalization",
  "url",
+ "zeroize",
 ]
 
 [[package]]

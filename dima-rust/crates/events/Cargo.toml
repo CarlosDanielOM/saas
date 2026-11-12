@@ -1,6 +1,6 @@
 [package]
 name = "dima-events"
-description = "The durable domain event journal: contracts, identities, producers, wakeups, health, durable cron-job intents."
+description = "The durable domain event journal: contracts, identities, producers, the consumer runtime, wakeups, health, durable cron-job intents."
 version.workspace = true
 edition.workspace = true
 publish.workspace = true

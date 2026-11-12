@@ -508,28 +508,7 @@ pub(crate) fn pathname(url: &str) -> &str {
 
 /// `!isNaN(value)` for a header string: JavaScript `Number(value)` is not NaN.
 fn js_number_is_finite(value: &str) -> bool {
-    let trimmed = crate::mediatype::trim_js(value);
-    if trimmed.is_empty() {
-        return true;
-    }
-    let unsigned = trimmed.strip_prefix(['+', '-']).unwrap_or(trimmed);
-    if unsigned == "Infinity" {
-        return true;
-    }
-    let lower = trimmed.to_ascii_lowercase();
-    if let Some(hex) = lower.strip_prefix("0x") {
-        return !hex.is_empty() && hex.bytes().all(|b| b.is_ascii_hexdigit());
-    }
-    if let Some(bin) = lower.strip_prefix("0b") {
-        return !bin.is_empty() && bin.bytes().all(|b| b == b'0' || b == b'1');
-    }
-    if let Some(oct) = lower.strip_prefix("0o") {
-        return !oct.is_empty() && oct.bytes().all(|b| (b'0'..=b'7').contains(&b));
-    }
-    let plain = unsigned
-        .bytes()
-        .all(|b| b.is_ascii_digit() || matches!(b, b'.' | b'e' | b'E' | b'+' | b'-'));
-    plain && unsigned.parse::<f64>().is_ok()
+    !dima_text::parse_number(value).is_nan()
 }
 
 #[cfg(test)]
@@ -539,6 +518,30 @@ mod tests {
     fn request(builder: http::request::Builder) -> Req<()> {
         let (parts, ()) = builder.body(()).expect("request").into_parts();
         Req::new(Arc::new(()), parts, Body::empty())
+    }
+
+    #[test]
+    fn number_header_shared_contract() {
+        for value in [
+            "",
+            " ",
+            "0x10",
+            "0b11",
+            "0o17",
+            "-0",
+            "1e2",
+            "Infinity",
+            "-Infinity",
+        ] {
+            assert!(js_number_is_finite(value));
+        }
+        // Node rejects repeated/mixed signs; the old copy stripped one before parsing.
+        for value in ["++1", "--1", "+-1", "-+1"] {
+            assert!(!js_number_is_finite(value));
+        }
+        for value in ["😀", "%20", "0x", "NaN"] {
+            assert!(!js_number_is_finite(value));
+        }
     }
 
     #[test]

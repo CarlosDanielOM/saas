@@ -121,6 +121,7 @@ fn short_process(
         config,
         TwitchDeps {
             http: dima_http::HttpClient::builder().build()?,
+            exchange_http: dima_twitch::exchange_client(dima_http::HttpClient::builder())?,
             helix: server.provider(
                 dima_twitch::helix_provider(CLIENT_ID)
                     .timeout(std::time::Duration::from_millis(40)),

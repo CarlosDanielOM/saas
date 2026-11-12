@@ -147,20 +147,15 @@ pub struct Journal {
 
 impl Journal {
     /// A journal on `store`, writable once the unique indexes of `domain_events` exist
-    /// (`indexes` is the startup report of [`dima_model::ensure_indexes`] for it).
+    /// (`indexes` is the startup report of [`dima_model::ensure_indexes`] for it; every declared
+    /// unique index must be in it, whatever policy built it: [`crate::indexes`]).
     pub fn new(
         store: MongoStore,
         clock: Arc<dyn Clock>,
         config: &crate::config::EventsConfig,
         indexes: &IndexReport,
     ) -> Result<Self, RequiredIndexError> {
-        if indexes.collection != COLLECTION {
-            return Err(RequiredIndexError {
-                collection: COLLECTION,
-                missing: vec![format!("no index report (got {})", indexes.collection)],
-            });
-        }
-        indexes.require()?;
+        crate::indexes::require_unique(indexes, COLLECTION, dima_model::domain_events::INDEXES)?;
         Ok(Self {
             store,
             clock,

@@ -285,6 +285,7 @@ fn short(stores: &Stores, server: &MockServer) -> Result<Twitch> {
         config,
         TwitchDeps {
             http: HttpClient::builder().build()?,
+            exchange_http: dima_twitch::exchange_client(HttpClient::builder())?,
             helix: server.provider(
                 dima_twitch::helix_provider(CLIENT_ID)
                     .timeout(Duration::from_millis(25))

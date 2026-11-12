@@ -564,61 +564,24 @@ fn parse_json(text: &str, strict: bool) -> Result<Value, Error> {
             )));
         }
     }
-    // MIGRATION.md text rule 3: a `\uD800`-`\uDFFF` escape outside a valid pair becomes U+FFFD
-    // (JavaScript keeps the lone surrogate; Rust text cannot hold one).
-    let text = dima_text::sanitize_lone_surrogates(text.as_bytes());
-    // A number beyond the double range (`1e400`) is a parse error here; `JSON.parse` makes it
-    // `Infinity`, which no client sends on purpose (allowed difference).
-    let mut value: Value =
-        serde_json::from_slice(&text).map_err(|e| parse_failed(e.to_string()))?;
-    // `JSON.parse` key order: array-index keys first, ascending, then the others in source order.
-    dima_text::js_key_order(&mut value);
-    javascript_numbers(&mut value);
-    Ok(value)
-}
-
-/// 2^53: integers up to this magnitude are exact as doubles.
-const MAX_EXACT_INTEGER: u64 = 1 << 53;
-
-/// Makes every number the value `JSON.parse` would hold, so nothing downstream stores a value or
-/// a BSON type the reference never would: integers beyond 2^53 become the nearest double
-/// (`9007199254740993` is `9007199254740992`), and integral doubles within 2^53 (`1.0`, `1e2`)
-/// become integers, since JavaScript cannot tell them apart. `-0` stays a double.
-fn javascript_numbers(value: &mut Value) {
-    let mut pending = vec![value];
-    while let Some(value) = pending.pop() {
-        match value {
-            Value::Number(number) => {
-                if let Some(javascript) = javascript_number(number) {
-                    *number = javascript;
-                }
-            }
-            Value::Array(items) => pending.extend(items.iter_mut()),
-            Value::Object(map) => pending.extend(map.values_mut()),
-            _ => {}
-        }
-    }
-}
-
-/// The replacement for `number`, when it differs from what JavaScript holds.
-fn javascript_number(number: &serde_json::Number) -> Option<serde_json::Number> {
-    if let Some(integer) = number.as_i64() {
-        // `as` rounds to the nearest double, ties to even, as `JSON.parse` does.
-        return (integer.unsigned_abs() > MAX_EXACT_INTEGER)
-            .then(|| serde_json::Number::from_f64(integer as f64))
-            .flatten();
-    }
-    if let Some(integer) = number.as_u64() {
-        return (integer > MAX_EXACT_INTEGER)
-            .then(|| serde_json::Number::from_f64(integer as f64))
-            .flatten();
-    }
-    let double = number.as_f64()?;
-    let integral = double.fract() == 0.0 && double.abs() <= MAX_EXACT_INTEGER as f64;
-    if !integral || (double == 0.0 && double.is_sign_negative()) {
-        return None;
-    }
-    Some(serde_json::Number::from(double as i64))
+    // The decoded body has already passed the configured wire/inflated byte limits.
+    // Keep serde_json's previous bound of 127 open containers.
+    dima_text::parse_js_json(
+        text,
+        dima_text::JsonLimits {
+            max_depth: 127,
+            max_bytes: usize::MAX,
+        },
+    )
+    .map_err(|error| {
+        // Preserve the caller's existing diagnostic as well as status and error kind.
+        // Only malformed inputs take this path; successful bodies are parsed once.
+        let repaired = dima_text::sanitize_lone_surrogates(text.as_bytes());
+        let message = serde_json::from_slice::<Value>(&repaired)
+            .err()
+            .map_or_else(|| error.to_string(), |error| error.to_string());
+        parse_failed(message)
+    })
 }
 
 #[cfg(test)]
@@ -674,6 +637,15 @@ mod tests {
     /// Review finding: integers above 2^53 kept full precision where `JSON.parse` rounds them.
     /// Expectations from Node 26 `JSON.stringify(JSON.parse(text))`.
     #[test]
+    fn duplicate_keys_keep_first_position_and_last_value() {
+        let value = parse_json(r#"{"b":1,"2":2,"a":3,"b":4,"1":5}"#, true).expect("parses");
+        assert_eq!(
+            dima_text::to_js_json(&value),
+            r#"{"1":5,"2":2,"b":4,"a":3}"#
+        );
+    }
+
+    #[test]
     fn numbers_are_what_javascript_holds() {
         let text = r#"{"n":9007199254740993,"m":-9007199254740993,"big":18446744073709551615,"f":1.0,"e":1e2,"z":-0,"safe":9007199254740992,"frac":0.1,"neg":-5,"arr":[1.5e300,123456789012345678901234567890]}"#;
         let value = parse_json(text, true).expect("parses");
@@ -681,7 +653,9 @@ mod tests {
             dima_text::to_js_json(&value),
             r#"{"n":9007199254740992,"m":-9007199254740992,"big":18446744073709552000,"f":1,"e":100,"z":0,"safe":9007199254740992,"frac":0.1,"neg":-5,"arr":[1.5e+300,1.2345678901234568e+29]}"#
         );
-        assert!(value["n"].is_f64() && value["m"].is_f64() && value["big"].is_f64());
+        // The shared parser canonicalizes the rounded ±2^53 to integers, like other
+        // integral doubles in range. The old copy left these two as doubles.
+        assert!(value["n"].is_i64() && value["m"].is_i64() && value["big"].is_f64());
         assert_eq!(value["n"].as_f64(), Some(9_007_199_254_740_992.0));
         // Integral values are integers for typed handlers, as `Number.isInteger` sees them.
         assert_eq!(value["f"].as_u64(), Some(1));
@@ -701,11 +675,11 @@ mod tests {
     #[test]
     fn nesting_deeper_than_serde_json_allows_is_refused() {
         // Known difference: JSON.parse accepts any depth; serde_json stops at 128 levels.
-        let deep = format!("{}{}", "[".repeat(129), "]".repeat(129));
+        let deep = format!("{}{}", "[".repeat(128), "]".repeat(128));
         let error = parse_json(&deep, true).expect_err("too deep");
         assert_eq!(error.status(), Some(400));
         assert_eq!(error.kind(), Some("entity.parse.failed"));
-        let fine = format!("{}{}", "[".repeat(100), "]".repeat(100));
+        let fine = format!("{}{}", "[".repeat(127), "]".repeat(127));
         assert!(parse_json(&fine, true).is_ok());
     }
 

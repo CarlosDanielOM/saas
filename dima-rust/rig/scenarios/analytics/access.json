@@ -8,6 +8,9 @@
         "path": "/health",
         "expect": {
           "status": 200
+        },
+        "save": {
+          "health_etag": "headers.etag"
         }
       }
     },
@@ -98,6 +101,18 @@
         "path": "/missing",
         "expect": {
           "status": 401
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/health",
+        "headers": {
+          "if-none-match": "${health_etag}"
+        },
+        "expect": {
+          "status": 304
         }
       }
     }
