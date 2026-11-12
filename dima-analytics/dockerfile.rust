@@ -1,0 +1,16 @@
+# Build only on the production cutover host. Compose command/healthcheck must be
+# changed together at cutover: the existing Node overrides cannot run this image.
+FROM rust:1.99-alpine AS build
+RUN apk add --no-cache musl-dev pkgconfig
+WORKDIR /src
+COPY dima-rust/ ./
+RUN cargo build --locked --release -p dima-analytics
+FROM alpine:3.23
+RUN apk add --no-cache ca-certificates && addgroup -S analytics && adduser -S -G analytics analytics
+COPY --from=build /src/target/release/dima-analytics /usr/local/bin/dima-analytics
+USER analytics
+EXPOSE 3210
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD ["/usr/local/bin/dima-analytics", "--healthcheck"]
+CMD ["/usr/local/bin/dima-analytics"]
+# Keep Compose's 512m/1CPU/128 PID limit, read-only root, /tmp tmpfs,
+# dropped capabilities, no-new-privileges and external databases network.

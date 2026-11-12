@@ -1,0 +1,105 @@
+{
+  "rig_scenario": 1,
+  "description": "Unauthenticated access across every route; health is public. PostgreSQL fixture comparisons live in crate tests until the rig can isolate PostgreSQL.",
+  "steps": [
+    {
+      "http": {
+        "method": "GET",
+        "path": "/health",
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/session",
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/overview",
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/resources",
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/traces",
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/traces/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/logs",
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/grants",
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/2",
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "DELETE",
+        "path": "/api/grants/2",
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/missing",
+        "expect": {
+          "status": 401
+        }
+      }
+    }
+  ]
+}

@@ -23,3 +23,9 @@ sha2.workspace = true
 hex.workspace = true
 url.workspace = true
 uuid.workspace = true
+mongodb.workspace = true
+regex.workspace = true
+bson.workspace = true
+futures-util.workspace = true
+[dev-dependencies]
+http-body-util.workspace = true

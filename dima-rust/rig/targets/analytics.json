@@ -1,0 +1,43 @@
+{
+  "rig_target": 1,
+  "description": "Analytics: caller must provision distinct disposable PostgreSQL databases; rig has no PostgreSQL isolation yet. Use --dragonfly-dbs 4-5.",
+  "reference": {
+    "command": [
+      "node",
+      "src/index.mjs"
+    ],
+    "cwd": "/home/dom/Projects/saas/dima-analytics",
+    "env": {
+      "PORT": "{port}",
+      "REDIS_URL": "{dragonfly_url}",
+      "OWNER_TWITCH_ID": "1",
+      "COLLECTORS_DISABLED": "true",
+      "HOSTSTATS_URL": "off",
+      "DATABASE_URL": "{var.reference_postgres_uri}"
+    },
+    "pass_env": [
+      "PATH"
+    ],
+    "ready": {
+      "http": "/health",
+      "timeout_ms": 10000
+    }
+  },
+  "candidate": {
+    "command": [
+      "{rig_dir}/../target/debug/dima-analytics"
+    ],
+    "env": {
+      "PORT": "{port}",
+      "REDIS_URL": "{dragonfly_url}",
+      "OWNER_TWITCH_ID": "1",
+      "COLLECTORS_DISABLED": "true",
+      "HOSTSTATS_URL": "off",
+      "DATABASE_URL": "{var.candidate_postgres_uri}"
+    },
+    "ready": {
+      "http": "/health",
+      "timeout_ms": 10000
+    }
+  }
+}
