@@ -255,6 +255,14 @@ impl MessageBudget {
         }
     }
 
+    /// Bytes of memory the message has left.
+    pub(super) fn memory_left(&self) -> u64 {
+        self.0
+            .limits
+            .memory_bytes
+            .saturating_sub(self.0.memory.load(Ordering::SeqCst))
+    }
+
     /// Takes `bytes` of memory.
     pub(super) fn reserve_memory(&self, bytes: u64) -> Result<(), LimitKind> {
         self.running()?;

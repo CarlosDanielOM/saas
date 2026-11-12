@@ -185,3 +185,96 @@ fn kept_entries_and_reference_arguments_cost_their_overhead() {
     assert_eq!(rendered.state.command_references.len(), 1);
     assert!(rendered.budget.usage().memory_bytes > overhead);
 }
+
+/// A JSON list of `count` empty lists.
+fn empty_lists(count: usize) -> String {
+    format!("[{}]", vec!["[]"; count].join(","))
+}
+
+/// R3: `l` stored as 300,000 empty lists (900,001 bytes), read with `%(*l.length)`. Before the
+/// fix it answered 300000: the value was parsed although a value may be 256 KiB.
+#[test]
+fn a_stored_value_over_the_limit_is_refused_before_it_is_parsed() {
+    let big = empty_lists(300_000);
+    assert_eq!(big.len(), 900_001);
+    let too_long = marker(LimitKind::TextSize);
+    // Channel, viewer and cache variables, read as a value or as a list.
+    let cases = [
+        ("%(*l.length)", "*"),
+        ("%(*l)", "*"),
+        ("%(**l.length)", "**"),
+        ("%(#l.length)", "#"),
+        ("%(##l[0])", "##"),
+    ];
+    for (source, storage) in cases {
+        let mut host = MemoryHost::new(1);
+        match storage {
+            "*" => {
+                host.channel.insert("l".into(), big.clone());
+            }
+            "**" => {
+                host.users.insert("l:caller".into(), big.clone());
+            }
+            "#" => {
+                host.cache.insert("twitch:1:variable:l".into(), big.clone());
+            }
+            _ => {
+                host.cache
+                    .insert("twitch:1:variable:l:id:1".into(), big.clone());
+            }
+        }
+        let rendered = run(EvalLimits::default(), &mut host, &format!("{source} after"));
+        let usage = rendered.budget.usage();
+        println!(
+            "R3 {source}: {:?}, {} bytes charged, {} steps",
+            rendered.text, usage.memory_bytes, rendered.stats.steps
+        );
+        assert_eq!(rendered.text, format!("{too_long} after"), "{source}");
+        // Nothing of it was kept.
+        assert_eq!(usage.memory_bytes, 0, "{source}");
+    }
+
+    // The command can still replace or delete the value.
+    let mut host = MemoryHost::new(1);
+    host.channel.insert("l".into(), big.clone());
+    let rendered = run(
+        EvalLimits::default(),
+        &mut host,
+        "%(*l) %(*l small) %(*l) %del(*l) %(*l.length)",
+    );
+    assert_eq!(rendered.text, format!("{too_long}  small  0"));
+}
+
+#[test]
+fn a_value_read_from_json_is_charged_per_node_while_it_is_built() {
+    // Within the text limit (261,001 bytes), 87,001 nodes: 2,784,032 bytes at 32 a node.
+    let lists = empty_lists(87_000);
+    assert!(lists.len() <= EvalLimits::default().text_bytes);
+    let node = dima_engine::json::JSON_NODE_BYTES;
+    assert!(87_001 * node > 1024 * 1024);
+    for source in [
+        "%(*l.length)",
+        "%(*l[0])",
+        "*(for #v in %(*l) { #v })",
+        "%del(*l[0])",
+    ] {
+        let read = |memory_bytes: usize| {
+            let mut host = MemoryHost::new(1);
+            host.channel.insert("l".into(), lists.clone());
+            let limits = EvalLimits {
+                memory_bytes,
+                ..EvalLimits::default()
+            };
+            run(limits, &mut host, source).text
+        };
+        // With a 1 MiB memory budget the value does not fit and is not built.
+        assert_eq!(read(1024 * 1024), marker(LimitKind::Memory), "{source}");
+        // With the default 4 MiB it does.
+        assert!(
+            !read(EvalLimits::default().memory_bytes).contains("[Parse error"),
+            "{source}"
+        );
+    }
+    // The node cost is a floor for what a node takes.
+    assert!(std::mem::size_of::<dima_engine::value::Value>() <= node);
+}

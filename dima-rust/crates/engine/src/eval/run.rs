@@ -160,11 +160,12 @@ fn item_texts(items: &[Value]) -> Result<Vec<String>, CoercionError> {
 
 /// `parseIterableValue`: a list's items, a JSON list's items, otherwise the text as one item
 /// (none for empty text, `null` and `undefined`). A JSON list whose items `String()` cannot
-/// convert is one item, its text: the reference converts them inside its `try`.
-fn iterable_values(value: Value) -> Result<Vec<String>, CoercionError> {
+/// convert is one item, its text: the reference converts them inside its `try`. `parsed` is
+/// the text read as JSON ([`Run::parse_json`]).
+fn iterable_values(value: Value, parsed: Option<Value>) -> Result<Vec<String>, CoercionError> {
     Ok(match value {
         Value::List(items) => item_texts(&items)?,
-        Value::Text(text) => match Value::parse_json(&text) {
+        Value::Text(text) => match parsed {
             Some(Value::List(items)) => item_texts(&items).unwrap_or_else(|_| vec![text]),
             Some(_) => vec![text],
             None if text.is_empty() => Vec::new(),
@@ -486,6 +487,21 @@ impl<'a> Run<'a> {
                 .saturating_add(map_size(&outer)),
         );
         self.frames.loop_vars = outer;
+    }
+
+    /// The memory the run may still take: within its own limit and the message's.
+    fn memory_room(&self) -> usize {
+        let run = self.engine.limits.memory_bytes.saturating_sub(self.memory);
+        let message = usize::try_from(self.budget.memory_left()).unwrap_or(usize::MAX);
+        run.min(message)
+    }
+
+    /// `JSON.parse(text)` (`None` where it throws), its nodes charged as they are built
+    /// against the memory the run may still take ([`crate::json::parse_within`]): a value
+    /// that needs more is [`LimitKind::Memory`] and is not built.
+    pub(super) fn parse_json(&self, text: &str) -> Result<Option<Value>, EvalError> {
+        crate::json::parse_within(text, self.memory_room())
+            .map_err(|_| EvalError::Limit(LimitKind::Memory))
     }
 
     /// Adds `bytes` to a running total of one step's gathered values, within the text budget.
@@ -1257,10 +1273,14 @@ impl<'a> Run<'a> {
                 None => Value::empty(),
             };
             self.next_active(depth);
-            if let Value::Text(text) = &value {
-                self.charge_bytes(text.len())?;
-            }
-            for item in iterable_values(value)? {
+            let parsed = match &value {
+                Value::Text(text) => {
+                    self.charge_bytes(text.len())?;
+                    self.parse_json(text)?
+                }
+                _ => None,
+            };
+            for item in iterable_values(value, parsed)? {
                 if iterations >= max {
                     break;
                 }

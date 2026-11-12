@@ -32,11 +32,11 @@ fn normalize_login(login: &str) -> String {
     to_lower(trim(login).trim_start_matches('@'))
 }
 
-/// `JSON.parse` of a stored value as a list (`getArrayFromStorage`): a JSON list's items, any
-/// other JSON value as one item of its text, nothing for invalid JSON. An object `String()`
-/// cannot convert is nothing too: the reference converts it inside its `try`.
-fn parse_list(raw: &str) -> Vec<Value> {
-    match Value::parse_json(raw) {
+/// A stored value read as a list (`getArrayFromStorage`), from its `JSON.parse`: a JSON list's
+/// items, any other JSON value as one item of its text, nothing for invalid JSON. An object
+/// `String()` cannot convert is nothing too: the reference converts it inside its `try`.
+fn list_of(parsed: Option<Value>) -> Vec<Value> {
+    match parsed {
         Some(Value::List(items)) => items,
         Some(other) => match other.into_text() {
             Ok(text) => vec![Value::Text(text)],
@@ -137,6 +137,7 @@ impl Run<'_> {
             VariableStorage::Cache | VariableStorage::CacheUser => {
                 for key in self.cache_keys(name, storage, target) {
                     if let Some(found) = host_call!(self, self.host.cache_get(&key))? {
+                        self.check_size(found.len())?;
                         return Ok(found);
                     }
                 }
@@ -150,6 +151,7 @@ impl Run<'_> {
                 if loaded.is_empty() {
                     return Ok(String::new());
                 }
+                self.check_size(loaded.len())?;
                 self.put(Kept::ChannelMemo, stripped.to_owned(), loaded.clone())?;
                 Ok(loaded)
             }
@@ -162,6 +164,7 @@ impl Run<'_> {
                 if loaded.is_empty() {
                     return Ok(String::new());
                 }
+                self.check_size(loaded.len())?;
                 self.put(Kept::UserMemo, memo, loaded.clone())?;
                 Ok(loaded)
             }
@@ -188,7 +191,7 @@ impl Run<'_> {
             return Ok(Vec::new());
         }
         self.charge_bytes(raw.len())?;
-        Ok(parse_list(&raw))
+        Ok(list_of(self.parse_json(&raw)?))
     }
 
     /// `checkKeyExists` (and `checkArrayKeyExists`).
@@ -320,11 +323,12 @@ impl Run<'_> {
     }
 
     async fn delete_memory_item(&mut self, name: &str, index: &AstNode) -> Result<(), EvalError> {
-        let mut list = match self.state.variables.get(name) {
-            Some(raw) if !raw.is_empty() => match Value::parse_json(raw) {
-                Some(Value::List(items)) => items,
-                _ => Vec::new(),
-            },
+        let parsed = match self.state.variables.get(name) {
+            Some(raw) if !raw.is_empty() => self.parse_json(raw)?,
+            _ => None,
+        };
+        let mut list = match parsed {
+            Some(Value::List(items)) => items,
             _ => Vec::new(),
         };
         let index = self.child(index).await?;
@@ -362,8 +366,9 @@ impl Run<'_> {
             else {
                 continue;
             };
+            self.check_size(raw.len())?;
             self.charge_bytes(raw.len())?;
-            let Some(Value::List(mut list)) = Value::parse_json(&raw) else {
+            let Some(Value::List(mut list)) = self.parse_json(&raw)? else {
                 continue;
             };
             // The reference resolves the index inside its per-key `try`: a conversion that
@@ -433,7 +438,7 @@ impl Run<'_> {
         current: &str,
     ) -> Result<(), EvalError> {
         self.charge_bytes(current.len())?;
-        let Some(Value::List(mut list)) = Value::parse_json(current) else {
+        let Some(Value::List(mut list)) = self.parse_json(current)? else {
             return Ok(());
         };
         match accessor {

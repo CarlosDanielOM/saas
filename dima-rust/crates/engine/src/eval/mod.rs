@@ -60,7 +60,16 @@
 //!   responses array with the live context until the scheduler serialises it, which it does
 //!   immediately);
 //! - `JSON.parse` of stored values ([`crate::json`]) refuses nesting deeper than
-//!   [`crate::json::MAX_JSON_NESTING`] (V8 reads any depth).
+//!   [`crate::json::MAX_JSON_NESTING`] (V8 reads any depth), and builds a value only within
+//!   the memory the run may still take, each node charged [`crate::json::JSON_NODE_BYTES`] and
+//!   its text's bytes as it is built: a value that needs more is [`LimitKind::Memory`];
+//! - a value read from storage (a channel, viewer or cache variable) longer than
+//!   [`EvalLimits::text_bytes`] is refused before it is parsed or kept, with the error a value
+//!   that long gets when it is written ([`LimitKind::TextSize`]): the expression that reads it
+//!   shows `[Parse error: This command builds text that is too long]` and the rest of the
+//!   command runs. Such a value can only predate the limit (the production copy has none: the
+//!   longest stored variable is 17 bytes); the reference reads any size. A command can still
+//!   overwrite or delete it, which reads nothing.
 
 mod budget;
 mod coerce;
