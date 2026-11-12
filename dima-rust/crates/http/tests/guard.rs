@@ -507,3 +507,27 @@ async fn a_body_never_follows_a_redirect_to_another_origin() {
     );
     assert!(last.body.is_empty());
 }
+
+/// A user's URL can carry any secret under any name: `Response::info()` and every error built
+/// from the response show the query's names, never a value.
+#[tokio::test]
+async fn guarded_responses_show_query_names_only() {
+    let server = MockServer::start().await.unwrap();
+    let resolver = Arc::new(ScriptedResolver::default());
+    resolver.answer("a.test", &[&[LOOPBACK]]);
+    let port = server.addr().port();
+    let client = client(policy(&server, &["a.test"]), &resolver);
+    let url = format!("http://a.test:{port}/p?session=MARKER1&X-Goog-Signature=MARKER2&flag");
+    server.push(MockResponse::new(404).body("missing"));
+    let response = client.get(&url).send().await.unwrap();
+    let info = format!("{} | {:?}", response.info(), response.info());
+    assert!(!info.contains("MARKER"), "{info}");
+    assert!(
+        info.contains("session=<redacted>") && info.contains("flag"),
+        "{info}"
+    );
+    let error = response.error_for_status().await.unwrap_err();
+    let printed = format!("{error} | {error:?}");
+    assert!(!printed.contains("MARKER"), "{printed}");
+    assert!(printed.contains("X-Goog-Signature"), "{printed}");
+}

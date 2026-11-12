@@ -5,6 +5,7 @@ use crate::guard::{BoxFuture, PlainResolver, Resolver};
 use crate::observe::{EndGuard, NoopObserver, Observer, TraceInjector};
 use crate::path::Path;
 use crate::provider::{DEFAULT_CONNECT_TIMEOUT, Provider, Redirects};
+use crate::redact::QueryShown;
 use crate::response::{Limits, Response};
 use crate::retry::{Context, Decision, Outcome, RetryPolicy, StopReason};
 use bytes::Bytes;
@@ -592,8 +593,10 @@ impl<'a> Sender<'a> {
     }
 
     fn info(&self) -> RequestInfo {
-        RequestInfo::new(self.provider.0.name, self.method.clone(), self.template)
-            .with_query(&self.url, &self.provider.0.secret_query)
+        RequestInfo::new(self.provider.0.name, self.method.clone(), self.template).with_query(
+            &self.url,
+            &QueryShown::Redact(Arc::clone(&self.provider.0.secret_query)),
+        )
     }
 
     async fn run(mut self) -> Result<Response> {
@@ -723,7 +726,7 @@ impl<'a> Sender<'a> {
         Response::new(
             response,
             RequestInfo::new(self.provider.0.name, self.method.clone(), self.template),
-            Arc::clone(&self.provider.0.secret_query),
+            QueryShown::Redact(Arc::clone(&self.provider.0.secret_query)),
             limits,
             self.cancel.clone(),
         )

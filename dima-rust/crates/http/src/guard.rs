@@ -588,7 +588,7 @@ impl GuardedRequest<'_> {
             return Ok(Response::new(
                 response,
                 info(method),
-                Arc::from([]),
+                crate::redact::QueryShown::NamesOnly,
                 limits,
                 cancel,
             ));

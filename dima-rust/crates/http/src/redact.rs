@@ -51,8 +51,22 @@ pub(crate) fn kept_headers(headers: &HeaderMap) -> HeaderMap {
     out
 }
 
-/// The query of `url` with the values of `secrets` (case-insensitive names) replaced.
-pub(crate) fn query(url: &url::Url, secrets: &[&'static str]) -> Option<Box<str>> {
+/// How a query string is shown.
+#[derive(Clone, Debug)]
+pub(crate) enum QueryShown {
+    /// A provider's request: values of these names (and the common secret names) are replaced.
+    Redact(std::sync::Arc<[&'static str]>),
+    /// A user-supplied URL: no list of names can be complete, so every value is replaced.
+    NamesOnly,
+}
+
+/// The query of `url` as `shown` allows.
+pub(crate) fn query(url: &url::Url, shown: &QueryShown) -> Option<Box<str>> {
+    let secrets: &[&'static str] = match shown {
+        QueryShown::Redact(secrets) => secrets,
+        QueryShown::NamesOnly => &[],
+    };
+    let names_only = matches!(shown, QueryShown::NamesOnly);
     let raw = url.query()?;
     if raw.is_empty() {
         return None;
@@ -67,11 +81,12 @@ pub(crate) fn query(url: &url::Url, secrets: &[&'static str]) -> Option<Box<str>
             None => (pair, false),
         };
         let decoded = percent_encoding::percent_decode_str(name).decode_utf8_lossy();
-        let secret = secrets.iter().any(|s| s.eq_ignore_ascii_case(&decoded))
+        let secret = names_only
+            || secrets.iter().any(|s| s.eq_ignore_ascii_case(&decoded))
             || SENSITIVE_QUERY
                 .iter()
                 .any(|s| s.eq_ignore_ascii_case(&decoded));
-        if secret {
+        if secret && (has_value || !names_only) {
             out.push_str(name);
             out.push_str("=<redacted>");
         } else if has_value {
@@ -151,13 +166,26 @@ mod tests {
     fn query_redacts_provider_and_common_secrets() {
         let url =
             url::Url::parse("https://x.test/p?id=1&key=abc&Sig=s3&flag&client_secret=zz").unwrap();
-        let out = query(&url, &["sig"]).unwrap();
+        let out = query(&url, &QueryShown::Redact(std::sync::Arc::from(["sig"]))).unwrap();
         assert_eq!(
             &*out,
             "id=1&key=<redacted>&Sig=<redacted>&flag&client_secret=<redacted>"
         );
         let encoded = url::Url::parse("https://x.test/p?%6Bey=abc").unwrap();
-        assert_eq!(&*query(&encoded, &[]).unwrap(), "%6Bey=<redacted>");
+        assert_eq!(
+            &*query(&encoded, &QueryShown::Redact(std::sync::Arc::from([]))).unwrap(),
+            "%6Bey=<redacted>"
+        );
+    }
+
+    #[test]
+    fn user_urls_show_query_names_only() {
+        let url =
+            url::Url::parse("https://x.test/p?id=1&sess=MARKER&flag&x-goog-sig=MARKER2").unwrap();
+        assert_eq!(
+            &*query(&url, &QueryShown::NamesOnly).unwrap(),
+            "id=<redacted>&sess=<redacted>&flag&x-goog-sig=<redacted>"
+        );
     }
 
     #[test]

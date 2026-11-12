@@ -182,7 +182,8 @@ pub struct RequestInfo {
     pub method: Method,
     /// The path template (`/v1/customers/{}/state`), never the rendered path.
     pub template: &'static str,
-    /// The query string with secret parameters replaced by `<redacted>`.
+    /// The query string with secret parameters replaced by `<redacted>` (for a guarded request,
+    /// a user-supplied URL, every value is replaced and only the names are shown).
     pub query: Option<Box<str>>,
 }
 
@@ -197,8 +198,8 @@ impl RequestInfo {
     }
 
     /// The same, with the redacted query of `url`.
-    pub(crate) fn with_query(mut self, url: &url::Url, secrets: &[&'static str]) -> Self {
-        self.query = redact::query(url, secrets);
+    pub(crate) fn with_query(mut self, url: &url::Url, shown: &redact::QueryShown) -> Self {
+        self.query = redact::query(url, shown);
         self
     }
 }

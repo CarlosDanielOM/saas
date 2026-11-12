@@ -3,11 +3,11 @@
 use crate::client::Cancel;
 use crate::error::{Error, FailureClass, RequestInfo, Result, StatusError, TimeoutKind};
 use crate::observe::EndGuard;
+use crate::redact::QueryShown;
 use crate::sse::SseStream;
 use bytes::{Bytes, BytesMut};
 use http::{HeaderMap, StatusCode};
 use serde::de::DeserializeOwned;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio::sync::OwnedSemaphorePermit;
@@ -30,7 +30,7 @@ pub(crate) struct Limits {
 pub struct Response {
     inner: reqwest::Response,
     info: RequestInfo,
-    secrets: Arc<[&'static str]>,
+    query: QueryShown,
     limits: Limits,
     received: u64,
     cancel: Cancel,
@@ -55,14 +55,14 @@ impl Response {
     pub(crate) fn new(
         inner: reqwest::Response,
         info: RequestInfo,
-        secrets: Arc<[&'static str]>,
+        query: QueryShown,
         limits: Limits,
         cancel: Cancel,
     ) -> Self {
         Self {
             inner,
             info,
-            secrets,
+            query,
             limits,
             received: 0,
             cancel,
@@ -100,11 +100,10 @@ impl Response {
         self.inner.headers()
     }
 
-    /// The request this answers (safe to print), with its redacted query.
+    /// The request this answers (safe to print), with its redacted query: a provider's secret
+    /// parameters are replaced; for a guarded request every value is replaced.
     pub fn info(&self) -> RequestInfo {
-        self.info
-            .clone()
-            .with_query(self.inner.url(), &self.secrets)
+        self.info.clone().with_query(self.inner.url(), &self.query)
     }
 
     /// How many attempts were made.
