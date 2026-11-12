@@ -738,6 +738,72 @@ async fn recovery_stores_are_bounded() {
     s.server.stop().await;
 }
 
+/// H2 (re-check of 2026-11-12): a restore whose client takes nothing is ended by the
+/// slow-consumer rule, and its batch's share of the recovery budget comes back with it. The
+/// client recovers over polling and never polls: the replay fills the socket's queue and
+/// waits; newer events evict its batch from the store, which keeps the figure within its bound
+/// (the batch stays charged); once nothing was taken for `close_timeout` the connection closes
+/// as a slow consumer. Before, the replay waited until the heartbeat ended the session.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_stalled_replay_is_closed_as_a_slow_consumer() {
+    const BOUND: usize = 64 << 10;
+    let s = setup(
+        Options {
+            close_timeout: Duration::from_millis(500),
+            recovery: RecoveryLimits {
+                bytes_total: BOUND,
+                ..RecoveryLimits::default()
+            },
+            ..Options::default()
+        },
+        NamespaceOptions {
+            queue: Some(QueueLimits {
+                packets: 1024,
+                bytes: 8 << 10,
+            }),
+            ..NamespaceOptions::default()
+        },
+    )
+    .await;
+    let io = s.server.io.clone();
+    let mut client = Ws::open(s.server.addr).await;
+    let (_, pid, offset) = join_and_hello(&mut client, &ok()).await;
+    client.drop_connection();
+    eventually("the session kept", || io.stats().sessions == 1).await;
+    let chunk = [json!("x".repeat(4 << 10))];
+    for _ in 0..12 {
+        s.probe.emit("/p", "big", &chunk).unwrap();
+    }
+    let back = Polling::open(s.server.addr).await;
+    let connect = format!("40/p,{}", json!({"pid": pid, "offset": offset}));
+    assert_eq!(back.post(&[&connect]).await, Some(200));
+    eventually("the replay waits for room", || {
+        io.stats().outbound_bytes >= 4 << 10
+    })
+    .await;
+    for _ in 0..40 {
+        s.probe.emit("/p", "big", &chunk).unwrap();
+        assert!(io.stats().stored_bytes <= BOUND, "{:?}", io.stats());
+    }
+    let telemetry = Arc::clone(&s.telemetry);
+    eventually("closed as a slow consumer", || {
+        telemetry.get("closed:slow consumer") == 1
+    })
+    .await;
+    assert_eq!(s.telemetry.get("send:SlowConsumer"), 1);
+    eventually("output released", || io.stats().outbound_bytes == 0).await;
+    // Its share is back: the store fills the whole budget again.
+    for _ in 0..20 {
+        s.probe.emit("/p", "big", &chunk).unwrap();
+    }
+    let stats = io.stats();
+    assert!(
+        stats.stored_bytes <= BOUND && stats.stored_bytes > BOUND - (6 << 10),
+        "{stats:?}"
+    );
+    s.server.stop().await;
+}
+
 /// `/slow` dispatches one event at a time.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_client_flooding_busy_handlers_is_closed() {

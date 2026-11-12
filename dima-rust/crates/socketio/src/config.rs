@@ -120,7 +120,9 @@ pub struct Options {
     pub shutdown_drain: Duration,
     /// How long a closing connection may take to hand its last packets and the close packet to
     /// the client, and then to end, before its socket is aborted (30 s: `engine.io`'s polling
-    /// `closeTimeout` and `ws`'s close timeout).
+    /// `closeTimeout` and `ws`'s close timeout). Also how long a restore's missed events may
+    /// wait for room in a full send queue while the client takes nothing: past it, the
+    /// connection is closed as a slow consumer.
     pub close_timeout: Duration,
 }
 

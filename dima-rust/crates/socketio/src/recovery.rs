@@ -32,6 +32,11 @@
 //!   kind (stored bytes for packets, sessions for sessions) is dropped, the writer's own
 //!   namespace included. So one channel's churn drops its own entries before it can push any
 //!   other channel below its size, and the namespaces converge to equal shares of the limit.
+//! - **One reservation per stored packet.** A packet's bytes are taken from `bytes_total` when
+//!   it is stored and given back when its last owner drops it: the store, or a restore sending
+//!   it, which keeps it after the store evicted it. So the budget bounds what is really alive;
+//!   when restores hold the rest of it, a new event is not stored (as one too large). A
+//!   restore whose client takes nothing ends by the slow-consumer rule (`close_timeout`).
 //! - **Sessions are measured** by what they really keep ([`crate::RetainedSize`] of the socket
 //!   data, its ids and a fixed overhead), when the socket leaves and again when its last
 //!   handler has ended; a session over `session_bytes` is not kept, and all of them together
@@ -53,6 +58,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tokio_util::sync::CancellationToken;
 
+use crate::budget::{release, reserve};
 use crate::config::RecoveryLimits;
 use crate::telemetry::{Eviction, RecoveryOutcome, Telemetry};
 
@@ -75,13 +81,47 @@ fn find<'a>(sessions: &'a HashMap<Key, Session>, pid: &str) -> Option<&'a Sessio
         .filter(|s| dima_core::crypto::constant_time_eq(s.pid.as_bytes(), pid.as_bytes()))
 }
 
-/// Readable copies of the store's totals (for [`crate::Stats`]); written under the store lock.
+/// The store's totals (for [`crate::Stats`]). `bytes` is the packet budget itself: reserved
+/// when a packet is stored, given back when the last owner of the packet (the store, or a
+/// replay sending it) drops it. The others are copies written under the store lock.
 #[derive(Debug, Default)]
 pub struct Totals {
     pub packets: AtomicUsize,
     pub bytes: AtomicUsize,
     pub sessions: AtomicUsize,
     pub session_bytes: AtomicUsize,
+}
+
+/// A stored event's text with its share of the packet budget (`Totals::bytes`), reserved once
+/// when it was stored and given back when the last reference goes: a replay that took the
+/// packet keeps it charged after the store evicted it (H2 of the re-check), so the budget
+/// bounds what is really alive.
+pub struct Payload {
+    json: Arc<str>,
+    cost: usize,
+    totals: Arc<Totals>,
+}
+
+impl std::ops::Deref for Payload {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        &self.json
+    }
+}
+
+impl Drop for Payload {
+    fn drop(&mut self) {
+        release(&self.totals.bytes, self.cost);
+    }
+}
+
+impl std::fmt::Debug for Payload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Payload")
+            .field("cost", &self.cost)
+            .finish_non_exhaustive()
+    }
 }
 
 /// The timing rules.
@@ -100,8 +140,8 @@ struct Stored {
     offset: String,
     /// `None`: the whole namespace; `Some(sid)`: one socket.
     target: Option<String>,
-    /// The event's data array, offset included (`["name",…,"<offset>"]`).
-    json: Arc<str>,
+    /// The event's data array, offset included (`["name",…,"<offset>"]`), charged.
+    json: Arc<Payload>,
     emitted_ms: i64,
     cost: usize,
 }
@@ -179,6 +219,7 @@ struct Record {
     /// after it could not be stored.
     barrier: u64,
     packets: VecDeque<Stored>,
+    /// Bytes of the packets in `packets`.
     bytes: usize,
     sessions: HashMap<Key, Session>,
     /// Restores sending this record's packets; the record is kept while any runs.
@@ -226,7 +267,7 @@ pub struct Restored {
 /// The next missed events for a restoring socket.
 #[derive(Debug, Default)]
 pub struct Batch {
-    pub packets: Vec<Arc<str>>,
+    pub packets: Vec<Arc<Payload>>,
     pub cursor: u64,
     /// Events after the cursor were dropped: the replay would be partial.
     pub gap: bool,
@@ -245,7 +286,9 @@ pub struct Ctx<'a> {
 pub struct Store {
     records: HashMap<String, Record>,
     packets: usize,
-    bytes: usize,
+    /// Bytes of the packets the store holds (what evicting can free); the budget, which also
+    /// counts packets only a replay still holds, is `totals.bytes`.
+    stored_bytes: usize,
     sessions: usize,
     session_bytes: usize,
     totals: Arc<Totals>,
@@ -262,7 +305,6 @@ impl Store {
 
     fn publish(&self) {
         self.totals.packets.store(self.packets, Ordering::Release);
-        self.totals.bytes.store(self.bytes, Ordering::Release);
         self.totals.sessions.store(self.sessions, Ordering::Release);
         self.totals
             .session_bytes
@@ -326,7 +368,8 @@ impl Store {
         };
         record.bytes = record.bytes.saturating_sub(packet.cost);
         self.packets = self.packets.saturating_sub(1);
-        self.bytes = self.bytes.saturating_sub(packet.cost);
+        self.stored_bytes = self.stored_bytes.saturating_sub(packet.cost);
+        // Its share of the budget goes with the last reference (here, or a replay's).
         true
     }
 
@@ -363,8 +406,9 @@ impl Store {
     }
 
     /// Stores one eligible event. When the bounds leave no room for it (it alone is larger than
-    /// a namespace's or the server's byte limit), it is not stored but still takes its place in
-    /// the sequence, and offsets before it can no longer be recovered. Returns whether it was
+    /// a namespace's or the server's byte limit, or replays hold the rest of the budget after
+    /// everything evictable was evicted), it is not stored but still takes its place in the
+    /// sequence, and offsets before it can no longer be recovered. Returns whether it was
     /// stored.
     pub fn append(
         &mut self,
@@ -377,14 +421,7 @@ impl Store {
         let cost = OVERHEAD + json.len() + offset.len() + target.map_or(0, str::len);
         let limits = ctx.limits;
         if cost > limits.bytes_per_namespace || cost > limits.bytes_total {
-            let record = self.record(nsp, ctx);
-            let seq = record.next_seq;
-            record.next_seq += 1;
-            record.barrier = seq + 1;
-            ctx.telemetry.recovery_evicted(nsp, Eviction::NotStored);
-            self.drop_if_empty(nsp);
-            self.publish();
-            return false;
+            return self.not_stored(nsp, ctx);
         }
         // Room in the namespace: its own oldest go.
         loop {
@@ -398,17 +435,24 @@ impl Store {
             self.pop_packet(nsp);
             ctx.telemetry.recovery_evicted(nsp, Eviction::Packet);
         }
-        // Room in the server: the largest namespace's oldest go.
-        while self.packets >= limits.packets_total || self.bytes + cost > limits.bytes_total {
-            let Some(largest) = self.largest_by_bytes() else {
+        // Room in the server: the largest namespace's oldest go, until the packet count fits
+        // and the budget (what is stored and what replays still hold) can take this one.
+        while self.packets >= limits.packets_total {
+            if !self.evict_largest(nsp, ctx) {
                 break;
-            };
-            self.pop_packet(&largest);
-            ctx.telemetry.recovery_evicted(&largest, Eviction::Packet);
-            if largest != nsp {
-                self.drop_if_empty(&largest);
             }
         }
+        while !reserve(&self.totals.bytes, cost, limits.bytes_total) {
+            if !self.evict_largest(nsp, ctx) {
+                // Replays hold the rest: nothing more can be freed now.
+                return self.not_stored(nsp, ctx);
+            }
+        }
+        let payload = Arc::new(Payload {
+            json,
+            cost,
+            totals: Arc::clone(&self.totals),
+        });
         let record = self.record(nsp, ctx);
         let seq = record.next_seq;
         record.next_seq += 1;
@@ -417,14 +461,41 @@ impl Store {
             seq,
             offset: offset.to_owned(),
             target: target.map(str::to_owned),
-            json,
+            json: payload,
             emitted_ms: ctx.now,
             cost,
         });
         self.packets += 1;
-        self.bytes += cost;
+        self.stored_bytes += cost;
         self.publish();
         true
+    }
+
+    /// Drops the oldest packet of the namespace storing the most bytes; `false` when nothing is
+    /// stored.
+    fn evict_largest(&mut self, nsp: &str, ctx: &Ctx<'_>) -> bool {
+        let Some(largest) = self.largest_by_bytes() else {
+            return false;
+        };
+        self.pop_packet(&largest);
+        ctx.telemetry.recovery_evicted(&largest, Eviction::Packet);
+        if largest != nsp {
+            self.drop_if_empty(&largest);
+        }
+        true
+    }
+
+    /// An event that is not stored still takes its place in its namespace's sequence: a
+    /// restore from an earlier offset would miss it, so the barrier moves past it.
+    fn not_stored(&mut self, nsp: &str, ctx: &Ctx<'_>) -> bool {
+        let record = self.record(nsp, ctx);
+        let seq = record.next_seq;
+        record.next_seq += 1;
+        record.barrier = seq + 1;
+        ctx.telemetry.recovery_evicted(nsp, Eviction::NotStored);
+        self.drop_if_empty(nsp);
+        self.publish();
+        false
     }
 
     /// Makes room for one more session of `cost` bytes in `nsp`; `false` when there is none.
@@ -632,11 +703,11 @@ impl Store {
         self.publish();
     }
 
-    /// Drops everything (shutdown).
+    /// Drops everything (shutdown). Packets a replay still holds stay charged until it lets go.
     pub fn clear(&mut self) {
         self.records.clear();
         self.packets = 0;
-        self.bytes = 0;
+        self.stored_bytes = 0;
         self.sessions = 0;
         self.session_bytes = 0;
         self.publish();
@@ -720,7 +791,7 @@ mod tests {
         assert_eq!((sid.as_str(), *data), ("sid1", 7));
         let batch = state.missed("/n", restored.cursor, "sid1", 100, &c);
         assert_eq!(
-            batch.packets.iter().map(|p| p.as_ref()).collect::<Vec<_>>(),
+            batch.packets.iter().map(|p| &***p).collect::<Vec<_>>(),
             ["[\"b\",\"o2\"]", "[\"d\",\"o4\"]"]
         );
         assert!(!state.has_after("/n", batch.cursor));
@@ -909,6 +980,46 @@ mod tests {
                 .restore("/n", "abcdefghijklmnopqrst", "o1", &c)
                 .is_ok()
         );
+    }
+
+    /// H2 (re-check of 2026-11-12): a replay shares the store's reservation. The review's
+    /// sequence: a restore takes its batch, newer events evict the batch's packets from the
+    /// store; the budget's figure is what is alive (stored, or held by the replay), never above
+    /// the bound, and the replay's share comes back when it lets go.
+    #[test]
+    fn a_replay_batch_keeps_its_packets_charged_until_it_lets_go() {
+        let (totals, mut state) = store();
+        let mut c = ctx(0);
+        let text = |i: usize| json(&format!("[\"{}\",\"o{i}\"]", "x".repeat(1_000)));
+        // Every packet costs the same: its text, its offset and the fixed overhead.
+        let cost = OVERHEAD + text(0).len() + "o0".len();
+        c.limits.bytes_total = 6 * cost;
+        for i in 0..4 {
+            assert!(state.append("/n", None, &format!("o{i}"), text(i), &c));
+        }
+        state.persist("/n", session("s", "p", (), 0), &c);
+        let restored = state.restore("/n", "p", "o0", &c).unwrap();
+        let batch = state.missed("/n", restored.cursor, "s", 64, &c);
+        assert_eq!(batch.packets.len(), 3);
+        // Six newer events: the store keeps the newest it can; the batch's three stay alive.
+        for i in 4..10 {
+            state.append("/n", None, &format!("o{i}"), text(i), &c);
+        }
+        let stored = state.stored("/n");
+        assert_eq!(
+            totals.bytes.load(Ordering::Acquire),
+            (stored + batch.packets.len()) * cost,
+            "the figure is what is alive"
+        );
+        assert!(totals.bytes.load(Ordering::Acquire) <= c.limits.bytes_total);
+        assert_eq!(stored, 3);
+        // The replay ends: its share is given back; the store has room again.
+        drop(batch);
+        assert_eq!(totals.bytes.load(Ordering::Acquire), stored * cost);
+        assert!(state.append("/n", None, "o9x", text(9), &c));
+        // One byte more: its offset is one character longer.
+        assert_eq!(totals.bytes.load(Ordering::Acquire), 4 * cost + 1);
+        state.finish_restore("/n");
     }
 
     /// Finding 8: an event that cannot be stored still takes its place in the sequence, and

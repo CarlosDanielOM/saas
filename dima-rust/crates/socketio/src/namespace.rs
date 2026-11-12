@@ -791,11 +791,15 @@ async fn replay<N: Namespace>(
             batch
         };
         cursor = batch.cursor;
+        // Each missed event's share of the recovery budget stays taken until it is encoded
+        // (the batch holds the stored text, even after the store evicted it); its encoded
+        // copy is charged to the outbound budget from then on.
         for json in batch.packets {
             let packet = codec::encode_event(nsp, None, &json);
+            drop(json);
             if !core
                 .conn
-                .push_waiting(core.key, def.queue, packet, ticket)
+                .push_waiting(nsp, core.key, def.queue, packet, ticket)
                 .await
             {
                 return false;
