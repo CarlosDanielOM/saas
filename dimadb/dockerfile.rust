@@ -1,0 +1,52 @@
+# dimadb with the Rust backend (dima-rust/services/dimadb-server) in place of server/*.mjs.
+#
+# Build from the repository root, because the Rust workspace lives outside dimadb/:
+#
+#   docker build -f dimadb/dockerfile.rust -t dimadb:latest .
+#
+# The runtime contract is the one dimadb/dockerfile and docker-compose.yaml rely on, so the
+# Compose file needs no change: port 80, PUBLIC_DIR=/app/public, DATA_DIR=/data (the ./data
+# volume), the same DIMADB_* variables, no command override.
+#
+# Differences from the Node image:
+# - The process runs as uid:gid 65532:65532, not root. A ./data directory written by the Node
+#   image belongs to root (and `secret` is mode 0600), so it must be handed over once before the
+#   switch: `chown -R 65532:65532 dimadb/data`. The Node image (root) still reads it after a
+#   rollback. Without the chown the server stops at start-up with "cannot use the secret file".
+# - Port 80 as a non-root user relies on Docker's default
+#   net.ipv4.ip_unprivileged_port_start=0 inside containers.
+# - No Node in the runtime image: `docker exec <container> node ...` probes (scripts/saas-ops
+#   readiness, ops/tests/docker_smoke.py) need their native mode first.
+
+FROM node:22-alpine AS ui
+WORKDIR /ui
+COPY dimadb/package.json dimadb/package-lock.json ./
+RUN npm ci
+COPY dimadb/angular.json dimadb/tsconfig.json dimadb/tsconfig.app.json dimadb/.postcssrc.json ./
+COPY dimadb/public ./public
+COPY dimadb/src ./src
+RUN npm run build
+
+# The toolchain pinned in dima-rust/rust-toolchain.toml; RUSTUP_TOOLCHAIN keeps rustup from
+# installing the file's extra components (rustfmt, clippy) for a release build.
+FROM rust:1.99.1-slim-bookworm AS server
+ENV RUSTUP_TOOLCHAIN=1.99.1 \
+    CARGO_TERM_COLOR=never
+WORKDIR /build
+COPY dima-rust ./dima-rust
+RUN cargo build --manifest-path dima-rust/Cargo.toml --locked --release -p dimadb-server \
+ && install -D -m 0755 dima-rust/target/release/dimadb-server /out/dimadb-server \
+ && mkdir -p /out/data
+
+# glibc 2.36 like the builder (both Debian 12), CA certificates included, no shell.
+FROM gcr.io/distroless/cc-debian12:nonroot
+WORKDIR /app
+ENV PORT=80 \
+    PUBLIC_DIR=/app/public \
+    DATA_DIR=/data
+COPY --from=server /out/dimadb-server /app/dimadb-server
+COPY --from=ui /ui/dist/dimadb/browser /app/public
+COPY --from=server --chown=65532:65532 /out/data /data
+USER 65532:65532
+EXPOSE 80
+CMD ["/app/dimadb-server"]
