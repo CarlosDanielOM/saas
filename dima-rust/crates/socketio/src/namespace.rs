@@ -13,7 +13,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::budget::Charge;
 use crate::codec;
-use crate::config::{Dispatch, QueueLimits, Recovery};
+use crate::config::{Dispatch, HandlerDeadlines, QueueLimits, Recovery};
 use crate::connection::{Connection, Ticket};
 use crate::error::{ConnectError, DisconnectReason, SendError};
 use crate::handshake::Handshake;
@@ -23,7 +23,7 @@ use crate::pattern::Pattern;
 use crate::recovery::{self, Session};
 use crate::server::Shared;
 use crate::socket::{Core, ErasedSocket, Event, Socket};
-use crate::telemetry::{RecoveryOutcome, Refusal, SendOutcome};
+use crate::telemetry::{Handler, RecoveryOutcome, Refusal, SendOutcome};
 
 /// What a feature package implements for one namespace or family (`io.of(name)` and its
 /// `connection` handler in the reference). Every method is async and runs in a task the server
@@ -82,6 +82,10 @@ pub struct NamespaceOptions {
     pub queue: Option<QueueLimits>,
     /// How events reach [`Namespace::on_event`].
     pub dispatch: Dispatch,
+    /// How long its handlers may run (`None`: the server's [`Options::handler_deadlines`]).
+    ///
+    /// [`Options::handler_deadlines`]: crate::Options::handler_deadlines
+    pub deadlines: Option<HandlerDeadlines>,
 }
 
 /// Which names a declaration covers.
@@ -126,6 +130,7 @@ pub(crate) struct Def<N: Namespace> {
     pub recovery: Recovery,
     pub queue: QueueLimits,
     pub dispatch: Dispatch,
+    pub deadlines: HandlerDeadlines,
     pub matcher: Matcher,
     children: Mutex<HashMap<String, Arc<Child<N::Data>>>>,
     store: Option<Mutex<recovery::State<N::Data>>>,
@@ -136,13 +141,17 @@ pub(crate) trait DefOps<D>: Send + Sync {
     fn shared(&self) -> &Shared;
     fn recovery(&self) -> Recovery;
     fn queue(&self) -> QueueLimits;
-    /// Stores an eligible event (full recovery), then runs `send` under the same lock.
+    /// Stores an eligible event (full recovery), then runs `send` under the same lock. With
+    /// `left` (the private id and key of a socket that has left), the event is stored only
+    /// while that socket's session is kept unclaimed: a late emit of old work never reaches a
+    /// socket that recovered the session (`Err(Disconnected)` without storing).
     fn store_and_send(
         &self,
         nsp: &str,
         target: Option<&str>,
         offset: &str,
         json: Arc<str>,
+        left: Option<(&str, u64)>,
         send: &mut dyn FnMut() -> Result<(), SendError>,
     ) -> Result<(), SendError>;
     /// The socket leaves: keep its session when the reason allows, then drop its membership.
@@ -173,6 +182,9 @@ impl<N: Namespace> Def<N> {
         matcher: Matcher,
     ) -> Self {
         let queue = options.queue.unwrap_or(shared.options.queue);
+        let deadlines = options
+            .deadlines
+            .unwrap_or(shared.options.handler_deadlines);
         let store =
             (options.recovery == Recovery::Full).then(|| Mutex::new(recovery::State::default()));
         let mut children = HashMap::new();
@@ -185,6 +197,7 @@ impl<N: Namespace> Def<N> {
             recovery: options.recovery,
             queue,
             dispatch: options.dispatch,
+            deadlines,
             matcher,
             children: Mutex::new(children),
             store,
@@ -278,11 +291,17 @@ impl<N: Namespace> DefOps<N::Data> for Def<N> {
         target: Option<&str>,
         offset: &str,
         json: Arc<str>,
+        left: Option<(&str, u64)>,
         send: &mut dyn FnMut() -> Result<(), SendError>,
     ) -> Result<(), SendError> {
         let now = self.shared.clock.now_ms();
         match self.store() {
             Some(mut store) => {
+                if let Some((pid, owner)) = left
+                    && !store.owns(nsp, pid, owner)
+                {
+                    return Err(SendError::Disconnected);
+                }
                 store.append(nsp, target, offset, json, &self.ctx(now));
                 send()
             }
@@ -303,6 +322,8 @@ impl<N: Namespace> DefOps<N::Data> for Def<N> {
                     core.id.clone(),
                     core.pid.clone(),
                     Arc::clone(&core.data),
+                    core.key,
+                    core.ended.clone(),
                     now,
                 );
                 store.persist(&core.nsp, session, &self.ctx(now));
@@ -382,16 +403,41 @@ impl<N: Namespace> ErasedDef for Def<N> {
     }
 }
 
-/// Runs one handler future: contained panics, dropped at the hard stop of a shutdown.
-async fn guarded(shared: &Shared, nsp: &str, future: impl Future<Output = ()>) {
+/// Runs one handler future: contained panics, dropped at `deadline` or when `cancel` fires
+/// (the socket left, for `on_connect` and `on_event`; the hard stop of a shutdown always).
+async fn run_handler(
+    shared: &Shared,
+    nsp: &str,
+    kind: Handler,
+    deadline: Duration,
+    cancel: Option<&CancellationToken>,
+    future: impl Future<Output = ()>,
+) {
+    let cancelled = async {
+        match cancel {
+            Some(cancel) => cancel.cancelled().await,
+            None => std::future::pending().await,
+        }
+    };
     tokio::select! {
         biased;
         () = shared.hard_stop.cancelled() => {}
+        () = cancelled => {}
+        () = tokio::time::sleep(deadline) => shared.telemetry.handler_timed_out(nsp, kind),
         outcome = AssertUnwindSafe(future).catch_unwind() => {
             if outcome.is_err() {
                 shared.telemetry.handler_panicked(nsp);
             }
         }
+    }
+}
+
+/// Fires its token when dropped: the socket's work has ended, however its task ended.
+struct Ended(CancellationToken);
+
+impl Drop for Ended {
+    fn drop(&mut self) {
+        self.0.cancel();
     }
 }
 
@@ -406,11 +452,18 @@ struct Admission<N: Namespace> {
     ticket: Ticket,
     /// The socket created for it, opened in the connection's outbox.
     socket: Option<u64>,
+    /// It claimed a session: the store keeps the namespace's record until the restore ends.
+    restoring: bool,
     joined: bool,
 }
 
 impl<N: Namespace> Drop for Admission<N> {
     fn drop(&mut self) {
+        if self.restoring
+            && let Some(mut store) = self.def.store()
+        {
+            store.finish_restore(&self.nsp);
+        }
         if self.joined {
             return;
         }
@@ -444,6 +497,7 @@ async fn run_socket<N: Namespace>(
         nsp: nsp.clone(),
         ticket: ticket.clone(),
         socket: None,
+        restoring: false,
         joined: false,
     };
 
@@ -454,14 +508,30 @@ async fn run_socket<N: Namespace>(
         && let Some(mut store) = def.store()
     {
         match store.restore(&nsp, pid, offset, &def.ctx(now)) {
-            Ok(session) => restored = Some(session),
+            Ok(session) => {
+                admission.restoring = true;
+                restored = Some(session);
+            }
             Err(outcome) => shared.telemetry.recovery(&nsp, outcome),
         }
     }
 
     let handshake = Handshake::new(Arc::clone(&conn.first), auth, charge, now);
     let (sid, pid, data, cursor) = match restored {
-        Some(session) => (session.sid, session.pid, session.data, Some(session.cursor)),
+        Some(session) => {
+            // The socket that left the session may still be finishing its handlers (its
+            // `on_disconnect`, at most its deadline): the new one starts once they ended.
+            let released = tokio::select! {
+                biased;
+                () = ticket.cancel.cancelled() => false,
+                () = shared.hard_stop.cancelled() => false,
+                () = session.released.cancelled() => true,
+            };
+            if !released || conn.is_closed() {
+                return;
+            }
+            (session.sid, session.pid, session.data, Some(session.cursor))
+        }
         None => {
             let check = AssertUnwindSafe(def.handler.check(&handshake, &nsp)).catch_unwind();
             let result = tokio::select! {
@@ -530,8 +600,11 @@ async fn run_socket<N: Namespace>(
         joined: std::sync::atomic::AtomicBool::new(false),
         inbound: inbound_tx,
         inbound_bytes: Arc::default(),
+        ended: CancellationToken::new(),
         me: OnceLock::new(),
     });
+    // Whatever ends this task, a restore waiting for this socket's work is let go.
+    let _ended = Ended(core.ended.clone());
     let _ = core.me.set(Arc::downgrade(&core));
     conn.open_socket(core.key);
     admission.socket = Some(core.key);
@@ -551,14 +624,32 @@ async fn run_socket<N: Namespace>(
     let socket = Socket {
         core: Arc::clone(&core),
     };
-    guarded(&shared, &nsp, def.handler.on_connect(socket.clone())).await;
+    let deadlines = def.deadlines;
+    run_handler(
+        &shared,
+        &nsp,
+        Handler::Connect,
+        deadlines.connect,
+        Some(&core.closed),
+        def.handler.on_connect(socket.clone()),
+    )
+    .await;
+    // Returns once the socket has left and every event handler of it has ended.
     events(&def, &socket, inbound).await;
     let reason = core
         .reason
         .get()
         .copied()
         .unwrap_or(DisconnectReason::TransportClose);
-    guarded(&shared, &nsp, def.handler.on_disconnect(socket, reason)).await;
+    run_handler(
+        &shared,
+        &nsp,
+        Handler::Disconnect,
+        deadlines.disconnect,
+        None,
+        def.handler.on_disconnect(socket, reason),
+    )
+    .await;
 }
 
 /// Makes the socket a member and sends its CONNECT, under the member lock, so a namespace emit
@@ -613,7 +704,6 @@ async fn replay<N: Namespace>(
             };
             let batch = store.missed(nsp, cursor, &core.id, REPLAY_BATCH, &def.ctx(now));
             if batch.gap {
-                store.finish_restore(nsp);
                 drop(store);
                 shared.telemetry.recovery(nsp, RecoveryOutcome::Gap);
                 core.conn.close(DisconnectReason::ForcedServerClose);
@@ -622,7 +712,7 @@ async fn replay<N: Namespace>(
             if batch.packets.is_empty() && batch.cursor == cursor {
                 // Nothing after the cursor: register while no emit can store a packet.
                 let joined = register(child, core, ticket);
-                store.finish_restore(nsp);
+                drop(store);
                 if joined {
                     shared.telemetry.recovery(nsp, RecoveryOutcome::Recovered);
                 }
@@ -638,16 +728,14 @@ async fn replay<N: Namespace>(
                 .push_waiting(core.key, def.queue, packet, ticket)
                 .await
             {
-                if let Some(mut store) = def.store() {
-                    store.finish_restore(nsp);
-                }
                 return false;
             }
         }
     }
 }
 
-/// Feeds client events to the handler until the socket leaves.
+/// Feeds client events to the handler until the socket leaves; returns once every event
+/// handler of the socket has ended (cancelled when it left, or at its deadline).
 async fn events<N: Namespace>(
     def: &Arc<Def<N>>,
     socket: &Socket<N::Data>,
@@ -655,6 +743,7 @@ async fn events<N: Namespace>(
 ) {
     let shared = Arc::clone(&def.shared);
     let core = &socket.core;
+    let deadline = def.deadlines.event;
     match def.dispatch {
         Dispatch::Sequential => loop {
             let event = tokio::select! {
@@ -664,16 +753,22 @@ async fn events<N: Namespace>(
                 event = inbound.recv() => event,
             };
             let Some(event) = event else { break };
-            guarded(
+            run_handler(
                 &shared,
                 &core.nsp,
+                Handler::Event,
+                deadline,
+                Some(&core.closed),
                 def.handler.on_event(socket.clone(), event),
             )
             .await;
         },
         Dispatch::Concurrent(limit) => {
             let slots = Arc::new(Semaphore::new(limit.max(1)));
+            // The socket's running handlers: aborted and joined when it leaves.
+            let mut running = tokio::task::JoinSet::new();
             loop {
+                while running.try_join_next().is_some() {}
                 let slot = tokio::select! {
                     biased;
                     () = core.closed.cancelled() => break,
@@ -691,13 +786,23 @@ async fn events<N: Namespace>(
                 let def = Arc::clone(def);
                 let socket = socket.clone();
                 let task_shared = Arc::clone(&shared);
-                shared.tasks.spawn(async move {
+                running.spawn(shared.tasks.track_future(async move {
                     let shared = task_shared;
-                    let nsp = socket.core.nsp.clone();
-                    guarded(&shared, &nsp, def.handler.on_event(socket, event)).await;
+                    let core = &socket.core;
+                    run_handler(
+                        &shared,
+                        &core.nsp,
+                        Handler::Event,
+                        deadline,
+                        Some(&core.closed),
+                        def.handler.on_event(socket.clone(), event),
+                    )
+                    .await;
                     drop(slot);
-                });
+                }));
             }
+            running.abort_all();
+            while running.join_next().await.is_some() {}
         }
     }
 }

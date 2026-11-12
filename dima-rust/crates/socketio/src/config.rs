@@ -79,6 +79,8 @@ pub struct Options {
     pub queue: QueueLimits,
     /// Bounds of connection state recovery.
     pub recovery: RecoveryLimits,
+    /// How long each kind of handler may run (a namespace may set its own).
+    pub handler_deadlines: HandlerDeadlines,
     /// At shutdown, how long queued output may take to reach the clients before every
     /// connection is closed (5 s); handlers still running are dropped at the same deadline.
     pub shutdown_drain: Duration,
@@ -113,8 +115,38 @@ impl Default for Options {
             max_outbound_total: 128 << 20,
             queue: QueueLimits::default(),
             recovery: RecoveryLimits::default(),
+            handler_deadlines: HandlerDeadlines::default(),
             shutdown_drain: Duration::from_secs(5),
             close_timeout: Duration::from_secs(30),
+        }
+    }
+}
+
+/// How long a handler of a socket may run before it is dropped (cancelled at its next await),
+/// counted from its start. Generous on purpose: they bound work that never ends, not work that
+/// is slow.
+///
+/// Besides its deadline, every `on_connect` and `on_event` of a socket is cancelled when the
+/// socket leaves its namespace; `on_disconnect` then runs once, under its own deadline only.
+/// A recovered socket starts only once every handler of the socket it replaces has ended, so
+/// no work of the old socket can run beside the new one on the data they share.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandlerDeadlines {
+    /// [`crate::Namespace::on_connect`] (60 s).
+    pub connect: Duration,
+    /// Each [`crate::Namespace::on_event`] (120 s: the speech preview's client waits 90 s for
+    /// its acknowledgement).
+    pub event: Duration,
+    /// [`crate::Namespace::on_disconnect`] (10 s). A client recovering the socket waits for it.
+    pub disconnect: Duration,
+}
+
+impl Default for HandlerDeadlines {
+    fn default() -> Self {
+        Self {
+            connect: Duration::from_secs(60),
+            event: Duration::from_secs(120),
+            disconnect: Duration::from_secs(10),
         }
     }
 }

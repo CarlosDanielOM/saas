@@ -31,6 +31,8 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use tokio_util::sync::CancellationToken;
+
 use crate::config::RecoveryLimits;
 use crate::telemetry::{Eviction, RecoveryOutcome, Telemetry};
 
@@ -73,18 +75,32 @@ pub struct Session<D> {
     pub sid: String,
     pub pid: String,
     pub data: Arc<D>,
+    /// The key of the socket that left it: only that socket's late emits may still be stored
+    /// for it, and only while the session is not claimed.
+    owner: u64,
+    /// Fires when every handler of that socket has ended: a restore waits for it.
+    released: CancellationToken,
     disconnected_ms: i64,
     cost: usize,
 }
 
 impl<D> Session<D> {
     /// A session for a socket that just left.
-    pub fn new(sid: String, pid: String, data: Arc<D>, disconnected_ms: i64) -> Self {
+    pub fn new(
+        sid: String,
+        pid: String,
+        data: Arc<D>,
+        owner: u64,
+        released: CancellationToken,
+        disconnected_ms: i64,
+    ) -> Self {
         let cost = OVERHEAD + sid.len() + pid.len() + std::mem::size_of::<D>();
         Self {
             sid,
             pid,
             data,
+            owner,
+            released,
             disconnected_ms,
             cost,
         }
@@ -174,6 +190,8 @@ pub struct Restored<D> {
     pub pid: String,
     pub data: Arc<D>,
     pub cursor: u64,
+    /// Fires when the socket that left the session has no handler running any more.
+    pub released: CancellationToken,
 }
 
 /// The next missed events for a restoring socket.
@@ -400,6 +418,7 @@ impl<D> State<D> {
                                 pid: session.pid,
                                 data: session.data,
                                 cursor,
+                                released: session.released,
                             })
                         }
                         None => Err(RecoveryOutcome::UnknownSession),
@@ -409,6 +428,15 @@ impl<D> State<D> {
         };
         self.drop_if_empty(nsp);
         outcome
+    }
+
+    /// Whether the session of `pid` is still kept, unclaimed, for the socket `owner` that left
+    /// it (its late emits may then still be stored for it).
+    pub fn owns(&self, nsp: &str, pid: &str, owner: u64) -> bool {
+        self.records
+            .get(nsp)
+            .and_then(|record| record.sessions.get(pid))
+            .is_some_and(|session| session.owner == owner)
     }
 
     /// Up to `max` missed events after `cursor` for socket `sid` (`shouldIncludePacket`: sent to
@@ -531,7 +559,14 @@ mod tests {
         assert!(state.append("/n", None, "o1", json("[\"a\",\"o1\"]"), &c));
         state.persist(
             "/n",
-            Session::new("sid1".into(), "pid1".into(), Arc::new(7), 1_000),
+            Session::new(
+                "sid1".into(),
+                "pid1".into(),
+                Arc::new(7),
+                0,
+                CancellationToken::new(),
+                1_000,
+            ),
             &c,
         );
         assert!(state.append("/n", None, "o2", json("[\"b\",\"o2\"]"), &c));
@@ -562,7 +597,14 @@ mod tests {
         state.append("/n", None, "o1", json("[\"a\",\"o1\"]"), &c);
         state.persist(
             "/n",
-            Session::new("s".into(), "p".into(), Arc::new(()), 0),
+            Session::new(
+                "s".into(),
+                "p".into(),
+                Arc::new(()),
+                0,
+                CancellationToken::new(),
+                0,
+            ),
             &c,
         );
         assert!(matches!(
@@ -586,7 +628,14 @@ mod tests {
         state.finish_restore("/n");
         state.persist(
             "/n",
-            Session::new("s".into(), "p2".into(), Arc::new(()), 0),
+            Session::new(
+                "s".into(),
+                "p2".into(),
+                Arc::new(()),
+                0,
+                CancellationToken::new(),
+                0,
+            ),
             &c,
         );
         state.append("/n", None, "o2", json("[\"a\",\"o2\"]"), &c);
@@ -606,7 +655,14 @@ mod tests {
         // At 170 s the last sweep was at 120 s (threshold 0): nothing older than 0.
         state.persist(
             "/n",
-            Session::new("s".into(), "p".into(), Arc::new(()), 169_000),
+            Session::new(
+                "s".into(),
+                "p".into(),
+                Arc::new(()),
+                0,
+                CancellationToken::new(),
+                169_000,
+            ),
             &ctx(&totals, 170_000),
         );
         assert_eq!(state.stored("/n"), 2);
@@ -639,7 +695,14 @@ mod tests {
         // A cursor before the retained range is a gap.
         state.persist(
             "/n",
-            Session::new("s".into(), "p".into(), Arc::new(()), 0),
+            Session::new(
+                "s".into(),
+                "p".into(),
+                Arc::new(()),
+                0,
+                CancellationToken::new(),
+                0,
+            ),
             &c,
         );
         let restored = state.restore("/n", "p", "o2", &c).unwrap();
@@ -656,7 +719,14 @@ mod tests {
         for i in 0..4 {
             state.persist(
                 "/s",
-                Session::new(format!("s{i}"), format!("p{i}"), Arc::new(()), i),
+                Session::new(
+                    format!("s{i}"),
+                    format!("p{i}"),
+                    Arc::new(()),
+                    0,
+                    CancellationToken::new(),
+                    i,
+                ),
                 &c,
             );
         }
@@ -664,7 +734,14 @@ mod tests {
         c.limits.session_bytes = 10;
         assert!(!state.persist(
             "/s",
-            Session::new("s".into(), "p".into(), Arc::new(()), 9),
+            Session::new(
+                "s".into(),
+                "p".into(),
+                Arc::new(()),
+                0,
+                CancellationToken::new(),
+                9
+            ),
             &c
         ));
         state.clear(&totals);

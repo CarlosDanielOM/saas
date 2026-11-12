@@ -68,6 +68,17 @@ pub enum Eviction {
     SessionTooLarge,
 }
 
+/// A kind of handler.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Handler {
+    /// `on_connect`.
+    Connect,
+    /// `on_event`.
+    Event,
+    /// `on_disconnect`.
+    Disconnect,
+}
+
 /// The seam. All methods default to doing nothing.
 pub trait Telemetry: Send + Sync + 'static {
     /// An Engine.IO connection opened.
@@ -94,6 +105,8 @@ pub trait Telemetry: Send + Sync + 'static {
     fn inbound_overflow(&self) {}
     /// A handler (check, connect, event, disconnect) panicked; the panic was contained.
     fn handler_panicked(&self, _namespace: &str) {}
+    /// A handler ran past its deadline and was dropped.
+    fn handler_timed_out(&self, _namespace: &str, _handler: Handler) {}
 }
 
 /// Reports nothing.

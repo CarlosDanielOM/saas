@@ -172,7 +172,7 @@ mod socket;
 pub mod telemetry;
 
 pub use client_files::CLIENT_VERSION;
-pub use config::{Dispatch, Options, QueueLimits, Recovery, RecoveryLimits};
+pub use config::{Dispatch, HandlerDeadlines, Options, QueueLimits, Recovery, RecoveryLimits};
 pub use error::{AckError, BuildError, ConnectError, DisconnectReason, SendError};
 pub use handshake::{Handshake, Query};
 pub use namespace::{Namespace, NamespaceOptions, NamespaceRef};

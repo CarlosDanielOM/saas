@@ -122,6 +122,9 @@ impl Telemetry for Counting {
     fn handler_panicked(&self, _namespace: &str) {
         self.bump("panic".into());
     }
+    fn handler_timed_out(&self, _namespace: &str, handler: dima_socketio::telemetry::Handler) {
+        self.bump(format!("timeout:{handler:?}"));
+    }
 }
 
 struct Setup {
@@ -1492,5 +1495,241 @@ async fn the_server_wide_inbound_budget_is_shared() {
     b.send(&format!("42/p,[\"echo\",\"{text}\"]")).await;
     assert!(b.closed_within(3 * SECOND).await);
     assert!(!a.closed_within(Duration::from_millis(200)).await);
+    s.server.stop().await;
+}
+
+// ----- finding 3: each socket owns its handlers --------------------------------------------
+
+type Shared = Arc<Mutex<Vec<String>>>;
+type Handles = Arc<Mutex<Vec<Socket<Mutex<Vec<String>>>>>>;
+
+/// Records `what` in `log` when dropped (a handler future cancelled or ended).
+struct OnDrop(Shared, &'static str);
+
+impl Drop for OnDrop {
+    fn drop(&mut self) {
+        self.0.lock().unwrap().push(self.1.to_owned());
+    }
+}
+
+/// `/z`: full recovery; the socket's data is a list of writes; handlers that hang, write late,
+/// and a slow `on_disconnect`.
+struct Fenced {
+    log: Shared,
+    handles: Handles,
+}
+
+impl Namespace for Fenced {
+    type Data = Mutex<Vec<String>>;
+
+    async fn check(&self, _handshake: &Handshake, _nsp: &str) -> Result<Self::Data, ConnectError> {
+        Ok(Mutex::new(Vec::new()))
+    }
+
+    async fn on_connect(&self, socket: Socket<Self::Data>) {
+        self.handles.lock().unwrap().push(socket.clone());
+        if socket.recovered() {
+            let seen = socket.data().lock().unwrap().clone();
+            self.log
+                .lock()
+                .unwrap()
+                .push(format!("recovered saw {seen:?}"));
+            return;
+        }
+        let _ = socket.emit("hello", &[]);
+        if socket.handshake().auth().contains_key("hang") {
+            let _guard = OnDrop(Arc::clone(&self.log), "connect dropped");
+            std::future::pending::<()>().await;
+        }
+    }
+
+    async fn on_event(&self, socket: Socket<Self::Data>, mut event: Event) {
+        match event.name.as_str() {
+            "slow-write" => {
+                tokio::time::sleep(Duration::from_millis(400)).await;
+                socket.data().lock().unwrap().push("old event".to_owned());
+            }
+            "hang" => {
+                let _guard = OnDrop(Arc::clone(&self.log), "event dropped");
+                std::future::pending::<()>().await;
+            }
+            "ping" => {
+                if let Some(ack) = event.take_ack() {
+                    let _ = ack.send(&[json!("pong")]);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    async fn on_disconnect(&self, socket: Socket<Self::Data>, _reason: DisconnectReason) {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        socket
+            .data()
+            .lock()
+            .unwrap()
+            .push("disconnect done".to_owned());
+        self.log.lock().unwrap().push("disconnect".to_owned());
+    }
+}
+
+struct FencedSetup {
+    server: TestServer,
+    log: Shared,
+    handles: Handles,
+    telemetry: Arc<Counting>,
+}
+
+async fn fenced(options: NamespaceOptions) -> FencedSetup {
+    let log: Shared = Arc::default();
+    let handles: Handles = Arc::default();
+    let telemetry = Arc::new(Counting::default());
+    let runtime = Runtime {
+        telemetry: Arc::clone(&telemetry) as Arc<dyn Telemetry>,
+        ..Runtime::default()
+    };
+    let (l, h) = (Arc::clone(&log), Arc::clone(&handles));
+    let server = TestServer::start_with(Options::default(), runtime, move |builder| {
+        builder
+            .namespace("/z", options, Fenced { log: l, handles: h })
+            .unwrap();
+    })
+    .await;
+    FencedSetup {
+        server,
+        log,
+        handles,
+        telemetry,
+    }
+}
+
+fn logged(log: &Shared, what: &str) -> bool {
+    log.lock().unwrap().iter().any(|entry| entry == what)
+}
+
+/// Finding 3: a socket that leaves while its `on_connect` never returns has it cancelled, and
+/// `on_disconnect` still runs (before, both stayed: the task lived until shutdown).
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_socket_that_leaves_cancels_its_running_handlers() {
+    let s = fenced(NamespaceOptions::default()).await;
+    let mut client = Ws::open(s.server.addr).await;
+    client.join("/z", &json!({"hang": true})).await.unwrap();
+    let log = Arc::clone(&s.log);
+    client.close().await;
+    eventually("on_connect cancelled, on_disconnect run", || {
+        logged(&log, "connect dropped") && logged(&log, "disconnect")
+    })
+    .await;
+    // An event handler too.
+    let mut client = Ws::open(s.server.addr).await;
+    client.join("/z", &ok()).await.unwrap();
+    client.send("42/z,[\"hang\"]").await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert!(!logged(&log, "event dropped"));
+    client.close().await;
+    eventually("on_event cancelled", || logged(&log, "event dropped")).await;
+    s.server.stop().await;
+}
+
+/// Finding 3: every handler kind has a deadline; an event handler past it is dropped and the
+/// socket carries on.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_handler_past_its_deadline_is_dropped() {
+    for dispatch in [Dispatch::Sequential, Dispatch::Concurrent(4)] {
+        let options = NamespaceOptions {
+            dispatch,
+            deadlines: Some(dima_socketio::HandlerDeadlines {
+                event: Duration::from_millis(200),
+                ..dima_socketio::HandlerDeadlines::default()
+            }),
+            ..NamespaceOptions::default()
+        };
+        let s = fenced(options).await;
+        let mut client = Ws::open(s.server.addr).await;
+        client.join("/z", &ok()).await.unwrap();
+        client.send("42/z,[\"hang\"]").await;
+        let log = Arc::clone(&s.log);
+        eventually("the event handler timed out", || {
+            logged(&log, "event dropped")
+        })
+        .await;
+        assert_eq!(s.telemetry.get("timeout:Event"), 1);
+        client.send("42/z,5[\"ping\"]").await;
+        assert_eq!(
+            client
+                .until(|t| t.starts_with("43/z,5"), 3 * SECOND)
+                .await
+                .as_deref(),
+            Some("43/z,5[\"pong\"]")
+        );
+        client.close().await;
+        s.server.stop().await;
+    }
+}
+
+/// Finding 3: work of a socket that left cannot touch what a recovered socket now holds. Its
+/// running event handler is cancelled when it leaves (the late write never happens); the
+/// recovered socket starts only after the old `on_disconnect` has finished; and an emit
+/// through a handle of the old socket after the recovery is not stored for the new one.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn old_work_cannot_touch_a_recovered_socket() {
+    let s = fenced(NamespaceOptions::default()).await;
+    let mut client = Ws::open(s.server.addr).await;
+    let connect = client.join("/z", &ok()).await.unwrap();
+    let hello = client
+        .until(|t| event(t, "/z").is_some(), 3 * SECOND)
+        .await
+        .unwrap();
+    let offset = event(&hello, "/z")
+        .unwrap()
+        .last()
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let pid = connect["pid"].as_str().unwrap().to_owned();
+    // The write is 400 ms away when the connection drops.
+    client.send("42/z,[\"slow-write\"]").await;
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    client.drop_connection();
+    let io = s.server.io.clone();
+    eventually("the session is kept", || io.stats().sessions == 1).await;
+    let mut back = Ws::open(s.server.addr).await;
+    let again = back
+        .join("/z", &json!({"pid": pid, "offset": offset}))
+        .await
+        .unwrap();
+    assert_eq!(again["pid"].as_str(), Some(pid.as_str()));
+    let log = Arc::clone(&s.log);
+    eventually("the recovered socket connected", || {
+        log.lock()
+            .unwrap()
+            .iter()
+            .any(|e| e.starts_with("recovered saw"))
+    })
+    .await;
+    tokio::time::sleep(Duration::from_millis(600)).await;
+    let entries = s.log.lock().unwrap().clone();
+    assert!(
+        entries.contains(&"recovered saw [\"disconnect done\"]".to_owned()),
+        "{entries:?}"
+    );
+    let handles = s.handles.lock().unwrap().clone();
+    assert_eq!(handles.len(), 2);
+    assert_eq!(
+        *handles[1].data().lock().unwrap(),
+        ["disconnect done".to_owned()]
+    );
+    // The old handle: disconnected, and nothing is stored on behalf of the new socket.
+    let stored = io.stats().stored_packets;
+    assert_eq!(
+        handles[0].emit("stale", &[]),
+        Err(dima_socketio::SendError::Disconnected)
+    );
+    assert_eq!(io.stats().stored_packets, stored);
+    // While the new one is connected, its own emits are stored as usual.
+    assert_eq!(handles[1].emit("fresh", &[]), Ok(()));
+    assert_eq!(io.stats().stored_packets, stored + 1);
+    back.close().await;
     s.server.stop().await;
 }

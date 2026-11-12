@@ -131,6 +131,8 @@ pub(crate) struct Core<D> {
     pub inbound: mpsc::Sender<Event>,
     /// Inbound bytes held by this socket's events and answers (`max_inbound_bytes`).
     pub inbound_bytes: Arc<std::sync::atomic::AtomicUsize>,
+    /// Fires when every handler of the socket, `on_disconnect` included, has ended.
+    pub ended: CancellationToken,
     pub me: OnceLock<std::sync::Weak<Core<D>>>,
 }
 
@@ -351,9 +353,12 @@ impl<D: Send + Sync + 'static> Socket<D> {
     /// `socket.emit(event, ...args)` with a delivery policy for a full send queue.
     ///
     /// In a namespace with full recovery the event gets an offset and is stored, also when the
-    /// socket has already disconnected: a client that recovers this socket receives it (as in
-    /// the reference, where `socket.emit` goes through the adapter). The result is then
-    /// [`SendError::Disconnected`], though the event is kept.
+    /// socket has already disconnected, as long as its session waits unclaimed: a client that
+    /// recovers this socket receives it (as in the reference, where `socket.emit` goes through
+    /// the adapter). The result is then [`SendError::Disconnected`], though the event is kept.
+    /// Once the session was recovered by a new socket (or was never kept), an emit through
+    /// this old handle stores nothing: work of the old socket cannot add to what the new one
+    /// receives.
     pub fn emit_with(
         &self,
         delivery: &Delivery,
@@ -382,6 +387,7 @@ impl<D: Send + Sync + 'static> Socket<D> {
                 Some(&core.id),
                 &offset,
                 Arc::from(json.as_str()),
+                (!core.is_connected()).then_some((core.pid.as_str(), core.key)),
                 &mut || core.push(packet.clone(), delivery),
             ),
             _ => core.push(packet, delivery),
