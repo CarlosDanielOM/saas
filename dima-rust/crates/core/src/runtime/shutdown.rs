@@ -1,5 +1,6 @@
 //! The shutdown token, the signal listener and ordered shutdown under a deadline.
 
+use super::registry::WorkRegistry;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
@@ -8,33 +9,58 @@ use tokio_util::sync::CancellationToken;
 
 /// A cancellation signal shared by everything that must stop on shutdown. Clones share the
 /// state; [`Shutdown::child`] makes a token that also fires on its own without stopping the parent.
+///
+/// A token may carry a [`WorkRegistry`] ([`Shutdown::with_registry`]): work that
+/// [`run_with_deadline`](super::run_with_deadline) starts under it, or under any token derived
+/// from it, is registered there until it has really stopped.
 #[derive(Clone, Debug, Default)]
-pub struct Shutdown(CancellationToken);
+pub struct Shutdown {
+    token: CancellationToken,
+    registry: Option<WorkRegistry>,
+}
 
 impl Shutdown {
     /// A token that has not fired.
     pub fn new() -> Self {
-        Self(CancellationToken::new())
+        Self::default()
     }
 
     /// Fires the token (idempotent). Every clone and child sees it.
     pub fn trigger(&self) {
-        self.0.cancel();
+        self.token.cancel();
     }
 
     /// Whether the token has fired.
     pub fn is_triggered(&self) -> bool {
-        self.0.is_cancelled()
+        self.token.is_cancelled()
     }
 
     /// Resolves once the token has fired (at once if it already has).
     pub async fn wait(&self) {
-        self.0.cancelled().await;
+        self.token.cancelled().await;
     }
 
-    /// A token that fires when this one does, or when triggered itself.
+    /// A token that fires when this one does, or when triggered itself. It carries the same
+    /// registry.
     pub fn child(&self) -> Self {
-        Self(self.0.child_token())
+        Self {
+            token: self.token.child_token(),
+            registry: self.registry.clone(),
+        }
+    }
+
+    /// The same signal (not a child: triggering either fires both), with work started under it
+    /// registered in `registry`, replacing any registry this token carried.
+    pub fn with_registry(&self, registry: &WorkRegistry) -> Self {
+        Self {
+            token: self.token.clone(),
+            registry: Some(registry.clone()),
+        }
+    }
+
+    /// The registry work started under this token is registered in, if any.
+    pub fn registry(&self) -> Option<&WorkRegistry> {
+        self.registry.as_ref()
     }
 }
 
