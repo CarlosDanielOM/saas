@@ -6,6 +6,9 @@
 [workspace]
 resolver = "3"
 members = [".", "crates/*", "rig", "services/*"]
+# Third-party crates carried with local patches (vendor/README.md). Their own workspace runs
+# their tests; they stay out of this workspace's lint and format gate.
+exclude = ["vendor"]
 
 [workspace.package]
 version = "0.1.0"
@@ -117,6 +120,12 @@ unimplemented = "deny"
 dbg_macro = "deny"
 # Byte-index slicing of strings panics off a character boundary (MIGRATION.md section 4).
 string_slice = "deny"
+
+# The patched copies of the Engine.IO transport (vendor/README.md lists every change). Every
+# crate of the workspace, `socketioxide` of the root crate included, uses them.
+[patch.crates-io]
+engineioxide = { path = "vendor/engineioxide" }
+engineioxide-core = { path = "vendor/engineioxide-core" }
 
 # Smaller, faster development builds: the shared target directory is used by
 # every worktree, and full debug info for dependencies costs tens of gigabytes.

@@ -1747,6 +1747,114 @@
     ]
    ]
   },
+  "4.7.5 polling short: upgrade probe answer lost on the way down": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "during 0"
+    ],
+    [
+     "ack",
+     "during 1"
+    ],
+    [
+     "ack",
+     "during 2"
+    ],
+    [
+     "ack",
+     "during 3"
+    ],
+    [
+     "transport",
+     "polling"
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling short: upgrade probe lost on the way up": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "during 0"
+    ],
+    [
+     "ack",
+     "during 1"
+    ],
+    [
+     "ack",
+     "during 2"
+    ],
+    [
+     "ack",
+     "during 3"
+    ],
+    [
+     "transport",
+     "polling"
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
   "4.7.5 polling unicode payloads": {
    "a": [
     [
@@ -3582,6 +3690,114 @@
       "tag": "t475upgrade28"
      },
      "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade short: upgrade probe answer lost on the way down": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "during 0"
+    ],
+    [
+     "ack",
+     "during 1"
+    ],
+    [
+     "ack",
+     "during 2"
+    ],
+    [
+     "ack",
+     "during 3"
+    ],
+    [
+     "transport",
+     "polling"
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade short: upgrade probe lost on the way up": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "during 0"
+    ],
+    [
+     "ack",
+     "during 1"
+    ],
+    [
+     "ack",
+     "during 2"
+    ],
+    [
+     "ack",
+     "during 3"
+    ],
+    [
+     "transport",
+     "polling"
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "connected",
+     true
     ],
     [
      "disconnect",
@@ -5431,6 +5647,20 @@
     ]
    ]
   },
+  "4.7.5 websocket short: upgrade probe answer lost on the way down": {
+   "a": [
+    [
+     "not run over WebSocket only"
+    ]
+   ]
+  },
+  "4.7.5 websocket short: upgrade probe lost on the way up": {
+   "a": [
+    [
+     "not run over WebSocket only"
+    ]
+   ]
+  },
   "4.7.5 websocket unicode payloads": {
    "a": [
     [
@@ -7266,6 +7496,114 @@
       "tag": "t483polling28"
      },
      "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling short: upgrade probe answer lost on the way down": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "during 0"
+    ],
+    [
+     "ack",
+     "during 1"
+    ],
+    [
+     "ack",
+     "during 2"
+    ],
+    [
+     "ack",
+     "during 3"
+    ],
+    [
+     "transport",
+     "polling"
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling short: upgrade probe lost on the way up": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "during 0"
+    ],
+    [
+     "ack",
+     "during 1"
+    ],
+    [
+     "ack",
+     "during 2"
+    ],
+    [
+     "ack",
+     "during 3"
+    ],
+    [
+     "transport",
+     "polling"
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "connected",
+     true
     ],
     [
      "disconnect",
@@ -9115,6 +9453,114 @@
     ]
    ]
   },
+  "4.8.3 upgrade short: upgrade probe answer lost on the way down": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "during 0"
+    ],
+    [
+     "ack",
+     "during 1"
+    ],
+    [
+     "ack",
+     "during 2"
+    ],
+    [
+     "ack",
+     "during 3"
+    ],
+    [
+     "transport",
+     "polling"
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade short: upgrade probe lost on the way up": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "during 0"
+    ],
+    [
+     "ack",
+     "during 1"
+    ],
+    [
+     "ack",
+     "during 2"
+    ],
+    [
+     "ack",
+     "during 3"
+    ],
+    [
+     "transport",
+     "polling"
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
   "4.8.3 upgrade unicode payloads": {
    "a": [
     [
@@ -10957,6 +11403,20 @@
     ]
    ]
   },
+  "4.8.3 websocket short: upgrade probe answer lost on the way down": {
+   "a": [
+    [
+     "not run over WebSocket only"
+    ]
+   ]
+  },
+  "4.8.3 websocket short: upgrade probe lost on the way up": {
+   "a": [
+    [
+     "not run over WebSocket only"
+    ]
+   ]
+  },
   "4.8.3 websocket unicode payloads": {
    "a": [
     [
@@ -11410,6 +11870,79 @@
     "status": 413,
     "headers": {}
    }
+  },
+  "upgrade races": {
+   "opened": [
+    "open",
+    "open"
+   ],
+   "answers": [
+    "3probe",
+    "close 1005"
+   ],
+   "connect": "40/norec,{\"sid\":\"<sid>\",\"pid\":\"<pid>\"}",
+   "welcome": "42/norec,[\"welcome\",{\"recovered\":false,\"nsp\":\"/norec\",\"x\":null,\"token\":null,\"tag\":null}]",
+   "echo": "42/norec,[\"echo\",\"over the winner\"]",
+   "late opened": "open",
+   "late answer": "close 1005",
+   "echo after": "42/norec,[\"echo\",\"still\"]",
+   "poll after": {
+    "status": 400,
+    "body": "{\"code\":3,\"message\":\"Bad request\"}"
+   }
+  },
+  "a six-byte text that is not a packet": {
+   "opened": "open",
+   "open": true,
+   "websocket": "close 1005",
+   "poll after the post": 400
+  },
+  "a six-byte text that is not a packet: the POST answer": {
+   "status": 200,
+   "body": "ok"
+  },
+  "a POST that arrives in pieces": {
+   "joined": true,
+   "post": {
+    "status": 200,
+    "body": "ok"
+   },
+   "waiting poll": {
+    "answered before the POST was complete": false
+   },
+   "echoes": [
+    "first",
+    "second"
+   ]
+  },
+  "an oversized POST that starts with a valid packet": {
+   "joined": true,
+   "big post": {
+    "status": 413
+   },
+   "post after": {
+    "status": 200
+   },
+   "echoes": [
+    "after"
+   ]
+  },
+  "a ping from the client": {
+   "websocket 2": "close 1005",
+   "websocket 2probe": "close 1005",
+   "polling post": {
+    "status": 200,
+    "body": "ok"
+   },
+   "poll after": 400
+  },
+  "heartbeat timing": {
+   "websocket first ping": "2",
+   "websocket first ping after the interval": true,
+   "websocket next ping": "2",
+   "websocket next ping an interval after the pong": true,
+   "polling first ping": "2",
+   "polling first ping after the interval": true
   },
   "the app and other upgrades": {
    "hello": {

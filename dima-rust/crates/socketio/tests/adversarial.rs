@@ -859,19 +859,18 @@ async fn shutdown_says_goodbye_and_releases_everything() {
     ws.join("/p", &ok()).await.unwrap();
     let polling = Polling::open(s.server.addr).await;
     assert_eq!(polling.post(&["40/f/x,{}"]).await, Some(200));
-    // Take everything queued so far: the hello and the first heartbeat ping (sent when the
-    // session opens; this client never answers it, so no other comes for 20 s).
-    let (mut hello, mut ping) = (false, false);
+    // Take everything queued so far: the hello. The first heartbeat ping comes one ping
+    // interval (25 s) after the session opened, as in `engine.io`.
+    let mut hello = false;
     for _ in 0..5 {
         for packet in polling.poll(2 * SECOND).await.unwrap_or_default() {
             hello |= event(&packet, "/f/x").is_some();
-            ping |= packet == "2";
         }
-        if hello && ping {
+        if hello {
             break;
         }
     }
-    assert!(hello && ping);
+    assert!(hello);
     let mut wait = tokio::spawn(async move { polling.poll(10 * SECOND).await });
     tokio::time::sleep(Duration::from_millis(100)).await;
     let io = s.server.io.clone();
@@ -1058,9 +1057,9 @@ async fn a_client_that_stops_answering_heartbeats_is_closed() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn overlapping_polling_requests_end_the_session() {
     let s = setup(Options::default(), NamespaceOptions::default()).await;
-    // Two polls at once (`overlap from client`).
+    // Two polls at once (`overlap from client`). Nothing is queued (the first heartbeat ping
+    // waits one ping interval), so the first one waits.
     let polling = Polling::open(s.server.addr).await;
-    let _ = polling.poll(SECOND).await;
     let first = tokio::spawn({
         let addr = s.server.addr;
         let path = format!("/socket.io/?EIO=4&transport=polling&sid={}", polling.sid);
@@ -1104,12 +1103,13 @@ async fn overlapping_polling_requests_end_the_session() {
     s.server.stop().await;
 }
 
-/// A known difference: `engineioxide` ends the whole session when a WebSocket upgrade fails
-/// after its handshake (a wrong probe, or no probe within the upgrade timeout), where
-/// `engine.io` only closes the probe and keeps the client on polling. The client reconnects.
+/// A WebSocket upgrade that fails after its handshake (here a wrong probe) closes the probe
+/// only; the client stays on polling, as in `engine.io` (socket.js 243-246). Upstream
+/// `engineioxide` ended the whole session; the vendored copy is patched (vendor/README.md,
+/// change 1).
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn a_failed_upgrade_ends_the_session() {
-    use futures_util::SinkExt as _;
+async fn a_failed_upgrade_keeps_the_session_on_polling() {
+    use futures_util::{SinkExt as _, StreamExt as _};
     use tokio_tungstenite::tungstenite::Message;
     let s = setup(Options::default(), NamespaceOptions::default()).await;
     let polling = Polling::open(s.server.addr).await;
@@ -1121,17 +1121,32 @@ async fn a_failed_upgrade_ends_the_session() {
     );
     let (mut ws, _) = tokio_tungstenite::connect_async(url).await.unwrap();
     ws.send(Message::text("4not a probe")).await.unwrap();
-    let mut gone = false;
+    let closed = tokio::time::timeout(2 * SECOND, async {
+        loop {
+            match ws.next().await {
+                Some(Ok(Message::Close(_))) | None | Some(Err(_)) => return,
+                Some(Ok(_)) => {}
+            }
+        }
+    })
+    .await;
+    assert!(closed.is_ok(), "the probe WebSocket was not closed");
+    assert_eq!(
+        polling.post(&["42/p,1[\"echo\",\"still\"]"]).await,
+        Some(200)
+    );
+    let mut answered = false;
     for _ in 0..20 {
-        if matches!(polling.poll(SECOND).await, Err(Some(400))) {
-            gone = true;
-            break;
+        match polling.poll(SECOND).await {
+            Ok(packets) if packets.iter().any(|p| p.starts_with("43/p,1")) => {
+                answered = true;
+                break;
+            }
+            Ok(_) => {}
+            Err(status) => panic!("the polling session ended: {status:?}"),
         }
     }
-    assert!(
-        gone,
-        "engineioxide closed the polling session with the failed upgrade"
-    );
+    assert!(answered, "no answer over polling after the failed upgrade");
     s.server.stop().await;
 }
 

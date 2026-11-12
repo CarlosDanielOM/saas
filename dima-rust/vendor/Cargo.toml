@@ -1,0 +1,18 @@
+# The vendored crates' own workspace (README.md). It exists to run their tests with their
+# dev-dependencies, which the main workspace's lock file does not carry:
+#
+#   cd dima-rust/vendor && ../tools/cargo test --locked --features engineioxide/__test_harness
+#
+# The main workspace excludes this directory and uses the crates through `[patch.crates-io]`.
+[workspace]
+resolver = "3"
+members = ["engineioxide", "engineioxide-core"]
+
+[patch.crates-io]
+engineioxide-core = { path = "engineioxide-core" }
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false

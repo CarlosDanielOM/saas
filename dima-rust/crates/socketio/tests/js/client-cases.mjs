@@ -9,6 +9,7 @@
 // each socket's observations are kept apart, so the output depends only on the server's
 // behaviour. Progress goes to stderr.
 import http from 'node:http';
+import net from 'node:net';
 import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { brotliDecompressSync, gunzipSync, inflateSync } from 'node:zlib';
@@ -165,6 +166,62 @@ function blip(socket) {
   socket.io.engine.close();
 }
 
+// A TCP proxy to `port` for a network that breaks WebSockets after their handshake: HTTP
+// requests pass, and so does a WebSocket handshake, but on an upgraded connection the frames
+// going `drop` ('up': client to server, 'down': server to client) are lost.
+function brokenWebSocketProxy(port, drop) {
+  const sockets = new Set();
+  const server = net.createServer((client) => {
+    const upstream = net.connect(port, '127.0.0.1');
+    sockets.add(client).add(upstream);
+    let head = Buffer.alloc(0);
+    let upgrade = null; // known once the request head is complete
+    let answered = false; // the 101 went down
+    client.on('data', (chunk) => {
+      if (upgrade === true && answered && drop === 'up') return;
+      if (upgrade === null) {
+        head = Buffer.concat([head, chunk]);
+        const end = head.indexOf('\r\n\r\n');
+        if (end < 0) return;
+        upgrade = /^upgrade:\s*websocket/im.test(head.subarray(0, end).toString('latin1'));
+        upstream.write(head);
+        return;
+      }
+      upstream.write(chunk);
+    });
+    upstream.on('data', (chunk) => {
+      if (upgrade === true && answered && drop === 'down') return;
+      if (upgrade === true && !answered) {
+        // The handshake answer passes; anything after it in the same chunk is a frame.
+        const end = chunk.indexOf('\r\n\r\n');
+        answered = end >= 0;
+        client.write(drop === 'down' && answered ? chunk.subarray(0, end + 4) : chunk);
+        return;
+      }
+      client.write(chunk);
+    });
+    const close = () => {
+      client.destroy();
+      upstream.destroy();
+    };
+    for (const side of [client, upstream]) {
+      side.on('error', close);
+      side.on('close', close);
+    }
+  });
+  return new Promise((done) =>
+    server.listen(0, '127.0.0.1', () =>
+      done({
+        port: server.address().port,
+        close() {
+          server.close();
+          for (const socket of sockets) socket.destroy();
+        },
+      }),
+    ),
+  );
+}
+
 const cases = {
   async 'connect root'(run) {
     const s = run.socket('/', 'root');
@@ -258,6 +315,9 @@ const cases = {
   async 'client disconnects'(run) {
     const s = run.socket('/basic', 'a');
     await connected(run, s, 'a');
+    // The Rust server sends a namespace's first events a moment after its CONNECT reply (the
+    // connect handler runs as a task); a poll may carry the CONNECT alone. Wait for them.
+    await run.until('a', 'event', 'welcome');
     s.disconnect();
     await run.until('a', 'disconnect');
   },
@@ -321,12 +381,16 @@ const cases = {
     s.emit('echo', 'y'.repeat(1_100_000));
     await run.until('a', 'disconnect', undefined, 1, 5000);
     await run.until('a', 'connect', undefined, 2, 5000);
+    // As in 'client disconnects': the welcome may follow the CONNECT reply in a later poll.
+    await run.until('a', 'event', 'welcome', 2, 5000);
   },
   async 'malformed packets close the connection'(run) {
     for (const packet of ['garbage', '2/basic,["connect"]', '0/basic,', '2/elsewhere,["x"]', '3/basic,']) {
       const label = packet;
       const s = run.socket('/basic', label);
       await connected(run, s, label);
+      // The welcome carries the offset a recovery needs (see 'client disconnects').
+      await run.until(label, 'event', 'welcome');
       s.io.engine.send(packet);
       if (await run.until(label, 'disconnect', undefined, 1, 1500)) {
         await run.until(label, 'event', 'welcome', 2);
@@ -449,6 +513,18 @@ const cases = {
     blip(s);
     await run.until('a', 'event', 'welcome', 2, 6000);
   },
+  // The WebSocket handshake succeeds but no frame gets through, so the probe is never
+  // answered: the server gives up after its upgrade timeout (1 s on the short servers) and the
+  // client stays connected over polling (engine.io socket.js 211-218). The proxy would also
+  // starve a WebSocket-only client, so that variant does not run.
+  async 'short: upgrade probe lost on the way up'(run) {
+    await lostProbe(run, 'up');
+  },
+  // The probe reaches the server but its answer does not reach the client: the server's polls
+  // turn to noops until it gives the upgrade up, then carry data again.
+  async 'short: upgrade probe answer lost on the way down'(run) {
+    await lostProbe(run, 'down');
+  },
   async 'short: connect timeout'(run) {
     const m = run.manager({ reconnection: false });
     m.on('close', (reason) => run.log('manager', 'close', reason));
@@ -457,6 +533,31 @@ const cases = {
     await run.until('manager', 'close', undefined, 1, 4000);
   },
 };
+
+async function lostProbe(run, drop) {
+  if (run.transport === 'websocket') {
+    run.log('a', 'not run over WebSocket only');
+    return;
+  }
+  const proxy = await brokenWebSocketProxy(new URL(run.base).port, drop);
+  try {
+    const s = run.client.io(`http://127.0.0.1:${proxy.port}/norec`, run.options());
+    run.sockets.push(s);
+    run.watch(s, 'a', '/norec');
+    s.io.on('open', () => s.io.engine.on('upgrade', () => run.log('a', 'upgraded')));
+    await run.until('a', 'event', 'welcome');
+    // Longer than the upgrade timeout, with traffic during it.
+    for (let i = 0; i < 4; i++) {
+      await run.ack('a', s, 'echo', `during ${i}`);
+      await sleep(400);
+    }
+    run.log('a', 'transport', s.io.engine.transport.name);
+    await run.ack('a', s, 'echo', 'after');
+    run.log('a', 'connected', s.connected);
+  } finally {
+    proxy.close();
+  }
+}
 
 // ----- HTTP cases ---------------------------------------------------------------------------
 
@@ -501,6 +602,137 @@ async function handshake(base, headers = {}) {
   const text = decode(response).toString('utf8');
   const open = JSON.parse(text.slice(1));
   return { response, open, sid: open.sid };
+}
+
+// A raw WebSocket: its frames and its end, in order, as text.
+class RawWs {
+  constructor(url) {
+    this.events = [];
+    this.waiters = [];
+    this.ws = new WebSocket(url);
+    this.ws.on('message', (data, binary) => this.push(binary ? `binary ${data.length}` : String(data)));
+    this.ws.on('close', (code) => this.push(`close ${code}`));
+    this.ws.on('error', () => {});
+    this.opened = new Promise((done) => {
+      this.ws.on('open', () => done('open'));
+      this.ws.on('unexpected-response', (_req, res) => done(`status ${res.statusCode}`));
+      this.ws.on('error', (error) => done(`error ${error.code ?? error.message}`));
+    });
+  }
+
+  push(event) {
+    const waiter = this.waiters.shift();
+    if (waiter) waiter(event);
+    else this.events.push(event);
+  }
+
+  // The next frame or the close; heartbeat pings are answered and skipped unless `pings`.
+  async next(timeout = 2000, { pings = false } = {}) {
+    if (typeof timeout === 'object') return this.next(2000, timeout);
+    for (;;) {
+      const event = this.events.length
+        ? this.events.shift()
+        : await new Promise((done) => {
+            const waiter = (e) => {
+              clearTimeout(timer);
+              done(e);
+            };
+            const timer = setTimeout(() => {
+              this.waiters = this.waiters.filter((w) => w !== waiter);
+              done('timeout');
+            }, timeout);
+            this.waiters.push(waiter);
+          });
+      if (event === '2' && !pings) {
+        this.send('3');
+        continue;
+      }
+      return event;
+    }
+  }
+
+  send(text) {
+    if (this.ws.readyState === WebSocket.OPEN) this.ws.send(text);
+  }
+
+  close() {
+    this.ws.terminate();
+  }
+}
+
+// A polling session opened with raw requests; its packets, heartbeat pings answered.
+async function rawPolling(base) {
+  const { sid } = await handshake(base);
+  const path = `/socket.io/?EIO=4&transport=polling&sid=${sid}`;
+  const text = { 'content-type': 'text/plain;charset=UTF-8' };
+  return {
+    sid,
+    path,
+    post: (body) => request(base, path, { method: 'POST', body, headers: text }),
+    // One poll: its packets, pings answered and left out.
+    async poll() {
+      const response = await request(base, path);
+      if (response.error) return { error: response.error };
+      if (response.status !== 200) return { status: response.status, body: response.body.toString() };
+      const packets = decode(response).toString('utf8').split('\x1e');
+      if (packets.includes('2')) await request(base, path, { method: 'POST', body: '3', headers: text });
+      return { packets: packets.filter((p) => p !== '2') };
+    },
+  };
+}
+
+// A chunked POST (no Content-Length) whose pieces are written `pause` ms apart; `whenSent` runs
+// once the last piece is written.
+function streamedPost(base, path, pieces, whenSent = () => {}) {
+  return new Promise((done) => {
+    const req = http.request(
+      `${base}${path}`,
+      { method: 'POST', agent: false, headers: { 'content-type': 'text/plain;charset=UTF-8', 'transfer-encoding': 'chunked' } },
+      (res) => {
+        const chunks = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => done({ status: res.statusCode, body: Buffer.concat(chunks).toString() }));
+        res.on('error', (error) => done({ error: error.code ?? error.message }));
+      },
+    );
+    req.on('error', (error) => done({ error: error.code ?? error.message }));
+    (async () => {
+      for (const { data, pause } of pieces) {
+        if (req.destroyed) return;
+        req.write(data);
+        if (pause) await sleep(pause);
+      }
+      whenSent();
+      req.end();
+    })();
+  });
+}
+
+// Joins /norec over a raw polling session and waits for its welcome.
+async function joinNorec(session) {
+  await session.post('40/norec,');
+  for (let i = 0; i < 5; i++) {
+    const { packets } = await session.poll();
+    if (packets?.some((p) => p.startsWith('42/norec,["welcome"'))) return true;
+  }
+  return false;
+}
+
+// The echo payloads of /norec that the next polls carry, until `last` arrives (or five polls).
+async function echoes(session, last) {
+  const seen = [];
+  for (let i = 0; i < 5 && !seen.includes(last); i++) {
+    const answer = await session.poll();
+    if (!answer.packets) {
+      seen.push(answer);
+      break;
+    }
+    for (const packet of answer.packets) {
+      const echo = /^42\/norec,\["echo","([^"]*)"\]$/.exec(packet);
+      if (echo) seen.push(echo[1]);
+    }
+  }
+  return seen;
 }
 
 const httpCases = {
@@ -563,6 +795,144 @@ const httpCases = {
     out['first message'] = packets.find((p) => p.startsWith('4'))?.replace(/"sid":"[^"]+","pid":"[^"]+"/, '<ids>');
     const big = await request(base, path, { method: 'POST', body: 'x'.repeat(1_000_001), headers: text });
     out['oversized post'] = describe(big, { body: 'none' });
+    return out;
+  },
+  // engine.io server.js 616-623: a second WebSocket for a session that is upgrading, or has
+  // upgraded, is closed after its handshake; the session goes on over the one that won.
+  async 'upgrade races'() {
+    const base = SHORT;
+    const out = {};
+    const session = await rawPolling(base);
+    const url = `${base.replace('http', 'ws')}${session.path.replace('polling', 'websocket')}`;
+    const probes = [new RawWs(url), new RawWs(url)];
+    out.opened = (await Promise.all(probes.map((p) => p.opened))).sort();
+    for (const probe of probes) probe.send('2probe');
+    const answers = await Promise.all(probes.map((p) => p.next()));
+    out.answers = [...answers].sort();
+    const winner = probes[answers.indexOf('3probe')];
+    if (winner) {
+      winner.send('5');
+      winner.send('40/norec,');
+      out.connect = (await winner.next()).replace(/"sid":"[^"]+"/, '"sid":"<sid>"').replace(/"pid":"[^"]+"/, '"pid":"<pid>"');
+      out.welcome = await winner.next();
+      winner.send('42/norec,["echo","over the winner"]');
+      out.echo = await winner.next();
+      const late = new RawWs(url);
+      out['late opened'] = await late.opened;
+      late.send('2probe');
+      out['late answer'] = await late.next();
+      late.close();
+      winner.send('42/norec,["echo","still"]');
+      out['echo after'] = await winner.next();
+    }
+    out['poll after'] = await session.poll();
+    for (const probe of probes) probe.close();
+    return out;
+  },
+  // `é1234`: six bytes, a first character two bytes long. engine.io reads an unknown packet type
+  // as a parse error and closes the session (engine.io-parser decodePacket, socket.js 113-115).
+  async 'a six-byte text that is not a packet'(base) {
+    const out = {};
+    const ws = new RawWs(`${base.replace('http', 'ws')}/socket.io/?EIO=4&transport=websocket`);
+    out.opened = await ws.opened;
+    out.open = (await ws.next()).startsWith('0{');
+    ws.send('é1234');
+    out.websocket = await ws.next();
+    ws.close();
+    const session = await rawPolling(base);
+    await session.post('é1234');
+    out['poll after the post'] = (await session.poll()).status ?? 'answered';
+    return out;
+  },
+  // The answer to a POST whose payload ended the session: engine.io handles the payload, then
+  // answers `ok` (polling.js 120-131).
+  async 'a six-byte text that is not a packet: the POST answer'(base) {
+    const session = await rawPolling(base);
+    const post = await session.post('é1234');
+    return post.error ? { error: post.error } : { status: post.status, body: post.body.toString() };
+  },
+  // engine.io buffers a POST and handles its packets once it has fully arrived (polling.js
+  // 106-133): a poll waiting meanwhile gets nothing from its first piece.
+  async 'a POST that arrives in pieces'(base) {
+    const out = {};
+    const session = await rawPolling(base);
+    out.joined = await joinNorec(session);
+    let sent = false;
+    const poll = session.poll().then((answer) => ({ 'answered before the POST was complete': !sent, ...answer }));
+    await sleep(50);
+    const post = await streamedPost(
+      base,
+      session.path,
+      [{ data: '42/norec,["echo","first"]\x1e', pause: 300 }, { data: '42/norec,["echo","second"]' }],
+      () => {
+        sent = true;
+      },
+    );
+    out.post = post;
+    const first = await poll;
+    out['waiting poll'] = { 'answered before the POST was complete': first['answered before the POST was complete'] };
+    const seen = (first.packets ?? []).map((p) => /^42\/norec,\["echo","([^"]*)"\]$/.exec(p)?.[1]).filter(Boolean);
+    out.echoes = seen.includes('second') ? seen : [...seen, ...(await echoes(session, 'second'))];
+    return out;
+  },
+  // A body over maxHttpBufferSize is refused while it arrives (polling.js 113-117): its first,
+  // valid packet is never handled, and the session stays.
+  async 'an oversized POST that starts with a valid packet'(base) {
+    const out = {};
+    const session = await rawPolling(base);
+    out.joined = await joinNorec(session);
+    const big = await streamedPost(base, session.path, [
+      { data: '42/norec,["echo","in the big one"]\x1e', pause: 50 },
+      { data: 'x'.repeat(1_000_001) },
+    ]);
+    out['big post'] = big.error ? { error: big.error } : { status: big.status };
+    const after = await session.post('42/norec,["echo","after"]');
+    out['post after'] = after.error ? { error: after.error } : { status: after.status };
+    out.echoes = await echoes(session, 'after');
+    return out;
+  },
+  // Protocol 4: the server pings, the client answers. A ping from the client is an "invalid
+  // heartbeat direction", a transport error that ends the session (socket.js 93-97), and the
+  // probe ping on the main transport is a ping too.
+  async 'a ping from the client'(base) {
+    const out = {};
+    for (const ping of ['2', '2probe']) {
+      const ws = new RawWs(`${base.replace('http', 'ws')}/socket.io/?EIO=4&transport=websocket`);
+      await ws.opened;
+      await ws.next();
+      ws.send(ping);
+      out[`websocket ${ping}`] = await ws.next();
+      ws.close();
+    }
+    const session = await rawPolling(base);
+    const post = await session.post('2');
+    out['polling post'] = post.error ? { error: post.error } : { status: post.status, body: post.body.toString() };
+    out['poll after'] = (await session.poll()).status ?? 'answered';
+    return out;
+  },
+  // socket.js 138-144 and 108-110: the first ping goes out one ping interval after the open
+  // packet (400 ms on the short servers), the next one an interval after the pong.
+  async 'heartbeat timing'() {
+    const base = SHORT;
+    const interval = 400;
+    const out = {};
+    const ws = new RawWs(`${base.replace('http', 'ws')}/socket.io/?EIO=4&transport=websocket`);
+    await ws.opened;
+    await ws.next({ pings: true });
+    let start = Date.now();
+    out['websocket first ping'] = await ws.next(2000, { pings: true });
+    out['websocket first ping after the interval'] = Date.now() - start >= interval - 50;
+    await sleep(150);
+    ws.send('3');
+    start = Date.now();
+    out['websocket next ping'] = await ws.next(2000, { pings: true });
+    out['websocket next ping an interval after the pong'] = Date.now() - start >= interval - 50;
+    ws.close();
+    start = Date.now();
+    const { sid } = await handshake(base);
+    const poll = await request(base, `/socket.io/?EIO=4&transport=polling&sid=${sid}`);
+    out['polling first ping'] = decode(poll).toString();
+    out['polling first ping after the interval'] = Date.now() - start >= interval - 50;
     return out;
   },
   async 'the app and other upgrades'(base) {
