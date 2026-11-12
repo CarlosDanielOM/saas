@@ -1183,6 +1183,44 @@ async fn the_refresh_hook_runs_after_the_slot_is_released() {
     );
 }
 
+/// A refresh that gives up, after longer than the attempt's own deadline.
+#[derive(Debug)]
+struct SlowStopCredential;
+
+impl Credential for SlowStopCredential {
+    fn refresh<'a>(&'a self, _attempt: u32, _rejected: &'a HeaderValue) -> BoxFuture<'a, Refresh> {
+        Box::pin(async {
+            tokio::time::sleep(ms(400)).await;
+            Refresh::Stop
+        })
+    }
+}
+
+#[tokio::test]
+async fn a_rejected_answer_is_readable_after_a_slow_refresh_stops() {
+    let server = MockServer::start().await.unwrap();
+    server.push(MockResponse::new(401).body("expired"));
+    let provider = Provider::builder("twitch", &server.url())
+        .timeout(ms(200))
+        .retry(RetryPolicy::twitch_helix_with(&[ms(1)]))
+        .build()
+        .unwrap();
+    let response = client()
+        .get(&provider, "/users")
+        .credential(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Bearer old"),
+            Arc::new(SlowStopCredential),
+        )
+        .refresh_timeout(Duration::from_secs(5))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 401);
+    // The attempt's 200 ms passed while the hook ran; the answer was already read.
+    assert_eq!(response.text().await.unwrap(), "expired");
+}
+
 /// A refresh that never answers.
 #[derive(Debug)]
 struct StalledCredential;

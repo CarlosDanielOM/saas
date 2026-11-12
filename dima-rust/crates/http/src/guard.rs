@@ -169,6 +169,7 @@ pub struct GuardPolicy {
     connect_timeout: Duration,
     idle_timeout: Duration,
     max_bytes: u64,
+    max_request_bytes: u64,
     exempt: Vec<IpAddr>,
 }
 
@@ -204,6 +205,7 @@ impl GuardPolicy {
             connect_timeout: Duration::from_secs(5),
             idle_timeout: Duration::from_secs(30),
             max_bytes: 8 * 1024 * 1024,
+            max_request_bytes: crate::provider::DEFAULT_MAX_REQUEST_BYTES,
             exempt: Vec::new(),
         }
     }
@@ -247,6 +249,12 @@ impl GuardPolicy {
     /// The default body limit.
     pub fn max_bytes(mut self, max: u64) -> Self {
         self.max_bytes = max;
+        self
+    }
+
+    /// The default limit on a request body sent out (8 MiB unless set).
+    pub fn max_request_bytes(mut self, max: u64) -> Self {
+        self.max_request_bytes = max;
         self
     }
 
@@ -465,6 +473,7 @@ impl GuardedClient {
             body: Body::Empty,
             timeout: self.policy.timeout,
             max_bytes: self.policy.max_bytes,
+            max_request_bytes: self.policy.max_request_bytes,
             idle_timeout: self.policy.idle_timeout,
             invalid: None,
         }
@@ -484,6 +493,7 @@ pub struct GuardedRequest<'a> {
     body: Body,
     timeout: Duration,
     max_bytes: u64,
+    max_request_bytes: u64,
     idle_timeout: Duration,
     invalid: Option<&'static str>,
 }
@@ -528,6 +538,12 @@ impl GuardedRequest<'_> {
     /// The body limit.
     pub fn max_bytes(mut self, max: u64) -> Self {
         self.max_bytes = max;
+        self
+    }
+
+    /// The limit on the request body sent out; a larger one is refused before anything is sent.
+    pub fn max_request_bytes(mut self, max: u64) -> Self {
+        self.max_request_bytes = max;
         self
     }
 
@@ -578,6 +594,14 @@ impl GuardedRequest<'_> {
             return Err(Error::Invalid {
                 info: info(method),
                 reason,
+            });
+        }
+        if let Body::Bytes(bytes) = &self.body
+            && bytes.len() as u64 > self.max_request_bytes
+        {
+            return Err(Error::RequestBodyTooLarge {
+                info: info(method),
+                limit: self.max_request_bytes,
             });
         }
         let deadline = tokio::time::Instant::now() + self.timeout;

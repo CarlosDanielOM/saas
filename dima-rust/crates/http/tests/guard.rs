@@ -362,6 +362,47 @@ async fn post_turns_into_get_on_303_and_keeps_its_body_on_307() {
 }
 
 #[tokio::test]
+async fn request_bodies_are_bounded_before_anything_is_sent() {
+    let server = MockServer::start().await.unwrap();
+    let resolver = Arc::new(ScriptedResolver::default());
+    resolver.answer("a.test", &[&[LOOPBACK]]);
+    let port = server.addr().port();
+    let client = client(
+        policy(&server, &["a.test"]).max_request_bytes(16),
+        &resolver,
+    );
+    let url = format!("http://a.test:{port}/upload");
+    let error = client
+        .request(Method::POST, &url)
+        .body(vec![b'x'; 17])
+        .send()
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(error, Error::RequestBodyTooLarge { limit: 16, .. }),
+        "{error:?}"
+    );
+    assert!(server.requests().is_empty());
+    // At the limit it goes out; one request may raise its own limit.
+    server.push(MockResponse::new(200));
+    server.push(MockResponse::new(200));
+    client
+        .request(Method::POST, &url)
+        .body(vec![b'x'; 16])
+        .send()
+        .await
+        .unwrap();
+    client
+        .request(Method::POST, &url)
+        .body(vec![b'x'; 17])
+        .max_request_bytes(32)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(server.requests().len(), 2);
+}
+
+#[tokio::test]
 async fn size_and_time_limits_hold() {
     let server = MockServer::start().await.unwrap();
     let resolver = Arc::new(ScriptedResolver::default());

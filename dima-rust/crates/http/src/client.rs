@@ -19,6 +19,10 @@ use tokio::sync::OwnedSemaphorePermit;
 use tokio::time::Instant;
 use url::Url;
 
+/// How long a response that was read into memory stays readable (see `buffer`): long enough
+/// that no refresh deadline can outlast it.
+const BUFFERED_READ_GRACE: Duration = Duration::from_secs(24 * 60 * 60);
+
 /// What a credential refresh produced.
 #[derive(Clone)]
 pub enum Refresh {
@@ -822,10 +826,13 @@ impl<'a> Sender<'a> {
         // The body is already decoded: the length and encoding headers no longer describe it.
         rebuilt.headers_mut().remove(http::header::CONTENT_ENCODING);
         rebuilt.headers_mut().remove(http::header::CONTENT_LENGTH);
+        // The body is in memory now, so no network read is left to bound, and the attempt's
+        // deadline may pass while the refresh hook runs under its own: a rejected answer handed
+        // back after `Refresh::Stop` must still be readable.
         let limits = Limits {
             max_bytes: self.max_bytes,
             idle: self.idle_timeout,
-            deadline,
+            deadline: Instant::now() + BUFFERED_READ_GRACE,
         };
         Ok(Response::new(
             reqwest::Response::from(rebuilt),

@@ -119,7 +119,8 @@ impl std::fmt::Debug for Provider {
         let p = &self.0;
         f.debug_struct("Provider")
             .field("name", &p.name)
-            .field("base", &p.base.as_str())
+            // The origin only: a base path can hold a key.
+            .field("origin", &p.base.origin().ascii_serialization())
             .field("headers", &crate::redact::HeaderNames(&p.headers))
             .field("timeout", &p.timeout)
             .field("retry_attempts", &p.retry.attempts())
@@ -409,7 +410,8 @@ impl ProviderRegistry {
     }
 
     /// A line for the binary to log at startup when the registry runs in a test mode, naming
-    /// every overridden provider and where it now sends its credentials; `None` in production.
+    /// every overridden provider and the origin that now receives its credentials; `None` in
+    /// production.
     pub fn startup_report(&self) -> Option<String> {
         let TestMode::RigMock { loopback_only } = self.test_mode else {
             return None;
@@ -422,7 +424,9 @@ impl ProviderRegistry {
             line.push_str("base url overrides receive provider credentials:");
             for name in &self.overridden {
                 if let Some(provider) = self.providers.get(name) {
-                    line.push_str(&format!(" {name} -> {};", provider.base_url()));
+                    // The origin only: a path can hold a key.
+                    let origin = provider.base_url().origin().ascii_serialization();
+                    line.push_str(&format!(" {name} -> {origin};"));
                 }
             }
             line.pop();
@@ -584,12 +588,19 @@ mod tests {
         let report = rig.startup_report().unwrap();
         assert!(report.contains("TEST MODE"), "{report}");
         assert!(
-            report.contains("polar -> http://127.0.0.1:9999/mock/polar"),
+            report.contains("polar -> http://127.0.0.1:9999;"),
             "{report}"
         );
         assert!(
-            report.contains("twitch -> http://mock-twitch:8080/"),
+            report.ends_with("twitch -> http://mock-twitch:8080"),
             "{report}"
+        );
+        // A path can hold a key: neither the report nor `Debug` shows it.
+        assert!(!report.contains("mock/polar"), "{report}");
+        let polar = format!("{:?}", rig.get("polar"));
+        assert!(
+            polar.contains("http://127.0.0.1:9999") && !polar.contains("mock/polar"),
+            "{polar}"
         );
         assert!(!report.contains("polar_oat"), "{report}");
         // Production has nothing to report; a test mode without overrides still says so.

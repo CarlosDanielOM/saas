@@ -31,9 +31,15 @@ pub struct SseLimits {
     pub max_line: usize,
     /// The largest event: its joined data plus its type, in bytes.
     pub max_event: usize,
-    /// Dispatched events waiting to be taken out with [`SseDecoder::next_event`].
+    /// Dispatched events waiting to be taken out with [`SseDecoder::next_event`]. Their bytes
+    /// (data, type and id together) are bounded too, at twice [`SseLimits::max_event`], so a
+    /// caller that feeds without taking events out cannot be made to hold more than that.
     pub max_queued: usize,
 }
+
+/// The longest event id, in bytes. Every queued event carries the last id, so an unbounded id
+/// would multiply by the queue length.
+pub const MAX_ID_BYTES: usize = 1024;
 
 impl Default for SseLimits {
     /// 8 MiB per line and per event (the default response body limit), 1024 queued events.
@@ -58,6 +64,12 @@ pub enum SseError {
     /// More than [`SseLimits::max_queued`] events waiting.
     #[error("more than {0} event stream events queued")]
     TooManyQueued(usize),
+    /// An `id` field longer than [`MAX_ID_BYTES`].
+    #[error("event stream id longer than {0} bytes")]
+    IdTooLong(usize),
+    /// The waiting events hold more than this many bytes (twice [`SseLimits::max_event`]).
+    #[error("more than {0} bytes of event stream events queued")]
+    QueueTooLarge(usize),
 }
 
 /// One dispatched event.
@@ -85,6 +97,8 @@ pub struct SseDecoder {
     last_id: String,
     retry: Option<u64>,
     events: VecDeque<SseEvent>,
+    /// Bytes held by `events` (data, type and id of each).
+    queued_bytes: usize,
 }
 
 /// Sizes only: the buffered text is response content.
@@ -173,7 +187,9 @@ impl SseDecoder {
 
     /// The next complete event, if any.
     pub fn next_event(&mut self) -> Option<SseEvent> {
-        self.events.pop_front()
+        let event = self.events.pop_front()?;
+        self.queued_bytes = self.queued_bytes.saturating_sub(event_bytes(&event));
+        Some(event)
     }
 
     /// Bytes held for a line that has not ended yet.
@@ -213,24 +229,34 @@ impl SseDecoder {
             None => (line, &[][..]),
         };
         match field {
+            // The limits count decoded bytes: an invalid byte becomes a three-byte replacement
+            // character, so the text can be up to three times its input (itself at most a line).
             b"data" => {
-                if self.data.len() + self.event.len() + value.len() + 1 > self.limits.max_event {
+                let text = String::from_utf8_lossy(value);
+                if self.data.len() + self.event.len() + text.len() + 1 > self.limits.max_event {
                     return Err(SseError::EventTooLarge(self.limits.max_event));
                 }
-                self.data.push_str(&String::from_utf8_lossy(value));
+                self.data.push_str(&text);
                 self.data.push('\n');
                 self.has_data = true;
             }
             b"event" => {
-                // Checked before the copy: the decoded text is at most three times longer.
-                if self.data.len() + value.len() > self.limits.max_event {
+                let text = String::from_utf8_lossy(value);
+                if self.data.len() + text.len() > self.limits.max_event {
                     return Err(SseError::EventTooLarge(self.limits.max_event));
                 }
-                self.event = String::from_utf8_lossy(value).into_owned();
+                self.event = text.into_owned();
             }
             b"id" => {
+                if value.len() > MAX_ID_BYTES {
+                    return Err(SseError::IdTooLong(MAX_ID_BYTES));
+                }
                 if !value.contains(&0) {
-                    self.last_id = String::from_utf8_lossy(value).into_owned();
+                    let text = String::from_utf8_lossy(value);
+                    if text.len() > MAX_ID_BYTES {
+                        return Err(SseError::IdTooLong(MAX_ID_BYTES));
+                    }
+                    self.last_id = text.into_owned();
                 }
             }
             // Too many digits to fit is ignored like any other invalid value.
@@ -258,7 +284,7 @@ impl SseDecoder {
         if data.ends_with('\n') {
             data.pop();
         }
-        self.events.push_back(SseEvent {
+        let event = SseEvent {
             event: if event.is_empty() {
                 "message".to_owned()
             } else {
@@ -266,21 +292,44 @@ impl SseDecoder {
             },
             data,
             id: self.last_id.clone(),
-        });
+        };
+        let budget = self.limits.max_event.saturating_mul(2);
+        let queued = self.queued_bytes.saturating_add(event_bytes(&event));
+        // One event always fits, whatever its size: `max_event` already bounded it.
+        if queued > budget && !self.events.is_empty() {
+            return Err(SseError::QueueTooLarge(budget));
+        }
+        self.queued_bytes = queued;
+        self.events.push_back(event);
         Ok(())
     }
+}
+
+fn event_bytes(event: &SseEvent) -> usize {
+    event.event.len() + event.data.len() + event.id.len()
 }
 
 /// An event stream read from a [`Response`] with its limits: the body byte limit bounds the whole
 /// stream, the idle timeout bounds the gap between chunks, the total deadline and shutdown apply.
 /// Dropping it closes the connection.
-#[derive(Debug)]
 pub struct SseStream {
     response: Response,
     decoder: SseDecoder,
     /// The rest of the last network chunk, not fed yet.
     pending: Bytes,
     done: bool,
+}
+
+/// Sizes only: the bytes not fed yet are response content.
+impl std::fmt::Debug for SseStream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SseStream")
+            .field("response", &self.response)
+            .field("decoder", &self.decoder)
+            .field("unfed_bytes", &self.pending.len())
+            .field("done", &self.done)
+            .finish()
+    }
 }
 
 impl SseStream {
@@ -517,6 +566,63 @@ mod tests {
             assert_eq!(decoder.next_event().unwrap().data, n.to_string());
         }
         assert_eq!(SseDecoder::new().limits(), SseLimits::default());
+    }
+
+    #[test]
+    fn ids_and_queued_bytes_are_bounded_and_limits_count_decoded_text() {
+        // An id is repeated on every queued event, so it has its own small bound.
+        let mut decoder = SseDecoder::new();
+        let mut long_id = b"id: ".to_vec();
+        long_id.extend(std::iter::repeat_n(b'x', MAX_ID_BYTES + 1));
+        long_id.push(b'\n');
+        assert_eq!(
+            decoder.feed(&long_id),
+            Err(SseError::IdTooLong(MAX_ID_BYTES))
+        );
+        // Invalid bytes triple when decoded: the bound is on the decoded id.
+        let mut decoder = SseDecoder::new();
+        let mut wide_id = b"id: ".to_vec();
+        wide_id.extend(std::iter::repeat_n(0xff, MAX_ID_BYTES / 2));
+        wide_id.push(b'\n');
+        assert_eq!(
+            decoder.feed(&wide_id),
+            Err(SseError::IdTooLong(MAX_ID_BYTES))
+        );
+        // The same for data and for the event type.
+        let limits = SseLimits {
+            max_line: 64,
+            max_event: 24,
+            max_queued: 100,
+        };
+        let mut decoder = SseDecoder::with_limits(limits);
+        assert_eq!(
+            decoder.feed(b"data: \xff\xff\xff\xff\xff\xff\xff\xff\n"),
+            Err(SseError::EventTooLarge(24))
+        );
+        let mut decoder = SseDecoder::with_limits(limits);
+        assert_eq!(
+            decoder.feed(b"event: \xff\xff\xff\xff\xff\xff\xff\xff\xff\n"),
+            Err(SseError::EventTooLarge(24))
+        );
+        // Events not taken out are bounded by their bytes as well as by their number: here 48
+        // bytes, each event holding 7 of type, 10 of data and 3 of id.
+        let mut decoder = SseDecoder::with_limits(limits);
+        decoder.feed(b"id: abc\n").unwrap();
+        decoder.feed(b"data: 0123456789\n\n").unwrap();
+        decoder.feed(b"data: 0123456789\n\n").unwrap();
+        assert_eq!(
+            decoder.feed(b"data: 0123456789\n\n"),
+            Err(SseError::QueueTooLarge(48))
+        );
+        // Taking events out gives the bytes back.
+        let mut decoder = SseDecoder::with_limits(limits);
+        decoder.feed(b"id: abc\n").unwrap();
+        for _ in 0..10 {
+            decoder.feed(b"data: 0123456789\n\n").unwrap();
+            decoder.feed(b"data: 0123456789\n\n").unwrap();
+            assert_eq!(decoder.next_event().unwrap().id, "abc");
+            assert_eq!(decoder.next_event().unwrap().data, "0123456789");
+        }
     }
 
     #[test]
