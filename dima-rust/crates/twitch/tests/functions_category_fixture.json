@@ -1,0 +1,275 @@
+[
+  {
+    "query": "mortal shell 2",
+    "title": "Mortal Shell II",
+    "tokens": [
+      "mortal",
+      "shell",
+      "2"
+    ],
+    "queries": [
+      "mortal shell 2",
+      "mortal shell ii",
+      "mortal shell"
+    ],
+    "score": 3
+  },
+  {
+    "query": "dark souls III",
+    "title": "Dark Souls 3",
+    "tokens": [
+      "dark",
+      "souls",
+      "3"
+    ],
+    "queries": [
+      "dark souls iii",
+      "dark souls 3",
+      "dark souls"
+    ],
+    "score": 3
+  },
+  {
+    "query": "final fantasy 14 online",
+    "title": "FINAL FANTASY XIV Online",
+    "tokens": [
+      "final",
+      "fantasy",
+      "14",
+      "online"
+    ],
+    "queries": [
+      "final fantasy 14 online",
+      "final fantasy xiv online",
+      "final fantasy online"
+    ],
+    "score": 3
+  },
+  {
+    "query": "baldurs gate3",
+    "title": "Baldur’s Gate III",
+    "tokens": [
+      "baldurs",
+      "gate",
+      "3"
+    ],
+    "queries": [
+      "baldurs gate3",
+      "baldurs gate 3",
+      "baldurs gate iii",
+      "baldurs gate"
+    ],
+    "score": 3
+  },
+  {
+    "query": "civilization 6",
+    "title": "Sid Meier's Civilization VI",
+    "tokens": [
+      "civilization",
+      "6"
+    ],
+    "queries": [
+      "civilization 6",
+      "civilization vi",
+      "civilization"
+    ],
+    "score": 1
+  },
+  {
+    "query": "witcher 3",
+    "title": "The Witcher 3: Wild Hunt",
+    "tokens": [
+      "witcher",
+      "3"
+    ],
+    "queries": [
+      "witcher 3",
+      "witcher iii",
+      "witcher"
+    ],
+    "score": 1
+  },
+  {
+    "query": "cyberpunk 2077",
+    "title": "Cyberpunk 2077",
+    "tokens": [
+      "cyberpunk",
+      "2077"
+    ],
+    "queries": [
+      "cyberpunk 2077",
+      "cyberpunk"
+    ],
+    "score": 4
+  },
+  {
+    "query": "mortal shell 2",
+    "title": "Mortal Shell",
+    "tokens": [
+      "mortal",
+      "shell",
+      "2"
+    ],
+    "queries": [
+      "mortal shell 2",
+      "mortal shell ii",
+      "mortal shell"
+    ],
+    "score": 0
+  },
+  {
+    "query": "  Pokémon:   Violet  ",
+    "title": "Pokémon Violet",
+    "tokens": [
+      "pokemon",
+      "violet"
+    ],
+    "queries": [
+      "pokémon: violet",
+      "pokemon violet"
+    ],
+    "score": 3
+  },
+  {
+    "query": "V Rising",
+    "title": "V Rising",
+    "tokens": [
+      "v",
+      "rising"
+    ],
+    "queries": [
+      "v rising"
+    ],
+    "score": 4
+  },
+  {
+    "query": "fort",
+    "title": "Fortnite",
+    "tokens": [
+      "fort"
+    ],
+    "queries": [
+      "fort"
+    ],
+    "score": 2
+  },
+  {
+    "query": "fort",
+    "title": "Fortnite Festival",
+    "tokens": [
+      "fort"
+    ],
+    "queries": [
+      "fort"
+    ],
+    "score": 1
+  },
+  {
+    "query": "dark souls 2",
+    "title": "Dark Souls II: Remastered",
+    "tokens": [
+      "dark",
+      "souls",
+      "2"
+    ],
+    "queries": [
+      "dark souls 2",
+      "dark souls ii",
+      "dark souls"
+    ],
+    "score": 1
+  },
+  {
+    "query": "",
+    "title": "",
+    "tokens": [],
+    "queries": [],
+    "score": 0
+  },
+  {
+    "query": "🙂 café 2",
+    "title": "🙂 CAFE II",
+    "tokens": [
+      "cafe",
+      "2"
+    ],
+    "queries": [
+      "🙂 café 2",
+      "cafe 2",
+      "cafe ii",
+      "cafe"
+    ],
+    "score": 3
+  },
+  {
+    "query": "אבג 2",
+    "title": "אבג II",
+    "tokens": [
+      "אבג",
+      "2"
+    ],
+    "queries": [
+      "אבג 2",
+      "אבג ii",
+      "אבג"
+    ],
+    "score": 3
+  },
+  {
+    "query": "é 3",
+    "title": "É III",
+    "tokens": [
+      "e",
+      "3"
+    ],
+    "queries": [
+      "é 3",
+      "e 3",
+      "e iii",
+      "e"
+    ],
+    "score": 3
+  },
+  {
+    "query": "I Am Alive",
+    "title": "I Am Alive",
+    "tokens": [
+      "i",
+      "am",
+      "alive"
+    ],
+    "queries": [
+      "i am alive"
+    ],
+    "score": 4
+  },
+  {
+    "query": "Test 02",
+    "title": "Test II",
+    "tokens": [
+      "test",
+      "2"
+    ],
+    "queries": [
+      "test 02",
+      "test 2",
+      "test ii",
+      "test"
+    ],
+    "score": 3
+  },
+  {
+    "query": "Test 2",
+    "title": "Test 20",
+    "tokens": [
+      "test",
+      "2"
+    ],
+    "queries": [
+      "test 2",
+      "test ii",
+      "test"
+    ],
+    "score": 0
+  }
+]

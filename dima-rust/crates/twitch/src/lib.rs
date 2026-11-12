@@ -59,6 +59,7 @@ pub mod emotes;
 mod error;
 pub mod events;
 mod flight;
+pub mod functions;
 pub mod helix;
 pub mod keys;
 pub mod oauth;

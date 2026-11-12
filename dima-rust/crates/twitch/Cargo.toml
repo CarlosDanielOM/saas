@@ -20,10 +20,12 @@ dima-core = { workspace = true }
 dima-http = { workspace = true }
 dima-model = { workspace = true }
 dima-store = { workspace = true }
-dima-text = { workspace = true }
+dima-text = { workspace = true, features = ["collation"] }
 futures-util = { workspace = true }
 mongodb = { workspace = true }
 redis = { workspace = true }
+regex = { workspace = true }
+unicode-normalization = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
