@@ -1508,6 +1508,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-ai"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dima-core",
+ "dima-http",
+ "dima-text",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "dima-billing"
 version = "0.1.0"
 dependencies = [

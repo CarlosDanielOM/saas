@@ -6,7 +6,8 @@
 # Exports:
 #   DIMA_TEST_MONGO_URI     root URI of the local MongoDB container (no database in the path)
 #   DIMA_TEST_DRAGONFLY     host:port of the local Dragonfly container (no authentication)
-#   DIMA_TEST_QDRANT_URL    base URL of the local Qdrant container (no authentication)
+#   DIMA_TEST_QDRANT_URL    base URL of the local Qdrant container
+#   DIMA_TEST_QDRANT_API_KEY  its API key, when the container has one
 #   DIMA_TEST_POSTGRES_URI  URI of the local Postgres container
 #   DIMA_TEST_REQUIRE_STORES=1  a test that needs one of these fails instead of skipping when it is
 #                           missing (MIGRATION.md section 8)
@@ -31,6 +32,10 @@ fi
 printf 'export DIMA_TEST_REQUIRE_STORES=1\n'
 printf 'export DIMA_TEST_DRAGONFLY=%q\n' "127.0.0.1:6379"
 printf 'export DIMA_TEST_QDRANT_URL=%q\n' "http://127.0.0.1:6333"
+qdrant_key="$(from_container qdrant QDRANT__SERVICE__API_KEY)"
+if [[ -n "$qdrant_key" ]]; then
+    printf 'export DIMA_TEST_QDRANT_API_KEY=%q\n' "$qdrant_key"
+fi
 
 pg_user="$(from_container postgres POSTGRES_USER)"
 pg_pass="$(from_container postgres POSTGRES_PASSWORD)"

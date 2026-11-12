@@ -1,0 +1,393 @@
+[
+  {
+    "method": "GET",
+    "target": "/collections",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "accept": "*/*",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate"
+    },
+    "body": null
+  },
+  {
+    "method": "GET",
+    "target": "/collections/twitch_chat_logs/exists",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "accept": "*/*",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate"
+    },
+    "body": null
+  },
+  {
+    "method": "PUT",
+    "target": "/collections/twitch_chat_logs",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "143"
+    },
+    "body": {
+      "vectors": {
+        "size": 1024,
+        "distance": "Cosine",
+        "on_disk": true
+      },
+      "quantization_config": {
+        "scalar": {
+          "type": "int8",
+          "quantile": 0.99,
+          "always_ram": true
+        }
+      }
+    }
+  },
+  {
+    "method": "PUT",
+    "target": "/collections/twitch_chat_logs/index",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "46"
+    },
+    "body": {
+      "field_name": "message",
+      "field_schema": "text"
+    }
+  },
+  {
+    "method": "PUT",
+    "target": "/collections/twitch_chat_logs/index",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "51"
+    },
+    "body": {
+      "field_name": "timestamp",
+      "field_schema": "integer"
+    }
+  },
+  {
+    "method": "PUT",
+    "target": "/collections/twitch_chat_logs/index",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "50"
+    },
+    "body": {
+      "field_name": "confidence",
+      "field_schema": "float"
+    }
+  },
+  {
+    "method": "PUT",
+    "target": "/collections/twitch_chat_logs/index",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "52"
+    },
+    "body": {
+      "field_name": "channel_id",
+      "field_schema": "keyword"
+    }
+  },
+  {
+    "method": "PUT",
+    "target": "/collections/twitch_chat_logs/points?wait=false",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "101"
+    },
+    "body": {
+      "points": [
+        {
+          "id": 42,
+          "vector": [
+            1,
+            0,
+            0
+          ],
+          "payload": {
+            "channel_id": "c",
+            "message": "hello",
+            "timestamp": 12
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "PUT",
+    "target": "/collections/twitch_chat_logs/points?wait=true",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "101"
+    },
+    "body": {
+      "points": [
+        {
+          "id": 42,
+          "vector": [
+            1,
+            0,
+            0
+          ],
+          "payload": {
+            "channel_id": "c",
+            "message": "hello",
+            "timestamp": 12
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "POST",
+    "target": "/collections/twitch_channel_memories/points",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "52"
+    },
+    "body": {
+      "ids": [
+        42
+      ],
+      "with_payload": true,
+      "with_vector": false
+    }
+  },
+  {
+    "method": "POST",
+    "target": "/collections/twitch_channel_memories/points/delete?wait=true",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "15"
+    },
+    "body": {
+      "points": [
+        42
+      ]
+    }
+  },
+  {
+    "method": "POST",
+    "target": "/collections/twitch_channel_memories/points/delete?wait=true",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "64"
+    },
+    "body": {
+      "filter": {
+        "must": [
+          {
+            "key": "channel_id",
+            "match": {
+              "value": "c"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "target": "/collections/twitch_chat_logs/points/query",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "133"
+    },
+    "body": {
+      "query": [
+        1,
+        0,
+        0
+      ],
+      "filter": {
+        "must": [
+          {
+            "key": "channel_id",
+            "match": {
+              "value": "c"
+            }
+          }
+        ]
+      },
+      "score_threshold": 0.75,
+      "limit": 9,
+      "with_payload": true
+    }
+  },
+  {
+    "method": "POST",
+    "target": "/collections/twitch_chat_logs/points/scroll",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "163"
+    },
+    "body": {
+      "limit": 120,
+      "filter": {
+        "must": [
+          {
+            "key": "channel_id",
+            "match": {
+              "value": "c"
+            }
+          },
+          {
+            "key": "timestamp",
+            "range": {
+              "gte": 1,
+              "lte": 20
+            }
+          }
+        ]
+      },
+      "with_payload": true,
+      "with_vector": false
+    }
+  },
+  {
+    "method": "POST",
+    "target": "/collections/twitch_chat_logs/points/scroll",
+    "headers": {
+      "host": "<loopback>",
+      "connection": "keep-alive",
+      "user-agent": "qdrant-js/1.19.0",
+      "api-key": true,
+      "content-type": "application/json",
+      "accept": "application/json",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "175"
+    },
+    "body": {
+      "limit": 120,
+      "offset": 42,
+      "filter": {
+        "must": [
+          {
+            "key": "channel_id",
+            "match": {
+              "value": "c"
+            }
+          },
+          {
+            "key": "timestamp",
+            "range": {
+              "gte": 1,
+              "lte": 20
+            }
+          }
+        ]
+      },
+      "with_payload": true,
+      "with_vector": false
+    }
+  }
+]
