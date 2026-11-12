@@ -1635,6 +1635,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bson",
+ "dima-commands",
  "dima-core",
  "dima-text",
  "futures-util",

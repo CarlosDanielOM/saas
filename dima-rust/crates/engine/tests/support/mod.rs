@@ -13,13 +13,13 @@
 
 use dima_core::{Clock, ManualClock, Random, RandomError};
 use dima_engine::context::{
-    Authorization, Budget, CommandReference, Context, Effect, Identity, LoopExit, Origin, Plan,
-    State, TimerSnapshot,
+    Authorization, Budget, CommandReference, Context, Effect, LoopExit, Origin, Plan, State,
+    TimerSnapshot,
 };
 use dima_engine::eval::{Engine, EvalError, EvalLimits};
 use dima_engine::host::{Host, HostCall, HostError, HostFunction, HostFuture};
 use dima_engine::map::OrderedMap;
-use dima_engine::permissions::ReferencePermissions;
+use dima_engine::permissions::UserIdentity;
 use dima_engine::registry::{Builtin, FunctionKind, Metadata, Registry};
 use dima_engine::syntax::AstNode;
 use dima_engine::value::Value;
@@ -866,18 +866,18 @@ pub fn typed_snapshot(snap: &TimerSnapshot) -> Json {
     ])
 }
 
-fn typed_identity(identity: &Identity) -> Json {
+fn typed_identity(identity: &UserIdentity) -> Json {
     let mut entries = vec![
-        ("level", number(f64::from(identity.level))),
+        ("level", number(identity.level())),
         (
             "tags",
-            array(identity.tags.iter().map(|t| s(t.as_str())).collect()),
+            array(identity.tags().iter().map(|t| s(t.as_str())).collect()),
         ),
     ];
-    if let Some(id) = &identity.user_id {
+    if let Some(id) = identity.user_id() {
         entries.push(("userId", s(id)));
     }
-    if let Some(login) = &identity.login {
+    if let Some(login) = identity.login() {
         entries.push(("login", s(login)));
     }
     object(entries)
@@ -1049,12 +1049,8 @@ pub fn observe(outcome: &Outcome, initial: &State, context: &Context, host: &Cor
 // Running a case.
 
 pub fn engine_for(registry: Registry) -> Engine {
-    Engine::new(
-        Arc::new(registry),
-        Arc::new(ReferencePermissions),
-        dima_engine::syntax::Limits::default(),
-    )
-    .with_limits(EvalLimits::default())
+    Engine::new(Arc::new(registry), dima_engine::syntax::Limits::default())
+        .with_limits(EvalLimits::default())
 }
 
 pub fn runtime() -> tokio::runtime::Runtime {

@@ -42,7 +42,6 @@ pub use limits::{EvalLimits, LimitKind};
 
 use crate::context::{Context, State, TimerSnapshot};
 use crate::host::{Host, HostError};
-use crate::permissions::{Permissions, ReferencePermissions};
 use crate::registry::Registry;
 use crate::syntax::{
     AstNode, CompiledProgram, CompiledTemplate, Diagnostic, Limits, PreparedGrammar, SegmentStep,
@@ -101,20 +100,15 @@ pub struct Rendered {
 pub struct Engine {
     syntax: SyntaxEngine,
     registry: Arc<Registry>,
-    permissions: Arc<dyn Permissions>,
     limits: EvalLimits,
 }
 
 impl Default for Engine {
-    /// The reference grammar and registry, [`ReferencePermissions`], the syntax's default
-    /// [`Limits`] and default [`EvalLimits`]. Production callers use [`Engine::new`] with the
+    /// The reference grammar and registry, the syntax's default [`Limits`] and default
+    /// [`EvalLimits`]. Production callers use [`Engine::new`] with the
     /// parse limits they need.
     fn default() -> Self {
-        Self::new(
-            Registry::standard(),
-            Arc::new(ReferencePermissions),
-            Limits::default(),
-        )
+        Self::new(Registry::standard(), Limits::default())
     }
 }
 
@@ -130,11 +124,10 @@ impl std::fmt::Debug for Engine {
 impl Engine {
     /// An engine for the reference grammar with the caller's parse limits (the bot sets
     /// [`Limits::input_chars`] for its substituted texts) and default evaluation limits.
-    pub fn new(registry: Arc<Registry>, permissions: Arc<dyn Permissions>, syntax: Limits) -> Self {
+    pub fn new(registry: Arc<Registry>, syntax: Limits) -> Self {
         Self {
             syntax: SyntaxEngine::new(PreparedGrammar::default(), syntax),
             registry,
-            permissions,
             limits: EvalLimits::default(),
         }
     }

@@ -13,6 +13,8 @@ workspace = true
 dima-text = { workspace = true }
 # Clock and randomness traits the host exposes.
 dima-core = { workspace = true }
+# The permission system's role rules (`roles.ts`): the identity a command reference runs with.
+dima-commands = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

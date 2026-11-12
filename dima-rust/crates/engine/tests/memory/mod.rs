@@ -290,11 +290,7 @@ pub fn engine_with(extra: &[(&str, Option<f64>)]) -> Engine {
         });
         registry.register(*name, FunctionKind::Host(HostFunction::Custom), metadata);
     }
-    Engine::new(
-        Arc::new(registry),
-        Arc::new(dima_engine::permissions::ReferencePermissions),
-        dima_engine::syntax::Limits::default(),
-    )
+    Engine::new(Arc::new(registry), dima_engine::syntax::Limits::default())
 }
 
 pub fn block_on<F: std::future::Future>(future: F) -> F::Output {

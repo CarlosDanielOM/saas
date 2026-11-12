@@ -74,7 +74,7 @@ pub enum Origin {
 }
 
 /// `AstAuthorization`: the run's origin and, for AI runs, the requesting chatter's identity as
-/// stored (any shape; [`crate::permissions::Permissions::parse_identity`] reads it).
+/// stored (any shape; [`crate::permissions::parse_identity`] reads it).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Authorization {
@@ -88,75 +88,8 @@ pub struct Authorization {
     pub identity: Option<Value>,
 }
 
-/// A role tag of the permission system, in the reference's order.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum RoleTag {
-    /// `everyone`.
-    Everyone,
-    /// `sub`.
-    Sub,
-    /// `vip`.
-    Vip,
-    /// `founder`.
-    Founder,
-    /// `mod`.
-    Mod,
-    /// `editor`.
-    Editor,
-    /// `admin`.
-    Admin,
-    /// `broadcaster`.
-    Broadcaster,
-}
-
-impl RoleTag {
-    /// The tag spelled `text` (`isRoleTag`).
-    pub fn parse(text: &str) -> Option<Self> {
-        Some(match text {
-            "everyone" => Self::Everyone,
-            "sub" => Self::Sub,
-            "vip" => Self::Vip,
-            "founder" => Self::Founder,
-            "mod" => Self::Mod,
-            "editor" => Self::Editor,
-            "admin" => Self::Admin,
-            "broadcaster" => Self::Broadcaster,
-            _ => return None,
-        })
-    }
-
-    /// The tag's spelling.
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Everyone => "everyone",
-            Self::Sub => "sub",
-            Self::Vip => "vip",
-            Self::Founder => "founder",
-            Self::Mod => "mod",
-            Self::Editor => "editor",
-            Self::Admin => "admin",
-            Self::Broadcaster => "broadcaster",
-        }
-    }
-}
-
-/// `UserIdentity`: a level (1 to 10), role tags (a set in insertion order, `everyone` always
-/// included) and an optional verified id and login.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Identity {
-    /// Level, 1 (everyone) to 10 (broadcaster).
-    pub level: u8,
-    /// Tags in insertion order, no repeats.
-    pub tags: Vec<RoleTag>,
-    /// A numeric Twitch user id.
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub user_id: Option<String>,
-    /// A lowercase Twitch login.
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub login: Option<String>,
-}
+/// The permission system's role tags and identities (`dima-commands`).
+pub use crate::permissions::{RoleTag, UserIdentity};
 
 /// Live effect authority (`AstEffectContext`): minted only by the host from verified ingress,
 /// opaque to the engine and never built from data. The engine carries it, strips it from
@@ -385,12 +318,23 @@ pub enum ReferenceOrigin {
 }
 
 /// The authorization a reference runs with.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ReferenceAuthorization {
     /// Origin.
     pub origin: ReferenceOrigin,
     /// Identity.
-    pub identity: Identity,
+    pub identity: UserIdentity,
+}
+
+impl Serialize for ReferenceAuthorization {
+    /// `{origin, identity}` with the identity as `serializeUserIdentity` writes it.
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut fields = serializer.serialize_struct("ReferenceAuthorization", 2)?;
+        fields.serialize_field("origin", &self.origin)?;
+        fields.serialize_field("identity", &self.identity.to_json())?;
+        fields.end()
+    }
 }
 
 /// `CommandReferenceState`: what a reference's run inherits.

@@ -13,6 +13,7 @@ use crate::context::{
 use crate::functions::{self, Counters};
 use crate::host::{Host, HostCall, HostFuture};
 use crate::map::OrderedMap;
+use crate::permissions;
 use crate::registry::{Builtin, FunctionKind};
 use crate::syntax::{
     ArrayAccessor, AstNode, BinaryOp, LoopAssignOp, LoopMode, TemplateSegment, UnaryOp,
@@ -1154,28 +1155,27 @@ impl<'a> Run<'a> {
         Ok(Value::empty())
     }
 
-    /// `resolveCommandRefAuthorization`.
+    /// `resolveCommandRefAuthorization`, with `dima-commands`' identity rules.
     fn reference_authorization(&self) -> ReferenceAuthorization {
         let context = self.context;
-        let permissions = &self.engine.permissions;
         if !context.enforce_function_permissions {
             return ReferenceAuthorization {
                 origin: ReferenceOrigin::Authored,
-                identity: permissions.broadcaster_identity(),
+                identity: permissions::create_broadcaster_identity(),
             };
         }
         let fallback = if context.user_level.is_finite() {
-            context.user_level.trunc().clamp(1.0, 10.0) as u8
+            context.user_level.trunc().clamp(1.0, 10.0)
         } else {
-            1
+            1.0
         };
         let identity = match context
             .authorization
             .as_ref()
             .and_then(|a| a.identity.as_ref())
         {
-            Some(raw) if raw.js_truthy() => permissions.parse_identity(raw, fallback),
-            _ => permissions.user_identity(fallback),
+            Some(raw) if raw.js_truthy() => permissions::parse_identity(raw, fallback),
+            _ => permissions::user_identity(fallback),
         };
         ReferenceAuthorization {
             origin: ReferenceOrigin::Llm,
