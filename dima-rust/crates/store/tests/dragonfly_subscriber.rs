@@ -11,7 +11,8 @@ mod dragonfly_support;
 
 use anyhow::{Context, Result, bail, ensure};
 use dima_store::dragonfly::{
-    Dragonfly, DragonflyConfig, Event, Gap, Hooks, Overflow, Subscriber, Subscription, Topic,
+    Dragonfly, DragonflyConfig, DragonflyError, Event, Gap, Hooks, Overflow, Subscriber,
+    Subscription, Topic,
 };
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -384,6 +385,72 @@ async fn a_refused_subscribe_replaces_the_connection() -> Result<()> {
     peer.closed(Duration::from_secs(1)).await?;
     let mut fresh = mock.peer().await?;
     ensure!(fresh.command().await? == ["SUBSCRIBE", "a"]);
+    Ok(())
+}
+
+#[tokio::test]
+async fn subscriptions_beyond_the_cap_are_refused() -> Result<()> {
+    let mut mock = Mock::start().await?;
+    let mut config = mock.config(Duration::from_secs(10));
+    config.max_subscriptions = 2;
+    let subscriber = setup(config).await?;
+    let mut peer = mock.peer().await?;
+    let a = subscribed(&subscriber, &mut peer, "a").await?;
+    let b = subscribed(&subscriber, &mut peer, "b").await?;
+    let refused = subscriber
+        .subscribe(Topic::Channel("c".into()), Overflow::Gap)
+        .await;
+    ensure!(
+        matches!(
+            refused,
+            Err(DragonflyError::TooManySubscriptions { limit: 2 })
+        ),
+        "{refused:?}"
+    );
+    ensure!(
+        refused
+            .err()
+            .is_some_and(|e| e.to_string().contains("2 subscriptions"))
+    );
+    // Replacing a held topic is not a new one: allowed, live at once, nothing sent.
+    let replaced = subscriber
+        .subscribe(Topic::Channel("a".into()), Overflow::DropNewest)
+        .await?;
+    ensure!(replaced.confirmed());
+    drop(a);
+    // Dropping "b" frees a place.
+    drop(b);
+    ensure!(peer.command().await? == ["UNSUBSCRIBE", "b"]);
+    peer.send(&confirmation("unsubscribe", "b", 1)).await?;
+    let c = subscribed(&subscriber, &mut peer, "c").await?;
+    ensure!(c.confirmed());
+    drop(replaced);
+    Ok(())
+}
+
+#[tokio::test]
+async fn an_oversized_message_replaces_the_connection_before_it_is_buffered() -> Result<()> {
+    let mut mock = Mock::start().await?;
+    let mut config = mock.config(Duration::from_secs(10));
+    config.subscription_max_message_bytes = 1024;
+    let subscriber = setup(config).await?;
+    let mut peer = mock.peer().await?;
+    let mut subscription = subscribed(&subscriber, &mut peer, "a").await?;
+    // At the limit: delivered.
+    let largest = "x".repeat(1024);
+    peer.send(&message("a", &largest)).await?;
+    match next(&mut subscription).await? {
+        Event::Message(message) => ensure!(message.payload.len() == 1024),
+        other => bail!("{other:?}"),
+    }
+    // Over it: only the length header is sent, the connection goes at once.
+    peer.send(b"*3\r\n$7\r\nmessage\r\n$1\r\na\r\n$1025\r\n")
+        .await?;
+    peer.closed(Duration::from_secs(1)).await?;
+    let mut fresh = mock.peer().await?;
+    ensure!(fresh.command().await? == ["SUBSCRIBE", "a"]);
+    fresh.send(&confirmation("subscribe", "a", 1)).await?;
+    ensure!(next(&mut subscription).await? == RESUBSCRIBED);
     Ok(())
 }
 

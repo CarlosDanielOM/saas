@@ -40,6 +40,12 @@ pub enum DragonflyError {
         /// Which rule it breaks.
         reason: &'static str,
     },
+    /// A new subscription would exceed [`super::DragonflyConfig::max_subscriptions`].
+    #[error("the Dragonfly subscriber already has {limit} subscriptions (max_subscriptions)")]
+    TooManySubscriptions {
+        /// The configured cap.
+        limit: usize,
+    },
     /// The subscriber task has stopped (it was shut down or its owner dropped it).
     #[error("Dragonfly subscriber has stopped")]
     SubscriberClosed,

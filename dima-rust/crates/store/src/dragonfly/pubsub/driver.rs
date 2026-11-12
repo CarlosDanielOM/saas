@@ -9,7 +9,8 @@
 //! subscriber reconnects and subscribes again.
 //!
 //! Bytes go from the socket into one buffer, are parsed into frames ([`super::resp`], every
-//! bulk string bounded by [`MAX_MESSAGE_BYTES`]) and handed to the subscriptions at once, which
+//! bulk string bounded by `subscription_max_message_bytes`) and handed to the subscriptions at
+//! once, which
 //! never wait ([`super::Inbox`]). So the stage between the socket and the subscriptions holds at
 //! most one frame being received plus one read; the socket is read only as fast as frames are
 //! dispatched, and a frame over the limit discards the connection instead of growing the buffer.
@@ -18,7 +19,8 @@
 //! so a peer that stops answering is noticed even without control traffic.
 
 use super::resp::{self, Frame};
-use super::{Control, Entry, Message, Push, State, Topic};
+use super::{Ack, Control, Entry, Message, Push, State, Topic};
+use crate::dragonfly::DragonflyError;
 use crate::dragonfly::client::Shared;
 use redis::ConnectionAddr;
 use std::collections::{HashMap, VecDeque};
@@ -33,15 +35,13 @@ use tokio::time::Instant;
 /// Bytes asked from the socket per read.
 const READ_CHUNK: usize = 16 * 1024;
 
-/// The largest message (payload, channel or pattern) a subscriber accepts.
-pub(super) const MAX_MESSAGE_BYTES: usize = 8 * 1024 * 1024;
-
 /// The settings the loop runs with, from [`crate::dragonfly::DragonflyConfig`].
 #[derive(Clone, Copy, Debug)]
 struct Limits {
     control_timeout: Duration,
     ping_interval: Duration,
     max_message_bytes: usize,
+    max_subscriptions: usize,
 }
 
 impl Limits {
@@ -52,7 +52,8 @@ impl Limits {
                 .config
                 .subscriber_ping_interval
                 .max(Duration::from_millis(1)),
-            max_message_bytes: MAX_MESSAGE_BYTES,
+            max_message_bytes: shared.config.subscription_max_message_bytes.max(1),
+            max_subscriptions: shared.config.max_subscriptions,
         }
     }
 }
@@ -145,7 +146,7 @@ pub(super) async fn run(
                 tokio::select! {
                     () = &mut sleep => break,
                     request = control.recv() => {
-                        if let Flow::Stop(ack) = offline(request, &mut entries, false) {
+                        if let Flow::Stop(ack) = offline(request, &mut entries, false, limits) {
                             return stop(entries, ack);
                         }
                     }
@@ -160,7 +161,7 @@ pub(super) async fn run(
             tokio::select! {
                 result = &mut connecting => break result,
                 request = control.recv() => {
-                    if let Flow::Stop(ack) = offline(request, &mut entries, true) {
+                    if let Flow::Stop(ack) = offline(request, &mut entries, true, limits) {
                         return stop(entries, ack);
                     }
                 }
@@ -216,6 +217,7 @@ fn offline(
     request: Option<Control>,
     entries: &mut HashMap<Topic, Entry>,
     connecting: bool,
+    limits: Limits,
 ) -> Flow {
     match request {
         None => Flow::Stop(None),
@@ -225,6 +227,9 @@ fn offline(
             mut entry,
             ack,
         }) => {
+            let Some(ack) = admit(&topic, entries, ack, limits) else {
+                return Flow::Continue;
+            };
             if let Some(mut old) = entries.remove(&topic) {
                 old.release_waiters(false);
             }
@@ -233,7 +238,7 @@ fn offline(
                 entry.waiters.push(ack);
             } else {
                 entry.owe_gap = true;
-                let _ = ack.send(false);
+                let _ = ack.send(Ok(false));
             }
             entries.insert(topic, entry);
             Flow::Continue
@@ -245,6 +250,18 @@ fn offline(
             Flow::Continue
         }
     }
+}
+
+/// Refuses a new topic beyond the cap (the request's entry is dropped, its stream ends);
+/// otherwise hands the acknowledgement back.
+fn admit(topic: &Topic, entries: &HashMap<Topic, Entry>, ack: Ack, limits: Limits) -> Option<Ack> {
+    if !entries.contains_key(topic) && entries.len() >= limits.max_subscriptions {
+        let _ = ack.send(Err(DragonflyError::TooManySubscriptions {
+            limit: limits.max_subscriptions,
+        }));
+        return None;
+    }
+    Some(ack)
 }
 
 /// Serves a connection until it is lost (`Err`) or the task must stop (`Ok`).
@@ -372,10 +389,13 @@ impl Connection {
         &mut self,
         topic: Topic,
         mut entry: Entry,
-        ack: oneshot::Sender<bool>,
+        ack: Ack,
         entries: &mut HashMap<Topic, Entry>,
         limits: Limits,
     ) {
+        let Some(ack) = admit(&topic, entries, ack, limits) else {
+            return;
+        };
         match entries.remove(&topic) {
             // Replacing a topic keeps its server subscription: the new subscription is live as
             // soon as that one is (the old stream ends).
@@ -383,7 +403,7 @@ impl Connection {
                 old.release_waiters(false);
                 entry.live = old.live;
                 if entry.live {
-                    let _ = ack.send(true);
+                    let _ = ack.send(Ok(true));
                 } else {
                     entry.waiters.push(ack);
                 }

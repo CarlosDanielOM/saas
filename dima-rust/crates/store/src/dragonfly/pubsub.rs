@@ -29,6 +29,21 @@
 //! A full `Gap` buffer holds at most one marker beyond its messages, so the bound is
 //! `subscription_buffer + 1` events whatever the policy.
 //!
+//! # Memory bound
+//!
+//! - At most [`super::DragonflyConfig::max_subscriptions`] topics per subscriber (default
+//!   [`super::config::DEFAULT_MAX_SUBSCRIPTIONS`]); one more is refused with
+//!   [`DragonflyError::TooManySubscriptions`].
+//! - At most `subscription_buffer + 1` buffered events per subscription (above).
+//! - Between the socket and the subscriptions, one buffer holding the frame being received:
+//!   frames are dispatched as soon as they are complete, dispatch never waits, and the socket is
+//!   read only as fast as frames are dispatched. A message, channel or pattern longer than
+//!   [`super::DragonflyConfig::subscription_max_message_bytes`] is refused from its length
+//!   header, before its bytes arrive: the connection is discarded and replaced (`Gap`
+//!   subscriptions report a gap) instead of the buffer growing.
+//! - Control requests queue in a channel of 64; queued commands and unconfirmed confirmations
+//!   are bounded by the subscriptions and the deadline.
+//!
 //! # Connection
 //!
 //! - **Reconnect**: when the connection drops, the task reconnects with back-off
@@ -54,9 +69,7 @@
 //!
 //! The task speaks RESP2 on its own socket (`driver.rs`, `resp.rs`) rather than through
 //! redis-rs `PubSub`, whose reader moves messages into an unbounded queue and whose subscribe
-//! calls wait for their confirmation. Between the socket and the subscriptions there is one
-//! buffer holding at most the frame being received; frames are dispatched as soon as they are
-//! complete and dispatch never waits.
+//! calls wait for their confirmation.
 //!
 //! # Envelope layer
 //!
@@ -255,11 +268,14 @@ impl Inbox {
     }
 }
 
+/// The answer to a subscribe request: confirmed or not, or refused.
+type Ack = oneshot::Sender<Result<bool>>;
+
 enum Control {
     Subscribe {
         topic: Topic,
         entry: Entry,
-        ack: oneshot::Sender<bool>,
+        ack: Ack,
     },
     Unsubscribe {
         topic: Topic,
@@ -280,13 +296,13 @@ struct Entry {
     /// Confirmed on the current connection.
     live: bool,
     /// [`Subscriber::subscribe`] calls waiting for the confirmation.
-    waiters: Vec<oneshot::Sender<bool>>,
+    waiters: Vec<Ack>,
 }
 
 impl Entry {
     fn release_waiters(&mut self, confirmed: bool) {
         for waiter in self.waiters.drain(..) {
-            let _ = waiter.send(confirmed);
+            let _ = waiter.send(Ok(confirmed));
         }
     }
 
@@ -428,6 +444,10 @@ impl Subscriber {
     /// confirmation deadline passes or the connection attempt in progress fails, and at once
     /// while the subscriber waits between attempts (the subscription is then made on reconnect;
     /// see [`Subscription::confirmed`]).
+    ///
+    /// A new topic beyond [`super::DragonflyConfig::max_subscriptions`] is refused with
+    /// [`DragonflyError::TooManySubscriptions`]; replacing a topic that is already subscribed is
+    /// always allowed.
     pub async fn subscribe(&self, topic: Topic, overflow: Overflow) -> Result<Subscription> {
         let inbox = Arc::new(Inbox::new(self.buffer, overflow));
         let id = self.state.next_id.fetch_add(1, Ordering::Relaxed);
@@ -448,7 +468,7 @@ impl Subscriber {
             .map_err(|_| DragonflyError::SubscriberClosed)?;
         let confirmed = confirmed
             .await
-            .map_err(|_| DragonflyError::SubscriberClosed)?;
+            .map_err(|_| DragonflyError::SubscriberClosed)??;
         Ok(Subscription {
             topic,
             id,
