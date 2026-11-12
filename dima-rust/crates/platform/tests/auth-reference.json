@@ -1,0 +1,481 @@
+{
+  "sha256": {
+    "src/middleware/auth.middleware.ts": "9ff83234e83278aa4b1c1059fda6e95bb7d2bf2025a9d87e420257561181cfb5",
+    "src/middleware/optional.middleware.ts": "ce56fc847889f31d51d5f46cf2f541341e684122f5549463e8e4b344ae51e4c2",
+    "src/middleware/workspace-owner.middleware.ts": "2dcf14a2ef2b16be61ab7502510890c124c9bf81685edb1167ef6ffefb6fff87",
+    "src/middleware/types.ts": "bec2725ffcda18fb992c5aefdc610dd46bc6873c01a4940cf41c47773f795ae3",
+    "src/schemas/users.schema.ts": "f324f0837b01866a0caf28854c0261b8a2e28f0fb577cd5ae370e45c352fad13"
+  },
+  "rows": [
+    {
+      "name": "no_header",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"No token provided\",\"status\":401,\"type\":\"no_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [],
+      "cached": false,
+      "cacheTtl": null,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "empty_header",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"No token provided\",\"status\":401,\"type\":\"no_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [],
+      "cached": false,
+      "cacheTtl": null,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "bearer_word_only",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Invalid token\",\"status\":401,\"type\":\"invalid_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate"
+      ],
+      "cached": false,
+      "cacheTtl": null,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "valid_cache_miss",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(valid)\",\"login\":\"login_valid\",\"display_name\":\"Display valid\",\"profile_image_url\":\"https://img.example/valid.png\"},\"bound\":\"$ID(valid)\"}",
+      "handlerRan": true,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": 86400,
+      "activityStamped": true
+    },
+    {
+      "name": "valid_cache_hit",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(valid)\",\"login\":\"login_valid\",\"display_name\":\"Display valid\",\"profile_image_url\":\"https://img.example/valid.png\"},\"bound\":\"$ID(valid)\"}",
+      "handlerRan": true,
+      "twitchCalls": [],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": 86400,
+      "activityStamped": true
+    },
+    {
+      "name": "bare_token_without_scheme",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(valid)\",\"login\":\"login_valid\",\"display_name\":\"Display valid\",\"profile_image_url\":\"https://img.example/valid.png\"},\"bound\":\"$ID(valid)\"}",
+      "handlerRan": true,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": 86400,
+      "activityStamped": true
+    },
+    {
+      "name": "lowercase_scheme",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Invalid token\",\"status\":401,\"type\":\"invalid_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate"
+      ],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "double_space_after_scheme",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Invalid token\",\"status\":401,\"type\":\"invalid_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate"
+      ],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "oauth_scheme",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Invalid token\",\"status\":401,\"type\":\"invalid_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate"
+      ],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "revoked_token",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Invalid token\",\"status\":401,\"type\":\"invalid_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "validate_server_error_then_users_ok",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(valid)\",\"login\":\"login_valid\",\"display_name\":\"Display valid\",\"profile_image_url\":\"https://img.example/valid.png\"},\"bound\":\"$ID(valid)\"}",
+      "handlerRan": true,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": 86400,
+      "activityStamped": true
+    },
+    {
+      "name": "validate_not_json",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Failed to validate token\",\"status\":401,\"type\":\"invalid_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "validate_json_null",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Invalid token\",\"status\":401,\"type\":\"invalid_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "validate_unreachable",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Failed to validate token\",\"status\":401,\"type\":\"invalid_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "users_refused",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Invalid token or user not found\",\"status\":401,\"type\":\"user_fetch_failed\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "users_empty",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"User not found\",\"status\":401,\"type\":\"user_fetch_failed\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "users_without_data",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"User not found\",\"status\":401,\"type\":\"user_fetch_failed\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "users_not_json",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Failed to fetch user data\",\"status\":401,\"type\":\"user_fetch_failed\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "users_unreachable",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Failed to fetch user data\",\"status\":401,\"type\":\"user_fetch_failed\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "users_json_null",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Failed to fetch user data\",\"status\":401,\"type\":\"user_fetch_failed\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "foreign_client_token",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Invalid token or user not found\",\"status\":401,\"type\":\"user_fetch_failed\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "cached_then_revoked_on_twitch",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(valid)\",\"login\":\"login_valid\",\"display_name\":\"Display valid\",\"profile_image_url\":\"\"},\"bound\":\"$ID(valid)\"}",
+      "handlerRan": true,
+      "twitchCalls": [],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": 86399,
+      "activityStamped": true
+    },
+    {
+      "name": "channel_param_binds_channel",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(valid)\",\"login\":\"login_valid\",\"display_name\":\"Display valid\",\"profile_image_url\":\"https://img.example/valid.png\"},\"bound\":\"$ID(channel)\"}",
+      "handlerRan": true,
+      "twitchCalls": [],
+      "cached": true,
+      "cacheTtl": 13999,
+      "touchKeyTtl": 86399,
+      "activityStamped": true
+    },
+    {
+      "name": "overlong_token",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Invalid token\",\"status\":401,\"type\":\"invalid_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [
+        "validate"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "no_picture_cache_miss",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(nopic)\",\"login\":\"login_nopic\",\"display_name\":\"Display nopic\"},\"bound\":\"$ID(nopic)\"}",
+      "handlerRan": true,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": 86400,
+      "activityStamped": true
+    },
+    {
+      "name": "no_picture_cache_hit",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(nopic)\",\"login\":\"login_nopic\",\"display_name\":\"Display nopic\",\"profile_image_url\":\"\"},\"bound\":\"$ID(nopic)\"}",
+      "handlerRan": true,
+      "twitchCalls": [],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": 86400,
+      "activityStamped": true
+    },
+    {
+      "name": "no_site_account",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(nosite)\",\"login\":\"login_nosite\",\"display_name\":\"Display nosite\",\"profile_image_url\":\"https://img.example/nosite.png\"},\"bound\":\"$ID(nosite)\"}",
+      "handlerRan": true,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": 86400,
+      "activityStamped": false
+    },
+    {
+      "name": "token_expiring_soon",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(valid)\",\"login\":\"login_valid\",\"display_name\":\"Display valid\",\"profile_image_url\":\"https://img.example/valid.png\"},\"bound\":\"$ID(valid)\"}",
+      "handlerRan": true,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": 86399,
+      "activityStamped": true
+    },
+    {
+      "name": "optional_without_token",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"No token provided\",\"status\":401,\"type\":\"no_token\"}",
+      "handlerRan": true,
+      "twitchCalls": [],
+      "cached": false,
+      "cacheTtl": null,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "optional_with_valid_token",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(valid)\",\"login\":\"login_valid\",\"display_name\":\"Display valid\",\"profile_image_url\":\"https://img.example/valid.png\"},\"bound\":\"$ID(valid)\"}",
+      "handlerRan": true,
+      "twitchCalls": [],
+      "cached": true,
+      "cacheTtl": 13998,
+      "touchKeyTtl": 86398,
+      "activityStamped": true
+    },
+    {
+      "name": "optional_with_revoked_token",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Invalid token\",\"status\":401,\"type\":\"invalid_token\"}",
+      "handlerRan": true,
+      "twitchCalls": [
+        "validate"
+      ],
+      "cached": false,
+      "cacheTtl": -2,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    },
+    {
+      "name": "workspace_creator",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"next\":true,\"user\":{\"id\":\"$ID(creator)\",\"login\":\"login_creator\",\"display_name\":\"Display creator\",\"profile_image_url\":\"https://img.example/creator.png\"},\"bound\":\"$ID(creator)\"}",
+      "handlerRan": true,
+      "twitchCalls": [
+        "validate",
+        "users"
+      ],
+      "cached": true,
+      "cacheTtl": 14000,
+      "touchKeyTtl": 86400,
+      "activityStamped": true
+    },
+    {
+      "name": "workspace_other_user",
+      "status": 403,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"Admin workspace access required\",\"status\":403}",
+      "handlerRan": false,
+      "twitchCalls": [],
+      "cached": true,
+      "cacheTtl": 13998,
+      "touchKeyTtl": 86398,
+      "activityStamped": true
+    },
+    {
+      "name": "workspace_without_token",
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "body": "{\"error\":true,\"message\":\"No token provided\",\"status\":401,\"type\":\"no_token\"}",
+      "handlerRan": false,
+      "twitchCalls": [],
+      "cached": false,
+      "cacheTtl": null,
+      "touchKeyTtl": null,
+      "activityStamped": null
+    }
+  ]
+}

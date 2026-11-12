@@ -1,0 +1,121 @@
+{
+  "client_id": "fixture-client",
+  "site_users": ["valid", "creator", "nopic"],
+  "tokens": {
+    "valid": {
+      "user": "valid",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": { "status": 200, "body": { "data": [ { "id": "$ID", "login": "$LOGIN", "display_name": "Display valid", "profile_image_url": "https://img.example/valid.png", "type": "", "broadcaster_type": "", "created_at": "2020-01-01T00:00:00Z" } ] } }
+    },
+    "valid_raw": {
+      "user": "valid",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": { "status": 200, "body": { "data": [ { "id": "$ID", "login": "$LOGIN", "display_name": "Display valid", "profile_image_url": "https://img.example/valid.png" } ] } }
+    },
+    "creator": {
+      "user": "creator",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": { "status": 200, "body": { "data": [ { "id": "$ID", "login": "$LOGIN", "display_name": "Display creator", "profile_image_url": "https://img.example/creator.png" } ] } }
+    },
+    "revoked": {
+      "user": "valid",
+      "validate": { "status": 401, "body": { "status": 401, "message": "invalid access token" } },
+      "users": { "status": 401, "body": { "status": 401, "message": "Invalid OAuth token" } }
+    },
+    "validate500": {
+      "user": "valid",
+      "validate": { "status": 500, "body": { "status": 500, "message": "Internal Server Error" } },
+      "users": { "status": 200, "body": { "data": [ { "id": "$ID", "login": "$LOGIN", "display_name": "Display valid", "profile_image_url": "https://img.example/valid.png" } ] } }
+    },
+    "validate_text": { "user": "valid", "validate": { "status": 200, "body": "<html>upstream</html>" }, "users": { "status": 200, "body": { "data": [] } } },
+    "validate_null": { "user": "valid", "validate": { "status": 200, "body": "null" }, "users": { "status": 200, "body": { "data": [] } } },
+    "validate_drop": { "user": "valid", "validate": "drop", "users": { "status": 200, "body": { "data": [] } } },
+    "users401": {
+      "user": "valid",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": { "status": 401, "body": { "error": "Unauthorized", "status": 401, "message": "Invalid OAuth token" } }
+    },
+    "users_empty": {
+      "user": "valid",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": { "status": 200, "body": { "data": [] } }
+    },
+    "users_nodata": {
+      "user": "valid",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": { "status": 200, "body": {} }
+    },
+    "users_text": {
+      "user": "valid",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": { "status": 200, "body": "<html>upstream</html>" }
+    },
+    "users_drop": {
+      "user": "valid",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": "drop"
+    },
+    "users_null": {
+      "user": "valid",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": { "status": 200, "body": "null" }
+    },
+    "foreign": {
+      "user": "valid",
+      "client": "other-app",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": { "status": 200, "body": { "data": [ { "id": "$ID", "login": "$LOGIN", "display_name": "Display valid", "profile_image_url": "" } ] } }
+    },
+    "nopic": {
+      "user": "nopic",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": { "status": 200, "body": { "data": [ { "id": "$ID", "login": "$LOGIN", "display_name": "Display nopic" } ] } }
+    },
+    "nosite": {
+      "user": "nosite",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 14400 } },
+      "users": { "status": 200, "body": { "data": [ { "id": "$ID", "login": "$LOGIN", "display_name": "Display nosite", "profile_image_url": "https://img.example/nosite.png" } ] } }
+    },
+    "short_lived": {
+      "user": "valid",
+      "validate": { "status": 200, "body": { "client_id": "$CLIENT", "login": "$LOGIN", "scopes": [], "user_id": "$ID", "expires_in": 120 } },
+      "users": { "status": 200, "body": { "data": [ { "id": "$ID", "login": "$LOGIN", "display_name": "Display valid", "profile_image_url": "https://img.example/valid.png" } ] } }
+    }
+  },
+  "rows": [
+    { "name": "no_header", "path": "/probe", "header": null },
+    { "name": "empty_header", "path": "/probe", "header": "" },
+    { "name": "bearer_word_only", "path": "/probe", "header": "Bearer" },
+    { "name": "valid_cache_miss", "path": "/probe", "header": "Bearer $TOKEN", "token": "valid", "user": "valid" },
+    { "name": "valid_cache_hit", "path": "/probe", "header": "Bearer $TOKEN", "token": "valid", "user": "valid" },
+    { "name": "bare_token_without_scheme", "path": "/probe", "header": "$TOKEN", "token": "valid_raw", "user": "valid" },
+    { "name": "lowercase_scheme", "path": "/probe", "header": "bearer $TOKEN", "token": "valid" },
+    { "name": "double_space_after_scheme", "path": "/probe", "header": "Bearer  $TOKEN", "token": "valid" },
+    { "name": "oauth_scheme", "path": "/probe", "header": "OAuth $TOKEN", "token": "valid" },
+    { "name": "revoked_token", "path": "/probe", "header": "Bearer $TOKEN", "token": "revoked" },
+    { "name": "validate_server_error_then_users_ok", "path": "/probe", "header": "Bearer $TOKEN", "token": "validate500", "user": "valid" },
+    { "name": "validate_not_json", "path": "/probe", "header": "Bearer $TOKEN", "token": "validate_text" },
+    { "name": "validate_json_null", "path": "/probe", "header": "Bearer $TOKEN", "token": "validate_null" },
+    { "name": "validate_unreachable", "path": "/probe", "header": "Bearer $TOKEN", "token": "validate_drop" },
+    { "name": "users_refused", "path": "/probe", "header": "Bearer $TOKEN", "token": "users401" },
+    { "name": "users_empty", "path": "/probe", "header": "Bearer $TOKEN", "token": "users_empty" },
+    { "name": "users_without_data", "path": "/probe", "header": "Bearer $TOKEN", "token": "users_nodata" },
+    { "name": "users_not_json", "path": "/probe", "header": "Bearer $TOKEN", "token": "users_text" },
+    { "name": "users_unreachable", "path": "/probe", "header": "Bearer $TOKEN", "token": "users_drop" },
+    { "name": "users_json_null", "path": "/probe", "header": "Bearer $TOKEN", "token": "users_null" },
+    { "name": "foreign_client_token", "path": "/probe", "header": "Bearer $TOKEN", "token": "foreign" },
+    { "name": "cached_then_revoked_on_twitch", "path": "/probe", "header": "Bearer $TOKEN", "token": "cached_revoked", "seed": "valid", "user": "valid" },
+    { "name": "channel_param_binds_channel", "path": "/probe/$CHANNEL", "header": "Bearer $TOKEN", "token": "valid", "user": "valid" },
+    { "name": "overlong_token", "path": "/probe", "header": "Bearer $TOKEN", "token": "long" },
+    { "name": "no_picture_cache_miss", "path": "/probe", "header": "Bearer $TOKEN", "token": "nopic", "user": "nopic" },
+    { "name": "no_picture_cache_hit", "path": "/probe", "header": "Bearer $TOKEN", "token": "nopic", "user": "nopic" },
+    { "name": "no_site_account", "path": "/probe", "header": "Bearer $TOKEN", "token": "nosite", "user": "nosite" },
+    { "name": "token_expiring_soon", "path": "/probe", "header": "Bearer $TOKEN", "token": "short_lived", "user": "valid" },
+    { "name": "optional_without_token", "path": "/optional", "header": null },
+    { "name": "optional_with_valid_token", "path": "/optional", "header": "Bearer $TOKEN", "token": "valid", "user": "valid" },
+    { "name": "optional_with_revoked_token", "path": "/optional", "header": "Bearer $TOKEN", "token": "revoked" },
+    { "name": "workspace_creator", "path": "/workspace", "header": "Bearer $TOKEN", "token": "creator", "user": "creator" },
+    { "name": "workspace_other_user", "path": "/workspace", "header": "Bearer $TOKEN", "token": "valid", "user": "valid" },
+    { "name": "workspace_without_token", "path": "/workspace", "header": null }
+  ]
+}
