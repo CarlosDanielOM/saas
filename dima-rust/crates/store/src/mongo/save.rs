@@ -39,11 +39,11 @@
 //! listed in the ledger's hooks table.
 
 use crate::mongo::cast::{
-    Caster, PrepareError, WriteContext, check_depth_at, check_document_depth, deep_equal, get_path,
-    get_path_mut, remove_path, set_path,
+    Caster, PrepareError, WriteContext, check_depth_at, check_document_depth, check_map_key,
+    deep_equal, get_path, get_path_mut, remove_path, set_path,
 };
 use crate::mongo::number::normalize_js_numbers;
-use crate::mongo::schema::{Field, Kind, Schema, Target, TargetKind, resolve};
+use crate::mongo::schema::{Field, Kind, MapOf, Schema, Target, TargetKind, resolve};
 use bson::{Bson, Document};
 use std::collections::{HashMap, HashSet};
 
@@ -148,6 +148,31 @@ pub fn prepare_save(
                     continue;
                 };
                 let place = place_of(schema, path);
+                if let Place::InMap {
+                    path: map_path,
+                    key,
+                    of,
+                } = &place
+                {
+                    check_map_key(map_path, key)?;
+                    // An entry of a missing (or null) Map: Mongoose sets the whole Map.
+                    if path.split('.').count() == map_path.split('.').count() + 1
+                        && matches!(get_path(&doc, map_path), None | Some(Bson::Null))
+                    {
+                        let mut built = Document::new();
+                        built.insert(key.clone(), cast_change(&mut caster, target, path, value)?);
+                        let whole = Target::of_kind(TargetKind::Map(*of));
+                        commit(
+                            &mut doc,
+                            &mut defaults,
+                            &mut tracker,
+                            map_path,
+                            Bson::Document(built),
+                            whole,
+                        )?;
+                        continue;
+                    }
+                }
                 // A path inside a missing (or null) single nested sub-document: Mongoose builds
                 // the sub-document (with its defaults) and sets it whole.
                 if let Place::InSubdocument {
@@ -454,6 +479,12 @@ enum Place {
         path: String,
         schema: &'static Schema,
     },
+    /// At or below entry `key` of the Map at `path`.
+    InMap {
+        path: String,
+        key: String,
+        of: MapOf,
+    },
 }
 
 /// The first sub-document (array element or single nested) that `path` goes through, the
@@ -474,6 +505,16 @@ fn place_of(schema: &Schema, path: &str) -> Place {
                 return Place::InSubdocument {
                     path: segments[..=i].join("."),
                     schema: sub,
+                };
+            }
+            Kind::Map(of) => {
+                return match segments.get(i + 1) {
+                    Some(key) => Place::InMap {
+                        path: segments[..=i].join("."),
+                        key: (*key).to_owned(),
+                        of,
+                    },
+                    None => Place::Plain,
                 };
             }
             Kind::DocumentArray(_) => {
@@ -656,7 +697,7 @@ fn minimize_update(schema: &Schema, update: &mut Document) {
             } else {
                 resolve(schema, &key)
             };
-            if target.is_some_and(|t| matches!(t.kind, TargetKind::Map)) {
+            if target.is_some_and(|t| matches!(t.kind, TargetKind::Map(_))) {
                 continue;
             }
             let fields = target.and_then(|t| match t.kind {
@@ -693,7 +734,7 @@ fn minimize_fields(fields: Option<&'static [Field]>, doc: &mut Document) {
     let keys: Vec<String> = doc.keys().cloned().collect();
     for key in keys {
         let field = fields.and_then(|fs| fs.iter().find(|f| f.name == key));
-        if field.is_some_and(|f| matches!(f.kind, Kind::Map)) {
+        if field.is_some_and(|f| matches!(f.kind, Kind::Map(_))) {
             continue;
         }
         let child = field.and_then(|f| match f.kind {

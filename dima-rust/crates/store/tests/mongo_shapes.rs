@@ -7,7 +7,7 @@ use bson::{Bson, DateTime, Document, doc};
 use dima_store::mongo::insert::{InsertStyle, prepare_insert};
 use dima_store::mongo::number::JsNumber;
 use dima_store::mongo::save::{Change, prepare_save};
-use dima_store::mongo::schema::{DefaultValue as D, Field, Schema, Timestamps};
+use dima_store::mongo::schema::{DefaultValue as D, Field, MapOf, Schema, Timestamps};
 use dima_store::mongo::update::{
     Returned, UpdateDoc, UpdateOptions, prepare_find_one_and_update, prepare_update,
 };
@@ -26,7 +26,7 @@ static S: Schema = Schema::new(&[
     Field::value("name").trim(),
     Field::value("count").default(D::Int(0)),
     Field::mixed("meta"),
-    Field::map("vars"),
+    Field::map("vars", MapOf::Values),
     Field::array("tags").trim(),
     Field::document_array("items", &ITEM),
 ])

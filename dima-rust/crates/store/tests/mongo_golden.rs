@@ -27,15 +27,15 @@
 use anyhow::{Context, Result, anyhow, bail};
 use bson::oid::ObjectId;
 use bson::{Bson, DateTime, Document, doc};
-use dima_store::mongo::WriteContext;
 use dima_store::mongo::id::parse_object_id;
 use dima_store::mongo::insert::{InsertStyle, prepare_insert};
 use dima_store::mongo::save::{Change, prepare_save};
-use dima_store::mongo::schema::{DefaultValue as D, Field, Schema, Timestamps};
+use dima_store::mongo::schema::{DefaultValue as D, Field, MapOf, Schema, Timestamps};
 use dima_store::mongo::update::{
     BulkUpdate, Returned, Update, UpdateDoc, UpdateOptions, prepare_bulk_update,
     prepare_find_one_and_update, prepare_update,
 };
+use dima_store::mongo::{PrepareError, WriteContext};
 use mongodb::{Collection, Database};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -82,7 +82,7 @@ static CAMEL: Schema = Schema::new(&[
     Field::subdocument("opts", &OPTS).default_fn(D::With(opts_default)),
     Field::mixed("meta").default_fn(D::EmptyDocument),
     Field::mixed("blob"),
-    Field::map("vars"),
+    Field::map("vars", MapOf::Values),
     Field::value("leaseUntil").default_fn(D::DateMs(0)),
     Field::value("seenAt").default_fn(D::Now),
     Field::value("flag").default(D::Null),
@@ -118,7 +118,7 @@ static SNAKE: Schema = Schema::new(&[
     Field::document_array("history", &HISTORY),
     Field::document_array("accounts", &ACCOUNT),
     Field::mixed_array("responses").default(D::EmptyArray),
-    Field::map("variables").default(D::EmptyDocument),
+    Field::map("variables", MapOf::Values).default(D::EmptyDocument),
 ])
 .timestamps(Timestamps::SNAKE);
 
@@ -177,8 +177,20 @@ static TYPED: Schema = Schema::new(&[
     ),
     Field::subdocument("one", &TYPED_ONE),
     Field::document_array("entries", &TYPED_ENTRY),
+    Field::map("steps", MapOf::Subdocuments(&TYPED_STEP)).default(D::EmptyDocument),
+    Field::map("marks", MapOf::Subdocuments(&TYPED_MARK)),
+    Field::map("vars", MapOf::Values),
+    Field::map("counts", MapOf::Values),
 ])
 .timestamps(Timestamps::CAMEL);
+static TYPED_STEP: Schema = Schema::subdocument(&[
+    Field::value("status"),
+    Field::value("reason"),
+    Field::value("at"),
+])
+.no_id();
+static TYPED_MARK: Schema =
+    Schema::subdocument(&[Field::value("v"), Field::value("d").default(D::Int(0))]);
 
 static HAND: Schema = Schema::new(&[
     Field::value("name"),
@@ -501,10 +513,26 @@ fn expected_failure(case: &Value) -> Option<Failure> {
     if let Some(code) = error["code"].as_i64().and_then(|c| i32::try_from(c).ok()) {
         return Some(Failure::Code(code));
     }
+    let message = error["message"].as_str().unwrap_or_default();
     Some(match error["name"].as_str()? {
         "VersionError" | "DocumentNotFoundError" => Failure::Conflict,
+        // A Map key with `.` or a leading `$`: an `Error` where the Map is cast, a
+        // `ValidationError` ("Cast to Map failed") where a document is validated.
+        _ if message.starts_with("Mongoose maps do not support keys")
+            || message.contains("Cast to Map failed") =>
+        {
+            Failure::Mongoose("InvalidMapKey".into())
+        }
         other => Failure::Mongoose(other.to_owned()),
     })
+}
+
+/// The Mongoose failure a helper's refusal stands for, if the replay knows it.
+fn prepare_failure(error: &anyhow::Error) -> Option<Failure> {
+    match error.downcast_ref::<PrepareError>()? {
+        PrepareError::InvalidMapKey { .. } => Some(Failure::Mongoose("InvalidMapKey".into())),
+        _ => None,
+    }
 }
 
 fn now_ms() -> i64 {
@@ -949,9 +977,16 @@ async fn check_case(
         sent.clear();
     }
     let t0 = now_ms() - 1;
-    let outcome = run_case(db, case, now, numbers)
-        .await
-        .with_context(|| format!("case {name}"))?;
+    let outcome = match run_case(db, case, now, numbers).await {
+        Ok(outcome) => outcome,
+        // The helper refused the write before anything was sent, as Mongoose did.
+        Err(error) if prepare_failure(&error).is_some() => Outcome {
+            commands: Vec::new(),
+            result: None,
+            failure: prepare_failure(&error),
+        },
+        Err(error) => return Err(error.context(format!("case {name}"))),
+    };
     let t1 = now_ms() + 1;
     let stored: Vec<Document> = {
         use futures_util::TryStreamExt;

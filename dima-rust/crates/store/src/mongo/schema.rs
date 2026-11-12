@@ -260,9 +260,11 @@ impl Field {
         Self::with_kind(name, Kind::Subdocument(schema))
     }
 
-    /// A `Map` of values (`{ type: Map, of: String }`).
-    pub const fn map(name: &'static str) -> Self {
-        Self::with_kind(name, Kind::Map)
+    /// A `Map` (`{ type: Map, of: String }`, `{ type: Map, of: SubSchema }`): a document whose
+    /// keys the caller chooses, each value of the kind `of` says. Keys may not contain `.` or
+    /// start with `$` ([`crate::mongo::PrepareError::InvalidMapKey`]).
+    pub const fn map(name: &'static str, of: MapOf) -> Self {
+        Self::with_kind(name, Kind::Map(of))
     }
 
     /// A literal default (`default: 'x'`, `default: null`, `default: []`).
@@ -335,7 +337,19 @@ pub enum Kind {
     /// A single nested sub-document.
     Subdocument(&'static Schema),
     /// A `Map` (stored as a document; never minimized).
-    Map,
+    Map(MapOf),
+}
+
+/// What the values of a `Map` are.
+#[derive(Clone, Copy, Debug)]
+pub enum MapOf {
+    /// Single values (`of: String`, `of: Number`).
+    Values,
+    /// Anything (`of: Mixed`, or no `of`).
+    Mixed,
+    /// Sub-documents (`of: new Schema({...})`): each value is built like a sub-document, with
+    /// its defaults, its `_id` unless the sub-schema has `{ _id: false }`, unknown keys dropped.
+    Subdocuments(&'static Schema),
 }
 
 /// A default and whether it is a function in the TypeScript schema.
@@ -428,7 +442,7 @@ pub(crate) enum TargetKind {
     /// A single nested sub-document, or one element of a document array.
     Subdocument(&'static Schema),
     /// A Map.
-    Map,
+    Map(MapOf),
 }
 
 impl Target {
@@ -441,7 +455,7 @@ impl Target {
             Kind::MixedArray => TargetKind::MixedArray,
             Kind::DocumentArray(schema) => TargetKind::DocumentArray(schema),
             Kind::Subdocument(schema) => TargetKind::Subdocument(schema),
-            Kind::Map => TargetKind::Map,
+            Kind::Map(of) => TargetKind::Map(of),
         };
         Self {
             kind,
@@ -533,8 +547,14 @@ fn resolve_field(field: &'static Field, rest: &[&str]) -> Option<Target> {
             _ => None,
         },
         Kind::MixedArray => Some(Target::plain(TargetKind::Free)),
-        Kind::Map => match rest {
-            [_] => Some(Target::plain(TargetKind::Value)),
+        // `map.<key>` is one value; below it, a sub-document's paths, or anything (Mongoose
+        // sends `vars.a.b` as it is for a map of strings).
+        Kind::Map(of) => match (of, rest) {
+            (MapOf::Values, [_]) => Some(Target::plain(TargetKind::Value)),
+            (MapOf::Subdocuments(schema), [_]) => {
+                Some(Target::plain(TargetKind::Subdocument(schema)))
+            }
+            (MapOf::Subdocuments(schema), [_, deeper @ ..]) => resolve_in_schema(schema, deeper),
             _ => Some(Target::plain(TargetKind::Free)),
         },
     }
@@ -562,7 +582,7 @@ mod tests {
         ),
         Field::subdocument("opts", &ITEM),
         Field::mixed("meta"),
-        Field::map("vars"),
+        Field::map("vars", MapOf::Values),
     ])
     .timestamps(Timestamps::CAMEL);
 

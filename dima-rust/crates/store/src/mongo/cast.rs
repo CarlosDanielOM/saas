@@ -19,7 +19,7 @@
 //! (top level and single nested ones as their own paths; array elements only when the whole
 //! array is `$set`).
 
-use crate::mongo::schema::{Field, Kind, Leaf, Schema, Target, TargetKind};
+use crate::mongo::schema::{Field, Kind, Leaf, MapOf, Schema, Target, TargetKind};
 use bson::oid::ObjectId;
 use bson::{Bson, DateTime, Document};
 
@@ -110,6 +110,18 @@ pub enum PrepareError {
         path: String,
         /// Why.
         reason: &'static str,
+    },
+    /// A `Map` key Mongoose refuses: one that contains `.` or starts with `$` (checked where
+    /// Mongoose checks it: whole Map values in inserts, updates and saves, and keys a save sets;
+    /// a dotted update path such as `vars.$x` is sent as it is).
+    #[error("{path}: Mongoose maps do not support keys that {rule}, got \"{key}\"")]
+    InvalidMapKey {
+        /// The Map path.
+        path: String,
+        /// The key.
+        key: String,
+        /// `contain "."` or `start with "$"`.
+        rule: &'static str,
     },
     /// The loaded document of a save has no `_id`.
     #[error("the loaded document has no _id")]
@@ -616,7 +628,10 @@ impl<'c> Caster<'c> {
                 Bson::String(dima_text::trim(&text).to_owned())
             }
             (TargetKind::Subdocument(schema), Bson::Document(given)) => {
-                Bson::Document(self.construct(schema, Some(&given), "")?)
+                Bson::Document(self.construct(schema, Some(&given), &format!("{path}."))?)
+            }
+            (TargetKind::Map(of), Bson::Document(given)) => {
+                Bson::Document(self.cast_map(of, given, path)?)
             }
             (TargetKind::Subdocument(_), _) => {
                 return Err(PrepareError::ObjectExpected {
@@ -649,6 +664,35 @@ impl<'c> Caster<'c> {
         })
     }
 
+    /// A whole `Map` value: every key checked ([`check_map_key`]), every value cast to the
+    /// Map's kind, in the given order.
+    pub fn cast_map(
+        &mut self,
+        of: MapOf,
+        given: Document,
+        path: &str,
+    ) -> Result<Document, PrepareError> {
+        let mut out = Document::new();
+        for (key, value) in given {
+            check_map_key(path, &key)?;
+            let cast = match (of, value) {
+                (_, Bson::Undefined) => continue,
+                (MapOf::Subdocuments(schema), Bson::Document(inner)) => Bson::Document(
+                    self.construct(schema, Some(&inner), &format!("{path}.{key}."))?,
+                ),
+                (MapOf::Subdocuments(_), Bson::Null) => Bson::Null,
+                (MapOf::Subdocuments(_), _) => {
+                    return Err(PrepareError::ObjectExpected {
+                        path: format!("{path}.{key}"),
+                    });
+                }
+                (_, other) => other,
+            };
+            out.insert(key, cast);
+        }
+        Ok(out)
+    }
+
     /// One element pushed onto an array path (`$push`, `$addToSet`, save `push`).
     pub fn cast_array_element(
         &mut self,
@@ -664,6 +708,22 @@ impl<'c> Caster<'c> {
             (_, other) => other,
         })
     }
+}
+
+/// Mongoose's Map key rule: no `.` anywhere, no `$` first.
+pub(crate) fn check_map_key(path: &str, key: &str) -> Result<(), PrepareError> {
+    let rule = if key.contains('.') {
+        "contain \".\""
+    } else if key.starts_with('$') {
+        "start with \"$\""
+    } else {
+        return Ok(());
+    };
+    Err(PrepareError::InvalidMapKey {
+        path: path.to_owned(),
+        key: key.to_owned(),
+        rule,
+    })
 }
 
 fn trim_if(value: Bson, trim: bool) -> Bson {
@@ -886,7 +946,7 @@ fn minimize_with_fields(fields: Option<&'static [Field]>, doc: &mut Document) {
     let keys: Vec<String> = doc.keys().cloned().collect();
     for key in keys {
         let field = fields.and_then(|fs| fs.iter().find(|f| f.name == key));
-        if field.is_some_and(|f| matches!(f.kind, Kind::Map)) {
+        if field.is_some_and(|f| matches!(f.kind, Kind::Map(_))) {
             continue;
         }
         let child_fields = field.and_then(|f| match f.kind {

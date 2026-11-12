@@ -161,6 +161,12 @@ const schemas = {
         info: { since: Date, tag: { type: String, immutable: true } },
         one: new Schema({ when: Date, k: { type: Number, default: 1 }, code: { type: String, immutable: true } }, { _id: false }),
         entries: [new Schema({ who: Schema.Types.ObjectId, at: Date, n: Number, code: { type: String, immutable: true } })],
+        // Maps: of `_id: false` sub-documents (stream_operations_receipts.steps), of
+        // sub-documents with an auto `_id`, of strings (astvariables.variables), of numbers.
+        steps: { type: Map, of: new Schema({ status: String, reason: String, at: Date }, { _id: false }), default: {} },
+        marks: { type: Map, of: new Schema({ v: Number, d: { type: Number, default: 0 } }) },
+        vars: { type: Map, of: String },
+        counts: { type: Map, of: Number },
     }, { timestamps: true }),
 
     // no timestamps option, hand-written createdAt/updatedAt with Date.now defaults (admins, events).
@@ -222,6 +228,11 @@ const typedSeed = () => ({
     _id: oid1, owner: OID(0x50), label: 'l', n: 1, at: T1, on: true, key: 'k1', info: { since: T1, tag: 't1' },
     one: { when: T1, k: 2, code: 'c1' }, entries: [{ _id: sub1, who: OID(0x51), at: T1, n: 1, code: 'e1' }],
     createdAt: T1, updatedAt: T1, __v: 0,
+});
+const typedMapSeed = () => ({
+    ...typedSeed(), _id: oid3,
+    steps: { k1: { status: 'completed', at: T1 }, 'clé 👋': { status: 'skipped', reason: 'r', at: T1 } },
+    marks: { m1: { v: 1, d: 0, _id: sub2 } }, vars: { a: 'x' }, counts: { c: 1 },
 });
 // Immutable paths that were never written.
 const typedSparseSeed = () => ({ _id: oid2, label: 's', entries: [{ _id: sub1, n: 1 }], createdAt: T1, updatedAt: T1, __v: 0 });
@@ -440,6 +451,30 @@ const cases = [
     { name: 'update_push_subdoc_immutable', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $push: { entries: { code: 'u', n: 3 } } } },
     { name: 'update_set_subdoc_array_immutable', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $set: { entries: [{ code: 'v' }], one: { code: 'w' }, 'entries.0.code': 'x' } } },
     { name: 'save_immutable_same_value', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'key', value: 'k1' }] },
+
+    // ---- Maps: values cast to the map's type, keys validated (no '.', no leading '$')
+    { name: 'create_typed_maps', schema: 'typed', op: 'create', doc: { steps: { k1: { at: T1, status: 'completed', junk: 1 } }, marks: { m: { v: 1 } }, vars: { a: 'x', [TEXT]: TEXT }, counts: { c: 2 } } },
+    { name: 'create_typed_map_key_dot', schema: 'typed', op: 'create', doc: { vars: { 'a.b': 'x' } } },
+    { name: 'create_typed_map_key_dollar', schema: 'typed', op: 'create', doc: { vars: { $x: 'y' } } },
+    { name: 'create_typed_map_key_inner_dollar', schema: 'typed', op: 'create', doc: { vars: { 'a$': 'y', '': 'empty' } } },
+    { name: 'update_map_entry_whole', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { 'steps.k2': { status: 'skipped', at: T2, junk: 1 }, 'marks.m2': { v: 2 } } } },
+    { name: 'update_map_entry_dotted', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { 'steps.k1.status': 'failed', 'steps.k1.junk': 1, 'vars.b': 'y', 'marks.m1.v': 5 } } },
+    { name: 'update_map_whole', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { steps: { k: { status: 'completed', at: T1 } }, vars: { z: 'w' }, marks: { q: {} } } } },
+    { name: 'update_map_unset_entry', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $unset: { 'steps.k1': 1, 'vars.a': '' } } },
+    { name: 'update_map_key_dot_path', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { 'vars.a.b': 'x' } } },
+    { name: 'update_map_key_dot_whole', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { vars: { 'a.b': 'x' } } } },
+    { name: 'update_map_key_dollar_path', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { 'vars.$x': 'y' } } },
+    { name: 'update_map_key_dollar_whole', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { steps: { $k: { status: 'completed' } } } } },
+    { name: 'upsert_map_entry', schema: 'typed', op: 'updateOne', filter: { _id: oid9 }, update: { $setOnInsert: { key: 'c', at: T2 }, $set: { 'steps.s1': { status: 'completed', at: T1 } } }, options: { upsert: true } },
+    { name: 'upsert_map_entry_existing', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $setOnInsert: { key: 'c' }, $set: { [`steps.${'clé 👋'}`]: { status: 'failed', reason: 'again', at: T2 } } }, options: { upsert: true } },
+    { name: 'save_map_entry', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'steps.k3', value: { status: 'completed', at: T2, junk: 1 } }, { set: 'vars.z', value: 'w' }, { set: 'marks.m9', value: { v: 9 } }] },
+    { name: 'save_map_entry_field', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'steps.k1.reason', value: 'why' }, { set: 'marks.m1.v', value: 7 }] },
+    { name: 'save_map_whole', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'steps', value: { n: { status: 'skipped', at: T2 } } }, { set: 'vars', value: { q: 'r' } }] },
+    { name: 'save_map_unset_entry', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ unset: 'steps.k1' }, { unset: 'vars.a' }] },
+    { name: 'save_map_same_entry', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'vars.a', value: 'x' }, { set: 'steps.k1', value: { status: 'completed', at: T1 } }] },
+    { name: 'save_map_key_dot', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'vars', value: { 'a.b': 'x' } }] },
+    { name: 'save_map_key_dollar', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'vars.$x', value: 'x' }] },
+    { name: 'save_map_on_doc_without_maps', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'vars.a', value: 'x' }] },
 
     // ---- save with compare-and-set predicates (`doc.$where`) and a document that went away
     { name: 'save_where_match', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { updatedAt: T1, __v: 3 }, changes: [{ set: 'score', value: 2 }] },
