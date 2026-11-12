@@ -38,9 +38,11 @@
 //! - Between the socket and the subscriptions, one buffer holding the frame being received:
 //!   frames are dispatched as soon as they are complete, dispatch never waits, and the socket is
 //!   read only as fast as frames are dispatched. A message, channel or pattern longer than
-//!   [`super::DragonflyConfig::subscription_max_message_bytes`] is refused from its length
-//!   header, before its bytes arrive: the connection is discarded and replaced (`Gap`
-//!   subscriptions report a gap) instead of the buffer growing.
+//!   [`super::DragonflyConfig::subscription_max_message_bytes`], a frame longer than one
+//!   message plus two topic names and its headers, and a nested array are refused from their
+//!   headers, before their bytes arrive: the connection is discarded and replaced (`Gap`
+//!   subscriptions report a gap) instead of the buffer growing. An incomplete frame is never
+//!   parsed again from its start.
 //! - A channel or pattern name is at most
 //!   [`super::DragonflyConfig::effective_max_topic_bytes`] (default
 //!   [`super::config::DEFAULT_SUBSCRIPTION_MAX_TOPIC_BYTES`], never above the receive limit);
@@ -68,11 +70,16 @@
 //!   [`super::DragonflyConfig::response_timeout`]. The task never waits for a confirmation: it
 //!   keeps delivering, serving requests and answering shutdown while one is outstanding. On
 //!   expiry the connection is discarded and the subscriber reconnects and subscribes again
-//!   (`Gap` subscriptions report a gap). [`Subscriber::subscribe`] returns at the deadline at
-//!   the latest, unconfirmed. A connection that sends no complete
+//!   (`Gap` subscriptions report a gap). [`Subscriber::subscribe`] returns, unconfirmed at
+//!   the latest, when a confirmation it waits for misses its deadline (two in a row when the
+//!   topic's previous subscription is still being unsubscribed). A connection that sends no complete
 //!   frame for [`super::DragonflyConfig::subscriber_ping_interval`] is sent `PING` (bytes of an
 //!   unfinished frame do not count), so a peer that stops answering, or trickles a frame that
 //!   never ends, is noticed without control traffic.
+//! - **Live**: a subscription counts as live, and receives messages, only once the server has
+//!   confirmed every command sent for its topic and the last one was a subscribe (the per-topic
+//!   state machine is described in `driver.rs`). A late confirmation of an earlier command for
+//!   the same topic never makes a newer subscription live.
 //! - **One handler per channel**: subscribing to a topic that already has a subscription replaces
 //!   it (the old subscription's stream ends), mirroring the reference's `Map.set(channel, handler)`.
 //!   Dropping a [`Subscription`] unsubscribes (only if it is still the current one) at the
