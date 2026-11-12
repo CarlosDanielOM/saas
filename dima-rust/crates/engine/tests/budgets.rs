@@ -175,8 +175,9 @@ fn dense_text_under_the_source_limit_never_hits_a_budget() {
 }
 
 /// The work budget covers the quadratic shapes within the source limit: templates nested in
-/// templates (each level is lexed again, to the nesting limit) and loops nested in loop bodies (each body is scanned
-/// again), the worst with an emoji payload that makes every level long in bytes.
+/// templates (each level is lexed again, to the nesting limit) and loops nested in loop bodies
+/// (each body is scanned again), the worst with an emoji payload that makes every level long in
+/// bytes.
 #[test]
 fn nested_templates_and_loops_under_the_source_limit_fit_the_work_budget() {
     let engine = SyntaxEngine::default();

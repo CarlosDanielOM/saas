@@ -18,14 +18,14 @@
 //! - text ordering (`<`, `>`, …) is by code point;
 //! - resource limits ([`EvalLimits`]; the work and host-call limits are by plan, calibrated
 //!   against the supported workload of [`SUPPORTED_STATEMENTS`]): when one is hit inside an
-//!   expression, that expression's output is `[Parse error: …]` and rendering goes on (once the work, call or text budget is
-//!   spent, every later expression hits it too); [`Engine::evaluate`] returns
-//!   [`EvalError::Limit`]. Nothing is allocated past a limit first: a builtin sizes its
-//!   result before building it, the values one step gathers (a call's arguments, a list
-//!   literal's items, a reference's argument, a list written as JSON) are counted as they are
-//!   gathered, and what a run keeps (variables, the database memo, loop variables, reference
-//!   arguments) is charged to [`EvalLimits::memory_bytes`]. A tree deeper than
-//!   [`EvalLimits::nesting`] (32, as the parser) is refused before any of it runs;
+//!   expression, that expression's output is `[Parse error: …]` and rendering goes on (once
+//!   the work, call or text budget is spent, every later expression hits it too);
+//!   [`Engine::evaluate`] returns [`EvalError::Limit`]. Nothing is allocated past a limit
+//!   first: a builtin sizes its result before building it, the values one step gathers (a
+//!   call's arguments, a list literal's items, a reference's argument, a list written as JSON)
+//!   are counted as they are gathered, and what a run keeps (variables, the database memo, loop
+//!   variables, reference arguments) is charged to [`EvalLimits::memory_bytes`]. A tree deeper
+//!   than [`EvalLimits::nesting`] (32, as the parser) is refused before any of it runs;
 //! - the stack contract ([`crate::stack`]): every poll of an evaluation needs
 //!   [`crate::stack::EVAL_STACK_BYTES`] left on a registered thread, or it stops with
 //!   [`EvalError::Stack`]; within it, the deepest tree fits, as `tests/stack_contract.rs`
