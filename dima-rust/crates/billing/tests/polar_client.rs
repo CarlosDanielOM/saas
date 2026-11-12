@@ -367,7 +367,7 @@ async fn an_undecodable_answer_to_a_write_is_an_unknown_outcome() {
         let error = polar.create_customer_session(&json!({})).await.unwrap_err();
         assert!(error.outcome_unknown(), "session {body:?}: {error:?}");
     }
-    server.push(MockResponse::json(200, "[1]"));
+    server.push(MockResponse::json(200, r#"{"inserted":"#));
     let error = polar.ingest_events(&[]).await.unwrap_err();
     assert!(error.outcome_unknown(), "{error:?}");
     server.push(MockResponse::json(200, "not json"));
