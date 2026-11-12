@@ -1,0 +1,143 @@
+{
+  "rig_scenario": 3,
+  "description": "Invalid envelopes, invalid metric/span/log, per-kind oversized arrays and >256000 byte raw payload are discarded and counted; consumer leaves producer overflow counter unchanged.",
+  "seed": {
+    "dragonfly": [
+      [
+        "HSET",
+        "token:analytics-rig-owner",
+        "id",
+        "1",
+        "login",
+        "owner"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-viewer",
+        "id",
+        "2",
+        "login",
+        "viewer"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-investigator",
+        "id",
+        "3",
+        "login",
+        "investigator"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-stranger",
+        "id",
+        "4",
+        "login",
+        "stranger"
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "dragonfly": [
+        "SET",
+        "observability:v1:overflow",
+        "7"
+      ]
+    },
+    {
+      "dragonfly": [
+        "LPUSH",
+        "observability:v1:inbox",
+        "{\"version\": 2, \"id\": \"12345678-1234-1234-1234-000000000000\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [], \"spans\": [], \"logs\": []}"
+      ]
+    },
+    {
+      "dragonfly": [
+        "LPUSH",
+        "observability:v1:inbox",
+        "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-000000000001\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [{}], \"spans\": [], \"logs\": []}"
+      ]
+    },
+    {
+      "dragonfly": [
+        "LPUSH",
+        "observability:v1:inbox",
+        "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-000000000002\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [], \"spans\": [{}], \"logs\": []}"
+      ]
+    },
+    {
+      "dragonfly": [
+        "LPUSH",
+        "observability:v1:inbox",
+        "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-000000000003\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [], \"spans\": [], \"logs\": [{}]}"
+      ]
+    },
+    {
+      "dragonfly": [
+        "LPUSH",
+        "observability:v1:inbox",
+        "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-000000000004\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}], \"spans\": [], \"logs\": []}"
+      ]
+    },
+    {
+      "dragonfly": [
+        "LPUSH",
+        "observability:v1:inbox",
+        "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-000000000005\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [], \"spans\": [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}], \"logs\": []}"
+      ]
+    },
+    {
+      "dragonfly": [
+        "LPUSH",
+        "observability:v1:inbox",
+        "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-000000000006\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [], \"spans\": [], \"logs\": [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]}"
+      ]
+    },
+    {
+      "dragonfly": [
+        "EVAL",
+        "return redis.call('LPUSH', KEYS[1], string.rep('x',256001))",
+        "1",
+        "observability:v1:inbox"
+      ]
+    },
+    {
+      "pause_ms": 1600
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/resources",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "dragonfly": [
+        "LLEN",
+        "observability:v1:inbox"
+      ]
+    },
+    {
+      "dragonfly": [
+        "LLEN",
+        "observability:v1:processing"
+      ]
+    },
+    {
+      "dragonfly": [
+        "GET",
+        "observability:v1:overflow"
+      ]
+    },
+    {
+      "sql": "SELECT count(*) AS receipts FROM analytics_batches"
+    }
+  ],
+  "allow_scripts": true
+}

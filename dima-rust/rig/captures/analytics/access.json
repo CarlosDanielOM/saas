@@ -5,28 +5,28 @@
   "provenance": {
     "side": "reference",
     "label": null,
-    "recorded_at": "2026-11-12T07:19:11.522Z",
+    "recorded_at": "2026-11-12T07:40:20.852Z",
     "rig_version": "0.1.0"
   },
   "hashes": {
-    "scenario": "fnv1a64:19715e97eb9277b5",
+    "scenario": "fnv1a64:eb96860510381196",
     "files": {
-      "access.json": "fnv1a64:19715e97eb9277b5"
+      "access.json": "fnv1a64:eb96860510381196"
     }
   },
   "run": {
-    "seeded_at": 1794467945520,
-    "start": 1794467946321,
-    "end": 1794467946349,
-    "process_start": 1794467945719,
+    "seeded_at": 1794469215869,
+    "start": 1794469217394,
+    "end": 1794469217424,
+    "process_start": 1794469216112,
     "ports": {
-      "http": 35773
+      "http": 36157
     },
-    "mongo_db": "rig_1560239_0_ref",
-    "mongo_uri": "mongodb://127.0.0.1:27017/rig_1560239_0_ref?authSource=admin&directConnection=true",
-    "dragonfly_db": 1,
-    "dragonfly_url": "redis://127.0.0.1:6379/1",
-    "mock_port": 33603,
+    "mongo_db": "rig_1744305_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_1744305_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 4,
+    "dragonfly_url": "redis://127.0.0.1:6379/4",
+    "mock_port": 39717,
     "qdrant_port": null,
     "qdrant_prefix": null
   },
@@ -2357,7 +2357,7 @@
   "steps": [
     {
       "http": {
-        "at": 1794467946324,
+        "at": 1794469217398,
         "status": 200,
         "headers": [
           [
@@ -2378,7 +2378,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:06 GMT"
+            "Thu, 12 Nov 2026 07:40:17 GMT"
           ],
           [
             "connection",
@@ -2394,7 +2394,7 @@
     },
     {
       "http": {
-        "at": 1794467946327,
+        "at": 1794469217402,
         "status": 401,
         "headers": [
           [
@@ -2415,7 +2415,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:06 GMT"
+            "Thu, 12 Nov 2026 07:40:17 GMT"
           ],
           [
             "connection",
@@ -2431,7 +2431,7 @@
     },
     {
       "http": {
-        "at": 1794467946329,
+        "at": 1794469217404,
         "status": 401,
         "headers": [
           [
@@ -2452,7 +2452,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:06 GMT"
+            "Thu, 12 Nov 2026 07:40:17 GMT"
           ],
           [
             "connection",
@@ -2468,7 +2468,7 @@
     },
     {
       "http": {
-        "at": 1794467946332,
+        "at": 1794469217406,
         "status": 401,
         "headers": [
           [
@@ -2489,7 +2489,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:06 GMT"
+            "Thu, 12 Nov 2026 07:40:17 GMT"
           ],
           [
             "connection",
@@ -2505,7 +2505,7 @@
     },
     {
       "http": {
-        "at": 1794467946334,
+        "at": 1794469217409,
         "status": 401,
         "headers": [
           [
@@ -2526,7 +2526,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:06 GMT"
+            "Thu, 12 Nov 2026 07:40:17 GMT"
           ],
           [
             "connection",
@@ -2542,7 +2542,7 @@
     },
     {
       "http": {
-        "at": 1794467946337,
+        "at": 1794469217411,
         "status": 401,
         "headers": [
           [
@@ -2563,7 +2563,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:06 GMT"
+            "Thu, 12 Nov 2026 07:40:17 GMT"
           ],
           [
             "connection",
@@ -2579,7 +2579,7 @@
     },
     {
       "http": {
-        "at": 1794467946339,
+        "at": 1794469217412,
         "status": 401,
         "headers": [
           [
@@ -2600,7 +2600,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:06 GMT"
+            "Thu, 12 Nov 2026 07:40:17 GMT"
           ],
           [
             "connection",
@@ -2616,7 +2616,7 @@
     },
     {
       "http": {
-        "at": 1794467946342,
+        "at": 1794469217414,
         "status": 401,
         "headers": [
           [
@@ -2637,7 +2637,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:06 GMT"
+            "Thu, 12 Nov 2026 07:40:17 GMT"
           ],
           [
             "connection",
@@ -2653,7 +2653,7 @@
     },
     {
       "http": {
-        "at": 1794467946345,
+        "at": 1794469217417,
         "status": 401,
         "headers": [
           [
@@ -2674,7 +2674,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:06 GMT"
+            "Thu, 12 Nov 2026 07:40:17 GMT"
           ],
           [
             "connection",
@@ -2690,7 +2690,7 @@
     },
     {
       "http": {
-        "at": 1794467946347,
+        "at": 1794469217419,
         "status": 401,
         "headers": [
           [
@@ -2711,7 +2711,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:06 GMT"
+            "Thu, 12 Nov 2026 07:40:17 GMT"
           ],
           [
             "connection",
@@ -2727,7 +2727,7 @@
     },
     {
       "http": {
-        "at": 1794467946349,
+        "at": 1794469217421,
         "status": 401,
         "headers": [
           [
@@ -2748,7 +2748,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:06 GMT"
+            "Thu, 12 Nov 2026 07:40:17 GMT"
           ],
           [
             "connection",
@@ -2760,6 +2760,35 @@
           ]
         ],
         "body": "{\"message\":\"Sign in to view analytics\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469217424,
+        "status": 304,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "etag",
+            "W/\"4a-fxHLFXqeCLFSKua9hFAKwuzrU7Q\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:40:17 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": ""
       }
     }
   ],

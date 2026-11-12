@@ -97,20 +97,16 @@ pub async fn build(
                     .unwrap_or(503),
                 json!({"message":error.message()}),
             )
+            .remove_header("cache-control")
         })
     });
     dima_web::App::new(root,State{infra_cache:Default::default(),names_mongo,mongo,collector:Default::default(),config,store,redis,clock,health:Mutex::new(json!({"ingestedAt":null,"invalidBatches":0,"ingestionErrors":0,"collectorError":false})),limits:Default::default(),names:Default::default(),draining:Default::default(),http,twitch}).map_err(|_|Error::Config)
 }
 fn reply(status: u16, body: V) -> dima_web::Response {
-    match http::Response::builder()
-        .status(status)
-        .header("content-type", "application/json; charset=utf-8")
-        .header("cache-control", "no-store")
-        .body(dima_web::Body::from(dima_text::to_js_json(&body)))
-    {
-        Ok(r) => dima_web::Response::from_http(r),
-        Err(_) => dima_web::Response::status(500).end(),
-    }
+    // Use the Express-compatible send path for ETags, freshness and HEAD handling.
+    dima_web::Response::status(status)
+        .set("cache-control", "no-store")
+        .json(&body)
 }
 fn denied(status: u16, message: &str) -> (u16, V) {
     (status, json!({"message":message}))
@@ -431,6 +427,7 @@ async fn route(req: &mut dima_web::Req<State>) -> Result<(u16, V)> {
     let key = hex::encode(Sha256::digest(token.as_bytes()));
     {
         let mut limits = s.limits.lock().await;
+        // Reference quirk: new keys stop at 2000, so this expiry sweep is unreachable.
         if limits.len() > 2000 {
             limits.retain(|_, (until, _)| *until >= now);
         }
@@ -579,7 +576,13 @@ async fn route(req: &mut dima_web::Req<State>) -> Result<(u16, V)> {
             if grant["role"] == "viewer" {
                 return Ok(denied(403, "Investigator access is required"));
             }
-            let detail = path.strip_prefix("/api/traces/");
+            let decoded_detail = path
+                .strip_prefix("/api/traces/")
+                .and_then(dima_web::uri::decode_uri_component);
+            if path.starts_with("/api/traces/") && decoded_detail.is_none() {
+                return Ok(denied(400, "Failed to decode param"));
+            }
+            let detail = decoded_detail.as_deref();
             let logs = path == "/api/logs";
             let mut args: Vec<Box<dyn ToSql + Sync + Send>> = Vec::new();
             let base = if let Some(trace) = detail {
@@ -672,8 +675,14 @@ async fn route(req: &mut dima_web::Req<State>) -> Result<(u16, V)> {
                 json!({"grants":rows,"channelNames":s.names(ids).await}),
             ));
         }
-        if let Some(subject) = path.strip_prefix("/api/grants/") {
+        if let Some(encoded_subject) = path.strip_prefix("/api/grants/") {
+            let Some(subject) = dima_web::uri::decode_uri_component(encoded_subject) else {
+                return Ok(denied(400, "Failed to decode param"));
+            };
+            let subject = subject.as_str();
             if method == "DELETE" {
+                // Reference defect: audit failure leaves this deletion committed. Keep the
+                // separate statements for parity; revoke-failure records the lost audit.
                 s.store
                     .execute("DELETE FROM analytics_grants WHERE user_id=$1", &[&subject])
                     .await?;

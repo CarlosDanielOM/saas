@@ -1,5 +1,8 @@
 # Analytics Rust candidate
 
+The initial author report below is historical. The dated parity follow-up at the end records
+subsequent verification and supersedes its claims about unavailable dependencies or rig support.
+
 This is an implementation candidate, **not yet certified as a drop-in replacement**. The Node
 reference packages are absent at `/home/dom/Projects/saas/dima-analytics/node_modules` and in this
 checkout. No packages were installed, reference captures fabricated, containers built, services
@@ -119,3 +122,113 @@ retryable startup around the eager shared MongoStore constructor. Shared
 MongoConfig has no socket-timeout knob, so overall timeouts wrap Mongo operations. No shared crate
 was changed. Open question for the lead: reference dependencies must be provisioned independently
 before parity/resource verification can finish; the agent was explicitly forbidden to install them.
+
+## Parity follow-up (2026-11-12)
+
+Part 1: analytics JSON responses now use dima-web's JSON send path instead of raw HTTP
+responses. This supplies Express weak ETags, conditional GET freshness and HEAD stripping.
+The access scenario saves `/health`'s ETag and reuses it in `If-None-Match`; Node and Rust
+both return 304 with an empty body. Default double-run recording and candidate verification
+passed for all 12 access steps. No ETag computation is duplicated in this service.
+
+Part 2: the ingestion time differences are quantization artefacts. Both stores use the same
+`floor(m.at / 1000 / resolution) * resolution` SQL for resolutions 10, 60 and 3600.
+The scenario interpolates wall-clock `${now_ms}` independently on each run; subtracting each
+run's start does not cancel flooring to UTC boundaries. The scenario now declares bounded
+time tolerances (10 s for freshness, 60 s for timeline, 3600 s for mixed-resolution stored
+rows). These do not excuse wrong bucketing: three SQL observations independently require
+all three metric rows to equal the exact floor of the stored unrounded span timestamp, and
+both HTTP freshness/timeline timestamps to equal their 10 s/60 s floors. Every captured
+predicate is true. Counts, sums, histograms and resolutions still compare exactly.
+Default double-run recording and candidate verification pass (16 steps); no capture was
+edited by hand. No service bucketing change was necessary.
+
+Part 3: `verify analytics --dragonfly-dbs 4-5` passed all three scenarios (61 steps).
+There are no unallowed differences. The four ingestion allowances above account solely for
+UTC quantization of independent run clocks. The only note is non-contract object-key order
+in `channelNames`. PostgreSQL catalogue definitions and rows compare without structural
+allowances, including schema creation from empty databases in access/routes/ingestion.
+
+Part 4: ten additional scenarios were recorded with Node's default double-run stability check.
+All 13 scenarios / 2426 steps now verify against Rust, with no unallowed differences:
+
+- `validation` (90): all allowed range values, malformed/out-of-range values for each query
+  route, numeric coercions, unknown fields, grant ID/role/list/expiry failures, encoded IDs
+  and query values. `access-rules` (12): expired grants, role/owner guards on all methods,
+  oversized bearer tokens, and service-scoped exclusion of infrastructure.
+- `body-errors` (2): invalid JSON gives 400; >16 KiB gives 413. Only parser syntax-error prose
+  is ignored (charter §3); statuses and headers compare. Node's parser runs before its
+  cache-control middleware, so Rust now omits that header on parser failures too.
+- `ordering-rounding` (5): 505 spans prove ascending detail truncation at 500 plus `partial`,
+  descending list truncation at 100; 105 logs prove descending truncation and escaped search;
+  505 grants prove descending truncation at 500. These endpoints expose caps, not cursor
+  pagination. Four-significant-digit ties exposed a real defect: Rust's ties-to-even gave
+  12340 for 12345, while Node gives 12350. Exact decimal rounding now follows Node, including
+  binary64 1.2345 rounding to 1.234. Shared text has `to_fixed`, but no `toPrecision` helper;
+  the bounded local trend formatter fills that gap without changing shared crates.
+- `invalid-batches` (15): invalid envelope/each kind, oversized arrays/256001-byte raw payload,
+  eight discards, no receipts, empty inbox/processing and producer overflow counter still 7.
+- `retry-uuid` / `retry-partial` (5 each): permissive UUID and missing `partial` pass validation,
+  fail PostgreSQL, roll back receipts and retain the processing head. Retry attempt counts
+  alone are ignored because they depend on timer ticks; retention and receipt counts are exact.
+- `revoke-failure` (4): an injected audit CHECK failure returns 503 after deletion commits;
+  access is revoked and no audit exists. This reference data-integrity defect is deliberately
+  retained and marked in code. Missing-partial head blocking and permissive UUID behavior are
+  also marked; no leak was observed. An invalid span can eventually age out and be discarded.
+- `rate-window` (122): first 120 requests pass, later requests get 429. `rate-saturation` (2005):
+  2000 keys fill the map, new keys get 429, existing keys work; after 61 seconds new keys
+  remain refused. The unreachable `>2000` expiry sweep is retained and marked.
+
+Encoded parameters now use dima-web's URI decoder before validation/database operations.
+Additional ordering allowances cover only fixture clock anchors (minute for ordering, hour for
+resource fixtures and their plotted times). All ordered arrays and numeric values stay exact.
+There are 11 allowances total: four ingestion quantization, four ordering fixture anchors,
+two timer-dependent retry counters, one parser error message. No catalogue allowance exists.
+
+Rig limitation found: two simultaneous recordings restricted to Dragonfly DB4/5 can each
+reserve one database and wait for the other. Extra runs were interrupted with cleanup, and
+remaining runs were serialized. No rig/shared-crate source was modified.
+
+Part 5: the final 13-scenario verification reports no PostgreSQL catalogue difference.
+In particular, `access` starts with a fresh empty PostgreSQL database per side; both services
+create identical tables, ordered columns, SQL types, indexes and constraints, including daily
+partitions. The rig also compares final rows after each scenario. Its observer does not cover
+roles/grants, triggers/function bodies, user-defined types or sequence counters; those are
+not claimed here. The only SQL allowances concern fixture/quantized row timestamps.
+
+Part 6: release Rust versus Node, Linux `/proc/<pid>/status` VmRSS and `/proc/<pid>/stat`
+user+system CPU time, sampled by `tests/resource_probe.py` every 50 ms for both services.
+The probe records the first successful health check and the last live sample after the rig's
+fixed ingestion workload: one valid batch containing metric/span/log observations, its replay,
+and malformed JSON. Collectors are disabled on both sides; each has its own fresh PostgreSQL,
+MongoDB and Dragonfly database, using the normal rig mocks and cleanup. Only the service
+process is measured (not Python, PostgreSQL, Redis or the mock).
+
+| Service | Startup RSS KiB | After workload RSS KiB | Startup CPU s | Total CPU s | Workload CPU delta s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Node | 116968 | 117108 | 0.79 | 0.84 | 0.05 |
+| Rust release | 11080 | 11336 | 0.02 | 0.03 | 0.01 |
+
+The final release comparison matched ingestion, including exact bucket predicates and all
+values. These are one successful pair of small-workload measurements, not a throughput benchmark;
+CPU resolution is 10 ms. An earlier pair failed because the first observation was not available
+at the scenario's 1.5-second check and was excluded; its resources were cleaned up before retry.
+For reproduction, wrap both target commands with `python3 <absolute path>/tests/resource_probe.py`,
+set `DIMA_RESOURCE_SIDE` to reference/candidate, replace the candidate command with the absolute
+`target/release/dima-analytics`, and run `compare analytics ingestion` using a temporary target
+and the normal rig scenarios. Do not change the committed debug target or reference checkout.
+
+Final gate: `eval "$(dima-rust/tools/test-env)"; dima-rust/tools/check dima-analytics` passed
+format, clippy with warnings denied, and 9 tests with no skips. Last lines:
+
+```text
+   Doc-tests dima_analytics
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+All rig runs, including interrupted/failed attempts, reported deletion of their PostgreSQL and
+MongoDB databases/users and flushing of their claimed Dragonfly databases. Store tests also
+removed their uniquely named fixtures. No container was started/stopped/built; nothing was
+deployed or pushed. Original author open items outside this package's requested scenarios
+(such as long-range performance and outbound fault comparisons) are not certified by these results.

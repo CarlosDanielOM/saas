@@ -1,5 +1,5 @@
 {
-  "rig_scenario": 1,
+  "rig_scenario": 3,
   "description": "Each telemetry kind through inbox, receipt replay and invalid batch discard, including final PostgreSQL catalogue and rows.",
   "seed": {
     "dragonfly": [
@@ -57,6 +57,10 @@
         },
         "expect": {
           "status": 200
+        },
+        "save": {
+          "lastAt2": "body.lastAt",
+          "timelineAt2": "body.timeline[0].at"
         }
       }
     },
@@ -115,6 +119,10 @@
         },
         "expect": {
           "status": 200
+        },
+        "save": {
+          "lastAt8": "body.lastAt",
+          "timelineAt8": "body.timeline[0].at"
         }
       }
     },
@@ -145,6 +153,41 @@
           "status": 200
         }
       }
+    },
+    {
+      "sql": "SELECT count(*)=3 AND bool_and(m.at=to_timestamp(floor(extract(epoch FROM s.at)/m.resolution)*m.resolution)) AS buckets_match FROM analytics_metrics m CROSS JOIN analytics_spans s WHERE s.trace_id='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"
+    },
+    {
+      "sql": "SELECT '${lastAt2}'::timestamptz=to_timestamp(floor(extract(epoch FROM at)/10)*10) AS last_matches, '${timelineAt2}'::numeric=floor(extract(epoch FROM at)/60)*60000 AS timeline_matches FROM analytics_spans WHERE trace_id='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"
+    },
+    {
+      "sql": "SELECT '${lastAt8}'::timestamptz=to_timestamp(floor(extract(epoch FROM at)/10)*10) AS last_matches, '${timelineAt8}'::numeric=floor(extract(epoch FROM at)/60)*60000 AS timeline_matches FROM analytics_spans WHERE trace_id='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"
+    }
+  ],
+  "allow": [
+    {
+      "path": "postgres[\"public.analytics_metrics*\"].rows[*].at",
+      "kind": "tolerance",
+      "ms": 3600000,
+      "reason": "Run-relative input is quantized into UTC buckets; independent runs straddle boundaries. Exact SQL checks below prove every resolution and returned bucket against the unrounded span observation; counts, sums and histograms stay exact."
+    },
+    {
+      "path": "steps[*].body.lastAt",
+      "kind": "tolerance",
+      "ms": 10000,
+      "reason": "Run-relative input is quantized into UTC buckets; independent runs straddle boundaries. Exact SQL checks below prove every resolution and returned bucket against the unrounded span observation; counts, sums and histograms stay exact."
+    },
+    {
+      "path": "steps[*].body.groups[*].lastAt",
+      "kind": "tolerance",
+      "ms": 10000,
+      "reason": "Run-relative input is quantized into UTC buckets; independent runs straddle boundaries. Exact SQL checks below prove every resolution and returned bucket against the unrounded span observation; counts, sums and histograms stay exact."
+    },
+    {
+      "path": "steps[*].body.timeline[*].at",
+      "kind": "tolerance",
+      "ms": 60000,
+      "reason": "Run-relative input is quantized into UTC buckets; independent runs straddle boundaries. Exact SQL checks below prove every resolution and returned bucket against the unrounded span observation; counts, sums and histograms stay exact."
     }
   ]
 }

@@ -1,0 +1,6943 @@
+{
+  "rig_capture": 5,
+  "target": "analytics",
+  "scenario": "rate-window",
+  "provenance": {
+    "side": "reference",
+    "label": null,
+    "recorded_at": "2026-11-12T07:48:53.117Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:889f0f1a20f610e1",
+    "files": {
+      "rate-window.json": "fnv1a64:889f0f1a20f610e1"
+    }
+  },
+  "run": {
+    "seeded_at": 1794469724863,
+    "start": 1794469725668,
+    "end": 1794469725872,
+    "process_start": 1794469725052,
+    "ports": {
+      "http": 44593
+    },
+    "mongo_db": "rig_1807482_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_1807482_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 4,
+    "dragonfly_url": "redis://127.0.0.1:6379/4",
+    "mock_port": 36479,
+    "qdrant_port": null,
+    "qdrant_prefix": null
+  },
+  "postgres": {
+    "public.analytics_audit": {
+      "kind": "r",
+      "partition_bound": null,
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "actor",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "subject",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        }
+      ],
+      "indexes": [],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_batches": {
+      "kind": "r",
+      "partition_bound": null,
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_batches_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_batches_pkey ON public.analytics_batches USING btree (id)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_batches_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_grants": {
+      "kind": "r",
+      "partition_bound": null,
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channels",
+          "type": "text[]",
+          "default": "'{}'::text[]",
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "services",
+          "type": "text[]",
+          "default": "'{}'::text[]",
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 5,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "granted_by",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_grants_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_grants_pkey ON public.analytics_grants USING btree (user_id)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_grants_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (user_id)"
+        },
+        {
+          "name": "analytics_grants_role_check",
+          "validated": true,
+          "definition": "CHECK ((role = ANY (ARRAY['viewer'::text, 'investigator'::text])))"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_logs": {
+      "kind": "p",
+      "partition_bound": null,
+      "partition_key": "RANGE (at)",
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "fields",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_logs_scope",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_logs_scope ON ONLY public.analytics_logs USING btree (channel, at)"
+        }
+      ],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_logs_20261111": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-11 00:00:00+00') TO ('2026-11-12 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "fields",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_logs_20261111_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_logs_20261111_channel_at_idx ON public.analytics_logs_20261111 USING btree (channel, at)"
+        }
+      ],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_logs_20261112": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-12 00:00:00+00') TO ('2026-11-13 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "fields",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_logs_20261112_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_logs_20261112_channel_at_idx ON public.analytics_logs_20261112 USING btree (channel, at)"
+        }
+      ],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_logs_20261113": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-13 00:00:00+00') TO ('2026-11-14 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "fields",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_logs_20261113_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_logs_20261113_channel_at_idx ON public.analytics_logs_20261113 USING btree (channel, at)"
+        }
+      ],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_logs_20261114": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-14 00:00:00+00') TO ('2026-11-15 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "fields",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_logs_20261114_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_logs_20261114_channel_at_idx ON public.analytics_logs_20261114 USING btree (channel, at)"
+        }
+      ],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_metrics": {
+      "kind": "p",
+      "partition_bound": null,
+      "partition_key": "RANGE (at)",
+      "view": null,
+      "columns": [
+        {
+          "name": "resolution",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "count",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "sum",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "max",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "histogram",
+          "type": "bigint[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_metrics_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_metrics_pkey ON ONLY public.analytics_metrics USING btree (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_metrics_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_metrics_20261111": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-11 00:00:00+00') TO ('2026-11-12 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "resolution",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "count",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "sum",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "max",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "histogram",
+          "type": "bigint[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_metrics_20261111_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_metrics_20261111_pkey ON public.analytics_metrics_20261111 USING btree (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_metrics_20261111_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_metrics_20261112": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-12 00:00:00+00') TO ('2026-11-13 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "resolution",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "count",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "sum",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "max",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "histogram",
+          "type": "bigint[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_metrics_20261112_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_metrics_20261112_pkey ON public.analytics_metrics_20261112 USING btree (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_metrics_20261112_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_metrics_20261113": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-13 00:00:00+00') TO ('2026-11-14 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "resolution",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "count",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "sum",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "max",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "histogram",
+          "type": "bigint[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_metrics_20261113_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_metrics_20261113_pkey ON public.analytics_metrics_20261113 USING btree (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_metrics_20261113_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_metrics_20261114": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-14 00:00:00+00') TO ('2026-11-15 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "resolution",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "count",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "sum",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "max",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "histogram",
+          "type": "bigint[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_metrics_20261114_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_metrics_20261114_pkey ON public.analytics_metrics_20261114 USING btree (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_metrics_20261114_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_resources": {
+      "kind": "p",
+      "partition_bound": null,
+      "partition_key": "RANGE (at)",
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "value",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_resources_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_resources_pkey ON ONLY public.analytics_resources USING btree (at, service, name)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_resources_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, service, name)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_resources_20261111": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-11 00:00:00+00') TO ('2026-11-12 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "value",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_resources_20261111_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_resources_20261111_pkey ON public.analytics_resources_20261111 USING btree (at, service, name)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_resources_20261111_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, service, name)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_resources_20261112": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-12 00:00:00+00') TO ('2026-11-13 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "value",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_resources_20261112_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_resources_20261112_pkey ON public.analytics_resources_20261112 USING btree (at, service, name)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_resources_20261112_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, service, name)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_resources_20261113": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-13 00:00:00+00') TO ('2026-11-14 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "value",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_resources_20261113_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_resources_20261113_pkey ON public.analytics_resources_20261113 USING btree (at, service, name)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_resources_20261113_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, service, name)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_resources_20261114": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-14 00:00:00+00') TO ('2026-11-15 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "value",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_resources_20261114_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_resources_20261114_pkey ON public.analytics_resources_20261114 USING btree (at, service, name)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_resources_20261114_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, service, name)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_spans": {
+      "kind": "p",
+      "partition_bound": null,
+      "partition_key": "RANGE (at)",
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "span_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "parent_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "duration",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "partial",
+          "type": "boolean",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_spans_lookup",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_lookup ON ONLY public.analytics_spans USING btree (trace_id, at)"
+        },
+        {
+          "name": "analytics_spans_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_spans_pkey ON ONLY public.analytics_spans USING btree (at, span_id)"
+        },
+        {
+          "name": "analytics_spans_scope",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_scope ON ONLY public.analytics_spans USING btree (channel, at)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_spans_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, span_id)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_spans_20261111": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-11 00:00:00+00') TO ('2026-11-12 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "span_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "parent_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "duration",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "partial",
+          "type": "boolean",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_spans_20261111_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261111_channel_at_idx ON public.analytics_spans_20261111 USING btree (channel, at)"
+        },
+        {
+          "name": "analytics_spans_20261111_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_spans_20261111_pkey ON public.analytics_spans_20261111 USING btree (at, span_id)"
+        },
+        {
+          "name": "analytics_spans_20261111_trace_id_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261111_trace_id_at_idx ON public.analytics_spans_20261111 USING btree (trace_id, at)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_spans_20261111_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, span_id)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_spans_20261112": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-12 00:00:00+00') TO ('2026-11-13 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "span_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "parent_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "duration",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "partial",
+          "type": "boolean",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_spans_20261112_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261112_channel_at_idx ON public.analytics_spans_20261112 USING btree (channel, at)"
+        },
+        {
+          "name": "analytics_spans_20261112_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_spans_20261112_pkey ON public.analytics_spans_20261112 USING btree (at, span_id)"
+        },
+        {
+          "name": "analytics_spans_20261112_trace_id_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261112_trace_id_at_idx ON public.analytics_spans_20261112 USING btree (trace_id, at)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_spans_20261112_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, span_id)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_spans_20261113": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-13 00:00:00+00') TO ('2026-11-14 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "span_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "parent_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "duration",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "partial",
+          "type": "boolean",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_spans_20261113_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261113_channel_at_idx ON public.analytics_spans_20261113 USING btree (channel, at)"
+        },
+        {
+          "name": "analytics_spans_20261113_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_spans_20261113_pkey ON public.analytics_spans_20261113 USING btree (at, span_id)"
+        },
+        {
+          "name": "analytics_spans_20261113_trace_id_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261113_trace_id_at_idx ON public.analytics_spans_20261113 USING btree (trace_id, at)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_spans_20261113_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, span_id)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_spans_20261114": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-14 00:00:00+00') TO ('2026-11-15 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "span_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "parent_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "duration",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "partial",
+          "type": "boolean",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_spans_20261114_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261114_channel_at_idx ON public.analytics_spans_20261114 USING btree (channel, at)"
+        },
+        {
+          "name": "analytics_spans_20261114_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_spans_20261114_pkey ON public.analytics_spans_20261114 USING btree (at, span_id)"
+        },
+        {
+          "name": "analytics_spans_20261114_trace_id_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261114_trace_id_at_idx ON public.analytics_spans_20261114 USING btree (trace_id, at)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_spans_20261114_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, span_id)"
+        }
+      ],
+      "rows": []
+    }
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794469725675,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725679,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725683,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725687,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725690,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725693,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725697,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725700,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725704,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725706,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725709,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725712,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725715,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725718,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725721,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725724,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725727,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725729,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725732,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725733,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725735,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725736,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725738,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725739,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725740,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725742,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725743,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725745,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725746,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725748,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725749,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725751,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725752,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725754,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725755,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725757,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725758,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725759,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725761,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725762,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725763,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725764,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725766,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725767,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725769,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725770,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725772,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725773,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725775,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725777,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725778,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725780,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725782,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725783,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725784,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725786,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725788,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725789,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725791,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725793,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725794,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725795,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725798,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725800,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725801,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725802,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725803,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725805,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725806,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725807,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725809,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725810,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725811,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725813,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725814,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725816,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725817,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725819,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725820,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725821,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725822,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725824,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725825,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725826,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725827,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725829,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725830,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725831,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725832,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725834,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725835,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725836,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725837,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725838,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725840,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725841,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725842,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725843,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725845,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725846,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725847,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725848,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725850,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725851,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725852,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725853,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725854,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725855,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725857,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725858,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725859,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725860,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725861,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725862,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725864,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725865,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725866,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725867,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725868,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725870,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "106"
+          ],
+          [
+            "etag",
+            "W/\"6a-TTcXk7HjtR/2z73srO4OcgajZeI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"user\":{\"id\":\"1\",\"login\":\"owner\"},\"grant\":{\"role\":\"owner\",\"channels\":[],\"services\":[]},\"channelNames\":{}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725871,
+        "status": 429,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "40"
+          ],
+          [
+            "etag",
+            "W/\"28-CvcHrlsFPPASnUpTVCpPu5C9nJ0\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"message\":\"Too many analytics queries\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794469725872,
+        "status": 429,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "40"
+          ],
+          [
+            "etag",
+            "W/\"28-CvcHrlsFPPASnUpTVCpPu5C9nJ0\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:48:45 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"message\":\"Too many analytics queries\"}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [
+    {
+      "key": "token:analytics-rig-investigator",
+      "type": "hash",
+      "pttl": -1,
+      "pttl_at": 1794469725873,
+      "value": [
+        [
+          "id",
+          "3"
+        ],
+        [
+          "login",
+          "investigator"
+        ]
+      ]
+    },
+    {
+      "key": "token:analytics-rig-owner",
+      "type": "hash",
+      "pttl": -1,
+      "pttl_at": 1794469725874,
+      "value": [
+        [
+          "id",
+          "1"
+        ],
+        [
+          "login",
+          "owner"
+        ]
+      ]
+    },
+    {
+      "key": "token:analytics-rig-stranger",
+      "type": "hash",
+      "pttl": -1,
+      "pttl_at": 1794469725874,
+      "value": [
+        [
+          "id",
+          "4"
+        ],
+        [
+          "login",
+          "stranger"
+        ]
+      ]
+    },
+    {
+      "key": "token:analytics-rig-viewer",
+      "type": "hash",
+      "pttl": -1,
+      "pttl_at": 1794469725875,
+      "value": [
+        [
+          "id",
+          "2"
+        ],
+        [
+          "login",
+          "viewer"
+        ]
+      ]
+    }
+  ],
+  "calls": [],
+  "startup_ignored": {},
+  "startup_keys": []
+}

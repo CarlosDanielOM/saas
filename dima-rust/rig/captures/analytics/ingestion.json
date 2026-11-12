@@ -5,28 +5,28 @@
   "provenance": {
     "side": "reference",
     "label": null,
-    "recorded_at": "2026-11-12T07:19:18.444Z",
+    "recorded_at": "2026-11-12T07:40:51.177Z",
     "rig_version": "0.1.0"
   },
   "hashes": {
-    "scenario": "fnv1a64:67503105933f5066",
+    "scenario": "fnv1a64:b80190e7c3812ae7",
     "files": {
-      "ingestion.json": "fnv1a64:67503105933f5066"
+      "ingestion.json": "fnv1a64:b80190e7c3812ae7"
     }
   },
   "run": {
-    "seeded_at": 1794467952749,
-    "start": 1794467953672,
-    "end": 1794467958223,
-    "process_start": 1794467952947,
+    "seeded_at": 1794469236747,
+    "start": 1794469238197,
+    "end": 1794469243115,
+    "process_start": 1794469237042,
     "ports": {
-      "http": 45059
+      "http": 34797
     },
-    "mongo_db": "rig_1562747_0_ref",
-    "mongo_uri": "mongodb://127.0.0.1:27017/rig_1562747_0_ref?authSource=admin&directConnection=true",
-    "dragonfly_db": 1,
-    "dragonfly_url": "redis://127.0.0.1:6379/1",
-    "mock_port": 35761,
+    "mongo_db": "rig_1748856_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_1748856_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 4,
+    "dragonfly_url": "redis://127.0.0.1:6379/4",
+    "mock_port": 42961,
     "qdrant_port": null,
     "qdrant_prefix": null
   },
@@ -126,7 +126,7 @@
       "rows": [
         {
           "id": "12345678-1234-1234-1234-123456789012",
-          "received_at": "2026-11-12T07:19:14.383786+00:00"
+          "received_at": "2026-11-12T07:40:38.934674+00:00"
         }
       ]
     },
@@ -315,7 +315,7 @@
       "constraints": [],
       "rows": [
         {
-          "at": "2026-11-12T07:19:13.672+00:00",
+          "at": "2026-11-12T07:40:38.197+00:00",
           "name": "fixture",
           "level": "error",
           "fields": {
@@ -501,7 +501,7 @@
       "constraints": [],
       "rows": [
         {
-          "at": "2026-11-12T07:19:13.672+00:00",
+          "at": "2026-11-12T07:40:38.197+00:00",
           "name": "fixture",
           "level": "error",
           "fields": {
@@ -820,7 +820,7 @@
       ],
       "rows": [
         {
-          "at": "2026-11-12T07:19:10+00:00",
+          "at": "2026-11-12T07:40:00+00:00",
           "max": 10,
           "sum": 10,
           "kind": "chat",
@@ -847,7 +847,7 @@
             0,
             0
           ],
-          "resolution": 10
+          "resolution": 60
         },
         {
           "at": "2026-11-12T07:00:00+00:00",
@@ -880,7 +880,7 @@
           "resolution": 3600
         },
         {
-          "at": "2026-11-12T07:19:00+00:00",
+          "at": "2026-11-12T07:40:30+00:00",
           "max": 10,
           "sum": 10,
           "kind": "chat",
@@ -907,7 +907,7 @@
             0,
             0
           ],
-          "resolution": 60
+          "resolution": 10
         }
       ]
     },
@@ -1177,7 +1177,7 @@
       ],
       "rows": [
         {
-          "at": "2026-11-12T07:19:10+00:00",
+          "at": "2026-11-12T07:40:00+00:00",
           "max": 10,
           "sum": 10,
           "kind": "chat",
@@ -1204,7 +1204,7 @@
             0,
             0
           ],
-          "resolution": 10
+          "resolution": 60
         },
         {
           "at": "2026-11-12T07:00:00+00:00",
@@ -1237,7 +1237,7 @@
           "resolution": 3600
         },
         {
-          "at": "2026-11-12T07:19:00+00:00",
+          "at": "2026-11-12T07:40:30+00:00",
           "max": 10,
           "sum": 10,
           "kind": "chat",
@@ -1264,7 +1264,7 @@
             0,
             0
           ],
-          "resolution": 60
+          "resolution": 10
         }
       ]
     },
@@ -1992,7 +1992,7 @@
       ],
       "rows": [
         {
-          "at": "2026-11-12T07:19:13.672+00:00",
+          "at": "2026-11-12T07:40:38.197+00:00",
           "kind": "chat",
           "name": "message",
           "channel": "allowed",
@@ -2292,7 +2292,7 @@
       ],
       "rows": [
         {
-          "at": "2026-11-12T07:19:13.672+00:00",
+          "at": "2026-11-12T07:40:38.197+00:00",
           "kind": "chat",
           "name": "message",
           "channel": "allowed",
@@ -2596,11 +2596,11 @@
   "steps": [
     {
       "dragonfly": {
-        "at": 1794467953673,
+        "at": 1794469238197,
         "command": [
           "LPUSH",
           "observability:v1:inbox",
-          "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-123456789012\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [{\"at\": 1794467953672, \"kind\": \"chat\", \"name\": \"message\", \"channel\": \"allowed\", \"outcome\": \"ok\", \"count\": 1, \"sum\": 10, \"max\": 10, \"histogram\": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}], \"spans\": [{\"at\": 1794467953672, \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"spanId\": \"bbbbbbbbbbbbbbbb\", \"parentId\": null, \"channel\": \"allowed\", \"kind\": \"chat\", \"name\": \"message\", \"outcome\": \"ok\", \"duration\": 10, \"partial\": false}], \"logs\": [{\"at\": 1794467953672, \"level\": \"error\", \"name\": \"fixture\", \"channel\": \"allowed\", \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"fields\": {\"code\": \"test\"}}]}"
+          "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-123456789012\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [{\"at\": 1794469238197, \"kind\": \"chat\", \"name\": \"message\", \"channel\": \"allowed\", \"outcome\": \"ok\", \"count\": 1, \"sum\": 10, \"max\": 10, \"histogram\": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}], \"spans\": [{\"at\": 1794469238197, \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"spanId\": \"bbbbbbbbbbbbbbbb\", \"parentId\": null, \"channel\": \"allowed\", \"kind\": \"chat\", \"name\": \"message\", \"outcome\": \"ok\", \"duration\": 10, \"partial\": false}], \"logs\": [{\"at\": 1794469238197, \"level\": \"error\", \"name\": \"fixture\", \"channel\": \"allowed\", \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"fields\": {\"code\": \"test\"}}]}"
         ],
         "reply": {
           "int": 1
@@ -2612,7 +2612,7 @@
     },
     {
       "http": {
-        "at": 1794467955193,
+        "at": 1794469239731,
         "status": 200,
         "headers": [
           [
@@ -2629,11 +2629,11 @@
           ],
           [
             "etag",
-            "W/\"36c-rq88+jnsmgrVYFhz3R81BCtdQHc\""
+            "W/\"36c-pzv7w8XrSwJyYETevOBbIsr811U\""
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:15 GMT"
+            "Thu, 12 Nov 2026 07:40:39 GMT"
           ],
           [
             "connection",
@@ -2644,12 +2644,12 @@
             "timeout=5"
           ]
         ],
-        "body": "{\"minutes\":60,\"resolution\":10,\"generatedAt\":\"2026-11-12T07:19:15.178Z\",\"lastAt\":\"2026-11-12T07:19:10.000Z\",\"http\":{\"count\":0,\"sum\":0,\"max\":0,\"errors\":0,\"histogram\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":null,\"p50\":null,\"p95\":null,\"p99\":null},\"chat\":{\"count\":1,\"sum\":10,\"max\":10,\"errors\":0,\"histogram\":[0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":10,\"p50\":10,\"p95\":10,\"p99\":10},\"timeline\":[{\"at\":1794467940000,\"http\":0,\"chat\":1,\"httpRps\":0,\"chatRps\":0.016666666666666666}],\"groups\":[{\"service\":\"rig\",\"kind\":\"chat\",\"name\":\"message\",\"channel\":\"allowed\",\"count\":1,\"sum\":10,\"max\":10,\"errors\":0,\"histogram\":[0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":10,\"p50\":10,\"p95\":10,\"p99\":10,\"lastAt\":\"2026-11-12T07:19:10.000Z\",\"lastValue\":10}],\"measured\":\"completed operations; latency percentiles are histogram upper bounds; missing buckets are not zero\",\"channelNames\":{\"allowed\":null}}"
+        "body": "{\"minutes\":60,\"resolution\":10,\"generatedAt\":\"2026-11-12T07:40:39.706Z\",\"lastAt\":\"2026-11-12T07:40:30.000Z\",\"http\":{\"count\":0,\"sum\":0,\"max\":0,\"errors\":0,\"histogram\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":null,\"p50\":null,\"p95\":null,\"p99\":null},\"chat\":{\"count\":1,\"sum\":10,\"max\":10,\"errors\":0,\"histogram\":[0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":10,\"p50\":10,\"p95\":10,\"p99\":10},\"timeline\":[{\"at\":1794469200000,\"http\":0,\"chat\":1,\"httpRps\":0,\"chatRps\":0.016666666666666666}],\"groups\":[{\"service\":\"rig\",\"kind\":\"chat\",\"name\":\"message\",\"channel\":\"allowed\",\"count\":1,\"sum\":10,\"max\":10,\"errors\":0,\"histogram\":[0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":10,\"p50\":10,\"p95\":10,\"p99\":10,\"lastAt\":\"2026-11-12T07:40:30.000Z\",\"lastValue\":10}],\"measured\":\"completed operations; latency percentiles are histogram upper bounds; missing buckets are not zero\",\"channelNames\":{\"allowed\":null}}"
       }
     },
     {
       "http": {
-        "at": 1794467955199,
+        "at": 1794469239748,
         "status": 200,
         "headers": [
           [
@@ -2666,11 +2666,11 @@
           ],
           [
             "etag",
-            "W/\"119-1nShUren3/uk850jOXU7vt6U/VY\""
+            "W/\"119-VlVqJmSub2Pn+RtGSbJSftVniVA\""
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:15 GMT"
+            "Thu, 12 Nov 2026 07:40:39 GMT"
           ],
           [
             "connection",
@@ -2681,12 +2681,12 @@
             "timeout=5"
           ]
         ],
-        "body": "{\"spans\":[{\"at\":\"2026-11-12T07:19:13.672Z\",\"trace_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"span_id\":\"bbbbbbbbbbbbbbbb\",\"parent_id\":null,\"service\":\"rig\",\"channel\":\"allowed\",\"kind\":\"chat\",\"name\":\"message\",\"outcome\":\"ok\",\"duration\":10,\"partial\":false}],\"channelNames\":{\"allowed\":null}}"
+        "body": "{\"spans\":[{\"at\":\"2026-11-12T07:40:38.197Z\",\"trace_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"span_id\":\"bbbbbbbbbbbbbbbb\",\"parent_id\":null,\"service\":\"rig\",\"channel\":\"allowed\",\"kind\":\"chat\",\"name\":\"message\",\"outcome\":\"ok\",\"duration\":10,\"partial\":false}],\"channelNames\":{\"allowed\":null}}"
       }
     },
     {
       "http": {
-        "at": 1794467955202,
+        "at": 1794469239754,
         "status": 200,
         "headers": [
           [
@@ -2703,11 +2703,11 @@
           ],
           [
             "etag",
-            "W/\"129-JhRagX7QXk4nfY1xTZ8dswiMFDA\""
+            "W/\"129-6lYPIl7C9BnQiMZ+XHpRsW5m4+I\""
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:15 GMT"
+            "Thu, 12 Nov 2026 07:40:39 GMT"
           ],
           [
             "connection",
@@ -2718,12 +2718,12 @@
             "timeout=5"
           ]
         ],
-        "body": "{\"spans\":[{\"at\":\"2026-11-12T07:19:13.672Z\",\"trace_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"span_id\":\"bbbbbbbbbbbbbbbb\",\"parent_id\":null,\"service\":\"rig\",\"channel\":\"allowed\",\"kind\":\"chat\",\"name\":\"message\",\"outcome\":\"ok\",\"duration\":10,\"partial\":false}],\"channelNames\":{\"allowed\":null},\"partial\":false}"
+        "body": "{\"spans\":[{\"at\":\"2026-11-12T07:40:38.197Z\",\"trace_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"span_id\":\"bbbbbbbbbbbbbbbb\",\"parent_id\":null,\"service\":\"rig\",\"channel\":\"allowed\",\"kind\":\"chat\",\"name\":\"message\",\"outcome\":\"ok\",\"duration\":10,\"partial\":false}],\"channelNames\":{\"allowed\":null},\"partial\":false}"
       }
     },
     {
       "http": {
-        "at": 1794467955206,
+        "at": 1794469239772,
         "status": 200,
         "headers": [
           [
@@ -2740,11 +2740,11 @@
           ],
           [
             "etag",
-            "W/\"d8-JzRGXBkzbwYZlr7MM3qKr57XXXo\""
+            "W/\"d8-DlOFSo/1TxB4LdbPtNGic+U1kXg\""
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:15 GMT"
+            "Thu, 12 Nov 2026 07:40:39 GMT"
           ],
           [
             "connection",
@@ -2755,16 +2755,16 @@
             "timeout=5"
           ]
         ],
-        "body": "{\"logs\":[{\"at\":\"2026-11-12T07:19:13.672Z\",\"service\":\"rig\",\"channel\":\"allowed\",\"level\":\"error\",\"name\":\"fixture\",\"trace_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"fields\":{\"code\":\"test\"}}],\"channelNames\":{\"allowed\":null}}"
+        "body": "{\"logs\":[{\"at\":\"2026-11-12T07:40:38.197Z\",\"service\":\"rig\",\"channel\":\"allowed\",\"level\":\"error\",\"name\":\"fixture\",\"trace_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"fields\":{\"code\":\"test\"}}],\"channelNames\":{\"allowed\":null}}"
       }
     },
     {
       "dragonfly": {
-        "at": 1794467955207,
+        "at": 1794469239773,
         "command": [
           "LPUSH",
           "observability:v1:processing",
-          "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-123456789012\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [{\"at\": 1794467955206, \"kind\": \"chat\", \"name\": \"message\", \"channel\": \"allowed\", \"outcome\": \"ok\", \"count\": 1, \"sum\": 10, \"max\": 10, \"histogram\": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}], \"spans\": [{\"at\": 1794467955206, \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"spanId\": \"bbbbbbbbbbbbbbbb\", \"parentId\": null, \"channel\": \"allowed\", \"kind\": \"chat\", \"name\": \"message\", \"outcome\": \"ok\", \"duration\": 10, \"partial\": false}], \"logs\": [{\"at\": 1794467955206, \"level\": \"error\", \"name\": \"fixture\", \"channel\": \"allowed\", \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"fields\": {\"code\": \"test\"}}]}"
+          "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-123456789012\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [{\"at\": 1794469239772, \"kind\": \"chat\", \"name\": \"message\", \"channel\": \"allowed\", \"outcome\": \"ok\", \"count\": 1, \"sum\": 10, \"max\": 10, \"histogram\": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}], \"spans\": [{\"at\": 1794469239772, \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"spanId\": \"bbbbbbbbbbbbbbbb\", \"parentId\": null, \"channel\": \"allowed\", \"kind\": \"chat\", \"name\": \"message\", \"outcome\": \"ok\", \"duration\": 10, \"partial\": false}], \"logs\": [{\"at\": 1794469239772, \"level\": \"error\", \"name\": \"fixture\", \"channel\": \"allowed\", \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"fields\": {\"code\": \"test\"}}]}"
         ],
         "reply": {
           "int": 1
@@ -2776,7 +2776,7 @@
     },
     {
       "http": {
-        "at": 1794467956715,
+        "at": 1794469241282,
         "status": 200,
         "headers": [
           [
@@ -2793,11 +2793,11 @@
           ],
           [
             "etag",
-            "W/\"36c-S4puv0LiBuVORdRZrHrxbb0PNtU\""
+            "W/\"36c-J0UmmmCWGTu6iGH8uj8ykJ8Gnpo\""
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:16 GMT"
+            "Thu, 12 Nov 2026 07:40:41 GMT"
           ],
           [
             "connection",
@@ -2808,12 +2808,12 @@
             "timeout=5"
           ]
         ],
-        "body": "{\"minutes\":60,\"resolution\":10,\"generatedAt\":\"2026-11-12T07:19:16.710Z\",\"lastAt\":\"2026-11-12T07:19:10.000Z\",\"http\":{\"count\":0,\"sum\":0,\"max\":0,\"errors\":0,\"histogram\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":null,\"p50\":null,\"p95\":null,\"p99\":null},\"chat\":{\"count\":1,\"sum\":10,\"max\":10,\"errors\":0,\"histogram\":[0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":10,\"p50\":10,\"p95\":10,\"p99\":10},\"timeline\":[{\"at\":1794467940000,\"http\":0,\"chat\":1,\"httpRps\":0,\"chatRps\":0.016666666666666666}],\"groups\":[{\"service\":\"rig\",\"kind\":\"chat\",\"name\":\"message\",\"channel\":\"allowed\",\"count\":1,\"sum\":10,\"max\":10,\"errors\":0,\"histogram\":[0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":10,\"p50\":10,\"p95\":10,\"p99\":10,\"lastAt\":\"2026-11-12T07:19:10.000Z\",\"lastValue\":10}],\"measured\":\"completed operations; latency percentiles are histogram upper bounds; missing buckets are not zero\",\"channelNames\":{\"allowed\":null}}"
+        "body": "{\"minutes\":60,\"resolution\":10,\"generatedAt\":\"2026-11-12T07:40:41.278Z\",\"lastAt\":\"2026-11-12T07:40:30.000Z\",\"http\":{\"count\":0,\"sum\":0,\"max\":0,\"errors\":0,\"histogram\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":null,\"p50\":null,\"p95\":null,\"p99\":null},\"chat\":{\"count\":1,\"sum\":10,\"max\":10,\"errors\":0,\"histogram\":[0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":10,\"p50\":10,\"p95\":10,\"p99\":10},\"timeline\":[{\"at\":1794469200000,\"http\":0,\"chat\":1,\"httpRps\":0,\"chatRps\":0.016666666666666666}],\"groups\":[{\"service\":\"rig\",\"kind\":\"chat\",\"name\":\"message\",\"channel\":\"allowed\",\"count\":1,\"sum\":10,\"max\":10,\"errors\":0,\"histogram\":[0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],\"average\":10,\"p50\":10,\"p95\":10,\"p99\":10,\"lastAt\":\"2026-11-12T07:40:30.000Z\",\"lastValue\":10}],\"measured\":\"completed operations; latency percentiles are histogram upper bounds; missing buckets are not zero\",\"channelNames\":{\"allowed\":null}}"
       }
     },
     {
       "dragonfly": {
-        "at": 1794467956716,
+        "at": 1794469241283,
         "command": [
           "LLEN",
           "observability:v1:processing"
@@ -2825,7 +2825,7 @@
     },
     {
       "dragonfly": {
-        "at": 1794467956716,
+        "at": 1794469241283,
         "command": [
           "LPUSH",
           "observability:v1:inbox",
@@ -2841,7 +2841,7 @@
     },
     {
       "http": {
-        "at": 1794467958223,
+        "at": 1794469242792,
         "status": 200,
         "headers": [
           [
@@ -2858,11 +2858,11 @@
           ],
           [
             "etag",
-            "W/\"8f-MG7OBvxJtH+PUSnI6N6BPjQoCfI\""
+            "W/\"8f-0p2lrcl7VVCcGcn01g9PdCCdYjg\""
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 07:19:18 GMT"
+            "Thu, 12 Nov 2026 07:40:42 GMT"
           ],
           [
             "connection",
@@ -2873,7 +2873,39 @@
             "timeout=5"
           ]
         ],
-        "body": "{\"samples\":[],\"limited\":false,\"status\":{\"ingestedAt\":\"2026-11-12T07:19:15.385Z\",\"invalidBatches\":1,\"ingestionErrors\":0,\"collectorError\":false}}"
+        "body": "{\"samples\":[],\"limited\":false,\"status\":{\"ingestedAt\":\"2026-11-12T07:40:39.931Z\",\"invalidBatches\":1,\"ingestionErrors\":0,\"collectorError\":false}}"
+      }
+    },
+    {
+      "sql": {
+        "at": 1794469242902,
+        "rows": [
+          {
+            "buckets_match": true
+          }
+        ]
+      }
+    },
+    {
+      "sql": {
+        "at": 1794469243019,
+        "rows": [
+          {
+            "last_matches": true,
+            "timeline_matches": true
+          }
+        ]
+      }
+    },
+    {
+      "sql": {
+        "at": 1794469243114,
+        "rows": [
+          {
+            "last_matches": true,
+            "timeline_matches": true
+          }
+        ]
       }
     }
   ],
@@ -2883,7 +2915,7 @@
       "key": "token:analytics-rig-investigator",
       "type": "hash",
       "pttl": -1,
-      "pttl_at": 1794467958228,
+      "pttl_at": 1794469243118,
       "value": [
         [
           "id",
@@ -2899,7 +2931,7 @@
       "key": "token:analytics-rig-owner",
       "type": "hash",
       "pttl": -1,
-      "pttl_at": 1794467958229,
+      "pttl_at": 1794469243119,
       "value": [
         [
           "id",
@@ -2915,7 +2947,7 @@
       "key": "token:analytics-rig-stranger",
       "type": "hash",
       "pttl": -1,
-      "pttl_at": 1794467958230,
+      "pttl_at": 1794469243120,
       "value": [
         [
           "id",
@@ -2931,7 +2963,7 @@
       "key": "token:analytics-rig-viewer",
       "type": "hash",
       "pttl": -1,
-      "pttl_at": 1794467958231,
+      "pttl_at": 1794469243121,
       "value": [
         [
           "id",

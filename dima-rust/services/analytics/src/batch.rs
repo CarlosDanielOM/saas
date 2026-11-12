@@ -25,6 +25,8 @@ pub fn hex(v: &Value, len: usize) -> bool {
     })
 }
 pub fn validate(batch: &Value, now: i64) -> Result<()> {
+    // Reference quirk: this is a character-class check, not UUID validation.
+    // PostgreSQL rejects accepted malformed IDs; the consumer retains them for retry.
     let id = batch["id"].as_str().unwrap_or("");
     if batch["version"].as_f64() != Some(1.)
         || id.len() != 36
@@ -66,6 +68,7 @@ pub fn validate(batch: &Value, now: i64) -> Result<()> {
             return Err(Error::Invalid("Invalid metric"));
         }
     }
+    // Reference defect: missing `partial` reaches NOT NULL and blocks the processing head.
     for s in batch["spans"].as_array().into_iter().flatten() {
         if !valid_time(&s["at"])
             || !number(&s["duration"])
