@@ -10,10 +10,20 @@
 //! The generation is stored **with the token in MongoDB**: it is the user's `refreshed_at`
 //! (a `Date` in the schema, epoch milliseconds here; a missing value is 0). The reference
 //! sets it only when the document is created (`default: Date.now`) and never reads it; no
-//! client reads it. This crate advances it with every credential write it makes (a persisted
-//! rotation, a wipe, [`crate::Twitch::credentials_changed`]), in the same `updateOne` as the
-//! tokens, whose filter requires the `refreshed_at` value read just before and whose `$set`
-//! stores `max(now, read + 1 ms)`.
+//! client reads it. This crate advances it with every credential write it makes, in the same
+//! `updateOne` as the tokens, whose filter requires the `refreshed_at` value read just before
+//! and whose `$set` stores `max(now, read + 1 ms)`. The writers, all through
+//! [`Inner::compare_and_set`]:
+//!
+//! - a persisted rotation (a refresh, a retry, the reconciliation): [`Inner::write_rotation`];
+//! - a wipe after a conclusive refusal: [`Inner::write_wipe`];
+//! - [`crate::Twitch::credentials_changed`] (a writer outside the crate wrote the tokens and
+//!   tells the crate afterwards): [`Inner::write_bump`], which advances the generation alone;
+//! - [`crate::Twitch::store_sign_in`] (the sign-in route): the fresh tokens and the generation
+//!   in one compare-and-set, [`Inner::write_sign_in`].
+//!
+//! The recovery records depend on it (`crate::recovery`): a token another writer put in MongoDB
+//! without advancing the generation cannot be told from an older one.
 //!
 //! **Why it only grows.** Each such write needs the exact previous value and stores a larger
 //! one, so two writes can never start from the same value and every accepted write raises it,
@@ -287,6 +297,87 @@ impl Inner {
             "accounts.$.up_to_date_permissions": false,
         };
         self.compare_and_set(id, stored, set).await
+    }
+
+    /// Stores the fresh credentials of a verified sign-in over `stored` (`updateUserDataTokens`'s
+    /// credential fields: both envelopes, the expiry when Twitch gave one, and both permission
+    /// flags when `grant`), plus the generation. The cache fields to publish come back with it.
+    pub(crate) async fn write_sign_in(
+        &self,
+        id: &str,
+        stored: &StoredAccount,
+        access: &StoredCredential,
+        refresh: &StoredCredential,
+        expires_at: Option<f64>,
+        grant: bool,
+    ) -> Result<(Written, Vec<(&'static str, String)>), TwitchError> {
+        let mut set = doc! {
+            "accounts.$.access_token": envelope_bson(access),
+            "accounts.$.refresh_token": envelope_bson(refresh),
+        };
+        if let Some(expires_at) = expires_at {
+            set.insert("accounts.$.access_token_expires_at", js_number(expires_at));
+        }
+        if grant {
+            set.insert("accounts.$.up_to_date_permissions", true);
+            set.insert("accounts.$.has_permissions", true);
+        }
+        let envelope = |credential: &StoredCredential| EncryptedToken {
+            iv: Some(credential.iv.clone()),
+            content: Some(credential.content.clone()),
+        };
+        let after = StoredAccount {
+            refresh: envelope(refresh),
+            access: envelope(access),
+            expires_at: expires_at
+                .map(dima_text::number_to_string)
+                .or_else(|| stored.expires_at.clone()),
+            has_permissions: grant || stored.has_permissions,
+            up_to_date_permissions: grant || stored.up_to_date_permissions,
+            ..stored.clone()
+        };
+        let written = self.compare_and_set(id, stored, set).await?;
+        Ok((written, after.cache_fields()))
+    }
+
+    /// [`crate::Twitch::store_sign_in`].
+    pub(crate) async fn store_sign_in(
+        &self,
+        id: &str,
+        sign_in: &crate::tokens::SignIn,
+    ) -> Result<Option<crate::tokens::SignInStored>, TwitchError> {
+        let random: &dyn dima_core::SecureRandom = &*self.random;
+        let access = self.cipher.encrypt(sign_in.access_token.expose(), random)?;
+        let refresh = self
+            .cipher
+            .encrypt(sign_in.refresh_token.expose(), random)?;
+        // The reference sets the expiry only for a finite, positive `expires_in`.
+        let expires_at = sign_in
+            .expires_in
+            .filter(|seconds| seconds.is_finite() && *seconds > 0.0)
+            .map(|seconds| self.now_secs() as f64 + seconds);
+        for _round in 0..CAS_ROUNDS {
+            let Some(stored) = self.load_stored(id).await? else {
+                return Ok(None);
+            };
+            let (written, fields) = self
+                .write_sign_in(
+                    id,
+                    &stored,
+                    &access,
+                    &refresh,
+                    expires_at,
+                    sign_in.grant_permissions,
+                )
+                .await?;
+            if let Written::Done(generation) = written {
+                self.publish(id, generation, &fields).await?;
+                return Ok(Some(crate::tokens::SignInStored { generation }));
+            }
+        }
+        Err(TwitchError::Write(
+            "the stored credentials kept changing".to_owned(),
+        ))
     }
 
     /// Advances the generation of `stored` without touching its credentials.

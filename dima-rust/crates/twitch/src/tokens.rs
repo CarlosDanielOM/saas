@@ -29,7 +29,8 @@
 //!    it gives up for this call.
 //! 2. **Under the lease, MongoDB decides** (`refresh.rs`): an answer this process still holds,
 //!    then the streamer's recovery record (written by any process, however old), is written to
-//!    MongoDB first, or dropped when MongoDB holds something newer; while that fails, nothing is
+//!    MongoDB first, or dropped when MongoDB holds a newer generation, or left alone when MongoDB
+//!    holds another token at its generation (unmatched); while that fails, nothing is
 //!    exchanged; then a usable stored access token is returned (the cache
 //!    repaired from MongoDB, nothing sent); otherwise the **stored** refresh token is the one
 //!    exchanged, never the cache's copy.
@@ -58,8 +59,9 @@
 //! longer the refused one, another refresh rotated it and its access token is used when it has
 //! more than 60 s left (otherwise the call fails without touching anything). If it is the same
 //! but the exchange marker is no longer this refresh's own, the refusal is inconclusive (another
-//! exchange may have consumed the token) and nothing changes. Otherwise, when the cache holds a
-//! different refresh token, that one is tried once; failing that the stored tokens are wiped
+//! exchange may have consumed the token) and nothing changes. Otherwise other refresh tokens
+//! are tried once each: the answer of an unmatched recovery record (`crate::recovery`), then a
+//! different token in the cache; failing those the stored tokens are wiped
 //! (`{iv: null, content: null}` envelopes, `access_token_expires_at: null`, `has_permissions`
 //! and `up_to_date_permissions` false; the hash's credential fields emptied) and the streamer
 //! must log in again at domdimabot.com.
@@ -137,6 +139,28 @@ pub enum TokenError {
     /// A store failed.
     #[error(transparent)]
     Store(#[from] TwitchError),
+}
+
+/// Fresh credentials from a verified sign-in ([`Twitch::store_sign_in`]).
+#[derive(Clone, Debug)]
+pub struct SignIn {
+    /// The access token Twitch issued.
+    pub access_token: AccessToken,
+    /// The refresh token Twitch issued.
+    pub refresh_token: RefreshToken,
+    /// Twitch's `expires_in` (seconds); the stored expiry is left as it is when this is `None`,
+    /// not finite or not positive, as in the reference.
+    pub expires_in: Option<f64>,
+    /// The reference's `activate`: `has_permissions` and `up_to_date_permissions` set to true.
+    pub grant_permissions: bool,
+}
+
+/// What [`Twitch::store_sign_in`] stored.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SignInStored {
+    /// The generation written (the user's `refreshed_at`, epoch milliseconds).
+    pub generation: i64,
 }
 
 /// The result of `refreshTwitchToken`.
@@ -605,6 +629,23 @@ impl Twitch {
     /// MongoDB write.
     pub async fn credentials_changed(&self, id: &str) -> Result<(), TwitchError> {
         self.inner.credentials_changed(id).await
+    }
+
+    /// The credential write of a verified sign-in (`updateUserDataTokens` in the reference's
+    /// `auth.route.ts`) for the Twitch account `id`: both tokens encrypted, the expiry when
+    /// `expires_in` is finite and positive, both permission flags when
+    /// [`SignIn::grant_permissions`], and the generation advanced, in **one** compare-and-set on
+    /// what is stored; then the directory hash under that generation. A refresh that started
+    /// from the state before finds a newer generation and keeps these credentials. The route
+    /// writes its other fields (`actived`, `chat_enabled`) itself; the sign-in route must use
+    /// this instead of writing the tokens and calling [`Twitch::credentials_changed`].
+    /// `Ok(None)` when no user has the account.
+    pub async fn store_sign_in(
+        &self,
+        id: &str,
+        sign_in: &SignIn,
+    ) -> Result<Option<SignInStored>, TwitchError> {
+        self.inner.store_sign_in(id, sign_in).await
     }
 
     /// `getAccountRefreshTokenById(id, 'twitch')`: the stored refresh token (cache, else

@@ -98,4 +98,4 @@ pub use oauth::{RefreshContext, RefreshFailureKind, RefreshFailureReason};
 pub use recovery::RecoveryReport;
 pub use secret::{AccessToken, RefreshToken};
 pub use streamers::StreamerAccount;
-pub use tokens::{RefreshOutcome, TokenError};
+pub use tokens::{RefreshOutcome, SignIn, SignInStored, TokenError};

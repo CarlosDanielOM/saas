@@ -12,9 +12,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::Notify;
 
-const NOW_SECS: i64 = NOW_MS / 1000;
+pub(crate) const NOW_SECS: i64 = NOW_MS / 1000;
 
-fn state() -> Shared {
+pub(crate) fn state() -> Shared {
     let mut state = TwitchState {
         consume: true,
         expires_in: 14_400,
@@ -42,7 +42,7 @@ async fn seed(stores: &Stores, process: &Process) -> Result<()> {
     Ok(())
 }
 
-async fn stored_refresh(stores: &Stores, id: &str) -> Result<Option<String>> {
+pub(crate) async fn stored_refresh(stores: &Stores, id: &str) -> Result<Option<String>> {
     Ok(decrypt_field(
         &stored_account(stores, id).await?,
         "refresh_token",
@@ -50,7 +50,7 @@ async fn stored_refresh(stores: &Stores, id: &str) -> Result<Option<String>> {
 }
 
 /// MongoDB refuses every write of `process` (as an outage would).
-fn fail_writes(process: &Process) {
+pub(crate) fn fail_writes(process: &Process) {
     process.twitch.set_fault_hook(|point, _| {
         async move {
             if point == FaultPoint::BeforePersist {
@@ -282,7 +282,7 @@ async fn a_recovery_record_never_expires() -> Result<()> {
 }
 
 /// Twitch's state with a valid refresh token `{id}-refresh-0` for each streamer.
-fn state_for(ids: &[&str]) -> Shared {
+pub(crate) fn state_for(ids: &[&str]) -> Shared {
     let state = state();
     {
         let mut state = state
@@ -299,19 +299,30 @@ fn state_for(ids: &[&str]) -> Shared {
 
 /// Seeds `ids`, then leaves a recovery record for each: a process whose MongoDB refuses every
 /// write refreshes them all and stops.
-async fn park_answers(
+pub(crate) async fn park_answers(
     stores: &Stores,
     server: &dima_http::testing::MockServer,
     ids: &[&str],
 ) -> Result<()> {
+    park_answers_at(stores, server, ids, None).await
+}
+
+/// [`park_answers`], each user stored with the generation (`refreshed_at`, milliseconds)
+/// `generation` when it is given.
+pub(crate) async fn park_answers_at(
+    stores: &Stores,
+    server: &dima_http::testing::MockServer,
+    ids: &[&str],
+    generation: Option<i64>,
+) -> Result<()> {
     for id in ids {
         let access = format!("{id}-access-0");
         let refresh = format!("{id}-refresh-0");
-        insert_user(
-            stores,
-            user_document(id, id, &access, &refresh, Some(NOW_SECS - 10)),
-        )
-        .await?;
+        let mut user = user_document(id, id, &access, &refresh, Some(NOW_SECS - 10));
+        if let Some(generation) = generation {
+            user.insert("refreshed_at", bson::DateTime::from_millis(generation));
+        }
+        insert_user(stores, user).await?;
     }
     let mut timings = fast_timings();
     timings.exchange_drain = Duration::from_millis(300);
@@ -334,7 +345,7 @@ async fn park_answers(
 }
 
 /// Every recovery record under the test prefix.
-async fn records(stores: &Stores) -> Result<Vec<String>> {
+pub(crate) async fn records(stores: &Stores) -> Result<Vec<String>> {
     let mut found = Vec::new();
     let mut scan = stores
         .dragonfly

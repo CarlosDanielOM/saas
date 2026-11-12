@@ -11,6 +11,7 @@ mod deadlines;
 mod directory;
 mod drain;
 mod fence;
+mod generations;
 mod helix;
 mod parity;
 mod recovery;
