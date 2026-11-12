@@ -33,6 +33,8 @@ tokio-util = { workspace = true }
 futures-util = { workspace = true }
 
 [dev-dependencies]
+# Direct command used only to disconnect this test's own pubsub socket.
+redis = { workspace = true }
 anyhow = { workspace = true }
 dima-core = { workspace = true, features = ["test-util"] }
 dima-http = { workspace = true, features = ["test-util"] }
