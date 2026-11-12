@@ -232,3 +232,26 @@ MongoDB databases/users and flushing of their claimed Dragonfly databases. Store
 removed their uniquely named fixtures. No container was started/stopped/built; nothing was
 deployed or pushed. Original author open items outside this package's requested scenarios
 (such as long-range performance and outbound fault comparisons) are not certified by these results.
+
+## Connections, cancellation and shutdown
+
+The service keeps at most five PostgreSQL connections. A borrower that finishes, with a result
+or an error, hands its connection straight back: nothing is in flight, and a transaction that
+ended early queued its rollback when it was dropped. A borrower that is dropped part-way (a
+deadline, a client that went away) keeps its slot until PostgreSQL has been told to cancel the
+statement and has rolled back, and that connection is closed instead of reused, because a
+CancelRequest is never acknowledged and a late one must not hit the next statement.
+
+Shutdown refuses new borrowers, waits for the five slots, ends each connection and waits for its
+driver; this also runs after `--migrate-only` and after a failed start-up migration. It then
+gives the backends up to two seconds to disappear, watched from the `postgres` maintenance
+database. That last step is a courtesy to whoever drops the database next and is skipped when
+the role may not connect there. Tests use `Store::close_confirmed`, which insists on it.
+
+The limits are unchanged: 3 seconds to connect or to get a slot, 8 seconds per statement on the
+server, 9 seconds per call (35 for an ingestion batch).
+
+Open: under a loaded machine the `validation` scenario once answered 503 on a grant write in
+about half the runs. Thirty loaded runs after these changes did not show it again, and no lock
+wait was seen in PostgreSQL (only waits on WAL sync), so its cause is not established; see the
+ledger row S-ANALYTICS-c.

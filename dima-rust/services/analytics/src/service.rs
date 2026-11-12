@@ -65,7 +65,10 @@ pub async fn build(
     rc.connect_timeout = Duration::from_secs(3);
     let redis = Dragonfly::connect(rc, Default::default()).await?;
     let store = Store::connect(&config.database_url).await?;
-    store.migrate(clock.now_ms()).await?;
+    if let Err(error) = store.migrate(clock.now_ms()).await {
+        store.close().await?;
+        return Err(error);
+    }
     let http = dima_http::HttpClient::builder()
         .clock(clock.clone())
         .shutdown(shutdown)

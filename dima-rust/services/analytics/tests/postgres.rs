@@ -168,6 +168,7 @@ async fn real_postgres_persistence_replay_permissions_and_redis_ingestion() -> a
             }
         }
         stop.trigger();
+        s.store.close_confirmed().await?;
         drop(app);
         match checks {
             Ok(result) => result,
@@ -388,5 +389,51 @@ async fn exercise_queue_and_grants(
             .0,
         403
     );
+    // A grant upsert and its audit are atomic, including the failure path.
+    s.store.execute("ALTER TABLE analytics_audit ADD CONSTRAINT reject_grant CHECK(action <> 'grant') NOT VALID", &[]).await?;
+    assert_eq!(
+        call(
+            app,
+            owner,
+            "PUT",
+            "/api/grants/9",
+            json!({"role":"viewer","channels":[],"services":[],"expiresAt":null})
+        )
+        .await?
+        .0,
+        503
+    );
+    assert!(
+        s.store
+            .query("SELECT 1 FROM analytics_grants WHERE user_id='9'", &[])
+            .await?
+            .is_empty()
+    );
+    s.store
+        .execute(
+            "ALTER TABLE analytics_audit DROP CONSTRAINT reject_grant",
+            &[],
+        )
+        .await?;
+    // Reference quirk: revoke commits before its independently failing audit.
+    s.store.execute("ALTER TABLE analytics_audit ADD CONSTRAINT reject_revoke CHECK(action <> 'revoke') NOT VALID", &[]).await?;
+    assert_eq!(
+        call(app, owner, "DELETE", "/api/grants/3", json!({}))
+            .await?
+            .0,
+        503
+    );
+    assert!(
+        s.store
+            .query("SELECT 1 FROM analytics_grants WHERE user_id='3'", &[])
+            .await?
+            .is_empty()
+    );
+    s.store
+        .execute(
+            "ALTER TABLE analytics_audit DROP CONSTRAINT reject_revoke",
+            &[],
+        )
+        .await?;
     Ok(())
 }
