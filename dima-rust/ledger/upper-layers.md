@@ -1146,3 +1146,79 @@ Each with a recommendation. Those marked **owner** need the owner's word.
     read), or keep it with a canonicalised path check if the owner still uses the page.
 11. **Bot shutdown.** The reference's bot ignores SIGTERM until killed. Rust drains and exits within its budget;
     recorded as an intended difference (P4-BIN-BOT).
+
+## After P4-SKEL
+
+The names later briefs cite, where they differ from or add to the plan above (P4-SKEL, 2026-11-12). Every
+module's documentation names its package, the TypeScript it ports and the reference's exports other packages
+call.
+
+**Crates and binaries.** Directories are the crate name without `dima-`: `crates/moderation`, `features`,
+`actions`, `chat`, `realtime`, `services`, `event-handlers`, `recap`, `site-agent`, `routes`. The binaries are the
+packages `dima-server` (`api/`) and `dima-bot` (`bot/`); `cron/` stays P2-CRON-01's, and its package name
+`dima-cron` is already in the layer test.
+
+**`dima_twitch::chat`** (section 2.1):
+
+- `ChatOut` has two methods. `send(&RenderScope, text) -> Result<Sent, ChatError>` is `sendTwitchChatMessage`,
+  plain or rendered. `deliver(channel_id, Option<&Rendering>, text) -> Result<(), ChatError>` is
+  `parseSpecialCommands` then `deliverAstMessage`, which the goal and roulette actions and the cron's timer loop
+  need (they let a rendering failure through, trim, and never reply).
+- `RenderScope { channel_id, reply_to, render: Option<Rendering> }` (`RenderScope::plain`, `::rendered`,
+  `.replying_to`). `Rendering` is the reference's render context (`event_data`, `eventsub_data`, `argument`,
+  `literal_arguments`, `variables`, `user_plan: Option<dima_model::users::PlanTier>`, `user_level`,
+  `extra_context`, `scope_type`, `scope_name`, `scope_aliases`, `effect: Option<EffectGrant>`). `EffectGrant`
+  describes a Twitch event's authority; `ChatDelivery` mints the engine's `Effect` from it (the crate is below the
+  engine, so no engine type crosses).
+- `Sent::{Posted { message_id }, Nothing}` and `ChatError::{Rejected, HeldForModeration, NoAppToken, Failed,
+  RequiredGoalContribution, Render}` with `message()`, `kind()` (the reference's `type`) and `status()`.
+  `RequiredGoalContribution` is the error the reference rethrows out of a send so the domain event is retried.
+- The plain send lives at **`dima_twitch::chat::send`** (the plan said `functions::chats::send`); P4-TW-CHAT owns
+  `crates/twitch/src/chat/send.rs`.
+
+**`dima_actions`** (section 2.2):
+
+- `host::DimaHost::new(Arc<HostDeps>)`. `HostDeps` holds `mongo`, `dragonfly`, `twitch`, `clock`, `random` and
+  one struct per group, `host::{moderation, channel, media, ai}::Deps`, which each group package fills (only
+  `media::Deps` has fields yet: `backend: Arc<dyn BackendApi>`, `clips: Arc<dyn ClipPublisher>`).
+- `host::Group::of(HostFunction) -> Option<Group>` is the `match` over every variant (`None` for `Custom`); each
+  group module's entry is `call(&mut DimaHost, HostCall) -> Result<Value, HostError>`.
+- "Not yet ported" is `host::ActionError::NotYetPorted(HostFunction)` (also `StorageNotYetPorted(&str)`,
+  `Unregistered(String)`), turned into `dima_engine::host::HostError`, the engine's only failure kind for a host
+  (a thrown error: the evaluation stops). Until P4-ACT-CORE: storage methods answer `StorageNotYetPorted`,
+  `fork_effect` answers `None`, `sleep` waits on tokio time, `alarm` keeps the engine's default.
+- `delivery::ChatDelivery::new(Arc<HostDeps>, Arc<Engine>)`, the future `ChatOut` implementer.
+- `runner::CommandRunner::run_program(&str, Context) -> Result<Value, runner::RunError>` (the `ast_parser` tool's
+  `parseAndEvaluate` then reference delivery); `RunError::{Parse(Diagnostic), Eval(EvalError)}`.
+- `backend` (new path): the bot and cron `BackendApi` and `ClipPublisher`, P4-ACT-MEDIA's.
+
+**`dima_realtime`**: `registry::RealtimeModule` (`const NAME`, `type Handle`, `register(self, &mut Sockets) ->
+Result<Handle, RegisterError>`), `registry::Sockets::{namespace, family, fail}`, `registry::Registry::{new(Builder),
+register, declared, build}`, `registry::Declared`. `backend` (new path) is the in-process `BackendApi` and
+`ClipPublisher` (P4-RT-SOCKETS, with P4-RT-CLIP-FX's publisher).
+
+**`dima_event_handlers`**: `registry::Registry<D = registry::Deps>` with `register(consumer, |deps| Arc<handler>)`,
+`missing()` and `into_consumers()` for `dima_events::consumer::Runtime::new`. It is keyed by **consumer name**
+(the reference's `DOMAIN_EVENT_CONSUMERS`), not by event type as section 2.3 put it: `dima-events` dispatches by
+consumer. `registry::Deps` holds `mongo`, `dragonfly`, `twitch`, `chat: Arc<dyn ChatOut>`, `clock`, `random`. The
+handlers are `handlers` (P4-EVH).
+
+**`dima_platform::access`**: `ChannelGuard::self_only()` with the new `Need::SelfOnly` (question 7.6).
+
+**`dima_routes`**: `mounts::MOUNTS` (54 lines of `server.ts`: 42 routers, 8 middleware, 3 inline routes and the
+OAuth metadata route), `mounts::build::<S>()`, `mounts::{Mount, What, RouterFile, Middleware, Route, Guard}`;
+`state::RouteState` is the bound every router takes. Each router file is a function of its package's module,
+named in `RouterFile::router` (for example `users::user_router`, `media::speech_router`). `auth::router` mounts
+`auth::account::router` after its own routes; `triggers::router` mounts `triggers::library::router` before its
+own. P4-API-APP owns `mounts` after P4-SKEL and fills the middleware and inline routes in `build`. The speech
+route's service credential (question 7.1) is the `Guard::Undecided` of `/speech`.
+
+**Module paths added to the plan's.** `dima_site_agent::tools` and `tools::write::settings` have one submodule per
+TypeScript file, because P4-SA-TOOLS-A/B (wave 2) and P4-SA-WRITE-B/C (wave 3) fill them at the same time;
+`tools::write::timers` is P4-SA-WRITE-B's; `tools::write::settings` (its `mod.rs`) is P4-SA-WRITE-C's.
+`dima_features::desktop` holds the desktop AI model (P4-FEAT-ASSETS).
+
+**Binaries.** `THREAD_STACK_BYTES` = 2 MiB (registered in `on_thread_start`), `SHUTDOWN_BUDGET` = 17 s, typed
+configuration in `api/src/config.rs` and `bot/src/config.rs`. **`api/tests/layers.rs`** reads `cargo metadata`
+and enforces the layers: a new crate must add its layer there, and the crate map's two same-layer edges
+(`dima-features` → `dima-engine`, `dima-routes` → `dima-site-agent`) are the only ones allowed.
