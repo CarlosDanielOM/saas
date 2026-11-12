@@ -25,3 +25,37 @@ Checked and found sound by inspection:
 - Host futures explicitly require `Send`; random-user state and effect authority have dedicated contract fields.
 - No shipped host handler needs arbitrary variable writes. The 19 fixture-write exclusions reflect an interface restriction, not an impossibility in Rust; non-text names/arguments are outside their declared contracts, but `variables` is explicitly `Map<string, unknown>` in TypeScript, so that portion of the 110 exclusions still needs caller-level justification.
 - Registry structure preserves registration order, aliases, metadata, and replacement semantics; no additional discrepancy identified.
+## Re-check at `30f8a536`, after E-ENGINE-02b and 02c (GPT-6.1 Sol, 2026-11-12)
+
+Findings 2 to 6 are closed (2 and 5 under the declared stack contract, proven in a debug
+build). Finding 1 is partly closed: `replace` is checked before it allocates, but the response
+list and stored-list reads still escape. Three new points, all reproduced; the lead's decision
+follows each. The fixes are package E-ENGINE-02d.
+
+**R1, SECURITY. Writing a response by index bypasses the aggregate and kept-memory limits.**
+`%(x a)`, seventeen times `%(x "${%(x)}${%(x)}")`, a loop of 100 `%(responses[] "")`, then a
+loop of 100 `%(responses[#i] %(x))`: 13,107,200 bytes of responses with 131,073 charged, 1,596
+steps, no error. More slots take it toward exhausting the process. `run.rs:894`.
+*Decision: taken.* The resulting aggregate is checked and its memory reserved before a slot is
+replaced.
+
+**R2, SECURITY. Empty response entries cost nothing.** With `l` stored as a list holding a list
+of 1,024 empty strings, a loop of 100 `%(responses[] %(*l[0]))` makes 102,400 entries in 2,005
+steps with 3,076 bytes charged, and each append scans all earlier entries. `run.rs:884`.
+*Decision: taken.* Every entry is charged its overhead and its serialised size before the list
+grows, from counters kept as it grows (no rescans), and the number of entries has a limit.
+
+**R3, RISK. Stored JSON is expanded before its size is checked.** With `l` stored as an array of
+300,000 empty arrays (900,001 bytes), `%(*l.length)` answers 300000 in 3,518 steps although a
+value may be 256 KiB; cache reads have no ceiling of their own. `storage.rs:190`.
+*Decision: taken.* A stored value over the limit is refused before it is parsed, and the nodes
+and containers of a value are charged to the memory budget while it is built.
+
+For the bot that embeds the engine (recorded with the binaries' obligations): register each
+runtime thread's real stack size; implement `Host::alarm` so that it always wakes, and make host
+futures yield and stop when dropped; use a clock that cannot go back for the deadline; send
+every reference through the shared-budget entry points with the owning channel's plan; bound
+what a host function returns; and limit messages per channel and evaluations in flight overall,
+since a budget per message does not stop a channel from sending expensive messages one after
+another. *Also taken into 02d:* parsing on an unregistered thread starts one thread per caller
+with no cap; a cap on those threads belongs in the engine.
