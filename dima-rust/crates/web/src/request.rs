@@ -406,8 +406,17 @@ impl<S> Req<S> {
     }
 
     /// Takes hyper's upgrade handle (WebSocket and other protocol upgrades on this port).
+    /// Take the [`crate::UpgradeGuard`] with it ([`Req::take_upgrade_guard`]).
     pub fn take_upgrade(&mut self) -> Option<hyper::upgrade::OnUpgrade> {
         self.extensions.remove::<hyper::upgrade::OnUpgrade>()
+    }
+
+    /// Takes the guard [`crate::serve`] attaches to a request that asks for an upgrade: hold it
+    /// while you own the upgraded socket and watch its shutdown token (see
+    /// [`crate::UpgradeGuard`]). `None` when the request was not served by [`crate::serve`] or
+    /// asked for no upgrade.
+    pub fn take_upgrade_guard(&mut self) -> Option<crate::UpgradeGuard> {
+        self.extensions.remove::<crate::UpgradeGuard>()
     }
 
     /// `typeis.hasBody(req)`: a `Transfer-Encoding` or a numeric `Content-Length` header.
