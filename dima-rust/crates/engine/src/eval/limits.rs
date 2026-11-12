@@ -8,6 +8,32 @@
 //! count (Free 25, Premium 50, Pro 100) with [`SUPPORTED_STATEMENTS`] statements in the inner
 //! body, each a read or a write of a variable of any storage (memory, `#`, `##`, `*`, `**`).
 //! It completes; ten times that (ten times the statements) does not (`tests/workload.rs`).
+//!
+//! # One message
+//!
+//! A message (a chat message, a timer, a redemption) runs one command, which may start up to
+//! fifty command references, at any depth. Each run has the limits above; all of them together
+//! draw from one budget of [`EvalLimits::message_factor`] (2) times those figures, and the
+//! message ends at [`EvalLimits::deadline_ms`] (`super::MessageBudget`). The worst one message
+//! can cost, by default:
+//!
+//! | Plan    | Work units | Host calls | Kept       | Output  | Seconds |
+//! |---------|-----------:|-----------:|-----------:|--------:|--------:|
+//! | Free    |    375,000 |    187,500 | 8 MiB      | 512 KiB |      10 |
+//! | Premium |  1,500,000 |    750,000 | 8 MiB      | 512 KiB |      10 |
+//! | Pro     |  6,000,000 |  3,000,000 | 8 MiB      | 512 KiB |      10 |
+//!
+//! Computed from the limits (`super::MessageLimits::of`) and measured
+//! (`tests/workload.rs`, `the_worst_message_is_bounded`): a command that starts fifty
+//! references to the worst command spends exactly the work units, or the host calls, of its
+//! row and stops; on a debug build with an in-memory host the Pro message takes 4.5 s (work)
+//! and 4.8 s (host calls), about twice the worst single command. *Kept* is what the runs keep
+//! (variables, memos, loop variables, reference arguments), each value within
+//! [`EvalLimits::text_bytes`]; *output* is every run's rendered text together. *Seconds* is the
+//! deadline on the host's clock: past it the message stops within one lease of work (1,024
+//! units: well under a millisecond) or, during a host call, when the host's alarm fires
+//! (`crate::host::Host::alarm`; a host without one lets that call finish, so its own timeout
+//! is the overrun).
 
 use crate::context::Plan;
 
