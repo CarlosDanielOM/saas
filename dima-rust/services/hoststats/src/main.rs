@@ -25,6 +25,12 @@ async fn main() -> anyhow::Result<()> {
         .await??;
         return Ok(());
     }
+    if let Some(port) = env.get("PORT").filter(|s| !s.is_empty()) {
+        let port = dima_text::parse_number(port);
+        if !port.is_finite() || port.fract() != 0. || !(0.0..=65535.0).contains(&port) {
+            anyhow::bail!("invalid PORT")
+        }
+    }
     let config = dima_hoststats::config::Config::from_values(|k| env.get(k).cloned());
     let port = config.port;
     let app = dima_hoststats::build(config, Arc::new(SystemClock), Arc::new(SystemRandom))?;
@@ -41,22 +47,37 @@ async fn main() -> anyhow::Result<()> {
         let mut interval = tokio::time::interval(std::time::Duration::from_millis(
             sampling.state().config.sample_ms,
         ));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         interval.tick().await;
+        let mut work: Option<tokio::task::JoinHandle<()>> = None;
         loop {
-            tokio::select! {_ = token.cancelled()=>break,_ = interval.tick()=>{tokio::select!{_ = token.cancelled()=>break,_ = sampling.state().sample()=>{}}}}
+            tokio::select! {
+                _ = token.cancelled()=>break,
+                _ = interval.tick()=> {
+                    if work.as_ref().is_none_or(|task|task.is_finished()) {
+                        if let Some(task)=work.take(){let _=task.await;}
+                        let app=sampling.clone();
+                        work=Some(tokio::spawn(async move{app.state().sample().await;}));
+                    }
+                }
+            }
+        }
+        if let Some(task) = work {
+            task.abort();
+            let _ = task.await;
         }
     });
     let listener = dima_web::bind_to(SocketAddr::from((Ipv4Addr::UNSPECIFIED, port)))?;
     let result = dima_web::serve(
         listener,
-        app,
+        app.clone(),
         shutdown.cancellation_token(),
         Default::default(),
     )
     .await;
     shutdown.trigger();
-    sampler.abort();
     let _ = sampler.await;
+    app.state().stop().await;
     signals.abort();
     let _ = signals.await;
     result?;

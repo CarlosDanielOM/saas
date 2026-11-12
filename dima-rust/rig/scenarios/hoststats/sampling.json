@@ -1,0 +1,67 @@
+{
+  "rig_scenario": 1,
+  "description": "Repeated sampling: fixture counters stay fixed, so rates become zero; timestamps use rig normalisation.",
+  "seed": {
+    "files": {
+      "proc/stat": {
+        "text": "cpu  1 0 1 10 0 0 0 0"
+      },
+      "proc/meminfo": {
+        "text": "MemTotal: 100 kB\nMemAvailable: 50 kB"
+      },
+      "proc/loadavg": {
+        "text": "0.5 0.4 0.3 2/300 9"
+      },
+      "proc/uptime": {
+        "text": "123.4 9"
+      },
+      "net": {
+        "text": "a\nb\n eth0: 10 0 0 0 0 0 0 0 20 0 0 0 0 0 0 0"
+      },
+      "proc/diskstats": {
+        "text": "8 0 sda 10 0 100 0 5 0 200 0 0 0 0"
+      },
+      "proc/pressure/cpu": {
+        "text": "some avg10=1.92 avg60=0"
+      },
+      "proc/pressure/memory": {
+        "text": "some avg10=0.1"
+      },
+      "proc/pressure/io": {
+        "text": "some avg10=0.5"
+      }
+    }
+  },
+  "steps": [
+    {
+      "http": {
+        "method": "GET",
+        "path": "/v1/snapshot",
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "pause_ms": 15500
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/v1/snapshot",
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/health",
+        "expect": {
+          "status": 200
+        }
+      }
+    }
+  ]
+}

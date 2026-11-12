@@ -62,6 +62,15 @@ async fn read(path: impl AsRef<std::path::Path>) -> String {
     tokio::fs::read_to_string(path).await.unwrap_or_default()
 }
 impl State {
+    /// Cancel and join the independent df read before shutting down the runtime.
+    pub async fn stop(&self) {
+        let task = self.df_task.lock().ok().and_then(|mut task| task.take());
+        if let Some(task) = task {
+            task.abort();
+            let _ = task.await;
+        }
+    }
+
     pub async fn sample(&self) {
         let Ok(mut prev) = self.sample.try_lock() else {
             return;
@@ -126,7 +135,8 @@ impl State {
                 ),
                 (
                     "diskUsed",
-                    (fs.blocks() as f64 - fs.blocks_free() as f64) * fs.block_size() as f64,
+                    fs.blocks() as f64 * fs.block_size() as f64
+                        - fs.blocks_free() as f64 * fs.block_size() as f64,
                 ),
                 ("inodesTotal", fs.files() as f64),
                 ("inodesUsed", fs.files() as f64 - fs.files_free() as f64),
@@ -153,8 +163,15 @@ impl State {
         match self.docker.get("/containers/json?all=1", 5000).await {
             Err(e) => {
                 let msg = match &e {
-                    docker::Error::Io(io) if io.kind() == std::io::ErrorKind::NotFound => {
-                        format!("docker: connect ENOENT {}", self.config.socket.display())
+                    docker::Error::Io(io) => {
+                        let code = match io.raw_os_error() {
+                            Some(2) => "ENOENT",
+                            Some(13) => "EACCES",
+                            Some(111) => "ECONNREFUSED",
+                            Some(20) => "ENOTDIR",
+                            _ => "EIO",
+                        };
+                        format!("docker: connect {code} {}", self.config.socket.display())
                     }
                     _ => format!("docker: {e}"),
                 };
@@ -164,10 +181,10 @@ impl State {
                 reachable = true;
                 let list = p::select(&list, &self.config.projects);
                 if prev.version_at.is_none_or(|last| at - last > 3600000) {
-                    if let Ok(v) = self.docker.get("/version", 5000).await {
-                        if v["Version"].as_str().is_some_and(|s| !s.is_empty()) {
-                            prev.version = v["Version"].clone();
-                        }
+                    if let Ok(v) = self.docker.get("/version", 5000).await
+                        && v["Version"].as_str().is_some_and(|s| !s.is_empty())
+                    {
+                        prev.version = v["Version"].clone();
                     }
                     prev.version_at = Some(at);
                 }
@@ -210,6 +227,15 @@ impl State {
                         Ok((entry, inspect, counters)) => {
                             let id = entry["id"].as_str().unwrap_or("");
                             let old = prev.containers.get(id).unwrap_or(&V::Null);
+                            // Reference containerView dereferences a null stats payload when a
+                            // previous CPU counter exists. Preserve its failed-row outcome.
+                            if counters.is_null()
+                                && inspect["State"]["Status"] == "running"
+                                && !old["cpuNs"].is_null()
+                            {
+                                failed += 1;
+                                continue;
+                            }
                             let mut row = p::view(&entry, &inspect, &counters, old, at as f64);
                             if counters.is_null() {
                                 prev.containers.remove(id);
@@ -261,20 +287,21 @@ impl State {
             let df = self.df.lock().await;
             let due = df.value.is_null() || at - df.at > self.config.df_ms as i64;
             drop(df);
-            if due && let Ok(mut task) = self.df_task.lock() {
-                if task.as_ref().is_none_or(|h| h.is_finished()) {
-                    let docker = self.docker.clone();
-                    let shared = self.df.clone();
-                    let clock = self.clock.clone();
-                    *task = Some(tokio::spawn(async move {
-                        let result = docker.get("/system/df", 120000).await;
-                        let mut df = shared.lock().await;
-                        if let Ok(v) = result {
-                            df.value = p::df(&v, clock.now_ms());
-                        }
-                        df.at = clock.now_ms();
-                    }));
-                }
+            if due
+                && let Ok(mut task) = self.df_task.lock()
+                && task.as_ref().is_none_or(|h| h.is_finished())
+            {
+                let docker = self.docker.clone();
+                let shared = self.df.clone();
+                let clock = self.clock.clone();
+                *task = Some(tokio::spawn(async move {
+                    let result = docker.get("/system/df", 120000).await;
+                    let mut df = shared.lock().await;
+                    if let Ok(v) = result {
+                        df.value = p::df(&v, clock.now_ms());
+                    }
+                    df.at = clock.now_ms();
+                }));
             }
         }
     }
@@ -322,10 +349,10 @@ async fn handle(req: &mut dima_web::Req<State>) -> dima_web::Response {
 
 impl Drop for State {
     fn drop(&mut self) {
-        if let Ok(task) = self.df_task.get_mut() {
-            if let Some(task) = task.take() {
-                task.abort();
-            }
+        if let Ok(task) = self.df_task.get_mut()
+            && let Some(task) = task.take()
+        {
+            task.abort();
         }
     }
 }

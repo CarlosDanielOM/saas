@@ -56,7 +56,7 @@ pub fn cpu_between(a: &V, b: &V) -> V {
 }
 pub fn mem(s: &str) -> V {
     let mut m = V::Object(Default::default());
-    if let Ok(r) = regex::Regex::new(r"^(\w+):\s+(\d+)") {
+    if let Ok(r) = regex::Regex::new(r"^([A-Za-z0-9_]+):\s+([0-9]+)") {
         for line in s.lines() {
             if let Some(c) = r.captures(line) {
                 m[&c[1]] = json!(dima_text::parse_number(&c[2]) * 1024.);
@@ -99,7 +99,7 @@ pub fn disks(s: &str) -> V {
         let f: Vec<_> = l.split_whitespace().collect();
         if f.len() < 10
             || !re(
-                r"^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|hd[a-z]+|nvme\d+n\d+|mmcblk\d+)$",
+                r"^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|hd[a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+)$",
                 f[2],
             )
         {
@@ -123,7 +123,7 @@ pub fn net(s: &str) -> V {
         };
         if rest.is_empty()
             || re(
-                r"^(lo|docker\d*|br-|veth|virbr|cni|flannel|tunl|vxlan|wg|tailscale)",
+                r"^(lo|docker[0-9]*|br-|veth|virbr|cni|flannel|tunl|vxlan|wg|tailscale)",
                 name.trim(),
             )
         {
@@ -149,7 +149,7 @@ pub fn net(s: &str) -> V {
     }
 }
 pub fn pressure(s: &str) -> V {
-    regex::Regex::new(r"(?m)^some avg10=([\d.]+)")
+    regex::Regex::new(r"(?m)^some avg10=([[0-9].]+)")
         .ok()
         .and_then(|r| r.captures(s).map(|c| json!(dima_text::parse_number(&c[1]))))
         .unwrap_or(V::Null)
@@ -200,8 +200,8 @@ pub fn counters(s: &V) -> V {
     if let Some(nets) = s["networks"].as_object() {
         for nic in nets.values() {
             has = true;
-            rx += number(&nic["rx_bytes"]);
-            tx += number(&nic["tx_bytes"]);
+            rx += zero_nan(number(&nic["rx_bytes"]));
+            tx += zero_nan(number(&nic["tx_bytes"]));
         }
     }
     let (mut read, mut written) = (0., 0.);
@@ -214,7 +214,7 @@ pub fn counters(s: &V) -> V {
             _ => {}
         }
     }
-    json!({"cpuNs":n(s.pointer("/cpu_stats/cpu_usage/total_usage")),"memBytes":mem.get("usage").map(|v|(number(v)-number(cache)).max(0.)),"pids":n(s.pointer("/pids_stats/current")),"rx":if has{json!(rx)}else{V::Null},"tx":if has{json!(tx)}else{V::Null},"read":read,"written":written})
+    json!({"cpuNs":n(s.pointer("/cpu_stats/cpu_usage/total_usage")),"memBytes":mem.get("usage").map(|v|nonnegative(number(v)-number(cache))),"pids":n(s.pointer("/pids_stats/current")),"rx":if has{json!(rx)}else{V::Null},"tx":if has{json!(tx)}else{V::Null},"read":read,"written":written})
 }
 fn text(v: &V, max: usize) -> V {
     v.as_str()
@@ -256,7 +256,7 @@ pub fn view(entry: &V, i: &V, c: &V, p: &V, at: f64) -> V {
             V::Null
         }
     };
-    json!({"name":entry["name"],"project":entry["project"],"service":text(&i["Config"]["Labels"]["com.docker.compose.service"],80),"image":text(&i["Config"]["Image"],200),"imageId":text(&i["Image"],80),"state":state,"health":health,"failingStreak":n(s.pointer("/Health/FailingStreak")),"startedAt":date(&s["StartedAt"]),"finishedAt":date(&s["FinishedAt"]),"exitCode":n(s.get("ExitCode")),"oomKilled":s["OOMKilled"]==true,"restartCount":n(i.get("RestartCount")).as_f64().unwrap_or(0.),"restartPolicy":text(&h["RestartPolicy"]["Name"],40),"cpuPct":if running&&!cpu.is_null(){json!(number(&cpu)/1e9*100.)}else{V::Null},"cpuLimit":if number(&h["NanoCpus"])>0.{json!(number(&h["NanoCpus"])/1e9)}else if number(&h["CpuQuota"])>0.&&number(&h["CpuPeriod"])>0.{json!(number(&h["CpuQuota"])/number(&h["CpuPeriod"]))}else{V::Null},"memBytes":if running{c["memBytes"].clone()}else{V::Null},"memLimit":positive("Memory"),"pids":if running{c["pids"].clone()}else{V::Null},"pidsLimit":positive("PidsLimit"),"netRx":c["rx"],"netTx":c["tx"],"netRxBps":cr("rx"),"netTxBps":cr("tx"),"blkRead":c["read"],"blkWrite":c["written"],"blkReadBps":cr("read"),"blkWriteBps":cr("written"),"imageBytes":null,"writableBytes":null,"volumeBytes":null,"volumes":array(&i["Mounts"]).iter().filter(|m|m["Type"]=="volume"&&m["Name"].is_string()).map(|m|text(&m["Name"],128)).collect::<Vec<_>>()})
+    json!({"name":entry["name"],"project":entry["project"],"service":text(&i["Config"]["Labels"]["com.docker.compose.service"],80),"image":text(&i["Config"]["Image"],200),"imageId":text(&i["Image"],80),"state":state,"health":health,"failingStreak":n(s.pointer("/Health/FailingStreak")),"startedAt":date(&s["StartedAt"]),"finishedAt":date(&s["FinishedAt"]),"exitCode":n(s.get("ExitCode")),"oomKilled":s["OOMKilled"]==true,"restartCount":n(i.get("RestartCount")).as_f64().unwrap_or(0.),"restartPolicy":text(&h["RestartPolicy"]["Name"],40),"cpuPct":if running&&!cpu.is_null(){json!((number(&c["cpuNs"])-number(&p["cpuNs"]))/(seconds*1e9)*100.)}else{V::Null},"cpuLimit":if number(&h["NanoCpus"])>0.{json!(number(&h["NanoCpus"])/1e9)}else if number(&h["CpuQuota"])>0.&&number(&h["CpuPeriod"])>0.{json!(number(&h["CpuQuota"])/number(&h["CpuPeriod"]))}else{V::Null},"memBytes":if running{c["memBytes"].clone()}else{V::Null},"memLimit":positive("Memory"),"pids":if running{c["pids"].clone()}else{V::Null},"pidsLimit":positive("PidsLimit"),"netRx":c["rx"],"netTx":c["tx"],"netRxBps":cr("rx"),"netTxBps":cr("tx"),"blkRead":c["read"],"blkWrite":c["written"],"blkReadBps":cr("read"),"blkWriteBps":cr("written"),"imageBytes":null,"writableBytes":null,"volumeBytes":null,"volumes":array(&i["Mounts"]).iter().filter(|m|m["Type"]=="volume"&&m["Name"].is_string()).map(|m|text(&m["Name"],128)).collect::<Vec<_>>()})
 }
 pub fn df(d: &V, at: i64) -> V {
     if !d.is_object() && !d.is_array() {
@@ -275,12 +275,12 @@ pub fn df(d: &V, at: i64) -> V {
     let mut bv = bi.clone();
     for i in images {
         if let Some(id) = i["Id"].as_str() {
-            bi[id] = json!(number(&i["Size"]));
+            bi[id] = json!(zero_nan(number(&i["Size"])));
         }
     }
     for c in containers {
         if let Some(id) = c["Id"].as_str() {
-            bc[id] = json!(number(&c["SizeRw"]));
+            bc[id] = json!(zero_nan(number(&c["SizeRw"])));
         }
     }
     for v in volumes {
@@ -288,5 +288,13 @@ pub fn df(d: &V, at: i64) -> V {
             bv[id] = json!(pos(&v["UsageData"]["Size"]));
         }
     }
-    json!({"at":dima_text::to_iso_string(at),"imagesCount":images.len(),"imagesBytes":if pos(&d["LayersSize"])>0.{pos(&d["LayersSize"])}else{images.iter().map(|i|pos(&i["Size"])).sum::<f64>()},"imagesUnusedBytes":images.iter().filter(|i|!containers.iter().any(|c|c["ImageID"]==i["Id"])&&number(&i["Containers"])<=0.).map(|i|(number(&i["Size"])-pos(&i["SharedSize"])).max(0.)).sum::<f64>(),"buildCacheBytes":cache.iter().map(|c|pos(&c["Size"])).sum::<f64>(),"buildCacheReclaimable":cache.iter().filter(|c|c["InUse"]!=true&&c["Shared"]!=true).map(|c|pos(&c["Size"])).sum::<f64>(),"volumesCount":volumes.len(),"volumesBytes":volumes.iter().map(|v|pos(&v["UsageData"]["Size"])).sum::<f64>(),"containersBytes":containers.iter().map(|c|pos(&c["SizeRw"])).sum::<f64>(),"byImage":bi,"byContainer":bc,"byVolume":bv})
+    json!({"at":dima_text::to_iso_string(at),"imagesCount":images.len(),"imagesBytes":if pos(&d["LayersSize"])>0.{pos(&d["LayersSize"])}else{images.iter().map(|i|pos(&i["Size"])).sum::<f64>()},"imagesUnusedBytes":images.iter().filter(|i|!containers.iter().any(|c|c["ImageID"]==i["Id"])&&number(&i["Containers"]).partial_cmp(&0.)!=Some(std::cmp::Ordering::Greater)).map(|i|(number(&i["Size"])-pos(&i["SharedSize"])).max(0.)).sum::<f64>(),"buildCacheBytes":cache.iter().map(|c|pos(&c["Size"])).sum::<f64>(),"buildCacheReclaimable":cache.iter().filter(|c|c["InUse"]!=true&&c["Shared"]!=true).map(|c|pos(&c["Size"])).sum::<f64>(),"volumesCount":volumes.len(),"volumesBytes":volumes.iter().map(|v|pos(&v["UsageData"]["Size"])).sum::<f64>(),"containersBytes":containers.iter().map(|c|pos(&c["SizeRw"])).sum::<f64>(),"byImage":bi,"byContainer":bc,"byVolume":bv})
+}
+
+fn zero_nan(n: f64) -> f64 {
+    if n.is_nan() { 0. } else { n }
+}
+
+fn nonnegative(n: f64) -> f64 {
+    if n.is_nan() { n } else { n.max(0.) }
 }

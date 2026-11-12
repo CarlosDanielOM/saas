@@ -98,10 +98,7 @@ impl Docker {
         let mut cursor = 0;
         loop {
             if chunked {
-                loop {
-                    let Some(end) = body[cursor..].windows(2).position(|w| w == b"\r\n") else {
-                        break;
-                    };
+                while let Some(end) = body[cursor..].windows(2).position(|w| w == b"\r\n") {
                     let line = std::str::from_utf8(&body[cursor..cursor + end])
                         .map_err(|_| Error::Http)?;
                     let size = usize::from_str_radix(line.split(';').next().unwrap_or(""), 16)
