@@ -36,7 +36,7 @@ dima-platform = { path = ".", features = ["test-util"] }
 anyhow.workspace = true
 regex.workspace = true
 dima-http = { workspace = true, features = ["test-util"] }
-tokio = { workspace = true, features = ["io-util", "io-std", "process"] }
+tokio = { workspace = true, features = ["io-util", "io-std", "process", "test-util"] }
 serde_json.workspace = true
 dima-twitch.workspace = true
 http.workspace = true

@@ -1,0 +1,38 @@
+{
+  "admins": [
+    { "admin": "super", "channel": "site", "role": "super", "actived": true, "permissions": [] },
+    { "admin": "super", "channel": "managed", "role": "channel", "actived": true, "permissions": ["dashboard:view"] },
+    { "admin": "super_inactive", "channel": "site", "role": "super", "actived": false, "permissions": [] },
+    { "admin": "support", "channel": "site", "role": "support", "actived": true, "permissions": [] },
+    { "admin": "billing", "channel": "site", "role": "billing", "actived": true, "permissions": [] },
+    { "admin": "db_creator", "channel": "site", "role": "creator", "actived": true, "permissions": [] },
+    { "admin": "full", "channel": "managed", "role": "channel", "actived": true, "permissions": ["*"] },
+    { "admin": "manager", "channel": "managed", "role": "channel", "actived": true, "permissions": ["dashboard:view", "commands:view", "commands:manage"] },
+    { "admin": "triggers_all", "channel": "managed", "actived": true, "permissions": ["dashboard:view", "triggers:all"] },
+    { "admin": "dimafx_all", "channel": "managed", "actived": true, "permissions": ["dimafx:all"] },
+    { "admin": "viewer", "channel": "managed", "actived": true, "permissions": ["dashboard:view", "triggers:view", "analytics:view"] },
+    { "admin": "split", "channel": "managed", "actived": true, "permissions": ["analytics:view"] },
+    { "admin": "split", "channel": "managed", "actived": true, "permissions": ["billing:view"] },
+    { "admin": "inactive", "channel": "managed", "actived": false, "permissions": ["*"] },
+    { "admin": "elsewhere", "channel": "unrelated", "actived": true, "permissions": ["*"] },
+    { "admin": "chat_only", "channel": "managed", "actived": true, "permissions": ["chat:admin"] },
+    { "admin": "creator_editor", "channel": "creator_channel", "actived": true, "permissions": ["*"] }
+  ],
+  "requesters": ["creator", "super", "super_inactive", "support", "billing", "db_creator", "full", "manager", "triggers_all", "dimafx_all", "viewer", "split", "inactive", "elsewhere", "chat_only", "creator_editor", "owner", "none", "empty", "missing"],
+  "targets": ["own", "managed", "unrelated", "creator_channel", "empty", "missing"],
+  "permissions": ["dashboard:view", "commands:manage", "triggers:edit", "dimafx:edit", "*", "admins:view", "chat:admin", "Commands:Manage", ["analytics:view", "billing:view"], [], [5, null], { "x": 1 }, "$missing"],
+  "decision_lists": [["analytics:view", "billing:view"], ["triggers:edit", "dimafx:delete", "commands:view"], ["*"], [], ["10", "2", "a"], ["chat:admin"]],
+  "parse_inputs": ["$missing", "a,b", " a , b ,", ["a", "b,c"], ["a", { "x": 1 }], { "x": "a" }, "", ",,,", "dashboard:view,dashboard:view", "Dashboard:View", "bad name!", "ſ", "$21", "$20", "$64", "$65", 5, null, true, ["", " "], "triggers:*,*", "a ,b"],
+  "expand_inputs": ["triggers:edit", ["dimafx:edit", "triggers:view"], [], ["*"], [5, "a"], "x", ["triggers:all"], ["triggers:edit", "triggers:edit"], { "x": 1 }],
+  "resolve_inputs": [
+    [["*"], ["a", "b"]],
+    [["triggers:all"], ["triggers:edit", "triggers:view", "dimafx:view"]],
+    [["dimafx:all", "commands:view"], ["dimafx:delete", "commands:view", "commands:manage"]],
+    [[], ["dashboard:view"]],
+    [["a"], ["10", "2", "a", "b"]]
+  ],
+  "creator_assignment": [
+    ["x", "y", "z"], ["x", "y", "creator"], ["y", "y", "creator"], ["creator", "y", "creator"], ["$missing", "$missing", "creator"], ["x", "$missing", "$missing"], ["creator", "creator", "creator"]
+  ],
+  "admin_users": ["creator", "super", "super_inactive", "support", "billing", "db_creator", "full", "manager", "none", "empty", "missing"]
+}
