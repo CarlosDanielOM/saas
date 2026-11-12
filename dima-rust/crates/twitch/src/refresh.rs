@@ -20,6 +20,7 @@ use crate::base::Inner;
 use crate::credentials::{CAS_ROUNDS, StoredAccount, Written, rotation_fields, wipe_fields};
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
+use crate::lease::Lease;
 use crate::oauth::{RefreshContext, RefreshFailureKind, RefreshFailureReason, classify_refusal};
 use crate::secret::{AccessToken, RefreshToken, open_cached};
 use crate::streamers::decrypt_envelope;
@@ -28,17 +29,9 @@ use dima_core::SecretString;
 use dima_core::crypto::{CredentialCipher, StoredCredential};
 use dima_model::users::EncryptedToken;
 use dima_store::dragonfly::commands::reply;
-use dima_store::dragonfly::script::Script;
-use dima_store::dragonfly::{SetCondition, SetExpiry, SetOptions, SetOutcome};
 use serde_json::{Value, json};
 use std::sync::Arc;
 use tokio::time::Instant;
-
-/// Deletes the lock only if this process still owns it (Rust only; no loop).
-static RELEASE_LOCK: Script = Script::new(
-    "RELEASE_REFRESH_LOCK_SCRIPT",
-    "\nif redis.call('GET', KEYS[1]) == ARGV[1] then\n    return redis.call('DEL', KEYS[1])\nend\nreturn 0\n",
-);
 
 /// The cache's credential fields of one streamer, decrypted.
 #[derive(Default)]
@@ -68,8 +61,19 @@ enum Exchange {
         reason: RefreshFailureReason,
         status: u16,
     },
-    /// No usable answer (network, unparseable, incomplete).
-    Failed(RefreshOutcome),
+    /// No usable answer (network, unparseable, incomplete). `uncertain` when Twitch may have
+    /// processed the request (a lost answer, a 2xx that could not be read).
+    Failed {
+        outcome: RefreshOutcome,
+        uncertain: bool,
+    },
+}
+
+/// The lease of a streamer, or the token another holder produced while this one waited.
+enum Acquired {
+    Lease(Lease),
+    Winner(AccessToken),
+    Unavailable,
 }
 
 /// What a compare-and-set write of a rotation found.
@@ -189,7 +193,8 @@ impl Inner {
         user_id: &str,
         context: &RefreshContext,
     ) -> Exchange {
-        let Some(answer) = self.post_refresh(refresh_token, user_id, context).await else {
+        let (answer, uncertain) = self.post_refresh(refresh_token, user_id, context).await;
+        let Some(answer) = answer else {
             self.refresh_log(
                 Level::Error,
                 Destination::Both,
@@ -203,11 +208,14 @@ impl Inner {
                     "attempts": self.config.timings.refresh_attempts,
                 }),
             );
-            return Exchange::Failed(failure(
-                RefreshFailureKind::Transient,
-                None,
-                RefreshFailureReason::Network,
-            ));
+            return Exchange::Failed {
+                outcome: failure(
+                    RefreshFailureKind::Transient,
+                    None,
+                    RefreshFailureReason::Network,
+                ),
+                uncertain,
+            };
         };
         let status = answer.status;
         let data: Value = if answer.text.is_empty() {
@@ -232,11 +240,15 @@ impl Inner {
                             "bodyLength": dima_text::utf16_len(&answer.text),
                         }),
                     );
-                    return Exchange::Failed(failure(
-                        RefreshFailureKind::Transient,
-                        Some(status),
-                        RefreshFailureReason::Unparseable,
-                    ));
+                    return Exchange::Failed {
+                        outcome: failure(
+                            RefreshFailureKind::Transient,
+                            Some(status),
+                            RefreshFailureReason::Unparseable,
+                        ),
+                        // A 2xx that cannot be read may carry a rotation that is now lost.
+                        uncertain: answer.ok(),
+                    };
                 }
             }
         };
@@ -296,11 +308,14 @@ impl Inner {
                     "hasRefreshToken": refresh.is_some(),
                 }),
             );
-            return Exchange::Failed(failure(
-                RefreshFailureKind::Transient,
-                Some(status),
-                RefreshFailureReason::IncompletePayload,
-            ));
+            return Exchange::Failed {
+                outcome: failure(
+                    RefreshFailureKind::Transient,
+                    Some(status),
+                    RefreshFailureReason::IncompletePayload,
+                ),
+                uncertain: true,
+            };
         };
         let access = AccessToken::new(access);
         let refresh = RefreshToken::new(refresh);
@@ -316,17 +331,92 @@ impl Inner {
         }
     }
 
-    /// `refreshTwitchToken` for a refresh token the caller holds (no lock).
-    pub(crate) async fn refresh_twitch_token(
-        &self,
-        refresh_token: &RefreshToken,
+    /// `refreshTwitchToken(presented)` as the sign-in routes call it, through the same gate and
+    /// lease as every other refresh (review finding 3): the presented token is exchanged only
+    /// while it is still the stored one.
+    pub(crate) async fn locked_rotation(
+        self: &Arc<Self>,
+        presented: &RefreshToken,
         user_id: &str,
         context: &RefreshContext,
     ) -> RefreshOutcome {
-        let result = self
-            .exchange_and_store(refresh_token, user_id, context, None, None)
-            .await;
+        let caller = context.caller.as_deref().unwrap_or("refreshTwitchToken");
+        let result = async {
+            let _gate = self.gate(user_id).await?;
+            let lease = match self.acquire(user_id, None, false, caller).await? {
+                Acquired::Lease(lease) => lease,
+                Acquired::Winner(_) | Acquired::Unavailable => {
+                    return Ok(self.refresh_skipped(
+                        user_id,
+                        context,
+                        RefreshFailureReason::ExchangeInFlight,
+                    ));
+                }
+            };
+            let result = self
+                .rotate_under_lock(&lease, presented, user_id, context)
+                .await;
+            self.release(lease).await;
+            result
+        }
+        .await;
         self.outcome_or_exception(result, user_id, context)
+    }
+
+    /// Under the lease, for [`Inner::locked_rotation`].
+    async fn rotate_under_lock(
+        self: &Arc<Self>,
+        lease: &Lease,
+        presented: &RefreshToken,
+        user_id: &str,
+        context: &RefreshContext,
+    ) -> Result<RefreshOutcome, TwitchError> {
+        let Some(stored) = self.load_stored(user_id).await? else {
+            return Ok(self.refresh_skipped(user_id, context, RefreshFailureReason::UserNotFound));
+        };
+        match stored_refresh(&self.cipher, &stored.refresh) {
+            Ok(Some(current)) if current != *presented => {
+                // Rotated since the caller read it: the stored pair, nothing sent.
+                self.rotated_elsewhere(user_id, &stored, &current, None, context)
+                    .await
+            }
+            // Still the stored one, or the stored envelope is unreadable (the presented token
+            // then replaces it).
+            Ok(Some(_)) | Err(_) => {
+                self.exchange_and_store(lease, presented, user_id, context, Some(stored), None)
+                    .await
+            }
+            Ok(None) => {
+                Ok(self.refresh_skipped(user_id, context, RefreshFailureReason::NoRefreshToken))
+            }
+        }
+    }
+
+    /// A refresh that sent nothing to Twitch.
+    fn refresh_skipped(
+        &self,
+        user_id: &str,
+        context: &RefreshContext,
+        reason: RefreshFailureReason,
+    ) -> RefreshOutcome {
+        self.refresh_log(
+            Level::Warn,
+            Destination::Both,
+            user_id,
+            context,
+            json!({
+                "function": "refreshTwitchToken",
+                "userId": user_id,
+                "action": "token_refresh_skipped",
+                "reason": reason.as_str(),
+            }),
+        );
+        let kind = if reason == RefreshFailureReason::NoRefreshToken {
+            RefreshFailureKind::Permanent
+        } else {
+            RefreshFailureKind::Transient
+        };
+        failure(kind, None, reason)
     }
 
     fn outcome_or_exception(
@@ -359,18 +449,30 @@ impl Inner {
         }
     }
 
-    /// Exchanges `refresh_token` and stores the outcome. `base` is the stored state the token
-    /// was read from (the rotation is written over it with a compare-and-set); `rescue` is a
-    /// different refresh token to try before a permanent refusal wipes the streamer.
+    /// Exchanges `refresh_token` under the exchange marker and stores the outcome. `base` is
+    /// the stored state the token was read from (the rotation is written over it with a
+    /// compare-and-set); `rescue` is a different refresh token to try before a permanent
+    /// refusal wipes the streamer.
     async fn exchange_and_store(
         &self,
+        lease: &Lease,
         refresh_token: &RefreshToken,
         user_id: &str,
         context: &RefreshContext,
         base: Option<StoredAccount>,
         rescue: Option<RefreshToken>,
     ) -> Result<RefreshOutcome, TwitchError> {
-        match self.exchange(refresh_token, user_id, context).await {
+        if self.shutdown.is_triggered() {
+            return Ok(self.refresh_skipped(user_id, context, RefreshFailureReason::Interrupted));
+        }
+        if !self.mark_exchange(lease, user_id).await? {
+            return Ok(self.refresh_skipped(
+                user_id,
+                context,
+                RefreshFailureReason::ExchangeInFlight,
+            ));
+        }
+        let result = match self.exchange(refresh_token, user_id, context).await {
             Exchange::Rotated {
                 access,
                 refresh,
@@ -392,16 +494,39 @@ impl Inner {
                 reason,
                 status,
             } => {
-                self.refused_for_good(refresh_token, user_id, status, reason, context, rescue)
-                    .await
+                self.refused_for_good(
+                    lease,
+                    refresh_token,
+                    user_id,
+                    status,
+                    reason,
+                    context,
+                    rescue,
+                )
+                .await
             }
             Exchange::Refused {
                 kind,
                 reason,
                 status,
             } => Ok(failure(kind, Some(status), reason)),
-            Exchange::Failed(outcome) => Ok(outcome),
+            Exchange::Failed {
+                outcome,
+                uncertain: true,
+            } => {
+                // Twitch may have rotated the token and the answer is lost: the marker stays
+                // until it expires, so no refusal in the meantime is blamed on the stored token.
+                self.abandon_marker(lease);
+                return Ok(outcome);
+            }
+            Exchange::Failed { outcome, .. } => Ok(outcome),
+        };
+        match &result {
+            Ok(_) => self.clear_marker(lease).await,
+            // A store failed after Twitch answered: the outcome is not settled.
+            Err(_) => self.abandon_marker(lease),
         }
+        result
     }
 
     /// Writes a rotation Twitch answered (MongoDB, then the cache).
@@ -555,8 +680,10 @@ impl Inner {
 
     /// A permanent refusal of `failed`: compared with the stored refresh token, then a
     /// concurrent rotation is reused, the `rescue` token tried, or the stored tokens wiped.
+    #[allow(clippy::too_many_arguments)]
     async fn refused_for_good(
         &self,
+        lease: &Lease,
         failed: &RefreshToken,
         user_id: &str,
         status: u16,
@@ -575,8 +702,30 @@ impl Inner {
                 && current != *failed
             {
                 return self
-                    .rotated_elsewhere(user_id, stored, &current, status, context)
+                    .rotated_elsewhere(user_id, stored, &current, Some(status), context)
                     .await;
+            }
+            // The refused token is the stored one. The refusal is conclusive only if no other
+            // exchange started since this one (the marker is still ours): otherwise that one may
+            // have consumed the token, and its outcome decides.
+            if !self.marker_is_ours(lease).await? {
+                self.refresh_log(
+                    Level::Warn,
+                    Destination::Both,
+                    user_id,
+                    context,
+                    json!({
+                        "function": "refreshTwitchToken",
+                        "userId": user_id,
+                        "action": "token_refresh_inconclusive",
+                        "reason": "another refresh of this streamer may have consumed the token; nothing is invalidated",
+                    }),
+                );
+                return Ok(failure(
+                    RefreshFailureKind::Transient,
+                    Some(status),
+                    RefreshFailureReason::ExchangeInFlight,
+                ));
             }
             // The stored token is the refused one. A different token in the cache is tried once
             // before the streamer is wiped: the cache may be ahead of MongoDB.
@@ -620,7 +769,7 @@ impl Inner {
                         reason,
                         status,
                     } => return Ok(failure(kind, Some(status), reason)),
-                    Exchange::Failed(outcome) => return Ok(outcome),
+                    Exchange::Failed { outcome, .. } => return Ok(outcome),
                 }
             }
             let generation = match &stored {
@@ -661,7 +810,7 @@ impl Inner {
         user_id: &str,
         stored: &StoredAccount,
         current: &RefreshToken,
-        status: u16,
+        status: Option<u16>,
         context: &RefreshContext,
     ) -> Result<RefreshOutcome, TwitchError> {
         let mut cached = self.cached_credentials(user_id).await?;
@@ -709,7 +858,7 @@ impl Inner {
         );
         Ok(failure(
             RefreshFailureKind::Transient,
-            Some(status),
+            status,
             RefreshFailureReason::RotatedElsewhere,
         ))
     }
@@ -731,46 +880,61 @@ impl Inner {
             .and_then(|account| account.refresh_token()))
     }
 
-    async fn acquire_lock(&self, key: &str) -> Result<Option<String>, TwitchError> {
-        let random: &dyn dima_core::Random = &*self.random;
-        let owner = random
-            .uuid_v4()
-            .map_err(|error| TwitchError::cache("lock", error))?;
-        let ttl = u64::try_from(self.config.timings.refresh_lock_ttl.as_millis()).unwrap_or(5000);
-        let outcome = self
-            .dragonfly
-            .set(
-                key,
-                owner.as_bytes(),
-                SetOptions {
-                    condition: SetCondition::IfMissing,
-                    expiry: SetExpiry::Millis(ttl.max(1)),
-                    get: false,
-                },
-            )
-            .await
-            .map_err(|error| TwitchError::cache("lock", error))?;
-        Ok((outcome == SetOutcome::Written).then_some(owner))
-    }
-
-    async fn release_lock(&self, key: &str, owner: &str) {
-        // The lease expires on its own; a failed release only delays the next refresh.
-        let _ = RELEASE_LOCK
-            .run_value(&self.dragonfly, &[key], &[owner])
-            .await;
+    /// The lease, after waiting for another holder when it is taken: the reference's
+    /// `acquireRefreshLock`, `waitForRefreshedToken` and second attempt. With `want_token`, the
+    /// wait ends early on a usable token other than `rejected` (the winner's).
+    async fn acquire(
+        self: &Arc<Self>,
+        id: &str,
+        rejected: Option<&AccessToken>,
+        want_token: bool,
+        caller: &str,
+    ) -> Result<Acquired, TwitchError> {
+        if let Some(lease) = self.try_lease(id).await? {
+            return Ok(Acquired::Lease(lease));
+        }
+        if let Some(winner) = self.wait_for_refreshed(id, rejected, want_token).await? {
+            return Ok(Acquired::Winner(winner));
+        }
+        match self.try_lease(id).await? {
+            Some(lease) => {
+                self.token_log(
+                    Level::Info,
+                    id,
+                    caller,
+                    json!({ "action": "refresh_lock_takeover" }),
+                );
+                Ok(Acquired::Lease(lease))
+            }
+            None => {
+                self.token_log(
+                    Level::Warn,
+                    id,
+                    caller,
+                    json!({ "action": "refresh_lock_unavailable" }),
+                );
+                Ok(Acquired::Unavailable)
+            }
+        }
     }
 
     /// `waitForRefreshedToken`.
     async fn wait_for_refreshed(
         &self,
         id: &str,
-        lock_key: &str,
         rejected: Option<&AccessToken>,
+        want_token: bool,
     ) -> Result<Option<AccessToken>, TwitchError> {
         let timings = &self.config.timings;
         let deadline = Instant::now() + timings.refresh_wait;
         while Instant::now() < deadline {
             tokio::time::sleep(timings.refresh_wait_poll).await;
+            if !want_token {
+                if !self.lease_held(id).await? {
+                    break;
+                }
+                continue;
+            }
             let cached = self.cached_credentials(id).await?;
             let token = cached.access();
             let not_rejected = rejected.is_none_or(|rejected| token != Some(rejected.expose()));
@@ -784,12 +948,7 @@ impl Inner {
             {
                 return Ok(cached.access_token);
             }
-            let held = self
-                .dragonfly
-                .exists(&[lock_key])
-                .await
-                .map_err(|error| TwitchError::cache("exists", error))?;
-            if held != 1 {
+            if !self.lease_held(id).await? {
                 break;
             }
         }
@@ -809,17 +968,17 @@ impl Inner {
         self.log(level, Destination::Cache, Some(id), data);
     }
 
-    /// The lock, the double check and the refresh of `getAccountTokenById`.
+    /// The gate, the lease, the double check and the refresh of `getAccountTokenById`.
     pub(crate) async fn locked_refresh(
         self: &Arc<Self>,
         id: &str,
         rejected: Option<&AccessToken>,
         caller: &str,
     ) -> Result<AccessToken, TokenError> {
-        let lock_key = self.config.keys.refresh_lock(id);
-        let mut owner = self.acquire_lock(&lock_key).await?;
-        if owner.is_none() {
-            if let Some(winner) = self.wait_for_refreshed(id, &lock_key, rejected).await? {
+        let _gate = self.gate(id).await?;
+        let lease = match self.acquire(id, rejected, true, caller).await? {
+            Acquired::Lease(lease) => lease,
+            Acquired::Winner(winner) => {
                 self.token_log(
                     Level::Debug,
                     id,
@@ -828,33 +987,17 @@ impl Inner {
                 );
                 return Ok(winner);
             }
-            owner = self.acquire_lock(&lock_key).await?;
-            if owner.is_none() {
-                self.token_log(
-                    Level::Warn,
-                    id,
-                    caller,
-                    json!({ "action": "refresh_lock_unavailable" }),
-                );
-                return Err(TokenError::LockUnavailable);
-            }
-            self.token_log(
-                Level::Info,
-                id,
-                caller,
-                json!({ "action": "refresh_lock_takeover" }),
-            );
-        }
-        let result = self.refresh_under_lock(id, rejected, caller).await;
-        if let Some(owner) = owner {
-            self.release_lock(&lock_key, &owner).await;
-        }
+            Acquired::Unavailable => return Err(TokenError::LockUnavailable),
+        };
+        let result = self.refresh_under_lock(&lease, id, rejected, caller).await;
+        self.release(lease).await;
         result
     }
 
-    /// Under the lock: the cache's double check, then MongoDB decides (see the module docs).
+    /// Under the lease: the cache's double check, then MongoDB decides (see the module docs).
     async fn refresh_under_lock(
         self: &Arc<Self>,
+        lease: &Lease,
         id: &str,
         rejected: Option<&AccessToken>,
         caller: &str,
@@ -929,7 +1072,7 @@ impl Inner {
         };
         let context = RefreshContext::new("token_refresh", caller);
         let result = self
-            .exchange_and_store(&token, id, &context, Some(stored), rescue)
+            .exchange_and_store(lease, &token, id, &context, Some(stored), rescue)
             .await;
         match self.outcome_or_exception(result, id, &context) {
             RefreshOutcome::Success {

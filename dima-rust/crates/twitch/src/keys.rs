@@ -8,7 +8,8 @@
 //! | `accounts:twitch:{id}:data` (hash; tokens as `{iv, content}` envelopes, plain text in the reference) | `twitch_streamers.class.ts`, `tokens.ts` | **rebuilt**: the start-up load writes every streamer from MongoDB again |
 //! | `twitch:accounts` (JSON aggregate, `EX 3600`) | `CHECK_PLAN_ACCOUNTS_SCRIPT` | **rebuilt** on the next read |
 //! | `streamers:by:id` (set) | `getTwitchAccountsFromDB`, hydration | **rebuilt** by the start-up load |
-//! | `locks:refresh:twitch:{id}` (`PX 5000`) | `acquireRefreshLock` | **rebuilt** (a 5 s lease; Rust's database starts without one) |
+//! | `locks:refresh:twitch:{id}` (`PX 5000`, renewed by its holder) | `acquireRefreshLock` | **rebuilt** (a 5 s lease; Rust's database starts without one) |
+//! | `locks:refresh:twitch:{id}:exchange` (`PX 30000`, renewed) | Rust only: an exchange is (or may be) in flight | **rebuilt** |
 //! | `app:twitch:token` (envelope, `EX expires_in`; plain text in the reference) | `getNewTwitchAppToken` | **rebuilt**: a new app token is requested on first use |
 //! | `twitch:{id}:emote-catalog:v1` (JSON, `EX 86400`) | `twitch_emotes.ts` | **rebuilt** from Helix on first use |
 //! | `twitch:{id}:ai:credits:plan-version` (fence) | billing | read here (fence of the account hash); owned by the billing package |
@@ -72,6 +73,11 @@ impl KeySpace {
     /// `locks:refresh:twitch:{id}`.
     pub fn refresh_lock(&self, id: &str) -> String {
         format!("{}locks:refresh:twitch:{id}", self.prefix)
+    }
+
+    /// `locks:refresh:twitch:{id}:exchange`.
+    pub fn exchange_marker(&self, id: &str) -> String {
+        format!("{}:exchange", self.refresh_lock(id))
     }
 
     /// `app:twitch:token`.

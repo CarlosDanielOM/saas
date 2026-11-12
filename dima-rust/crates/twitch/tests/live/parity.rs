@@ -36,6 +36,39 @@ fn expected_reason(name: &str) -> Option<RefreshFailureReason> {
     })
 }
 
+/// Deliberate differences in what a trace's sequence does (review finding 3): the public
+/// `refreshTwitchToken` now runs under the same lease as every refresh and reads MongoDB first,
+/// so it sends nothing when the presented token is no longer the stored one (the reference sent
+/// it, got "invalid refresh token" and then looked at the store) or when the user does not exist
+/// (the reference consumed the token and lost the rotation). Same outcome kind, same stores,
+/// fewer requests; the status of the expired rotation is `None` since Twitch was not asked.
+struct Deviation {
+    attempts: usize,
+    actions: &'static [&'static str],
+    status: Option<u16>,
+}
+
+fn deviation(name: &str) -> Option<Deviation> {
+    Some(match name {
+        "rotated-usable" => Deviation {
+            attempts: 0,
+            actions: &["info:token_refresh_rotation_detected"],
+            status: None,
+        },
+        "rotated-expired" => Deviation {
+            attempts: 0,
+            actions: &["warn:token_refresh_rotation_detected"],
+            status: None,
+        },
+        "missing-user" => Deviation {
+            attempts: 0,
+            actions: &["warn:token_refresh_skipped"],
+            status: None,
+        },
+        _ => return None,
+    })
+}
+
 fn corpus() -> Result<Value> {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/corpus/reference.json");
     Ok(serde_json::from_slice(&std::fs::read(path)?)?)
@@ -79,7 +112,16 @@ async fn refresh_traces_match_the_reference() -> Result<()> {
                 ("old-access", "old-refresh", "1000")
             };
             stores.mongo.documents("users").delete_many(doc! {}).await?;
-            stores.dragonfly.del(&[&stores.keys.account(USER)]).await?;
+            // Each trace starts from clean keys (a trace whose outcome is unknown, such as an
+            // incomplete 2xx, leaves its exchange marker to expire).
+            stores
+                .dragonfly
+                .del(&[
+                    &stores.keys.account(USER),
+                    &stores.keys.refresh_lock(USER),
+                    &stores.keys.exchange_marker(USER),
+                ])
+                .await?;
             if !missing_user {
                 insert_user(
                     &stores,
@@ -123,6 +165,7 @@ async fn refresh_traces_match_the_reference() -> Result<()> {
 
             // Outcome.
             let result = &case["result"];
+            let deviation = deviation(name);
             match (&outcome, result["kind"].as_str()) {
                 (
                     RefreshOutcome::Success {
@@ -157,7 +200,12 @@ async fn refresh_traces_match_the_reference() -> Result<()> {
                         RefreshFailureKind::Transient => "transient_failure",
                     };
                     assert_eq!(kind, expected, "{name}");
-                    assert_eq!(status.map(u64::from), result["status"].as_u64(), "{name}");
+                    match &deviation {
+                        Some(deviation) => assert_eq!(*status, deviation.status, "{name}"),
+                        None => {
+                            assert_eq!(status.map(u64::from), result["status"].as_u64(), "{name}")
+                        }
+                    }
                     assert!(
                         result["message"].is_string(),
                         "{name}: the reference had a message"
@@ -173,11 +221,11 @@ async fn refresh_traces_match_the_reference() -> Result<()> {
                     panic!("{name}: {outcome:?} where the reference gave {expected:?}")
                 }
             }
-            assert_eq!(
-                calls.load(Ordering::SeqCst),
-                usize::try_from(case["attempts"].as_u64().unwrap_or(0))?,
-                "{name}: attempts"
-            );
+            let attempts = match &deviation {
+                Some(deviation) => deviation.attempts,
+                None => usize::try_from(case["attempts"].as_u64().unwrap_or(0))?,
+            };
+            assert_eq!(calls.load(Ordering::SeqCst), attempts, "{name}: attempts");
 
             // MongoDB.
             let effects = &case["effects"];
@@ -224,12 +272,15 @@ async fn refresh_traces_match_the_reference() -> Result<()> {
             }
 
             // Log actions, in order.
-            let expected: Vec<String> = effects["actions"]
-                .as_array()
-                .context("actions")?
-                .iter()
-                .filter_map(|a| a.as_str().map(str::to_owned))
-                .collect();
+            let expected: Vec<String> = match &deviation {
+                Some(deviation) => deviation.actions.iter().map(|a| (*a).to_owned()).collect(),
+                None => effects["actions"]
+                    .as_array()
+                    .context("actions")?
+                    .iter()
+                    .filter_map(|a| a.as_str().map(str::to_owned))
+                    .collect(),
+            };
             let got: Vec<String> = process
                 .events
                 .entries()

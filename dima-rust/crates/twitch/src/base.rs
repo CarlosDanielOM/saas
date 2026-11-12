@@ -112,6 +112,7 @@ pub(crate) struct Inner {
     pub(crate) hydrate_flights: Flights<String, Result<Option<StreamerAccount>, TwitchError>>,
     pub(crate) emote_flights: Flights<String, ChannelEmoteCatalog>,
     pub(crate) permission_checks: crate::credentials::PermissionChecks,
+    pub(crate) gates: crate::lease::Gates,
     seen: Mutex<HashMap<String, String>>,
     #[cfg(any(test, feature = "test-util"))]
     pub(crate) fault: Mutex<Option<FaultHook>>,
@@ -140,6 +141,7 @@ impl Twitch {
                 hydrate_flights: Flights::new(MAX_FLIGHTS),
                 emote_flights: Flights::new(MAX_FLIGHTS),
                 permission_checks: Mutex::new(HashMap::new()),
+                gates: crate::lease::Gates::default(),
                 seen: Mutex::new(HashMap::new()),
                 #[cfg(any(test, feature = "test-util"))]
                 fault: Mutex::new(None),

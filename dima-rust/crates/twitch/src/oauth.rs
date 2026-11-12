@@ -89,6 +89,11 @@ pub enum RefreshFailureReason {
     Store,
     /// The refresh stopped before it produced a result (the process is stopping).
     Interrupted,
+    /// Another refresh of this streamer is (or may be) in flight: nothing was sent, or a refusal
+    /// could not be blamed on the stored token (it may have been consumed by that refresh).
+    ExchangeInFlight,
+    /// MongoDB holds no refresh token for the streamer: nothing was sent.
+    NoRefreshToken,
 }
 
 impl RefreshFailureReason {
@@ -109,6 +114,8 @@ impl RefreshFailureReason {
             Self::RotatedElsewhere => "rotated_elsewhere",
             Self::Store => "store_failed",
             Self::Interrupted => "interrupted",
+            Self::ExchangeInFlight => "exchange_in_flight",
+            Self::NoRefreshToken => "no_refresh_token",
         }
     }
 
@@ -131,6 +138,8 @@ impl RefreshFailureReason {
             }
             Self::Store => "The token store failed",
             Self::Interrupted => "The refresh was interrupted",
+            Self::ExchangeInFlight => "Another refresh of this streamer is in flight",
+            Self::NoRefreshToken => "The streamer has no stored refresh token",
         }
     }
 }
@@ -221,6 +230,20 @@ impl RefreshContext {
     }
 }
 
+/// Whether a request that failed this way may have been processed by Twitch: anything but a
+/// failure to connect, a request that was never built or sent, or a wait for a slot.
+fn may_have_reached_twitch(class: dima_http::FailureClass) -> bool {
+    use dima_http::{FailureClass as F, TimeoutKind as T};
+    !matches!(
+        class,
+        F::Connect
+            | F::Timeout(T::Queue | T::Connect)
+            | F::Blocked
+            | F::Invalid
+            | F::RequestTooLarge
+    )
+}
+
 /// One answer of the token endpoint.
 #[derive(Clone)]
 pub(crate) struct TokenAnswer {
@@ -257,13 +280,14 @@ impl Inner {
 
     /// The reference's refresh loop: up to [`crate::Timings::refresh_attempts`] attempts, a
     /// failed or 5xx attempt retried after 400 ms then 900 ms. `None` when no attempt got an
-    /// answer (each failure is logged as `token_refresh_attempt_failed`).
+    /// answer (each failure is logged as `token_refresh_attempt_failed`). The flag says whether
+    /// a failed attempt may have reached Twitch (its outcome is then unknown).
     pub(crate) async fn post_refresh(
         &self,
         refresh_token: &RefreshToken,
         user_id: &str,
         context: &RefreshContext,
-    ) -> Option<TokenAnswer> {
+    ) -> (Option<TokenAnswer>, bool) {
         let timings = &self.config.timings;
         let attempts = timings.refresh_attempts.max(1);
         let pairs = [
@@ -273,10 +297,12 @@ impl Inner {
             ("refresh_token", refresh_token.expose()),
         ];
         let mut answer = None;
+        let mut uncertain = false;
         for attempt in 0..attempts {
             answer = match self.post_token_form(&pairs).await {
                 Ok(answer) => Some(answer),
                 Err(error) => {
+                    uncertain |= may_have_reached_twitch(error.class());
                     self.log(
                         Level::Warn,
                         Destination::Both,
@@ -304,7 +330,7 @@ impl Inner {
                 .map_or(timings.backoff(usize::MAX), |index| timings.backoff(index));
             tokio::time::sleep(pause).await;
         }
-        answer
+        (answer, uncertain)
     }
 
     /// `client_credentials` exchange (no retry, as in the reference).

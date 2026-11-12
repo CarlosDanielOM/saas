@@ -452,6 +452,7 @@ pub fn helix_ok(request: &RecordedRequest, state: &Shared) -> MockResponse {
 pub fn fast_timings() -> Timings {
     Timings {
         refresh_lock_ttl: Duration::from_millis(800),
+        exchange_marker_ttl: Duration::from_millis(1500),
         refresh_wait: Duration::from_millis(720),
         refresh_wait_poll: Duration::from_millis(20),
         refresh_backoff: vec![Duration::from_millis(40), Duration::from_millis(90)],

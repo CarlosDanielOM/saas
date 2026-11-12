@@ -62,6 +62,7 @@ pub mod events;
 mod flight;
 pub mod helix;
 pub mod keys;
+mod lease;
 pub mod oauth;
 mod refresh;
 mod secret;

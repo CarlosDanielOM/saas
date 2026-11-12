@@ -59,7 +59,8 @@ impl fmt::Debug for TwitchConfig {
 ///
 /// | Field | Value | Source |
 /// |---|---|---|
-/// | `refresh_lock_ttl` | 5 s | `REFRESH_LOCK_TTL_MS` (`twitch_streamers.class.ts`) |
+/// | `refresh_lock_ttl` | 5 s | `REFRESH_LOCK_TTL_MS` (`twitch_streamers.class.ts`); renewed every third of it while the holder works (Rust only) |
+/// | `exchange_marker_ttl` | 30 s | Rust only: how long a refresh whose outcome is unknown (lost answer, dead holder) blocks the next exchange of that streamer; renewed while the holder lives |
 /// | `refresh_wait` | 4.5 s | `REFRESH_WAIT_TIMEOUT_MS` |
 /// | `refresh_wait_poll` | 150 ms | `REFRESH_WAIT_POLL_MS` |
 /// | `token_expiry_skew_secs` | 300 | `TOKEN_EXPIRY_SKEW_SECONDS` |
@@ -74,8 +75,10 @@ impl fmt::Debug for TwitchConfig {
 /// | `permission_recheck` | 30 s | Rust only: how long a "no permissions" confirmed by MongoDB is not checked again (per streamer and cached generation) |
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Timings {
-    /// Lease of the cross-process refresh lock (`SET NX PX`).
+    /// Lease of the cross-process refresh lock (`SET NX PX`), renewed while it is held.
     pub refresh_lock_ttl: Duration,
+    /// Lifetime of the exchange marker (see [`crate::tokens`]), renewed while its holder lives.
+    pub exchange_marker_ttl: Duration,
     /// How long a caller that lost the lock waits for the winner's token.
     pub refresh_wait: Duration,
     /// How often it looks.
@@ -108,6 +111,7 @@ impl Timings {
     pub fn reference() -> Self {
         Self {
             refresh_lock_ttl: Duration::from_millis(5000),
+            exchange_marker_ttl: Duration::from_secs(30),
             refresh_wait: Duration::from_millis(4500),
             refresh_wait_poll: Duration::from_millis(150),
             token_expiry_skew_secs: 300,

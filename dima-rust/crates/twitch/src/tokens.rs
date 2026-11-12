@@ -428,9 +428,12 @@ impl Twitch {
         waiter.await
     }
 
-    /// `refreshTwitchToken(refreshToken, userId, context)` as the sign-in routes call it (no
-    /// lock, as in the reference). The refresh runs as a task: dropping the returned future
-    /// does not lose a rotation Twitch already answered.
+    /// `refreshTwitchToken(refreshToken, userId, context)` as the sign-in routes call it. Unlike
+    /// the reference (no lock), it goes through the same gate and lease as every other refresh,
+    /// and the presented token is exchanged only while it is still the stored one; when it has
+    /// been rotated meanwhile, the stored pair is returned if its access token is usable, and
+    /// nothing is sent. The refresh runs as a task: dropping the returned future does not lose
+    /// a rotation Twitch already answered.
     pub async fn refresh_token(
         &self,
         refresh_token: &RefreshToken,
@@ -440,10 +443,17 @@ impl Twitch {
         let inner = Arc::clone(&self.inner);
         let refresh_token = refresh_token.clone();
         let user_id = user_id.to_owned();
+        let kill = self.inner.kill.clone();
         let task = self.inner.tracker.spawn(async move {
-            inner
-                .refresh_twitch_token(&refresh_token, &user_id, &context)
-                .await
+            tokio::select! {
+                biased;
+                () = kill.cancelled() => RefreshOutcome::Failure {
+                    kind: RefreshFailureKind::Transient,
+                    status: None,
+                    reason: RefreshFailureReason::Interrupted,
+                },
+                outcome = inner.locked_rotation(&refresh_token, &user_id, &context) => outcome,
+            }
         });
         task.await.unwrap_or_else(|_| {
             RefreshOutcome::failure(
