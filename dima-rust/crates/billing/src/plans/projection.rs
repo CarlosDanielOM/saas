@@ -18,6 +18,22 @@
 //! reference decided whether to run the effects against the owner it had read before the
 //! write, and ran retention before invalidating.
 //!
+//! **One plan change at a time per owner** (item 3 of P2-BILLING-01c, re-check finding N4). Two
+//! plan writes for one owner could apply their retention in the wrong order, and Free's
+//! retention deletes history: A writes Free and pauses, B writes Premium and finishes its
+//! effects, A resumes and deletes. Now the write and its effects run under the owner's plan
+//! effects lease in Dragonfly (`locks:plan-effects:{owner id}`, a random token, `SET NX PX`
+//! [`EFFECTS_LEASE_MS`], waited for [`EFFECTS_LEASE_WAIT`]: the three processes share it), and
+//! the effect is handed a guard ([`EffectGuard::confirm`]) that, immediately before anything
+//! destructive, checks that this process still holds the lease (and extends it) and reads the
+//! owner's plan again from MongoDB: the plan version that won must still be this write's. A
+//! stale effect does nothing and says so ([`PlanProjection::Superseded`]); the pending flag is
+//! cleared only by the effects of the write that won (the clear is filtered on its version).
+//! The lease is a fence, not the proof: if a holder stalls past its lease, the next write may
+//! go ahead, and the stalled one's next confirmation refuses. What is left is the gap between
+//! a confirmation and the operation that follows it, which the effect keeps to one MongoDB
+//! operation with a server time limit below [`EFFECTS_LEASE_MS`] − [`EFFECTS_DEADLINE`].
+//!
 //! Writes go through `dima_model::users::INFO` (timestamps as Mongoose adds them) and the store's
 //! `PlanCacheFence` (`INVALIDATE_PLAN_SCRIPT`, `SYNC_CREDITS_SCRIPT`, verbatim).
 
@@ -53,6 +69,10 @@ pub enum ProjectionError {
         "Polar plan projection lost ordering race to divergent or unfinished entitlement; retry fresh state"
     )]
     LostRace,
+    /// Another plan change of this owner holds the effects lease: nothing was written; retry
+    /// later.
+    #[error("another plan change of this owner is running its effects; retry later")]
+    EffectsBusy,
     /// The stored snapshot is missing after the write.
     #[error("Polar owner credit snapshot could not be persisted")]
     SnapshotMissing,
@@ -71,20 +91,166 @@ pub enum ProjectionError {
     /// Dragonfly failed.
     #[error(transparent)]
     Fence(#[from] FenceError),
-    /// The retention adjustment failed.
+    /// The retention adjustment failed (or outlived [`EFFECTS_DEADLINE`]).
     #[error("AI usage retention adjustment failed: {0}")]
     Retention(String),
+}
+
+/// How long the owner's plan effects lease lasts, renewed by every confirmation.
+pub const EFFECTS_LEASE_MS: u64 = 60_000;
+/// How long a plan write waits for another one's effects before it gives up
+/// ([`ProjectionError::EffectsBusy`]).
+pub const EFFECTS_LEASE_WAIT: std::time::Duration = std::time::Duration::from_millis(2500);
+/// How often it tries meanwhile.
+pub const EFFECTS_LEASE_RETRY: std::time::Duration = std::time::Duration::from_millis(100);
+/// The deadline of the retention adjustment: aborted past it (the lease outlives it by
+/// 15 s, the margin a MongoDB operation's server time limit must stay within).
+pub const EFFECTS_DEADLINE: std::time::Duration = std::time::Duration::from_secs(45);
+
+/// `locks:plan-effects:{owner id}` (Rust-only).
+pub fn effects_lease_key(owner_id: &ObjectId) -> String {
+    format!("locks:plan-effects:{}", owner_id.to_hex())
+}
+
+static EXTEND_EFFECTS_LEASE: dima_store::dragonfly::Script = dima_store::dragonfly::Script::new(
+    "PLAN_EFFECTS_LEASE_EXTEND",
+    include_str!("lua/plan_effects_extend.lua"),
+);
+static RELEASE_EFFECTS_LEASE: dima_store::dragonfly::Script = dima_store::dragonfly::Script::new(
+    "PLAN_EFFECTS_LEASE_RELEASE",
+    include_str!("lua/plan_effects_release.lua"),
+);
+
+/// Every script of the plan effects lease, for the tests that check them.
+pub fn effects_lease_scripts() -> [&'static dima_store::dragonfly::Script; 2] {
+    [&EXTEND_EFFECTS_LEASE, &RELEASE_EFFECTS_LEASE]
+}
+
+/// Why an effect must not go on.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum StaleEffect {
+    /// This process no longer holds the owner's plan effects lease.
+    #[error("the plan effects lease passed to another plan change")]
+    LeaseLost,
+    /// A newer plan write is stored: its own effects apply instead.
+    #[error("a newer plan write superseded this one")]
+    Superseded,
+    /// The owner is gone.
+    #[error("the owner disappeared")]
+    OwnerGone,
+    /// MongoDB or Dragonfly could not confirm; treated as stale (nothing destructive runs).
+    #[error("the plan could not be confirmed: {0}")]
+    Unconfirmed(String),
+}
+
+/// Handed to the effects of one plan write ([`PlanEffects::adjust_usage_retention`]).
+pub struct EffectGuard<'a> {
+    stores: ProjectionStores<'a>,
+    owner_id: ObjectId,
+    observed_at_ms: i64,
+    event_key: &'a str,
+    tier: PlanTier,
+    lease_key: String,
+    token: String,
+}
+
+impl std::fmt::Debug for EffectGuard<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EffectGuard")
+            .field("tier", &self.tier)
+            .finish_non_exhaustive()
+    }
+}
+
+impl EffectGuard<'_> {
+    /// The tier the write stored.
+    pub fn tier(&self) -> PlanTier {
+        self.tier
+    }
+
+    /// Call immediately before anything destructive (a delete, a shortened lifetime): `Ok` when
+    /// this process still holds the owner's plan effects lease (it is extended to
+    /// [`EFFECTS_LEASE_MS`]) and the owner's stored plan is still this write's (its version,
+    /// and so the tier that won). Otherwise stop, do nothing more, and return
+    /// [`Retention::Stale`].
+    pub async fn confirm(&self) -> Result<(), StaleEffect> {
+        let unconfirmed =
+            |error: &dyn std::fmt::Display| StaleEffect::Unconfirmed(error.to_string());
+        let extended = EXTEND_EFFECTS_LEASE
+            .run_value(
+                self.stores.dragonfly,
+                &[&self.lease_key],
+                &[self.token.as_str(), &EFFECTS_LEASE_MS.to_string()],
+            )
+            .await
+            .map_err(|e| unconfirmed(&e))?;
+        if dima_store::dragonfly::commands::reply::int(extended).map_err(|e| unconfirmed(&e))? != 1
+        {
+            return Err(StaleEffect::LeaseLost);
+        }
+        let stored = self
+            .stores
+            .mongo
+            .documents(dima_model::users::COLLECTION)
+            .find_one(doc! { "_id": self.owner_id })
+            .projection(
+                doc! { "plan_tier": 1, "polar_plan_event_at": 1, "polar_plan_event_key": 1 },
+            )
+            .await
+            .map_err(|e| unconfirmed(&e))?
+            .ok_or(StaleEffect::OwnerGone)?;
+        let at = match stored.get("polar_plan_event_at") {
+            Some(Bson::DateTime(at)) => Some(at.timestamp_millis()),
+            _ => None,
+        };
+        let key = stored.get_str("polar_plan_event_key").ok();
+        let tier = stored.get_str("plan_tier").ok();
+        if at != Some(self.observed_at_ms)
+            || key != Some(self.event_key)
+            || tier != Some(self.tier.as_str())
+        {
+            return Err(StaleEffect::Superseded);
+        }
+        Ok(())
+    }
+}
+
+/// What the retention adjustment did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Retention {
+    /// Applied for the write's tier.
+    Applied,
+    /// [`EffectGuard::confirm`] refused before a destructive step: stopped there.
+    Stale,
 }
 
 /// The plan side effect owned by the AI usage ledger (`adjustAiUsageRetention`, the second half
 /// of this crate).
 pub trait PlanEffects: Send + Sync {
-    /// Adjusts the retention of the channels' usage receipts to `tier`.
+    /// Adjusts the retention of the channels' usage receipts to `tier` (`guard.tier()`).
+    /// Each step that deletes, or shortens a lifetime that a TTL index then enforces, is
+    /// preceded by `guard.confirm()`; when it refuses, the adjustment stops at once and
+    /// returns [`Retention::Stale`]. Each step is one MongoDB operation with a server time limit
+    /// (`maxTimeMS`) of at most 10 s, so none can outlive the lease after a confirmation.
     fn adjust_usage_retention<'a>(
         &'a self,
         channel_ids: &'a [String],
         tier: PlanTier,
-    ) -> BoxFuture<'a, Result<(), String>>;
+        guard: &'a EffectGuard<'a>,
+    ) -> BoxFuture<'a, Result<Retention, String>>;
+}
+
+/// What [`project_polar_plan`] did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlanProjection {
+    /// The write was applied, and its effects ran when the plan changed (the reference's
+    /// `true`).
+    Applied,
+    /// A newer equal plan was already stored: nothing to do (the reference's `false`).
+    AlreadyCurrent,
+    /// The write was applied, but a newer plan write took over before its effects could run:
+    /// they did nothing, and the newer write's effects apply and clear the pending flag.
+    Superseded,
 }
 
 /// Where the projection writes.
@@ -176,9 +342,33 @@ fn until_bson(until: Option<i64>) -> Bson {
     until.map_or(Bson::Null, date)
 }
 
-/// `projectPolarPlan(owner, plan, observedAt, eventKey, customerId, deps, fingerprint)`: `true`
-/// when this write was applied (and its effects ran), `false` when a newer equal plan was
-/// already stored.
+/// Takes the owner's plan effects lease, waiting [`EFFECTS_LEASE_WAIT`]; `None` when another
+/// plan change keeps it.
+async fn take_effects_lease(
+    dragonfly: &Dragonfly,
+    key: &str,
+    token: &str,
+) -> Result<bool, DragonflyError> {
+    let started = tokio::time::Instant::now();
+    loop {
+        let options = dima_store::dragonfly::SetOptions {
+            condition: dima_store::dragonfly::SetCondition::IfMissing,
+            expiry: dima_store::dragonfly::SetExpiry::Millis(EFFECTS_LEASE_MS),
+            get: false,
+        };
+        if dragonfly.set(key, token.as_bytes(), options).await?
+            == dima_store::dragonfly::SetOutcome::Written
+        {
+            return Ok(true);
+        }
+        if started.elapsed() >= EFFECTS_LEASE_WAIT {
+            return Ok(false);
+        }
+        tokio::time::sleep(EFFECTS_LEASE_RETRY).await;
+    }
+}
+
+/// `projectPolarPlan(owner, plan, observedAt, eventKey, customerId, deps, fingerprint)`.
 ///
 /// Item 3 of P2-BILLING-01b (review finding 3). Whether the plan changed is decided against
 /// the document this write **replaced**, which the conditional update returns atomically with
@@ -190,6 +380,11 @@ fn until_bson(until: Option<i64>) -> Bson {
 /// adjusts the usage retention when the plan differs from the replaced one (or the replaced
 /// one had effects pending), and clears the flag (filtered on this write's event key and
 /// time). `owner` still names the customer link the write requires.
+///
+/// Item 3 of P2-BILLING-01c (re-check finding N4): all of it runs under the owner's plan
+/// effects lease (see the module docs; `random` draws its token), the retention under
+/// [`EFFECTS_DEADLINE`] and behind [`EffectGuard::confirm`]; a write whose effects were
+/// overtaken does nothing more and answers [`PlanProjection::Superseded`].
 #[allow(clippy::too_many_arguments)]
 pub async fn project_polar_plan(
     stores: ProjectionStores<'_>,
@@ -201,7 +396,55 @@ pub async fn project_polar_plan(
     customer_id: &str,
     fingerprint: &str,
     now_ms: i64,
-) -> Result<bool, ProjectionError> {
+    random: &dyn Random,
+) -> Result<PlanProjection, ProjectionError> {
+    let redis = |source| FenceError::Redis {
+        write_outcome_unknown: true,
+        source,
+    };
+    let lease_key = effects_lease_key(&owner.id);
+    let token = random
+        .uuid_v4()
+        .map_err(|_| redis(DragonflyError::Reply("lease token unavailable")))?;
+    if !take_effects_lease(stores.dragonfly, &lease_key, &token)
+        .await
+        .map_err(redis)?
+    {
+        return Err(ProjectionError::EffectsBusy);
+    }
+    let outcome = project_under_lease(
+        stores.clone(),
+        effects,
+        owner,
+        plan,
+        observed_at_ms,
+        event_key,
+        customer_id,
+        fingerprint,
+        now_ms,
+        (&lease_key, &token),
+    )
+    .await;
+    // Released only if still ours; a failed release expires on its own.
+    let _ = RELEASE_EFFECTS_LEASE
+        .run_value(stores.dragonfly, &[&lease_key], &[token.as_str()])
+        .await;
+    outcome
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn project_under_lease(
+    stores: ProjectionStores<'_>,
+    effects: &dyn PlanEffects,
+    owner: &PlanOwnerState,
+    plan: EntitledPlan,
+    observed_at_ms: i64,
+    event_key: &str,
+    customer_id: &str,
+    fingerprint: &str,
+    now_ms: i64,
+    (lease_key, token): (&str, &str),
+) -> Result<PlanProjection, ProjectionError> {
     let customer = owner
         .customer_id
         .as_ref()
@@ -260,7 +503,7 @@ pub async fn project_polar_plan(
         {
             return Err(ProjectionError::LostRace);
         }
-        return Ok(false);
+        return Ok(PlanProjection::AlreadyCurrent);
     };
     let replaced = PlanOwnerState::of(&dima_model::decode_document::<User>(&replaced)?);
     let plan_changed = replaced.effects_pending
@@ -286,10 +529,30 @@ pub async fn project_polar_plan(
         let _: Acceptance = fence.invalidate_plan(id, &version, &context_key).await?;
     }
     if plan_changed && !twitch_ids.is_empty() {
-        effects
-            .adjust_usage_retention(twitch_ids, plan.plan_tier)
-            .await
-            .map_err(ProjectionError::Retention)?;
+        let guard = EffectGuard {
+            stores: stores.clone(),
+            owner_id: owner.id,
+            observed_at_ms,
+            event_key,
+            tier: plan.plan_tier,
+            lease_key: lease_key.to_owned(),
+            token: token.to_owned(),
+        };
+        // The tier that won is read again before the effects start, and by the effect before
+        // each destructive step.
+        if guard.confirm().await.is_err() {
+            return Ok(PlanProjection::Superseded);
+        }
+        let retention = tokio::time::timeout(
+            EFFECTS_DEADLINE,
+            effects.adjust_usage_retention(twitch_ids, plan.plan_tier, &guard),
+        )
+        .await
+        .map_err(|_| ProjectionError::Retention("deadline exceeded".into()))?
+        .map_err(ProjectionError::Retention)?;
+        if retention == Retention::Stale {
+            return Ok(PlanProjection::Superseded);
+        }
     }
     let mut ctx = WriteContext::new(now_ms);
     let clear = dima_model::users::INFO.prepare_update(
@@ -307,7 +570,7 @@ pub async fn project_polar_plan(
         .writes(dima_model::users::COLLECTION)
         .update_one(&clear)
         .await?;
-    Ok(true)
+    Ok(PlanProjection::Applied)
 }
 
 /// `payload.meters` as stored by Mongoose in a Mixed array: numbers as the driver writes them.

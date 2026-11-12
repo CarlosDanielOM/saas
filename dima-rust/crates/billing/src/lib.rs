@@ -40,7 +40,8 @@
 //! flags `twitch:{id}:ai:exhaust` and `{id}:ai:exhaust`, `twitch:{id}:ai:credits:plan-version`,
 //! `twitch:{id}:ai:credits:polar-version`, `twitch:{id}:ai:credits:revision` (the generation and
 //! the debits held against Polar's figures, [`plans::balance`]), `twitch:{id}:ai:usage-local:*`,
-//! `billing:credit-packs:context:v1:*`, `locks:polar-ingest:{id}`. Drained (money):
+//! `billing:credit-packs:context:v1:*`, `locks:polar-ingest:{id}`, `locks:plan-effects:{owner}`
+//! (one plan change's write and effects at a time, [`plans::projection`]). Drained (money):
 //! `twitch:{id}:ai:polarshevent`, flushed by the TypeScript processes before they stop; its
 //! Rust-only companions `twitch:{id}:ai:polarshevent:processing` and `…:dead` are new after
 //! cutover (an operator reviews `…:dead`, which is never trimmed: [`polar::flush`]). The

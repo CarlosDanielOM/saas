@@ -20,8 +20,8 @@ use dima_billing::plans::credits_cache::{CreditsCache, UsageProjection};
 use dima_billing::plans::entitlements::EntitledPlan;
 use dima_billing::plans::pack_context::{PackContextCache, context_cache_key};
 use dima_billing::plans::projection::{
-    PlanEffects, PlanOwnerState, ProjectionError, ProjectionStores, project_credit_snapshot,
-    project_polar_plan,
+    EffectGuard, PlanEffects, PlanOwnerState, PlanProjection, ProjectionError, ProjectionStores,
+    Retention, project_credit_snapshot, project_polar_plan,
 };
 use dima_billing::products::AI_CREDITS_METER_ID;
 use dima_core::ManualClock;
@@ -50,17 +50,21 @@ impl PlanEffects for Effects {
         &'a self,
         channel_ids: &'a [String],
         tier: PlanTier,
-    ) -> BoxFuture<'a, Result<(), String>> {
+        guard: &'a EffectGuard<'a>,
+    ) -> BoxFuture<'a, Result<Retention, String>> {
         Box::pin(async move {
             if self.fail.load(Ordering::SeqCst) > 0 {
                 self.fail.fetch_sub(1, Ordering::SeqCst);
                 return Err("retention store unavailable".into());
             }
+            if guard.confirm().await.is_err() {
+                return Ok(Retention::Stale);
+            }
             self.calls
                 .lock()
                 .unwrap()
                 .push((channel_ids.to_vec(), tier));
-            Ok(())
+            Ok(Retention::Applied)
         })
     }
 }
@@ -142,9 +146,10 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-1",
             T0,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(applied);
+        assert_eq!(applied, PlanProjection::Applied);
         let (document, after) = load(&store, id).await;
         assert_eq!(document.get_str("plan_tier")?, "premium");
         assert_eq!(
@@ -198,9 +203,10 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-1",
             T0 + 5,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(applied);
+        assert_eq!(applied, PlanProjection::Applied);
         assert_eq!(effects.calls.lock().unwrap().len(), 1);
         assert_eq!(load(&store, id).await.1, after);
 
@@ -215,9 +221,10 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-1",
             T0 + 6,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(applied);
+        assert_eq!(applied, PlanProjection::Applied);
         assert_eq!(
             effects.calls.lock().unwrap().len(),
             1,
@@ -238,6 +245,7 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-0",
             T0 + 7,
+            &dima_core::SystemRandom,
         )
         .await;
         assert!(matches!(older, Err(ProjectionError::LostRace)), "{older:?}");
@@ -251,9 +259,10 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-0",
             T0 + 8,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(!older_same);
+        assert_eq!(older_same, PlanProjection::AlreadyCurrent);
         assert_eq!(load(&store, id).await.1.plan_tier, "premium");
 
         // Interrupted between the two writes: the plan is stored with the pending flag and the
@@ -275,6 +284,7 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-2",
             T0 + 9,
+            &dima_core::SystemRandom,
         )
         .await;
         assert!(matches!(failed, Err(ProjectionError::Retention(_))));
@@ -301,9 +311,10 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-2",
             T0 + 10,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(retried);
+        assert_eq!(retried, PlanProjection::Applied);
         let (document, _) = load(&store, id).await;
         assert!(!document.contains_key("polar_plan_effects_pending"));
         assert!(!exists(&dragonfly, &credits_cache_key(&channel)).await);
@@ -324,7 +335,8 @@ async fn plan_projection_fault_cases() -> Result<()> {
                 "evt-3",
                 CUSTOMER,
                 "fp-3",
-                T0 + 11
+                T0 + 11,
+                &dima_core::SystemRandom
             ),
             project_polar_plan(
                 stores.clone(),
@@ -335,12 +347,16 @@ async fn plan_projection_fault_cases() -> Result<()> {
                 "evt-4",
                 CUSTOMER,
                 "fp-4",
-                T0 + 11
+                T0 + 11,
+                &dima_core::SystemRandom
             ),
         );
         assert!(b.is_ok(), "{b:?}");
         assert!(
-            matches!(a, Ok(true) | Err(ProjectionError::LostRace)),
+            matches!(
+                a,
+                Ok(PlanProjection::Applied) | Err(ProjectionError::LostRace)
+            ),
             "{a:?}"
         );
         let (document, _) = load(&store, id).await;
@@ -366,6 +382,7 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp",
             T0 + 12,
+            &dima_core::SystemRandom,
         )
         .await;
         assert!(
@@ -586,9 +603,10 @@ async fn a_stale_owner_cannot_suppress_the_invalidation_of_a_plan_change() -> Re
             CUSTOMER,
             "fp-a",
             T0 + 1,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(a);
+        assert_eq!(a, PlanProjection::Applied);
         // Premium caches, filled after A's effects.
         seed_caches(&dragonfly, &channel).await;
 
@@ -602,9 +620,10 @@ async fn a_stale_owner_cannot_suppress_the_invalidation_of_a_plan_change() -> Re
             CUSTOMER,
             "fp-b",
             T0 + 2,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(b);
+        assert_eq!(b, PlanProjection::Applied);
         let (document, after) = load(&store, id).await;
         assert_eq!(document.get_str("plan_tier")?, "free");
         assert!(!after.effects_pending);

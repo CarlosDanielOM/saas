@@ -45,8 +45,9 @@ use futures_util::future::BoxFuture;
 use serde_json::Value;
 use std::sync::Arc;
 
-/// `APPLY_AI_CREDIT_USAGE_SCRIPT` (`billing.ts`) with the usage revision
-/// ([`super::balance::DEBIT_REVISION_LINES`]): otherwise the reference's text.
+/// `APPLY_AI_CREDIT_USAGE_SCRIPT` (`billing.ts`) with the hold of local debits
+/// ([`super::balance::HOLD_PRELUDE`], [`super::balance::DEBIT_GUARD_LINES`],
+/// [`super::balance::DEBIT_HOLD_LINES`]): otherwise the reference's text.
 pub use super::balance::DEBIT as APPLY_AI_CREDIT_USAGE;
 
 /// 31 days, the usage rewrite's TTL and the idempotency marker's.
