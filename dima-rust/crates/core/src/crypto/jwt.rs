@@ -134,7 +134,9 @@ pub struct VerifyOptions<'a> {
     pub nonce: Option<&'a str>,
     /// `maxAge`: `iat` plus this must still be in the future.
     pub max_age: Option<Timespan<'a>>,
-    /// `clockTolerance` in seconds, applied to `nbf`, `exp` and `maxAge`.
+    /// `clockTolerance` in seconds, applied to `nbf`, `exp` and `maxAge`. A value that is not a
+    /// finite number counts as zero: NaN as in the package (`clockTolerance || 0`), and, unlike
+    /// the package, an infinite value too, so no tolerance can switch those checks off.
     pub clock_tolerance_secs: f64,
     /// `ignoreExpiration`.
     pub ignore_expiration: bool,
@@ -175,6 +177,10 @@ pub enum JwtError {
     /// A `typ: "JWT"` token whose payload is not JSON (Node throws a `SyntaxError`).
     #[error("invalid token payload")]
     PayloadSyntax,
+    /// A correctly signed token whose payload is JSON `null` (the package throws a `TypeError`
+    /// reading `payload.nbf`).
+    #[error("Cannot read properties of null (reading 'nbf')")]
+    NullPayload,
     /// An unsigned token presented with a key.
     #[error("jwt signature is required")]
     SignatureRequired,
@@ -548,7 +554,13 @@ pub fn verify(
     }
 
     let payload = decoded.payload;
-    let tolerance = options.clock_tolerance_secs;
+    // The package reads `payload.nbf` next, which throws for a `null` payload.
+    if payload.is_null() {
+        return Err(JwtError::NullPayload);
+    }
+    let tolerance = Some(options.clock_tolerance_secs)
+        .filter(|tolerance| tolerance.is_finite())
+        .unwrap_or(0.0);
     if !options.ignore_not_before
         && let Some(nbf) = claim(&payload, "nbf")
     {
@@ -727,6 +739,73 @@ mod tests {
         assert_eq!(ms("h"), None);
         assert_eq!(ms("1 hour "), None);
         assert_eq!(ms(""), None);
+    }
+
+    #[test]
+    fn a_tolerance_that_is_not_a_finite_number_is_zero() {
+        let key = SecretBytes::from_text("k");
+        let now = 1_700_000_000_000;
+        let expired = sign(
+            &object(json!({"exp": 1_699_999_990})),
+            &key,
+            &SignOptions::default(),
+            now,
+        )
+        .unwrap();
+        let early = sign(
+            &object(json!({"nbf": 1_700_000_010})),
+            &key,
+            &SignOptions::default(),
+            now,
+        )
+        .unwrap();
+        for tolerance in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let options = VerifyOptions {
+                clock_tolerance_secs: tolerance,
+                ..VerifyOptions::new(HMAC_ALGORITHMS)
+            };
+            assert_eq!(
+                verify(&expired, &key, &options, now),
+                Err(JwtError::Expired {
+                    exp: 1_699_999_990.0
+                }),
+                "{tolerance}"
+            );
+            assert_eq!(
+                verify(&early, &key, &options, now),
+                Err(JwtError::NotActive {
+                    nbf: 1_700_000_010.0
+                }),
+                "{tolerance}"
+            );
+        }
+        // A finite tolerance still applies, as in the package.
+        let options = VerifyOptions {
+            clock_tolerance_secs: 20.0,
+            ..VerifyOptions::new(HMAC_ALGORITHMS)
+        };
+        assert!(verify(&expired, &key, &options, now).is_ok());
+        assert!(verify(&early, &key, &options, now).is_ok());
+    }
+
+    #[test]
+    fn a_signed_null_payload_is_rejected() {
+        // Signed by Node with key "k"; `jwt.verify` throws reading `payload.nbf` of null, even
+        // with ignoreNotBefore and ignoreExpiration.
+        let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.efAgOWZZ8H6y_ZFOuV31OpDCj6CMDTV6niY0hHU1GjE";
+        let key = SecretBytes::from_text("k");
+        for ignore in [false, true] {
+            let options = VerifyOptions {
+                ignore_expiration: ignore,
+                ignore_not_before: ignore,
+                ..VerifyOptions::new(HMAC_ALGORITHMS)
+            };
+            assert_eq!(verify(token, &key, &options, 0), Err(JwtError::NullPayload));
+        }
+        assert_eq!(
+            JwtError::NullPayload.to_string(),
+            "Cannot read properties of null (reading 'nbf')"
+        );
     }
 
     #[test]
