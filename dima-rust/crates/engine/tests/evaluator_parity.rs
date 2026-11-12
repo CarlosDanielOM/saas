@@ -1,4 +1,4 @@
-//! The evaluator corpus (`fixtures/ast_evaluator_cases.json`, 3,563 cases generated from today's
+//! The evaluator corpus (`fixtures/ast_evaluator_cases.json`, 4,005 cases generated from today's
 //! TypeScript by `fixtures/ast_evaluator_reference.mjs` under Node 24) run against
 //! `dima_engine::eval`. Every case must give the recorded observation, with the intended
 //! differences of [`support::Difference`] applied; the cases whose input cannot exist in Rust

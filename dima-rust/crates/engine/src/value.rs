@@ -16,6 +16,15 @@ use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
 use std::borrow::Cow;
 use std::fmt;
 
+/// `String(value)` or `Number(value)` threw: the value is an object with an own `toString`
+/// key, or a list that holds one (joining a list converts its items). Data has no functions, so
+/// such a key is never callable, and `Object.prototype.valueOf` returns the object itself:
+/// JavaScript's `ToPrimitive` throws a `TypeError` with this message. An own `valueOf` key
+/// alone changes nothing (`toString` is still found on the prototype).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, thiserror::Error)]
+#[error("Cannot convert object to primitive value")]
+pub struct CoercionError;
+
 /// A value of the command language.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum Value {
@@ -99,38 +108,44 @@ impl Value {
         }
     }
 
-    /// `String(value)`.
-    pub fn to_text(&self) -> Cow<'_, str> {
-        match self {
+    /// Whether this is an object with an own `toString` key, which `String()` cannot convert.
+    fn shadows_to_string(&self) -> bool {
+        matches!(self, Self::Object(entries) if entries.iter().any(|(key, _)| key == "toString"))
+    }
+
+    /// `String(value)`. Fails where JavaScript throws ([`CoercionError`]).
+    pub fn to_text(&self) -> Result<Cow<'_, str>, CoercionError> {
+        Ok(match self {
             Self::Text(text) => Cow::Borrowed(text),
             Self::Undefined => Cow::Borrowed("undefined"),
             Self::Null => Cow::Borrowed("null"),
             Self::Bool(true) => Cow::Borrowed("true"),
             Self::Bool(false) => Cow::Borrowed("false"),
             Self::Number(number) => Cow::Owned(number_to_string(*number)),
+            Self::Object(_) if self.shadows_to_string() => return Err(CoercionError),
             Self::Object(_) => Cow::Borrowed("[object Object]"),
             Self::List(items) => {
                 let mut out = String::new();
-                join_list(items, &mut out);
+                join_list(items, &mut out)?;
                 Cow::Owned(out)
             }
-        }
+        })
     }
 
     /// `String(value ?? '')`: `undefined` and `null` are empty.
-    pub fn to_text_or_empty(&self) -> Cow<'_, str> {
+    pub fn to_text_or_empty(&self) -> Result<Cow<'_, str>, CoercionError> {
         if self.is_nullish() {
-            Cow::Borrowed("")
+            Ok(Cow::Borrowed(""))
         } else {
             self.to_text()
         }
     }
 
     /// Converts into text (`String(value)`), reusing the text's buffer.
-    pub fn into_text(self) -> String {
+    pub fn into_text(self) -> Result<String, CoercionError> {
         match self {
-            Self::Text(text) => text,
-            other => other.to_text().into_owned(),
+            Self::Text(text) => Ok(text),
+            other => Ok(other.to_text()?.into_owned()),
         }
     }
 
@@ -146,16 +161,17 @@ impl Value {
         }
     }
 
-    /// `Number(value)`.
-    pub fn to_number(&self) -> f64 {
-        match self {
+    /// `Number(value)`. Fails where JavaScript throws ([`CoercionError`]): an object or list
+    /// is converted through its text.
+    pub fn to_number(&self) -> Result<f64, CoercionError> {
+        Ok(match self {
             Self::Undefined => f64::NAN,
             Self::Null => 0.0,
             Self::Bool(flag) => f64::from(u8::from(*flag)),
             Self::Number(number) => *number,
             Self::Text(text) => dima_text::parse_number(text),
-            other => dima_text::parse_number(&other.to_text()),
-        }
+            other => dima_text::parse_number(&other.to_text()?),
+        })
     }
 
     /// `JSON.parse(text)`, or `None` where it throws. Lone surrogate escapes become U+FFFD (text
@@ -269,8 +285,8 @@ impl From<serde_json::Value> for Value {
 }
 
 /// `Array.prototype.join(',')`, as `String(list)` does: `null` and `undefined` items are empty,
-/// nested lists are joined the same way.
-fn join_list(items: &[Value], out: &mut String) {
+/// nested lists are joined the same way, and an item `String()` cannot convert fails the join.
+fn join_list(items: &[Value], out: &mut String) -> Result<(), CoercionError> {
     enum Step<'a> {
         Item(&'a Value),
         Comma,
@@ -294,9 +310,10 @@ fn join_list(items: &[Value], out: &mut String) {
                 }
             }
             Step::Item(item) if item.is_nullish() => {}
-            Step::Item(item) => out.push_str(&item.to_text()),
+            Step::Item(item) => out.push_str(&item.to_text()?),
         }
     }
+    Ok(())
 }
 
 /// Whether `key` is an array index (`"0"` to `"4294967294"`, no leading zeros), and its value.
@@ -513,11 +530,22 @@ mod tests {
             Value::List(vec![Value::text("a"), Value::Undefined, Value::Bool(true)]),
             Value::Object(vec![]),
         ]);
-        assert_eq!(list.to_text(), "1,,a,,true,[object Object]");
-        assert_eq!(Value::Number(-0.0).to_text(), "0");
-        assert_eq!(Value::Number(1e21).to_text(), "1e+21");
-        assert_eq!(Value::Undefined.to_text(), "undefined");
-        assert_eq!(Value::Undefined.to_text_or_empty(), "");
+        assert_eq!(list.to_text().unwrap(), "1,,a,,true,[object Object]");
+        assert_eq!(Value::Number(-0.0).to_text().unwrap(), "0");
+        assert_eq!(Value::Number(1e21).to_text().unwrap(), "1e+21");
+        assert_eq!(Value::Undefined.to_text().unwrap(), "undefined");
+        assert_eq!(Value::Undefined.to_text_or_empty().unwrap(), "");
+        let shadowed = Value::object(vec![("toString".into(), Value::Null)]);
+        assert_eq!(shadowed.to_text(), Err(CoercionError));
+        assert_eq!(shadowed.to_number(), Err(CoercionError));
+        let nested = Value::List(vec![Value::Null, Value::List(vec![shadowed.clone()])]);
+        assert_eq!(nested.to_text(), Err(CoercionError));
+        let value_of = Value::object(vec![("valueOf".into(), Value::Null)]);
+        assert_eq!(value_of.to_text().unwrap(), "[object Object]");
+        assert!(value_of.to_number().unwrap().is_nan());
+        // A nested object is never converted by `String()` of its parent.
+        let inner = Value::object(vec![("a".into(), shadowed)]);
+        assert_eq!(inner.to_text().unwrap(), "[object Object]");
     }
 
     #[test]
@@ -577,10 +605,10 @@ mod tests {
 
     #[test]
     fn number_and_truthiness() {
-        assert_eq!(Value::text(" 0x10 ").to_number(), 16.0);
-        assert!(Value::Null.to_number() == 0.0);
-        assert!(Value::Undefined.to_number().is_nan());
-        assert_eq!(Value::List(vec![Value::text("5")]).to_number(), 5.0);
+        assert_eq!(Value::text(" 0x10 ").to_number(), Ok(16.0));
+        assert_eq!(Value::Null.to_number(), Ok(0.0));
+        assert!(Value::Undefined.to_number().unwrap().is_nan());
+        assert_eq!(Value::List(vec![Value::text("5")]).to_number(), Ok(5.0));
         assert!(!Value::Number(f64::NAN).js_truthy());
         assert!(Value::List(vec![]).js_truthy());
         assert!(!Value::empty().js_truthy());

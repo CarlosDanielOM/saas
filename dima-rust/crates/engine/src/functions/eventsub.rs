@@ -1,7 +1,7 @@
 //! `eventsub.functions.ts` and `ad.time`: reads of the triggering event's data.
 
 use crate::context::Context;
-use crate::value::Value;
+use crate::value::{CoercionError, Value};
 use dima_text::{
     is_js_whitespace, math_round, number_to_string, parse_date, parse_number, to_lower, trim,
 };
@@ -248,18 +248,20 @@ pub(crate) fn reward_input(context: &Context) -> String {
 }
 
 /// `$(ad.time)` (`adHandler` in `channel.functions.ts`): `duration_seconds` when truthy.
-pub(crate) fn ad_time(context: &Context) -> String {
-    match field(context, "duration_seconds").filter(|value| value.js_truthy()) {
-        Some(value) => {
-            let text = value.to_text();
-            if text.is_empty() {
-                "0".into()
-            } else {
-                text.into_owned()
+pub(crate) fn ad_time(context: &Context) -> Result<String, CoercionError> {
+    Ok(
+        match field(context, "duration_seconds").filter(|value| value.js_truthy()) {
+            Some(value) => {
+                let text = value.to_text()?;
+                if text.is_empty() {
+                    "0".into()
+                } else {
+                    text.into_owned()
+                }
             }
-        }
-        None => "0".into(),
-    }
+            None => "0".into(),
+        },
+    )
 }
 
 #[cfg(test)]
@@ -332,7 +334,7 @@ mod tests {
             "0"
         );
         assert_eq!(
-            ad_time(&with(vec![("duration_seconds", Value::Number(90.0))])),
+            ad_time(&with(vec![("duration_seconds", Value::Number(90.0))])).unwrap(),
             "90"
         );
     }

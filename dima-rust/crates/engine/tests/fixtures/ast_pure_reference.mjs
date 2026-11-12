@@ -5,9 +5,8 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import ts from 'typescript';
 import {
-  buildSourceBundle, createPreparedSourceOracle, preparedSourceLoaderTransport,
+  ts, repo, buildSourceBundle, createPreparedSourceOracle, preparedSourceLoaderTransport,
   normalizeObservation, withTwin
 } from './ast_evaluator_reference.mjs';
 export { normalizeObservation };
@@ -286,7 +285,7 @@ async function appendActualTestCases(definitions) {
   }
   for (const source of ['$(slice - 2 - 1 abc)','$(slice - -2 abc)','$(upper \"hello world\")','$(user \"ignore symbols numbers\")','$(replace \"a a\" \"$&$$\" \"a a a a\")']) parse(source,{},'quoted-folding');
   for (const path of extraSources) {
-    const text = await readFile(new URL(`../../../../../${path}`,import.meta.url),'utf8');
+    const text = await readFile(new URL(path,repo),'utf8');
     const ast = ts.createSourceFile(path,text,ts.ScriptTarget.Latest,true);
     const unavailable=Symbol('not a statically known test value');
     const staticValue=(node,seen=new Set())=>{
@@ -485,7 +484,7 @@ async function registryEvidence(bundle) {
 }
 
 export async function buildCorpus() {
-  assert.equal(sha256(await readFile(oldOutput)),'a8bebad938d3107052391ba631f0315dd9054059dae2ce7c3e1b04d56a540e74','evaluator corpus (regenerated from today\'s TypeScript) must remain byte-identical');
+  assert.equal(sha256(await readFile(oldOutput)),'17f8250d5b4374928eca3ee55bbeb785d521d9d51ec6b3ca4ac3fa54c4f8b1ce','evaluator corpus (regenerated from today\'s TypeScript) must remain byte-identical');
   const bundle=await sourceBundle();
   const registryMetadata=await registryEvidence(bundle);
   const oracle=createPreparedSourceOracle(bundle.code,{registrations});

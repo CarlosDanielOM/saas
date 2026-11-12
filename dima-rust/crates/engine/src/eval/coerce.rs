@@ -2,57 +2,61 @@
 //! positions and loop counter assignments. All visible in chat, all kept exactly, except the
 //! one ordering rule noted on [`compare`].
 
+use crate::functions::Failure;
 use crate::syntax::{BinaryOp, LoopAssignOp};
-use crate::value::Value;
+use crate::value::{CoercionError, Value};
 use dima_text::{
     Radix, math_round, number_to_string, parse_float, parse_int, parse_number, to_lower, trim,
 };
 
 /// `toNumberSafe`: a finite number as is; otherwise the text's leading decimal number
 /// (`parseFloat`), with empty text, `null`, `undefined`, NaN and the infinities all 0.
-pub(crate) fn to_number_safe(value: &Value) -> f64 {
+pub(crate) fn to_number_safe(value: &Value) -> Result<f64, CoercionError> {
     if let Value::Number(number) = value
         && number.is_finite()
     {
-        return *number;
+        return Ok(*number);
     }
-    let text = value.to_text_or_empty();
+    let text = value.to_text_or_empty()?;
     let text = trim(&text);
     if text.is_empty() || text == "null" || text == "undefined" {
-        return 0.0;
+        return Ok(0.0);
     }
     let number = parse_float(text);
-    if number.is_finite() { number } else { 0.0 }
+    Ok(if number.is_finite() { number } else { 0.0 })
 }
 
 /// `isTruthy`: the language's conditions. `true`/`1` are true; `false`, `0`, `null` and
 /// `undefined` are false; any other value is false when its text, lowercased and trimmed, is
 /// `false`, `0` or empty.
-pub(crate) fn is_truthy(value: &Value) -> bool {
+pub(crate) fn is_truthy(value: &Value) -> Result<bool, CoercionError> {
     match value {
-        Value::Bool(flag) => return *flag,
-        Value::Number(number) if *number == 1.0 => return true,
-        Value::Number(number) if *number == 0.0 => return false,
-        Value::Null | Value::Undefined => return false,
+        Value::Bool(flag) => return Ok(*flag),
+        Value::Number(number) if *number == 1.0 => return Ok(true),
+        Value::Number(number) if *number == 0.0 => return Ok(false),
+        Value::Null | Value::Undefined => return Ok(false),
         _ => {}
     }
-    let text = to_lower(&value.to_text());
-    !matches!(trim(&text), "false" | "0" | "")
+    let text = to_lower(&value.to_text()?);
+    Ok(!matches!(trim(&text), "false" | "0" | ""))
 }
 
 /// `resolveArrayIndex`: a number is truncated, anything else read with `parseInt(…, 10)`;
 /// negative counts from the end. `None` when invalid or out of range.
-pub(crate) fn resolve_array_index(value: &Value, length: usize) -> Option<usize> {
+pub(crate) fn resolve_array_index(
+    value: &Value,
+    length: usize,
+) -> Result<Option<usize>, CoercionError> {
     let index = match value {
         Value::Number(number) => number.trunc(),
-        other => parse_int(trim(&other.to_text()), Radix::Decimal),
+        other => parse_int(trim(&other.to_text()?), Radix::Decimal),
     };
     if !index.is_finite() {
-        return None;
+        return Ok(None);
     }
     let length = length as f64;
     let index = if index < 0.0 { length + index } else { index };
-    (index >= 0.0 && index < length).then_some(index as usize)
+    Ok((index >= 0.0 && index < length).then_some(index as usize))
 }
 
 /// `/^-?\d+(\.\d+)?$/` (ASCII digits).
@@ -126,18 +130,18 @@ pub(crate) fn loop_assignment(
     operator: LoopAssignOp,
     value: &Value,
     max: usize,
-) -> Result<String, crate::functions::TooLong> {
+) -> Result<String, Failure> {
     let current_value = || Value::text(current.unwrap_or_default());
     match operator {
         LoopAssignOp::Increment => {
-            return Ok(number_to_string(to_number_safe(&current_value()) + 1.0));
+            return Ok(number_to_string(to_number_safe(&current_value())? + 1.0));
         }
         LoopAssignOp::Decrement => {
-            return Ok(number_to_string(to_number_safe(&current_value()) - 1.0));
+            return Ok(number_to_string(to_number_safe(&current_value())? - 1.0));
         }
         _ => {}
     }
-    let next = value.to_text_or_empty();
+    let next = value.to_text_or_empty()?;
     Ok(match operator {
         LoopAssignOp::Assign => next.into_owned(),
         LoopAssignOp::Add => {
@@ -151,7 +155,7 @@ pub(crate) fn loop_assignment(
                     .len()
                     .checked_add(next.len())
                     .filter(|size| *size <= max)
-                    .ok_or(crate::functions::TooLong)?;
+                    .ok_or(Failure::TooLong)?;
                 let mut joined = String::with_capacity(size);
                 joined.push_str(current);
                 joined.push_str(&next);
@@ -159,8 +163,8 @@ pub(crate) fn loop_assignment(
             }
         }
         _ => {
-            let left = to_number_safe(&current_value());
-            let right = to_number_safe(&Value::text(next.as_ref()));
+            let left = to_number_safe(&current_value())?;
+            let right = to_number_safe(&Value::text(next.as_ref()))?;
             number_to_string(match operator {
                 LoopAssignOp::Subtract => left - right,
                 LoopAssignOp::Multiply => left * right,
@@ -180,18 +184,22 @@ mod tests {
 
     #[test]
     fn conversions_match_the_reference() {
-        assert_eq!(to_number_safe(&Value::text(" 5abc ")), 5.0);
-        assert_eq!(to_number_safe(&Value::text("Infinity")), 0.0);
-        assert_eq!(to_number_safe(&Value::Null), 0.0);
-        assert!(is_truthy(&Value::text(" TRUE ")));
-        assert!(!is_truthy(&Value::text(" FALSE ")));
-        assert!(!is_truthy(&Value::text("0")));
-        assert!(is_truthy(&Value::text("00")));
-        assert!(is_truthy(&Value::Number(f64::NAN)));
-        assert_eq!(resolve_array_index(&Value::text("-1"), 3), Some(2));
-        assert_eq!(resolve_array_index(&Value::text("1.9"), 3), Some(1));
-        assert_eq!(resolve_array_index(&Value::text("0x1"), 3), Some(0));
-        assert_eq!(resolve_array_index(&Value::text("nope"), 3), None);
+        assert_eq!(to_number_safe(&Value::text(" 5abc ")), Ok(5.0));
+        assert_eq!(to_number_safe(&Value::text("Infinity")), Ok(0.0));
+        assert_eq!(to_number_safe(&Value::Null), Ok(0.0));
+        assert_eq!(is_truthy(&Value::text(" TRUE ")), Ok(true));
+        assert_eq!(is_truthy(&Value::text(" FALSE ")), Ok(false));
+        assert_eq!(is_truthy(&Value::text("0")), Ok(false));
+        assert_eq!(is_truthy(&Value::text("00")), Ok(true));
+        assert_eq!(is_truthy(&Value::Number(f64::NAN)), Ok(true));
+        assert_eq!(resolve_array_index(&Value::text("-1"), 3), Ok(Some(2)));
+        assert_eq!(resolve_array_index(&Value::text("1.9"), 3), Ok(Some(1)));
+        assert_eq!(resolve_array_index(&Value::text("0x1"), 3), Ok(Some(0)));
+        assert_eq!(resolve_array_index(&Value::text("nope"), 3), Ok(None));
+        let shadowed = Value::object(vec![("toString".into(), Value::text("x"))]);
+        assert_eq!(to_number_safe(&shadowed), Err(CoercionError));
+        assert_eq!(is_truthy(&shadowed), Err(CoercionError));
+        assert_eq!(resolve_array_index(&shadowed, 3), Err(CoercionError));
         assert!(compare("01", BinaryOp::Equal, "1"));
         assert!(!compare("5abc", BinaryOp::Equal, "5"));
         assert!(compare("ABC", BinaryOp::Equal, "abc"));

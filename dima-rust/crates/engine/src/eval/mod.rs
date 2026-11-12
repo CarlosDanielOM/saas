@@ -27,6 +27,13 @@
 //!   16,384) is refused before any of it runs, and the stack an evaluation uses is measured
 //!   against [`EvalLimits::stack_bytes`] as it recurses, so no tree can overflow the thread's
 //!   stack in any build;
+//! - `String()` and `Number()` fail where JavaScript throws ([`crate::value::CoercionError`]:
+//!   an object with an own `toString` key, or a list holding one). Where the reference catches
+//!   the throw, so does the port: a stored JSON value read as a list is then empty
+//!   (`getArrayFromStorage`), a stored JSON list iterated by a loop is one item, its text
+//!   (`parseIterableValue`), and removing a list item from a cache or database variable leaves
+//!   it as it was. Everywhere else the evaluation stops with [`EvalError::Coercion`], as the
+//!   reference's render does (it catches nothing);
 //! - parse limits are the caller's ([`Engine::new`] takes the syntax [`Limits`]): the bot passes
 //!   the input size its substituted texts need;
 //! - a timer's snapshot is a copy taken when it is scheduled (the reference shares the
@@ -51,7 +58,7 @@ use crate::syntax::{
     AstNode, CompiledProgram, CompiledTemplate, Diagnostic, Limits, PreparedGrammar, SegmentStep,
     SyntaxEngine,
 };
-use crate::value::Value;
+use crate::value::{CoercionError, Value};
 use std::sync::Arc;
 
 /// Why an evaluation stopped.
@@ -66,6 +73,10 @@ pub enum EvalError {
     /// A resource limit of this port.
     #[error("{}", .0.message())]
     Limit(LimitKind),
+    /// `String()` or `Number()` threw, where nothing in the reference catches it: the command
+    /// stops, as the reference's render does.
+    #[error(transparent)]
+    Coercion(#[from] CoercionError),
 }
 
 /// Work counters of a run.
@@ -211,7 +222,7 @@ impl Engine {
                     text.push(']');
                 }
                 SegmentStep::Program(program) => match run.program(program.root()).await {
-                    Ok(value) => text.push_str(&value.to_text_or_empty()),
+                    Ok(value) => text.push_str(&value.to_text_or_empty()?),
                     Err(EvalError::Limit(kind)) => {
                         run.after_limit();
                         text.push_str("[Parse error: ");

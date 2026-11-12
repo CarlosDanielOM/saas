@@ -6,28 +6,29 @@
 //! [`TooLong`], and nothing of its size was allocated. The arguments themselves are within the
 //! evaluator's budget for the arguments of one call.
 
-use super::TooLong;
+use super::{Failure, TooLong};
 use crate::value::Value;
 use dima_text::{Radix, char_len, parse_int, slice_chars, to_lower, to_upper, trim};
 use regex::Regex;
 use std::borrow::Cow;
 use std::sync::LazyLock;
 
-/// `String(arg ?? '')` of each argument from `from`.
-fn texts(args: &[Value], from: usize) -> Vec<Cow<'_, str>> {
-    args.iter()
+/// `String(arg ?? '')` of each argument from `from`, in order (the first that throws stops).
+fn texts(args: &[Value], from: usize) -> Result<Vec<Cow<'_, str>>, Failure> {
+    Ok(args
+        .iter()
         .skip(from)
         .map(Value::to_text_or_empty)
-        .collect()
+        .collect::<Result<_, _>>()?)
 }
 
 /// `size` when it is within `max`.
-fn within(size: Option<usize>, max: usize) -> Result<usize, TooLong> {
-    size.filter(|size| *size <= max).ok_or(TooLong)
+fn within(size: Option<usize>, max: usize) -> Result<usize, Failure> {
+    Ok(size.filter(|size| *size <= max).ok_or(TooLong)?)
 }
 
 /// The size of `parts` joined by spaces.
-fn joined_size(parts: &[Cow<'_, str>], max: usize) -> Result<usize, TooLong> {
+fn joined_size(parts: &[Cow<'_, str>], max: usize) -> Result<usize, Failure> {
     let mut total = Some(parts.len().saturating_sub(1));
     for part in parts {
         total = total.and_then(|total| total.checked_add(part.len()));
@@ -36,8 +37,8 @@ fn joined_size(parts: &[Cow<'_, str>], max: usize) -> Result<usize, TooLong> {
 }
 
 /// `joinArgs(args, from)`: `String(arg ?? '')` of each argument from `from`, joined by spaces.
-pub(crate) fn join_args(args: &[Value], from: usize, max: usize) -> Result<String, TooLong> {
-    let parts = texts(args, from);
+pub(crate) fn join_args(args: &[Value], from: usize, max: usize) -> Result<String, Failure> {
+    let parts = texts(args, from)?;
     let mut out = String::with_capacity(joined_size(&parts, max)?);
     for (index, part) in parts.iter().enumerate() {
         if index > 0 {
@@ -62,19 +63,19 @@ fn lower_size(text: &str) -> Option<usize> {
     })
 }
 
-pub(crate) fn upper(args: &[Value], max: usize) -> Result<String, TooLong> {
+pub(crate) fn upper(args: &[Value], max: usize) -> Result<String, Failure> {
     let text = join_args(args, 0, max)?;
     within(upper_size(&text), max)?;
     Ok(to_upper(&text))
 }
 
 /// `text.toLowerCase()` within `max`.
-fn lowered(text: &str, max: usize) -> Result<String, TooLong> {
+fn lowered(text: &str, max: usize) -> Result<String, Failure> {
     within(lower_size(text), max)?;
     Ok(to_lower(text))
 }
 
-pub(crate) fn lower(args: &[Value], max: usize) -> Result<String, TooLong> {
+pub(crate) fn lower(args: &[Value], max: usize) -> Result<String, Failure> {
     lowered(&join_args(args, 0, max)?, max)
 }
 
@@ -87,7 +88,7 @@ static TITLE_START: LazyLock<Option<Regex>> = LazyLock::new(|| {
 });
 
 /// Lowercases, then uppercases each letter at the start or after whitespace.
-pub(crate) fn title(args: &[Value], max: usize) -> Result<String, TooLong> {
+pub(crate) fn title(args: &[Value], max: usize) -> Result<String, Failure> {
     let text = lowered(&join_args(args, 0, max)?, max)?;
     let Some(regex) = TITLE_START.as_ref() else {
         return Ok(text);
@@ -114,7 +115,7 @@ pub(crate) fn title(args: &[Value], max: usize) -> Result<String, TooLong> {
 
 /// The first character uppercased. Intended difference: the reference uppercases the first
 /// UTF-16 unit, so an astral first letter (Deseret `𐐨`, Adlam…) stayed lowercase there.
-pub(crate) fn capitalize(args: &[Value], max: usize) -> Result<String, TooLong> {
+pub(crate) fn capitalize(args: &[Value], max: usize) -> Result<String, Failure> {
     let text = join_args(args, 0, max)?;
     let mut chars = text.chars();
     let Some(first) = chars.next() else {
@@ -131,19 +132,19 @@ pub(crate) fn capitalize(args: &[Value], max: usize) -> Result<String, TooLong> 
     Ok(out)
 }
 
-pub(crate) fn trim_text(args: &[Value], max: usize) -> Result<String, TooLong> {
+pub(crate) fn trim_text(args: &[Value], max: usize) -> Result<String, Failure> {
     Ok(trim(&join_args(args, 0, max)?).to_owned())
 }
 
 /// Characters, not UTF-16 units (intended difference for text outside the BMP). Counted
 /// without joining.
-pub(crate) fn length(args: &[Value]) -> String {
-    let parts = texts(args, 0);
+pub(crate) fn length(args: &[Value]) -> Result<String, Failure> {
+    let parts = texts(args, 0)?;
     let spaces = parts.len().saturating_sub(1);
     let chars = parts
         .iter()
         .fold(spaces, |total, part| total.saturating_add(char_len(part)));
-    chars.to_string()
+    Ok(chars.to_string())
 }
 
 /// `/^-?\d+$/` on the trimmed text.
@@ -165,29 +166,30 @@ fn slice_index(raw: &str, length: usize, fallback: usize) -> usize {
 
 /// `$(slice start [end] text…)`: numbers first (a separate `-` before a number is its sign),
 /// then the text, cut by character.
-pub(crate) fn slice(args: &[Value], max: usize) -> Result<String, TooLong> {
-    let token = |at: usize| -> String {
-        args.get(at)
-            .map(|arg| trim(&arg.to_text_or_empty()).to_owned())
-            .unwrap_or_default()
+pub(crate) fn slice(args: &[Value], max: usize) -> Result<String, Failure> {
+    let token = |at: usize| -> Result<String, Failure> {
+        Ok(match args.get(at) {
+            Some(arg) => trim(&arg.to_text_or_empty()?).to_owned(),
+            None => String::new(),
+        })
     };
-    let take_number = |at: usize| -> (Option<String>, usize) {
-        let current = token(at);
+    let take_number = |at: usize| -> Result<(Option<String>, usize), Failure> {
+        let current = token(at)?;
         if current == "-" {
-            let next = token(at + 1);
+            let next = token(at + 1)?;
             if is_integer_text(&next) {
-                return (Some(format!("-{next}")), at + 2);
+                return Ok((Some(format!("-{next}")), at + 2));
             }
         }
         if is_integer_text(&current) {
-            return (Some(current), at + 1);
+            return Ok((Some(current), at + 1));
         }
-        (None, at)
+        Ok((None, at))
     };
-    let (Some(start), next) = take_number(0) else {
+    let (Some(start), next) = take_number(0)? else {
         return Ok(String::new());
     };
-    let (end, rest) = take_number(next);
+    let (end, rest) = take_number(next)?;
     let text = join_args(args, rest, max)?;
     let length = char_len(&text);
     let start = slice_index(&start, length, 0);
@@ -198,15 +200,13 @@ pub(crate) fn slice(args: &[Value], max: usize) -> Result<String, TooLong> {
 /// `$(replace search replacement text…)`: literal, every occurrence (`split(search)` then
 /// `join(replacement)`: non-overlapping matches, left to right). The result's size is
 /// `text − n × search + n × replacement` for `n` matches, checked before it is built.
-pub(crate) fn replace(args: &[Value], max: usize) -> Result<String, TooLong> {
-    let search = args
-        .first()
-        .map(|v| v.to_text_or_empty())
-        .unwrap_or_default();
-    let replacement = args
-        .get(1)
-        .map(|v| v.to_text_or_empty())
-        .unwrap_or_default();
+pub(crate) fn replace(args: &[Value], max: usize) -> Result<String, Failure> {
+    let text_at = |at: usize| match args.get(at) {
+        Some(arg) => arg.to_text_or_empty(),
+        None => Ok(Cow::Borrowed("")),
+    };
+    let search = text_at(0)?;
+    let replacement = text_at(1)?;
     let text = join_args(args, 2, max)?;
     if search.is_empty() || text.is_empty() {
         return Ok(text);
@@ -254,7 +254,7 @@ mod tests {
         );
         assert_eq!(capitalize(&args(&["𐐨bc"]), MAX).unwrap(), "𐐀bc");
         assert_eq!(capitalize(&args(&[]), MAX).unwrap(), "");
-        assert_eq!(length(&args(&["😀", "é"])), "3");
+        assert_eq!(length(&args(&["😀", "é"])).unwrap(), "3");
         assert_eq!(
             slice(&args(&["0", "5", "hello", "world"]), MAX).unwrap(),
             "hello"

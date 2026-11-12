@@ -23,7 +23,7 @@ fn host() -> MemoryHost {
         .answer("say", |args, _| {
             Value::Text(
                 args.iter()
-                    .map(|a| a.to_text_or_empty().into_owned())
+                    .map(|a| a.to_text_or_empty().unwrap().into_owned())
                     .collect::<Vec<_>>()
                     .join(" "),
             )

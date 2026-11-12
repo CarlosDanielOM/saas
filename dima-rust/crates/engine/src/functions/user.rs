@@ -1,8 +1,9 @@
 //! `user.functions.ts`: `user` (with the `ignore symbols|numbers` filters) and `touser`.
 //! (`randomuser` reads the chatter list and the blacklist: it is a host function.)
 
-use super::TooLong;
+use super::Failure;
 use crate::context::Context;
+use crate::value::CoercionError;
 use crate::value::Value;
 use dima_text::{is_js_whitespace, to_lower, trim};
 use regex::Regex;
@@ -19,7 +20,7 @@ fn matches(regex: &LazyLock<Option<Regex>>, text: &str) -> bool {
 }
 
 /// `getUserName`: the chatter from the event, then the extra context, then the caller.
-pub(crate) fn user_name(context: &Context) -> String {
+pub(crate) fn user_name(context: &Context) -> Result<String, CoercionError> {
     for (source, key) in [
         (&context.event_data, "chatter_user_name"),
         (&context.event_data, "chatter_user_login"),
@@ -27,52 +28,54 @@ pub(crate) fn user_name(context: &Context) -> String {
         (&context.extra_context, "userLogin"),
     ] {
         if let Some(value) = source.get(key).filter(|value| value.js_truthy()) {
-            return value.to_text().into_owned();
+            return Ok(value.to_text()?.into_owned());
         }
     }
     if !context.user_display_name.is_empty() {
-        return context.user_display_name.clone();
+        return Ok(context.user_display_name.clone());
     }
-    context.user_login.clone()
+    Ok(context.user_login.clone())
 }
 
 /// `flattenArgumentTokens`: every argument split on whitespace, lowercased.
-pub(crate) fn argument_tokens(args: &[Value]) -> Vec<String> {
+pub(crate) fn argument_tokens(args: &[Value]) -> Result<Vec<String>, CoercionError> {
     let mut tokens = Vec::new();
     for arg in args {
-        let text = arg.to_text_or_empty();
+        let text = arg.to_text_or_empty()?;
         for part in trim(&text).split(is_js_whitespace) {
             if !part.is_empty() {
                 tokens.push(to_lower(part));
             }
         }
     }
-    tokens
+    Ok(tokens)
 }
 
 /// `parseUserNameFilter`: `(remove symbols, remove numbers)` for `ignore symbols|numbers…`.
-fn name_filter(args: &[Value]) -> Option<(bool, bool)> {
-    let tokens = argument_tokens(args);
-    let (first, rest) = tokens.split_first()?;
+fn name_filter(args: &[Value]) -> Result<Option<(bool, bool)>, CoercionError> {
+    let tokens = argument_tokens(args)?;
+    let Some((first, rest)) = tokens.split_first() else {
+        return Ok(None);
+    };
     if first != "ignore" || rest.is_empty() {
-        return None;
+        return Ok(None);
     }
     let mut plan = (false, false);
     for token in rest {
         match token.as_str() {
             "symbols" => plan.0 = true,
             "numbers" => plan.1 = true,
-            _ => return None,
+            _ => return Ok(None),
         }
     }
-    Some(plan)
+    Ok(Some(plan))
 }
 
-/// `$(user)`.
-pub(crate) fn user(args: &[Value], context: &Context) -> String {
-    let name = user_name(context);
-    let Some((symbols, numbers)) = name_filter(args) else {
-        return name;
+/// `$(user)`: the name first, then the filter, as the reference reads them.
+pub(crate) fn user(args: &[Value], context: &Context) -> Result<String, CoercionError> {
+    let name = user_name(context)?;
+    let Some((symbols, numbers)) = name_filter(args)? else {
+        return Ok(name);
     };
     let mut filtered = String::new();
     let mut buffer = [0u8; 4];
@@ -87,14 +90,14 @@ pub(crate) fn user(args: &[Value], context: &Context) -> String {
         filtered.push(ch);
     }
     if !matches(&LETTER_OR_NUMBER, &filtered) {
-        return "viewer".into();
+        return Ok("viewer".into());
     }
-    filtered
+    Ok(filtered)
 }
 
 /// `$(touser)`: the target with `$`, `%` and `*` escaped, else the chatter's name. Escaping
 /// adds a byte per escaped character, counted before the result is built.
-pub(crate) fn touser(args: &[Value], context: &Context, max: usize) -> Result<String, TooLong> {
+pub(crate) fn touser(args: &[Value], context: &Context, max: usize) -> Result<String, Failure> {
     let target = match args.first() {
         Some(arg) if arg.js_truthy() => Some(arg.clone()),
         _ => context
@@ -113,7 +116,7 @@ pub(crate) fn touser(args: &[Value], context: &Context, max: usize) -> Result<St
                 .len()
                 .checked_add(escapes)
                 .filter(|size| *size <= max)
-                .ok_or(TooLong)?;
+                .ok_or(Failure::TooLong)?;
             let mut out = String::with_capacity(size);
             for ch in text.chars() {
                 if matches!(ch, '$' | '%' | '*') {
@@ -123,8 +126,8 @@ pub(crate) fn touser(args: &[Value], context: &Context, max: usize) -> Result<St
             }
             out
         }
-        Some(other) => other.to_text().into_owned(),
-        None => user_name(context),
+        Some(other) => other.to_text()?.into_owned(),
+        None => user_name(context)?,
     })
 }
 
@@ -144,31 +147,43 @@ mod tests {
     #[test]
     fn user_and_touser() {
         let ctx = context("Ca_ll3r😀", Value::Undefined);
-        assert_eq!(user(&[], &ctx), "Ca_ll3r😀");
-        assert_eq!(user(&[Value::text("ignore symbols")], &ctx), "Call3r");
+        assert_eq!(user(&[], &ctx).unwrap(), "Ca_ll3r😀");
         assert_eq!(
-            user(&[Value::text("ignore"), Value::text("numbers")], &ctx),
+            user(&[Value::text("ignore symbols")], &ctx).unwrap(),
+            "Call3r"
+        );
+        assert_eq!(
+            user(&[Value::text("ignore"), Value::text("numbers")], &ctx).unwrap(),
             "Ca_llr😀"
         );
         assert_eq!(
-            user(&[Value::text("ignore symbols numbers")], &ctx),
+            user(&[Value::text("ignore symbols numbers")], &ctx).unwrap(),
             "Callr"
         );
-        assert_eq!(user(&[Value::text("ignore other")], &ctx), "Ca_ll3r😀");
+        assert_eq!(
+            user(&[Value::text("ignore other")], &ctx).unwrap(),
+            "Ca_ll3r😀"
+        );
         let digits = context("123", Value::Undefined);
-        assert_eq!(user(&[Value::text("ignore numbers")], &digits), "viewer");
+        assert_eq!(
+            user(&[Value::text("ignore numbers")], &digits).unwrap(),
+            "viewer"
+        );
         let event = context(
             "x",
             Value::object(vec![("chatter_user_name".into(), Value::text("Ev"))]),
         );
-        assert_eq!(user(&[], &event), "Ev");
+        assert_eq!(user(&[], &event).unwrap(), "Ev");
         assert_eq!(
             touser(&[Value::text("a$b%c*")], &ctx, 64).unwrap(),
             "a\\$b\\%c\\*"
         );
         assert_eq!(touser(&[Value::empty()], &ctx, 64).unwrap(), "Ca_ll3r😀");
         assert_eq!(touser(&[Value::Number(5.0)], &ctx, 64).unwrap(), "5");
-        assert_eq!(touser(&[Value::text("$$$")], &ctx, 5), Err(TooLong));
+        assert_eq!(
+            touser(&[Value::text("$$$")], &ctx, 5),
+            Err(Failure::TooLong)
+        );
         assert_eq!(touser(&[Value::text("$$$")], &ctx, 6).unwrap(), "\\$\\$\\$");
     }
 }

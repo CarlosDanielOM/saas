@@ -19,7 +19,7 @@ use crate::syntax::{
     ArrayAccessor, AstNode, BinaryOp, LoopAssignOp, LoopMode, TemplateSegment, UnaryOp,
     VariableStorage,
 };
-use crate::value::Value;
+use crate::value::{CoercionError, Value};
 use dima_text::{to_lower, trim};
 
 /// `MAX_TIMER_DEPTH`.
@@ -182,59 +182,64 @@ fn children<'a>(node: &'a AstNode, mut visit: impl FnMut(&'a AstNode)) {
     }
 }
 
+/// `String(item ?? '')` of each item.
+fn item_texts(items: &[Value]) -> Result<Vec<String>, CoercionError> {
+    items
+        .iter()
+        .map(|item| item.to_text_or_empty().map(std::borrow::Cow::into_owned))
+        .collect()
+}
+
 /// `parseIterableValue`: a list's items, a JSON list's items, otherwise the text as one item
-/// (none for empty text, `null` and `undefined`).
-fn iterable_values(value: Value) -> Vec<String> {
-    match value {
-        Value::List(items) => items
-            .iter()
-            .map(|item| item.to_text_or_empty().into_owned())
-            .collect(),
+/// (none for empty text, `null` and `undefined`). A JSON list whose items `String()` cannot
+/// convert is one item, its text: the reference converts them inside its `try`.
+fn iterable_values(value: Value) -> Result<Vec<String>, CoercionError> {
+    Ok(match value {
+        Value::List(items) => item_texts(&items)?,
         Value::Text(text) => match Value::parse_json(&text) {
-            Some(Value::List(items)) => items
-                .iter()
-                .map(|item| item.to_text_or_empty().into_owned())
-                .collect(),
+            Some(Value::List(items)) => item_texts(&items).unwrap_or_else(|_| vec![text]),
             Some(_) => vec![text],
             None if text.is_empty() => Vec::new(),
             None => vec![text],
         },
         Value::Undefined | Value::Null => Vec::new(),
-        other => vec![other.into_text()],
-    }
+        other => vec![other.into_text()?],
+    })
 }
 
 /// `String(value ?? '')`, reusing text.
-fn text_of(value: Value) -> String {
+fn text_of(value: Value) -> Result<String, CoercionError> {
     match value {
-        Value::Text(text) => text,
-        other => other.to_text_or_empty().into_owned(),
+        Value::Text(text) => Ok(text),
+        other => Ok(other.to_text_or_empty()?.into_owned()),
     }
 }
 
 /// Arithmetic or comparison of two evaluated operands.
-fn binary_result(operator: BinaryOp, left: &Value, right: &Value) -> Value {
-    match operator {
+fn binary_result(operator: BinaryOp, left: &Value, right: &Value) -> Result<Value, CoercionError> {
+    Ok(match operator {
         BinaryOp::Add
         | BinaryOp::Subtract
         | BinaryOp::Multiply
         | BinaryOp::Divide
-        | BinaryOp::Modulo => Value::Text(arithmetic(
-            operator,
-            to_number_safe(left),
-            to_number_safe(right),
-        )),
-        _ => Value::flag(compare(&left.to_text(), operator, &right.to_text())),
-    }
+        | BinaryOp::Modulo => {
+            let left = to_number_safe(left)?;
+            Value::Text(arithmetic(operator, left, to_number_safe(right)?))
+        }
+        _ => {
+            let left = left.to_text()?;
+            Value::flag(compare(&left, operator, &right.to_text()?))
+        }
+    })
 }
 
 /// A root keeps every value but `undefined` and empty text, joined by spaces.
 /// The text a root adds for `value`, if any.
-fn root_text(value: &Value) -> Option<std::borrow::Cow<'_, str>> {
+fn root_text(value: &Value) -> Result<Option<std::borrow::Cow<'_, str>>, CoercionError> {
     if matches!(value, Value::Undefined) || value.as_str() == Some("") {
-        return None;
+        return Ok(None);
     }
-    Some(value.to_text())
+    value.to_text().map(Some)
 }
 
 /// `snapshotTimerContext`.
@@ -593,7 +598,7 @@ impl<'a> Run<'a> {
 
     /// `String(value ?? '')` of a child.
     async fn child_text(&mut self, node: &AstNode) -> Result<String, EvalError> {
-        Ok(text_of(self.child(node).await?))
+        Ok(text_of(self.child(node).await?)?)
     }
 
     /// A child whose returned context the reference throws away.
@@ -643,7 +648,7 @@ impl<'a> Run<'a> {
         };
         let current = self.frames.loop_vars.get(name).map(String::as_str);
         let resolved = loop_assignment(current, operator, &next, self.engine.limits.text_bytes)
-            .map_err(|_| EvalError::Limit(LimitKind::TextSize))?;
+            .map_err(failure)?;
         self.put(Kept::LoopVars, name.to_owned(), resolved.clone())?;
         Ok(Value::Text(resolved))
     }
@@ -673,11 +678,11 @@ impl<'a> Run<'a> {
     ) -> Result<Value, EvalError> {
         let left = self.child(left).await?;
         let right = self.child(right).await?;
-        Ok(binary_result(operator, &left, &right))
+        Ok(binary_result(operator, &left, &right)?)
     }
 
     async fn unary(&mut self, operator: UnaryOp, argument: &AstNode) -> Result<Value, EvalError> {
-        let number = to_number_safe(&self.child(argument).await?);
+        let number = to_number_safe(&self.child(argument).await?)?;
         let result = match operator {
             UnaryOp::Plus => number,
             UnaryOp::Minus => -number,
@@ -692,7 +697,7 @@ impl<'a> Run<'a> {
         alternate: &AstNode,
     ) -> Result<Value, EvalError> {
         let test = self.child(test).await?;
-        let branch = if is_truthy(&test) {
+        let branch = if is_truthy(&test)? {
             consequent
         } else {
             alternate
@@ -710,7 +715,7 @@ impl<'a> Run<'a> {
                 }
                 TemplateSegment::Expr { node } => {
                     let value = self.child(node).await?;
-                    let text = value.to_text_or_empty();
+                    let text = value.to_text_or_empty()?;
                     self.check_size(out.len().saturating_add(text.len()))?;
                     out.push_str(&text);
                 }
@@ -727,14 +732,14 @@ impl<'a> Run<'a> {
         let mut values = Vec::with_capacity(items.len());
         let mut total = 0usize;
         for item in items {
-            let value = text_of(self.child(item).await?);
+            let value = text_of(self.child(item).await?)?;
             self.gather(&mut total, value.len())?;
             values.push(value);
         }
         Ok(match accessor {
             Some(ArrayAccessor::Index { index }) => {
                 let index = self.child(index).await?;
-                match resolve_array_index(&index, values.len()) {
+                match resolve_array_index(&index, values.len())? {
                     Some(at) => Value::Text(values.swap_remove(at)),
                     None => Value::empty(),
                 }
@@ -753,7 +758,7 @@ impl<'a> Run<'a> {
         let mut first = true;
         for child in children {
             let value = self.child(child).await?;
-            let Some(text) = root_text(&value) else {
+            let Some(text) = root_text(&value)? else {
                 continue;
             };
             self.check_size(out.len().saturating_add(text.len()).saturating_add(1))?;
@@ -792,7 +797,7 @@ impl<'a> Run<'a> {
                 Some(ArrayAccessor::Index { index }) => {
                     let index = self.discarded(index).await?;
                     let responses = &self.state.command_responses;
-                    resolve_array_index(&index, responses.len())
+                    resolve_array_index(&index, responses.len())?
                         .and_then(|at| responses.get(at).cloned())
                         .map_or_else(Value::empty, Value::Text)
                 }
@@ -813,7 +818,7 @@ impl<'a> Run<'a> {
             ArrayAccessor::Array => Value::Text(self.write_json(&list)?),
             ArrayAccessor::Index { index } => {
                 let index = self.discarded(index).await?;
-                match resolve_array_index(&index, list.len()) {
+                match resolve_array_index(&index, list.len())? {
                     Some(at) => list.swap_remove(at),
                     None => Value::empty(),
                 }
@@ -836,12 +841,12 @@ impl<'a> Run<'a> {
         let target = target.as_deref();
         let value = self.child(value).await?;
         // `String(value)`: `undefined` is the text "undefined" here.
-        let text = value.to_text().into_owned();
+        let text = value.to_text()?.into_owned();
         let appended: Vec<String> = match &value {
             Value::List(items) => items
                 .iter()
-                .map(|item| item.to_text().into_owned())
-                .collect(),
+                .map(|item| item.to_text().map(std::borrow::Cow::into_owned))
+                .collect::<Result<_, _>>()?,
             _ => vec![text.clone()],
         };
         if Self::responses(name, storage) {
@@ -860,7 +865,7 @@ impl<'a> Run<'a> {
                 Some(ArrayAccessor::SetIndex { index }) => {
                     let index = self.child(index).await?;
                     if let Some(at) =
-                        resolve_array_index(&index, self.state.command_responses.len())
+                        resolve_array_index(&index, self.state.command_responses.len())?
                     {
                         if let Some(slot) = self.state.command_responses.get_mut(at) {
                             *slot = text;
@@ -886,7 +891,7 @@ impl<'a> Run<'a> {
             ArrayAccessor::SetIndex { index } => {
                 let index = self.child(index).await?;
                 if let Some(slot) =
-                    resolve_array_index(&index, list.len()).and_then(|at| list.get_mut(at))
+                    resolve_array_index(&index, list.len())?.and_then(|at| list.get_mut(at))
                 {
                     *slot = Value::Text(text);
                     let json = self.write_json(&list)?;
@@ -913,7 +918,7 @@ impl<'a> Run<'a> {
                 None | Some(ArrayAccessor::Array | ArrayAccessor::Random) => any,
                 Some(ArrayAccessor::Index { index }) => {
                     let index = self.child(index).await?;
-                    resolve_array_index(&index, self.state.command_responses.len()).is_some()
+                    resolve_array_index(&index, self.state.command_responses.len())?.is_some()
                 }
                 Some(ArrayAccessor::Length) => true,
                 Some(_) => false,
@@ -929,7 +934,7 @@ impl<'a> Run<'a> {
                 if exists {
                     let list = self.read_list(name, storage, target).await?;
                     let index = self.child(index).await?;
-                    resolve_array_index(&index, list.len()).is_some()
+                    resolve_array_index(&index, list.len())?.is_some()
                 } else {
                     false
                 }
@@ -989,7 +994,7 @@ impl<'a> Run<'a> {
             }
         }
         match spec.kind {
-            FunctionKind::Builtin(Builtin::Delay) => match functions::delay_millis(&args) {
+            FunctionKind::Builtin(Builtin::Delay) => match functions::delay_millis(&args)? {
                 Ok(millis) => {
                     self.host_op()?;
                     self.host.sleep(millis).await;
@@ -1001,6 +1006,8 @@ impl<'a> Run<'a> {
             FunctionKind::Builtin(builtin) => {
                 let mut draw: Option<f64> = None;
                 if builtin == Builtin::Random {
+                    // The bound is read (and may fail) before the draw.
+                    functions::random_max(&args)?;
                     draw = Some(self.random()?);
                 }
                 let scalars = &mut self.frames.scalars;
@@ -1018,7 +1025,7 @@ impl<'a> Run<'a> {
                     &mut random,
                     self.engine.limits.text_bytes,
                 )
-                .map_err(|_| EvalError::Limit(LimitKind::TextSize))
+                .map_err(failure)
             }
             FunctionKind::Host(function) => {
                 self.host_op()?;
@@ -1060,7 +1067,7 @@ impl<'a> Run<'a> {
         );
         self.frames.switch();
         self.frames.scalars.effect = effect;
-        let seconds = duration?.to_number();
+        let seconds = duration?.to_number()?;
         if !seconds.is_finite() || !(1.0..=MAX_TIMER_SECONDS).contains(&seconds) {
             return Ok(fail("seconds must be between 1 and 604800"));
         }
@@ -1135,7 +1142,7 @@ impl<'a> Run<'a> {
             if let Value::Text(text) = &value {
                 self.charge_bytes(text.len())?;
             }
-            for item in iterable_values(value) {
+            for item in iterable_values(value)? {
                 if iterations >= max {
                     break;
                 }
@@ -1156,7 +1163,7 @@ impl<'a> Run<'a> {
             if let Some(condition) = condition {
                 let test = self.child(condition).await?;
                 self.next_active(depth);
-                if !is_truthy(&test) {
+                if !is_truthy(&test)? {
                     break;
                 }
             }
@@ -1303,6 +1310,14 @@ impl<'a> Run<'a> {
             origin: ReferenceOrigin::Llm,
             identity,
         }
+    }
+}
+
+/// A builtin's failure as the evaluation's error.
+fn failure(failure: functions::Failure) -> EvalError {
+    match failure {
+        functions::Failure::TooLong => EvalError::Limit(LimitKind::TextSize),
+        functions::Failure::Coercion => EvalError::Coercion(CoercionError),
     }
 }
 

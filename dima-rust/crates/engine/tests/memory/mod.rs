@@ -123,7 +123,7 @@ impl Host for MemoryHost {
         let args = call
             .args
             .iter()
-            .map(|v| v.to_text_or_empty().into_owned())
+            .map(|v| v.to_text_or_empty().unwrap().into_owned())
             .collect();
         self.recorded.calls.push((call.name.to_owned(), args));
         let answer = self
@@ -144,7 +144,7 @@ impl Host for MemoryHost {
             Some(pure) if !pure.contains(&name) => {
                 let args = args
                     .iter()
-                    .map(|v| v.to_text_or_empty().into_owned())
+                    .map(|v| v.to_text_or_empty().unwrap().into_owned())
                     .collect();
                 self.recorded.calls.push((name.to_owned(), args));
                 Some(
@@ -327,7 +327,7 @@ pub fn render(
 }
 
 pub fn text(evaluated: &Evaluated) -> String {
-    evaluated.value.to_text().into_owned()
+    evaluated.value.to_text().unwrap().into_owned()
 }
 
 pub fn with_variable(name: &str, value: &str) -> State {

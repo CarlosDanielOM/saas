@@ -24,6 +24,7 @@ use dima_engine::registry::{Builtin, FunctionKind, Metadata, Registry};
 use dima_engine::syntax::AstNode;
 use dima_engine::value::Value;
 use serde_json::{Value as Json, json};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
@@ -476,7 +477,9 @@ impl CorpusHost {
     fn stored(value: Option<&Value>) -> String {
         match value {
             Some(Value::Text(text)) => text.clone(),
-            Some(other) if !other.is_nullish() => other.to_text().into_owned(),
+            Some(other) if !other.is_nullish() => {
+                other.to_text().map(Cow::into_owned).unwrap_or_default()
+            }
             _ => String::new(),
         }
     }
@@ -546,13 +549,14 @@ impl Host for CorpusHost {
         let args = typed(&Value::List(call.args.clone()));
         let event = self.event("handler", vec![s(call.name), args]);
         let result = event.and_then(|()| match call.name {
-            "fixture.echo" => Ok(Value::Text(
-                call.args
-                    .iter()
-                    .map(|v| v.to_text_or_empty().into_owned())
-                    .collect::<Vec<_>>()
-                    .join("|"),
-            )),
+            // `String(v ?? '')` throws as the reference's handler does.
+            "fixture.echo" => call
+                .args
+                .iter()
+                .map(|v| v.to_text_or_empty().map(Cow::into_owned))
+                .collect::<Result<Vec<_>, _>>()
+                .map(|texts| Value::Text(texts.join("|")))
+                .map_err(|error| HostError::new(error.to_string())),
             "fixture.value" => Ok(call
                 .args
                 .first()
@@ -1172,10 +1176,6 @@ pub enum Difference {
     /// A timer's snapshot is a copy at scheduling (the reference shares the responses array with
     /// the live context until the scheduler serialises it, immediately in production).
     SnapshotCopy,
-    /// An object whose own `toString` key is not a function makes JavaScript's `String()` throw;
-    /// a Rust object is data and prints `[object Object]`. The generator records the twin with
-    /// the key renamed.
-    OwnToStringKey,
 }
 
 /// Replaces every occurrence of the twins' BMP characters (values and keys) by the originals.
@@ -1311,13 +1311,8 @@ pub fn expected(case: &Json) -> (Json, Vec<Difference>) {
             })
             .collect();
         let twinned = untwin(&twin["source"], &map);
-        let to_string_twin = map.iter().any(|(original, _)| original == "toString");
         if comparable(&twinned) != comparable(&source) {
-            differences.push(if to_string_twin {
-                Difference::OwnToStringKey
-            } else {
-                Difference::CharacterCount
-            });
+            differences.push(Difference::CharacterCount);
         }
         source = twinned;
     }
