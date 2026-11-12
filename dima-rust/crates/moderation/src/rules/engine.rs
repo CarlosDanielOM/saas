@@ -518,19 +518,23 @@ impl CompiledSettings {
         self.memory
     }
 
-    /// Every rule's outcome for one message, in order, through the first
-    /// [`RuleOutcome::Failed`] (the reference stops there). Disabled rules are left out.
-    pub fn check_all(&self, input: &MessageInput, identity: &UserIdentity) -> Vec<RuleOutcome> {
+    /// Every rule's outcome for one message with the rule's position, in order, through the
+    /// first [`RuleOutcome::Failed`] (the reference stops there). Disabled rules are left out.
+    pub fn check_all(
+        &self,
+        input: &MessageInput,
+        identity: &UserIdentity,
+    ) -> Vec<(usize, RuleOutcome)> {
         let mut outcomes = Vec::new();
         for rule in &self.rules {
             let outcome = rule.check(input, identity);
             match outcome {
                 RuleOutcome::Disabled => {}
                 RuleOutcome::Failed(_) => {
-                    outcomes.push(outcome);
+                    outcomes.push((rule.index, outcome));
                     break;
                 }
-                _ => outcomes.push(outcome),
+                _ => outcomes.push((rule.index, outcome)),
             }
         }
         outcomes
