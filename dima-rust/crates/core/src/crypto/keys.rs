@@ -4,7 +4,7 @@
 
 use super::digest::{constant_time_eq, hmac_sha256, md5, sha256};
 use super::encoding::decode_hex_lenient;
-use crate::random::{Random, RandomError};
+use crate::random::{RandomError, SecureRandom};
 use crate::secret::SecretString;
 use serde_json::Value;
 
@@ -22,7 +22,7 @@ pub fn sha256_base64url(value: &str) -> String {
 
 /// The OAuth server's `secret(prefix)`: `prefix` + 32 random bytes as base64url (43 characters).
 /// Access tokens use `dima_at_`, refresh tokens `dima_rt_`; request ids and codes no prefix.
-pub fn oauth_secret(random: &dyn Random, prefix: &str) -> Result<String, RandomError> {
+pub fn oauth_secret(random: &dyn SecureRandom, prefix: &str) -> Result<String, RandomError> {
     Ok(format!("{prefix}{}", random.base64url_token(32)?))
 }
 

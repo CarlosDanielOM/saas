@@ -235,28 +235,29 @@ fn credential_cipher() {
     }
     let cipher =
         CredentialCipher::new(text(&file["key"])).unwrap_or_else(|error| panic!("{error}"));
+    // Rust encrypting with Node's IVs is checked by the cipher's unit tests (`encrypt_with_iv`
+    // exists only with the `test-util` feature); here, Node encrypts and Rust decrypts.
     for row in rows(&file, "encrypt") {
         let plaintext = text(&row["text"]);
-        let iv: [u8; 16] = decode_hex_lenient(text(&row["iv"]))
-            .try_into()
-            .unwrap_or_else(|_| panic!("iv"));
-        let stored = cipher
-            .encrypt_with_iv(plaintext, iv)
-            .unwrap_or_else(|error| panic!("{error}"));
         let expected: StoredCredential =
             serde_json::from_value(row["stored"].clone()).unwrap_or_else(|error| panic!("{error}"));
-        check.eq(
-            format!("encrypt {plaintext:?}"),
-            (&stored.iv, &stored.content),
-            (&expected.iv, &expected.content),
-        );
-        // Node encrypts, Rust decrypts.
         let back = cipher
             .decrypt(&expected)
             .unwrap_or_else(|error| panic!("{error}"));
         check.eq(
             format!("decrypt {plaintext:?}"),
             back,
+            (!plaintext.is_empty()).then(|| plaintext.to_owned()),
+        );
+        // A fresh IV from the system generator round-trips too.
+        let fresh = cipher
+            .encrypt(plaintext, &dima_core::SystemRandom)
+            .unwrap_or_else(|error| panic!("{error}"));
+        check.eq(
+            format!("round trip {plaintext:?}"),
+            cipher
+                .decrypt(&fresh)
+                .unwrap_or_else(|error| panic!("{error}")),
             (!plaintext.is_empty()).then(|| plaintext.to_owned()),
         );
     }

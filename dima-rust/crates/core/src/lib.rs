@@ -15,7 +15,9 @@ pub mod runtime;
 pub mod secret;
 pub mod time;
 
-pub use random::{Random, RandomError, SeededRandom, SystemRandom};
+#[cfg(any(test, feature = "test-util"))]
+pub use random::SeededRandom;
+pub use random::{Random, RandomError, SecureRandom, SystemRandom};
 pub use runtime::{Shutdown, run_with_deadline};
 pub use secret::{SecretBytes, SecretString};
 pub use time::{Clock, ManualClock, SystemClock};

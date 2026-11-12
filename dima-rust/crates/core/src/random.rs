@@ -1,7 +1,7 @@
 //! Randomness, injectable for tests, with the output shapes of every generator the reference uses.
 //!
 //! [`Random`] has one required method, [`Random::fill`]; every generator is built on it, so the
-//! seeded implementation ([`SeededRandom`]) makes all of them deterministic. [`SystemRandom`]
+//! seeded implementation (`SeededRandom`, feature `test-util`) makes all of them deterministic. [`SystemRandom`]
 //! reads the operating system's generator (`getrandom`), as Node's `crypto.randomBytes` does.
 //!
 //! | Reference | Method |
@@ -15,9 +15,56 @@
 //! | `crypto.randomInt(min, max)` | [`Random::int`] |
 //! | `randomTicket(total)` in `roulette/model.ts` | [`Random::ticket`] |
 //! | a token over a custom alphabet | [`Random::alphabet_token`] |
+//!
+//! **Predictable output is for tests only.** `SeededRandom` and the cipher's chosen-IV entry
+//! point exist only with the `test-util` feature (off by default; tests opt in through a
+//! dev-dependency: `dima-core = { workspace = true, features = ["test-util"] }`). Secret
+//! generation (IVs, tokens, session ids) takes a [`SecureRandom`], which only [`SystemRandom`]
+//! implements in a normal build.
+#![cfg_attr(
+    not(feature = "test-util"),
+    doc = r#"
+Without `test-util` the seeded generator does not exist:
+
+```compile_fail
+let _ = dima_core::random::SeededRandom::new(1);
+```
+
+and neither does encryption with a chosen IV:
+
+```compile_fail
+let cipher = dima_core::crypto::CredentialCipher::new("test-key").unwrap();
+let _ = cipher.encrypt_with_iv("text", [0; 16]);
+```
+
+and a home-made generator is not accepted for secrets:
+
+```compile_fail
+#[derive(Debug)]
+struct Zeros;
+impl dima_core::Random for Zeros {
+    fn fill(&self, buf: &mut [u8]) -> Result<(), dima_core::RandomError> {
+        buf.fill(0);
+        Ok(())
+    }
+}
+let cipher = dima_core::crypto::CredentialCipher::new("test-key").unwrap();
+let _ = cipher.encrypt("text", &Zeros);
+```
+
+while the system generator is:
+
+```
+let cipher = dima_core::crypto::CredentialCipher::new("test-key").unwrap();
+let stored = cipher.encrypt("text", &dima_core::SystemRandom).unwrap();
+assert_eq!(cipher.decrypt(&stored).unwrap().as_deref(), Some("text"));
+```
+"#
+)]
 
 use crate::crypto::encoding::{encode_base64url, encode_hex};
 use std::fmt;
+#[cfg(any(test, feature = "test-util"))]
 use std::sync::Mutex;
 
 /// Why random output could not be produced.
@@ -194,6 +241,21 @@ pub trait Random: Send + Sync + fmt::Debug {
     }
 }
 
+/// A generator fit for secrets (IVs, tokens, session ids). Sealed: in a normal build only
+/// [`SystemRandom`] implements it, so a predictable source cannot reach secret generation. With
+/// the `test-util` feature, `SeededRandom` implements it too, for deterministic tests.
+///
+/// Take `&dyn SecureRandom` (or `Arc<dyn SecureRandom>`) wherever the output is a secret; it
+/// coerces to `&dyn Random` for everything else.
+pub trait SecureRandom: Random + sealed::Sealed {}
+
+mod sealed {
+    pub trait Sealed {}
+    impl Sealed for super::SystemRandom {}
+    #[cfg(any(test, feature = "test-util"))]
+    impl Sealed for super::SeededRandom {}
+}
+
 /// The operating system's generator.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SystemRandom;
@@ -204,10 +266,19 @@ impl Random for SystemRandom {
     }
 }
 
-/// A deterministic generator for tests (SplitMix64). Not for secrets.
+impl SecureRandom for SystemRandom {}
+
+/// A deterministic generator for tests (SplitMix64), only with the `test-util` feature. It
+/// implements [`SecureRandom`] so secret generation can be tested deterministically: never enable
+/// `test-util` outside `[dev-dependencies]`.
+#[cfg(any(test, feature = "test-util"))]
 #[derive(Debug)]
 pub struct SeededRandom(Mutex<u64>);
 
+#[cfg(any(test, feature = "test-util"))]
+impl SecureRandom for SeededRandom {}
+
+#[cfg(any(test, feature = "test-util"))]
 impl SeededRandom {
     /// A generator whose output is fixed by `seed`.
     pub fn new(seed: u64) -> Self {
@@ -227,6 +298,7 @@ impl SeededRandom {
     }
 }
 
+#[cfg(any(test, feature = "test-util"))]
 impl Random for SeededRandom {
     fn fill(&self, buf: &mut [u8]) -> Result<(), RandomError> {
         for chunk in buf.chunks_mut(8) {

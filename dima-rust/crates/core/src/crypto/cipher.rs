@@ -16,7 +16,7 @@
 //! encrypt or decrypt; here [`CredentialCipher::new`] rejects such a key up front.
 
 use super::encoding::{decode_hex_lenient, encode_hex};
-use crate::random::{Random, RandomError};
+use crate::random::{RandomError, SecureRandom};
 use crate::secret::SecretBytes;
 use aes::cipher::{KeyIvInit, StreamCipher};
 use serde::{Deserialize, Serialize};
@@ -88,27 +88,32 @@ impl CredentialCipher {
         })
     }
 
-    /// `encrypt(text)` with a fresh random IV.
+    /// `encrypt(text)` with a fresh random IV from a generator fit for secrets.
     pub fn encrypt(
         &self,
         text: &str,
-        random: &dyn Random,
+        random: &dyn SecureRandom,
     ) -> Result<StoredCredential, CipherError> {
         if text.is_empty() {
             return Ok(StoredCredential::default());
         }
         let mut iv = [0_u8; 16];
         random.fill(&mut iv)?;
-        self.encrypt_with_iv(text, iv)
+        self.encrypt_iv(text, iv)
     }
 
-    /// `encrypt(text)` with a chosen IV, for golden tests. Never reuse an IV with one key: this
-    /// format has no authentication and a reused IV exposes both plaintexts.
+    /// `encrypt(text)` with a chosen IV, for golden tests (feature `test-util`). Never reuse an IV
+    /// with one key: this format has no authentication and a reused IV exposes both plaintexts.
+    #[cfg(any(test, feature = "test-util"))]
     pub fn encrypt_with_iv(
         &self,
         text: &str,
         iv: [u8; 16],
     ) -> Result<StoredCredential, CipherError> {
+        self.encrypt_iv(text, iv)
+    }
+
+    fn encrypt_iv(&self, text: &str, iv: [u8; 16]) -> Result<StoredCredential, CipherError> {
         if text.is_empty() {
             return Ok(StoredCredential::default());
         }
@@ -184,6 +189,40 @@ mod tests {
         assert_eq!(
             CredentialCipher::new("").err(),
             Some(CipherError::MissingKey)
+        );
+    }
+
+    /// The golden vectors written by real Node (`tests/vectors/generate.mjs`): Rust encrypting
+    /// with Node's IVs produces Node's bytes.
+    #[test]
+    fn encrypts_like_node() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/vectors/cipher.json");
+        let file: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+        let cipher = CredentialCipher::new(file["key"].as_str().unwrap()).unwrap();
+        let rows = file["encrypt"].as_array().unwrap();
+        assert!(!rows.is_empty());
+        for row in rows {
+            let iv: [u8; 16] = decode_hex_lenient(row["iv"].as_str().unwrap())
+                .try_into()
+                .unwrap();
+            let stored = cipher
+                .encrypt_with_iv(row["text"].as_str().unwrap(), iv)
+                .unwrap();
+            let expected: StoredCredential = serde_json::from_value(row["stored"].clone()).unwrap();
+            assert_eq!(stored, expected, "{}", row["text"]);
+        }
+    }
+
+    #[test]
+    fn a_seeded_generator_gives_repeatable_ivs_in_tests() {
+        let cipher = CredentialCipher::new("test-secret-key").unwrap();
+        let first = cipher.encrypt("x", &crate::SeededRandom::new(5)).unwrap();
+        let again = cipher.encrypt("x", &crate::SeededRandom::new(5)).unwrap();
+        assert_eq!(first, again);
+        assert_ne!(
+            cipher.encrypt("x", &crate::SystemRandom).unwrap().iv,
+            first.iv
         );
     }
 
