@@ -141,7 +141,7 @@ async fn run_step(env: &Env, op: &str, v: &Value) -> Value {
                     .as_array()
                     .into_iter()
                     .flatten()
-                    .filter_map(|x| s(x))
+                    .filter_map(s)
                     .collect(),
                 kind: s(&v["type"]),
                 limit: v["limit"].as_f64(),
@@ -416,7 +416,7 @@ async fn recorded_scenarios_match_the_reference() -> anyhow::Result<()> {
                 scenario["points"]
             );
             anyhow::ensure!(
-                &Value::from(rust.embeddings.clone()) == &scenario["embeddings"],
+                Value::from(rust.embeddings.clone()) == scenario["embeddings"],
                 "{name}: embedding requests\n rust {:?}\n   ts {}",
                 rust.embeddings,
                 scenario["embeddings"]
