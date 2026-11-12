@@ -35,16 +35,28 @@
 //!   (`min(50 ms × 2^attempt, 2 s)`, node-redis 5's default strategy without its random jitter) and
 //!   subscribes again to every channel and pattern, as node-redis does. Messages published while it
 //!   was disconnected are lost; a `Gap` subscription gets an [`Event::Gap`] with
-//!   [`Gap::resubscribed`] set when it is subscribed again, and so does one that was registered
-//!   while disconnected ([`Subscription::confirmed`] `false`) once it is live.
+//!   [`Gap::resubscribed`] set when it is subscribed again, and so does one whose
+//!   [`Subscriber::subscribe`] returned unconfirmed ([`Subscription::confirmed`] `false`) once it
+//!   is live. A subscription made while a connection is being opened waits for it instead.
+//! - **Deadlines**: every subscribe, unsubscribe and keep-alive `PING` must be confirmed within
+//!   [`super::DragonflyConfig::response_timeout`]. The task never waits for a confirmation: it
+//!   keeps delivering, serving requests and answering shutdown while one is outstanding. On
+//!   expiry the connection is discarded and the subscriber reconnects and subscribes again
+//!   (`Gap` subscriptions report a gap). [`Subscriber::subscribe`] returns at the deadline at
+//!   the latest, unconfirmed. A connection silent for
+//!   [`super::DragonflyConfig::subscriber_ping_interval`] is sent `PING`, so a peer that stops
+//!   answering is noticed without control traffic.
 //! - **One handler per channel**: subscribing to a topic that already has a subscription replaces
 //!   it (the old subscription's stream ends), mirroring the reference's `Map.set(channel, handler)`.
 //!   Dropping a [`Subscription`] unsubscribes (only if it is still the current one).
 //! - **Shutdown**: dropping the [`Subscriber`] (or [`Subscriber::shutdown`]) stops the task and
 //!   closes the connection; every subscription's stream then ends.
 //!
-//! The driver beneath (redis-rs `PubSub`) moves messages from the socket into an unbounded queue
-//! that this task drains without ever waiting on a consumer, so that queue stays short.
+//! The task speaks RESP2 on its own socket (`driver.rs`, `resp.rs`) rather than through
+//! redis-rs `PubSub`, whose reader moves messages into an unbounded queue and whose subscribe
+//! calls wait for their confirmation. Between the socket and the subscriptions there is one
+//! buffer holding at most the frame being received; frames are dispatched as soon as they are
+//! complete and dispatch never waits.
 //!
 //! # Envelope layer
 //!
@@ -56,20 +68,18 @@
 //! keys plus `timestamp`) is what subscribers read. Raw publishers (`keywords:changed`, the
 //! domain-event wake-ups) add no envelope: use [`super::Dragonfly::publish`] with their payload.
 
+mod driver;
+mod resp;
+
 use super::client::{Dragonfly, Shared};
 use super::error::{DragonflyError, Result};
 use dima_text::{js_key_order, sanitize_lone_surrogates, to_js_json};
-use futures_util::StreamExt;
-use redis::ConnectionAddr;
-use redis::aio::{PubSub, PubSubSink};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::{Notify, mpsc, oneshot};
 use tokio::task::JoinHandle;
 
@@ -267,6 +277,35 @@ struct Entry {
     /// disconnected, or the connection was lost): a `Gap` subscription gets a marker once it is
     /// live again.
     owe_gap: bool,
+    /// Confirmed on the current connection.
+    live: bool,
+    /// [`Subscriber::subscribe`] calls waiting for the confirmation.
+    waiters: Vec<oneshot::Sender<bool>>,
+}
+
+impl Entry {
+    fn release_waiters(&mut self, confirmed: bool) {
+        for waiter in self.waiters.drain(..) {
+            let _ = waiter.send(confirmed);
+        }
+    }
+
+    /// The server confirmed it. `false` when its receiver is gone (unsubscribe it).
+    fn go_live(&mut self) -> bool {
+        self.live = true;
+        self.release_waiters(true);
+        if std::mem::take(&mut self.owe_gap) {
+            return self.inbox.push_resubscribed() != Push::Closed;
+        }
+        true
+    }
+
+    /// The connection was lost: not live any more, and owed a gap marker when live again.
+    fn went_offline(&mut self) {
+        self.live = false;
+        self.owe_gap = true;
+        self.release_waiters(false);
+    }
 }
 
 impl Drop for Entry {
@@ -345,7 +384,8 @@ impl Subscription {
     }
 
     /// `true` when the server confirmed the subscription before [`Subscriber::subscribe`]
-    /// returned; `false` when the subscriber was disconnected and will subscribe on reconnect.
+    /// returned; `false` when the subscriber was disconnected, or the confirmation did not come
+    /// within the deadline, and it will subscribe on reconnect.
     pub fn confirmed(&self) -> bool {
         self.confirmed
     }
@@ -373,7 +413,7 @@ impl Subscriber {
     pub(crate) fn start(shared: Arc<Shared>) -> Self {
         let (control, receiver) = mpsc::channel(CONTROL_BUFFER);
         let state = Arc::new(State::default());
-        let task = tokio::spawn(run(shared.clone(), receiver, state.clone()));
+        let task = tokio::spawn(driver::run(shared.clone(), receiver, state.clone()));
         Self {
             control,
             buffer: shared.config.subscription_buffer.max(1),
@@ -384,9 +424,10 @@ impl Subscriber {
     }
 
     /// Subscribes to a topic with an overflow policy (see the module docs for which fits which
-    /// channel). Returns once the server confirmed it, or at once when the subscriber is
-    /// reconnecting (the subscription is then made on reconnect; see
-    /// [`Subscription::confirmed`]).
+    /// channel). Returns once the server confirmed it; unconfirmed at the latest when the
+    /// confirmation deadline passes or the connection attempt in progress fails, and at once
+    /// while the subscriber waits between attempts (the subscription is then made on reconnect;
+    /// see [`Subscription::confirmed`]).
     pub async fn subscribe(&self, topic: Topic, overflow: Overflow) -> Result<Subscription> {
         let inbox = Arc::new(Inbox::new(self.buffer, overflow));
         let id = self.state.next_id.fetch_add(1, Ordering::Relaxed);
@@ -398,6 +439,8 @@ impl Subscriber {
                     id,
                     inbox: inbox.clone(),
                     owe_gap: false,
+                    live: false,
+                    waiters: Vec::new(),
                 },
                 ack,
             })
@@ -457,12 +500,13 @@ impl Subscriber {
         Ok(HandlerGuard { task })
     }
 
-    /// The server's id for the current connection (`CLIENT ID`), 0 while disconnected.
+    /// The server's id for the current connection (`CLIENT ID`) once every registered
+    /// subscription is confirmed on it; 0 while disconnected or resubscribing.
     pub fn connection_id(&self) -> i64 {
         self.state.connection_id.load(Ordering::Relaxed)
     }
 
-    /// How many connections the subscriber has opened so far (1 + reconnections).
+    /// How many connections became ready so far (1 + reconnections).
     pub fn connections(&self) -> u64 {
         self.state.connections.load(Ordering::Relaxed)
     }
@@ -540,235 +584,6 @@ impl super::hooks::Hooks {
             });
         }
     }
-}
-
-fn backoff(attempt: u32) -> Duration {
-    Duration::from_millis(50u64.saturating_mul(1u64 << attempt.min(16)).min(2000))
-}
-
-async fn run(shared: Arc<Shared>, mut control: mpsc::Receiver<Control>, state: Arc<State>) {
-    let mut entries: HashMap<Topic, Entry> = HashMap::new();
-    let mut attempt = 0_u32;
-    loop {
-        // Connect (and subscribe to everything registered), serving requests while waiting.
-        let (mut sink, mut stream) = loop {
-            match connect(&shared).await {
-                Ok((pubsub, id)) => {
-                    let (mut sink, stream) = pubsub.split();
-                    match resubscribe(&mut sink, &entries).await {
-                        Ok(()) => {
-                            state.connection_id.store(id, Ordering::Relaxed);
-                            state.connections.fetch_add(1, Ordering::Relaxed);
-                            attempt = 0;
-                            entries.retain(|_, entry| {
-                                if std::mem::take(&mut entry.owe_gap) {
-                                    entry.inbox.push_resubscribed() != Push::Closed
-                                } else {
-                                    true
-                                }
-                            });
-                            break (sink, stream);
-                        }
-                        Err(error) => shared.hooks.report(&shared.config.caller, &error),
-                    }
-                }
-                Err(error) => shared.hooks.report(&shared.config.caller, &error),
-            }
-            let sleep = tokio::time::sleep(backoff(attempt));
-            attempt = attempt.saturating_add(1);
-            tokio::pin!(sleep);
-            loop {
-                tokio::select! {
-                    () = &mut sleep => break,
-                    request = control.recv() => match request {
-                        None => return,
-                        Some(Control::Shutdown { ack }) => {
-                            let _ = ack.send(());
-                            return;
-                        }
-                        Some(Control::Subscribe { topic, mut entry, ack }) => {
-                            entry.owe_gap = true;
-                            entries.insert(topic, entry);
-                            let _ = ack.send(false);
-                        }
-                        Some(Control::Unsubscribe { topic, id }) => {
-                            if entries.get(&topic).is_some_and(|entry| entry.id == id) {
-                                entries.remove(&topic);
-                            }
-                        }
-                    },
-                }
-            }
-        };
-
-        // Connected: deliver messages and serve requests until the connection drops.
-        loop {
-            tokio::select! {
-                request = control.recv() => match request {
-                    None => return,
-                    Some(Control::Shutdown { ack }) => {
-                        drop((sink, stream));
-                        let _ = ack.send(());
-                        return;
-                    }
-                    Some(Control::Subscribe { topic, mut entry, ack }) => {
-                        // Replacing a live topic keeps the server subscription: the new
-                        // subscription is live at once.
-                        entry.owe_gap = false;
-                        let fresh = entries.insert(topic.clone(), entry).is_none();
-                        let result = if fresh { subscribe(&mut sink, &topic).await } else { Ok(()) };
-                        let confirmed = result.is_ok();
-                        let _ = ack.send(confirmed);
-                        if let Err(error) = result {
-                            shared.hooks.report(&shared.config.caller, &error);
-                            break;
-                        }
-                    }
-                    Some(Control::Unsubscribe { topic, id }) => {
-                        if entries.get(&topic).is_some_and(|entry| entry.id == id) {
-                            entries.remove(&topic);
-                            if let Err(error) = unsubscribe(&mut sink, &topic).await {
-                                shared.hooks.report(&shared.config.caller, &error);
-                                break;
-                            }
-                        }
-                    }
-                },
-                message = stream.next() => match message {
-                    None => {
-                        let error = redis::RedisError::from(std::io::Error::new(
-                            std::io::ErrorKind::ConnectionReset,
-                            "Dragonfly subscriber connection closed",
-                        ));
-                        shared.hooks.report(&shared.config.caller, &error);
-                        break;
-                    }
-                    Some(message) => {
-                        if let Some(topic) = deliver(&message, &mut entries)
-                            && let Err(error) = unsubscribe(&mut sink, &topic).await
-                        {
-                            shared.hooks.report(&shared.config.caller, &error);
-                            break;
-                        }
-                    }
-                },
-            }
-        }
-        state.connection_id.store(0, Ordering::Relaxed);
-        for entry in entries.values_mut() {
-            entry.owe_gap = true;
-        }
-    }
-}
-
-/// Hands one message to its subscription. Returns a topic whose subscription is gone (its
-/// receiver was dropped without the unsubscribe request getting through) so the caller can
-/// unsubscribe it.
-fn deliver(message: &redis::Msg, entries: &mut HashMap<Topic, Entry>) -> Option<Topic> {
-    let channel: Vec<u8> = message.get_channel().unwrap_or_default();
-    let pattern: Option<Vec<u8>> = message.get_pattern().unwrap_or_default();
-    let topic = match &pattern {
-        Some(pattern) => Topic::Pattern(String::from_utf8(pattern.clone()).ok()?),
-        None => Topic::Channel(String::from_utf8(channel.clone()).ok()?),
-    };
-    let entry = entries.get(&topic)?;
-    let outgoing = Message {
-        channel,
-        pattern: match topic {
-            Topic::Pattern(ref pattern) => Some(pattern.clone()),
-            Topic::Channel(_) => None,
-        },
-        payload: message.get_payload_bytes().to_vec(),
-    };
-    match entry.inbox.push_message(outgoing) {
-        Push::Delivered | Push::Dropped => None,
-        Push::Closed => {
-            entries.remove(&topic);
-            Some(topic)
-        }
-    }
-}
-
-async fn subscribe(sink: &mut PubSubSink, topic: &Topic) -> redis::RedisResult<()> {
-    match topic {
-        Topic::Channel(channel) => sink.subscribe(channel).await,
-        Topic::Pattern(pattern) => sink.psubscribe(pattern).await,
-    }
-}
-
-async fn unsubscribe(sink: &mut PubSubSink, topic: &Topic) -> redis::RedisResult<()> {
-    match topic {
-        Topic::Channel(channel) => sink.unsubscribe(channel).await,
-        Topic::Pattern(pattern) => sink.punsubscribe(pattern).await,
-    }
-}
-
-async fn resubscribe(
-    sink: &mut PubSubSink,
-    entries: &HashMap<Topic, Entry>,
-) -> redis::RedisResult<()> {
-    for topic in entries.keys() {
-        subscribe(sink, topic).await?;
-    }
-    Ok(())
-}
-
-/// Opens the subscriber connection on a socket of our own, so it can learn its `CLIENT ID` (for
-/// diagnostics and tests) before the connection switches to subscribe mode.
-async fn connect(shared: &Shared) -> redis::RedisResult<(PubSub, i64)> {
-    let info = shared.client.get_connection_info();
-    let ConnectionAddr::Tcp(host, port) = info.addr() else {
-        return Err(redis::RedisError::from((
-            redis::ErrorKind::InvalidClientConfig,
-            "subscriber needs a TCP address",
-        )));
-    };
-    let open = async {
-        let mut stream = tokio::net::TcpStream::connect((host.as_str(), *port)).await?;
-        stream.set_nodelay(true)?;
-        let id = client_id(&mut stream).await?;
-        let pubsub = PubSub::new(info.redis_settings(), stream).await?;
-        Ok::<_, redis::RedisError>((pubsub, id))
-    };
-    match tokio::time::timeout(shared.config.connect_timeout, open).await {
-        Ok(result) => result,
-        Err(_) => Err(redis::RedisError::from(std::io::Error::new(
-            std::io::ErrorKind::TimedOut,
-            "Dragonfly subscriber connection did not open within the connect timeout",
-        ))),
-    }
-}
-
-/// `CLIENT ID` over the raw socket: the request, then one `:<integer>\r\n` reply.
-async fn client_id(stream: &mut tokio::net::TcpStream) -> std::io::Result<i64> {
-    stream
-        .write_all(b"*2\r\n$6\r\nCLIENT\r\n$2\r\nID\r\n")
-        .await?;
-    let mut line = Vec::with_capacity(24);
-    loop {
-        let byte = stream.read_u8().await?;
-        line.push(byte);
-        if line.ends_with(b"\r\n") {
-            break;
-        }
-        if line.len() > 32 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "CLIENT ID reply too long",
-            ));
-        }
-    }
-    let digits = line
-        .strip_prefix(b":")
-        .and_then(|rest| rest.strip_suffix(b"\r\n"))
-        .and_then(|digits| std::str::from_utf8(digits).ok())
-        .and_then(|digits| digits.parse::<i64>().ok());
-    digits.ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "unexpected CLIENT ID reply",
-        )
-    })
 }
 
 #[cfg(test)]
@@ -934,6 +749,8 @@ mod tests {
 
     #[test]
     fn backoff_matches_node_redis_without_jitter() {
+        use super::driver::backoff;
+        use std::time::Duration;
         assert_eq!(backoff(0), Duration::from_millis(50));
         assert_eq!(backoff(1), Duration::from_millis(100));
         assert_eq!(backoff(5), Duration::from_millis(1600));

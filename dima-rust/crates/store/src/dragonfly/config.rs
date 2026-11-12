@@ -37,6 +37,14 @@ pub const DEFAULT_RECONNECT_RETRIES: usize = 6;
 /// Default bound on undelivered messages per subscription (see [`super::pubsub`]).
 pub const DEFAULT_SUBSCRIPTION_BUFFER: usize = 1024;
 
+/// Default interval of silence after which a subscriber connection is sent `PING`: 30 seconds.
+///
+/// The reference sets no `pingInterval` (node-redis 5 then never pings), so a subscriber whose
+/// peer stopped answering without closing would wait for ever. By charter rule 6 this is a
+/// generous bound that only fires on a real hang: the reply must come within
+/// [`DragonflyConfig::response_timeout`], else the connection is replaced.
+pub const DEFAULT_SUBSCRIBER_PING_INTERVAL: Duration = Duration::from_secs(30);
+
 /// Connection settings, read once at startup by the binary from `DRAGONFLY_HOST` and
 /// `DRAGONFLY_PORT` and passed in (this crate never reads the environment).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -54,8 +62,11 @@ pub struct DragonflyConfig {
     pub connect_timeout: Duration,
     /// Reconnection attempts per outage; see [`DEFAULT_RECONNECT_RETRIES`].
     pub reconnect_retries: usize,
-    /// Messages buffered per subscription before new ones are dropped and counted.
+    /// Messages buffered per subscription before its overflow policy applies.
     pub subscription_buffer: usize,
+    /// Silence on a subscriber connection before it is sent `PING`; see
+    /// [`DEFAULT_SUBSCRIBER_PING_INTERVAL`].
+    pub subscriber_ping_interval: Duration,
 }
 
 impl DragonflyConfig {
@@ -70,6 +81,7 @@ impl DragonflyConfig {
             connect_timeout: DEFAULT_CONNECT_TIMEOUT,
             reconnect_retries: DEFAULT_RECONNECT_RETRIES,
             subscription_buffer: DEFAULT_SUBSCRIPTION_BUFFER,
+            subscriber_ping_interval: DEFAULT_SUBSCRIBER_PING_INTERVAL,
         }
     }
 
