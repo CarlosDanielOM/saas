@@ -1532,10 +1532,14 @@ name = "dima-ai"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bson",
  "dima-core",
  "dima-http",
+ "dima-model",
  "dima-store",
  "dima-text",
+ "futures-util",
+ "mongodb",
  "redis",
  "regex",
  "serde",

@@ -19,6 +19,11 @@ serde.workspace = true
 serde_json.workspace = true
 regex.workspace = true
 thiserror.workspace = true
+# memory_store: the `channelaimemories` model and its writes, the driver, cursors.
+dima-model.workspace = true
+bson.workspace = true
+mongodb.workspace = true
+futures-util.workspace = true
 
 [dev-dependencies]
 dima-http = { workspace = true, features = ["test-util"] }
