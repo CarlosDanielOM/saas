@@ -6,7 +6,7 @@
 //! no index.
 //!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
-//! and `null` or a removal where [`READ_NEEDS`] and [`CONFIG_READ_NEEDS`] say the read types has
+//! and `null` or a removal where [`READ_NEEDS`] and [`CONFIG_READ_NEEDS`] say the read types have
 //! none; the census of the production copy shows none stored there, so Mongoose's acceptance of
 //! them is not reproduced.
 
