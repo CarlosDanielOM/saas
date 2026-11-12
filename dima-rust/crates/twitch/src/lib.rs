@@ -93,7 +93,7 @@ pub use helix::{
     Auth, CredentialError, HELIX_PROVIDER, HelixError, HelixRequest, HelixResponse, OAUTH_PROVIDER,
     helix_provider, oauth_provider,
 };
-pub use keys::KeySpace;
+pub use keys::{KeySpace, RecoveryKey};
 pub use oauth::{RefreshContext, RefreshFailureKind, RefreshFailureReason};
 pub use recovery::RecoveryReport;
 pub use secret::{AccessToken, RefreshToken};

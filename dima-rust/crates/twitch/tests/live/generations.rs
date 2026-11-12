@@ -322,3 +322,234 @@ async fn a_sign_in_is_newer_than_a_parked_answer() -> Result<()> {
     })
     .await
 }
+
+/// A recovery record of any key: its generation and the refresh token of its answer.
+pub(crate) async fn record_at(stores: &Stores, key: &str) -> Result<Option<(i64, String)>> {
+    let fields: std::collections::HashMap<String, String> =
+        stores.dragonfly.hgetall(key).await?.into_iter().collect();
+    let (Some(generation), Some(rotation)) = (fields.get("generation"), fields.get("rotation"))
+    else {
+        return Ok(None);
+    };
+    let rotation: serde_json::Value = serde_json::from_str(rotation)?;
+    let refresh: dima_core::crypto::StoredCredential =
+        serde_json::from_value(rotation["refresh"].clone())?;
+    Ok(Some((
+        generation.parse()?,
+        cipher().decrypt(&refresh)?.unwrap_or_default(),
+    )))
+}
+
+/// The conflict side record of `id`.
+fn conflict_key(stores: &Stores, id: &str) -> String {
+    format!(
+        "{}twitch:{id}:refresh:parked:conflict",
+        stores.keys.prefix()
+    )
+}
+
+/// Review G2: the lease and the marker both failed, and two exchanges of the same stored state
+/// (R0, generation G0) both got an answer while MongoDB refused every write: process B parked
+/// R2 first, then process A tries to park R1. With `third`, the side record already holds yet
+/// another answer of G0. Returns A and B, both stopped.
+async fn two_answers_for_one_generation(
+    stores: &Stores,
+    server: &dima_http::testing::MockServer,
+    third: bool,
+) -> Result<(Process, Process)> {
+    use dima_twitch::{FaultAction, FaultPoint};
+    use futures_util::FutureExt;
+    let mut user = user_document(
+        "u1",
+        "u1",
+        "u1-access-0",
+        "u1-refresh-0",
+        Some(NOW_SECS - 10),
+    );
+    user.insert("refreshed_at", bson::DateTime::from_millis(G0));
+    insert_user(stores, user).await?;
+    let mut timings = fast_timings();
+    timings.exchange_drain = std::time::Duration::from_millis(300);
+    timings.park_grace = std::time::Duration::from_millis(400);
+    let a = process(stores, server, timings.clone())?;
+    let b = process(stores, server, timings)?;
+    a.twitch.load_streamers().await?;
+    let reached = Arc::new(tokio::sync::Notify::new());
+    let release = Arc::new(tokio::sync::Notify::new());
+    let first = Arc::new(std::sync::atomic::AtomicBool::new(true));
+    {
+        let (reached, release) = (Arc::clone(&reached), Arc::clone(&release));
+        a.twitch.set_fault_hook(move |point, _| {
+            let hold = point == FaultPoint::AfterTwitchAnswer
+                && first.swap(false, std::sync::atomic::Ordering::SeqCst);
+            let (reached, release) = (Arc::clone(&reached), Arc::clone(&release));
+            async move {
+                if hold {
+                    reached.notify_one();
+                    release.notified().await;
+                }
+                if point == FaultPoint::BeforePersist {
+                    FaultAction::Fail
+                } else {
+                    FaultAction::Continue
+                }
+            }
+            .boxed()
+        });
+    }
+    crate::recovery::fail_writes(&b);
+    let call = {
+        let twitch = a.twitch.clone();
+        tokio::spawn(async move { twitch.streamer_token("u1", None, "a").await })
+    };
+    reached.notified().await;
+    // The lease and the marker fail.
+    stores
+        .dragonfly
+        .del(&[
+            &stores.keys.refresh_lock("u1"),
+            &stores.keys.exchange_marker("u1"),
+        ])
+        .await?;
+    let token = b.twitch.streamer_token("u1", None, "b").await?;
+    assert_eq!(token.expose(), "u1-access-2");
+    assert_eq!(
+        record_at(stores, &stores.keys.parked_rotation("u1"))
+            .await?
+            .map(|(_, refresh)| refresh)
+            .as_deref(),
+        Some("u1-refresh-2")
+    );
+    if third {
+        let random = dima_core::SystemRandom;
+        let rotation = serde_json::json!({
+            "base": cipher().encrypt("u1-refresh-0", &random)?,
+            "generation": G0,
+            "access": cipher().encrypt("u1-access-9", &random)?,
+            "refresh": cipher().encrypt("u1-refresh-9", &random)?,
+            "expiresAt": NOW_SECS + 14_400,
+            "expiresIn": 14_400,
+        })
+        .to_string();
+        stores
+            .dragonfly
+            .hset(
+                &conflict_key(stores, "u1"),
+                &[
+                    ("generation", G0.to_string().as_bytes()),
+                    ("rotation", rotation.as_bytes()),
+                ],
+            )
+            .await?;
+    }
+    release.notify_one();
+    let token = call.await??;
+    assert_eq!(token.expose(), "u1-access-1");
+    for p in [&a, &b] {
+        p.shutdown.trigger();
+        assert!(!p.twitch.shutdown().await, "MongoDB never took it");
+        p.twitch.kill();
+    }
+    Ok((a, b))
+}
+
+/// Review G2: the second answer of one generation is kept in a side record of its own, and
+/// both are unmatched: the reconciliation writes neither. A refresh then finds MongoDB's R0
+/// consumed and tries the records' answers before anything is wiped. (Before: the park script
+/// answered "kept" to the second holder, which then forgot R1 at shutdown.)
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+async fn two_answers_for_one_generation_are_both_kept_and_unmatched() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state_for(&["u1"]);
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .consume = false;
+        let (a, _b) = two_answers_for_one_generation(&stores, &server, false).await?;
+        assert_eq!(
+            record_at(&stores, &stores.keys.parked_rotation("u1")).await?,
+            Some((G0, "u1-refresh-2".to_owned()))
+        );
+        assert_eq!(
+            record_at(&stores, &conflict_key(&stores, "u1")).await?,
+            Some((G0, "u1-refresh-1".to_owned())),
+            "the second answer is in its side record"
+        );
+        assert!(
+            !a.events
+                .actions()
+                .contains(&"token_refresh_lost".to_owned())
+        );
+
+        let next = process(&stores, &server, fast_timings())?;
+        let report = next.twitch.reconcile_recovery().await?;
+        assert_eq!(
+            report,
+            RecoveryReport {
+                unmatched: 2,
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            stored_refresh(&stores, "u1").await?.as_deref(),
+            Some("u1-refresh-0")
+        );
+        assert_eq!(stored_generation(&stores, "u1").await?, G0);
+
+        // Twitch had consumed R0 after all.
+        state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .valid
+            .remove("u1-refresh-0");
+        marker_gone(&stores, "u1").await?;
+        let token = next.twitch.streamer_token("u1", None, "next").await?;
+        assert_eq!(token.expose(), "u1-access-3");
+        assert_eq!(
+            stored_refresh(&stores, "u1").await?.as_deref(),
+            Some("u1-refresh-3")
+        );
+        let after = next.twitch.reconcile_recovery().await?;
+        assert_eq!(after.already_newer, 2, "{after:?}");
+        assert!(records(&stores).await?.is_empty());
+        assert!(!key_exists(&stores, &conflict_key(&stores, "u1")).await?);
+        Ok(())
+    })
+    .await
+}
+
+/// Review G2, bounded: a third answer of the same generation finds the side record taken. Its
+/// holder does not believe it is kept: the last step of shutdown keeps trying and reports it
+/// lost.
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+async fn a_third_answer_for_one_generation_is_not_taken_for_kept() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state_for(&["u1"]);
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .consume = false;
+        let (a, _b) = two_answers_for_one_generation(&stores, &server, true).await?;
+        assert!(
+            a.events
+                .actions()
+                .contains(&"token_refresh_lost".to_owned())
+        );
+        assert!(
+            !a.events
+                .actions()
+                .contains(&"token_refresh_parked".to_owned())
+        );
+        assert_eq!(
+            record_at(&stores, &conflict_key(&stores, "u1"))
+                .await?
+                .map(|(_, refresh)| refresh)
+                .as_deref(),
+            Some("u1-refresh-9")
+        );
+        Ok(())
+    })
+    .await
+}

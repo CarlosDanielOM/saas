@@ -12,6 +12,7 @@
 //! | `locks:refresh:twitch:{id}:exchange` (`PX 30000`, renewed) | Rust only: an exchange is (or may be) in flight | **rebuilt** |
 //! | `app:twitch:token` (envelope, `EX expires_in`; plain text in the reference) | `getNewTwitchAppToken` | **rebuilt**: a new app token is requested on first use |
 //! | `twitch:{id}:refresh:parked` (hash: `generation`, `rotation` as JSON of envelopes; **no expiry**) | Rust only: the recovery record of an answer MongoDB has not taken (`crate::recovery`) | **drained**, never flushed while one is left: the next refresh of that streamer or the reconciliation ([`crate::Twitch::reconcile_recovery`], at every start and on its tick) writes it to MongoDB. Rust's database starts without any at the cutover; before a rollback it is reconciled until none is left |
+//! | `twitch:{id}:refresh:parked:conflict` (hash: `generation`, `rotation`, as the record; **no expiry**) | Rust only: a second, different answer of the record's generation (review G2: two exchanges of one stored state); both are unmatched until MongoDB's generation moves or an operator settles them | **drained** with the records |
 //! | `twitch:{id}:emote-catalog:v1` (JSON, `EX 86400`) | `twitch_emotes.ts` | **rebuilt** from Helix on first use |
 //! | `twitch:{id}:ai:credits:plan-version` (fence) | billing | read here (fence of the account hash); owned by the billing package |
 //! | `streamers:by:name` | legacy (`DEL` only, no writer) | not written or deleted by Rust |
@@ -20,6 +21,16 @@
 //!
 //! Nothing here is *carried*: every value is derived from MongoDB or Twitch, and the Rust
 //! processes use their own logical database (`MIGRATION.md` section 3).
+
+/// The kinds of recovery key ([`KeySpace::recovery_key`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum RecoveryKey {
+    /// `twitch:{id}:refresh:parked`, the recovery record.
+    Parked,
+    /// `twitch:{id}:refresh:parked:conflict`, its side record.
+    Conflict,
+}
 
 /// The prefix of every key (empty in production).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -86,7 +97,36 @@ impl KeySpace {
         format!("{}twitch:{id}:refresh:parked", self.prefix)
     }
 
-    /// `twitch:*:refresh:parked`, the pattern the reconciliation scans.
+    /// `twitch:{id}:refresh:parked:conflict`, the side record of a second answer of the same
+    /// generation.
+    pub fn parked_conflict(&self, id: &str) -> String {
+        format!("{}:conflict", self.parked_rotation(id))
+    }
+
+    /// `twitch:*:refresh:*`, the pattern the reconciliation scans: every recovery key
+    /// ([`KeySpace::recovery_key`]).
+    pub fn recovery_pattern(&self) -> String {
+        format!("{}twitch:*:refresh:*", self.prefix)
+    }
+
+    /// The streamer id and the kind of a recovery key (`None` for any other key).
+    pub fn recovery_key<'a>(&self, key: &'a str) -> Option<(&'a str, RecoveryKey)> {
+        let (id, rest) = key
+            .strip_prefix(self.prefix.as_str())?
+            .strip_prefix("twitch:")?
+            .split_once(":refresh:")?;
+        if id.is_empty() || id.contains(':') {
+            return None;
+        }
+        let kind = match rest {
+            "parked" => RecoveryKey::Parked,
+            "parked:conflict" => RecoveryKey::Conflict,
+            _ => return None,
+        };
+        Some((id, kind))
+    }
+
+    /// `twitch:*:refresh:parked`, the pattern of the records alone.
     pub fn parked_pattern(&self) -> String {
         format!("{}twitch:*:refresh:parked", self.prefix)
     }
@@ -148,6 +188,28 @@ mod tests {
         let test = KeySpace::prefixed("t1:");
         assert_eq!(test.parked_pattern(), "t1:twitch:*:refresh:parked");
         assert_eq!(test.parked_user(&test.parked_rotation("42")), Some("42"));
+        assert_eq!(
+            keys.parked_conflict("42"),
+            "twitch:42:refresh:parked:conflict"
+        );
+        assert_eq!(keys.recovery_pattern(), "twitch:*:refresh:*");
+        assert_eq!(
+            test.recovery_key(&test.parked_rotation("42")),
+            Some(("42", RecoveryKey::Parked))
+        );
+        assert_eq!(
+            test.recovery_key(&test.parked_conflict("42")),
+            Some(("42", RecoveryKey::Conflict))
+        );
+        for other in [
+            "twitch:42:refresh:parked",
+            "t1:twitch:42:refresh:other",
+            "t1:twitch::refresh:parked",
+            "t1:twitch:4:2:refresh:parked",
+            "t1:twitch:42:emote-catalog:v1",
+        ] {
+            assert_eq!(test.recovery_key(other), None, "{other}");
+        }
         for other in [
             "twitch:42:emote-catalog:v1",
             "t1:twitch:42:refresh:parked",
