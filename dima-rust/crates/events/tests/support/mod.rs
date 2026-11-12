@@ -91,13 +91,11 @@ pub async fn indexes(
     store: &MongoStore,
     info: &dima_model::CollectionInfo,
 ) -> Result<dima_model::IndexReport> {
-    let report = dima_model::ensure_indexes(
-        store,
-        info,
-        dima_model::startup_policy(info),
-        std::time::Duration::from_secs(30),
-    )
-    .await;
+    let Some(policy) = dima_model::startup_policy(info) else {
+        bail!("{} is not initialised at start-up", info.name);
+    };
+    let report =
+        dima_model::ensure_indexes(store, info, policy, std::time::Duration::from_secs(30)).await;
     if report.failures().next().is_some() {
         bail!("index creation failed: {report}");
     }

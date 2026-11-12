@@ -201,6 +201,9 @@ pub fn startup_policy(info: &CollectionInfo) -> Option<IndexPolicy> {
     }
     Some(match info.name {
         crate::domain_events::COLLECTION
+        // Without its unique index two dispatchers can create one delivery twice, and a
+        // consumer then applies the event twice.
+        | crate::domain_event_deliveries::COLLECTION
         | crate::cron_job_intents::COLLECTION
         | crate::credit_transactions::COLLECTION
         | crate::ai_usage_receipts::COLLECTION
