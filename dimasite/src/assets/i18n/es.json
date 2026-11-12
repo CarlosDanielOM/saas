@@ -5401,6 +5401,16 @@
     "loadTitle": "Error al cargar",
     "loadMessage": "No se pudieron cargar los eventos de chat. Por favor, intenta de nuevo."
   },
+  "rewardLimit": {
+    "noteTitle": "Tu canal tiene {{count}} de {{limit}} recompensas de Twitch",
+    "noteBody": "También cuentan las creadas en Twitch o en otras apps, aunque estén desactivadas o en pausa. Elimina las que no uses para crear nuevas.",
+    "openRewards": "Ver tus recompensas",
+    "manageOnTwitch": "Administrar en Twitch",
+    "dismiss": "Ocultar este aviso",
+    "toastTitle": "Llegaste al límite de recompensas de Twitch",
+    "toastTrigger": "Tu canal ya tiene las 50 recompensas que permite Twitch, y las desactivadas o en pausa también cuentan. Apagamos la recompensa, así que al guardar de nuevo el trigger se guarda sin ella. Para agregar una recompensa, primero elimina una que no uses.",
+    "editorHint": "Tu canal ya tiene las 50 recompensas de Twitch, así que este trigger no puede tener una por ahora. Igual se reproduce desde cualquier comando. Elimina una recompensa que no uses para agregarla aquí."
+  },
   "redemptions": {
     "title": "Canjes",
     "subtitle": "Recompensas de puntos de canal que tus espectadores canjean en tu stream. DomDimaBot puede enviar un mensaje al chat, reproducir un trigger y subir el precio tras cada canje.",
@@ -5536,7 +5546,7 @@
       "saveTitle": "No se pudo guardar",
       "deleteTitle": "No se pudo eliminar",
       "duplicateTitle": "Ya tienes una recompensa con este nombre en Twitch. Elige otro nombre.",
-      "tooManyRewards": "Twitch permite 50 recompensas por canal. Elimina una para hacer espacio.",
+      "tooManyRewards": "Tu canal ya tiene las 50 recompensas que permite Twitch, y las desactivadas o en pausa también cuentan. Elimina una que no uses para hacer espacio.",
       "loadTitle": "Error al cargar",
       "loadMessage": "No se pudieron cargar los canjes. Por favor, intenta de nuevo.",
       "loadTwitchTitle": "Error al cargar recompensas de Twitch",

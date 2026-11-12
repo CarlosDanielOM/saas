@@ -17,7 +17,9 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { FullAccessNoteComponent } from '../../shared/full-access-note/full-access-note.component';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
+import { RewardLimitNoteComponent } from '../../shared/reward-limit-note/reward-limit-note.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { TWITCH_REWARD_LIMIT, twitchRewardErrorKind } from '../../shared/utils/twitch-reward-error.util';
 import { TriggersService } from '../triggers/triggers.service';
 import { CreateRewardModalComponent } from './components/create-reward-modal.component';
 import {
@@ -35,7 +37,7 @@ const SEARCH_THRESHOLD = 6;
 
 @Component({
   selector: 'app-redemptions-page',
-  imports: [RouterLink, CreateRewardModalComponent, LfIconComponent, FullAccessNoteComponent],
+  imports: [RouterLink, CreateRewardModalComponent, LfIconComponent, FullAccessNoteComponent, RewardLimitNoteComponent],
   styleUrl: './redemptions-page.component.css',
   templateUrl: './redemptions-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -66,6 +68,10 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   readonly triggerByReward = signal<Record<string, string>>({});
   readonly isLoading = signal(true);
   readonly isLoadingTwitch = signal(false);
+  /** Twitch answered at least once, so the reward count is real. */
+  readonly twitchLoaded = signal(false);
+  /** Twitch just refused a new reward because the channel is full. */
+  readonly rewardLimitHit = signal(false);
   readonly loadFailed = signal(false);
   readonly canManage = signal(false);
   readonly permissionLoaded = signal(false);
@@ -150,6 +156,13 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   readonly pausableRewards = computed(() => this.rewards().filter((r) => r.isEnabled && !r.isPaused));
   readonly pausedRewards = computed(() => this.rewards().filter((r) => r.isPaused));
 
+  /** Rewards on Twitch from every app (Twitch caps a channel at 50); null until Twitch answers. */
+  readonly twitchRewardCount = computed(() => {
+    const count = this.twitchRedemptions().length;
+    if (this.rewardLimitHit()) return Math.max(count, TWITCH_REWARD_LIMIT);
+    return this.twitchLoaded() ? count : null;
+  });
+
   readonly twitchDashboardUrl = computed(
     () => `https://dashboard.twitch.tv/u/${encodeURIComponent(this.streamer() || '')}/viewer-rewards/channel-points/rewards`,
   );
@@ -228,6 +241,8 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     this.redemptionsService.getTwitchRedemptions(channelId, forceRefresh).subscribe({
       next: (redemptions) => {
         this.twitchRedemptions.set(redemptions);
+        this.twitchLoaded.set(true);
+        this.rewardLimitHit.set(false);
         this.isLoadingTwitch.set(false);
       },
       error: () => {
@@ -322,7 +337,10 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
         this.loadTwitchRedemptions(channelId, true);
         this.toastService.success(this.t('redemptions.createSuccessTitle'), this.t('redemptions.createSuccessMessage', { title: data.title }));
       },
-      error: () => {},
+      // The service already showed the toast; a full channel also brings up the limit note.
+      error: (error: { error?: { message?: string }; message?: string }) => {
+        if (twitchRewardErrorKind(error?.error?.message || error?.message) === 'tooMany') this.rewardLimitHit.set(true);
+      },
     });
   }
 
@@ -495,6 +513,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
       next: () => {
         this.customRedemptions.update((reds) => reds.filter((r) => (r.rewardID || r.id) !== rewardId));
         this.twitchRedemptions.update((reds) => reds.filter((r) => r.id !== rewardId));
+        this.rewardLimitHit.set(false);
         this.deleting.set(false);
         this.redemptionToDelete.set(null);
         this.toastService.success(this.t('redemptions.deleteSuccessTitle'), this.t('redemptions.deleteSuccessMessage', { title: redemption.title }));

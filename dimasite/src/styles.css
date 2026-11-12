@@ -9267,7 +9267,8 @@ html[data-plan-tier='pro'] .dashboard-shell {
   position: fixed;
   top: 5.5rem;
   right: 1rem;
-  z-index: 80;
+  /* Above dialogs (120–140): a save error from an open editor must be readable. */
+  z-index: 200;
   display: grid;
   gap: 1rem;
   width: min(26rem, calc(100vw - 2rem));
@@ -9770,6 +9771,11 @@ html[data-plan-tier='pro'] .dashboard-shell {
     right: 0.6rem;
     width: 1.8rem;
     height: 1.8rem;
+  }
+
+  /* Keep long titles clear of the absolutely placed close button. */
+  .toast-3d-title {
+    padding-right: 1.9rem;
   }
 }
 

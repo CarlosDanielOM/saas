@@ -66,6 +66,10 @@
       />
     }
 
+    @if (canEdit()) {
+      <app-reward-limit-note [count]="twitchRewardCount()" [channelID]="channelID()" [streamer]="streamer()" />
+    }
+
     @if (loadFailed()) {
       <section class="lf-banner lf-banner--error" role="alert">
         <p class="lf-banner__title">{{ t('redemptions.errors.loadMessage') }}</p>

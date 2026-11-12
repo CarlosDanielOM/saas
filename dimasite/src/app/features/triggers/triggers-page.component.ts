@@ -38,11 +38,15 @@ import { catchError, firstValueFrom, forkJoin, map, of, switchMap } from 'rxjs';
 import { SafeUrlPipe } from '../../pipes/safe-url.pipe';
 import { DisplayNamePipe } from '../../pipes/display-name.pipe';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
+import { RewardLimitNoteComponent } from '../../shared/reward-limit-note/reward-limit-note.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { TWITCH_REWARD_ERROR_TOAST_MS, TWITCH_REWARD_LIMIT, twitchRewardErrorKind } from '../../shared/utils/twitch-reward-error.util';
+import { BotAccessService } from '../../services/bot-access.service';
 import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
+import { RedemptionsService } from '../redemptions/redemptions.service';
 import { PublicLibraryModalComponent } from './components/public-library-modal.component';
 import { LazyVideoFrameDirective } from './lazy-video-frame.directive';
 import {
@@ -119,7 +123,8 @@ const SAFE_NAME_MAX_LENGTH = 60;
     PublicLibraryModalComponent,
     LucideAngularModule,
     LazyVideoFrameDirective,
-    NgTemplateOutlet
+    NgTemplateOutlet,
+    RewardLimitNoteComponent
   ],
   styleUrl: './triggers-page.component.css',
   templateUrl: './triggers-page.component.html',
@@ -137,6 +142,8 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly triggersService = inject(TriggersService);
   private readonly toastService = inject(ToastService);
+  private readonly redemptionsService = inject(RedemptionsService);
+  private readonly botAccess = inject(BotAccessService);
 
   private cooldownTimer: number | null = null;
   private testPreviewReady = false;
@@ -177,6 +184,9 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   readonly isUploadingMedia = signal(false);
   readonly isSendingTest = signal(false);
   readonly pageError = signal<string | null>(null);
+  /** Channel points rewards on Twitch from every app (Twitch caps a channel at 50); null = unknown. */
+  readonly twitchRewardCount = signal<number | null>(null);
+  private rewardCountRequest = 0;
 
   readonly refreshCooldown = signal(0);
   readonly copiedObsLink = signal(false);
@@ -258,16 +268,17 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   });
   readonly triggerFormErrors = computed(() => {
     const form = this.triggerForm();
+    const rewardOn = form.reward.enabled && !this.rewardBlocked();
     return {
       name: form.name.trim().length === 0,
       invalidName: form.name.trim().length > 0 && !TRIGGER_NAME_REGEX.test(form.name.trim()),
       libraryItemID: this.triggerFormMode() === 'create' && form.libraryItemID.trim().length === 0,
       volume: !Number.isFinite(form.volume) || form.volume < 0 || form.volume > 100,
-      rewardTitle: form.reward.enabled && form.reward.title.trim().length === 0,
-      rewardCost: form.reward.enabled && (!Number.isFinite(form.reward.cost) || form.reward.cost < 0),
-      rewardCooldown: form.reward.enabled && (!Number.isFinite(form.reward.cooldown) || form.reward.cooldown < 0),
-      rewardDuration: form.reward.enabled && (!Number.isFinite(form.reward.duration) || form.reward.duration < 0),
-      rewardCostChange: form.reward.enabled && !Number.isFinite(form.reward.costChange)
+      rewardTitle: rewardOn && form.reward.title.trim().length === 0,
+      rewardCost: rewardOn && (!Number.isFinite(form.reward.cost) || form.reward.cost < 0),
+      rewardCooldown: rewardOn && (!Number.isFinite(form.reward.cooldown) || form.reward.cooldown < 0),
+      rewardDuration: rewardOn && (!Number.isFinite(form.reward.duration) || form.reward.duration < 0),
+      rewardCostChange: rewardOn && !Number.isFinite(form.reward.costChange)
     };
   });
   readonly uploadLimitLabel = computed(() => this.formatBytes(this.getUploadLimitBytes(this.planTier())));
@@ -275,6 +286,15 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   readonly filterOptions: MediaFilter[] = ['all', 'video', 'audio', 'image', 'gif'];
   readonly editingTrigger = computed(() => this.triggers().find((item) => item._id === this.editingTriggerId()) || null);
   readonly hasLinkedRewardInEditor = computed(() => Boolean(this.editingTrigger()?.reward?.rewardID));
+  /**
+   * Every Twitch reward slot is taken: a new reward can't be made, so the editor keeps the reward
+   * off (the trigger still saves and plays from commands). A trigger that already has its reward keeps it.
+   * The draft's reward settings stay in the form and come back if a slot frees up.
+   */
+  readonly rewardBlocked = computed(
+    () => (this.twitchRewardCount() ?? 0) >= TWITCH_REWARD_LIMIT && !this.hasLinkedRewardInEditor()
+  );
+  readonly rewardOn = computed(() => this.triggerForm().reward.enabled && !this.rewardBlocked());
   readonly triggerSearch = signal('');
   readonly pickerSearch = signal('');
   readonly submitAttempted = signal(false);
@@ -442,6 +462,42 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
 
     this.loadTriggers(channelId, force);
     this.loadLibrary(channelId, force);
+    void this.loadRewardCount(channelId);
+  }
+
+  /**
+   * How many Twitch reward slots are taken, for the "50 of 50" note. Optional: without full
+   * access or reward permission Twitch/the API refuse, and the page simply shows no note.
+   */
+  private async loadRewardCount(channelId: string): Promise<void> {
+    if (this.botAccess.needsFullAccess(channelId)) return;
+    const request = ++this.rewardCountRequest;
+    const canView = await firstValueFrom(this.sessionAuth.checkPermission(channelId, 'rewards:view').pipe(catchError(() => of(false))));
+    if (!canView || request !== this.rewardCountRequest) return;
+    this.redemptionsService.getTwitchRedemptions(channelId, true).subscribe({
+      next: (rewards) => {
+        // Only the newest request counts: an older reply must not undo a newer one.
+        if (request === this.rewardCountRequest && this.channelID() === channelId) this.twitchRewardCount.set(rewards.length);
+      },
+      error: () => {}
+    });
+  }
+
+  /** Server error toast; Twitch reward problems get plain words and stay up long enough to act on. */
+  private showSaveError(titleKey: string, error: unknown, fallbackKey: string): void {
+    const raw = this.resolveErrorMessage(error, '');
+    const kind = twitchRewardErrorKind(raw);
+    if (kind === 'tooMany') {
+      this.rewardCountRequest++; // Twitch's refusal is newer than any count still on its way.
+      this.twitchRewardCount.update((count) => Math.max(count ?? 0, TWITCH_REWARD_LIMIT));
+      this.toastService.error(this.t('rewardLimit.toastTitle'), this.t('rewardLimit.toastTrigger'), TWITCH_REWARD_ERROR_TOAST_MS);
+      return;
+    }
+    if (kind === 'duplicate') {
+      this.toastService.error(this.t(titleKey), this.t('redemptions.errors.duplicateTitle'), TWITCH_REWARD_ERROR_TOAST_MS);
+      return;
+    }
+    this.toastService.error(this.t(titleKey), raw || this.t(fallbackKey));
   }
 
   refreshAll(): void {
@@ -611,7 +667,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   toggleRewardSection(enabled: boolean): void {
-    if (this.hasLinkedRewardInEditor()) {
+    if (this.hasLinkedRewardInEditor() || this.rewardBlocked()) {
       return;
     }
 
@@ -661,10 +717,11 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
           this.closeTriggerModal();
           this.toastService.success(this.t('triggers.createSuccessTitle'), this.t('triggers.createSuccessMessage'));
           this.loadTriggers(channelId, true);
+          if (payload.reward?.create) void this.loadRewardCount(channelId);
         },
         error: (error) => {
           this.isSubmittingTrigger.set(false);
-          this.toastService.error(this.t('triggers.errors.createTitle'), this.resolveErrorMessage(error, this.t('triggers.errors.createMessage')));
+          this.showSaveError('triggers.errors.createTitle', error, 'triggers.errors.createMessage');
         }
       });
       return;
@@ -682,6 +739,8 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
       volume: Math.round(form.volume),
       reward: this.buildRewardPayload(form)
     };
+    // Turning the reward on for a trigger that had none makes a new Twitch reward.
+    const addsReward = Boolean(payload.reward) && !this.hasLinkedRewardInEditor();
 
     this.triggersService.updateTrigger(channelId, triggerId, payload).subscribe({
       next: (updatedTrigger) => {
@@ -689,10 +748,11 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
         this.isSubmittingTrigger.set(false);
         this.closeTriggerModal();
         this.toastService.success(this.t('triggers.updateSuccessTitle'), this.t('triggers.updateSuccessMessage'));
+        if (addsReward) void this.loadRewardCount(channelId);
       },
       error: (error) => {
         this.isSubmittingTrigger.set(false);
-        this.toastService.error(this.t('triggers.errors.updateTitle'), this.resolveErrorMessage(error, this.t('triggers.errors.updateMessage')));
+        this.showSaveError('triggers.errors.updateTitle', error, 'triggers.errors.updateMessage');
       }
     });
   }
@@ -751,9 +811,12 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     }
 
     if (pending.type === 'trigger') {
+      const deleted = this.triggers().find((item) => item._id === pending.id);
+      const hadReward = Boolean(deleted?.rewardID || deleted?.reward?.rewardID);
       this.triggersService.deleteTrigger(channelId, pending.id).subscribe({
         next: () => {
           this.triggers.update((items) => items.filter((item) => item._id !== pending.id));
+          if (hadReward) void this.loadRewardCount(channelId);
           this.pendingDelete.set(null);
           this.toastService.success(this.t('triggers.deleteTriggerTitle'), this.t('triggers.deleteTriggerMessage'));
         },
@@ -1164,7 +1227,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   private buildRewardPayload(form: TriggerFormState): TriggerRewardDraft | null {
-    if (!form.reward.enabled) {
+    if (!form.reward.enabled || this.rewardBlocked()) {
       return null;
     }
 

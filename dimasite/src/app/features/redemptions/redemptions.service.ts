@@ -6,6 +6,7 @@ import { map, tap, shareReplay, catchError } from 'rxjs/operators';
 import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { ToastService } from '../../services/toast.service';
+import { TWITCH_REWARD_ERROR_TOAST_MS, twitchRewardErrorKind } from '../../shared/utils/twitch-reward-error.util';
 import {
   Redemption,
   TwitchRedemption,
@@ -130,10 +131,7 @@ export class RedemptionsService {
         }),
         catchError((error) => {
           this.isLoading.set(false);
-          this.toastService.error(
-            this.languageService.translate('redemptions.errors.saveTitle'),
-            this.friendlyError(error, this.languageService.translate('redemptions.serviceErrors.create')),
-          );
+          this.toastError('redemptions.errors.saveTitle', error, 'redemptions.serviceErrors.create');
           return throwError(() => error);
         })
       );
@@ -171,10 +169,7 @@ export class RedemptionsService {
         }),
         catchError((error) => {
           if (!options.silent) {
-            this.toastService.error(
-              this.languageService.translate('redemptions.errors.saveTitle'),
-              this.friendlyError(error, this.languageService.translate('redemptions.serviceErrors.update')),
-            );
+            this.toastError('redemptions.errors.saveTitle', error, 'redemptions.serviceErrors.update');
           }
           return throwError(() => error);
         })
@@ -185,9 +180,18 @@ export class RedemptionsService {
   friendlyError(error: unknown, fallback: string): string {
     const err = error as { error?: { message?: string }; message?: string };
     const raw = err?.error?.message || err?.message || fallback;
-    if (/DUPLICATE_REWARD/i.test(raw)) return this.languageService.translate('redemptions.errors.duplicateTitle');
-    if (/TOO_MANY_REWARDS|maximum number of (custom )?rewards/i.test(raw)) return this.languageService.translate('redemptions.errors.tooManyRewards');
+    const kind = twitchRewardErrorKind(raw);
+    if (kind === 'duplicate') return this.languageService.translate('redemptions.errors.duplicateTitle');
+    if (kind === 'tooMany') return this.languageService.translate('redemptions.errors.tooManyRewards');
     return raw;
+  }
+
+  /** Error toast; Twitch's reward problems stay up longer so there's time to read what to do. */
+  private toastError(titleKey: string, error: unknown, fallbackKey: string): void {
+    const message = this.friendlyError(error, this.languageService.translate(fallbackKey));
+    const err = error as { error?: { message?: string }; message?: string };
+    const known = twitchRewardErrorKind(err?.error?.message || err?.message);
+    this.toastService.error(this.languageService.translate(titleKey), message, known ? TWITCH_REWARD_ERROR_TOAST_MS : undefined);
   }
 
   updateRedemptionField(
@@ -219,10 +223,7 @@ export class RedemptionsService {
           this.clearCache(normalizedId);
         }),
         catchError((error) => {
-          this.toastService.error(
-            this.languageService.translate('redemptions.errors.deleteTitle'),
-            this.friendlyError(error, this.languageService.translate('redemptions.serviceErrors.delete')),
-          );
+          this.toastError('redemptions.errors.deleteTitle', error, 'redemptions.serviceErrors.delete');
           return throwError(() => error);
         })
       );

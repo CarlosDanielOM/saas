@@ -51,6 +51,10 @@
       </div>
     </header>
 
+    @if (canAttach() || canEdit()) {
+      <app-reward-limit-note [count]="twitchRewardCount()" [channelID]="channelID()" [streamer]="streamer()" [showRewardsLink]="true" />
+    }
+
     <!-- One-time OBS setup -->
     <section class="lf-tile lf-setup" aria-labelledby="trigger-setup-title">
       <span class="lf-setup__icon" aria-hidden="true">
@@ -375,16 +379,21 @@
           <div class="lf-step__row">
             <h3 class="lf-step__title" id="trigger-step-reward"><span class="lf-step__num" aria-hidden="true">3</span>{{ t('triggers.editor.rewardTitle') }}</h3>
             <label class="lf-switch">
-              <input type="checkbox" [checked]="triggerForm().reward.enabled" [disabled]="hasLinkedRewardInEditor()"
-                [attr.aria-label]="t('triggers.editor.rewardToggle')" (change)="toggleRewardSection($any($event.target).checked)" />
+              <input type="checkbox" [checked]="rewardOn()" [disabled]="hasLinkedRewardInEditor() || rewardBlocked()"
+                [attr.aria-label]="t('triggers.editor.rewardToggle')" [attr.aria-describedby]="rewardBlocked() ? 'trigger-reward-full' : null"
+                (change)="toggleRewardSection($any($event.target).checked)" />
               <span class="lf-switch__track"></span>
             </label>
           </div>
-          <p class="lf-note">
-            {{ hasLinkedRewardInEditor() ? t('triggers.rewardBuilderLinkedHint') : triggerForm().reward.enabled ? t('triggers.editor.rewardOnHint') : t('triggers.editor.rewardOffHint') }}
-          </p>
+          @if (rewardBlocked()) {
+            <p class="lf-note lf-note--warn" id="trigger-reward-full">{{ t('rewardLimit.editorHint') }}</p>
+          } @else {
+            <p class="lf-note">
+              {{ hasLinkedRewardInEditor() ? t('triggers.rewardBuilderLinkedHint') : triggerForm().reward.enabled ? t('triggers.editor.rewardOnHint') : t('triggers.editor.rewardOffHint') }}
+            </p>
+          }
 
-          @if (triggerForm().reward.enabled) {
+          @if (rewardOn()) {
             <div class="lf-form-grid lf-form-grid--3">
               <label class="lf-field lf-field--span">
                 <span class="lf-label">{{ t('triggers.rewardFields.title') }}</span>

@@ -5401,6 +5401,16 @@
     "loadTitle": "Failed to Load",
     "loadMessage": "Unable to load chat events. Please try again."
   },
+  "rewardLimit": {
+    "noteTitle": "Your channel has {{count}} of {{limit}} Twitch rewards",
+    "noteBody": "Rewards made on Twitch or in other apps count too, even turned off or paused. Delete ones you don't use to make new ones.",
+    "openRewards": "See your rewards",
+    "manageOnTwitch": "Manage on Twitch",
+    "dismiss": "Hide this notice",
+    "toastTitle": "Twitch reward limit reached",
+    "toastTrigger": "Your channel already has the 50 rewards Twitch allows, and turned-off or paused ones still count. We turned the reward off, so saving again keeps the trigger without one. To add a reward, delete one you don't use first.",
+    "editorHint": "Your channel has all 50 Twitch rewards, so this trigger can't get one right now. It still plays from any command. Delete a reward you don't use to add one here."
+  },
   "redemptions": {
     "title": "Redemptions",
     "subtitle": "Channel point rewards viewers redeem on your stream. DomDimaBot can post a chat message, play a trigger, and raise the price after each redeem.",
@@ -5536,7 +5546,7 @@
       "saveTitle": "Couldn't save",
       "deleteTitle": "Couldn't delete",
       "duplicateTitle": "You already have a reward with this name on Twitch. Pick a different name.",
-      "tooManyRewards": "Twitch allows 50 rewards per channel. Delete one to make room.",
+      "tooManyRewards": "Your channel already has the 50 rewards Twitch allows, and turned-off or paused ones still count. Delete one you don't use to make room.",
       "loadTitle": "Failed to Load",
       "loadMessage": "Unable to load redemptions. Please try again.",
       "loadTwitchTitle": "Failed to Load Twitch Rewards",
