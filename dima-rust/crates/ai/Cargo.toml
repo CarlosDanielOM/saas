@@ -22,6 +22,6 @@ thiserror.workspace = true
 
 [dev-dependencies]
 dima-http = { workspace = true, features = ["test-util"] }
-tokio.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
 uuid.workspace = true
 anyhow.workspace = true

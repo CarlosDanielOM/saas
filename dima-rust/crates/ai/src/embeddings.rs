@@ -220,6 +220,24 @@ impl Client {
                     .total_cmp(&b["index"].as_f64().unwrap_or(0.0))
             });
         }
+        if texts.len() == 1 && matches!(self.service, Service::Lfm2) {
+            let embedding = data.first().and_then(|d| d.get("embedding"));
+            let message = if embedding.is_none_or(|v| !dima_text::js_truthy(v)) {
+                Some("Empty embedding returned from LFM2 service")
+            } else if embedding
+                .and_then(Value::as_array)
+                .is_none_or(Vec::is_empty)
+            {
+                Some("Invalid embedding shape")
+            } else {
+                None
+            };
+            if let Some(message) = message {
+                let mut result = EmbeddingResult::fail(message);
+                result.model = Some(model.into());
+                return result;
+            }
+        }
         let vectors: Result<Vec<Vec<f64>>, _> = data
             .iter()
             .map(|d| serde_json::from_value(d["embedding"].clone()))
