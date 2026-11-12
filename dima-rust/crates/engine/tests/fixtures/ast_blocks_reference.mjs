@@ -208,7 +208,7 @@ const slug = (text) => String(text)
     .replace(/^_+|_+$/g, '')
     .slice(0, 48) || 'empty';
 
-function addCase({ operation, key, input, source, expected, parity = 'source-parity', approved, tags = [], description }) {
+function addCase({ operation, key, input, source, expected, parity = 'source-parity', approved, tags = [], description, twin }) {
     caseSeq += 1;
     const name = `${String(caseSeq).padStart(4, '0')}-${operation}-${slug(key)}`;
     assert.ok(!caseNames.has(name), `duplicate case name ${name}`);
@@ -223,6 +223,7 @@ function addCase({ operation, key, input, source, expected, parity = 'source-par
         parity,
         ...(approved ? { approved: json(approved) } : {}),
         ...(description ? { description } : {}),
+        ...(twin ? { twin: json(twin) } : {}),
         tags: [...new Set(tags)].sort()
     });
 }
@@ -282,6 +283,52 @@ function expectedImport(source) {
         : { outcome: 'error', error: source.error };
 }
 
+// BMP twin: the same input with every astral character replaced by a BMP
+// character of the same class for every pattern the reference uses (a \p{L}
+// letter, a \p{N} digit, or a symbol that is neither and not whitespace). The
+// Rust port counts characters, so on the original input it must give the
+// twin's result with the replacements undone. The parity test states that rule
+// once; the twin is recorded for every case whose input has an astral character.
+const ASTRAL = /[\u{10000}-\u{10FFFF}]/u;
+const TWIN_POOLS = { L: [0xa640, 46], N: [0x0660, 10], S: [0x2600, 128] };
+function twinOf(value) {
+    const map = {};
+    const byOriginal = new Map();
+    const used = { L: 0, N: 0, S: 0 };
+    const swap = (text) => Array.from(text).map((ch) => {
+        if (ch.codePointAt(0) <= 0xffff) return ch;
+        if (byOriginal.has(ch)) return byOriginal.get(ch);
+        const cls = /\p{L}/u.test(ch) ? 'L' : /\p{N}/u.test(ch) ? 'N' : 'S';
+        const [base, size] = TWIN_POOLS[cls];
+        assert.ok(used[cls] < size, `twin pool ${cls} exhausted`);
+        const twin = String.fromCodePoint(base + used[cls]++);
+        assert.equal(/\p{L}/u.test(twin), cls === 'L', `twin class L for ${twin}`);
+        assert.equal(/\p{N}/u.test(twin), cls === 'N', `twin class N for ${twin}`);
+        assert.ok(!/\s/.test(twin), 'twin is not whitespace');
+        map[twin] = ch;
+        byOriginal.set(ch, twin);
+        return twin;
+    }).join('');
+    const walk = (item) => {
+        if (typeof item === 'string') return swap(item);
+        if (Array.isArray(item)) return item.map(walk);
+        if (item && typeof item === 'object') return Object.fromEntries(Object.entries(item).map(([k, v]) => [k, walk(v)]));
+        return item;
+    };
+    const input = walk(value);
+    const twinText = JSON.stringify(input);
+    for (const twin of Object.keys(map)) {
+        assert.ok(!JSON.stringify(value).includes(twin), `twin ${twin} already occurs in the input`);
+        assert.ok(twinText.includes(twin));
+    }
+    return { input, map };
+}
+function twinFor(input, run) {
+    if (!ASTRAL.test(JSON.stringify(input))) return undefined;
+    const { input: twinInput, map } = twinOf(input);
+    return { input: twinInput, map, source: run(twinInput) };
+}
+
 function addRead(key, input, tags = [], options = {}) {
     input = json(input);
     const source = readSource(input);
@@ -289,7 +336,8 @@ function addRead(key, input, tags = [], options = {}) {
         operation: 'read', key, input, source,
         expected: options.expected ?? expectedRead(source),
         parity: options.parity, approved: options.approved, tags,
-        description: options.description
+        description: options.description,
+        twin: twinFor(input, readSource)
     });
 }
 function addCompile(key, input, tags = [], options = {}) {
@@ -299,7 +347,8 @@ function addCompile(key, input, tags = [], options = {}) {
         operation: 'compile', key, input, source,
         expected: options.expected ?? expectedCompile(source),
         parity: options.parity, approved: options.approved, tags,
-        description: options.description
+        description: options.description,
+        twin: twinFor(input, compileSource)
     });
 }
 function addImport(key, text, tags = [], options = {}) {
@@ -308,7 +357,8 @@ function addImport(key, text, tags = [], options = {}) {
         operation: 'import', key, input: { text }, source,
         expected: options.expected ?? expectedImport(source),
         parity: options.parity, approved: options.approved, tags,
-        description: options.description
+        description: options.description,
+        twin: twinFor({ text }, (twin) => importSource(twin.text))
     });
 }
 
@@ -670,38 +720,22 @@ function materializeTreeSpec(spec) {
 function addQuotaRead(key, spec, options = {}) {
     const nodes = specNodeCount(spec);
     const input = { treeSpec: 'flat-nodes', ...spec };
-    let source;
-    if (nodes <= 4001) {
-        resetIds();
-        const actual = capture(() => api.readBlockRoot(materializeTreeSpec(spec)));
-        source = {
-            summary: true, materialized: true, validatedNodes: nodes,
-            outcome: actual.ok ? 'accepted' : 'error',
-            ...(actual.ok ? {} : { error: actual.error })
-        };
-        if (actual.ok) assert.equal(countNodes(actual.value), nodes, `spec/node count drift for ${key}`);
-    } else {
-        source = {
-            summary: true, materialized: false, validatedNodes: nodes,
-            reason: 'TypeScript MAX_BLOCK_NODES=4000; tree not materialized'
-        };
-    }
-    const accepted = nodes <= 7500;
+    resetIds();
+    const actual = capture(() => api.readBlockRoot(materializeTreeSpec(spec)));
+    const source = {
+        summary: true, materialized: true, validatedNodes: nodes,
+        outcome: actual.ok ? 'accepted' : 'error',
+        ...(actual.ok ? {} : { error: actual.error })
+    };
+    if (actual.ok) assert.equal(countNodes(actual.value), nodes, `spec/node count drift for ${key}`);
     addCase({
         operation: 'read',
         key,
         input,
         source,
-        expected: accepted
+        expected: actual.ok
             ? { outcome: 'accepted', validatedNodes: nodes }
-            : { outcome: 'error', error: { name: 'Error', message: 'Too many blocks (limit 7500).' } },
-        parity: nodes <= 4000 ? 'source-parity' : 'approved-node-limit',
-        approved: nodes > 4000 ? {
-            item: 'limits',
-            change: 'MAX_BLOCK_NODES 4000 -> 7500',
-            sourceLimit: 4000,
-            rustLimit: 7500
-        } : undefined,
+            : { outcome: 'error', error: actual.error },
         tags: ['quota', `nodes:${nodes}`, ...(options.tags ?? [])],
         description: options.description
     });
@@ -881,15 +915,7 @@ function addProvenanceCompile(key, input, childId, tags) {
     assert.notEqual(source.error.blockId, childId, `${key}: source and approved provenance should differ`);
     addCase({
         operation: 'compile', key, input, source,
-        expected: { outcome: 'error', error: { ...source.error, blockId: childId } },
-        parity: 'approved-provenance',
-        approved: {
-            item: 6,
-            change: 'error blockId points at the offending literal child',
-            sourceBlockId: source.error.blockId,
-            expectedBlockId: childId,
-            messageUnchanged: true
-        },
+        expected: { outcome: 'error', error: source.error },
         tags: ['approved:provenance', ...tags]
     });
 }
@@ -952,36 +978,8 @@ addImport('empty-text', '', ['import:empty']);
 addImport('text-length-10000', 'a'.repeat(10000), ['limit:10000']);
 addImport('text-length-10001', 'a'.repeat(10001), ['limit:10001', 'error:text-limit']);
 addImport('nested-functions-47-accepts', '$(s '.repeat(47) + 'x' + ')'.repeat(47), ['depth', 'depth:48']);
-addImport('nested-functions-48-fallback', '$(s '.repeat(48) + 'x' + ')'.repeat(48), ['depth', 'depth:49', 'fallback:depth'], {
-    expected: {
-        outcome: 'imported',
-        root: canonicalizeIds({ id: 'canon-root', type: 'root', children: [{ id: 'canon-raw', type: 'raw', source: '$(s '.repeat(48) + 'x' + ')'.repeat(48) }] }),
-        advancedCount: 1,
-        canonicalization: 'import-ids',
-        resaveTextEqualsInput: true
-    },
-    parity: 'approved-invariant',
-    approved: {
-        item: 5,
-        change: 'import fallback to original expression bytes under save limits',
-        reason: 'candidate depth 49 > 48'
-    }
-});
-addImport('empty-function-name-fallback', '$(123)', ['fallback:name'], {
-    expected: {
-        outcome: 'imported',
-        root: canonicalizeIds({ id: 'canon-root', type: 'root', children: [{ id: 'canon-raw', type: 'raw', source: '$(123)' }] }),
-        advancedCount: 1,
-        canonicalization: 'import-ids',
-        resaveTextEqualsInput: true
-    },
-    parity: 'approved-invariant',
-    approved: {
-        item: 5,
-        change: 'import fallback to original expression bytes under save limits',
-        reason: 'candidate function name is invalid under typed validation'
-    }
-});
+addImport('nested-functions-48-fallback', '$(s '.repeat(48) + 'x' + ')'.repeat(48), ['depth', 'depth:49', 'fallback:depth']);
+addImport('empty-function-name-fallback', '$(123)', ['fallback:name']);
 addImport('invalid-var-name-source-raw', '$(say %(*bad-name))', ['fallback:name']);
 
 // Output-expansion and node-quota fallbacks: invariants only (algorithm not final).
@@ -998,23 +996,7 @@ function addCompactImport(key, text, tags, description) {
     };
     addCase({
         operation: 'import', key, input: { text }, source: summary,
-        expected: {
-            outcome: 'invariants',
-            invariants: {
-                rawPiecesAreOriginalBytes: true,
-                rawPiecesConcatenateToInput: true,
-                advancedCountMatchesRawChildren: true,
-                typedValidation: { maxNodes: 7500, maxDepth: 48, names: 'typed validation rules' },
-                resaveWithinUnits: 10000
-            }
-        },
-        parity: 'approved-import-fallback',
-        approved: {
-            item: 5,
-            change: 'global import fallback under node/depth/name/format and save-output limits',
-            sourceAdvancedCount: source.value.advancedCount,
-            sourceNodeCount: summary.nodeCount
-        },
+        expected: { outcome: 'summary', ...summary },
         tags: ['approved:import-fallback', 'summary', ...tags],
         description
     });
@@ -1093,7 +1075,7 @@ addStructural('root-child-count', root(lit('a')), root(lit('a'), lit('b')), ['ty
 // all prior cases so earlier case names stay stable. Source outcomes are the
 // actual isolated-oracle results; Rust failure/fix behaviour is not fitted.
 // ---------------------------------------------------------------------------
-function addExactFallbackRegression(key, text, expectedRoot, tags, reason) {
+function addExactFallbackRegression(key, text, _expectedRoot, tags, _reason) {
     const source = importSource(text);
     assert.ok(source.ok, `${key}: source import threw`);
     resetIds();
@@ -1101,22 +1083,8 @@ function addExactFallbackRegression(key, text, expectedRoot, tags, reason) {
     assert.equal(save.ok, false, `${key}: expected the source save to fail`);
     addCase({
         operation: 'import', key, input: { text }, source,
-        expected: {
-            outcome: 'imported',
-            root: canonicalizeIds(expectedRoot),
-            advancedCount: 1,
-            canonicalization: 'import-ids',
-            resaveTextEqualsInput: true
-        },
-        parity: 'approved-invariant',
-        approved: {
-            item: 5,
-            change: 'import fallback to original expression bytes under save limits',
-            reason,
-            sourceAdvancedCount: source.value.advancedCount,
-            sourceRootChildTypes: source.value.root.children.map((child) => child.type),
-            sourceSaveOutcome: save.error
-        },
+        expected: expectedImport(source),
+        save: save.error,
         tags: ['approved:import-fallback', 'regression:review-20261025', ...tags]
     });
 }
@@ -1185,6 +1153,103 @@ addExactFallbackRegression(
         parity: 'source-parity',
         tags: ['regression:review-20261025', 'limit:10001', 'error:output-limit']
     });
+}
+
+// ---------------------------------------------------------------------------
+// Unicode: emoji, combining marks, right-to-left text and astral characters on
+// both sides of every limit (the TypeScript counts UTF-16 units; the port
+// counts characters, so these carry a twin). Appended after the earlier cases
+// so their names stay stable.
+// ---------------------------------------------------------------------------
+{
+    const E = '😀';
+    const A = '𐐀';
+    const D = '𝟘';
+    const FAMILY = '👨‍👩‍👧‍👦';
+    const FLAG = '🇪🇸';
+    const HEBREW = 'שלום';
+    const ARABIC = 'مرحبا';
+    const COMBINING = 'é';
+    const tags = ['unicode'];
+    // Text (10,000).
+    for (const [key, value] of [
+        ['emoji-5000', E.repeat(5000)], ['emoji-5001', E.repeat(5001)],
+        ['emoji-10000', E.repeat(10000)], ['emoji-10001', E.repeat(10001)],
+        ['ascii-9999-emoji', 'a'.repeat(9999) + E], ['ascii-10000-emoji', 'a'.repeat(10000) + E],
+        ['combining-10000', COMBINING.repeat(5000)], ['combining-10001', COMBINING.repeat(5000) + 'e'],
+        ['hebrew-10000', (HEBREW + ' ').repeat(2000)], ['hebrew-10001', (HEBREW + ' ').repeat(2000) + 'x'],
+        ['family-zwj', FAMILY.repeat(1428) + 'abcd']
+    ]) {
+        addRead(`unicode-literal-${key}`, root(lit(value)), [...tags, 'limit:text']);
+    }
+    for (const [key, value] of [
+        ['emoji-9993', '$(say ' + E.repeat(9993) + ')'], ['emoji-9994', '$(say ' + E.repeat(9994) + ')']
+    ]) {
+        addRead(`unicode-raw-${key}`, root(raw(value)), [...tags, 'limit:raw']);
+    }
+    // Names: function 80, command 60 (before the ! is stripped), variable 64, counter 32.
+    for (const n of [40, 41]) addRead(`unicode-function-name-${n}-emoji`, root(fn(E.repeat(n))), [...tags, 'limit:80']);
+    for (const name of [E.repeat(30), E.repeat(31), E.repeat(60), E.repeat(61), '!' + E.repeat(30),
+        '!' + E.repeat(59), HEBREW, FLAG, FAMILY, COMBINING, A.repeat(60) + 'a']) {
+        addRead(`unicode-command-${name.length}u-${Array.from(name).length}c`, root(cmd(name)), [...tags, 'limit:60']);
+    }
+    for (const [key, name] of [
+        ['astral-32', A.repeat(32)], ['astral-33', A.repeat(33)], ['astral-64', A.repeat(64)],
+        ['astral-65', A.repeat(65)], ['digit-33', D.repeat(33)], ['mixed-64', A.repeat(40) + 'a'.repeat(24)],
+        ['emoji', E], ['combining', COMBINING], ['hebrew', HEBREW], ['arabic', ARABIC]
+    ]) {
+        addRead(`unicode-varname-${key}`, root(getVar(name, 'db')), [...tags, 'limit:64']);
+    }
+    for (const n of [16, 17]) {
+        addRead(`unicode-counter-${n}-emoji`, root(loopVar(E.repeat(n))), [...tags, 'limit:32']);
+    }
+    // The unknown-type message quotes 24 units (TypeScript) or 24 characters.
+    for (const [key, type] of [
+        ['x23-emoji', 'x'.repeat(23) + E], ['x22-emoji', 'x'.repeat(22) + E + 'yy'],
+        ['emoji-13', E.repeat(13)], ['hebrew', HEBREW.repeat(7)]
+    ]) {
+        addRead(`unicode-unknown-type-${key}`, root({ id: 'ut', type }), [...tags, 'error:unknown-type']);
+    }
+    addRead('unicode-id-emoji', root({ ...lit('x'), id: E }), [...tags, 'ids']);
+    // Compile: the 10,000-character command and its count.
+    for (const [key, children] of [
+        ['emoji-4000-ascii-6000', [lit(E.repeat(4000)), lit('a'.repeat(6000))]],
+        ['ascii-9999-emoji', [lit('a'.repeat(9999)), lit(E)]],
+        ['ascii-10000-emoji', [lit('a'.repeat(10000)), lit(E)]],
+        ['emoji-9993-user', [lit(E.repeat(9993)), fn('user')]],
+        ['emoji-9994-user', [lit(E.repeat(9994)), fn('user')]],
+        ['emoji-9999-user', [lit(E.repeat(9999)), fn('user')]],
+        ['quoted-emoji-args', [fn('say', [lit(E.repeat(4997))])]],
+        ['quoted-emoji-args-over', [fn('say', [lit(E.repeat(4998))])]]
+    ]) {
+        addCompile(`unicode-output-${key}`, root(...children), [...tags, 'limit:output']);
+    }
+    addCompile('unicode-mixed-reply', root(
+        lit(`${E} ${HEBREW} `), fn('say', [lit(`${HEBREW} ${ARABIC}`), lit(COMBINING), lit(E), lit(FAMILY), lit(A), lit(D)]),
+        lit(` ${COMBINING} $(not) ${FLAG}`), getVar(A.repeat(5), 'dbUser', { userSelector: fn('touser') }),
+        cmd(E.repeat(31), [lit(E)]),
+        ternary(binary(fn('user'), '==', lit(A)), lit(`${E} sí`), group(lit(`${HEBREW} `), fn('user')))
+    ), [...tags, 'escaping']);
+    addCompile('unicode-emoji-before-start-token', root(lit(`${E}$(user)${E}%del(x)`)), [...tags, 'escaping']);
+    addCompile('unicode-template-parts', root(fn('say', [template(lit(`${E} "`), fn('user'), lit(` ${HEBREW}\n`))])), [...tags, 'type:template']);
+    // Import: the 10,000-character text and its count.
+    for (const [key, text] of [
+        ['ascii-9999-emoji', 'a'.repeat(9999) + E], ['emoji-10000', E.repeat(10000)], ['emoji-10001', E.repeat(10001)],
+        ['combining-10001', COMBINING.repeat(5000) + 'e']
+    ]) {
+        addImport(`unicode-text-${key}`, text, [...tags, 'limit:10000']);
+    }
+    for (const text of [
+        `${E} $(say ${E} 👍🏽) ${HEBREW} %(**${A}($(touser))) ${COMBINING} #(${E})`,
+        `$(say "${E} \${$(user)} ${E}")`,
+        `%(${E} 1) %(${A} 1) %(${COMBINING} 1)`,
+        `*(%[${E}, "a,${E}", ${A}][random])`,
+        `text ${E} \\$(not) ${E}`,
+        `${ARABIC} *(for #i = 0; #i < 2; #i++ { $(say ${E} #i) }) ${FLAG}`,
+        `#(${E.repeat(31)}) #(${E.repeat(61)})`
+    ]) {
+        addImport(`unicode-${text}`, text, [...tags, 'import:unicode']);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1350,13 +1415,13 @@ assert.ok(benchmarks.filter((benchmark) => !benchmark.timingPair).every((benchma
 
 const manifest = {
     schemaVersion: 1,
-    fixtureId: 'ast-blocks-20261025',
+    fixtureId: 'ast-blocks-20261111-utf8',
     description: 'Source-backed TypeScript-compatible ast_blocks fixtures for the dima-rust pure port.',
     contract: {
         oracle: 'actual TypeScript modules loaded in an isolated VM',
         evaluator: 'throw-only stub; never called',
         sourceFiles: 11,
-        limits: { tsMaxBlockNodes: 4000, rustMaxBlockNodes: 7500, maxBlockDepth: 48, maxCommandText: 10000 },
+        limits: { tsMaxBlockNodes: 4000, rustMaxBlockNodes: 4000, maxBlockDepth: 48, maxCommandText: 10000, unit: 'characters in Rust, UTF-16 units in TypeScript (see twin)' },
         idPolicy: 'validation ids exact; import ids canonicalized by pre-order traversal',
         errorPolicy: 'source keeps TS name/message/blockId; Rust code/path are additive and not asserted as TS facts'
     },
@@ -1369,10 +1434,10 @@ const manifest = {
     },
     baseline: {
         tsMaxBlockNodes: validateApi.MAX_BLOCK_NODES,
-        rustMaxBlockNodes: 7500,
+        rustMaxBlockNodes: 4000,
         maxBlockDepth: validateApi.MAX_BLOCK_DEPTH,
         maxCommandText: api.MAX_COMMAND_TEXT,
-        nodeLimit: 'approved hardening: validated nodes 4000 -> 7500',
+        nodeLimit: 'unchanged (4000)',
         depthAndTextLimits: 'unchanged'
     },
     counts: {
@@ -1383,19 +1448,19 @@ const manifest = {
     },
     coverage,
     benchmarks,
+    twinPolicy: 'Cases whose input has an astral character carry `twin`: the input with each astral character replaced by a BMP character of the same class (\\p{L}, \\p{N}, other), the TypeScript result on it, and the map back. Rust counts characters, so its result is the twin result mapped back.',
     knownLimitations: [
-        'Import fallback IDs/order/tree shape are intentionally not asserted; only the approved invariants are.',
+        'Every expectation is the TypeScript result (dima-engine follows the reference; the old port\'s node limit and import fallback were dropped).',
         'Import expectations use canonical n1.. IDs; source keeps deterministic opaque oracle IDs.',
         'The TypeScript oracle has no error code or JSON pointer fields; no fixture invents them.',
         'Quota/oversize trees use compact treeSpec inputs and source summaries to keep the JSON bounded.',
         'Evaluator, functions registry, services, environment, network and clock are never loaded.',
         'Benchmark entries are definitions only; no timing result or Rust benchmark is claimed.',
-        'Rust default is TypeScript-compatible; approved import fallback is the only import difference from the TS source.',
         'Unicode regex behaviour is pinned to the probed Node engine; Unicode version changes could alter edge cases.',
-        'Unpaired UTF-16 surrogate strings are outside Rust String/&str JSON and are excluded; astral pair counting is covered.',
+        'A TypeScript result may contain half of a surrogate pair (slice of a message); readers replace it with U+FFFD at load, as the API edge does.',
         'Command-name length is capped before the leading ! is stripped, matching the TS source order (verified by cases).',
         'storedBlocks in TS is an unvalidated passthrough; stored parity cases use read-validated typed trees only. Invalid/null branches are outside the Rust typed StoredBlocks API.',
-        'An import candidate cannot reach 7500 nodes under the 10000-unit text cap without also exceeding depth 48 (flat grammar max ~7499); node quota is enforced by typed read validation, while import fallback covers depth/name/format/output. A 7499-node wide case covers the near-limit path.'
+        'Imports are not validated against the block limits by the reference: an import can hold more than 4000 blocks or nest deeper than 48 and then fail to save.'
     ],
     corpusHash: null,
     cases

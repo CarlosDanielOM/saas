@@ -1318,6 +1318,50 @@ for (const item of cases) {
 }
 
 // ===========================================================================
+// Unicode: emoji, combining marks, right-to-left text and astral characters,
+// including both sides of the port's 10,000-character source limit (the
+// reference has no limit; spans are UTF-16 here and the port converts its byte
+// spans to compare). Appended after the earlier cases so their names stay put.
+// ===========================================================================
+{
+  const E = '😀';
+  const A = '𐐀';
+  const unicodeParse = [
+    `$(say ${E} 👨‍👩‍👧‍👦 🇪🇸 👍🏽)`, `%(${E} 1)`, `%(**${A}($(touser)))`, `%(*${A}[0] x)`, `^(#${E})`,
+    `#(${E} a)`, '$(say é ñ שׁ)', '$(say שלום עולם)', '$(say مرحبا بالعالم)',
+    `"\${$(user)} שלום ${E}"`, `"${E} \${%(x} ${E}"`, `%[${E}, 👍🏽, "a,${E}"][random]`,
+    `*(${E} == ${E} ? "sí" : "no")`, `${E} $(user`, `${E}${E} %[a, b`, `"${E} unterminated`,
+    `${E} $(say x))`, `${A} *(1 + 2]`, `$(say https://例え.jp/${E}?q=1)`, 'é$(user)é',
+    '‮RTL $(user)‬', `%del(##${E}(${A}))`, `*(for #i = 0; #i < 2; #i++ { $(say ${E} #i) })`,
+    `$(say ${E}\\) x)`, `text ${E} \\$(not) ${E}`, `%[%[${E}, ${A}], "${E}"][0]`, `$(say ${E}.${A})`,
+    `*(${E}5.5${E})`, `$(say ${E}${E}${E}`, `"${E}\\n${E}\\"${E}"`
+  ];
+  for (const source of unicodeParse) addParse('unicode', source);
+  // The port's source limit is 10,000 characters: both sides, in characters and
+  // in UTF-16 units (the earlier port counted units and refused 5,001 emoji).
+  const limitParse = [
+    E.repeat(5000), E.repeat(5001), E.repeat(10000), E.repeat(10001),
+    '$(say ' + E.repeat(9993) + ')', '$(say ' + E.repeat(9994) + ')',
+    'e'.repeat(9999) + '́', 'e'.repeat(10000) + '́',
+    'ש'.repeat(9999) + 'x', 'ש'.repeat(10000) + 'x'
+  ];
+  for (const source of limitParse) addParse('unicode-limit', source);
+  const unicodeScan = [
+    `שלום $(user) ${E} \\$(x) مرحبا`, `${E}$(a)${E}$(b`, `${A}\\\\$(user)`, `${E} "$(say ")" x)`,
+    `${E} %(x ')' y) ${E}`, 'é$(user)é', E.repeat(10001), `$(say ${E.repeat(5000)})`
+  ];
+  for (const source of unicodeScan) addScan('unicode', source);
+  const unicodeCompiled = [
+    `${E}${E} $(say %[a,b) ok`, `${E} $(user`, `${A} $(user)) ${E}`, `שלום $(say "${E}) מה`,
+    `${E} $(say "\${%(x}") ${E}`, `${E.repeat(4000)} $(say ${E.repeat(5990)})`,
+    `${E.repeat(4000)} $(say ${E.repeat(5994)})`
+  ];
+  for (const source of unicodeCompiled) addCompiled('unicode', source);
+  for (const value of [`${E}\\)`, `\\(${A}\\)`, 'é\\;']) addUnescape('unicode', 'literal', value);
+  for (const value of [`${E}\\$${E}`, `\\%${A}`]) addUnescape('unicode', 'rendered', value);
+}
+
+// ===========================================================================
 // Coverage + assertions
 // ===========================================================================
 function walkAst(node, visit) {
