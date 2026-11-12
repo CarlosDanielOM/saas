@@ -16,20 +16,28 @@ pub use dima_model::users::ResetStatus;
 use crate::plans::credits::VerifiedBalance;
 
 /// What a new period's grant may be computed from (item 5 of P2-BILLING-01b).
-#[derive(Clone, Copy, Debug, PartialEq)]
+///
+/// Item 2 of P2-BILLING-01c: the usage is the [`VerifiedBalance`] itself, which only a read of
+/// Polar whose publication was accepted can make, so no number can be passed off as verified.
+#[derive(Clone, Debug, PartialEq)]
 pub enum ResetUsage {
-    /// Credits used in the period, as Polar's meter reported them: build it with
-    /// `ResetUsage::from(&verified_balance)`. Writing `Verified(x)` by hand is a claim that
-    /// `x` came from Polar.
-    Verified(f64),
-    /// No verified balance (Polar could not be reached, the read was fenced, or only a cached
-    /// or fallback balance exists): a new period is deferred, never granted from it.
+    /// Credits used in the period, as the read that verified the balance published them.
+    Verified(VerifiedBalance),
+    /// No verified balance (Polar could not be reached, the read was fenced or superseded, or
+    /// only a cached or fallback balance exists): a new period is deferred, never granted from
+    /// it.
     Unverified,
+}
+
+impl From<VerifiedBalance> for ResetUsage {
+    fn from(balance: VerifiedBalance) -> Self {
+        Self::Verified(balance)
+    }
 }
 
 impl From<&VerifiedBalance> for ResetUsage {
     fn from(balance: &VerifiedBalance) -> Self {
-        Self::Verified(balance.used())
+        Self::Verified(balance.clone())
     }
 }
 
@@ -161,11 +169,11 @@ pub fn decide_free_credit_reset(input: &FreeCreditResetInput<'_>) -> FreeCreditR
             FreeCreditResetDecision::CompleteZero { external_id }
         };
     }
-    let ResetUsage::Verified(used) = input.usage else {
+    let ResetUsage::Verified(balance) = &input.usage else {
         return FreeCreditResetDecision::Defer;
     };
     let maximum = whole_credits(input.maximum_reset_credits);
-    let used = whole_credits(used);
+    let used = whole_credits(balance.used());
     let credits = crate::js::min(used, maximum);
     if credits > 0.0 {
         FreeCreditResetDecision::Grant {
@@ -188,13 +196,22 @@ mod tests {
         dima_text::parse_date(text).unwrap()
     }
 
+    /// A balance as a read would have verified it (only this crate can make one).
+    pub(super) fn verified(used: f64) -> ResetUsage {
+        let data = crate::plans::credits::AiCreditsData {
+            used,
+            ..crate::plans::credits::unavailable_ai_credits(String::new())
+        };
+        ResetUsage::Verified(VerifiedBalance::new(&data, 0, "test".into(), 1))
+    }
+
     fn input(previous: Option<PreviousReset<'static>>, used: f64) -> FreeCreditResetInput<'static> {
         FreeCreditResetInput {
             user_id: "user-1",
             period_source: "free_monthly",
             period_starts_at_ms: Some(ms(START)),
             previous,
-            usage: ResetUsage::Verified(used),
+            usage: verified(used),
             maximum_reset_credits: 25_000.0,
         }
     }
@@ -287,5 +304,198 @@ mod tests {
             free_credit_reset_external_id("u-😃", ms("+010000-01-01T00:00:00.000Z")).as_deref(),
             Some("free-credit-reset-u-😃-+010000-01")
         );
+    }
+}
+
+/// The recorded cases of `decideFreeCreditReset` (`tests/corpus/billing.json`, op `free_reset`,
+/// recorded from the TypeScript). They run inside the crate because a [`VerifiedBalance`] has no
+/// public constructor (item 2 of P2-BILLING-01c): the recording's `usedCredits` (whatever value
+/// the reference coerced with `Number`) stands for the read that verified it.
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod corpus {
+    use super::*;
+    use serde_json::{Map, Value, json};
+
+    /// A tagged number of the corpus (`{"$number": "NaN"}`...).
+    fn number(value: &Value) -> Option<f64> {
+        match value {
+            Value::Number(n) => n.as_f64(),
+            Value::Object(o) => match o.get("$number").and_then(Value::as_str)? {
+                "NaN" => Some(f64::NAN),
+                "+Infinity" => Some(f64::INFINITY),
+                "-Infinity" => Some(f64::NEG_INFINITY),
+                "-0" => Some(-0.0),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn is_undefined(value: &Value) -> bool {
+        value.get("$undefined").is_some()
+    }
+
+    fn field<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
+        value.get(key).filter(|v| !is_undefined(v))
+    }
+
+    fn text<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
+        field(value, key).and_then(Value::as_str)
+    }
+
+    /// A corpus value as plain JSON (`undefined` members dropped).
+    fn plain(value: &Value) -> Option<Value> {
+        Some(match value {
+            Value::Object(o) if o.contains_key("$number") => {
+                Value::Number(serde_json::Number::from_f64(number(value)?)?)
+            }
+            Value::Object(o) if o.contains_key("$undefined") => Value::Null,
+            Value::Object(o) => {
+                let mut out = Map::new();
+                for (k, v) in o {
+                    if !is_undefined(v) {
+                        out.insert(k.clone(), plain(v)?);
+                    }
+                }
+                Value::Object(out)
+            }
+            Value::Array(items) => Value::Array(items.iter().map(plain).collect::<Option<_>>()?),
+            other => other.clone(),
+        })
+    }
+
+    /// `Number(x)` of a corpus value (`undefined` is `NaN`).
+    fn js_number(value: Option<&Value>) -> f64 {
+        match value {
+            None => f64::NAN,
+            Some(v) if is_undefined(v) => f64::NAN,
+            Some(v) => number(v).unwrap_or_else(|| crate::js::number(plain(v).as_ref())),
+        }
+    }
+
+    fn date_of(value: Option<&Value>) -> Option<i64> {
+        let value = value.filter(|v| !v.is_null() && !is_undefined(v))?;
+        match value {
+            Value::String(text) if text.is_empty() => None,
+            other => crate::js::date_ms(Some(other)),
+        }
+    }
+
+    fn decision_json(decision: &FreeCreditResetDecision) -> Value {
+        let credits = |x: f64| {
+            if x.is_nan() {
+                json!({"$number": "NaN"})
+            } else if x.is_infinite() {
+                json!({"$number": if x > 0.0 { "+Infinity" } else { "-Infinity" }})
+            } else {
+                Value::Number(serde_json::Number::from_f64(x).unwrap())
+            }
+        };
+        match decision {
+            FreeCreditResetDecision::Initialize { external_id } => {
+                json!({"action": "initialize", "externalId": external_id})
+            }
+            FreeCreditResetDecision::Skip => json!({"action": "skip"}),
+            FreeCreditResetDecision::CompleteZero { external_id } => {
+                json!({"action": "complete_zero", "externalId": external_id})
+            }
+            FreeCreditResetDecision::Grant {
+                credits: n,
+                external_id,
+            } => json!({"action": "grant", "credits": credits(*n), "externalId": external_id}),
+            FreeCreditResetDecision::Defer => json!({"action": "defer"}),
+        }
+    }
+
+    /// Numbers by value (with the sign of zero), `undefined` members as absent.
+    fn same(expected: &Value, actual: &Value) -> bool {
+        if let Some(n) = number(expected).filter(|_| !expected.is_number()) {
+            return number(actual).is_some_and(|a| {
+                (a.is_nan() && n.is_nan())
+                    || (a == n && a.is_sign_negative() == n.is_sign_negative())
+            });
+        }
+        match (expected, actual) {
+            (Value::Number(e), Value::Number(a)) => {
+                let (e, a) = (e.as_f64().unwrap(), a.as_f64().unwrap());
+                e == a && (e != 0.0 || e.is_sign_negative() == a.is_sign_negative())
+            }
+            (Value::Object(e), Value::Object(a)) if !e.contains_key("$undefined") => {
+                let defined: Vec<_> = e.iter().filter(|(_, v)| !is_undefined(v)).collect();
+                defined.len() == a.len()
+                    && defined
+                        .iter()
+                        .all(|(k, v)| a.get(*k).is_some_and(|actual| same(v, actual)))
+            }
+            (e, a) => e == a,
+        }
+    }
+
+    #[test]
+    fn free_credit_reset_matches_the_reference() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/corpus/billing.json");
+        let corpus: Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+        let (mut checked, mut deferred, mut failures) = (0, 0, Vec::new());
+        for case in corpus["cases"].as_array().unwrap() {
+            if case["op"] != "free_reset" {
+                continue;
+            }
+            let input = &case["input"];
+            let starts_at = input["period"]["startsAt"].as_str().unwrap();
+            let start_ms = dima_text::parse_date(starts_at);
+            // The recording's own parse of the date text.
+            assert_eq!(
+                start_ms,
+                number(&case["dateInputs"]["periodStartMs"])
+                    .filter(|n| n.is_finite())
+                    .map(|n| n as i64),
+                "{starts_at}"
+            );
+            let previous = field(input, "previous").filter(|p| !p.is_null());
+            let external = previous
+                .map(|p| text(p, "externalId").unwrap_or("").to_owned())
+                .unwrap_or_default();
+            let status = previous
+                .map(|p| text(p, "status").unwrap_or("").to_owned())
+                .unwrap_or_default();
+            let decision = decide_free_credit_reset(&FreeCreditResetInput {
+                user_id: input["userId"].as_str().unwrap(),
+                period_source: input["period"]["source"].as_str().unwrap(),
+                period_starts_at_ms: start_ms,
+                previous: previous.map(|p| PreviousReset {
+                    period_start_ms: date_of(field(p, "periodStart")),
+                    status: &status,
+                    credits: js_number(field(p, "credits")),
+                    external_id: &external,
+                }),
+                // The recording's `usedCredits` came from a read the worker trusted; replayed
+                // as verified. Absent, it is the worker's first call, made before any read.
+                usage: match field(input, "usedCredits") {
+                    Some(used) => super::tests::verified(js_number(Some(used))),
+                    None => ResetUsage::Unverified,
+                },
+                maximum_reset_credits: js_number(field(input, "maximumResetCredits")),
+            });
+            let actual = decision_json(&decision);
+            // Intended difference (item 5 of P2-BILLING-01b): without a verified usage a new
+            // period is deferred; the reference computed `Math.floor(NaN || 0)` = 0 and
+            // answered `complete_zero` (its worker then read the credits and decided again,
+            // trusting even the invented fallback).
+            let expected = if decision == FreeCreditResetDecision::Defer {
+                deferred += 1;
+                assert_eq!(case["expected"]["action"], "complete_zero", "{input}");
+                json!({"action": "defer"})
+            } else {
+                case["expected"].clone()
+            };
+            checked += 1;
+            if !same(&expected, &actual) {
+                failures.push(format!("{input}: expected {expected} got {actual}"));
+            }
+        }
+        assert!(failures.is_empty(), "{failures:#?}");
+        assert_eq!(checked, 128, "free_reset cases");
+        assert_eq!(deferred, 1, "cases deferred for want of a verified usage");
     }
 }

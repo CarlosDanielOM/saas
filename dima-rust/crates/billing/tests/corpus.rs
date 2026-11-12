@@ -16,9 +16,6 @@
 mod support;
 
 use dima_billing::credit_packs::{self, CreditPackError};
-use dima_billing::free_credit_reset::{
-    FreeCreditResetDecision, FreeCreditResetInput, PreviousReset, ResetUsage,
-};
 use dima_billing::plans::checkout::{self, BillingAction};
 use dima_billing::plans::credits::{self, AiCreditsData, CreditStatus};
 use dima_billing::plans::{self, PaidTier};
@@ -97,25 +94,6 @@ impl Tally {
     }
 }
 
-fn decision_json(decision: &FreeCreditResetDecision) -> Value {
-    match decision {
-        FreeCreditResetDecision::Initialize { external_id } => {
-            json!({"action": "initialize", "externalId": external_id})
-        }
-        FreeCreditResetDecision::Skip => json!({"action": "skip"}),
-        FreeCreditResetDecision::CompleteZero { external_id } => {
-            json!({"action": "complete_zero", "externalId": external_id})
-        }
-        FreeCreditResetDecision::Grant {
-            credits,
-            external_id,
-        } => {
-            json!({"action": "grant", "credits": js_value(*credits), "externalId": external_id})
-        }
-        FreeCreditResetDecision::Defer => json!({"action": "defer"}),
-    }
-}
-
 /// A Rust number as comparable JSON (`NaN` and infinities as the corpus tags them).
 fn js_value(x: f64) -> Value {
     if x.is_nan() {
@@ -127,80 +105,10 @@ fn js_value(x: f64) -> Value {
     }
 }
 
-/// `timestamp(value)` / `new Date(value)` of a corpus date text.
-fn date_of(value: Option<&Value>) -> Option<i64> {
-    let value = value.filter(|v| !v.is_null() && !is_undefined(v))?;
-    match value {
-        Value::String(text) if text.is_empty() => None,
-        other => js::date_ms(Some(other)),
-    }
-}
-
+/// The `free_reset` cases run inside the crate (`free_credit_reset::corpus`): a
+/// `VerifiedBalance` has no public constructor (item 2 of P2-BILLING-01c).
 #[test]
 fn free_credit_reset_matches_the_reference() {
-    let mut tally = Tally::new("free_reset");
-    let mut deferred = 0;
-    for case in cases("free_reset") {
-        let input = &case["input"];
-        let starts_at = input["period"]["startsAt"].as_str().unwrap();
-        let start_ms = dima_text::parse_date(starts_at);
-        // The recording's own parse of the date text.
-        assert_eq!(
-            start_ms,
-            number(&case["dateInputs"]["periodStartMs"])
-                .filter(|n| n.is_finite())
-                .map(|n| n as i64),
-            "{starts_at}"
-        );
-        let previous = field(input, "previous").filter(|p| !p.is_null());
-        let external = previous
-            .map(|p| text(p, "externalId").unwrap_or("").to_owned())
-            .unwrap_or_default();
-        let status = previous
-            .map(|p| text(p, "status").unwrap_or("").to_owned())
-            .unwrap_or_default();
-        let decision =
-            dima_billing::free_credit_reset::decide_free_credit_reset(&FreeCreditResetInput {
-                user_id: input["userId"].as_str().unwrap(),
-                period_source: input["period"]["source"].as_str().unwrap(),
-                period_starts_at_ms: start_ms,
-                previous: previous.map(|p| PreviousReset {
-                    period_start_ms: date_of(field(p, "periodStart")),
-                    status: &status,
-                    credits: js_number(field(p, "credits")),
-                    external_id: &external,
-                }),
-                // The recording's `usedCredits` came from a read the worker trusted; replayed as
-                // verified. Absent, it is the worker's first call, made before any read.
-                usage: match field(input, "usedCredits") {
-                    Some(_) => ResetUsage::Verified(js_number(field(input, "usedCredits"))),
-                    None => ResetUsage::Unverified,
-                },
-                maximum_reset_credits: js_number(field(input, "maximumResetCredits")),
-            });
-        let actual = decision_json(&decision);
-        // Intended difference (item 5 of P2-BILLING-01b): without a verified usage a new
-        // period is deferred; the reference computed `Math.floor(NaN || 0)` = 0 and answered
-        // `complete_zero` (its worker then read the credits and decided again, trusting even
-        // the invented fallback).
-        let expected = if decision == FreeCreditResetDecision::Defer {
-            deferred += 1;
-            assert_eq!(
-                case["expected"]["action"], "complete_zero",
-                "{}",
-                case["input"]
-            );
-            json!({"action": "defer"})
-        } else {
-            case["expected"].clone()
-        };
-        tally.check(same(&expected, &actual), &case, || {
-            format!("expected {expected} got {actual}")
-        });
-    }
-    tally.finish();
-    assert_eq!(deferred, 1, "cases deferred for want of a verified usage");
-
     let mut tally = Tally::new("reset_external_id");
     for case in cases("reset_external_id") {
         let millis = js::time_clip(num(case["input"].get("millis"))).unwrap();

@@ -9,12 +9,13 @@
 -- (when the fetch began, ms), ARGV[7] now (ms), ARGV[8] updatedAt, ARGV[9] the revision's TTL,
 -- ARGV[10] the oldest figure still published (ms of age), ARGV[11] how long a queued event is
 -- held (ms), ARGV[12] the most queued events counted.
--- Returns {1, stored} published; {2, cached} a publication was accepted since the fetch began;
--- {0, ''} the plan fence is newer; {3, ''} the generation was lost (a balance left without its
--- revision is deleted); {4, cached} too many queued events to count; {5, ''} the figure is too
--- old. Nothing changes except in the first case (and the deletion of the third).
+-- Returns {1, stored, publications} published (the publications accepted in the generation,
+-- this one included); {2, cached, 0} a publication was accepted since the fetch began;
+-- {0, '', 0} the plan fence is newer; {3, '', 0} the generation was lost (a balance left without
+-- its revision is deleted); {4, cached, 0} too many queued events to count; {5, '', 0} the
+-- figure is too old. Nothing changes except in the first case (and the deletion of the third).
 local fence = redis.call('GET', KEYS[4])
-if fence and fence > ARGV[1] then return {0, ''} end
+if fence and fence > ARGV[1] then return {0, '', 0} end
 local kind = holdKind(KEYS[5])
 if kind ~= 'none' and kind ~= 'hash' then
     return redis.error_reply('WRONGTYPE revision is a ' .. tostring(kind))
@@ -22,21 +23,21 @@ end
 local gen = redis.call('HGET', KEYS[5], 'gen')
 if gen ~= ARGV[4] then
     if not gen then redis.call('DEL', KEYS[1]) end
-    return {3, ''}
+    return {3, '', 0}
 end
 if (tonumber(redis.call('HGET', KEYS[5], 'pub') or '0') or 0) > (tonumber(ARGV[5]) or 0) then
-    return {2, redis.call('GET', KEYS[1]) or ''}
+    return {2, redis.call('GET', KEYS[1]) or '', 0}
 end
 local now = tonumber(ARGV[7])
 local asOf = math.min(tonumber(ARGV[6]), now)
 local floor = now - tonumber(ARGV[10])
-if asOf <= floor then return {5, ''} end
+if asOf <= floor then return {5, '', 0} end
 local held = heldAt(KEYS[5], asOf, floor)
 local queued = queuedHeld(KEYS[6], KEYS[7], asOf, tonumber(ARGV[11]), tonumber(ARGV[12]))
-if not held or not queued then return {4, redis.call('GET', KEYS[1]) or ''} end
+if not held or not queued then return {4, redis.call('GET', KEYS[1]) or '', 0} end
 local raw = ARGV[2]
 local ok, data = pcall(cjson.decode, raw)
-if not ok or type(data) ~= 'table' then return {0, ''} end
+if not ok or type(data) ~= 'table' then return {0, '', 0} end
 if applyHeld(data, held + queued, ARGV[8]) then raw = cjson.encode(data) end
 redis.call('SET', KEYS[1], raw, 'EX', ARGV[3])
 if data.status == 'exhausted' then
@@ -45,6 +46,6 @@ if data.status == 'exhausted' then
 else
     redis.call('DEL', KEYS[2], KEYS[3])
 end
-redis.call('HINCRBY', KEYS[5], 'pub', 1)
+local publications = redis.call('HINCRBY', KEYS[5], 'pub', 1)
 redis.call('EXPIRE', KEYS[5], ARGV[9])
-return {1, raw}
+return {1, raw, publications}

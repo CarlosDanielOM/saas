@@ -245,23 +245,39 @@ pub enum Publication {
     Stale,
 }
 
-/// Decodes `{status, value}`.
-pub(crate) fn publication(value: redis::Value) -> Result<Publication, DragonflyError> {
+/// Decodes `{status, value, publications}`: the publication and, when it was accepted, the
+/// publications accepted in the generation with it.
+pub(crate) fn publication(value: redis::Value) -> Result<(Publication, i64), DragonflyError> {
     let mut items = reply::array(value)?.into_iter();
-    let (Some(status), Some(raw), None) = (items.next(), items.next(), items.next()) else {
+    let (Some(status), Some(raw), Some(count), None) =
+        (items.next(), items.next(), items.next(), items.next())
+    else {
         return Err(DragonflyError::Reply("unexpected publication reply"));
     };
     let raw = reply::text(raw)?;
-    Ok(match reply::int(status)? {
-        1 => Publication::Accepted(raw),
-        2 => Publication::Superseded(raw),
-        0 => Publication::Fenced,
-        3 => Publication::Lost,
-        4 => Publication::Backlog(raw),
-        5 => Publication::Stale,
-        _ => return Err(DragonflyError::Reply("unexpected publication status")),
-    })
+    let count = reply::int(count)?;
+    Ok((
+        match reply::int(status)? {
+            1 => Publication::Accepted(raw),
+            2 => Publication::Superseded(raw),
+            0 => Publication::Fenced,
+            3 => Publication::Lost,
+            4 => Publication::Backlog(raw),
+            5 => Publication::Stale,
+            _ => return Err(DragonflyError::Reply("unexpected publication status")),
+        },
+        count,
+    ))
 }
+
+/// The local top-up after a grant ([`super::credits_cache::CreditsCache::top_up`]).
+pub static TOP_UP: Script = Script::new(
+    "TOP_UP_AI_CREDITS",
+    concat!(
+        include_str!("lua/credits_hold.lua"),
+        include_str!("lua/credits_top_up.lua")
+    ),
+);
 
 /// When a debit's event is released from the hold.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -279,7 +295,7 @@ mod tests {
 
     #[test]
     fn every_script_is_bounded() {
-        for script in [&DEBIT, &BEGIN, &PUBLISH, &SYNC, &EXHAUSTION] {
+        for script in [&DEBIT, &BEGIN, &PUBLISH, &SYNC, &EXHAUSTION, &TOP_UP] {
             assert!(script.check().is_ok(), "{}", script.name());
         }
         assert!(DEBIT.source().starts_with(HOLD_PRELUDE));

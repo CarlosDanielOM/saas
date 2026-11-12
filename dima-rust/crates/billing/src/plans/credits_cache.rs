@@ -362,7 +362,7 @@ impl CreditsCache {
         version: &str,
         raw: &str,
         start: &Start,
-    ) -> Result<Publication, DragonflyError> {
+    ) -> Result<(Publication, i64), DragonflyError> {
         let [canonical, legacy] = exhausted_key(channel_id);
         let keys = [
             credits_cache_key(channel_id),
@@ -459,10 +459,7 @@ impl CreditsCache {
                 )
                 .await
         {
-            return Ok(AiCredits {
-                data: read.payload,
-                state: BalanceState::Cached,
-            });
+            return Ok(AiCredits::unverified(read.payload, BalanceState::Cached));
         }
 
         let mut fence: Option<String> = None;
@@ -482,70 +479,72 @@ impl CreditsCache {
             read_cached_credits(stored, options.require_verified, || self.now_iso())
                 .map(|read| read.payload)
         };
+        let unknown = || {
+            AiCredits::unverified(
+                unavailable_ai_credits(self.now_iso()),
+                BalanceState::Unknown,
+            )
+        };
         match fetched {
-            Ok(Fetched::NotRead(data)) => Ok(AiCredits {
-                data,
-                state: BalanceState::Unknown,
-            }),
+            Ok(Fetched::NotRead(data)) => Ok(AiCredits::unverified(data, BalanceState::Unknown)),
             Ok(Fetched::Read {
                 payload,
                 meter,
                 published,
                 raw,
-            }) => {
-                let read = if meter {
-                    BalanceState::Verified {
-                        at_ms: self.clock.now_ms(),
+                generation,
+                publication,
+            }) => Ok(match published {
+                // Stored: what Polar answered, with the debits it does not cover yet held.
+                Publication::Accepted(stored) => {
+                    let data = if stored == raw {
+                        Some(payload.clone())
+                    } else {
+                        read_back(&stored)
+                    };
+                    match data {
+                        Some(data) if meter => AiCredits::verified_by(
+                            VerifiedBalance::new(
+                                &data,
+                                self.clock.now_ms(),
+                                generation,
+                                publication,
+                            ),
+                            data,
+                        ),
+                        Some(data) => AiCredits::unverified(data, BalanceState::Unknown),
+                        None => AiCredits::unverified(payload, BalanceState::Unknown),
                     }
-                } else {
-                    BalanceState::Unknown
-                };
-                Ok(match published {
-                    Publication::Accepted(stored) if stored == raw => AiCredits {
-                        data: payload,
-                        state: read,
-                    },
-                    // Debits made during the fetch were applied to what Polar answered.
-                    Publication::Accepted(stored) => AiCredits {
-                        data: read_back(&stored).unwrap_or(payload),
-                        state: read,
-                    },
-                    // A newer snapshot was published meanwhile: it stands. Too many queued
-                    // events to count: the cached balance (which carries every local debit)
-                    // stands. Without one, nothing verified can be answered.
-                    Publication::Superseded(current) | Publication::Backlog(current) => {
-                        match read_back(&current) {
-                            Some(data) => AiCredits {
-                                data,
-                                state: BalanceState::Cached,
-                            },
-                            None => AiCredits {
-                                data: unavailable_ai_credits(self.now_iso()),
-                                state: BalanceState::Unknown,
-                            },
-                        }
+                }
+                // A newer snapshot was published meanwhile: it stands, and this read verifies
+                // nothing (item 2 of P2-BILLING-01c). Too many queued events to count: the
+                // cached balance (which carries every local debit) stands. Without one,
+                // nothing can be answered.
+                Publication::Superseded(current) | Publication::Backlog(current) => {
+                    match read_back(&current) {
+                        Some(data) => AiCredits::unverified(data, BalanceState::Cached),
+                        None => unknown(),
                     }
-                    // The plan fence is newer, the generation was lost while Polar was read
-                    // (the next read starts clean), or the figure is too old.
-                    Publication::Fenced | Publication::Lost | Publication::Stale => AiCredits {
-                        data: unavailable_ai_credits(self.now_iso()),
-                        state: BalanceState::Unknown,
-                    },
-                })
-            }
-            Err(message) => Ok(AiCredits {
-                data: self
-                    .fallback(twitch_id, &fence, &current_user, &message)
-                    .await,
-                state: BalanceState::Unknown,
+                }
+                // The plan fence is newer, the generation was lost while Polar was read
+                // (the next read starts clean), or the figure is too old.
+                Publication::Fenced | Publication::Lost | Publication::Stale => unknown(),
             }),
+            Err(message) => Ok(AiCredits::unverified(
+                self.fallback(twitch_id, &fence, &current_user, &message)
+                    .await,
+                BalanceState::Unknown,
+            )),
         }
     }
 
-    /// A balance read from Polar now, for anything that grants, resets or tops up credits:
-    /// the cache is not consulted, and an answer without the AI credit meter, a plan fence that
-    /// refuses the read, or any failure is [`UnverifiedBalance`], never the reference's
-    /// invented fallback. What Polar answered is published like any fetch.
+    /// A balance read from Polar now, for anything that resets or tops up credits: the cache
+    /// is not consulted, and only a read whose publication was accepted is verified: what it
+    /// stored, read back (Polar's figure with the debits it does not cover yet held). An
+    /// answer without the AI credit meter, a newer publication since the read began (item 2
+    /// of P2-BILLING-01c, re-check finding N2), a plan fence that refuses it, a read that could
+    /// not be published, or any failure is [`UnverifiedBalance`], never the superseded figures
+    /// or the reference's invented fallback.
     pub async fn verified_balance(
         &self,
         user: &PlanOwner,
@@ -558,7 +557,7 @@ impl CreditsCache {
         let options = CreditOptions {
             require_verified: true,
         };
-        match self
+        let fetched = self
             .fetch(
                 user,
                 twitch_id,
@@ -568,22 +567,93 @@ impl CreditsCache {
                 &mut fence,
                 &mut current_user,
             )
-            .await
-        {
+            .await;
+        match fetched {
             Ok(Fetched::Read {
                 published: Publication::Fenced,
                 ..
             }) => Err(UnverifiedBalance::Fenced),
             Ok(Fetched::Read { meter: false, .. }) => Err(UnverifiedBalance::NoMeter),
-            Ok(Fetched::Read { payload, .. }) => {
-                Ok(VerifiedBalance::new(&payload, self.clock.now_ms()))
-            }
+            Ok(Fetched::Read {
+                published,
+                generation,
+                publication,
+                ..
+            }) => match published {
+                Publication::Accepted(stored) => {
+                    read_cached_credits(&stored, true, || self.now_iso())
+                        .map(|read| {
+                            VerifiedBalance::new(
+                                &read.payload,
+                                self.clock.now_ms(),
+                                generation,
+                                publication,
+                            )
+                        })
+                        .ok_or_else(|| {
+                            UnverifiedBalance::Failed("published balance unreadable".into())
+                        })
+                }
+                Publication::Superseded(_) => Err(UnverifiedBalance::Superseded),
+                Publication::Fenced => Err(UnverifiedBalance::Fenced),
+                Publication::Lost | Publication::Backlog(_) | Publication::Stale => {
+                    Err(UnverifiedBalance::NotPublished)
+                }
+            },
             Ok(Fetched::NotRead(_)) => Err(UnverifiedBalance::NotRead),
             Err(message) => {
                 self.observer.error("verifiedAiCredits", &message);
                 Err(UnverifiedBalance::Failed(message))
             }
         }
+    }
+
+    /// The local top-up after a grant Polar accepted (`adminGrantAiCredits` writes the balance
+    /// before the grant plus the credits, until Polar's own figure shows them): `credits`
+    /// (whole credits above 0) are added to the cached balance's limit and balance, which turn
+    /// available, and the exhaustion flags are removed when credit is left, as the reference
+    /// does. Item 2 of P2-BILLING-01c: it takes the balance the read verified, not a number,
+    /// and applies only on top of that read's own publication (the debits made since stay
+    /// applied), once: after any newer publication, a retry of the same top-up, another
+    /// channel's balance, a lost generation or an expired balance it changes nothing
+    /// ([`TopUp::Refused`]; the grant shows when Polar's figure does).
+    pub async fn top_up(
+        &self,
+        channel_id: &str,
+        credits: f64,
+        verified: &VerifiedBalance,
+    ) -> Result<TopUp, DragonflyError> {
+        let credits = credits.floor();
+        if channel_id.is_empty() || !credits.is_finite() || credits <= 0.0 {
+            return Ok(TopUp::Refused);
+        }
+        let (generation, publication) = verified.publication();
+        let [canonical, legacy] = exhausted_key(channel_id);
+        let keys = [
+            credits_cache_key(channel_id),
+            canonical,
+            legacy,
+            balance::revision_key(channel_id),
+        ];
+        let args = [
+            dima_text::number_to_string(credits),
+            generation.to_owned(),
+            publication.to_string(),
+            self.now_iso(),
+            AI_CREDITS_CACHE_TTL_SECONDS.to_string(),
+            AI_CREDITS_METER_ID.to_owned(),
+            AI_CREDITS_CACHE_SCHEMA_VERSION.to_string(),
+        ];
+        let reply = balance::TOP_UP
+            .run_value(&self.dragonfly, &keys, &args)
+            .await?;
+        Ok(
+            if dima_store::dragonfly::commands::reply::int(reply)? == 1 {
+                TopUp::Applied
+            } else {
+                TopUp::Refused
+            },
+        )
     }
 
     /// The fetch branch of `getAiCredits`: the plan fence, the customer, Polar's state, then
@@ -665,7 +735,7 @@ impl CreditsCache {
             payload.status = CreditStatus::Unavailable;
         }
         let raw = payload.to_cache_text(&version);
-        let published = self
+        let (published, publication) = self
             .publish(twitch_id, &version, &raw, &start)
             .await
             .map_err(|e| e.to_string())?;
@@ -674,6 +744,8 @@ impl CreditsCache {
             meter: meter.is_some(),
             published,
             raw,
+            generation: start.generation,
+            publication,
         })
     }
 
@@ -739,7 +811,20 @@ enum Fetched {
         meter: bool,
         published: Publication,
         raw: String,
+        /// The generation the read began in.
+        generation: String,
+        /// The publications accepted in it once this one was (when it was).
+        publication: i64,
     },
+}
+
+/// What [`CreditsCache::top_up`] did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TopUp {
+    /// Added to the balance the read published.
+    Applied,
+    /// Nothing changed (see [`CreditsCache::top_up`]).
+    Refused,
 }
 
 /// Why [`CreditsCache::verified_balance`] has no verified balance to give.
@@ -754,6 +839,14 @@ pub enum UnverifiedBalance {
     /// A newer plan fence refused the publication.
     #[error("a newer plan change superseded the read")]
     Fenced,
+    /// A newer balance was published while Polar was read: this read's figures are not
+    /// verified (item 2 of P2-BILLING-01c).
+    #[error("a newer balance was published while Polar was read")]
+    Superseded,
+    /// The read could not be published: the generation was lost, too many queued events wait
+    /// to be counted, or the figure is too old ([`super::balance::Publication`]).
+    #[error("the balance read from Polar could not be published")]
+    NotPublished,
     /// Polar or Dragonfly failed.
     #[error("credit usage unavailable: {0}")]
     Failed(String),
