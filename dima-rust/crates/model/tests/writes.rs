@@ -349,6 +349,60 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("stream_operations_receipts", "typed") => {
+            use dima_model::stream_operations_receipts::*;
+            let input = NewStreamOperationsReceipt {
+                id: "event:1".into(),
+                channel_id: "111".into(),
+                expires_at: ms("2021-06-07T08:09:10.011Z")?,
+                steps: Some(dima_model::Private::new(std::collections::BTreeMap::from(
+                    [(
+                        "timers".into(),
+                        Some(NewStepOutcome {
+                            status: StepStatus::Completed,
+                            reason: None,
+                            at: ms("2020-01-02T03:04:05.006Z")?,
+                        }),
+                    )],
+                ))),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("stream_operations_reconciliations", "typed") => {
+            use dima_model::stream_operations_reconciliations::*;
+            let input = NewStreamOperationsReconciliation {
+                id: "111".into(),
+                revision: JsNumber(0.0),
+                pending: true,
+                next_attempt_at: ms("2020-01-02T03:04:05.006Z")?,
+                lease_token: None,
+                lease_until: None,
+                last_error: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("stream_subscription_ledgers", "typed") => {
+            use dima_model::stream_subscription_ledgers::*;
+            let input = NewStreamSubscriptionLedger {
+                platform: PlatformKind::Twitch,
+                streamer_id: "111".into(),
+                user_id: "222".into(),
+                streamer_login: None,
+                streamer_name: None,
+                user_login: None,
+                user_name: None,
+                sub_tier_raw: None,
+                sub_tier_normalized: None,
+                is_gift: None,
+                status: None,
+                subbed_at: ms("2020-01-02T03:04:05.006Z")?,
+                ended_at: dima_model::values::Nullable::Null,
+                last_event_at: ms("2020-01-02T03:04:05.006Z")?,
+                event_key: None,
+                applied_event_keys: Some(dima_model::Private::new(vec![Some("key:1".into())])),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
         ("channelstreamsummaries", "typed") => {
             use dima_model::channel_stream_summaries::*;
             let input = NewChannelStreamSummary {

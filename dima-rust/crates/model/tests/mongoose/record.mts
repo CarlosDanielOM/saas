@@ -60,6 +60,9 @@ const imported = async (file: string) => import(pathToFileURL(path.join(root, fi
 
 // One entry per registered collection: the schema file and the model name.
 const FILES: Array<[string, string]> = [
+    ['src/schemas/stream_operations_receipt.schema.ts', 'stream_operations_receipt'],
+    ['src/schemas/stream_operations_receipt.schema.ts', 'stream_operations_reconciliation'],
+    ['src/schemas/stream_subscription_ledger.schema.ts', 'stream_subscription_ledger'],
     ['src/schemas/channel_stream_summary.schema.ts', 'ChannelStreamSummary'],
     ['src/schemas/dashboard_activity.schema.ts', 'dashboard_activity_daily'],
     ['src/schemas/dashboard_activity.schema.ts', 'dashboard_activity_summary'],
@@ -416,6 +419,32 @@ const libraryItem = (extra: any = {}) => ({
 const librarySeed = (extra: any = {}) => ({ _id: OID(1), ...libraryItem(), createdAt: T1, updatedAt: T1, __v: 0, ...extra });
 
 const CASES: Record<string, any[]> = {
+    stream_operations_receipts: [
+        { name: 'create_typed', op: 'create', rust: 'typed', doc: { _id: 'event:1', channelID: '111', expiresAt: T2, steps: { timers: { status: 'completed', at: T1 } } } },
+        { name: 'validate_missing', op: 'validate', doc: {} },
+        { name: 'upsert_progress', op: 'updateOne', filter: { _id: 'event:2' }, update: { $setOnInsert: { channelID: '111', expiresAt: T2 }, $set: { 'steps.editors': { status: 'failed', reason: TEXT, at: T1 } } }, options: { upsert: true } },
+        { name: 'update_progress', op: 'updateOne', seed: [{ _id: 'event:1', channelID: '111', expiresAt: T2, steps: {} }], filter: { _id: 'event:1' }, update: { $set: { 'steps.timers': { status: 'skipped', reason: 'permissions_disabled', at: T1 } } } },
+    ],
+    stream_operations_reconciliations: [
+        { name: 'retry_failure', op: 'updateOne', seed: [{ _id: '111', revision: 1, pending: true, nextAttemptAt: T1, leaseToken: 'lease', leaseUntil: T2 }], filter: { _id: '111', revision: 1, leaseToken: 'lease', leaseUntil: { $gt: T1 } }, update: { $set: { lastError: TEXT, nextAttemptAt: T2 }, $unset: { leaseToken: 1, leaseUntil: 1 } } },
+        { name: 'create_typed', op: 'create', rust: 'typed', doc: { _id: '111', revision: 0, pending: true, nextAttemptAt: T1 } },
+        { name: 'validate_missing', op: 'validate', doc: {} },
+        { name: 'upsert_enqueue', op: 'updateOne', filter: { _id: '111' }, update: { $inc: { revision: 1 }, $set: { pending: true, nextAttemptAt: T1 } }, options: { upsert: true } },
+        { name: 'claim', op: 'findOneAndUpdate', seed: [{ _id: '111', revision: 1, pending: true, nextAttemptAt: T1 }], filter: { pending: true, nextAttemptAt: { $lte: T2 }, $or: [{ leaseUntil: { $exists: false } }, { leaseUntil: { $lte: T2 } }] }, update: { $set: { leaseToken: 'lease', leaseUntil: T2 } }, options: { new: true } },
+        { name: 'acknowledge', op: 'updateOne', seed: [{ _id: '111', revision: 1, pending: true, nextAttemptAt: T1, leaseToken: 'lease', leaseUntil: T2, lastError: TEXT }], filter: { _id: '111', revision: 1, leaseToken: 'lease', leaseUntil: { $gt: T1 } }, update: { $set: { pending: false }, $unset: { leaseToken: 1, leaseUntil: 1, lastError: 1 } } },
+    ],
+    stream_subscription_ledgers: [
+        { name: 'duplicate_event', op: 'create', seed: [{ _id: OID(1), platform: 'twitch', streamer_id: '111', user_id: '222', event_key: 'same' }], doc: { platform: 'twitch', streamer_id: '333', user_id: '444', event_key: 'same' } },
+        { name: 'save_stored_invalid', op: 'save', seed: [{ _id: OID(1), platform: 'twitch', streamer_id: '111', user_id: '222', subbed_at: T1, last_event_at: T1, status: 'lost' }], id: OID(1), changes: [{ set: 'user_name', value: TEXT }] },
+        { name: 'save_missing_required', op: 'save', seed: [{ _id: OID(1), platform: 'twitch', subbed_at: T1, last_event_at: T1 }], id: OID(1), changes: [{ set: 'status', value: 'lost' }, { set: 'sub_tier_normalized', value: 'invalid' }] },
+        { name: 'create_typed', op: 'create', rust: 'typed', doc: { platform: 'twitch', streamer_id: '111', user_id: '222', subbed_at: T1, last_event_at: T1, ended_at: null, applied_event_keys: ['key:1'] } },
+        { name: 'validate_missing', op: 'validate', doc: {} },
+        { name: 'update_end', op: 'updateOne', seed: [{ _id: OID(1), platform: 'twitch', streamer_id: '111', user_id: '222', subbed_at: T1, last_event_at: T1, status: 'active', __v: 0 }], filter: { _id: OID(1), last_event_at: { $lte: T2 }, applied_event_keys: { $ne: 'key:2' } }, update: { $set: { status: 'ended', ended_at: T2, last_event_at: T2, event_key: 'key:2' }, $push: { applied_event_keys: { $each: ['key:2'], $slice: -10000 } } } },
+        { name: 'save', op: 'save', seed: [{ _id: OID(1), platform: 'twitch', streamer_id: '111', user_id: '222', subbed_at: T1, last_event_at: T1, applied_event_keys: ['key:1'], __v: 0 }], id: OID(1), changes: [{ set: 'user_name', value: TEXT }] },
+        { name: 'save_invalid', op: 'save', seed: [{ _id: OID(1), platform: 'twitch', streamer_id: '111', user_id: '222', subbed_at: T1, last_event_at: T1 }], id: OID(1), changes: [{ set: 'status', value: 'lost' }] },
+        { name: 'duplicate_active', op: 'create', seed: [{ _id: OID(1), platform: 'twitch', streamer_id: '111', user_id: '222', status: 'active' }], doc: { platform: 'twitch', streamer_id: '111', user_id: '222' } },
+    ],
+
 "channelstreamsummaries": [
  {name:'missing_required',op:'validate',doc:{}},
  {name:'duplicate_identity',op:'create',seed:[{...{"channelID":"seed","channel":"seed","stream_session_id":OID(2),"stream_id":"seed","started_at":T2,"ended_at":T2,"duration_minutes":1,"average_viewers":1,"peak_viewers":1,"follows":1,"subs":1,"bits":1,"donations":1,"headline":"seed","recap":"seed","highlights":["seed"],"chat_messages_sampled":1,"snapshot_count":1,"proposed_actions":[{"action":"create","type":"seed","targetMemoryId":"seed","summary":"seed","content":"seed","confidence":1,"risk":"low","reason":"seed","evidence":["seed"]}],"applied_actions":[{"action":"create","targetMemoryId":"seed","status":"applied","reason":"seed","error":"seed"}],"totals":{"proposed":1,"applied":1,"skipped":1,"failed":1},"status":"pending","error_message":"seed","source":"stream_offline"},_id:OID(10)}],doc:{"channelID":"seed","channel":"seed","stream_session_id":OID(2),"stream_id":"seed","started_at":T2,"ended_at":T2,"duration_minutes":1,"average_viewers":1,"peak_viewers":1,"follows":1,"subs":1,"bits":1,"donations":1,"headline":"seed","recap":"seed","highlights":["seed"],"chat_messages_sampled":1,"snapshot_count":1,"proposed_actions":[{"action":"create","type":"seed","targetMemoryId":"seed","summary":"seed","content":"seed","confidence":1,"risk":"low","reason":"seed","evidence":["seed"]}],"applied_actions":[{"action":"create","targetMemoryId":"seed","status":"applied","reason":"seed","error":"seed"}],"totals":{"proposed":1,"applied":1,"skipped":1,"failed":1},"status":"pending","error_message":"seed","source":"stream_offline"}},
