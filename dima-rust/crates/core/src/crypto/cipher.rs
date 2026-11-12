@@ -21,6 +21,7 @@ use crate::secret::SecretBytes;
 use aes::cipher::{KeyIvInit, StreamCipher};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use zeroize::Zeroize;
 
 type Aes256Ctr = ctr::Ctr128BE<aes::Aes256>;
 
@@ -81,7 +82,9 @@ impl CredentialCipher {
         if secret_key.len() + padding != 32 {
             return Err(CipherError::InvalidKeyLength);
         }
-        let mut key = secret_key.as_bytes().to_vec();
+        // Sized up front: growing the buffer would leave a copy of the key behind.
+        let mut key = Vec::with_capacity(32);
+        key.extend_from_slice(secret_key.as_bytes());
         key.resize(32, b' ');
         Ok(Self {
             key: SecretBytes::new(key),
@@ -147,16 +150,24 @@ impl CredentialCipher {
             .map_err(|_| CipherError::InvalidIv)?;
         let mut bytes = decode_hex_lenient(content);
         self.apply(&iv, &mut bytes)?;
-        Ok(Some(String::from_utf8_lossy(&bytes).into_owned()))
+        // Valid UTF-8 becomes the result without a copy; otherwise the decrypted bytes are wiped
+        // once the replacement text has been made from them.
+        Ok(Some(match String::from_utf8(bytes) {
+            Ok(text) => text,
+            Err(error) => {
+                let mut bytes = error.into_bytes();
+                let text = String::from_utf8_lossy(&bytes).into_owned();
+                bytes.zeroize();
+                text
+            }
+        }))
     }
 
     fn apply(&self, iv: &[u8; 16], bytes: &mut [u8]) -> Result<(), CipherError> {
-        let key: [u8; 32] = self
-            .key
-            .expose()
-            .try_into()
+        // Borrows the key (no copy on the stack); the expanded key schedule and the counter are
+        // wiped when `cipher` drops (the `zeroize` features of `aes` and `ctr`).
+        let mut cipher = Aes256Ctr::new_from_slices(self.key.expose(), iv)
             .map_err(|_| CipherError::InvalidKeyLength)?;
-        let mut cipher = Aes256Ctr::new(&key.into(), &(*iv).into());
         cipher
             .try_apply_keystream(bytes)
             .map_err(|_| CipherError::CounterExhausted)
