@@ -315,6 +315,9 @@ const cases = {
   async 'client disconnects'(run) {
     const s = run.socket('/basic', 'a');
     await connected(run, s, 'a');
+    // The Rust server sends a namespace's first events a moment after its CONNECT reply (the
+    // connect handler runs as a task); a poll may carry the CONNECT alone. Wait for them.
+    await run.until('a', 'event', 'welcome');
     s.disconnect();
     await run.until('a', 'disconnect');
   },
@@ -378,12 +381,16 @@ const cases = {
     s.emit('echo', 'y'.repeat(1_100_000));
     await run.until('a', 'disconnect', undefined, 1, 5000);
     await run.until('a', 'connect', undefined, 2, 5000);
+    // As in 'client disconnects': the welcome may follow the CONNECT reply in a later poll.
+    await run.until('a', 'event', 'welcome', 2, 5000);
   },
   async 'malformed packets close the connection'(run) {
     for (const packet of ['garbage', '2/basic,["connect"]', '0/basic,', '2/elsewhere,["x"]', '3/basic,']) {
       const label = packet;
       const s = run.socket('/basic', label);
       await connected(run, s, label);
+      // The welcome carries the offset a recovery needs (see 'client disconnects').
+      await run.until(label, 'event', 'welcome');
       s.io.engine.send(packet);
       if (await run.until(label, 'disconnect', undefined, 1, 1500)) {
         await run.until(label, 'event', 'welcome', 2);
@@ -621,6 +628,7 @@ class RawWs {
 
   // The next frame or the close; heartbeat pings are answered and skipped unless `pings`.
   async next(timeout = 2000, { pings = false } = {}) {
+    if (typeof timeout === 'object') return this.next(2000, timeout);
     for (;;) {
       const event = this.events.length
         ? this.events.shift()
@@ -881,6 +889,50 @@ const httpCases = {
     const after = await session.post('42/norec,["echo","after"]');
     out['post after'] = after.error ? { error: after.error } : { status: after.status };
     out.echoes = await echoes(session, 'after');
+    return out;
+  },
+  // Protocol 4: the server pings, the client answers. A ping from the client is an "invalid
+  // heartbeat direction", a transport error that ends the session (socket.js 93-97), and the
+  // probe ping on the main transport is a ping too.
+  async 'a ping from the client'(base) {
+    const out = {};
+    for (const ping of ['2', '2probe']) {
+      const ws = new RawWs(`${base.replace('http', 'ws')}/socket.io/?EIO=4&transport=websocket`);
+      await ws.opened;
+      await ws.next();
+      ws.send(ping);
+      out[`websocket ${ping}`] = await ws.next();
+      ws.close();
+    }
+    const session = await rawPolling(base);
+    const post = await session.post('2');
+    out['polling post'] = post.error ? { error: post.error } : { status: post.status, body: post.body.toString() };
+    out['poll after'] = (await session.poll()).status ?? 'answered';
+    return out;
+  },
+  // socket.js 138-144 and 108-110: the first ping goes out one ping interval after the open
+  // packet (400 ms on the short servers), the next one an interval after the pong.
+  async 'heartbeat timing'() {
+    const base = SHORT;
+    const interval = 400;
+    const out = {};
+    const ws = new RawWs(`${base.replace('http', 'ws')}/socket.io/?EIO=4&transport=websocket`);
+    await ws.opened;
+    await ws.next({ pings: true });
+    let start = Date.now();
+    out['websocket first ping'] = await ws.next(2000, { pings: true });
+    out['websocket first ping after the interval'] = Date.now() - start >= interval - 50;
+    await sleep(150);
+    ws.send('3');
+    start = Date.now();
+    out['websocket next ping'] = await ws.next(2000, { pings: true });
+    out['websocket next ping an interval after the pong'] = Date.now() - start >= interval - 50;
+    ws.close();
+    start = Date.now();
+    const { sid } = await handshake(base);
+    const poll = await request(base, `/socket.io/?EIO=4&transport=polling&sid=${sid}`);
+    out['polling first ping'] = decode(poll).toString();
+    out['polling first ping after the interval'] = Date.now() - start >= interval - 50;
     return out;
   },
   async 'the app and other upgrades'(base) {

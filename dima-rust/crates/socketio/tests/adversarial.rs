@@ -859,19 +859,18 @@ async fn shutdown_says_goodbye_and_releases_everything() {
     ws.join("/p", &ok()).await.unwrap();
     let polling = Polling::open(s.server.addr).await;
     assert_eq!(polling.post(&["40/f/x,{}"]).await, Some(200));
-    // Take everything queued so far: the hello and the first heartbeat ping (sent when the
-    // session opens; this client never answers it, so no other comes for 20 s).
-    let (mut hello, mut ping) = (false, false);
+    // Take everything queued so far: the hello. The first heartbeat ping comes one ping
+    // interval (25 s) after the session opened, as in `engine.io`.
+    let mut hello = false;
     for _ in 0..5 {
         for packet in polling.poll(2 * SECOND).await.unwrap_or_default() {
             hello |= event(&packet, "/f/x").is_some();
-            ping |= packet == "2";
         }
-        if hello && ping {
+        if hello {
             break;
         }
     }
-    assert!(hello && ping);
+    assert!(hello);
     let mut wait = tokio::spawn(async move { polling.poll(10 * SECOND).await });
     tokio::time::sleep(Duration::from_millis(100)).await;
     let io = s.server.io.clone();
@@ -1058,9 +1057,9 @@ async fn a_client_that_stops_answering_heartbeats_is_closed() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn overlapping_polling_requests_end_the_session() {
     let s = setup(Options::default(), NamespaceOptions::default()).await;
-    // Two polls at once (`overlap from client`).
+    // Two polls at once (`overlap from client`). Nothing is queued (the first heartbeat ping
+    // waits one ping interval), so the first one waits.
     let polling = Polling::open(s.server.addr).await;
-    let _ = polling.poll(SECOND).await;
     let first = tokio::spawn({
         let addr = s.server.addr;
         let path = format!("/socket.io/?EIO=4&transport=polling&sid={}", polling.sid);

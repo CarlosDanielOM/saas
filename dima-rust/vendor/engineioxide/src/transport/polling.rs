@@ -229,10 +229,15 @@ where
                 engine.close_session(sid, DisconnectReason::TransportClose);
                 break;
             }
-            Ok(Packet::Pong | Packet::Ping) => socket
-                .heartbeat_tx
-                .try_send(())
-                .map_err(|_| Error::HeartbeatTimeout),
+            // [dima-rust patch 6] A ping from a protocol 4 client ends the session as a
+            // transport error; the payload is answered `ok` (polling.js 120-131).
+            Ok(p @ (Packet::Pong | Packet::Ping | Packet::PongUpgrade | Packet::PingUpgrade)) => {
+                if socket.on_client_heartbeat(&p).is_err() {
+                    engine.close_session(sid, DisconnectReason::TransportError);
+                    break;
+                }
+                Ok(())
+            }
             Ok(Packet::Message(msg)) => {
                 engine.handler.on_message(msg, socket.clone());
                 Ok(())

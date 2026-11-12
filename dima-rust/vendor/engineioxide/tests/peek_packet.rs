@@ -56,10 +56,10 @@ async fn create_small_payload_server(
 
 /// Drain the ping packet that the heartbeat job buffers right after connecting,
 /// so subsequent polls only observe the packets emitted by the test.
-async fn drain_initial_ping<H: EngineIoHandler>(svc: &mut EngineIoService<H>, sid: &str) {
-    let ping = poll(svc, sid).await;
-    assert_eq!(ping, "2", "expected the initial heartbeat ping");
-}
+///
+/// [dima-rust patch 6] There is none any more: the first ping waits one ping interval (60 s
+/// here), as in engine.io.
+async fn drain_initial_ping<H: EngineIoHandler>(_svc: &mut EngineIoService<H>, _sid: &str) {}
 
 /// Perform a polling request and return the raw payload, failing fast instead of
 /// hanging if the payload is unexpectedly empty (e.g. a peeked packet was lost).

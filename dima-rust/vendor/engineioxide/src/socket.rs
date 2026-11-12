@@ -107,6 +107,9 @@ impl From<&Error> for Option<DisconnectReason> {
             WsTransport(_) => Some(DisconnectReason::TransportError),
             BadPacket(_) | PacketParse(_) => Some(DisconnectReason::PacketParsingError),
             HeartbeatTimeout => Some(DisconnectReason::HeartbeatTimeout),
+            // [dima-rust patch 6] engine.io socket.js 95: "invalid heartbeat direction" is a
+            // transport error.
+            HeartbeatDirection => Some(DisconnectReason::TransportError),
             _ => None,
         }
     }
@@ -384,16 +387,17 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(sid = ?self.id, "heartbeat sender routine started");
 
-        let mut interval_tick = tokio::time::interval(interval);
-        interval_tick.tick().await;
-        // Some clients send the pong packet in first. If that happens, we should consume it.
-        heartbeat_rx.try_recv().ok();
+        // [dima-rust patch 6] As engine.io (socket.js 138-144, 108-110): the first ping goes out
+        // one interval after the open packet, and each later one an interval after the pong,
+        // not on a fixed schedule from the start.
         loop {
+            tokio::time::sleep(interval).await;
             // If we are currently upgrading we should pause the heartbeat process
             if self.is_upgrading() {
-                interval_tick.tick().await;
                 continue;
             }
+            // A pong sent before this ping does not answer it.
+            while heartbeat_rx.try_recv().is_ok() {}
 
             #[cfg(feature = "tracing")]
             tracing::trace!(sid = ?self.id, "emitting ping");
@@ -412,8 +416,6 @@ where
 
             #[cfg(feature = "tracing")]
             tracing::trace!(sid = ?self.id, "pong received");
-
-            interval_tick.tick().await;
         }
     }
 
@@ -452,6 +454,22 @@ where
 
     /// Sets the [`TransportType`] to WebSocket
     /// Used when the client upgrade the connection from HTTP to WebSocket
+    /// [dima-rust patch 6] A heartbeat packet from the client: the answer it should send (a pong
+    /// in protocol 4, a ping in protocol 3) counts, even when one is already waiting to be
+    /// counted; the other direction is an error that ends the session (engine.io socket.js
+    /// 93-112, which reads `2probe` and `3probe` by their type too).
+    pub(crate) fn on_client_heartbeat(&self, packet: &Packet) -> Result<(), Error> {
+        let answer = match self.protocol {
+            ProtocolVersion::V4 => matches!(packet, Packet::Pong | Packet::PongUpgrade),
+            ProtocolVersion::V3 => matches!(packet, Packet::Ping | Packet::PingUpgrade),
+        };
+        if !answer {
+            return Err(Error::HeartbeatDirection);
+        }
+        self.heartbeat_tx.try_send(()).ok();
+        Ok(())
+    }
+
     pub(crate) fn upgrade_to_websocket(&self) {
         self.upgrading.store(false, Ordering::Relaxed);
         self.transport

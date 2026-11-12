@@ -127,13 +127,15 @@ pub async fn polling_server_closing_pending_poll() {
         .unwrap();
 }
 
+// [dima-rust patch 6] The first ping now waits one interval (300 ms) before the 200 ms timeout
+// starts, as in engine.io: the window is 1 s instead of 500 ms.
 #[tokio::test]
 pub async fn polling_heartbeat_timeout() {
     let (disconnect_tx, mut rx) = mpsc::channel(10);
     let mut svc = create_server(MyHandler { disconnect_tx }).await;
     create_polling_connection(&mut svc).await;
 
-    let data = tokio::time::timeout(Duration::from_millis(500), rx.recv())
+    let data = tokio::time::timeout(Duration::from_millis(1000), rx.recv())
         .await
         .expect("timeout waiting for DisconnectReason::HeartbeatTimeout")
         .unwrap();
@@ -141,13 +143,15 @@ pub async fn polling_heartbeat_timeout() {
     assert_eq!(data, DisconnectReason::HeartbeatTimeout);
 }
 
+// [dima-rust patch 6] The first ping now waits one interval (300 ms) before the 200 ms timeout
+// starts, as in engine.io: the window is 1 s instead of 500 ms.
 #[tokio::test]
 pub async fn ws_heartbeat_timeout() {
     let (disconnect_tx, mut rx) = mpsc::channel(10);
     let mut svc = create_server(MyHandler { disconnect_tx }).await;
     let _stream = create_ws_connection(&mut svc).await;
 
-    let data = tokio::time::timeout(Duration::from_millis(500), rx.recv())
+    let data = tokio::time::timeout(Duration::from_millis(1000), rx.recv())
         .await
         .expect("timeout waiting for DisconnectReason::HeartbeatTimeout")
         .unwrap();

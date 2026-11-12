@@ -577,6 +577,8 @@ pub fn short_options() -> Options {
         connect_timeout: Duration::from_secs(1),
         recovery_max_disconnection: Duration::from_millis(1500),
         upgrade_timeout: Duration::from_secs(1),
+        ping_interval: Duration::from_millis(400),
+        ping_timeout: Duration::from_millis(1500),
         ..Options::default()
     }
 }

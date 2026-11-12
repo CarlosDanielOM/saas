@@ -11927,6 +11927,23 @@
     "after"
    ]
   },
+  "a ping from the client": {
+   "websocket 2": "close 1005",
+   "websocket 2probe": "close 1005",
+   "polling post": {
+    "status": 200,
+    "body": "ok"
+   },
+   "poll after": 400
+  },
+  "heartbeat timing": {
+   "websocket first ping": "2",
+   "websocket first ping after the interval": true,
+   "websocket next ping": "2",
+   "websocket next ping an interval after the pong": true,
+   "polling first ping": "2",
+   "polling first ping after the interval": true
+  },
   "the app and other upgrades": {
    "hello": {
     "status": 200,

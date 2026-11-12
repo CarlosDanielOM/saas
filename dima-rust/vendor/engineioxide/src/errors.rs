@@ -16,6 +16,9 @@ pub enum Error {
     WsTransport(#[from] Box<tungstenite::Error>),
     #[error("heartbeat timeout")]
     HeartbeatTimeout,
+    /// [dima-rust patch 6]
+    #[error("invalid heartbeat direction")]
+    HeartbeatDirection,
     #[error("upgrade error")]
     Upgrade,
     #[error("multiple ws upgrade requests")]

@@ -190,3 +190,26 @@ git diff <that commit> -- dima-rust/vendor
    `a_malformed_packet_in_a_post_ends_the_session_after_the_packets_before_it`);
    `dima-socketio`'s differential cases `a POST that arrives in pieces`, `an oversized POST that
    starts with a valid packet`, `a six-byte text that is not a packet: the POST answer`.
+
+6. **Heartbeat as in protocol 4 of `engine.io`.** `socket.rs` (`heartbeat_job_v4`, new
+   `on_client_heartbeat`, the `HeartbeatDirection` mapping), `errors.rs` (`HeartbeatDirection`),
+   `transport/ws.rs` (`forward_to_handler`), `transport/polling.rs` (`post_req`).
+   - The first ping goes out one ping interval after the open packet, and each later one an
+     interval after the pong (socket.js 138-144, 108-110); upstream pinged at once and then on
+     a fixed schedule from the start.
+   - A ping from a protocol 4 client (`2`, and `2probe` on the main transport, which
+     `engine.io` reads by its type) is an "invalid heartbeat direction" that ends the session
+     as a transport error (socket.js 93-97; protocol 3's opposite direction, 104-107, is mapped
+     too); upstream counted it as a pong. Over polling the payload is still answered `ok`
+     (polling.js 120-131).
+   - A pong is never an error: upstream ended the session as a heartbeat timeout when a second
+     pong arrived before the heartbeat had counted the first (its one-slot channel was full).
+     `3probe` on the main transport counts as a pong, as in `engine.io`. A pong that arrives
+     before a ping does not answer it (upstream dropped one such pong at the start).
+   Tests: `tests/heartbeat.rs` (seven cases: first ping over polling and WebSocket, next ping
+   after the pong, client pings over WebSocket and polling, extra pongs, a silent client still
+   closed); upstream's `polling_heartbeat_timeout` and `ws_heartbeat_timeout`
+   (`tests/disconnect_reason.rs`) get a 1 s window instead of 500 ms, and `tests/peek_packet.rs`
+   no longer drains a ping that is no longer sent at once; `dima-socketio`'s differential cases
+   `a ping from the client` and `heartbeat timing` (the short servers ping every 400 ms on both
+   sides).

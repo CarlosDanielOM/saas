@@ -83,6 +83,10 @@ path = "tests/upgrade.rs"
 name = "input"
 path = "tests/input.rs"
 
+[[test]]
+name = "heartbeat"
+path = "tests/heartbeat.rs"
+
 [dependencies.bytes]
 version = "1.11"
 features = ["serde"]
