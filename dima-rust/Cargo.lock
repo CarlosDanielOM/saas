@@ -1636,6 +1636,23 @@ dependencies = [
 [[package]]
 name = "dima-telemetry"
 version = "0.1.0"
+dependencies = [
+ "dima-core",
+ "dima-http",
+ "dima-store",
+ "dima-web",
+ "futures-util",
+ "http",
+ "http-body-util",
+ "nix",
+ "redis",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tower 0.5.3",
+]
 
 [[package]]
 name = "dima-text"
