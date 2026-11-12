@@ -15,8 +15,9 @@ use serde_json::{Map, Value};
 
 use crate::uri::decode_uri_component;
 
-/// The default [`QsOptions::node_limit`]: far above what the default limits allow (1000 pairs of
-/// at most 34 segments each), so it only bounds parsers configured with larger limits.
+/// The default [`QsOptions::node_limit`]: far above what the default limits allow (1000 pairs,
+/// each a value plus at most 34 segments and one merge), so it only bounds parsers configured
+/// with larger limits.
 pub const NODE_LIMIT: usize = 100_000;
 
 /// Options that differ between the two places Express calls qs.
@@ -30,8 +31,9 @@ pub struct QsOptions {
     pub strict_depth: bool,
     /// `parameterLimit`: pairs after this many are ignored.
     pub parameter_limit: usize,
-    /// Not in qs: the most nested values (one per key segment) one parse may build. Beyond it the
-    /// parse fails with [`QsError::TooManyNodes`].
+    /// Not in qs: the most values one parse may build: every leaf string and every array or
+    /// object, charged as it is created (from the first pass over the pairs, where repeated keys
+    /// build arrays). Beyond it the parse fails with [`QsError::TooManyNodes`].
     pub node_limit: usize,
 }
 
@@ -82,22 +84,52 @@ pub fn parse(input: &str, options: &QsOptions) -> Result<Value, QsError> {
         return Ok(Value::Object(Map::new()));
     }
     let limit = options.array_limit as f64;
-    let temp = parse_values(input, options);
+    let mut budget = Budget::new(options.node_limit);
+    let temp = parse_values(input, options, &mut budget)?;
     let mut result = V::Obj(Obj::default());
-    let mut nodes = 0usize;
+    budget.charge(1)?;
     for (key, value) in temp.into_entries() {
         if key.is_empty() {
             continue;
         }
         let segments = split_key(&key, options)?;
-        nodes = nodes.saturating_add(segments.len());
-        if nodes > options.node_limit {
-            return Err(QsError::TooManyNodes);
-        }
-        let parsed = parse_object(&segments, value, limit);
-        result = merge(result, Some(parsed), limit);
+        // One container per segment, before they are built.
+        budget.charge(segments.len())?;
+        let parsed = parse_object(&segments, value, limit, &mut budget);
+        result = merge(result, Some(parsed), limit, &mut budget);
+        budget.check()?;
     }
     Ok(result.into_value())
+}
+
+/// Values built so far against [`QsOptions::node_limit`].
+struct Budget {
+    used: usize,
+    limit: usize,
+}
+
+impl Budget {
+    fn new(limit: usize) -> Self {
+        Self { used: 0, limit }
+    }
+
+    /// Counts `n` values about to be created; fails past the limit.
+    fn charge(&mut self, n: usize) -> Result<(), QsError> {
+        self.add(n);
+        self.check()
+    }
+
+    /// Counts `n` values created inside a merge; [`Budget::check`] fails afterwards.
+    fn add(&mut self, n: usize) {
+        self.used = self.used.saturating_add(n);
+    }
+
+    fn check(&self) -> Result<(), QsError> {
+        if self.used > self.limit {
+            return Err(QsError::TooManyNodes);
+        }
+        Ok(())
+    }
 }
 
 /// A JavaScript value as qs builds it.
@@ -313,7 +345,7 @@ fn limited(array: Arr, limit: f64) -> V {
 }
 
 /// qs `utils.combine(a, b, arrayLimit)`.
-fn combine(a: V, b: V, limit: f64) -> V {
+fn combine(a: V, b: V, limit: f64, budget: &mut Budget) -> V {
     match a {
         V::Obj(mut obj) if obj.overflow.is_some() => {
             let next = obj.overflow.unwrap_or(0.0) + 1.0;
@@ -322,6 +354,9 @@ fn combine(a: V, b: V, limit: f64) -> V {
             V::Obj(obj)
         }
         a => {
+            if !matches!(a, V::Arr(_)) {
+                budget.add(1);
+            }
             let mut result = Arr::from_value(a);
             result.concat(b);
             limited(result, limit)
@@ -330,7 +365,7 @@ fn combine(a: V, b: V, limit: f64) -> V {
 }
 
 /// qs `utils.merge(target, source)`; `None` is `undefined`.
-fn merge(target: V, source: Option<V>, limit: f64) -> V {
+fn merge(target: V, source: Option<V>, limit: f64, budget: &mut Budget) -> V {
     let source = match source {
         None => return target,
         Some(V::Str(s)) if s.is_empty() => return target,
@@ -355,6 +390,7 @@ fn merge(target: V, source: Option<V>, limit: f64) -> V {
             }
             // strictMerge: `[target, source]`.
             None => {
+                budget.add(1);
                 let mut pair = Arr::default();
                 pair.push(V::Obj(obj));
                 pair.push(V::Str(s));
@@ -362,19 +398,20 @@ fn merge(target: V, source: Option<V>, limit: f64) -> V {
             }
         },
         (V::Str(t), V::Str(s)) => {
+            budget.add(1);
             let mut pair = Arr::default();
             pair.push(V::Str(t));
             pair.push(V::Str(s));
             V::Arr(pair)
         }
-        (V::Str(t), source) => merge_into_primitive(t, source, limit),
+        (V::Str(t), source) => merge_into_primitive(t, source, limit, budget),
         (V::Arr(mut array), V::Arr(source)) => {
             for (index, item) in source.items {
                 match array.items.remove(&index) {
                     Some(existing) if existing.is_object() && item.is_object() => {
                         array
                             .items
-                            .insert(index, merge(existing, Some(item), limit));
+                            .insert(index, merge(existing, Some(item), limit, budget));
                     }
                     Some(existing) => {
                         array.items.insert(index, existing);
@@ -417,6 +454,7 @@ fn merge(target: V, source: Option<V>, limit: f64) -> V {
                         std::mem::replace(slot, V::Str(String::new())),
                         Some(value),
                         limit,
+                        budget,
                     ),
                     None => value,
                 };
@@ -437,7 +475,8 @@ fn merge(target: V, source: Option<V>, limit: f64) -> V {
 }
 
 /// `merge` when the target is a (truthy or empty) string and the source an object or array.
-fn merge_into_primitive(target: String, source: V, limit: f64) -> V {
+fn merge_into_primitive(target: String, source: V, limit: f64, budget: &mut Budget) -> V {
+    budget.add(1);
     match source {
         V::Obj(source) if source.overflow.is_some() => {
             let max = source.overflow.unwrap_or(0.0);
@@ -496,11 +535,13 @@ fn unescape_brackets(input: &str) -> String {
 }
 
 /// qs `parseValues`: flat `key → value` pairs, duplicates combined.
-fn parse_values(input: &str, options: &QsOptions) -> Obj {
+fn parse_values(input: &str, options: &QsOptions, budget: &mut Budget) -> Result<Obj, QsError> {
     let limit = options.array_limit as f64;
     let clean = unescape_brackets(input);
     let mut obj = Obj::default();
     for part in clean.split('&').take(options.parameter_limit) {
+        // The value's string, before it is decoded.
+        budget.charge(1)?;
         let position = match part.find("]=") {
             Some(at) => Some(at + 1),
             None => part.find('='),
@@ -517,12 +558,14 @@ fn parse_values(input: &str, options: &QsOptions) -> Obj {
                 std::mem::replace(slot, V::Str(String::new())),
                 V::Str(value),
                 limit,
+                budget,
             ),
             None => V::Str(value),
         };
         obj.set(key, merged);
+        budget.check()?;
     }
-    obj
+    Ok(obj)
 }
 
 /// qs `splitKeyIntoSegments` (with `allowPrototypes: true`, `allowDots: false`).
@@ -583,14 +626,16 @@ fn split_key(key: &str, options: &QsOptions) -> Result<Vec<String>, QsError> {
 }
 
 /// qs `parseObject`: builds the nested value for one key's segments.
-fn parse_object(chain: &[String], value: V, limit: f64) -> V {
+/// The containers it builds were charged by the caller (one per segment); `budget` counts only
+/// what `combine` adds.
+fn parse_object(chain: &[String], value: V, limit: f64, budget: &mut Budget) -> V {
     let mut leaf = value;
     for root in chain.iter().rev() {
         leaf = if root == "[]" {
             if leaf.is_overflow() {
                 leaf
             } else {
-                combine(V::Arr(Arr::default()), leaf, limit)
+                combine(V::Arr(Arr::default()), leaf, limit, budget)
             }
         } else {
             let clean = if root.len() >= 2 && root.starts_with('[') && root.ends_with(']') {
@@ -782,7 +827,12 @@ mod tests {
         let segments: Vec<String> = std::iter::once("k".to_owned())
             .chain(std::iter::repeat_n("[599]".to_owned(), 32))
             .collect();
-        let tree = parse_object(&segments, V::Str("v".into()), 600.0);
+        let tree = parse_object(
+            &segments,
+            V::Str("v".into()),
+            600.0,
+            &mut Budget::new(NODE_LIMIT),
+        );
         // The object for `k`, 32 arrays and the string: no holes.
         assert_eq!(tree.count(), 34);
         let V::Obj(mut root) = tree else {
@@ -815,8 +865,9 @@ mod tests {
 
     #[test]
     fn node_budget_is_enforced() {
+        // The root object, the leaf and one container per segment.
         let options = QsOptions {
-            node_limit: 10,
+            node_limit: 12,
             ..QsOptions::urlencoded(1, 32, 1000)
         };
         assert!(parse("a[b][c][d][e][f][g][h][i][j]=1", &options).is_ok());
@@ -834,6 +885,7 @@ mod tests {
     fn many_distinct_keys_and_duplicates_are_linear() {
         let options = QsOptions {
             parameter_limit: 200_000,
+            node_limit: 1_000_000,
             ..QsOptions::urlencoded(200_000, 32, 200_000)
         };
         let distinct: Vec<String> = (0..100_000).map(|i| format!("key{i}=v")).collect();
@@ -856,5 +908,35 @@ mod tests {
             parse("a=1&b=2&c=3", &options),
             Ok(json!({"a": "1", "b": "2"}))
         );
+    }
+
+    /// Review finding: arrays of repeated values were built in the first pass before the budget
+    /// was checked, and only key segments were charged, so `a=v` repeated 100 000 times (with a
+    /// raised parameter limit) passed a budget of 1000 as one node.
+    #[test]
+    fn repeated_values_are_charged_in_the_first_pass() {
+        let options = QsOptions {
+            parameter_limit: 100_000,
+            node_limit: 1000,
+            ..QsOptions::urlencoded(100_000, 32, 100_000)
+        };
+        let repeated = vec!["a=v"; 100_000].join("&");
+        assert_eq!(parse(&repeated, &options), Err(QsError::TooManyNodes));
+        let fits = vec!["a=v"; 990].join("&");
+        assert_eq!(
+            parse(&fits, &options).map(|v| v["a"].as_array().map(Vec::len)),
+            Ok(Some(990))
+        );
+        // Merges charge the containers they create: `a=1&a[c]=2` builds `["1", {c: "2"}]`, one
+        // more than `a=1&b[c]=2` (the root, two strings, three segments).
+        let tight = QsOptions {
+            node_limit: 6,
+            ..QsOptions::QUERY
+        };
+        assert_eq!(
+            parse("a=1&b[c]=2", &tight),
+            Ok(json!({"a": "1", "b": {"c": "2"}}))
+        );
+        assert_eq!(parse("a=1&a[c]=2", &tight), Err(QsError::TooManyNodes));
     }
 }

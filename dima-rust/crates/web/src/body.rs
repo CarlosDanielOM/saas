@@ -746,7 +746,8 @@ mod tests {
 
     #[test]
     fn node_budget_is_refused_like_the_parameter_limit() {
-        let form = urlencoded().node_limit(5);
+        // The root object, two values and five segments.
+        let form = urlencoded().node_limit(8);
         assert!(form.parse("a[b][c]=1&d[e]=2").is_ok());
         let error = form.parse("a[b][c]=1&d[e][f]=2").expect_err("over budget");
         assert_eq!(error.status(), Some(413));
