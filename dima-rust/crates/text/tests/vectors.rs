@@ -321,6 +321,50 @@ fn json_stringify_matches_node() {
     check.finish();
 }
 
+fn indent(value: &Value) -> JsonIndent<'_> {
+    match (value.get("number"), value.get("text")) {
+        (Some(bits), _) => JsonIndent::Number(double(bits)),
+        (_, Some(space)) => JsonIndent::Text(text(space)),
+        _ => panic!("bad indent {value}"),
+    }
+}
+
+#[test]
+fn json_stringify_pretty_matches_node() {
+    let file = load("json.json");
+    let mut check = Check::new("JSON.stringify(value, null, space)");
+    for row in rows(&file, "pretty") {
+        let input = text(&row["input"]);
+        let space = indent(&row["indent"]);
+        let mut value: Value =
+            serde_json::from_str(input).unwrap_or_else(|error| panic!("{input}: {error}"));
+        js_key_order(&mut value);
+        let expected = text(&row["expected"]);
+        let actual = to_js_json_pretty(&value, space);
+        check.expect(actual == expected, || {
+            format!("{input} {space:?}\n  rust {actual}\n  node {expected}")
+        });
+        let one_pass = to_js_json_pretty_from(&value, space)
+            .ok()
+            .and_then(|bytes| String::from_utf8(bytes).ok());
+        check.expect(one_pass.as_deref() == Some(expected), || {
+            format!("one pass {input} {space:?}: {one_pass:?} != {expected}")
+        });
+    }
+    for row in rows(&file, "gaps") {
+        let space = indent(&row["indent"]);
+        let expected = row["pretty"]
+            .as_bool()
+            .is_some_and(|pretty| pretty)
+            .then(|| text(&row["gap"]));
+        let actual = space.gap();
+        check.expect(actual == expected, || {
+            format!("gap {space:?}: {actual:?} != {expected:?}")
+        });
+    }
+    check.finish();
+}
+
 #[test]
 fn lone_surrogate_repair_matches_node_well_formed_strings() {
     let file = load("json.json");
@@ -630,6 +674,165 @@ fn nfc_matches_node() {
         let actual = nfc(input);
         check.expect(actual == expected, || {
             format!("{input:?}: {actual:?} != {expected:?}")
+        });
+    }
+    check.finish();
+}
+
+// ------------------------------------------------------------------ URI escapes
+
+#[test]
+fn uri_encoding_matches_node() {
+    let file = load("uri.json");
+    let mut check = Check::new("encodeURIComponent/encodeURI");
+    for row in rows(&file, "encode") {
+        let input = text(&row[0]);
+        let component = encode_uri_component(input);
+        check.expect(component == text(&row[1]), || {
+            format!("encodeURIComponent({input:?}): {component:?} != {}", row[1])
+        });
+        let uri = encode_uri(input);
+        check.expect(uri == text(&row[2]), || {
+            format!("encodeURI({input:?}): {uri:?} != {}", row[2])
+        });
+    }
+    // Above ASCII both escape every UTF-8 byte; the generator checks this rule with Node for every
+    // scalar value, so it is applied here to every code point.
+    for ch in (0x80..=0x10_ffff).filter_map(char::from_u32) {
+        let mut buffer = [0; 4];
+        let single = ch.encode_utf8(&mut buffer);
+        let expected: String = single.bytes().map(|byte| format!("%{byte:02X}")).collect();
+        check.expect(
+            encode_uri_component(single) == expected && encode_uri(single) == expected,
+            || format!("U+{:04X}", u32::from(ch)),
+        );
+    }
+    check.finish();
+}
+
+#[test]
+fn uri_decoding_matches_node() {
+    let file = load("uri.json");
+    let mut check = Check::new("decodeURIComponent/decodeURI");
+    for row in rows(&file, "decode") {
+        let input = text(&row[0]);
+        let component = decode_uri_component(input).ok();
+        check.expect(component.as_deref() == row[1].as_str(), || {
+            format!("decodeURIComponent({input:?}): {component:?} != {}", row[1])
+        });
+        let uri = decode_uri(input).ok();
+        check.expect(uri.as_deref() == row[2].as_str(), || {
+            format!("decodeURI({input:?}): {uri:?} != {}", row[2])
+        });
+    }
+    check.finish();
+}
+
+// ------------------------------------------------------------------ JSON.parse
+
+/// The generator's dump: every number as `{"n": "<16 hex digits of its bits>"}`.
+fn with_number_bits(value: &Value) -> Value {
+    match value {
+        Value::Number(number) => {
+            let bits = number.as_f64().unwrap_or(f64::NAN).to_bits();
+            serde_json::json!({ "n": format!("{bits:016x}") })
+        }
+        Value::Array(items) => Value::Array(items.iter().map(with_number_bits).collect()),
+        Value::Object(map) => Value::Object(
+            map.iter()
+                .map(|(key, item)| (key.clone(), with_number_bits(item)))
+                .collect(),
+        ),
+        other => other.clone(),
+    }
+}
+
+#[test]
+fn json_parse_matches_node() {
+    let file = load("json_parse.json");
+    let mut check = Check::new("JSON.parse");
+    // JavaScript has no limits; these are high enough for every vector.
+    let limits = JsonLimits {
+        max_depth: 10_000,
+        max_bytes: 1 << 20,
+    };
+    for row in rows(&file, "parse") {
+        let input = text(&row["input"]);
+        let actual = parse_js_json(input, limits);
+        let shown = || format!("{:?}", input.chars().take(120).collect::<String>());
+        if let Some(expected) = row["held"].as_str() {
+            let actual = actual
+                .as_ref()
+                .map(|value| to_js_json(&with_number_bits(value)));
+            check.expect(actual.as_deref() == Ok(expected), || {
+                format!("{}\n  rust {actual:?}\n  node {expected}", shown())
+            });
+        } else if row["infinite"].as_bool() == Some(true) {
+            // `Infinity` in JavaScript; a parse error here (allowed difference).
+            check.expect(
+                matches!(actual, Err(JsonParseError::NumberOutOfRange { .. })),
+                || format!("{}: {actual:?} should be out of range", shown()),
+            );
+        } else {
+            check.expect(matches!(actual, Err(JsonParseError::Syntax { .. })), || {
+                format!("{}: {actual:?} should throw", shown())
+            });
+        }
+    }
+    check.finish();
+}
+
+// ------------------------------------------------------------------ Date text
+
+#[test]
+fn date_text_matches_node() {
+    let file = load("date_text.json");
+    let mut check = Check::new("toString/toUTCString/toISOString");
+    for row in rows(&file, "date_text") {
+        let ms = int(&row[0]);
+        for (name, actual, expected) in [
+            ("toString", to_string_utc(ms), &row[1]),
+            ("toUTCString", to_utc_string(ms), &row[2]),
+            ("toISOString", to_iso_string(ms), &row[3]),
+        ] {
+            check.expect(actual.as_deref() == expected.as_str(), || {
+                format!("{ms} {name}: {actual:?} != {expected}")
+            });
+        }
+    }
+    check.finish();
+}
+
+// ------------------------------------------------------------------ a value as JavaScript sees it
+
+#[test]
+fn js_view_matches_node() {
+    let file = load("view.json");
+    let mut check = Check::new("String/Number/Boolean/Object.keys");
+    for row in rows(&file, "js_view") {
+        let input = text(&row[0]);
+        // Keys in text order: the property order must come from `js_object_keys`.
+        let value: Value =
+            serde_json::from_str(input).unwrap_or_else(|error| panic!("{input}: {error}"));
+        let string = js_string(&value);
+        check.expect(string == text(&row[1]), || {
+            format!("String({input}): {string:?} != {}", row[1])
+        });
+        let number = js_number(&value);
+        check.expect(same(number, double(&row[2])), || {
+            format!("Number({input}): {number:e} != {:e}", double(&row[2]))
+        });
+        let truthy = js_truthy(&value);
+        check.expect(Some(truthy) == row[3].as_bool(), || {
+            format!("Boolean({input}): {truthy} != {}", row[3])
+        });
+        let keys = js_object_keys(&value);
+        let expected: Vec<&str> = row[4]
+            .as_array()
+            .map(|keys| keys.iter().map(text).collect())
+            .unwrap_or_default();
+        check.expect(keys == expected, || {
+            format!("Object.keys({input}): {keys:?} != {expected:?}")
         });
     }
     check.finish();

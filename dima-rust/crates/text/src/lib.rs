@@ -6,7 +6,8 @@
 //! the contract rows of that section; no UTF-16 data is built or stored.
 //!
 //! The JavaScript behaviour reproduced here (whitespace, number text, `Number()`/`parseInt`,
-//! dates, `JSON.stringify`, string ordering, case mapping) is pinned by golden vectors written
+//! dates, `JSON.stringify` and `JSON.parse`, URI escapes, string ordering, case mapping, and a
+//! value read as JavaScript reads it: [`JsView`]) is pinned by golden vectors written
 //! by the production Node runtime: see `tests/vectors/generate.mjs`.
 //!
 //! # Reproducing `JSON.stringify` bytes
@@ -33,10 +34,13 @@ mod case;
 mod chars;
 mod date;
 mod json;
+mod json_parse;
 mod number;
 mod order;
 mod parse;
+mod uri;
 mod utf16;
+mod view;
 mod whitespace;
 
 pub use case::{nfc, to_lower, to_upper};
@@ -46,12 +50,13 @@ pub use chars::{
 };
 pub use date::{
     MAX_TIME_MS, MS_PER_DAY, UtcFields, date_utc, parse_date, to_date_string_utc, to_iso_string,
-    to_locale_string_en_us_utc, utc_day_start, utc_fields,
+    to_locale_string_en_us_utc, to_string_utc, to_utc_string, utc_day_start, utc_fields,
 };
 pub use json::{
-    SortedKeys, js_key_order, sanitize_lone_surrogates, to_js_json, to_js_json_from,
-    to_js_json_sorted,
+    JsonIndent, SortedKeys, js_key_order, sanitize_lone_surrogates, to_js_json, to_js_json_from,
+    to_js_json_pretty, to_js_json_pretty_from, to_js_json_sorted,
 };
+pub use json_parse::{JsonLimits, JsonParseError, js_number_value, parse_js_json};
 pub use number::{
     NumberLocale, math_round, number_to_string, string_of, to_fixed, to_locale_string,
 };
@@ -59,5 +64,10 @@ pub use order::cmp_utf16;
 #[cfg(feature = "collation")]
 pub use order::{CollationError, Collator};
 pub use parse::{Radix, parse_float, parse_int, parse_number};
+pub use uri::{UriError, decode_uri, decode_uri_component, encode_uri, encode_uri_component};
 pub use utf16::{truncate_utf16_budget, utf16_len, utf16_offset, utf16_to_byte};
+pub use view::{
+    Js, JsView, js_number, js_number_with, js_object_keys, js_property_order, js_string,
+    js_string_with, js_truthy, js_truthy_with,
+};
 pub use whitespace::{is_js_whitespace, trim, trim_end, trim_start};

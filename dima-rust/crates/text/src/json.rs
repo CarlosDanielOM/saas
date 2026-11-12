@@ -5,6 +5,7 @@
 
 use crate::number::number_to_string;
 use crate::order::cmp_utf16;
+use crate::utf16::truncate_utf16_budget;
 use serde_json::{Map, Number, Value};
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -17,7 +18,75 @@ use std::cmp::Ordering;
 /// JavaScript would write as `null`. For a value built in Rust whose keys must enumerate the way
 /// a JavaScript object's do, call [`js_key_order`] first.
 pub fn to_js_json(value: &Value) -> String {
-    write(value, None)
+    write(value, None, None)
+}
+
+/// The `space` argument of `JSON.stringify(value, null, space)`.
+///
+/// V8 turns it into the indentation string (the "gap") as follows, which differs from the
+/// specification in two corners that Node shows:
+///
+/// - a number above zero selects the pretty form with that many spaces after truncation toward
+///   zero, at most ten; between 0 and 1 the pretty form has line breaks but no indentation (the
+///   specification says compact). Zero, negatives and `NaN` select the compact form.
+/// - a non-empty string selects the pretty form with its first ten UTF-16 units as the gap, cut
+///   at the first NUL (V8 reads the gap as a C string). The empty string selects the compact form.
+///
+/// A string whose tenth UTF-16 unit is the first half of a surrogate pair is cut before that
+/// character: JavaScript keeps the lone half, which Rust text cannot hold (text rule 3).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum JsonIndent<'a> {
+    /// `JSON.stringify(value, null, n)`.
+    Number(f64),
+    /// `JSON.stringify(value, null, "text")`.
+    Text(&'a str),
+}
+
+impl<'a> JsonIndent<'a> {
+    /// The gap V8 derives from this argument, or `None` for the compact form.
+    pub fn gap(self) -> Option<&'a str> {
+        const SPACES: &str = "          ";
+        match self {
+            // `n > 0` is false for NaN.
+            Self::Number(n) if n > 0.0 => SPACES.get(..n.min(10.0) as usize),
+            Self::Number(_) => None,
+            Self::Text("") => None,
+            Self::Text(text) => {
+                let gap = truncate_utf16_budget(text, 10);
+                Some(gap.split('\0').next().unwrap_or(gap))
+            }
+        }
+    }
+}
+
+/// `JSON.stringify(value, null, indent)`: the pretty form, keys in stored order.
+///
+/// Each member of a non-empty array or object goes on its own line, indented by the gap once per
+/// level, and object members read `"key": value`. Empty containers stay `[]` and `{}`. Numbers and
+/// strings are written as [`to_js_json`] writes them; when the indent selects the compact form
+/// the output is identical to [`to_js_json`].
+pub fn to_js_json_pretty(value: &Value, indent: JsonIndent<'_>) -> String {
+    write(value, None, indent.gap())
+}
+
+/// [`to_js_json_pretty`] bytes for any serialisable value, in one pass (see [`to_js_json_from`]
+/// for the key-order rules that apply to a `Serialize` type).
+pub fn to_js_json_pretty_from<T: serde::Serialize + ?Sized>(
+    value: &T,
+    indent: JsonIndent<'_>,
+) -> Result<Vec<u8>, serde_json::Error> {
+    let Some(gap) = indent.gap() else {
+        return to_js_json_from(value);
+    };
+    let mut out = Vec::with_capacity(256);
+    let formatter = JsPrettyFormatter {
+        gap: gap.as_bytes(),
+        level: 0,
+        has_value: false,
+    };
+    let mut serializer = serde_json::Serializer::with_formatter(&mut out, formatter);
+    value.serialize(&mut serializer)?;
+    Ok(out)
 }
 
 /// [`to_js_json`] bytes for any serialisable value, written in one pass with no intermediate tree.
@@ -39,29 +108,144 @@ pub fn to_js_json_from<T: serde::Serialize + ?Sized>(
 /// `JSON.stringify` (the vector tests compare both writers with Node).
 struct JsFormatter;
 
+/// The number methods both formatters share.
+macro_rules! js_numbers {
+    () => {
+        fn write_i64<W: ?Sized + std::io::Write>(
+            &mut self,
+            writer: &mut W,
+            value: i64,
+        ) -> std::io::Result<()> {
+            writer.write_all(number_text(&Number::from(value)).as_bytes())
+        }
+
+        fn write_u64<W: ?Sized + std::io::Write>(
+            &mut self,
+            writer: &mut W,
+            value: u64,
+        ) -> std::io::Result<()> {
+            writer.write_all(number_text(&Number::from(value)).as_bytes())
+        }
+
+        fn write_f64<W: ?Sized + std::io::Write>(
+            &mut self,
+            writer: &mut W,
+            value: f64,
+        ) -> std::io::Result<()> {
+            writer.write_all(number_to_string(value).as_bytes())
+        }
+    };
+}
+
 impl serde_json::ser::Formatter for JsFormatter {
-    fn write_i64<W: ?Sized + std::io::Write>(
-        &mut self,
-        writer: &mut W,
-        value: i64,
-    ) -> std::io::Result<()> {
-        writer.write_all(number_text(&Number::from(value)).as_bytes())
+    js_numbers!();
+}
+
+/// `JSON.stringify` with a gap, after `serde_json`'s `PrettyFormatter` (same layout: members on
+/// their own lines, `": "` between key and value, empty containers kept on one line).
+struct JsPrettyFormatter<'g> {
+    gap: &'g [u8],
+    level: usize,
+    has_value: bool,
+}
+
+impl JsPrettyFormatter<'_> {
+    fn indent<W: ?Sized + std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        for _ in 0..self.level {
+            writer.write_all(self.gap)?;
+        }
+        Ok(())
     }
 
-    fn write_u64<W: ?Sized + std::io::Write>(
+    fn open<W: ?Sized + std::io::Write>(
         &mut self,
         writer: &mut W,
-        value: u64,
+        bracket: &[u8],
     ) -> std::io::Result<()> {
-        writer.write_all(number_text(&Number::from(value)).as_bytes())
+        self.level += 1;
+        self.has_value = false;
+        writer.write_all(bracket)
     }
 
-    fn write_f64<W: ?Sized + std::io::Write>(
+    fn close<W: ?Sized + std::io::Write>(
         &mut self,
         writer: &mut W,
-        value: f64,
+        bracket: &[u8],
     ) -> std::io::Result<()> {
-        writer.write_all(number_to_string(value).as_bytes())
+        self.level = self.level.saturating_sub(1);
+        if self.has_value {
+            writer.write_all(b"\n")?;
+            self.indent(writer)?;
+        }
+        writer.write_all(bracket)
+    }
+
+    fn member<W: ?Sized + std::io::Write>(
+        &mut self,
+        writer: &mut W,
+        first: bool,
+    ) -> std::io::Result<()> {
+        writer.write_all(if first { b"\n" } else { b",\n" })?;
+        self.indent(writer)
+    }
+}
+
+impl serde_json::ser::Formatter for JsPrettyFormatter<'_> {
+    js_numbers!();
+
+    fn begin_array<W: ?Sized + std::io::Write>(&mut self, writer: &mut W) -> std::io::Result<()> {
+        self.open(writer, b"[")
+    }
+
+    fn end_array<W: ?Sized + std::io::Write>(&mut self, writer: &mut W) -> std::io::Result<()> {
+        self.close(writer, b"]")
+    }
+
+    fn begin_array_value<W: ?Sized + std::io::Write>(
+        &mut self,
+        writer: &mut W,
+        first: bool,
+    ) -> std::io::Result<()> {
+        self.member(writer, first)
+    }
+
+    fn end_array_value<W: ?Sized + std::io::Write>(
+        &mut self,
+        _writer: &mut W,
+    ) -> std::io::Result<()> {
+        self.has_value = true;
+        Ok(())
+    }
+
+    fn begin_object<W: ?Sized + std::io::Write>(&mut self, writer: &mut W) -> std::io::Result<()> {
+        self.open(writer, b"{")
+    }
+
+    fn end_object<W: ?Sized + std::io::Write>(&mut self, writer: &mut W) -> std::io::Result<()> {
+        self.close(writer, b"}")
+    }
+
+    fn begin_object_key<W: ?Sized + std::io::Write>(
+        &mut self,
+        writer: &mut W,
+        first: bool,
+    ) -> std::io::Result<()> {
+        self.member(writer, first)
+    }
+
+    fn begin_object_value<W: ?Sized + std::io::Write>(
+        &mut self,
+        writer: &mut W,
+    ) -> std::io::Result<()> {
+        writer.write_all(b": ")
+    }
+
+    fn end_object_value<W: ?Sized + std::io::Write>(
+        &mut self,
+        _writer: &mut W,
+    ) -> std::io::Result<()> {
+        self.has_value = true;
+        Ok(())
     }
 }
 
@@ -78,7 +262,7 @@ pub enum SortedKeys {
 
 /// `to_js_json` with every object's keys sorted like the TypeScript's canonical writers.
 pub fn to_js_json_sorted(value: &Value, order: SortedKeys) -> String {
-    write(value, Some(order))
+    write(value, Some(order), None)
 }
 
 /// Reorders every object's keys (recursively) the way a JavaScript object enumerates them:
@@ -91,10 +275,7 @@ pub fn js_key_order(value: &mut Value) {
             Value::Array(items) => pending.extend(items.iter_mut()),
             Value::Object(map) => {
                 if map.keys().any(|key| array_index(key).is_some()) {
-                    let mut entries: Vec<(String, Value)> =
-                        std::mem::take(map).into_iter().collect();
-                    entries.sort_by(|(left, _), (right, _)| index_first(left, right));
-                    map.extend(entries);
+                    index_keys_first(map);
                 }
                 pending.extend(map.values_mut());
             }
@@ -152,8 +333,15 @@ fn unicode_escape(json: &[u8], at: usize) -> Option<u32> {
     }
 }
 
+/// Moves the array-index keys of one object to the front, in numeric order (stable for the rest).
+pub(crate) fn index_keys_first(map: &mut Map<String, Value>) {
+    let mut entries: Vec<(String, Value)> = std::mem::take(map).into_iter().collect();
+    entries.sort_by(|(left, _), (right, _)| index_first(left, right));
+    map.extend(entries);
+}
+
 /// `n` when `key` is an array index: the canonical decimal of an integer below 2^32 - 1.
-fn array_index(key: &str) -> Option<u32> {
+pub(crate) fn array_index(key: &str) -> Option<u32> {
     let bytes = key.as_bytes();
     if bytes.is_empty() || bytes.len() > 10 || (bytes.len() > 1 && bytes.first() == Some(&b'0')) {
         return None;
@@ -165,7 +353,7 @@ fn array_index(key: &str) -> Option<u32> {
 }
 
 /// Array-index keys first in numeric order; the rest keep their relative order (stable sort).
-fn index_first(left: &str, right: &str) -> Ordering {
+pub(crate) fn index_first(left: &str, right: &str) -> Ordering {
     match (array_index(left), array_index(right)) {
         (Some(left), Some(right)) => left.cmp(&right),
         (Some(_), None) => Ordering::Less,
@@ -174,42 +362,67 @@ fn index_first(left: &str, right: &str) -> Ordering {
     }
 }
 
-/// The `JSON.stringify` writer: an explicit stack, so depth is limited by memory, not the call stack.
-fn write(value: &Value, order: Option<SortedKeys>) -> String {
+/// The `JSON.stringify` writer: an explicit stack, so depth is limited by memory, not the call
+/// stack. `gap` is the indentation per level of the pretty form; `None` writes the compact form.
+fn write(value: &Value, order: Option<SortedKeys>, gap: Option<&str>) -> String {
     enum Step<'a> {
-        Value(&'a Value),
+        Value(&'a Value, usize),
         Key(&'a str),
         Text(&'static str),
+        /// A line break followed by the gap repeated this many times.
+        Break(usize),
     }
     let mut out = String::new();
-    let mut steps = vec![Step::Value(value)];
+    let mut steps = vec![Step::Value(value, 0)];
+    let pretty = gap.is_some();
+    let gap = gap.unwrap_or_default();
     while let Some(step) = steps.pop() {
         match step {
             Step::Text(text) => out.push_str(text),
+            Step::Break(level) => {
+                out.push('\n');
+                for _ in 0..level {
+                    out.push_str(gap);
+                }
+            }
             Step::Key(key) => {
                 quote(key, &mut out);
-                out.push(':');
+                out.push_str(if pretty { ": " } else { ":" });
             }
-            Step::Value(Value::Null) => out.push_str("null"),
-            Step::Value(Value::Bool(flag)) => out.push_str(if *flag { "true" } else { "false" }),
-            Step::Value(Value::Number(number)) => out.push_str(&number_text(number)),
-            Step::Value(Value::String(text)) => quote(text, &mut out),
-            Step::Value(Value::Array(items)) => {
+            Step::Value(Value::Null, _) => out.push_str("null"),
+            Step::Value(Value::Bool(flag), _) => {
+                out.push_str(if *flag { "true" } else { "false" });
+            }
+            Step::Value(Value::Number(number), _) => out.push_str(&number_text(number)),
+            Step::Value(Value::String(text), _) => quote(text, &mut out),
+            Step::Value(Value::Array(items), level) => {
                 out.push('[');
                 steps.push(Step::Text("]"));
+                if pretty && !items.is_empty() {
+                    steps.push(Step::Break(level));
+                }
                 for (index, item) in items.iter().enumerate().rev() {
-                    steps.push(Step::Value(item));
+                    steps.push(Step::Value(item, level + 1));
+                    if pretty {
+                        steps.push(Step::Break(level + 1));
+                    }
                     if index > 0 {
                         steps.push(Step::Text(","));
                     }
                 }
             }
-            Step::Value(Value::Object(map)) => {
+            Step::Value(Value::Object(map), level) => {
                 out.push('{');
                 steps.push(Step::Text("}"));
+                if pretty && !map.is_empty() {
+                    steps.push(Step::Break(level));
+                }
                 for (index, (key, item)) in entries(map, order).into_iter().enumerate().rev() {
-                    steps.push(Step::Value(item));
+                    steps.push(Step::Value(item, level + 1));
                     steps.push(Step::Key(key));
+                    if pretty {
+                        steps.push(Step::Break(level + 1));
+                    }
                     if index > 0 {
                         steps.push(Step::Text(","));
                     }

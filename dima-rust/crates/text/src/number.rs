@@ -145,40 +145,12 @@ pub fn math_round(x: f64) -> f64 {
     if x - floor < 0.5 { floor } else { floor + 1.0 }
 }
 
-/// `String(value)` for a JSON value.
+/// `String(value)` for a JSON value: [`crate::js_string`].
 ///
 /// Arrays are comma-joined with `null` items as empty text (nested arrays likewise), objects are
 /// `[object Object]`, numbers use [`number_to_string`].
 pub fn string_of(value: &Value) -> String {
-    enum Step<'a> {
-        Value(&'a Value),
-        Comma,
-    }
-    let mut out = String::new();
-    let mut steps = vec![Step::Value(value)];
-    while let Some(step) = steps.pop() {
-        match step {
-            Step::Comma => out.push(','),
-            Step::Value(Value::Null) => out.push_str("null"),
-            Step::Value(Value::Bool(flag)) => out.push_str(if *flag { "true" } else { "false" }),
-            Step::Value(Value::Number(number)) => {
-                out.push_str(&number_to_string(number.as_f64().unwrap_or(f64::NAN)))
-            }
-            Step::Value(Value::String(text)) => out.push_str(text),
-            Step::Value(Value::Object(_)) => out.push_str("[object Object]"),
-            Step::Value(Value::Array(items)) => {
-                for (index, item) in items.iter().enumerate().rev() {
-                    if !item.is_null() {
-                        steps.push(Step::Value(item));
-                    }
-                    if index > 0 {
-                        steps.push(Step::Comma);
-                    }
-                }
-            }
-        }
-    }
-    out
+    crate::view::js_string(value)
 }
 
 /// A positive decimal: `0.d1d2… × 10^point`, digits as ASCII without trailing zeros.

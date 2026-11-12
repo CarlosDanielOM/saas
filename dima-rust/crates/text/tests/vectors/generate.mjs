@@ -243,7 +243,40 @@ const sanitizeInputs = [
 ];
 const sanitize = sanitizeInputs.map((input) => ({ input, expected: JSON.stringify(wellFormed(JSON.parse(input))) }));
 
-write('json.json', { stringify, sanitize });
+// `JSON.stringify(value, null, space)`. The Rust input is the compact text (what the value is
+// after JavaScript's own conversion: holes and NaN become null, undefined members vanish).
+const indents = [0, 1, 2, 3, 4, 8, 10, 11, 100, -1, -0, 0.5, 0.999, 1.5, 2.7, -2.7, 9.99, 10.5, NaN, Infinity, -Infinity, 1e-9,
+    Number.MAX_VALUE, '', ' ', '  ', '\t', '\n', '--', '\r\n', 'abcdefghij', 'abcdefghijklmnop', '<br>', '\u00e9\u00e9', 'ñ', '😀',
+    '😀😀😀😀😀', '😀😀😀😀😀😀', 'ab😀😀😀😀', 'a😀😀😀😀😀', '\u0000', 'ab\u0000cd', '\u0000ab', '\u0000😀😀😀😀😀😀', '"', '\\', ' \u{a0}\u{3000}', '\u{2028}'];
+const prettyValues = [
+    ...jsonTexts.map((text) => JSON.parse(text)),
+    [1, , 3], [, ,], [NaN, Infinity, -Infinity, -0, undefined, () => 1], { a: undefined, b: () => 1, c: NaN, d: [undefined] },
+    { '': {}, ' ': [], x: [[]], y: [{}], z: { a: [], b: {} } }, [[[[[[[[[[[[1, [], {}]]]]]]]]]]]],
+    { 2: 'b', 1: 'a', x: { 10: [1, { 3: 'c', 0: 'z' }] } }, [0.1, 1e21, 1e-7, 5e-324, 2 ** 64, -(2 ** 53) - 2],
+    Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`k${i}`, i % 3 ? [i, { i }] : {}])),
+    Array.from({ length: 40 }, (_, i) => (i % 5 === 0 ? [] : i % 5 === 1 ? {} : i % 5 === 2 ? [i] : i % 5 === 3 ? { i } : i)),
+];
+let nested = 0;
+for (let i = 0; i < 30; i++) nested = i % 2 ? { [`d${i}`]: nested, e: [] } : [nested, {}];
+prettyValues.push(nested);
+const indentKey = (space) => (typeof space === 'number' ? { number: bits(space) } : { text: space });
+const pretty = [];
+for (const value of prettyValues) {
+    const input = JSON.stringify(value);
+    for (const space of indents) {
+        // A cut inside a surrogate pair leaves a lone half in JavaScript's gap; Rust drops the half
+        // (documented on `JsonIndent::gap`), so those indents are not compared.
+        if (typeof space === 'string' && space.slice(0, 10) !== space.slice(0, 10).toWellFormed()) continue;
+        pretty.push({ input, indent: indentKey(space), expected: JSON.stringify(value, null, space) });
+    }
+}
+const lone = (space) => typeof space === 'string' && space.slice(0, 10) !== space.slice(0, 10).toWellFormed();
+const gaps = indents.filter((space) => !lone(space)).map((space) => {
+    const text = JSON.stringify([1], null, space);
+    return { indent: indentKey(space), pretty: text !== '[1]', gap: text === '[1]' ? '' : text.slice(2, -3) };
+});
+
+write('json.json', { stringify, sanitize, pretty, gaps });
 
 // ---------------------------------------------------------------- dates
 
@@ -436,4 +469,186 @@ write('text.json', {
     nfc_strings: nfcStrings.map((s) => [s, s.normalize('NFC')]),
 });
 
-console.log('wrote numbers.json whitespace.json json.json dates.json order.json text.json');
+// Sections added later go below, so the random draws above (and their vectors) do not move.
+
+// ---------------------------------------------------------------- URI escapes
+
+const uriEncoder = new TextEncoder();
+const utf8Escaped = (s) => [...uriEncoder.encode(s)].map((b) => `%${b.toString(16).toUpperCase().padStart(2, '0')}`).join('');
+// Above ASCII both encoders escape every UTF-8 byte; checked here for every scalar value so the
+// Rust test can apply the rule to every code point (the ASCII rows below are recorded one by one).
+for (let cp = 0x80; cp <= 0x10ffff; cp++) {
+    if (cp >= 0xd800 && cp <= 0xdfff) continue;
+    const s = String.fromCodePoint(cp);
+    if (encodeURIComponent(s) !== utf8Escaped(s) || encodeURI(s) !== utf8Escaped(s)) throw new Error(`U+${cp.toString(16)} breaks the UTF-8 rule`);
+}
+const encodeInputs = [];
+for (let cp = 0; cp < 0x80; cp++) encodeInputs.push(String.fromCharCode(cp));
+const encodeSamples = [0x80, 0xff, 0x100, 0x7ff, 0x800, 0xfff, 0x1000, 0xd7ff, 0xe000, 0xfeff, 0xfffd, 0xffff, 0x10000, 0x1f600, 0xfffff,
+    0x100000, 0x10ffff];
+for (let i = 0; i < 300; i++) {
+    const cp = pick([() => 0x80 + randInt(0x780), () => 0x800 + randInt(0xd000), () => 0xe000 + randInt(0x2000), () => 0x10000 + randInt(0x100000)])();
+    encodeSamples.push(cp);
+}
+for (const cp of encodeSamples) encodeInputs.push(String.fromCodePoint(cp));
+encodeInputs.push('', 'plain', 'a b', 'a+b', 'key=value&other=1', 'https://example.com/a path/?q=ñ&r=😀#frag', '%', '%41', '%%', '100%',
+    'ñandú', '😀👍🏽', 'שלום', '\u0000\u001f\u007f', ";/?:@&=+$,#-_.!~*'()", '[]{}|\\^`"<>', 'e\u0301', '\u2028\u2029');
+const encode = encodeInputs.map((s) => [s, encodeURIComponent(s), encodeURI(s)]);
+
+const attempt = (f, s) => { try { return f(s); } catch (error) { if (!(error instanceof URIError)) throw error; return null; } };
+const hex2 = (b) => b.toString(16).padStart(2, '0');
+const decodeInputs = [];
+for (let b = 0; b < 256; b++) decodeInputs.push(`%${hex2(b).toUpperCase()}`, `%${hex2(b)}`, `a%${hex2(b)}b`);
+const continuations = [0x00, 0x2f, 0x7f, 0x80, 0x8f, 0x90, 0x9f, 0xa0, 0xbf, 0xc0, 0xff];
+for (let lead = 0xc0; lead <= 0xff; lead++) {
+    for (const second of continuations) {
+        decodeInputs.push(`%${hex2(lead)}%${hex2(second)}`);
+        if (lead >= 0xe0) for (const third of [0x80, 0xbf, 0x7f, 0xc0]) {
+            decodeInputs.push(`%${hex2(lead)}%${hex2(second)}%${hex2(third)}`);
+            if (lead >= 0xf0) for (const fourth of [0x80, 0xbf, 0x41]) decodeInputs.push(`%${hex2(lead)}%${hex2(second)}%${hex2(third)}%${hex2(fourth)}`);
+        }
+    }
+}
+decodeInputs.push('', 'plain', '%', '%4', '%G0', '%0G', 'a%', 'a%4', '%%', '%%41', '%41%', '%E2%82', '%E2%82%A', '%E2%82X', '%E2%82%',
+    '%E2%82%AC', '%e2%82%ac', '%E2%%82%AC', '%E2%82%2C', '%E2 %82%AC', '%E2%82%AC%', 'ñ%20😀', '%F0%9F%98%80', '%f0%9f%98%80x',
+    '%2F%2f%3B%3b%23%26%3D%2B%24%2C%3A%40%3F', '%252F', '%25', '%2', '%C0%80', '%C1%BF', '%C2%80', '%DF%BF', '%E0%80%80', '%E0%9F%BF',
+    '%E0%A0%80', '%ED%9F%BF', '%ED%A0%80', '%ED%BF%BF', '%EE%80%80', '%EF%BF%BF', '%EF%BB%BF', '%F0%80%80%80', '%F0%8F%BF%BF',
+    '%F0%90%80%80', '%F4%8F%BF%BF', '%F4%90%80%80', '%F5%80%80%80', '%F8%88%80%80%80', '%FC%84%80%80%80%80', '%FE', '%FF',
+    'a+b%20c', 'ключ%3Dзначение', '%D0%BA%D0%BB%D1%8E%D1%87', '%00', '%7F', '%0A%0D%09', 'x%E2%82%ACy%E2%82%ACz', '%C3%A9%C3', '%C3%A9%',
+    '%C3%A9%C3%A9', '%u0041', '%+41', '% 41', '%-1', '%0x', '\u{1f600}%F0%9F%98%80\u{1f600}');
+const tokens = ['%20', '%2F', '%2f', '%23', '%3A', '%41', '%C3%A9', '%E2%82%AC', '%F0%9F%98%80', '%', '%4', '%C3', '%80', '%ED%A0%80',
+    'a', 'Z', '9', ' ', '+', '/', '#', 'é', '😀', '%25', '%%', '%zz'];
+for (let i = 0; i < 600; i++) decodeInputs.push(Array.from({ length: 1 + randInt(8) }, () => pick(tokens)).join(''));
+const decode = decodeInputs.map((s) => [s, attempt(decodeURIComponent, s), attempt(decodeURI, s)]);
+// Lone surrogates cannot reach a result: every invalid sequence throws.
+for (const [, component, uri] of decode) for (const r of [component, uri]) if (r !== null && r !== r.toWellFormed()) throw new Error('lone surrogate');
+
+write('uri.json', { encode, decode });
+
+// ---------------------------------------------------------------- JSON.parse
+
+// What JavaScript holds after JSON.parse, written out with every number as its bits (so -0 and
+// the last bit of a rounded integer show) and lone surrogates replaced (text rule 3, which is
+// what toWellFormed does).
+const held = (text) => {
+    let value;
+    try { value = JSON.parse(text); } catch (error) { if (!(error instanceof SyntaxError)) throw error; return { throws: true }; }
+    let infinite = false;
+    const dumped = JSON.stringify(wellFormed(value), (_key, v) => {
+        if (typeof v !== 'number') return v;
+        if (!Number.isFinite(v)) infinite = true;
+        return { n: bits(v) };
+    });
+    return infinite ? { infinite: true } : { held: dumped };
+};
+const parseTexts = [
+    // Key order and duplicates.
+    '{"b":1,"2":2,"a":3,"1":4,"-1":5,"01":6,"4294967294":7,"4294967295":8,"1.5":9,"10":10,"0":11," 3":12,"":13}',
+    '{"a":1,"b":2,"a":3}', '{"b":1,"a":2,"b":3,"c":4,"a":5}', '{"1":1,"a":2,"1":3}', '{"a":1,"1":2,"a":3,"0":4,"1":5}',
+    '{"x":{"9":"nine","y":0,"2":2},"1":[{"b":0,"0":0,"b":1}]}', '{"__proto__":1,"constructor":2,"toString":3}', '{"__proto__":{"a":1}}',
+    '{"4294967293":"a","4294967296":"b","9007199254740993":"c","00":"d","-0":"e","0":"f","+1":"g","1e2":"h","0x1":"i"}',
+    '{"\\u0031":"escaped one","1":"plain one"}', '{"\\u00e9":1,"e\\u0301":2,"\\ud83d\\ude00":3,"😀":4}', '{"":1,"":2}',
+    '[{"a":1},{"a":2,"a":{}},{"a":[],"a":null}]',
+    // Numbers.
+    '0', '-0', '0.0', '-0.0', '0e0', '-0e-0', '0E+0', '1', '-1', '1.0', '1.5', '1e2', '1E2', '1e+2', '1e-2', '1.5e300', '1e308',
+    '1.7976931348623157e308', '1.7976931348623158e308', '1.7976931348623159e308', '1e309', '-1e309', '5e-324', '2.4703282292062328e-324',
+    '2.4703282292062327e-324', '2e-324', '1e-400', '-1e-400', '9007199254740991', '9007199254740992', '9007199254740993',
+    '9007199254740994', '9007199254740995', '-9007199254740993', '18446744073709551615', '18446744073709551616', '-9223372036854775808',
+    '-9223372036854775809', '123456789012345678901234567890', '1' + '0'.repeat(21), '1' + '0'.repeat(400), '0.' + '0'.repeat(400) + '1',
+    '1'.repeat(30) + '.' + '1'.repeat(30), '0.1', '0.2', '0.30000000000000004', '100000000000000000000', '1e21', '1e-7', '4.35',
+    '[1.0,2.50,-0,1E2,1e+2,0.000001,0.0000001,1e21]',
+    // Strings and escapes.
+    '""', '"plain"', '"\\"\\\\\\/\\b\\f\\n\\r\\t"', '"\\u0000\\u001f\\u0020\\u007f\\u0080\\u00ff\\u0100\\uffff\\ufeff"', '"\\u0041\\u004a\\u004A"',
+    '"\\ud83d\\ude00"', '"\\uD83D\\uDE00"', '"\\ud800"', '"\\udc00"', '"\\udbff\\udfff"', '"\\ude00\\ud83d"', '"a\\ud83db"', '"\\ud83d\\ud83d\\ude00"',
+    '"\\ud83d\\u0041"', '"\\ud83d\\\\ude00"', '"\\ud83d😀"', '"😀 ñ ש 中"', '"e\\u0301"', '"\\u2028\\u2029"', '"</script>"', '"\u007f"',
+    '"\\x41"', '"\\u12"', '"\\u12G4"', '"\\U0041"', '"\\a"', '"\\\'"', '"\\0"', '"\\', '"abc', '"\t"', '"\n"', '"\u0000"', '"\u001f"',
+    '" "', '"\\u{41}"',
+    // Literals, whitespace, structure.
+    'true', 'false', 'null', 'True', 'nul', 'nulls', 'truefalse', ' \t\n\r1 \t\n\r', ' 1', '1 ', '\u000b1', '\u000c1',
+    '﻿1', ' 1', '', ' ', '[]', '{}', '[ ]', '{ }', '[1,2,3]', '[1,]', '[,1]', '[1 2]', '[1,,2]', '{"a":1,}', '{"a" 1}',
+    '{"a":}', '{a:1}', "{'a':1}", '{"a":1', '[1', '[', ']', '{', '}', '{"a":1}}', '[1]]', '1 2', '01', '00', '-', '-01', '1.', '.5',
+    '+1', '1e', '1e+', '1e-', '1.e1', '0x10', 'NaN', 'Infinity', '-Infinity', '1_0', '[-]', '{"a":[{"b":[{}]}]}', '[[],[[]],{"":[]}]',
+    '[null,true,false,"",0,{},[]]', '{"a":1}\n', '"x"garbage', '[1]x', 'nullx',
+];
+// Deep nesting (JavaScript has no limit; the Rust test lifts its own for these).
+for (const depth of [1, 2, 10, 100, 127, 128, 129, 500, 1000]) {
+    parseTexts.push('['.repeat(depth) + ']'.repeat(depth), '['.repeat(depth) + '1' + ']'.repeat(depth),
+        '{"a":'.repeat(depth) + '{}' + '}'.repeat(depth), '['.repeat(depth) + ']'.repeat(depth - 1));
+}
+// Random doubles written as JavaScript writes them, and random digit strings.
+for (let i = 0; i < 300; i++) parseTexts.push(String(randomDouble()));
+for (let i = 0; i < 300; i++) {
+    const digits = Array.from({ length: 1 + randInt(30) }, () => randInt(10)).join('').replace(/^0+(?=\d)/, '');
+    const fraction = randInt(2) ? '.' + Array.from({ length: 1 + randInt(25) }, () => randInt(10)).join('') : '';
+    const exponent = randInt(3) ? '' : pick(['e', 'E', 'e+', 'e-', 'E-']) + randInt(400);
+    parseTexts.push((randInt(3) ? '' : '-') + digits + fraction + exponent);
+}
+// Random documents: random keys (index-like ones included, duplicates likely) and values.
+const randomKey = () => pick([() => String(randInt(20)), () => pick(['a', 'b', 'c', '0', '01', '-1', '4294967295', 'é', '😀', '']), () => String(randInt(2 ** 32))])();
+const randomJson = (depth) => {
+    const kind = randInt(depth > 3 ? 5 : 8);
+    if (kind === 0) return 'null';
+    if (kind === 1) return pick(['true', 'false']);
+    if (kind === 2) return String(randInt(2) ? randomDouble() : randInt(2 ** 31) - 2 ** 30);
+    if (kind === 3) return JSON.stringify(Array.from({ length: randInt(5) }, () => pick(['a', 'é', '😀', '\n', '"', '\\', '\u0001'])).join(''));
+    if (kind === 4) return pick(['"\\ud800"', '"\\ud83d\\ude00"', '1e2', '-0', '9007199254740993']);
+    if (kind < 6) return `[${Array.from({ length: randInt(5) }, () => randomJson(depth + 1)).join(',')}]`;
+    return `{${Array.from({ length: randInt(7) }, () => `${JSON.stringify(randomKey())}:${randomJson(depth + 1)}`).join(',')}}`;
+};
+for (let i = 0; i < 400; i++) parseTexts.push(randomJson(0));
+const parsed = unique(parseTexts).map((input) => ({ input, ...held(input) }));
+
+write('json_parse.json', { parse: parsed });
+
+// ---------------------------------------------------------------- Date text (toString, toUTCString, toISOString)
+
+// The services run with TZ=UTC (pinned at the top of this script), so toString() is UTC.
+const dateTimes = [0, -1, 1, MAX_TIME, -MAX_TIME, MAX_TIME + 1, -MAX_TIME - 1, MAX_TIME - 1, -MAX_TIME + 1, 1794409445123, 951782400000,
+    86399999, 86400000, -86400000, -86400001];
+// Year boundaries: the last and first millisecond of each year where the year text changes shape.
+for (const year of [-271821, -271820, -100000, -10000, -9999, -1000, -999, -100, -99, -10, -9, -2, -1, 0, 1, 9, 10, 99, 100, 999, 1000,
+    1969, 1970, 1999, 2000, 2026, 9999, 10000, 99999, 100000, 275759, 275760]) {
+    const first = new Date(0); first.setUTCFullYear(year, 0, 1); first.setUTCHours(0, 0, 0, 0);
+    if (Number.isFinite(first.getTime())) dateTimes.push(first.getTime(), first.getTime() - 1);
+    const last = new Date(0); last.setUTCFullYear(year, 11, 31); last.setUTCHours(23, 59, 59, 999);
+    if (Number.isFinite(last.getTime())) dateTimes.push(last.getTime());
+}
+// Every month and weekday: the 1st, the 15th and the last day of each month of a few years.
+for (const year of [2024, 2026, 1900, -1, 12345]) {
+    for (let month = 0; month < 12; month++) {
+        for (const day of [1, 15, 0]) {
+            const d = new Date(0);
+            d.setUTCFullYear(year, day === 0 ? month + 1 : month, day);
+            d.setUTCHours(randInt(24), randInt(60), randInt(60), randInt(1000));
+            dateTimes.push(d.getTime());
+        }
+    }
+}
+for (let i = 0; i < 7; i++) dateTimes.push(1794355200000 + i * 86400000 + randInt(86400000));
+for (let i = 0; i < 80; i++) dateTimes.push((randInt(2 ** 31) * 4096 + randInt(4096)) * (randInt(2) ? 1 : -1));
+const dateText = unique(dateTimes).map((ms) => {
+    const d = new Date(ms);
+    const valid = Number.isFinite(d.getTime());
+    // Invalid dates print `Invalid Date` (toISOString throws): null, which the Rust functions give as None.
+    return [ms, valid ? d.toString() : null, valid ? d.toUTCString() : null, valid ? d.toISOString() : null];
+});
+
+write('date_text.json', { date_text: dateText });
+
+// ---------------------------------------------------------------- a value as JavaScript sees it
+
+// String(v), Number(v), Boolean(v) and Object.keys(v) of parsed JSON. The Rust test reads the
+// input with serde_json (keys in text order), so the key order comes from js_object_keys alone.
+const viewInputs = [...stringOfInputs, '"  12 "', '" 12﻿"', '"0x10"', '"0b101"', '"0o17"', '"1e3"', '" "', '"1_000"', '"Infinity"',
+    '"-Infinity"', '"abc"', '"-0"', '"0"', '"false"', '[" 7 "]', '[[]]', '[[[5]]]', '[1,2]', '[true]', '["0x1F"]', '[null,1]', '[1e21]', '[-0]',
+    '[""]', '[" "]', '[{}]', '{"b":1,"2":2,"a":3,"1":4}', '{"10":1,"9":2,"01":3,"-1":4,"4294967294":5,"4294967295":6,"":7}', '{"z":{"1":1}}',
+    '0.1', '-1.5', '5e-324', '1.7976931348623157e308', '9007199254740993', '18446744073709551616', '-1e21', '1e-7', '"\\t\\n 3.5e1 \\r"', '"+.5"',
+    '"0x"', '"1e400"', '"-1e400"', '["1","2"]', '[[1,[2,[3]]]]', '[[null],[]]', '{"0":"a"}', '{"length":1}'];
+const jsView = unique(viewInputs).map((input) => {
+    const v = JSON.parse(input);
+    return [input, String(v), bits(Number(v)), Boolean(v), v && typeof v === 'object' && !Array.isArray(v) ? Object.keys(v) : null];
+});
+
+write('view.json', { js_view: jsView });
+
+console.log('wrote numbers.json whitespace.json json.json uri.json json_parse.json date_text.json view.json dates.json order.json text.json');

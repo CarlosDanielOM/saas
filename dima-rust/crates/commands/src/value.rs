@@ -5,36 +5,20 @@
 //! JSON (API bodies, fixtures) or as raw BSON (`dima-model` keeps `Mixed` paths as [`bson::Bson`]).
 //! [`JsView`] gives both the same JavaScript reading, so one validator serves both.
 //!
+//! The rules themselves (`String()`, `Number()`, truthiness, property order) and the [`Js`] kinds
+//! are `dima-text`'s. This crate keeps its own [`JsView`] trait only because Rust's orphan rule
+//! forbids implementing `dima_text::JsView` for `bson::Bson` here; the functions below apply the
+//! shared rules through `dima-text`'s `_with` forms.
+//!
 //! BSON values that are JavaScript objects but not plain documents (ObjectId, Date, Binary,
 //! Decimal128, regular expressions and the rest) read as [`Js::Other`]. JavaScript would see an
 //! object with no recognised operator key there; this crate treats them the same way: they are
 //! never valid expression nodes.
 
-use dima_text::number_to_string;
+pub use dima_text::Js;
 
-/// What a value is, as `typeof` and `Array.isArray` tell it.
-#[derive(Debug)]
-pub enum Js<'a, V> {
-    /// `undefined` (BSON's deprecated undefined).
-    Undefined,
-    /// `null`.
-    Null,
-    /// A boolean.
-    Bool(bool),
-    /// A number (BSON int32, int64 and double all read as JavaScript numbers).
-    Number(f64),
-    /// A string.
-    String(&'a str),
-    /// An array.
-    Array(&'a [V]),
-    /// A plain object; read its keys with [`JsView::keys`].
-    Object,
-    /// Any other object (ObjectId, Date, binary data...).
-    Other,
-}
-
-/// A JavaScript reading of an untyped value. Implemented for [`serde_json::Value`] and
-/// [`bson::Bson`].
+/// A JavaScript reading of an untyped value. Implemented for [`serde_json::Value`] (through
+/// `dima_text::JsView`) and [`bson::Bson`].
 pub trait JsView: Sized {
     /// The kind of value.
     fn js(&self) -> Js<'_, Self>;
@@ -46,29 +30,15 @@ pub trait JsView: Sized {
 
 impl JsView for serde_json::Value {
     fn js(&self) -> Js<'_, Self> {
-        use serde_json::Value;
-        match self {
-            Value::Null => Js::Null,
-            Value::Bool(flag) => Js::Bool(*flag),
-            Value::Number(number) => Js::Number(number.as_f64().unwrap_or(f64::NAN)),
-            Value::String(text) => Js::String(text),
-            Value::Array(items) => Js::Array(items),
-            Value::Object(_) => Js::Object,
-        }
+        dima_text::JsView::js(self)
     }
 
     fn keys(&self) -> Vec<&str> {
-        match self {
-            serde_json::Value::Object(map) => map.keys().map(String::as_str).collect(),
-            _ => Vec::new(),
-        }
+        dima_text::JsView::keys(self)
     }
 
     fn get(&self, key: &str) -> Option<&Self> {
-        match self {
-            serde_json::Value::Object(map) => map.get(key),
-            _ => None,
-        }
+        dima_text::JsView::get(self, key)
     }
 }
 
@@ -105,100 +75,38 @@ impl JsView for bson::Bson {
     }
 }
 
-/// `Object.keys(value)`: integer-like keys first in ascending order, then the rest in stored
-/// order (JavaScript's own property order).
+/// `Object.keys(value)` ([`dima_text::js_property_order`]).
 pub(crate) fn js_object_keys<V: JsView>(value: &V) -> Vec<&str> {
-    let mut keys = value.keys();
-    // A stable sort keeps stored order among the non-index keys.
-    keys.sort_by_key(|key| array_index(key).map_or((1, 0), |index| (0, index)));
-    keys
+    dima_text::js_property_order(value.keys())
 }
 
-/// A canonical array index (`"0"`, `"17"`, not `"01"`), below 2^32 - 1.
-fn array_index(key: &str) -> Option<u64> {
-    if key.is_empty() || (key.len() > 1 && key.starts_with('0')) {
-        return None;
-    }
-    if !key.bytes().all(|byte| byte.is_ascii_digit()) {
-        return None;
-    }
-    key.parse::<u64>()
-        .ok()
-        .filter(|index| *index < u64::from(u32::MAX))
-}
-
-/// `String(value)`. Objects read `[object Object]`; `null` and `undefined` inside an array
-/// read as empty text. Iterative, so a deeply nested array cannot exhaust the stack.
+/// `String(value)` ([`dima_text::js_string_with`]).
 pub(crate) fn js_string<V: JsView>(value: &V) -> String {
-    enum Step<'a, V> {
-        Value(&'a V),
-        Comma,
-    }
-    let mut out = String::new();
-    let mut steps = vec![Step::Value(value)];
-    while let Some(step) = steps.pop() {
-        let value = match step {
-            Step::Comma => {
-                out.push(',');
-                continue;
-            }
-            Step::Value(value) => value,
-        };
-        match value.js() {
-            Js::Undefined => out.push_str("undefined"),
-            Js::Null => out.push_str("null"),
-            Js::Bool(flag) => out.push_str(if flag { "true" } else { "false" }),
-            Js::Number(number) => out.push_str(&number_to_string(number)),
-            Js::String(text) => out.push_str(text),
-            Js::Object | Js::Other => out.push_str("[object Object]"),
-            Js::Array(items) => {
-                for (index, item) in items.iter().enumerate().rev() {
-                    if !matches!(item.js(), Js::Null | Js::Undefined) {
-                        steps.push(Step::Value(item));
-                    }
-                    if index > 0 {
-                        steps.push(Step::Comma);
-                    }
-                }
-            }
-        }
-    }
-    out
+    dima_text::js_string_with(value, V::js)
 }
 
-/// `Number(value)`: strings through [`dima_text::parse_number`], booleans 0 or 1, `null` 0,
-/// arrays through their text, other objects and `undefined` NaN.
+/// `Number(value)` ([`dima_text::js_number_with`]).
 pub(crate) fn js_number<V: JsView>(value: &V) -> f64 {
-    match value.js() {
-        Js::Number(number) => number,
-        Js::Null => 0.0,
-        Js::Bool(flag) => f64::from(u8::from(flag)),
-        Js::String(text) => dima_text::parse_number(text),
-        Js::Array(_) => dima_text::parse_number(&js_string(value)),
-        Js::Undefined | Js::Object | Js::Other => f64::NAN,
-    }
+    dima_text::js_number_with(value, V::js)
 }
 
-/// JavaScript truthiness (`!value` is false).
+/// JavaScript truthiness ([`dima_text::js_truthy_with`]).
 pub(crate) fn js_truthy<V: JsView>(value: &V) -> bool {
-    match value.js() {
-        Js::Undefined | Js::Null => false,
-        Js::Bool(flag) => flag,
-        Js::Number(number) => number != 0.0 && !number.is_nan(),
-        Js::String(text) => !text.is_empty(),
-        Js::Array(_) | Js::Object | Js::Other => true,
-    }
+    dima_text::js_truthy_with(value, V::js)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bson::{Bson, doc};
     use serde_json::json;
 
     #[test]
     fn keys_follow_javascript_property_order() {
         let value = json!({"role": 1, "10": 2, "b": 3, "2": 4, "01": 5});
         assert_eq!(js_object_keys(&value), ["2", "10", "role", "b", "01"]);
+        let stored = Bson::Document(doc! {"role": 1, "10": 2, "b": 3, "2": 4, "01": 5});
+        assert_eq!(js_object_keys(&stored), ["2", "10", "role", "b", "01"]);
     }
 
     #[test]
@@ -206,18 +114,37 @@ mod tests {
         assert_eq!(js_string(&json!([1, null, [2, null], "x"])), "1,,2,,x");
         assert_eq!(js_string(&json!({"a": 1})), "[object Object]");
         assert_eq!(js_string(&json!(1e21)), "1e+21");
-        assert_eq!(js_string(&bson::Bson::Undefined), "undefined");
+        assert_eq!(js_string(&Bson::Undefined), "undefined");
+        assert_eq!(
+            js_string(&Bson::Array(vec![
+                Bson::Undefined,
+                Bson::Int64(7),
+                Bson::Null
+            ])),
+            ",7,"
+        );
+        assert_eq!(
+            js_string(&Bson::ObjectId(bson::oid::ObjectId::new())),
+            "[object Object]"
+        );
         let deep = (0..1_000).fold(json!(1), |inner, _| json!([inner]));
         assert_eq!(js_string(&deep), "1");
     }
 
     #[test]
     fn bson_numbers_read_as_javascript_numbers() {
-        assert!(matches!(bson::Bson::Int32(7).js(), Js::Number(n) if n == 7.0));
-        assert!(matches!(bson::Bson::Int64(7).js(), Js::Number(n) if n == 7.0));
+        assert!(matches!(Bson::Int32(7).js(), Js::Number(n) if n == 7.0));
+        assert!(matches!(Bson::Int64(7).js(), Js::Number(n) if n == 7.0));
         assert!(matches!(
-            bson::Bson::ObjectId(bson::oid::ObjectId::new()).js(),
+            Bson::ObjectId(bson::oid::ObjectId::new()).js(),
             Js::Other
         ));
+        assert_eq!(
+            js_number(&Bson::Array(vec![Bson::String(" 7 ".into())])),
+            7.0
+        );
+        assert!(js_number(&Bson::Undefined).is_nan());
+        assert!(!js_truthy(&Bson::Undefined));
+        assert!(js_truthy(&Bson::DateTime(bson::DateTime::now())));
     }
 }

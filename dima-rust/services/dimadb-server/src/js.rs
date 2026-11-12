@@ -6,23 +6,14 @@
 
 use serde_json::Value;
 
-/// `Boolean(value)`: `false`, `0`, `-0`, `NaN`, `""`, `null` and `undefined` are falsy.
+/// `Boolean(value)` ([`dima_text::js_truthy`]); `undefined` is falsy.
 pub fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null) => false,
-        Some(Value::Bool(flag)) => *flag,
-        Some(Value::Number(number)) => number.as_f64().is_some_and(|n| n != 0.0 && !n.is_nan()),
-        Some(Value::String(text)) => !text.is_empty(),
-        Some(Value::Array(_) | Value::Object(_)) => true,
-    }
+    value.is_some_and(dima_text::js_truthy)
 }
 
-/// `String(value)`; `undefined` is `"undefined"`.
+/// `String(value)` ([`dima_text::js_string`]); `undefined` is `"undefined"`.
 pub fn string(value: Option<&Value>) -> String {
-    match value {
-        None => "undefined".to_owned(),
-        Some(value) => dima_text::string_of(value),
-    }
+    value.map_or_else(|| "undefined".to_owned(), dima_text::js_string)
 }
 
 /// `String(value || '')`.
@@ -38,23 +29,13 @@ pub fn string_or_empty(value: Option<&Value>) -> String {
 pub fn string_nullish(value: Option<&Value>) -> String {
     match value {
         None | Some(Value::Null) => String::new(),
-        Some(value) => dima_text::string_of(value),
+        Some(value) => dima_text::js_string(value),
     }
 }
 
-/// `Number(value)`.
+/// `Number(value)` ([`dima_text::js_number`]); `undefined` is NaN.
 pub fn number(value: Option<&Value>) -> f64 {
-    match value {
-        None => f64::NAN,
-        Some(Value::Null) => 0.0,
-        Some(Value::Bool(flag)) => f64::from(u8::from(*flag)),
-        Some(Value::Number(number)) => number.as_f64().unwrap_or(f64::NAN),
-        Some(Value::String(text)) => dima_text::parse_number(text),
-        // ToPrimitive: arrays join their items, objects are "[object Object]" (NaN).
-        Some(other @ (Value::Array(_) | Value::Object(_))) => {
-            dima_text::parse_number(&dima_text::string_of(other))
-        }
-    }
+    value.map_or(f64::NAN, dima_text::js_number)
 }
 
 /// `Number.isInteger(n)`.
@@ -65,21 +46,7 @@ pub fn is_integer(n: f64) -> bool {
 /// `decodeURIComponent(text)`: `None` where JavaScript throws `URIError: URI malformed` (a `%`
 /// not followed by two hex digits, or escapes that are not UTF-8).
 pub fn decode_uri_component(text: &str) -> Option<String> {
-    let bytes = text.as_bytes();
-    let mut index = 0;
-    while let Some(&byte) = bytes.get(index) {
-        if byte == b'%' {
-            let pair = bytes.get(index + 1..index + 3)?;
-            if !pair.iter().all(u8::is_ascii_hexdigit) {
-                return None;
-            }
-            index += 3;
-        } else {
-            index += 1;
-        }
-    }
-    percent_encoding::percent_decode_str(text)
-        .decode_utf8()
+    dima_text::decode_uri_component(text)
         .ok()
         .map(std::borrow::Cow::into_owned)
 }
@@ -105,75 +72,30 @@ pub fn split_whitespace(text: &str) -> Vec<String> {
     parts
 }
 
-/// 2^53: integers up to this magnitude are exact as doubles.
-const MAX_EXACT_INTEGER: u64 = 1 << 53;
+/// Deepest nesting read: the limit `serde_json` imposed when it parsed these texts (127 open
+/// containers), kept so that nothing accepted or refused changes. `JSON.parse` has none.
+pub const MAX_JSON_DEPTH: usize = 127;
 
-/// Deepest nesting `serde_json` reads; `JSON.parse` has no limit (see the package report).
-pub const MAX_JSON_DEPTH: usize = 128;
-
-/// `JSON.parse(text)`, holding what JavaScript holds: lone surrogate escapes become U+FFFD
-/// (text rule 3), keys enumerate in JavaScript order (array indices first), integers beyond
-/// 2^53 are rounded to doubles and integral doubles are integers. `None` where `JSON.parse`
-/// throws (and for numbers beyond the double range, which JavaScript reads as `Infinity`).
+/// `JSON.parse(text)`, holding what JavaScript holds ([`dima_text::parse_js_json`]): lone
+/// surrogate escapes become U+FFFD (text rule 3), keys enumerate in JavaScript order (array
+/// indices first), integers beyond 2^53 are rounded to doubles and integral doubles are integers.
+/// `None` where `JSON.parse` throws (and for numbers beyond the double range, which JavaScript
+/// reads as `Infinity`). The texts are request bodies, already bounded by the body limit, and
+/// stored values, so no size limit is added here.
 pub fn parse_json(text: &[u8]) -> Option<Value> {
-    let text = dima_text::sanitize_lone_surrogates(text);
-    let mut value: Value = serde_json::from_slice(&text).ok()?;
-    dima_text::js_key_order(&mut value);
-    javascript_numbers(&mut value);
-    Some(value)
+    let text = std::str::from_utf8(text).ok()?;
+    let limits = dima_text::JsonLimits {
+        max_depth: MAX_JSON_DEPTH,
+        max_bytes: usize::MAX,
+    };
+    dima_text::parse_js_json(text, limits).ok()
 }
 
-fn javascript_numbers(value: &mut Value) {
-    let mut pending = vec![value];
-    while let Some(value) = pending.pop() {
-        match value {
-            Value::Number(number) => {
-                if let Some(replacement) = javascript_number(number) {
-                    *number = replacement;
-                }
-            }
-            Value::Array(items) => pending.extend(items.iter_mut()),
-            Value::Object(map) => pending.extend(map.values_mut()),
-            _ => {}
-        }
-    }
-}
-
-#[expect(
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    reason = "rounding to the nearest double is what JSON.parse does"
-)]
-fn javascript_number(number: &serde_json::Number) -> Option<serde_json::Number> {
-    if let Some(integer) = number.as_i64() {
-        return (integer.unsigned_abs() > MAX_EXACT_INTEGER)
-            .then(|| serde_json::Number::from_f64(integer as f64))
-            .flatten();
-    }
-    if let Some(integer) = number.as_u64() {
-        return (integer > MAX_EXACT_INTEGER)
-            .then(|| serde_json::Number::from_f64(integer as f64))
-            .flatten();
-    }
-    let double = number.as_f64()?;
-    let integral = double.fract() == 0.0 && double.abs() <= MAX_EXACT_INTEGER as f64;
-    if !integral || (double == 0.0 && double.is_sign_negative()) {
-        return None;
-    }
-    Some(serde_json::Number::from(double as i64))
-}
-
-/// A JSON number for a JavaScript number (`NaN` and infinities are `null`, as `JSON.stringify`
-/// writes them). Integral values within 2^53 are integers so they print without a fraction.
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "only integral values within 2^53 are converted"
-)]
+/// A JSON number for a JavaScript number ([`dima_text::js_number_value`]): `NaN` and infinities
+/// are `null`, as `JSON.stringify` writes them; integral values within 2^53 are integers so they
+/// print without a fraction.
 pub fn number_value(n: f64) -> Value {
-    if is_integer(n) && n.abs() <= 9_007_199_254_740_992.0 && !(n == 0.0 && n.is_sign_negative()) {
-        return Value::from(n as i64);
-    }
-    serde_json::Number::from_f64(n).map_or(Value::Null, Value::Number)
+    dima_text::js_number_value(n)
 }
 
 #[cfg(test)]
