@@ -1,0 +1,219 @@
+{
+  "issued_at_ms": 1794487309740,
+  "access_token": "dima_at_HPey-rBtbAnfeUvZOtUFYFPpRJ6N2pA2LGlZTvUjl-8",
+  "refresh_token": "dima_rt_ka6ioTXszM1ZcZL2Fex4WaJMWCE5yzSSQObk-KSNnxw",
+  "access_value": "{\"session_id\":\"6af5b40d8c9c916c929fa304\",\"user_id\":\"6af5b40d8c9c916c929fa2ff\",\"client_id\":\"dima-desktop\",\"channel_id\":\"9223730016\",\"scopes\":[\"profile:read\",\"desktop:connect\"]}",
+  "documents": {
+    "users": [
+      {
+        "_id": {
+          "$oid": "6af5b40d8c9c916c929fa2ff"
+        },
+        "name": "site_cross",
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "9223730016",
+            "name": "login_cross",
+            "email": null,
+            "refresh_token": {
+              "iv": null,
+              "content": null
+            },
+            "access_token": {
+              "iv": null,
+              "content": null
+            },
+            "access_token_expires_at": null,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true,
+            "_id": {
+              "$oid": "6af5b40d8c9c916c929fa300"
+            }
+          }
+        ],
+        "language": null,
+        "polar_sh_customer_id": null,
+        "plan_tier": "free",
+        "plan_tier_until": null,
+        "last_app_activity_at": null,
+        "referrerId": null,
+        "referralCodeUsed": null,
+        "token_balance": {
+          "$numberInt": "0"
+        },
+        "reminder_sent_at": null,
+        "refreshed_at": {
+          "$date": {
+            "$numberLong": "1794487309703"
+          }
+        },
+        "created_at": {
+          "$date": {
+            "$numberLong": "1794487309703"
+          }
+        },
+        "updated_at": {
+          "$date": {
+            "$numberLong": "1794487309703"
+          }
+        },
+        "__v": {
+          "$numberInt": "0"
+        }
+      }
+    ],
+    "oauth_clients": [
+      {
+        "_id": {
+          "$oid": "6af5b40d28f76edd05d655e5"
+        },
+        "client_id": "dima-desktop",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "allowed_scopes": [
+          "profile:read",
+          "credits:read",
+          "desktop:connect",
+          "ai:interact",
+          "pet:read",
+          "pet:receive",
+          "pet:interact",
+          "pet:control",
+          "pet:playback:select"
+        ],
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1794487309724"
+          }
+        },
+        "enabled": true,
+        "name": "Dima Desktop Beta",
+        "redirect_uris": [
+          "http://127.0.0.1/oauth/callback",
+          "http://[::1]/oauth/callback"
+        ],
+        "type": "public",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794487309724"
+          }
+        }
+      }
+    ],
+    "oauth_grants": [
+      {
+        "_id": {
+          "$oid": "6af5b40d28f76edd05d655e6"
+        },
+        "user_id": {
+          "$oid": "6af5b40d8c9c916c929fa2ff"
+        },
+        "channel_id": "9223730016",
+        "client_id": "dima-desktop",
+        "__v": {
+          "$numberInt": "0"
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1794487309739"
+          }
+        },
+        "revoked_at": null,
+        "scopes": [
+          "profile:read",
+          "desktop:connect"
+        ],
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794487309739"
+          }
+        }
+      }
+    ],
+    "oauth_sessions": [
+      {
+        "_id": {
+          "$oid": "6af5b40d8c9c916c929fa304"
+        },
+        "grant_id": {
+          "$oid": "6af5b40d28f76edd05d655e6"
+        },
+        "user_id": {
+          "$oid": "6af5b40d8c9c916c929fa2ff"
+        },
+        "client_id": "dima-desktop",
+        "channel_id": "9223730016",
+        "device_name": "Desktop computer",
+        "scopes": [
+          "profile:read",
+          "desktop:connect"
+        ],
+        "current_refresh_hash": "zT6cjPAFzsjEr4ditY6WNl-04izl0HhYfeMiNpaAh5c",
+        "last_used_at": {
+          "$date": {
+            "$numberLong": "1794487309740"
+          }
+        },
+        "idle_expires_at": {
+          "$date": {
+            "$numberLong": "1797079309740"
+          }
+        },
+        "expires_at": {
+          "$date": {
+            "$numberLong": "1802263309740"
+          }
+        },
+        "revoked_at": null,
+        "revoke_reason": null,
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1794487309740"
+          }
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794487309740"
+          }
+        },
+        "__v": {
+          "$numberInt": "0"
+        }
+      }
+    ],
+    "oauth_refresh_tokens": [
+      {
+        "_id": {
+          "$oid": "6af5b40d8c9c916c929fa305"
+        },
+        "token_hash": "zT6cjPAFzsjEr4ditY6WNl-04izl0HhYfeMiNpaAh5c",
+        "session_id": {
+          "$oid": "6af5b40d8c9c916c929fa304"
+        },
+        "used_at": null,
+        "expires_at": {
+          "$date": {
+            "$numberLong": "1802263309740"
+          }
+        },
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1794487309741"
+          }
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794487309741"
+          }
+        },
+        "__v": {
+          "$numberInt": "0"
+        }
+      }
+    ]
+  }
+}

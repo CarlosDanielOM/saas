@@ -26,10 +26,19 @@ tokio.workspace = true
 unicode-normalization.workspace = true
 serde.workspace = true
 redis.workspace = true
+# Authentication, access and OAuth (src/auth, src/access, src/oauth): guards for the inbound
+# edge, the telemetry channel binding, and JSON inputs.
+dima-web.workspace = true
+dima-telemetry.workspace = true
+serde_json.workspace = true
 [dev-dependencies]
 dima-platform = { path = ".", features = ["test-util"] }
 anyhow.workspace = true
 regex.workspace = true
 dima-http = { workspace = true, features = ["test-util"] }
-tokio = { workspace = true, features = ["io-util", "io-std", "process"] }
+tokio = { workspace = true, features = ["io-util", "io-std", "process", "test-util"] }
 serde_json.workspace = true
+dima-twitch.workspace = true
+http.workspace = true
+http-body-util.workspace = true
+dima-core = { workspace = true, features = ["test-util"] }
