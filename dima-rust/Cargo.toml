@@ -18,6 +18,7 @@ rust-version = "1.99"
 # vendor SDK crates: outside services are called with the shared HTTP client.
 [workspace.dependencies]
 # Internal crates.
+dima-ai = { path = "crates/ai" }
 dima-text = { path = "crates/text" }
 dima-core = { path = "crates/core" }
 dima-store = { path = "crates/store" }

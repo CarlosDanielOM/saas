@@ -1,0 +1,25 @@
+[package]
+name = "dima-ai"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tokio.workspace = true
+dima-http.workspace = true
+dima-core.workspace = true
+dima-text.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+dima-http = { workspace = true, features = ["test-util"] }
+tokio.workspace = true
+uuid.workspace = true
+anyhow.workspace = true
