@@ -27,6 +27,7 @@ pub mod config;
 pub mod contracts;
 pub mod dispatch;
 pub mod envelope;
+pub mod health;
 pub mod identity;
 pub mod jobs;
 pub mod producers;

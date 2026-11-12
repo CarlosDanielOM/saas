@@ -253,6 +253,16 @@ try {
         deliveries: (await DomainEventDeliverySchema.collection.find({}, RAW).sort({ consumer: 1, eventKey: 1 }).toArray()).map(canonical),
         pending: (await DomainEventSchema.collection.find({ dispatchPending: true }).toArray()).length
     };
+    // The admin health report on that state (one delivery made processing and one retry first).
+    const { getDomainEventHealth } = await load('src/utils/domain_event_health.ts');
+    await DomainEventDeliverySchema.collection.updateOne({ consumer: 'stream-analytics-v1' }, { $set: { status: 'processing', lockedUntil: new RealDate(NOW_MS + 30_000) } });
+    await DomainEventDeliverySchema.collection.updateOne({ consumer: 'polar-credits-v1' }, { $set: { status: 'retry', nextAttemptAt: new RealDate(NOW_MS), lastErrorCode: 'prerequisite_missing', lastPrerequisiteKind: 'owner', lastAttemptDurationMs: 12.5 } });
+    await DomainEventSchema.collection.updateOne({ eventKey: 'twitch-eventsub:message-1:channel.bits.received' }, { $set: { dispatchPending: true } });
+    const healthAt = new RealDate(NOW_MS + 120_000);
+    result.health = { nowMs: healthAt.getTime(),
+        all: await getDomainEventHealth(undefined, healthAt), widget: await getDomainEventHealth('widget-actions-v1', healthAt),
+        credits: await getDomainEventHealth('polar-credits-v1', healthAt), empty: await getDomainEventHealth('', healthAt) };
+    await DomainEventSchema.collection.updateOne({ eventKey: 'twitch-eventsub:message-1:channel.bits.received' }, { $set: { dispatchPending: false } });
 
     // Durable cron-job intents, with a recording stand-in for Dragonfly.
     let clock = NOW_MS;

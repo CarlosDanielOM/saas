@@ -345,6 +345,33 @@ async fn the_journal_writes_what_the_reference_writes() -> Result<()> {
             .count_documents(doc! { "dispatchPending": true })
             .await?;
         ensure!(serde_json::json!(pending) == dispatch["pending"], "pending {pending}");
+
+        // The admin health report on the same state, as text (key order included).
+        let deliveries = store.documents(domain_event_deliveries::COLLECTION);
+        deliveries
+            .update_one(
+                doc! { "consumer": "stream-analytics-v1" },
+                doc! { "$set": { "status": "processing", "lockedUntil": bson::DateTime::from_millis(now + 30_000) } },
+            )
+            .await?;
+        deliveries
+            .update_one(
+                doc! { "consumer": "polar-credits-v1" },
+                doc! { "$set": { "status": "retry", "nextAttemptAt": bson::DateTime::from_millis(now), "lastErrorCode": "prerequisite_missing", "lastPrerequisiteKind": "owner", "lastAttemptDurationMs": 12.5 } },
+            )
+            .await?;
+        store
+            .documents(domain_events::COLLECTION)
+            .update_one(doc! { "eventKey": "twitch-eventsub:message-1:channel.bits.received" }, doc! { "$set": { "dispatchPending": true } })
+            .await?;
+        let health = &recording["health"];
+        let at = health["nowMs"].as_i64().context("health.nowMs")?;
+        let deadline = std::time::Duration::from_secs(10);
+        for (name, consumer) in [("all", None), ("widget", Some("widget-actions-v1")), ("credits", Some("polar-credits-v1")), ("empty", Some(""))] {
+            let report = dima_events::health::report(&store, deadline, consumer, at).await?;
+            let (expected, actual) = (serde_json::to_string(&health[name])?, serde_json::to_string(&report)?);
+            ensure!(expected == actual, "health {name}\n  expected {expected}\n  actual   {actual}");
+        }
         Ok(())
     })
     .await

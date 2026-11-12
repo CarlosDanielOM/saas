@@ -951,7 +951,7 @@
      "total": 1500,
      "top_contributions": [
       {
-       "user_id": "329106003",
+       "user_id": "536080701",
        "user_login": "testuser",
        "user_name": "TestUser",
        "type": "bits",
@@ -1021,7 +1021,7 @@
       "total": 1500,
       "top_contributions": [
        {
-        "user_id": "329106003",
+        "user_id": "536080701",
         "user_login": "testuser",
         "user_name": "TestUser",
         "type": "bits",
@@ -1093,7 +1093,7 @@
      "total": 1500,
      "top_contributions": [
       {
-       "user_id": "367184860",
+       "user_id": "891461052",
        "user_login": "testuser",
        "user_name": "TestUser",
        "type": "bits",
@@ -1161,7 +1161,7 @@
       "total": 1500,
       "top_contributions": [
        {
-        "user_id": "367184860",
+        "user_id": "891461052",
         "user_login": "testuser",
         "user_name": "TestUser",
         "type": "bits",
@@ -1231,7 +1231,7 @@
      "total": 1500,
      "top_contributions": [
       {
-       "user_id": "420240101",
+       "user_id": "880173334",
        "user_login": "testuser",
        "user_name": "TestUser",
        "type": "bits",
@@ -1298,7 +1298,7 @@
       "total": 1500,
       "top_contributions": [
        {
-        "user_id": "420240101",
+        "user_id": "880173334",
         "user_login": "testuser",
         "user_name": "TestUser",
         "type": "bits",
@@ -1362,7 +1362,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_name": "TestStreamer",
      "broadcaster_user_login": "teststreamer",
-     "requester_user_id": "360493272",
+     "requester_user_id": "243408633",
      "requester_user_name": "TestUser",
      "requester_user_login": "testuser",
      "duration_seconds": 60,
@@ -1410,7 +1410,7 @@
       "broadcaster_user_id": "1001",
       "broadcaster_user_name": "TestStreamer",
       "broadcaster_user_login": "teststreamer",
-      "requester_user_id": "360493272",
+      "requester_user_id": "243408633",
       "requester_user_name": "TestUser",
       "requester_user_login": "testuser",
       "duration_seconds": 60,
@@ -1758,7 +1758,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "425179591",
+     "user_id": "851246731",
      "user_login": "testuser",
      "user_name": "TestUser",
      "bits": 100,
@@ -1805,7 +1805,7 @@
       "broadcaster_user_id": "1001",
       "broadcaster_user_login": "teststreamer",
       "broadcaster_user_name": "TestStreamer",
-      "user_id": "425179591",
+      "user_id": "851246731",
       "user_login": "testuser",
       "user_name": "TestUser",
       "bits": 100,
@@ -1855,7 +1855,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "933456489",
+     "user_id": "796819546",
      "user_login": "testuser",
      "user_name": "TestUser",
      "bits": 100,
@@ -1902,7 +1902,7 @@
       "broadcaster_user_id": "1001",
       "broadcaster_user_login": "teststreamer",
       "broadcaster_user_name": "TestStreamer",
-      "user_id": "933456489",
+      "user_id": "796819546",
       "user_login": "testuser",
       "user_name": "TestUser",
       "bits": 100,
@@ -1952,7 +1952,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "232101991",
+     "user_id": "417573491",
      "user_login": "testuser",
      "user_name": "TestUser",
      "bits": 100,
@@ -1999,7 +1999,7 @@
       "broadcaster_user_id": "1001",
       "broadcaster_user_login": "teststreamer",
       "broadcaster_user_name": "TestStreamer",
-      "user_id": "232101991",
+      "user_id": "417573491",
       "user_login": "testuser",
       "user_name": "TestUser",
       "bits": 100,
@@ -2047,7 +2047,7 @@
      "created_at": "2026-11-11T10:20:30.456Z"
     },
     "event": {
-     "user_id": "330214403",
+     "user_id": "143120770",
      "user_name": "TestFollower",
      "user_login": "testfollower",
      "broadcaster_user_id": "1001",
@@ -2093,7 +2093,7 @@
       "created_at": "2026-11-11T10:20:30.456Z"
      },
      "event": {
-      "user_id": "330214403",
+      "user_id": "143120770",
       "user_name": "TestFollower",
       "user_login": "testfollower",
       "broadcaster_user_id": "1001",
@@ -2145,10 +2145,10 @@
      "to_broadcaster_user_id": "1001",
      "to_broadcaster_user_login": "teststreamer",
      "to_broadcaster_user_name": "TestStreamer",
-     "from_broadcaster_user_id": "274389407",
+     "from_broadcaster_user_id": "635099153",
      "from_broadcaster_user_login": "raidstreamer",
      "from_broadcaster_user_name": "RaidStreamer",
-     "viewers": 101
+     "viewers": 53
     },
     "durableChatHandled": true,
     "durableDefenseHandled": true
@@ -2190,10 +2190,10 @@
       "to_broadcaster_user_id": "1001",
       "to_broadcaster_user_login": "teststreamer",
       "to_broadcaster_user_name": "TestStreamer",
-      "from_broadcaster_user_id": "274389407",
+      "from_broadcaster_user_id": "635099153",
       "from_broadcaster_user_login": "raidstreamer",
       "from_broadcaster_user_name": "RaidStreamer",
-      "viewers": 101
+      "viewers": 53
      }
     },
     "metadata": {
@@ -2240,7 +2240,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "chatter_user_id": "603285788",
+     "chatter_user_id": "474067390",
      "chatter_user_login": "testviewer",
      "chatter_user_name": "TestViewer",
      "chatter_is_anonymous": false,
@@ -2299,7 +2299,7 @@
       "broadcaster_user_id": "1001",
       "broadcaster_user_login": "teststreamer",
       "broadcaster_user_name": "TestStreamer",
-      "chatter_user_id": "603285788",
+      "chatter_user_id": "474067390",
       "chatter_user_login": "testviewer",
       "chatter_user_name": "TestViewer",
       "chatter_is_anonymous": false,
@@ -2360,7 +2360,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "949975649",
+     "user_id": "598331373",
      "user_login": "testuser",
      "user_name": "TestUser",
      "tier": "1000",
@@ -2409,7 +2409,7 @@
       "broadcaster_user_id": "1001",
       "broadcaster_user_login": "teststreamer",
       "broadcaster_user_name": "TestStreamer",
-      "user_id": "949975649",
+      "user_id": "598331373",
       "user_login": "testuser",
       "user_name": "TestUser",
       "tier": "1000",
@@ -2461,7 +2461,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "476518705",
+     "user_id": "798840229",
      "user_login": "testuser",
      "user_name": "TestUser",
      "tier": "1000",
@@ -2510,7 +2510,7 @@
       "broadcaster_user_id": "1001",
       "broadcaster_user_login": "teststreamer",
       "broadcaster_user_name": "TestStreamer",
-      "user_id": "476518705",
+      "user_id": "798840229",
       "user_login": "testuser",
       "user_name": "TestUser",
       "tier": "1000",
@@ -2562,7 +2562,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "652367090",
+     "user_id": "710580302",
      "user_login": "testuser",
      "user_name": "TestUser",
      "tier": "1000",
@@ -2611,7 +2611,7 @@
       "broadcaster_user_id": "1001",
       "broadcaster_user_login": "teststreamer",
       "broadcaster_user_name": "TestStreamer",
-      "user_id": "652367090",
+      "user_id": "710580302",
       "user_login": "testuser",
       "user_name": "TestUser",
       "tier": "1000",
@@ -2663,7 +2663,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "529635628",
+     "user_id": "437946278",
      "user_login": "testuser",
      "user_name": "TestUser",
      "tier": "1000",
@@ -2713,7 +2713,7 @@
       "broadcaster_user_id": "1001",
       "broadcaster_user_login": "teststreamer",
       "broadcaster_user_name": "TestStreamer",
-      "user_id": "529635628",
+      "user_id": "437946278",
       "user_login": "testuser",
       "user_name": "TestUser",
       "tier": "1000",
@@ -5418,7 +5418,7 @@
  "events": [
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30dc"
+    "$oid": "6af4416ed1624f140ada0a43"
    },
    "eventKey": "extension:receipt%3A1%2F2:extension.event",
    "source": "extension",
@@ -5467,7 +5467,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30df"
+    "$oid": "6af4416ed1624f140ada0a46"
    },
    "eventKey": "extension:receipt-2:extension.event",
    "source": "extension",
@@ -5502,7 +5502,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30e2"
+    "$oid": "6af4416ed1624f140ada0a49"
    },
    "eventKey": "extension:receipt-4:extension.event",
    "source": "extension",
@@ -5536,7 +5536,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30ce"
+    "$oid": "6af4416ed1624f140ada0a35"
    },
    "eventKey": "goals-custom:06a29b7116cbd9d837aafa25225a592266dfcc28760232dc86846471601f8bfc:goal.item.added",
    "source": "goals-custom",
@@ -5577,7 +5577,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30d9"
+    "$oid": "6af4416ed1624f140ada0a40"
    },
    "eventKey": "goals-custom:e0b488f71e8b896606f566388e48a01936979edad8dc5fa82b76b98ad3dd6785:goal.item.added",
    "source": "goals-custom",
@@ -5618,7 +5618,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30b5"
+    "$oid": "6af4416ed1624f140ada0a1c"
    },
    "eventKey": "polar-webhook:wh-10:billing.customer.state.changed",
    "source": "polar-webhook",
@@ -5666,7 +5666,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30b8"
+    "$oid": "6af4416ed1624f140ada0a1f"
    },
    "eventKey": "polar-webhook:wh-12:provider.polar.product.created",
    "source": "polar-webhook",
@@ -5716,7 +5716,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30bd"
+    "$oid": "6af4416ed1624f140ada0a24"
    },
    "eventKey": "polar-webhook:wh-13:provider.polar.order.refunded",
    "source": "polar-webhook",
@@ -5765,7 +5765,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30c2"
+    "$oid": "6af4416ed1624f140ada0a29"
    },
    "eventKey": "polar-webhook:wh-14:provider.polar.customer.updated",
    "source": "polar-webhook",
@@ -5811,7 +5811,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30c7"
+    "$oid": "6af4416ed1624f140ada0a2e"
    },
    "eventKey": "polar-webhook:wh-15:provider.polar.checkout.updated",
    "source": "polar-webhook",
@@ -5860,7 +5860,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30cb"
+    "$oid": "6af4416ed1624f140ada0a32"
    },
    "eventKey": "polar-webhook:wh-16:provider.polar.benefit_grant.cycled",
    "source": "polar-webhook",
@@ -5910,7 +5910,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3090"
+    "$oid": "6af4416ed1624f140ada09f7"
    },
    "eventKey": "polar-webhook:wh-1:billing.order.paid",
    "source": "polar-webhook",
@@ -5962,7 +5962,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a309a"
+    "$oid": "6af4416ed1624f140ada0a01"
    },
    "eventKey": "polar-webhook:wh-2:billing.order.paid",
    "source": "polar-webhook",
@@ -6009,7 +6009,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a309e"
+    "$oid": "6af4416ed1624f140ada0a05"
    },
    "eventKey": "polar-webhook:wh-3:billing.order.paid",
    "source": "polar-webhook",
@@ -6060,7 +6060,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30a3"
+    "$oid": "6af4416ed1624f140ada0a0a"
    },
    "eventKey": "polar-webhook:wh-5:billing.order.paid",
    "source": "polar-webhook",
@@ -6112,7 +6112,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30a8"
+    "$oid": "6af4416ed1624f140ada0a0f"
    },
    "eventKey": "polar-webhook:wh-6:billing.subscription.updated",
    "source": "polar-webhook",
@@ -6159,7 +6159,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30ac"
+    "$oid": "6af4416ed1624f140ada0a13"
    },
    "eventKey": "polar-webhook:wh-7:billing.subscription.updated",
    "source": "polar-webhook",
@@ -6204,7 +6204,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a30b1"
+    "$oid": "6af4416ed1624f140ada0a18"
    },
    "eventKey": "polar-webhook:wh-9:billing.customer.state.changed",
    "source": "polar-webhook",
@@ -6277,7 +6277,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a307f"
+    "$oid": "6af4416ed1624f140ada09e6"
    },
    "eventKey": "twitch-eventsub-test:test-1:channel.follow.received",
    "source": "twitch-eventsub-test",
@@ -6333,7 +6333,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3022"
+    "$oid": "6af4416ed1624f140ada0989"
    },
    "eventKey": "twitch-eventsub:fixture-channel.ad_break.begin:channel.ad_break.began",
    "source": "twitch-eventsub",
@@ -6382,7 +6382,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_name": "TestStreamer",
      "broadcaster_user_login": "teststreamer",
-     "requester_user_id": "360493272",
+     "requester_user_id": "243408633",
      "requester_user_name": "TestUser",
      "requester_user_login": "testuser",
      "duration_seconds": {
@@ -6412,7 +6412,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a303a"
+    "$oid": "6af4416ed1624f140ada09a1"
    },
    "eventKey": "twitch-eventsub:fixture-channel.bit.use:channel.bits.received",
    "source": "twitch-eventsub",
@@ -6461,7 +6461,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "232101991",
+     "user_id": "417573491",
      "user_login": "testuser",
      "user_name": "TestUser",
      "bits": {
@@ -6491,7 +6491,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3032"
+    "$oid": "6af4416ed1624f140ada0999"
    },
    "eventKey": "twitch-eventsub:fixture-channel.bits.use:channel.bits.received",
    "source": "twitch-eventsub",
@@ -6540,7 +6540,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "425179591",
+     "user_id": "851246731",
      "user_login": "testuser",
      "user_name": "TestUser",
      "bits": {
@@ -6570,7 +6570,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3046"
+    "$oid": "6af4416ed1624f140ada09ad"
    },
    "eventKey": "twitch-eventsub:fixture-channel.chat.notification:channel.chat.notification",
    "source": "twitch-eventsub",
@@ -6620,7 +6620,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "chatter_user_id": "603285788",
+     "chatter_user_id": "474067390",
      "chatter_user_login": "testviewer",
      "chatter_user_name": "TestViewer",
      "chatter_is_anonymous": false,
@@ -6663,7 +6663,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3036"
+    "$oid": "6af4416ed1624f140ada099d"
    },
    "eventKey": "twitch-eventsub:fixture-channel.cheer:channel.bits.received",
    "source": "twitch-eventsub",
@@ -6712,7 +6712,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "933456489",
+     "user_id": "796819546",
      "user_login": "testuser",
      "user_name": "TestUser",
      "bits": {
@@ -6742,7 +6742,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a303e"
+    "$oid": "6af4416ed1624f140ada09a5"
    },
    "eventKey": "twitch-eventsub:fixture-channel.follow:channel.follow.received",
    "source": "twitch-eventsub",
@@ -6789,7 +6789,7 @@
      "created_at": "2026-11-11T10:20:30.456Z"
     },
     "event": {
-     "user_id": "330214403",
+     "user_id": "143120770",
      "user_name": "TestFollower",
      "user_login": "testfollower",
      "broadcaster_user_id": "1001",
@@ -6819,7 +6819,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3026"
+    "$oid": "6af4416ed1624f140ada098d"
    },
    "eventKey": "twitch-eventsub:fixture-channel.goal.begin:channel.goal.began",
    "source": "twitch-eventsub",
@@ -6900,7 +6900,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a302e"
+    "$oid": "6af4416ed1624f140ada0995"
    },
    "eventKey": "twitch-eventsub:fixture-channel.goal.end:channel.goal.ended",
    "source": "twitch-eventsub",
@@ -6983,7 +6983,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a302a"
+    "$oid": "6af4416ed1624f140ada0991"
    },
    "eventKey": "twitch-eventsub:fixture-channel.goal.progress:channel.goal.updated",
    "source": "twitch-eventsub",
@@ -7064,7 +7064,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3016"
+    "$oid": "6af4416ed1624f140ada097d"
    },
    "eventKey": "twitch-eventsub:fixture-channel.hype_train.begin:channel.hype_train.began",
    "source": "twitch-eventsub",
@@ -7122,7 +7122,7 @@
      },
      "top_contributions": [
       {
-       "user_id": "329106003",
+       "user_id": "536080701",
        "user_login": "testuser",
        "user_name": "TestUser",
        "type": "bits",
@@ -7179,7 +7179,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a301e"
+    "$oid": "6af4416ed1624f140ada0985"
    },
    "eventKey": "twitch-eventsub:fixture-channel.hype_train.end:channel.hype_train.ended",
    "source": "twitch-eventsub",
@@ -7237,7 +7237,7 @@
      },
      "top_contributions": [
       {
-       "user_id": "420240101",
+       "user_id": "880173334",
        "user_login": "testuser",
        "user_name": "TestUser",
        "type": "bits",
@@ -7283,7 +7283,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a301a"
+    "$oid": "6af4416ed1624f140ada0981"
    },
    "eventKey": "twitch-eventsub:fixture-channel.hype_train.progress:channel.hype_train.updated",
    "source": "twitch-eventsub",
@@ -7341,7 +7341,7 @@
      },
      "top_contributions": [
       {
-       "user_id": "367184860",
+       "user_id": "891461052",
        "user_login": "testuser",
        "user_name": "TestUser",
        "type": "bits",
@@ -7392,7 +7392,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a2ffa"
+    "$oid": "6af4416ed1624f140ada0961"
    },
    "eventKey": "twitch-eventsub:fixture-channel.poll.begin:channel.poll.began",
    "source": "twitch-eventsub",
@@ -7483,7 +7483,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3002"
+    "$oid": "6af4416ed1624f140ada0969"
    },
    "eventKey": "twitch-eventsub:fixture-channel.poll.end:channel.poll.ended",
    "source": "twitch-eventsub",
@@ -7576,7 +7576,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a2ffe"
+    "$oid": "6af4416ed1624f140ada0965"
    },
    "eventKey": "twitch-eventsub:fixture-channel.poll.progress:channel.poll.updated",
    "source": "twitch-eventsub",
@@ -7667,7 +7667,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3006"
+    "$oid": "6af4416ed1624f140ada096d"
    },
    "eventKey": "twitch-eventsub:fixture-channel.prediction.begin:channel.prediction.began",
    "source": "twitch-eventsub",
@@ -7766,7 +7766,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3012"
+    "$oid": "6af4416ed1624f140ada0979"
    },
    "eventKey": "twitch-eventsub:fixture-channel.prediction.end:channel.prediction.ended",
    "source": "twitch-eventsub",
@@ -7868,7 +7868,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a300e"
+    "$oid": "6af4416ed1624f140ada0975"
    },
    "eventKey": "twitch-eventsub:fixture-channel.prediction.lock:channel.prediction.locked",
    "source": "twitch-eventsub",
@@ -7968,7 +7968,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a300a"
+    "$oid": "6af4416ed1624f140ada0971"
    },
    "eventKey": "twitch-eventsub:fixture-channel.prediction.progress:channel.prediction.updated",
    "source": "twitch-eventsub",
@@ -8067,7 +8067,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3042"
+    "$oid": "6af4416ed1624f140ada09a9"
    },
    "eventKey": "twitch-eventsub:fixture-channel.raid:channel.raid.received",
    "source": "twitch-eventsub",
@@ -8116,11 +8116,11 @@
      "to_broadcaster_user_id": "1001",
      "to_broadcaster_user_login": "teststreamer",
      "to_broadcaster_user_name": "TestStreamer",
-     "from_broadcaster_user_id": "274389407",
+     "from_broadcaster_user_id": "635099153",
      "from_broadcaster_user_login": "raidstreamer",
      "from_broadcaster_user_name": "RaidStreamer",
      "viewers": {
-      "$numberInt": "101"
+      "$numberInt": "53"
      }
     }
    },
@@ -8145,7 +8145,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a304a"
+    "$oid": "6af4416ed1624f140ada09b1"
    },
    "eventKey": "twitch-eventsub:fixture-channel.subscribe:channel.subscription.received",
    "source": "twitch-eventsub",
@@ -8194,7 +8194,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "949975649",
+     "user_id": "598331373",
      "user_login": "testuser",
      "user_name": "TestUser",
      "tier": "1000",
@@ -8224,7 +8224,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3056"
+    "$oid": "6af4416ed1624f140ada09bd"
    },
    "eventKey": "twitch-eventsub:fixture-channel.subscription.end:channel.subscription.ended",
    "source": "twitch-eventsub",
@@ -8273,7 +8273,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "529635628",
+     "user_id": "437946278",
      "user_login": "testuser",
      "user_name": "TestUser",
      "tier": "1000",
@@ -8304,7 +8304,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3052"
+    "$oid": "6af4416ed1624f140ada09b9"
    },
    "eventKey": "twitch-eventsub:fixture-channel.subscription.gift:channel.subscription.gifted",
    "source": "twitch-eventsub",
@@ -8353,7 +8353,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "652367090",
+     "user_id": "710580302",
      "user_login": "testuser",
      "user_name": "TestUser",
      "tier": "1000",
@@ -8385,7 +8385,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a304e"
+    "$oid": "6af4416ed1624f140ada09b5"
    },
    "eventKey": "twitch-eventsub:fixture-channel.subscription.message:channel.subscription.received",
    "source": "twitch-eventsub",
@@ -8434,7 +8434,7 @@
      "broadcaster_user_id": "1001",
      "broadcaster_user_login": "teststreamer",
      "broadcaster_user_name": "TestStreamer",
-     "user_id": "476518705",
+     "user_id": "798840229",
      "user_login": "testuser",
      "user_name": "TestUser",
      "tier": "1000",
@@ -8464,7 +8464,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a305e"
+    "$oid": "6af4416ed1624f140ada09c5"
    },
    "eventKey": "twitch-eventsub:fixture-stream.offline:stream.ended",
    "source": "twitch-eventsub",
@@ -8535,7 +8535,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a305a"
+    "$oid": "6af4416ed1624f140ada09c1"
    },
    "eventKey": "twitch-eventsub:fixture-stream.online:stream.started",
    "source": "twitch-eventsub",
@@ -8610,7 +8610,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3062"
+    "$oid": "6af4416ed1624f140ada09c9"
    },
    "eventKey": "twitch-eventsub:message-1:channel.bits.received",
    "source": "twitch-eventsub",
@@ -8669,7 +8669,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a306b"
+    "$oid": "6af4416ed1624f140ada09d2"
    },
    "eventKey": "twitch-eventsub:message-2:channel.subscription.gifted",
    "source": "twitch-eventsub",
@@ -8727,7 +8727,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a306f"
+    "$oid": "6af4416ed1624f140ada09d6"
    },
    "eventKey": "twitch-eventsub:message-3:stream.started",
    "source": "twitch-eventsub",
@@ -8784,7 +8784,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a307b"
+    "$oid": "6af4416ed1624f140ada09e2"
    },
    "eventKey": "twitch-eventsub:message-stale-retry:channel.follow.received",
    "source": "twitch-eventsub",
@@ -8840,7 +8840,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3087"
+    "$oid": "6af4416ed1624f140ada09ee"
    },
    "eventKey": "twitch-eventsub:offset:channel.subscription.ended",
    "source": "twitch-eventsub",
@@ -8897,7 +8897,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3073"
+    "$oid": "6af4416ed1624f140ada09da"
    },
    "eventKey": "twitch-eventsub:raid-receipt:channel.raid.received",
    "source": "twitch-eventsub",
@@ -8961,7 +8961,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3077"
+    "$oid": "6af4416ed1624f140ada09de"
    },
    "eventKey": "twitch-eventsub:raid-sent:channel.raid.sent",
    "source": "twitch-eventsub",
@@ -9024,7 +9024,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a308b"
+    "$oid": "6af4416ed1624f140ada09f2"
    },
    "eventKey": "twitch-eventsub:traced:stream.ended",
    "source": "twitch-eventsub",
@@ -9085,7 +9085,7 @@
   },
   {
    "_id": {
-    "$oid": "6af4416e6f7a75c10e2a3083"
+    "$oid": "6af4416ed1624f140ada09ea"
    },
    "eventKey": "twitch-eventsub:unicode-%F0%9F%91%8B:channel.subscription.received",
    "source": "twitch-eventsub",
@@ -9176,10 +9176,10 @@
   "deliveries": [
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48ea0"
+     "$oid": "6af5517828f76edd05d49078"
     },
+    "eventKey": "twitch-eventsub:fixture-stream.online:stream.started",
     "consumer": "account-health-notifications-v1",
-    "eventKey": "twitch-eventsub:fixture-stream.online:stream.started",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9191,7 +9191,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a305a"
+     "$oid": "6af4416ed1624f140ada09c1"
     },
     "expiresAt": {
      "$date": {
@@ -9222,10 +9222,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e3b"
+     "$oid": "6af5517728f76edd05d49013"
     },
+    "consumer": "channel-goals-v1",
     "eventKey": "twitch-eventsub:fixture-channel.bit.use:channel.bits.received",
-    "consumer": "channel-goals-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9237,7 +9237,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a303a"
+     "$oid": "6af4416ed1624f140ada09a1"
     },
     "expiresAt": {
      "$date": {
@@ -9268,10 +9268,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e39"
+     "$oid": "6af5517728f76edd05d49011"
     },
+    "consumer": "channel-goals-v1",
     "eventKey": "twitch-eventsub:fixture-channel.bits.use:channel.bits.received",
-    "consumer": "channel-goals-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9283,7 +9283,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3032"
+     "$oid": "6af4416ed1624f140ada0999"
     },
     "expiresAt": {
      "$date": {
@@ -9314,10 +9314,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e3a"
+     "$oid": "6af5517728f76edd05d49012"
     },
+    "consumer": "channel-goals-v1",
     "eventKey": "twitch-eventsub:fixture-channel.cheer:channel.bits.received",
-    "consumer": "channel-goals-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9329,7 +9329,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3036"
+     "$oid": "6af4416ed1624f140ada099d"
     },
     "expiresAt": {
      "$date": {
@@ -9360,10 +9360,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e3c"
+     "$oid": "6af5517728f76edd05d49014"
     },
+    "consumer": "channel-goals-v1",
     "eventKey": "twitch-eventsub:fixture-channel.follow:channel.follow.received",
-    "consumer": "channel-goals-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9375,7 +9375,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a303e"
+     "$oid": "6af4416ed1624f140ada09a5"
     },
     "expiresAt": {
      "$date": {
@@ -9406,10 +9406,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e3d"
+     "$oid": "6af5517728f76edd05d49015"
     },
+    "consumer": "channel-goals-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscribe:channel.subscription.received",
-    "consumer": "channel-goals-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9421,7 +9421,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a304a"
+     "$oid": "6af4416ed1624f140ada09b1"
     },
     "expiresAt": {
      "$date": {
@@ -9452,10 +9452,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e3f"
+     "$oid": "6af5517728f76edd05d49017"
     },
+    "consumer": "channel-goals-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.gift:channel.subscription.gifted",
-    "consumer": "channel-goals-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9467,7 +9467,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3052"
+     "$oid": "6af4416ed1624f140ada09b9"
     },
     "expiresAt": {
      "$date": {
@@ -9498,10 +9498,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e3e"
+     "$oid": "6af5517728f76edd05d49016"
     },
+    "consumer": "channel-goals-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.message:channel.subscription.received",
-    "consumer": "channel-goals-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9513,7 +9513,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a304e"
+     "$oid": "6af4416ed1624f140ada09b5"
     },
     "expiresAt": {
      "$date": {
@@ -9544,10 +9544,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e40"
+     "$oid": "6af5517728f76edd05d49018"
     },
+    "consumer": "channel-goals-v1",
     "eventKey": "twitch-eventsub:message-1:channel.bits.received",
-    "consumer": "channel-goals-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9559,7 +9559,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3062"
+     "$oid": "6af4416ed1624f140ada09c9"
     },
     "expiresAt": {
      "$date": {
@@ -9590,10 +9590,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e41"
+     "$oid": "6af5517728f76edd05d49019"
     },
+    "consumer": "channel-goals-v1",
     "eventKey": "twitch-eventsub:message-2:channel.subscription.gifted",
-    "consumer": "channel-goals-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9605,7 +9605,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a306b"
+     "$oid": "6af4416ed1624f140ada09d2"
     },
     "expiresAt": {
      "$date": {
@@ -9636,10 +9636,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e42"
+     "$oid": "6af5517728f76edd05d4901a"
     },
+    "consumer": "channel-goals-v1",
     "eventKey": "twitch-eventsub:message-stale-retry:channel.follow.received",
-    "consumer": "channel-goals-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9651,7 +9651,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a307b"
+     "$oid": "6af4416ed1624f140ada09e2"
     },
     "expiresAt": {
      "$date": {
@@ -9682,10 +9682,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e43"
+     "$oid": "6af5517728f76edd05d4901b"
     },
+    "consumer": "channel-goals-v1",
     "eventKey": "twitch-eventsub:unicode-%F0%9F%91%8B:channel.subscription.received",
-    "consumer": "channel-goals-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9697,7 +9697,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3083"
+     "$oid": "6af4416ed1624f140ada09ea"
     },
     "expiresAt": {
      "$date": {
@@ -9728,10 +9728,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e97"
+     "$oid": "6af5517828f76edd05d4906f"
     },
-    "consumer": "chat-announcements-v1",
     "eventKey": "twitch-eventsub:fixture-channel.bit.use:channel.bits.received",
+    "consumer": "chat-announcements-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9743,7 +9743,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a303a"
+     "$oid": "6af4416ed1624f140ada09a1"
     },
     "expiresAt": {
      "$date": {
@@ -9774,10 +9774,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e95"
+     "$oid": "6af5517828f76edd05d4906d"
     },
-    "consumer": "chat-announcements-v1",
     "eventKey": "twitch-eventsub:fixture-channel.bits.use:channel.bits.received",
+    "consumer": "chat-announcements-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9789,7 +9789,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3032"
+     "$oid": "6af4416ed1624f140ada0999"
     },
     "expiresAt": {
      "$date": {
@@ -9820,10 +9820,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e99"
+     "$oid": "6af5517828f76edd05d49071"
     },
-    "consumer": "chat-announcements-v1",
     "eventKey": "twitch-eventsub:fixture-channel.chat.notification:channel.chat.notification",
+    "consumer": "chat-announcements-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9835,7 +9835,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3046"
+     "$oid": "6af4416ed1624f140ada09ad"
     },
     "expiresAt": {
      "$date": {
@@ -9866,10 +9866,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e96"
+     "$oid": "6af5517828f76edd05d4906e"
     },
-    "consumer": "chat-announcements-v1",
     "eventKey": "twitch-eventsub:fixture-channel.cheer:channel.bits.received",
+    "consumer": "chat-announcements-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9881,7 +9881,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3036"
+     "$oid": "6af4416ed1624f140ada099d"
     },
     "expiresAt": {
      "$date": {
@@ -9912,10 +9912,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e98"
+     "$oid": "6af5517828f76edd05d49070"
     },
-    "consumer": "chat-announcements-v1",
     "eventKey": "twitch-eventsub:fixture-channel.follow:channel.follow.received",
+    "consumer": "chat-announcements-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9927,7 +9927,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a303e"
+     "$oid": "6af4416ed1624f140ada09a5"
     },
     "expiresAt": {
      "$date": {
@@ -9958,10 +9958,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e9a"
+     "$oid": "6af5517828f76edd05d49072"
     },
-    "consumer": "chat-announcements-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscribe:channel.subscription.received",
+    "consumer": "chat-announcements-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -9973,7 +9973,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a304a"
+     "$oid": "6af4416ed1624f140ada09b1"
     },
     "expiresAt": {
      "$date": {
@@ -10004,10 +10004,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e9d"
+     "$oid": "6af5517828f76edd05d49075"
     },
-    "consumer": "chat-announcements-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.end:channel.subscription.ended",
+    "consumer": "chat-announcements-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10019,7 +10019,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3056"
+     "$oid": "6af4416ed1624f140ada09bd"
     },
     "expiresAt": {
      "$date": {
@@ -10050,10 +10050,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e9c"
+     "$oid": "6af5517828f76edd05d49074"
     },
-    "consumer": "chat-announcements-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.gift:channel.subscription.gifted",
+    "consumer": "chat-announcements-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10065,7 +10065,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3052"
+     "$oid": "6af4416ed1624f140ada09b9"
     },
     "expiresAt": {
      "$date": {
@@ -10096,10 +10096,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e9b"
+     "$oid": "6af5517828f76edd05d49073"
     },
-    "consumer": "chat-announcements-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.message:channel.subscription.received",
+    "consumer": "chat-announcements-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10111,7 +10111,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a304e"
+     "$oid": "6af4416ed1624f140ada09b5"
     },
     "expiresAt": {
      "$date": {
@@ -10142,56 +10142,56 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e9f"
+     "$oid": "6af5517828f76edd05d49077"
     },
-    "consumer": "chat-announcements-v1",
     "eventKey": "twitch-eventsub:fixture-stream.offline:stream.ended",
-    "attempts": {
-     "$numberInt": "0"
-    },
-    "completedAt": null,
-    "createdAt": {
-     "$date": {
-      "$numberLong": "1794392490456"
-     }
-    },
-    "deadLetteredAt": null,
-    "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a305e"
-    },
-    "expiresAt": {
-     "$date": {
-      "$numberLong": "1802168430456"
-     }
-    },
-    "firstAttemptAt": null,
-    "lastAttemptDurationMs": null,
-    "lastDeadLetterError": "",
-    "lastError": "",
-    "lastErrorCode": "",
-    "lastPrerequisiteKind": "",
-    "lastReplayedAt": null,
-    "leaseToken": null,
-    "lockedUntil": null,
-    "nextAttemptAt": null,
-    "replayCount": {
-     "$numberInt": "0"
-    },
-    "skipReason": "",
-    "status": "pending",
-    "topic": "channel",
-    "updatedAt": {
-     "$date": {
-      "$numberLong": "1794392490456"
-     }
-    }
-   },
-   {
-    "_id": {
-     "$oid": "6af5507428f76edd05d48e9e"
-    },
     "consumer": "chat-announcements-v1",
+    "attempts": {
+     "$numberInt": "0"
+    },
+    "completedAt": null,
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794392490456"
+     }
+    },
+    "deadLetteredAt": null,
+    "eventID": {
+     "$oid": "6af4416ed1624f140ada09c5"
+    },
+    "expiresAt": {
+     "$date": {
+      "$numberLong": "1802168430456"
+     }
+    },
+    "firstAttemptAt": null,
+    "lastAttemptDurationMs": null,
+    "lastDeadLetterError": "",
+    "lastError": "",
+    "lastErrorCode": "",
+    "lastPrerequisiteKind": "",
+    "lastReplayedAt": null,
+    "leaseToken": null,
+    "lockedUntil": null,
+    "nextAttemptAt": null,
+    "replayCount": {
+     "$numberInt": "0"
+    },
+    "skipReason": "",
+    "status": "pending",
+    "topic": "channel",
+    "updatedAt": {
+     "$date": {
+      "$numberLong": "1794392490456"
+     }
+    }
+   },
+   {
+    "_id": {
+     "$oid": "6af5517828f76edd05d49076"
+    },
     "eventKey": "twitch-eventsub:fixture-stream.online:stream.started",
+    "consumer": "chat-announcements-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10203,7 +10203,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a305a"
+     "$oid": "6af4416ed1624f140ada09c1"
     },
     "expiresAt": {
      "$date": {
@@ -10234,10 +10234,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e71"
+     "$oid": "6af5517728f76edd05d49049"
     },
+    "consumer": "follow-defense-v1",
     "eventKey": "twitch-eventsub:fixture-channel.follow:channel.follow.received",
-    "consumer": "follow-defense-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10249,7 +10249,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a303e"
+     "$oid": "6af4416ed1624f140ada09a5"
     },
     "expiresAt": {
      "$date": {
@@ -10280,10 +10280,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e72"
+     "$oid": "6af5517728f76edd05d4904a"
     },
+    "consumer": "follow-defense-v1",
     "eventKey": "twitch-eventsub:fixture-channel.raid:channel.raid.received",
-    "consumer": "follow-defense-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10295,7 +10295,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3042"
+     "$oid": "6af4416ed1624f140ada09a9"
     },
     "expiresAt": {
      "$date": {
@@ -10326,10 +10326,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e73"
+     "$oid": "6af5517728f76edd05d4904b"
     },
-    "eventKey": "twitch-eventsub:raid-receipt:channel.raid.received",
     "consumer": "follow-defense-v1",
+    "eventKey": "twitch-eventsub:raid-receipt:channel.raid.received",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10345,7 +10345,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3073"
+     "$oid": "6af4416ed1624f140ada09da"
     },
     "expiresAt": {
      "$date": {
@@ -10376,10 +10376,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e44"
+     "$oid": "6af5517728f76edd05d4901c"
     },
+    "consumer": "goal-custom-contributions-v1",
     "eventKey": "goals-custom:06a29b7116cbd9d837aafa25225a592266dfcc28760232dc86846471601f8bfc:goal.item.added",
-    "consumer": "goal-custom-contributions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10391,7 +10391,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a30ce"
+     "$oid": "6af4416ed1624f140ada0a35"
     },
     "expiresAt": {
      "$date": {
@@ -10422,10 +10422,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e45"
+     "$oid": "6af5517728f76edd05d4901d"
     },
+    "consumer": "goal-custom-contributions-v1",
     "eventKey": "goals-custom:e0b488f71e8b896606f566388e48a01936979edad8dc5fa82b76b98ad3dd6785:goal.item.added",
-    "consumer": "goal-custom-contributions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10437,7 +10437,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a30d9"
+     "$oid": "6af4416ed1624f140ada0a40"
     },
     "expiresAt": {
      "$date": {
@@ -10468,10 +10468,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e6d"
+     "$oid": "6af5517728f76edd05d49045"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.ad_break.begin:channel.ad_break.began",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10483,7 +10483,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3022"
+     "$oid": "6af4416ed1624f140ada0989"
     },
     "expiresAt": {
      "$date": {
@@ -10514,10 +10514,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e6e"
+     "$oid": "6af5517728f76edd05d49046"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.goal.begin:channel.goal.began",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10529,7 +10529,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3026"
+     "$oid": "6af4416ed1624f140ada098d"
     },
     "expiresAt": {
      "$date": {
@@ -10560,10 +10560,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e70"
+     "$oid": "6af5517728f76edd05d49048"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.goal.end:channel.goal.ended",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10575,7 +10575,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a302e"
+     "$oid": "6af4416ed1624f140ada0995"
     },
     "expiresAt": {
      "$date": {
@@ -10606,10 +10606,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e6f"
+     "$oid": "6af5517728f76edd05d49047"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.goal.progress:channel.goal.updated",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10621,7 +10621,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a302a"
+     "$oid": "6af4416ed1624f140ada0991"
     },
     "expiresAt": {
      "$date": {
@@ -10652,10 +10652,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e6a"
+     "$oid": "6af5517728f76edd05d49042"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.hype_train.begin:channel.hype_train.began",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10667,7 +10667,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3016"
+     "$oid": "6af4416ed1624f140ada097d"
     },
     "expiresAt": {
      "$date": {
@@ -10698,10 +10698,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e6c"
+     "$oid": "6af5517728f76edd05d49044"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.hype_train.end:channel.hype_train.ended",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10713,7 +10713,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a301e"
+     "$oid": "6af4416ed1624f140ada0985"
     },
     "expiresAt": {
      "$date": {
@@ -10744,10 +10744,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e6b"
+     "$oid": "6af5517728f76edd05d49043"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.hype_train.progress:channel.hype_train.updated",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10759,7 +10759,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a301a"
+     "$oid": "6af4416ed1624f140ada0981"
     },
     "expiresAt": {
      "$date": {
@@ -10790,10 +10790,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e63"
+     "$oid": "6af5517728f76edd05d4903b"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.poll.begin:channel.poll.began",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10805,7 +10805,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a2ffa"
+     "$oid": "6af4416ed1624f140ada0961"
     },
     "expiresAt": {
      "$date": {
@@ -10836,10 +10836,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e65"
+     "$oid": "6af5517728f76edd05d4903d"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.poll.end:channel.poll.ended",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10851,7 +10851,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3002"
+     "$oid": "6af4416ed1624f140ada0969"
     },
     "expiresAt": {
      "$date": {
@@ -10882,10 +10882,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e64"
+     "$oid": "6af5517728f76edd05d4903c"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.poll.progress:channel.poll.updated",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10897,7 +10897,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a2ffe"
+     "$oid": "6af4416ed1624f140ada0965"
     },
     "expiresAt": {
      "$date": {
@@ -10928,10 +10928,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e66"
+     "$oid": "6af5517728f76edd05d4903e"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.begin:channel.prediction.began",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10943,7 +10943,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3006"
+     "$oid": "6af4416ed1624f140ada096d"
     },
     "expiresAt": {
      "$date": {
@@ -10974,10 +10974,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e69"
+     "$oid": "6af5517728f76edd05d49041"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.end:channel.prediction.ended",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -10989,7 +10989,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3012"
+     "$oid": "6af4416ed1624f140ada0979"
     },
     "expiresAt": {
      "$date": {
@@ -11020,10 +11020,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e68"
+     "$oid": "6af5517728f76edd05d49040"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.lock:channel.prediction.locked",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11035,7 +11035,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a300e"
+     "$oid": "6af4416ed1624f140ada0975"
     },
     "expiresAt": {
      "$date": {
@@ -11066,10 +11066,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e67"
+     "$oid": "6af5517728f76edd05d4903f"
     },
+    "consumer": "overlay-interactions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.progress:channel.prediction.updated",
-    "consumer": "overlay-interactions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11081,7 +11081,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a300a"
+     "$oid": "6af4416ed1624f140ada0971"
     },
     "expiresAt": {
      "$date": {
@@ -11112,10 +11112,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48eab"
+     "$oid": "6af5517828f76edd05d49083"
     },
-    "consumer": "polar-credits-v1",
     "eventKey": "polar-webhook:wh-10:billing.customer.state.changed",
+    "consumer": "polar-credits-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11127,7 +11127,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a30b5"
+     "$oid": "6af4416ed1624f140ada0a1c"
     },
     "expiresAt": {
      "$date": {
@@ -11158,10 +11158,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48eaa"
+     "$oid": "6af5517828f76edd05d49082"
     },
-    "consumer": "polar-credits-v1",
     "eventKey": "polar-webhook:wh-9:billing.customer.state.changed",
+    "consumer": "polar-credits-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11173,7 +11173,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a30b1"
+     "$oid": "6af4416ed1624f140ada0a18"
     },
     "expiresAt": {
      "$date": {
@@ -11204,10 +11204,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48ea8"
+     "$oid": "6af5517828f76edd05d49080"
     },
-    "eventKey": "polar-webhook:wh-10:billing.customer.state.changed",
     "consumer": "polar-plan-v1",
+    "eventKey": "polar-webhook:wh-10:billing.customer.state.changed",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11219,7 +11219,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a30b5"
+     "$oid": "6af4416ed1624f140ada0a1c"
     },
     "expiresAt": {
      "$date": {
@@ -11250,10 +11250,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48ea9"
+     "$oid": "6af5517828f76edd05d49081"
     },
+    "consumer": "polar-plan-v1",
     "eventKey": "polar-webhook:wh-16:provider.polar.benefit_grant.cycled",
-    "consumer": "polar-plan-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11265,7 +11265,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a30cb"
+     "$oid": "6af4416ed1624f140ada0a32"
     },
     "expiresAt": {
      "$date": {
@@ -11296,10 +11296,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48ea1"
+     "$oid": "6af5517828f76edd05d49079"
     },
+    "consumer": "polar-plan-v1",
     "eventKey": "polar-webhook:wh-1:billing.order.paid",
-    "consumer": "polar-plan-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11311,7 +11311,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3090"
+     "$oid": "6af4416ed1624f140ada09f7"
     },
     "expiresAt": {
      "$date": {
@@ -11342,10 +11342,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48ea2"
+     "$oid": "6af5517828f76edd05d4907a"
     },
+    "consumer": "polar-plan-v1",
     "eventKey": "polar-webhook:wh-2:billing.order.paid",
-    "consumer": "polar-plan-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11357,7 +11357,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a309a"
+     "$oid": "6af4416ed1624f140ada0a01"
     },
     "expiresAt": {
      "$date": {
@@ -11388,10 +11388,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48ea3"
+     "$oid": "6af5517828f76edd05d4907b"
     },
+    "consumer": "polar-plan-v1",
     "eventKey": "polar-webhook:wh-3:billing.order.paid",
-    "consumer": "polar-plan-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11403,7 +11403,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a309e"
+     "$oid": "6af4416ed1624f140ada0a05"
     },
     "expiresAt": {
      "$date": {
@@ -11434,10 +11434,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48ea4"
+     "$oid": "6af5517828f76edd05d4907c"
     },
+    "consumer": "polar-plan-v1",
     "eventKey": "polar-webhook:wh-5:billing.order.paid",
-    "consumer": "polar-plan-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11449,7 +11449,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a30a3"
+     "$oid": "6af4416ed1624f140ada0a0a"
     },
     "expiresAt": {
      "$date": {
@@ -11480,10 +11480,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48ea5"
+     "$oid": "6af5517828f76edd05d4907d"
     },
+    "consumer": "polar-plan-v1",
     "eventKey": "polar-webhook:wh-6:billing.subscription.updated",
-    "consumer": "polar-plan-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11495,7 +11495,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a30a8"
+     "$oid": "6af4416ed1624f140ada0a0f"
     },
     "expiresAt": {
      "$date": {
@@ -11526,10 +11526,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48ea6"
+     "$oid": "6af5517828f76edd05d4907e"
     },
+    "consumer": "polar-plan-v1",
     "eventKey": "polar-webhook:wh-7:billing.subscription.updated",
-    "consumer": "polar-plan-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11541,7 +11541,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a30ac"
+     "$oid": "6af4416ed1624f140ada0a13"
     },
     "expiresAt": {
      "$date": {
@@ -11572,10 +11572,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48ea7"
+     "$oid": "6af5517828f76edd05d4907f"
     },
+    "consumer": "polar-plan-v1",
     "eventKey": "polar-webhook:wh-9:billing.customer.state.changed",
-    "consumer": "polar-plan-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11587,7 +11587,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a30b1"
+     "$oid": "6af4416ed1624f140ada0a18"
     },
     "expiresAt": {
      "$date": {
@@ -11618,10 +11618,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48eac"
+     "$oid": "6af5517828f76edd05d49084"
     },
+    "consumer": "polar-rewards-v1",
     "eventKey": "polar-webhook:wh-1:billing.order.paid",
-    "consumer": "polar-rewards-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11633,7 +11633,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3090"
+     "$oid": "6af4416ed1624f140ada09f7"
     },
     "expiresAt": {
      "$date": {
@@ -11664,10 +11664,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48ead"
+     "$oid": "6af5517828f76edd05d49085"
     },
+    "consumer": "polar-rewards-v1",
     "eventKey": "polar-webhook:wh-2:billing.order.paid",
-    "consumer": "polar-rewards-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11679,7 +11679,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a309a"
+     "$oid": "6af4416ed1624f140ada0a01"
     },
     "expiresAt": {
      "$date": {
@@ -11710,10 +11710,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48eae"
+     "$oid": "6af5517828f76edd05d49086"
     },
+    "consumer": "polar-rewards-v1",
     "eventKey": "polar-webhook:wh-3:billing.order.paid",
-    "consumer": "polar-rewards-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11725,7 +11725,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a309e"
+     "$oid": "6af4416ed1624f140ada0a05"
     },
     "expiresAt": {
      "$date": {
@@ -11756,10 +11756,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48eaf"
+     "$oid": "6af5517828f76edd05d49087"
     },
+    "consumer": "polar-rewards-v1",
     "eventKey": "polar-webhook:wh-5:billing.order.paid",
-    "consumer": "polar-rewards-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11771,7 +11771,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a30a3"
+     "$oid": "6af4416ed1624f140ada0a0a"
     },
     "expiresAt": {
      "$date": {
@@ -11802,10 +11802,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e29"
+     "$oid": "6af5517728f76edd05d49001"
     },
+    "consumer": "raid-history-v1",
     "eventKey": "twitch-eventsub:fixture-channel.raid:channel.raid.received",
-    "consumer": "raid-history-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11817,7 +11817,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3042"
+     "$oid": "6af4416ed1624f140ada09a9"
     },
     "expiresAt": {
      "$date": {
@@ -11848,10 +11848,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e2a"
+     "$oid": "6af5517728f76edd05d49002"
     },
+    "consumer": "raid-history-v1",
     "eventKey": "twitch-eventsub:raid-receipt:channel.raid.received",
-    "consumer": "raid-history-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11863,7 +11863,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3073"
+     "$oid": "6af4416ed1624f140ada09da"
     },
     "expiresAt": {
      "$date": {
@@ -11894,10 +11894,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e2b"
+     "$oid": "6af5517728f76edd05d49003"
     },
+    "consumer": "raid-history-v1",
     "eventKey": "twitch-eventsub:raid-sent:channel.raid.sent",
-    "consumer": "raid-history-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11909,7 +11909,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3077"
+     "$oid": "6af4416ed1624f140ada09de"
     },
     "expiresAt": {
      "$date": {
@@ -11940,10 +11940,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e8d"
+     "$oid": "6af5517728f76edd05d49065"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub-test:test-1:channel.follow.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -11955,7 +11955,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a307f"
+     "$oid": "6af4416ed1624f140ada09e6"
     },
     "expiresAt": {
      "$date": {
@@ -11986,10 +11986,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e7d"
+     "$oid": "6af5517728f76edd05d49055"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.bit.use:channel.bits.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12001,7 +12001,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a303a"
+     "$oid": "6af4416ed1624f140ada09a1"
     },
     "expiresAt": {
      "$date": {
@@ -12032,10 +12032,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e7b"
+     "$oid": "6af5517728f76edd05d49053"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.bits.use:channel.bits.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12047,7 +12047,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3032"
+     "$oid": "6af4416ed1624f140ada0999"
     },
     "expiresAt": {
      "$date": {
@@ -12078,10 +12078,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e80"
+     "$oid": "6af5517728f76edd05d49058"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.chat.notification:channel.chat.notification",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12093,7 +12093,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3046"
+     "$oid": "6af4416ed1624f140ada09ad"
     },
     "expiresAt": {
      "$date": {
@@ -12124,10 +12124,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e7c"
+     "$oid": "6af5517728f76edd05d49054"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.cheer:channel.bits.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12139,7 +12139,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3036"
+     "$oid": "6af4416ed1624f140ada099d"
     },
     "expiresAt": {
      "$date": {
@@ -12170,10 +12170,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e7e"
+     "$oid": "6af5517728f76edd05d49056"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.follow:channel.follow.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12185,7 +12185,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a303e"
+     "$oid": "6af4416ed1624f140ada09a5"
     },
     "expiresAt": {
      "$date": {
@@ -12216,10 +12216,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e74"
+     "$oid": "6af5517728f76edd05d4904c"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.poll.begin:channel.poll.began",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12231,7 +12231,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a2ffa"
+     "$oid": "6af4416ed1624f140ada0961"
     },
     "expiresAt": {
      "$date": {
@@ -12262,10 +12262,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e76"
+     "$oid": "6af5517728f76edd05d4904e"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.poll.end:channel.poll.ended",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12277,7 +12277,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3002"
+     "$oid": "6af4416ed1624f140ada0969"
     },
     "expiresAt": {
      "$date": {
@@ -12308,10 +12308,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e75"
+     "$oid": "6af5517728f76edd05d4904d"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.poll.progress:channel.poll.updated",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12323,7 +12323,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a2ffe"
+     "$oid": "6af4416ed1624f140ada0965"
     },
     "expiresAt": {
      "$date": {
@@ -12354,10 +12354,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e77"
+     "$oid": "6af5517728f76edd05d4904f"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.begin:channel.prediction.began",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12369,7 +12369,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3006"
+     "$oid": "6af4416ed1624f140ada096d"
     },
     "expiresAt": {
      "$date": {
@@ -12400,10 +12400,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e7a"
+     "$oid": "6af5517728f76edd05d49052"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.end:channel.prediction.ended",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12415,7 +12415,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3012"
+     "$oid": "6af4416ed1624f140ada0979"
     },
     "expiresAt": {
      "$date": {
@@ -12446,10 +12446,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e79"
+     "$oid": "6af5517728f76edd05d49051"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.lock:channel.prediction.locked",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12461,7 +12461,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a300e"
+     "$oid": "6af4416ed1624f140ada0975"
     },
     "expiresAt": {
      "$date": {
@@ -12492,10 +12492,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e78"
+     "$oid": "6af5517728f76edd05d49050"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.progress:channel.prediction.updated",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12507,7 +12507,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a300a"
+     "$oid": "6af4416ed1624f140ada0971"
     },
     "expiresAt": {
      "$date": {
@@ -12538,10 +12538,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e7f"
+     "$oid": "6af5517728f76edd05d49057"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.raid:channel.raid.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12553,7 +12553,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3042"
+     "$oid": "6af4416ed1624f140ada09a9"
     },
     "expiresAt": {
      "$date": {
@@ -12584,10 +12584,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e81"
+     "$oid": "6af5517728f76edd05d49059"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscribe:channel.subscription.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12599,7 +12599,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a304a"
+     "$oid": "6af4416ed1624f140ada09b1"
     },
     "expiresAt": {
      "$date": {
@@ -12630,10 +12630,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e84"
+     "$oid": "6af5517728f76edd05d4905c"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.end:channel.subscription.ended",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12645,7 +12645,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3056"
+     "$oid": "6af4416ed1624f140ada09bd"
     },
     "expiresAt": {
      "$date": {
@@ -12676,10 +12676,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e83"
+     "$oid": "6af5517728f76edd05d4905b"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.gift:channel.subscription.gifted",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12691,7 +12691,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3052"
+     "$oid": "6af4416ed1624f140ada09b9"
     },
     "expiresAt": {
      "$date": {
@@ -12722,10 +12722,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e82"
+     "$oid": "6af5517728f76edd05d4905a"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.message:channel.subscription.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12737,7 +12737,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a304e"
+     "$oid": "6af4416ed1624f140ada09b5"
     },
     "expiresAt": {
      "$date": {
@@ -12768,10 +12768,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e86"
+     "$oid": "6af5517728f76edd05d4905e"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-stream.offline:stream.ended",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12783,7 +12783,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a305e"
+     "$oid": "6af4416ed1624f140ada09c5"
     },
     "expiresAt": {
      "$date": {
@@ -12814,10 +12814,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e85"
+     "$oid": "6af5517728f76edd05d4905d"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:fixture-stream.online:stream.started",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12829,7 +12829,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a305a"
+     "$oid": "6af4416ed1624f140ada09c1"
     },
     "expiresAt": {
      "$date": {
@@ -12860,10 +12860,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e87"
+     "$oid": "6af5517728f76edd05d4905f"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:message-1:channel.bits.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12875,7 +12875,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3062"
+     "$oid": "6af4416ed1624f140ada09c9"
     },
     "expiresAt": {
      "$date": {
@@ -12906,10 +12906,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e88"
+     "$oid": "6af5517728f76edd05d49060"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:message-2:channel.subscription.gifted",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12921,7 +12921,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a306b"
+     "$oid": "6af4416ed1624f140ada09d2"
     },
     "expiresAt": {
      "$date": {
@@ -12952,10 +12952,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e89"
+     "$oid": "6af5517728f76edd05d49061"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:message-3:stream.started",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -12967,7 +12967,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a306f"
+     "$oid": "6af4416ed1624f140ada09d6"
     },
     "expiresAt": {
      "$date": {
@@ -12998,10 +12998,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e8c"
+     "$oid": "6af5517728f76edd05d49064"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:message-stale-retry:channel.follow.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13013,7 +13013,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a307b"
+     "$oid": "6af4416ed1624f140ada09e2"
     },
     "expiresAt": {
      "$date": {
@@ -13044,10 +13044,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e8f"
+     "$oid": "6af5517828f76edd05d49067"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:offset:channel.subscription.ended",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13059,7 +13059,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3087"
+     "$oid": "6af4416ed1624f140ada09ee"
     },
     "expiresAt": {
      "$date": {
@@ -13090,10 +13090,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e8a"
+     "$oid": "6af5517728f76edd05d49062"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:raid-receipt:channel.raid.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13105,7 +13105,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3073"
+     "$oid": "6af4416ed1624f140ada09da"
     },
     "expiresAt": {
      "$date": {
@@ -13136,10 +13136,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e8b"
+     "$oid": "6af5517728f76edd05d49063"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:raid-sent:channel.raid.sent",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13151,7 +13151,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3077"
+     "$oid": "6af4416ed1624f140ada09de"
     },
     "expiresAt": {
      "$date": {
@@ -13182,10 +13182,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e90"
+     "$oid": "6af5517828f76edd05d49068"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:traced:stream.ended",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13197,7 +13197,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a308b"
+     "$oid": "6af4416ed1624f140ada09f2"
     },
     "expiresAt": {
      "$date": {
@@ -13228,10 +13228,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e8e"
+     "$oid": "6af5517728f76edd05d49066"
     },
+    "consumer": "stream-analytics-v1",
     "eventKey": "twitch-eventsub:unicode-%F0%9F%91%8B:channel.subscription.received",
-    "consumer": "stream-analytics-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13243,7 +13243,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3083"
+     "$oid": "6af4416ed1624f140ada09ea"
     },
     "expiresAt": {
      "$date": {
@@ -13274,10 +13274,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e92"
+     "$oid": "6af5517828f76edd05d4906a"
     },
+    "consumer": "stream-operations-v1",
     "eventKey": "twitch-eventsub:fixture-stream.offline:stream.ended",
-    "consumer": "stream-operations-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13289,7 +13289,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a305e"
+     "$oid": "6af4416ed1624f140ada09c5"
     },
     "expiresAt": {
      "$date": {
@@ -13320,10 +13320,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e91"
+     "$oid": "6af5517828f76edd05d49069"
     },
+    "consumer": "stream-operations-v1",
     "eventKey": "twitch-eventsub:fixture-stream.online:stream.started",
-    "consumer": "stream-operations-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13335,7 +13335,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a305a"
+     "$oid": "6af4416ed1624f140ada09c1"
     },
     "expiresAt": {
      "$date": {
@@ -13366,10 +13366,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e93"
+     "$oid": "6af5517828f76edd05d4906b"
     },
+    "consumer": "stream-operations-v1",
     "eventKey": "twitch-eventsub:message-3:stream.started",
-    "consumer": "stream-operations-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13381,7 +13381,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a306f"
+     "$oid": "6af4416ed1624f140ada09d6"
     },
     "expiresAt": {
      "$date": {
@@ -13412,10 +13412,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e94"
+     "$oid": "6af5517828f76edd05d4906c"
     },
+    "consumer": "stream-operations-v1",
     "eventKey": "twitch-eventsub:traced:stream.ended",
-    "consumer": "stream-operations-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13427,7 +13427,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a308b"
+     "$oid": "6af4416ed1624f140ada09f2"
     },
     "expiresAt": {
      "$date": {
@@ -13458,10 +13458,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e2e"
+     "$oid": "6af5517728f76edd05d49006"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:fixture-channel.bit.use:channel.bits.received",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13473,7 +13473,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a303a"
+     "$oid": "6af4416ed1624f140ada09a1"
     },
     "expiresAt": {
      "$date": {
@@ -13504,10 +13504,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e2c"
+     "$oid": "6af5517728f76edd05d49004"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:fixture-channel.bits.use:channel.bits.received",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13519,7 +13519,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3032"
+     "$oid": "6af4416ed1624f140ada0999"
     },
     "expiresAt": {
      "$date": {
@@ -13550,10 +13550,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e2d"
+     "$oid": "6af5517728f76edd05d49005"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:fixture-channel.cheer:channel.bits.received",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13565,7 +13565,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3036"
+     "$oid": "6af4416ed1624f140ada099d"
     },
     "expiresAt": {
      "$date": {
@@ -13596,10 +13596,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e2f"
+     "$oid": "6af5517728f76edd05d49007"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:fixture-channel.follow:channel.follow.received",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13611,7 +13611,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a303e"
+     "$oid": "6af4416ed1624f140ada09a5"
     },
     "expiresAt": {
      "$date": {
@@ -13642,10 +13642,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e30"
+     "$oid": "6af5517728f76edd05d49008"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:fixture-channel.raid:channel.raid.received",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13657,7 +13657,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3042"
+     "$oid": "6af4416ed1624f140ada09a9"
     },
     "expiresAt": {
      "$date": {
@@ -13688,10 +13688,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e31"
+     "$oid": "6af5517728f76edd05d49009"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscribe:channel.subscription.received",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13703,7 +13703,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a304a"
+     "$oid": "6af4416ed1624f140ada09b1"
     },
     "expiresAt": {
      "$date": {
@@ -13734,10 +13734,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e33"
+     "$oid": "6af5517728f76edd05d4900b"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.gift:channel.subscription.gifted",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13749,7 +13749,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3052"
+     "$oid": "6af4416ed1624f140ada09b9"
     },
     "expiresAt": {
      "$date": {
@@ -13780,10 +13780,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e32"
+     "$oid": "6af5517728f76edd05d4900a"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.message:channel.subscription.received",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13795,7 +13795,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a304e"
+     "$oid": "6af4416ed1624f140ada09b5"
     },
     "expiresAt": {
      "$date": {
@@ -13826,10 +13826,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e34"
+     "$oid": "6af5517728f76edd05d4900c"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:message-1:channel.bits.received",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13841,7 +13841,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3062"
+     "$oid": "6af4416ed1624f140ada09c9"
     },
     "expiresAt": {
      "$date": {
@@ -13872,10 +13872,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e35"
+     "$oid": "6af5517728f76edd05d4900d"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:message-2:channel.subscription.gifted",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13887,7 +13887,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a306b"
+     "$oid": "6af4416ed1624f140ada09d2"
     },
     "expiresAt": {
      "$date": {
@@ -13918,10 +13918,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e37"
+     "$oid": "6af5517728f76edd05d4900f"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:message-stale-retry:channel.follow.received",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13933,7 +13933,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a307b"
+     "$oid": "6af4416ed1624f140ada09e2"
     },
     "expiresAt": {
      "$date": {
@@ -13964,10 +13964,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e36"
+     "$oid": "6af5517728f76edd05d4900e"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:raid-receipt:channel.raid.received",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -13979,7 +13979,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3073"
+     "$oid": "6af4416ed1624f140ada09da"
     },
     "expiresAt": {
      "$date": {
@@ -14010,10 +14010,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507328f76edd05d48e38"
+     "$oid": "6af5517728f76edd05d49010"
     },
+    "consumer": "stream-timeline-v1",
     "eventKey": "twitch-eventsub:unicode-%F0%9F%91%8B:channel.subscription.received",
-    "consumer": "stream-timeline-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14025,7 +14025,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3083"
+     "$oid": "6af4416ed1624f140ada09ea"
     },
     "expiresAt": {
      "$date": {
@@ -14056,10 +14056,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e5f"
+     "$oid": "6af5517728f76edd05d49037"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub-test:test-1:channel.follow.received",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14075,7 +14075,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a307f"
+     "$oid": "6af4416ed1624f140ada09e6"
     },
     "expiresAt": {
      "$date": {
@@ -14106,10 +14106,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e4f"
+     "$oid": "6af5517728f76edd05d49027"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.bit.use:channel.bits.received",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14121,7 +14121,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a303a"
+     "$oid": "6af4416ed1624f140ada09a1"
     },
     "expiresAt": {
      "$date": {
@@ -14152,10 +14152,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e4d"
+     "$oid": "6af5517728f76edd05d49025"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.bits.use:channel.bits.received",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14167,7 +14167,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3032"
+     "$oid": "6af4416ed1624f140ada0999"
     },
     "expiresAt": {
      "$date": {
@@ -14198,10 +14198,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e52"
+     "$oid": "6af5517728f76edd05d4902a"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.chat.notification:channel.chat.notification",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14213,7 +14213,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3046"
+     "$oid": "6af4416ed1624f140ada09ad"
     },
     "expiresAt": {
      "$date": {
@@ -14244,10 +14244,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e4e"
+     "$oid": "6af5517728f76edd05d49026"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.cheer:channel.bits.received",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14259,7 +14259,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3036"
+     "$oid": "6af4416ed1624f140ada099d"
     },
     "expiresAt": {
      "$date": {
@@ -14290,10 +14290,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e50"
+     "$oid": "6af5517728f76edd05d49028"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.follow:channel.follow.received",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14305,7 +14305,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a303e"
+     "$oid": "6af4416ed1624f140ada09a5"
     },
     "expiresAt": {
      "$date": {
@@ -14336,10 +14336,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e46"
+     "$oid": "6af5517728f76edd05d4901e"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.poll.begin:channel.poll.began",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14351,7 +14351,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a2ffa"
+     "$oid": "6af4416ed1624f140ada0961"
     },
     "expiresAt": {
      "$date": {
@@ -14382,10 +14382,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e48"
+     "$oid": "6af5517728f76edd05d49020"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.poll.end:channel.poll.ended",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14397,7 +14397,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3002"
+     "$oid": "6af4416ed1624f140ada0969"
     },
     "expiresAt": {
      "$date": {
@@ -14428,10 +14428,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e47"
+     "$oid": "6af5517728f76edd05d4901f"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.poll.progress:channel.poll.updated",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14443,7 +14443,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a2ffe"
+     "$oid": "6af4416ed1624f140ada0965"
     },
     "expiresAt": {
      "$date": {
@@ -14474,10 +14474,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e49"
+     "$oid": "6af5517728f76edd05d49021"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.begin:channel.prediction.began",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14489,7 +14489,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3006"
+     "$oid": "6af4416ed1624f140ada096d"
     },
     "expiresAt": {
      "$date": {
@@ -14520,10 +14520,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e4c"
+     "$oid": "6af5517728f76edd05d49024"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.end:channel.prediction.ended",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14535,7 +14535,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3012"
+     "$oid": "6af4416ed1624f140ada0979"
     },
     "expiresAt": {
      "$date": {
@@ -14566,10 +14566,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e4b"
+     "$oid": "6af5517728f76edd05d49023"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.lock:channel.prediction.locked",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14581,7 +14581,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a300e"
+     "$oid": "6af4416ed1624f140ada0975"
     },
     "expiresAt": {
      "$date": {
@@ -14612,10 +14612,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e4a"
+     "$oid": "6af5517728f76edd05d49022"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.prediction.progress:channel.prediction.updated",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14627,7 +14627,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a300a"
+     "$oid": "6af4416ed1624f140ada0971"
     },
     "expiresAt": {
      "$date": {
@@ -14658,10 +14658,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e51"
+     "$oid": "6af5517728f76edd05d49029"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.raid:channel.raid.received",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14673,7 +14673,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3042"
+     "$oid": "6af4416ed1624f140ada09a9"
     },
     "expiresAt": {
      "$date": {
@@ -14704,10 +14704,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e53"
+     "$oid": "6af5517728f76edd05d4902b"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscribe:channel.subscription.received",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14719,7 +14719,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a304a"
+     "$oid": "6af4416ed1624f140ada09b1"
     },
     "expiresAt": {
      "$date": {
@@ -14750,10 +14750,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e56"
+     "$oid": "6af5517728f76edd05d4902e"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.end:channel.subscription.ended",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14765,7 +14765,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3056"
+     "$oid": "6af4416ed1624f140ada09bd"
     },
     "expiresAt": {
      "$date": {
@@ -14796,10 +14796,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e55"
+     "$oid": "6af5517728f76edd05d4902d"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.gift:channel.subscription.gifted",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14811,7 +14811,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3052"
+     "$oid": "6af4416ed1624f140ada09b9"
     },
     "expiresAt": {
      "$date": {
@@ -14842,10 +14842,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e54"
+     "$oid": "6af5517728f76edd05d4902c"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-channel.subscription.message:channel.subscription.received",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14857,7 +14857,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a304e"
+     "$oid": "6af4416ed1624f140ada09b5"
     },
     "expiresAt": {
      "$date": {
@@ -14888,10 +14888,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e58"
+     "$oid": "6af5517728f76edd05d49030"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-stream.offline:stream.ended",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14903,7 +14903,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a305e"
+     "$oid": "6af4416ed1624f140ada09c5"
     },
     "expiresAt": {
      "$date": {
@@ -14934,10 +14934,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e57"
+     "$oid": "6af5517728f76edd05d4902f"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:fixture-stream.online:stream.started",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14949,7 +14949,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a305a"
+     "$oid": "6af4416ed1624f140ada09c1"
     },
     "expiresAt": {
      "$date": {
@@ -14980,10 +14980,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e59"
+     "$oid": "6af5517728f76edd05d49031"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:message-1:channel.bits.received",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -14999,7 +14999,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3062"
+     "$oid": "6af4416ed1624f140ada09c9"
     },
     "expiresAt": {
      "$date": {
@@ -15030,10 +15030,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e5a"
+     "$oid": "6af5517728f76edd05d49032"
     },
-    "eventKey": "twitch-eventsub:message-2:channel.subscription.gifted",
     "consumer": "widget-actions-v1",
+    "eventKey": "twitch-eventsub:message-2:channel.subscription.gifted",
     "attempts": {
      "$numberInt": "0"
     },
@@ -15045,7 +15045,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a306b"
+     "$oid": "6af4416ed1624f140ada09d2"
     },
     "expiresAt": {
      "$date": {
@@ -15076,10 +15076,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e5b"
+     "$oid": "6af5517728f76edd05d49033"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:message-3:stream.started",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -15095,7 +15095,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a306f"
+     "$oid": "6af4416ed1624f140ada09d6"
     },
     "expiresAt": {
      "$date": {
@@ -15126,10 +15126,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e5e"
+     "$oid": "6af5517728f76edd05d49036"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:message-stale-retry:channel.follow.received",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -15145,7 +15145,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a307b"
+     "$oid": "6af4416ed1624f140ada09e2"
     },
     "expiresAt": {
      "$date": {
@@ -15176,10 +15176,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e61"
+     "$oid": "6af5517728f76edd05d49039"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:offset:channel.subscription.ended",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -15195,7 +15195,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3087"
+     "$oid": "6af4416ed1624f140ada09ee"
     },
     "expiresAt": {
      "$date": {
@@ -15226,10 +15226,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e5c"
+     "$oid": "6af5517728f76edd05d49034"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:raid-receipt:channel.raid.received",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -15245,7 +15245,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3073"
+     "$oid": "6af4416ed1624f140ada09da"
     },
     "expiresAt": {
      "$date": {
@@ -15276,10 +15276,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e5d"
+     "$oid": "6af5517728f76edd05d49035"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:raid-sent:channel.raid.sent",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -15295,7 +15295,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3077"
+     "$oid": "6af4416ed1624f140ada09de"
     },
     "expiresAt": {
      "$date": {
@@ -15326,10 +15326,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e62"
+     "$oid": "6af5517728f76edd05d4903a"
     },
+    "consumer": "widget-actions-v1",
     "eventKey": "twitch-eventsub:traced:stream.ended",
-    "consumer": "widget-actions-v1",
     "attempts": {
      "$numberInt": "0"
     },
@@ -15345,7 +15345,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a308b"
+     "$oid": "6af4416ed1624f140ada09f2"
     },
     "expiresAt": {
      "$date": {
@@ -15376,10 +15376,10 @@
    },
    {
     "_id": {
-     "$oid": "6af5507428f76edd05d48e60"
+     "$oid": "6af5517728f76edd05d49038"
     },
-    "eventKey": "twitch-eventsub:unicode-%F0%9F%91%8B:channel.subscription.received",
     "consumer": "widget-actions-v1",
+    "eventKey": "twitch-eventsub:unicode-%F0%9F%91%8B:channel.subscription.received",
     "attempts": {
      "$numberInt": "0"
     },
@@ -15395,7 +15395,7 @@
     },
     "deadLetteredAt": null,
     "eventID": {
-     "$oid": "6af4416e6f7a75c10e2a3083"
+     "$oid": "6af4416ed1624f140ada09ea"
     },
     "expiresAt": {
      "$date": {
@@ -15426,6 +15426,429 @@
    }
   ],
   "pending": 0
+ },
+ "health": {
+  "nowMs": 1794392550456,
+  "all": {
+   "asOf": "2026-11-11T10:22:30.456Z",
+   "consumer": null,
+   "scope": "retained-deliveries; dispatch is global; independent reads, not a snapshot",
+   "limits": {
+    "documentsPerBucket": 10000,
+    "maxTimeMSPerQuery": 1000,
+    "approachingExpiryWindowMs": 3600000
+   },
+   "semantics": "When capped, counts and maximum ages/durations are lower bounds over an unordered sample. Delivery ages use createdAt; ready age is the age of currently ready work, not time overdue. Dispatch age uses journaledAt. Only succeeded is success. Owner/subject signals use the last prerequisite failure, not journal identity presence. Legacy unclassified failures are not inferred.",
+   "deliveries": {
+    "pending": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 123,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": 60000
+    },
+    "processing": {
+     "dueRetries": 0,
+     "staleProcessing": 1,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 1,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": 60000
+    },
+    "retry": {
+     "dueRetries": 1,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 1,
+     "ownerUnresolved": 1,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": 12.5,
+     "count": 1,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": 60000
+    },
+    "succeeded": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    },
+    "skipped": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 10,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": null
+    },
+    "dead": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    }
+   },
+   "dispatchPending": {
+    "count": 1,
+    "approachingExpiry": 0,
+    "expired": 0,
+    "capped": false,
+    "oldestAgeMs": 120000,
+    "oldestReadyAgeMs": null
+   }
+  },
+  "widget": {
+   "asOf": "2026-11-11T10:22:30.456Z",
+   "consumer": "widget-actions-v1",
+   "scope": "retained-deliveries; dispatch is global; independent reads, not a snapshot",
+   "limits": {
+    "documentsPerBucket": 10000,
+    "maxTimeMSPerQuery": 1000,
+    "approachingExpiryWindowMs": 3600000
+   },
+   "semantics": "When capped, counts and maximum ages/durations are lower bounds over an unordered sample. Delivery ages use createdAt; ready age is the age of currently ready work, not time overdue. Dispatch age uses journaledAt. Only succeeded is success. Owner/subject signals use the last prerequisite failure, not journal identity presence. Legacy unclassified failures are not inferred.",
+   "deliveries": {
+    "pending": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 20,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": 60000
+    },
+    "processing": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    },
+    "retry": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    },
+    "succeeded": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    },
+    "skipped": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 9,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": null
+    },
+    "dead": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    }
+   },
+   "dispatchPending": {
+    "count": 1,
+    "approachingExpiry": 0,
+    "expired": 0,
+    "capped": false,
+    "oldestAgeMs": 120000,
+    "oldestReadyAgeMs": null
+   }
+  },
+  "credits": {
+   "asOf": "2026-11-11T10:22:30.456Z",
+   "consumer": "polar-credits-v1",
+   "scope": "retained-deliveries; dispatch is global; independent reads, not a snapshot",
+   "limits": {
+    "documentsPerBucket": 10000,
+    "maxTimeMSPerQuery": 1000,
+    "approachingExpiryWindowMs": 3600000
+   },
+   "semantics": "When capped, counts and maximum ages/durations are lower bounds over an unordered sample. Delivery ages use createdAt; ready age is the age of currently ready work, not time overdue. Dispatch age uses journaledAt. Only succeeded is success. Owner/subject signals use the last prerequisite failure, not journal identity presence. Legacy unclassified failures are not inferred.",
+   "deliveries": {
+    "pending": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 1,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": 60000
+    },
+    "processing": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    },
+    "retry": {
+     "dueRetries": 1,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 1,
+     "ownerUnresolved": 1,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": 12.5,
+     "count": 1,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": 60000
+    },
+    "succeeded": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    },
+    "skipped": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    },
+    "dead": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    }
+   },
+   "dispatchPending": {
+    "count": 1,
+    "approachingExpiry": 0,
+    "expired": 0,
+    "capped": false,
+    "oldestAgeMs": 120000,
+    "oldestReadyAgeMs": null
+   }
+  },
+  "empty": {
+   "asOf": "2026-11-11T10:22:30.456Z",
+   "consumer": null,
+   "scope": "retained-deliveries; dispatch is global; independent reads, not a snapshot",
+   "limits": {
+    "documentsPerBucket": 10000,
+    "maxTimeMSPerQuery": 1000,
+    "approachingExpiryWindowMs": 3600000
+   },
+   "semantics": "When capped, counts and maximum ages/durations are lower bounds over an unordered sample. Delivery ages use createdAt; ready age is the age of currently ready work, not time overdue. Dispatch age uses journaledAt. Only succeeded is success. Owner/subject signals use the last prerequisite failure, not journal identity presence. Legacy unclassified failures are not inferred.",
+   "deliveries": {
+    "pending": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 123,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": 60000
+    },
+    "processing": {
+     "dueRetries": 0,
+     "staleProcessing": 1,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 1,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": 60000
+    },
+    "retry": {
+     "dueRetries": 1,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 1,
+     "ownerUnresolved": 1,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": 12.5,
+     "count": 1,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": 60000
+    },
+    "succeeded": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    },
+    "skipped": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 10,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": 60000,
+     "oldestReadyAgeMs": null
+    },
+    "dead": {
+     "dueRetries": 0,
+     "staleProcessing": 0,
+     "prerequisiteMissing": 0,
+     "ownerUnresolved": 0,
+     "subjectUnresolved": 0,
+     "maxLastAttemptDurationMs": null,
+     "count": 0,
+     "approachingExpiry": 0,
+     "expired": 0,
+     "capped": false,
+     "oldestAgeMs": null,
+     "oldestReadyAgeMs": null
+    }
+   },
+   "dispatchPending": {
+    "count": 1,
+    "approachingExpiry": 0,
+    "expired": 0,
+    "capped": false,
+    "oldestAgeMs": 120000,
+    "oldestReadyAgeMs": null
+   }
+  }
  },
  "jobs": {
   "queue": "cron:stream-memory:queue",
@@ -15573,7 +15996,7 @@
       "dedupeKey": "cron:jobs:dedupe:stream-memory-summary:1001"
      },
      "claim": {
-      "intentId": "6af4416e6f7a75c10e2a318c",
+      "intentId": "6af4416ed1624f140ada0b13",
       "queueKey": "cron:stream-memory:queue",
       "owner": "owner-1",
       "token": "uuid-1"
@@ -15667,7 +16090,7 @@
       "dedupeKey": "cron:jobs:dedupe:stream-memory-summary:1001"
      },
      "claim": {
-      "intentId": "6af4416e6f7a75c10e2a318c",
+      "intentId": "6af4416ed1624f140ada0b13",
       "queueKey": "cron:stream-memory:queue",
       "owner": "owner-2",
       "token": "uuid-2"
@@ -15723,7 +16146,7 @@
       "dedupeKey": "cron:jobs:dedupe:session:legacy"
      },
      "claim": {
-      "intentId": "6af4416e6f7a75c10e2a3195",
+      "intentId": "6af4416ed1624f140ada0b1c",
       "queueKey": "cron:stream-memory:queue",
       "owner": "owner-4",
       "token": "uuid-3"
@@ -15748,7 +16171,7 @@
       "dedupeKey": "cron:jobs:dedupe:session:auto-1"
      },
      "claim": {
-      "intentId": "6af4416e6f7a75c10e2a3192",
+      "intentId": "6af4416ed1624f140ada0b19",
       "queueKey": "cron:stream-memory:queue",
       "owner": "owner-5",
       "token": "uuid-4"
@@ -15810,7 +16233,7 @@
       "channelID": "1001"
      },
      "claim": {
-      "intentId": "6af442d86f7a75c10e2a31b5",
+      "intentId": "6af442d8d1624f140ada0b3c",
       "queueKey": "cron:stream-memory:queue",
       "owner": "owner-6",
       "token": "uuid-5"
@@ -15861,7 +16284,7 @@
       "dedupeKey": "cron:jobs:dedupe:later"
      },
      "claim": {
-      "intentId": "6af442d86f7a75c10e2a31b0",
+      "intentId": "6af442d8d1624f140ada0b37",
       "queueKey": "cron:stream-memory:queue",
       "owner": "owner-7",
       "token": "uuid-6"
@@ -15921,7 +16344,7 @@
   "intents": [
    {
     "_id": {
-     "$oid": "6af4416e6f7a75c10e2a318c"
+     "$oid": "6af4416ed1624f140ada0b13"
     },
     "jobID": "job-a",
     "queueKey": "cron:stream-memory:queue",
@@ -15969,7 +16392,7 @@
    },
    {
     "_id": {
-     "$oid": "6af442d86f7a75c10e2a31b5"
+     "$oid": "6af442d8d1624f140ada0b3c"
     },
     "jobID": "job-adopted",
     "queueKey": "cron:stream-memory:queue",
@@ -16010,7 +16433,7 @@
    },
    {
     "_id": {
-     "$oid": "6af4416e6f7a75c10e2a3192"
+     "$oid": "6af4416ed1624f140ada0b19"
     },
     "jobID": "job-auto",
     "queueKey": "cron:stream-memory:queue",
@@ -16057,7 +16480,7 @@
    },
    {
     "_id": {
-     "$oid": "6af442d86f7a75c10e2a31b0"
+     "$oid": "6af442d8d1624f140ada0b37"
     },
     "jobID": "job-later",
     "queueKey": "cron:stream-memory:queue",
@@ -16103,7 +16526,7 @@
    },
    {
     "_id": {
-     "$oid": "6af443516f7a75c10e2a31c3"
+     "$oid": "6af44351d1624f140ada0b4a"
     },
     "jobID": "job-later-2",
     "queueKey": "cron:stream-memory:queue",
@@ -16147,7 +16570,7 @@
    },
    {
     "_id": {
-     "$oid": "6af4416e6f7a75c10e2a3195"
+     "$oid": "6af4416ed1624f140ada0b1c"
     },
     "jobID": "job-legacy",
     "queueKey": "cron:stream-memory:queue",
@@ -16207,6 +16630,7 @@
   "src/schemas/domain_event_delivery.schema.ts": "d6fd780e484f2e7ef4fe6e4385ee737455908a761dfbdc30bac41791284b5a68",
   "src/schemas/users.schema.ts": "f324f0837b01866a0caf28854c0261b8a2e28f0fb577cd5ae370e45c352fad13",
   "src/utils/domain_event_consumer.ts": "75faff46ec4a2a735cb01a82a84d33fbbb3ae6678b4c1ed5ac558029ec5d1456",
+  "src/utils/domain_event_health.ts": "7bca5d8e521d0704905cdb7e81f6be85f6f41a2b9bbc87239a897f98e3a44dd0",
   "src/utils/domain_events.ts": "b624f04197dac55038fa94fd7b40dc921740426c859713ace98667a4e9f71f62",
   "src/utils/durable_cron_jobs.ts": "a32eb5e2e14a827c0645b7eeef071c6cb07d61d879f6d24ac0f9bc8c26b711c4",
   "src/utils/eventsub.test-data.ts": "e26b72d8377d56403e1aac6d5820fbe0cc1345312da2b01c850a308a9f868f44",
