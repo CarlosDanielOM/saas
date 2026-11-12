@@ -778,7 +778,10 @@ impl BotMetrics {
             .collect();
         let delay = inner.delay.take();
         let mut window_object = Map::new();
-        window_object.insert("durationMs".to_owned(), json!(inner.config.interval_ms));
+        window_object.insert(
+            "durationMs".to_owned(),
+            dima_text::js_number_value(inner.config.interval_ms),
+        );
         for (name, value) in &window {
             window_object.insert((*name).to_owned(), Value::from(*value));
         }
@@ -817,13 +820,13 @@ impl BotMetrics {
                 "embeddingProcessing": inner.embedding_processing.load(Ordering::Relaxed),
             },
             "eventLoop": {
-                "minMs": delay.min_ms,
-                "maxMs": delay.max_ms,
-                "meanMs": delay.mean_ms,
-                "stddevMs": delay.stddev_ms,
-                "p50Ms": delay.p50_ms,
-                "p95Ms": delay.p95_ms,
-                "p99Ms": delay.p99_ms,
+                "minMs": dima_text::js_number_value(delay.min_ms),
+                "maxMs": dima_text::js_number_value(delay.max_ms),
+                "meanMs": dima_text::js_number_value(delay.mean_ms),
+                "stddevMs": dima_text::js_number_value(delay.stddev_ms),
+                "p50Ms": dima_text::js_number_value(delay.p50_ms),
+                "p95Ms": dima_text::js_number_value(delay.p95_ms),
+                "p99Ms": dima_text::js_number_value(delay.p99_ms),
             },
             "window": Value::Object(window_object),
             "totals": {
@@ -970,15 +973,17 @@ impl BotMetrics {
             flush.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
             // `setInterval` first fires one interval after it is set.
             flush.reset();
-            let mut probe = tokio::time::Instant::now() + RESOLUTION;
+            // Node's histogram records the whole interval between two wakes of its 20 ms
+            // timer (about 20 ms when idle), so this does too.
+            let mut last = tokio::time::Instant::now();
             loop {
                 tokio::select! {
                     () = stop.wait() => return,
                     _ = flush.tick() => metrics.flush().await,
-                    () = tokio::time::sleep_until(probe) => {
+                    () = tokio::time::sleep_until(last + RESOLUTION) => {
                         let now = tokio::time::Instant::now();
-                        metrics.inner.delay.record(now.saturating_duration_since(probe));
-                        probe = now + RESOLUTION;
+                        metrics.inner.delay.record(now.saturating_duration_since(last));
+                        last = now;
                     }
                 }
             }

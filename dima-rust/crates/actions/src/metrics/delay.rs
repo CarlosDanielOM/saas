@@ -2,8 +2,9 @@
 //! reads Node's `monitorEventLoopDelay` with a 20 ms resolution).
 //!
 //! Tokio has no event loop to measure; the nearest figure is how late a timer task is woken. A
-//! probe sleeps [`RESOLUTION`] at a time and records how far past its deadline it ran, which grows
-//! when the runtime's workers are busy. Samples are kept for one snapshot window, at most
+//! probe sleeps [`RESOLUTION`] at a time and records the whole interval between two wakes, as
+//! Node's histogram does (about 20 ms when idle), which grows when the runtime's workers are
+//! busy. Samples are kept for one snapshot window, at most
 //! [`MAX_SAMPLES`] of them (a 30 s window at 20 ms needs 1,500); beyond that the newest replace
 //! the oldest.
 
