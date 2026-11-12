@@ -102,3 +102,52 @@ pub fn from_ejson(value: &Value) -> Result<Bson> {
 pub fn reference(text: &str) -> Value {
     serde_json::from_str(text).expect("recorded reference")
 }
+
+/// The recorders' fixed random bytes: block `i` is SHA-256(`{label}:{i}`), consumed in order.
+#[derive(Debug)]
+pub struct StreamRandom {
+    label: String,
+    state: std::sync::Mutex<(u64, Vec<u8>)>,
+}
+
+impl StreamRandom {
+    pub fn new(label: &str) -> Self {
+        Self {
+            label: label.to_owned(),
+            state: std::sync::Mutex::new((0, Vec::new())),
+        }
+    }
+}
+
+impl dima_core::Random for StreamRandom {
+    fn fill(&self, buf: &mut [u8]) -> Result<(), dima_core::RandomError> {
+        let mut state = self.state.lock().unwrap();
+        while state.1.len() < buf.len() {
+            let block = state.0;
+            state.0 += 1;
+            let digest = dima_core::crypto::sha256(format!("{}:{block}", self.label));
+            state.1.extend_from_slice(&digest.0);
+        }
+        let rest = state.1.split_off(buf.len());
+        buf.copy_from_slice(&state.1);
+        state.1 = rest;
+        Ok(())
+    }
+}
+
+/// JSON with every number as a double, so `1.0` and `1` compare equal (a JavaScript reading).
+pub fn numbers_as_doubles(value: &Value) -> Value {
+    match value {
+        Value::Number(n) => n
+            .as_f64()
+            .and_then(serde_json::Number::from_f64)
+            .map_or(Value::Null, Value::Number),
+        Value::Array(items) => Value::Array(items.iter().map(numbers_as_doubles).collect()),
+        Value::Object(map) => Value::Object(
+            map.iter()
+                .map(|(k, v)| (k.clone(), numbers_as_doubles(v)))
+                .collect(),
+        ),
+        other => other.clone(),
+    }
+}
