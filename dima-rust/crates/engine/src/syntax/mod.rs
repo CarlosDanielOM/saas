@@ -108,6 +108,19 @@ impl SyntaxEngine {
     /// does before it evaluates. One budget covers every segment; a resource limit anywhere fails
     /// the whole plan, while ordinary parse errors stay with their segment.
     pub fn compile_template(&self, input: &str) -> Result<CompiledTemplate, Diagnostic> {
+        self.compile(input, false)
+    }
+
+    /// As [`SyntaxEngine::compile_template`], except that a resource limit hit inside one
+    /// expression becomes that segment's [`SegmentStep::ParseError`] (shown in chat as
+    /// `[Parse error: …]`) instead of failing the whole plan; only a source over the length
+    /// limit fails. The budget stays shared, so once it is spent every later expression gets
+    /// the same limit error.
+    pub fn compile_segments(&self, input: &str) -> Result<CompiledTemplate, Diagnostic> {
+        self.compile(input, true)
+    }
+
+    fn compile(&self, input: &str, isolate_limits: bool) -> Result<CompiledTemplate, Diagnostic> {
         source::check_length(input, self.limits)?;
         let view = View::original(Arc::from(input));
         let mut budget = Budget::new(self.limits);
@@ -123,7 +136,9 @@ impl SyntaxEngine {
                     let range = segment.span.start..segment.span.end;
                     match self.parse_range(&view, range, &mut budget) {
                         Ok(program) => SegmentStep::Program(program),
-                        Err(error) if error.is_resource_limit() => return Err(error),
+                        Err(error) if error.is_resource_limit() && !isolate_limits => {
+                            return Err(error);
+                        }
                         Err(error) => SegmentStep::ParseError(error),
                     }
                 }
