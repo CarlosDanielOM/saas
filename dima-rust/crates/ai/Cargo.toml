@@ -9,6 +9,8 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+dima-store.workspace = true
+redis.workspace = true
 tokio.workspace = true
 dima-http.workspace = true
 dima-core.workspace = true

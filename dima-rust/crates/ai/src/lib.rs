@@ -1,6 +1,7 @@
-//! AI data services. Embeddings are supplied by callers.
+//! AI data services and pure context rules.
 #![forbid(unsafe_code)]
-pub mod memory;
 pub mod prompts;
+pub mod memory;
 pub mod qdrant;
 pub mod summary;
+pub mod threads;

@@ -1,0 +1,361 @@
+[
+  {
+    "label": "trimmed",
+    "context": [
+      {
+        "role": "user",
+        "timestamp": 1700000000013,
+        "username": "Alice",
+        "message": "message 13"
+      },
+      {
+        "role": "user",
+        "timestamp": 1700000000014,
+        "username": "Alice",
+        "message": "message 14"
+      },
+      {
+        "role": "user",
+        "timestamp": 1700000000015,
+        "username": "Alice",
+        "message": "message 15"
+      },
+      {
+        "role": "user",
+        "timestamp": 1700000000016,
+        "username": "Alice",
+        "message": "message 16"
+      },
+      {
+        "role": "user",
+        "timestamp": 1700000000017,
+        "username": "Alice",
+        "message": "message 17"
+      },
+      {
+        "role": "user",
+        "timestamp": 1700000000018,
+        "username": "Alice",
+        "message": "message 18"
+      },
+      {
+        "role": "user",
+        "timestamp": 1700000000019,
+        "username": "Alice",
+        "message": "message 19"
+      },
+      {
+        "role": "user",
+        "timestamp": 1700000000020,
+        "username": "Alice",
+        "message": "message 20"
+      },
+      {
+        "role": "user",
+        "timestamp": 1700000000021,
+        "username": "Alice",
+        "message": "message 21"
+      },
+      {
+        "role": "assistant",
+        "timestamp": 1700000000023,
+        "username": "DomDimaBot",
+        "message": "😀 é مرحبا",
+        "badges": "🤖"
+      }
+    ],
+    "values": {
+      "twitch:c:ai:thread:00000000-0000-4000-8000-000000000001:meta": {
+        "type": "string",
+        "data": {
+          "threadID": "00000000-0000-4000-8000-000000000001",
+          "channelID": "c",
+          "ownerUserID": "u",
+          "ownerUsername": "Alice",
+          "createdAt": "2023-11-14T22:13:20.000Z",
+          "updatedAt": "2023-11-14T22:13:20.023Z",
+          "lastActivityTs": 1700000000023,
+          "status": "active",
+          "topicSeed": "I love chess",
+          "topicKeywords": [
+            "love",
+            "chess",
+            "message"
+          ],
+          "messageCount": 23,
+          "lastUserMessage": "message 21",
+          "lastAssistantMessage": "😀 é مرحبا"
+        },
+        "ttl": 86400
+      },
+      "twitch:c:ai:thread:00000000-0000-4000-8000-000000000001:turns": {
+        "type": "list",
+        "data": [
+          {
+            "role": "assistant",
+            "username": "DomDimaBot",
+            "message": "😀 é مرحبا",
+            "timestamp": 1700000000023,
+            "delivered": false
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 21",
+            "timestamp": 1700000000021
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 20",
+            "timestamp": 1700000000020
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 19",
+            "timestamp": 1700000000019
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 18",
+            "timestamp": 1700000000018
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 17",
+            "timestamp": 1700000000017
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 16",
+            "timestamp": 1700000000016
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 15",
+            "timestamp": 1700000000015
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 14",
+            "timestamp": 1700000000014
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 13",
+            "timestamp": 1700000000013
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 12",
+            "timestamp": 1700000000012
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 11",
+            "timestamp": 1700000000011
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 10",
+            "timestamp": 1700000000010
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 9",
+            "timestamp": 1700000000009
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 8",
+            "timestamp": 1700000000008
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 7",
+            "timestamp": 1700000000007
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 6",
+            "timestamp": 1700000000006
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 5",
+            "timestamp": 1700000000005
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 4",
+            "timestamp": 1700000000004
+          },
+          {
+            "role": "user",
+            "userID": "u",
+            "username": "Alice",
+            "message": "message 3",
+            "timestamp": 1700000000003
+          }
+        ],
+        "ttl": 86400
+      },
+      "twitch:c:ai:threads:active": {
+        "type": "zset",
+        "data": [
+          {
+            "value": "00000000-0000-4000-8000-000000000001",
+            "score": 1700000000000
+          }
+        ],
+        "ttl": 86400
+      },
+      "twitch:c:ai:user:u:threads": {
+        "type": "zset",
+        "data": [
+          {
+            "value": "00000000-0000-4000-8000-000000000001",
+            "score": 1700000000000
+          }
+        ],
+        "ttl": 86400
+      }
+    }
+  },
+  {
+    "label": "evicted",
+    "context": {
+      "userEvicted": 2,
+      "channelEvicted": 0
+    },
+    "values": {
+      "twitch:c:ai:thread:00000000-0000-4000-8000-000000000003:meta": {
+        "type": "string",
+        "data": {
+          "threadID": "00000000-0000-4000-8000-000000000003",
+          "channelID": "c",
+          "ownerUserID": "u",
+          "ownerUsername": "Alice",
+          "createdAt": "2023-11-14T22:13:20.102Z",
+          "updatedAt": "2023-11-14T22:13:20.102Z",
+          "lastActivityTs": 1700000000102,
+          "status": "active",
+          "topicSeed": "seed 2",
+          "topicKeywords": [
+            "seed"
+          ],
+          "messageCount": 0
+        },
+        "ttl": 86400
+      },
+      "twitch:c:ai:thread:00000000-0000-4000-8000-000000000004:meta": {
+        "type": "string",
+        "data": {
+          "threadID": "00000000-0000-4000-8000-000000000004",
+          "channelID": "c",
+          "ownerUserID": "u",
+          "ownerUsername": "Alice",
+          "createdAt": "2023-11-14T22:13:20.103Z",
+          "updatedAt": "2023-11-14T22:13:20.103Z",
+          "lastActivityTs": 1700000000103,
+          "status": "active",
+          "topicSeed": "seed 3",
+          "topicKeywords": [
+            "seed"
+          ],
+          "messageCount": 0
+        },
+        "ttl": 86400
+      },
+      "twitch:c:ai:thread:00000000-0000-4000-8000-000000000005:meta": {
+        "type": "string",
+        "data": {
+          "threadID": "00000000-0000-4000-8000-000000000005",
+          "channelID": "c",
+          "ownerUserID": "u",
+          "ownerUsername": "Alice",
+          "createdAt": "2023-11-14T22:13:20.104Z",
+          "updatedAt": "2023-11-14T22:13:20.104Z",
+          "lastActivityTs": 1700000000104,
+          "status": "active",
+          "topicSeed": "seed 4",
+          "topicKeywords": [
+            "seed"
+          ],
+          "messageCount": 0
+        },
+        "ttl": 86400
+      },
+      "twitch:c:ai:threads:active": {
+        "type": "zset",
+        "data": [
+          {
+            "value": "00000000-0000-4000-8000-000000000003",
+            "score": 1700000000102
+          },
+          {
+            "value": "00000000-0000-4000-8000-000000000004",
+            "score": 1700000000103
+          },
+          {
+            "value": "00000000-0000-4000-8000-000000000005",
+            "score": 1700000000104
+          }
+        ],
+        "ttl": 86400
+      },
+      "twitch:c:ai:user:u:threads": {
+        "type": "zset",
+        "data": [
+          {
+            "value": "00000000-0000-4000-8000-000000000003",
+            "score": 1700000000102
+          },
+          {
+            "value": "00000000-0000-4000-8000-000000000004",
+            "score": 1700000000103
+          },
+          {
+            "value": "00000000-0000-4000-8000-000000000005",
+            "score": 1700000000104
+          }
+        ],
+        "ttl": 86400
+      }
+    }
+  }
+]
