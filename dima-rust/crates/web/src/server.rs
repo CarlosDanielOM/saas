@@ -2,10 +2,16 @@
 //!
 //! Bounds, with the defaults of [`ServeOptions`]:
 //!
-//! - **Connections**: at most [`ServeOptions::max_connections`] open at once, upgraded
-//!   (WebSocket) connections included. At the cap the server stops accepting: new connections
-//!   wait in the kernel's listen backlog (511, as in Node) until one closes, and the kernel
-//!   refuses connections once the backlog is full.
+//! - **Connections**: at most [`ServeOptions::max_connections`] ordinary HTTP connections open
+//!   at once. At the cap the server stops accepting: new connections wait in the kernel's listen
+//!   backlog (511, as in Node) until one closes, and the kernel refuses connections once the
+//!   backlog is full.
+//! - **Long-lived streams**: a connection that is upgraded (`101`, WebSocket) or starts an
+//!   event stream (`Content-Type: text/event-stream`) moves from that cap to a quota of its own,
+//!   [`ServeOptions::max_streams`], and stays there until it closes, so overlays holding
+//!   streams open cannot shut ordinary HTTP out. When the stream quota is full the answer is
+//!   replaced with `503 Service Unavailable` (the upgrade does not happen, the event stream's
+//!   body is dropped and its senders see the client gone).
 //! - **Shutdown**: the server stops accepting, lets open requests finish and waits for upgraded
 //!   sockets and their [`UpgradeGuard`]s, all up to [`ServeOptions::drain_timeout`]; then HTTP
 //!   connections are aborted and every upgraded socket fails its reads and writes (the owner
@@ -34,6 +40,7 @@ use axum::body::HttpBody;
 use bytes::Bytes;
 use hyper::body::{Frame, Incoming, SizeHint};
 use hyper_util::rt::{TokioIo, TokioTimer};
+use std::sync::{Mutex, PoisonError};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::{TcpListener, TcpStream};
 
@@ -75,10 +82,15 @@ pub struct ServeOptions {
     /// before it is closed (Node's `server.keepAliveTimeout`, 5 s). Streaming responses and
     /// slow handlers count as in progress.
     pub keep_alive_timeout: Duration,
-    /// Connections served at once, upgraded ones included (10 000 by default; Node has no cap
-    /// and stops only at the file-descriptor limit). At the cap the server stops accepting until
-    /// a connection closes; waiting clients queue in the kernel backlog.
+    /// Ordinary HTTP connections served at once (10 000 by default; Node has no cap and stops
+    /// only at the file-descriptor limit). At the cap the server stops accepting until a
+    /// connection closes or moves to the stream quota; waiting clients queue in the kernel
+    /// backlog.
     pub max_connections: usize,
+    /// Long-lived streams open at once: upgraded connections and event streams, which leave the
+    /// [`ServeOptions::max_connections`] cap when they start (10 000 by default). Beyond it the
+    /// answer that would start one becomes `503`.
+    pub max_streams: usize,
     /// After shutdown is requested, how long open connections may finish their requests, and
     /// upgraded connections may close, before they are closed.
     pub drain_timeout: Duration,
@@ -91,6 +103,7 @@ impl Default for ServeOptions {
             request_timeout: Duration::from_secs(300),
             keep_alive_timeout: Duration::from_secs(5),
             max_connections: 10_000,
+            max_streams: 10_000,
             drain_timeout: Duration::from_secs(10),
         }
     }
@@ -249,9 +262,49 @@ impl HttpBody for TrackedBody {
     }
 }
 
+/// Which quota a connection counts against: ordinary HTTP, or long-lived streams once it was
+/// upgraded or started an event stream. Shared by the socket (which holds it for as long as it
+/// lives, upgraded or not) and the connection's request handling (which moves it).
+struct Slot(Mutex<Quota>);
+
+/// The permit held and the quota it came from.
+struct Quota {
+    stream: bool,
+    _permit: OwnedSemaphorePermit,
+}
+
+impl Slot {
+    fn http(permit: OwnedSemaphorePermit) -> Self {
+        Self(Mutex::new(Quota {
+            stream: false,
+            _permit: permit,
+        }))
+    }
+
+    /// Moves the connection to the stream quota (releasing its HTTP slot); `false` when the
+    /// stream quota is full.
+    fn promote(&self, streams: &Arc<Semaphore>) -> bool {
+        let mut quota = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        if quota.stream {
+            return true;
+        }
+        match Arc::clone(streams).try_acquire_owned() {
+            Ok(permit) => {
+                *quota = Quota {
+                    stream: true,
+                    _permit: permit,
+                };
+                true
+            }
+            Err(_) => false,
+        }
+    }
+}
+
 /// What the server shares with every connection.
 #[derive(Clone)]
 struct Shared {
+    streams: Arc<Semaphore>,
     /// Every socket holds a token until it is dropped; shutdown waits for them.
     sockets: TaskTracker,
     /// Cancelled when shutdown begins: upgrade owners watch it ([`UpgradeGuard::shutdown`]).
@@ -276,7 +329,8 @@ struct Shared {
 ///   `ConnectionAborted` (a pending read is woken); drop it then. `serve` returns at most one
 ///   more second later whatever the owners do.
 ///
-/// A clone is a second guard: shutdown waits for every one.
+/// The connection counts against [`ServeOptions::max_streams`] once the `101` is sent, until the
+/// socket is dropped. A clone is a second guard: shutdown waits for every one.
 #[derive(Clone)]
 pub struct UpgradeGuard {
     shutdown: CancellationToken,
@@ -309,7 +363,7 @@ impl UpgradeGuard {
 struct ConnectionIo {
     stream: TcpStream,
     activity: Arc<Activity>,
-    _slot: OwnedSemaphorePermit,
+    _slot: Arc<Slot>,
     _tracked: TaskTrackerToken,
     /// Two waiters, so a reader and a writer on different tasks are both woken.
     forced_read: Pin<Box<WaitForCancellationFutureOwned>>,
@@ -408,6 +462,7 @@ where
 {
     let slots = Arc::new(Semaphore::new(options.max_connections.max(1)));
     let shared = Shared {
+        streams: Arc::new(Semaphore::new(options.max_streams.max(1))),
         sockets: TaskTracker::new(),
         shutdown: shutdown.clone(),
         force: CancellationToken::new(),
@@ -453,6 +508,32 @@ where
     Ok(())
 }
 
+/// An answer that starts a long-lived stream: a protocol switch or an event stream.
+fn is_long_lived<B>(response: &http::Response<B>) -> bool {
+    response.status() == http::StatusCode::SWITCHING_PROTOCOLS
+        || response
+            .headers()
+            .get(http::header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .is_some_and(|value| {
+                value
+                    .trim_start()
+                    .get(..17)
+                    .is_some_and(|kind| kind.eq_ignore_ascii_case("text/event-stream"))
+            })
+}
+
+/// The answer when the stream quota is full.
+fn streams_full() -> http::Response<Body> {
+    let mut response = http::Response::new(Body::from("Service Unavailable"));
+    *response.status_mut() = http::StatusCode::SERVICE_UNAVAILABLE;
+    response.headers_mut().insert(
+        http::header::CONTENT_TYPE,
+        http::HeaderValue::from_static("text/plain; charset=utf-8"),
+    );
+    response
+}
+
 async fn connection<T, B>(
     stream: TcpStream,
     peer: SocketAddr,
@@ -472,10 +553,11 @@ async fn connection<T, B>(
     // Node sets TCP_NODELAY on server sockets by default.
     let _ = stream.set_nodelay(true);
     let activity = Arc::new(Activity::new());
+    let slot = Arc::new(Slot::http(permit));
     let io = ConnectionIo {
         stream,
         activity: Arc::clone(&activity),
-        _slot: permit,
+        _slot: Arc::clone(&slot),
         _tracked: shared.sockets.token(),
         forced_read: Box::pin(shared.force.clone().cancelled_owned()),
         forced_write: Box::pin(shared.force.clone().cancelled_owned()),
@@ -498,10 +580,17 @@ async fn connection<T, B>(
             });
         }
         let response = service.clone().oneshot(request);
+        let slot = Arc::clone(&slot);
+        let streams = Arc::clone(&shared.streams);
         async move {
-            let response = response.await?;
+            let response = response.await?.map(Body::new);
+            let response = if is_long_lived(&response) && !slot.promote(&streams) {
+                streams_full()
+            } else {
+                response
+            };
             Ok::<_, Infallible>(response.map(|inner| TrackedBody {
-                inner: Body::new(inner),
+                inner,
                 _in_flight: in_flight,
             }))
         }

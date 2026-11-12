@@ -370,6 +370,18 @@ async fn stubborn_upgrade(req: &mut Req) -> Result<Response, Error> {
     switching()
 }
 
+/// GET /sse: an event stream that stays open until the client goes away.
+async fn sse_forever(_req: &mut Req) -> Response {
+    let (events, body) = dima_web::sse::channel(dima_web::sse::SseOptions::new());
+    tokio::spawn(async move {
+        let _ = events.comment("open").await;
+        events.closed().await;
+    });
+    Response::new()
+        .header("Content-Type", "text/event-stream")
+        .stream(body)
+}
+
 async fn slow(_req: &mut Req) -> Response {
     tokio::time::sleep(Duration::from_millis(200)).await;
     Response::new().text("done")
@@ -391,6 +403,7 @@ async fn start(
     root.get("/up", echo_upgrade);
     root.get("/guarded", guarded_upgrade);
     root.get("/stubborn", stubborn_upgrade);
+    root.get("/sse", sse_forever);
     root.get("/slow", slow);
     root.middleware_at("/read", dima_web::body::json());
     root.post("/read", read_body);
@@ -836,4 +849,74 @@ async fn shutdown_closes_upgraded_sockets_that_ignore_it() {
         .expect("serve returned")
         .expect("join")
         .expect("serve");
+}
+
+async fn status_of(addr: std::net::SocketAddr, request: &str) -> String {
+    let raw = tokio::time::timeout(Duration::from_secs(3), roundtrip(addr, request))
+        .await
+        .expect("answered");
+    raw.lines().next().unwrap_or_default().to_owned()
+}
+
+/// Review finding: upgraded sockets and event streams held a connection slot for as long as
+/// they lived, so enough of them shut ordinary HTTP out. They now move to a quota of their own.
+#[tokio::test]
+async fn long_lived_streams_have_their_own_quota() {
+    let options = ServeOptions {
+        max_connections: 1,
+        max_streams: 1,
+        ..ServeOptions::default()
+    };
+    let (addr, token, server) = start(options).await;
+    let mut events = TcpStream::connect(addr).await.expect("connect");
+    events
+        .write_all(b"GET /sse HTTP/1.1\r\nHost: x\r\n\r\n")
+        .await
+        .expect("write");
+    let (head, _) = read_response(&mut events, true).await;
+    assert!(head.starts_with("HTTP/1.1 200"), "{head}");
+
+    // The only HTTP slot is free again: ordinary requests are served.
+    let close = "Host: x\r\nConnection: close\r\n\r\n";
+    assert_eq!(
+        status_of(addr, &format!("GET /who HTTP/1.1\r\n{close}")).await,
+        "HTTP/1.1 200 OK"
+    );
+    // The stream quota is full: another stream or an upgrade is refused.
+    assert_eq!(
+        status_of(addr, &format!("GET /sse HTTP/1.1\r\n{close}")).await,
+        "HTTP/1.1 503 Service Unavailable"
+    );
+    let mut refused = TcpStream::connect(addr).await.expect("connect");
+    refused
+        .write_all(b"GET /up HTTP/1.1\r\nHost: x\r\nConnection: Upgrade\r\nUpgrade: echo\r\n\r\n")
+        .await
+        .expect("write");
+    let (head, _) =
+        tokio::time::timeout(Duration::from_secs(3), read_response(&mut refused, false))
+            .await
+            .expect("answered");
+    assert!(
+        head.starts_with("HTTP/1.1 503 Service Unavailable"),
+        "{head}"
+    );
+    drop(refused);
+    // Once the stream closes its slot is free.
+    drop(events);
+    let mut reopened = String::new();
+    for _ in 0..100 {
+        let mut stream = TcpStream::connect(addr).await.expect("connect");
+        stream
+            .write_all(b"GET /sse HTTP/1.1\r\nHost: x\r\n\r\n")
+            .await
+            .expect("write");
+        reopened = read_response(&mut stream, true).await.0;
+        if reopened.starts_with("HTTP/1.1 200") {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(reopened.starts_with("HTTP/1.1 200"), "{reopened}");
+    token.cancel();
+    server.await.expect("join").expect("serve");
 }

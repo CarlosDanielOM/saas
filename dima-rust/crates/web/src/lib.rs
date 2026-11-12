@@ -70,7 +70,7 @@
 //!
 //! Serving: `dima_web::serve(dima_web::bind(3000)?, app, shutdown_token, ServeOptions::default())`.
 //! [`bind`] listens like Node (dual-stack `::`), and [`ServeOptions`] carries Node's timeouts and
-//! this crate's bounds (connections, request head size). A Socket.IO
+//! this crate's bounds (HTTP connections, long-lived streams, request head size). A Socket.IO
 //! layer can wrap the [`App`] (it is a `tower::Service`), and handlers can take a connection
 //! upgrade with [`Req::take_upgrade`] and the [`UpgradeGuard`] that ties it to shutdown with
 //! [`Req::take_upgrade_guard`].
