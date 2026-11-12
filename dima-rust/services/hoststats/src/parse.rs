@@ -80,7 +80,7 @@ pub fn load(s: &str) -> V {
         .split(char::is_whitespace)
         .filter(|s| !s.is_empty())
         .collect();
-    let get = |i| {
+    let get = |i: usize| {
         f.get(i)
             .map(|s| json!(dima_text::parse_number(s)))
             .unwrap_or(V::Null)

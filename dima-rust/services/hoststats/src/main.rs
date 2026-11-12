@@ -7,6 +7,24 @@ use std::{
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> anyhow::Result<()> {
     let env: std::collections::HashMap<_, _> = std::env::vars().collect();
+    if std::env::args().nth(1).as_deref() == Some("--healthcheck") {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let port = env.get("PORT").map(String::as_str).unwrap_or("3211");
+        tokio::time::timeout(std::time::Duration::from_secs(4), async {
+            let mut stream = tokio::net::TcpStream::connect(format!("127.0.0.1:{port}")).await?;
+            stream
+                .write_all(b"GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+                .await?;
+            let mut head = [0; 64];
+            let n = stream.read(&mut head).await?;
+            if !head[..n].starts_with(b"HTTP/1.1 200 ") {
+                anyhow::bail!("hoststats unhealthy")
+            }
+            Ok::<_, anyhow::Error>(())
+        })
+        .await??;
+        return Ok(());
+    }
     let config = dima_hoststats::config::Config::from_values(|k| env.get(k).cloned());
     let port = config.port;
     let app = dima_hoststats::build(config, Arc::new(SystemClock), Arc::new(SystemRandom))?;

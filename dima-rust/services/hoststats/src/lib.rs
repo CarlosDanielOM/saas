@@ -163,11 +163,13 @@ impl State {
             Ok(list) => {
                 reachable = true;
                 let list = p::select(&list, &self.config.projects);
-                if prev.version_at.is_none_or(|last| at-last>3600000) {
-                    if let Ok(v)=self.docker.get("/version",5000).await {
-                        if v["Version"].as_str().is_some_and(|s|!s.is_empty()) {prev.version=v["Version"].clone();}
+                if prev.version_at.is_none_or(|last| at - last > 3600000) {
+                    if let Ok(v) = self.docker.get("/version", 5000).await {
+                        if v["Version"].as_str().is_some_and(|s| !s.is_empty()) {
+                            prev.version = v["Version"].clone();
+                        }
                     }
-                    prev.version_at=Some(at);
+                    prev.version_at = Some(at);
                 }
                 let df = self.df.lock().await;
                 use futures_util::{StreamExt, stream};
@@ -245,7 +247,7 @@ impl State {
                 });
             }
         }
-        let version=prev.version.clone();
+        let version = prev.version.clone();
         let mut latest = self.latest.write().await;
         let mut df = self.df.lock().await.value.clone();
         if let Some(m) = df.as_object_mut() {
@@ -256,22 +258,25 @@ impl State {
         *latest = json!({"version":1,"at":dima_text::to_iso_string(at),"sampleMs":self.config.sample_ms,"host":host,"docker":{"reachable":reachable,"version":version,"df":df},"containers":rows,"errors":errors});
         drop(latest);
         if reachable {
-            let df=self.df.lock().await;
-            let due=df.value.is_null() || at-df.at>self.config.df_ms as i64;
+            let df = self.df.lock().await;
+            let due = df.value.is_null() || at - df.at > self.config.df_ms as i64;
             drop(df);
-            if due && let Ok(mut task)=self.df_task.lock() {
-                if task.as_ref().is_none_or(|h|h.is_finished()) {
-                    let docker=self.docker.clone();let shared=self.df.clone();let clock=self.clock.clone();
-                    *task=Some(tokio::spawn(async move {
-                        let result=docker.get("/system/df",120000).await;
-                        let mut df=shared.lock().await;
-                        if let Ok(v)=result {df.value=p::df(&v,clock.now_ms());}
-                        df.at=clock.now_ms();
+            if due && let Ok(mut task) = self.df_task.lock() {
+                if task.as_ref().is_none_or(|h| h.is_finished()) {
+                    let docker = self.docker.clone();
+                    let shared = self.df.clone();
+                    let clock = self.clock.clone();
+                    *task = Some(tokio::spawn(async move {
+                        let result = docker.get("/system/df", 120000).await;
+                        let mut df = shared.lock().await;
+                        if let Ok(v) = result {
+                            df.value = p::df(&v, clock.now_ms());
+                        }
+                        df.at = clock.now_ms();
                     }));
                 }
             }
         }
-
     }
 }
 async fn handle(req: &mut dima_web::Req<State>) -> dima_web::Response {
@@ -316,5 +321,11 @@ async fn handle(req: &mut dima_web::Req<State>) -> dima_web::Response {
 }
 
 impl Drop for State {
-    fn drop(&mut self) {if let Ok(task)=self.df_task.get_mut() {if let Some(task)=task.take(){task.abort();}}}
+    fn drop(&mut self) {
+        if let Ok(task) = self.df_task.get_mut() {
+            if let Some(task) = task.take() {
+                task.abort();
+            }
+        }
+    }
 }

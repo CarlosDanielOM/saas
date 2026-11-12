@@ -1,0 +1,41 @@
+{
+  "rig_target": 1,
+  "description": "Hoststats Node reference and Rust candidate, deterministic proc and missing socket.",
+  "reference": {
+    "command": [
+      "node",
+      "src/index.mjs"
+    ],
+    "cwd": "{rig_dir}/../../dima-hoststats",
+    "env": {
+      "PORT": "{port}",
+      "HOSTSTATS_PROC": "{data_dir}/proc",
+      "HOSTSTATS_NET_DEV": "{data_dir}/net",
+      "HOSTSTATS_DISK_PATH": "/does-not-exist-hoststats",
+      "DOCKER_SOCKET": "/tmp/hoststats-rig-absent.sock"
+    },
+    "pass_env": [
+      "PATH"
+    ],
+    "ready": {
+      "http": "/health",
+      "timeout_ms": 10000
+    }
+  },
+  "candidate": {
+    "command": [
+      "{rig_dir}/../target/debug/dima-hoststats"
+    ],
+    "env": {
+      "PORT": "{port}",
+      "HOSTSTATS_PROC": "{data_dir}/proc",
+      "HOSTSTATS_NET_DEV": "{data_dir}/net",
+      "HOSTSTATS_DISK_PATH": "/does-not-exist-hoststats",
+      "DOCKER_SOCKET": "/tmp/hoststats-rig-absent.sock"
+    },
+    "ready": {
+      "http": "/health",
+      "timeout_ms": 10000
+    }
+  }
+}

@@ -1,0 +1,423 @@
+[
+  {
+    "fn": "parseCpuStat",
+    "args": [
+      "cpu  100 0 50 800 50 0 0 0 0 0\ncpu0 1 2 3"
+    ],
+    "result": {
+      "total": 1000,
+      "idle": 800,
+      "iowait": 50,
+      "steal": 0
+    }
+  },
+  {
+    "fn": "parseCpuStat",
+    "args": [
+      "cpu  200 0 100 1500 100 0 0 0 0 0"
+    ],
+    "result": {
+      "total": 1900,
+      "idle": 1500,
+      "iowait": 100,
+      "steal": 0
+    }
+  },
+  {
+    "fn": "cpuBetween",
+    "args": [
+      {
+        "total": 1000,
+        "idle": 800,
+        "iowait": 50,
+        "steal": 0
+      },
+      {
+        "total": 1900,
+        "idle": 1500,
+        "iowait": 100,
+        "steal": 0
+      }
+    ],
+    "result": {
+      "cpuPct": 16.666666666666664,
+      "iowaitPct": 5.555555555555555,
+      "stealPct": 0
+    }
+  },
+  {
+    "fn": "parseMeminfo",
+    "args": [
+      "MemTotal: 1000 kB\nMemFree: 100 kB\nMemAvailable: 400 kB\nBuffers: 10 kB\nCached: 200 kB\nSReclaimable: 20 kB\nShmem: 5 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB"
+    ],
+    "result": {
+      "memTotal": 1024000,
+      "memAvailable": 409600,
+      "memUsed": 614400,
+      "memFree": 102400,
+      "memCache": 235520,
+      "memShared": 5120,
+      "swapTotal": 0,
+      "swapUsed": 0
+    }
+  },
+  {
+    "fn": "parseDiskstats",
+    "args": [
+      "   8       0 sda 10 0 100 0 5 0 200 0 0 0 0\n   8       1 sda1 10 0 100 0 5 0 200 0 0 0 0\n   7       0 loop0 1 0 999 0 0 0 999 0 0 0 0"
+    ],
+    "result": {
+      "read": 51200,
+      "written": 102400
+    }
+  },
+  {
+    "fn": "parseNetDev",
+    "args": [
+      "h1\nh2\n    lo: 50 1 0 0 0 0 0 0 50 1 0 0 0 0 0 0\n  eth0: 1000 1 0 0 0 0 0 0 300 1 0 0 0 0 0 0\nveth1: 9 1 0 0 0 0 0 0 9 1 0 0 0 0 0 0\nbr-x: 9 1 0 0 0 0 0 0 9 1 0 0 0 0 0 0"
+    ],
+    "result": {
+      "rx": 1000,
+      "tx": 300
+    }
+  },
+  {
+    "fn": "parsePressure",
+    "args": [
+      "some avg10=1.92 avg60=0.52 avg300=0.15 total=1\nfull avg10=0.00"
+    ],
+    "result": 1.92
+  },
+  {
+    "fn": "rate",
+    "args": [
+      100,
+      50,
+      10
+    ],
+    "result": null
+  },
+  {
+    "fn": "rate",
+    "args": [
+      100,
+      300,
+      10
+    ],
+    "result": 20
+  },
+  {
+    "fn": "selectContainers",
+    "args": [
+      [
+        {
+          "Id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "Names": [
+            "/dima-server"
+          ],
+          "Labels": {
+            "com.docker.compose.project": "dimabot"
+          }
+        },
+        {
+          "Id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "Names": [
+            "/other-app"
+          ],
+          "Labels": {
+            "com.docker.compose.project": "someone-else"
+          }
+        },
+        {
+          "Id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "Names": [
+            "/saas-ops-test"
+          ],
+          "Labels": {}
+        }
+      ],
+      [
+        "dimabot"
+      ]
+    ],
+    "result": [
+      {
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "name": "dima-server",
+        "project": "dimabot"
+      }
+    ]
+  },
+  {
+    "fn": "statsCounters",
+    "args": [
+      {
+        "cpu_stats": {
+          "cpu_usage": {
+            "total_usage": 3000000000
+          }
+        },
+        "memory_stats": {
+          "usage": 800,
+          "stats": {
+            "inactive_file": 300
+          }
+        },
+        "pids_stats": {
+          "current": 7
+        },
+        "networks": {
+          "eth0": {
+            "rx_bytes": 2000,
+            "tx_bytes": 1000
+          }
+        },
+        "blkio_stats": {
+          "io_service_bytes_recursive": [
+            {
+              "op": "read",
+              "value": 500
+            },
+            {
+              "op": "write",
+              "value": 900
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "cpuNs": 3000000000,
+      "memBytes": 500,
+      "pids": 7,
+      "rx": 2000,
+      "tx": 1000,
+      "read": 500,
+      "written": 900
+    }
+  },
+  {
+    "fn": "containerView",
+    "args": [
+      {
+        "name": "mongodb",
+        "project": "databases"
+      },
+      {
+        "State": {
+          "Status": "running",
+          "StartedAt": "2026-10-01T00:00:00Z",
+          "FinishedAt": "0001-01-01T00:00:00Z",
+          "Health": {
+            "Status": "healthy",
+            "FailingStreak": 0
+          }
+        },
+        "RestartCount": 2,
+        "Image": "sha256:abc",
+        "Config": {
+          "Image": "mongo:8",
+          "Labels": {
+            "com.docker.compose.service": "mongodb"
+          }
+        },
+        "HostConfig": {
+          "Memory": 1000,
+          "NanoCpus": 2000000000,
+          "PidsLimit": 64,
+          "RestartPolicy": {
+            "Name": "unless-stopped"
+          }
+        },
+        "Mounts": [
+          {
+            "Type": "volume",
+            "Name": "vol1"
+          },
+          {
+            "Type": "bind",
+            "Source": "/x"
+          }
+        ]
+      },
+      {
+        "cpuNs": 3000000000,
+        "memBytes": 500,
+        "pids": 7,
+        "rx": 2000,
+        "tx": 1000,
+        "read": 500,
+        "written": 900
+      },
+      {
+        "at": 0,
+        "cpuNs": 1000000000,
+        "rx": 1000,
+        "tx": 500,
+        "read": 0,
+        "written": 100
+      },
+      10000
+    ],
+    "result": {
+      "name": "mongodb",
+      "project": "databases",
+      "service": "mongodb",
+      "image": "mongo:8",
+      "imageId": "sha256:abc",
+      "state": "running",
+      "health": "healthy",
+      "failingStreak": 0,
+      "startedAt": "2026-10-01T00:00:00Z",
+      "finishedAt": null,
+      "exitCode": null,
+      "oomKilled": false,
+      "restartCount": 2,
+      "restartPolicy": "unless-stopped",
+      "cpuPct": 20,
+      "cpuLimit": 2,
+      "memBytes": 500,
+      "memLimit": 1000,
+      "pids": 7,
+      "pidsLimit": 64,
+      "netRx": 2000,
+      "netTx": 1000,
+      "netRxBps": 100,
+      "netTxBps": 50,
+      "blkRead": 500,
+      "blkWrite": 900,
+      "blkReadBps": 50,
+      "blkWriteBps": 80,
+      "imageBytes": null,
+      "writableBytes": null,
+      "volumeBytes": null,
+      "volumes": [
+        "vol1"
+      ]
+    }
+  },
+  {
+    "fn": "containerView",
+    "args": [
+      {
+        "name": "x",
+        "project": "p"
+      },
+      {
+        "State": {
+          "Status": "exited",
+          "ExitCode": 137,
+          "OOMKilled": true
+        },
+        "HostConfig": {}
+      },
+      null,
+      null,
+      1
+    ],
+    "result": {
+      "name": "x",
+      "project": "p",
+      "service": null,
+      "image": null,
+      "imageId": null,
+      "state": "exited",
+      "health": null,
+      "failingStreak": null,
+      "startedAt": null,
+      "finishedAt": null,
+      "exitCode": 137,
+      "oomKilled": true,
+      "restartCount": 0,
+      "restartPolicy": null,
+      "cpuPct": null,
+      "cpuLimit": null,
+      "memBytes": null,
+      "memLimit": null,
+      "pids": null,
+      "pidsLimit": null,
+      "netRx": null,
+      "netTx": null,
+      "netRxBps": null,
+      "netTxBps": null,
+      "blkRead": null,
+      "blkWrite": null,
+      "blkReadBps": null,
+      "blkWriteBps": null,
+      "imageBytes": null,
+      "writableBytes": null,
+      "volumeBytes": null,
+      "volumes": []
+    }
+  },
+  {
+    "fn": "parseDf",
+    "args": [
+      {
+        "LayersSize": 5000,
+        "Images": [
+          {
+            "Id": "i1",
+            "Size": 3000,
+            "SharedSize": 1000,
+            "Containers": 1
+          },
+          {
+            "Id": "i2",
+            "Size": 2500,
+            "SharedSize": 1000,
+            "Containers": 0
+          }
+        ],
+        "Containers": [
+          {
+            "Id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ImageID": "i1",
+            "SizeRw": 42
+          }
+        ],
+        "Volumes": [
+          {
+            "Name": "v",
+            "UsageData": {
+              "Size": 77
+            }
+          }
+        ],
+        "BuildCache": [
+          {
+            "Size": 10,
+            "InUse": false,
+            "Shared": false
+          },
+          {
+            "Size": 5,
+            "InUse": true
+          }
+        ]
+      },
+      0
+    ],
+    "result": {
+      "at": "1970-01-01T00:00:00.000Z",
+      "imagesCount": 2,
+      "imagesBytes": 5000,
+      "imagesUnusedBytes": 1500,
+      "buildCacheBytes": 15,
+      "buildCacheReclaimable": 10,
+      "volumesCount": 1,
+      "volumesBytes": 77,
+      "containersBytes": 42,
+      "byImage": {
+        "i1": 3000,
+        "i2": 2500
+      },
+      "byContainer": {
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 42
+      },
+      "byVolume": {
+        "v": 77
+      }
+    }
+  }
+]

@@ -1,0 +1,18 @@
+# Build from repository root. Never built by the migration implementation agent.
+# Cutover requires reviewed Compose/ops command and healthcheck updates:
+# command: [/app/dima-hoststats]
+# healthcheck: [CMD, /app/dima-hoststats, --healthcheck]
+# Keep existing group_add (983 on production), read_only, cap_drop, security_opt,
+# mounts, internal network, memory/CPU/PID limits and absence of published ports.
+# Node's `node src/index.mjs` command and JS healthcheck cannot run in this image.
+FROM rust:1.99.1-slim-bookworm AS build
+ENV RUSTUP_TOOLCHAIN=1.99.1 CARGO_TERM_COLOR=never
+WORKDIR /build
+COPY dima-rust ./dima-rust
+RUN dima-rust/tools/cargo build --manifest-path dima-rust/Cargo.toml --locked --release -p dima-hoststats
+FROM gcr.io/distroless/cc-debian12:nonroot
+WORKDIR /app
+COPY --from=build /build/dima-rust/target/release/dima-hoststats /app/dima-hoststats
+USER 65532:65532
+EXPOSE 3211
+CMD ["/app/dima-hoststats"]
