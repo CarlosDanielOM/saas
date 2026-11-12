@@ -396,6 +396,15 @@ pub enum CheckoutError {
     Malformed,
 }
 
+impl CheckoutError {
+    /// Polar may have created the checkout or session although this call failed
+    /// ([`PolarError::outcome_unknown`]). A new request makes a new checkout, which is harmless:
+    /// an unpaid checkout costs nothing.
+    pub fn outcome_unknown(&self) -> bool {
+        matches!(self, Self::Polar(error) if error.outcome_unknown())
+    }
+}
+
 /// `isDiscountApplicableToProduct(discount, productId)`.
 pub fn discount_applies(discount: &Discount, product_id: &str) -> Result<bool, CheckoutError> {
     let Some(Value::Array(products)) = &discount.products else {

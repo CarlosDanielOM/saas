@@ -79,7 +79,7 @@ pub trait UsageSink: Send + Sync {
     fn track(&self, usage: AcceptedUsage<'_>, metadata: &Map<String, Value>);
 }
 
-/// What `ingestPolarSHEvent` answers (`{error, message}`).
+/// What `ingestPolarSHEvent` and `grantPolarAiCredits` answer (`{error, message}`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum IngestOutcome {
     /// Accepted (sent, or queued for the next flush).
@@ -87,16 +87,74 @@ pub enum IngestOutcome {
         /// `"queued (flush in progress)"` when the lock was busy.
         message: Option<&'static str>,
     },
-    /// `{error: true, message}` with the reference's message (Polar errors without their body).
+    /// `{error: true, message}` with the reference's message (Polar errors without their body):
+    /// Polar did not apply it (refused before sending, or answered that it refused it).
     Failed {
+        /// The message.
+        message: String,
+    },
+    /// `{error: true, message}` in the reference too, but Polar may have applied it: the
+    /// request was sent and no usable answer came (a lost reply, a 5xx, a success answer that
+    /// cannot be read). Retry only with the same external id, which Polar deduplicates; never
+    /// with a new one (item 7 of P2-BILLING-01b).
+    OutcomeUnknown {
         /// The message.
         message: String,
     },
 }
 
+impl IngestOutcome {
+    /// `{error}` of the reference's answer.
+    pub fn is_error(&self) -> bool {
+        !matches!(self, Self::Done { .. })
+    }
+}
+
 fn failed(message: impl Into<String>) -> IngestOutcome {
     IngestOutcome::Failed {
         message: message.into(),
+    }
+}
+
+/// The outcome of a Polar call that failed: unknown when Polar may have applied it.
+fn polar_failure(error: &PolarError) -> IngestOutcome {
+    let message = polar_message(error);
+    if error.outcome_unknown() {
+        IngestOutcome::OutcomeUnknown { message }
+    } else {
+        IngestOutcome::Failed { message }
+    }
+}
+
+/// Why `ingestPolarNamedEvents` failed (the reference threw with these messages).
+#[derive(Debug, thiserror::Error)]
+pub enum NamedIngestError {
+    /// Refused before anything was sent.
+    #[error("{0}")]
+    Refused(&'static str),
+    /// Polar stored fewer events than were sent; resend them with the same external ids.
+    #[error("PolarSH ingest incomplete ({} inserted, {} duplicates of {expected})", dima_text::number_to_string(*inserted), dima_text::number_to_string(*duplicates))]
+    Incomplete {
+        /// `inserted`.
+        inserted: f64,
+        /// `duplicates`.
+        duplicates: f64,
+        /// Events sent.
+        expected: usize,
+    },
+    /// Polar failed.
+    #[error(transparent)]
+    Polar(#[from] PolarError),
+}
+
+impl NamedIngestError {
+    /// Polar may have stored some or all of the events.
+    pub fn outcome_unknown(&self) -> bool {
+        match self {
+            Self::Refused(_) => false,
+            Self::Incomplete { .. } => true,
+            Self::Polar(error) => error.outcome_unknown(),
+        }
     }
 }
 
@@ -241,7 +299,7 @@ impl Ingest<'_> {
                     IngestOutcome::Done { message: None }
                 }
                 Ok(_) => failed("PolarSH ingest incomplete"),
-                Err(error) => failed(polar_message(&error)),
+                Err(error) => polar_failure(&error),
             };
         }
         let Some(channel) = channel else {
@@ -320,7 +378,7 @@ impl Ingest<'_> {
             Err(error) => {
                 self.observer
                     .error("ingestPolarSHEvent", &polar_message(&error));
-                return failed(polar_message(&error));
+                return polar_failure(&error);
             }
         }
         // Remove exactly the events sent; events queued during the ingest survive.
@@ -350,7 +408,7 @@ impl Ingest<'_> {
             Err(error) => {
                 self.observer
                     .error("grantPolarAiCredits", &polar_message(&error));
-                return failed(polar_message(&error));
+                return polar_failure(&error);
             }
         }
         let channel = input.channel_id.as_deref().filter(|c| !c.is_empty());
@@ -370,23 +428,21 @@ impl Ingest<'_> {
     }
 
     /// `ingestPolarNamedEvents(events)`: `(inserted, duplicates)`.
-    pub async fn ingest_named_events(&self, events: &[IngestEvent]) -> Result<(f64, f64), String> {
+    pub async fn ingest_named_events(
+        &self,
+        events: &[IngestEvent],
+    ) -> Result<(f64, f64), NamedIngestError> {
         if events.is_empty() {
             return Ok((0.0, 0.0));
         }
-        check_named_events(events)?;
-        let result = self
-            .polar
-            .ingest_events(events)
-            .await
-            .map_err(|e| e.to_string())?;
+        check_named_events(events).map_err(NamedIngestError::Refused)?;
+        let result = self.polar.ingest_events(events).await?;
         if !result.is_complete(events.len()) {
-            return Err(format!(
-                "PolarSH ingest incomplete ({} inserted, {} duplicates of {})",
-                dima_text::number_to_string(result.inserted),
-                dima_text::number_to_string(result.duplicates),
-                events.len()
-            ));
+            return Err(NamedIngestError::Incomplete {
+                inserted: result.inserted,
+                duplicates: result.duplicates,
+                expected: events.len(),
+            });
         }
         Ok((result.inserted, result.duplicates))
     }

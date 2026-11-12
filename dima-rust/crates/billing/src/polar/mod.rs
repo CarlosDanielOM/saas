@@ -20,9 +20,10 @@
 //!   customer's e-mail among them; the reference put the body in its error message) or an id:
 //!   paths are templates and the `customer_id`, `external_customer_id` and `query` parameters
 //!   are redacted.
-//! - A `POST` whose answer was lost ([`PolarError::outcome_unknown`]) may have been applied by
-//!   Polar; callers reconcile, they never resend blindly (ingest relies on `external_id`
-//!   deduplication, checkouts on the `Idempotency-Key`).
+//! - A `POST` whose answer was lost, or whose success answer cannot be read
+//!   ([`PolarError::outcome_unknown`]), may have been applied by Polar; callers reconcile, they
+//!   never resend blindly (ingest relies on `external_id` deduplication, checkouts on the
+//!   `Idempotency-Key`).
 
 mod flows;
 mod ingest;
@@ -88,7 +89,10 @@ pub enum PolarError {
     },
     /// The answer was not the JSON the call expects.
     #[error("Polar answered with an unexpected shape")]
-    Decode,
+    Decode {
+        /// Whether the call was a `POST`: Polar answered success, so it may have applied it.
+        mutation: bool,
+    },
 }
 
 impl PolarError {
@@ -101,10 +105,11 @@ impl PolarError {
     }
 
     /// A mutation whose effect at Polar is unknown: a `POST` that failed in transport after it
-    /// may have been sent, or one answered with a 5xx.
+    /// may have been sent, one answered with a 5xx, or one answered with a success whose body
+    /// cannot be read (Polar may have committed it; item 7 of P2-BILLING-01b).
     pub fn outcome_unknown(&self) -> bool {
         match self {
-            Self::Transport { mutation, .. } => *mutation,
+            Self::Transport { mutation, .. } | Self::Decode { mutation } => *mutation,
             Self::Status { status, mutation } => *mutation && *status >= 500,
             _ => false,
         }
@@ -219,7 +224,7 @@ impl PolarClient {
             .await
             .map_err(|source| PolarError::Transport { source, mutation })?;
         serde_json::from_slice(&dima_text::sanitize_lone_surrogates(&bytes))
-            .map_err(|_| PolarError::Decode)
+            .map_err(|_| PolarError::Decode { mutation })
     }
 
     async fn get<T: DeserializeOwned>(

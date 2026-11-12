@@ -677,7 +677,7 @@ impl plans::entitlements::GraceLookup for FixedGrace {
             self.0
                 .clone()
                 .ok_or(plans::entitlements::EntitlementError::Polar(
-                    polar::PolarError::Decode,
+                    polar::PolarError::Decode { mutation: false },
                 ))
         })
     }

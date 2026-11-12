@@ -137,13 +137,14 @@ async fn ingest_modes_queue_flush_and_project_as_the_reference() {
     assert_eq!(after["balance"], json!(4850));
     assert_eq!(llen(queue.clone()).await, 0);
 
-    // Polar refusing: nothing projected, nothing receipted.
+    // Polar failing: nothing projected, nothing receipted. A 5xx to a write may have been
+    // applied, so it is an unknown outcome (item 7), with the reference's message.
     server.push(MockResponse::json(500, "{}"));
     let outcome = ingest
         .ingest_usage(&usage(&channel, "aiu_failed"), IngestMode::Immediate)
         .await;
     assert!(
-        matches!(outcome, IngestOutcome::Failed { ref message } if message == "Polar API error 500"),
+        matches!(outcome, IngestOutcome::OutcomeUnknown { ref message } if message == "Polar API error 500"),
         "{outcome:?}"
     );
     assert_eq!(sink.receipts.lock().unwrap().len(), 1);
@@ -265,18 +266,78 @@ async fn ingest_modes_queue_flush_and_project_as_the_reference() {
         metadata: json!({"tokens": 3}).as_object().cloned().unwrap(),
     };
     server.push(MockResponse::json(200, r#"{"inserted":0,"duplicates":0}"#));
+    let error = ingest
+        .ingest_named_events(std::slice::from_ref(&named))
+        .await
+        .unwrap_err();
     assert_eq!(
-        ingest
-            .ingest_named_events(std::slice::from_ref(&named))
-            .await,
-        Err("PolarSH ingest incomplete (0 inserted, 0 duplicates of 1)".into())
+        error.to_string(),
+        "PolarSH ingest incomplete (0 inserted, 0 duplicates of 1)"
     );
+    assert!(error.outcome_unknown());
     let mut credit = named.clone();
     credit.metadata.insert("credits".into(), json!(1));
+    let error = ingest.ingest_named_events(&[credit]).await.unwrap_err();
     assert_eq!(
-        ingest.ingest_named_events(&[credit]).await,
-        Err("ingestPolarNamedEvents must not send AI credit usage".into())
+        error.to_string(),
+        "ingestPolarNamedEvents must not send AI credit usage"
     );
+    assert!(!error.outcome_unknown());
 
+    support::cleanup(&dragonfly, &channel).await.unwrap();
+}
+
+// Item 7 of P2-BILLING-01b (review finding 9): a write Polar may have applied (a success answer
+// that cannot be read, a 5xx, a lost reply) reaches the caller as `OutcomeUnknown`, not as a
+// message; nothing is projected or receipted for it.
+#[tokio::test]
+async fn an_ambiguous_answer_reaches_the_caller_as_an_unknown_outcome() {
+    let Some(dragonfly) = support::dragonfly(9).await.unwrap() else {
+        return;
+    };
+    let server = MockServer::start().await.unwrap();
+    let polar = PolarClient::new(
+        HttpClient::builder().build().unwrap(),
+        server
+            .provider(PolarClient::provider(&Default::default()))
+            .unwrap(),
+        Some(SecretString::from("t")),
+    );
+    let clock = Arc::new(ManualClock::new(1_793_000_000_000));
+    let credits = CreditsCache::new(dragonfly.clone(), clock, Arc::new(NoopObserver));
+    let sink = Sink::default();
+    let random = support::ZeroRandom;
+    let ingest = Ingest {
+        polar: &polar,
+        dragonfly: &dragonfly,
+        credits: &credits,
+        sink: &sink,
+        random: &random,
+        observer: &NoopObserver,
+    };
+    let channel = support::channel_id();
+    for answer in [
+        MockResponse::json(200, "not json"),
+        MockResponse::json(502, "{}"),
+        MockResponse::drop_connection(),
+    ] {
+        server.push(answer);
+        let outcome = ingest
+            .ingest_usage(&usage(&channel, "aiu_unknown"), IngestMode::Immediate)
+            .await;
+        assert!(
+            matches!(outcome, IngestOutcome::OutcomeUnknown { .. }),
+            "{outcome:?}"
+        );
+    }
+    server.push(MockResponse::json(422, "{}"));
+    let outcome = ingest
+        .ingest_usage(&usage(&channel, "aiu_refused"), IngestMode::Immediate)
+        .await;
+    assert!(
+        matches!(outcome, IngestOutcome::Failed { .. }),
+        "{outcome:?}"
+    );
+    assert!(sink.receipts.lock().unwrap().is_empty());
     support::cleanup(&dragonfly, &channel).await.unwrap();
 }
