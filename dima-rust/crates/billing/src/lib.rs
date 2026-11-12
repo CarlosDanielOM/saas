@@ -94,6 +94,7 @@ pub mod mongo_ops;
 pub mod plans;
 pub mod polar;
 pub mod products;
+pub mod referrals;
 pub mod usage;
 pub mod usage_backfill;
 pub mod usage_health;
