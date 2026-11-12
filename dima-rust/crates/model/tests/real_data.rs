@@ -90,6 +90,7 @@ async fn every_real_document_decodes() -> Result<()> {
     let census = census_counts()?;
     let mut total = 0_u64;
     for info in REGISTRY {
+        let scan_started = std::time::Instant::now();
         let collection = store.database().collection::<RawDocumentBuf>(info.name);
         let count = collection.count_documents(doc! {}).await?;
         let counted = census.get(info.name).copied().unwrap_or(0);
@@ -127,14 +128,15 @@ async fn every_real_document_decodes() -> Result<()> {
         }
         total += decoded;
         eprintln!(
-            "{:<28} {decoded:>7} of {count:>7} decoded{}, {failed} failed, {:.2} µs per document (debug build)",
+            "{:<28} {decoded:>7} of {count:>7} decoded{}, {failed} failed, {:.2} µs per document (debug build), {:.3}s scan",
             info.name,
             if stride > 1 {
                 format!(" (1 in {stride})")
             } else {
                 String::new()
             },
-            decoding.as_secs_f64() * 1e6 / decoded.max(1) as f64
+            decoding.as_secs_f64() * 1e6 / decoded.max(1) as f64,
+            scan_started.elapsed().as_secs_f64()
         );
     }
     eprintln!(
