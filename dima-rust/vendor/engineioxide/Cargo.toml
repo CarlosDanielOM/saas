@@ -87,6 +87,10 @@ path = "tests/input.rs"
 name = "heartbeat"
 path = "tests/heartbeat.rs"
 
+[[test]]
+name = "hooks"
+path = "tests/hooks.rs"
+
 [dependencies.bytes]
 version = "1.11"
 features = ["serde"]
@@ -152,7 +156,10 @@ features = ["handshake"]
 
 [dependencies.tokio-util]
 version = "0.7.18"
-features = ["io"]
+features = [
+    "io",
+    "rt",
+]
 default-features = false
 
 [dependencies.tower-layer]

@@ -9,11 +9,16 @@ use http_body::Body;
 use http_body_util::Full;
 use tokio_util::future::FutureExt as _;
 
-use engineioxide_core::{Packet, PacketParseError, ProtocolVersion, Sid, TransportType};
+use engineioxide_core::{Packet, PacketBuf, PacketParseError, ProtocolVersion, Sid, TransportType};
 
 use crate::{
-    DisconnectReason, body::ResponseBody, engine::EngineIo, errors::Error,
-    handler::EngineIoHandler, socket::InternalRx, transport::make_open_packet,
+    DisconnectReason,
+    body::{MessagesDone, ResponseBody},
+    engine::EngineIo,
+    errors::Error,
+    handler::EngineIoHandler,
+    socket::{InternalRx, is_message},
+    transport::make_open_packet,
 };
 
 /// Create a response for http request
@@ -128,17 +133,27 @@ where
     tracing::debug!(%sid, %protocol, supports_binary = socket.supports_binary, "polling request");
 
     let max_payload = engine.config.max_payload;
+    // [dima-rust patch 7] The messages from the packet buffer that this payload takes, and
+    // whether the last packet the encoder took (the one it may hold back) was one of them.
+    let (mut taken, mut last_counted) = (0u64, false);
     let payload = {
         let InternalRx {
             buffered_rx,
             volatile_rx,
             peeked_packet,
+            peeked_counted,
         } = &mut *rx;
 
         // Prepend the packet peeked during the previous
         // polling request so it is encoded first, ahead of the newly received packets.
-        let rx_stream = stream::iter(peeked_packet.take())
-            .chain(rx_stream::EncoderStream::new(buffered_rx, volatile_rx));
+        let peeked_counted = std::mem::take(peeked_counted);
+        let rx_stream = stream::iter(peeked_packet.take().map(|p| (p, peeked_counted)))
+            .chain(rx_stream::EncoderStream::new(buffered_rx, volatile_rx))
+            .map(|(packets, counted)| {
+                taken += u64::from(counted);
+                last_counted = counted;
+                packets
+            });
 
         // Stop waiting for the next packet as soon as the session is closed. The combinator is biased
         // towards the encoder completion, so any buffered close packet is still flushed to the client.
@@ -155,17 +170,31 @@ where
     else {
         #[cfg(feature = "tracing")]
         tracing::debug!(%sid, "session closed while polling, returning empty payload");
+        // [dima-rust patch 7] What the encoder had taken is dropped.
+        socket.add_messages_done(taken);
         return Ok(http_response(StatusCode::OK, "", false));
     };
 
     // set back the peeked packet so it can be read again
     // on the next polling request
+    let held_back = peeked.is_some() && last_counted;
     rx.peeked_packet = peeked;
+    rx.peeked_counted = held_back;
 
     #[cfg(feature = "tracing")]
     tracing::trace!(%sid, %protocol, supports_binary = socket.supports_binary, "sending data: {:?}", data);
 
-    Ok(http_response(StatusCode::OK, data, has_binary))
+    // [dima-rust patch 7] The payload's messages are done once the HTTP layer drops it.
+    let done = MessagesDone::new(
+        socket.messages_done.clone(),
+        taken.saturating_sub(u64::from(held_back)),
+    );
+    Ok(
+        http_response(StatusCode::OK, data, has_binary).map(|body| match body {
+            ResponseBody::CustomBody { body } => ResponseBody::payload(body, done),
+            other => other,
+        }),
+    )
 }
 
 /// Handle http polling post request
@@ -396,17 +425,22 @@ mod rx_stream {
         }
     }
 
-    impl<'a, T: Clone + Send + Sync + 'static> Stream for EncoderStream<'a, T> {
-        type Item = T;
+    /// [dima-rust patch 7] Items come with whether they are messages from the packet buffer
+    /// (counted by `Socket::messages_done`); volatile ones are not.
+    impl<'a> Stream for EncoderStream<'a, super::PacketBuf> {
+        type Item = (super::PacketBuf, bool);
 
         fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
             let this = self.project();
             // low priority: poll the watch stream first, then the rx stream.
             // same than with ws transport
             match this.rx.poll_next(cx) {
-                Poll::Ready(v) => Poll::Ready(v),
+                Poll::Ready(v) => Poll::Ready(v.map(|v| {
+                    let counted = super::is_message(&v);
+                    (v, counted)
+                })),
                 Poll::Pending => match this.watch.poll_next(cx) {
-                    Poll::Ready(Some(v)) => Poll::Ready(v),
+                    Poll::Ready(Some(v)) => Poll::Ready(v.map(|v| (v, false))),
                     Poll::Ready(None) | Poll::Pending => Poll::Pending,
                 },
             }

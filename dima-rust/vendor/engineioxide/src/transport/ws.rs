@@ -26,8 +26,14 @@ use tokio_util::future::FutureExt as _;
 use engineioxide_core::{Packet, ProtocolVersion, Sid, Str, TransportType};
 
 use crate::{
-    DisconnectReason, Socket, body::ResponseBody, config::EngineIoConfig, engine::EngineIo,
-    errors::Error, handler::EngineIoHandler, socket::InternalRx, transport::make_open_packet,
+    DisconnectReason, Socket,
+    body::ResponseBody,
+    config::EngineIoConfig,
+    engine::EngineIo,
+    errors::Error,
+    handler::EngineIoHandler,
+    socket::{InternalRx, is_message},
+    transport::make_open_packet,
 };
 
 /// Create a response for websocket upgrade
@@ -122,17 +128,20 @@ where
         .max_frame_size(Some(engine.config.ws_max_frame_size));
 
     let ws_init = move || WebSocketStream::from_raw_socket(conn, Role::Server, Some(ws_config));
-    let (socket, ws) = if let Some(sid) = sid {
+    let (socket, ws, _task) = if let Some(sid) = sid {
         match engine.get_socket(sid) {
             None => return Err(Error::UnknownSessionID(sid)),
             // [dima-rust patch 2] One upgrade at a time, and none after one succeeded: the new
             // WebSocket is closed after its handshake, the session is untouched (engine.io
             // server.js 616-623).
             Some(socket) if socket.is_ws() || !socket.claim_upgrade() => {
+                let _task = socket.tasks.token(); // [dima-rust patch 7]
                 close_unused_ws(&mut ws_init().await).await;
                 return Err(Error::MultipleWebsocketRequests);
             }
             Some(socket) => {
+                // [dima-rust patch 7] This task is the upgrade attempt, then the reader.
+                let task = socket.tasks.token();
                 let mut ws = ws_init().await;
 
                 let upgrade_fut = upgrade_handshake::<H, S>(&socket, &mut ws);
@@ -162,11 +171,13 @@ where
                     close_unused_ws(&mut ws).await;
                     return Err(e);
                 }
-                (socket, ws)
+                (socket, ws, task)
             }
         }
     } else {
         let socket = engine.create_session(protocol, TransportType::Websocket, req_data, false);
+        // [dima-rust patch 7] This task is the reader.
+        let task = socket.tasks.token();
 
         #[cfg(feature = "tracing")]
         tracing::debug!("new websocket connection");
@@ -176,12 +187,15 @@ where
         socket
             .clone()
             .spawn_heartbeat(engine.config.ping_interval, engine.config.ping_timeout);
-        (socket, ws)
+        (socket, ws, task)
     };
     let (tx, rx) = ws.split();
 
     // Pipe between websocket and internal socket channel.
-    tokio::spawn(forward_to_socket::<H, S>(socket.clone(), tx));
+    // [dima-rust patch 7] tracked
+    socket
+        .tasks
+        .spawn(forward_to_socket::<H, S>(socket.clone(), tx));
 
     // pipe between internal socket channel and websocket
     match forward_to_handler(&engine, rx, &socket)
@@ -316,6 +330,9 @@ async fn forward_to_socket<H: EngineIoHandler, S>(
             };
         }
 
+    // [dima-rust patch 7] Messages taken from the packet buffer and not yet counted as done.
+    let mut taken = 0u64;
+
     // Forward buffered packets until the channel is closed or the session is cancelled.
     // [dima-rust patch 3] The writes are cancelled too: a peer that stopped reading must not keep
     // the packet buffer, which the session's close task waits for.
@@ -326,10 +343,12 @@ async fn forward_to_socket<H: EngineIoHandler, S>(
                 items = buffered_rx.recv() => {
                     match items {
                         Some(packets) => {
+                            taken += u64::from(is_message(&packets));
                             for item in packets {
                                 map_fn!(item);
                             }
                             while let Ok(packets) = buffered_rx.try_recv() {
+                                taken += u64::from(is_message(&packets));
                                 for item in packets {
                                     map_fn!(item);
                                 }
@@ -353,6 +372,8 @@ async fn forward_to_socket<H: EngineIoHandler, S>(
             #[cfg(feature = "tracing")]
             tracing::trace!(sid = %socket.id, "ws flush");
             tx.flush().await.ok();
+            // [dima-rust patch 7] written (or failed, and dropped)
+            socket.add_messages_done(std::mem::take(&mut taken));
         }
     };
     tokio::select! {
@@ -372,6 +393,8 @@ async fn forward_to_socket<H: EngineIoHandler, S>(
     })
     .await
     .ok();
+    // [dima-rust patch 7] Written by the closing flush, or dropped.
+    socket.add_messages_done(taken);
 }
 /// Send a Engine.IO [`OpenPacket`] to initiate a websocket connection
 async fn init_handshake<S>(
@@ -607,5 +630,66 @@ mod tests {
             .await
             .expect("the writer ended")
             .expect("the writer did not panic");
+    }
+
+    /// [dima-rust patch 7] Over a real WebSocket session (`on_init`): a message waiting for a
+    /// peer that stopped reading is not done, the session's tasks include the writer that holds
+    /// it, and once the peer is gone the message is done (dropped) and the tasks end.
+    #[tokio::test]
+    async fn a_message_waiting_for_a_silent_peer_is_not_done_and_its_writer_is_a_task() {
+        #[derive(Debug)]
+        struct Capture(mpsc::Sender<Arc<Socket<()>>>);
+        impl EngineIoHandler for Capture {
+            type Data = ();
+            fn on_connect(self: Arc<Self>, socket: Arc<Socket<()>>) {
+                self.0.try_send(socket).ok();
+            }
+            fn on_disconnect(&self, _socket: Arc<Socket<()>>, _reason: DisconnectReason) {}
+            fn on_message(self: &Arc<Self>, _msg: Str, _socket: Arc<Socket<()>>) {}
+            fn on_binary(self: &Arc<Self>, _data: Bytes, _socket: Arc<Socket<()>>) {}
+        }
+        let (socket_tx, mut socket_rx) = mpsc::channel(1);
+        let engine = Arc::new(EngineIo::new(
+            Arc::new(Capture(socket_tx)),
+            EngineIoConfig::default(),
+        ));
+        let (server, client) = tokio::io::duplex(4096);
+        tokio::spawn(on_init(
+            engine.clone(),
+            server,
+            ProtocolVersion::V4,
+            None,
+            Request::<()>::default().into_parts().0,
+        ));
+        let mut client = WebSocketStream::from_raw_socket(client, Role::Client, None).await;
+        assert!(matches!(client.next().await, Some(Ok(Message::Text(_)))));
+        let socket = socket_rx.recv().await.unwrap();
+
+        socket.emit("small").unwrap();
+        assert!(
+            matches!(client.next().await, Some(Ok(Message::Text(t))) if t.as_str() == "4small")
+        );
+        assert_eq!(socket.messages_done(), 1);
+        // From now on the client reads nothing.
+        socket.emit("x".repeat(64 * 1024)).unwrap();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert_eq!(
+            socket.messages_done(),
+            1,
+            "a message nobody read counts as done"
+        );
+
+        engine.close_session(socket.id, DisconnectReason::ClosingServer);
+        assert!(
+            tokio::time::timeout(Duration::from_millis(200), socket.tasks_ended())
+                .await
+                .is_err(),
+            "the tasks ended while the writer still held the connection"
+        );
+        drop(client);
+        tokio::time::timeout(Duration::from_secs(1), socket.tasks_ended())
+            .await
+            .expect("the tasks ended once the peer was gone");
+        assert_eq!(socket.messages_done(), 2);
     }
 }

@@ -15,6 +15,12 @@ pin_project! {
             #[pin]
             body: Full<Bytes>,
         },
+        // [dima-rust patch 7] A polling payload: its messages are done when the body is dropped.
+        Payload {
+            #[pin]
+            body: Full<Bytes>,
+            done: MessagesDone,
+        },
         Body {
             #[pin]
             body: B,
@@ -38,6 +44,29 @@ impl<B> ResponseBody<B> {
     pub fn new(body: B) -> Self {
         ResponseBody::Body { body }
     }
+
+    /// [dima-rust patch 7]
+    pub(crate) fn payload(body: Full<Bytes>, done: MessagesDone) -> Self {
+        ResponseBody::Payload { body, done }
+    }
+}
+
+/// [dima-rust patch 7] Counts `count` messages of a socket as done when dropped.
+pub struct MessagesDone {
+    done: std::sync::Arc<tokio::sync::watch::Sender<u64>>,
+    count: u64,
+}
+
+impl MessagesDone {
+    pub(crate) fn new(done: std::sync::Arc<tokio::sync::watch::Sender<u64>>, count: u64) -> Self {
+        Self { done, count }
+    }
+}
+
+impl Drop for MessagesDone {
+    fn drop(&mut self) {
+        crate::socket::add_done(&self.done, self.count);
+    }
 }
 
 impl<B> Body for ResponseBody<B>
@@ -54,6 +83,7 @@ where
             ResponseBody::EmptyResponse => true,
             ResponseBody::Body { body } => body.is_end_stream(),
             ResponseBody::CustomBody { body } => body.is_end_stream(),
+            ResponseBody::Payload { body, .. } => body.is_end_stream(),
         }
     }
 
@@ -66,6 +96,7 @@ where
             }
             ResponseBody::Body { body } => body.size_hint(),
             ResponseBody::CustomBody { body } => body.size_hint(),
+            ResponseBody::Payload { body, .. } => body.size_hint(),
         }
     }
 
@@ -77,6 +108,7 @@ where
             BodyProj::EmptyResponse => Poll::Ready(None),
             BodyProj::Body { body } => body.poll_frame(cx),
             BodyProj::CustomBody { body } => body.poll_frame(cx).map_err(|err| match err {}),
+            BodyProj::Payload { body, .. } => body.poll_frame(cx).map_err(|err| match err {}),
         }
     }
 }

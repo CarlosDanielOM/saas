@@ -213,3 +213,42 @@ git diff <that commit> -- dima-rust/vendor
    no longer drains a ping that is no longer sent at once; `dima-socketio`'s differential cases
    `a ping from the client` and `heartbeat timing` (the short servers ping every 400 ms on both
    sides).
+
+7. **Two hooks for `dima-socketio` (public, additive).** `socket.rs` (`tasks`, `tasks_ended`,
+   `messages_done`, `watch_messages_done`, `is_message`, `add_done`, `InternalRx::peeked_counted`),
+   `engine.rs` (the close task), `body.rs` (`ResponseBody::Payload`, `MessagesDone`),
+   `transport/ws.rs` and `transport/polling.rs` (tracking and counting); `Cargo.toml`:
+   `tokio-util` gains its `rt` feature (for `TaskTracker`; the main workspace enables it already,
+   `vendor/Cargo.lock` gains `futures-macro`).
+
+   ```rust
+   impl<D> Socket<D> {
+       pub async fn tasks_ended(&self);
+       pub fn messages_done(&self) -> u64;
+       pub fn watch_messages_done(&self) -> tokio::sync::watch::Receiver<u64>;
+   }
+   ```
+
+   - `tasks_ended` resolves once the session is closed and every task its transports started
+     has ended: the WebSocket reader (and an upgrade attempt, refused ones included), the
+     writer (its closing flush is bounded by the 30 s close timeout of change 1), the heartbeat,
+     and the close task that calls `on_disconnect`. Polling requests are not tasks; the HTTP
+     server waits for those. For the server's shutdown: close every session, then await this
+     for each (keep the `Arc<Socket>` past `on_disconnect` to do so) before saying it is done.
+   - `messages_done` counts the messages handed to the socket (each successful `emit`,
+     `emit_binary` or `Permit` call is one, a message with its binary attachments included) that
+     are finished: over WebSocket flushed to the connection, over polling in a response body the
+     HTTP layer has dropped, or dropped because the session ended (the close task counts what is
+     left in the buffer). Volatile messages and the transport's own packets are not counted.
+     Messages finish in the order they were handed over, so the Socket.IO layer can number its
+     sends and release, oldest first, every one whose number is at most `messages_done()`, waking
+     on the watch; output stuck behind a reader that stopped reading then stays inside the
+     per-socket and global byte budgets (today `Bytes::is_unique` releases a message as soon as
+     the writer has encoded it). Over polling `dima-socketio` collects the engine's body to
+     compress it, which drops it before its own response is written; keeping the engine body
+     alive inside its own response body covers that time too.
+
+   Tests: `tests/hooks.rs` (tasks of polling and WebSocket sessions end only once closed;
+   polled messages are done once their payload is gone, a held-back one and a volatile one are
+   not; WebSocket messages are done once written; what is left at close is done);
+   `transport::ws::tests::a_message_waiting_for_a_silent_peer_is_not_done_and_its_writer_is_a_task`.

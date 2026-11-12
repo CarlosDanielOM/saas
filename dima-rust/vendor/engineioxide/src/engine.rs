@@ -9,7 +9,7 @@ use http::request::Parts;
 use crate::{
     config::EngineIoConfig,
     handler::EngineIoHandler,
-    socket::{DisconnectReason, Socket},
+    socket::{DisconnectReason, Socket, is_message},
 };
 
 type SocketMap<T> = RwLock<HashMap<Sid, Arc<T>>>;
@@ -94,17 +94,30 @@ impl<H: EngineIoHandler> EngineIo<H> {
         socket.cancellation_token.cancel();
 
         let handler = self.handler.clone();
-        tokio::spawn(async move {
+        // [dima-rust patch 7] tracked, and the last task: the session's tracker closes with it.
+        let tasks = socket.tasks.clone();
+        tasks.spawn(async move {
             // Wait for the cancelled transport task to yield the `internal_rx` lock, then close the
             // channel so that `Socket::closed` resolves and no more packets can be buffered.
             // When no transport holds the lock (e.g. polling between requests) this resolves
             // immediately.
-            socket.internal_rx.lock().await.buffered_rx.close();
+            {
+                let mut rx = socket.internal_rx.lock().await;
+                rx.buffered_rx.close();
+                // [dima-rust patch 7] What was never sent is dropped: done.
+                let peeked = rx.peeked_packet.take().is_some();
+                let mut dropped = u64::from(peeked && std::mem::take(&mut rx.peeked_counted));
+                while let Ok(packets) = rx.buffered_rx.try_recv() {
+                    dropped += u64::from(is_message(&packets));
+                }
+                socket.add_messages_done(dropped);
+            }
 
             #[cfg(feature = "tracing")]
             tracing::debug!(sid = %socket.id, "session closed, notifying handler");
             handler.on_disconnect(socket, reason);
         });
+        tasks.close();
 
         #[cfg(feature = "tracing")]
         tracing::debug!(

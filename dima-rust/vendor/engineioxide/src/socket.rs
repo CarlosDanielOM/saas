@@ -78,6 +78,7 @@ use tokio::sync::{
 
 pub use engineioxide_core::Sid;
 use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
 
 /// A [`DisconnectReason`] represents the reason why a [`Socket`] was closed.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -161,6 +162,9 @@ impl Permit<'_> {
 pub(crate) struct InternalRx {
     pub buffered_rx: Receiver<PacketBuf>,
     pub peeked_packet: Option<PacketBuf>,
+    /// [dima-rust patch 7] `peeked_packet` is a message from `buffered_rx` (counted by
+    /// [`Socket::messages_done`] once done), not a volatile one.
+    pub peeked_counted: bool,
     pub volatile_rx: watch::Receiver<Option<PacketBuf>>,
 }
 
@@ -172,6 +176,7 @@ impl InternalRx {
         Self {
             buffered_rx,
             peeked_packet: None,
+            peeked_counted: false,
             volatile_rx,
         }
     }
@@ -241,6 +246,13 @@ where
     /// A cancellation token that will be triggered when the socket is being closed.
     pub(crate) cancellation_token: CancellationToken,
 
+    /// [dima-rust patch 7] Every task the session's transports start (the WebSocket reader,
+    /// writer and upgrade attempts, the heartbeat, the close task). Closed with the session.
+    pub(crate) tasks: TaskTracker,
+
+    /// [dima-rust patch 7] The count behind [`Socket::messages_done`].
+    pub(crate) messages_done: Arc<watch::Sender<u64>>,
+
     /// Function to call when the socket is closed
     close_fn: Box<dyn Fn(Sid, DisconnectReason) + Send + Sync>,
     /// User data bound to the socket
@@ -285,6 +297,8 @@ where
             heartbeat_rx: Mutex::new(heartbeat_rx),
             heartbeat_tx,
             cancellation_token: CancellationToken::new(),
+            tasks: TaskTracker::new(),
+            messages_done: Arc::new(watch::channel(0).0),
 
             close_fn,
 
@@ -340,7 +354,9 @@ where
     pub(crate) fn spawn_heartbeat(self: Arc<Self>, interval: Duration, timeout: Duration) {
         let cancellation_token = self.cancellation_token.clone();
 
-        tokio::spawn(
+        // [dima-rust patch 7] tracked
+        let tasks = self.tasks.clone();
+        tasks.spawn(
             cancellation_token
                 .run_until_cancelled_owned(async move {
                     if let Err(_e) = self.heartbeat_job(interval, timeout).await {
@@ -441,6 +457,36 @@ where
                 .try_send(smallvec![Packet::Pong])
                 .map_err(|_| Error::HeartbeatTimeout)?;
         }
+    }
+
+    /// [dima-rust patch 7] Resolves once the session is closed and every task its transports
+    /// started has ended: the WebSocket reader and writer (the writer's closing flush is bounded
+    /// by the 30 s WebSocket close timeout), an upgrade attempt, the heartbeat, and the close
+    /// task that calls [`EngineIoHandler::on_disconnect`](crate::handler::EngineIoHandler).
+    /// Polling requests are not tasks: the HTTP server that runs them waits for them.
+    pub async fn tasks_ended(&self) {
+        self.tasks.wait().await
+    }
+
+    /// [dima-rust patch 7] How many messages handed to this socket are done: written to the
+    /// network, or dropped because the session ended. A message is one successful call of
+    /// [`Socket::emit`], [`Socket::emit_binary`] or a [`Permit`] method (a message with its
+    /// binary attachments is one); volatile messages and the transport's own packets (pings,
+    /// noops, the close packet) are not counted. Messages are done in the order they were handed
+    /// over. Written means: over WebSocket, flushed to the connection; over polling, in a
+    /// response body that the HTTP layer has dropped (after writing it, or on failure).
+    pub fn messages_done(&self) -> u64 {
+        *self.messages_done.borrow()
+    }
+
+    /// [dima-rust patch 7] A receiver of [`Socket::messages_done`], to wait for it to grow.
+    pub fn watch_messages_done(&self) -> watch::Receiver<u64> {
+        self.messages_done.subscribe()
+    }
+
+    /// [dima-rust patch 7] `count` more messages are done.
+    pub(crate) fn add_messages_done(&self, count: u64) {
+        add_done(&self.messages_done, count);
     }
 
     /// Returns true if the [`Socket`] has a websocket [`TransportType`]
@@ -596,6 +642,22 @@ where
     }
 }
 
+/// [dima-rust patch 7] Whether a buffer from the packet channel is a message handed over by
+/// `emit`, `emit_binary` or a `Permit` (the transport's own packets are single control packets).
+pub(crate) fn is_message(packets: &PacketBuf) -> bool {
+    matches!(
+        packets.first(),
+        Some(Packet::Message(_) | Packet::Binary(_) | Packet::BinaryV3(_))
+    )
+}
+
+/// [dima-rust patch 7]
+pub(crate) fn add_done(done: &watch::Sender<u64>, count: u64) {
+    if count > 0 {
+        done.send_modify(|done| *done = done.saturating_add(count));
+    }
+}
+
 impl<D: Default + Send + Sync + 'static> std::fmt::Debug for Socket<D> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Socket")
@@ -672,6 +734,8 @@ where
             heartbeat_rx: Mutex::new(heartbeat_rx),
             heartbeat_tx,
             cancellation_token: CancellationToken::new(),
+            tasks: TaskTracker::new(),
+            messages_done: Arc::new(watch::channel(0).0),
             close_fn,
 
             data: D::default(),
