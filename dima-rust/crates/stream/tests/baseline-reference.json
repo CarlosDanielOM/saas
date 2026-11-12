@@ -1,0 +1,1664 @@
+{
+  "now": 1794355200000,
+  "documents": 153040,
+  "baselines": [
+    {
+      "channel": "1050106737",
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 7.166666666666667,
+        "averageStream": 6.25,
+        "sampleDays": 28,
+        "streamCount": 12,
+        "excludedDays": 0,
+        "attackThreshold": 500
+      }
+    },
+    {
+      "channel": "277645557",
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 0.43333333333333335,
+        "averageStream": 0.15555555555555556,
+        "sampleDays": 26,
+        "streamCount": 45,
+        "excludedDays": 0,
+        "attackThreshold": 500
+      }
+    },
+    {
+      "channel": "81308976",
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 3.3,
+        "averageStream": 2.5161290322580645,
+        "sampleDays": 29,
+        "streamCount": 31,
+        "excludedDays": 0,
+        "attackThreshold": 500
+      }
+    },
+    {
+      "channel": "475816586",
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 2.433333333333333,
+        "averageStream": 2.235294117647059,
+        "sampleDays": 19,
+        "streamCount": 17,
+        "excludedDays": 0,
+        "attackThreshold": 500
+      }
+    },
+    {
+      "channel": "89256232",
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 0,
+        "averageStream": 0,
+        "sampleDays": 15,
+        "streamCount": 16,
+        "excludedDays": 0,
+        "attackThreshold": 500
+      }
+    },
+    {
+      "channel": "576934748",
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 0.03333333333333333,
+        "averageStream": 0,
+        "sampleDays": 4,
+        "streamCount": 4,
+        "excludedDays": 0,
+        "attackThreshold": null
+      }
+    },
+    {
+      "channel": "925651894",
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 2.9,
+        "averageStream": 2.5,
+        "sampleDays": 25,
+        "streamCount": 16,
+        "excludedDays": 0,
+        "attackThreshold": 500
+      }
+    },
+    {
+      "channel": "426580588",
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 2,
+        "averageStream": 1.9523809523809523,
+        "sampleDays": 21,
+        "streamCount": 21,
+        "excludedDays": 0,
+        "attackThreshold": 500
+      }
+    },
+    {
+      "channel": "65012735",
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 0.4,
+        "averageStream": 0.8333333333333334,
+        "sampleDays": 9,
+        "streamCount": 6,
+        "excludedDays": 0,
+        "attackThreshold": 500
+      }
+    },
+    {
+      "channel": "810249317",
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 0.4666666666666667,
+        "averageStream": 0.3333333333333333,
+        "sampleDays": 12,
+        "streamCount": 6,
+        "excludedDays": 0,
+        "attackThreshold": 500
+      }
+    }
+  ],
+  "pure": [
+    {
+      "name": "20k/day channel gets a 40k wave threshold, keeping 10k below attack",
+      "days": [
+        {
+          "day": "0",
+          "follows": 20000
+        },
+        {
+          "day": "1",
+          "follows": 20000
+        },
+        {
+          "day": "2",
+          "follows": 20000
+        },
+        {
+          "day": "3",
+          "follows": 20000
+        },
+        {
+          "day": "4",
+          "follows": 20000
+        },
+        {
+          "day": "5",
+          "follows": 20000
+        },
+        {
+          "day": "6",
+          "follows": 20000
+        },
+        {
+          "day": "7",
+          "follows": 20000
+        },
+        {
+          "day": "8",
+          "follows": 20000
+        },
+        {
+          "day": "9",
+          "follows": 20000
+        },
+        {
+          "day": "10",
+          "follows": 20000
+        },
+        {
+          "day": "11",
+          "follows": 20000
+        },
+        {
+          "day": "12",
+          "follows": 20000
+        },
+        {
+          "day": "13",
+          "follows": 20000
+        },
+        {
+          "day": "14",
+          "follows": 20000
+        },
+        {
+          "day": "15",
+          "follows": 20000
+        },
+        {
+          "day": "16",
+          "follows": 20000
+        },
+        {
+          "day": "17",
+          "follows": 20000
+        },
+        {
+          "day": "18",
+          "follows": 20000
+        },
+        {
+          "day": "19",
+          "follows": 20000
+        },
+        {
+          "day": "20",
+          "follows": 20000
+        },
+        {
+          "day": "21",
+          "follows": 20000
+        },
+        {
+          "day": "22",
+          "follows": 20000
+        },
+        {
+          "day": "23",
+          "follows": 20000
+        },
+        {
+          "day": "24",
+          "follows": 20000
+        },
+        {
+          "day": "25",
+          "follows": 20000
+        },
+        {
+          "day": "26",
+          "follows": 20000
+        },
+        {
+          "day": "27",
+          "follows": 20000
+        },
+        {
+          "day": "28",
+          "follows": 20000
+        },
+        {
+          "day": "29",
+          "follows": 20000
+        }
+      ],
+      "streams": [
+        {
+          "day": "0",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "1",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "2",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "3",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "4",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "5",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "6",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "7",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "8",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "9",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "10",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "11",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "12",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "13",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "14",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "15",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "16",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "17",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "18",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "19",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "20",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "21",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "22",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "23",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "24",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "25",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "26",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "27",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "28",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "29",
+          "follows": 20000,
+          "count": 1
+        }
+      ],
+      "excluded": [],
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 20000,
+        "averageStream": 20000,
+        "sampleDays": 30,
+        "streamCount": 30,
+        "excludedDays": 0,
+        "attackThreshold": 40000
+      }
+    },
+    {
+      "name": "completed-stream average protects channels streaming less often",
+      "days": [
+        {
+          "day": "0",
+          "follows": 1000
+        },
+        {
+          "day": "1",
+          "follows": 1000
+        },
+        {
+          "day": "2",
+          "follows": 1000
+        },
+        {
+          "day": "3",
+          "follows": 1000
+        },
+        {
+          "day": "4",
+          "follows": 1000
+        },
+        {
+          "day": "5",
+          "follows": 1000
+        },
+        {
+          "day": "6",
+          "follows": 1000
+        },
+        {
+          "day": "7",
+          "follows": 1000
+        },
+        {
+          "day": "8",
+          "follows": 1000
+        },
+        {
+          "day": "9",
+          "follows": 1000
+        },
+        {
+          "day": "10",
+          "follows": 1000
+        },
+        {
+          "day": "11",
+          "follows": 1000
+        },
+        {
+          "day": "12",
+          "follows": 1000
+        },
+        {
+          "day": "13",
+          "follows": 1000
+        },
+        {
+          "day": "14",
+          "follows": 1000
+        },
+        {
+          "day": "15",
+          "follows": 1000
+        },
+        {
+          "day": "16",
+          "follows": 1000
+        },
+        {
+          "day": "17",
+          "follows": 1000
+        },
+        {
+          "day": "18",
+          "follows": 1000
+        },
+        {
+          "day": "19",
+          "follows": 1000
+        },
+        {
+          "day": "20",
+          "follows": 1000
+        },
+        {
+          "day": "21",
+          "follows": 1000
+        },
+        {
+          "day": "22",
+          "follows": 1000
+        },
+        {
+          "day": "23",
+          "follows": 1000
+        },
+        {
+          "day": "24",
+          "follows": 1000
+        },
+        {
+          "day": "25",
+          "follows": 1000
+        },
+        {
+          "day": "26",
+          "follows": 1000
+        },
+        {
+          "day": "27",
+          "follows": 1000
+        },
+        {
+          "day": "28",
+          "follows": 1000
+        },
+        {
+          "day": "29",
+          "follows": 1000
+        }
+      ],
+      "streams": [
+        {
+          "day": "0",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "1",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "2",
+          "follows": 20000,
+          "count": 1
+        }
+      ],
+      "excluded": [],
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 2000,
+        "averageStream": 20000,
+        "sampleDays": 30,
+        "streamCount": 3,
+        "excludedDays": 0,
+        "attackThreshold": 40000
+      }
+    },
+    {
+      "name": "known attack days cannot train the baseline upward",
+      "days": [
+        {
+          "day": "0",
+          "follows": 20000
+        },
+        {
+          "day": "1",
+          "follows": 20000
+        },
+        {
+          "day": "2",
+          "follows": 20000
+        },
+        {
+          "day": "3",
+          "follows": 20000
+        },
+        {
+          "day": "4",
+          "follows": 20000
+        },
+        {
+          "day": "5",
+          "follows": 20000
+        },
+        {
+          "day": "6",
+          "follows": 20000
+        },
+        {
+          "day": "7",
+          "follows": 20000
+        },
+        {
+          "day": "8",
+          "follows": 20000
+        },
+        {
+          "day": "9",
+          "follows": 20000
+        },
+        {
+          "day": "10",
+          "follows": 20000
+        },
+        {
+          "day": "11",
+          "follows": 20000
+        },
+        {
+          "day": "12",
+          "follows": 20000
+        },
+        {
+          "day": "13",
+          "follows": 20000
+        },
+        {
+          "day": "14",
+          "follows": 20000
+        },
+        {
+          "day": "15",
+          "follows": 20000
+        },
+        {
+          "day": "16",
+          "follows": 20000
+        },
+        {
+          "day": "17",
+          "follows": 20000
+        },
+        {
+          "day": "18",
+          "follows": 20000
+        },
+        {
+          "day": "19",
+          "follows": 20000
+        },
+        {
+          "day": "20",
+          "follows": 20000
+        },
+        {
+          "day": "21",
+          "follows": 20000
+        },
+        {
+          "day": "22",
+          "follows": 20000
+        },
+        {
+          "day": "23",
+          "follows": 20000
+        },
+        {
+          "day": "24",
+          "follows": 20000
+        },
+        {
+          "day": "25",
+          "follows": 20000
+        },
+        {
+          "day": "26",
+          "follows": 20000
+        },
+        {
+          "day": "27",
+          "follows": 20000
+        },
+        {
+          "day": "28",
+          "follows": 20000
+        },
+        {
+          "day": "29",
+          "follows": 10000000
+        }
+      ],
+      "streams": [
+        {
+          "day": "0",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "1",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "2",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "3",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "4",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "5",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "6",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "7",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "8",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "9",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "10",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "11",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "12",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "13",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "14",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "15",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "16",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "17",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "18",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "19",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "20",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "21",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "22",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "23",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "24",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "25",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "26",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "27",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "28",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "29",
+          "follows": 20000,
+          "count": 1
+        }
+      ],
+      "excluded": [
+        "29",
+        "29"
+      ],
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 20000,
+        "averageStream": 20000,
+        "sampleDays": 29,
+        "streamCount": 29,
+        "excludedDays": 1,
+        "attackThreshold": 40000
+      }
+    },
+    {
+      "name": "sparse history waits for manual attack",
+      "days": [
+        {
+          "day": "0",
+          "follows": 20000
+        },
+        {
+          "day": "1",
+          "follows": 20000
+        },
+        {
+          "day": "2",
+          "follows": 20000
+        },
+        {
+          "day": "3",
+          "follows": 20000
+        },
+        {
+          "day": "4",
+          "follows": 20000
+        },
+        {
+          "day": "5",
+          "follows": 20000
+        }
+      ],
+      "streams": [
+        {
+          "day": "0",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "1",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "2",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "3",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "4",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "5",
+          "follows": 20000,
+          "count": 1
+        }
+      ],
+      "excluded": [],
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 4000,
+        "averageStream": 20000,
+        "sampleDays": 6,
+        "streamCount": 6,
+        "excludedDays": 0,
+        "attackThreshold": null
+      }
+    },
+    {
+      "name": "two streams is insufficient",
+      "days": [
+        {
+          "day": "0",
+          "follows": 20000
+        },
+        {
+          "day": "1",
+          "follows": 20000
+        },
+        {
+          "day": "2",
+          "follows": 20000
+        },
+        {
+          "day": "3",
+          "follows": 20000
+        },
+        {
+          "day": "4",
+          "follows": 20000
+        },
+        {
+          "day": "5",
+          "follows": 20000
+        },
+        {
+          "day": "6",
+          "follows": 20000
+        },
+        {
+          "day": "7",
+          "follows": 20000
+        },
+        {
+          "day": "8",
+          "follows": 20000
+        },
+        {
+          "day": "9",
+          "follows": 20000
+        },
+        {
+          "day": "10",
+          "follows": 20000
+        },
+        {
+          "day": "11",
+          "follows": 20000
+        },
+        {
+          "day": "12",
+          "follows": 20000
+        },
+        {
+          "day": "13",
+          "follows": 20000
+        },
+        {
+          "day": "14",
+          "follows": 20000
+        },
+        {
+          "day": "15",
+          "follows": 20000
+        },
+        {
+          "day": "16",
+          "follows": 20000
+        },
+        {
+          "day": "17",
+          "follows": 20000
+        },
+        {
+          "day": "18",
+          "follows": 20000
+        },
+        {
+          "day": "19",
+          "follows": 20000
+        },
+        {
+          "day": "20",
+          "follows": 20000
+        },
+        {
+          "day": "21",
+          "follows": 20000
+        },
+        {
+          "day": "22",
+          "follows": 20000
+        },
+        {
+          "day": "23",
+          "follows": 20000
+        },
+        {
+          "day": "24",
+          "follows": 20000
+        },
+        {
+          "day": "25",
+          "follows": 20000
+        },
+        {
+          "day": "26",
+          "follows": 20000
+        },
+        {
+          "day": "27",
+          "follows": 20000
+        },
+        {
+          "day": "28",
+          "follows": 20000
+        },
+        {
+          "day": "29",
+          "follows": 20000
+        }
+      ],
+      "streams": [
+        {
+          "day": "0",
+          "follows": 20000,
+          "count": 1
+        },
+        {
+          "day": "1",
+          "follows": 20000,
+          "count": 1
+        }
+      ],
+      "excluded": [],
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 20000,
+        "averageStream": 20000,
+        "sampleDays": 30,
+        "streamCount": 2,
+        "excludedDays": 0,
+        "attackThreshold": null
+      }
+    },
+    {
+      "name": "small channels have a floor",
+      "days": [
+        {
+          "day": "0",
+          "follows": 1
+        },
+        {
+          "day": "1",
+          "follows": 1
+        },
+        {
+          "day": "2",
+          "follows": 1
+        },
+        {
+          "day": "3",
+          "follows": 1
+        },
+        {
+          "day": "4",
+          "follows": 1
+        },
+        {
+          "day": "5",
+          "follows": 1
+        },
+        {
+          "day": "6",
+          "follows": 1
+        },
+        {
+          "day": "7",
+          "follows": 1
+        },
+        {
+          "day": "8",
+          "follows": 1
+        },
+        {
+          "day": "9",
+          "follows": 1
+        },
+        {
+          "day": "10",
+          "follows": 1
+        },
+        {
+          "day": "11",
+          "follows": 1
+        },
+        {
+          "day": "12",
+          "follows": 1
+        },
+        {
+          "day": "13",
+          "follows": 1
+        },
+        {
+          "day": "14",
+          "follows": 1
+        },
+        {
+          "day": "15",
+          "follows": 1
+        },
+        {
+          "day": "16",
+          "follows": 1
+        },
+        {
+          "day": "17",
+          "follows": 1
+        },
+        {
+          "day": "18",
+          "follows": 1
+        },
+        {
+          "day": "19",
+          "follows": 1
+        },
+        {
+          "day": "20",
+          "follows": 1
+        },
+        {
+          "day": "21",
+          "follows": 1
+        },
+        {
+          "day": "22",
+          "follows": 1
+        },
+        {
+          "day": "23",
+          "follows": 1
+        },
+        {
+          "day": "24",
+          "follows": 1
+        },
+        {
+          "day": "25",
+          "follows": 1
+        },
+        {
+          "day": "26",
+          "follows": 1
+        },
+        {
+          "day": "27",
+          "follows": 1
+        },
+        {
+          "day": "28",
+          "follows": 1
+        },
+        {
+          "day": "29",
+          "follows": 1
+        }
+      ],
+      "streams": [
+        {
+          "day": "0",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "1",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "2",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "3",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "4",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "5",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "6",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "7",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "8",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "9",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "10",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "11",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "12",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "13",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "14",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "15",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "16",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "17",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "18",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "19",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "20",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "21",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "22",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "23",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "24",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "25",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "26",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "27",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "28",
+          "follows": 1,
+          "count": 1
+        },
+        {
+          "day": "29",
+          "follows": 1,
+          "count": 1
+        }
+      ],
+      "excluded": [],
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 1,
+        "averageStream": 1,
+        "sampleDays": 30,
+        "streamCount": 30,
+        "excludedDays": 0,
+        "attackThreshold": 500
+      }
+    },
+    {
+      "name": "empty channel",
+      "days": [],
+      "streams": [],
+      "excluded": [],
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 0,
+        "averageStream": 0,
+        "sampleDays": 0,
+        "streamCount": 0,
+        "excludedDays": 0,
+        "attackThreshold": null
+      }
+    },
+    {
+      "name": "round upward",
+      "days": [
+        {
+          "day": "0",
+          "follows": 250.25
+        },
+        {
+          "day": "1",
+          "follows": 250.25
+        },
+        {
+          "day": "2",
+          "follows": 250.25
+        },
+        {
+          "day": "3",
+          "follows": 250.25
+        },
+        {
+          "day": "4",
+          "follows": 250.25
+        },
+        {
+          "day": "5",
+          "follows": 250.25
+        },
+        {
+          "day": "6",
+          "follows": 250.25
+        },
+        {
+          "day": "7",
+          "follows": 250.25
+        },
+        {
+          "day": "8",
+          "follows": 250.25
+        },
+        {
+          "day": "9",
+          "follows": 250.25
+        },
+        {
+          "day": "10",
+          "follows": 250.25
+        },
+        {
+          "day": "11",
+          "follows": 250.25
+        },
+        {
+          "day": "12",
+          "follows": 250.25
+        },
+        {
+          "day": "13",
+          "follows": 250.25
+        },
+        {
+          "day": "14",
+          "follows": 250.25
+        },
+        {
+          "day": "15",
+          "follows": 250.25
+        },
+        {
+          "day": "16",
+          "follows": 250.25
+        },
+        {
+          "day": "17",
+          "follows": 250.25
+        },
+        {
+          "day": "18",
+          "follows": 250.25
+        },
+        {
+          "day": "19",
+          "follows": 250.25
+        },
+        {
+          "day": "20",
+          "follows": 250.25
+        },
+        {
+          "day": "21",
+          "follows": 250.25
+        },
+        {
+          "day": "22",
+          "follows": 250.25
+        },
+        {
+          "day": "23",
+          "follows": 250.25
+        },
+        {
+          "day": "24",
+          "follows": 250.25
+        },
+        {
+          "day": "25",
+          "follows": 250.25
+        },
+        {
+          "day": "26",
+          "follows": 250.25
+        },
+        {
+          "day": "27",
+          "follows": 250.25
+        },
+        {
+          "day": "28",
+          "follows": 250.25
+        },
+        {
+          "day": "29",
+          "follows": 250.25
+        }
+      ],
+      "streams": [
+        {
+          "day": "0",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "1",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "2",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "3",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "4",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "5",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "6",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "7",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "8",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "9",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "10",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "11",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "12",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "13",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "14",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "15",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "16",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "17",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "18",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "19",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "20",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "21",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "22",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "23",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "24",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "25",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "26",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "27",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "28",
+          "follows": 0,
+          "count": 1
+        },
+        {
+          "day": "29",
+          "follows": 0,
+          "count": 1
+        }
+      ],
+      "excluded": [],
+      "expected": {
+        "calculatedAt": 1794355200000,
+        "averageDaily": 250.25,
+        "averageStream": 0,
+        "sampleDays": 30,
+        "streamCount": 30,
+        "excludedDays": 0,
+        "attackThreshold": 501
+      }
+    }
+  ]
+}
