@@ -10,3 +10,18 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+bson = { workspace = true }
+dima-core = { workspace = true }
+dima-store = { workspace = true }
+dima-text = { workspace = true }
+futures-util = { workspace = true }
+mongodb = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_path_to_error = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+dima-text = { workspace = true }
+tokio = { workspace = true }

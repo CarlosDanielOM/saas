@@ -1,0 +1,510 @@
+{
+ "mongoose": "8.24.3",
+ "fixedMs": 1794392430456,
+ "models": {
+  "users": {
+   "model": "users",
+   "file": "src/schemas/users.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "created_at",
+     "updatedAt": "updated_at"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "name",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "email",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "accounts",
+      "kind": "documentArray",
+      "schema": {
+       "id": "auto",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "type",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "twitch"
+         }
+        },
+        {
+         "name": "id",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": null
+         }
+        },
+        {
+         "name": "name",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": null
+         }
+        },
+        {
+         "name": "email",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": null
+         }
+        },
+        {
+         "name": "refresh_token",
+         "kind": "nested",
+         "fields": [
+          {
+           "name": "iv",
+           "kind": "value",
+           "type": "String",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": null
+           }
+          },
+          {
+           "name": "content",
+           "kind": "value",
+           "type": "String",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": null
+           }
+          }
+         ]
+        },
+        {
+         "name": "access_token",
+         "kind": "nested",
+         "fields": [
+          {
+           "name": "iv",
+           "kind": "value",
+           "type": "String",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": null
+           }
+          },
+          {
+           "name": "content",
+           "kind": "value",
+           "type": "String",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": null
+           }
+          }
+         ]
+        },
+        {
+         "name": "access_token_expires_at",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": null
+         }
+        },
+        {
+         "name": "actived",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "chat_enabled",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "has_permissions",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "up_to_date_permissions",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "language",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "tts_default_provider",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "polar_sh_customer_id",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "polar_plan_event_at",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "polar_plan_event_key",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "polar_plan_effects_pending",
+      "kind": "value",
+      "type": "Boolean"
+     },
+     {
+      "name": "polar_plan_entitlement_fingerprint",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "polar_credit_snapshot",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "occurredAt",
+         "kind": "value",
+         "type": "Date"
+        },
+        {
+         "name": "eventKey",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "meters",
+         "kind": "mixedArray",
+         "default": {
+          "function": false,
+          "implicit": true,
+          "value": []
+         }
+        }
+       ]
+      }
+     },
+     {
+      "name": "plan_tier",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "free"
+      }
+     },
+     {
+      "name": "plan_tier_until",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "last_app_activity_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "refreshed_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "referrerId",
+      "kind": "value",
+      "type": "ObjectId",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "referralCodeUsed",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "token_balance",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "applied_credit_transaction_ids",
+      "kind": "array",
+      "type": "ObjectId"
+     },
+     {
+      "name": "reminder_sent_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "free_credit_reset",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "periodStart",
+         "kind": "value",
+         "type": "Date"
+        },
+        {
+         "name": "periodEnd",
+         "kind": "value",
+         "type": "Date"
+        },
+        {
+         "name": "status",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "credits",
+         "kind": "value",
+         "type": "Number"
+        },
+        {
+         "name": "externalId",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "updatedAt",
+         "kind": "value",
+         "type": "Date"
+        },
+        {
+         "name": "completedAt",
+         "kind": "value",
+         "type": "Date",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": null
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "hidden": [
+    "polar_credit_snapshot",
+    "applied_credit_transaction_ids"
+   ],
+   "validators": [
+    {
+     "path": "accounts.$.type",
+     "type": "enum",
+     "values": [
+      "twitch",
+      "youtube",
+      "kick",
+      "tiktok",
+      "spotify"
+     ]
+    },
+    {
+     "path": "language",
+     "type": "enum",
+     "values": [
+      "en",
+      "es"
+     ]
+    },
+    {
+     "path": "tts_default_provider",
+     "type": "enum",
+     "values": [
+      "kokoro"
+     ]
+    },
+    {
+     "path": "polar_credit_snapshot.occurredAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "polar_credit_snapshot.eventKey",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "polar_credit_snapshot.meters",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "plan_tier",
+     "type": "enum",
+     "values": [
+      "free",
+      "premium",
+      "pro"
+     ]
+    },
+    {
+     "path": "free_credit_reset.periodStart",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "free_credit_reset.periodEnd",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "free_credit_reset.status",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "free_credit_reset.status",
+     "type": "enum",
+     "values": [
+      "initialized",
+      "pending",
+      "completed"
+     ]
+    },
+    {
+     "path": "free_credit_reset.credits",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "free_credit_reset.credits",
+     "type": "min",
+     "min": 0
+    },
+    {
+     "path": "free_credit_reset.externalId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "free_credit_reset.updatedAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": []
+  }
+ }
+}

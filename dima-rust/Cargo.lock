@@ -1538,6 +1538,20 @@ version = "0.1.0"
 [[package]]
 name = "dima-model"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bson",
+ "dima-core",
+ "dima-store",
+ "dima-text",
+ "futures-util",
+ "mongodb",
+ "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "thiserror 2.0.21",
+ "tokio",
+]
 
 [[package]]
 name = "dima-rig"

@@ -1,0 +1,679 @@
+//! Every registered collection written through this crate and the store's helpers, against what
+//! the real Mongoose model wrote for the same intent (`tests/mongoose/writes.json`, recorded by
+//! `tests/mongoose/record.mts`): the indexes `Model.init()` leaves on an empty database, documents
+//! created (through the module's input type where the case names one), validation errors,
+//! updates, upserts, `findOneAndUpdate` results and saves, hooks included, each compared as the
+//! exact stored BSON (types, key order, missing versus null). Duplicate keys on the unique indexes
+//! are detected. One throwaway database per test, dropped afterwards.
+//!
+//! Skipped with a message when `DIMA_TEST_MONGO_URI` is not set.
+
+mod support;
+
+use anyhow::{Context, Result, anyhow, bail};
+use bson::oid::ObjectId;
+use bson::{Bson, Document, doc};
+use dima_model::users::{
+    AccountType, EncryptedToken, Language, NewAccount, NewUser, PlanTier, TtsProvider,
+};
+use dima_model::{CollectionInfo, ModelError, REGISTRY, ensure_indexes};
+use dima_store::mongo::date::JsDate;
+use dima_store::mongo::insert::PreparedInsert;
+use dima_store::mongo::number::JsNumber;
+use dima_store::mongo::save::{Change, prepare_save};
+use dima_store::mongo::update::{
+    Returned, UpdateOptions, prepare_find_one_and_update, prepare_update,
+};
+use dima_store::mongo::{MongoStore, WriteContext};
+use futures_util::TryStreamExt;
+use serde_json::Value;
+use std::collections::{HashMap, HashSet};
+
+// ------------------------------------------------------------------------------------ recording
+
+struct Recording {
+    now_ms: i64,
+    indexes: Vec<Value>,
+    cases: Vec<Value>,
+}
+
+fn recording() -> Result<Recording> {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/mongoose/writes.json");
+    let text = std::fs::read_to_string(path).with_context(|| format!("reading {path}"))?;
+    let value: Value = serde_json::from_str(&text)?;
+    let now_ms = value
+        .pointer("/meta/nowMs")
+        .and_then(Value::as_i64)
+        .context("meta.nowMs")?;
+    let list = |key: &str| -> Result<Vec<Value>> {
+        value
+            .get(key)
+            .and_then(Value::as_array)
+            .cloned()
+            .with_context(|| format!("{key} missing"))
+    };
+    Ok(Recording {
+        now_ms,
+        indexes: list("indexes")?,
+        cases: list("cases")?,
+    })
+}
+
+fn bson_of(value: &Value) -> Result<Bson> {
+    Bson::try_from(value.clone()).map_err(|e| anyhow!("extended JSON: {e}"))
+}
+
+fn document_of(value: &Value) -> Result<Document> {
+    match bson_of(value)? {
+        Bson::Document(document) => Ok(document),
+        other => bail!("expected a document, found {other:?}"),
+    }
+}
+
+fn info(collection: &str) -> Result<&'static CollectionInfo> {
+    REGISTRY
+        .iter()
+        .copied()
+        .find(|info| info.name == collection)
+        .with_context(|| format!("{collection} is not registered"))
+}
+
+/// Canonical Extended JSON text (keys in stored order, exact number types).
+fn canonical(value: Bson) -> String {
+    value.into_canonical_extjson().to_string()
+}
+
+// -------------------------------------------------------------------------------- normalisation
+
+/// What the recorder does to its output: generated ObjectIds and UUIDs numbered by first
+/// appearance; ids and strings found in the seed or the intent are kept.
+struct Normaliser {
+    ids: HashSet<ObjectId>,
+    strings: HashSet<String>,
+    generated: HashMap<ObjectId, ObjectId>,
+    uuids: HashMap<String, String>,
+}
+
+impl Normaliser {
+    fn new(known: &[&Bson]) -> Self {
+        let mut normaliser = Self {
+            ids: HashSet::new(),
+            strings: HashSet::new(),
+            generated: HashMap::new(),
+            uuids: HashMap::new(),
+        };
+        for value in known {
+            normaliser.collect(value);
+        }
+        normaliser
+    }
+
+    fn collect(&mut self, value: &Bson) {
+        match value {
+            Bson::ObjectId(id) => {
+                self.ids.insert(*id);
+            }
+            Bson::String(text) => {
+                self.strings.insert(text.clone());
+            }
+            Bson::Array(items) => items.iter().for_each(|v| self.collect(v)),
+            Bson::Document(document) => document.values().for_each(|v| self.collect(v)),
+            _ => {}
+        }
+    }
+
+    fn walk(&mut self, value: Bson) -> Bson {
+        match value {
+            Bson::ObjectId(id) if !self.ids.contains(&id) => {
+                let next = self.generated.len() + 1;
+                let replacement = *self.generated.entry(id).or_insert_with(|| {
+                    ObjectId::parse_str(format!("ffffffffffffffff{next:08}"))
+                        .unwrap_or_else(|_| ObjectId::from_bytes([0xff; 12]))
+                });
+                Bson::ObjectId(replacement)
+            }
+            Bson::String(text) if is_uuid_v4(&text) && !self.strings.contains(&text) => {
+                let next = self.uuids.len() + 1;
+                Bson::String(
+                    self.uuids
+                        .entry(text)
+                        .or_insert_with(|| format!("uuid-{next}"))
+                        .clone(),
+                )
+            }
+            Bson::Array(items) => Bson::Array(items.into_iter().map(|v| self.walk(v)).collect()),
+            Bson::Document(document) => Bson::Document(
+                document
+                    .into_iter()
+                    .map(|(k, v)| (k, self.walk(v)))
+                    .collect(),
+            ),
+            other => other,
+        }
+    }
+}
+
+fn is_uuid_v4(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    bytes.len() == 36
+        && bytes.iter().enumerate().all(|(i, b)| match i {
+            8 | 13 | 18 | 23 => *b == b'-',
+            14 => *b == b'4',
+            19 => matches!(b, b'8' | b'9' | b'a' | b'b'),
+            _ => b.is_ascii_digit() || (b'a'..=b'f').contains(b),
+        })
+}
+
+/// Same values whatever the key order and number width (`to_document()` against the intent).
+fn same_values(a: &Bson, b: &Bson) -> bool {
+    let number = dima_store::mongo::number::read_number;
+    match (a, b) {
+        (Bson::Document(x), Bson::Document(y)) => {
+            x.len() == y.len()
+                && x.iter()
+                    .all(|(k, v)| y.get(k).is_some_and(|w| same_values(v, w)))
+        }
+        (Bson::Array(x), Bson::Array(y)) => {
+            x.len() == y.len() && x.iter().zip(y).all(|(v, w)| same_values(v, w))
+        }
+        _ => match (number(a), number(b)) {
+            (Some(x), Some(y)) => x == y,
+            _ => a == b,
+        },
+    }
+}
+
+// -------------------------------------------------------------------- typed inputs and adapters
+
+/// The module's input type for a `create` case that names one: what `to_document()` gives and
+/// the prepared insert.
+fn typed_create(
+    collection: &str,
+    key: &str,
+    ctx: &mut WriteContext,
+) -> Result<(Document, PreparedInsert)> {
+    let text = "héllo 👋🏽 ñ مرحبا שלום e\u{301} 👨‍👩‍👧";
+    let token = || EncryptedToken {
+        iv: Some("a1b2".into()),
+        content: Some("c3d4".into()),
+    };
+    let ms = |iso: &str| dima_text::parse_date(iso).map(JsDate).context("date");
+    let pair = |given: Document, prepared: Result<PreparedInsert, ModelError>| -> Result<_> {
+        Ok((given, prepared?))
+    };
+    match (collection, key) {
+        ("users", "empty") => {
+            let user = NewUser::default();
+            pair(user.to_document()?, user.prepare(ctx))
+        }
+        ("users", "signup") => {
+            let mut account = NewAccount::new(AccountType::Twitch, "222");
+            account.name = Some(text.into());
+            account.email = Some("new@example.com".into());
+            account.refresh_token = Some(token());
+            account.access_token = Some(token());
+            account.actived = Some(false);
+            account.chat_enabled = Some(false);
+            account.has_permissions = Some(false);
+            account.up_to_date_permissions = Some(false);
+            let user = NewUser {
+                tts_default_provider: Some(TtsProvider::Kokoro),
+                name: Some(text.into()),
+                email: Some("new@example.com".into()),
+                language: Some(Language::En),
+                accounts: vec![account],
+                plan_tier: Some(PlanTier::Free),
+                plan_tier_until: Some(ms("2021-06-07T08:09:10.011Z")?),
+                last_app_activity_at: Some(ms("2020-01-02T03:04:05.006Z")?),
+                token_balance: Some(JsNumber(0.0)),
+                ..NewUser::default()
+            };
+            pair(user.to_document()?, user.prepare(ctx))
+        }
+        ("users", "referred") => {
+            let user = NewUser {
+                name: Some("r".into()),
+                accounts: vec![NewAccount::new(AccountType::Kick, "9")],
+                referrer_id: Some(ObjectId::parse_str("000000000000000000000001")?),
+                referral_code_used: Some("CODE".into()),
+                plan_tier: Some(PlanTier::Pro),
+                ..NewUser::default()
+            };
+            pair(user.to_document()?, user.prepare(ctx))
+        }
+        _ => bail!("{collection}: no typed input named {key}"),
+    }
+}
+
+/// `Model.create(doc)` for a case without a typed input (and for validation cases).
+fn create(
+    info: &CollectionInfo,
+    given: &Document,
+    ctx: &mut WriteContext,
+) -> Result<PreparedInsert, ModelError> {
+    info.prepare_create(given, ctx)
+}
+
+fn changes_of(value: &Value) -> Result<Vec<Change>> {
+    let mut out = Vec::new();
+    for change in value.as_array().context("changes")? {
+        if let Some(path) = change.get("set").and_then(Value::as_str) {
+            out.push(Change::set(
+                path,
+                bson_of(change.get("value").context("value")?)?,
+            ));
+        } else if let Some(path) = change.get("unset").and_then(Value::as_str) {
+            out.push(Change::unset(path));
+        } else if let Some(path) = change.get("push").and_then(Value::as_str) {
+            let values = change
+                .get("values")
+                .and_then(Value::as_array)
+                .context("values")?;
+            out.push(Change::push(
+                path,
+                values.iter().map(bson_of).collect::<Result<Vec<_>>>()?,
+            ));
+        } else {
+            bail!("unknown change {change}");
+        }
+    }
+    Ok(out)
+}
+
+fn update_options(intent: &Value) -> Result<UpdateOptions> {
+    let options = intent.get("options");
+    let mut out = if options
+        .and_then(|o| o.get("upsert"))
+        .and_then(Value::as_bool)
+        == Some(true)
+    {
+        UpdateOptions::upsert()
+    } else {
+        UpdateOptions::default()
+    };
+    if let Some(filters) = options
+        .and_then(|o| o.get("arrayFilters"))
+        .and_then(Value::as_array)
+    {
+        out = out.array_filters(
+            filters
+                .iter()
+                .map(document_of)
+                .collect::<Result<Vec<_>>>()?,
+        );
+    }
+    Ok(out)
+}
+
+// --------------------------------------------------------------------------------------- running
+
+async fn stored(store: &MongoStore, collection: &str) -> Result<Vec<Document>> {
+    Ok(store
+        .documents(collection)
+        .find(doc! {})
+        .sort(doc! { "_id": 1 })
+        .await?
+        .try_collect()
+        .await?)
+}
+
+/// Runs one recorded case through the Rust side; returns what to compare.
+async fn run_case(
+    store: &MongoStore,
+    case: &Value,
+    now_ms: i64,
+) -> Result<(Option<Value>, Option<Bson>)> {
+    let collection = case
+        .get("collection")
+        .and_then(Value::as_str)
+        .context("collection")?;
+    let op = case.get("op").and_then(Value::as_str).context("op")?;
+    let intent = case.get("intent").context("intent")?;
+    let info = info(collection)?;
+    let mut ctx = WriteContext::with_sequential_ids(now_ms, 1);
+    let mut writes = store.writes(collection);
+    let failure = |message: String| Ok((Some(Value::String(message)), None));
+    match op {
+        "create" => {
+            let prepared = match case.get("rust").and_then(Value::as_str) {
+                Some(key) => {
+                    let (given, prepared) = typed_create(collection, key, &mut ctx)?;
+                    let expected = bson_of(intent.get("doc").context("doc")?)?;
+                    if !same_values(&Bson::Document(given.clone()), &expected) {
+                        bail!("typed input {key} gives {given:?}, the case creates {expected:?}");
+                    }
+                    prepared
+                }
+                None => create(
+                    info,
+                    &document_of(intent.get("doc").context("doc")?)?,
+                    &mut ctx,
+                )?,
+            };
+            if let Err(error) = writes.insert_one(&prepared).await {
+                return failure(write_error(&error));
+            }
+        }
+        "validate" => {
+            return match create(
+                info,
+                &document_of(intent.get("doc").context("doc")?)?,
+                &mut ctx,
+            ) {
+                Ok(_) => Ok((None, None)),
+                Err(ModelError::Validation(error)) => Ok((
+                    Some(serde_json::json!({
+                        "name": "ValidationError",
+                        "message": error.to_string(),
+                        "errors": error.errors.iter().map(|e| serde_json::json!({
+                            "path": e.path, "kind": e.kind.as_str(), "message": e.message,
+                        })).collect::<Vec<_>>(),
+                    })),
+                    None,
+                )),
+                Err(other) => Err(other.into()),
+            };
+        }
+        "updateOne" | "updateMany" => {
+            let filter = document_of(intent.get("filter").context("filter")?)?;
+            let update = document_of(intent.get("update").context("update")?)?;
+            let prepared = prepare_update(
+                info.schema,
+                &filter,
+                update,
+                update_options(intent)?,
+                &mut ctx,
+            )?;
+            let outcome = if op == "updateOne" {
+                writes.update_one(&prepared).await
+            } else {
+                writes.update_many(&prepared).await
+            };
+            if let Err(error) = outcome {
+                return failure(write_error(&error));
+            }
+        }
+        "findOneAndUpdate" => {
+            let filter = document_of(intent.get("filter").context("filter")?)?;
+            let update = document_of(intent.get("update").context("update")?)?;
+            let returned = if intent.pointer("/options/new").and_then(Value::as_bool) == Some(true)
+            {
+                Returned::After
+            } else {
+                Returned::Before
+            };
+            let prepared = prepare_find_one_and_update(
+                info.schema,
+                &filter,
+                update,
+                update_options(intent)?,
+                returned,
+                &mut ctx,
+            )?;
+            let found = writes.find_one_and_update(&prepared).await?;
+            return Ok((
+                None,
+                found.map(|mut document| {
+                    dima_store::mongo::json::remove_paths(&mut document, info.hidden);
+                    Bson::Document(document)
+                }),
+            ));
+        }
+        "save" => {
+            let id = bson_of(intent.get("id").context("id")?)?;
+            // A save reads the whole document (see the crate docs on hidden paths).
+            let loaded = store
+                .documents(collection)
+                .find_one(doc! { "_id": id })
+                .await?
+                .context("the document to save is missing")?;
+            let changes = changes_of(intent.get("changes").context("changes")?)?;
+            let prepared = prepare_save(info.schema, &loaded, &changes, &mut ctx)?;
+            writes.save(&prepared).await?;
+        }
+        other => bail!("unknown op {other}"),
+    }
+    Ok((None, None))
+}
+
+fn write_error(error: &dima_store::mongo::write::WriteError) -> String {
+    match error {
+        dima_store::mongo::write::WriteError::Driver(driver)
+            if dima_store::mongo::error::is_duplicate_key(driver) =>
+        {
+            "duplicate key".to_owned()
+        }
+        other => other.to_string(),
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn indexes_match_mongoose() -> Result<()> {
+    let recording = recording()?;
+    support::with_store(|store| async move {
+        let mut problems = Vec::new();
+        let recorded: HashSet<&str> = recording
+            .indexes
+            .iter()
+            .filter_map(|r| r.get("collection").and_then(Value::as_str))
+            .collect();
+        for info in REGISTRY {
+            if !recorded.contains(info.name) {
+                problems.push(format!("{}: no index recording (add it to record.mts)", info.name));
+            }
+        }
+        for record in &recording.indexes {
+            let collection = record.get("collection").and_then(Value::as_str).context("collection")?;
+            let info = info(collection)?;
+            let failures = ensure_indexes(&store, info).await;
+            if !failures.is_empty() {
+                problems.push(format!("{collection}: {failures:?}"));
+            }
+            // Idempotent, like `Model.init()` on every start.
+            let again = ensure_indexes(&store, info).await;
+            if !again.is_empty() {
+                problems.push(format!("{collection} (second run): {again:?}"));
+            }
+            let listed = list_indexes(&store, collection).await?;
+            let expected = record.get("indexes").and_then(Value::as_array).context("indexes")?;
+            let mut expected_specs: Vec<String> = expected
+                .iter()
+                .map(|v| document_of(v).map(|d| canonical(Bson::Document(index_spec(d)))))
+                .collect::<Result<_>>()?;
+            let mut actual_specs: Vec<String> = listed
+                .into_iter()
+                .map(|d| canonical(Bson::Document(index_spec(d))))
+                .collect();
+            expected_specs.sort();
+            actual_specs.sort();
+            if expected_specs != actual_specs {
+                problems.push(format!(
+                    "{collection}: indexes differ\n  mongoose {expected_specs:?}\n  rust     {actual_specs:?}"
+                ));
+            }
+        }
+        if !problems.is_empty() {
+            bail!("{}", problems.join("\n"));
+        }
+        eprintln!("indexes of {} collections match", recording.indexes.len());
+        Ok(())
+    })
+    .await
+}
+
+/// The index specifications exactly as the server lists them (`listIndexes`).
+async fn list_indexes(store: &MongoStore, collection: &str) -> Result<Vec<Document>> {
+    let reply = store
+        .database()
+        .run_command(doc! { "listIndexes": collection })
+        .await?;
+    let batch = reply
+        .get_document("cursor")
+        .and_then(|cursor| cursor.get_array("firstBatch"))
+        .map_err(|e| anyhow!("{collection}: listIndexes reply: {e}"))?;
+    batch
+        .iter()
+        .map(|spec| match spec {
+            Bson::Document(spec) => Ok(spec.clone()),
+            other => bail!("{collection}: index {other:?}"),
+        })
+        .collect()
+}
+
+/// An index specification without the version field, keys in a fixed order.
+fn index_spec(document: Document) -> Document {
+    let mut keys: Vec<(String, Bson)> = document.into_iter().filter(|(k, _)| k != "v").collect();
+    keys.sort_by(|a, b| a.0.cmp(&b.0));
+    keys.into_iter().collect()
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn writes_match_mongoose() -> Result<()> {
+    let recording = recording()?;
+    support::with_store(|store| async move {
+        let mut problems = Vec::new();
+        let mut covered: HashSet<&str> = HashSet::new();
+        for case in &recording.cases {
+            let collection = case
+                .get("collection")
+                .and_then(Value::as_str)
+                .context("collection")?;
+            let name = case.get("name").and_then(Value::as_str).context("name")?;
+            covered.insert(collection);
+            store.documents(collection).delete_many(doc! {}).await?;
+            let seed: Vec<Document> = case
+                .get("seed")
+                .and_then(Value::as_array)
+                .context("seed")?
+                .iter()
+                .map(document_of)
+                .collect::<Result<_>>()?;
+            if !seed.is_empty() {
+                store
+                    .documents(collection)
+                    .insert_many(seed.clone())
+                    .await?;
+            }
+            let (error, result) = match run_case(&store, case, recording.now_ms).await {
+                Ok(outcome) => outcome,
+                Err(error) => {
+                    problems.push(format!("{collection}/{name}: {error:#}"));
+                    continue;
+                }
+            };
+            // The error (if any) the reference reported.
+            let expected_error =
+                case.get("error")
+                    .map(|e| match e.get("code").and_then(Value::as_i64) {
+                        Some(11000) => Value::String("duplicate key".into()),
+                        _ => e.clone(),
+                    });
+            if expected_error != error {
+                problems.push(format!(
+                    "{collection}/{name}: error\n  mongoose {}\n  rust     {}",
+                    expected_error.map_or_else(|| "none".into(), |v| v.to_string()),
+                    error.map_or_else(|| "none".into(), |v| v.to_string()),
+                ));
+            }
+            let intent = bson_of(case.get("intent").context("intent")?)?;
+            let seed_bson = Bson::Array(seed.into_iter().map(Bson::Document).collect());
+            let mut normaliser = Normaliser::new(&[&seed_bson, &intent]);
+            let actual: Vec<Bson> = stored(&store, collection)
+                .await?
+                .into_iter()
+                .map(|d| normaliser.walk(Bson::Document(d)))
+                .collect();
+            let actual = canonical(Bson::Array(actual));
+            let expected = canonical(bson_of(case.get("stored").context("stored")?)?);
+            if actual != expected {
+                problems.push(format!(
+                    "{collection}/{name}: stored\n  mongoose {expected}\n  rust     {actual}"
+                ));
+            }
+            if let Some(expected) = case.get("result") {
+                let actual = result.map(|r| canonical(normaliser.walk(r)));
+                let expected = canonical(bson_of(expected)?);
+                if actual.as_deref() != Some(expected.as_str()) {
+                    problems.push(format!(
+                        "{collection}/{name}: result\n  mongoose {expected}\n  rust     {actual:?}"
+                    ));
+                }
+            }
+        }
+        for info in REGISTRY {
+            if !covered.contains(info.name) {
+                problems.push(format!("{}: no write cases recorded", info.name));
+            }
+        }
+        if !problems.is_empty() {
+            bail!("{} problems:\n{}", problems.len(), problems.join("\n"));
+        }
+        eprintln!("{} recorded writes match", recording.cases.len());
+        Ok(())
+    })
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn unique_indexes_report_duplicates() -> Result<()> {
+    support::with_store(|store| async move {
+        let mut checked = 0;
+        for info in REGISTRY {
+            let Some(unique) = info.indexes.iter().find(|spec| spec.unique) else {
+                continue;
+            };
+            let failures = ensure_indexes(&store, info).await;
+            if !failures.is_empty() {
+                bail!("{}: {failures:?}", info.name);
+            }
+            // Two documents with the same values on the unique keys (and on a partial filter's
+            // fields): the second insert must fail with E11000 naming the index.
+            let mut document = doc! {};
+            for (key, _) in unique.keys {
+                if *key != "_id" {
+                    insert_path(&mut document, key, Bson::String("same".into()));
+                }
+            }
+            if let Some(filter) = unique.partial_filter {
+                for (key, value) in filter() {
+                    insert_path(&mut document, &key, value);
+                }
+            }
+            let collection = store.documents(info.name);
+            collection.insert_one(document.clone()).await?;
+            let Err(error) = collection.insert_one(document).await else {
+                bail!("{}: duplicate on {} was accepted", info.name, unique.name());
+            };
+            let duplicate = dima_store::mongo::error::duplicate_key(&error)
+                .with_context(|| format!("{}: not a duplicate-key error: {error}", info.name))?;
+            if duplicate.index.as_deref() != Some(unique.name().as_str()) {
+                bail!(
+                    "{}: duplicate reported on {:?}, expected {}",
+                    info.name,
+                    duplicate.index,
+                    unique.name()
+                );
+            }
+            checked += 1;
+        }
+        eprintln!("duplicate keys detected on {checked} unique indexes");
+        Ok(())
+    })
+    .await
+}
+
+fn insert_path(document: &mut Document, path: &str, value: Bson) {
+    match path.split_once('.') {
+        None => {
+            document.insert(path, value);
+        }
+        Some((head, rest)) => {
+            if !matches!(document.get(head), Some(Bson::Document(_))) {
+                document.insert(head, doc! {});
+            }
+            if let Some(Bson::Document(inner)) = document.get_mut(head) {
+                insert_path(inner, rest, value);
+            }
+        }
+    }
+}
