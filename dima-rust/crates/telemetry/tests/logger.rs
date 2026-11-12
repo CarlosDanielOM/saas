@@ -265,3 +265,26 @@ async fn log_limits_apply_while_the_value_is_walked_and_panics_are_contained() {
     assert_eq!(lines[0]["data"].as_array().map(Vec::len), Some(100));
     assert_eq!(lines[1]["data"], "[unserializable]");
 }
+
+/// A writer stuck on a hung store at shutdown is aborted; the entries it held are counted.
+#[tokio::test]
+async fn entries_an_aborted_cache_writer_abandoned_are_counted() {
+    let (port, server) = support::black_hole().await;
+    let (config, _console) = support::memory_config("api", Some(support::local_store(port)));
+    let telemetry = Telemetry::new(config).unwrap();
+    for index in 0..10 {
+        telemetry.info(&json!({ "index": index }), LogOptions::cache());
+    }
+    let running = telemetry.start();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let report = running.shutdown(Duration::from_millis(300)).await;
+    assert!(!report.clean);
+    assert_eq!(report.stats.cache_written, 0);
+    assert_eq!(report.stats.cache_dropped, 10, "{:?}", report.stats);
+    // The exporter's final flush was aborted too: its metrics are counted, not lost silently.
+    assert!(report.stats.pipeline_dropped > 0, "{:?}", report.stats);
+    // Entries logged after the writer is gone are refused and counted too.
+    telemetry.info(&"late", LogOptions::cache());
+    assert_eq!(telemetry.stats().cache_dropped, 11);
+    server.abort();
+}

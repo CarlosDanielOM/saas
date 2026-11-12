@@ -231,11 +231,13 @@ impl Exporter {
 /// closes or `stop` fires; then whatever is queued is exported once more.
 pub(crate) async fn run(
     exporter: Exporter,
-    mut rx: tokio::sync::mpsc::Receiver<Arc<LogRecord>>,
+    rx: tokio::sync::mpsc::Receiver<Arc<LogRecord>>,
     stop: dima_core::Shutdown,
     telemetry: crate::Telemetry,
 ) {
-    let mut batch: Vec<Arc<LogRecord>> = Vec::with_capacity(MAX_BATCH);
+    // A batch in flight and the queue are counted as dropped if this task is aborted.
+    let mut drain = crate::telemetry::Drain::new(&telemetry, rx, MAX_BATCH, |drops| &drops.posthog);
+    let crate::telemetry::Drain { rx, batch, .. } = &mut drain;
     let mut stopping = false;
     loop {
         if !stopping {
@@ -262,7 +264,7 @@ pub(crate) async fn run(
             }
         }
         if !batch.is_empty() {
-            if exporter.export(&batch).await.is_err() {
+            if exporter.export(batch).await.is_err() {
                 telemetry
                     .0
                     .sinks

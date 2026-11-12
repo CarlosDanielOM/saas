@@ -838,7 +838,12 @@ impl Telemetry {
         let (payloads, oversized) =
             taken.encode(&self.0.service, &self.0.instance, self.now_ms(), uuid);
         self.lose(oversized);
-        let mut sent = 0;
+        // Whatever is not acknowledged by the store is lost and counted, also when this future
+        // is dropped half-way (an abort at shutdown).
+        let mut unsent = Unsent {
+            telemetry: self,
+            items: payloads.iter().map(|payload| payload.items).sum(),
+        };
         let send = async {
             let dragonfly = self.0.store.get().await.ok_or(())?;
             for payload in &payloads {
@@ -850,21 +855,14 @@ impl Telemetry {
                     )
                     .await
                     .map_err(|_| ())?;
-                sent += 1;
+                unsent.items -= payload.items;
+                self.0.payloads_sent.fetch_add(1, Ordering::Relaxed);
             }
             Ok::<(), ()>(())
         };
         let ok = matches!(tokio::time::timeout(FLUSH_DEADLINE, send).await, Ok(Ok(())));
-        self.0
-            .payloads_sent
-            .fetch_add(sent as u64, Ordering::Relaxed);
+        drop(unsent);
         if !ok {
-            let lost: u64 = payloads
-                .iter()
-                .skip(sent)
-                .map(|payload| payload.items)
-                .sum();
-            self.lose(lost);
             self.0.store.failed().await;
         }
     }
@@ -927,6 +925,21 @@ impl Telemetry {
     }
 }
 
+/// The items of a flush not yet acknowledged; counted as lost when it goes away.
+struct Unsent<'a> {
+    telemetry: &'a Telemetry,
+    items: u64,
+}
+
+impl Drop for Unsent<'_> {
+    fn drop(&mut self) {
+        self.telemetry.lose(self.items);
+    }
+}
+
+/// How long an aborted background task gets to finish being dropped.
+pub const ABORT_GRACE: Duration = Duration::from_millis(200);
+
 /// The background work started by [`Telemetry::start`].
 pub struct Running {
     telemetry: Telemetry,
@@ -938,7 +951,8 @@ pub struct Running {
 /// What [`Running::shutdown`] managed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ShutdownReport {
-    /// Every task finished its final flush within the deadline.
+    /// Every task finished its final flush within the deadline, none of them had panicked, and
+    /// the console writer reached its flush marker.
     pub clean: bool,
     /// Counters after the final flush.
     pub stats: Stats,
@@ -946,16 +960,23 @@ pub struct ShutdownReport {
 
 impl Running {
     /// Final sample and flush, then drains the log queues, all within `deadline`. Tasks still
-    /// running at the deadline are aborted.
+    /// running at the deadline are aborted and joined (each within [`ABORT_GRACE`]); what an
+    /// aborted task still held (a batch being written, its queue) is counted as dropped. A task
+    /// that panicked makes the report unclean.
     pub async fn shutdown(mut self, deadline: Duration) -> ShutdownReport {
         self.stop.trigger();
         let until = Instant::now() + deadline;
         let mut clean = true;
-        for task in std::mem::take(&mut self.tasks) {
-            let abort = task.abort_handle();
-            if tokio::time::timeout_at(until, task).await.is_err() {
-                abort.abort();
-                clean = false;
+        for mut task in std::mem::take(&mut self.tasks) {
+            match tokio::time::timeout_at(until, &mut task).await {
+                Ok(Ok(())) => {}
+                // It panicked (it is never cancelled from here before the deadline).
+                Ok(Err(_)) => clean = false,
+                Err(_) => {
+                    clean = false;
+                    task.abort();
+                    let _ = tokio::time::timeout(ABORT_GRACE, task).await;
+                }
             }
         }
         if self.console
@@ -975,7 +996,8 @@ impl Running {
                     Err(_) => break false,
                 }
             };
-            clean &= queued && tokio::time::timeout_at(until, rx).await.is_ok();
+            // `Ok(Err(_))`: the writer thread is gone without reaching the marker.
+            clean &= queued && matches!(tokio::time::timeout_at(until, rx).await, Ok(Ok(())));
             let _ = console.try_send(ConsoleMessage::Stop);
         }
         ShutdownReport {
@@ -1016,30 +1038,69 @@ async fn run_exporter(telemetry: Telemetry, stop: Shutdown) {
     telemetry.flush().await;
 }
 
+/// A log queue's receiving end and the batch taken from it. Whatever it still holds when it goes
+/// away (the writer returned, was aborted at shutdown, or panicked) is counted as dropped, and
+/// the queue is closed so later entries are refused and counted by the sender.
+pub(crate) struct Drain {
+    pub(crate) rx: tokio::sync::mpsc::Receiver<Arc<crate::logger::LogRecord>>,
+    pub(crate) batch: Vec<Arc<crate::logger::LogRecord>>,
+    telemetry: Telemetry,
+    counter: fn(&crate::logger::LogDrops) -> &AtomicU64,
+}
+
+impl Drain {
+    pub(crate) fn new(
+        telemetry: &Telemetry,
+        rx: tokio::sync::mpsc::Receiver<Arc<crate::logger::LogRecord>>,
+        capacity: usize,
+        counter: fn(&crate::logger::LogDrops) -> &AtomicU64,
+    ) -> Self {
+        Self {
+            rx,
+            batch: Vec::with_capacity(capacity),
+            telemetry: telemetry.clone(),
+            counter,
+        }
+    }
+}
+
+impl Drop for Drain {
+    fn drop(&mut self) {
+        self.rx.close();
+        let mut left = self.batch.len() as u64;
+        while self.rx.try_recv().is_ok() {
+            left += 1;
+        }
+        if left > 0 {
+            (self.counter)(&self.telemetry.0.sinks.drops).fetch_add(left, Ordering::Relaxed);
+        }
+    }
+}
+
 async fn run_cache_writer(
     telemetry: Telemetry,
-    mut rx: tokio::sync::mpsc::Receiver<Arc<crate::logger::LogRecord>>,
+    rx: tokio::sync::mpsc::Receiver<Arc<crate::logger::LogRecord>>,
     stop: Shutdown,
 ) {
-    let mut batch = Vec::with_capacity(CACHE_BATCH);
+    let mut drain = Drain::new(&telemetry, rx, CACHE_BATCH, |drops| &drops.cache);
     loop {
         let stopping = tokio::select! {
             biased;
             () = stop.wait() => true,
-            record = rx.recv() => match record {
-                Some(record) => { batch.push(record); false }
+            record = drain.rx.recv() => match record {
+                Some(record) => { drain.batch.push(record); false }
                 None => true,
             },
         };
-        while batch.len() < CACHE_BATCH {
-            match rx.try_recv() {
-                Ok(record) => batch.push(record),
+        while drain.batch.len() < CACHE_BATCH {
+            match drain.rx.try_recv() {
+                Ok(record) => drain.batch.push(record),
                 Err(_) => break,
             }
         }
-        if !batch.is_empty() {
-            write_cache_batch(&telemetry, &batch).await;
-            batch.clear();
+        if !drain.batch.is_empty() {
+            write_cache_batch(&telemetry, &drain.batch).await;
+            drain.batch.clear();
             if stopping {
                 continue;
             }
@@ -1092,6 +1153,51 @@ async fn write_cache_batch(telemetry: &Telemetry, batch: &[Arc<crate::logger::Lo
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn running(tasks: Vec<JoinHandle<()>>) -> Running {
+        Running {
+            telemetry: Telemetry::disabled(),
+            stop: Shutdown::new(),
+            tasks,
+            console: false,
+        }
+    }
+
+    #[tokio::test]
+    async fn a_panicked_background_task_makes_shutdown_unclean() {
+        let ok = running(vec![tokio::spawn(async {})]).shutdown(Duration::from_secs(1));
+        assert!(ok.await.clean);
+        let panicked = tokio::spawn(async { panic!("a background task panicked") });
+        tokio::task::yield_now().await;
+        let report = running(vec![panicked])
+            .shutdown(Duration::from_secs(1))
+            .await;
+        assert!(!report.clean);
+    }
+
+    #[tokio::test]
+    async fn a_task_past_the_deadline_is_aborted_and_joined() {
+        struct Dropped(Arc<std::sync::atomic::AtomicBool>);
+        impl Drop for Dropped {
+            fn drop(&mut self) {
+                self.0.store(true, Ordering::SeqCst);
+            }
+        }
+        let dropped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let guard = Dropped(dropped.clone());
+        let stuck = tokio::spawn(async move {
+            let _guard = guard;
+            std::future::pending::<()>().await;
+        });
+        let started = Instant::now();
+        let report = running(vec![stuck])
+            .shutdown(Duration::from_millis(50))
+            .await;
+        assert!(!report.clean);
+        assert!(started.elapsed() < Duration::from_millis(50) + ABORT_GRACE);
+        // Joined: its state was dropped before shutdown returned.
+        assert!(dropped.load(Ordering::SeqCst));
+    }
 
     #[test]
     fn flushes_land_one_second_after_each_boundary() {

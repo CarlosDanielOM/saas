@@ -269,3 +269,25 @@ async fn an_optional_minimum_export_level_keeps_lower_entries_out_and_counts_the
     assert_eq!(report.stats.posthog_dropped, 0);
     assert_eq!(report.stats.total_dropped(), 0);
 }
+
+/// An export still waiting at the shutdown deadline is aborted; its records are counted.
+#[tokio::test]
+async fn records_an_aborted_export_abandoned_are_counted() {
+    let server = MockServer::start().await.unwrap();
+    server.fallback(|_| MockResponse::new(200).delay(Duration::from_secs(5)));
+    let telemetry = with_posthog(&server.url());
+    let running = telemetry.start();
+    for index in 0..5 {
+        telemetry.info(&json!({ "index": index }), LogOptions::console());
+    }
+    // The first batch goes out after the export interval and hangs on the slow endpoint.
+    tokio::time::sleep(Duration::from_millis(1300)).await;
+    for index in 5..8 {
+        telemetry.info(&json!({ "index": index }), LogOptions::console());
+    }
+    let started = Instant::now();
+    let report = running.shutdown(Duration::from_millis(300)).await;
+    assert!(started.elapsed() < Duration::from_secs(1));
+    assert!(!report.clean);
+    assert_eq!(report.stats.posthog_dropped, 8, "{:?}", report.stats);
+}
