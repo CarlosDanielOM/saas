@@ -253,6 +253,7 @@ pub mod app_configs;
 pub mod ast_variables;
 pub mod availability;
 pub mod channel_configs;
+pub mod channel_extension_items;
 pub mod command_user_variables;
 pub mod commands;
 pub mod countdown_timers;
@@ -260,11 +261,13 @@ pub mod credit_gifts;
 pub mod credit_transactions;
 pub mod cron_job_intents;
 pub mod custom_timers;
+pub mod dimafx_playbacks;
 pub mod domain_event_checkpoints;
 pub mod domain_event_deliveries;
 pub mod domain_events;
 pub mod events;
 pub mod eventsubs;
+pub mod extension_wallet_transactions;
 pub mod oauth_clients;
 pub mod oauth_grants;
 pub mod oauth_refresh_tokens;
@@ -274,6 +277,7 @@ pub mod referral_codes;
 pub mod site_analytics;
 pub mod stream_sessions;
 pub mod timer_commands;
+pub mod user_extension_inventories;
 pub mod users;
 
 pub use collection::{CollectionInfo, Hooks, ReadError};
@@ -323,4 +327,8 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &credit_gifts::INFO,
     &credit_transactions::INFO,
     &referral_codes::INFO,
+    &channel_extension_items::INFO,
+    &user_extension_inventories::INFO,
+    &extension_wallet_transactions::INFO,
+    &dimafx_playbacks::INFO,
 ];

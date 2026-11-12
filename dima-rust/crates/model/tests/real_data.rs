@@ -40,6 +40,24 @@ async fn expected_collections(store: &dima_store::mongo::MongoStore) -> Result<(
     Ok(())
 }
 
+/// Index differences the production copy is known to have: (collection, index name, why). Each
+/// is listed in the package report; the cutover rehearsal's preflight shows them too.
+const KNOWN_DIFFERENCES: &[(&str, &str, &str)] = &[(
+    "extensionwallettransactions",
+    "twitchTransactionID_1",
+    "production has a plain index where the schema declares a unique partial one \
+     (IndexOptionsConflict: Mongoose never built it; ledger mongo.md \"Option conflict\")",
+)];
+
+fn is_known(difference: &dima_model::index::IndexDifference, known: &(&str, &str, &str)) -> bool {
+    match difference {
+        dima_model::index::IndexDifference::Differs {
+            collection, stored, ..
+        } => *collection == known.0 && stored.get_str("name").ok() == Some(known.1),
+        _ => false,
+    }
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn every_real_document_decodes() -> Result<()> {
     let Some(store) = support::real_store().await? else {
@@ -122,7 +140,9 @@ async fn real_indexes_match_declarations() -> Result<()> {
     expected_collections(&store).await?;
     let differences =
         dima_model::preflight_indexes(&store, REGISTRY, std::time::Duration::from_secs(60)).await?;
-    // A collection the copy does not have (none today) has no indexes to compare.
+    // A collection the copy does not have (`NEVER_CREATED`) has no indexes to compare, and the
+    // differences production is known to have are reported, not failed.
+    let mut known = Vec::new();
     let real: Vec<String> = differences
         .iter()
         .filter(|d| {
@@ -131,8 +151,20 @@ async fn real_indexes_match_declarations() -> Result<()> {
                 dima_model::index::IndexDifference::MissingCollection { .. }
             )
         })
+        .filter(
+            |d| match KNOWN_DIFFERENCES.iter().find(|k| is_known(d, k)) {
+                Some((collection, index, why)) => {
+                    known.push(format!("{collection}.{index}: {why}"));
+                    false
+                }
+                None => true,
+            },
+        )
         .map(ToString::to_string)
         .collect();
+    for line in &known {
+        eprintln!("known difference: {line}");
+    }
     if !real.is_empty() {
         bail!("{}", real.join("\n"));
     }

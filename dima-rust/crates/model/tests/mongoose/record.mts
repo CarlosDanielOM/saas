@@ -92,6 +92,10 @@ const FILES: Array<[string, string]> = [
     ['src/schemas/credit_gift.schema.ts', 'CreditGift'],
     ['src/schemas/credit_transaction.schema.ts', 'CreditTransaction'],
     ['src/schemas/referral_code.schema.ts', 'ReferralCode'],
+    ['src/schemas/channel_extension_item.schema.ts', 'ChannelExtensionItem'],
+    ['src/schemas/user_extension_inventory.schema.ts', 'UserExtensionInventory'],
+    ['src/schemas/extension_wallet_transaction.schema.ts', 'ExtensionWalletTransaction'],
+    ['src/schemas/dimafx_playback.schema.ts', 'DimafxPlayback'],
 ];
 const MODELS: Record<string, any> = {};
 for (const [file, name] of FILES) {
@@ -288,7 +292,81 @@ const creditSeed = (extra: any = {}) => ({
 });
 const codeSeed = (extra: any = {}) => ({ _id: OID(1), code: 'abc', owner: OID(0x11), label: '', stats: { conversions: 2 }, active: true, createdAt: T1, updatedAt: T1, __v: 0, ...extra });
 
+const EPOCH = new RealDate(0);
+const itemBase = () => ({ channelID: '111', channelName: 'seed', createdByUserID: '111', description: ` ${TEXT} `, bitsPrice: 100, sku: 'dimafx_100', volume: 80, isEnabled: true, sortOrder: 0 });
+const itemSeed = (extra: any = {}) => ({
+    _id: OID(1), channelID: '111', channelName: 'seed', createdByUserID: '111', assetID: OID(0x41), name: 'Clip', description: '', category: 'video',
+    mediaType: 'video', thumbnailUrl: 'https://example.com/t.png', durationMs: 5000, bitsPrice: 100, sku: 'dimafx_100', volume: 100, isEnabled: true,
+    sortOrder: 0, tts: null, deletedAt: null, createdAt: T1, updatedAt: T1, __v: 0, ...extra,
+});
+const identity = { platform: 'twitch', userID: 'u1', channelID: '111' };
+const walletItem = (extra: any = {}) => ({ channelExtensionItemID: OID(1), quantity: 1, purchasePriceBits: 100, acquiredAt: T1, source: 'bits_purchase', ...extra });
+const walletSeed = (extra: any = {}) => ({
+    _id: OID(1), ...identity, displayName: null, balance: 100, config: { quickPurchasePriority: 'credits_first', quickPurchaseAction: 'use_now' },
+    items: [walletItem()], dimafxReceipts: [], createdAt: T1, updatedAt: T1, __v: 0, ...extra,
+});
+const ledgerEntry = (extra: any = {}) => ({
+    platform: 'twitch', userID: 'u1', opaqueUserID: null, channelID: '111', type: 'bits_purchase', amountBits: 100, balanceDelta: 0,
+    channelExtensionItemID: OID(0x51), twitchTransactionID: 'tx1', sku: 'dimafx_100', metadata: { action: 'use_now', fulfillment: 'pending', viewerText: TEXT }, ...extra,
+});
+const ledgerSeedEntry = (extra: any = {}) => ({ _id: OID(1), ...ledgerEntry(), createdAt: T1, updatedAt: T1, __v: 0, ...extra });
+const playbackPayload = () => ({ triggerID: 'bits-1', channelID: '111', itemID: 'i1', name: TEXT, category: 'tts', volume: 100, durationMs: 0, tts: { text: TEXT, voice: '', language: 'es' }, refundOnFailure: { userID: 'u1', priceBits: 100 }, source: 'bits_purchase', enqueuedAt: 1577934245006 });
+const playbackSeed = (extra: any = {}) => ({ _id: 'bits-1', channelID: '111', payload: playbackPayload(), state: 'queued', leaseOwner: '', leaseUntil: EPOCH, createdAt: T1, updatedAt: T1, __v: 0, ...extra });
+
 const CASES: Record<string, any[]> = {
+    channelextensionitems: [
+        { name: 'create_media', op: 'create', rust: 'media', doc: { ...itemBase(), name: ' Clip ', assetID: OID(0x41), category: 'video', mediaType: 'video', thumbnailUrl: 'https://example.com/t.png', durationMs: 5000 } },
+        // `dimafx.route.ts:1157`: a TTS item has no asset (`assetID: null` passed through).
+        { name: 'create_tts', op: 'create', rust: 'tts', doc: { ...itemBase(), name: 'TTS message', assetID: null, category: 'tts', mediaType: 'audio', thumbnailUrl: '', durationMs: 0, tts: { mode: 'fixed', text: ` ${TEXT} `, voice: ' es_voice ', language: 'es' } } },
+        { name: 'validate_missing', op: 'validate', doc: { category: 'video', volume: 101, durationMs: -1, bitsPrice: -5, name: 'n'.repeat(81), tts: { mode: 'x', language: 'fr', voice: 'v'.repeat(121) } } },
+        { name: 'validate_tts_no_asset', op: 'validate', doc: { channelID: '1', channelName: 'c', createdByUserID: '1', name: 'n', category: 'tts', mediaType: 'audio', bitsPrice: 1, sku: 's' } },
+        { name: 'save_edit', op: 'save', seed: [itemSeed()], id: OID(1), changes: [{ set: 'name', value: ' Renamed ' }, { set: 'volume', value: 40 }, { set: 'bitsPrice', value: 500 }, { set: 'sku', value: 'dimafx_500' }] },
+        { name: 'save_tts', op: 'save', seed: [itemSeed({ assetID: null, category: 'tts', mediaType: 'audio', tts: { mode: 'custom', text: '', voice: '', language: 'en' } })], id: OID(1), changes: [{ set: 'tts', value: { mode: 'fixed', text: ` ${TEXT} `, voice: '', language: 'es' } }] },
+        { name: 'save_delete', op: 'save', seed: [itemSeed()], id: OID(1), changes: [{ set: 'isEnabled', value: false }, { set: 'deletedAt', value: T2 }] },
+        { name: 'save_invalid', op: 'save', seed: [itemSeed()], id: OID(1), changes: [{ set: 'volume', value: 150 }, { set: 'assetID', value: null }] },
+        { name: 'migrate_category', op: 'updateMany', seed: [itemSeed({ mediaType: 'audio' })], filter: { mediaType: 'audio', category: 'video' }, update: { $set: { category: 'audio' } } },
+    ],
+    userextensioninventories: [
+        { name: 'create_wallet', op: 'create', rust: 'wallet', doc: { ...identity, balance: 0, config: { quickPurchasePriority: 'credits_first', quickPurchaseAction: 'use_now' }, items: [] } },
+        { name: 'create_items', op: 'create', rust: 'items', doc: { ...identity, userID: 'u2', displayName: TEXT, items: [{ channelExtensionItemID: OID(1), quantity: 2, purchasePriceBits: 100, source: 'gift' }] } },
+        { name: 'validate_enums', op: 'validate', doc: { platform: 'kick', balance: -1, config: { quickPurchasePriority: 'x' }, items: [{ quantity: -1, source: 'stolen' }] } },
+        // `dimafx.route.ts:293`: the wallet is created on first use.
+        { name: 'get_or_create', op: 'findOneAndUpdate', filter: identity, update: { $setOnInsert: { ...identity, balance: 0, config: { quickPurchasePriority: 'credits_first', quickPurchaseAction: 'use_now' }, items: [] }, $set: { displayName: TEXT } }, options: { new: true, upsert: true } },
+        { name: 'get_existing', op: 'findOneAndUpdate', seed: [walletSeed()], filter: identity, update: { $setOnInsert: { ...identity, balance: 0, config: { quickPurchasePriority: 'credits_first', quickPurchaseAction: 'use_now' }, items: [] } }, options: { new: true, upsert: true } },
+        { name: 'increment_item', op: 'findOneAndUpdate', seed: [walletSeed()], filter: { ...identity, items: { $elemMatch: { channelExtensionItemID: OID(1), purchasePriceBits: 100, source: 'bits_purchase' } } }, update: { $inc: { 'items.$.quantity': 1 } }, options: { new: true } },
+        { name: 'push_item', op: 'findOneAndUpdate', seed: [walletSeed()], filter: { ...identity, items: { $not: { $elemMatch: { channelExtensionItemID: OID(2), purchasePriceBits: 100, source: 'bits_purchase' } } } }, update: { $push: { items: { channelExtensionItemID: OID(2), quantity: 1, purchasePriceBits: 100, acquiredAt: T2, source: 'bits_purchase' } } }, options: { new: true } },
+        { name: 'debit', op: 'findOneAndUpdate', seed: [walletSeed()], filter: { ...identity, balance: { $gte: 50 } }, update: { $inc: { balance: -50 } }, options: { new: true } },
+        // `dimafx-fulfillment.service.ts`: the receipt and its effect are one update.
+        { name: 'refund_once', op: 'updateOne', seed: [walletSeed()], filter: { ...identity, dimafxReceipts: { $ne: 'refund:bits-1' } }, update: { $inc: { balance: 25 }, $addToSet: { dimafxReceipts: 'refund:bits-1' } } },
+        { name: 'save_once', op: 'updateOne', seed: [walletSeed()], filter: { ...identity, dimafxReceipts: { $ne: 'save:l1' } }, update: { $addToSet: { dimafxReceipts: 'save:l1' }, $push: { items: { channelExtensionItemID: OID(3), quantity: 1, purchasePriceBits: 300, acquiredAt: T2, source: 'bits_purchase' } } } },
+        { name: 'set_config', op: 'findOneAndUpdate', seed: [walletSeed()], filter: identity, update: { $set: { config: { quickPurchasePriority: 'bits_first', quickPurchaseAction: 'save' } } }, options: { new: true } },
+        // `dimafx.route.ts:1312`: a deleted item's saved copies are refunded with a save.
+        { name: 'save_refund', op: 'save', seed: [walletSeed()], id: OID(1), changes: [{ set: 'items.0.quantity', value: 0 }, { set: 'balance', value: 200 }] },
+        { name: 'save_negative', op: 'save', seed: [walletSeed()], id: OID(1), changes: [{ set: 'balance', value: -1 }] },
+        { name: 'duplicate_wallet', op: 'create', seed: [walletSeed()], doc: identity },
+    ],
+    extensionwallettransactions: [
+        { name: 'create_bits', op: 'create', rust: 'bits', doc: ledgerEntry() },
+        { name: 'create_anonymous', op: 'create', rust: 'anonymous', doc: ledgerEntry({ userID: null, opaqueUserID: 'Uopaque', twitchTransactionID: 'tx2', metadata: { action: 'use_now', fulfillment: 'pending' } }) },
+        { name: 'create_refund', op: 'create', rust: 'refund', doc: { platform: 'twitch', userID: 'u1', channelID: '111', type: 'refund_credit', amountBits: 25, balanceDelta: 2.5, channelExtensionItemID: OID(0x51), metadata: { reason: 'channel_extension_item_deleted' } } },
+        { name: 'validate_enums', op: 'validate', doc: { type: 'theft', platform: 'kick' } },
+        { name: 'mark_fulfillment', op: 'updateOne', seed: [ledgerSeedEntry()], filter: { _id: OID(1) }, update: { $set: { 'metadata.fulfillment': 'fulfilled' } } },
+        { name: 'claim_fulfillment', op: 'updateOne', seed: [ledgerSeedEntry()], filter: { _id: OID(1), $or: [{ 'metadata.fulfillment': 'pending' }, { 'metadata.fulfillment': 'processing', updatedAt: { $lt: T2 } }] }, update: { $set: { 'metadata.fulfillment': 'processing' } } },
+        { name: 'duplicate_transaction', op: 'create', seed: [ledgerSeedEntry()], doc: ledgerEntry({ amountBits: 1 }) },
+        // The unique index is partial: entries without a Twitch transaction never collide.
+        { name: 'null_transactions', op: 'create', seed: [ledgerSeedEntry({ twitchTransactionID: null })], doc: ledgerEntry({ twitchTransactionID: null, type: 'use_now' }) },
+    ],
+    dimafxplaybacks: [
+        { name: 'create_job', op: 'create', rust: 'job', doc: { _id: 'bits-1', channelID: '111', payload: playbackPayload(), state: 'queued', leaseOwner: '', leaseUntil: EPOCH } },
+        { name: 'validate_missing', op: 'validate', doc: { state: 'lost' } },
+        // `dimafx_queue.handler.ts:128`: the job is persisted before dispatch.
+        { name: 'enqueue_upsert', op: 'updateOne', filter: { _id: 'bits-2' }, update: { $setOnInsert: { channelID: '111', payload: playbackPayload(), state: 'queued', leaseOwner: '', leaseUntil: EPOCH } }, options: { upsert: true } },
+        { name: 'enqueue_retry', op: 'updateOne', seed: [playbackSeed()], filter: { _id: 'bits-1' }, update: { $setOnInsert: { channelID: '111', payload: { other: true }, state: 'queued', leaseOwner: '', leaseUntil: EPOCH } }, options: { upsert: true } },
+        { name: 'lease', op: 'findOneAndUpdate', seed: [playbackSeed()], filter: { _id: 'bits-1', state: { $nin: ['completed', 'refunded'] }, $or: [{ leaseUntil: { $lte: T2 } }, { leaseOwner: 'api-1' }] }, update: { $set: { leaseOwner: 'api-1', leaseUntil: T2 } }, options: { new: true } },
+        { name: 'refunding', op: 'updateOne', seed: [playbackSeed({ state: 'playing', leaseOwner: 'api-1', leaseUntil: T2 })], filter: { _id: 'bits-1', leaseOwner: 'api-1', state: 'playing' }, update: { $set: { state: 'refunding', failure: TEXT } } },
+        { name: 'release', op: 'updateOne', seed: [playbackSeed({ state: 'completed', leaseOwner: 'api-1', leaseUntil: T2 })], filter: { _id: 'bits-1', leaseOwner: 'api-1' }, update: { $set: { leaseOwner: '', leaseUntil: EPOCH } } },
+        { name: 'widget_claim', op: 'updateOne', seed: [playbackSeed()], filter: { _id: 'bits-1', channelID: '111', widgetSentAt: null }, update: { $set: { widgetSentAt: T2 } } },
+    ],
     ai_usage_receipts: [
         { name: 'create_usage', op: 'create', rust: 'usage', doc: receiptDoc({ category: TEXT }) },
         { name: 'create_adjustment', op: 'create', rust: 'adjustment', doc: receiptDoc({ entryId: 'e2', requestId: null, entryKind: 'adjustment', source: null, adjustmentType: 'grant', model: null, quantity: null, unit: null, credits: -50, itemized: false }) },

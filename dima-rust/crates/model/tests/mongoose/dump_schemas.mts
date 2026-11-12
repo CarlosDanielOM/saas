@@ -62,6 +62,10 @@ const MODELS: Array<[string, string]> = [
     ['src/schemas/credit_gift.schema.ts', 'CreditGift'],
     ['src/schemas/credit_transaction.schema.ts', 'CreditTransaction'],
     ['src/schemas/referral_code.schema.ts', 'ReferralCode'],
+    ['src/schemas/channel_extension_item.schema.ts', 'ChannelExtensionItem'],
+    ['src/schemas/user_extension_inventory.schema.ts', 'UserExtensionInventory'],
+    ['src/schemas/extension_wallet_transaction.schema.ts', 'ExtensionWalletTransaction'],
+    ['src/schemas/dimafx_playback.schema.ts', 'DimafxPlayback'],
 ];
 
 export const FIXED_MS = Date.UTC(2026, 10, 11, 10, 20, 30, 456);

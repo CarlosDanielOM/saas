@@ -432,7 +432,8 @@ fn validate_level(
     let mut missing: Vec<(Vec<usize>, ValidatorError)> = Vec::new();
     // With an order: the same errors with their sort keys.
     let mut ordered: Vec<((u8, Vec<usize>), ValidatorError)> = Vec::new();
-    let mut present: Vec<(Vec<usize>, ValidatorError)> = Vec::new();
+    // (sort key, schema position, error).
+    let mut present: Vec<(Vec<usize>, Vec<usize>, ValidatorError)> = Vec::new();
     let mut children: Vec<ChildRules<'_>> = Vec::new();
     // An empty-object default (`default: () => ({})`) is present when Mongoose validates, and
     // removed by `minimize` afterwards.
@@ -444,10 +445,9 @@ fn validate_level(
                 position,
                 field,
             }) => {
-                let failed = |list: &[(Vec<usize>, ValidatorError)]| {
-                    list.iter().any(|(p, _)| *p == position)
-                };
-                if failed(&missing) || failed(&present) {
+                if missing.iter().any(|(p, _)| *p == position)
+                    || present.iter().any(|(_, p, _)| *p == position)
+                {
                     continue;
                 }
                 let value = effective_value(document, given, &local).or_else(|| {
@@ -469,7 +469,13 @@ fn validate_level(
                     if value.is_none() {
                         missing.push((position, error));
                     } else {
-                        present.push((position, error));
+                        // A new document's paths a default filled come after the given ones
+                        // (Mongoose validates its `modify` state before its `default` state).
+                        let defaulted =
+                            given.is_some_and(|g| value_at(g, &local).is_none()) && order.is_none();
+                        let mut key = vec![usize::from(defaulted)];
+                        key.extend(position.iter().copied());
+                        present.push((key, position, error));
                     }
                 }
             }
@@ -499,8 +505,9 @@ fn validate_level(
     // A sub-document whose own path failed (a user-defined validator on it) is not validated.
     let failed: Vec<Vec<usize>> = missing
         .iter()
-        .chain(present.iter())
-        .map(|(position, _)| position.clone())
+        .map(|(position, _)| position)
+        .chain(present.iter().map(|(_, position, _)| position))
+        .cloned()
         .collect();
     if order.is_some() {
         // The sort is stable: errors with equal keys keep the order they were found in.
@@ -510,7 +517,7 @@ fn validate_level(
         missing.sort_by(|a, b| b.0.cmp(&a.0));
         present.sort_by(|a, b| a.0.cmp(&b.0));
         errors.extend(missing.into_iter().map(|(_, e)| e));
-        errors.extend(present.into_iter().map(|(_, e)| e));
+        errors.extend(present.into_iter().map(|(_, _, e)| e));
     }
     children.sort_by(|a, b| a.position.cmp(&b.position));
     for child in children {

@@ -24,6 +24,9 @@ use dima_model::app_configs::NewAppConfig;
 use dima_model::ast_variables::NewAstVariables;
 use dima_model::availability::Writer;
 use dima_model::channel_configs::{ChannelConfigDate, NewChannelConfig};
+use dima_model::channel_extension_items::{
+    ItemCategory, MediaType, NewChannelExtensionItem, NewItemTts, TtsLanguage, TtsMode,
+};
 use dima_model::command_user_variables::NewCommandUserVariables;
 use dima_model::commands::{self, Activation, MatchMode, NewCommand, NewKeywordSettings};
 use dima_model::countdown_timers::{CountdownConfig, NewCountdown};
@@ -33,11 +36,15 @@ use dima_model::credit_transactions::{
 };
 use dima_model::cron_job_intents::{IntentStatus, NewCronJobIntent};
 use dima_model::custom_timers::{FrequencyUnit, NewCustomTimer};
+use dima_model::dimafx_playbacks::{NewDimafxPlayback, PlaybackState};
 use dima_model::domain_event_checkpoints::NewCheckpoint;
 use dima_model::domain_event_deliveries::NewDelivery;
 use dima_model::domain_events::{self, NewDomainEvent, NewSubject, SubjectKind, Topic};
 use dima_model::events::{ControlType, Localized, NewControl, NewEvent, ReleaseStage};
 use dima_model::eventsubs::NewEventsub;
+use dima_model::extension_wallet_transactions::{
+    NewExtensionWalletTransaction, WalletTransactionType,
+};
 use dima_model::index::{IndexDifference, IndexError, IndexStatus};
 use dima_model::oauth_clients::{ClientType, NewOAuthClient};
 use dima_model::oauth_grants::NewOAuthGrant;
@@ -48,6 +55,10 @@ use dima_model::referral_codes::{NewReferralCode, NewReferralStats};
 use dima_model::site_analytics::{BotPlatform, NewLiveChannel, NewSiteAnalytics};
 use dima_model::stream_sessions::NewStreamSession;
 use dima_model::timer_commands::NewTimerCommand;
+use dima_model::user_extension_inventories::{
+    ExtensionPlatform, ItemSource, NewInventoryConfig, NewInventoryItem, NewUserExtensionInventory,
+    QuickPurchaseAction, QuickPurchasePriority,
+};
 use dima_model::users::{
     AccountType, EncryptedToken, Language, NewAccount, NewUser, PlanTier, TtsProvider,
 };
@@ -971,6 +982,125 @@ fn typed_create(
             };
             pair(code.to_document()?, code.prepare(ctx))
         }
+        ("channelextensionitems", "media" | "tts") => {
+            let mut item = NewChannelExtensionItem {
+                channel_id: "111".into(),
+                channel_name: "seed".into(),
+                created_by_user_id: "111".into(),
+                description: Some(format!(" {text} ")),
+                bits_price: JsNumber(100.0),
+                sku: "dimafx_100".into(),
+                volume: Some(JsNumber(80.0)),
+                is_enabled: Some(true),
+                sort_order: Some(JsNumber(0.0)),
+                name: " Clip ".into(),
+                asset_id: oid(0x41)?.into(),
+                category: ItemCategory::Video,
+                media_type: MediaType::Video,
+                thumbnail_url: Some("https://example.com/t.png".into()),
+                duration_ms: Some(JsNumber(5000.0)),
+                tts: None,
+            };
+            if key == "tts" {
+                item.name = "TTS message".into();
+                item.asset_id = Nullable::Null;
+                item.category = ItemCategory::Tts;
+                item.media_type = MediaType::Audio;
+                item.thumbnail_url = Some(String::new());
+                item.duration_ms = Some(JsNumber(0.0));
+                item.tts = Some(NewItemTts {
+                    mode: TtsMode::Fixed,
+                    text: format!(" {text} "),
+                    voice: " es_voice ".into(),
+                    language: TtsLanguage::Es,
+                });
+            }
+            pair(item.to_document()?, item.prepare(ctx))
+        }
+        ("userextensioninventories", "wallet") => {
+            let wallet = NewUserExtensionInventory {
+                platform: ExtensionPlatform::Twitch,
+                user_id: "u1".into(),
+                channel_id: "111".into(),
+                display_name: None,
+                balance: Some(JsNumber(0.0)),
+                config: Some(NewInventoryConfig {
+                    quick_purchase_priority: QuickPurchasePriority::CreditsFirst,
+                    quick_purchase_action: QuickPurchaseAction::UseNow,
+                }),
+                items: Some(Vec::new()),
+            };
+            pair(wallet.to_document()?, wallet.prepare(ctx))
+        }
+        ("userextensioninventories", "items") => {
+            let wallet = NewUserExtensionInventory {
+                platform: ExtensionPlatform::Twitch,
+                user_id: "u2".into(),
+                channel_id: "111".into(),
+                display_name: Some(text.into()),
+                balance: None,
+                config: None,
+                items: Some(vec![NewInventoryItem {
+                    channel_extension_item_id: oid(1)?,
+                    quantity: JsNumber(2.0),
+                    purchase_price_bits: JsNumber(100.0),
+                    acquired_at: None,
+                    source: ItemSource::Gift,
+                }]),
+            };
+            pair(wallet.to_document()?, wallet.prepare(ctx))
+        }
+        ("extensionwallettransactions", "bits" | "anonymous" | "refund") => {
+            let mut entry = NewExtensionWalletTransaction {
+                platform: ExtensionPlatform::Twitch,
+                user_id: "u1".to_owned().into(),
+                opaque_user_id: Nullable::Null,
+                channel_id: "111".into(),
+                kind: WalletTransactionType::BitsPurchase,
+                amount_bits: JsNumber(100.0),
+                balance_delta: JsNumber(0.0),
+                channel_extension_item_id: Some(oid(0x51)?),
+                twitch_transaction_id: "tx1".to_owned().into(),
+                sku: Some("dimafx_100".into()),
+                metadata:
+                    doc! { "action": "use_now", "fulfillment": "pending", "viewerText": text }
+                        .into(),
+            };
+            if key == "anonymous" {
+                entry.user_id = Nullable::Null;
+                entry.opaque_user_id = "Uopaque".to_owned().into();
+                entry.twitch_transaction_id = "tx2".to_owned().into();
+                entry.metadata = doc! { "action": "use_now", "fulfillment": "pending" }.into();
+            }
+            if key == "refund" {
+                entry.opaque_user_id = Nullable::Unset;
+                entry.kind = WalletTransactionType::RefundCredit;
+                entry.amount_bits = JsNumber(25.0);
+                entry.balance_delta = JsNumber(2.5);
+                entry.twitch_transaction_id = Nullable::Unset;
+                entry.sku = None;
+                entry.metadata = doc! { "reason": "channel_extension_item_deleted" }.into();
+            }
+            pair(entry.to_document()?, entry.prepare(ctx))
+        }
+        ("dimafxplaybacks", "job") => {
+            let job = NewDimafxPlayback {
+                id: "bits-1".into(),
+                channel_id: "111".into(),
+                payload: doc! {
+                    "triggerID": "bits-1", "channelID": "111", "itemID": "i1", "name": text,
+                    "category": "tts", "volume": 100, "durationMs": 0,
+                    "tts": { "text": text, "voice": "", "language": "es" },
+                    "refundOnFailure": { "userID": "u1", "priceBits": 100 },
+                    "source": "bits_purchase", "enqueuedAt": 1_577_934_245_006_i64,
+                }
+                .into(),
+                state: Some(PlaybackState::Queued),
+                lease_owner: Some(String::new()),
+                lease_until: Some(JsDate(0)),
+            };
+            pair(job.to_document()?, job.prepare(ctx))
+        }
         _ => bail!("{collection}: no typed input named {key}"),
     }
 }
@@ -1407,6 +1537,7 @@ fn copied_fields_sorted(value: Bson, copied: &HashSet<String>) -> Bson {
                 })
                 .collect(),
         ),
+        Bson::Document(document) => Bson::Document(sort(document)),
         other => other,
     }
 }
@@ -1551,8 +1682,10 @@ async fn writes_match_mongoose() -> Result<()> {
                 ));
             }
             if let Some(expected) = case.get("result") {
-                let actual = result.map(canonical);
-                let expected = canonical(bson_of(expected)?);
+                // The upserted document a `findOneAndUpdate` returns has the copied fields in the
+                // server's varying order too.
+                let actual = result.map(|r| canonical(copied_fields_sorted(r, &copied)));
+                let expected = canonical(copied_fields_sorted(bson_of(expected)?, &copied));
                 if actual.as_deref() != Some(expected.as_str()) {
                     problems.push(format!(
                         "{collection}/{name}: result\n  mongoose {expected}\n  rust     {actual:?}"

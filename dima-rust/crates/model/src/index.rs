@@ -180,13 +180,20 @@ impl IndexPolicy {
 /// - `credittransactions` (unique): `CreditTransactionSchema.init()` is awaited before a
 ///   paid-order reward is reserved, and a duplicate `idempotencyKey` would credit twice;
 /// - `ai_usage_receipts` (unique): nothing awaits it, but the upsert on `{channelID, customerId,
-///   entryId}` is what makes a receipt idempotent, and a duplicate would count its credits twice.
+///   entryId}` is what makes a receipt idempotent, and a duplicate would count its credits twice;
+/// - `userextensioninventories` (unique): nothing awaits it, but the first purchase upserts the
+///   viewer's wallet on `{platform, userID, channelID}`, and two wallets would split a balance.
+///
+/// `extensionwallettransactions.twitchTransactionID` guards money too, but production holds a
+/// conflicting plain index of that name, so it cannot be built there; it stays best effort (see
+/// that module).
 pub fn startup_policy(info: &CollectionInfo) -> IndexPolicy {
     match info.name {
         crate::domain_events::COLLECTION
         | crate::cron_job_intents::COLLECTION
         | crate::credit_transactions::COLLECTION
-        | crate::ai_usage_receipts::COLLECTION => IndexPolicy::RequireUnique,
+        | crate::ai_usage_receipts::COLLECTION
+        | crate::user_extension_inventories::COLLECTION => IndexPolicy::RequireUnique,
         crate::oauth_clients::COLLECTION
         | crate::oauth_grants::COLLECTION
         | crate::oauth_refresh_tokens::COLLECTION
