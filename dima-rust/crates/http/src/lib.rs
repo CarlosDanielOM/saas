@@ -7,9 +7,10 @@
 //! - [`HttpClient`]: one shared connection pool (rustls with ring, HTTP/1.1, gzip/brotli/deflate
 //!   accepted and decoded as Node's `fetch` does), no proxy variables, no automatic redirects or
 //!   retries underneath.
-//! - [`Provider`]: one outside service: telemetry name, base URL (overridable by configuration,
-//!   which is how the rig points everything at local mocks), default headers, timeouts, body
-//!   limit, retry policy, redirect handling, concurrency cap. [`ProviderRegistry`] holds them.
+//! - [`Provider`]: one outside service: telemetry name, base URL, default headers, timeouts,
+//!   body limits, retry policy, redirect handling, concurrency cap. [`ProviderRegistry`] holds
+//!   them; its base URL overrides (how the rig points everything at local mocks) exist only in
+//!   an explicit [`TestMode`] chosen at startup, which the registry reports.
 //! - [`RequestBuilder`]: built against a provider with a [`Path`] template, so feature crates
 //!   never concatenate hosts and telemetry never sees ids. JSON, JavaScript-exact JSON, exact
 //!   bytes, forms and streamed bodies.
@@ -39,8 +40,10 @@
 //! let shutdown = dima_core::Shutdown::new();
 //! let key = dima_core::SecretString::from("sk-or-...");
 //!
-//! // At startup: the binary declares its providers and applies configuration overrides.
+//! // At startup: the binary declares its providers. Only the rig runs in a test mode, which
+//! // allows base URL overrides; the binary logs the registry's report.
 //! let registry = ProviderRegistry::builder()
+//!     .test_mode(dima_http::TestMode::RigMock { loopback_only: true })
 //!     .provider(
 //!         Provider::builder("openrouter", "https://openrouter.ai/api/v1")
 //!             .secret_header("authorization", &dima_core::SecretString::new(format!("Bearer {}", key.expose())))
@@ -54,6 +57,9 @@
 //!     )
 //!     .base_url_override("openrouter", "http://127.0.0.1:18080") // the rig's mock
 //!     .build()?;
+//! if let Some(report) = registry.startup_report() {
+//!     eprintln!("{report}");
+//! }
 //! let client = HttpClient::builder().shutdown(shutdown.clone()).build()?;
 //! let openrouter = registry.get("openrouter")?;
 //!
@@ -131,7 +137,9 @@ pub use error::{
     TimeoutKind,
 };
 pub use path::{Path, PathError};
-pub use provider::{ConfigError, Provider, ProviderBuilder, ProviderRegistry, Redirects};
+pub use provider::{
+    ConfigError, Provider, ProviderBuilder, ProviderRegistry, Redirects, RegistryBuilder, TestMode,
+};
 pub use response::Response;
 pub use retry::RetryPolicy;
 pub use sse::{SseError, SseEvent, SseLimits, SseStream};

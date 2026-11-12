@@ -20,9 +20,11 @@ async fn setup() -> (MockServer, HttpClient, Provider, Shutdown) {
         .shutdown(shutdown.clone())
         .build()
         .unwrap();
-    let provider = Provider::builder("openrouter", "https://openrouter.ai/api/v1")
-        .base_url(&server.url())
-        .build()
+    let provider = server
+        .provider(Provider::builder(
+            "openrouter",
+            "https://openrouter.ai/api/v1",
+        ))
         .unwrap();
     (server, client, provider, shutdown)
 }

@@ -24,9 +24,11 @@ fn client() -> HttpClient {
 }
 
 fn provider(server: &MockServer) -> Provider {
-    Provider::builder("mock", "https://api.example.invalid/base")
-        .base_url(&format!("{}/base", server.url()))
-        .build()
+    server
+        .provider(Provider::builder(
+            "mock",
+            "https://api.example.invalid/base",
+        ))
         .unwrap()
 }
 
@@ -41,11 +43,12 @@ async fn json_round_trip_with_paths_queries_and_headers() {
         200,
         r#"{"data":[{"id":"1","name":"\ud800x"}]}"#,
     ));
-    let provider = Provider::builder("twitch", "https://api.twitch.tv/helix")
-        .base_url(&format!("{}/helix", server.url()))
-        .header("client-id", "abc")
-        .header("content-type", "application/json")
-        .build()
+    let provider = server
+        .provider(
+            Provider::builder("twitch", "https://api.twitch.tv/helix")
+                .header("client-id", "abc")
+                .header("content-type", "application/json"),
+        )
         .unwrap();
     let client = client();
     #[derive(serde::Deserialize)]
@@ -414,10 +417,11 @@ async fn refused_connection_is_a_connect_error_and_retried_when_allowed() {
 #[tokio::test]
 async fn retries_statuses_and_returns_the_last_response() {
     let server = MockServer::start().await.unwrap();
-    let provider = Provider::builder("ai", "https://openrouter.ai/api/v1")
-        .base_url(&server.url())
-        .retry(RetryPolicy::fetch_with_retry(&[ms(10), ms(10)]))
-        .build()
+    let provider = server
+        .provider(
+            Provider::builder("ai", "https://openrouter.ai/api/v1")
+                .retry(RetryPolicy::fetch_with_retry(&[ms(10), ms(10)])),
+        )
         .unwrap();
     let client = client();
     server.push(MockResponse::new(503));
@@ -539,10 +543,11 @@ async fn helix_run(
     for status in statuses {
         server.push(MockResponse::new(*status));
     }
-    let provider = Provider::builder("twitch", "https://api.twitch.tv/helix")
-        .base_url(&server.url())
-        .retry(RetryPolicy::twitch_helix_with(delays))
-        .build()
+    let provider = server
+        .provider(
+            Provider::builder("twitch", "https://api.twitch.tv/helix")
+                .retry(RetryPolicy::twitch_helix_with(delays)),
+        )
         .unwrap();
     let credential = Arc::new(ScriptedCredential {
         refreshes: Mutex::new(Vec::new()),
@@ -684,14 +689,15 @@ async fn redirects_error_manual_and_same_origin() {
 #[tokio::test]
 async fn nothing_secret_is_printed() {
     let server = MockServer::start().await.unwrap();
-    let provider = Provider::builder("polar", "https://api.polar.sh/v1")
-        .base_url(&format!("{}/v1", server.url()))
-        .secret_header(
-            "authorization",
-            &SecretString::from("Bearer polar_oat_SECRET1"),
+    let provider = server
+        .provider(
+            Provider::builder("polar", "https://api.polar.sh/v1")
+                .secret_header(
+                    "authorization",
+                    &SecretString::from("Bearer polar_oat_SECRET1"),
+                )
+                .secret_query_params(&["sig"]),
         )
-        .secret_query_params(&["sig"])
-        .build()
         .unwrap();
     let client = client();
     server.push(
@@ -795,11 +801,12 @@ async fn observer_sees_attempts_and_trace_headers_go_to_internal_providers_only(
         .trace_injector(Arc::new(Trace))
         .build()
         .unwrap();
-    let internal = Provider::builder("internal-api", "http://dima-server:3000")
-        .base_url(&server.url())
-        .internal(true)
-        .retry(RetryPolicy::fixed(&[ms(1)]).retry_statuses(StatusSet::new().with(503)))
-        .build()
+    let internal = server
+        .provider(
+            Provider::builder("internal-api", "http://dima-server:3000")
+                .internal(true)
+                .retry(RetryPolicy::fixed(&[ms(1)]).retry_statuses(StatusSet::new().with(503))),
+        )
         .unwrap();
     let external = provider(&server);
     server.push(MockResponse::new(503));
