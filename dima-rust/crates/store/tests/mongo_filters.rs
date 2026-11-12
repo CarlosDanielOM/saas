@@ -10,7 +10,8 @@ use bson::{Bson, DateTime, Document, doc, oid::ObjectId};
 use dima_store::mongo::filter::{prepare_filter, prepare_id_filter};
 use dima_store::mongo::schema::{Field, Schema, Timestamps, ValueType};
 use dima_store::mongo::{PrepareError, WriteContext};
-use futures_util::TryStreamExt;
+use futures_util::{FutureExt, TryStreamExt};
+use std::panic::AssertUnwindSafe;
 
 /// The parts of `custom_timers` / `triggers` the filters touch.
 static TIMERS: Schema = Schema::new(&[
@@ -115,7 +116,8 @@ async fn cast_filters_match_what_is_stored() -> Result<()> {
     };
     let client = mongodb::Client::with_uri_str(&uri).await?;
     let db = client.database(&format!("dima_test_store_{}", ObjectId::new().to_hex()));
-    let outcome = async {
+    // A failed assertion panics: the database is dropped first, then the panic goes on.
+    let outcome = AssertUnwindSafe(async {
         let id = ObjectId::parse_str(ID)?;
         let timers = db.collection::<Document>("custom_timers");
         timers
@@ -146,8 +148,12 @@ async fn cast_filters_match_what_is_stored() -> Result<()> {
         let matched: Vec<Document> = timers.find(filter).await?.try_collect().await?;
         assert_eq!(matched.len(), 1);
         Ok::<(), anyhow::Error>(())
-    }
+    })
+    .catch_unwind()
     .await;
     db.drop().await?;
-    outcome
+    match outcome {
+        Ok(outcome) => outcome,
+        Err(panic) => std::panic::resume_unwind(panic),
+    }
 }

@@ -16,8 +16,9 @@ use dima_store::mongo::write::{
     DroppedPathPolicy, DroppedPaths, SaveOutcome, UpdateOutcome, WriteError,
 };
 use dima_store::mongo::{CommandHook, MongoConfig, MongoStore, WriteContext};
-use futures_util::TryStreamExt;
+use futures_util::{FutureExt, TryStreamExt};
 use std::future::Future;
+use std::panic::AssertUnwindSafe;
 use std::sync::{Arc, Mutex};
 
 static ITEMS: Schema = Schema::new(&[
@@ -65,9 +66,13 @@ where
         store = store.with_dropped_path_policy(policy);
     }
     let database = store.database().clone();
-    let outcome = test(store, reports).await;
+    // A failed assertion panics: the database is dropped first, then the panic goes on.
+    let outcome = AssertUnwindSafe(test(store, reports)).catch_unwind().await;
     database.drop().await?;
-    outcome
+    match outcome {
+        Ok(outcome) => outcome,
+        Err(panic) => std::panic::resume_unwind(panic),
+    }
 }
 
 async fn all(store: &MongoStore) -> Result<Vec<Document>> {
