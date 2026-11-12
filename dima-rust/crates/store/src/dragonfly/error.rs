@@ -46,6 +46,17 @@ pub enum DragonflyError {
         /// The configured cap.
         limit: usize,
     },
+    /// `EXEC` answered nil: a key the connection watched changed, so the transaction was
+    /// discarded and none of its commands ran (see [`super::Dragonfly::transaction`]).
+    #[error("Dragonfly transaction aborted: EXEC returned nil, nothing ran")]
+    TransactionAborted,
+    /// A channel or pattern name is longer than
+    /// [`super::DragonflyConfig::effective_max_topic_bytes`]; nothing was sent.
+    #[error("a Dragonfly channel or pattern name is longer than {limit} bytes")]
+    TopicTooLong {
+        /// The effective limit.
+        limit: usize,
+    },
     /// The subscriber task has stopped (it was shut down or its owner dropped it).
     #[error("Dragonfly subscriber has stopped")]
     SubscriberClosed,

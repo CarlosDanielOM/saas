@@ -32,20 +32,33 @@
 //! # Memory bound
 //!
 //! - At most [`super::DragonflyConfig::max_subscriptions`] topics per subscriber (default
-//!   [`super::config::DEFAULT_MAX_SUBSCRIPTIONS`]); one more is refused with
-//!   [`DragonflyError::TooManySubscriptions`].
+//!   [`super::config::DEFAULT_MAX_SUBSCRIPTIONS`]), counting the topics still being
+//!   unsubscribed; one more is refused with [`DragonflyError::TooManySubscriptions`].
 //! - At most `subscription_buffer + 1` buffered events per subscription (above).
 //! - Between the socket and the subscriptions, one buffer holding the frame being received:
 //!   frames are dispatched as soon as they are complete, dispatch never waits, and the socket is
 //!   read only as fast as frames are dispatched. A message, channel or pattern longer than
-//!   [`super::DragonflyConfig::subscription_max_message_bytes`] is refused from its length
-//!   header, before its bytes arrive: the connection is discarded and replaced (`Gap`
-//!   subscriptions report a gap) instead of the buffer growing.
-//! - Control requests queue in a channel of 64; queued commands and unconfirmed confirmations
-//!   are bounded by the subscriptions and the deadline.
+//!   [`super::DragonflyConfig::subscription_max_message_bytes`], a frame longer than one
+//!   message plus two topic names and its headers, and a nested array are refused from their
+//!   headers, before their bytes arrive: the connection is discarded and replaced (`Gap`
+//!   subscriptions report a gap) instead of the buffer growing. An incomplete frame is never
+//!   parsed again from its start.
+//! - A channel or pattern name is at most
+//!   [`super::DragonflyConfig::effective_max_topic_bytes`] (default
+//!   [`super::config::DEFAULT_SUBSCRIPTION_MAX_TOPIC_BYTES`], never above the receive limit);
+//!   a longer one is refused with [`DragonflyError::TopicTooLong`] before anything is sent.
+//! - Control requests queue in a channel of 64. At most one command per topic is in flight
+//!   (requests made meanwhile only change what is wanted), so the commands waiting for a
+//!   confirmation are at most `max_subscriptions + 1` (the `+ 1` is a keep-alive `PING`) and the
+//!   bytes queued for the socket at most that many commands of the longest topic, whatever the
+//!   subscribe and unsubscribe churn; a buffer above that bound replaces the connection.
 //!
 //! # Connection
 //!
+//! - **Opening**: `AUTH` first when the address carries credentials (a refused `AUTH` is
+//!   reported once and retried with the back-off below), then `CLIENT ID`, all within
+//!   [`super::DragonflyConfig::connect_timeout`]. No `SELECT`: pub/sub ignores the logical
+//!   database, channels are server-wide.
 //! - **Reconnect**: when the connection drops, the task reconnects with back-off
 //!   (`min(50 ms × 2^attempt, 2 s)`, node-redis 5's default strategy without its random jitter) and
 //!   subscribes again to every channel and pattern, as node-redis does. Messages published while it
@@ -57,13 +70,21 @@
 //!   [`super::DragonflyConfig::response_timeout`]. The task never waits for a confirmation: it
 //!   keeps delivering, serving requests and answering shutdown while one is outstanding. On
 //!   expiry the connection is discarded and the subscriber reconnects and subscribes again
-//!   (`Gap` subscriptions report a gap). [`Subscriber::subscribe`] returns at the deadline at
-//!   the latest, unconfirmed. A connection silent for
-//!   [`super::DragonflyConfig::subscriber_ping_interval`] is sent `PING`, so a peer that stops
-//!   answering is noticed without control traffic.
+//!   (`Gap` subscriptions report a gap). [`Subscriber::subscribe`] returns, unconfirmed at
+//!   the latest, when a confirmation it waits for misses its deadline (two in a row when the
+//!   topic's previous subscription is still being unsubscribed). A connection that sends no complete
+//!   frame for [`super::DragonflyConfig::subscriber_ping_interval`] is sent `PING` (bytes of an
+//!   unfinished frame do not count), so a peer that stops answering, or trickles a frame that
+//!   never ends, is noticed without control traffic.
+//! - **Live**: a subscription counts as live, and receives messages, only once the server has
+//!   confirmed every command sent for its topic and the last one was a subscribe (the per-topic
+//!   state machine is described in `driver.rs`). A late confirmation of an earlier command for
+//!   the same topic never makes a newer subscription live.
 //! - **One handler per channel**: subscribing to a topic that already has a subscription replaces
 //!   it (the old subscription's stream ends), mirroring the reference's `Map.set(channel, handler)`.
-//!   Dropping a [`Subscription`] unsubscribes (only if it is still the current one).
+//!   Dropping a [`Subscription`] unsubscribes (only if it is still the current one) at the
+//!   task's next turn, however quiet its topic is; so does a [`Subscriber::subscribe`] call
+//!   whose caller stops waiting for it.
 //! - **Shutdown**: dropping the [`Subscriber`] (or [`Subscriber::shutdown`]) stops the task and
 //!   closes the connection; every subscription's stream then ends.
 //!
@@ -106,6 +127,15 @@ pub enum Topic {
     Channel(String),
     /// `PSUBSCRIBE pattern`.
     Pattern(String),
+}
+
+impl Topic {
+    /// The channel or pattern name.
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Channel(name) | Self::Pattern(name) => name,
+        }
+    }
 }
 
 /// One received message.
@@ -243,6 +273,11 @@ impl Inbox {
         self.notify.notify_one();
     }
 
+    /// The [`Subscription`] is gone (dropped, or never handed out).
+    fn receiver_closed(&self) -> bool {
+        self.lock().receiver_closed
+    }
+
     fn close_receiver(&self) {
         let mut state = self.lock();
         state.receiver_closed = true;
@@ -276,10 +311,6 @@ enum Control {
         topic: Topic,
         entry: Entry,
         ack: Ack,
-    },
-    Unsubscribe {
-        topic: Topic,
-        id: u64,
     },
     Shutdown {
         ack: oneshot::Sender<()>,
@@ -336,6 +367,31 @@ struct State {
     connection_id: AtomicI64,
     connections: AtomicU64,
     next_id: AtomicU64,
+    /// Subscriptions dropped (or abandoned before [`Subscriber::subscribe`] returned) that the
+    /// task has not forgotten yet: one entry per dropped [`Subscription`], taken by the task at
+    /// its next turn, whatever traffic its topic has. Not the control channel, which is bounded
+    /// and could refuse it.
+    closed: Mutex<Vec<(Topic, u64)>>,
+    /// Wakes the task when `closed` gains an entry.
+    reap: Notify,
+}
+
+impl State {
+    fn closed_lock(&self) -> MutexGuard<'_, Vec<(Topic, u64)>> {
+        // Nothing panics while the lock is held; a poisoned lock still holds valid state.
+        self.closed.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// A subscription's receiver is gone.
+    fn close(&self, topic: Topic, id: u64) {
+        self.closed_lock().push((topic, id));
+        self.reap.notify_one();
+    }
+
+    /// The subscriptions closed since the last call.
+    fn take_closed(&self) -> Vec<(Topic, u64)> {
+        std::mem::take(&mut *self.closed_lock())
+    }
 }
 
 /// A subscriber: one connection in subscribe mode, owned by a background task.
@@ -368,7 +424,7 @@ pub struct Subscription {
     id: u64,
     confirmed: bool,
     inbox: Arc<Inbox>,
-    control: mpsc::Sender<Control>,
+    state: Arc<State>,
 }
 
 impl std::fmt::Debug for Subscription {
@@ -416,12 +472,8 @@ impl Subscription {
 impl Drop for Subscription {
     fn drop(&mut self) {
         self.inbox.close_receiver();
-        // If the control buffer is full the task notices the closed receiver on the next message
-        // for this topic and unsubscribes then.
-        let _ = self.control.try_send(Control::Unsubscribe {
-            topic: self.topic.clone(),
-            id: self.id,
-        });
+        // The task forgets it (and unsubscribes unless it was replaced) at its next turn.
+        self.state.close(self.topic.clone(), self.id);
     }
 }
 
@@ -445,19 +497,37 @@ impl Subscriber {
     /// while the subscriber waits between attempts (the subscription is then made on reconnect;
     /// see [`Subscription::confirmed`]).
     ///
+    /// A name longer than [`super::DragonflyConfig::effective_max_topic_bytes`] is refused with
+    /// [`DragonflyError::TopicTooLong`] before anything is sent.
+    ///
     /// A new topic beyond [`super::DragonflyConfig::max_subscriptions`] is refused with
     /// [`DragonflyError::TooManySubscriptions`]; replacing a topic that is already subscribed is
-    /// always allowed.
+    /// always allowed. A dropped subscription keeps its place until the server confirms the
+    /// unsubscribe (normally well under a millisecond; at most the response timeout, after which
+    /// the connection is replaced), since the server still holds it until then.
     pub async fn subscribe(&self, topic: Topic, overflow: Overflow) -> Result<Subscription> {
+        let limit = self.shared.config.effective_max_topic_bytes();
+        if topic.name().len() > limit {
+            return Err(DragonflyError::TopicTooLong { limit });
+        }
         let inbox = Arc::new(Inbox::new(self.buffer, overflow));
         let id = self.state.next_id.fetch_add(1, Ordering::Relaxed);
+        // Made first, so a caller that stops waiting (a timeout around this call) drops it, and
+        // the task forgets the subscription as for any other dropped one.
+        let mut subscription = Subscription {
+            topic: topic.clone(),
+            id,
+            confirmed: false,
+            inbox: inbox.clone(),
+            state: self.state.clone(),
+        };
         let (ack, confirmed) = oneshot::channel();
         self.control
             .send(Control::Subscribe {
-                topic: topic.clone(),
+                topic,
                 entry: Entry {
                     id,
-                    inbox: inbox.clone(),
+                    inbox,
                     owe_gap: false,
                     live: false,
                     waiters: Vec::new(),
@@ -466,16 +536,10 @@ impl Subscriber {
             })
             .await
             .map_err(|_| DragonflyError::SubscriberClosed)?;
-        let confirmed = confirmed
+        subscription.confirmed = confirmed
             .await
             .map_err(|_| DragonflyError::SubscriberClosed)??;
-        Ok(Subscription {
-            topic,
-            id,
-            confirmed,
-            inbox,
-            control: self.control.clone(),
-        })
+        Ok(subscription)
     }
 
     /// Runs `handler` for every message of `topic` parsed as the envelope's JSON (see

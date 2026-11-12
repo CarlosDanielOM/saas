@@ -19,9 +19,18 @@ use super::error::{DragonflyError, Result};
 use super::hooks::{CacheLookup, CommandOutcome, Hooks, instrumented_method};
 use super::pubsub::Subscriber;
 use redis::aio::{ConnectionManager, ConnectionManagerConfig};
-use redis::{Cmd, FromRedisValue, Pipeline, Value};
+use redis::{AsyncConnectionConfig, Cmd, FromRedisValue, Pipeline, Value};
 use std::sync::Arc;
 use tokio::time::Instant;
+
+/// The configuration error for credentials the server refused.
+pub(crate) const AUTH_REFUSED: &str = "the server refused the credentials in the address (AUTH)";
+
+/// `true` when the driver failed because the server refused `AUTH`.
+pub(crate) fn is_auth_refused(error: &redis::RedisError) -> bool {
+    error.kind() == redis::ErrorKind::AuthenticationFailed
+        || matches!(error.code(), Some("WRONGPASS" | "NOAUTH" | "NOPERM"))
+}
 
 /// A cloneable handle for ordinary commands on the process's shared connection.
 #[derive(Clone)]
@@ -57,6 +66,19 @@ impl Dragonfly {
             .set_connection_timeout(Some(config.connect_timeout))
             .set_number_of_retries(config.reconnect_retries);
         let attempt = async {
+            // The connection manager retries every failure, a refused AUTH included, until the
+            // deadline; one plain connection first turns refused credentials into a prompt
+            // configuration error.
+            if config.has_credentials() {
+                let probe = AsyncConnectionConfig::new()
+                    .set_connection_timeout(Some(config.connect_timeout))
+                    .set_response_timeout(Some(config.response_timeout));
+                drop(
+                    client
+                        .get_multiplexed_async_connection_with_config(&probe)
+                        .await?,
+                );
+            }
             let mut manager = client
                 .get_connection_manager_with_config(manager_config)
                 .await?;
@@ -65,6 +87,9 @@ impl Dragonfly {
         };
         let manager = match tokio::time::timeout(config.connect_timeout, attempt).await {
             Ok(Ok(manager)) => manager,
+            Ok(Err(error)) if is_auth_refused(&error) => {
+                return Err(DragonflyError::Config(AUTH_REFUSED));
+            }
             Ok(Err(error)) => {
                 hooks.report(&config.caller, &error);
                 return Err(error.into());

@@ -86,3 +86,68 @@ fn every_embedded_script_has_bounded_loops() -> Result<()> {
     }
     Ok(())
 }
+
+/// Every Lua template literal in the reference (files under `dimabot/src`, tests excluded):
+/// `(file, constant name, text)`. Literals with interpolation are skipped (not one script text).
+fn reference_scripts() -> Result<Vec<(String, String, String)>> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../dimabot/src");
+    let mut pending = vec![root.clone()];
+    let mut found = Vec::new();
+    while let Some(dir) = pending.pop() {
+        for entry in std::fs::read_dir(&dir).with_context(|| format!("read {}", dir.display()))? {
+            let path = entry?.path();
+            let name = path.to_string_lossy().into_owned();
+            if path.is_dir() {
+                pending.push(path);
+                continue;
+            }
+            if !name.ends_with(".ts") || name.ends_with(".test.ts") {
+                continue;
+            }
+            let source = std::fs::read_to_string(&path)?;
+            let mut rest = source.as_str();
+            while let Some(at) = rest.find(" = `") {
+                let before = rest.get(..at).unwrap_or_default();
+                let constant = before
+                    .rsplit(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+                    .next()
+                    .unwrap_or_default()
+                    .to_owned();
+                let body = rest.get(at + 4..).unwrap_or_default();
+                let Some(end) = body.find('`') else { break };
+                let text = body.get(..end).unwrap_or_default();
+                if text.contains("redis.call") && !text.contains("${") {
+                    let file = name
+                        .rsplit_once("dimabot/src/")
+                        .map_or(name.clone(), |(_, file)| file.to_owned());
+                    found.push((file, constant, text.to_owned()));
+                }
+                rest = body.get(end + 1..).unwrap_or_default();
+            }
+        }
+    }
+    found.sort();
+    Ok(found)
+}
+
+/// The loop check is a heuristic: this pins what it says about the reference's own scripts.
+/// Every one passes except the AI usage backfill's reclaim script (`while true`), which the
+/// package porting that worker ports with an explicit iteration cap (see `script.rs`).
+#[test]
+fn reference_scripts_pass_the_loop_check_except_the_reclaim_script() -> Result<()> {
+    let scripts = reference_scripts()?;
+    ensure!(scripts.len() >= 20, "found only {} scripts", scripts.len());
+    let mut refused = Vec::new();
+    for (file, constant, text) in scripts {
+        let name: &'static str = Box::leak(constant.clone().into_boxed_str());
+        let source: &'static str = Box::leak(text.into_boxed_str());
+        if Script::new(name, source).check().is_err() {
+            refused.push(format!("{file}:{constant}"));
+        }
+    }
+    ensure!(
+        refused == ["workers/ai_usage_backfill.worker.ts:RECLAIM_SCRIPT"],
+        "{refused:?}"
+    );
+    Ok(())
+}

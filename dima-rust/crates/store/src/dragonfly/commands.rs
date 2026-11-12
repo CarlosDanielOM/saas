@@ -322,7 +322,13 @@ pub mod reply {
     /// that failed at run time (`WRONGTYPE` ...) is an `Err` in its slot while the others ran, as
     /// Redis transactions do not roll back; nested replies stay [`Value`]s for the other
     /// decoders here (`scored`, `field_pairs` ...).
+    ///
+    /// A nil reply (`EXEC` aborted because a watched key changed: nothing ran) is
+    /// [`DragonflyError::TransactionAborted`], never an empty success.
     pub fn transaction(value: Value) -> Result<Vec<Result<Value>>> {
+        if value == Value::Nil {
+            return Err(DragonflyError::TransactionAborted);
+        }
         Ok(array(value)?
             .into_iter()
             .map(|reply| match reply {
@@ -585,14 +591,27 @@ impl Dragonfly {
         )
     }
 
-    /// Runs `pipeline` as one `MULTI` ... `EXEC` transaction and returns one result per command
-    /// ([`reply::transaction`]), instead of failing the whole call when one command fails at run
-    /// time (the others have run by then). An error while queueing (an unknown command) aborts
-    /// the transaction (`EXECABORT`, nothing ran) and is the call's error. Not instrumented,
-    /// like `multi()` in the reference.
-    pub async fn transaction(&self, mut pipeline: Pipeline) -> Result<Vec<Result<Value>>> {
-        pipeline.atomic().ignore_errors();
-        reply::transaction(self.query_pipeline(&pipeline).await?)
+    /// Runs the commands of `pipeline` as one `MULTI` ... `EXEC` transaction and returns one
+    /// result per command, in the order they were added ([`reply::transaction`]), instead of
+    /// failing the whole call when one command fails at run time (the others have run by then).
+    ///
+    /// - The transaction is rebuilt from the pipeline's commands only: `.ignore()` flags (and
+    ///   `atomic()` / `ignore_errors()` settings) on `pipeline` have no effect, so a command
+    ///   marked ignored still has its slot and its error is never dropped, and result `i` is
+    ///   always command `i`.
+    /// - An error while queueing (an unknown command) aborts the transaction (`EXECABORT`,
+    ///   nothing ran) and is the call's error.
+    /// - A nil `EXEC` reply (a watched key changed, nothing ran) is
+    ///   [`DragonflyError::TransactionAborted`].
+    ///
+    /// Not instrumented, like `multi()` in the reference.
+    pub async fn transaction(&self, pipeline: Pipeline) -> Result<Vec<Result<Value>>> {
+        let mut transaction = redis::pipe();
+        for cmd in pipeline.cmd_iter() {
+            transaction.add_command(cmd.clone());
+        }
+        transaction.atomic().ignore_errors();
+        reply::transaction(self.query_pipeline(&transaction).await?)
     }
 
     /// Starts a `SCAN 0 MATCH pattern [COUNT count]` iteration.
@@ -661,6 +680,15 @@ mod tests {
         .unwrap();
         assert_eq!(read[0].0, b"k".to_vec());
         assert_eq!(read[0].1.len(), 1);
+    }
+
+    #[test]
+    fn an_aborted_exec_is_not_an_empty_success() {
+        assert!(matches!(
+            transaction(Value::Nil),
+            Err(DragonflyError::TransactionAborted)
+        ));
+        assert!(transaction(Value::Array(vec![])).unwrap().is_empty());
     }
 
     #[test]

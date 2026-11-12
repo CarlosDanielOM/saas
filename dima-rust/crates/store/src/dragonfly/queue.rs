@@ -21,7 +21,7 @@ use super::blocking::BlockingConnection;
 use super::client::Dragonfly;
 use super::commands::{End, reply};
 use super::error::{DragonflyError, Result};
-use super::script::Script;
+use super::script::{Script, reads};
 use dima_text::{number_to_string, sanitize_lone_surrogates, to_js_json, to_js_json_from};
 use serde::de::{Deserialize, DeserializeOwned};
 use std::borrow::Cow;
@@ -346,9 +346,10 @@ pub enum Transition {
 /// - the script starts with `if redis.call('GET', KEYS[1]) ~= ARGV[1] then return -1 end`,
 ///   and `-1` means [`Transition::LeaseLost`].
 ///
-/// It runs through [`Script::run_value`], which refuses scripts with unbounded loops
-/// (`MIGRATION.md` data rule 7); [`Self::check`] also refuses a script that never reads
-/// `KEYS[1]` and `ARGV[1]`. Register each as a `static`, one `.lua` file per script:
+/// It runs through [`Script::run_value`], which refuses scripts with obviously unbounded loops
+/// (`MIGRATION.md` data rule 7); [`Self::check`] also refuses a script whose code (comments and
+/// strings excluded) never reads `KEYS[1]` and `ARGV[1]`. That is a convention check, not a
+/// proof that the script compares them before it changes anything: review each script. Register each as a `static`, one `.lua` file per script:
 ///
 /// ```ignore
 /// pub static REQUEUE: FencedTransition =
@@ -372,11 +373,12 @@ impl FencedTransition {
         &self.script
     }
 
-    /// Refuses a script with an unbounded loop or one that does not read its fence.
+    /// Refuses a script with an obviously unbounded loop, or one whose code (comments and
+    /// strings excluded) never reads `KEYS[1]` and `ARGV[1]` (a convention check).
     pub fn check(&self) -> Result<()> {
         self.script.check()?;
         let source = self.script.source();
-        if !(source.contains("KEYS[1]") && source.contains("ARGV[1]")) {
+        if !(reads(source, b"KEYS", b"1") && reads(source, b"ARGV", b"1")) {
             return Err(DragonflyError::ScriptRefused {
                 name: self.script.name(),
                 reason: "a fenced transition must compare KEYS[1] (the lease) with ARGV[1] (the owner)",
@@ -569,6 +571,25 @@ pub mod presets {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_fence_only_mentioned_in_a_comment_or_string_is_refused() {
+        static COMMENTED: FencedTransition = FencedTransition::new(
+            "COMMENTED",
+            "-- compares KEYS[1] with ARGV[1]\nreturn redis.call('LREM', KEYS[2], 1, ARGV[2])",
+        );
+        assert!(COMMENTED.check().is_err());
+        static QUOTED: FencedTransition = FencedTransition::new(
+            "QUOTED",
+            "local s = 'KEYS[1] ARGV[1]' return redis.call('LREM', KEYS[2], 1, ARGV[2])",
+        );
+        assert!(QUOTED.check().is_err());
+        static FENCED: FencedTransition = FencedTransition::new(
+            "FENCED",
+            "if redis.call('GET', KEYS[ 1 ]) ~= ARGV[1] then return -1 end return 1",
+        );
+        assert!(FENCED.check().is_ok());
+    }
+
     use super::*;
     use serde::Serialize;
     use std::borrow::Cow;
