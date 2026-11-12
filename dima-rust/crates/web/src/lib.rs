@@ -114,7 +114,10 @@
 //!   Server-Sent Events with heartbeats; [`Req::closed`] tells spawned work when the exchange is
 //!   over, including when the client goes away.
 //! - **Uploads**: [`multipart`] is multer 1.4.5-lts.2 over busboy 1.6 (`single(field)`, disk and
-//!   streaming storage, limits with multer's codes, file filter, cleanup, deadline).
+//!   streaming storage, limits with multer's codes, file filter, cleanup, deadline). When porting,
+//!   every upload route states its [`multipart::Limits`] (at least `file_size`, the
+//!   reference's `fileSize`): without a file size the whole body may be only 32 MiB
+//!   ([`multipart::DEFAULT_WIRE_BUDGET`]), and a route that takes more says so explicitly.
 //! - **Telemetry**: [`App::observe`] installs an [`Observer`] that sees every request start and
 //!   end (route, status, duration, bytes, aborts) and may attach a [`TraceContext`].
 #![forbid(unsafe_code)]

@@ -89,10 +89,10 @@ pub struct Limits {
     pub files: Option<usize>,
     /// `parts`: delimiters after the first (so the number of parts must stay below it).
     pub parts: Option<usize>,
-    /// Not in multer: bytes of the whole body on the wire. `None` allows the file size (1 GiB
-    /// when `file_size` is unset), plus `fields_size`, plus 1 MiB for part headers and
-    /// delimiters. Past it the rest is left unread and the upload fails with
-    /// [`Budget::Body`].
+    /// Not in multer: bytes of the whole body on the wire. `None` allows the file size plus
+    /// `fields_size` plus 1 MiB for part headers and delimiters, or [`DEFAULT_WIRE_BUDGET`]
+    /// (32 MiB in all) when `file_size` is unset. Past it the rest is left unread and the upload
+    /// fails with [`Budget::Body`]. A route that takes larger uploads states its limits.
     pub body_size: Option<u64>,
     /// Not in multer: bytes of all text fields together, names included ([`DEFAULT_FIELDS_SIZE`]
     /// by default), counted as the UTF-8 text that is kept: a value is charged as it is read and
@@ -110,7 +110,13 @@ pub const DEFAULT_FIELDS_SIZE: u64 = 4 * 1024 * 1024;
 /// The default [`Limits::max_parts`] (body-parser's `parameterLimit` for urlencoded forms).
 pub const DEFAULT_MAX_PARTS: usize = 1000;
 
-/// The file size [`Limits::body_size`] assumes when `file_size` is unset: 1 GiB.
+/// The wire budget ([`Limits::wire_budget`]) when neither `body_size` nor `file_size` is set:
+/// 32 MiB.
+pub const DEFAULT_WIRE_BUDGET: u64 = 32 * 1024 * 1024;
+
+/// Earlier, the file size [`Limits::body_size`] assumed when `file_size` was unset (1 GiB). No
+/// longer used: without a file size the wire budget is [`DEFAULT_WIRE_BUDGET`].
+#[deprecated(note = "without a file size the wire budget is DEFAULT_WIRE_BUDGET")]
 pub const DEFAULT_FILE_BUDGET: u64 = 1024 * 1024 * 1024;
 
 /// What [`Limits::body_size`] adds for part headers and delimiters: 1 MiB.
@@ -136,10 +142,11 @@ impl Limits {
     /// The bytes allowed on the wire ([`Limits::body_size`] or its derived default).
     pub fn wire_budget(&self) -> u64 {
         self.body_size.unwrap_or_else(|| {
-            self.file_size
-                .unwrap_or(DEFAULT_FILE_BUDGET)
-                .saturating_add(self.fields_size)
-                .saturating_add(FRAMING_BUDGET)
+            self.file_size.map_or(DEFAULT_WIRE_BUDGET, |file_size| {
+                file_size
+                    .saturating_add(self.fields_size)
+                    .saturating_add(FRAMING_BUDGET)
+            })
         })
     }
 }
@@ -1222,6 +1229,23 @@ mod tests {
             upload(Limits::default(), form(&[field("f", &value)]))
                 .await
                 .is_ok()
+        );
+    }
+
+    /// Review finding: with no file-size limit the default wire budget was about 1 GiB.
+    #[tokio::test]
+    async fn without_a_file_size_the_wire_budget_is_32_mib() {
+        assert_eq!(Limits::default().wire_budget(), 32 * 1024 * 1024);
+        let big = vec![7; 33 * 1024 * 1024];
+        assert_eq!(
+            budget(upload(Limits::default(), form(&[file("file", "a.bin", &big)])).await),
+            Some(Budget::Body)
+        );
+        let fits = vec![7; 30 * 1024 * 1024];
+        let stored = upload(Limits::default(), form(&[file("file", "a.bin", &fits)])).await;
+        assert_eq!(
+            stored.ok().flatten().map(|f| f.size()),
+            Some(30 * 1024 * 1024)
         );
     }
 
