@@ -196,6 +196,7 @@ impl ReceiptConsumer<'_> {
         let batch = self.config.batch_size.clamp(1, 1000);
         let lease_ms = self.config.lease_ms.max(30_000);
         let now = self.ledger.clock.now_ms();
+        self.ledger.boundary("queue.claim").await;
         let Some((resumed, jobs)) =
             usage_queue::claim(dragonfly, self.keys, lease, batch, now).await?
         else {
@@ -254,6 +255,7 @@ impl ReceiptConsumer<'_> {
             };
             match outcome {
                 Ok(persisted) => {
+                    self.ledger.boundary("queue.complete").await;
                     if !usage_queue::complete(dragonfly, self.keys, lease, &job).await? {
                         report.end = SettleEnd::LeaseLost;
                         return Ok(report);

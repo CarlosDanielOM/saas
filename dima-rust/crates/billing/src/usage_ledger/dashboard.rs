@@ -122,7 +122,7 @@ pub(crate) fn json_to_bson(value: &Value) -> Bson {
 pub(crate) fn bson_to_json(value: &Bson) -> Value {
     match value {
         Bson::Double(n) => num(*n),
-        Bson::Int32(n) => Value::from(*n),
+        Bson::Int32(n) => num(f64::from(*n)),
         #[allow(clippy::cast_precision_loss)]
         Bson::Int64(n) => num(*n as f64),
         Bson::String(text) => Value::String(text.clone()),
