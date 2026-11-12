@@ -1,9 +1,10 @@
 //! What every collection module declares ([`CollectionInfo`]) and the reads every HTTP route
 //! shares: documents without their `select: false` paths, rendered as Express renders them.
 
-use crate::decode::DecodeError;
+use crate::decode::{DecodeError, Decoded};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::shape::ReadNeed;
 use crate::validation::{Rule, ValidationError, validate, validate_given};
 use bson::{Document, RawDocument};
 use dima_store::mongo::filter::prepare_filter;
@@ -35,10 +36,17 @@ pub struct CollectionInfo {
     pub indexes: &'static [IndexSpec],
     /// The validators, in schema path order.
     pub rules: &'static [Rule],
+    /// What the read type cannot decode: the write helpers refuse to store it (`shape.rs`).
+    pub read_needs: &'static [ReadNeed],
     /// The Mongoose middleware the module's adapters reproduce.
     pub hooks: Hooks,
-    /// Decodes a stored document with the module's read type (used by the real-data check).
-    pub decode: fn(&RawDocument) -> Result<(), DecodeError>,
+    /// The private paths of the read type (`$` for each array element): every `select: false`
+    /// path, e-mail addresses, tokens, payloads with personal data. Their read type fields are
+    /// [`crate::Private`], so `Debug` never shows them (`tests/private.rs`).
+    pub private: &'static [&'static str],
+    /// Decodes a stored document with the module's read type (the real-data check, the private
+    /// paths check).
+    pub decode: fn(&RawDocument) -> Result<Decoded, DecodeError>,
 }
 
 /// The Mongoose middleware of a collection. With any, writes go through the module's adapter
@@ -87,6 +95,7 @@ impl CollectionInfo {
             &prepared.document,
             Some(given),
         )?;
+        self.check_insert(&prepared.document)?;
         Ok(prepared)
     }
 
@@ -188,8 +197,10 @@ mod tests {
         hidden: &["secret", "deep.token"],
         indexes: &[],
         rules: &[],
+        read_needs: &[],
         hooks: Hooks::None,
-        decode: |_| Ok(()),
+        private: &[],
+        decode: |_| Ok(Box::new(())),
     };
 
     #[test]

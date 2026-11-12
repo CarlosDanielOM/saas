@@ -1,26 +1,48 @@
 //! Every registered collection decoded from the local `domdimabot` copy (a stale production
-//! copy, read only) with its read type: every document of a collection under 50,000 documents,
-//! an even spread of 50,000 above that (every n-th document in `_id` order), or every document
-//! with `DIMA_MODEL_FULL_SCAN=1`. Documents are read without a projection, so the `select: false`
+//! copy, read only) with its read type. With `DIMA_TEST_REQUIRE_STORES=1` (the gate) or
+//! `DIMA_MODEL_FULL_SCAN=1`, every document of every collection; otherwise every document of a
+//! collection under 50,000 documents and an even spread of 50,000 above that (every n-th
+//! document in `_id` order). Documents are read without a projection, so the `select: false`
 //! paths are decoded too. A failure names the collection, the `_id` and the field.
 //!
-//! Skipped with a message when `DIMA_TEST_MONGO_URI` is not set or the copy is absent.
+//! Without the copy the tests skip with a notice; with `DIMA_TEST_REQUIRE_STORES=1` a missing
+//! server, copy or registered collection fails them.
 
 mod support;
 
 use anyhow::{Result, bail};
-use bson::{Bson, Document, RawDocumentBuf, doc};
+use bson::{RawDocumentBuf, doc};
 use dima_model::REGISTRY;
 use futures_util::TryStreamExt;
 
 const SAMPLE: u64 = 50_000;
+
+/// Every registered collection exists in the copy (an empty one included).
+async fn expected_collections(store: &dima_store::mongo::MongoStore) -> Result<()> {
+    let names = store.database().list_collection_names().await?;
+    let absent: Vec<&str> = REGISTRY
+        .iter()
+        .map(|info| info.name)
+        .filter(|name| !names.iter().any(|n| n == name))
+        .collect();
+    if !absent.is_empty() {
+        let message = format!("collections missing from the copy: {}", absent.join(", "));
+        if support::stores_required() {
+            bail!("{message} (DIMA_TEST_REQUIRE_STORES=1)");
+        }
+        eprintln!("{message}");
+    }
+    Ok(())
+}
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn every_real_document_decodes() -> Result<()> {
     let Some(store) = support::real_store().await? else {
         return Ok(());
     };
-    let full = std::env::var("DIMA_MODEL_FULL_SCAN").is_ok_and(|v| v == "1");
+    expected_collections(&store).await?;
+    let full =
+        support::stores_required() || std::env::var("DIMA_MODEL_FULL_SCAN").is_ok_and(|v| v == "1");
     let mut failures = Vec::new();
     let mut total = 0_u64;
     for info in REGISTRY {
@@ -67,7 +89,14 @@ async fn every_real_document_decodes() -> Result<()> {
             decoding.as_secs_f64() * 1e6 / decoded.max(1) as f64
         );
     }
-    eprintln!("{total} documents decoded");
+    eprintln!(
+        "{total} documents decoded{}",
+        if full {
+            " (every document)"
+        } else {
+            " (sampled)"
+        }
+    );
     if !failures.is_empty() {
         bail!(
             "{} documents failed to decode:\n{}",
@@ -78,105 +107,29 @@ async fn every_real_document_decodes() -> Result<()> {
     Ok(())
 }
 
-/// The specification the server stores for a declared index (`listIndexes` without `v`).
-fn declared_spec(spec: &dima_model::IndexSpec) -> Document {
-    let mut out = doc! { "key": spec.key_document(), "name": spec.name(), "background": true };
-    if spec.unique {
-        out.insert("unique", true);
-    }
-    if spec.sparse {
-        out.insert("sparse", true);
-    }
-    if let Some(seconds) = spec.expire_after_seconds {
-        out.insert(
-            "expireAfterSeconds",
-            Bson::Int64(i64::try_from(seconds).unwrap_or(i64::MAX)),
-        );
-    }
-    if let Some(filter) = spec.partial_filter {
-        out.insert("partialFilterExpression", filter());
-    }
-    out
-}
-
-/// Same specification whatever the key order and number width.
-fn same_spec(a: &Document, b: &Document) -> bool {
-    let number = dima_store::mongo::number::read_number;
-    a.len() == b.len()
-        && a.iter().all(|(key, x)| {
-            b.get(key).is_some_and(|y| match (x, y) {
-                (Bson::Document(x), Bson::Document(y)) => same_spec(x, y),
-                _ => match (number(x), number(y)) {
-                    (Some(x), Some(y)) => x == y,
-                    _ => x == y,
-                },
-            })
-        })
-}
-
-/// The production copy's indexes against the declarations: every declared index exists with the
-/// declared options, and no other index exists (besides `_id_`). Read only.
+/// The production copy's indexes against the declarations, read only: every declared index
+/// exists with the declared options, and no other index exists (besides `_id_`).
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn real_indexes_match_declarations() -> Result<()> {
     let Some(store) = support::real_store().await? else {
         return Ok(());
     };
-    let mut problems = Vec::new();
-    for info in REGISTRY {
-        let reply = store
-            .database()
-            .run_command(doc! { "listIndexes": info.name })
-            .await;
-        let listed: Vec<Document> = match reply {
-            Ok(reply) => reply
-                .get_document("cursor")
-                .and_then(|c| c.get_array("firstBatch"))
-                .map(|batch| {
-                    batch
-                        .iter()
-                        .filter_map(|b| b.as_document().cloned())
-                        .map(|mut d| {
-                            d.remove("v");
-                            d
-                        })
-                        .filter(|d| d.get_str("name").ok() != Some("_id_"))
-                        .collect()
-                })
-                .unwrap_or_default(),
-            // A collection the copy does not have (none today) has no indexes to compare.
-            Err(_) => Vec::new(),
-        };
-        let declared: Vec<Document> = info.indexes.iter().map(declared_spec).collect();
-        for spec in &declared {
-            match listed
-                .iter()
-                .find(|l| l.get_str("name").ok() == spec.get_str("name").ok())
-            {
-                None => problems.push(format!(
-                    "{}: {} is declared but missing",
-                    info.name,
-                    spec.get_str("name").unwrap_or("?")
-                )),
-                Some(found) if !same_spec(found, spec) => {
-                    problems.push(format!(
-                        "{}: {found} differs from the declaration {spec}",
-                        info.name
-                    ));
-                }
-                Some(_) => {}
-            }
-        }
-        for found in &listed {
-            if !declared
-                .iter()
-                .any(|d| d.get_str("name").ok() == found.get_str("name").ok())
-            {
-                problems.push(format!("{}: {found} exists but is not declared", info.name));
-            }
-        }
-    }
-    if !problems.is_empty() {
-        bail!("{}", problems.join("\n"));
+    expected_collections(&store).await?;
+    let differences =
+        dima_model::preflight_indexes(&store, REGISTRY, std::time::Duration::from_secs(60)).await?;
+    // A collection the copy does not have (none today) has no indexes to compare.
+    let real: Vec<String> = differences
+        .iter()
+        .filter(|d| {
+            !matches!(
+                d,
+                dima_model::index::IndexDifference::MissingCollection { .. }
+            )
+        })
+        .map(ToString::to_string)
+        .collect();
+    if !real.is_empty() {
+        bail!("{}", real.join("\n"));
     }
     eprintln!(
         "the production copy's indexes match the declarations of {} collections",

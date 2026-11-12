@@ -5,17 +5,23 @@
 //! hand-written `createdAt`/`updatedAt` with `Date.now`, and a `pre('save')` hook that sets
 //! `updatedAt = new Date()` on every save. Many strings are trimmed. `config[]` elements carry
 //! their own `_id`. `__v`, no index.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::hooks::{save_stamping, stamp_insert};
 use crate::index::IndexSpec;
+use crate::loaded::LoadedForSave;
+use crate::shape::ReadNeed;
 use crate::users::PlanTier;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
-use bson::{Bson, Document, RawDocument};
+use bson::{Bson, Document};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::id::IdType;
@@ -139,6 +145,33 @@ pub const RULES: &[Rule] = &[
     Rule::required("config.$.showIf.is"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("name"),
+    ReadNeed::value("type"),
+    ReadNeed::not_null("version"),
+    ReadNeed::value("icon"),
+    ReadNeed::value("color"),
+    ReadNeed::value("textColor"),
+    ReadNeed::not_null("releaseStage"),
+    ReadNeed::not_null("enabled"),
+    ReadNeed::not_null("plan_tier"),
+    ReadNeed::value("description"),
+    ReadNeed::value("description.EN"),
+    ReadNeed::value("description.ES"),
+    ReadNeed::not_null("config"),
+    ReadNeed::value("config.$.id"),
+    ReadNeed::value("config.$.label"),
+    ReadNeed::value("config.$.label.EN"),
+    ReadNeed::value("config.$.label.ES"),
+    ReadNeed::not_null("config.$.type"),
+    ReadNeed::not_null("config.$.canDisable"),
+    ReadNeed::value("config.$.showIf.controlId"),
+    ReadNeed::not_null("tierLimits.free"),
+    ReadNeed::not_null("tierLimits.premium"),
+    ReadNeed::not_null("tierLimits.pro"),
+];
+
 /// The registry entry. Creates and saves go through [`NewEvent::prepare`] and [`prepare_save`]
 /// (the `updatedAt` hook).
 pub static INFO: CollectionInfo = CollectionInfo {
@@ -150,8 +183,10 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: &[],
     indexes: &[] as &[IndexSpec],
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::Save,
-    decode: |raw: &RawDocument| decode::<Event>(raw).map(drop),
+    private: &[],
+    decode: decode_boxed::<Event>,
 };
 
 /// A catalogue event.
@@ -392,9 +427,9 @@ impl NewEvent {
 
 /// `doc.save()` of a loaded event after `changes`, with the hook's `updatedAt = new Date()`.
 pub fn prepare_save(
-    loaded: &Document,
+    loaded: &LoadedForSave,
     changes: &[Change],
     ctx: &mut WriteContext,
 ) -> Result<PreparedSave, ModelError> {
-    save_stamping(&SCHEMA, loaded, changes, "updatedAt", ctx)
+    save_stamping(&INFO, loaded, changes, "updatedAt", ctx)
 }

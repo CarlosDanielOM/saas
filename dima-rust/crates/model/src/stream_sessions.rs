@@ -5,16 +5,22 @@
 //! timestamps, `__v`, no hooks. At most one open session per channel (unique partial index on
 //! `{channelID, ended_at}` where `ended_at` is `null`). `applied_domain_event_keys` is
 //! `select: false`: a save must not load the document without it (see the crate docs).
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::defaults::{empty, zero};
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::private::Private;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
-use bson::{Bson, Document, RawDocument, doc};
+use bson::{Bson, Document, doc};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::id::IdType;
@@ -110,6 +116,30 @@ pub const RULES: &[Rule] = &[
     Rule::one_of("closure_source", ClosureSource::STRINGS),
 ];
 
+/// The private paths: their read type fields are [`crate::Private`].
+pub const PRIVATE: &[&str] = &["applied_domain_event_keys"];
+
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("channelID"),
+    ReadNeed::not_null("channel"),
+    ReadNeed::value("stream_id"),
+    ReadNeed::value("started_at"),
+    ReadNeed::not_null("status"),
+    ReadNeed::not_null("peak_viewers"),
+    ReadNeed::not_null("average_viewers"),
+    ReadNeed::not_null("sample_count"),
+    ReadNeed::not_null("sample_total_viewers"),
+    ReadNeed::not_null("duration_minutes"),
+    ReadNeed::not_null("follows"),
+    ReadNeed::not_null("subs"),
+    ReadNeed::not_null("bits"),
+    ReadNeed::not_null("donations"),
+    ReadNeed::not_null("messages"),
+    ReadNeed::not_null("commands"),
+    ReadNeed::not_null("consecutive_offline_checks"),
+];
+
 /// The registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -120,8 +150,10 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::None,
-    decode: |raw: &RawDocument| decode::<StreamSession>(raw).map(drop),
+    private: PRIVATE,
+    decode: decode_boxed::<StreamSession>,
 };
 
 /// A stored stream session.
@@ -187,7 +219,7 @@ pub struct StreamSession {
     pub commands: JsNumber,
     /// Domain events already counted (`select: false`: `None` unless the read selected it).
     #[serde(default)]
-    pub applied_domain_event_keys: Option<Vec<String>>,
+    pub applied_domain_event_keys: Option<Private<Vec<String>>>,
     /// When the offline summary was queued.
     #[serde(default)]
     pub offline_summary_enqueued_at: Option<JsDate>,

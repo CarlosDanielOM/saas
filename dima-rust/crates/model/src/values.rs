@@ -2,8 +2,55 @@
 
 use bson::{Bson, Document};
 use serde::de::{self, MapAccess, Visitor};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
+
+/// An input field with three states, for the few create paths of the reference that pass an
+/// explicit `null` through (`new Model({ description: raw.description })` with a stored `null`):
+/// left out, so the schema default applies ([`Nullable::Unset`]); stored as `null`
+/// ([`Nullable::Null`]); or a value. Declare the field with
+/// `#[serde(default, skip_serializing_if = "Nullable::is_unset")]`.
+///
+/// Use it only where a create path really passes `null`; every other optional input field is an
+/// `Option` left out when `None`. A `Mixed` field needs neither: its `Bson` holds `null` itself.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Nullable<T> {
+    /// Left out: the schema default applies.
+    #[default]
+    Unset,
+    /// Stored as `null`.
+    Null,
+    /// Stored as the value.
+    Value(T),
+}
+
+impl<T> Nullable<T> {
+    /// `true` when left out (for `skip_serializing_if`).
+    pub fn is_unset(&self) -> bool {
+        matches!(self, Self::Unset)
+    }
+
+    /// JavaScript's `value ?? null`: `None` is stored as `null`.
+    pub fn or_null(value: Option<T>) -> Self {
+        value.map_or(Self::Null, Self::Value)
+    }
+}
+
+impl<T> From<T> for Nullable<T> {
+    fn from(value: T) -> Self {
+        Self::Value(value)
+    }
+}
+
+impl<T: Serialize> Serialize for Nullable<T> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            // Only reached when the field lacks `skip_serializing_if`: still never a value.
+            Self::Unset | Self::Null => serializer.serialize_none(),
+            Self::Value(value) => value.serialize(serializer),
+        }
+    }
+}
 
 /// A `Map` of strings (`{ type: Map, of: String }`), entries in stored order.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -61,6 +108,31 @@ mod tests {
     #[derive(Deserialize)]
     struct Row {
         vars: StringMap,
+    }
+
+    #[derive(Serialize)]
+    struct Input {
+        #[serde(skip_serializing_if = "Nullable::is_unset")]
+        a: Nullable<String>,
+        #[serde(skip_serializing_if = "Nullable::is_unset")]
+        b: Nullable<String>,
+        #[serde(skip_serializing_if = "Nullable::is_unset")]
+        c: Nullable<String>,
+    }
+
+    #[test]
+    fn nullable_has_three_states() -> Result<(), bson::error::Error> {
+        let input = Input {
+            a: Nullable::Unset,
+            b: Nullable::Null,
+            c: "x 👋".to_owned().into(),
+        };
+        assert_eq!(
+            bson::serialize_to_document(&input)?,
+            doc! { "b": Bson::Null, "c": "x 👋" }
+        );
+        assert_eq!(Nullable::<u8>::or_null(None), Nullable::Null);
+        Ok(())
     }
 
     #[test]

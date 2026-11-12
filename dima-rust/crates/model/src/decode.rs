@@ -7,6 +7,19 @@
 
 use bson::{Document, RawDocument, RawDocumentBuf};
 use serde::de::DeserializeOwned;
+use std::fmt;
+
+/// A document decoded with some collection's read type, as the registry hands it out: it can only
+/// be shown through `Debug`, which keeps [`crate::Private`] values private.
+pub type Decoded = Box<dyn fmt::Debug + Send + Sync>;
+
+/// [`decode`] for the registry ([`crate::CollectionInfo::decode`]).
+pub fn decode_boxed<T>(raw: &RawDocument) -> Result<Decoded, DecodeError>
+where
+    T: DeserializeOwned + fmt::Debug + Send + Sync + 'static,
+{
+    decode::<T>(raw).map(|value| Box::new(value) as Decoded)
+}
 
 /// A stored document that does not fit its read type.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]

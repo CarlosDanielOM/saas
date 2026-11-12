@@ -4,16 +4,23 @@
 //! Reference: `dimabot/src/schemas/users.schema.ts`. Snake-case timestamps, `__v`, no hooks and no
 //! declared index (the reference queries `accounts.type` + `accounts.id` without one).
 //! `polar_credit_snapshot` and `applied_credit_transaction_ids` are `select: false`.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::defaults::{yes, zero};
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::private::Private;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
+use crate::values::Nullable;
 use bson::oid::ObjectId;
-use bson::{Bson, Document, RawDocument, doc};
+use bson::{Bson, Document, doc};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::id::IdType;
@@ -172,6 +179,38 @@ pub const RULES: &[Rule] = &[
     Rule::required("free_credit_reset.updatedAt"),
 ];
 
+/// The private paths: their read type fields are [`crate::Private`].
+pub const PRIVATE: &[&str] = &[
+    "email",
+    "accounts.$.email",
+    "accounts.$.refresh_token",
+    "accounts.$.access_token",
+    "polar_sh_customer_id",
+    "polar_credit_snapshot",
+    "applied_credit_transaction_ids",
+];
+
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::not_null("accounts"),
+    ReadNeed::not_null("accounts.$.type"),
+    ReadNeed::not_null("accounts.$.actived"),
+    ReadNeed::not_null("accounts.$.chat_enabled"),
+    ReadNeed::not_null("accounts.$.has_permissions"),
+    ReadNeed::not_null("accounts.$.up_to_date_permissions"),
+    ReadNeed::value("polar_credit_snapshot.occurredAt"),
+    ReadNeed::value("polar_credit_snapshot.eventKey"),
+    ReadNeed::not_null("polar_credit_snapshot.meters"),
+    ReadNeed::not_null("plan_tier"),
+    ReadNeed::not_null("token_balance"),
+    ReadNeed::value("free_credit_reset.periodStart"),
+    ReadNeed::value("free_credit_reset.periodEnd"),
+    ReadNeed::value("free_credit_reset.status"),
+    ReadNeed::value("free_credit_reset.credits"),
+    ReadNeed::value("free_credit_reset.externalId"),
+    ReadNeed::value("free_credit_reset.updatedAt"),
+];
+
 /// The registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -182,8 +221,10 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::None,
-    decode: |raw: &RawDocument| decode::<User>(raw).map(drop),
+    private: PRIVATE,
+    decode: decode_boxed::<User>,
 };
 
 // ------------------------------------------------------------------------------------- reading
@@ -200,7 +241,7 @@ pub struct User {
     pub name: Option<String>,
     /// E-mail address.
     #[serde(default)]
-    pub email: Option<String>,
+    pub email: Option<Private<String>>,
     /// Connected platform accounts.
     #[serde(default)]
     pub accounts: Vec<Account>,
@@ -212,7 +253,7 @@ pub struct User {
     pub tts_default_provider: Option<Open<TtsProvider>>,
     /// Polar customer id.
     #[serde(default)]
-    pub polar_sh_customer_id: Option<String>,
+    pub polar_sh_customer_id: Option<Private<String>>,
     /// When the last Polar plan event was applied.
     #[serde(default)]
     pub polar_plan_event_at: Option<JsDate>,
@@ -227,7 +268,7 @@ pub struct User {
     pub polar_plan_entitlement_fingerprint: Option<String>,
     /// The last Polar credit meter snapshot (`select: false`).
     #[serde(default)]
-    pub polar_credit_snapshot: Option<CreditSnapshot>,
+    pub polar_credit_snapshot: Option<Private<CreditSnapshot>>,
     /// Plan tier.
     #[serde(default = "free")]
     pub plan_tier: Open<PlanTier>,
@@ -251,7 +292,7 @@ pub struct User {
     pub token_balance: JsNumber,
     /// Credit transactions already applied (`select: false`; absent on most users).
     #[serde(default)]
-    pub applied_credit_transaction_ids: Option<Vec<ObjectId>>,
+    pub applied_credit_transaction_ids: Option<Private<Vec<ObjectId>>>,
     /// When the activation reminder was sent.
     #[serde(default)]
     pub reminder_sent_at: Option<JsDate>,
@@ -303,13 +344,13 @@ pub struct Account {
     pub name: Option<String>,
     /// The platform e-mail.
     #[serde(default)]
-    pub email: Option<String>,
+    pub email: Option<Private<String>>,
     /// Encrypted refresh token.
     #[serde(default)]
-    pub refresh_token: EncryptedToken,
+    pub refresh_token: Private<EncryptedToken>,
     /// Encrypted access token.
     #[serde(default)]
-    pub access_token: EncryptedToken,
+    pub access_token: Private<EncryptedToken>,
     /// Access token expiry (epoch milliseconds).
     #[serde(default)]
     pub access_token_expires_at: Option<JsNumber>,
@@ -327,7 +368,8 @@ pub struct Account {
     pub up_to_date_permissions: bool,
 }
 
-/// A token encrypted by `utils/crypto.ts` (`{iv, content}`). `Debug` never prints the content.
+/// A token encrypted by `utils/crypto.ts` (`{iv, content}`). Fields hold it as
+/// `Private<EncryptedToken>`; its own `Debug` never prints the content either.
 #[derive(Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct EncryptedToken {
     /// Initialisation vector (hex).
@@ -408,7 +450,7 @@ pub struct NewUser {
     pub name: Option<String>,
     /// E-mail address.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub email: Option<String>,
+    pub email: Option<Private<String>>,
     /// Connected accounts.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub accounts: Vec<NewAccount>,
@@ -420,13 +462,13 @@ pub struct NewUser {
     pub tts_default_provider: Option<TtsProvider>,
     /// Polar customer id.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub polar_sh_customer_id: Option<String>,
+    pub polar_sh_customer_id: Option<Private<String>>,
     /// Plan tier (default `free`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plan_tier: Option<PlanTier>,
-    /// End of a time-limited plan.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub plan_tier_until: Option<JsDate>,
+    /// End of a time-limited plan (sign-up passes `null`).
+    #[serde(skip_serializing_if = "Nullable::is_unset")]
+    pub plan_tier_until: Nullable<JsDate>,
     /// Last activity.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_app_activity_at: Option<JsDate>,
@@ -454,13 +496,13 @@ pub struct NewAccount {
     pub name: Option<String>,
     /// The platform e-mail.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub email: Option<String>,
+    pub email: Option<Private<String>>,
     /// Encrypted refresh token.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub refresh_token: Option<EncryptedToken>,
+    pub refresh_token: Option<Private<EncryptedToken>>,
     /// Encrypted access token.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub access_token: Option<EncryptedToken>,
+    pub access_token: Option<Private<EncryptedToken>>,
     /// Access token expiry (epoch milliseconds).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub access_token_expires_at: Option<JsNumber>,

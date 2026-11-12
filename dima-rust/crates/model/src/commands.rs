@@ -10,20 +10,29 @@
 //! Domain content stays raw until its package types it: the block tree ([`CommandBlocks`],
 //! engine), the tag permission expression ([`PermissionExpression`], permissions), the response
 //! table ([`CommandResponses`]) and the per-action permissions ([`CommandPermissions`]).
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
+//! `permissions` (`Mixed`) is read as raw BSON ([`CommandPermissions`]): a client may store any
+//! value there.
 
 use crate::availability::{self, AvailabilityLease, AvailabilityState, Writer};
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::defaults::{empty, yes, zero};
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::loaded::LoadedForSave;
+use crate::private::Private;
+use crate::shape::ReadNeed;
 use crate::timer_commands::{CREATION_DATE, CreationDate};
 use crate::validation::Rule;
-use crate::values::StringMap;
-use crate::writes::{find_and_update_unchecked, save_unchecked, update_unchecked};
+use crate::values::{Nullable, StringMap};
+use crate::writes::{find_and_update_unchecked, save_with_hooks, update_unchecked};
 use bson::oid::ObjectId;
-use bson::{Bson, Document, RawDocument};
+use bson::{Bson, Document};
 use dima_core::Random;
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
@@ -124,6 +133,30 @@ pub const RULES: &[Rule] = &[
     Rule::required("channelID"),
 ];
 
+/// The private paths: their read type fields are [`crate::Private`].
+pub const PRIVATE: &[&str] = &["blocks", "availability", "availabilityLease"];
+
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::not_null("activation"),
+    ReadNeed::not_null("keywordSettings.matchMode"),
+    ReadNeed::not_null("message"),
+    ReadNeed::not_null("authoring"),
+    ReadNeed::not_null("responses"),
+    ReadNeed::not_null("type"),
+    ReadNeed::not_null("platform"),
+    ReadNeed::not_null("reserved"),
+    ReadNeed::not_null("cooldown"),
+    ReadNeed::not_null("count"),
+    ReadNeed::not_null("userLevelName"),
+    ReadNeed::not_null("userLevel"),
+    ReadNeed::not_null("enabled"),
+    ReadNeed::not_null("paused"),
+    ReadNeed::value("channelID"),
+    ReadNeed::not_null("premiumRequired"),
+    ReadNeed::not_null("premiumLevelRequired"),
+];
+
 /// The registry entry. Every write goes through this module (the availability hook).
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -134,8 +167,10 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::UpdatesAndSave,
-    decode: |raw: &RawDocument| decode::<Command>(raw).map(drop),
+    private: PRIVATE,
+    decode: decode_boxed::<Command>,
 };
 
 /// A stored command, defaults filled in as a hydrated Mongoose document shows them. The hidden
@@ -169,7 +204,7 @@ pub struct Command {
     /// The block tree (`select: false`: `None` when not selected, and when stored as `null`, the
     /// default).
     #[serde(default)]
-    pub blocks: Option<CommandBlocks>,
+    pub blocks: Option<Private<CommandBlocks>>,
     /// Response table of built-in functions (roulette outcomes, size ranges...).
     #[serde(default)]
     pub responses: CommandResponses,
@@ -232,10 +267,10 @@ pub struct Command {
     pub date: CreationDate,
     /// Scheduled availability (`select: false`).
     #[serde(default)]
-    pub availability: Option<AvailabilityState>,
+    pub availability: Option<Private<AvailabilityState>>,
     /// Availability synchronisation lease (`select: false`).
     #[serde(default, rename = "availabilityLease")]
-    pub availability_lease: Option<AvailabilityLease>,
+    pub availability_lease: Option<Private<AvailabilityLease>>,
 }
 
 fn command() -> Open<Activation> {
@@ -294,10 +329,17 @@ pub struct PermissionExpression(pub Bson);
 #[serde(transparent)]
 pub struct CommandResponses(pub Vec<Bson>);
 
-/// Per-action permission levels (`{play: 7, skip: 7}`), kept as stored.
-#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+/// Per-action permission levels (`{play: 7, skip: 7}`), kept as stored. The path is `Mixed`
+/// (`type: Object`), so any value may be stored there; missing reads as the default `{}`.
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(transparent)]
-pub struct CommandPermissions(pub Document);
+pub struct CommandPermissions(pub Bson);
+
+impl Default for CommandPermissions {
+    fn default() -> Self {
+        Self(Bson::Document(Document::new()))
+    }
+}
 
 /// A new command (`new CommandsSchema({...})` in `command_mutations.service.ts`). Unset fields
 /// take the schema defaults.
@@ -330,9 +372,9 @@ pub struct NewCommand {
     /// How the reply was written (default `text`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authoring: Option<Authoring>,
-    /// The block tree (the reference passes `null` for text commands).
+    /// The block tree (the reference passes `null` for text commands; `select: false`).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub blocks: Option<Bson>,
+    pub blocks: Option<Private<Bson>>,
     /// Response table.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub responses: Option<Vec<Bson>>,
@@ -342,9 +384,9 @@ pub struct NewCommand {
     /// Built-in (default `false`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reserved: Option<bool>,
-    /// Description.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    /// Description (the restore path passes a stored `null` through: 49 commands have it).
+    #[serde(skip_serializing_if = "Nullable::is_unset")]
+    pub description: Nullable<String>,
     /// Cooldown in seconds (default 20).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cooldown: Option<JsNumber>,
@@ -390,7 +432,7 @@ impl NewCommand {
             responses: None,
             kind: None,
             reserved: None,
-            description: None,
+            description: Nullable::Unset,
             cooldown: None,
             enabled: None,
             user_level_name: None,
@@ -422,7 +464,7 @@ pub fn prepare_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    update_unchecked(&SCHEMA, filter, update.into(), options, ctx)
+    update_unchecked(&INFO, filter, update.into(), options, ctx)
 }
 
 /// `Model.findOneAndUpdate` with the availability hook (unless `writer` is internal).
@@ -438,16 +480,29 @@ pub fn prepare_find_one_and_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    find_and_update_unchecked(&SCHEMA, filter, update.into(), options, returned, ctx)
+    find_and_update_unchecked(&INFO, filter, update.into(), options, returned, ctx)
 }
 
 /// `doc.save()` of a loaded command (read without projection) after `changes`, with the save hook.
 pub fn prepare_save(
-    loaded: &Document,
+    loaded: &LoadedForSave,
     changes: &[Change],
     ctx: &mut WriteContext,
     random: &dyn Random,
 ) -> Result<PreparedSave, ModelError> {
-    let changes = availability::guard_save(loaded, changes, ENABLED, ctx.now_ms(), random)?;
-    save_unchecked(&SCHEMA, loaded, &changes, ctx)
+    save_with_hooks(
+        &INFO,
+        loaded,
+        changes,
+        |loaded, changes, ctx| {
+            Ok(availability::guard_save(
+                loaded,
+                changes,
+                ENABLED,
+                ctx.now_ms(),
+                random,
+            )?)
+        },
+        ctx,
+    )
 }

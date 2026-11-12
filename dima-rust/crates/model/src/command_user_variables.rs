@@ -2,15 +2,20 @@
 //!
 //! Reference: `dimabot/src/schemas/command_user_variables.schema.ts`. Camel-case timestamps,
 //! `__v`, no hooks. Unique `{commandId, userId}`. Empty in the production copy.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use crate::values::StringMap;
+use bson::Document;
 use bson::oid::ObjectId;
-use bson::{Document, RawDocument};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::id::IdType;
@@ -47,6 +52,13 @@ pub const RULES: &[Rule] = &[
     Rule::required("userId"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("commandId"),
+    ReadNeed::value("channelID"),
+    ReadNeed::value("userId"),
+];
+
 /// The registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -57,8 +69,10 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::None,
-    decode: |raw: &RawDocument| decode::<CommandUserVariables>(raw).map(drop),
+    private: &[],
+    decode: decode_boxed::<CommandUserVariables>,
 };
 
 /// One user's variables of one command.

@@ -3,6 +3,10 @@
 //! model names, schema options, every field with its kind, type, default (computed defaults
 //! evaluated at the dump's fixed instant), `trim` and `immutable`, the `select: false` paths, the
 //! validators and the declared indexes. Offline: no database is needed.
+//!
+//! The snapshot is only as current as the TypeScript it was dumped from: it records the reference
+//! commit and the SHA-256 of every source file (the schema files and what they import), and
+//! [`snapshot_sources_are_current`] fails, naming the file, when this checkout's copy differs.
 
 use anyhow::{Context, Result, bail};
 use bson::Bson;
@@ -312,5 +316,79 @@ fn every_schema_matches_mongoose() -> Result<()> {
         bail!("{} differences:\n{}", problems.len(), problems.join("\n"));
     }
     eprintln!("{} collections match Mongoose", REGISTRY.len());
+    Ok(())
+}
+
+/// How to regenerate the snapshot (`src/lib.rs`, "Tests every collection gets").
+const REGENERATE: &str = "cd \"$DIMABOT_DIR\" && TZ=UTC node_modules/.bin/tsx \
+    \"$REPO/dima-rust/crates/model/tests/mongoose/dump_schemas.mts\" \
+    \"$REPO/dima-rust/crates/model/tests/mongoose/schemas.json\"";
+
+#[test]
+fn snapshot_sources_are_current() -> Result<()> {
+    use sha2::{Digest, Sha256};
+    let dump = dump()?;
+    let reference = dump
+        .get("reference")
+        .and_then(Value::as_str)
+        .context("the snapshot records no reference commit")?;
+    if reference.len() != 40 || !reference.bytes().all(|b| b.is_ascii_hexdigit()) {
+        bail!("the snapshot's reference commit is not a commit id: {reference}");
+    }
+    let sources = dump
+        .get("sources")
+        .and_then(Value::as_array)
+        .context("the snapshot records no source hashes")?;
+    let dimabot = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../dimabot");
+    let mut recorded = BTreeSet::new();
+    let mut problems = Vec::new();
+    for source in sources {
+        let path = source
+            .get("path")
+            .and_then(Value::as_str)
+            .context("source path")?;
+        let expected = source
+            .get("sha256")
+            .and_then(Value::as_str)
+            .context("source hash")?;
+        recorded.insert(path);
+        let file = format!("{dimabot}/{path}");
+        match std::fs::read(&file) {
+            Ok(bytes) => {
+                let actual: String = Sha256::digest(&bytes)
+                    .iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect();
+                if actual != expected {
+                    problems.push(format!("dimabot/{path} changed since the snapshot"));
+                }
+            }
+            Err(error) => problems.push(format!("dimabot/{path}: {error}")),
+        }
+    }
+    let models = dump
+        .get("models")
+        .and_then(Value::as_object)
+        .context("models")?;
+    for (name, model) in models {
+        match model.get("file").and_then(Value::as_str) {
+            Some(file) if recorded.contains(file) => {}
+            other => problems.push(format!(
+                "{name}: schema file {other:?} has no recorded hash"
+            )),
+        }
+    }
+    if !problems.is_empty() {
+        bail!(
+            "the schema snapshot (reference {reference}) is stale:\n{}\n\
+             dimabot/src is frozen: if the change is intended, regenerate the snapshot and \
+             re-check every model against it:\n{REGENERATE}",
+            problems.join("\n")
+        );
+    }
+    eprintln!(
+        "{} source files match the snapshot of reference {reference}",
+        sources.len()
+    );
     Ok(())
 }

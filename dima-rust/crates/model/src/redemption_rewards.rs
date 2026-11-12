@@ -5,17 +5,24 @@
 //! the availability fields and hooks on `isEnabled` (`crate::availability`). No timestamps,
 //! `__v`. Writes go through this module ([`prepare_update`], [`prepare_find_one_and_update`],
 //! [`prepare_save`], [`NewRedemptionReward::prepare`]).
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::availability::{self, AvailabilityLease, AvailabilityState, Writer};
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::defaults::{empty, yes, zero};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::loaded::LoadedForSave;
+use crate::private::Private;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
-use crate::writes::{find_and_update_unchecked, save_unchecked, update_unchecked};
+use crate::writes::{find_and_update_unchecked, save_with_hooks, update_unchecked};
+use bson::Document;
 use bson::oid::ObjectId;
-use bson::{Document, RawDocument};
 use dima_core::Random;
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::id::IdType;
@@ -69,6 +76,30 @@ pub const RULES: &[Rule] = &[
     Rule::required("cost"),
 ];
 
+/// The private paths: their read type fields are [`crate::Private`].
+pub const PRIVATE: &[&str] = &["availability", "availabilityLease"];
+
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("eventsubID"),
+    ReadNeed::value("channelID"),
+    ReadNeed::value("channel"),
+    ReadNeed::value("rewardID"),
+    ReadNeed::value("title"),
+    ReadNeed::not_null("type"),
+    ReadNeed::not_null("prompt"),
+    ReadNeed::value("originalCost"),
+    ReadNeed::value("cost"),
+    ReadNeed::not_null("isEnabled"),
+    ReadNeed::not_null("message"),
+    ReadNeed::not_null("costChange"),
+    ReadNeed::not_null("returnToOriginalCost"),
+    ReadNeed::not_null("duration"),
+    ReadNeed::not_null("cooldown"),
+    ReadNeed::not_null("createdFrom"),
+    ReadNeed::not_null("createdFor"),
+];
+
 /// The registry entry. Every write goes through this module (the availability hook).
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -79,8 +110,10 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: availability::HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::UpdatesAndSave,
-    decode: |raw: &RawDocument| decode::<RedemptionReward>(raw).map(drop),
+    private: PRIVATE,
+    decode: decode_boxed::<RedemptionReward>,
 };
 
 /// A stored reward.
@@ -142,10 +175,10 @@ pub struct RedemptionReward {
     pub created_for: String,
     /// Scheduled availability (`select: false`).
     #[serde(default)]
-    pub availability: Option<AvailabilityState>,
+    pub availability: Option<Private<AvailabilityState>>,
     /// Availability synchronisation lease (`select: false`).
     #[serde(default, rename = "availabilityLease")]
-    pub availability_lease: Option<AvailabilityLease>,
+    pub availability_lease: Option<Private<AvailabilityLease>>,
 }
 
 fn custom() -> String {
@@ -216,7 +249,7 @@ pub fn prepare_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    update_unchecked(&SCHEMA, filter, update.into(), options, ctx)
+    update_unchecked(&INFO, filter, update.into(), options, ctx)
 }
 
 /// `Model.findOneAndUpdate` with the availability hook (unless `writer` is internal).
@@ -232,16 +265,29 @@ pub fn prepare_find_one_and_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    find_and_update_unchecked(&SCHEMA, filter, update.into(), options, returned, ctx)
+    find_and_update_unchecked(&INFO, filter, update.into(), options, returned, ctx)
 }
 
 /// `doc.save()` of a loaded reward (read without projection) after `changes`, with the save hook.
 pub fn prepare_save(
-    loaded: &Document,
+    loaded: &LoadedForSave,
     changes: &[Change],
     ctx: &mut WriteContext,
     random: &dyn Random,
 ) -> Result<PreparedSave, ModelError> {
-    let changes = availability::guard_save(loaded, changes, ENABLED, ctx.now_ms(), random)?;
-    save_unchecked(&SCHEMA, loaded, &changes, ctx)
+    save_with_hooks(
+        &INFO,
+        loaded,
+        changes,
+        |loaded, changes, ctx| {
+            Ok(availability::guard_save(
+                loaded,
+                changes,
+                ENABLED,
+                ctx.now_ms(),
+                random,
+            )?)
+        },
+        ctx,
+    )
 }

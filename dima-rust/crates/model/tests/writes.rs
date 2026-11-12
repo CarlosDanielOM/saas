@@ -14,8 +14,8 @@ mod support;
 use anyhow::{Context, Result, anyhow, bail};
 use bson::oid::ObjectId;
 use bson::{Bson, Document, doc};
-use dima_model::admins::{self, NewAdmin};
-use dima_model::app_configs::{self, NewAppConfig};
+use dima_model::admins::NewAdmin;
+use dima_model::app_configs::NewAppConfig;
 use dima_model::ast_variables::NewAstVariables;
 use dima_model::availability::Writer;
 use dima_model::command_user_variables::NewCommandUserVariables;
@@ -25,15 +25,19 @@ use dima_model::custom_timers::{FrequencyUnit, NewCustomTimer};
 use dima_model::domain_event_checkpoints::NewCheckpoint;
 use dima_model::domain_event_deliveries::NewDelivery;
 use dima_model::domain_events::{self, NewDomainEvent, NewSubject, SubjectKind, Topic};
-use dima_model::events::{self, ControlType, Localized, NewControl, NewEvent, ReleaseStage};
+use dima_model::events::{ControlType, Localized, NewControl, NewEvent, ReleaseStage};
 use dima_model::eventsubs::NewEventsub;
-use dima_model::redemption_rewards::{self, NewRedemptionReward};
+use dima_model::index::{IndexDifference, IndexError, IndexStatus};
+use dima_model::redemption_rewards::NewRedemptionReward;
 use dima_model::stream_sessions::NewStreamSession;
 use dima_model::timer_commands::NewTimerCommand;
 use dima_model::users::{
     AccountType, EncryptedToken, Language, NewAccount, NewUser, PlanTier, TtsProvider,
 };
-use dima_model::{CollectionInfo, ModelError, REGISTRY, ensure_indexes};
+use dima_model::values::Nullable;
+use dima_model::{
+    CollectionInfo, IndexPolicy, ModelError, REGISTRY, ensure_indexes, preflight_indexes,
+};
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::insert::PreparedInsert;
 use dima_store::mongo::number::JsNumber;
@@ -43,6 +47,9 @@ use dima_store::mongo::{MongoStore, WriteContext};
 use futures_util::TryStreamExt;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+
+/// A generous deadline for index work on the local server.
+const DEADLINE: std::time::Duration = std::time::Duration::from_secs(60);
 
 // ------------------------------------------------------------------------------------ recording
 
@@ -198,24 +205,6 @@ fn same_values(a: &Bson, b: &Bson) -> bool {
     }
 }
 
-// ---------------------------------------------------------------------------- deterministic ids
-
-/// Random bytes from a counter: distinct, reproducible UUIDs for the hooks' tokens.
-#[derive(Debug, Default)]
-struct CountingRandom(std::sync::atomic::AtomicU64);
-
-impl dima_core::Random for CountingRandom {
-    fn fill(&self, buf: &mut [u8]) -> Result<(), dima_core::RandomError> {
-        for chunk in buf.chunks_mut(8) {
-            let next = self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-            for (slot, byte) in chunk.iter_mut().zip(next.to_le_bytes()) {
-                *slot = byte;
-            }
-        }
-        Ok(())
-    }
-}
-
 // -------------------------------------------------------------------- typed inputs and adapters
 
 /// The module's input type for a `create` case that names one: what `to_document()` gives and
@@ -243,8 +232,8 @@ fn typed_create(
             let mut account = NewAccount::new(AccountType::Twitch, "222");
             account.name = Some(text.into());
             account.email = Some("new@example.com".into());
-            account.refresh_token = Some(token());
-            account.access_token = Some(token());
+            account.refresh_token = Some(token().into());
+            account.access_token = Some(token().into());
             account.actived = Some(false);
             account.chat_enabled = Some(false);
             account.has_permissions = Some(false);
@@ -256,7 +245,7 @@ fn typed_create(
                 language: Some(Language::En),
                 accounts: vec![account],
                 plan_tier: Some(PlanTier::Free),
-                plan_tier_until: Some(ms("2021-06-07T08:09:10.011Z")?),
+                plan_tier_until: ms("2021-06-07T08:09:10.011Z")?.into(),
                 last_app_activity_at: Some(ms("2020-01-02T03:04:05.006Z")?),
                 token_balance: Some(JsNumber(0.0)),
                 ..NewUser::default()
@@ -399,7 +388,8 @@ fn typed_create(
                 access_token: EncryptedToken {
                     iv: Some("i".into()),
                     content: Some("c".into()),
-                },
+                }
+                .into(),
             };
             pair(config.to_document()?, config.prepare(ctx))
         }
@@ -466,7 +456,7 @@ fn typed_create(
                 stream_id: None,
                 occurred_at: t1,
                 journaled_at: Some(t2),
-                payload: doc! { "user": { "id": "9", "login": text } },
+                payload: doc! { "user": { "id": "9", "login": text } }.into(),
                 metadata: Some(
                     doc! { "originalEventType": "channel.follow", "durableChatHandled": true },
                 ),
@@ -477,7 +467,7 @@ fn typed_create(
                 event.id = Some(oid(0x501)?);
                 event.event_key = "k2".into();
                 event.source_event_id = "k2".into();
-                event.payload = doc! {};
+                event.payload = doc! {}.into();
                 event.metadata = Some(doc! {});
                 event.subject = None;
                 event.owner_user_id = None;
@@ -501,7 +491,7 @@ fn typed_create(
                     stream_id: None,
                     occurred_at: t1,
                     journaled_at: None,
-                    payload: doc! { "a": 1 },
+                    payload: doc! { "a": 1 }.into(),
                     metadata: None,
                     dispatch_pending: None,
                     expires_at: t2,
@@ -517,11 +507,11 @@ fn typed_create(
             command.func = Some("custom".into());
             command.message = Some(format!("hola {text}"));
             command.authoring = Some(commands::Authoring::Text);
-            command.blocks = Some(Bson::Null);
+            command.blocks = Some(Bson::Null.into());
             command.responses = Some(Vec::new());
             command.kind = Some("command".into());
             command.reserved = Some(false);
-            command.description = Some(String::new());
+            command.description = String::new().into();
             command.cooldown = Some(JsNumber(10.0));
             command.enabled = Some(true);
             command.user_level_name = Some("everyone".into());
@@ -529,6 +519,22 @@ fn typed_create(
             command.permission_expression = Some(Bson::Null);
             command.channel = Some("seed".into());
             pair(command.to_document()?, command.prepare(ctx))
+        }
+        ("commands", "restored") => {
+            // The restore path (`command_mutations.service.ts:371`) passes a stored null through.
+            let mut command = NewCommand::new("111");
+            command.cmd = Some("!old".into());
+            command.description = Nullable::Null;
+            pair(command.to_document()?, command.prepare(ctx))
+        }
+        ("users", "signup_until_null") => {
+            let user = NewUser {
+                name: Some("n".into()),
+                plan_tier: Some(PlanTier::Free),
+                plan_tier_until: Nullable::Null,
+                ..NewUser::default()
+            };
+            pair(user.to_document()?, user.prepare(ctx))
         }
         ("commands", "keyword") => {
             let mut command = NewCommand::new("111");
@@ -696,7 +702,7 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
     let info = info(collection)?;
     let mut ctx = WriteContext::with_sequential_ids(now_ms, 1);
     let mut writes = store.writes(collection);
-    let random = CountingRandom::default();
+    let random = support::entry::CountingRandom::default();
     let writer = if intent.get("internal").and_then(Value::as_bool) == Some(true) {
         Writer::Internal
     } else {
@@ -738,13 +744,7 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
             ) {
                 Ok(_) => {}
                 Err(ModelError::Validation(error)) => {
-                    outcome.error = Some(serde_json::json!({
-                        "name": "ValidationError",
-                        "message": error.to_string(),
-                        "errors": error.errors.iter().map(|e| serde_json::json!({
-                            "path": e.path, "kind": e.kind.as_str(), "message": e.message,
-                        })).collect::<Vec<_>>(),
-                    }));
+                    outcome.error = Some(validation_json(&error));
                 }
                 Err(other) => return Err(other.into()),
             }
@@ -753,14 +753,15 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
             let filter = document_of(intent.get("filter").context("filter")?)?;
             let update = document_of(intent.get("update").context("update")?)?;
             let options = update_options(intent)?;
-            let prepared = match collection {
-                "commands" => {
-                    commands::prepare_update(&filter, update, options, writer, &mut ctx, &random)?
+            let prepared =
+                support::entry::update(info, &filter, update, options, writer, &mut ctx, &random);
+            let prepared = match prepared {
+                Ok(prepared) => prepared,
+                Err(ModelError::Validation(error)) => {
+                    outcome.error = Some(validation_json(&error));
+                    return Ok(outcome);
                 }
-                "redemptionrewards" => redemption_rewards::prepare_update(
-                    &filter, update, options, writer, &mut ctx, &random,
-                )?,
-                _ => info.prepare_update(&filter, update, options, &mut ctx)?,
+                Err(other) => return Err(other.into()),
             };
             if let Some(update) = &prepared.update {
                 outcome.sent.push(sent_update(
@@ -790,17 +791,9 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
                 Returned::Before
             };
             let options = update_options(intent)?;
-            let prepared = match collection {
-                "commands" => commands::prepare_find_one_and_update(
-                    &filter, update, options, returned, writer, &mut ctx, &random,
-                )?,
-                "redemptionrewards" => redemption_rewards::prepare_find_one_and_update(
-                    &filter, update, options, returned, writer, &mut ctx, &random,
-                )?,
-                _ => {
-                    info.prepare_find_one_and_update(&filter, update, options, returned, &mut ctx)?
-                }
-            };
+            let prepared = support::entry::find_one_and_update(
+                info, &filter, update, options, returned, writer, &mut ctx, &random,
+            )?;
             if let Some(update) = &prepared.update {
                 let mut sent = doc! {
                     "op": "findAndModify",
@@ -822,22 +815,19 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
         }
         "save" => {
             let id = bson_of(intent.get("id").context("id")?)?;
-            // A save reads the whole document (see the crate docs on hidden paths).
-            let loaded = store
-                .documents(collection)
-                .find_one(doc! { "_id": id })
+            let loaded = info
+                .load_for_save(store, &doc! { "_id": id }, &mut ctx)
                 .await?
                 .context("the document to save is missing")?;
             let changes = changes_of(intent.get("changes").context("changes")?)?;
-            let prepared = match collection {
-                "admins" => admins::prepare_save(&loaded, &changes, &mut ctx)?,
-                "app_configs" => app_configs::prepare_save(&loaded, &changes, &mut ctx)?,
-                "events" => events::prepare_save(&loaded, &changes, &mut ctx)?,
-                "commands" => commands::prepare_save(&loaded, &changes, &mut ctx, &random)?,
-                "redemptionrewards" => {
-                    redemption_rewards::prepare_save(&loaded, &changes, &mut ctx, &random)?
+            let prepared = support::entry::save(info, &loaded, &changes, &mut ctx, &random);
+            let prepared = match prepared {
+                Ok(prepared) => prepared,
+                Err(ModelError::Validation(error)) => {
+                    outcome.error = Some(validation_json(&error));
+                    return Ok(outcome);
                 }
-                _ => info.prepare_save(&loaded, &changes, &mut ctx)?,
+                Err(other) => return Err(other.into()),
             };
             if let Some(update) = &prepared.update {
                 outcome.sent.push(sent_update(
@@ -853,6 +843,17 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
         other => bail!("unknown op {other}"),
     }
     Ok(outcome)
+}
+
+/// A validation error as the recording writes it.
+fn validation_json(error: &dima_model::ValidationError) -> Value {
+    serde_json::json!({
+        "name": "ValidationError",
+        "message": error.to_string(),
+        "errors": error.errors.iter().map(|e| serde_json::json!({
+            "path": e.path, "kind": e.kind.as_str(), "message": e.message,
+        })).collect::<Vec<_>>(),
+    })
 }
 
 fn write_error(error: &dima_store::mongo::write::WriteError) -> String {
@@ -884,14 +885,14 @@ async fn indexes_match_mongoose() -> Result<()> {
         for record in &recording.indexes {
             let collection = record.get("collection").and_then(Value::as_str).context("collection")?;
             let info = info(collection)?;
-            let failures = ensure_indexes(&store, info).await;
-            if !failures.is_empty() {
-                problems.push(format!("{collection}: {failures:?}"));
+            let first = ensure_indexes(&store, info, IndexPolicy::RequireAll, DEADLINE).await;
+            if first.outcomes.iter().any(|o| !matches!(o.status, IndexStatus::Created)) {
+                problems.push(format!("{collection}: on an empty database\n{first}"));
             }
-            // Idempotent, like `Model.init()` on every start.
-            let again = ensure_indexes(&store, info).await;
-            if !again.is_empty() {
-                problems.push(format!("{collection} (second run): {again:?}"));
+            // Idempotent, like `Model.init()` on every start: nothing left to create.
+            let again = ensure_indexes(&store, info, IndexPolicy::RequireAll, DEADLINE).await;
+            if again.outcomes.iter().any(|o| !matches!(o.status, IndexStatus::Exists)) {
+                problems.push(format!("{collection} (second run)\n{again}"));
             }
             let listed = list_indexes(&store, collection).await?;
             let expected = record.get("indexes").and_then(Value::as_array).context("indexes")?;
@@ -1018,10 +1019,9 @@ async fn writes_match_mongoose() -> Result<()> {
         let mut covered: HashSet<&str> = HashSet::new();
         // Mongoose's `autoIndex` created every index before the recorded cases ran.
         for info in REGISTRY {
-            let failures = ensure_indexes(&store, info).await;
-            if !failures.is_empty() {
-                bail!("{}: {failures:?}", info.name);
-            }
+            ensure_indexes(&store, info, IndexPolicy::RequireAll, DEADLINE)
+                .await
+                .require()?;
         }
         for case in &recording.cases {
             let collection = case
@@ -1055,6 +1055,30 @@ async fn writes_match_mongoose() -> Result<()> {
                     continue;
                 }
             };
+            // A case marked `refused` is one Rust refuses on purpose (the write guard): a
+            // refusal, nothing sent, the seed unchanged.
+            if let Some(reason) = case.get("refused") {
+                let kinds: Vec<&str> = error
+                    .as_ref()
+                    .and_then(|e| e.get("errors"))
+                    .and_then(Value::as_array)
+                    .map(|errors| {
+                        errors
+                            .iter()
+                            .filter_map(|e| e.get("kind").and_then(Value::as_str))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let guard = !kinds.is_empty()
+                    && kinds.iter().all(|k| matches!(*k, "type" | "null" | "missing"));
+                let after = stored(&store, collection).await?;
+                if !guard || !sent.is_empty() || after != seed {
+                    problems.push(format!(
+                        "{collection}/{name}: must be refused ({reason}), got {error:?}, sent {sent:?}"
+                    ));
+                }
+                continue;
+            }
             // The error (if any) the reference reported.
             let expected_error =
                 case.get("error")
@@ -1132,10 +1156,9 @@ async fn unique_indexes_report_duplicates() -> Result<()> {
             let Some(unique) = info.indexes.iter().find(|spec| spec.unique) else {
                 continue;
             };
-            let failures = ensure_indexes(&store, info).await;
-            if !failures.is_empty() {
-                bail!("{}: {failures:?}", info.name);
-            }
+            ensure_indexes(&store, info, IndexPolicy::RequireAll, DEADLINE)
+                .await
+                .require()?;
             // Two documents with the same values on the unique keys (and on a partial filter's
             // fields): the second insert must fail with E11000 naming the index.
             let mut document = doc! {};
@@ -1188,12 +1211,11 @@ fn insert_path(document: &mut Document, path: &str, value: Bson) {
     }
 }
 
-/// A generic write must not skip a collection's Mongoose middleware: the collection's module is
-/// the only way in.
+/// A generic update must not skip a collection's update middleware: the collection's module is
+/// the only way in (saves: `writes::tests::hooked_collections_refuse_generic_saves`).
 #[test]
-fn hooked_collections_refuse_generic_writes() -> Result<()> {
+fn hooked_collections_refuse_generic_updates() -> Result<()> {
     let mut ctx = WriteContext::new(0);
-    let loaded = doc! { "_id": oid(1)?, "enabled": true };
     for info in REGISTRY {
         let update = info.prepare_update(
             &doc! {},
@@ -1201,28 +1223,57 @@ fn hooked_collections_refuse_generic_writes() -> Result<()> {
             UpdateOptions::default(),
             &mut ctx,
         );
-        let save = info.prepare_save(&loaded, &[], &mut ctx);
-        let update = matches!(update, Err(ModelError::Hooked { .. }));
-        let save = matches!(save, Err(ModelError::Hooked { .. }));
-        match info.hooks {
-            dima_model::Hooks::None => {
-                if update || save {
-                    bail!("{} has no hooks but a generic write was refused", info.name);
-                }
-            }
-            dima_model::Hooks::Save => {
-                if update || !save {
-                    bail!("{}: only saves must be refused", info.name);
-                }
-            }
-            dima_model::Hooks::UpdatesAndSave => {
-                if !update || !save {
-                    bail!("{}: updates and saves must be refused", info.name);
-                }
-            }
+        let refused = matches!(update, Err(ModelError::Hooked { .. }));
+        if refused != (info.hooks == dima_model::Hooks::UpdatesAndSave) {
+            bail!("{}: generic update refused: {refused}", info.name);
         }
     }
     Ok(())
+}
+
+/// A save hydrates the loaded document and writes the defaults of the paths it lacks; the only
+/// loaded document a save accepts is a whole one, so `select: false` paths survive a save.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn saves_keep_hidden_paths() -> Result<()> {
+    support::with_store(|store| async move {
+        let info = &dima_model::stream_sessions::INFO;
+        let mut ctx = WriteContext::with_sequential_ids(1_794_392_430_456, 1);
+        let session =
+            NewStreamSession::new("111", "s1", JsDate(1_700_000_000_000)).prepare(&mut ctx)?;
+        let mut document = session.document.clone();
+        document.insert("applied_domain_event_keys", vec!["k0", "k1"]);
+        // Without the projection a normal read uses: the field a hidden path default would erase.
+        let id = document.get_object_id("_id")?;
+        store.documents(info.name).insert_one(document).await?;
+        let loaded = info
+            .load_for_save(&store, &doc! { "_id": id.to_hex() }, &mut ctx)
+            .await?
+            .context("loaded")?;
+        let save = info.prepare_save(&loaded, &[Change::set("status", "offline")], &mut ctx)?;
+        if let Some(update) = &save.update
+            && update
+                .get_document("$set")
+                .is_ok_and(|set| set.contains_key("applied_domain_event_keys"))
+        {
+            bail!("the save overwrites a hidden path: {update}");
+        }
+        store.writes(info.name).save(&save).await?;
+        let stored = store
+            .documents(info.name)
+            .find_one(doc! { "_id": id })
+            .await?
+            .context("stored")?;
+        if stored.get_array("applied_domain_event_keys")?.len() != 2 {
+            bail!("hidden path lost: {stored}");
+        }
+        // A document loaded from one collection cannot be saved to another.
+        let wrong = dima_model::custom_timers::INFO.prepare_save(&loaded, &[], &mut ctx);
+        if !matches!(wrong, Err(ModelError::WrongCollection { .. })) {
+            bail!("a save to another collection must be refused: {wrong:?}");
+        }
+        Ok(())
+    })
+    .await
 }
 
 /// Reads for HTTP responses leave out the `select: false` paths unless the projection names them,
@@ -1233,7 +1284,7 @@ async fn response_reads_hide_select_false_paths() -> Result<()> {
         let mut ctx = WriteContext::with_sequential_ids(1_794_392_430_456, 1);
         let mut command = NewCommand::new("111");
         command.cmd = Some("!hola".into());
-        command.blocks = Some(Bson::Document(doc! { "v": 1, "root": {} }));
+        command.blocks = Some(Bson::Document(doc! { "v": 1, "root": {} }).into());
         let prepared = command.prepare(&mut ctx)?;
         let id = prepared.document.get_object_id("_id")?;
         store
@@ -1278,6 +1329,117 @@ async fn response_reads_hide_select_false_paths() -> Result<()> {
             .is_ok()
         {
             bail!("an invalid ObjectId must fail to cast");
+        }
+        Ok(())
+    })
+    .await
+}
+
+/// Index creation reports every index, honours its deadline and the caller's policy; the
+/// preflight lists every difference and changes nothing.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn index_reports_policies_and_preflight() -> Result<()> {
+    support::with_store(|store| async move {
+        let journal = &dima_model::domain_events::INFO;
+        let sessions = &dima_model::stream_sessions::INFO;
+        // No time at all: nothing is done, and the journal's unique indexes are missing.
+        let late = ensure_indexes(
+            &store,
+            journal,
+            IndexPolicy::RequireUnique,
+            std::time::Duration::ZERO,
+        )
+        .await;
+        if !late
+            .outcomes
+            .iter()
+            .all(|o| matches!(o.status, IndexStatus::Failed(IndexError::Deadline(_))))
+        {
+            bail!("a zero deadline must fail every index:\n{late}");
+        }
+        let Err(missing) = late.require() else {
+            bail!("the journal's unique indexes are required");
+        };
+        if missing.missing.len() != journal.indexes.iter().filter(|s| s.unique).count() {
+            bail!("only the unique indexes are required: {missing}");
+        }
+        // An older index of the same name with other options: reported, the others created.
+        store
+            .documents(sessions.name)
+            .create_index(
+                mongodb::IndexModel::builder()
+                    .keys(doc! { "status": 1 })
+                    .options(
+                        mongodb::options::IndexOptions::builder()
+                            .sparse(true)
+                            .build(),
+                    )
+                    .build(),
+            )
+            .await?;
+        let report = ensure_indexes(&store, sessions, IndexPolicy::BestEffort, DEADLINE).await;
+        let conflict = report
+            .outcomes
+            .iter()
+            .find(|o| o.index == "status_1")
+            .context("status_1")?;
+        if !matches!(
+            conflict.status,
+            IndexStatus::Failed(IndexError::Conflict { .. })
+        ) {
+            bail!("the conflict must be reported:\n{report}");
+        }
+        if report.failures().count() != 1 || report.require().is_err() {
+            bail!("best effort: one failure, nothing required:\n{report}");
+        }
+        if ensure_indexes(&store, sessions, IndexPolicy::RequireAll, DEADLINE)
+            .await
+            .require()
+            .is_ok()
+        {
+            bail!("RequireAll must refuse the conflicting index");
+        }
+        let journal_report =
+            ensure_indexes(&store, journal, IndexPolicy::RequireUnique, DEADLINE).await;
+        journal_report.require()?;
+        // The preflight: the conflict, a dropped index, an undeclared one, a missing collection.
+        store
+            .documents(journal.name)
+            .drop_index("channelID_1")
+            .await?;
+        store
+            .documents(journal.name)
+            .create_index(
+                mongodb::IndexModel::builder()
+                    .keys(doc! { "extra": 1 })
+                    .build(),
+            )
+            .await?;
+        let before = list_indexes(&store, journal.name).await?;
+        let infos = [journal, sessions, &dima_model::users::INFO];
+        let differences = preflight_indexes(&store, &infos, DEADLINE).await?;
+        let after = list_indexes(&store, journal.name).await?;
+        if before != after {
+            bail!("the preflight changed the indexes");
+        }
+        let found: Vec<String> = differences.iter().map(ToString::to_string).collect();
+        let expected = |d: &IndexDifference| match d {
+            IndexDifference::Missing {
+                collection,
+                declared,
+            } => {
+                *collection == journal.name && declared.get_str("name").ok() == Some("channelID_1")
+            }
+            IndexDifference::Undeclared { collection, stored } => {
+                *collection == journal.name && stored.get_str("name").ok() == Some("extra_1")
+            }
+            IndexDifference::Differs {
+                collection, stored, ..
+            } => *collection == sessions.name && stored.get_str("name").ok() == Some("status_1"),
+            IndexDifference::MissingCollection { collection } => *collection == "users",
+        };
+        if differences.len() != 4 || !differences.iter().all(expected) {
+            bail!("preflight differences:\n{}", found.join("\n"));
         }
         Ok(())
     })

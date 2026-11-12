@@ -5,16 +5,21 @@
 //! `__v`, no hooks. Unique `{consumer, eventKey}`; TTL on `expiresAt`. The status vocabulary and
 //! the lease fields are ported exactly (`MIGRATION.md` data rule 8); the error code and
 //! prerequisite kind enumerations include the empty string.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::defaults::{empty, zero};
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
+use bson::Document;
 use bson::oid::ObjectId;
-use bson::{Document, RawDocument};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::id::IdType;
@@ -135,6 +140,23 @@ pub const RULES: &[Rule] = &[
     Rule::required("expiresAt"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("consumer"),
+    ReadNeed::value("topic"),
+    ReadNeed::value("eventID"),
+    ReadNeed::value("eventKey"),
+    ReadNeed::not_null("status"),
+    ReadNeed::not_null("attempts"),
+    ReadNeed::not_null("lastError"),
+    ReadNeed::not_null("lastErrorCode"),
+    ReadNeed::not_null("lastPrerequisiteKind"),
+    ReadNeed::not_null("lastDeadLetterError"),
+    ReadNeed::not_null("skipReason"),
+    ReadNeed::not_null("replayCount"),
+    ReadNeed::value("expiresAt"),
+];
+
 /// The registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -145,8 +167,10 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: &[],
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::None,
-    decode: |raw: &RawDocument| decode::<Delivery>(raw).map(drop),
+    private: &[],
+    decode: decode_boxed::<Delivery>,
 };
 
 /// A stored delivery.

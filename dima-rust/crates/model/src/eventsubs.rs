@@ -3,15 +3,20 @@
 //!
 //! Reference: `dimabot/src/schemas/eventsub.schema.ts`. No timestamps (`created_at` is Twitch's
 //! text), `__v`, no hooks. Indexes `{channelID, type}` and `{id}`.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::defaults::{empty, yes, zero};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
-use bson::{Bson, Document, RawDocument};
+use bson::{Bson, Document};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::id::IdType;
@@ -74,6 +79,33 @@ pub const RULES: &[Rule] = &[
     Rule::required("channelID"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("id"),
+    ReadNeed::value("status"),
+    ReadNeed::value("type"),
+    ReadNeed::value("version"),
+    ReadNeed::present("condition"),
+    ReadNeed::value("created_at"),
+    ReadNeed::present("transport"),
+    ReadNeed::value("cost"),
+    ReadNeed::value("channel"),
+    ReadNeed::value("channelID"),
+    ReadNeed::not_null("enabled"),
+    ReadNeed::not_null("message"),
+    ReadNeed::not_null("watchStreakEnabled"),
+    ReadNeed::not_null("modiversaryMessage"),
+    ReadNeed::not_null("modiversaryEnabled"),
+    ReadNeed::not_null("endMessage"),
+    ReadNeed::not_null("endEnabled"),
+    ReadNeed::not_null("minViewers"),
+    ReadNeed::not_null("temporalBanMessage"),
+    ReadNeed::not_null("clipEnabled"),
+    ReadNeed::not_null("delay"),
+    ReadNeed::not_null("cheerTiers"),
+    ReadNeed::not_null("todayFollows"),
+];
+
 /// The registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -84,8 +116,10 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::None,
-    decode: |raw: &RawDocument| decode::<Eventsub>(raw).map(drop),
+    private: &[],
+    decode: decode_boxed::<Eventsub>,
 };
 
 /// A stored subscription, defaults filled in as a hydrated Mongoose document shows them.

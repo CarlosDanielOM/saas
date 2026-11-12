@@ -198,7 +198,7 @@ fn cast_boolean(value: &Bson) -> Option<bool> {
 /// The save hook: when a change set the enabled field to a value other than the one it had at
 /// that moment (Mongoose's `isModified`, which stays set even if a later change restores the
 /// loaded value), a fresh state with `previousEnabled = Boolean(final value)` is set after the
-/// changes.
+/// changes. Returns the hook's own changes.
 pub(crate) fn guard_save(
     loaded: &Document,
     changes: &[Change],
@@ -221,12 +221,11 @@ pub(crate) fn guard_save(
         modified |= next != current;
         current = next;
     }
-    let mut out = changes.to_vec();
-    if modified {
-        let state = state(current.unwrap_or(false), None, now_ms, random)?;
-        out.push(Change::set("availability", state));
+    if !modified {
+        return Ok(Vec::new());
     }
-    Ok(out)
+    let state = state(current.unwrap_or(false), None, now_ms, random)?;
+    Ok(vec![Change::set("availability", state)])
 }
 
 #[cfg(test)]
@@ -282,20 +281,20 @@ mod tests {
         let set = |v: bool| Change::set("enabled", v);
         assert_eq!(
             guard_save(&loaded, &[set(true)], "enabled", 0, &Fixed)?.len(),
-            1
+            0
         );
         assert_eq!(
             guard_save(&loaded, &[set(false)], "enabled", 0, &Fixed)?.len(),
-            2
+            1
         );
         // Modified once, modified for the save, even when set back.
         assert_eq!(
             guard_save(&loaded, &[set(false), set(true)], "enabled", 0, &Fixed)?.len(),
-            3
+            1
         );
         assert_eq!(
             guard_save(&doc! { "_id": 1 }, &[set(true)], "enabled", 0, &Fixed)?.len(),
-            1
+            0
         );
         Ok(())
     }
