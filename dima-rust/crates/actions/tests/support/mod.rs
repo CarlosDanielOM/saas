@@ -35,8 +35,9 @@ pub const CLIENT_SECRET: &str = "test-client-secret-value";
 pub const TEST_SECRET_KEY: &str = "dima-actions-test-key";
 /// The logical database the tests write (charter: 11, and 8 as a second).
 pub const DATABASE: u8 = 11;
-/// 2026-11-12T09:30:00.123Z.
-pub const NOW_MS: i64 = 1_794_475_800_123;
+/// 2030-01-01T09:30:00.123Z, the recorders' time: in the future, so that keys written with an
+/// absolute expiry (`PXAT`, the AST timers) are not expired by the server's real clock.
+pub const NOW_MS: i64 = 1_893_490_200_123;
 /// The stack of every thread a test evaluates on.
 pub const TEST_STACK: usize = 4 * 1024 * 1024;
 

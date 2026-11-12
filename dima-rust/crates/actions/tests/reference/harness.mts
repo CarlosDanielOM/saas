@@ -60,7 +60,10 @@ function next(): bigint {
 // the system's generator, so it cannot move the sequence.
 const realRandom = Math.random;
 const realUuid = crypto.randomUUID.bind(crypto);
-const fromLanguage = () => /utils\/ast_parser\/|handlers\/special_parser\.handler|utils\/ast_timer_runtime/.test(new Error().stack ?? '');
+// The direct caller only (the frame after the replaced function): a Dragonfly call made by the
+// language draws for its telemetry span, which is not the language's draw.
+const LANGUAGE = /utils\/ast_parser\/|handlers\/special_parser\.handler|utils\/ast_timer_runtime/;
+const fromLanguage = () => LANGUAGE.test((new Error().stack ?? '').split('\n')[3] ?? '');
 Math.random = () => fromLanguage() ? Number(next() >> 12n) / 2 ** 52 : realRandom();
 const uuid = () => {
     const bytes: number[] = [];
