@@ -23,6 +23,7 @@ import { decrementSiteAnalytics } from './siteanalytics.js';
 import { deleteChannelMemoryEmbeddingsByChannel } from './qdrant/functions/memory/sync_memory.qdrant.js';
 import { revokeUserOAuth } from '../server/oauth/service.js';
 import { revokePolarSubscriptionsForAccount } from './polar_account_cancellation.js';
+import { ModerationDecision } from '../schemas/moderation_decision.schema.js';
 
 export interface IDeleteAccountOptions {
     channelID: string;
@@ -153,7 +154,8 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         memoriesDelete,
         streamSummariesDelete,
         dimafxDelete,
-        siteAgentDelete
+        siteAgentDelete,
+        moderationDecisionsDelete
     ] = await Promise.all([
         cleanupChannelMediaOwnership({ channelID, userID }),
         TriggerFileSchema.deleteMany({ channelID }),
@@ -169,7 +171,9 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         deleteChannelSiteAgentData(channelID).catch((err: unknown) => {
             console.error('[ACCOUNT_DELETION] Site agent cleanup failed', { channelID, error: err instanceof Error ? err.message : String(err) });
             return { sessionsDeleted: 0, changesDeleted: 0 };
-        })
+        }),
+        // Chat messages reviewed by chat protection, including the ones an operator labelled and kept for tuning.
+        ModerationDecision.deleteMany({ channelID })
     ]);
 
     console.log('[ACCOUNT_DELETION] Phase 2 complete - additional deletions', {
@@ -178,6 +182,7 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         personalitiesDeleted: personalitiesDelete.deletedCount ?? 0,
         assistantSessionsDeleted: siteAgentDelete.sessionsDeleted,
         assistantChangesDeleted: siteAgentDelete.changesDeleted,
+        moderationDecisionsDeleted: moderationDecisionsDelete.deletedCount ?? 0,
         ...dimafxDelete
     });
 

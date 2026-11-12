@@ -545,7 +545,7 @@ try {
     "38",
   );
   assert.match(await page.locator(".connection").textContent(), /Live updates/);
-  assert.equal(await page.locator(".bottom-nav a").count(), 5);
+  assert.equal(await page.locator(".bottom-nav a").count(), 6);
   await page.getByRole("link", { name: /pixelpilot/ }).first().waitFor();
   const healthQuery = new URLSearchParams(
     requests.find((r) => r.path === "/admin-site/users").query,

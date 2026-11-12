@@ -1,0 +1,249 @@
+/* Chat protection review: one card per distinct message, verdict buttons in thumb reach. */
+.rv-page .lf-main {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.rv-filters {
+  display: grid;
+  gap: 0.6rem;
+}
+.rv-kinds {
+  display: grid;
+  /* Sized by their words: "Contradictions" needs more room than "Bans" on a phone. */
+  grid-template-columns: auto auto auto;
+  border-radius: var(--radius-sm);
+}
+.rv-kinds label {
+  display: grid;
+}
+.rv-kinds span {
+  flex-direction: column;
+  gap: 0.15rem;
+  min-height: 3.1rem;
+  padding: 0.3rem 0.35rem;
+  border-radius: calc(var(--radius-sm) - 0.25rem);
+  font-size: 0.76rem;
+  text-align: center;
+  white-space: nowrap;
+}
+.rv-kinds input:checked + span {
+  background: var(--accent-solid);
+  color: #fff;
+}
+.rv-kinds input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.rv-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--btn);
+  color: var(--fg);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.rv-states {
+  display: flex;
+  gap: 0.4rem;
+}
+.rv-states .lf-chip {
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.rv-hint {
+  margin: 0;
+}
+
+.rv-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rv-card {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 1rem;
+}
+.rv-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.rv-channel {
+  color: var(--fg);
+  font-weight: 750;
+  text-decoration: none;
+}
+.rv-channel:hover,
+.rv-channel:focus-visible {
+  text-decoration: underline;
+}
+.rv-message {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--input-bg);
+  color: var(--fg);
+  font-size: 1rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.rv-reason {
+  margin: 0;
+  color: var(--fg);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.rv-scores {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+.rv-scores > div {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 9rem) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.6rem;
+}
+.rv-scores dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.rv-scores dd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.4rem;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+.rv-scores b {
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.rv-bar > span {
+  background: var(--danger);
+}
+.rv-bar--safe > span {
+  background: var(--ok);
+}
+
+.rv-context {
+  margin-inline: -1rem;
+}
+.rv-context .lf-more__body {
+  display: grid;
+  gap: 0.75rem;
+}
+.rv-chat__where {
+  margin: 0 0 0.3rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.rv-chat__none {
+  margin: 0;
+}
+.rv-context ol {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lf-status:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.rv-context li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.45rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.rv-context li b {
+  color: var(--fg);
+}
+
+.rv-verdict {
+  display: grid;
+  gap: 0.5rem;
+}
+.rv-verdict .lf-chip {
+  justify-self: start;
+  white-space: normal;
+}
+.rv-btn {
+  min-height: 2.9rem;
+  justify-content: center;
+}
+.rv-btn--ban {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.rv-btn--keep {
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.rv-pager {
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 480px) {
+  .rv-kinds span {
+    flex-direction: row;
+    gap: 0.35rem;
+    min-height: 2.75rem;
+    font-size: 0.8rem;
+  }
+}
+@media (min-width: 640px) {
+  .rv-kinds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .rv-filters {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .rv-hint {
+    grid-column: 1 / -1;
+  }
+  .rv-kinds span {
+    font-size: 0.88rem;
+  }
+  .rv-verdict {
+    grid-template-columns: repeat(2, minmax(0, 14rem));
+  }
+  .rv-verdict .lf-chip {
+    grid-column: 1 / -1;
+  }
+}
+@media (min-width: 960px) {
+  .rv-card {
+    padding: 1.15rem 1.25rem;
+  }
+  .rv-context {
+    margin-inline: -1.25rem;
+  }
+}

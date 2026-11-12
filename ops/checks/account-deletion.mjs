@@ -11,7 +11,8 @@
  * - TTL: every purchase/playback record older than 365 days expires, in any state (including
  *   unresolved ones); records younger than 365 days stay.
  * - DELETE /auth/account removes the channel's shop items, viewer wallets, purchase log and
- *   playback records; other channels' DimaFX data is untouched; unauthenticated calls get 401.
+ *   playback records, and the chat messages chat protection reviewed (labelled ones included);
+ *   other channels' data is untouched; unauthenticated calls get 401.
  *
  * Run with --dependency mongo --dependency redis --fixtures <copy of ops/checks/account-deletion-fixtures>
  * --test-env ops/checks/account-deletion-fixtures/test-env.json.
@@ -147,6 +148,17 @@ await db.collection('dimafxplaybacks').insertMany([
   { _id: 'other-done', channelID: other, payload: {}, state: 'completed', leaseOwner: '', leaseUntil: new Date(0), createdAt: new Date(), updatedAt: new Date() }
 ]);
 
+// Chat messages reviewed by chat protection, including one an operator labelled and kept for tuning.
+const reviewed = (id, channelID, feedback = null) => ({
+  _id: id, channelID, userID: '55500002', username: 'viewer', messageID: id, messageText: 'Best viewers with example .com',
+  ruleID: 'builtin-spam-protection', reviewSource: 'first_message', state: 'completed', verdict: 'uncertain', status: 'uncertain',
+  scores: { ads: 0.7, safe: 0.5, violation: 0.7 }, feedback, createdAt: new Date(), expiresAt: new Date(Date.now() + (feedback ? 1095 : 180) * DAY)
+});
+await db.collection('moderation_decisions').insertMany([
+  reviewed('mod-owner-plain', owner), reviewed('mod-owner-labelled', owner, { label: 'violation', reviewerID: 'admin', reviewedAt: new Date() }),
+  reviewed('mod-other', other)
+]);
+
 const counts = async channelID => ({
   items: await db.collection('channelextensionitems').countDocuments({ channelID }),
   wallets: await db.collection('userextensioninventories').countDocuments({ channelID }),
@@ -172,6 +184,8 @@ assert.equal(body.data.dimafxPlaybacksDeleted, 2);
 assert.deepEqual(await counts(owner), { items: 0, wallets: 0, transactions: 0, playbacks: 0 });
 assert.deepEqual(await counts(other), { items: 1, wallets: 2, transactions: 2, playbacks: 1 }, 'other channels untouched');
 assert.equal(await db.collection('users').countDocuments({ 'accounts.id': owner }), 0, 'account deleted');
+assert.equal(await db.collection('moderation_decisions').countDocuments({ channelID: owner }), 0, 'reviewed chat messages go with the account, labelled ones too');
+assert.equal(await db.collection('moderation_decisions').countDocuments({ channelID: other }), 1, "another channel's reviews are untouched");
 console.log('PASS DELETE /auth/account removed the channel\'s DimaFX items, wallets, purchase log and playbacks; other channels untouched; 401 without auth');
 
 // 4. Polar subscriptions are revoked before anything is deleted.

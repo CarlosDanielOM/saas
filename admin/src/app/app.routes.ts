@@ -93,6 +93,14 @@ export const routes: Routes = [
         title: 'Analytics | DimaBot Admin',
       },
       {
+        path: 'moderation-review',
+        loadComponent: () =>
+          import('./pages/moderation-review/moderation-review-page.component').then(
+            (m) => m.ModerationReviewPageComponent,
+          ),
+        title: 'Chat protection review | DimaBot Admin',
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('./pages/settings/settings-page.component').then((m) => m.SettingsPageComponent),

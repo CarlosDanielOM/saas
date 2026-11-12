@@ -49,6 +49,7 @@ export class NavbarComponent {
     { label: 'Overview', route: '/dashboard', icon: 'overview' },
     { label: 'Analytics', route: '/observability', icon: 'overview' },
     { label: 'Users', route: '/users', icon: 'users' },
+    { label: 'Review', route: '/moderation-review', icon: 'shield' },
     { label: 'Files', route: '/read-tool', icon: 'files' },
     { label: 'Email', route: '/email-test', icon: 'mail' },
   ] : [{ label: 'Analytics', route: '/observability', icon: 'overview' }]);

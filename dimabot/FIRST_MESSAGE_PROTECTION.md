@@ -168,19 +168,46 @@ On a downgrade, previously saved paid options may remain stored so the channel c
 
 The decisions page requests paginated history and displays the source (`First-message protection`, `Second-message protection`, `Third-message protection`, or `Continuous chat protection`), model scores, action outcome, status, and any AI credits used. Its API response intentionally does not include the stored prompt/context or provider metadata. The dashboard states that decisions are visible for 30 days; decision documents are retained internally for 180 days before TTL deletion. See [`moderation-page.component.html`](../dimasite/src/app/features/moderation/moderation-page.component.html), [`moderation.route.ts`](src/server/routes/moderation.route.ts), and [`moderation_decision.schema.ts`](src/schemas/moderation_decision.schema.ts).
 
-### Stored state and retention
+## Operator review
+
+The owner-only admin **Review** page at `/moderation-review` collects real built-in protection decisions for human verdicts that can help tune the classifier's bar and guards. It has **To review** and **Reviewed** views, three queues with pending counts, and a plain sentence on each card describing the scores and outcome. The two verdict buttons say whether the message should be a ban. See [`moderation-review-page.component.ts`](../admin/src/app/pages/moderation-review/moderation-review-page.component.ts) and [`moderation-review-page.component.html`](../admin/src/app/pages/moderation-review/moderation-review-page.component.html).
+
+The queues use stored built-in spam decisions with numeric scores and are mutually exclusive:
+
+| Queue | Selection |
+| --- | --- |
+| Contradictions | No violation verdict; the highest category score reached that decision's threshold and exceeded the safe score, but the overall score was below the 0.3 minimum. Only `completed` or `uncertain` decisions are included. |
+| Near misses | No violation verdict; the highest category score is at least 0.5 and the safe score is at most 0.9, the decision is `completed` or `uncertain`, and it is not a contradiction. The safe cutoff excludes older-model greetings scored highly in a category while 97% safe. |
+| Bans | The classifier verdict was `violation`, regardless of whether the ban was executed, cancelled, or refused by Twitch. |
+
+Late answers retained after the deadline do not enter these queues, nor do custom-rule decisions. A six-week replay of 6,284 reviews on the current classifier found 1 contradiction, 13 other near misses, and 156 ban verdicts. Contradictions are rare by design, so the other queues provide more cases for review. The filters are in [`moderation_review.service.ts`](src/server/services/moderation_review.service.ts).
+
+Identical message text is grouped by whether a verified broadcaster invitation was active, since that changes the self-promotion policy. Reviewed and unreviewed copies are separate; reviewed copies are also grouped by verdict. A card covers copies among the newest 300 in its group that have no preceding chat, plus copies of the first eight distinct nonempty chats (`REVIEW_CONTEXTS_SHOWN`). Other copies remain in the queue for a later card. Counts represent pending text-and-invitation groups, rather than the number of batches needed to show all their contexts.
+
+The operator can label the listed decision IDs `violation` (should be a ban) or `allow` (should not be a ban), change the verdict, or clear it. The service updates only listed IDs that still belong to the given queue, storing `label`, `reviewerID`, and `reviewedAt` in the existing `feedback` field. A later copy is not included and awaits its own review. This feedback does not ban or unban a chatter and does not change retention.
+
+Both endpoints use authentication and the same `ensureSuperAdmin` owner gate as other owner-only admin routes:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /admin-site/moderation-reviews?kind=contradiction\|near_miss\|ban&state=pending\|labelled&page=&limit=` | Lists cards and pending queue counts. |
+| `PUT /admin-site/moderation-reviews` | Saves `{ kind, ids, label }`; `label: null` clears feedback. |
+
+The response includes message text, preceding chat, scores, threshold, model, and channel and chatter names. It omits the stored policy and prompt, chatter user IDs, and provider request IDs. See [`admin_site.route.ts`](src/server/routes/admin_site.route.ts).
+
+## Stored state and retention
 
 | Record/cache | Purpose | Lifetime |
 | --- | --- | --- |
 | MongoDB `moderation_chatter` marker | Stores the channel/chatter pair's hashed ID, first-seen timestamp, and observed-message count capped at 4; no username or chat text. | No TTL is defined. |
 | Dragonfly `moderation:seen:<hash>` | Avoids database lookups after the observed-message count reaches 4. | 24 hours; expiry does not reset the MongoDB marker. |
 | Dragonfly `moderation:<channelID>:message:<messageID>` | Fences duplicate deliveries at the moderation gate. | 24 hours. |
-| MongoDB decision | Stores target text, context, policy snapshot, scores, usage, and consequence; recent earlier decisions can supply the same chatter's context for a second or third included review. | Expiry scheduled at 180 days; API visibility limited to 30 days. |
+| MongoDB decision | Stores target text, context, policy snapshot, scores, usage, consequence, and any operator `feedback` verdict; recent earlier decisions can supply the same chatter's context for a second or third included review. | Expiry scheduled at 180 days, including labelled decisions; channel API visibility limited to 30 days. Account deletion also removes the channel's decisions. |
 | MongoDB moderation action log | Stores attempted action, a 200-character message excerpt, success, and error. | 30-day TTL and 30-day API visibility. |
 
 A decision’s stored provider `cost` includes `usage.cost` plus a valid positive `usage.cost_details.upstream_inference_cost`; models using the service’s own key can report zero in `usage.cost`. Channel credit charges are unaffected and are computed from input tokens.
 
-MongoDB TTL removal is asynchronous. An `executed` consequence means the executor recorded its result; check `success` and `errorMessage` to know whether Twitch accepted the action. It does not mean success by itself. Source: [`moderation_action_log.schema.ts`](src/schemas/moderation_action_log.schema.ts) and [`execute_action.moderation.ts`](src/functions/moderation/execute_action.moderation.ts).
+MongoDB TTL removal is asynchronous. Account deletion removes the channel's decisions through [`account_deletion.ts`](src/utils/account_deletion.ts); it does not change the action-log TTL or the hash-only chatter marker's lack of TTL. An `executed` consequence means the executor recorded its result; check `success` and `errorMessage` to know whether Twitch accepted the action. It does not mean success by itself. Source: [`moderation_action_log.schema.ts`](src/schemas/moderation_action_log.schema.ts) and [`execute_action.moderation.ts`](src/functions/moderation/execute_action.moderation.ts).
 
 ## Examples
 
@@ -220,5 +247,8 @@ A first-seen marker is durable and does not expire with the 180-day decision rec
 - Polar zero-credit usage reporting: [`polarsh.ts`](src/utils/polarsh.ts).
 - Data shapes and retention: [`channel_moderation_settings.schema.ts`](src/schemas/channel_moderation_settings.schema.ts), [`moderation_chatter.schema.ts`](src/schemas/moderation_chatter.schema.ts), [`moderation_decision.schema.ts`](src/schemas/moderation_decision.schema.ts).
 - API configuration and history: [`moderation.route.ts`](src/server/routes/moderation.route.ts).
+- Operator review filters, grouping, feedback, and owner-only routes: [`moderation_review.service.ts`](src/server/services/moderation_review.service.ts), [`admin_site.route.ts`](src/server/routes/admin_site.route.ts).
+- Operator review page: [`moderation-review-page.component.ts`](../admin/src/app/pages/moderation-review/moderation-review-page.component.ts), [`moderation-review-page.component.html`](../admin/src/app/pages/moderation-review/moderation-review-page.component.html).
+- Operator review checks: [`moderation-review-api.mjs`](../ops/checks/moderation-review-api.mjs), [`moderation-review-browser.mjs`](../ops/checks/moderation-review-browser.mjs).
 - Dashboard controls and decision presentation: [`moderation-page.component.html`](../dimasite/src/app/features/moderation/moderation-page.component.html), [`moderation-page.component.ts`](../dimasite/src/app/features/moderation/moderation-page.component.ts).
 - Regression examples: [`spam.test.ts`](src/utils/moderation/spam.test.ts), [`spam-protection.mjs`](../ops/checks/spam-protection.mjs), and [`spam-protection-provider.mjs`](../ops/checks/spam-protection-provider.mjs).

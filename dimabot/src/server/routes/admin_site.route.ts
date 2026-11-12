@@ -32,6 +32,7 @@ import { getAiUsageDashboard } from '../../utils/ai_usage_dashboard.js';
 import { queryAiUsageTransactions, usageLedgerStatus } from '../../utils/ai_usage_queries.js';
 import { cacheCreditPackBillingContext } from '../../utils/billing.js';
 import { getAdminPetDiagnostics } from '../services/admin_pet_diagnostics.service.js';
+import { labelModerationReview, listModerationReviews, moderationReviewCounts, MODERATION_REVIEW_KINDS, MODERATION_REVIEW_LABELS, type ModerationReviewKind, type ModerationReviewLabel } from '../services/moderation_review.service.js';
 
 interface AuthRequest extends Request {
     user?: {
@@ -1111,6 +1112,52 @@ router.post('/domain-events/:eventKey/replay', authMiddleware as any, async (req
             message: 'Failed to schedule domain event replay',
             status: 500
         });
+    }
+});
+
+// Chat protection review: what the classifier banned, almost banned, or contradicted itself on,
+// with the operator's verdict saved on the decisions for later tuning. Owner only: it shows chat
+// messages from every channel.
+const reviewInteger = (value: unknown, fallback: number, max: number): number | null => {
+    if (value === undefined) return fallback;
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed >= 1 && parsed <= max ? parsed : null;
+};
+
+router.get('/moderation-reviews', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    if (!ensureSuperAdmin(req, res)) return;
+    res.setHeader('Cache-Control', 'no-store');
+    const kind = String(req.query.kind || 'contradiction') as ModerationReviewKind;
+    const state = String(req.query.state || 'pending');
+    const page = reviewInteger(req.query.page, 1, 10_000);
+    const limit = reviewInteger(req.query.limit, 20, 50);
+    if (!MODERATION_REVIEW_KINDS.includes(kind) || (state !== 'pending' && state !== 'labelled') || page === null || limit === null) {
+        return res.status(400).json({ error: true, message: 'Invalid review filter', status: 400 });
+    }
+    try {
+        const [list, counts] = await Promise.all([listModerationReviews(kind, state, page, limit), moderationReviewCounts()]);
+        return res.status(200).json({ error: false, message: 'Moderation reviews retrieved', status: 200, data: { ...list, counts } });
+    } catch {
+        return res.status(500).json({ error: true, message: 'Moderation reviews unavailable', status: 500 });
+    }
+});
+
+router.put('/moderation-reviews', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    if (!ensureSuperAdmin(req, res)) return;
+    const kind = req.body?.kind as ModerationReviewKind;
+    const ids = req.body?.ids;
+    const label = req.body?.label as ModerationReviewLabel | null;
+    if (!MODERATION_REVIEW_KINDS.includes(kind) || !Array.isArray(ids) || !ids.length || ids.length > 500
+        || !ids.every(id => typeof id === 'string' && /^[\w-]{1,128}$/.test(id)) || new Set(ids).size !== ids.length
+        || (label !== null && !MODERATION_REVIEW_LABELS.includes(label))) {
+        return res.status(400).json({ error: true, message: 'Invalid review verdict', status: 400 });
+    }
+    try {
+        const updated = await labelModerationReview(kind, ids, label, String(req.user?.id || ''));
+        if (!updated) return res.status(404).json({ error: true, message: 'None of those decisions is in this queue', status: 404 });
+        return res.status(200).json({ error: false, message: label ? 'Verdict saved' : 'Verdict cleared', status: 200, data: { updated, label } });
+    } catch {
+        return res.status(500).json({ error: true, message: 'Verdict could not be saved', status: 500 });
     }
 });
 

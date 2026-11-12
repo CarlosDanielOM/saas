@@ -1,0 +1,172 @@
+<div class="lf rv-page">
+  <div class="lf-main">
+    <header class="lf-head">
+      <div class="lf-head__row">
+        <div>
+          <h1 class="lf-title">Chat protection review</h1>
+          <p class="lf-sub">Say where the classifier got it wrong. Your verdicts are kept so it can be tuned on real messages.</p>
+        </div>
+        <div class="lf-head__actions">
+          <button type="button" class="lf-btn lf-btn--sm" (click)="load()" [disabled]="loading()">
+            <app-icon name="refresh" [class.lf-spinning]="loading()" />Refresh
+          </button>
+        </div>
+      </div>
+    </header>
+
+    @if (waiting() === null) {
+      @if (!failed()) {
+        <div class="lf-status" aria-busy="true"><app-skeleton width="14rem" height="1.4rem" /></div>
+      }
+    } @else if (waiting()! > 0) {
+      <div class="lf-status lf-status--warn" role="status" data-review-status tabindex="-1" #statusLine>
+        <app-icon name="alert" />
+        <div class="lf-status__body">
+          <strong class="lf-status__title">{{ waiting() }} {{ waiting() === 1 ? 'message is' : 'messages are' }} waiting for your verdict</strong>
+          <span class="lf-status__text">One card per distinct message. Your answer is saved for the copies listed on the card and changes nothing for the chatter.</span>
+        </div>
+      </div>
+    } @else {
+      <div class="lf-status lf-status--ok" role="status" data-review-status tabindex="-1" #statusLine>
+        <app-icon name="ok" />
+        <div class="lf-status__body">
+          <strong class="lf-status__title">Nothing is waiting for your verdict</strong>
+          <span class="lf-status__text">New bans, near misses and contradictions show up here as chat protection reviews messages.</span>
+        </div>
+      </div>
+    }
+
+    <section class="rv-filters" aria-label="Which messages to show">
+      <div class="lf-seg rv-kinds" role="radiogroup" aria-label="Queue">
+        @for (item of kinds; track item.key) {
+          <label>
+            <input type="radio" name="review-kind" [checked]="kind() === item.key" (change)="go({ kind: item.key })" />
+            <span>{{ item.label }}@if (counts(); as c) {<b class="rv-count" [attr.aria-label]="c[item.key] + ' waiting'">{{ c[item.key] }}</b>}</span>
+          </label>
+        }
+      </div>
+      <div class="rv-states" role="group" aria-label="Verdict status">
+        <button type="button" class="lf-chip" [attr.aria-pressed]="state() === 'pending'" (click)="go({ state: 'pending' })">To review</button>
+        <button type="button" class="lf-chip" [attr.aria-pressed]="state() === 'labelled'" (click)="go({ state: 'labelled' })">Reviewed</button>
+      </div>
+      <p class="lf-note rv-hint">{{ kindHint() }}</p>
+    </section>
+
+    @if (failed()) {
+      <div class="lf-tile lf-empty" role="alert">
+        <app-icon name="alert" />
+        <strong>The review queue did not load</strong>
+        <span>Nothing was changed. Your filters are kept.</span>
+        <button type="button" class="lf-btn" (click)="load()">Retry</button>
+      </div>
+    } @else if (loading() && !rows().length) {
+      <div class="rv-list" aria-busy="true">
+        @for (i of [0, 1, 2]; track i) {
+          <div class="lf-tile rv-card"><app-skeleton width="60%" height="1rem" /><app-skeleton width="100%" height="3.2rem" /><app-skeleton width="80%" height="1rem" /></div>
+        }
+      </div>
+    } @else if (!rows().length) {
+      <div class="lf-tile lf-empty" data-review-empty>
+        <app-icon name="ok" />
+        @if (state() === 'labelled') {
+          <strong>No verdicts here yet</strong>
+          <span>Messages you answer in this queue move here, where you can change or remove the verdict.</span>
+        } @else if (kind() === 'contradiction') {
+          <strong>No contradictions to review</strong>
+          <span>They are rare: about one in several thousand reviews. Near misses and bans usually have more to look at.</span>
+        } @else if (kind() === 'near_miss') {
+          <strong>No near misses to review</strong>
+          <span>Nothing scored 50% or more without being banned, or you have answered them all.</span>
+        } @else {
+          <strong>No bans to review</strong>
+          <span>Chat protection has not banned anyone you have not already looked at.</span>
+        }
+      </div>
+    } @else {
+      <ul class="rv-list" [attr.aria-busy]="loading()">
+        @for (row of rows(); track row.ids[0]) {
+          <li class="lf-tile rv-card" data-review-card>
+            <p class="rv-card__meta">
+              <a class="rv-channel" [routerLink]="['/channels', row.latest.channelID]">{{ row.latest.channel || row.latest.channelID }}</a>
+              <span>{{ row.latest.username }}</span>
+              <span>{{ ordinal(row) }}</span>
+              <span>{{ when(row.latest.createdAt) }}</span>
+              @if (row.count > 1) {
+                <span class="lf-chip lf-chip--accent" data-review-copies>{{ row.count }} copies · {{ row.channels }} {{ row.channels === 1 ? 'channel' : 'channels' }}</span>
+              }
+              @if (row.invited) {
+                <span class="lf-chip lf-chip--gold" data-review-invited>streamer had invited links</span>
+              }
+            </p>
+            <blockquote class="rv-message">{{ row.messageText }}</blockquote>
+            <p class="rv-reason">{{ reason(row) }}</p>
+            <dl class="rv-scores">
+              @for (category of categories(row); track category.name) {
+                <div>
+                  <dt>{{ category.name }}</dt>
+                  <dd><span class="lf-bar rv-bar" aria-hidden="true"><span [style.width.%]="category.percent"></span></span><b>{{ category.percent }}%</b></dd>
+                </div>
+              }
+              <div>
+                <dt>Safe</dt>
+                <dd><span class="lf-bar rv-bar rv-bar--safe" aria-hidden="true"><span [style.width.%]="round(row.latest.scores['safe'])"></span></span><b>{{ round(row.latest.scores['safe']) }}%</b></dd>
+              </div>
+            </dl>
+            @if (row.contexts.length) {
+              <details class="lf-more rv-context">
+                <summary>Chat before {{ row.count === 1 ? 'it' : 'the copies' }} ({{ chatSummary(row) }})<app-icon name="down" /></summary>
+                <div class="lf-more__body">
+                  @for (chat of row.contexts; track $index) {
+                    <div class="rv-chat">
+                      @if (row.count > 1) {
+                        <p class="rv-chat__where">In {{ chat.channel }}@if (chat.copies > 1) { · {{ chat.copies }} copies}</p>
+                      }
+                      <ol>
+                        @for (line of chat.lines; track $index) {
+                          <li><b>{{ line.username }}</b>@if (line.isBroadcaster) {<span class="lf-chip lf-chip--accent">streamer</span>}<span>{{ line.message }}</span></li>
+                        }
+                      </ol>
+                    </div>
+                  }
+                  @if (row.withoutContext) {
+                    <p class="lf-note rv-chat__none">{{ row.withoutContext }} {{ row.withoutContext === 1 ? 'copy' : 'copies' }} had no chat in the minute before.</p>
+                  }
+                </div>
+              </details>
+            } @else if (row.count === 1) {
+              <p class="lf-note rv-chat__none">No chat in the minute before it.</p>
+            }
+            @if (row.more) {
+              <p class="lf-note" data-review-more>{{ row.more }} more {{ row.more === 1 ? 'copy' : 'copies' }} came after other chat. {{ row.more === 1 ? 'It stays' : 'They stay' }} in the queue and come up after this card.</p>
+            }
+            <div class="rv-verdict">
+              @if (row.label) {
+                <span class="lf-chip" [class.lf-chip--danger]="row.label === 'violation'" [class.lf-chip--ok]="row.label === 'allow'" data-review-label>
+                  <app-icon name="check" />You said: {{ row.label === 'violation' ? 'should be a ban' : 'should not be a ban' }}
+                </span>
+                <button type="button" class="lf-btn lf-btn--sm" [disabled]="saving().has(row.ids[0])" (click)="setVerdict(row, row.label === 'violation' ? 'allow' : 'violation')">
+                  Change to "{{ row.label === 'violation' ? 'should not be a ban' : 'should be a ban' }}"
+                </button>
+                <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" [disabled]="saving().has(row.ids[0])" (click)="setVerdict(row, null)">Remove verdict</button>
+              } @else {
+                <button type="button" class="lf-btn rv-btn rv-btn--ban" [disabled]="saving().has(row.ids[0])" (click)="setVerdict(row, 'violation')">
+                  <app-icon name="shield" />Should be a ban
+                </button>
+                <button type="button" class="lf-btn rv-btn rv-btn--keep" [disabled]="saving().has(row.ids[0])" (click)="setVerdict(row, 'allow')">
+                  <app-icon name="check" />Should not be a ban
+                </button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+      @if (totalPages() > 1) {
+        <div class="lf-tile lf-pager rv-pager">
+          <button type="button" class="lf-btn lf-btn--sm" [disabled]="page() === 1 || loading()" (click)="go({ page: page() - 1 })">Previous</button>
+          <span class="lf-pager__info">Page {{ page() }} of {{ totalPages() }}<br />{{ total() }} messages</span>
+          <button type="button" class="lf-btn lf-btn--sm" [disabled]="page() >= totalPages() || loading()" (click)="go({ page: page() + 1 })">Next</button>
+        </div>
+      }
+    }
+  </div>
+</div>

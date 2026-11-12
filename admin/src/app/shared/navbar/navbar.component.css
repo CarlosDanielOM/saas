@@ -199,7 +199,8 @@
   z-index: 90;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
+  /* Six tabs share a 320px phone: edge to edge with smaller labels there, roomier from 380px. */
+  padding: 0.35rem 0.15rem calc(0.35rem + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--tile) 92%, transparent);
   backdrop-filter: saturate(1.4) blur(14px);
@@ -213,8 +214,16 @@
   min-height: 3.25rem;
   border-radius: 0.9rem;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 700;
+}
+@media (min-width: 380px) {
+  .bottom-nav {
+    padding-inline: 0.5rem;
+  }
+  .bottom-nav a {
+    font-size: 0.72rem;
+  }
 }
 .bottom-nav a app-icon {
   width: 1.35rem;
