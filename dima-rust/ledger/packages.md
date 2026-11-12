@@ -239,7 +239,10 @@ credential on it); the same for `POST /overlays/furry/:channelID` and `POST /use
 moderators and the DimaFX extension are still wanted; two one-off scripts with rows left on the copy
 (`migrate_ast_variables_global` 9, `cleanup_orphaned_clip_recommendations` 19) to run in production before the
 cutover; `GET /admin/read-file` to drop. Also: a request id sent by the admin site with a credit grant (a small change to the Angular
-admin site; without it Rust treats an identical request inside a window as a retry).
+admin site; without it Rust treats an identical request inside a window as a retry). And: whether the bot's EventSub endpoint is
+patched in production before the cutover (a single unsigned request with a non-JSON content type, or a
+signature of the wrong byte length, makes the bot process exit: `bot/eventsub.twitch.ts:282` and `:292`); whether
+the command arguments and the spoken TTS text keep going to PostHog.
 
 ## Owner decisions on reference behaviour (2026-11-12)
 

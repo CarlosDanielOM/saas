@@ -1,0 +1,431 @@
+{
+  "nowMs": 1794475815250,
+  "prefix": "dima:test:actions:metrics-rec:metrics:bot",
+  "keys": {
+    "eventsub:minute:202611120930": {
+      "type": "hash",
+      "ttl": 172800,
+      "value": {
+        "total": "7",
+        "channel.chat.message": "3",
+        "channel.follow": "2",
+        "unknown": "1",
+        "channel.unheard_of.thing": "1"
+      }
+    },
+    "runtime:cumulative": {
+      "type": "hash",
+      "ttl": 172800,
+      "value": {
+        "eventsubNotifications": "7",
+        "eventsubNotificationBytes": "1951",
+        "eventsubHandled": "2",
+        "eventsubHandleErrors": "1",
+        "messageHandlerStarted": "2",
+        "messageHandlerCompleted": "1",
+        "messageHandlerErrors": "1",
+        "embeddingEnqueued": "1",
+        "embeddingBatchesSuccess": "1",
+        "embeddingBatchesFailed": "1",
+        "embeddingMessagesProcessed": "5",
+        "redisOpsEstimated": "5",
+        "openrouterEmbeddingRequests": "1",
+        "openrouterEmbeddingErrors": "1",
+        "openrouterEmbeddingInputChars": "120",
+        "updatedAt": "2026-11-12T09:30:15.250Z",
+        "maxInflightEventsubHandlers": "2",
+        "maxInflightMessageHandlers": "2",
+        "maxEmbeddingQueueSize": "9"
+      }
+    },
+    "runtime:cumulative:eventsubByType": {
+      "type": "hash",
+      "ttl": 172800,
+      "value": {
+        "channel.chat.message": "3",
+        "channel.follow": "2",
+        "unknown": "1",
+        "channel.unheard_of.thing": "1"
+      }
+    },
+    "runtime:history": {
+      "type": "list",
+      "ttl": 172800,
+      "value": [
+        {
+          "timestamp": "2026-11-12T09:30:15.250Z",
+          "process": {
+            "pid": 3481356,
+            "node": "v26.13.0",
+            "uptimeSeconds": 1,
+            "startedAt": "2026-11-12T09:30:15.250Z",
+            "elapsedMs": 0
+          },
+          "memory": {
+            "rssBytes": 117497856,
+            "heapTotalBytes": 37097472,
+            "heapUsedBytes": 27068632,
+            "externalBytes": 5285929,
+            "arrayBuffersBytes": 2504794
+          },
+          "runtime": {
+            "inflightEventsubHandlers": 0,
+            "inflightMessageHandlers": 1,
+            "activeHandles": 3,
+            "activeRequests": 0,
+            "embeddingQueueSize": 9,
+            "embeddingProcessing": true
+          },
+          "eventLoop": {
+            "minMs": 19.071,
+            "maxMs": 20.824,
+            "meanMs": 20.062,
+            "stddevMs": 0.426,
+            "p50Ms": 20.152,
+            "p95Ms": 20.234,
+            "p99Ms": 20.824
+          },
+          "window": {
+            "durationMs": 30000,
+            "eventsubNotifications": 1,
+            "eventsubNotificationBytes": 100,
+            "eventsubHandled": 0,
+            "eventsubHandleErrors": 0,
+            "messageHandlerStarted": 0,
+            "messageHandlerCompleted": 0,
+            "messageHandlerErrors": 0,
+            "embeddingEnqueued": 0,
+            "embeddingBatchesSuccess": 0,
+            "embeddingBatchesFailed": 0,
+            "embeddingMessagesProcessed": 0,
+            "redisOpsEstimated": 0,
+            "openrouterEmbeddingRequests": 0,
+            "openrouterEmbeddingErrors": 0,
+            "openrouterEmbeddingInputChars": 0,
+            "eventsubByType": {
+              "channel.follow": 1
+            }
+          },
+          "totals": {
+            "maxInflightEventsubHandlers": 2,
+            "maxInflightMessageHandlers": 2,
+            "maxEmbeddingQueueSize": 9,
+            "eventsubByType": {
+              "channel.chat.message": 3,
+              "channel.follow": 2,
+              "unknown": 1,
+              "channel.unheard_of.thing": 1
+            }
+          }
+        },
+        {
+          "timestamp": "2026-11-12T09:30:15.250Z",
+          "process": {
+            "pid": 3481356,
+            "node": "v26.13.0",
+            "uptimeSeconds": 0,
+            "startedAt": "2026-11-12T09:30:15.250Z",
+            "elapsedMs": 0
+          },
+          "memory": {
+            "rssBytes": 116842496,
+            "heapTotalBytes": 36835328,
+            "heapUsedBytes": 26747296,
+            "externalBytes": 5285658,
+            "arrayBuffersBytes": 2504563
+          },
+          "runtime": {
+            "inflightEventsubHandlers": 0,
+            "inflightMessageHandlers": 1,
+            "activeHandles": 3,
+            "activeRequests": 0,
+            "embeddingQueueSize": 9,
+            "embeddingProcessing": true
+          },
+          "eventLoop": {
+            "minMs": 9223372036854.775,
+            "maxMs": 0,
+            "meanMs": 0,
+            "stddevMs": 0,
+            "p50Ms": 0.001,
+            "p95Ms": 0.001,
+            "p99Ms": 0.001
+          },
+          "window": {
+            "durationMs": 30000,
+            "eventsubNotifications": 6,
+            "eventsubNotificationBytes": 1851,
+            "eventsubHandled": 2,
+            "eventsubHandleErrors": 1,
+            "messageHandlerStarted": 2,
+            "messageHandlerCompleted": 1,
+            "messageHandlerErrors": 1,
+            "embeddingEnqueued": 1,
+            "embeddingBatchesSuccess": 1,
+            "embeddingBatchesFailed": 1,
+            "embeddingMessagesProcessed": 5,
+            "redisOpsEstimated": 5,
+            "openrouterEmbeddingRequests": 1,
+            "openrouterEmbeddingErrors": 1,
+            "openrouterEmbeddingInputChars": 120,
+            "eventsubByType": {
+              "channel.chat.message": 3,
+              "channel.follow": 1,
+              "unknown": 1,
+              "channel.unheard_of.thing": 1
+            }
+          },
+          "totals": {
+            "maxInflightEventsubHandlers": 2,
+            "maxInflightMessageHandlers": 2,
+            "maxEmbeddingQueueSize": 9,
+            "eventsubByType": {
+              "channel.chat.message": 3,
+              "channel.follow": 1,
+              "unknown": 1,
+              "channel.unheard_of.thing": 1
+            }
+          }
+        }
+      ]
+    },
+    "runtime:latest": {
+      "type": "string",
+      "ttl": 172800,
+      "value": {
+        "timestamp": "2026-11-12T09:30:15.250Z",
+        "process": {
+          "pid": 3481356,
+          "node": "v26.13.0",
+          "uptimeSeconds": 1,
+          "startedAt": "2026-11-12T09:30:15.250Z",
+          "elapsedMs": 0
+        },
+        "memory": {
+          "rssBytes": 117497856,
+          "heapTotalBytes": 37097472,
+          "heapUsedBytes": 27068632,
+          "externalBytes": 5285929,
+          "arrayBuffersBytes": 2504794
+        },
+        "runtime": {
+          "inflightEventsubHandlers": 0,
+          "inflightMessageHandlers": 1,
+          "activeHandles": 3,
+          "activeRequests": 0,
+          "embeddingQueueSize": 9,
+          "embeddingProcessing": true
+        },
+        "eventLoop": {
+          "minMs": 19.071,
+          "maxMs": 20.824,
+          "meanMs": 20.062,
+          "stddevMs": 0.426,
+          "p50Ms": 20.152,
+          "p95Ms": 20.234,
+          "p99Ms": 20.824
+        },
+        "window": {
+          "durationMs": 30000,
+          "eventsubNotifications": 1,
+          "eventsubNotificationBytes": 100,
+          "eventsubHandled": 0,
+          "eventsubHandleErrors": 0,
+          "messageHandlerStarted": 0,
+          "messageHandlerCompleted": 0,
+          "messageHandlerErrors": 0,
+          "embeddingEnqueued": 0,
+          "embeddingBatchesSuccess": 0,
+          "embeddingBatchesFailed": 0,
+          "embeddingMessagesProcessed": 0,
+          "redisOpsEstimated": 0,
+          "openrouterEmbeddingRequests": 0,
+          "openrouterEmbeddingErrors": 0,
+          "openrouterEmbeddingInputChars": 0,
+          "eventsubByType": {
+            "channel.follow": 1
+          }
+        },
+        "totals": {
+          "maxInflightEventsubHandlers": 2,
+          "maxInflightMessageHandlers": 2,
+          "maxEmbeddingQueueSize": 9,
+          "eventsubByType": {
+            "channel.chat.message": 3,
+            "channel.follow": 2,
+            "unknown": 1,
+            "channel.unheard_of.thing": 1
+          }
+        }
+      }
+    },
+    "runtime:minute:202611120930": {
+      "type": "hash",
+      "ttl": 172800,
+      "value": {
+        "messageHandlersStarted": "2",
+        "messageHandlersCompleted": "1",
+        "embeddingEnqueued": "1",
+        "embeddingProcessed": "5",
+        "redisOpsEstimated": "5"
+      }
+    },
+    "semantic:channel:1001:minute:202611120930": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "requests": "2",
+        "requestedTotal": "5",
+        "retrievedTotal": "3",
+        "latencyMsTotal": "13",
+        "avgScoreMilliTotal": "877",
+        "errors": "1",
+        "pass:first": "1",
+        "pass:none": "1"
+      }
+    },
+    "semantic:cumulative": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "requests": "2",
+        "requestedTotal": "5",
+        "retrievedTotal": "3",
+        "latencyMsTotal": "13",
+        "avgScoreMilliTotal": "877",
+        "errors": "1",
+        "pass:first": "1",
+        "updatedAt": "2026-11-12T09:30:15.250Z",
+        "pass:none": "1"
+      }
+    },
+    "semantic:minute:202611120930": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "requests": "2",
+        "requestedTotal": "5",
+        "retrievedTotal": "3",
+        "latencyMsTotal": "13",
+        "avgScoreMilliTotal": "877",
+        "errors": "1",
+        "pass:first": "1",
+        "pass:none": "1"
+      }
+    },
+    "stream_memory:action:channel:1002:minute:202611120930": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "count": "3",
+        "action:insert": "3",
+        "source:manual": "3"
+      }
+    },
+    "stream_memory:action:cumulative": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "count": "3",
+        "action:insert": "3",
+        "source:manual": "3",
+        "updatedAt": "2026-11-12T09:30:15.250Z"
+      }
+    },
+    "stream_memory:action:minute:202611120930": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "count": "3",
+        "action:insert": "3",
+        "source:manual": "3"
+      }
+    },
+    "stream_memory:job:channel:1002:minute:202611120930": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "requests": "2",
+        "job:summary": "1",
+        "source:stream_offline": "2",
+        "status:done": "1",
+        "latencyMsTotal": "1500",
+        "job:unknown": "1",
+        "status:noop": "1",
+        "errors": "1"
+      }
+    },
+    "stream_memory:job:cumulative": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "requests": "2",
+        "job:summary": "1",
+        "source:stream_offline": "2",
+        "status:done": "1",
+        "latencyMsTotal": "1500",
+        "updatedAt": "2026-11-12T09:30:15.250Z",
+        "job:unknown": "1",
+        "status:noop": "1",
+        "errors": "1"
+      }
+    },
+    "stream_memory:job:minute:202611120930": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "requests": "2",
+        "job:summary": "1",
+        "source:stream_offline": "2",
+        "status:done": "1",
+        "latencyMsTotal": "1500",
+        "job:unknown": "1",
+        "status:noop": "1",
+        "errors": "1"
+      }
+    },
+    "threading:channel:1001:minute:202611120930": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "requests": "1",
+        "candidateCountTotal": "4",
+        "selectedScoreMilliTotal": "500",
+        "promptTurnsTotal": "6",
+        "latencyMsTotal": "30",
+        "userEvictions": "1",
+        "channelEvictions": "0",
+        "created": "1"
+      }
+    },
+    "threading:cumulative": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "requests": "1",
+        "candidateCountTotal": "4",
+        "selectedScoreMilliTotal": "500",
+        "promptTurnsTotal": "6",
+        "latencyMsTotal": "30",
+        "userEvictions": "1",
+        "channelEvictions": "0",
+        "created": "1",
+        "updatedAt": "2026-11-12T09:30:15.250Z"
+      }
+    },
+    "threading:minute:202611120930": {
+      "type": "hash",
+      "ttl": 86399,
+      "value": {
+        "requests": "1",
+        "candidateCountTotal": "4",
+        "selectedScoreMilliTotal": "500",
+        "promptTurnsTotal": "6",
+        "latencyMsTotal": "30",
+        "userEvictions": "1",
+        "channelEvictions": "0",
+        "created": "1"
+      }
+    }
+  }
+}

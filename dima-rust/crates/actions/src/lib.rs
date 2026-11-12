@@ -39,6 +39,10 @@
 //! - [`ai`], by P4-ACT-AI-A (wave 3); [`ai::chat`] P4-ACT-AI-B (wave 4); [`ai::catalog`]
 //!   P4-ACT-AI-C (wave 3).
 //! - [`backend`], by P4-ACT-MEDIA (wave 3).
+//! - [`metrics`] (the bot runtime metrics), [`pubsub`] (the pub/sub manager) and
+//!   [`product_events`] (PostHog product events): P4-BOT-INGRESS (wave 1). The bot, the API and
+//!   the cron all load them, so they live in this crate, which the three binaries link (lead's
+//!   decision at the P4-SKEL merge).
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
@@ -46,6 +50,9 @@ pub mod ai;
 pub mod backend;
 pub mod delivery;
 pub mod host;
+pub mod metrics;
+pub mod product_events;
+pub mod pubsub;
 pub mod runner;
 pub mod simulate;
 pub mod timers;

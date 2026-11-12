@@ -1511,6 +1511,7 @@ dependencies = [
 name = "dima-actions"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "dima-ai",
  "dima-billing",
  "dima-commands",
@@ -1518,11 +1519,18 @@ dependencies = [
  "dima-engine",
  "dima-events",
  "dima-features",
+ "dima-http",
  "dima-moderation",
  "dima-store",
  "dima-stream",
+ "dima-telemetry",
+ "dima-text",
  "dima-tts",
  "dima-twitch",
+ "flate2",
+ "redis",
+ "serde",
+ "serde_json",
  "thiserror 2.0.21",
  "tokio",
 ]
@@ -1615,7 +1623,30 @@ dependencies = [
 name = "dima-chat"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "bson",
+ "bytes",
  "dima-actions",
+ "dima-chat",
+ "dima-core",
+ "dima-events",
+ "dima-model",
+ "dima-store",
+ "dima-stream",
+ "dima-telemetry",
+ "dima-text",
+ "dima-twitch",
+ "dima-web",
+ "futures-util",
+ "http",
+ "http-body-util",
+ "hyper",
+ "redis",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]

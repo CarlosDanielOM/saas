@@ -23,6 +23,8 @@ and none is read by the TypeScript. The lead keeps it current at each merge.
 | `commands:snapshot:{channel}` | hash | `v` (complete or partial), `b` (bytes), `c:{name}` (the command as BSON; empty means stale) | 3,600 s from the load | `dima-commands` | The channel's commands for the lookup on every chat message; at most 1,000 commands and 1 MiB |
 | `commands:revision:{channel}` | string | counter | none | `dima-commands` | Bumped by every write to the channel's commands; a load is published only if it has not moved |
 | `commands:writers:{channel}` | sorted set | writer tokens scored by lease end | lease (30 s) plus 60 s | `dima-commands` | Writers in flight: while one is live, readers ask MongoDB |
+| `eventsub:dead-letter` | list | signed deliveries the backend can never handle, with the reason | 1,000 records, 30 days | `dima-chat` | Answered 2xx to Twitch and kept here instead of being redelivered for ever; `eventsub:dead-letter:count` counts them |
+| `twitch:eventsub:message:{id}` | string | claim of a delivery that is not journaled | 600 s, or as long as the message stays valid | `dima-chat` | A replayed message id of a chat message or a redemption is acknowledged and not processed again |
 | `auth:token:{sha256 of the token, base64url}` | string | JSON `{id, login, display_name, profile_image_url, since}` | the smaller of 3600 s and the token's own remaining life, set in the same command | `dima-platform` | Validation cache of a Twitch user token. Replaces the reference's `token:{raw token}` hash; roles are never cached. Removed at sign-out and account deletion |
 | `auth:token-fence:{sha256 of the token, base64url}` | string | Dragonfly's clock at the forget, plus 5 s | 75 s | `dima-platform` | A sign-out: an authentication that began before it writes nothing to the cache |
 | `auth:user-fence:{twitch id}` | string | the same, per user | 3675 s | `dima-platform` | Account deletion or a ban: every cached token of the user that is older than the fence is ignored |
@@ -44,3 +46,5 @@ and none is read by the TypeScript. The lead keeps it current at each merge.
 Unchanged in format and rebuilt at the cutover: `oauth:request` (600 s), `oauth:code` (60 s), `oauth:access` (600 s), `oauth:rate` (60 s). Access tokens the TypeScript issued end with the cutover and the desktop app refreshes; sessions and refresh tokens are in MongoDB and carry over.
 
 The worker locks `worker:ai-usage-receipts:lock`, `worker:ai-usage-backfill:consumer` and `worker:ai-usage-backfill:daily-sweep` now hold a random token for 300 s and are fenced. `twitch:{channel}:ai:usage-receipts:generation` and its `v2` keys are no longer written (only a read cache that production no longer calls used them).
+
+Every pub/sub channel the Rust processes use is the reference's name with the prefix `rust:`.
