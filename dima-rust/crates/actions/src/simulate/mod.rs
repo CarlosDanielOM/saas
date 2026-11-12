@@ -241,6 +241,9 @@ pub struct SimulationResult {
     pub use_count: f64,
     /// `note`.
     pub note: &'static str,
+    /// Not in the answer: how many calls of the first sequence reached [`Host::call`], the one
+    /// way out of the run's memory (always refused). Zero, by construction; tests check it.
+    pub host_calls: usize,
 }
 
 fn number(value: f64) -> serde_json::Value {
@@ -486,6 +489,8 @@ struct SequenceState {
     channel: Memory,
     users: Memory,
     cache: MemoryCache,
+    /// Calls that reached [`Host::call`] (none can: every function is answered by `simulate`).
+    host_calls: usize,
 }
 
 /// The host of a test run: in-memory variables, every non-pure function recorded and answered
@@ -586,6 +591,7 @@ impl Host for SimulationHost<'_> {
 
     fn call<'a>(&'a mut self, call: HostCall<'a>) -> HostFuture<'a, Result<Value, HostError>> {
         // Every function of a test run is answered by `simulate` first; nothing reaches here.
+        self.state.host_calls += 1;
         ready(Err(HostError::new(format!(
             "$({}) cannot run in a test run",
             call.name
@@ -1103,6 +1109,7 @@ pub async fn simulate_command(
         variables: unique,
         use_count: state.count,
         note: NOTE,
+        host_calls: state.host_calls,
     };
     if input.repeat > 1 {
         let mut outcomes: Vec<(String, Outcome)> = Vec::new();
