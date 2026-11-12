@@ -35,3 +35,4 @@ dima-http = { workspace = true, features = ["test-util"] }
 # The fault test kills a child process at each write and reads its output.
 tokio = { workspace = true, features = ["io-util", "process"] }
 uuid.workspace = true
+sha2.workspace = true

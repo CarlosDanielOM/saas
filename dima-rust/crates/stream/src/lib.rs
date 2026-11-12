@@ -1,11 +1,13 @@
 //! Channel stream and audience records. No environment reads or runtime owner: callers supply
 //! stores, clock, credentials and request pacing. The cron worker is a separate package.
 #![forbid(unsafe_code)]
+mod activity_projection;
 pub mod clip_recommendations_queue;
 pub mod defense_baseline;
 pub mod follow_ledger;
 pub mod follow_ledger_queue;
 mod seen;
+pub mod stream_activity;
 pub mod stream_memory_queue;
 
 use std::{future::IntoFuture, time::Duration};

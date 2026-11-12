@@ -1,0 +1,3010 @@
+{
+  "now": 1794355200000,
+  "cases": [
+    {
+      "channel": "190003601",
+      "session": "6af4a2aecfe7a3a6b838e503",
+      "tier": "free",
+      "expected": {
+        "totals": {
+          "messages": 0,
+          "commands": 0,
+          "emotes": 0,
+          "emoteMessages": 0,
+          "redemptions": 0,
+          "follows": 0,
+          "subs": 0,
+          "bits": 0,
+          "raids": 1
+        },
+        "commands": [],
+        "emotes": [],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "messages": 0,
+            "chatters": 0
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T17:20:09.893Z",
+        "chatterStartedAt": null,
+        "updatedAt": "2026-11-11T17:20:11.782Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "190003601",
+      "session": "6af4a2aecfe7a3a6b838e503",
+      "tier": "premium",
+      "expected": {
+        "totals": {
+          "messages": 0,
+          "commands": 0,
+          "emotes": 0,
+          "emoteMessages": 0,
+          "redemptions": 0,
+          "follows": 0,
+          "subs": 0,
+          "bits": 0,
+          "raids": 1
+        },
+        "commands": [],
+        "emotes": [],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 0,
+            "chatters": 0
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T17:20:09.893Z",
+        "chatterStartedAt": null,
+        "updatedAt": "2026-11-11T17:20:11.782Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "190003601",
+      "session": "6af4a2aecfe7a3a6b838e503",
+      "tier": "pro",
+      "expected": {
+        "totals": {
+          "messages": 0,
+          "commands": 0,
+          "emotes": 0,
+          "emoteMessages": 0,
+          "redemptions": 0,
+          "follows": 0,
+          "subs": 0,
+          "bits": 0,
+          "raids": 1
+        },
+        "commands": [],
+        "emotes": [],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 0,
+            "chatters": 0
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T17:20:09.893Z",
+        "chatterStartedAt": null,
+        "updatedAt": "2026-11-11T17:20:11.782Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    },
+    {
+      "channel": "1106767031",
+      "session": "6af4a087cfe7a3a6b838e4e3",
+      "tier": "free",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "1106767031",
+      "session": "6af4a087cfe7a3a6b838e4e3",
+      "tier": "premium",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "1106767031",
+      "session": "6af4a087cfe7a3a6b838e4e3",
+      "tier": "pro",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    },
+    {
+      "channel": "452912249",
+      "session": "6af49eb8cfe7a3a6b838e4cf",
+      "tier": "free",
+      "expected": {
+        "totals": {
+          "messages": 63,
+          "commands": 0,
+          "emotes": 54,
+          "emoteMessages": 18,
+          "redemptions": 0,
+          "follows": 0,
+          "subs": 0,
+          "bits": 0,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [
+          {
+            "key": "c30ea3829e3e890f795be51fa4802fb063afb2801315647bf27924373537f554",
+            "label": "3044e7ecc151c34ab89d9ebc5b29c03086356783bfaa2e0636e202db37a3240c",
+            "count": 12,
+            "messages": 3
+          },
+          {
+            "key": "02f5fb9224dfeba52fb4a83f7cb62f600a38a2f900206324d1e51c8a01697a26",
+            "label": "6403648fc2086865dd8e2113848e0c2801eab33a3b16e940641bacb2ea8d55f9",
+            "count": 5,
+            "messages": 1
+          },
+          {
+            "key": "5dcbe465c28101b638ceed7830beaeb74c60885604ef29ba30f78f4ee43231ed",
+            "label": "c6650a48a45463216958a57fcdbe24d798bb13b026586d48c5570d48d2ea4456",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "c7df56585edd66525ac14217cd25ae406d10594ed58985a02d6313efd8278a8a",
+            "label": "55837173a16a7b5830c978f124daab2cd6bcbe8a9f37b37857605c24e806c5a0",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "f7acff9ce0efac15177a0c16d0b95e42697214386ee7f1ff418055f2f7da6b1b",
+            "label": "46315daf579fc0fb681cf486ebb6c8c9b12d43c9930d75d779d8af820b98f802",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "d8c18e2ad06d51b48407c609f8fe00942ff7b30b691b9d60212e4b7e9d083319",
+            "label": "f9b901348b50a5433cf57c17e551b8bb7fee97e36732e42066fee27b74e6709c",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "37475a2ef7c1df4fff7cefa8f68f3469208e43613c10cbd1a5442bb76e840643",
+            "label": "04a6ca8b5e60a5b7d71504dce9fd1aa111aae8d80cbb76f657d88e08a3d20dc7",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "e11bd0fed1ef73d930c5e7d34f625e63ff56648cf326b24e92d668e9ee512731",
+            "label": "b7a84f051dd21c6c1b0e18ed561d8fadad728be28e32a584cbbffb250d4fe728",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "a106dbd33edc9dc99eddb13e5fbf71644b4c6076f39c18a1d13c6a7861d1f425",
+            "label": "06bad8daece9cad0d474fb7703f9c23d5f7fae34ad26f86d76187d38f34343ea",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "680f655bafc6e25037d69e7d71964774aa762687dc65b4ffdca72b28a59dc5e3",
+            "label": "1ac5de5bc6b28b057c5302427153665bfe47ec3f7ea2bf2dc3a8b21189d6fb5b",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "a6dae4efc9fe3b90a746d6f0015013ffa0fb331cd5b3cafe551f6630b42b072e",
+            "label": "148de1ecb01de75c009a6f4f8507968c685a09c97218dfe664ea326ed07cc0a7",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "a0a45ead8a28e1ae716bf5fbe441a593b6aaa2da8d4ebc382199f0a3ffa40e1e",
+            "label": "2bc168905a4a206a4f992114e637e20f478ab0beea5907138761f004b3331b20",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "e7623a7c276fd33084e92264fc0df011fd4292542ea6858392a8830f3a86e6ef",
+            "label": "aa5b67ca366c2dda9078a18571aa8310bb270d9450c6966fc4fb92cd78f87e86",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "c270072050e4bff141c0e80776c7aeec712881824c0cb56d034281a1276588bc",
+            "label": "3dcf21a355923f80d4715e5837722c3db493dbdb589fc4a3590a078cf87bc6a0",
+            "count": 1,
+            "messages": 1
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "messages": 4,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 300,
+            "messages": 8,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 600,
+            "messages": 17,
+            "chatters": 5
+          },
+          {
+            "offsetSeconds": 900,
+            "messages": 13,
+            "chatters": 4
+          },
+          {
+            "offsetSeconds": 1200,
+            "messages": 11,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 1500,
+            "messages": 5,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 1800,
+            "messages": 5,
+            "chatters": 3
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T16:59:01.215Z",
+        "chatterStartedAt": "2026-11-11T16:59:01.215Z",
+        "updatedAt": "2026-11-11T17:31:47.440Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "452912249",
+      "session": "6af49eb8cfe7a3a6b838e4cf",
+      "tier": "premium",
+      "expected": {
+        "totals": {
+          "messages": 63,
+          "commands": 0,
+          "emotes": 54,
+          "emoteMessages": 18,
+          "redemptions": 0,
+          "follows": 0,
+          "subs": 0,
+          "bits": 0,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [
+          {
+            "key": "c30ea3829e3e890f795be51fa4802fb063afb2801315647bf27924373537f554",
+            "label": "3044e7ecc151c34ab89d9ebc5b29c03086356783bfaa2e0636e202db37a3240c",
+            "count": 12,
+            "messages": 3
+          },
+          {
+            "key": "02f5fb9224dfeba52fb4a83f7cb62f600a38a2f900206324d1e51c8a01697a26",
+            "label": "6403648fc2086865dd8e2113848e0c2801eab33a3b16e940641bacb2ea8d55f9",
+            "count": 5,
+            "messages": 1
+          },
+          {
+            "key": "5dcbe465c28101b638ceed7830beaeb74c60885604ef29ba30f78f4ee43231ed",
+            "label": "c6650a48a45463216958a57fcdbe24d798bb13b026586d48c5570d48d2ea4456",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "c7df56585edd66525ac14217cd25ae406d10594ed58985a02d6313efd8278a8a",
+            "label": "55837173a16a7b5830c978f124daab2cd6bcbe8a9f37b37857605c24e806c5a0",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "f7acff9ce0efac15177a0c16d0b95e42697214386ee7f1ff418055f2f7da6b1b",
+            "label": "46315daf579fc0fb681cf486ebb6c8c9b12d43c9930d75d779d8af820b98f802",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "d8c18e2ad06d51b48407c609f8fe00942ff7b30b691b9d60212e4b7e9d083319",
+            "label": "f9b901348b50a5433cf57c17e551b8bb7fee97e36732e42066fee27b74e6709c",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "37475a2ef7c1df4fff7cefa8f68f3469208e43613c10cbd1a5442bb76e840643",
+            "label": "04a6ca8b5e60a5b7d71504dce9fd1aa111aae8d80cbb76f657d88e08a3d20dc7",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "e11bd0fed1ef73d930c5e7d34f625e63ff56648cf326b24e92d668e9ee512731",
+            "label": "b7a84f051dd21c6c1b0e18ed561d8fadad728be28e32a584cbbffb250d4fe728",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "a106dbd33edc9dc99eddb13e5fbf71644b4c6076f39c18a1d13c6a7861d1f425",
+            "label": "06bad8daece9cad0d474fb7703f9c23d5f7fae34ad26f86d76187d38f34343ea",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "680f655bafc6e25037d69e7d71964774aa762687dc65b4ffdca72b28a59dc5e3",
+            "label": "1ac5de5bc6b28b057c5302427153665bfe47ec3f7ea2bf2dc3a8b21189d6fb5b",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "a6dae4efc9fe3b90a746d6f0015013ffa0fb331cd5b3cafe551f6630b42b072e",
+            "label": "148de1ecb01de75c009a6f4f8507968c685a09c97218dfe664ea326ed07cc0a7",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "a0a45ead8a28e1ae716bf5fbe441a593b6aaa2da8d4ebc382199f0a3ffa40e1e",
+            "label": "2bc168905a4a206a4f992114e637e20f478ab0beea5907138761f004b3331b20",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "e7623a7c276fd33084e92264fc0df011fd4292542ea6858392a8830f3a86e6ef",
+            "label": "aa5b67ca366c2dda9078a18571aa8310bb270d9450c6966fc4fb92cd78f87e86",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "c270072050e4bff141c0e80776c7aeec712881824c0cb56d034281a1276588bc",
+            "label": "3dcf21a355923f80d4715e5837722c3db493dbdb589fc4a3590a078cf87bc6a0",
+            "count": 1,
+            "messages": 1
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 4,
+            "messages": 4,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 300,
+            "commands": 0,
+            "emotes": 18,
+            "messages": 8,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 600,
+            "commands": 0,
+            "emotes": 16,
+            "messages": 17,
+            "chatters": 5
+          },
+          {
+            "offsetSeconds": 900,
+            "commands": 0,
+            "emotes": 5,
+            "messages": 13,
+            "chatters": 4
+          },
+          {
+            "offsetSeconds": 1200,
+            "commands": 0,
+            "emotes": 6,
+            "messages": 11,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 1500,
+            "commands": 0,
+            "emotes": 3,
+            "messages": 5,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 1800,
+            "commands": 0,
+            "emotes": 2,
+            "messages": 5,
+            "chatters": 3
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T16:59:01.215Z",
+        "chatterStartedAt": "2026-11-11T16:59:01.215Z",
+        "updatedAt": "2026-11-11T17:31:47.440Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "452912249",
+      "session": "6af49eb8cfe7a3a6b838e4cf",
+      "tier": "pro",
+      "expected": {
+        "totals": {
+          "messages": 63,
+          "commands": 0,
+          "emotes": 54,
+          "emoteMessages": 18,
+          "redemptions": 0,
+          "follows": 0,
+          "subs": 0,
+          "bits": 0,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [
+          {
+            "key": "c30ea3829e3e890f795be51fa4802fb063afb2801315647bf27924373537f554",
+            "label": "3044e7ecc151c34ab89d9ebc5b29c03086356783bfaa2e0636e202db37a3240c",
+            "count": 12,
+            "messages": 3
+          },
+          {
+            "key": "02f5fb9224dfeba52fb4a83f7cb62f600a38a2f900206324d1e51c8a01697a26",
+            "label": "6403648fc2086865dd8e2113848e0c2801eab33a3b16e940641bacb2ea8d55f9",
+            "count": 5,
+            "messages": 1
+          },
+          {
+            "key": "5dcbe465c28101b638ceed7830beaeb74c60885604ef29ba30f78f4ee43231ed",
+            "label": "c6650a48a45463216958a57fcdbe24d798bb13b026586d48c5570d48d2ea4456",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "c7df56585edd66525ac14217cd25ae406d10594ed58985a02d6313efd8278a8a",
+            "label": "55837173a16a7b5830c978f124daab2cd6bcbe8a9f37b37857605c24e806c5a0",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "f7acff9ce0efac15177a0c16d0b95e42697214386ee7f1ff418055f2f7da6b1b",
+            "label": "46315daf579fc0fb681cf486ebb6c8c9b12d43c9930d75d779d8af820b98f802",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "d8c18e2ad06d51b48407c609f8fe00942ff7b30b691b9d60212e4b7e9d083319",
+            "label": "f9b901348b50a5433cf57c17e551b8bb7fee97e36732e42066fee27b74e6709c",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "37475a2ef7c1df4fff7cefa8f68f3469208e43613c10cbd1a5442bb76e840643",
+            "label": "04a6ca8b5e60a5b7d71504dce9fd1aa111aae8d80cbb76f657d88e08a3d20dc7",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "e11bd0fed1ef73d930c5e7d34f625e63ff56648cf326b24e92d668e9ee512731",
+            "label": "b7a84f051dd21c6c1b0e18ed561d8fadad728be28e32a584cbbffb250d4fe728",
+            "count": 4,
+            "messages": 2
+          },
+          {
+            "key": "a106dbd33edc9dc99eddb13e5fbf71644b4c6076f39c18a1d13c6a7861d1f425",
+            "label": "06bad8daece9cad0d474fb7703f9c23d5f7fae34ad26f86d76187d38f34343ea",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "680f655bafc6e25037d69e7d71964774aa762687dc65b4ffdca72b28a59dc5e3",
+            "label": "1ac5de5bc6b28b057c5302427153665bfe47ec3f7ea2bf2dc3a8b21189d6fb5b",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "a6dae4efc9fe3b90a746d6f0015013ffa0fb331cd5b3cafe551f6630b42b072e",
+            "label": "148de1ecb01de75c009a6f4f8507968c685a09c97218dfe664ea326ed07cc0a7",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "a0a45ead8a28e1ae716bf5fbe441a593b6aaa2da8d4ebc382199f0a3ffa40e1e",
+            "label": "2bc168905a4a206a4f992114e637e20f478ab0beea5907138761f004b3331b20",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "e7623a7c276fd33084e92264fc0df011fd4292542ea6858392a8830f3a86e6ef",
+            "label": "aa5b67ca366c2dda9078a18571aa8310bb270d9450c6966fc4fb92cd78f87e86",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "c270072050e4bff141c0e80776c7aeec712881824c0cb56d034281a1276588bc",
+            "label": "3dcf21a355923f80d4715e5837722c3db493dbdb589fc4a3590a078cf87bc6a0",
+            "count": 1,
+            "messages": 1
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 4,
+            "messages": 4,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 300,
+            "commands": 0,
+            "emotes": 18,
+            "messages": 8,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 600,
+            "commands": 0,
+            "emotes": 16,
+            "messages": 17,
+            "chatters": 5
+          },
+          {
+            "offsetSeconds": 900,
+            "commands": 0,
+            "emotes": 5,
+            "messages": 13,
+            "chatters": 4
+          },
+          {
+            "offsetSeconds": 1200,
+            "commands": 0,
+            "emotes": 6,
+            "messages": 11,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 1500,
+            "commands": 0,
+            "emotes": 3,
+            "messages": 5,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 1800,
+            "commands": 0,
+            "emotes": 2,
+            "messages": 5,
+            "chatters": 3
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T16:59:01.215Z",
+        "chatterStartedAt": "2026-11-11T16:59:01.215Z",
+        "updatedAt": "2026-11-11T17:31:47.440Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    },
+    {
+      "channel": "597136690",
+      "session": "6af49d17cfe7a3a6b838e4c5",
+      "tier": "free",
+      "expected": {
+        "totals": {
+          "messages": 252,
+          "commands": 24,
+          "emotes": 114,
+          "emoteMessages": 50,
+          "redemptions": 0,
+          "follows": 2,
+          "subs": 0,
+          "bits": 0,
+          "raids": 1
+        },
+        "commands": [
+          {
+            "key": "043a718774c572bd8a25adbeb1bfcd5c0256ae11cecf9f9c3f925d0e52beaf89",
+            "label": "8c84765e0e8a33a6d3f24c3caabd0733c2013b57b0bfb40c37c9cd62b31bf3d5",
+            "count": 22
+          },
+          {
+            "key": "a1d9890884c1b4b960c279cfe7554a900d169422d6cec980beef67761487d3b9",
+            "label": "3b523dad5a8c79c5368e0b0d4178d0adfc19fb32885237ee2b886dbb4ad0e961",
+            "count": 2
+          }
+        ],
+        "emotes": [
+          {
+            "key": "91cde6993c5b12c4ad1c239a57c5c0770a3016bb8e7d42ba6fd2a2258acf4baf",
+            "label": "ad0276f100383722a4040e6f3e2e3da7e9b04daaf5e93ecf9fd7cb68fdeb5a9f",
+            "count": 13,
+            "messages": 4
+          },
+          {
+            "key": "5a4a4961415b123ed408067af204643052aab2c583b8be3bc5e1c43ed10034c5",
+            "label": "d40704604180d1f8eeb0974c3f98db9dd8039de7c2c0ebb5bbf7176235e0ba94",
+            "count": 9,
+            "messages": 3
+          },
+          {
+            "key": "08809591fb99a0e2c3d7c3822f32db04505ff71121a81860121a5d19400730e3",
+            "label": "b68fcb442244f092534a7fdeb5cd848212f2862c08a0ac6b1c7502f6ec878c5c",
+            "count": 8,
+            "messages": 2
+          },
+          {
+            "key": "cd6b6f1e48a8ca2e7fcc843b4f2f023938228613ece3cb8ee26a6dbdf2a9ab35",
+            "label": "249e35349129a35f376ef621bfa783839968f16e3cd8de9e9ca44e60aa16955d",
+            "count": 8,
+            "messages": 2
+          },
+          {
+            "key": "cdde415798a4f34c403daff90fdeabef5991676ef754c8de49d7918707b325b3",
+            "label": "dae8790864fcde4eeafa0885082234e996409f4501d6c5821ee3e1078bf2c7d2",
+            "count": 8,
+            "messages": 2
+          },
+          {
+            "key": "1378b612ad7519462e069e6bbdf7b51eb443f6b674ca546ae7c5875fceb974cc",
+            "label": "36d837c5768b86a6fc76e77697f3e029cfa75d3612f9a6c3c2e16c68dfd292b5",
+            "count": 6,
+            "messages": 6
+          },
+          {
+            "key": "370385800f0898364c423b53e7e012577f49ef5902e53d5f753eac087142203f",
+            "label": "38b7728332d5408a83246fc7257995bcc9ff95e8a96eb897c8fd632f9871f546",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "12b24d696cdfec46342280d70f8139a7579fc766fb58a606f27420933ef7b042",
+            "label": "2f70b53048c23d6c5ada2cf635dfdbcccc7645699f5ad7a9c94331f61fd318d5",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "4f17e940ceddfa55e2e5cf17560481055fede619c0bf452de99b79002732531c",
+            "label": "3cb380900ca4bafb82f28e5ef3bfe1074ec18ad02e640e4f6e94e5817eddb7d0",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "1934376906c0fb2789535eda214f04dfccffc961f8be9a4235cee2ed5f47ffdf",
+            "label": "1639279f8665b7561ca409db11192c10f35b2a9d822eb6e0972d791509ae0f1d",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "498936134737cabfc7460387c835d06947b41dfe47973c01f14c668671443418",
+            "label": "64cfea4cd925b37f6054ae3caabed6ef54252cc9776835cb5df6cbebcfe1f20f",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "4234f7cddc52886ad4e1535dd55e3ec962c2d9255e023227671107d8df424600",
+            "label": "d9ae656bd5e5bafbf6ce0f2e76831b037ef5bcaa7cd6e67f66782aab9e4c4717",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "d0d865604ca8aeba4c608f27f9b3ab3aaa9a5460e04d4f629abd5e1952af25e7",
+            "label": "3cac29e17e9842080c196e20c0464a9a63c3eba7e661b0f273410800c74f07d7",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "e92860abc9e949e46e8a2b58c68b96e32eff7ae3b2284c009f15457d4c464187",
+            "label": "003d43cc522e124b5b4b176ba34ea6fb866b5c8031b0c62ca7768e882fba47a9",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "11a71a1e3439b235c9b6291c56bdee24b8bd41882aca1106e8510a7f254fbc74",
+            "label": "af71a45beb22db2ad9ee49b821a680d1532a5a2aaf7e0277877ef06f492d7d19",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "3acd8cbe0ee457a5de297f09466b810f656f1f49dc2aa3218fe129b3756ccb6e",
+            "label": "40dad130779f0d3562101d14ea745526df2d5fb8b006f4056be9ea40e7208e45",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "100ebdf0dd6fd2199a8adfaa0649ae098dbb6e6f3dfa6f41e7da221bcbca6dbb",
+            "label": "5e634f3b02d809a33ae3b0c2f9225f89391c40a1fce174d999e663a5316e8eb1",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "9cceab07829867615c03d27ac2dc36b2ed2032b1201ad4fe1925cb7ccc92e322",
+            "label": "9066959537be0a4ff0e2887f43ac13d694563c17ba41822142be5aa57a8f73e8",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "1874c562f086a2bafc46a80c41ba6d325b818a589c837f4b905783919a97d7ba",
+            "label": "1d168ad61261ab95a04a39f7abbc694b436b633d0311c6adae30040951103942",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "524d351990c6f5df736734fcd8e71c50beaf543041b330f1ad995668bbb6dbc2",
+            "label": "54d626e08c1c802b305dad30b7e54a82f102390cc92c7d4db112048935236e9c",
+            "count": 2,
+            "messages": 2
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "messages": 20,
+            "chatters": 4
+          },
+          {
+            "offsetSeconds": 300,
+            "messages": 33,
+            "chatters": 7
+          },
+          {
+            "offsetSeconds": 600,
+            "messages": 44,
+            "chatters": 7
+          },
+          {
+            "offsetSeconds": 900,
+            "messages": 33,
+            "chatters": 6
+          },
+          {
+            "offsetSeconds": 1200,
+            "messages": 27,
+            "chatters": 6
+          },
+          {
+            "offsetSeconds": 1500,
+            "messages": 32,
+            "chatters": 5
+          },
+          {
+            "offsetSeconds": 1800,
+            "messages": 34,
+            "chatters": 6
+          },
+          {
+            "offsetSeconds": 2100,
+            "messages": 25,
+            "chatters": 9
+          },
+          {
+            "offsetSeconds": 2400,
+            "messages": 4,
+            "chatters": 2
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T16:51:35.735Z",
+        "chatterStartedAt": "2026-11-11T16:51:35.735Z",
+        "updatedAt": "2026-11-11T17:32:16.502Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "597136690",
+      "session": "6af49d17cfe7a3a6b838e4c5",
+      "tier": "premium",
+      "expected": {
+        "totals": {
+          "messages": 252,
+          "commands": 24,
+          "emotes": 114,
+          "emoteMessages": 50,
+          "redemptions": 0,
+          "follows": 2,
+          "subs": 0,
+          "bits": 0,
+          "raids": 1
+        },
+        "commands": [
+          {
+            "key": "043a718774c572bd8a25adbeb1bfcd5c0256ae11cecf9f9c3f925d0e52beaf89",
+            "label": "8c84765e0e8a33a6d3f24c3caabd0733c2013b57b0bfb40c37c9cd62b31bf3d5",
+            "count": 22,
+            "errors": 0
+          },
+          {
+            "key": "a1d9890884c1b4b960c279cfe7554a900d169422d6cec980beef67761487d3b9",
+            "label": "3b523dad5a8c79c5368e0b0d4178d0adfc19fb32885237ee2b886dbb4ad0e961",
+            "count": 2,
+            "errors": 0
+          }
+        ],
+        "emotes": [
+          {
+            "key": "91cde6993c5b12c4ad1c239a57c5c0770a3016bb8e7d42ba6fd2a2258acf4baf",
+            "label": "ad0276f100383722a4040e6f3e2e3da7e9b04daaf5e93ecf9fd7cb68fdeb5a9f",
+            "count": 13,
+            "messages": 4
+          },
+          {
+            "key": "5a4a4961415b123ed408067af204643052aab2c583b8be3bc5e1c43ed10034c5",
+            "label": "d40704604180d1f8eeb0974c3f98db9dd8039de7c2c0ebb5bbf7176235e0ba94",
+            "count": 9,
+            "messages": 3
+          },
+          {
+            "key": "08809591fb99a0e2c3d7c3822f32db04505ff71121a81860121a5d19400730e3",
+            "label": "b68fcb442244f092534a7fdeb5cd848212f2862c08a0ac6b1c7502f6ec878c5c",
+            "count": 8,
+            "messages": 2
+          },
+          {
+            "key": "cd6b6f1e48a8ca2e7fcc843b4f2f023938228613ece3cb8ee26a6dbdf2a9ab35",
+            "label": "249e35349129a35f376ef621bfa783839968f16e3cd8de9e9ca44e60aa16955d",
+            "count": 8,
+            "messages": 2
+          },
+          {
+            "key": "cdde415798a4f34c403daff90fdeabef5991676ef754c8de49d7918707b325b3",
+            "label": "dae8790864fcde4eeafa0885082234e996409f4501d6c5821ee3e1078bf2c7d2",
+            "count": 8,
+            "messages": 2
+          },
+          {
+            "key": "1378b612ad7519462e069e6bbdf7b51eb443f6b674ca546ae7c5875fceb974cc",
+            "label": "36d837c5768b86a6fc76e77697f3e029cfa75d3612f9a6c3c2e16c68dfd292b5",
+            "count": 6,
+            "messages": 6
+          },
+          {
+            "key": "370385800f0898364c423b53e7e012577f49ef5902e53d5f753eac087142203f",
+            "label": "38b7728332d5408a83246fc7257995bcc9ff95e8a96eb897c8fd632f9871f546",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "12b24d696cdfec46342280d70f8139a7579fc766fb58a606f27420933ef7b042",
+            "label": "2f70b53048c23d6c5ada2cf635dfdbcccc7645699f5ad7a9c94331f61fd318d5",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "4f17e940ceddfa55e2e5cf17560481055fede619c0bf452de99b79002732531c",
+            "label": "3cb380900ca4bafb82f28e5ef3bfe1074ec18ad02e640e4f6e94e5817eddb7d0",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "1934376906c0fb2789535eda214f04dfccffc961f8be9a4235cee2ed5f47ffdf",
+            "label": "1639279f8665b7561ca409db11192c10f35b2a9d822eb6e0972d791509ae0f1d",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "498936134737cabfc7460387c835d06947b41dfe47973c01f14c668671443418",
+            "label": "64cfea4cd925b37f6054ae3caabed6ef54252cc9776835cb5df6cbebcfe1f20f",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "4234f7cddc52886ad4e1535dd55e3ec962c2d9255e023227671107d8df424600",
+            "label": "d9ae656bd5e5bafbf6ce0f2e76831b037ef5bcaa7cd6e67f66782aab9e4c4717",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "d0d865604ca8aeba4c608f27f9b3ab3aaa9a5460e04d4f629abd5e1952af25e7",
+            "label": "3cac29e17e9842080c196e20c0464a9a63c3eba7e661b0f273410800c74f07d7",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "e92860abc9e949e46e8a2b58c68b96e32eff7ae3b2284c009f15457d4c464187",
+            "label": "003d43cc522e124b5b4b176ba34ea6fb866b5c8031b0c62ca7768e882fba47a9",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "11a71a1e3439b235c9b6291c56bdee24b8bd41882aca1106e8510a7f254fbc74",
+            "label": "af71a45beb22db2ad9ee49b821a680d1532a5a2aaf7e0277877ef06f492d7d19",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "3acd8cbe0ee457a5de297f09466b810f656f1f49dc2aa3218fe129b3756ccb6e",
+            "label": "40dad130779f0d3562101d14ea745526df2d5fb8b006f4056be9ea40e7208e45",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "100ebdf0dd6fd2199a8adfaa0649ae098dbb6e6f3dfa6f41e7da221bcbca6dbb",
+            "label": "5e634f3b02d809a33ae3b0c2f9225f89391c40a1fce174d999e663a5316e8eb1",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "9cceab07829867615c03d27ac2dc36b2ed2032b1201ad4fe1925cb7ccc92e322",
+            "label": "9066959537be0a4ff0e2887f43ac13d694563c17ba41822142be5aa57a8f73e8",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "1874c562f086a2bafc46a80c41ba6d325b818a589c837f4b905783919a97d7ba",
+            "label": "1d168ad61261ab95a04a39f7abbc694b436b633d0311c6adae30040951103942",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "524d351990c6f5df736734fcd8e71c50beaf543041b330f1ad995668bbb6dbc2",
+            "label": "54d626e08c1c802b305dad30b7e54a82f102390cc92c7d4db112048935236e9c",
+            "count": 2,
+            "messages": 2
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 2,
+            "messages": 20,
+            "chatters": 4
+          },
+          {
+            "offsetSeconds": 300,
+            "commands": 1,
+            "emotes": 6,
+            "messages": 33,
+            "chatters": 7
+          },
+          {
+            "offsetSeconds": 600,
+            "commands": 4,
+            "emotes": 29,
+            "messages": 44,
+            "chatters": 7
+          },
+          {
+            "offsetSeconds": 900,
+            "commands": 5,
+            "emotes": 9,
+            "messages": 33,
+            "chatters": 6
+          },
+          {
+            "offsetSeconds": 1200,
+            "commands": 4,
+            "emotes": 12,
+            "messages": 27,
+            "chatters": 6
+          },
+          {
+            "offsetSeconds": 1500,
+            "commands": 5,
+            "emotes": 24,
+            "messages": 32,
+            "chatters": 5
+          },
+          {
+            "offsetSeconds": 1800,
+            "commands": 2,
+            "emotes": 20,
+            "messages": 34,
+            "chatters": 6
+          },
+          {
+            "offsetSeconds": 2100,
+            "commands": 3,
+            "emotes": 11,
+            "messages": 25,
+            "chatters": 9
+          },
+          {
+            "offsetSeconds": 2400,
+            "commands": 0,
+            "emotes": 1,
+            "messages": 4,
+            "chatters": 2
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T16:51:35.735Z",
+        "chatterStartedAt": "2026-11-11T16:51:35.735Z",
+        "updatedAt": "2026-11-11T17:32:16.502Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "597136690",
+      "session": "6af49d17cfe7a3a6b838e4c5",
+      "tier": "pro",
+      "expected": {
+        "totals": {
+          "messages": 252,
+          "commands": 24,
+          "emotes": 114,
+          "emoteMessages": 50,
+          "redemptions": 0,
+          "follows": 2,
+          "subs": 0,
+          "bits": 0,
+          "raids": 1
+        },
+        "commands": [
+          {
+            "key": "043a718774c572bd8a25adbeb1bfcd5c0256ae11cecf9f9c3f925d0e52beaf89",
+            "label": "8c84765e0e8a33a6d3f24c3caabd0733c2013b57b0bfb40c37c9cd62b31bf3d5",
+            "count": 22,
+            "errors": 0
+          },
+          {
+            "key": "a1d9890884c1b4b960c279cfe7554a900d169422d6cec980beef67761487d3b9",
+            "label": "3b523dad5a8c79c5368e0b0d4178d0adfc19fb32885237ee2b886dbb4ad0e961",
+            "count": 2,
+            "errors": 0
+          }
+        ],
+        "emotes": [
+          {
+            "key": "91cde6993c5b12c4ad1c239a57c5c0770a3016bb8e7d42ba6fd2a2258acf4baf",
+            "label": "ad0276f100383722a4040e6f3e2e3da7e9b04daaf5e93ecf9fd7cb68fdeb5a9f",
+            "count": 13,
+            "messages": 4
+          },
+          {
+            "key": "5a4a4961415b123ed408067af204643052aab2c583b8be3bc5e1c43ed10034c5",
+            "label": "d40704604180d1f8eeb0974c3f98db9dd8039de7c2c0ebb5bbf7176235e0ba94",
+            "count": 9,
+            "messages": 3
+          },
+          {
+            "key": "08809591fb99a0e2c3d7c3822f32db04505ff71121a81860121a5d19400730e3",
+            "label": "b68fcb442244f092534a7fdeb5cd848212f2862c08a0ac6b1c7502f6ec878c5c",
+            "count": 8,
+            "messages": 2
+          },
+          {
+            "key": "cd6b6f1e48a8ca2e7fcc843b4f2f023938228613ece3cb8ee26a6dbdf2a9ab35",
+            "label": "249e35349129a35f376ef621bfa783839968f16e3cd8de9e9ca44e60aa16955d",
+            "count": 8,
+            "messages": 2
+          },
+          {
+            "key": "cdde415798a4f34c403daff90fdeabef5991676ef754c8de49d7918707b325b3",
+            "label": "dae8790864fcde4eeafa0885082234e996409f4501d6c5821ee3e1078bf2c7d2",
+            "count": 8,
+            "messages": 2
+          },
+          {
+            "key": "1378b612ad7519462e069e6bbdf7b51eb443f6b674ca546ae7c5875fceb974cc",
+            "label": "36d837c5768b86a6fc76e77697f3e029cfa75d3612f9a6c3c2e16c68dfd292b5",
+            "count": 6,
+            "messages": 6
+          },
+          {
+            "key": "370385800f0898364c423b53e7e012577f49ef5902e53d5f753eac087142203f",
+            "label": "38b7728332d5408a83246fc7257995bcc9ff95e8a96eb897c8fd632f9871f546",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "12b24d696cdfec46342280d70f8139a7579fc766fb58a606f27420933ef7b042",
+            "label": "2f70b53048c23d6c5ada2cf635dfdbcccc7645699f5ad7a9c94331f61fd318d5",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "4f17e940ceddfa55e2e5cf17560481055fede619c0bf452de99b79002732531c",
+            "label": "3cb380900ca4bafb82f28e5ef3bfe1074ec18ad02e640e4f6e94e5817eddb7d0",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "1934376906c0fb2789535eda214f04dfccffc961f8be9a4235cee2ed5f47ffdf",
+            "label": "1639279f8665b7561ca409db11192c10f35b2a9d822eb6e0972d791509ae0f1d",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "498936134737cabfc7460387c835d06947b41dfe47973c01f14c668671443418",
+            "label": "64cfea4cd925b37f6054ae3caabed6ef54252cc9776835cb5df6cbebcfe1f20f",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "4234f7cddc52886ad4e1535dd55e3ec962c2d9255e023227671107d8df424600",
+            "label": "d9ae656bd5e5bafbf6ce0f2e76831b037ef5bcaa7cd6e67f66782aab9e4c4717",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "d0d865604ca8aeba4c608f27f9b3ab3aaa9a5460e04d4f629abd5e1952af25e7",
+            "label": "3cac29e17e9842080c196e20c0464a9a63c3eba7e661b0f273410800c74f07d7",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "e92860abc9e949e46e8a2b58c68b96e32eff7ae3b2284c009f15457d4c464187",
+            "label": "003d43cc522e124b5b4b176ba34ea6fb866b5c8031b0c62ca7768e882fba47a9",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "11a71a1e3439b235c9b6291c56bdee24b8bd41882aca1106e8510a7f254fbc74",
+            "label": "af71a45beb22db2ad9ee49b821a680d1532a5a2aaf7e0277877ef06f492d7d19",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "3acd8cbe0ee457a5de297f09466b810f656f1f49dc2aa3218fe129b3756ccb6e",
+            "label": "40dad130779f0d3562101d14ea745526df2d5fb8b006f4056be9ea40e7208e45",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "100ebdf0dd6fd2199a8adfaa0649ae098dbb6e6f3dfa6f41e7da221bcbca6dbb",
+            "label": "5e634f3b02d809a33ae3b0c2f9225f89391c40a1fce174d999e663a5316e8eb1",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "9cceab07829867615c03d27ac2dc36b2ed2032b1201ad4fe1925cb7ccc92e322",
+            "label": "9066959537be0a4ff0e2887f43ac13d694563c17ba41822142be5aa57a8f73e8",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "1874c562f086a2bafc46a80c41ba6d325b818a589c837f4b905783919a97d7ba",
+            "label": "1d168ad61261ab95a04a39f7abbc694b436b633d0311c6adae30040951103942",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "524d351990c6f5df736734fcd8e71c50beaf543041b330f1ad995668bbb6dbc2",
+            "label": "54d626e08c1c802b305dad30b7e54a82f102390cc92c7d4db112048935236e9c",
+            "count": 2,
+            "messages": 2
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 2,
+            "messages": 20,
+            "chatters": 4
+          },
+          {
+            "offsetSeconds": 300,
+            "commands": 1,
+            "emotes": 6,
+            "messages": 33,
+            "chatters": 7
+          },
+          {
+            "offsetSeconds": 600,
+            "commands": 4,
+            "emotes": 29,
+            "messages": 44,
+            "chatters": 7
+          },
+          {
+            "offsetSeconds": 900,
+            "commands": 5,
+            "emotes": 9,
+            "messages": 33,
+            "chatters": 6
+          },
+          {
+            "offsetSeconds": 1200,
+            "commands": 4,
+            "emotes": 12,
+            "messages": 27,
+            "chatters": 6
+          },
+          {
+            "offsetSeconds": 1500,
+            "commands": 5,
+            "emotes": 24,
+            "messages": 32,
+            "chatters": 5
+          },
+          {
+            "offsetSeconds": 1800,
+            "commands": 2,
+            "emotes": 20,
+            "messages": 34,
+            "chatters": 6
+          },
+          {
+            "offsetSeconds": 2100,
+            "commands": 3,
+            "emotes": 11,
+            "messages": 25,
+            "chatters": 9
+          },
+          {
+            "offsetSeconds": 2400,
+            "commands": 0,
+            "emotes": 1,
+            "messages": 4,
+            "chatters": 2
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T16:51:35.735Z",
+        "chatterStartedAt": "2026-11-11T16:51:35.735Z",
+        "updatedAt": "2026-11-11T17:32:16.502Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    },
+    {
+      "channel": "402289241",
+      "session": "6af491f3cfe7a3a6b838e487",
+      "tier": "free",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "402289241",
+      "session": "6af491f3cfe7a3a6b838e487",
+      "tier": "premium",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "402289241",
+      "session": "6af491f3cfe7a3a6b838e487",
+      "tier": "pro",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    },
+    {
+      "channel": "406402360",
+      "session": "6af491f3cfe7a3a6b838e486",
+      "tier": "free",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "406402360",
+      "session": "6af491f3cfe7a3a6b838e486",
+      "tier": "premium",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "406402360",
+      "session": "6af491f3cfe7a3a6b838e486",
+      "tier": "pro",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    },
+    {
+      "channel": "654276676",
+      "session": "6af48f85cfe7a3a6b838e47a",
+      "tier": "free",
+      "expected": {
+        "totals": {
+          "messages": 167,
+          "commands": 0,
+          "emotes": 32,
+          "emoteMessages": 18,
+          "redemptions": 0,
+          "follows": 1,
+          "subs": 0,
+          "bits": 1,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [
+          {
+            "key": "102de1703b0112d4cf9c437b3af7137959e0f1f4635d89b98a8b28fc139fe4a0",
+            "label": "374d53a32b267b9f6355ab15a90380bae0b298401ffa436a2e070663efa6b8cd",
+            "count": 8,
+            "messages": 1
+          },
+          {
+            "key": "5bda2711a9648e4a30903abe116647df6e55c5c4ddcc818df0597b87283bc949",
+            "label": "046361cb832880da67e3c218b28f72724e5d7e88f383dd025640e5371c1cad71",
+            "count": 5,
+            "messages": 3
+          },
+          {
+            "key": "b3865f8d03dd6afccba3c75ac144ed7ab2cd4a5343ec7dbf636f9cb9e5a641b1",
+            "label": "784e8cd4bc1924ee7a6aa115c013bc9aa3d915b49db5911849739fb982c950fe",
+            "count": 3,
+            "messages": 3
+          },
+          {
+            "key": "52f69f1c20b4668c2b785fbd780beba596b52030f921531c6b27b63420803e23",
+            "label": "ff80c950d36230a0fcf5ec2467384e693610a58c64ad7bde62f6b672470994a2",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "4937720f3f45960d20de8f551a43f76da0999cb7c245a2e5d31dc90ed0faa8cf",
+            "label": "2c4da63987d276a6b615cce27725d7cb64f426e1aeee0f74d75548c0e19bf402",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "605e9e5503578a59336fac88188d65e144b241283039973f749b2cfacbc48b35",
+            "label": "4c9a2776e0cd4c02f4f593aac15193376352c596210f2bca8bb5321fbc9100dc",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "a76189faca8bbfbefa6024132bb08654fd62838fe44887963e443243feac9075",
+            "label": "faa1104fabe0f299f3ba3bbdb2f52379684de8a79bf2eeb15e6861d070fb26fd",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "4fba17700cb9bbf609a439111151db1a524e43849003c060680f976d9b5a2f38",
+            "label": "d9b9149d90aa64ad71832b102a31f1be439411e910365963b5c8ad699ad528b6",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "91a01cc0734f29ec18f577bb4a746bd0d9435c4a2525e7d6b226a16aa7c09697",
+            "label": "010f1b61cbca2ab7df364614f60d0e232234ab3301ea0015b419749c5c7abacf",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "21f82c0ad919217eaa17af070ddc2d05cb1c8b48773aaf8f12b6d917e145c253",
+            "label": "011049f1e86bde1c3a5468e95a07b50979c230b2cf8f62d04b6615d7bff983b0",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "35c76dd33b1291cfc2f4f58af0517463a338322ad496af47d228851a4d61719d",
+            "label": "5d8be86f9bef30671720d9a1111d3b29b5a929dbc8f8a48dfc0754eee2b740ea",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "f50bebb08b4e263049b4850439834bc1aa038084164c1689a9103244db5cd4f7",
+            "label": "6fa312435791d48ea764167417e64b707cade36b1d7a31fe9321a129ec8a48d5",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "524d351990c6f5df736734fcd8e71c50beaf543041b330f1ad995668bbb6dbc2",
+            "label": "54d626e08c1c802b305dad30b7e54a82f102390cc92c7d4db112048935236e9c",
+            "count": 1,
+            "messages": 1
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "messages": 11,
+            "chatters": 7
+          },
+          {
+            "offsetSeconds": 300,
+            "messages": 22,
+            "chatters": 10
+          },
+          {
+            "offsetSeconds": 600,
+            "messages": 26,
+            "chatters": 11
+          },
+          {
+            "offsetSeconds": 900,
+            "messages": 49,
+            "chatters": 11
+          },
+          {
+            "offsetSeconds": 1200,
+            "messages": 42,
+            "chatters": 10
+          },
+          {
+            "offsetSeconds": 1500,
+            "messages": 17,
+            "chatters": 5
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T15:53:41.709Z",
+        "chatterStartedAt": "2026-11-11T15:53:41.709Z",
+        "updatedAt": "2026-11-11T16:19:53.314Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "654276676",
+      "session": "6af48f85cfe7a3a6b838e47a",
+      "tier": "premium",
+      "expected": {
+        "totals": {
+          "messages": 167,
+          "commands": 0,
+          "emotes": 32,
+          "emoteMessages": 18,
+          "redemptions": 0,
+          "follows": 1,
+          "subs": 0,
+          "bits": 1,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [
+          {
+            "key": "102de1703b0112d4cf9c437b3af7137959e0f1f4635d89b98a8b28fc139fe4a0",
+            "label": "374d53a32b267b9f6355ab15a90380bae0b298401ffa436a2e070663efa6b8cd",
+            "count": 8,
+            "messages": 1
+          },
+          {
+            "key": "5bda2711a9648e4a30903abe116647df6e55c5c4ddcc818df0597b87283bc949",
+            "label": "046361cb832880da67e3c218b28f72724e5d7e88f383dd025640e5371c1cad71",
+            "count": 5,
+            "messages": 3
+          },
+          {
+            "key": "b3865f8d03dd6afccba3c75ac144ed7ab2cd4a5343ec7dbf636f9cb9e5a641b1",
+            "label": "784e8cd4bc1924ee7a6aa115c013bc9aa3d915b49db5911849739fb982c950fe",
+            "count": 3,
+            "messages": 3
+          },
+          {
+            "key": "52f69f1c20b4668c2b785fbd780beba596b52030f921531c6b27b63420803e23",
+            "label": "ff80c950d36230a0fcf5ec2467384e693610a58c64ad7bde62f6b672470994a2",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "4937720f3f45960d20de8f551a43f76da0999cb7c245a2e5d31dc90ed0faa8cf",
+            "label": "2c4da63987d276a6b615cce27725d7cb64f426e1aeee0f74d75548c0e19bf402",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "605e9e5503578a59336fac88188d65e144b241283039973f749b2cfacbc48b35",
+            "label": "4c9a2776e0cd4c02f4f593aac15193376352c596210f2bca8bb5321fbc9100dc",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "a76189faca8bbfbefa6024132bb08654fd62838fe44887963e443243feac9075",
+            "label": "faa1104fabe0f299f3ba3bbdb2f52379684de8a79bf2eeb15e6861d070fb26fd",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "4fba17700cb9bbf609a439111151db1a524e43849003c060680f976d9b5a2f38",
+            "label": "d9b9149d90aa64ad71832b102a31f1be439411e910365963b5c8ad699ad528b6",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "91a01cc0734f29ec18f577bb4a746bd0d9435c4a2525e7d6b226a16aa7c09697",
+            "label": "010f1b61cbca2ab7df364614f60d0e232234ab3301ea0015b419749c5c7abacf",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "21f82c0ad919217eaa17af070ddc2d05cb1c8b48773aaf8f12b6d917e145c253",
+            "label": "011049f1e86bde1c3a5468e95a07b50979c230b2cf8f62d04b6615d7bff983b0",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "35c76dd33b1291cfc2f4f58af0517463a338322ad496af47d228851a4d61719d",
+            "label": "5d8be86f9bef30671720d9a1111d3b29b5a929dbc8f8a48dfc0754eee2b740ea",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "f50bebb08b4e263049b4850439834bc1aa038084164c1689a9103244db5cd4f7",
+            "label": "6fa312435791d48ea764167417e64b707cade36b1d7a31fe9321a129ec8a48d5",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "524d351990c6f5df736734fcd8e71c50beaf543041b330f1ad995668bbb6dbc2",
+            "label": "54d626e08c1c802b305dad30b7e54a82f102390cc92c7d4db112048935236e9c",
+            "count": 1,
+            "messages": 1
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 1,
+            "messages": 11,
+            "chatters": 7
+          },
+          {
+            "offsetSeconds": 300,
+            "commands": 0,
+            "emotes": 11,
+            "messages": 22,
+            "chatters": 10
+          },
+          {
+            "offsetSeconds": 600,
+            "commands": 0,
+            "emotes": 5,
+            "messages": 26,
+            "chatters": 11
+          },
+          {
+            "offsetSeconds": 900,
+            "commands": 0,
+            "emotes": 4,
+            "messages": 49,
+            "chatters": 11
+          },
+          {
+            "offsetSeconds": 1200,
+            "commands": 0,
+            "emotes": 6,
+            "messages": 42,
+            "chatters": 10
+          },
+          {
+            "offsetSeconds": 1500,
+            "commands": 0,
+            "emotes": 5,
+            "messages": 17,
+            "chatters": 5
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T15:53:41.709Z",
+        "chatterStartedAt": "2026-11-11T15:53:41.709Z",
+        "updatedAt": "2026-11-11T16:19:53.314Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "654276676",
+      "session": "6af48f85cfe7a3a6b838e47a",
+      "tier": "pro",
+      "expected": {
+        "totals": {
+          "messages": 167,
+          "commands": 0,
+          "emotes": 32,
+          "emoteMessages": 18,
+          "redemptions": 0,
+          "follows": 1,
+          "subs": 0,
+          "bits": 1,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [
+          {
+            "key": "102de1703b0112d4cf9c437b3af7137959e0f1f4635d89b98a8b28fc139fe4a0",
+            "label": "374d53a32b267b9f6355ab15a90380bae0b298401ffa436a2e070663efa6b8cd",
+            "count": 8,
+            "messages": 1
+          },
+          {
+            "key": "5bda2711a9648e4a30903abe116647df6e55c5c4ddcc818df0597b87283bc949",
+            "label": "046361cb832880da67e3c218b28f72724e5d7e88f383dd025640e5371c1cad71",
+            "count": 5,
+            "messages": 3
+          },
+          {
+            "key": "b3865f8d03dd6afccba3c75ac144ed7ab2cd4a5343ec7dbf636f9cb9e5a641b1",
+            "label": "784e8cd4bc1924ee7a6aa115c013bc9aa3d915b49db5911849739fb982c950fe",
+            "count": 3,
+            "messages": 3
+          },
+          {
+            "key": "52f69f1c20b4668c2b785fbd780beba596b52030f921531c6b27b63420803e23",
+            "label": "ff80c950d36230a0fcf5ec2467384e693610a58c64ad7bde62f6b672470994a2",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "4937720f3f45960d20de8f551a43f76da0999cb7c245a2e5d31dc90ed0faa8cf",
+            "label": "2c4da63987d276a6b615cce27725d7cb64f426e1aeee0f74d75548c0e19bf402",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "605e9e5503578a59336fac88188d65e144b241283039973f749b2cfacbc48b35",
+            "label": "4c9a2776e0cd4c02f4f593aac15193376352c596210f2bca8bb5321fbc9100dc",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "a76189faca8bbfbefa6024132bb08654fd62838fe44887963e443243feac9075",
+            "label": "faa1104fabe0f299f3ba3bbdb2f52379684de8a79bf2eeb15e6861d070fb26fd",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "4fba17700cb9bbf609a439111151db1a524e43849003c060680f976d9b5a2f38",
+            "label": "d9b9149d90aa64ad71832b102a31f1be439411e910365963b5c8ad699ad528b6",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "91a01cc0734f29ec18f577bb4a746bd0d9435c4a2525e7d6b226a16aa7c09697",
+            "label": "010f1b61cbca2ab7df364614f60d0e232234ab3301ea0015b419749c5c7abacf",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "21f82c0ad919217eaa17af070ddc2d05cb1c8b48773aaf8f12b6d917e145c253",
+            "label": "011049f1e86bde1c3a5468e95a07b50979c230b2cf8f62d04b6615d7bff983b0",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "35c76dd33b1291cfc2f4f58af0517463a338322ad496af47d228851a4d61719d",
+            "label": "5d8be86f9bef30671720d9a1111d3b29b5a929dbc8f8a48dfc0754eee2b740ea",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "f50bebb08b4e263049b4850439834bc1aa038084164c1689a9103244db5cd4f7",
+            "label": "6fa312435791d48ea764167417e64b707cade36b1d7a31fe9321a129ec8a48d5",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "524d351990c6f5df736734fcd8e71c50beaf543041b330f1ad995668bbb6dbc2",
+            "label": "54d626e08c1c802b305dad30b7e54a82f102390cc92c7d4db112048935236e9c",
+            "count": 1,
+            "messages": 1
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 1,
+            "messages": 11,
+            "chatters": 7
+          },
+          {
+            "offsetSeconds": 300,
+            "commands": 0,
+            "emotes": 11,
+            "messages": 22,
+            "chatters": 10
+          },
+          {
+            "offsetSeconds": 600,
+            "commands": 0,
+            "emotes": 5,
+            "messages": 26,
+            "chatters": 11
+          },
+          {
+            "offsetSeconds": 900,
+            "commands": 0,
+            "emotes": 4,
+            "messages": 49,
+            "chatters": 11
+          },
+          {
+            "offsetSeconds": 1200,
+            "commands": 0,
+            "emotes": 6,
+            "messages": 42,
+            "chatters": 10
+          },
+          {
+            "offsetSeconds": 1500,
+            "commands": 0,
+            "emotes": 5,
+            "messages": 17,
+            "chatters": 5
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T15:53:41.709Z",
+        "chatterStartedAt": "2026-11-11T15:53:41.709Z",
+        "updatedAt": "2026-11-11T16:19:53.314Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    },
+    {
+      "channel": "752387691",
+      "session": "6af4864fcfe7a3a6b838e46d",
+      "tier": "free",
+      "expected": {
+        "totals": {
+          "messages": 1,
+          "commands": 0,
+          "emotes": 0,
+          "emoteMessages": 0,
+          "redemptions": 0,
+          "follows": 0,
+          "subs": 0,
+          "bits": 0,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "messages": 1,
+            "chatters": 1
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T15:14:24.619Z",
+        "chatterStartedAt": "2026-11-11T15:14:24.619Z",
+        "updatedAt": "2026-11-11T15:14:25.519Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "752387691",
+      "session": "6af4864fcfe7a3a6b838e46d",
+      "tier": "premium",
+      "expected": {
+        "totals": {
+          "messages": 1,
+          "commands": 0,
+          "emotes": 0,
+          "emoteMessages": 0,
+          "redemptions": 0,
+          "follows": 0,
+          "subs": 0,
+          "bits": 0,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T15:14:24.619Z",
+        "chatterStartedAt": "2026-11-11T15:14:24.619Z",
+        "updatedAt": "2026-11-11T15:14:25.519Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "752387691",
+      "session": "6af4864fcfe7a3a6b838e46d",
+      "tier": "pro",
+      "expected": {
+        "totals": {
+          "messages": 1,
+          "commands": 0,
+          "emotes": 0,
+          "emoteMessages": 0,
+          "redemptions": 0,
+          "follows": 0,
+          "subs": 0,
+          "bits": 0,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T15:14:24.619Z",
+        "chatterStartedAt": "2026-11-11T15:14:24.619Z",
+        "updatedAt": "2026-11-11T15:14:25.519Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    },
+    {
+      "channel": "826382636",
+      "session": "6af4805ccfe7a3a6b838e45f",
+      "tier": "free",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "826382636",
+      "session": "6af4805ccfe7a3a6b838e45f",
+      "tier": "premium",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "826382636",
+      "session": "6af4805ccfe7a3a6b838e45f",
+      "tier": "pro",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    },
+    {
+      "channel": "601512988",
+      "session": "6af47f2fcfe7a3a6b838e45e",
+      "tier": "free",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "601512988",
+      "session": "6af47f2fcfe7a3a6b838e45e",
+      "tier": "premium",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "601512988",
+      "session": "6af47f2fcfe7a3a6b838e45e",
+      "tier": "pro",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    },
+    {
+      "channel": "533945592",
+      "session": "6af46b8acfe7a3a6b838e44a",
+      "tier": "free",
+      "expected": {
+        "totals": {
+          "messages": 63,
+          "commands": 0,
+          "emotes": 67,
+          "emoteMessages": 29,
+          "redemptions": 0,
+          "follows": 2,
+          "subs": 0,
+          "bits": 0,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [
+          {
+            "key": "ed580e7d333dd62cbc91b440bf41479a9d4512b38735a3017368e71992ac7ef1",
+            "label": "7cb13b144addaef5f7c379b14a5e3db5f6f3e5b8174fddd9c21009d2ac6bf3a8",
+            "count": 9,
+            "messages": 3
+          },
+          {
+            "key": "9b8c221e40b3360f3c204de417f78270a5e0554d32cb12bee9e241c5110cf2cf",
+            "label": "ef3d83d12f5c62e79baae29a68974cb01e5c1d9dad3377f82325f245b2af2873",
+            "count": 6,
+            "messages": 2
+          },
+          {
+            "key": "a0422bbae02579721557e7e951b3c126897c7de3b604dcffc817d464a843460c",
+            "label": "f97a603be61d27664395e54a5f33715716aff7fdce394e9a3b2a8b26f1a0c29d",
+            "count": 4,
+            "messages": 3
+          },
+          {
+            "key": "d2fe4ef987ee9c05321fefa9615bea3e17190eb6948789caaa3603db6a20c3a1",
+            "label": "a53e5600ea19b4ebc052d832d6ca3320f72e48a104b38217e7f3e938098696a5",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "01eabb84a831e778db051688a7cb01d0f52cddf1b4a32c553c9d722ea0901896",
+            "label": "b4965cd0cefa07352333f7b1636f59226fba424060f143f981ebe0eb1cec1789",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "05b9581cf7e0d72ce9b3c17c4c8fa0341f09c1e8602138b5f49a1bd48eb1a6ad",
+            "label": "742f3ecbc1036a3d21703b07b3fc73f29215b81d64d39a8317acde34ae5715fc",
+            "count": 3,
+            "messages": 2
+          },
+          {
+            "key": "c6847177d84de1c9ac012df625f5a3b448924ed34b5c49c73cd0c3c4735712e6",
+            "label": "7edf3d1edf1a09a0d6de80d7f6297cd9282159be4983d06bb4adb72292a71e77",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "9cc4255414a4816045846e1880399557750cc3b1f42abbff239c771f929d57d9",
+            "label": "045fd251d2595041eb23d42737d8957f694ff0c60168e571363ed47e772eb540",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "f9f29b83da4a3ff9bad89b583d42b1083da1e6062216f1134c66383bc589c29c",
+            "label": "ca295192161bb4a872f517689d8236a2cd047b962d723cb0826dea02bf219c94",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "80fb7901b59121f8883a60d5cca714e65f5b589d1f67baa22fb99dd3800f41a2",
+            "label": "c001664d05c80e26942edff380b282f87da20e762f0ee21408b827778a5df197",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "bc724f5e132ebbcf92bea8e63605848cc93dc9a436744e24a6c6f33b41933711",
+            "label": "7780e2e8aa43ba4b9fde1b213c2e26043d4e0bb06232ddad3d62823f05655ded",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "8eec53673f6921c37455f41fccae6543e07b0f641cf2ee79acb82baa92a07da1",
+            "label": "9e1e158651017ad7cfd87fa018ae88682bd054b4fc1f8570b8d9629676e1ee5a",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "6a6cbdf05621e72d308be2834dd86098c8c983f268b984a539a065b747472c02",
+            "label": "a23c3e94a22a8310a9f68888af3d00a2304ea65a4dfb00b2a3441efb8e500dac",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "f13c8d86e9962e5b221da42529e3064dc4f059055c5e682f2c0f82c65223835f",
+            "label": "4ea573647bc0665c57b8de53e818e71d5f2e5f3547fc2e8ac7bafc6b8b4c85d1",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "fc0c013275ec8733717a088baaf15292209981ef571467b835620569e80fb7e1",
+            "label": "1565c5abec630c14ad098db57e6617758657d8a23625eac0948177a743b59ee7",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "ddf73b3a270ba540b8c590273755551bf9aebc3519e9ae5312479f1dd801e8ed",
+            "label": "164520f8ce2cb96cfe5a0321386da0931080f91b77212b8647a9f1ccd3b303dc",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "fbd3869c54b4d3a657314b067130265bacd02c0ed4dec67c221f795a652055d1",
+            "label": "691a7057debaf9654ec8cb48666052bb37487c42eaa8a865a3437d8059cd257b",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "bf78d616c10249507129a1160608e98412eefe988220fe98998205ec92bc7e3d",
+            "label": "864fab3b60555687d0b0f7683b08a4085ae029f1154a98e82def72659ab37a14",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "7a83aff73f4679edd395d0e53d46b33d6415b5cca4da6a400a34e3dd7959adab",
+            "label": "d0e325e69963856efa8a021e96a37abc860c334de618c7698a742683c04315b2",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "3468c864930e9e7b24573ebd31ed816e12b2b70b62ca9d1ebad2aec609702254",
+            "label": "fbda675c81d0d30be42aaad44e90961c7870d364b0d12ce52cb608aa62a9eb8d",
+            "count": 1,
+            "messages": 1
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 300,
+            "messages": 3,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 2100,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 2700,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 3300,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 3600,
+            "messages": 4,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 5700,
+            "messages": 6,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 6000,
+            "messages": 9,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 6900,
+            "messages": 13,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 7500,
+            "messages": 3,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 9300,
+            "messages": 4,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 9600,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 11700,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 12000,
+            "messages": 10,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 12300,
+            "messages": 4,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 12600,
+            "messages": 1,
+            "chatters": 1
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T13:20:10.337Z",
+        "chatterStartedAt": "2026-11-11T13:20:10.337Z",
+        "updatedAt": "2026-11-11T16:50:19.287Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "533945592",
+      "session": "6af46b8acfe7a3a6b838e44a",
+      "tier": "premium",
+      "expected": {
+        "totals": {
+          "messages": 63,
+          "commands": 0,
+          "emotes": 67,
+          "emoteMessages": 29,
+          "redemptions": 0,
+          "follows": 2,
+          "subs": 0,
+          "bits": 0,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [
+          {
+            "key": "ed580e7d333dd62cbc91b440bf41479a9d4512b38735a3017368e71992ac7ef1",
+            "label": "7cb13b144addaef5f7c379b14a5e3db5f6f3e5b8174fddd9c21009d2ac6bf3a8",
+            "count": 9,
+            "messages": 3
+          },
+          {
+            "key": "9b8c221e40b3360f3c204de417f78270a5e0554d32cb12bee9e241c5110cf2cf",
+            "label": "ef3d83d12f5c62e79baae29a68974cb01e5c1d9dad3377f82325f245b2af2873",
+            "count": 6,
+            "messages": 2
+          },
+          {
+            "key": "a0422bbae02579721557e7e951b3c126897c7de3b604dcffc817d464a843460c",
+            "label": "f97a603be61d27664395e54a5f33715716aff7fdce394e9a3b2a8b26f1a0c29d",
+            "count": 4,
+            "messages": 3
+          },
+          {
+            "key": "d2fe4ef987ee9c05321fefa9615bea3e17190eb6948789caaa3603db6a20c3a1",
+            "label": "a53e5600ea19b4ebc052d832d6ca3320f72e48a104b38217e7f3e938098696a5",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "01eabb84a831e778db051688a7cb01d0f52cddf1b4a32c553c9d722ea0901896",
+            "label": "b4965cd0cefa07352333f7b1636f59226fba424060f143f981ebe0eb1cec1789",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "05b9581cf7e0d72ce9b3c17c4c8fa0341f09c1e8602138b5f49a1bd48eb1a6ad",
+            "label": "742f3ecbc1036a3d21703b07b3fc73f29215b81d64d39a8317acde34ae5715fc",
+            "count": 3,
+            "messages": 2
+          },
+          {
+            "key": "c6847177d84de1c9ac012df625f5a3b448924ed34b5c49c73cd0c3c4735712e6",
+            "label": "7edf3d1edf1a09a0d6de80d7f6297cd9282159be4983d06bb4adb72292a71e77",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "9cc4255414a4816045846e1880399557750cc3b1f42abbff239c771f929d57d9",
+            "label": "045fd251d2595041eb23d42737d8957f694ff0c60168e571363ed47e772eb540",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "f9f29b83da4a3ff9bad89b583d42b1083da1e6062216f1134c66383bc589c29c",
+            "label": "ca295192161bb4a872f517689d8236a2cd047b962d723cb0826dea02bf219c94",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "80fb7901b59121f8883a60d5cca714e65f5b589d1f67baa22fb99dd3800f41a2",
+            "label": "c001664d05c80e26942edff380b282f87da20e762f0ee21408b827778a5df197",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "bc724f5e132ebbcf92bea8e63605848cc93dc9a436744e24a6c6f33b41933711",
+            "label": "7780e2e8aa43ba4b9fde1b213c2e26043d4e0bb06232ddad3d62823f05655ded",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "8eec53673f6921c37455f41fccae6543e07b0f641cf2ee79acb82baa92a07da1",
+            "label": "9e1e158651017ad7cfd87fa018ae88682bd054b4fc1f8570b8d9629676e1ee5a",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "6a6cbdf05621e72d308be2834dd86098c8c983f268b984a539a065b747472c02",
+            "label": "a23c3e94a22a8310a9f68888af3d00a2304ea65a4dfb00b2a3441efb8e500dac",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "f13c8d86e9962e5b221da42529e3064dc4f059055c5e682f2c0f82c65223835f",
+            "label": "4ea573647bc0665c57b8de53e818e71d5f2e5f3547fc2e8ac7bafc6b8b4c85d1",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "fc0c013275ec8733717a088baaf15292209981ef571467b835620569e80fb7e1",
+            "label": "1565c5abec630c14ad098db57e6617758657d8a23625eac0948177a743b59ee7",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "ddf73b3a270ba540b8c590273755551bf9aebc3519e9ae5312479f1dd801e8ed",
+            "label": "164520f8ce2cb96cfe5a0321386da0931080f91b77212b8647a9f1ccd3b303dc",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "fbd3869c54b4d3a657314b067130265bacd02c0ed4dec67c221f795a652055d1",
+            "label": "691a7057debaf9654ec8cb48666052bb37487c42eaa8a865a3437d8059cd257b",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "bf78d616c10249507129a1160608e98412eefe988220fe98998205ec92bc7e3d",
+            "label": "864fab3b60555687d0b0f7683b08a4085ae029f1154a98e82def72659ab37a14",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "7a83aff73f4679edd395d0e53d46b33d6415b5cca4da6a400a34e3dd7959adab",
+            "label": "d0e325e69963856efa8a021e96a37abc860c334de618c7698a742683c04315b2",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "3468c864930e9e7b24573ebd31ed816e12b2b70b62ca9d1ebad2aec609702254",
+            "label": "fbda675c81d0d30be42aaad44e90961c7870d364b0d12ce52cb608aa62a9eb8d",
+            "count": 1,
+            "messages": 1
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 300,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 3,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 2100,
+            "commands": 0,
+            "emotes": 1,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 2700,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 3300,
+            "commands": 0,
+            "emotes": 1,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 3600,
+            "commands": 0,
+            "emotes": 3,
+            "messages": 4,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 5700,
+            "commands": 0,
+            "emotes": 9,
+            "messages": 6,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 6000,
+            "commands": 0,
+            "emotes": 3,
+            "messages": 9,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 6900,
+            "commands": 0,
+            "emotes": 34,
+            "messages": 13,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 7500,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 3,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 9300,
+            "commands": 0,
+            "emotes": 2,
+            "messages": 4,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 9600,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 11700,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 12000,
+            "commands": 0,
+            "emotes": 8,
+            "messages": 10,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 12300,
+            "commands": 0,
+            "emotes": 6,
+            "messages": 4,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 12600,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T13:20:10.337Z",
+        "chatterStartedAt": "2026-11-11T13:20:10.337Z",
+        "updatedAt": "2026-11-11T16:50:19.287Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "533945592",
+      "session": "6af46b8acfe7a3a6b838e44a",
+      "tier": "pro",
+      "expected": {
+        "totals": {
+          "messages": 63,
+          "commands": 0,
+          "emotes": 67,
+          "emoteMessages": 29,
+          "redemptions": 0,
+          "follows": 2,
+          "subs": 0,
+          "bits": 0,
+          "raids": 0
+        },
+        "commands": [],
+        "emotes": [
+          {
+            "key": "ed580e7d333dd62cbc91b440bf41479a9d4512b38735a3017368e71992ac7ef1",
+            "label": "7cb13b144addaef5f7c379b14a5e3db5f6f3e5b8174fddd9c21009d2ac6bf3a8",
+            "count": 9,
+            "messages": 3
+          },
+          {
+            "key": "9b8c221e40b3360f3c204de417f78270a5e0554d32cb12bee9e241c5110cf2cf",
+            "label": "ef3d83d12f5c62e79baae29a68974cb01e5c1d9dad3377f82325f245b2af2873",
+            "count": 6,
+            "messages": 2
+          },
+          {
+            "key": "a0422bbae02579721557e7e951b3c126897c7de3b604dcffc817d464a843460c",
+            "label": "f97a603be61d27664395e54a5f33715716aff7fdce394e9a3b2a8b26f1a0c29d",
+            "count": 4,
+            "messages": 3
+          },
+          {
+            "key": "d2fe4ef987ee9c05321fefa9615bea3e17190eb6948789caaa3603db6a20c3a1",
+            "label": "a53e5600ea19b4ebc052d832d6ca3320f72e48a104b38217e7f3e938098696a5",
+            "count": 4,
+            "messages": 1
+          },
+          {
+            "key": "01eabb84a831e778db051688a7cb01d0f52cddf1b4a32c553c9d722ea0901896",
+            "label": "b4965cd0cefa07352333f7b1636f59226fba424060f143f981ebe0eb1cec1789",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "05b9581cf7e0d72ce9b3c17c4c8fa0341f09c1e8602138b5f49a1bd48eb1a6ad",
+            "label": "742f3ecbc1036a3d21703b07b3fc73f29215b81d64d39a8317acde34ae5715fc",
+            "count": 3,
+            "messages": 2
+          },
+          {
+            "key": "c6847177d84de1c9ac012df625f5a3b448924ed34b5c49c73cd0c3c4735712e6",
+            "label": "7edf3d1edf1a09a0d6de80d7f6297cd9282159be4983d06bb4adb72292a71e77",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "9cc4255414a4816045846e1880399557750cc3b1f42abbff239c771f929d57d9",
+            "label": "045fd251d2595041eb23d42737d8957f694ff0c60168e571363ed47e772eb540",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "f9f29b83da4a3ff9bad89b583d42b1083da1e6062216f1134c66383bc589c29c",
+            "label": "ca295192161bb4a872f517689d8236a2cd047b962d723cb0826dea02bf219c94",
+            "count": 3,
+            "messages": 1
+          },
+          {
+            "key": "80fb7901b59121f8883a60d5cca714e65f5b589d1f67baa22fb99dd3800f41a2",
+            "label": "c001664d05c80e26942edff380b282f87da20e762f0ee21408b827778a5df197",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "bc724f5e132ebbcf92bea8e63605848cc93dc9a436744e24a6c6f33b41933711",
+            "label": "7780e2e8aa43ba4b9fde1b213c2e26043d4e0bb06232ddad3d62823f05655ded",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "8eec53673f6921c37455f41fccae6543e07b0f641cf2ee79acb82baa92a07da1",
+            "label": "9e1e158651017ad7cfd87fa018ae88682bd054b4fc1f8570b8d9629676e1ee5a",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "6a6cbdf05621e72d308be2834dd86098c8c983f268b984a539a065b747472c02",
+            "label": "a23c3e94a22a8310a9f68888af3d00a2304ea65a4dfb00b2a3441efb8e500dac",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "f13c8d86e9962e5b221da42529e3064dc4f059055c5e682f2c0f82c65223835f",
+            "label": "4ea573647bc0665c57b8de53e818e71d5f2e5f3547fc2e8ac7bafc6b8b4c85d1",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "fc0c013275ec8733717a088baaf15292209981ef571467b835620569e80fb7e1",
+            "label": "1565c5abec630c14ad098db57e6617758657d8a23625eac0948177a743b59ee7",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "ddf73b3a270ba540b8c590273755551bf9aebc3519e9ae5312479f1dd801e8ed",
+            "label": "164520f8ce2cb96cfe5a0321386da0931080f91b77212b8647a9f1ccd3b303dc",
+            "count": 2,
+            "messages": 1
+          },
+          {
+            "key": "fbd3869c54b4d3a657314b067130265bacd02c0ed4dec67c221f795a652055d1",
+            "label": "691a7057debaf9654ec8cb48666052bb37487c42eaa8a865a3437d8059cd257b",
+            "count": 2,
+            "messages": 2
+          },
+          {
+            "key": "bf78d616c10249507129a1160608e98412eefe988220fe98998205ec92bc7e3d",
+            "label": "864fab3b60555687d0b0f7683b08a4085ae029f1154a98e82def72659ab37a14",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "7a83aff73f4679edd395d0e53d46b33d6415b5cca4da6a400a34e3dd7959adab",
+            "label": "d0e325e69963856efa8a021e96a37abc860c334de618c7698a742683c04315b2",
+            "count": 1,
+            "messages": 1
+          },
+          {
+            "key": "3468c864930e9e7b24573ebd31ed816e12b2b70b62ca9d1ebad2aec609702254",
+            "label": "fbda675c81d0d30be42aaad44e90961c7870d364b0d12ce52cb608aa62a9eb8d",
+            "count": 1,
+            "messages": 1
+          }
+        ],
+        "series": [
+          {
+            "offsetSeconds": 0,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 300,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 3,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 2100,
+            "commands": 0,
+            "emotes": 1,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 2700,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 3300,
+            "commands": 0,
+            "emotes": 1,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 3600,
+            "commands": 0,
+            "emotes": 3,
+            "messages": 4,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 5700,
+            "commands": 0,
+            "emotes": 9,
+            "messages": 6,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 6000,
+            "commands": 0,
+            "emotes": 3,
+            "messages": 9,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 6900,
+            "commands": 0,
+            "emotes": 34,
+            "messages": 13,
+            "chatters": 2
+          },
+          {
+            "offsetSeconds": 7500,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 3,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 9300,
+            "commands": 0,
+            "emotes": 2,
+            "messages": 4,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 9600,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 11700,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 12000,
+            "commands": 0,
+            "emotes": 8,
+            "messages": 10,
+            "chatters": 1
+          },
+          {
+            "offsetSeconds": 12300,
+            "commands": 0,
+            "emotes": 6,
+            "messages": 4,
+            "chatters": 3
+          },
+          {
+            "offsetSeconds": 12600,
+            "commands": 0,
+            "emotes": 0,
+            "messages": 1,
+            "chatters": 1
+          }
+        ],
+        "coverageStartedAt": "2026-11-11T13:20:10.337Z",
+        "chatterStartedAt": "2026-11-11T13:20:10.337Z",
+        "updatedAt": "2026-11-11T16:50:19.287Z",
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    },
+    {
+      "channel": "831390633",
+      "session": "6af467bccfe7a3a6b838e444",
+      "tier": "free",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "free",
+        "capabilities": {
+          "trends": false,
+          "comparison": false,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "831390633",
+      "session": "6af467bccfe7a3a6b838e444",
+      "tier": "premium",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "premium",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": false
+        }
+      }
+    },
+    {
+      "channel": "831390633",
+      "session": "6af467bccfe7a3a6b838e444",
+      "tier": "pro",
+      "expected": {
+        "totals": null,
+        "commands": [],
+        "emotes": [],
+        "series": [],
+        "coverageStartedAt": null,
+        "chatterStartedAt": null,
+        "updatedAt": null,
+        "pending": false,
+        "truncated": false,
+        "planTier": "pro",
+        "capabilities": {
+          "trends": true,
+          "comparison": true,
+          "users": true
+        }
+      }
+    }
+  ]
+}
