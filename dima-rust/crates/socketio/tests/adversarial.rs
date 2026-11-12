@@ -1021,3 +1021,197 @@ async fn the_recovery_modes_differ_as_in_the_reference() {
     );
     s.server.stop().await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_client_that_stops_answering_heartbeats_is_closed() {
+    let s = setup(
+        Options {
+            ping_interval: Duration::from_millis(200),
+            ping_timeout: Duration::from_millis(200),
+            ..Options::default()
+        },
+        NamespaceOptions::default(),
+    )
+    .await;
+    let mut alive = Ws::open(s.server.addr).await;
+    alive.join("/p", &ok()).await.unwrap();
+    // Read (and answer pings) all along.
+    let alive = tokio::spawn(async move { alive.closed_within(2 * SECOND).await });
+    let mut silent = Ws::open(s.server.addr).await;
+    silent.join("/f/silent", &ok()).await.unwrap();
+    silent.answer_pings = false;
+    assert!(silent.closed_within(3 * SECOND).await);
+    let seen = Arc::clone(&s.seen);
+    eventually("ping timeout", || {
+        seen.disconnects
+            .lock()
+            .unwrap()
+            .contains(&("/f/silent".to_owned(), DisconnectReason::PingTimeout))
+    })
+    .await;
+    // A recoverable reason: the session is kept.
+    assert_eq!(s.server.io.stats().sessions, 1);
+    assert!(!alive.await.unwrap(), "a client that answers stays");
+    s.server.stop().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn overlapping_polling_requests_end_the_session() {
+    let s = setup(Options::default(), NamespaceOptions::default()).await;
+    // Two polls at once (`overlap from client`).
+    let polling = Polling::open(s.server.addr).await;
+    let _ = polling.poll(SECOND).await;
+    let first = tokio::spawn({
+        let addr = s.server.addr;
+        let path = format!("/socket.io/?EIO=4&transport=polling&sid={}", polling.sid);
+        async move {
+            http(addr, "GET", &path, &[], b"", 5 * SECOND)
+                .await
+                .map(|a| a.status)
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let second = polling.poll(SECOND).await;
+    assert_eq!(second, Err(Some(400)));
+    let first = first.await.unwrap();
+    assert_eq!(first, Some(200), "the waiting poll ends with the close");
+    assert_eq!(
+        polling.poll(SECOND).await,
+        Err(Some(400)),
+        "the session is gone"
+    );
+    // Two POSTs at once (`data request overlap from client`): the first one's body never comes.
+    let polling = Polling::open(s.server.addr).await;
+    let path = format!("/socket.io/?EIO=4&transport=polling&sid={}", polling.sid);
+    let stalled = {
+        let request = format!(
+            "POST {path} HTTP/1.1\r\nHost: x\r\nContent-Type: text/plain\r\nContent-Length: 100\r\n\r\n4"
+        );
+        let mut stream = tokio::net::TcpStream::connect(s.server.addr).await.unwrap();
+        tokio::io::AsyncWriteExt::write_all(&mut stream, request.as_bytes())
+            .await
+            .unwrap();
+        stream
+    };
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert_eq!(polling.post(&["40/p,{}"]).await, Some(400));
+    assert_eq!(
+        polling.poll(SECOND).await,
+        Err(Some(400)),
+        "the session is gone"
+    );
+    drop(stalled);
+    s.server.stop().await;
+}
+
+/// A known difference: `engineioxide` ends the whole session when a WebSocket upgrade fails
+/// after its handshake (a wrong probe, or no probe within the upgrade timeout), where
+/// `engine.io` only closes the probe and keeps the client on polling. The client reconnects.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_failed_upgrade_ends_the_session() {
+    use futures_util::SinkExt as _;
+    use tokio_tungstenite::tungstenite::Message;
+    let s = setup(Options::default(), NamespaceOptions::default()).await;
+    let polling = Polling::open(s.server.addr).await;
+    assert_eq!(polling.post(&["40/p,{}"]).await, Some(200));
+    let _ = polling.poll(SECOND).await;
+    let url = format!(
+        "ws://{}/socket.io/?EIO=4&transport=websocket&sid={}",
+        s.server.addr, polling.sid
+    );
+    let (mut ws, _) = tokio_tungstenite::connect_async(url).await.unwrap();
+    ws.send(Message::text("4not a probe")).await.unwrap();
+    let mut gone = false;
+    for _ in 0..20 {
+        if matches!(polling.poll(SECOND).await, Err(Some(400))) {
+            gone = true;
+            break;
+        }
+    }
+    assert!(
+        gone,
+        "engineioxide closed the polling session with the failed upgrade"
+    );
+    s.server.stop().await;
+}
+
+/// `/k`: the check counts its calls and gives each socket its own counter.
+struct Counted {
+    checks: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl Namespace for Counted {
+    type Data = std::sync::atomic::AtomicUsize;
+
+    async fn check(
+        &self,
+        _handshake: &Handshake,
+        _namespace: &str,
+    ) -> Result<Self::Data, ConnectError> {
+        let n = self
+            .checks
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Ok(std::sync::atomic::AtomicUsize::new(n * 100))
+    }
+
+    async fn on_connect(&self, socket: Socket<Self::Data>) {
+        let value = socket
+            .data()
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let _ = socket.emit("value", &[json!(value), json!(socket.recovered())]);
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_recovered_socket_keeps_its_data_and_skips_the_check() {
+    let checks = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let slot: Arc<Mutex<Option<NamespaceRef<Counted>>>> = Arc::default();
+    let declared = Arc::clone(&slot);
+    let counted_checks = Arc::clone(&checks);
+    let server = TestServer::start_with(Options::default(), Runtime::default(), move |builder| {
+        let r = builder
+            .namespace(
+                "/k",
+                NamespaceOptions::default(),
+                Counted {
+                    checks: counted_checks,
+                },
+            )
+            .unwrap();
+        *declared.lock().unwrap() = Some(r);
+    })
+    .await;
+    let counted = slot.lock().unwrap().take().unwrap();
+    let mut client = Ws::open(server.addr).await;
+    let connect = client.join("/k", &ok()).await.unwrap();
+    let value = client
+        .until(|t| event(t, "/k").is_some(), SECOND)
+        .await
+        .unwrap();
+    let args = event(&value, "/k").unwrap();
+    assert_eq!((&args[1], &args[2]), (&json!(0), &json!(false)));
+    let before = counted.sockets("/k").pop().unwrap();
+    client.drop_connection();
+    eventually("the socket left", || counted.sockets("/k").is_empty()).await;
+    let auth = json!({"pid": connect["pid"], "offset": args[3]});
+    let mut back = Ws::open(server.addr).await;
+    assert_eq!(back.join("/k", &auth).await.unwrap(), connect);
+    let value = back
+        .until(|t| event(t, "/k").is_some(), SECOND)
+        .await
+        .unwrap();
+    let args = event(&value, "/k").unwrap();
+    assert_eq!(
+        (&args[1], &args[2]),
+        (&json!(1), &json!(true)),
+        "same counter, recovered"
+    );
+    assert_eq!(
+        checks.load(std::sync::atomic::Ordering::SeqCst),
+        1,
+        "the check was skipped"
+    );
+    let after = counted.sockets("/k").pop().unwrap();
+    assert!(Arc::ptr_eq(before.data(), after.data()));
+    server.stop().await;
+}

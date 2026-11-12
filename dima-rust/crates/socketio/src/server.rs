@@ -67,6 +67,7 @@ pub(crate) struct Shared {
     pub recovery: recovery::Totals,
     namespaces: AtomicUsize,
     next_key: AtomicU64,
+    next_ack: AtomicU64,
     /// Every task the server starts.
     pub tasks: TaskTracker,
     /// Shutdown has begun: no new connection, no new socket.
@@ -82,6 +83,11 @@ impl Shared {
 
     pub fn next_key(&self) -> u64 {
         self.next_key.fetch_add(1, Ordering::Relaxed)
+    }
+
+    /// The id of a server-to-client acknowledgement.
+    pub fn next_ack_id(&self) -> u64 {
+        self.next_ack.fetch_add(1, Ordering::Relaxed)
     }
 
     /// Counts a new concrete namespace; `false` at `max_namespaces`.
@@ -171,6 +177,7 @@ impl Builder {
             recovery: recovery::Totals::default(),
             namespaces: AtomicUsize::new(0),
             next_key: AtomicU64::new(1),
+            next_ack: AtomicU64::new(0),
             tasks: TaskTracker::new(),
             stop: CancellationToken::new(),
             hard_stop: CancellationToken::new(),
@@ -295,6 +302,27 @@ impl Builder {
             shutdown.wait().await;
             if let Some(inner) = weak.upgrade() {
                 SocketIo { inner }.shutdown().await;
+            }
+        });
+        // The reference's adapters sweep every 60 s; stores here are also swept when touched.
+        let weak = Arc::downgrade(&inner);
+        let every = shared
+            .options
+            .recovery_sweep_interval
+            .max(Duration::from_secs(1));
+        let stop = shared.stop.clone();
+        shared.tasks.spawn(async move {
+            let mut tick = tokio::time::interval(every);
+            tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            loop {
+                tokio::select! {
+                    () = stop.cancelled() => return,
+                    _ = tick.tick() => {}
+                }
+                let Some(inner) = weak.upgrade() else { return };
+                for def in inner.registry.all() {
+                    def.sweep();
+                }
             }
         });
         SocketIo { inner }

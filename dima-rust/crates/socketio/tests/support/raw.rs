@@ -26,6 +26,8 @@ pub enum Next {
 pub struct Ws {
     ws: WebSocketStream<MaybeTlsStream<TcpStream>>,
     pub sid: String,
+    /// Whether heartbeat pings are answered (a test of the heartbeat turns it off).
+    pub answer_pings: bool,
 }
 
 impl Ws {
@@ -38,6 +40,7 @@ impl Ws {
         let mut client = Self {
             ws,
             sid: String::new(),
+            answer_pings: true,
         };
         let Next::Text(open) = client.next(Duration::from_secs(5)).await else {
             panic!("no open packet");
@@ -69,7 +72,9 @@ impl Ws {
             };
             match frame {
                 Message::Text(text) if text.as_str() == "2" => {
-                    let _ = self.ws.send(Message::text("3")).await;
+                    if self.answer_pings {
+                        let _ = self.ws.send(Message::text("3")).await;
+                    }
                 }
                 Message::Text(text) => return Next::Text(text.as_str().to_owned()),
                 Message::Close(_) => return Next::Closed,

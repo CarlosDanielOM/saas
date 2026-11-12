@@ -114,8 +114,10 @@ where
         (None, Some(target)) => Some(target.as_str().to_owned()),
         _ => None,
     };
+    // An upgrade never reaches the client files (they listen to `request` events only).
+    let upgrade = wants_upgrade(req.headers());
     match target {
-        Some(target) if client_files::is_client_path(&target) => {
+        Some(target) if !upgrade && client_files::is_client_path(&target) => {
             client_files::serve(req.headers(), &target).await
         }
         Some(target) if target.starts_with("/socket.io/") => engine(io, req, target).await,
@@ -328,17 +330,25 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
         .and_then(|value| value.to_str().ok())
         .is_some_and(|ua| ua.contains(";MSIE") || ua.contains("Trident/"));
 
-    // A poll waits in Engine.IO; the client abandoning it ends the session.
-    let poll = match (&conn, polling && method == Method::GET) {
-        (Some(conn), true) => Some(conn.poll_started()),
+    // A poll waits in Engine.IO, a POST is read there; the client abandoning either ends the
+    // session, and a second POST while one is read is an overlap (`engine.io` closes then).
+    let guard = match (&conn, polling) {
+        (Some(conn), true) if method == Method::GET => Some(conn.poll_started()),
+        (Some(conn), true) => match conn.post_started() {
+            Some(guard) => Some(guard),
+            None => {
+                conn.close(crate::DisconnectReason::TransportError);
+                return plain(StatusCode::BAD_REQUEST, None, Body::empty());
+            }
+        },
         _ => None,
     };
     let response = match io.engine.clone().oneshot(req).await {
         Ok(response) => response,
         Err(never) => match never {},
     };
-    if let Some(poll) = poll {
-        poll.finish();
+    if let Some(guard) = guard {
+        guard.finish();
     }
     let (mut parts, body) = response.into_parts();
     if !polling || parts.status != StatusCode::OK {

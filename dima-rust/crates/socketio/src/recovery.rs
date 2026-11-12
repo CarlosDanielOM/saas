@@ -465,6 +465,15 @@ impl<D> State<D> {
             .is_some_and(|last| last.seq > cursor)
     }
 
+    /// The periodic sweep over every namespace of the store.
+    pub fn sweep(&mut self, ctx: &Ctx<'_>) {
+        for record in self.records.values_mut() {
+            record.sweep(ctx.now, ctx.timing, ctx.totals);
+        }
+        self.records.retain(|_, record| !record.is_empty());
+        self.compact(ctx.limits);
+    }
+
     /// Drops everything (shutdown), releasing the totals.
     pub fn clear(&mut self, totals: &Totals) {
         for record in self.records.values_mut() {
@@ -607,6 +616,13 @@ mod tests {
             Err(RecoveryOutcome::UnknownOffset)
         ));
         assert_eq!(state.stored("/n"), 0);
+        // The periodic sweep drops namespaces nobody touches any more.
+        state.append("/m", None, "o3", json("[3]"), &ctx(&totals, 200_000));
+        state.sweep(&ctx(&totals, 260_000));
+        assert_eq!(state.stored("/m"), 1);
+        state.sweep(&ctx(&totals, 380_000));
+        assert_eq!(state.stored("/m"), 0);
+        assert!(state.records.is_empty());
     }
 
     #[test]

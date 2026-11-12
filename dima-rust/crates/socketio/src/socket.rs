@@ -90,7 +90,6 @@ pub(crate) trait ErasedSocket: Send + Sync {
 
 pub(crate) struct SocketState {
     pub connected: bool,
-    next_ack: u64,
     acks: HashMap<u64, oneshot::Sender<Result<Vec<Value>, AckError>>>,
 }
 
@@ -123,7 +122,6 @@ impl<D> Core<D> {
     pub fn new_state() -> Mutex<SocketState> {
         Mutex::new(SocketState {
             connected: true,
-            next_ack: 0,
             acks: HashMap::new(),
         })
     }
@@ -372,8 +370,10 @@ impl<D: Send + Sync + 'static> Socket<D> {
             if state.acks.len() >= max {
                 return Err(AckError::TooMany);
             }
-            let id = state.next_ack;
-            state.next_ack += 1;
+            // Never reused, also across a recovery (the reference counts per namespace and never
+            // restarts): a late answer to a question of the socket's previous life can never
+            // resolve a new one.
+            let id = core.def.shared().next_ack_id();
             state.acks.insert(id, tx);
             id
         };

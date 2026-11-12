@@ -158,6 +158,8 @@ pub(crate) trait ErasedDef: Send + Sync {
         auth: Map<String, Value>,
         ticket: Ticket,
     ) -> Result<(), Refusal>;
+    /// Applies the recovery store's periodic sweep.
+    fn sweep(&self);
     fn clear(&self);
 }
 
@@ -350,6 +352,12 @@ impl<N: Namespace> ErasedDef for Def<N> {
             .tasks
             .spawn(run_socket(self, child, conn, nsp, auth, ticket));
         Ok(())
+    }
+
+    fn sweep(&self) {
+        if let Some(mut store) = self.store() {
+            store.sweep(&self.ctx(self.shared.clock.now_ms()));
+        }
     }
 
     fn clear(&self) {

@@ -77,7 +77,9 @@ const TICK: Duration = Duration::from_millis(100);
 pub(crate) struct Connection {
     pub shared: Arc<Shared>,
     registry: Arc<Registry>,
-    engine: Arc<EngineSocket>,
+    /// Released when the session ends, so a `Socket` handle kept by feature code does not keep
+    /// `engineioxide`'s socket and its buffers alive.
+    engine: Mutex<Option<Arc<EngineSocket>>>,
     pub first: Arc<Origin>,
     state: Mutex<State>,
     outbox: Mutex<Outbox>,
@@ -92,14 +94,18 @@ pub(crate) struct Connection {
     poke: Notify,
     /// Polling requests waiting for data.
     polls: std::sync::atomic::AtomicUsize,
+    /// A polling POST is being read (overlapping ones end the session, as in `engine.io`).
+    posting: std::sync::atomic::AtomicBool,
     /// `engineioxide` was told to close the session.
     engine_closing: std::sync::atomic::AtomicBool,
 }
 
-/// One polling request waiting in Engine.IO. Dropped before [`PollGuard::finish`] (the client
-/// went away mid-poll), it closes the connection: `poll connection closed prematurely`.
+/// One polling request in Engine.IO, a poll or a POST. Dropped before [`PollGuard::finish`]
+/// (the client went away mid-request), it closes the connection, as `engine.io` does
+/// (`poll connection closed prematurely`, `data request connection closed prematurely`).
 pub(crate) struct PollGuard {
     conn: Arc<Connection>,
+    post: bool,
     finished: bool,
 }
 
@@ -111,9 +117,15 @@ impl PollGuard {
 
 impl Drop for PollGuard {
     fn drop(&mut self) {
-        self.conn
-            .polls
-            .fetch_sub(1, std::sync::atomic::Ordering::AcqRel);
+        if self.post {
+            self.conn
+                .posting
+                .store(false, std::sync::atomic::Ordering::Release);
+        } else {
+            self.conn
+                .polls
+                .fetch_sub(1, std::sync::atomic::Ordering::AcqRel);
+        }
         if !self.finished {
             self.conn.close(DisconnectReason::TransportError);
         }
@@ -143,7 +155,7 @@ impl Connection {
         Arc::new(Self {
             shared,
             registry,
-            engine,
+            engine: Mutex::new(Some(engine)),
             first,
             state: Mutex::new(State {
                 entries: HashMap::new(),
@@ -158,6 +170,7 @@ impl Connection {
             drained: Notify::new(),
             poke: Notify::new(),
             polls: std::sync::atomic::AtomicUsize::new(0),
+            posting: std::sync::atomic::AtomicBool::new(false),
             engine_closing: std::sync::atomic::AtomicBool::new(false),
         })
     }
@@ -170,15 +183,22 @@ impl Connection {
         self.outbox.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
+    fn engine(&self) -> Option<Arc<EngineSocket>> {
+        self.engine
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
     pub fn is_closed(&self) -> bool {
         self.closed.is_cancelled()
     }
 
     /// The Engine.IO transport in use (`polling` or `websocket`).
     pub fn transport(&self) -> &'static str {
-        match self.engine.transport_type() {
-            engineioxide::TransportType::Polling => "polling",
-            engineioxide::TransportType::Websocket => "websocket",
+        match self.engine().map(|engine| engine.transport_type()) {
+            Some(engineioxide::TransportType::Websocket) => "websocket",
+            _ => "polling",
         }
     }
 
@@ -187,8 +207,18 @@ impl Connection {
         self.polls.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
         PollGuard {
             conn: Arc::clone(self),
+            post: false,
             finished: false,
         }
+    }
+
+    /// A polling POST starts; `None` when one is already being read (`data request overlap`).
+    pub fn post_started(self: &Arc<Self>) -> Option<PollGuard> {
+        (!self.posting.swap(true, std::sync::atomic::Ordering::AcqRel)).then(|| PollGuard {
+            conn: Arc::clone(self),
+            post: true,
+            finished: false,
+        })
     }
 
     /// Keeps the upgrade guard of a WebSocket upgrade until the connection closes.
@@ -350,8 +380,11 @@ impl Connection {
         if self.is_closed() {
             return Err(NotSent::Closed);
         }
+        let Some(engine) = self.engine() else {
+            return Err(NotSent::Closed);
+        };
         let result = self.outbox().push(
-            self.engine.as_ref(),
+            engine.as_ref(),
             outgoing,
             &self.shared.outbound_bytes,
             self.shared.options.max_outbound_total,
@@ -419,9 +452,11 @@ impl Connection {
         let released = {
             let mut outbox = self.outbox();
             let released = outbox.sweep(&self.shared.outbound_bytes);
-            if outbox.has_waiting() {
+            if outbox.has_waiting()
+                && let Some(engine) = self.engine()
+            {
                 outbox.flush_waiting(
-                    self.engine.as_ref(),
+                    engine.as_ref(),
                     &self.shared.outbound_bytes,
                     self.shared.options.max_outbound_total,
                 );
@@ -472,17 +507,22 @@ impl Connection {
     /// Closes the connection (`Client.close`): every socket leaves with `reason` and inbound
     /// packets are ignored from now on. As in `engine.io`, what is queued still reaches the
     /// client, then the close packet (on the next poll for a polling client), within
-    /// `close_timeout`; a slow consumer and a shutdown close at once. A session that has not
-    /// ended `close_timeout` after that has its socket aborted. The first reason wins.
+    /// `close_timeout`; a transport error, a slow consumer and a shutdown close at once. A
+    /// session that has not ended `close_timeout` after that has its socket aborted. The first
+    /// reason wins.
     pub fn close(&self, reason: DisconnectReason) {
         if self.reason.set(reason).is_err() {
             return;
         }
         self.closed.cancel();
         self.leave_all(reason);
+        // A transport error ends the session at once in `engine.io` (`onError`); so do a slow
+        // consumer and a shutdown here.
         if matches!(
             reason,
-            DisconnectReason::SlowConsumer | DisconnectReason::ServerShuttingDown
+            DisconnectReason::SlowConsumer
+                | DisconnectReason::ServerShuttingDown
+                | DisconnectReason::TransportError
         ) {
             self.close_engine();
         }
@@ -492,8 +532,9 @@ impl Connection {
     fn close_engine(&self) {
         self.engine_closing
             .store(true, std::sync::atomic::Ordering::Release);
-        self.engine
-            .close(engineioxide::DisconnectReason::TransportClose);
+        if let Some(engine) = self.engine() {
+            engine.close(engineioxide::DisconnectReason::TransportClose);
+        }
     }
 
     /// Fails the upgraded socket's I/O (`UpgradeGuard::abort`): the WebSocket writer of
@@ -524,6 +565,10 @@ impl Connection {
         };
         self.outbox().clear(&self.shared.outbound_bytes);
         self.state().guard = None;
+        self.engine
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
         self.drained.notify_waiters();
         self.shared.telemetry.connection_closed(reason);
     }
@@ -543,8 +588,7 @@ impl Connection {
         loop {
             self.sweep_and_flush();
             let drained = self.outbox().queued() == 0;
-            let deliverable = self.engine.transport_type()
-                == engineioxide::TransportType::Websocket
+            let deliverable = self.transport() == "websocket"
                 || self.polls.load(std::sync::atomic::Ordering::Acquire) > 0;
             if drained && deliverable {
                 break;
