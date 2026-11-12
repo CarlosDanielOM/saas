@@ -16,3 +16,11 @@ serde_json = { workspace = true }
 # Block names are checked with `\p{L}\p{N}`, as the reference's `/u` regular expressions do.
 regex = { workspace = true }
 
+
+[dev-dependencies]
+# The real-data test (tests/real_commands.rs) reads the local `domdimabot` copy, read-only.
+anyhow = { workspace = true }
+bson = { workspace = true }
+futures-util = { workspace = true }
+mongodb = { workspace = true }
+tokio = { workspace = true }
