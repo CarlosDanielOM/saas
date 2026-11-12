@@ -28,12 +28,26 @@
 //!   debit recorded without a queued event, [`super::credits_cache::CreditsCache::record_ai_credit_usage`]):
 //!   Polar stored it at `ack`. Held for figures dated before `ack + `[`SETTLE_AFTER_ACK_MS`]: the
 //!   time Polar's meter is given to count it.
-//! - **dead-lettered** (Polar refuses it for good): held like a queued event; Polar never counts
-//!   it and an operator settles it.
+//! - **dead-lettered** (Polar refuses it for good): held by its entry in the channel's
+//!   dead-letter list, counted at publication as the queue is; Polar never counts it. An operator
+//!   settles it (released at once: the entry is gone) or requeues it (held by the queue again).
+//!
+//! **One event, one hold** (item 3 of P2-BILLING-02c, re-check point S4). The hold belongs to the
+//! event and is where the event is: in the queue, the processing list or the dead-letter list
+//! (each counted at publication, an event being in exactly one of them, moved between them by a
+//! single script), or, once Polar acknowledged it, in an `h:` bucket the acknowledgement adds in
+//! the same script that removes the event. It is released by the rule of the state the event
+//! ends in: acknowledged, [`SETTLE_AFTER_ACK_MS`] after the acknowledgement; settled by an
+//! operator as never to be billed, at once (with the operator's operation id,
+//! [`crate::usage_health::resolve_dead_letter`]); dead and unresolved, [`QUEUED_HOLD_MS`] after it
+//! was queued. Before, a dead letter added an `h:` bucket that stayed beside the queue's count
+//! when it was requeued, beside the acknowledgement's bucket when it was billed, and once more
+//! for every further refusal.
 //!
 //! A debit is **covered** by a figure from Polar dated `T` (when the fetch began, or the
 //! webhook's `occurredAt`, never later than now) when it was acknowledged at least
-//! [`SETTLE_AFTER_ACK_MS`] before `T`, or queued at least [`QUEUED_HOLD_MS`] before `T`. Every
+//! [`SETTLE_AFTER_ACK_MS`] before `T`, or (queued or dead-lettered) queued at least
+//! [`QUEUED_HOLD_MS`] before `T`. Every
 //! debit not covered is subtracted from the figure before it is stored. This is the lead's rule
 //! (acknowledged, then a time bound) without the consumption test, for the reason above: it
 //! releases a debit only on a fact that no other event can fake, so it is at least as safe.
@@ -46,8 +60,8 @@
 //! [`ACK_BUCKET_MS`] rounding), and it is corrected by the next publication after that (a
 //! published balance lives [`super::credits::AI_CREDITS_CACHE_TTL_SECONDS`]). No debit is held
 //! for ever: an acknowledged one is released `SETTLE_AFTER_ACK_MS` after its acknowledgement; a
-//! queued or dead-lettered one [`QUEUED_HOLD_MS`] after it was queued (plus
-//! [`DEAD_LETTER_BUCKET_MS`] rounding for a dead letter), even if the flush never succeeds. If
+//! queued or dead-lettered one [`QUEUED_HOLD_MS`] after it was queued, even if the flush never
+//! succeeds. If
 //! Polar's meter takes longer than [`SETTLE_AFTER_ACK_MS`] to count an acknowledged event, the
 //! balance shows Polar's own figure until it does (never more than Polar shows).
 //!
@@ -62,8 +76,13 @@
 //! | a publication was accepted since the fetch began | nothing changes; the newer balance stands ([`Publication::Superseded`]) |
 //! | the revision is gone, or was recreated (Dragonfly lost it) | nothing published; a balance left without its revision is deleted, so the next read starts clean ([`Publication::Lost`]) |
 //! | the plan fence is newer | nothing changes ([`Publication::Fenced`]) |
-//! | more than [`MOST_QUEUED`] events wait to be counted | nothing changes ([`Publication::Backlog`]) |
+//! | more than [`MOST_QUEUED`] events wait to be counted (queued, claimed, and dead letters that may still be held) | nothing changes ([`Publication::Backlog`]) |
 //! | the figure is older than [`MAX_FIGURE_AGE_MS`] | nothing changes ([`Publication::Stale`]) |
+//!
+//! An accepted publication also answers what it held and how much of that is unsettled at
+//! Polar ([`Held`], item 1 of P2-BILLING-02c): a verified balance carries Polar's own figure
+//! beside the stored one ([`super::credits::VerifiedBalance`]), so a reset computes from Polar's
+//! and waits while a debit Polar may or may not count is held.
 //!
 //! A webhook's snapshot ([`SYNC`]) is ordered by its snapshot version as in the reference (an
 //! equal version is published again), within the generation read when its projection began, and
@@ -83,7 +102,7 @@
 //! |---|---|
 //! | `gen` | a random token (UUID) set when the hash is created |
 //! | `pub` | publications accepted in this generation |
-//! | `h:{ms}` | whole credits held for figures dated before `{ms}`: acknowledged events in [`ACK_BUCKET_MS`] buckets, dead letters in [`DEAD_LETTER_BUCKET_MS`] buckets; buckets older than [`MAX_FIGURE_AGE_MS`] are removed by every write, so the hash holds at most [`MAX_HOLD_FIELDS`] of them |
+//! | `h:{ms}` | whole credits of acknowledged events held for figures dated before `{ms}`, in [`ACK_BUCKET_MS`] buckets; buckets older than [`MAX_FIGURE_AGE_MS`] are removed by every write, so the hash holds at most [`MAX_HOLD_FIELDS`] of them |
 //!
 //! A queued event carries `queuedAt` (ms) in its queued JSON ([`crate::polar::flush`]).
 //!
@@ -161,6 +180,12 @@ pub static EXHAUSTION: Script = Script::new(
 pub const REVISION_TTL_SECONDS: u64 = super::credits_cache::USAGE_MARKER_TTL_SECONDS;
 /// How long after Polar acknowledged a usage event its debit is still held: the time its meter
 /// is given to count it (two minutes; normally a few seconds).
+///
+/// Re-check point S3 (kept by the lead until measured): the release is by time because Polar's
+/// figure is a net number that grants, resets and sibling accounts move, so it cannot show that
+/// one debit was counted; if the meter lags longer than this, the debit becomes spendable again
+/// until the meter counts it. The value is to be measured against Polar's sandbox at the system
+/// test (the meter's lag after an ingest) and changed here, the one place it is set.
 pub const SETTLE_AFTER_ACK_MS: i64 = 2 * 60 * 1000;
 /// How long after it was queued an event Polar has not acknowledged (or refused for good) is
 /// held at most: a flush that keeps failing cannot hold a channel down for longer.
@@ -170,17 +195,18 @@ pub const QUEUED_HOLD_MS: i64 = 24 * 60 * 60 * 1000;
 pub const MAX_FIGURE_AGE_MS: i64 = 60 * 60 * 1000;
 /// Acknowledged debits are held in buckets of this size (their release time rounded up).
 pub const ACK_BUCKET_MS: i64 = 30 * 1000;
-/// Dead letters are held in buckets of this size (their release time rounded up).
-pub const DEAD_LETTER_BUCKET_MS: i64 = 60 * 60 * 1000;
-/// The most queued and claimed events a publication counts; past it nothing is published (the
-/// cached balance, which carries every local debit, stays).
+/// The most queued, claimed and dead-lettered events a publication counts; past it nothing is
+/// published (the cached balance, which carries every local debit, stays). Dead letters are read
+/// newest first and only those set aside within [`QUEUED_HOLD_MS`] (plus
+/// [`DEAD_LETTER_SKEW_MS`]) count against it.
 pub const MOST_QUEUED: usize = 5000;
+/// The clock difference allowed between the processes that append to a dead-letter list (whose
+/// entries are read as appended in time order): an entry set aside less than
+/// `QUEUED_HOLD_MS + DEAD_LETTER_SKEW_MS` ago is never skipped unread.
+pub const DEAD_LETTER_SKEW_MS: i64 = 5 * 60 * 1000;
 /// The most hold buckets the hash keeps: acknowledged ones span at most
-/// `MAX_FIGURE_AGE_MS + SETTLE_AFTER_ACK_MS`, dead letters `MAX_FIGURE_AGE_MS + QUEUED_HOLD_MS`.
-pub const MAX_HOLD_FIELDS: i64 = (MAX_FIGURE_AGE_MS + SETTLE_AFTER_ACK_MS) / ACK_BUCKET_MS
-    + 1
-    + (MAX_FIGURE_AGE_MS + QUEUED_HOLD_MS) / DEAD_LETTER_BUCKET_MS
-    + 1;
+/// `MAX_FIGURE_AGE_MS + SETTLE_AFTER_ACK_MS`.
+pub const MAX_HOLD_FIELDS: i64 = (MAX_FIGURE_AGE_MS + SETTLE_AFTER_ACK_MS) / ACK_BUCKET_MS + 1;
 
 /// `twitch:{id}:ai:credits:revision`.
 pub fn revision_key(id: &str) -> String {
@@ -245,19 +271,52 @@ pub enum Publication {
     Stale,
 }
 
-/// Decodes `{status, value, publications}`: the publication and, when it was accepted, the
-/// publications accepted in the generation with it.
-pub(crate) fn publication(value: redis::Value) -> Result<(Publication, i64), DragonflyError> {
+/// What an accepted publication held against Polar's figure (item 1 of P2-BILLING-02c), in
+/// whole credits.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct Held {
+    /// Every debit held: Polar's figure minus this is the spending figure stored.
+    pub(crate) total: f64,
+    /// The part of `total` whose count at Polar is not settled: an acknowledged debit Polar's
+    /// meter may not count yet, or a queued one Polar has not stored or answered. Polar's figure
+    /// may or may not include it, so nothing computed from Polar's figure (a reset) can be
+    /// sound while it is above 0.
+    pub(crate) unsettled: f64,
+}
+
+/// What [`PUBLISH`] answered.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Published {
+    /// What happened.
+    pub(crate) publication: Publication,
+    /// When accepted: the publications accepted in the generation with it.
+    pub(crate) count: i64,
+    /// When accepted: what was held.
+    pub(crate) held: Held,
+}
+
+/// Decodes `{status, value, publications, held, unsettled}`.
+pub(crate) fn publication(value: redis::Value) -> Result<Published, DragonflyError> {
     let mut items = reply::array(value)?.into_iter();
-    let (Some(status), Some(raw), Some(count), None) =
-        (items.next(), items.next(), items.next(), items.next())
-    else {
+    let (Some(status), Some(raw), Some(count), Some(total), Some(unsettled), None) = (
+        items.next(),
+        items.next(),
+        items.next(),
+        items.next(),
+        items.next(),
+        items.next(),
+    ) else {
         return Err(DragonflyError::Reply("unexpected publication reply"));
     };
     let raw = reply::text(raw)?;
     let count = reply::int(count)?;
-    Ok((
-        match reply::int(status)? {
+    #[allow(clippy::cast_precision_loss)]
+    let held = Held {
+        total: reply::int(total)? as f64,
+        unsettled: reply::int(unsettled)? as f64,
+    };
+    Ok(Published {
+        publication: match reply::int(status)? {
             1 => Publication::Accepted(raw),
             2 => Publication::Superseded(raw),
             0 => Publication::Fenced,
@@ -267,7 +326,8 @@ pub(crate) fn publication(value: redis::Value) -> Result<(Publication, i64), Dra
             _ => return Err(DragonflyError::Reply("unexpected publication status")),
         },
         count,
-    ))
+        held,
+    })
 }
 
 /// The local top-up after a grant ([`super::credits_cache::CreditsCache::top_up`]).
@@ -302,8 +362,8 @@ mod tests {
         assert!(DEBIT.source().contains(DEBIT_GUARD_LINES));
         assert!(DEBIT.source().contains(DEBIT_HOLD_LINES));
         assert_eq!(revision_key("12"), "twitch:12:ai:credits:revision");
-        // 125 acknowledgement buckets and 26 dead-letter buckets at most.
-        assert_eq!(MAX_HOLD_FIELDS, 151);
+        // 125 acknowledgement buckets at most (dead letters are held by their list).
+        assert_eq!(MAX_HOLD_FIELDS, 125);
         const { assert!(MAX_HOLD_FIELDS * 2 + 4 < 2000, "within heldAt's cap") };
     }
 }

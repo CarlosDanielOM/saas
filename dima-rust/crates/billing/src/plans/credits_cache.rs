@@ -10,7 +10,7 @@
 //! | `twitch:{id}:ai:exhaust`, `{id}:ai:exhaust` | both scripts, the exhaustion repair | none |
 //! | `twitch:{id}:ai:credits:plan-version` | the plan projection (read here) | none |
 //! | `twitch:{id}:ai:usage-local:{sha256(externalId)}` | [`APPLY_AI_CREDIT_USAGE`] | 31 days |
-//! | `twitch:{id}:ai:credits:revision` | the generation and the debits held against Polar's figures: every debit, acknowledgement, dead letter, read of Polar and publication ([`super::balance`]) | 31 days |
+//! | `twitch:{id}:ai:credits:revision` | the generation and the acknowledged debits held against Polar's figures: every debit, acknowledgement, read of Polar and publication ([`super::balance`]; queued and dead-lettered debits are held by their lists) | 31 days |
 //!
 //! The exhaustion flags are rebuilt lazily: after a clear, a channel reads as not exhausted until
 //! its next `getAiCredits` (which every paid AI path calls) or usage write. The cutover step
@@ -26,7 +26,7 @@
 //! again from Polar. The exhaustion flags are read and repaired in one atomic step.
 
 use super::ai_credit_limit_for_plan;
-use super::balance::{self, Hold, Publication, Start};
+use super::balance::{self, Held, Hold, Publication, Published, Start};
 use super::credits::{
     AI_CREDITS_CACHE_SCHEMA_VERSION, AI_CREDITS_CACHE_TTL_SECONDS, AiCredits, AiCreditsData,
     BalanceState, CreditStatus, VerifiedBalance, build_ai_credits_data_from_meter,
@@ -363,7 +363,7 @@ impl CreditsCache {
         version: &str,
         raw: &str,
         start: &Start,
-    ) -> Result<(Publication, i64), DragonflyError> {
+    ) -> Result<Published, DragonflyError> {
         let [canonical, legacy] = exhausted_key(channel_id);
         let keys = [
             credits_cache_key(channel_id),
@@ -373,6 +373,7 @@ impl CreditsCache {
             balance::revision_key(channel_id),
             crate::polar::flush::queue_key(channel_id),
             crate::polar::flush::processing_key(channel_id),
+            crate::polar::flush::dead_letter_key(channel_id),
         ];
         let args = [
             version.to_owned(),
@@ -387,6 +388,7 @@ impl CreditsCache {
             balance::MAX_FIGURE_AGE_MS.to_string(),
             balance::QUEUED_HOLD_MS.to_string(),
             balance::MOST_QUEUED.to_string(),
+            balance::DEAD_LETTER_SKEW_MS.to_string(),
         ];
         balance::publication(
             balance::PUBLISH
@@ -495,6 +497,7 @@ impl CreditsCache {
                 raw,
                 generation,
                 publication,
+                held,
             }) => Ok(match published {
                 // Stored: what Polar answered, with the debits it does not cover yet held.
                 Publication::Accepted(stored) => {
@@ -506,7 +509,9 @@ impl CreditsCache {
                     match data {
                         Some(data) if meter => AiCredits::verified_by(
                             VerifiedBalance::new(
+                                &payload,
                                 &data,
+                                held,
                                 self.clock.now_ms(),
                                 generation,
                                 publication,
@@ -540,8 +545,9 @@ impl CreditsCache {
     }
 
     /// A balance read from Polar now, for anything that resets or tops up credits: the cache
-    /// is not consulted, and only a read whose publication was accepted is verified: what it
-    /// stored, read back (Polar's figure with the debits it does not cover yet held). An
+    /// is not consulted, and only a read whose publication was accepted is verified: Polar's
+    /// figure as its meter reported it, and what the publication stored, read back (Polar's
+    /// figure with the debits it does not cover yet held: [`VerifiedBalance`]). An
     /// answer without the AI credit meter, a newer publication since the read began (item 2
     /// of P2-BILLING-01c, re-check finding N2), a plan fence that refuses it, a read that could
     /// not be published, or any failure is [`UnverifiedBalance`], never the superseded figures
@@ -576,16 +582,20 @@ impl CreditsCache {
             }) => Err(UnverifiedBalance::Fenced),
             Ok(Fetched::Read { meter: false, .. }) => Err(UnverifiedBalance::NoMeter),
             Ok(Fetched::Read {
+                payload,
                 published,
                 generation,
                 publication,
+                held,
                 ..
             }) => match published {
                 Publication::Accepted(stored) => {
                     read_cached_credits(&stored, true, || self.now_iso())
                         .map(|read| {
                             VerifiedBalance::new(
+                                &payload,
                                 &read.payload,
+                                held,
                                 self.clock.now_ms(),
                                 generation,
                                 publication,
@@ -742,17 +752,18 @@ impl CreditsCache {
             payload.status = CreditStatus::Unavailable;
         }
         let raw = payload.to_cache_text(&version);
-        let (published, publication) = self
+        let published = self
             .publish(twitch_id, &version, &raw, &start)
             .await
             .map_err(|e| e.to_string())?;
         Ok(Fetched::Read {
             payload,
             meter: meter.is_some(),
-            published,
+            published: published.publication,
             raw,
             generation: start.generation,
-            publication,
+            publication: published.count,
+            held: published.held,
         })
     }
 
@@ -814,6 +825,7 @@ enum Fetched {
     NotRead(AiCreditsData),
     /// Polar answered.
     Read {
+        /// Polar's figure, no local debit applied.
         payload: AiCreditsData,
         meter: bool,
         published: Publication,
@@ -822,6 +834,8 @@ enum Fetched {
         generation: String,
         /// The publications accepted in it once this one was (when it was).
         publication: i64,
+        /// What the publication held against Polar's figure (when accepted).
+        held: Held,
     },
 }
 

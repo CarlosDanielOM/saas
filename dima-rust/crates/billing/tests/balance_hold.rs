@@ -679,15 +679,15 @@ async fn dragonfly_restarted_empty_between_any_two_steps() {
 
 /// No debit is held for ever: an acknowledged one is released two minutes after Polar stored
 /// it, a queued one that is never flushed a day after it was queued, a dead-lettered one a day
-/// after it was queued (rounded up to the hour); the revision hash keeps a bounded number of
-/// buckets.
+/// after it was queued (held by its entry: item 3 of P2-BILLING-02c); the revision hash keeps a
+/// bounded number of buckets.
 #[tokio::test]
 async fn a_debit_is_held_for_a_bounded_time() {
     if support::dragonfly(9).await.unwrap().is_none() {
         return;
     }
     use dima_billing::plans::balance::{
-        DEAD_LETTER_BUCKET_MS, MAX_HOLD_FIELDS, QUEUED_HOLD_MS, SETTLE_AFTER_ACK_MS, revision_key,
+        MAX_HOLD_FIELDS, QUEUED_HOLD_MS, SETTLE_AFTER_ACK_MS, revision_key,
     };
     let ledger = Ledger::default();
     let server = polar_server(ledger.clone()).await;
@@ -762,7 +762,7 @@ async fn a_debit_is_held_for_a_bounded_time() {
         .await
         .unwrap();
 
-    // Dead-lettered (Polar refuses it for good): held a day after it was queued, to the hour.
+    // Dead-lettered (Polar refuses it for good): held a day after it was queued.
     clock.set(T0);
     let channel = support::channel_id();
     process.spend(&channel, "aiu_refused", 500.0).await;
@@ -770,12 +770,12 @@ async fn a_debit_is_held_for_a_bounded_time() {
     let report = process.ingest().flush(&channel).await;
     ledger.refuse(false);
     assert_eq!(report.dead_lettered, 1, "{report:?}");
-    clock.set(T0 + QUEUED_HOLD_MS);
+    clock.set(T0 + QUEUED_HOLD_MS - 1);
     assert_eq!(
         process.read(&channel, &State::new(0.0)).await.data.balance,
         LIMIT - 500.0
     );
-    clock.set(T0 + QUEUED_HOLD_MS + DEAD_LETTER_BUCKET_MS);
+    clock.set(T0 + QUEUED_HOLD_MS);
     fresh(&channel).await;
     assert_eq!(
         process.read(&channel, &State::new(0.0)).await.data.balance,

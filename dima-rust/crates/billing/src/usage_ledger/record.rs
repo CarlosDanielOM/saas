@@ -21,13 +21,33 @@
 //! interrupted receipt (still in the processing list) or the next backfill makes. The unique
 //! `{channelID, customerId, date}` index refuses a second copy of a day; nothing increments.
 //!
+//! **The tier a write carries** (item 4 of P2-BILLING-02c, re-check point S5). A receipt's and a
+//! day's `retentionTier` and `expiresAt` come from the plan of the channel's owner. A writer used
+//! to carry a tier read earlier (the consumer's for its batch, the backfill job's from when it was
+//! queued); a plan change could write the owner's new tier and finish its retention pass in
+//! between, and the receipt was then inserted with the old tier's expiry, which `$setOnInsert`
+//! never repairs: after an upgrade the TTL deleted history a paying channel should keep. Now both
+//! writers run under the same per-owner coordination as a plan change: after the account lock,
+//! they take the owner's plan effects lease (`locks:plan-effects:{owner id}`,
+//! [`crate::plans::projection`]), read the owner's tier under it, and write with that tier; the
+//! lock confirms the lease with itself before every write ([`AccountLock::confirm`]). A plan
+//! change holds the same lease from its write of the owner's tier to the end of its retention
+//! pass. So for every receipt either its write comes before the plan write (and the pass, which
+//! starts after it, adjusts the receipt) or its tier read comes after the pass (and it reads the
+//! new tier): no stale tier is written. The tier passed by the caller is used only for a channel
+//! no user owns (no plan change can touch it). A plan change that is running makes a receipt wait
+//! [`super::LedgerConfig::plan_lease_wait`], then [`LedgerError::PlanChanging`] (the consumer
+//! leaves the receipt for its next call); a backfill waits
+//! [`super::LedgerConfig::backfill_plan_lease_wait`]. The lease is a fence as for the plan
+//! effects: a holder that stalls past it is refused at its next confirmation.
+//!
 //! Key order of a rebuilt day: the native worker appends `categories` last; Mongoose writes it
 //! in schema order. Each is kept for the path that writes it in production
 //! ([`DailyShape`]): the receipt queue's days are the native worker's, the backfill's are
 //! Mongoose's. MongoDB orders an upserted receipt itself (filter fields, then the new fields in
 //! lexicographic order), so both writers store the same receipt document.
 
-use super::lock::AccountLock;
+use super::lock::{AccountLock, PlanLease};
 use super::ops;
 use super::receipt::{QueuedReceipt, safe_category};
 use super::report::{DAY_MS, Transaction};
@@ -128,15 +148,70 @@ impl Ledger<'_> {
         Ok(())
     }
 
+    /// The tier of `channel`'s owner, read under the owner's plan effects lease, which `lock`
+    /// then holds (module docs); `ownerless` when no user owns the channel.
+    async fn owner_tier(
+        &self,
+        lock: &mut AccountLock,
+        channel: &str,
+        ownerless: RetentionTier,
+        wait: std::time::Duration,
+    ) -> Result<RetentionTier, LedgerError> {
+        let by_channel = doc! { "accounts": { "$elemMatch": { "type": "twitch", "id": channel } } };
+        let found = ops::find_one(
+            self,
+            dima_model::users::COLLECTION,
+            by_channel,
+            Some(doc! { "_id": 1 }),
+        )
+        .await?;
+        let Some(owner) = found.and_then(|user| user.get_object_id("_id").ok()) else {
+            return Ok(ownerless);
+        };
+        let key = crate::plans::projection::effects_lease_key(&owner);
+        let token = self.random.uuid_v4().map_err(|_| LedgerError::Random)?;
+        if !crate::plans::projection::take_owner_lease(self.dragonfly, &key, &token, wait).await? {
+            return Err(LedgerError::PlanChanging);
+        }
+        lock.hold_plan(PlanLease { key, token });
+        // Read again under the lease: the plan stored now is the one every later plan change's
+        // retention pass starts from.
+        let user = ops::find_one(
+            self,
+            dima_model::users::COLLECTION,
+            doc! { "_id": owner },
+            Some(doc! { "plan_tier": 1 }),
+        )
+        .await?;
+        Ok(match user {
+            Some(user) => valid_tier(user.get_str("plan_tier").ok()),
+            None => ownerless,
+        })
+    }
+
     /// Records one use: `persistAiUsageReceipt` as the native worker runs it (module docs).
+    /// The tier written is the owner's, read under the owner's plan effects lease; `ownerless`
+    /// is written only for a channel no user owns (the consumer passes Free, what `validTier`
+    /// makes of no owner).
     pub async fn persist_receipt(
         &self,
         receipt: &QueuedReceipt,
-        tier: RetentionTier,
+        ownerless: RetentionTier,
     ) -> Result<Persisted, LedgerError> {
         let customer = receipt.customer_id.expose();
-        let lock = AccountLock::acquire(self, &receipt.channel_id, customer).await?;
-        let outcome = self.persist_locked(&lock, receipt, tier).await;
+        let mut lock = AccountLock::acquire(self, &receipt.channel_id, customer).await?;
+        let outcome = match self
+            .owner_tier(
+                &mut lock,
+                &receipt.channel_id,
+                ownerless,
+                self.config.plan_lease_wait,
+            )
+            .await
+        {
+            Ok(tier) => self.persist_locked(&lock, receipt, tier).await,
+            Err(error) => Err(error),
+        };
         lock.release(self).await;
         outcome
     }
@@ -354,9 +429,23 @@ impl Ledger<'_> {
     /// `backfillAiUsageLedger(input)`: writes the transactions read from Polar for one channel
     /// and customer (those within the plan's retention), rebuilds the days from `rebuild_start`
     /// (else `coverage_start`) to now, and records the coverage (`$min`) and the sync time.
+    ///
+    /// The plan is the owner's, read under the owner's plan effects lease (module docs);
+    /// `input.plan_tier` stands only for a channel no user owns.
     pub async fn backfill(&self, input: &BackfillWrite<'_>) -> Result<(), LedgerError> {
-        let lock = AccountLock::acquire(self, input.channel_id, input.customer_id).await?;
-        let outcome = self.backfill_locked(&lock, input).await;
+        let mut lock = AccountLock::acquire(self, input.channel_id, input.customer_id).await?;
+        let outcome = match self
+            .owner_tier(
+                &mut lock,
+                input.channel_id,
+                valid_tier(input.plan_tier),
+                self.config.backfill_plan_lease_wait,
+            )
+            .await
+        {
+            Ok(tier) => self.backfill_locked(&lock, input, tier).await,
+            Err(error) => Err(error),
+        };
         lock.release(self).await;
         outcome
     }
@@ -365,10 +454,10 @@ impl Ledger<'_> {
         &self,
         lock: &AccountLock,
         input: &BackfillWrite<'_>,
+        tier: RetentionTier,
     ) -> Result<(), LedgerError> {
         let (channel, customer) = (input.channel_id, input.customer_id);
         self.mark_dashboards_dirty(lock, channel, customer).await?;
-        let tier = valid_tier(input.plan_tier);
         let now = input.now_ms;
         let floor = now - retention_days(tier) * DAY_MS;
         let receipts: Vec<&Transaction> = input
@@ -437,7 +526,8 @@ pub struct BackfillWrite<'a> {
     pub channel_id: &'a str,
     /// The customer.
     pub customer_id: &'a str,
-    /// The plan (`validTier`).
+    /// The plan the job was queued with (`validTier`): written only for a channel no user owns;
+    /// otherwise the owner's current plan is (see [`Ledger::backfill`]).
     pub plan_tier: Option<&'a str>,
     /// The coverage reached.
     pub coverage_start_ms: i64,

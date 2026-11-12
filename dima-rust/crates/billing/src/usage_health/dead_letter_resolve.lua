@@ -1,7 +1,9 @@
 -- Rust-only (P2-BILLING-02a): an operator settles or requeues one entry of a channel's usage
 -- dead-letter list, once per operation id. The entry is `{"reason","at"}`, a newline, then the
 -- queued event's bytes; a requeue appends those bytes to the usage queue (its external id is
--- unchanged, so a resend that Polar already has is counted as a duplicate there).
+-- unchanged, so a resend that Polar already has is counted as a duplicate there). The entry
+-- holds the event's debit against Polar's figure and the hold moves with it (P2-BILLING-02c
+-- item 3): a requeued event is held by the queue, a settled one is released at once.
 -- KEYS[1] dead-letter list, KEYS[2] usage queue, KEYS[3] the operation's record.
 -- ARGV[1] the entry's exact bytes, ARGV[2] 'settle' or 'requeue', ARGV[3] the entry's sha256
 -- hex, ARGV[4] the record's TTL (s).

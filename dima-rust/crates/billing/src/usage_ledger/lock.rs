@@ -14,6 +14,11 @@
 //! immediately before every write, and a write whose lock was lost does not start: each
 //! MongoDB operation has a server time limit far below the 120 s lifetime, so a lease confirmed
 //! before an operation outlives it. Released only by its owner.
+//!
+//! A writer that stores a retention expiry also holds the channel owner's plan effects lease
+//! (item 4 of P2-BILLING-02c, [`super::record`]); the lock carries it, so the same confirmation
+//! renews both before every write and refuses when either passed to another holder, and the
+//! release lets both go. The account lock is always taken first.
 
 use super::{Ledger, LedgerError};
 use dima_store::dragonfly::commands::reply;
@@ -50,10 +55,17 @@ pub fn lock_key(channel_id: &str, customer_id: &str) -> String {
     )
 }
 
-/// A held account lock.
+/// A held account lock (with the owner's plan effects lease, when the writer took it).
 pub struct AccountLock {
     key: String,
     owner: String,
+    plan: Option<PlanLease>,
+}
+
+/// A held plan effects lease of the channel's owner ([`crate::plans::projection`]).
+pub(crate) struct PlanLease {
+    pub(crate) key: String,
+    pub(crate) token: String,
 }
 
 impl std::fmt::Debug for AccountLock {
@@ -84,7 +96,11 @@ impl AccountLock {
                 .await?
                 == SetOutcome::Written
             {
-                return Ok(Self { key, owner });
+                return Ok(Self {
+                    key,
+                    owner,
+                    plan: None,
+                });
             }
             if started.elapsed() >= ledger.config.lock_wait {
                 return Err(LedgerError::Busy);
@@ -93,21 +109,40 @@ impl AccountLock {
         }
     }
 
-    /// Renews the lock if it is still this owner's; [`LedgerError::LeaseLost`] otherwise.
-    /// Called immediately before every write.
+    /// Holds `lease` with the lock: confirmed and released with it.
+    pub(crate) fn hold_plan(&mut self, lease: PlanLease) {
+        self.plan = Some(lease);
+    }
+
+    /// Renews the lock (and the plan effects lease it holds) if both are still this owner's;
+    /// [`LedgerError::LeaseLost`] otherwise. Called immediately before every write.
     pub async fn confirm(&self, ledger: &Ledger<'_>) -> Result<(), LedgerError> {
         let renewed = EXTEND
             .run_value(ledger.dragonfly, &[&self.key], &[self.owner.as_str()])
             .await?;
-        if reply::int(renewed)? == 1 {
-            Ok(())
-        } else {
-            Err(LedgerError::LeaseLost)
+        if reply::int(renewed)? != 1 {
+            return Err(LedgerError::LeaseLost);
         }
+        if let Some(plan) = &self.plan
+            && !crate::plans::projection::extend_owner_lease(
+                ledger.dragonfly,
+                &plan.key,
+                &plan.token,
+            )
+            .await?
+        {
+            return Err(LedgerError::LeaseLost);
+        }
+        Ok(())
     }
 
-    /// Releases the lock if it is still this owner's (a failed release expires on its own).
+    /// Releases the lock and the plan effects lease it holds, each if it is still this owner's
+    /// (a failed release expires on its own).
     pub async fn release(self, ledger: &Ledger<'_>) {
+        if let Some(plan) = &self.plan {
+            crate::plans::projection::release_owner_lease(ledger.dragonfly, &plan.key, &plan.token)
+                .await;
+        }
         let _ = RELEASE
             .run_value(ledger.dragonfly, &[&self.key], &[self.owner.as_str()])
             .await;

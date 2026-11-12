@@ -492,9 +492,9 @@ pub fn resolution_key(operation: &OperationId) -> String {
 /// an `LRANGE` gave them), once per `operation`: the operation's record makes a repeat (a retry
 /// after a lost reply, a second click) answer the first outcome and change nothing.
 ///
-/// The credits of a requeued event are held twice against the balance until its queuing time
-/// plus the queued hold (by its dead-letter bucket and by the queue): the balance shows less,
-/// never more, for at most a day ([`crate::plans::balance`]).
+/// The entry holds its event's debit against Polar's figure, and the hold goes with it (item 3 of
+/// P2-BILLING-02c, [`crate::plans::balance`]): a requeued event is held by the queue (once), a
+/// settled one is released at once.
 pub async fn resolve_dead_letter(
     dragonfly: &Dragonfly,
     channel: &str,

@@ -19,9 +19,22 @@ use crate::plans::credits::VerifiedBalance;
 ///
 /// Item 2 of P2-BILLING-01c: the usage is the [`VerifiedBalance`] itself, which only a read of
 /// Polar whose publication was accepted can make, so no number can be passed off as verified.
+///
+/// Item 1 of P2-BILLING-02c (re-check point S1): the grant is computed from the credits used as
+/// **Polar's meter reported them** ([`VerifiedBalance::polar_reported`]), never from the cautious
+/// spending figure, which counts a held debit twice when Polar already counts it (the reset
+/// granted 1,000 for 500 consumed). While a debit whose count at Polar is not settled is held
+/// ([`VerifiedBalance::unsettled_held`]: acknowledged less than the settle time ago, or queued
+/// and not yet stored), Polar's figure may or may not include it: granting from it could leave
+/// that debit to the new period, granting from the cautious figure could grant it twice, so a
+/// new period is deferred ([`FreeCreditResetDecision::Defer`]) until it settles (two minutes
+/// after Polar stored it, [`crate::plans::balance::SETTLE_AFTER_ACK_MS`]; a debit Polar never
+/// stores is held at most [`crate::plans::balance::QUEUED_HOLD_MS`] after it was queued). A
+/// dead-lettered debit (Polar refused it) does not defer: Polar's figure certainly does not
+/// count it.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ResetUsage {
-    /// Credits used in the period, as the read that verified the balance published them.
+    /// Credits used in the period, as the read that verified the balance saw them.
     Verified(VerifiedBalance),
     /// No verified balance (Polar could not be reached, the read was fenced or superseded, or
     /// only a cached or fallback balance exists): a new period is deferred, never granted from
@@ -89,8 +102,10 @@ pub enum FreeCreditResetDecision {
         /// Polar idempotency id.
         external_id: String,
     },
-    /// A new period needs a verified usage and has none ([`ResetUsage::Unverified`]): nothing
-    /// is written; the worker tries again later (its "Credit usage unavailable; reset deferred").
+    /// A new period needs a verified usage and has none ([`ResetUsage::Unverified`]), or the
+    /// verified balance holds a debit whose count at Polar is not settled yet
+    /// ([`VerifiedBalance::unsettled_held`]): nothing is written; the worker tries again later
+    /// (its "Credit usage unavailable; reset deferred").
     Defer,
     /// Grant credits (a whole JavaScript number above 0).
     Grant {
@@ -172,8 +187,11 @@ pub fn decide_free_credit_reset(input: &FreeCreditResetInput<'_>) -> FreeCreditR
     let ResetUsage::Verified(balance) = &input.usage else {
         return FreeCreditResetDecision::Defer;
     };
+    if balance.unsettled_held() > 0.0 {
+        return FreeCreditResetDecision::Defer;
+    }
     let maximum = whole_credits(input.maximum_reset_credits);
-    let used = whole_credits(balance.used());
+    let used = whole_credits(balance.polar_reported().used);
     let credits = crate::js::min(used, maximum);
     if credits > 0.0 {
         FreeCreditResetDecision::Grant {
@@ -196,13 +214,76 @@ mod tests {
         dima_text::parse_date(text).unwrap()
     }
 
-    /// A balance as a read would have verified it (only this crate can make one).
+    /// A balance as a read would have verified it with nothing held (only this crate can make
+    /// one): Polar's figure and the spending figure are the same.
     pub(super) fn verified(used: f64) -> ResetUsage {
         let data = crate::plans::credits::AiCreditsData {
             used,
             ..crate::plans::credits::unavailable_ai_credits(String::new())
         };
-        ResetUsage::Verified(VerifiedBalance::new(&data, 0, "test".into(), 1))
+        ResetUsage::Verified(VerifiedBalance::new(
+            &data,
+            &data,
+            crate::plans::balance::Held::default(),
+            0,
+            "test".into(),
+            1,
+        ))
+    }
+
+    /// A balance whose publication held `held` credits on top of Polar's `used`, `unsettled` of
+    /// them not settled at Polar.
+    fn held(used: f64, held: f64, unsettled: f64) -> ResetUsage {
+        let polar = crate::plans::credits::AiCreditsData {
+            used,
+            ..crate::plans::credits::unavailable_ai_credits(String::new())
+        };
+        let stored = crate::plans::credits::AiCreditsData {
+            used: used + held,
+            ..polar.clone()
+        };
+        ResetUsage::Verified(VerifiedBalance::new(
+            &polar,
+            &stored,
+            crate::plans::balance::Held {
+                total: held,
+                unsettled,
+            },
+            0,
+            "test".into(),
+            1,
+        ))
+    }
+
+    // Item 1 of P2-BILLING-02c: the grant is Polar's figure; an unsettled hold defers a new
+    // period; a settled one (a dead letter) does not change the grant; a pending retry and a
+    // first sight need no balance.
+    #[test]
+    fn a_new_period_grants_polar_s_figure_and_waits_for_unsettled_holds() {
+        let completed = || Some(previous(OLD, "completed", 0.0));
+        let with = |usage| FreeCreditResetInput {
+            usage,
+            ..input(completed(), 0.0)
+        };
+        assert_eq!(
+            decide_free_credit_reset(&with(held(500.0, 500.0, 500.0))),
+            FreeCreditResetDecision::Defer
+        );
+        assert_eq!(
+            decide_free_credit_reset(&with(held(500.0, 200.0, 0.0))),
+            FreeCreditResetDecision::Grant {
+                credits: 500.0,
+                external_id: "free-credit-reset-user-1-2026-09-07".into()
+            }
+        );
+        assert_eq!(
+            decide_free_credit_reset(&FreeCreditResetInput {
+                usage: held(0.0, 9.0, 9.0),
+                ..input(Some(previous(START, "pending", 7.0)), 0.0)
+            })
+            .action(),
+            "grant"
+        );
     }
 
     fn input(previous: Option<PreviousReset<'static>>, used: f64) -> FreeCreditResetInput<'static> {

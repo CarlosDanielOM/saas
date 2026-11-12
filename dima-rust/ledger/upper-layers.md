@@ -1241,3 +1241,4 @@ Kept by the lead; a package not listed has not started.
 | P4-BOT-INGRESS | merged (dima-chat 29 tests, dima-actions 22). Hand-over: the trait `ingress::EventsubHandler` (`handle` after the answer, `revoke` before it), implemented by P4-CHAT-EVENTS and P4-CHAT-MESSAGE. Wanted: an accessor for the EventSub secret in `dima-twitch` (the ingress reads `TWITCH_EVENTSUB_SECRET` itself); a bounded body reader in `dima-web` (its parser reads up to 64 MiB of a refused body). Kept from the reference: chat messages and redemptions are processed at most once; the dead-letter list is in Dragonfly |
 | P4-ACT-CORE | running (Opus xhigh) |
 | P4-AI-MEMORY | running (Opus) |
+| P4-FEAT-GAMES | running (Opus) |

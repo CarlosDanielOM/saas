@@ -52,7 +52,7 @@
 //! |---|---|
 //! | `twitch:{channel}:ai:polarshevent` | list: the queue (`RPUSH`, claimed from the head); each item is the event's JSON with `queuedAt` |
 //! | `twitch:{channel}:ai:polarshevent:processing` | list: the batch being sent |
-//! | `twitch:{channel}:ai:polarshevent:dead` | list: `{"reason","at"}` JSON, a newline, the item |
+//! | `twitch:{channel}:ai:polarshevent:dead` | list: `{"reason","at"}` JSON (`"held":false` added for an event refused before it was queued), a newline, the item |
 //! | `locks:polar-ingest:{channel}` | the lease (expires on its own) |
 
 use super::{BatchAnswer, IngestEvent, PolarClient};
@@ -99,11 +99,8 @@ static ACK: FencedTransition = FencedTransition::new(
 static REQUEUE: FencedTransition =
     FencedTransition::new("INGEST_REQUEUE", include_str!("lua/ingest_requeue.lua"));
 static DEAD_LETTER: FencedTransition = FencedTransition::new(
-    "INGEST_DEAD_LETTER_HELD",
-    concat!(
-        include_str!("../plans/lua/credits_hold.lua"),
-        include_str!("lua/ingest_dead_letter.lua")
-    ),
+    "INGEST_DEAD_LETTER",
+    include_str!("lua/ingest_dead_letter.lua"),
 );
 static EXTEND: FencedTransition = FencedTransition::new(
     "INGEST_LEASE_EXTEND",
@@ -172,11 +169,16 @@ pub(crate) fn queued_event(text: &[u8]) -> Option<IngestEvent> {
     })
 }
 
-/// The dead-letter entry: `{"reason","at"}`, a newline, the item's bytes.
-fn dead_letter_header(reason: &str, at_ms: i64) -> String {
+/// The dead-letter entry: `{"reason","at"}`, a newline, the item's bytes. The entry holds its
+/// event's debit against Polar's figure ([`crate::plans::balance`]); `held: false` marks an event
+/// refused before it was queued, whose debit was never recorded.
+fn dead_letter_header(reason: &str, at_ms: i64, held: bool) -> String {
     let mut map = Map::new();
     map.insert("reason".into(), Value::from(reason));
     map.insert("at".into(), Value::from(at_ms));
+    if !held {
+        map.insert("held".into(), Value::Bool(false));
+    }
     dima_text::to_js_json(&Value::Object(map))
 }
 
@@ -591,7 +593,6 @@ impl Flush<'_> {
         let trailing = [
             now.to_string(),
             balance::SETTLE_AFTER_ACK_MS.to_string(),
-            balance::QUEUED_HOLD_MS.to_string(),
             balance::ACK_BUCKET_MS.to_string(),
             self.generation_token()?,
             balance::REVISION_TTL_SECONDS.to_string(),
@@ -614,8 +615,8 @@ impl Flush<'_> {
             != Transition::LeaseLost)
     }
 
-    /// Moves one claimed item to the dead-letter list, its credits still held; `false` when
-    /// the lease was lost.
+    /// Moves one claimed item to the dead-letter list, its debit held by the entry (item 3 of
+    /// P2-BILLING-02c: the hold moves with the event); `false` when the lease was lost.
     async fn dead_letter(
         &self,
         channel: &str,
@@ -623,29 +624,16 @@ impl Flush<'_> {
         item: &QueueItem,
         reason: &str,
     ) -> Result<bool, DragonflyError> {
-        let now = self.clock.now_ms();
-        let header = dead_letter_header(reason, now);
+        let header = dead_letter_header(reason, self.clock.now_ms(), true);
         let dead = dead_letter_key(channel);
-        let revision = balance::revision_key(channel);
-        let credits = credits_cache_key(channel);
-        let args = [
-            header,
-            now.to_string(),
-            balance::QUEUED_HOLD_MS.to_string(),
-            balance::DEAD_LETTER_BUCKET_MS.to_string(),
-            self.generation_token()?,
-            balance::REVISION_TTL_SECONDS.to_string(),
-            balance::sweep_floor(now).to_string(),
-        ];
-        let args: Vec<&[u8]> = args.iter().map(String::as_bytes).collect();
         let moved = DEAD_LETTER
             .run(
                 self.dragonfly,
                 fence(lease),
                 &processing_list(channel),
                 item,
-                &[&dead, &revision, &credits],
-                &args,
+                &[&dead],
+                &[header.as_bytes()],
             )
             .await?;
         if moved == Transition::LeaseLost {
@@ -659,7 +647,8 @@ impl Flush<'_> {
     }
 
     /// Sets aside an event Polar's validation refuses before it is queued (it would never be
-    /// accepted); no lease is needed, nothing claims the dead-letter list.
+    /// accepted); no lease is needed, nothing claims the dead-letter list. Nothing was debited
+    /// for it, so its entry holds nothing (`"held":false`) until an operator requeues it.
     pub async fn dead_letter_at_admission(
         &self,
         channel: &str,
@@ -668,7 +657,7 @@ impl Flush<'_> {
     ) -> Result<(), DragonflyError> {
         let entry = format!(
             "{}\n{text}",
-            dead_letter_header(reason, self.clock.now_ms())
+            dead_letter_header(reason, self.clock.now_ms(), false)
         );
         self.dragonfly
             .rpush(&dead_letter_key(channel), &[entry.as_bytes()])
@@ -706,8 +695,12 @@ mod tests {
     #[test]
     fn dead_letter_entries_name_the_reason_and_time() {
         assert_eq!(
-            dead_letter_header("Polar refused it (422 missing)", 7),
+            dead_letter_header("Polar refused it (422 missing)", 7, true),
             r#"{"reason":"Polar refused it (422 missing)","at":7}"#
+        );
+        assert_eq!(
+            dead_letter_header("refused", 7, false),
+            r#"{"reason":"refused","at":7,"held":false}"#
         );
     }
 }

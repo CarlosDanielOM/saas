@@ -251,65 +251,114 @@ impl AiCredits {
     }
 }
 
+/// One set of credit figures of a [`VerifiedBalance`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CreditFigures {
+    /// Credits used.
+    pub used: f64,
+    /// The allowance.
+    pub limit: f64,
+    /// Credits left (may be negative).
+    pub balance: f64,
+}
+
+impl CreditFigures {
+    fn of(data: &AiCreditsData) -> Self {
+        Self {
+            used: data.used,
+            limit: data.limit,
+            balance: data.balance,
+        }
+    }
+}
+
 /// A balance Polar's AI credit meter verified, as the read that verified it published it
-/// (item 2 of P2-BILLING-01c, re-check finding N2): Polar's figure with the local debits it did
-/// not cover yet held, read back from what was stored. Its fields are private and only this
-/// crate makes one, from a read of Polar whose publication was accepted
-/// ([`AiCredits::verified`],
+/// (item 2 of P2-BILLING-01c, re-check finding N2). Its fields are private and only this crate
+/// makes one, from a read of Polar whose publication was accepted ([`AiCredits::verified`],
 /// [`super::credits_cache::CreditsCache::verified_balance`]): a superseded, cached, fenced or
 /// unknown balance never becomes one. It remembers the publication it came from, so a top-up
 /// ([`super::credits_cache::CreditsCache::top_up`]) applies on top of exactly that publication,
 /// once.
 ///
-/// What needs one: the free-credit reset of a new period
-/// ([`crate::free_credit_reset::ResetUsage`], the credits granted are computed from the usage)
-/// and the local top-up after an admin grant (`adminGrantAiCredits`, which writes the balance
-/// before the grant plus the credits). What does not: the grant itself and every grant that
-/// does not depend on a balance, which only sends credits to Polar ([`crate::polar::GrantInput`]:
-/// an admin grant, a gift, a reset's pending retry; a credit-pack purchase is Polar's own
-/// benefit); a gift's delivery reads the balance again from Polar instead of writing one.
+/// **Two figures** (item 1 of P2-BILLING-02c, re-check point S1). The publication holds every
+/// local debit Polar's figure may not count yet against it; when Polar already counts one, the
+/// held figure shows it twice. That is the right answer to "may this channel spend" and the
+/// wrong one to "how much did this channel use": the monthly reset granted 1,000 for 500
+/// consumed. So a verified balance carries both, under names that say which question each
+/// answers (there is no bare `used()`):
+///
+/// - [`Self::polar_reported`]: what Polar's meter reported at the read, normalised the
+///   reference's way (`buildAiCreditsDataFromMeter`), no local debit applied. **Every
+///   computation of a grant or a reset** uses it: the free-credit reset grants Polar's `used`.
+/// - [`Self::for_spending`]: the cautious figure that was stored, Polar's minus
+///   [`Self::held`]. **Every spending decision** uses it (it is what the cache holds and what
+///   chat features read); the local top-up after an admin grant adds the credits to it, since
+///   adding them to Polar's figure would give held debits back.
+/// - [`Self::unsettled_held`]: the part of the hold whose count at Polar is not settled (an
+///   acknowledged debit Polar's meter may not count yet, or a queued one Polar has not stored or
+///   answered). While it is above 0 the two figures cannot be told apart for those debits, and
+///   the reset defers ([`crate::free_credit_reset`]).
+///
+/// What needs one: the free-credit reset of a new period ([`crate::free_credit_reset::ResetUsage`])
+/// and the local top-up after an admin grant. What does not: the grant itself and every grant
+/// that does not depend on a balance, which only sends credits to Polar
+/// ([`crate::polar::GrantInput`]: an admin grant, a gift, a reset's pending retry; a credit-pack
+/// purchase is Polar's own benefit); a gift's delivery reads the balance again from Polar
+/// instead of writing one.
 #[derive(Clone, Debug, PartialEq)]
 pub struct VerifiedBalance {
-    used: f64,
-    limit: f64,
-    balance: f64,
+    polar: CreditFigures,
+    spending: CreditFigures,
+    held: f64,
+    unsettled: f64,
     verified_at_ms: i64,
     generation: String,
     publication: i64,
 }
 
 impl VerifiedBalance {
-    /// The balance a read published (`data`, read back from what was stored) in `generation`
-    /// as its `publication`-th publication.
+    /// The balance a read published: `polar` as Polar's meter reported it, `stored` read back
+    /// from what was stored with `held` debits held, in `generation` as its `publication`-th
+    /// publication.
     pub(crate) fn new(
-        data: &AiCreditsData,
+        polar: &AiCreditsData,
+        stored: &AiCreditsData,
+        held: super::balance::Held,
         verified_at_ms: i64,
         generation: String,
         publication: i64,
     ) -> Self {
         Self {
-            used: data.used,
-            limit: data.limit,
-            balance: data.balance,
+            polar: CreditFigures::of(polar),
+            spending: CreditFigures::of(stored),
+            held: held.total,
+            unsettled: held.unsettled,
             verified_at_ms,
             generation,
             publication,
         }
     }
 
-    /// Credits used.
-    pub fn used(&self) -> f64 {
-        self.used
+    /// What Polar's meter reported at the read (no local debit applied): the figure every
+    /// grant, reset or top-up computation uses.
+    pub fn polar_reported(&self) -> CreditFigures {
+        self.polar
     }
 
-    /// The allowance.
-    pub fn limit(&self) -> f64 {
-        self.limit
+    /// The cautious figure that was stored (Polar's minus [`Self::held`]): the figure every
+    /// spending decision uses.
+    pub fn for_spending(&self) -> CreditFigures {
+        self.spending
     }
 
-    /// Credits left.
-    pub fn balance(&self) -> f64 {
-        self.balance
+    /// Whole credits of local debits held against Polar's figure.
+    pub fn held(&self) -> f64 {
+        self.held
+    }
+
+    /// The part of [`Self::held`] whose count at Polar is not settled (see the type docs).
+    pub fn unsettled_held(&self) -> f64 {
+        self.unsettled
     }
 
     /// When Polar answered (epoch ms).

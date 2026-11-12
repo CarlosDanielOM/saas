@@ -54,10 +54,9 @@
 //! `twitch:{id}:ai:credits:polar-version`, `twitch:{id}:ai:credits:revision` (the generation and
 //! the debits held against Polar's figures, [`plans::balance`]), `twitch:{id}:ai:usage-local:*`,
 //! `billing:credit-packs:context:v1:*`, `locks:polar-ingest:{id}`, `locks:plan-effects:{owner}`
-//! (one plan change's write and effects at a time, [`plans::projection`]),
-//! `billing:admin-grant:pending:{sha256}` (an admin grant's operation id while its outcome is
-//! unknown, 24 hours: [`admin_grant`]; a pending grant lost with it can be granted again by
-//! a retry, as in the reference). Drained (money):
+//! (one plan change's write and effects at a time, and the usage ledger's writers read the
+//! owner's tier and write its expiry under it, [`plans::projection`]). An admin grant's
+//! identity and outcome are kept in MongoDB, not Dragonfly ([`admin_grant`]). Drained (money):
 //! `twitch:{id}:ai:polarshevent`, flushed by the TypeScript processes before they stop; its
 //! Rust-only companions `twitch:{id}:ai:polarshevent:processing` and `…:dead` are new after
 //! cutover (an operator reviews `…:dead`, which is never trimmed: [`polar::flush`]). The
@@ -91,10 +90,12 @@
 //!   call; a write whose outcome is unknown is reported as such ([`polar::IngestOutcome`]).
 //! - Lists are read to the end within a bound ([`polar::MAX_LIST_PAGES`]).
 //! - A product whose `name` is truthy but not text is malformed ([`credit_packs`], [`gifts`]).
-//! - An admin grant carries an operation id persisted before it is sent, and tops up the
-//!   local balance only when Polar stored it with this call, on a balance verified before it
-//!   ([`admin_grant`]); the reference drew a new id per call and added the credits to whatever
-//!   it read after the grant.
+//! - An admin grant is identified by its request (the admin site's request id, else who grants
+//!   what to whom and why, within a 24-hour window), reserved and kept in `credittransactions`
+//!   before it is sent; a repeat answers the first outcome, an unconfirmed one is reconciled by
+//!   its operation id; the local balance is topped up only when Polar stored it with this call,
+//!   on a balance verified before it ([`admin_grant`]); the reference drew a new id per call and
+//!   added the credits to whatever it read after the grant.
 //! - Referral codes racing past a plan's limit, or taken between check and insert, are
 //!   refused ([`referrals`]); a label counts characters (text rule 1).
 //! - A reward event with a cadence other than monthly or yearly is refused
