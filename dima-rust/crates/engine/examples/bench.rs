@@ -35,7 +35,10 @@ fn main() {
         .and_then(|arg| arg.parse().ok())
         .unwrap_or(2_000);
     let engine = SyntaxEngine::default();
-    println!("{:<28} {:>12} {:>12}", "syntax benchmark", "chars", "ns/compile");
+    println!(
+        "{:<28} {:>12} {:>12}",
+        "syntax benchmark", "chars", "ns/compile"
+    );
     let syntax = load("ast_syntax_cases.json");
     for bench in syntax["benchmarks"].as_array().into_iter().flatten() {
         let source = bench["source"].as_str().unwrap_or_default();
@@ -52,7 +55,10 @@ fn main() {
         );
     }
     println!();
-    println!("{:<28} {:>12} {:>12}", "blocks benchmark", "ns/import", "ns/save");
+    println!(
+        "{:<28} {:>12} {:>12}",
+        "blocks benchmark", "ns/import", "ns/save"
+    );
     let blocks = load("ast_blocks_cases.json");
     for bench in blocks["benchmarks"].as_array().into_iter().flatten() {
         let input = &bench["input"];

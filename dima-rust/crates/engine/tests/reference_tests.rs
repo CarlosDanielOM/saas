@@ -2,6 +2,9 @@
 //! and the parse-only assertions of `ast_parser/{syntax_errors,parens,arrays,ternary,loop}.test.ts`
 //! (their evaluation halves belong to the evaluator package). Names follow the originals.
 
+// Test helpers outside `#[test]` functions: a failed expectation is a failed test.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use dima_engine::blocks::{
     BlockKind, BlocksError, IdMaker, MAX_COMMAND_TEXT, compile_blocks, import_command_text,
 };
@@ -57,7 +60,11 @@ fn error(input: &Value) -> BlocksError {
 #[test]
 fn plain_text_stays_exactly_as_typed_smileys_and_spacing_included() {
     assert_eq!(
-        compile(vec![lit("Hello "), func("user", vec![]), lit("! :) welcome   back")]),
+        compile(vec![
+            lit("Hello "),
+            func("user", vec![]),
+            lit("! :) welcome   back")
+        ]),
         "Hello $(user)! :) welcome   back"
     );
 }
@@ -70,7 +77,9 @@ fn text_that_looks_like_an_expression_is_escaped_so_chat_shows_it() {
     );
     let back = import_command_text("type \\$(user) to see").expect("imports");
     let kinds: Vec<_> = back.root.children.iter().map(|c| &c.kind).collect();
-    assert!(matches!(kinds.as_slice(), [BlockKind::Literal { value }] if value == "type $(user) to see"));
+    assert!(
+        matches!(kinds.as_slice(), [BlockKind::Literal { value }] if value == "type $(user) to see")
+    );
 }
 
 #[test]
@@ -218,10 +227,15 @@ fn unclear_expressions_stay_as_advanced_pieces_with_their_exact_text() {
 #[test]
 fn save_errors_point_at_the_block() {
     let empty = json!({"id": "empty-if", "type": "binary", "operator": "==", "left": null, "right": lit("x")});
-    assert_eq!(error(&root(vec![empty])).block_id.as_deref(), Some("empty-if"));
+    assert_eq!(
+        error(&root(vec![empty])).block_id.as_deref(),
+        Some("empty-if")
+    );
     let raw = json!({"id": "r1", "type": "raw", "source": "$(x)"});
     assert_eq!(
-        error(&root(vec![func("say", vec![raw])])).block_id.as_deref(),
+        error(&root(vec![func("say", vec![raw])]))
+            .block_id
+            .as_deref(),
         Some("r1")
     );
     error(&root(vec![get_var("bad name", "memory", json!({}))]));
@@ -252,7 +266,10 @@ fn ids_are_kept_and_missing_or_duplicate_ids_are_replaced() {
 // ---- ast_parser/*.test.ts, the parse-only assertions -----------------------------------------
 
 fn parse_error(source: &str) -> Option<String> {
-    SyntaxEngine::default().parse(source).err().map(|e| e.message)
+    SyntaxEngine::default()
+        .parse(source)
+        .err()
+        .map(|e| e.message)
 }
 
 #[test]
@@ -267,7 +284,10 @@ fn unclosed_ast_calls_quotes_and_arrays_report_parse_errors() {
 fn extra_closing_delimiters_report_parse_errors() {
     for source in ["$(user))", "%(x])", "*(1 + 2))"] {
         let message = parse_error(source).unwrap_or_default().to_lowercase();
-        assert!(message.contains("unexpected closing"), "{source}: {message}");
+        assert!(
+            message.contains("unexpected closing"),
+            "{source}: {message}"
+        );
     }
 }
 
@@ -287,7 +307,9 @@ fn authored_templates_surface_an_unclosed_ast_call() {
     let plan = SyntaxEngine::default()
         .compile_template("before $(user")
         .expect("compiles");
-    assert!(matches!(plan.segments()[1].step(), SegmentStep::Unclosed(e) if e.message == "Unclosed expression"));
+    assert!(
+        matches!(plan.segments()[1].step(), SegmentStep::Unclosed(e) if e.message == "Unclosed expression")
+    );
 }
 
 #[test]
@@ -295,7 +317,9 @@ fn authored_templates_surface_errors_inside_a_balanced_expression() {
     let plan = SyntaxEngine::default()
         .compile_template("before $(say %[one,two)")
         .expect("compiles");
-    assert!(matches!(plan.segments()[1].step(), SegmentStep::ParseError(e) if e.message == "Unclosed array literal"));
+    assert!(
+        matches!(plan.segments()[1].step(), SegmentStep::ParseError(e) if e.message == "Unclosed array literal")
+    );
 }
 
 #[test]
@@ -335,10 +359,15 @@ fn balanced_and_escaped_parens_inside_function_args() {
 #[test]
 fn literal_arrays_decimals_and_member_access_parse() {
     let engine = SyntaxEngine::default();
-    let first = |source: &str| -> AstNode {
-        engine.parse(source).expect("parses").children()[0].clone()
-    };
-    assert!(matches!(first("%[1,2,3][0]"), AstNode::ArrayLiteral { accessor: Some(_), .. }));
+    let first =
+        |source: &str| -> AstNode { engine.parse(source).expect("parses").children()[0].clone() };
+    assert!(matches!(
+        first("%[1,2,3][0]"),
+        AstNode::ArrayLiteral {
+            accessor: Some(_),
+            ..
+        }
+    ));
     assert!(matches!(first("*(5.5 + 1)"), AstNode::Binary { .. }));
     let AstNode::Function { args, .. } = first("$(say x.length)") else {
         panic!("a call");

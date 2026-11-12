@@ -1,6 +1,9 @@
 //! Limits, hardening and fuzz-style checks: arbitrary UTF-8 input never panics, never exceeds
 //! the limits, and round-trips where the reference round-trips.
 
+// Test helpers outside `#[test]` functions: a failed expectation is a failed test.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use dima_engine::blocks::{
     BlockKind, BlockNode, BlockRoot, IdMaker, MAX_BLOCK_DEPTH, MAX_BLOCK_NODES, MAX_COMMAND_TEXT,
     compile_blocks, import_command_text_with, read_block_root, shape_eq_root,
@@ -31,11 +34,73 @@ impl Rng {
 }
 
 const PIECES: &[&str] = &[
-    "$(", "%(", "*(", "^(", "%del(", "#(", ")", "(", "[", "]", "{", "}", "%[", "\"", "'", "\\",
-    "${", ",", ";", "?", ":", "+", "-", "*", "/", "%", "#", "##", "**", "=", "==", "<", ">", "!=",
-    "~=", ".", " ", "  ", "\n", "\t", "for ", " in ", "#i", "random", "length", "http://x/",
-    "user", "say", "x", "1", "5.5", "😀", "𐐀", "👨‍👩‍👧‍👦", "é", "e\u{301}", "שלום", "مرحبا",
-    "\u{feff}", "\u{a0}", "\u{85}", "\u{3000}", "\u{0}", "\u{fffd}", "\u{202e}", "\\$", "\\)",
+    "$(",
+    "%(",
+    "*(",
+    "^(",
+    "%del(",
+    "#(",
+    ")",
+    "(",
+    "[",
+    "]",
+    "{",
+    "}",
+    "%[",
+    "\"",
+    "'",
+    "\\",
+    "${",
+    ",",
+    ";",
+    "?",
+    ":",
+    "+",
+    "-",
+    "*",
+    "/",
+    "%",
+    "#",
+    "##",
+    "**",
+    "=",
+    "==",
+    "<",
+    ">",
+    "!=",
+    "~=",
+    ".",
+    " ",
+    "  ",
+    "\n",
+    "\t",
+    "for ",
+    " in ",
+    "#i",
+    "random",
+    "length",
+    "http://x/",
+    "user",
+    "say",
+    "x",
+    "1",
+    "5.5",
+    "😀",
+    "𐐀",
+    "👨‍👩‍👧‍👦",
+    "é",
+    "e\u{301}",
+    "שלום",
+    "مرحبا",
+    "\u{feff}",
+    "\u{a0}",
+    "\u{85}",
+    "\u{3000}",
+    "\u{0}",
+    "\u{fffd}",
+    "\u{202e}",
+    "\\$",
+    "\\)",
     "\\\\",
 ];
 
@@ -176,7 +241,13 @@ fn exercise_blocks(text: &str, seed: u64) {
     };
     assert!(dima_text::char_len(&saved.text) <= MAX_COMMAND_TEXT);
     assert!(count(&saved.root) <= MAX_BLOCK_NODES);
-    assert!(saved.root.children.iter().all(|c| depth(c) <= MAX_BLOCK_DEPTH));
+    assert!(
+        saved
+            .root
+            .children
+            .iter()
+            .all(|c| depth(c) <= MAX_BLOCK_DEPTH)
+    );
     let again = import_command_text_with(&saved.text, &mut IdMaker::new("j", ""))
         .expect("saved text imports");
     assert!(
@@ -185,7 +256,10 @@ fn exercise_blocks(text: &str, seed: u64) {
         saved.text
     );
     let resaved = compile_blocks(&again.root.to_value()).expect("re-saves");
-    assert_eq!(resaved.text, saved.text, "saving is idempotent for {text:?}");
+    assert_eq!(
+        resaved.text, saved.text,
+        "saving is idempotent for {text:?}"
+    );
 }
 
 #[test]
@@ -223,16 +297,28 @@ fn deep_nesting_is_refused_without_recursion_trouble() {
         format!("*({})", vec!["1"; n].join(" + ")),
         "\"${".repeat(n),
         format!("{}{}", "\"${\\\"".repeat(1_000), "}\"".repeat(1_000)),
-        format!("*(for #i in %(x) {{ {}x{} }})", "*(for #j in %(y) { ".repeat(500), " })".repeat(500)),
+        format!(
+            "*(for #i in %(x) {{ {}x{} }})",
+            "*(for #j in %(y) { ".repeat(500),
+            " })".repeat(500)
+        ),
         format!("%(**a({}x{}))", "%(**a(".repeat(n / 4), "))".repeat(n / 4)),
         "{".repeat(n),
         "😀(".repeat(n),
     ];
     for source in &inputs {
         let outcome = catch_unwind(AssertUnwindSafe(|| exercise_syntax(&engine, source)));
-        assert!(outcome.is_ok(), "panicked on {}…", dima_text::truncate_chars(source, 40));
+        assert!(
+            outcome.is_ok(),
+            "panicked on {}…",
+            dima_text::truncate_chars(source, 40)
+        );
         let outcome = catch_unwind(AssertUnwindSafe(|| exercise_blocks(source, 1)));
-        assert!(outcome.is_ok(), "blocks panicked on {}…", dima_text::truncate_chars(source, 40));
+        assert!(
+            outcome.is_ok(),
+            "blocks panicked on {}…",
+            dima_text::truncate_chars(source, 40)
+        );
     }
     let deep = format!("{}1{}", "%[".repeat(140), "]".repeat(140));
     let raised = engine.with_limits(Limits {
@@ -240,7 +326,10 @@ fn deep_nesting_is_refused_without_recursion_trouble() {
         ..Limits::default()
     });
     assert_eq!(raised.limits().nesting, 128, "the hard ceiling holds");
-    assert_eq!(raised.parse(&deep).unwrap_err().code, DiagnosticCode::NestingLimit);
+    assert_eq!(
+        raised.parse(&deep).unwrap_err().code,
+        DiagnosticCode::NestingLimit
+    );
 }
 
 /// A JSON text with random structure, string escapes that include unpaired surrogates, astral
@@ -248,20 +337,86 @@ fn deep_nesting_is_refused_without_recursion_trouble() {
 /// text stays small whatever the dice say; `chain` makes one narrow, very deep branch.
 fn random_json(rng: &mut Rng, depth: usize, budget: &mut usize, chain: usize, out: &mut String) {
     const TYPES: &[&str] = &[
-        "literal", "raw", "function", "commandRef", "getVar", "setVar", "exists", "deleteVar",
-        "binary", "unary", "ternary", "template", "arrayLiteral", "loopVar", "loopAssign",
-        "forLoop", "group", "root", "nope",
+        "literal",
+        "raw",
+        "function",
+        "commandRef",
+        "getVar",
+        "setVar",
+        "exists",
+        "deleteVar",
+        "binary",
+        "unary",
+        "ternary",
+        "template",
+        "arrayLiteral",
+        "loopVar",
+        "loopAssign",
+        "forLoop",
+        "group",
+        "root",
+        "nope",
     ];
     const KEYS: &[&str] = &[
-        "id", "type", "value", "source", "name", "args", "commandName", "storage", "accessor",
-        "userSelector", "operator", "left", "right", "argument", "test", "consequent",
-        "alternate", "parts", "items", "loopVar", "mode", "init", "condition", "update",
-        "iterable", "body", "children", "index",
+        "id",
+        "type",
+        "value",
+        "source",
+        "name",
+        "args",
+        "commandName",
+        "storage",
+        "accessor",
+        "userSelector",
+        "operator",
+        "left",
+        "right",
+        "argument",
+        "test",
+        "consequent",
+        "alternate",
+        "parts",
+        "items",
+        "loopVar",
+        "mode",
+        "init",
+        "condition",
+        "update",
+        "iterable",
+        "body",
+        "children",
+        "index",
     ];
     const STRINGS: &[&str] = &[
-        "x", "say", "user", "memory", "dbUser", "cacheUser", "+", "==", "++", "range", "foreach",
-        "index", "append", "clear", "😀", "𐐀", "\\ud83d", "\\ude00", "\\ud83d\\ude00", "\\udfff\\ud800",
-        "$(x)", "\\\\$", "a b", "e\u{301}", "שלום", "!so", "\\u0000", "\\n", "\\\"",
+        "x",
+        "say",
+        "user",
+        "memory",
+        "dbUser",
+        "cacheUser",
+        "+",
+        "==",
+        "++",
+        "range",
+        "foreach",
+        "index",
+        "append",
+        "clear",
+        "😀",
+        "𐐀",
+        "\\ud83d",
+        "\\ude00",
+        "\\ud83d\\ude00",
+        "\\udfff\\ud800",
+        "$(x)",
+        "\\\\$",
+        "a b",
+        "e\u{301}",
+        "שלום",
+        "!so",
+        "\\u0000",
+        "\\n",
+        "\\\"",
     ];
     let roll = rng.below(10);
     *budget = budget.saturating_sub(1);
@@ -322,7 +477,11 @@ fn untrusted_block_json_never_panics_and_saves_only_within_limits() {
                 text.push(',');
             }
             let mut budget = 60;
-            let chain = if rng.below(10) == 0 { rng.below(300) } else { 0 };
+            let chain = if rng.below(10) == 0 {
+                rng.below(300)
+            } else {
+                0
+            };
             random_json(&mut rng, 0, &mut budget, chain, &mut text);
         }
         text.push_str("]}");
@@ -347,7 +506,10 @@ fn untrusted_block_json_never_panics_and_saves_only_within_limits() {
             assert!(dima_text::char_len(&compiled.text) <= MAX_COMMAND_TEXT);
         }
     }
-    assert!(saved > 10, "the generator should produce some valid trees ({saved})");
+    assert!(
+        saved > 10,
+        "the generator should produce some valid trees ({saved})"
+    );
 }
 
 #[test]
@@ -424,10 +586,18 @@ fn where_the_reference_throws_the_port_reports_or_parses() {
     // `unescapeLiteral(undefined)`: a per-viewer selector left open at the end of an item.
     let program = engine.parse("%[%(##x(]").expect("parses");
     let text = program.to_value().to_string();
-    assert!(text.contains("\"userSelector\":{\"type\":\"literal\",\"value\":\"\"}"), "{text}");
+    assert!(
+        text.contains("\"userSelector\":{\"type\":\"literal\",\"value\":\"\"}"),
+        "{text}"
+    );
     // Inside an interpolation the reference catches the throw and shows the expression.
     let program = engine.parse("\"${%[%(]}\"").expect("parses");
-    assert!(program.to_value().to_string().contains("[Parse error: %[%(]]"));
+    assert!(
+        program
+            .to_value()
+            .to_string()
+            .contains("[Parse error: %[%(]]")
+    );
 }
 
 #[test]
@@ -457,12 +627,18 @@ fn shared_budgets_cover_every_segment_and_nested_region() {
             tokens: stats.tokens - 1,
             ..Limits::default()
         });
-        assert_eq!(tokens.parse(nested).unwrap_err().code, DiagnosticCode::TokenLimit);
+        assert_eq!(
+            tokens.parse(nested).unwrap_err().code,
+            DiagnosticCode::TokenLimit
+        );
         let nodes = engine.clone().with_limits(Limits {
             nodes: stats.nodes - 1,
             ..Limits::default()
         });
-        assert_eq!(nodes.parse(nested).unwrap_err().code, DiagnosticCode::NodeLimit);
+        assert_eq!(
+            nodes.parse(nested).unwrap_err().code,
+            DiagnosticCode::NodeLimit
+        );
     }
     for limits in [
         Limits {
@@ -478,7 +654,11 @@ fn shared_budgets_cover_every_segment_and_nested_region() {
             ..Limits::default()
         },
     ] {
-        let error = engine.clone().with_limits(limits).parse("$(user)").unwrap_err();
+        let error = engine
+            .clone()
+            .with_limits(limits)
+            .parse("$(user)")
+            .unwrap_err();
         assert!(error.is_resource_limit());
     }
     // Arrays are indexed once per region, not once per ancestor.
@@ -501,7 +681,10 @@ fn the_json_shape_stays_below_the_standard_reader_limit() {
             }
             Err(error) => {
                 assert_eq!(error.code, DiagnosticCode::NestingLimit);
-                assert_eq!(error.message, "AST JSON serialization nesting limit exceeded");
+                assert_eq!(
+                    error.message,
+                    "AST JSON serialization nesting limit exceeded"
+                );
             }
         }
     }
@@ -556,7 +739,10 @@ fn grammar_extensions_keep_the_reference_rules() {
     assert!(matches!(program.children(), [AstNode::SetVar { .. }]));
     let segments = engine.scan_template("hi @(x) \\@(y)").unwrap();
     let kinds: Vec<_> = segments.iter().map(|s| s.kind).collect();
-    assert_eq!(kinds, [SegmentKind::Text, SegmentKind::Expr, SegmentKind::Text]);
+    assert_eq!(
+        kinds,
+        [SegmentKind::Text, SegmentKind::Expr, SegmentKind::Text]
+    );
 }
 
 #[test]

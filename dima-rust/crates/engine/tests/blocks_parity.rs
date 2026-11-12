@@ -9,10 +9,12 @@
 //! port's result on the input is the twin's result with the replacements undone: limits,
 //! counts in messages and the 24-character quote of an unknown type all follow from that.
 
+// Test helpers outside `#[test]` functions: a failed expectation is a failed test.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use dima_engine::blocks::{
-    BlockNode, BlockRoot, IdMaker, MAX_BLOCK_NODES, compile_blocks,
-    import_command_text_with, normalize_root, normalize_value, read_block_root, shape_eq,
-    shape_eq_root, stored_blocks,
+    BlockNode, BlockRoot, IdMaker, MAX_BLOCK_NODES, compile_blocks, import_command_text_with,
+    normalize_root, normalize_value, read_block_root, shape_eq, shape_eq_root, stored_blocks,
 };
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
@@ -282,7 +284,11 @@ fn actual(case: &Value) -> Value {
 fn every_corpus_case_gives_the_typescript_result() {
     let corpus = corpus();
     let cases = corpus["cases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 532, "regenerate the test's counts with the corpus");
+    assert_eq!(
+        cases.len(),
+        532,
+        "regenerate the test's counts with the corpus"
+    );
     assert_eq!(corpus["baseline"]["tsMaxBlockNodes"], MAX_BLOCK_NODES);
     let mut failures = Vec::new();
     let (mut twins, mut changed_by_twin) = (0, 0);
@@ -292,7 +298,11 @@ fn every_corpus_case_gives_the_typescript_result() {
         let expected = expected(case);
         if !case["twin"].is_null() {
             twins += 1;
-            if expected != project(case["operation"].as_str().unwrap_or_default(), &case["source"])
+            if expected
+                != project(
+                    case["operation"].as_str().unwrap_or_default(),
+                    &case["source"],
+                )
             {
                 changed_by_twin += 1;
             }
@@ -315,7 +325,10 @@ fn every_corpus_case_gives_the_typescript_result() {
     // (7 cases), variable names (5), command names (5), function and counter names (1 each,
     // a different message), the unknown-type quote (3), the compiled command's limit and its
     // count (7) and the import limit and its count (3).
-    assert_eq!(changed_by_twin, 32, "cases where the character rule changes the result");
+    assert_eq!(
+        changed_by_twin, 32,
+        "cases where the character rule changes the result"
+    );
 }
 
 fn truncate(value: &Value) -> String {

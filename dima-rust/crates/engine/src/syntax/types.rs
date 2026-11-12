@@ -577,7 +577,9 @@ pub struct SourceSegment {
 impl SourceSegment {
     /// The segment's text in `source` (the text the scanner ran on).
     pub fn text<'a>(&self, source: &'a str) -> &'a str {
-        source.get(self.span.start..self.span.end).unwrap_or_default()
+        source
+            .get(self.span.start..self.span.end)
+            .unwrap_or_default()
     }
 }
 

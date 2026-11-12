@@ -63,7 +63,10 @@ pub(crate) fn ast_to_block(node: &AstNode, ids: &mut IdMaker) -> Result<BlockNod
             user_selector,
         } => {
             let name = var_name(name, *storage)?;
-            let accessor = accessor.as_ref().map(|a| convert_accessor(a, ids)).transpose()?;
+            let accessor = accessor
+                .as_ref()
+                .map(|a| convert_accessor(a, ids))
+                .transpose()?;
             BlockKind::GetVar {
                 name,
                 storage: *storage,
@@ -78,7 +81,10 @@ pub(crate) fn ast_to_block(node: &AstNode, ids: &mut IdMaker) -> Result<BlockNod
             user_selector,
         } => {
             let name = var_name(name, *storage)?;
-            let accessor = accessor.as_ref().map(|a| convert_accessor(a, ids)).transpose()?;
+            let accessor = accessor
+                .as_ref()
+                .map(|a| convert_accessor(a, ids))
+                .transpose()?;
             BlockKind::Exists {
                 name,
                 storage: *storage,
@@ -93,7 +99,10 @@ pub(crate) fn ast_to_block(node: &AstNode, ids: &mut IdMaker) -> Result<BlockNod
             user_selector,
         } => {
             let name = var_name(name, *storage)?;
-            let accessor = accessor.as_ref().map(|a| convert_accessor(a, ids)).transpose()?;
+            let accessor = accessor
+                .as_ref()
+                .map(|a| convert_accessor(a, ids))
+                .transpose()?;
             BlockKind::DeleteVar {
                 name,
                 storage: *storage,
@@ -110,7 +119,10 @@ pub(crate) fn ast_to_block(node: &AstNode, ids: &mut IdMaker) -> Result<BlockNod
         } => {
             let name = var_name(name, *storage)?;
             let value = Box::new(ast_to_block(value, ids)?);
-            let accessor = accessor.as_ref().map(|a| convert_accessor(a, ids)).transpose()?;
+            let accessor = accessor
+                .as_ref()
+                .map(|a| convert_accessor(a, ids))
+                .transpose()?;
             BlockKind::SetVar {
                 name,
                 storage: *storage,
@@ -163,7 +175,10 @@ pub(crate) fn ast_to_block(node: &AstNode, ids: &mut IdMaker) -> Result<BlockNod
             let items = list(items, ids)?;
             BlockKind::ArrayLiteral {
                 items,
-                accessor: accessor.as_ref().map(|a| convert_accessor(a, ids)).transpose()?,
+                accessor: accessor
+                    .as_ref()
+                    .map(|a| convert_accessor(a, ids))
+                    .transpose()?,
             }
         }
         AstNode::LoopVar { name } => BlockKind::LoopVar { name: name.clone() },
@@ -226,7 +241,10 @@ fn var_name(name: &str, storage: VariableStorage) -> Result<String, Unsupported>
     Ok(bare.to_owned())
 }
 
-fn convert_accessor(value: &ArrayAccessor, ids: &mut IdMaker) -> Result<BlockAccessor, Unsupported> {
+fn convert_accessor(
+    value: &ArrayAccessor,
+    ids: &mut IdMaker,
+) -> Result<BlockAccessor, Unsupported> {
     Ok(match value {
         ArrayAccessor::Index { index } => BlockAccessor::Index {
             index: Box::new(ast_to_block(index, ids)?),

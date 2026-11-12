@@ -77,9 +77,7 @@ impl PreparedGrammar {
                 if !longest {
                     return Some(index);
                 }
-                if matched
-                    .is_none_or(|old| token.len() > self.definitions[old].start_token.len())
-                {
+                if matched.is_none_or(|old| token.len() > self.definitions[old].start_token.len()) {
                     matched = Some(index);
                 }
             }

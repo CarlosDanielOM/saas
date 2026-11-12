@@ -64,7 +64,10 @@ impl Parser<'_, '_> {
             TokenKind::Quoted(content) => format!("__TEMPLATE__:{}", sub(text, content.clone())),
             TokenKind::Array(_) => format!(
                 "__ARRAY__:{}",
-                sub(text, token.bytes.start + 2..token.bytes.end.saturating_sub(1))
+                sub(
+                    text,
+                    token.bytes.start + 2..token.bytes.end.saturating_sub(1)
+                )
             ),
             TokenKind::Raw | TokenKind::Start(_) => sub(text, token.bytes.clone()).to_owned(),
         }
@@ -611,8 +614,7 @@ impl Parser<'_, '_> {
                     TokenKind::Start(_) => true,
                     TokenKind::Quoted(content) => sub(text, content.clone()).ends_with('('),
                     TokenKind::Array(_) => {
-                        sub(text, t.bytes.start + 2..t.bytes.end.saturating_sub(1))
-                            .ends_with('(')
+                        sub(text, t.bytes.start + 2..t.bytes.end.saturating_sub(1)).ends_with('(')
                     }
                     TokenKind::Raw => token.ends_with('('),
                 },
@@ -762,7 +764,13 @@ impl Parser<'_, '_> {
                 break;
             }
             let inner = opening + 2..end - 1;
-            match tokenize(view.clone(), inner.clone(), self.grammar, self.budget, depth) {
+            match tokenize(
+                view.clone(),
+                inner.clone(),
+                self.grammar,
+                self.budget,
+                depth,
+            ) {
                 Err(error) if error.is_resource_limit() => return Err(error),
                 Err(error) => segments.push(TemplateSegment::Text {
                     value: format!("[Parse error: {}]", error.message),

@@ -9,8 +9,7 @@ static VAR_NAME: LazyLock<Option<Regex>> =
     LazyLock::new(|| Regex::new(r"^[\p{L}\p{N}_]{1,64}$").ok());
 
 /// `/^[\p{L}\p{N}_@!&¡¿]+$/u`: text that needs no quotes inside an expression.
-static BARE: LazyLock<Option<Regex>> =
-    LazyLock::new(|| Regex::new(r"^[\p{L}\p{N}_@!&¡¿]+$").ok());
+static BARE: LazyLock<Option<Regex>> = LazyLock::new(|| Regex::new(r"^[\p{L}\p{N}_@!&¡¿]+$").ok());
 
 fn matches(regex: &LazyLock<Option<Regex>>, text: &str) -> bool {
     // The patterns are constants; a pattern that failed to build matches nothing.
@@ -97,7 +96,10 @@ mod tests {
         assert!(!var_name(&"𐐀".repeat(65)));
         assert!(!var_name("bad name"));
         assert!(!var_name(""));
-        assert!(!var_name("e\u{301}"), "a combining mark is \\p{{M}}, not \\p{{L}}");
+        assert!(
+            !var_name("e\u{301}"),
+            "a combining mark is \\p{{M}}, not \\p{{L}}"
+        );
         assert!(loop_name("i"));
         assert!(loop_name(&"a".repeat(32)));
         assert!(!loop_name(&"a".repeat(33)));

@@ -12,6 +12,9 @@
 //!
 //! Everything else is compared exactly.
 
+// Test helpers outside `#[test]` functions: a failed expectation is a failed test.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use dima_engine::syntax::{
     AstNode, CompiledProgram, Diagnostic, Limits, SegmentKind, SegmentStep, SourceSegment, Span,
     SyntaxEngine, unescape_literal, unescape_rendered_text,
@@ -50,7 +53,9 @@ fn diagnostic_value(source: &str, diagnostic: &Diagnostic) -> Value {
 fn program_value(source: &str, result: Result<&CompiledProgram, &Diagnostic>) -> Value {
     match result {
         Ok(program) => json!({"outcome": "program", "ast": program.to_value()}),
-        Err(error) => json!({"outcome": "diagnostic", "diagnostic": diagnostic_value(source, error)}),
+        Err(error) => {
+            json!({"outcome": "diagnostic", "diagnostic": diagnostic_value(source, error)})
+        }
     }
 }
 
@@ -154,7 +159,9 @@ fn expectation(case: &Value) -> Value {
 fn recorded_matches_source(case: &Value) -> bool {
     let strip_parse = |value: &Value| match value["outcome"].as_str() {
         Some("program") => json!({"ast": value["ast"]}),
-        _ => json!({"ast": {"type": "root", "children": []}, "error": value["diagnostic"]["message"]}),
+        _ => {
+            json!({"ast": {"type": "root", "children": []}, "error": value["diagnostic"]["message"]})
+        }
     };
     let legacy = &case["expected"]["legacy"];
     let stripped = match case["operation"].as_str().unwrap_or_default() {
@@ -187,7 +194,11 @@ fn recorded_matches_source(case: &Value) -> bool {
 fn every_corpus_case_gives_the_typescript_result() {
     let corpus = corpus();
     let cases = corpus["cases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 1260, "regenerate the test's counts with the corpus");
+    assert_eq!(
+        cases.len(),
+        1260,
+        "regenerate the test's counts with the corpus"
+    );
     let engine = SyntaxEngine::default();
     let mut failures = Vec::new();
     let mut source_limit = 0;
@@ -210,7 +221,9 @@ fn every_corpus_case_gives_the_typescript_result() {
             }
             _ => {
                 if !recorded_matches_source(case) {
-                    failures.push(format!("{name}: recorded expectation drifted from the source"));
+                    failures.push(format!(
+                        "{name}: recorded expectation drifted from the source"
+                    ));
                 }
             }
         }
@@ -239,8 +252,14 @@ fn every_corpus_case_gives_the_typescript_result() {
     }
     assert!(failures.is_empty(), "{} corpus mismatches", failures.len());
     // The intended differences and how many cases they touch.
-    assert_eq!(source_limit, 6, "cases over the 10,000-character source limit");
-    assert_eq!(converted_spans, 27, "cases whose byte spans differ from UTF-16 spans");
+    assert_eq!(
+        source_limit, 6,
+        "cases over the 10,000-character source limit"
+    );
+    assert_eq!(
+        converted_spans, 27,
+        "cases whose byte spans differ from UTF-16 spans"
+    );
 }
 
 fn truncate(value: &Value) -> String {
@@ -278,18 +297,30 @@ fn recorded_asts_round_trip_through_the_typed_shape() {
 fn the_source_limit_counts_characters_and_reports_bytes() {
     let engine = SyntaxEngine::default();
     let at_limit = "😀".repeat(10_000);
-    assert!(engine.parse(&at_limit).is_ok(), "10,000 emoji are 10,000 characters");
+    assert!(
+        engine.parse(&at_limit).is_ok(),
+        "10,000 emoji are 10,000 characters"
+    );
     let over = "😀".repeat(10_001);
     let error = engine.parse(&over).unwrap_err();
     assert_eq!(error.message, "Source character limit exceeded");
-    assert_eq!(error.span, Span { start: 0, end: over.len() });
+    assert_eq!(
+        error.span,
+        Span {
+            start: 0,
+            end: over.len()
+        }
+    );
     assert_eq!(error.span.to_utf16(&over).end, 20_002);
     let small = engine.with_limits(Limits {
         source_chars: 2,
         ..Limits::default()
     });
     assert!(small.parse("😀é").is_ok());
-    assert!(small.parse("e\u{301}x").is_err(), "a combining mark is its own character");
+    assert!(
+        small.parse("e\u{301}x").is_err(),
+        "a combining mark is its own character"
+    );
 }
 
 #[test]
@@ -309,5 +340,8 @@ fn byte_spans_never_split_a_character_and_convert_to_javascript_offsets() {
         panic!("expected a parse error");
     };
     assert_eq!(error.message, "Unclosed array literal");
-    assert_eq!(template.get(error.span.start..error.span.end), Some("%[a, b)"));
+    assert_eq!(
+        template.get(error.span.start..error.span.end),
+        Some("%[a, b)")
+    );
 }

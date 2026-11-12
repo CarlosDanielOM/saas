@@ -133,7 +133,12 @@ impl Reader {
         }
     }
 
-    fn node(&mut self, value: &Value, depth: usize, at_root: bool) -> Result<BlockNode, BlocksError> {
+    fn node(
+        &mut self,
+        value: &Value,
+        depth: usize,
+        at_root: bool,
+    ) -> Result<BlockNode, BlocksError> {
         let Some(object) = value.as_object() else {
             return Err(BlocksError::plain("A block is broken."));
         };
@@ -160,14 +165,23 @@ impl Reader {
     }
 
     /// `child(slot, label, optional)` for a required slot.
-    fn child(&mut self, f: &Fields<'_>, key: &str, label: &str) -> Result<Box<BlockNode>, BlocksError> {
+    fn child(
+        &mut self,
+        f: &Fields<'_>,
+        key: &str,
+        label: &str,
+    ) -> Result<Box<BlockNode>, BlocksError> {
         match f.get(key) {
             Some(slot) => Ok(Box::new(self.node(slot, f.depth + 1, false)?)),
             None => Err(f.error(format!("Fill in {label}."))),
         }
     }
 
-    fn optional(&mut self, f: &Fields<'_>, key: &str) -> Result<Option<Box<BlockNode>>, BlocksError> {
+    fn optional(
+        &mut self,
+        f: &Fields<'_>,
+        key: &str,
+    ) -> Result<Option<Box<BlockNode>>, BlocksError> {
         f.get(key)
             .map(|slot| self.node(slot, f.depth + 1, false).map(Box::new))
             .transpose()
@@ -236,7 +250,12 @@ impl Reader {
         Box::new(BlockNode::literal(self.fresh_id(None), ""))
     }
 
-    fn kind(&mut self, f: &Fields<'_>, kind: &str, at_root: bool) -> Result<BlockKind, BlocksError> {
+    fn kind(
+        &mut self,
+        f: &Fields<'_>,
+        kind: &str,
+        at_root: bool,
+    ) -> Result<BlockKind, BlocksError> {
         Ok(match kind {
             "literal" => {
                 // `value.value ?? ''`.
