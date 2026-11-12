@@ -1724,6 +1724,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-platform"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "bytes",
+ "dima-core",
+ "dima-http",
+ "dima-text",
+ "futures-util",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "dima-rig"
 version = "0.1.0"
 dependencies = [

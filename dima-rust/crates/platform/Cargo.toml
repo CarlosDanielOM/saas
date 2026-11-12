@@ -1,0 +1,21 @@
+[package]
+name = "dima-platform"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+[lints]
+workspace = true
+[dependencies]
+dima-http.workspace = true
+dima-core.workspace = true
+dima-text.workspace = true
+thiserror.workspace = true
+url.workspace = true
+bytes.workspace = true
+futures-util.workspace = true
+base64.workspace = true
+[dev-dependencies]
+dima-http = { workspace = true, features = ["test-util"] }
+tokio.workspace = true
+serde_json.workspace = true
