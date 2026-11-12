@@ -76,6 +76,11 @@ impl Slot {
         true
     }
 
+    /// Whether `other` can be merged in and the row stays within the consumer's limits.
+    fn fits(&self, other: &Slot) -> bool {
+        self.count + other.count <= MAX_COUNT && self.sum + other.sum <= MAX_NUMBER
+    }
+
     fn merge(&mut self, other: &Slot) {
         self.count += other.count;
         self.sum += other.sum;
@@ -94,6 +99,29 @@ struct Series {
 #[derive(Default)]
 struct Shard {
     map: HashMap<Box<[u8]>, Series>,
+}
+
+/// One series' bucket merged across shards. Each shard's slot is valid for the consumer on its
+/// own (at most [`MAX_COUNT`] observations and a sum of [`MAX_NUMBER`]); merged, they could
+/// exceed both, and the consumer rejects a whole batch for one row over its limits. Slots are
+/// merged while the result fits and start a further row of the same series and bucket otherwise:
+/// every row is valid, nothing is lost (the consumer adds rows of the same series up).
+#[derive(Default)]
+struct Merged {
+    first: Slot,
+    more: Vec<Slot>,
+}
+
+impl Merged {
+    fn add(&mut self, slot: &Slot) {
+        if self.first.count == 0 || self.first.fits(slot) {
+            self.first.merge(slot);
+        } else if let Some(last) = self.more.last_mut().filter(|last| last.fits(slot)) {
+            last.merge(slot);
+        } else {
+            self.more.push(*slot);
+        }
+    }
 }
 
 /// Why an observation was not counted.
@@ -231,7 +259,7 @@ impl Metrics {
             taken.push(map);
         }
         let held: usize = taken.iter().map(HashMap::len).sum();
-        let mut merged: HashMap<(Box<[u8]>, u64), Slot> = HashMap::new();
+        let mut merged: HashMap<(Box<[u8]>, u64), Merged> = HashMap::new();
         for map in taken {
             for (key, series) in map {
                 // The key moves into the merged row; it is copied only for a second bucket.
@@ -240,19 +268,19 @@ impl Metrics {
                     merged
                         .entry((key.clone(), second.at))
                         .or_default()
-                        .merge(&second);
+                        .add(&second);
                 }
                 if first.count > 0 {
-                    merged.entry((key, first.at)).or_default().merge(&first);
+                    merged.entry((key, first.at)).or_default().add(&first);
                 }
             }
         }
         self.series.fetch_sub(held, Ordering::Relaxed);
-        let mut rows: Vec<MetricRow> = merged
-            .into_iter()
-            .map(|((key, at), slot)| {
-                let (kind, name, channel, outcome) = label::split_key(&key);
-                MetricRow {
+        let mut rows: Vec<MetricRow> = Vec::with_capacity(merged.len());
+        for ((key, at), slots) in merged {
+            let (kind, name, channel, outcome) = label::split_key(&key);
+            for slot in std::iter::once(slots.first).chain(slots.more) {
+                rows.push(MetricRow {
                     at,
                     kind: kind.to_owned(),
                     name: name.to_owned(),
@@ -262,9 +290,9 @@ impl Metrics {
                     sum: slot.sum,
                     max: slot.max,
                     histogram: slot.histogram,
-                }
-            })
-            .collect();
+                });
+            }
+        }
         rows.sort_by(|a, b| (a.at, &a.kind, &a.name).cmp(&(b.at, &b.kind, &b.name)));
         rows
     }
@@ -681,6 +709,63 @@ mod tests {
         );
         // A swap is a few pointer moves; copying and merging 2000 series takes hundreds of µs.
         assert!(median < 20_000, "median hold {median} ns");
+    }
+
+    /// The consumer's per-row checks (`dima-analytics/src/store.mjs`, `validateBatch`).
+    fn valid_for_consumer(row: &MetricRow) -> bool {
+        let number = |v: f64| v.is_finite() && (0.0..=MAX_NUMBER).contains(&v);
+        row.count >= 1
+            && row.count <= MAX_COUNT
+            && number(row.sum)
+            && number(row.max)
+            && row.histogram.iter().map(|n| u64::from(*n)).sum::<u64>() == row.count
+    }
+
+    /// A slot as full as one shard allows.
+    fn near_full(count: u64, sum: f64) -> Slot {
+        let mut slot = Slot {
+            at: 0,
+            count,
+            sum,
+            max: 10.0,
+            histogram: [0; 16],
+        };
+        slot.histogram[2] = u32::try_from(count).unwrap();
+        slot
+    }
+
+    #[test]
+    fn merged_shards_never_exceed_the_consumers_row_limits() {
+        let metrics = Metrics::new();
+        let k = key("busy");
+        // Every shard holds a valid slot for the same series; together they exceed both the
+        // count (1e8) and the sum (1e15) a row may carry.
+        for (index, shard) in metrics.shards.iter().enumerate() {
+            let slot = if index % 2 == 0 {
+                near_full(60_000_000, 1000.0)
+            } else {
+                near_full(10, 6e14)
+            };
+            let mut series = Series::default();
+            series.slots[0] = slot;
+            shard
+                .lock()
+                .unwrap()
+                .map
+                .insert(Box::from(k.bytes()), series);
+            metrics.series.fetch_add(1, Ordering::Relaxed);
+        }
+        let rows = metrics.take();
+        assert!(rows.iter().all(valid_for_consumer), "{rows:?}");
+        // Nothing is lost: the pieces add up to the shards' totals.
+        assert_eq!(
+            rows.iter().map(|row| row.count).sum::<u64>(),
+            4 * 60_000_000 + 4 * 10
+        );
+        assert!((rows.iter().map(|row| row.sum).sum::<f64>() - (4000.0 + 4.0 * 6e14)).abs() < 1.0);
+        assert!(rows.len() >= 3, "{}", rows.len());
+        assert!(rows.iter().all(|row| row.name == "busy" && row.at == 0));
+        assert_eq!(metrics.series(), 0);
     }
 
     #[test]
