@@ -24,6 +24,8 @@ bson.workspace = true
 mongodb.workspace = true
 tokio.workspace = true
 unicode-normalization.workspace = true
+serde.workspace = true
+redis.workspace = true
 [dev-dependencies]
 dima-platform = { path = ".", features = ["test-util"] }
 anyhow.workspace = true
