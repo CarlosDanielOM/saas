@@ -252,3 +252,26 @@ git diff <that commit> -- dima-rust/vendor
    polled messages are done once their payload is gone, a held-back one and a volatile one are
    not; WebSocket messages are done once written; what is left at close is done);
    `transport::ws::tests::a_message_waiting_for_a_silent_peer_is_not_done_and_its_writer_is_a_task`.
+
+## Differences from `engine.io` that are left
+
+Found while reading both sources; none is visible to the JavaScript clients in normal use, and
+none is changed here (each would be a change of its own, with its reason and test):
+
+- After the probe is answered, the upgrade holds the packet buffer for the WebSocket: data and
+  pings wait until the upgrade completes or fails (at most the upgrade timeout). `engine.io`
+  keeps flushing over polling and keeps pinging while it upgrades.
+- Packets of type `0`, `5` and `6` on an established transport: `engine.io` ignores them; here a
+  POST containing one is answered 400 and the rest of its payload is dropped (the session
+  stays), and over WebSocket the session closes as a parse error. A `1` (close) packet over
+  WebSocket closes the session here; `engine.io` only honours it over polling.
+- A pong that answers no ping restarts `engine.io`'s ping interval; here it is discarded.
+- A session that ends while its POST is still being read: `engine.io` destroys the request
+  socket; here the read stops and the POST is answered 400 (`Session ID unknown`).
+- Closing a WebSocket: `ws` waits up to 30 s for the peer's close frame before destroying the
+  socket; here the close frame is sent (within 30 s) and the connection is dropped.
+- `engineioxide`'s own error bodies carry the code as a string (`{"code":"1",…}`, errors.rs),
+  `engine.io` as a number; `dima-socketio` answers the request checks itself, so these only
+  appear when a session ends between its check and `engineioxide`'s.
+- A session opened over WebSocket cannot be upgraded again (`engine.io` would let a second
+  WebSocket take over through the probe); its refusal closes the new WebSocket.
