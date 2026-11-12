@@ -20,7 +20,11 @@ fn reader(store: MongoStore, r: &Value) -> Result<DashboardAnalytics> {
     Ok(DashboardAnalytics::new(
         store,
         Arc::new(ManualClock::new(r["now"].as_i64().context("now")?)),
-        Config::default(),
+        // The gate runs beside other builds: the production deadline (5 s) is not what this
+        // test is about, and a loaded machine has exceeded it.
+        Config {
+            store_deadline: std::time::Duration::from_secs(60),
+        },
     )?)
 }
 async fn compare(reader: &DashboardAnalytics, case: &Value) -> Result<()> {
