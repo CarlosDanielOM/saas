@@ -363,7 +363,13 @@ pub mod random_user_settings;
 pub mod redemption_rewards;
 pub mod referral_codes;
 pub mod site_analytics;
+pub mod stream_activities;
+pub mod stream_activity_aggregates;
+pub mod stream_activity_states;
+pub mod stream_markers;
+pub mod stream_participants;
 pub mod stream_sessions;
+pub mod stream_viewer_snapshots;
 pub mod temporary_moderators;
 pub mod timer_commands;
 pub mod titleconfigs;
@@ -391,6 +397,12 @@ pub use writes::UpdateOptions;
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).
 pub static REGISTRY: &[&CollectionInfo] = &[
+    &stream_activities::INFO,
+    &stream_activity_aggregates::INFO,
+    &stream_activity_states::INFO,
+    &stream_markers::INFO,
+    &stream_participants::INFO,
+    &stream_viewer_snapshots::INFO,
     &channel_moderation_settings::INFO,
     &moderation_decisions::INFO,
     &pet_requests::INFO,

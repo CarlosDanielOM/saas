@@ -349,6 +349,123 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("stream_activities", "typed") => {
+            use dima_model::stream_activities::*;
+            let input = NewStreamActivity {
+                id: "seed".into(),
+                channel_id: "seed".into(),
+                session_id: oid(2)?,
+                occurred_at: JsDate(1623053350011),
+                offset: Some(JsNumber(1.0)),
+                kind: StreamActivityKindValue::Message,
+                key: Some("seed".into()),
+                label: Some("seed".into()),
+                actor: Some("seed".into()),
+                actor_label: Some("seed".into()),
+                value: Some(JsNumber(1.0)),
+                outcome: Some("seed".into()),
+                emotes: Some(vec![Some(NewStreamActivityEmotes {
+                    key: Some("seed".into()),
+                    label: Some("seed".into()),
+                    count: Some(JsNumber(1.0)),
+                })]),
+                processed: Some(true),
+                dashboard_processed: Some(true),
+                expires_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("stream_activity_aggregates", "typed") => {
+            use dima_model::stream_activity_aggregates::*;
+            let input = NewStreamActivityAggregate {
+                id: "seed".into(),
+                channel_id: Some("seed".into()),
+                session_id: Some(oid(2)?),
+                scope: Some("seed".into()),
+                kind: Some("seed".into()),
+                key: Some("seed".into()),
+                actor: Some("seed".into()),
+                label: Some("seed".into()),
+                bucket: Some(JsNumber(1.0)),
+                count: Some(JsNumber(1.0)),
+                messages: Some(JsNumber(1.0)),
+                commands: Some(JsNumber(1.0)),
+                emotes: Some(JsNumber(1.0)),
+                emote_messages: Some(JsNumber(1.0)),
+                chatters: Some(JsNumber(1.0)),
+                failures: Some(JsNumber(1.0)),
+                redemptions: Some(JsNumber(1.0)),
+                follows: Some(JsNumber(1.0)),
+                subs: Some(JsNumber(1.0)),
+                bits: Some(JsNumber(1.0)),
+                raids: Some(JsNumber(1.0)),
+                first_seq: Some(JsNumber(1.0)),
+                last_seq: Some(JsNumber(1.0)),
+                first_at: Some(JsDate(1623053350011)),
+                message_started_at: Some(JsDate(1623053350011)),
+                updated_at: Some(JsDate(1623053350011)),
+                expires_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("stream_activity_states", "typed") => {
+            use dima_model::stream_activity_states::*;
+            let input = NewStreamActivityState {
+                id: "seed".into(),
+                owner: Some("seed".into()),
+                lease_until: Some(JsDate(1623053350011)),
+                seq: Some(JsNumber(1.0)),
+                active: Some(NewStreamActivityStateActive {
+                    seq: Some(JsNumber(1.0)),
+                    ids: Some(vec![Some("seed".into())]),
+                }),
+                updated_at: Some(JsDate(1623053350011)),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("stream_markers", "typed") => {
+            use dima_model::stream_markers::*;
+            let input = NewStreamMarker {
+                channel_id: "seed".into(),
+                session_id: oid(2)?,
+                key: "seed".into(),
+                kind: StreamMarkerKindValue::Note,
+                label: crate::Private::new("seed".into()),
+                value: Some(JsNumber(1.0)),
+                reward_id: Some("seed".into()),
+                cost: Some(JsNumber(1.0)),
+                status: Some("seed".into()),
+                occurred_at: JsDate(1623053350011),
+                expires_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("stream_participants", "typed") => {
+            use dima_model::stream_participants::*;
+            let input = NewStreamParticipant {
+                channel_id: "seed".into(),
+                session_id: oid(2)?,
+                bucket: JsNumber(1.0),
+                user_id: "seed".into(),
+                expires_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("streamviewersnapshots", "typed") => {
+            use dima_model::stream_viewer_snapshots::*;
+            let input = NewStreamViewerSnapshot {
+                channel_id: "seed".into(),
+                session_id: oid(2)?,
+                stream_id: "seed".into(),
+                captured_at: JsDate(1623053350011),
+                viewers: JsNumber(1.0),
+                title: Some(crate::Private::new("seed".into())),
+                game_name: Some("seed".into()),
+                messages: Some(JsNumber(1.0)),
+                commands: Some(JsNumber(1.0)),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
         ("moderation_decisions", "nullable") => {
             use dima_model::moderation_decisions::*;
             let mut input = NewModerationDecision {

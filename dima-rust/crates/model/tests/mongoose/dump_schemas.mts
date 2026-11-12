@@ -30,6 +30,13 @@ import { pathToFileURL } from 'node:url';
 
 // One entry per collection module of the registry: the schema file and the model name.
 const MODELS: Array<[string, string]> = [
+    ['src/schemas/stream_activity.schema.ts', 'stream_activity'],
+    ['src/schemas/stream_activity.schema.ts', 'stream_activity_aggregate'],
+    ['src/schemas/stream_activity.schema.ts', 'stream_activity_state'],
+    ['src/schemas/stream_timeline.schema.ts', 'stream_marker'],
+    ['src/schemas/stream_timeline.schema.ts', 'stream_participant'],
+    ['src/schemas/stream_viewer_snapshot.schema.ts', 'StreamViewerSnapshot'],
+
     ['src/schemas/channel_moderation_settings.schema.ts', 'channel_moderation_settings'],
     ['src/schemas/moderation_decision.schema.ts', 'moderation_decision'],
     ['src/schemas/pet_runtime.schema.ts', 'PetRequest'],

@@ -1633,6 +1633,1285 @@
   }
  ],
  "models": {
+  "stream_activities": {
+   "model": "stream_activity",
+   "file": "src/schemas/stream_activity.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "session_id",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "occurredAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "offset",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "kind",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "key",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "label",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "actor",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "actorLabel",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "value",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "1"
+       }
+      }
+     },
+     {
+      "name": "outcome",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "emotes",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "key",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "label",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "count",
+         "kind": "value",
+         "type": "Number"
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "processed",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "dashboardProcessed",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "session_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "occurredAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "kind",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "kind",
+     "type": "enum",
+     "values": [
+      "message",
+      "command",
+      "redemption",
+      "follow",
+      "sub",
+      "gift",
+      "bits",
+      "raid"
+     ]
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "processed",
+       1
+      ],
+      [
+       "occurredAt",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "session_id",
+       1
+      ],
+      [
+       "processed",
+       1
+      ],
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "session_id",
+       1
+      ],
+      [
+       "kind",
+       1
+      ],
+      [
+       "occurredAt",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "dashboardProcessed",
+       1
+      ],
+      [
+       "kind",
+       1
+      ],
+      [
+       "occurredAt",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "dashboardProcessed",
+       1
+      ],
+      [
+       "kind",
+       1
+      ],
+      [
+       "occurredAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "stream_activity_aggregates": {
+   "model": "stream_activity_aggregate",
+   "file": "src/schemas/stream_activity.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "session_id",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "scope",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "kind",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "key",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "actor",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "label",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "bucket",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "-1"
+       }
+      }
+     },
+     {
+      "name": "count",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "messages",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "commands",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "emotes",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "emoteMessages",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "chatters",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "failures",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "redemptions",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "follows",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "subs",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "bits",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "raids",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "firstSeq",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "lastSeq",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "firstAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "messageStartedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "session_id",
+       1
+      ],
+      [
+       "scope",
+       1
+      ],
+      [
+       "kind",
+       1
+      ],
+      [
+       "key",
+       1
+      ],
+      [
+       "count",
+       -1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "session_id",
+       1
+      ],
+      [
+       "scope",
+       1
+      ],
+      [
+       "kind",
+       1
+      ],
+      [
+       "count",
+       -1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "session_id",
+       1
+      ],
+      [
+       "scope",
+       1
+      ],
+      [
+       "bucket",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "stream_activity_states": {
+   "model": "stream_activity_state",
+   "file": "src/schemas/stream_activity.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "owner",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "leaseUntil",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "seq",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "active",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "seq",
+        "kind": "value",
+        "type": "Number"
+       },
+       {
+        "name": "ids",
+        "kind": "array",
+        "type": "String",
+        "default": {
+         "function": false,
+         "implicit": true,
+         "value": []
+        }
+       }
+      ]
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": []
+  },
+  "stream_markers": {
+   "model": "stream_marker",
+   "file": "src/schemas/stream_timeline.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "session_id",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "key",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "kind",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "label",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "value",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "rewardID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "cost",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "occurredAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "session_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "key",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "kind",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "kind",
+     "type": "enum",
+     "values": [
+      "note",
+      "redemption",
+      "follow",
+      "sub",
+      "gift",
+      "bits",
+      "raid"
+     ]
+    },
+    {
+     "path": "label",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "label",
+     "type": "maxlength",
+     "maxlength": 120
+    },
+    {
+     "path": "occurredAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "session_id",
+       1
+      ],
+      [
+       "key",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "session_id",
+       1
+      ],
+      [
+       "occurredAt",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "session_id",
+       1
+      ],
+      [
+       "kind",
+       1
+      ],
+      [
+       "occurredAt",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "stream_participants": {
+   "model": "stream_participant",
+   "file": "src/schemas/stream_timeline.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "session_id",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "bucket",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "user_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "session_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "bucket",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "user_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "session_id",
+       1
+      ],
+      [
+       "bucket",
+       1
+      ],
+      [
+       "user_id",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "streamviewersnapshots": {
+   "model": "StreamViewerSnapshot",
+   "file": "src/schemas/stream_viewer_snapshot.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "created_at",
+     "updatedAt": "updated_at"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "session_id",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "stream_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "captured_at",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "viewers",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "title",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "game_name",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "messages",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "commands",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "session_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "stream_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "captured_at",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "viewers",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "viewers",
+     "type": "min",
+     "min": 0
+    },
+    {
+     "path": "messages",
+     "type": "min",
+     "min": 0
+    },
+    {
+     "path": "commands",
+     "type": "min",
+     "min": 0
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "session_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "stream_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "captured_at",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "captured_at",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "session_id",
+       1
+      ],
+      [
+       "captured_at",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
   "channel_moderation_settings": {
    "model": "channel_moderation_settings",
    "file": "src/schemas/channel_moderation_settings.schema.ts",
@@ -17450,7 +18729,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416eaf8561d427e6d20b"
+          "value": "6af4416ef37da011979d5469"
          }
         },
         {

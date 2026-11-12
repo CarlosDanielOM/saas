@@ -60,6 +60,13 @@ const imported = async (file: string) => import(pathToFileURL(path.join(root, fi
 
 // One entry per registered collection: the schema file and the model name.
 const FILES: Array<[string, string]> = [
+    ['src/schemas/stream_activity.schema.ts', 'stream_activity'],
+    ['src/schemas/stream_activity.schema.ts', 'stream_activity_aggregate'],
+    ['src/schemas/stream_activity.schema.ts', 'stream_activity_state'],
+    ['src/schemas/stream_timeline.schema.ts', 'stream_marker'],
+    ['src/schemas/stream_timeline.schema.ts', 'stream_participant'],
+    ['src/schemas/stream_viewer_snapshot.schema.ts', 'StreamViewerSnapshot'],
+
     ['src/schemas/channel_moderation_settings.schema.ts', 'channel_moderation_settings'],
     ['src/schemas/moderation_decision.schema.ts', 'moderation_decision'],
     ['src/schemas/pet_runtime.schema.ts', 'PetRequest'],
@@ -404,6 +411,57 @@ const libraryItem = (extra: any = {}) => ({
 const librarySeed = (extra: any = {}) => ({ _id: OID(1), ...libraryItem(), createdAt: T1, updatedAt: T1, __v: 0, ...extra });
 
 const CASES: Record<string, any[]> = {
+"stream_activities": [
+ {name:'missing_required',op:'validate',doc:{}},
+{name:'create',op:'create',rust:'typed',doc:{"_id":"seed","channelID":"seed","session_id":OID(2),"occurredAt":T2,"offset":1,"kind":"message","key":"seed","label":"seed","actor":"seed","actorLabel":"seed","value":1,"outcome":"seed","emotes":[{"key":"seed","label":"seed","count":1}],"processed":true,"dashboardProcessed":true,"expiresAt":T2}},
+{name:'update',op:'updateOne',seed:[{...{"_id":"seed","channelID":"seed","session_id":OID(2),"occurredAt":T2,"offset":1,"kind":"message","key":"seed","label":"seed","actor":"seed","actorLabel":"seed","value":1,"outcome":"seed","emotes":[{"key":"seed","label":"seed","count":1}],"processed":true,"dashboardProcessed":true,"expiresAt":T2},_id:'seed'}],filter:{_id:'seed'},update:{$set:{"channelID":"seed"}}},
+{name:'upsert',op:'findOneAndUpdate',filter:{_id:'seed'},update:{$setOnInsert:{"_id":"seed","channelID":"seed","session_id":OID(2),"occurredAt":T2,"offset":1,"kind":"message","key":"seed","label":"seed","actor":"seed","actorLabel":"seed","value":1,"outcome":"seed","emotes":[{"key":"seed","label":"seed","count":1}],"processed":true,"dashboardProcessed":true,"expiresAt":T2}},options:{upsert:true,new:true}},
+],
+"stream_activity_aggregates": [
+ {name:'missing_required',op:'validate',doc:{}},
+ {name:'projector_increment',op:'updateOne',filter:{_id:'hash',$or:[{lastSeq:{$lt:2}},{lastSeq:{$exists:false}}]},update:{$setOnInsert:{channelID:'seed',session_id:OID(2),scope:'summary',kind:'',key:'',actor:'',bucket:-1,label:''},$inc:{messages:1,emotes:2},$set:{lastSeq:2,updatedAt:T2},$min:{firstAt:T2,messageStartedAt:T2},$max:{expiresAt:T2}},options:{upsert:true}},
+ {name:'distinct_receipt',op:'updateOne',filter:{_id:'distinct-hash'},update:{$setOnInsert:{channelID:'seed',session_id:OID(2),scope:'distinct',kind:'message',actor:'actor',key:'',bucket:0,firstSeq:1,expiresAt:T2}},options:{upsert:true}},
+
+{name:'create',op:'create',rust:'typed',doc:{"_id":"seed","channelID":"seed","session_id":OID(2),"scope":"seed","kind":"seed","key":"seed","actor":"seed","label":"seed","bucket":1,"count":1,"messages":1,"commands":1,"emotes":1,"emoteMessages":1,"chatters":1,"failures":1,"redemptions":1,"follows":1,"subs":1,"bits":1,"raids":1,"firstSeq":1,"lastSeq":1,"firstAt":T2,"messageStartedAt":T2,"updatedAt":T2,"expiresAt":T2}},
+{name:'update',op:'updateOne',seed:[{...{"_id":"seed","channelID":"seed","session_id":OID(2),"scope":"seed","kind":"seed","key":"seed","actor":"seed","label":"seed","bucket":1,"count":1,"messages":1,"commands":1,"emotes":1,"emoteMessages":1,"chatters":1,"failures":1,"redemptions":1,"follows":1,"subs":1,"bits":1,"raids":1,"firstSeq":1,"lastSeq":1,"firstAt":T2,"messageStartedAt":T2,"updatedAt":T2,"expiresAt":T2},_id:'seed'}],filter:{_id:'seed'},update:{$set:{"channelID":"seed"}}},
+{name:'upsert',op:'findOneAndUpdate',filter:{_id:'seed'},update:{$setOnInsert:{"_id":"seed","channelID":"seed","session_id":OID(2),"scope":"seed","kind":"seed","key":"seed","actor":"seed","label":"seed","bucket":1,"count":1,"messages":1,"commands":1,"emotes":1,"emoteMessages":1,"chatters":1,"failures":1,"redemptions":1,"follows":1,"subs":1,"bits":1,"raids":1,"firstSeq":1,"lastSeq":1,"firstAt":T2,"messageStartedAt":T2,"updatedAt":T2,"expiresAt":T2}},options:{upsert:true,new:true}},
+],
+"stream_activity_states": [
+ {name:'missing_required',op:'validate',doc:{},refused:'a string _id is required by the read type'},
+ {name:'lease_init',op:'updateOne',filter:{_id:'projector-v1'},update:{$setOnInsert:{seq:0,leaseUntil:new Date(0)}},options:{upsert:true}},
+ {name:'checkpoint',op:'updateOne',seed:[{_id:'projector-v1',owner:'worker',seq:0}],filter:{_id:'projector-v1',owner:'worker'},update:{$set:{active:{seq:1,ids:['receipt']},seq:1}}},
+ {name:'checkpoint_complete',op:'updateOne',seed:[{_id:'projector-v1',owner:'worker',seq:1,active:{seq:1,ids:['receipt']}}],filter:{_id:'projector-v1',owner:'worker'},update:{$unset:{active:''},$set:{updatedAt:T2}}},
+
+{name:'create',op:'create',rust:'typed',doc:{"_id":"seed","owner":"seed","leaseUntil":T2,"seq":1,"active":{"seq":1,"ids":["seed"]},"updatedAt":T2}},
+{name:'update',op:'updateOne',seed:[{...{"_id":"seed","owner":"seed","leaseUntil":T2,"seq":1,"active":{"seq":1,"ids":["seed"]},"updatedAt":T2},_id:'seed'}],filter:{_id:'seed'},update:{$set:{"owner":"seed"}}},
+{name:'upsert',op:'findOneAndUpdate',filter:{_id:'seed'},update:{$setOnInsert:{"_id":"seed","owner":"seed","leaseUntil":T2,"seq":1,"active":{"seq":1,"ids":["seed"]},"updatedAt":T2}},options:{upsert:true,new:true}},
+],
+"stream_markers": [
+ {name:'duplicate_identity',op:'create',seed:[{...{"channelID":"seed","session_id":OID(2),"key":"seed","kind":"note","label":"seed","value":1,"rewardID":"seed","cost":1,"status":"seed","occurredAt":T2,"expiresAt":T2},_id:OID(10)}],doc:{"channelID":"seed","session_id":OID(2),"key":"seed","kind":"note","label":"seed","value":1,"rewardID":"seed","cost":1,"status":"seed","occurredAt":T2,"expiresAt":T2}},
+ {name:'missing_required',op:'validate',doc:{}},
+{name:'create',op:'create',rust:'typed',doc:{"channelID":"seed","session_id":OID(2),"key":"seed","kind":"note","label":"seed","value":1,"rewardID":"seed","cost":1,"status":"seed","occurredAt":T2,"expiresAt":T2}},
+{name:'update',op:'updateOne',seed:[{...{"channelID":"seed","session_id":OID(2),"key":"seed","kind":"note","label":"seed","value":1,"rewardID":"seed","cost":1,"status":"seed","occurredAt":T2,"expiresAt":T2},_id:OID(1)}],filter:{_id:OID(1)},update:{$set:{"channelID":"seed"}}},
+{name:'upsert',op:'findOneAndUpdate',filter:{_id:OID(1)},update:{$setOnInsert:{"channelID":"seed","session_id":OID(2),"key":"seed","kind":"note","label":"seed","value":1,"rewardID":"seed","cost":1,"status":"seed","occurredAt":T2,"expiresAt":T2}},options:{upsert:true,new:true}},
+],
+"stream_participants": [
+ {name:'duplicate_identity',op:'create',seed:[{...{"channelID":"seed","session_id":OID(2),"bucket":1,"user_id":"seed","expiresAt":T2},_id:OID(10)}],doc:{"channelID":"seed","session_id":OID(2),"bucket":1,"user_id":"seed","expiresAt":T2}},
+ {name:'missing_required',op:'validate',doc:{}},
+{name:'create',op:'create',rust:'typed',doc:{"channelID":"seed","session_id":OID(2),"bucket":1,"user_id":"seed","expiresAt":T2}},
+{name:'update',op:'updateOne',seed:[{...{"channelID":"seed","session_id":OID(2),"bucket":1,"user_id":"seed","expiresAt":T2},_id:OID(1)}],filter:{_id:OID(1)},update:{$set:{"channelID":"seed"}}},
+{name:'upsert',op:'findOneAndUpdate',filter:{_id:OID(1)},update:{$setOnInsert:{"channelID":"seed","session_id":OID(2),"bucket":1,"user_id":"seed","expiresAt":T2}},options:{upsert:true,new:true}},
+],
+"streamviewersnapshots": [
+ {name:'save_invalid',op:'save',seed:[{_id:OID(1),channelID:'seed',session_id:OID(2),stream_id:'seed',captured_at:T2,viewers:1}],id:OID(1),changes:[{set:'viewers',value:-1}]},
+ {name:'save_untouched_invalid',op:'save',seed:[{_id:OID(1),channelID:'seed',session_id:OID(2),stream_id:'seed',captured_at:T2,viewers:-1}],id:OID(1),changes:[{set:'title',value:TEXT}]},
+ {name:'save_missing_required',op:'save',seed:[{_id:OID(1),channelID:'seed',session_id:OID(2),stream_id:'seed',captured_at:T2}],id:OID(1),changes:[{set:'title',value:TEXT}]},
+ {name:'save_error_order',op:'save',seed:[{_id:OID(1),channelID:'seed',session_id:OID(2),captured_at:T2,viewers:-1,messages:-1}],id:OID(1),changes:[{set:'commands',value:-2}]},
+
+ {name:'missing_required',op:'validate',doc:{}},
+{name:'create',op:'create',rust:'typed',doc:{"channelID":"seed","session_id":OID(2),"stream_id":"seed","captured_at":T2,"viewers":1,"title":"seed","game_name":"seed","messages":1,"commands":1}},
+{name:'update',op:'updateOne',seed:[{...{"channelID":"seed","session_id":OID(2),"stream_id":"seed","captured_at":T2,"viewers":1,"title":"seed","game_name":"seed","messages":1,"commands":1},_id:OID(1)}],filter:{_id:OID(1)},update:{$set:{"channelID":"seed"}}},
+{name:'upsert',op:'findOneAndUpdate',filter:{_id:OID(1)},update:{$setOnInsert:{"channelID":"seed","session_id":OID(2),"stream_id":"seed","captured_at":T2,"viewers":1,"title":"seed","game_name":"seed","messages":1,"commands":1}},options:{upsert:true,new:true}},
+{name:'save',op:'save',seed:[{...{"channelID":"seed","session_id":OID(2),"stream_id":"seed","captured_at":T2,"viewers":1,"title":"seed","game_name":"seed","messages":1,"commands":1},_id:OID(1)}],id:OID(1),changes:[{set:'viewers',value:2}]},
+],
     "channel_moderation_settings": [
         {name:'create',op:'create',rust:'typed',doc:{"channelID":"seed","channel":"seed","enabled":true,"spamProtection":{"enabled":true,"reviewAllMessages":true,"categories":["spam"],"exemptTags":["mod"],"thresholdPercent":80},"offenseWindowSeconds":60,"rules":[{"id":"seed","type":"caps","enabled":true,"firstOffense":{"action":"off","timeoutSeconds":1},"secondOffense":{"action":"off","timeoutSeconds":1},"thirdOffense":{"action":"off","timeoutSeconds":1},"reason":"seed","exemptUserLevel":1,"exemptExpression":{message:TEXT},"capsThresholdMode":"count","minCapsCount":1,"maxCapsPercentage":1,"minMessageLength":1,"allowlistDomains":["seed"],"maxEmoteCount":1,"terms":["seed"],"variations":{message:TEXT},"patterns":[{"id":"seed","source":"seed","boundary":"seed","ignoreCase":true}],"semantic":{"enabled":true,"thresholdPercent":1,"policy":"seed","examples":[{"message":"seed","label":"seed"}],"onUncertain":"allow_and_log"}}],"settingsVersion":1}},
         {name:'create_nulls',op:'create',rust:'nullable',doc:(()=>{const doc={"channelID":"seed","channel":"seed","enabled":true,"spamProtection":{"enabled":true,"reviewAllMessages":true,"categories":["spam"],"exemptTags":["mod"],"thresholdPercent":80},"offenseWindowSeconds":60,"rules":[{"id":"seed","type":"caps","enabled":true,"firstOffense":{"action":"off","timeoutSeconds":1},"secondOffense":{"action":"off","timeoutSeconds":1},"thirdOffense":{"action":"off","timeoutSeconds":1},"reason":"seed","exemptUserLevel":1,"exemptExpression":{message:TEXT},"capsThresholdMode":"count","minCapsCount":1,"maxCapsPercentage":1,"minMessageLength":1,"allowlistDomains":["seed"],"maxEmoteCount":1,"terms":["seed"],"variations":{message:TEXT},"patterns":[{"id":"seed","source":"seed","boundary":"seed","ignoreCase":true}],"semantic":{"enabled":true,"thresholdPercent":1,"policy":"seed","examples":[{"message":"seed","label":"seed"}],"onUncertain":"allow_and_log"}}],"settingsVersion":1};doc.rules[0].exemptExpression=null;return doc;})()},
