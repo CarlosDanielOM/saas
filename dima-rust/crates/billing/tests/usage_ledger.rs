@@ -163,7 +163,7 @@ async fn a_receipt_past_its_retention_is_not_stored() -> Result<()> {
         assert_eq!(env.plain().persist_receipt(&old, RetentionTier::Free).await?, Persisted::Expired);
         let state = ledger_state(&env.mongo).await?;
         assert!(state[0].is_empty() && state[1].is_empty());
-        assert_eq!(state[3][0].get_bool("dirty")?, true, "dashboards are dirtied first");
+        assert!(state[3][0].get_bool("dirty")?, "dashboards are dirtied first");
         env.cleanup(&[&channel]).await
     })
     .await
@@ -207,7 +207,7 @@ async fn a_stop_at_every_write_then_a_retry_records_the_use_once() -> Result<()>
             ]
         );
         let clean = ledger_state(&env.mongo).await?;
-        for at in 0..writes.len() {
+        for (at, write) in writes.iter().enumerate() {
             reset().await?;
             let killer = Killer::new(at);
             let ledger = env.ledger(&killer);
@@ -233,7 +233,7 @@ async fn a_stop_at_every_write_then_a_retry_records_the_use_once() -> Result<()>
                 ledger_state(&env.mongo).await?,
                 clean,
                 "stopped before {}",
-                writes[at]
+                write
             );
         }
         env.cleanup(&[&channel]).await

@@ -22,8 +22,10 @@
 //! that is interrupted, or fails, is repeated whole by the next projection of the plan (the
 //! owner's `polar_plan_effects_pending` flag stays until a run finishes).
 //!
-//! Intended difference: the reference changed and deleted each collection in one statement,
-//! without any check between them; the pipelines it sends are the same.
+//! Intended differences: the reference changed and deleted each collection in one statement,
+//! without any check between them; here the steps are batched and guarded, and documents
+//! already at the new tier are skipped (so an interrupted run resumes). The pipelines are the
+//! reference's.
 
 use super::{Ledger, LedgerError, ops, retention_days, valid_tier};
 use crate::plans::PlanTier;
@@ -151,6 +153,11 @@ impl Ledger<'_> {
         } }];
         let coverage =
             doc! { "$max": { "coverageStart": DateTime::from_millis(now - days * super::DAY_MS) } };
+        // A document already at the new tier was written or adjusted for it (both writers compute
+        // the expiry from the tier), so a run repeated after an interruption resumes where the
+        // last one stopped instead of rewriting every document again.
+        let mut to_adjust = of_channels.clone();
+        to_adjust.insert("retentionTier", doc! { "$ne": tier.as_str() });
         let mut expired = of_channels.clone();
         expired.insert("expiresAt", doc! { "$lte": DateTime::from_millis(now) });
         let steps: [(&str, &dima_model::CollectionInfo, &Document, Step<'_>); 6] = [
@@ -169,13 +176,13 @@ impl Ledger<'_> {
             (
                 ai_usage_receipts::COLLECTION,
                 &ai_usage_receipts::INFO,
-                &of_channels,
+                &to_adjust,
                 Step::Pipeline(&receipts_pipeline),
             ),
             (
                 ai_usage_dailies::COLLECTION,
                 &ai_usage_dailies::INFO,
-                &of_channels,
+                &to_adjust,
                 Step::Pipeline(&dailies_pipeline),
             ),
             (

@@ -359,7 +359,7 @@ mod tests {
         let value = item(&document);
         assert_eq!(value.get("requestId"), None);
         assert_eq!(value["adjustmentType"], "manual_grant");
-        assert_eq!(value["credits"], -5);
+        assert_eq!(value["credits"], -5.0);
         assert_eq!(value["occurredAt"], "1970-01-01T00:00:00.000Z");
     }
 }

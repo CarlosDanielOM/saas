@@ -147,12 +147,12 @@ async fn a_receipt_that_keeps_failing_is_retried_then_dead_lettered() -> Result<
             let report = consumer.settle_batch().await?;
             if attempt < 3 {
                 assert_eq!(report.retried, 1, "attempt {attempt}");
-                assert_eq!(env.list(&keys.queue).await?, [text.clone()]);
+                assert_eq!(env.list(&keys.queue).await?, std::slice::from_ref(&text));
             } else {
                 assert_eq!(report.dead_lettered, 1);
             }
         }
-        assert_eq!(env.list(&keys.dead).await?, [text.clone()]);
+        assert_eq!(env.list(&keys.dead).await?, std::slice::from_ref(&text));
         assert!(env.list(&keys.queue).await?.is_empty());
         assert!(
             env.dragonfly
@@ -211,7 +211,7 @@ async fn a_stop_at_every_write_of_the_consumer_is_recovered_by_the_next_call() -
         let writes = counter.0.lock().unwrap().clone();
         assert_eq!(writes.len(), 11, "{writes:?}");
         let settled = ledger_state(&env.mongo).await?;
-        for at in 0..writes.len() {
+        for (at, write) in writes.iter().enumerate() {
             reset().await?;
             let killer = Killer::new(at);
             let consumer = ReceiptConsumer {
@@ -224,7 +224,7 @@ async fn a_stop_at_every_write_of_the_consumer_is_recovered_by_the_next_call() -
             assert!(
                 killer.run(consumer.settle_batch()).await,
                 "stopped at {}",
-                writes[at]
+                write
             );
             // Every receipt is somewhere: queued, claimed or stored.
             let waiting =
@@ -247,7 +247,7 @@ async fn a_stop_at_every_write_of_the_consumer_is_recovered_by_the_next_call() -
                 ledger_state(&env.mongo).await?,
                 settled,
                 "stopped at {}",
-                writes[at]
+                write
             );
             assert!(
                 env.list(&keys.queue).await?.is_empty()

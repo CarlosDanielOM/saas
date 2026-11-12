@@ -62,6 +62,34 @@ impl UsageEvents for PolarClient {
     }
 }
 
+impl super::report::CustomerStates for PolarClient {
+    /// `client.customers.getState({id})` (`resolveAiUsagePeriod`): `activeSubscriptions` of
+    /// Polar's answer, read loosely (a missing or malformed list is none). Errors carry no id.
+    fn active_subscriptions<'a>(
+        &'a self,
+        customer_id: &'a str,
+    ) -> BoxFuture<'a, Result<Vec<super::report::SubscriptionPeriod>, String>> {
+        Box::pin(async move {
+            let state = self
+                .get_customer_state_sdk(customer_id)
+                .await
+                .map_err(|error| error.to_string())?;
+            let list = state
+                .get("active_subscriptions")
+                .or_else(|| state.get("activeSubscriptions"))
+                .and_then(Value::as_array);
+            Ok(list
+                .map(|items| {
+                    items
+                        .iter()
+                        .map(super::report::SubscriptionPeriod::from_json)
+                        .collect()
+                })
+                .unwrap_or_default())
+        })
+    }
+}
+
 /// Why the history could not be read.
 #[derive(Debug, thiserror::Error)]
 pub enum HistoryError {
