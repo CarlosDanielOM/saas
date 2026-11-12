@@ -1,0 +1,21 @@
+[package]
+name = "dima-routes"
+description = "Every HTTP router of the API, mounted in the reference's order."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# The crate map's dependencies (ledger/upper-layers.md section 2.3).
+dima-site-agent = { workspace = true }
+dima-realtime = { workspace = true }
+dima-services = { workspace = true }
+dima-recap = { workspace = true }
+dima-chat = { workspace = true }
+# The inbound edge and the guards the routers mount.
+dima-web = { workspace = true }
+dima-platform = { workspace = true }
