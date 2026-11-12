@@ -12,6 +12,7 @@ pub mod site_analytics;
 pub mod stream_activity;
 pub mod stream_memory_queue;
 pub mod stream_session_event_projection;
+pub mod stream_sessions;
 pub mod stream_timeline;
 pub mod subscription_ledger;
 mod timeline_store;
