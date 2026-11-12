@@ -14,6 +14,7 @@ pub mod detect;
 pub mod dfcmd;
 pub mod error;
 pub mod getlist;
+pub mod mock;
 pub mod path;
 pub mod report;
 pub mod run;

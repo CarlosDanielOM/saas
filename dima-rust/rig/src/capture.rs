@@ -52,6 +52,29 @@ pub struct RawHttp {
     pub body: Vec<u8>,
 }
 
+/// One request a side made to the mock of the outside world (or through the Qdrant proxy).
+/// Credential header values are already reduced to their scheme (`Bearer <redacted>`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct RawCall {
+    /// When the mock received it (rig clock, epoch ms).
+    pub at: i64,
+    /// The provider it was recorded under (`twitch`, `openrouter`, `qdrant`).
+    pub provider: String,
+    /// The host the side addressed (`api.twitch.tv`, `dima-server:3000`).
+    pub host: String,
+    pub method: String,
+    /// The path at that host (`/helix/users`).
+    pub path: String,
+    /// The raw query string, without `?`.
+    pub query: String,
+    /// Every request header: lower-case names, in the order received.
+    pub headers: Vec<(String, Vec<u8>)>,
+    /// The body as received (still compressed when it was sent compressed).
+    pub body: Vec<u8>,
+    /// What answered it: a route's origin, or `unmatched`.
+    pub answered: String,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct RawReplyStep {
     /// When the reply arrived (rig clock, epoch ms).
