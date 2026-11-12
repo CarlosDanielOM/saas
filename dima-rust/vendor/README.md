@@ -165,3 +165,26 @@ git diff <that commit> -- dima-rust/vendor
    | `engine.rs` | `RwLock` `unwrap` | poisoning needs a panic under the lock; none can happen |
    | `service/parser.rs` | query parsing (`split`, `find`, `nth`), `Sid` parse | returns errors |
    | `errors.rs`, `service/futures.rs`, `service/mod.rs`, `transport/polling.rs` | response builders | constant status and headers: cannot fail |
+
+5. **A polling POST is read whole before any of its packets is handled.**
+   `transport/polling.rs` (`post_req`, new `read_body` and `BodyError`). Upstream's streaming
+   decoder handed each complete packet at the front of the body to the handler before the rest
+   had arrived or been checked, so a chunked POST could cause work and then stall, or exceed the
+   size limit after its first packets were acted on (and the session was then closed, where
+   `engine.io` keeps it). `engine.io` buffers the body, answers 413 as soon as it exceeds
+   `maxHttpBufferSize` without handling anything and without closing the session, treats a
+   request that breaks off as a transport error, and handles the packets only on `end`
+   (polling.js 106-133). Now the body is read in full, under `max_payload`, before the first
+   packet is dispatched; the read ends with the session (the heartbeat ends a session whose
+   client is stuck in a POST, as in `engine.io`, which has no deadline of its own) and at the
+   latest after a ping interval plus a ping timeout (transport error). A payload with a
+   malformed packet handles the packets before it, closes the session and is answered `200 ok`,
+   as `engine.io` does (engine.io-parser `decodePayload` stops at the error packet; polling.js
+   120-131 answers once the payload is handled); upstream answered 400.
+   Tests: `tests/input.rs` (`a_post_is_handled_only_once_it_has_fully_arrived`,
+   `an_oversized_post_handles_none_of_its_packets_and_keeps_the_session`,
+   `a_stalled_post_is_given_up_without_handling_its_packets`,
+   `a_post_that_breaks_off_closes_the_session_without_handling_its_packets`,
+   `a_malformed_packet_in_a_post_ends_the_session_after_the_packets_before_it`);
+   `dima-socketio`'s differential cases `a POST that arrives in pieces`, `an oversized POST that
+   starts with a valid packet`, `a six-byte text that is not a packet: the POST answer`.

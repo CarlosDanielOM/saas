@@ -673,6 +673,60 @@ async function rawPolling(base) {
   };
 }
 
+// A chunked POST (no Content-Length) whose pieces are written `pause` ms apart; `whenSent` runs
+// once the last piece is written.
+function streamedPost(base, path, pieces, whenSent = () => {}) {
+  return new Promise((done) => {
+    const req = http.request(
+      `${base}${path}`,
+      { method: 'POST', agent: false, headers: { 'content-type': 'text/plain;charset=UTF-8', 'transfer-encoding': 'chunked' } },
+      (res) => {
+        const chunks = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => done({ status: res.statusCode, body: Buffer.concat(chunks).toString() }));
+        res.on('error', (error) => done({ error: error.code ?? error.message }));
+      },
+    );
+    req.on('error', (error) => done({ error: error.code ?? error.message }));
+    (async () => {
+      for (const { data, pause } of pieces) {
+        if (req.destroyed) return;
+        req.write(data);
+        if (pause) await sleep(pause);
+      }
+      whenSent();
+      req.end();
+    })();
+  });
+}
+
+// Joins /norec over a raw polling session and waits for its welcome.
+async function joinNorec(session) {
+  await session.post('40/norec,');
+  for (let i = 0; i < 5; i++) {
+    const { packets } = await session.poll();
+    if (packets?.some((p) => p.startsWith('42/norec,["welcome"'))) return true;
+  }
+  return false;
+}
+
+// The echo payloads of /norec that the next polls carry, until `last` arrives (or five polls).
+async function echoes(session, last) {
+  const seen = [];
+  for (let i = 0; i < 5 && !seen.includes(last); i++) {
+    const answer = await session.poll();
+    if (!answer.packets) {
+      seen.push(answer);
+      break;
+    }
+    for (const packet of answer.packets) {
+      const echo = /^42\/norec,\["echo","([^"]*)"\]$/.exec(packet);
+      if (echo) seen.push(echo[1]);
+    }
+  }
+  return seen;
+}
+
 const httpCases = {
   async 'client files'(base) {
     const out = {};
@@ -780,6 +834,53 @@ const httpCases = {
     const session = await rawPolling(base);
     await session.post('é1234');
     out['poll after the post'] = (await session.poll()).status ?? 'answered';
+    return out;
+  },
+  // The answer to a POST whose payload ended the session: engine.io handles the payload, then
+  // answers `ok` (polling.js 120-131).
+  async 'a six-byte text that is not a packet: the POST answer'(base) {
+    const session = await rawPolling(base);
+    const post = await session.post('é1234');
+    return post.error ? { error: post.error } : { status: post.status, body: post.body.toString() };
+  },
+  // engine.io buffers a POST and handles its packets once it has fully arrived (polling.js
+  // 106-133): a poll waiting meanwhile gets nothing from its first piece.
+  async 'a POST that arrives in pieces'(base) {
+    const out = {};
+    const session = await rawPolling(base);
+    out.joined = await joinNorec(session);
+    let sent = false;
+    const poll = session.poll().then((answer) => ({ 'answered before the POST was complete': !sent, ...answer }));
+    await sleep(50);
+    const post = await streamedPost(
+      base,
+      session.path,
+      [{ data: '42/norec,["echo","first"]\x1e', pause: 300 }, { data: '42/norec,["echo","second"]' }],
+      () => {
+        sent = true;
+      },
+    );
+    out.post = post;
+    const first = await poll;
+    out['waiting poll'] = { 'answered before the POST was complete': first['answered before the POST was complete'] };
+    const seen = (first.packets ?? []).map((p) => /^42\/norec,\["echo","([^"]*)"\]$/.exec(p)?.[1]).filter(Boolean);
+    out.echoes = seen.includes('second') ? seen : [...seen, ...(await echoes(session, 'second'))];
+    return out;
+  },
+  // A body over maxHttpBufferSize is refused while it arrives (polling.js 113-117): its first,
+  // valid packet is never handled, and the session stays.
+  async 'an oversized POST that starts with a valid packet'(base) {
+    const out = {};
+    const session = await rawPolling(base);
+    out.joined = await joinNorec(session);
+    const big = await streamedPost(base, session.path, [
+      { data: '42/norec,["echo","in the big one"]\x1e', pause: 50 },
+      { data: 'x'.repeat(1_000_001) },
+    ]);
+    out['big post'] = big.error ? { error: big.error } : { status: big.status };
+    const after = await session.post('42/norec,["echo","after"]');
+    out['post after'] = after.error ? { error: after.error } : { status: after.status };
+    out.echoes = await echoes(session, 'after');
     return out;
   },
   async 'the app and other upgrades'(base) {

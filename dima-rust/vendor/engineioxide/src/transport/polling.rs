@@ -9,7 +9,7 @@ use http_body::Body;
 use http_body_util::Full;
 use tokio_util::future::FutureExt as _;
 
-use engineioxide_core::{Packet, ProtocolVersion, Sid, TransportType};
+use engineioxide_core::{Packet, PacketParseError, ProtocolVersion, Sid, TransportType};
 
 use crate::{
     DisconnectReason, body::ResponseBody, engine::EngineIo, errors::Error,
@@ -185,8 +185,34 @@ where
     }
 
     let (parts, body) = req.into_parts();
+    // [dima-rust patch 5] The whole body first, under the size limit, and only then its packets
+    // (engine.io polling.js 106-133): a packet at the front of a body that is still arriving, or
+    // of one that turns out too large, is never acted on. engine.io sets no deadline of its own;
+    // a stalled body lasts until the heartbeat ends the session, which also ends the read here,
+    // and a ping interval plus a ping timeout bounds it in any case.
+    let max_payload = engine.config.max_payload;
+    let deadline = engine
+        .config
+        .ping_interval
+        .saturating_add(engine.config.ping_timeout);
+    let body = match tokio::time::timeout(deadline, read_body(body, max_payload))
+        .with_cancellation_token(&socket.cancellation_token)
+        .await
+    {
+        Some(Ok(Ok(body))) => body,
+        // 413 and nothing else: the session stays (polling.js 113-117).
+        Some(Ok(Err(BodyError::TooLarge))) => {
+            return Err(PacketParseError::PayloadTooLarge { max: max_payload }.into());
+        }
+        // "data request connection closed prematurely" (polling.js 107-110), or a stall.
+        Some(Ok(Err(BodyError::Read))) | Some(Err(_)) => {
+            engine.close_session(sid, DisconnectReason::TransportError);
+            return Err(PacketParseError::InvalidPacketPayload.into());
+        }
+        None => return Err(Error::UnknownSessionID(sid)),
+    };
     let content_type = parts.headers.get(CONTENT_TYPE);
-    let packets = payload::decoder(body, content_type, protocol, engine.config.max_payload);
+    let packets = payload::decoder(Full::new(body), content_type, protocol, max_payload);
     futures_util::pin_mut!(packets);
 
     while let Some(packet) = packets.next().await {
@@ -215,15 +241,48 @@ where
                 tracing::debug!(%sid, "invalid packet received: {:?}", &p);
                 Err(Error::BadPacket(p))
             }
-            Err(e) => {
+            Err(_e) => {
                 #[cfg(feature = "tracing")]
-                tracing::debug!(%sid, "could not parse packet: {e}");
+                tracing::debug!(%sid, "could not parse packet: {_e}");
                 engine.close_session(sid, DisconnectReason::PacketParsingError);
-                return Err(e.into());
+                // [dima-rust patch 5] The packets before it were handled; the payload is
+                // answered `ok` like any other (engine.io-parser decodePayload stops at the error
+                // packet, polling.js 120-131 answers once the payload is handled).
+                break;
             }
         }?;
     }
     Ok(http_response(StatusCode::OK, "ok", false))
+}
+
+/// [dima-rust patch 5] Why a POST body could not be read.
+enum BodyError {
+    /// More than `max_payload` bytes.
+    TooLarge,
+    /// The request broke off.
+    Read,
+}
+
+/// [dima-rust patch 5] Reads a whole request body of at most `max` bytes.
+async fn read_body<R>(mut body: R, max: u64) -> Result<Bytes, BodyError>
+where
+    R: Body + Unpin,
+{
+    use bytes::{Buf, BufMut};
+    use http_body_util::BodyExt;
+
+    let mut buf = bytes::BytesMut::new();
+    while let Some(frame) = body.frame().await {
+        let Ok(data) = frame.map_err(|_| BodyError::Read)?.into_data() else {
+            continue; // trailers
+        };
+        let len = u64::try_from(buf.len().saturating_add(data.remaining())).unwrap_or(u64::MAX);
+        if len > max {
+            return Err(BodyError::TooLarge);
+        }
+        buf.put(data);
+    }
+    Ok(buf.freeze())
 }
 
 mod rx_stream {

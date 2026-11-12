@@ -11897,6 +11897,36 @@
    "websocket": "close 1005",
    "poll after the post": 400
   },
+  "a six-byte text that is not a packet: the POST answer": {
+   "status": 200,
+   "body": "ok"
+  },
+  "a POST that arrives in pieces": {
+   "joined": true,
+   "post": {
+    "status": 200,
+    "body": "ok"
+   },
+   "waiting poll": {
+    "answered before the POST was complete": false
+   },
+   "echoes": [
+    "first",
+    "second"
+   ]
+  },
+  "an oversized POST that starts with a valid packet": {
+   "joined": true,
+   "big post": {
+    "status": 413
+   },
+   "post after": {
+    "status": 200
+   },
+   "echoes": [
+    "after"
+   ]
+  },
   "the app and other upgrades": {
    "hello": {
     "status": 200,
