@@ -10,3 +10,23 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+dima-core = { workspace = true }
+dima-http = { workspace = true }
+dima-store = { workspace = true }
+dima-web = { workspace = true }
+http = { workspace = true }
+# `getrusage(RUSAGE_SELF)`: the process's CPU time over all threads without `unsafe`.
+nix = { workspace = true, features = ["resource"] }
+redis = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+futures-util = { workspace = true }
+
+[dev-dependencies]
+dima-core = { workspace = true, features = ["test-util"] }
+dima-http = { workspace = true, features = ["test-util"] }
+tokio = { workspace = true, features = ["test-util"] }
