@@ -1,0 +1,120 @@
+{
+  "rig_scenario": 2,
+  "description": "Ordered events, ack, transport recovery, disconnect reason and structured connect error.",
+  "steps": [
+    {
+      "socketio": {
+        "action": "open",
+        "client": "viewer",
+        "timeout_ms": 1000,
+        "namespace": "/test",
+        "version": "4.7.5",
+        "transports": [
+          "websocket"
+        ],
+        "auth": {
+          "token": "fixture"
+        }
+      }
+    },
+    {
+      "socketio": {
+        "action": "emit",
+        "client": "viewer",
+        "timeout_ms": 1000,
+        "event": "burst",
+        "args": []
+      }
+    },
+    {
+      "socketio": {
+        "action": "wait",
+        "client": "viewer",
+        "timeout_ms": 1000,
+        "count": 2
+      }
+    },
+    {
+      "socketio": {
+        "action": "quiet",
+        "client": "viewer",
+        "timeout_ms": 30
+      }
+    },
+    {
+      "socketio": {
+        "action": "emit",
+        "client": "viewer",
+        "timeout_ms": 1000,
+        "event": "ack",
+        "args": [
+          "h\u00e9llo \ud83d\udc4b"
+        ],
+        "ack": true
+      }
+    },
+    {
+      "socketio": {
+        "action": "disconnect",
+        "client": "viewer",
+        "timeout_ms": 1000,
+        "transport": true
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/miss"
+      }
+    },
+    {
+      "socketio": {
+        "action": "reconnect",
+        "client": "viewer",
+        "timeout_ms": 1000
+      }
+    },
+    {
+      "socketio": {
+        "action": "quiet",
+        "client": "viewer",
+        "timeout_ms": 30
+      }
+    },
+    {
+      "socketio": {
+        "action": "disconnect",
+        "client": "viewer",
+        "timeout_ms": 1000
+      }
+    },
+    {
+      "socketio": {
+        "action": "open",
+        "client": "denied",
+        "timeout_ms": 1000,
+        "namespace": "/denied",
+        "version": "4.7.5",
+        "transports": [
+          "websocket"
+        ],
+        "auth": {}
+      }
+    },
+    {
+      "socketio": {
+        "action": "quiet",
+        "client": "denied",
+        "timeout_ms": 30
+      }
+    }
+  ],
+  "allow": [
+    {
+      "path": "steps[*].body[*].args[1]",
+      "kind": "generated",
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "reason": "Socket.IO session recovery adds a generated packet offset to each ordinary event."
+    }
+  ]
+}

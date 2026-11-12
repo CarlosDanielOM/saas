@@ -814,6 +814,18 @@ impl Detector<'_, '_> {
         let mut path = Path::root("steps");
         path.push_index(i);
         match s {
+            RawStep::Socketio { at, value } => {
+                // Reuse response JSON normalization and ordered comparison, including generated IDs.
+                self.step(
+                    i,
+                    &RawStep::Http(crate::capture::RawHttp {
+                        at: *at,
+                        status: 200,
+                        headers: vec![("content-type".into(), b"application/json".to_vec())],
+                        body: value.to_string().into_bytes(),
+                    }),
+                )
+            }
             RawStep::Done(kind) => StepCap::Done(kind.clone()),
             RawStep::Reply(r) => {
                 self.read_at = Some(r.at);

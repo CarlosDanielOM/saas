@@ -1,0 +1,32 @@
+{
+  "rig_target": 1,
+  "description": "Real Socket.IO client observation fault tests.",
+  "reference": {
+    "command": [
+      "node",
+      "{rig_dir}/../socketio-server.mjs"
+    ],
+    "env": {
+      "PORT": "{port}",
+      "VARIANT": "good"
+    },
+    "ready": {
+      "http": "/health",
+      "timeout_ms": 10000
+    }
+  },
+  "candidate": {
+    "command": [
+      "node",
+      "{rig_dir}/../socketio-server.mjs"
+    ],
+    "env": {
+      "PORT": "{port}",
+      "VARIANT": "{var.variant}"
+    },
+    "ready": {
+      "http": "/health",
+      "timeout_ms": 10000
+    }
+  }
+}

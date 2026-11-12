@@ -22,7 +22,7 @@ use crate::path::{Pattern, Seg as PSeg, name_glob};
 use crate::template::{self, NowFmt};
 use crate::timefmt;
 
-pub const SCENARIO_VERSION: u64 = 1;
+pub const SCENARIO_VERSION: u64 = 2;
 pub const SEED_VERSION: u64 = 1;
 const MAX_TIMEOUT_MS: u64 = 600_000;
 
@@ -107,6 +107,8 @@ struct SeedFile {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct StepFile {
+    #[serde(default)]
+    socketio: Option<crate::socketio::Action>,
     #[serde(default)]
     name: Option<String>,
     #[serde(default)]
@@ -508,6 +510,7 @@ pub struct CallCond {
 
 #[derive(Debug, Clone)]
 pub enum StepKind {
+    Socketio(crate::socketio::Action),
     Http(HttpStep),
     Dragonfly(Vec<Arg>),
     Pause(u64),
@@ -527,6 +530,7 @@ pub enum StepKind {
 impl StepKind {
     pub fn name(&self) -> &'static str {
         match self {
+            StepKind::Socketio(_) => "socketio",
             StepKind::Http(_) => "http",
             StepKind::Dragonfly(_) => "dragonfly",
             StepKind::Pause(_) => "pause_ms",
@@ -1710,7 +1714,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
     let v = read_json(&file)?;
     let f: ScenarioFile = parse(&file, &v)?;
     let at = file.display().to_string();
-    if f.rig_scenario != SCENARIO_VERSION {
+    if ![1, SCENARIO_VERSION].contains(&f.rig_scenario) {
         return Err(config(format!(
             "{at}: rig_scenario {} is not supported; this rig reads version {SCENARIO_VERSION}",
             f.rig_scenario
@@ -1746,6 +1750,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
     for (i, s) in f.steps.into_iter().enumerate() {
         let here = format!("{at}: steps[{i}]");
         let given: Vec<&str> = [
+            s.socketio.as_ref().map(|_| "socketio"),
             s.http.as_ref().map(|_| "http"),
             s.dragonfly.as_ref().map(|_| "dragonfly"),
             s.pause_ms.map(|_| "pause_ms"),
@@ -1760,7 +1765,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         .collect();
         if given.len() != 1 {
             return Err(config(format!(
-                "{here}: a step has exactly one of http, dragonfly, pause_ms, wait_for, wait_quiet, eventsub, polar, wait_call (found: {})",
+                "{here}: a step has exactly one of socketio, http, dragonfly, pause_ms, wait_for, wait_quiet, eventsub, polar, wait_call (found: {})",
                 if given.is_empty() {
                     "none".to_string()
                 } else {
@@ -1768,7 +1773,13 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
                 }
             )));
         }
-        let kind = if let Some(h) = s.http {
+        let kind = if let Some(a) = s.socketio {
+            a.validate()
+                .map_err(|e| config(format!("{here}.socketio: {e}")))?;
+            let input = serde_json::to_value(&a).map_err(|e| config(e.to_string()))?;
+            collect_inputs(patterns, &input, &mut loader.known);
+            StepKind::Socketio(a)
+        } else if let Some(h) = s.http {
             StepKind::Http(http_step(
                 h,
                 &format!("{here}.http"),
