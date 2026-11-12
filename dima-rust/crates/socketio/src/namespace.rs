@@ -20,7 +20,7 @@ use crate::handshake::Handshake;
 use crate::ids;
 use crate::outbox::Delivery;
 use crate::pattern::Pattern;
-use crate::recovery::{self, Session};
+use crate::recovery::{self, Leaving, Owner, Session};
 use crate::server::Shared;
 use crate::size::RetainedSize;
 use crate::socket::{Core, ErasedSocket, Event, Socket};
@@ -48,6 +48,21 @@ pub trait Namespace: Send + Sync + 'static {
         handshake: &Handshake,
         namespace: &str,
     ) -> impl Future<Output = Result<Self::Data, ConnectError>> + Send;
+
+    /// Who a recovery session of this socket belongs to, from what [`Namespace::check`] just
+    /// verified (`data`): part of the check's answer, asked once right after each check that
+    /// admits a socket. Sessions are kept and evicted per owner ([`crate::RecoveryLimits`]), so
+    /// return [`Owner::verified`] with a key the check proved (the channel a token was issued
+    /// for, the user who signed in) where a client may come back, never a key taken from the
+    /// namespace name or the handshake unchecked. The default, [`Owner::Anonymous`], puts the
+    /// session in the smaller anonymous pool, where any client can push it out.
+    ///
+    /// A recovery also requires the check of the recovering connection to name the same
+    /// owner as the session's.
+    fn owner(&self, data: &Self::Data) -> Owner {
+        let _ = data;
+        Owner::Anonymous
+    }
 
     /// Runs before a recovered session is given back (when
     /// [`NamespaceOptions::recheck_recovery`] is on, the default): `Err` refuses the recovery,
@@ -261,7 +276,7 @@ impl<N: Namespace> Def<N> {
             return;
         }
         // Measured (and compacted) without the store lock: see `recovery::session_cost`.
-        let cost = recovery::session_cost(&core.id, &core.pid, core.data.as_ref());
+        let cost = recovery::session_cost(&core.id, &core.pid, &core.owner, core.data.as_ref());
         let now = self.shared.clock.now_ms();
         self.shared
             .store()
@@ -352,20 +367,20 @@ impl<N: Namespace> DefOps<N::Data> for Def<N> {
         let persist = reason.recoverable() && !self.shared.stopping();
         // Measured (and compacted) before the store lock is taken: see `recovery::session_cost`.
         let cost = (persist && self.recovery == Recovery::Full)
-            .then(|| recovery::session_cost(&core.id, &core.pid, core.data.as_ref()));
+            .then(|| recovery::session_cost(&core.id, &core.pid, &core.owner, core.data.as_ref()));
         {
             let store = self.store();
             if let (Some(mut store), Some(cost)) = (store, cost) {
                 let now = self.shared.clock.now_ms();
-                let session = Session::new(
-                    core.id.clone(),
-                    core.pid.clone(),
-                    Arc::clone(&core.data),
-                    core.key,
-                    core.ended.clone(),
-                    now,
-                    cost,
-                );
+                let leaving = Leaving {
+                    sid: core.id.clone(),
+                    pid: core.pid.clone(),
+                    data: Arc::clone(&core.data),
+                    socket: core.key,
+                    owner: core.owner.clone(),
+                    released: core.ended.clone(),
+                };
+                let session = Session::new(leaving, now, cost);
                 store.persist(&core.nsp, session, &self.ctx(now));
                 child.lock().sockets.remove(&core.key);
             } else {
@@ -588,7 +603,13 @@ async fn run_socket<N: Namespace>(
                 true
             };
             if recheck {
-                Some((session.sid, session.pid, data, Some(session.cursor)))
+                Some((
+                    session.sid,
+                    session.pid,
+                    data,
+                    session.owner,
+                    Some(session.cursor),
+                ))
             } else {
                 shared
                     .telemetry
@@ -597,7 +618,7 @@ async fn run_socket<N: Namespace>(
             }
         }
     };
-    let (sid, pid, data, cursor) = match restored {
+    let (sid, pid, data, owner, cursor) = match restored {
         Some(restored) => restored,
         None => {
             let check = AssertUnwindSafe(def.handler.check(&handshake, &nsp)).catch_unwind();
@@ -620,8 +641,9 @@ async fn run_socket<N: Namespace>(
                     (Some(sid), Some(pid)) => {
                         // Spare capacity of what the check built goes before it is shared.
                         data.compact();
+                        let owner = def.handler.owner(&data);
                         let data = Arc::new(data);
-                        Ok((sid, pid, data))
+                        Ok((sid, pid, data, owner))
                     }
                     _ => Err((
                         ConnectError::new("Internal server error"),
@@ -638,7 +660,7 @@ async fn run_socket<N: Namespace>(
                 }
             };
             match refusal {
-                Ok((sid, pid, data)) => (sid, pid, data, None),
+                Ok((sid, pid, data, owner)) => (sid, pid, data, owner, None),
                 Err((error, refusal)) => {
                     shared.telemetry.connect_refused(&nsp, refusal);
                     conn.push_control(codec::encode_connect_error(
@@ -661,6 +683,7 @@ async fn run_socket<N: Namespace>(
         recovered: cursor.is_some(),
         handshake,
         data,
+        owner,
         conn: Arc::clone(&conn),
         def: Arc::clone(&def) as Arc<dyn DefOps<N::Data>>,
         state: Core::<N::Data>::new_state(),

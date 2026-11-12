@@ -205,6 +205,7 @@ pub use handshake::{Handshake, Query};
 pub use namespace::{Namespace, NamespaceOptions, NamespaceRef};
 pub use outbox::{Delivery, MAX_PENDING_KEYS};
 pub use pattern::{Pattern, PatternError};
+pub use recovery::Owner;
 pub use server::{Builder, Runtime, ShutdownReport, SocketIo, Stats};
 pub use service::SocketIoService;
 pub use size::RetainedSize;

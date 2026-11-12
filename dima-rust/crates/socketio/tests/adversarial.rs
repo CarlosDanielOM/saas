@@ -804,6 +804,96 @@ async fn a_stalled_replay_is_closed_as_a_slow_consumer() {
     s.server.stop().await;
 }
 
+/// `/o/<name>`: a family whose check accepts any name (as several do in the reference); a
+/// client with the channel's token is that channel's, verified.
+struct Owned;
+
+impl Namespace for Owned {
+    type Data = Option<String>;
+
+    async fn check(
+        &self,
+        handshake: &Handshake,
+        _nsp: &str,
+    ) -> Result<Option<String>, ConnectError> {
+        Ok((handshake.auth().get("token") == Some(&json!("real"))).then(|| "channel:1".to_owned()))
+    }
+
+    fn owner(&self, data: &Option<String>) -> dima_socketio::Owner {
+        data.as_ref()
+            .map_or(dima_socketio::Owner::Anonymous, |key| {
+                dima_socketio::Owner::verified(key.as_str())
+            })
+    }
+
+    async fn on_connect(&self, socket: Socket<Option<String>>) {
+        let _ = socket.emit("hello", &[]);
+    }
+}
+
+/// Joins `nsp` with `auth`, reads the hello; the connection's ids and the hello's offset.
+async fn join_owned(client: &mut Ws, nsp: &str, auth: &Value) -> (String, String, String) {
+    let connect = client.join(nsp, auth).await.unwrap();
+    let hello = client
+        .until(|t| event(t, nsp).is_some(), 3 * SECOND)
+        .await
+        .unwrap();
+    let args = event(&hello, nsp).unwrap();
+    (
+        connect["sid"].as_str().unwrap().to_owned(),
+        connect["pid"].as_str().unwrap().to_owned(),
+        args.last().and_then(Value::as_str).unwrap().to_owned(),
+    )
+}
+
+/// H3 (re-check of 2026-11-12), end to end: three session slots, one for anonymous sessions.
+/// The channel's two overlays drop their connections; an outsider then joins and drops ten
+/// made-up members of the family. The channel's sessions are its verified owner's: both
+/// overlays recover; before, the outsider pushed them out.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_outsider_on_made_up_names_cannot_push_a_channels_sessions_out() {
+    let options = Options {
+        recovery: RecoveryLimits {
+            sessions_total: 3,
+            anonymous_sessions: 1,
+            ..RecoveryLimits::default()
+        },
+        ..Options::default()
+    };
+    let server = TestServer::start_with(options, Runtime::default(), |builder| {
+        builder
+            .family(r"^\/o\/\w+$", NamespaceOptions::default(), Owned)
+            .unwrap();
+    })
+    .await;
+    let io = server.io.clone();
+    let token = json!({"token": "real"});
+    let mut overlays = Vec::new();
+    for _ in 0..2 {
+        let mut client = Ws::open(server.addr).await;
+        overlays.push(join_owned(&mut client, "/o/chan", &token).await);
+        client.drop_connection();
+    }
+    eventually("the channel's sessions kept", || io.stats().sessions == 2).await;
+    for i in 0..10 {
+        let mut client = Ws::open(server.addr).await;
+        join_owned(&mut client, &format!("/o/x{i}"), &ok()).await;
+        client.drop_connection();
+        eventually("an outsider's session kept", || io.stats().sessions == 3).await;
+    }
+    for (sid, pid, offset) in overlays {
+        let mut client = Ws::open(server.addr).await;
+        let auth = json!({"token": "real", "pid": pid, "offset": offset});
+        let connect = client.join("/o/chan", &auth).await.unwrap();
+        assert_eq!(
+            connect["sid"],
+            json!(sid),
+            "the overlay recovers its socket"
+        );
+    }
+    server.stop().await;
+}
+
 /// `/slow` dispatches one event at a time.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_client_flooding_busy_handlers_is_closed() {

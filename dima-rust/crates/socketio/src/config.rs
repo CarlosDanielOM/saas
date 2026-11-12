@@ -214,11 +214,27 @@ impl Default for QueueLimits {
     }
 }
 
-/// Hard bounds on what connection state recovery keeps. At a namespace's own bound its oldest
-/// entries are dropped; at a server-wide bound, the oldest entries of the namespace holding the
-/// most (stored bytes, or sessions) are, so one channel's churn cannot evict the others'. A
-/// client whose offset or session was dropped connects fresh (`recovered` false), never with a
-/// partial replay.
+/// Hard bounds on what connection state recovery keeps. A client whose offset or session was
+/// dropped connects fresh (`recovered` false), never with a partial replay.
+///
+/// **Packets** (emitted by the server, so no client chooses how many): at a namespace's own
+/// bound its oldest are dropped; at a server-wide bound, the oldest of the namespace storing
+/// the most bytes.
+///
+/// **Sessions** belong to the owner the namespace's check verified ([`crate::Owner`],
+/// [`crate::Namespace::owner`]), because namespace names are no proof of anything (several
+/// families accept any channel name, so a client can spread sessions over names it makes up):
+///
+/// - Sessions with a verified owner share the owned pool: `sessions_total` and
+///   `session_bytes_total` minus the anonymous pool (3584 sessions, 28 MiB). An owner holds at
+///   most `sessions_per_owner`; when the pool is full, the owner holding the most (sessions, or
+///   bytes when bytes are what is full) gives up its oldest, the newcomer's own owner included.
+/// - Sessions without an owner share the anonymous pool (`anonymous_sessions`,
+///   `anonymous_session_bytes`): when it is full its oldest goes. It never takes room from the
+///   owned pool, so anonymous clients can only push out each other.
+/// - A namespace holds at most `sessions_per_namespace`: at that bound it gives up its oldest
+///   anonymous session, or, for a newcomer with an owner, the oldest of the owner holding the
+///   most there. An anonymous newcomer finding only owned sessions there is not kept.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecoveryLimits {
     /// Stored packets per namespace (4096).
@@ -227,17 +243,25 @@ pub struct RecoveryLimits {
     pub bytes_per_namespace: usize,
     /// Stored packets in all namespaces (32,768).
     pub packets_total: usize,
-    /// Stored bytes in all namespaces (64 MiB).
+    /// Stored bytes in all namespaces (64 MiB). A stored packet is charged until its last
+    /// owner, the store or a restore sending it, lets go.
     pub bytes_total: usize,
     /// Sessions kept per namespace (256).
     pub sessions_per_namespace: usize,
-    /// Sessions kept in all namespaces (4096).
+    /// Sessions kept per verified owner, in all namespaces (256).
+    pub sessions_per_owner: usize,
+    /// Sessions kept in all namespaces, both pools (4096).
     pub sessions_total: usize,
-    /// The largest session kept (16 KiB: its ids, `size_of` the socket data and what the data
-    /// keeps on the heap, [`crate::RetainedSize`]); a larger one is not kept.
+    /// Of `sessions_total`, the sessions without an owner (512; at most `sessions_total`).
+    pub anonymous_sessions: usize,
+    /// The largest session kept (16 KiB: its ids, its owner key, `size_of` the socket data and
+    /// what the data keeps on the heap, [`crate::RetainedSize`]); a larger one is not kept.
     pub session_bytes: usize,
-    /// Bytes of all kept sessions together (32 MiB).
+    /// Bytes of all kept sessions together, both pools (32 MiB).
     pub session_bytes_total: usize,
+    /// Of `session_bytes_total`, the bytes of sessions without an owner (4 MiB; at most
+    /// `session_bytes_total`).
+    pub anonymous_session_bytes: usize,
 }
 
 impl Default for RecoveryLimits {
@@ -248,9 +272,12 @@ impl Default for RecoveryLimits {
             packets_total: 32_768,
             bytes_total: 64 << 20,
             sessions_per_namespace: 256,
+            sessions_per_owner: 256,
             sessions_total: 4096,
+            anonymous_sessions: 512,
             session_bytes: 16 << 10,
             session_bytes_total: 32 << 20,
+            anonymous_session_bytes: 4 << 20,
         }
     }
 }

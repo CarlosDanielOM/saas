@@ -27,11 +27,14 @@
 //! - **One store for the server**, under one lock: every namespace's packets and sessions, so
 //!   the server-wide limits are counted where they are enforced (no total checked under one
 //!   lock and incremented under another).
-//! - **Fair eviction.** A namespace over its own limits drops its own oldest entries. When a
-//!   server-wide limit is reached, the oldest entry of the namespace holding the most of that
-//!   kind (stored bytes for packets, sessions for sessions) is dropped, the writer's own
-//!   namespace included. So one channel's churn drops its own entries before it can push any
-//!   other channel below its size, and the namespaces converge to equal shares of the limit.
+//! - **Fair eviction.** A namespace over its own packet limits drops its own oldest packets;
+//!   at a server-wide limit, the oldest packet of the namespace storing the most bytes goes,
+//!   the writer's own namespace included. Sessions are grouped by their verified owner
+//!   ([`Owner`], H3 of the re-check), not by namespace: names prove nothing, and a client can
+//!   spread sessions over names it makes up. An owner over its quota drops its own oldest; a
+//!   full owned pool takes from the owner holding the most; sessions without an owner share a
+//!   smaller pool of their own that never takes from the owned one (see
+//!   [`RecoveryLimits`] for every rule).
 //! - **One reservation per stored packet.** A packet's bytes are taken from `bytes_total` when
 //!   it is stored and given back when its last owner drops it: the store, or a restore sending
 //!   it, which keeps it after the store evicted it. So the budget bounds what is really alive;
@@ -52,7 +55,7 @@
 //! [`DisconnectReason::recoverable`]: crate::DisconnectReason::recoverable
 
 use std::any::Any;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -72,6 +75,25 @@ type Key = [u8; 32];
 
 fn key(pid: &str) -> Key {
     *dima_core::crypto::sha256(pid).bytes()
+}
+
+/// The anonymous pool: its sessions and bytes (at most the totals).
+fn anonymous_pool(limits: &RecoveryLimits) -> (usize, usize) {
+    (
+        limits.anonymous_sessions.min(limits.sessions_total),
+        limits
+            .anonymous_session_bytes
+            .min(limits.session_bytes_total),
+    )
+}
+
+/// The owned pool: the totals minus the anonymous pool.
+fn owned_pool(limits: &RecoveryLimits) -> (usize, usize) {
+    let (sessions, bytes) = anonymous_pool(limits);
+    (
+        limits.sessions_total - sessions,
+        limits.session_bytes_total - bytes,
+    )
 }
 
 /// The session filed under `pid`'s digest, if its private id really is `pid`.
@@ -150,6 +172,36 @@ struct Stored {
 /// restores it as its own type).
 pub type Data = Arc<dyn Any + Send + Sync>;
 
+/// Who a socket's recovery session belongs to, as the namespace's check verified it
+/// ([`crate::Namespace::owner`]). Sessions are kept and evicted per owner, so a client cannot
+/// push out the sessions of an owner it is not.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub enum Owner {
+    /// Nobody verified: the session shares the anonymous pool
+    /// ([`RecoveryLimits::anonymous_sessions`]), which never takes room from owned sessions.
+    #[default]
+    Anonymous,
+    /// An owner key the application chose from what its check verified (a channel id, a user
+    /// id). Keys are compared as they are; give them a prefix of their kind when several kinds
+    /// share a server (`channel:123`, `user:456`).
+    Verified(Arc<str>),
+}
+
+impl Owner {
+    /// A verified owner.
+    pub fn verified(key: impl Into<Arc<str>>) -> Self {
+        Self::Verified(key.into())
+    }
+
+    /// The bytes of its key, counted in the session's size.
+    fn len(&self) -> usize {
+        match self {
+            Self::Anonymous => 0,
+            Self::Verified(key) => key.len(),
+        }
+    }
+}
+
 /// A kept session.
 pub struct Session {
     pub sid: String,
@@ -157,56 +209,92 @@ pub struct Session {
     pub data: Data,
     /// The key of the socket that left it: only that socket's late emits may still be stored
     /// for it, and only while the session is not claimed.
-    owner: u64,
+    socket: u64,
+    /// Who it belongs to.
+    pub owner: Owner,
     /// Fires when every handler of that socket has ended: a restore waits for it.
     released: CancellationToken,
     disconnected_ms: i64,
     cost: usize,
+    /// Its place in its owner's order (set when it is kept).
+    stamp: u64,
 }
 
 impl std::fmt::Debug for Session {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Session")
             .field("sid", &self.sid)
+            .field("socket", &self.socket)
             .field("owner", &self.owner)
             .field("cost", &self.cost)
             .finish_non_exhaustive()
     }
 }
 
-/// What a session costs: its ids, its data as it is now, and a fixed overhead. Measuring
-/// compacts what the data's locks guard ([`crate::RetainedSize`]), so it takes the data's own
-/// locks: never call it with the store lock held (a handler holding its data's lock may be
-/// waiting for the store lock to emit).
-pub fn session_cost<D: crate::RetainedSize>(sid: &str, pid: &str, data: &D) -> usize {
+/// What a session costs: its ids, its owner key, its data as it is now, and a fixed overhead.
+/// Measuring compacts what the data's locks guard ([`crate::RetainedSize`]), so it takes the
+/// data's own locks: never call it with the store lock held (a handler holding its data's lock
+/// may be waiting for the store lock to emit).
+pub fn session_cost<D: crate::RetainedSize>(
+    sid: &str,
+    pid: &str,
+    owner: &Owner,
+    data: &D,
+) -> usize {
     OVERHEAD
         .saturating_add(sid.len())
         .saturating_add(pid.len())
+        .saturating_add(owner.len())
         .saturating_add(std::mem::size_of::<D>())
         .saturating_add(data.retained_bytes())
+}
+
+/// Who a socket is and what it leaves behind, for [`Session::new`].
+pub struct Leaving<D> {
+    pub sid: String,
+    pub pid: String,
+    pub data: Arc<D>,
+    pub socket: u64,
+    pub owner: Owner,
+    pub released: CancellationToken,
 }
 
 impl Session {
     /// A session for a socket that just left; `cost` is [`session_cost`] of it, measured
     /// before the store lock was taken.
     pub fn new<D: Send + Sync + 'static>(
-        sid: String,
-        pid: String,
-        data: Arc<D>,
-        owner: u64,
-        released: CancellationToken,
+        leaving: Leaving<D>,
         disconnected_ms: i64,
         cost: usize,
     ) -> Self {
         Self {
-            sid,
-            pid,
-            data,
-            owner,
-            released,
+            sid: leaving.sid,
+            pid: leaving.pid,
+            data: leaving.data,
+            socket: leaving.socket,
+            owner: leaving.owner,
+            released: leaving.released,
             disconnected_ms,
             cost,
+            stamp: 0,
         }
+    }
+
+    fn order(&self) -> (i64, u64) {
+        (self.disconnected_ms, self.stamp)
+    }
+}
+
+/// The kept sessions of one owner, or of the anonymous pool: oldest first.
+#[derive(Debug, Default)]
+struct Group {
+    order: BTreeMap<(i64, u64), (String, Key)>,
+    bytes: usize,
+}
+
+impl Group {
+    fn oldest(&self) -> Option<(String, Key)> {
+        self.order.values().next().cloned()
     }
 }
 
@@ -246,10 +334,29 @@ impl Record {
         self.packets.is_empty() && self.sessions.is_empty() && self.restoring == 0
     }
 
-    fn oldest_session(&self) -> Option<Key> {
+    /// The session this namespace gives up for a newcomer of `owner` at its own bound: its
+    /// oldest anonymous session; for an owned newcomer, failing that, the oldest of the owner
+    /// holding the most sessions here. An anonymous newcomer never takes an owned session's
+    /// place.
+    fn victim_for(&self, owner: &Owner) -> Option<Key> {
+        let anonymous = self
+            .sessions
+            .iter()
+            .filter(|(_, s)| s.owner == Owner::Anonymous)
+            .min_by_key(|(_, s)| s.order())
+            .map(|(key, _)| *key);
+        if anonymous.is_some() || *owner == Owner::Anonymous {
+            return anonymous;
+        }
+        let mut held: HashMap<&Owner, usize> = HashMap::new();
+        for session in self.sessions.values() {
+            *held.entry(&session.owner).or_default() += 1;
+        }
+        let greedy = held.into_iter().max_by_key(|(_, n)| *n)?.0.clone();
         self.sessions
             .iter()
-            .min_by_key(|(_, s)| s.disconnected_ms)
+            .filter(|(_, s)| s.owner == greedy)
+            .min_by_key(|(_, s)| s.order())
             .map(|(key, _)| *key)
     }
 }
@@ -260,6 +367,8 @@ pub struct Restored {
     pub pid: String,
     pub data: Data,
     pub cursor: u64,
+    /// Who the session belongs to.
+    pub owner: Owner,
     /// Fires when the socket that left the session has no handler running any more.
     pub released: CancellationToken,
 }
@@ -291,6 +400,14 @@ pub struct Store {
     stored_bytes: usize,
     sessions: usize,
     session_bytes: usize,
+    /// Sessions with a verified owner, by owner.
+    owners: HashMap<Arc<str>, Group>,
+    /// Sessions of the owned pool, and their bytes.
+    owned: usize,
+    owned_bytes: usize,
+    /// Sessions without an owner.
+    anonymous: Group,
+    next_stamp: u64,
     totals: Arc<Totals>,
 }
 
@@ -377,7 +494,56 @@ impl Store {
         let session = self.records.get_mut(nsp)?.sessions.remove(key)?;
         self.sessions = self.sessions.saturating_sub(1);
         self.session_bytes = self.session_bytes.saturating_sub(session.cost);
+        match &session.owner {
+            Owner::Anonymous => {
+                self.anonymous.order.remove(&session.order());
+                self.anonymous.bytes = self.anonymous.bytes.saturating_sub(session.cost);
+            }
+            Owner::Verified(owner) => {
+                self.owned = self.owned.saturating_sub(1);
+                self.owned_bytes = self.owned_bytes.saturating_sub(session.cost);
+                if let Some(group) = self.owners.get_mut(owner) {
+                    group.order.remove(&session.order());
+                    group.bytes = group.bytes.saturating_sub(session.cost);
+                    if group.order.is_empty() {
+                        self.owners.remove(owner);
+                    }
+                }
+            }
+        }
         Some(session)
+    }
+
+    /// Files a session that has room (see [`Store::room_for_session`]).
+    fn insert_session(&mut self, nsp: &str, mut session: Session, ctx: &Ctx<'_>) {
+        self.next_stamp += 1;
+        session.stamp = self.next_stamp;
+        let place = (nsp.to_owned(), key(&session.pid));
+        let group = match &session.owner {
+            Owner::Anonymous => &mut self.anonymous,
+            Owner::Verified(owner) => {
+                self.owned += 1;
+                self.owned_bytes += session.cost;
+                self.owners.entry(Arc::clone(owner)).or_default()
+            }
+        };
+        group.order.insert(session.order(), place);
+        group.bytes += session.cost;
+        self.sessions += 1;
+        self.session_bytes += session.cost;
+        let record = self.record(nsp, ctx);
+        record.sessions.insert(key(&session.pid), session);
+    }
+
+    /// Drops a session to make room, from wherever it is filed.
+    fn evict_session(&mut self, nsp: &str, place: &(String, Key), ctx: &Ctx<'_>) {
+        let (victim_nsp, victim) = place;
+        self.remove_session(victim_nsp, victim);
+        ctx.telemetry
+            .recovery_evicted(victim_nsp, Eviction::Session);
+        if victim_nsp != nsp {
+            self.drop_if_empty(victim_nsp);
+        }
     }
 
     fn drop_if_empty(&mut self, nsp: &str) {
@@ -396,13 +562,20 @@ impl Store {
             .map(|(name, _)| name.clone())
     }
 
-    /// The namespace keeping the most sessions.
-    fn largest_by_sessions(&self) -> Option<String> {
-        self.records
-            .iter()
-            .filter(|(_, r)| !r.sessions.is_empty())
-            .max_by_key(|(_, r)| r.sessions.len())
-            .map(|(name, _)| name.clone())
+    /// The oldest session of the owner holding the most: by sessions when the owned pool's
+    /// count is what is full, by bytes otherwise (a scan of the owners, at most
+    /// `sessions_total` of them).
+    fn greediest_owner_oldest(&self, by_count: bool) -> Option<(String, Key)> {
+        self.owners
+            .values()
+            .max_by_key(|group| {
+                if by_count {
+                    (group.order.len(), group.bytes)
+                } else {
+                    (group.bytes, group.order.len())
+                }
+            })
+            .and_then(Group::oldest)
     }
 
     /// Stores one eligible event. When the bounds leave no room for it (it alone is larger than
@@ -498,33 +671,59 @@ impl Store {
         false
     }
 
-    /// Makes room for one more session of `cost` bytes in `nsp`; `false` when there is none.
-    fn room_for_session(&mut self, nsp: &str, cost: usize, ctx: &Ctx<'_>) -> bool {
+    /// Makes room for one more session of `owner` and `cost` bytes in `nsp`; `false` when
+    /// there is none.
+    ///
+    /// - The namespace's bound (`sessions_per_namespace`) gives up its oldest anonymous session,
+    ///   or for an owned newcomer the oldest of the owner holding the most there.
+    /// - An owner at its quota (`sessions_per_owner`) gives up its own oldest.
+    /// - The owned pool (the totals minus the anonymous pool) full: the owner holding the most
+    ///   gives up its oldest, the newcomer's own owner included.
+    /// - The anonymous pool full: its oldest goes. It never takes from the owned pool.
+    fn room_for_session(&mut self, nsp: &str, owner: &Owner, cost: usize, ctx: &Ctx<'_>) -> bool {
         let limits = ctx.limits;
-        loop {
-            let record = self.record(nsp, ctx);
-            if record.sessions.len() < limits.sessions_per_namespace {
-                break;
-            }
-            let Some(oldest) = record.oldest_session() else {
-                break;
-            };
-            self.remove_session(nsp, &oldest);
-            ctx.telemetry.recovery_evicted(nsp, Eviction::Session);
-        }
-        while self.sessions >= limits.sessions_total
-            || self.session_bytes + cost > limits.session_bytes_total
+        while self
+            .records
+            .get(nsp)
+            .is_some_and(|r| r.sessions.len() >= limits.sessions_per_namespace)
         {
-            let Some(largest) = self.largest_by_sessions() else {
+            let Some(victim) = self.records.get(nsp).and_then(|r| r.victim_for(owner)) else {
                 return false;
             };
-            let Some(oldest) = self.records.get(&largest).and_then(Record::oldest_session) else {
-                return false;
-            };
-            self.remove_session(&largest, &oldest);
-            ctx.telemetry.recovery_evicted(&largest, Eviction::Session);
-            if largest != nsp {
-                self.drop_if_empty(&largest);
+            self.evict_session(nsp, &(nsp.to_owned(), victim), ctx);
+        }
+        match owner {
+            Owner::Anonymous => {
+                let (max, max_bytes) = anonymous_pool(&limits);
+                while self.anonymous.order.len() >= max || self.anonymous.bytes + cost > max_bytes {
+                    let Some(oldest) = self.anonymous.oldest() else {
+                        return false;
+                    };
+                    self.evict_session(nsp, &oldest, ctx);
+                }
+            }
+            Owner::Verified(key) => {
+                while self
+                    .owners
+                    .get(key)
+                    .is_some_and(|g| g.order.len() >= limits.sessions_per_owner)
+                {
+                    let Some(oldest) = self.owners.get(key).and_then(Group::oldest) else {
+                        return false;
+                    };
+                    self.evict_session(nsp, &oldest, ctx);
+                }
+                let (max, max_bytes) = owned_pool(&limits);
+                loop {
+                    let by_count = self.owned >= max;
+                    if !by_count && self.owned_bytes + cost <= max_bytes {
+                        break;
+                    }
+                    let Some(oldest) = self.greediest_owner_oldest(by_count) else {
+                        return false;
+                    };
+                    self.evict_session(nsp, &oldest, ctx);
+                }
             }
         }
         true
@@ -533,7 +732,11 @@ impl Store {
     /// Keeps a session (`persistSession`). Returns `false` when it was not kept.
     pub fn persist(&mut self, nsp: &str, session: Session, ctx: &Ctx<'_>) -> bool {
         let limits = ctx.limits;
-        if session.cost > limits.session_bytes || session.cost > limits.session_bytes_total {
+        let pool_bytes = match session.owner {
+            Owner::Anonymous => anonymous_pool(&limits).1,
+            Owner::Verified(_) => owned_pool(&limits).1,
+        };
+        if session.cost > limits.session_bytes || session.cost > pool_bytes {
             ctx.telemetry
                 .recovery_evicted(nsp, Eviction::SessionTooLarge);
             return false;
@@ -545,15 +748,12 @@ impl Store {
         {
             self.remove_session(nsp, &key(&session.pid));
         }
-        if !self.room_for_session(nsp, session.cost, ctx) {
+        if !self.room_for_session(nsp, &session.owner, session.cost, ctx) {
             self.drop_if_empty(nsp);
             self.publish();
             return false;
         }
-        self.sessions += 1;
-        self.session_bytes += session.cost;
-        let record = self.record(nsp, ctx);
-        record.sessions.insert(key(&session.pid), session);
+        self.insert_session(nsp, session, ctx);
         self.publish();
         true
     }
@@ -561,12 +761,12 @@ impl Store {
     /// Measures a kept session again once the socket that left it has no handler running
     /// (`on_disconnect` may have changed its data): `cost` is its size now. A session that grew
     /// past `session_bytes` is dropped; one that grew is given room as a new one would be.
-    pub fn settle(&mut self, nsp: &str, pid: &str, owner: u64, cost: usize, ctx: &Ctx<'_>) {
+    pub fn settle(&mut self, nsp: &str, pid: &str, socket: u64, cost: usize, ctx: &Ctx<'_>) {
         let unchanged = self
             .records
             .get(nsp)
             .and_then(|r| find(&r.sessions, pid))
-            .filter(|s| s.owner == owner)
+            .filter(|s| s.socket == socket)
             .is_none_or(|s| s.cost == cost);
         if unchanged {
             return;
@@ -622,6 +822,7 @@ impl Store {
                         pid: session.pid,
                         data: session.data,
                         cursor,
+                        owner: session.owner,
                         released: session.released,
                     })
                 }
@@ -638,13 +839,13 @@ impl Store {
         outcome
     }
 
-    /// Whether the session of `pid` is still kept, unclaimed, for the socket `owner` that left
-    /// it (its late emits may then still be stored for it).
-    pub fn owns(&self, nsp: &str, pid: &str, owner: u64) -> bool {
+    /// Whether the session of `pid` is still kept, unclaimed, for the socket `socket` that
+    /// left it (its late emits may then still be stored for it).
+    pub fn owns(&self, nsp: &str, pid: &str, socket: u64) -> bool {
         self.records
             .get(nsp)
             .and_then(|record| find(&record.sessions, pid))
-            .is_some_and(|session| session.owner == owner)
+            .is_some_and(|session| session.socket == socket)
     }
 
     /// Up to `max` missed events after `cursor` for socket `sid` (`shouldIncludePacket`: sent to
@@ -706,6 +907,10 @@ impl Store {
     /// Drops everything (shutdown). Packets a replay still holds stay charged until it lets go.
     pub fn clear(&mut self) {
         self.records.clear();
+        self.owners.clear();
+        self.anonymous = Group::default();
+        self.owned = 0;
+        self.owned_bytes = 0;
         self.packets = 0;
         self.stored_bytes = 0;
         self.sessions = 0;
@@ -759,16 +964,26 @@ mod tests {
         data: D,
         at: i64,
     ) -> Session {
-        let cost = session_cost(sid, pid, &data);
-        Session::new(
-            sid.into(),
-            pid.into(),
-            Arc::new(data),
-            0,
-            CancellationToken::new(),
-            at,
-            cost,
-        )
+        owned(sid, pid, data, at, Owner::Anonymous)
+    }
+
+    fn owned<D: crate::RetainedSize + Send + Sync + 'static>(
+        sid: &str,
+        pid: &str,
+        data: D,
+        at: i64,
+        owner: Owner,
+    ) -> Session {
+        let cost = session_cost(sid, pid, &owner, &data);
+        let leaving = Leaving {
+            sid: sid.into(),
+            pid: pid.into(),
+            data: Arc::new(data),
+            socket: 0,
+            owner,
+            released: CancellationToken::new(),
+        };
+        Session::new(leaving, at, cost)
     }
 
     fn store() -> (Arc<Totals>, Store) {
@@ -893,34 +1108,41 @@ mod tests {
         assert_eq!(totals.bytes.load(Ordering::Acquire), 0);
     }
 
-    /// Finding 6: one namespace's churn cannot evict every other namespace's sessions or
-    /// packets: at the server-wide limit the largest namespace gives way first.
+    /// Finding 6: one channel's churn cannot evict the others'. Changed on purpose by H3: for
+    /// sessions, fairness is between verified owners (a namespace name proves nothing), so
+    /// the churning and the quiet channel are owners here; packets stay fair between
+    /// namespaces (the server emits them, no client chooses how many).
     #[test]
-    fn eviction_at_the_server_limit_is_fair_between_namespaces() {
+    fn eviction_at_the_server_limit_is_fair_between_owners() {
         let (_, mut state) = store();
         let mut c = ctx(0);
         c.limits.sessions_per_namespace = 100;
+        c.limits.sessions_per_owner = 100;
         c.limits.sessions_total = 10;
+        c.limits.anonymous_sessions = 0;
+        let quiet = Owner::verified("channel:quiet");
+        let busy = Owner::verified("channel:busy");
         for i in 0..3 {
-            state.persist(
-                "/quiet",
-                session(&format!("q{i}"), &format!("qp{i}"), (), i),
-                &c,
-            );
+            let s = owned(&format!("q{i}"), &format!("qp{i}"), (), i, quiet.clone());
+            state.persist("/quiet", s, &c);
         }
-        // A churning namespace keeps disconnecting new sockets.
+        // A churning channel keeps disconnecting new sockets.
         for i in 0..1000 {
-            state.persist(
-                "/busy",
-                session(&format!("b{i}"), &format!("bp{i}"), (), 10 + i),
-                &c,
+            let s = owned(
+                &format!("b{i}"),
+                &format!("bp{i}"),
+                (),
+                10 + i,
+                busy.clone(),
             );
+            state.persist("/busy", s, &c);
         }
         assert_eq!((state.kept("/quiet"), state.kept("/busy")), (3, 7));
         // The quiet one still gets room, from the busy one.
-        state.persist("/quiet", session("q9", "qp9", (), 5_000), &c);
+        let s = owned("q9", "qp9", (), 5_000, quiet.clone());
+        state.persist("/quiet", s, &c);
         assert_eq!((state.kept("/quiet"), state.kept("/busy")), (4, 6));
-        // Packets: the same rule by stored bytes.
+        // Packets: the same rule by stored bytes, between namespaces.
         c.limits.packets_total = 10;
         for i in 0..3 {
             assert!(state.append("/quiet", None, &format!("q{i}"), json("[0]"), &c));
@@ -929,6 +1151,96 @@ mod tests {
             assert!(state.append("/busy", None, &format!("b{i}"), json("[0]"), &c));
         }
         assert_eq!((state.stored("/quiet"), state.stored("/busy")), (3, 7));
+    }
+
+    /// H3 (re-check of 2026-11-12), the review's case: three slots, the real channel holds two
+    /// sessions, an outsider spreads sessions over made-up names of the same family. Before,
+    /// eviction was fair between namespaces and the real channel, holding the most, gave
+    /// first (it kept 0 of 2). Its sessions now belong to its verified owner; the outsider's,
+    /// anonymous, share their own pool and push out only each other, whatever the names, and
+    /// also inside the real channel's own namespace.
+    #[test]
+    fn made_up_namespaces_cannot_push_a_real_channel_out() {
+        let (totals, mut state) = store();
+        let mut c = ctx(0);
+        c.limits.sessions_total = 3;
+        c.limits.anonymous_sessions = 1;
+        c.limits.sessions_per_namespace = 3;
+        let channel = Owner::verified("channel:1");
+        state.persist("/clip/chan", owned("r1", "rp1", (), 0, channel.clone()), &c);
+        state.persist("/clip/chan", owned("r2", "rp2", (), 1, channel.clone()), &c);
+        for i in 0..100 {
+            let nsp = format!("/clip/x{i}");
+            state.persist(
+                &nsp,
+                session(&format!("x{i}"), &format!("xp{i}"), (), 10 + i),
+                &c,
+            );
+        }
+        assert_eq!(state.kept("/clip/chan"), 2);
+        assert_eq!(state.kept("/clip/x99"), 1);
+        assert_eq!(totals.sessions.load(Ordering::Acquire), 3);
+        // The same from inside the real channel's namespace: at the namespace's bound an
+        // anonymous newcomer takes only an anonymous session's place.
+        for i in 0..100 {
+            let s = session(&format!("y{i}"), &format!("yp{i}"), (), 200 + i);
+            state.persist("/clip/chan", s, &c);
+        }
+        assert_eq!(state.kept("/clip/chan"), 3);
+        let kept = &state.records["/clip/chan"].sessions;
+        assert!(find(kept, "rp1").is_some() && find(kept, "rp2").is_some());
+        assert_eq!(state.anonymous.order.len(), 1);
+    }
+
+    /// H3, the reverse: many owners, one greedy. The greedy owner is held to its quota, and
+    /// when the owned pool is full it is the one that gives; the others keep everything.
+    #[test]
+    fn a_greedy_owner_gives_first_and_stops_at_its_quota() {
+        let (_, mut state) = store();
+        let mut c = ctx(0);
+        c.limits.sessions_total = 30;
+        c.limits.anonymous_sessions = 0;
+        c.limits.sessions_per_owner = 100;
+        for owner in 0..10 {
+            for i in 0..2 {
+                let key = format!("o{owner}-{i}");
+                let s = owned(&key, &key, (), i, Owner::verified(format!("user:{owner}")));
+                state.persist(&format!("/u/{owner}"), s, &c);
+            }
+        }
+        let greedy = Owner::verified("user:greedy");
+        for i in 0..1000 {
+            let key = format!("g{i}");
+            let s = owned(&key, &key, (), 10 + i, greedy.clone());
+            state.persist(&format!("/g/{i}"), s, &c);
+        }
+        assert!((0..10).all(|owner| state.kept(&format!("/u/{owner}")) == 2));
+        assert_eq!(state.owners["user:greedy"].order.len(), 10);
+        // The newest of the greedy owner are the ones kept.
+        assert_eq!(state.kept("/g/999"), 1);
+        assert_eq!(state.kept("/g/989"), 0);
+        // Its quota, with room in the pool: 5.
+        c.limits.sessions_total = 1000;
+        c.limits.sessions_per_owner = 5;
+        for i in 0..20 {
+            let key = format!("h{i}");
+            let s = owned(&key, &key, (), 2_000 + i, greedy.clone());
+            state.persist(&format!("/h/{i}"), s, &c);
+        }
+        assert_eq!(state.owners["user:greedy"].order.len(), 5);
+        assert!((0..10).all(|owner| state.kept(&format!("/u/{owner}")) == 2));
+        // Bytes: when bytes are what is full, the owner holding the most bytes gives first.
+        let big = Owner::verified("user:big");
+        c.limits.anonymous_session_bytes = 0;
+        c.limits.session_bytes_total = state.session_bytes + 3_000;
+        for i in 0..4 {
+            let key = format!("big{i}");
+            let s = owned(&key, &key, "z".repeat(1_000), 3_000 + i, big.clone());
+            assert!(state.persist("/big", s, &c));
+        }
+        assert_eq!(state.kept("/big"), 2);
+        assert!((0..10).all(|owner| state.kept(&format!("/u/{owner}")) == 2));
+        assert_eq!(state.owners["user:greedy"].order.len(), 5);
     }
 
     /// Finding 7: a session costs what its data really keeps.
