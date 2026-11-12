@@ -49,6 +49,8 @@ serde_json = { version = "1.0.154", features = ["raw_value", "float_roundtrip", 
 thiserror = "2.0.21"
 anyhow = "1.0.104"
 # Stores.
+# analytics: native PostgreSQL protocol, JSON recordsets; no ORM or TLS library.
+tokio-postgres = { version = "0.7", default-features = false, features = ["runtime", "with-serde_json-1"] }
 mongodb = { version = "3.9.1", default-features = false, features = ["compat-3-3-0", "bson-3", "rustls-tls", "dns-resolver"] }
 # The same bson 3 the driver uses (re-exported as `mongodb::bson`), named directly for its
 # extended JSON support (`serde_json-1`), which dima-store needs for DBPointer and test fixtures.

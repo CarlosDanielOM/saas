@@ -1,0 +1,120 @@
+use crate::{
+    Result,
+    batch::summarize,
+    service::{State, range, refs, scope},
+};
+use serde_json::{Value as V, json};
+use std::collections::BTreeMap;
+use tokio_postgres::types::ToSql;
+pub async fn overview(s: &State, grant: &V, q: &V, now: i64) -> Result<(u16, V)> {
+    let Some((minutes, resolution)) = range(q) else {
+        return Ok((400, json!({"message":"Unsupported time range"})));
+    };
+    let since = dima_text::to_iso_string(now - i64::from(minutes) * 60000);
+    let step = if minutes > 1440 { 3600 } else { 60 };
+    let mut args: Vec<Box<dyn ToSql + Sync + Send>> = vec![Box::new(resolution), Box::new(since)];
+    let filter = scope(grant, q, &mut args);
+    let histogram = (1..=16)
+        .map(|i| format!("sum(histogram[{i}])"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let rows=s.rows(&format!("SELECT service,kind,name,channel,outcome,sum(count)::float8 AS count,sum(sum) AS sum,max(max) AS max,ARRAY[{histogram}]::float8[] AS histogram,max(at) AS last_at,(array_agg(sum/count ORDER BY at DESC))[1] AS last_value FROM analytics_metrics WHERE resolution=$1 AND at>=$2::text::timestamptz{filter} GROUP BY service,kind,name,channel,outcome"),&refs(&args)).await?;
+    let time=s.rows(&format!("SELECT (floor(extract(epoch FROM at)/{step})*{step}*1000)::float8 AS at,kind,sum(count)::float8 AS count FROM analytics_metrics WHERE resolution=$1 AND at>=$2::text::timestamptz AND kind IN ('http','chat'){filter} GROUP BY 1,2"),&refs(&args)).await?;
+    let mut recent_args: Vec<Box<dyn ToSql + Sync + Send>> = vec![Box::new(
+        dima_text::to_iso_string((now - i64::from(minutes) * 60000).max(now - 900000)),
+    )];
+    let mut fine = "(resolution=10 AND at>=$1::text::timestamptz)".to_owned();
+    if resolution == 3600 {
+        recent_args.push(Box::new(dima_text::to_iso_string(
+            (now - i64::from(minutes) * 60000).max(now - 86400000),
+        )));
+        fine += " OR (resolution=60 AND at>=$2::text::timestamptz)";
+    }
+    let recent_filter = scope(grant, q, &mut recent_args);
+    let recent = if resolution == 10 {
+        vec![]
+    } else {
+        s.rows(&format!("SELECT service,kind,name,channel,max(at) AS at,(array_agg(sum/count ORDER BY at DESC,resolution))[1] AS value FROM analytics_metrics WHERE ({fine}){recent_filter} GROUP BY service,kind,name,channel"),&refs(&recent_args)).await?
+    };
+    let key =
+        |r: &V| dima_text::to_js_json(&json!([r["service"], r["kind"], r["name"], r["channel"]]));
+    let mut grouped: Vec<(String, Vec<V>)> = vec![];
+    for row in &rows {
+        let key = key(row);
+        if let Some((_, items)) = grouped.iter_mut().find(|(k, _)| *k == key) {
+            items.push(row.clone());
+        } else {
+            grouped.push((key, vec![row.clone()]));
+        }
+    }
+    let mut groups = Vec::new();
+    for (k, items) in grouped {
+        let first = &items[0];
+        let mut group = json!({"service":first["service"],"kind":first["kind"],"name":first["name"],"channel":first["channel"]});
+        if let Some(fields) = summarize(&items).as_object() {
+            for (k, v) in fields {
+                group[&k] = v.clone();
+            }
+        }
+        let last = items
+            .iter()
+            .max_by_key(|r| r["last_at"].as_str().unwrap_or(""));
+        let (mut at, mut value) = last
+            .map(|r| (r["last_at"].clone(), r["last_value"].clone()))
+            .unwrap_or_default();
+        if let Some(r) = recent.iter().find(|r| key(r) == k)
+            && r["at"].as_str() >= at.as_str()
+        {
+            at = r["at"].clone();
+            value = r["value"].clone();
+        }
+        group["lastAt"] = at;
+        group["lastValue"] = value;
+        groups.push(group);
+    }
+    groups.sort_by(|a, b| {
+        b["count"]
+            .as_f64()
+            .unwrap_or(0.)
+            .total_cmp(&a["count"].as_f64().unwrap_or(0.))
+    });
+    let last = groups.iter().filter_map(|g| g["lastAt"].as_str()).max();
+    let mut times: BTreeMap<i64, V> = BTreeMap::new();
+    for row in time {
+        let at = row["at"].as_f64().unwrap_or(0.) as i64;
+        let v = times
+            .entry(at)
+            .or_insert_with(|| json!({"at":at,"http":0,"chat":0}));
+        let kind = row["kind"].as_str().unwrap_or("http");
+        v[kind] = json!(v[kind].as_f64().unwrap_or(0.) + row["count"].as_f64().unwrap_or(0.));
+    }
+    let timeline: Vec<V> = times
+        .into_values()
+        .map(|mut v| {
+            v["httpRps"] = json!(v["http"].as_f64().unwrap_or(0.) / f64::from(step));
+            v["chatRps"] = json!(v["chat"].as_f64().unwrap_or(0.) / f64::from(step));
+            v
+        })
+        .collect();
+    let mut ids: Vec<String> = grant["channels"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|v| v.as_str().map(str::to_owned))
+        .collect();
+    if let Some(c) = q["channel"].as_str()
+        && (ids.is_empty() || ids.iter().any(|id| id == c))
+    {
+        ids.insert(0, c.to_owned());
+    }
+    ids.extend(
+        groups
+            .iter()
+            .filter_map(|g| g["channel"].as_str().map(str::to_owned)),
+    );
+    let names = s.names(ids).await;
+    Ok((
+        200,
+        json!({"minutes":minutes,"resolution":resolution,"generatedAt":dima_text::to_iso_string(now),"lastAt":last,"http":summarize(&rows.iter().filter(|r|r["kind"]=="http").cloned().collect::<Vec<_>>()),"chat":summarize(&rows.iter().filter(|r|r["kind"]=="chat").cloned().collect::<Vec<_>>()),"timeline":timeline,"groups":groups,"measured":"completed operations; latency percentiles are histogram upper bounds; missing buckets are not zero","channelNames":names}),
+    ))
+}

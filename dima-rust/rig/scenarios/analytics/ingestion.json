@@ -1,0 +1,150 @@
+{
+  "rig_scenario": 1,
+  "description": "Each telemetry kind through inbox, receipt replay and invalid batch discard. PostgreSQL state must be compared separately.",
+  "seed": {
+    "dragonfly": [
+      [
+        "HSET",
+        "token:analytics-rig-owner",
+        "id",
+        "1",
+        "login",
+        "owner"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-viewer",
+        "id",
+        "2",
+        "login",
+        "viewer"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-investigator",
+        "id",
+        "3",
+        "login",
+        "investigator"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-stranger",
+        "id",
+        "4",
+        "login",
+        "stranger"
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "dragonfly": [
+        "LPUSH",
+        "observability:v1:inbox",
+        "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-123456789012\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [{\"at\": ${now_ms}, \"kind\": \"chat\", \"name\": \"message\", \"channel\": \"allowed\", \"outcome\": \"ok\", \"count\": 1, \"sum\": 10, \"max\": 10, \"histogram\": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}], \"spans\": [{\"at\": ${now_ms}, \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"spanId\": \"bbbbbbbbbbbbbbbb\", \"parentId\": null, \"channel\": \"allowed\", \"kind\": \"chat\", \"name\": \"message\", \"outcome\": \"ok\", \"duration\": 10, \"partial\": false}], \"logs\": [{\"at\": ${now_ms}, \"level\": \"error\", \"name\": \"fixture\", \"channel\": \"allowed\", \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"fields\": {\"code\": \"test\"}}]}"
+      ]
+    },
+    {
+      "pause_ms": 1500
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/overview?service=rig",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/traces?service=rig",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/traces/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/logs?service=rig",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "dragonfly": [
+        "LPUSH",
+        "observability:v1:processing",
+        "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-123456789012\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [{\"at\": ${now_ms}, \"kind\": \"chat\", \"name\": \"message\", \"channel\": \"allowed\", \"outcome\": \"ok\", \"count\": 1, \"sum\": 10, \"max\": 10, \"histogram\": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}], \"spans\": [{\"at\": ${now_ms}, \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"spanId\": \"bbbbbbbbbbbbbbbb\", \"parentId\": null, \"channel\": \"allowed\", \"kind\": \"chat\", \"name\": \"message\", \"outcome\": \"ok\", \"duration\": 10, \"partial\": false}], \"logs\": [{\"at\": ${now_ms}, \"level\": \"error\", \"name\": \"fixture\", \"channel\": \"allowed\", \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"fields\": {\"code\": \"test\"}}]}"
+      ]
+    },
+    {
+      "pause_ms": 1500
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/overview?service=rig",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "dragonfly": [
+        "LLEN",
+        "observability:v1:processing"
+      ]
+    },
+    {
+      "dragonfly": [
+        "LPUSH",
+        "observability:v1:inbox",
+        "{bad"
+      ]
+    },
+    {
+      "pause_ms": 1500
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/resources",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    }
+  ]
+}

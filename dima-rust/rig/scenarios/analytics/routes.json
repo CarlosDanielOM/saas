@@ -1,0 +1,612 @@
+{
+  "rig_scenario": 1,
+  "description": "Route successes, parameter validation and owner/viewer/investigator boundaries. Requires fresh per-side PostgreSQL databases supplied by caller.",
+  "seed": {
+    "dragonfly": [
+      [
+        "HSET",
+        "token:analytics-rig-owner",
+        "id",
+        "1",
+        "login",
+        "owner"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-viewer",
+        "id",
+        "2",
+        "login",
+        "viewer"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-investigator",
+        "id",
+        "3",
+        "login",
+        "investigator"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-stranger",
+        "id",
+        "4",
+        "login",
+        "stranger"
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/2",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        },
+        "json": {
+          "role": "viewer",
+          "channels": [
+            "allowed"
+          ],
+          "services": [],
+          "expiresAt": null
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/3",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        },
+        "json": {
+          "role": "investigator",
+          "channels": [
+            "allowed"
+          ],
+          "services": [],
+          "expiresAt": null
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/session",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/overview",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/resources",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/resources?include=snapshot",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/resources?include=infra",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/traces",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/logs",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/grants",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/resources",
+        "headers": {
+          "authorization": "Bearer analytics-rig-viewer"
+        },
+        "expect": {
+          "status": 403
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/traces",
+        "headers": {
+          "authorization": "Bearer analytics-rig-viewer"
+        },
+        "expect": {
+          "status": 403
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/logs",
+        "headers": {
+          "authorization": "Bearer analytics-rig-viewer"
+        },
+        "expect": {
+          "status": 403
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/grants",
+        "headers": {
+          "authorization": "Bearer analytics-rig-viewer"
+        },
+        "expect": {
+          "status": 403
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/session",
+        "headers": {
+          "authorization": "Bearer analytics-rig-stranger"
+        },
+        "expect": {
+          "status": 403
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/overview?minutes=bad",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/resources?minutes=bad",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/traces?minutes=bad",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/logs?minutes=bad",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/traces/INVALID",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/traces/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 404
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/bad",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        },
+        "json": {
+          "role": "viewer",
+          "channels": [],
+          "services": [],
+          "expiresAt": null
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/1",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        },
+        "json": {
+          "role": "viewer",
+          "channels": [],
+          "services": [],
+          "expiresAt": null
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/9",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        },
+        "json": {
+          "role": "owner",
+          "channels": [],
+          "services": [],
+          "expiresAt": null
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/9",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        },
+        "json": {
+          "role": "viewer",
+          "channels": [
+            "bad space"
+          ],
+          "services": [],
+          "expiresAt": null
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/9",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        },
+        "json": {
+          "role": "viewer",
+          "channels": [],
+          "services": [
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x",
+            "x"
+          ],
+          "expiresAt": null
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/9",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        },
+        "json": {
+          "role": "viewer",
+          "channels": null,
+          "services": [],
+          "expiresAt": null
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/9",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        },
+        "json": {
+          "role": "viewer",
+          "channels": [],
+          "services": [],
+          "expiresAt": "bad"
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/9",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 400
+        },
+        "json": {
+          "role": "viewer",
+          "channels": [],
+          "services": [],
+          "expiresAt": "2000-01-01"
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PUT",
+        "path": "/api/grants/9",
+        "headers": {
+          "authorization": "Bearer analytics-rig-viewer"
+        },
+        "expect": {
+          "status": 403
+        },
+        "json": {
+          "role": "viewer",
+          "channels": [],
+          "services": [],
+          "expiresAt": null
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "DELETE",
+        "path": "/api/grants/2",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/session",
+        "headers": {
+          "authorization": "Bearer analytics-rig-viewer"
+        },
+        "expect": {
+          "status": 403
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/missing",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 404
+        }
+      }
+    }
+  ]
+}
