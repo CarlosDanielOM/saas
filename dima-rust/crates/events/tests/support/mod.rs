@@ -239,3 +239,100 @@ pub async fn clean_keys(client: &dima_store::dragonfly::Dragonfly, prefix: &str)
     }
     Ok(())
 }
+
+/// A TCP proxy in front of a store that can go silent: while blackholed, it accepts and holds
+/// connections and forwards nothing in either direction, as a hung server or a network
+/// partition would. Dropping it stops it.
+pub struct Proxy {
+    /// `127.0.0.1:<port>`.
+    pub address: String,
+    silent: tokio::sync::watch::Sender<bool>,
+    task: tokio::task::JoinHandle<()>,
+}
+
+impl Proxy {
+    /// A proxy to `upstream` (`host:port`).
+    pub async fn start(upstream: String) -> Result<Self> {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let address = listener.local_addr()?.to_string();
+        let (silent, watch) = tokio::sync::watch::channel(false);
+        let task = tokio::spawn(async move {
+            loop {
+                let Ok((mut inbound, _)) = listener.accept().await else {
+                    return;
+                };
+                let upstream = upstream.clone();
+                let mut watch = watch.clone();
+                tokio::spawn(async move {
+                    let silent_now = *watch.borrow();
+                    if silent_now {
+                        // Hold the connection without answering.
+                        let _ = watch.wait_for(|silent| !*silent).await;
+                        return;
+                    }
+                    let Ok(mut outbound) = tokio::net::TcpStream::connect(upstream).await else {
+                        return;
+                    };
+                    let went_silent = tokio::select! {
+                        _ = tokio::io::copy_bidirectional(&mut inbound, &mut outbound) => false,
+                        silenced = async { watch.wait_for(|silent| *silent).await.is_ok() } => silenced,
+                    };
+                    if went_silent {
+                        // Go silent: keep both sockets open, forward nothing.
+                        let _ = watch.wait_for(|silent| !*silent).await;
+                    }
+                });
+            }
+        });
+        Ok(Self {
+            address,
+            silent,
+            task,
+        })
+    }
+
+    /// Stops forwarding (connections stay open and hang).
+    pub fn blackhole(&self) {
+        let _ = self.silent.send(true);
+    }
+
+    /// Forwards again (connections that went silent are closed; new ones work).
+    pub fn restore(&self) {
+        let _ = self.silent.send(false);
+    }
+}
+
+impl Drop for Proxy {
+    fn drop(&mut self) {
+        self.task.abort();
+    }
+}
+
+/// A store on `database` reached through `proxy` (the test URI with its host replaced).
+pub async fn store_through(proxy: &Proxy, database: &str) -> Result<Option<MongoStore>> {
+    let Some(uri) = mongo_uri()? else {
+        return Ok(None);
+    };
+    let (scheme, rest) = uri.split_once("://").ok_or_else(|| anyhow!("URI"))?;
+    let (credentials, after) = match rest.split_once('@') {
+        Some((credentials, after)) => (format!("{credentials}@"), after),
+        None => (String::new(), rest),
+    };
+    let tail = after.find(['/', '?']).map_or("", |at| after.get(at..).unwrap_or(""));
+    let mut config = MongoConfig::new(format!("{scheme}://{credentials}{}{tail}", proxy.address));
+    config.database = Some(database.to_owned());
+    config.server_selection_timeout = Some(std::time::Duration::from_secs(2));
+    config.connect_timeout = Some(std::time::Duration::from_secs(2));
+    Ok(Some(MongoStore::connect(&config, None).await?))
+}
+
+/// The upstream `host:port` of the test MongoDB.
+pub fn mongo_address() -> Result<Option<String>> {
+    let Some(uri) = mongo_uri()? else {
+        return Ok(None);
+    };
+    let rest = uri.split_once("://").map_or(uri.as_str(), |(_, r)| r);
+    let after = rest.split_once('@').map_or(rest, |(_, a)| a);
+    let end = after.find(['/', '?']).unwrap_or(after.len());
+    Ok(after.get(..end).map(str::to_owned))
+}
