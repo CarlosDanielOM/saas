@@ -37,6 +37,8 @@
 
 use crate::client::{self, Body, Cancel};
 use crate::error::{BlockReason, BoxError, Error, RequestInfo, Result};
+use crate::observe::{EndGuard, NoopObserver, Observer};
+use crate::redact::QueryShown;
 use crate::response::{Limits, Response};
 use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 use std::future::Future;
@@ -379,6 +381,29 @@ pub struct GuardedClient {
     inner: reqwest::Client,
     policy: Arc<GuardPolicy>,
     shutdown: dima_core::Shutdown,
+    observer: Arc<dyn Observer>,
+}
+
+/// What the observer is told about a guarded fetch instead of its URL: the provider is
+/// `"guarded"` and the template is the class of the host the caller asked for.
+pub mod host_class {
+    /// A name on the policy's host list.
+    pub const LISTED: &str = "listed-host";
+    /// Any public name (the policy has no host list).
+    pub const PUBLIC_NAME: &str = "public-name";
+    /// An IP literal.
+    pub const IP_LITERAL: &str = "ip-literal";
+    /// The URL did not parse.
+    pub const INVALID: &str = "invalid";
+}
+
+fn host_class(policy: &GuardPolicy, url: Option<&Url>) -> &'static str {
+    match url.and_then(Url::host) {
+        Some(url::Host::Domain(_)) if policy.hosts.is_some() => host_class::LISTED,
+        Some(url::Host::Domain(_)) => host_class::PUBLIC_NAME,
+        Some(url::Host::Ipv4(_) | url::Host::Ipv6(_)) => host_class::IP_LITERAL,
+        None => host_class::INVALID,
+    }
 }
 
 const INFO_PROVIDER: &str = "guarded";
@@ -414,7 +439,15 @@ impl GuardedClient {
             inner,
             policy,
             shutdown,
+            observer: Arc::new(NoopObserver),
         })
+    }
+
+    /// Reports every fetch to `observer`: provider `"guarded"`, the method, and a
+    /// [`host_class`] as the template; never the URL, its host or its path.
+    pub fn with_observer(mut self, observer: Arc<dyn Observer>) -> Self {
+        self.observer = observer;
+        self
     }
 
     /// Starts a GET of `url`.
@@ -506,6 +539,40 @@ impl GuardedRequest<'_> {
 
     /// Sends the request, following and re-checking redirects.
     pub async fn send(self) -> Result<Response> {
+        let parsed = parse(&self.url);
+        let class = host_class(&self.client.policy, parsed.as_ref().ok());
+        let bytes_sent = match &self.body {
+            Body::Bytes(bytes) => Some(bytes.len() as u64),
+            _ => Some(0),
+        };
+        let mut end = EndGuard::start(
+            Arc::clone(&self.client.observer),
+            INFO_PROVIDER,
+            &self.method,
+            class,
+            1,
+            bytes_sent,
+        );
+        match self.fetch(parsed).await {
+            Ok((response, info, limits, cancel)) => {
+                end.set_status(response.status().as_u16());
+                Ok(
+                    Response::new(response, info, QueryShown::NamesOnly, limits, cancel)
+                        .with_attempt_state(1, false, false, Some(end), None),
+                )
+            }
+            Err(error) => {
+                end.fail(error.class());
+                Err(error)
+            }
+        }
+    }
+
+    /// The hops of one fetch, up to the final response.
+    async fn fetch(
+        self,
+        parsed: std::result::Result<Url, BlockReason>,
+    ) -> Result<(reqwest::Response, RequestInfo, Limits, Cancel)> {
         let mut method = self.method;
         if let Some(reason) = self.invalid {
             return Err(Error::Invalid {
@@ -514,7 +581,7 @@ impl GuardedRequest<'_> {
             });
         }
         let deadline = tokio::time::Instant::now() + self.timeout;
-        let mut url = parse(&self.url).map_err(|reason| Error::Blocked {
+        let mut url = parsed.map_err(|reason| Error::Blocked {
             info: info(method.clone()),
             reason,
         })?;
@@ -586,13 +653,7 @@ impl GuardedRequest<'_> {
                 idle: self.idle_timeout,
                 deadline,
             };
-            return Ok(Response::new(
-                response,
-                info(method),
-                crate::redact::QueryShown::NamesOnly,
-                limits,
-                cancel,
-            ));
+            return Ok((response, info(method), limits, cancel));
         }
     }
 }

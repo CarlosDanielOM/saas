@@ -531,3 +531,65 @@ async fn guarded_responses_show_query_names_only() {
     assert!(!printed.contains("MARKER"), "{printed}");
     assert!(printed.contains("X-Goog-Signature"), "{printed}");
 }
+
+#[derive(Debug, Default)]
+struct Recorder {
+    events: Mutex<Vec<String>>,
+}
+
+impl dima_http::observe::Observer for Recorder {
+    fn request_start(&self, start: &dima_http::observe::RequestStart<'_>) {
+        self.events.lock().unwrap().push(format!("{start:?}"));
+    }
+    fn request_end(&self, end: &dima_http::observe::RequestEnd<'_>) {
+        self.events.lock().unwrap().push(format!("{end:?}"));
+    }
+}
+
+/// The observer sees each guarded fetch as provider "guarded" with the host class, its status,
+/// failure and sizes; never the URL, the host or the path.
+#[tokio::test]
+async fn the_observer_sees_the_host_class_never_the_url() {
+    let server = MockServer::start().await.unwrap();
+    let resolver = Arc::new(ScriptedResolver::default());
+    resolver.answer("secret-host.test", &[&[LOOPBACK]]);
+    let port = server.addr().port();
+    let recorder = Arc::new(Recorder::default());
+    let client =
+        client(policy(&server, &["secret-host.test"]), &resolver).with_observer(recorder.clone());
+    server.push(MockResponse::new(200).body("image"));
+    let body = client
+        .get(&format!(
+            "http://secret-host.test:{port}/secret-path?k=secret-query"
+        ))
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    assert_eq!(&body[..], b"image");
+    // A refused fetch is reported too.
+    client
+        .get("http://secret-host.test:1/secret-path")
+        .send()
+        .await
+        .unwrap_err();
+    client.get("not a url secret").send().await.unwrap_err();
+    let events = recorder.events.lock().unwrap().clone();
+    assert_eq!(events.len(), 6, "{events:#?}");
+    for event in &events {
+        assert!(!event.contains("secret"), "{event}");
+        assert!(event.contains("\"guarded\""), "{event}");
+    }
+    assert!(events[0].contains("listed-host"), "{}", events[0]);
+    assert!(
+        events[1].contains("status: Some(200)")
+            && events[1].contains("body_complete: true")
+            && events[1].contains("bytes_received: 5"),
+        "{}",
+        events[1]
+    );
+    assert!(events[3].contains("Blocked"), "{}", events[3]);
+    assert!(events[4].contains("invalid"), "{}", events[4]);
+}
