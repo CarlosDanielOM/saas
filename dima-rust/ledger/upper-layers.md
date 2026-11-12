@@ -1237,6 +1237,6 @@ Kept by the lead; a package not listed has not started.
 |---|---|
 | P4-SKEL | merged |
 | P4-CMD-RUNTIME | merged (98 tests in the crate). Later packages: every write to `commands` goes through `CommandCache::write` (P4-SVC-COMMANDS ports create and edit; account deletion calls `invalidate_channel`); the cron calls `Availability::recover` every 2 s. Reference bug kept for now, to fix with P4-SVC-COMMANDS: `availability/service.ts:48` and `:81` read rewards without the schema default of `createdFor`, so 26 of the 69 stored rewards are refused with "Only Twitch redemptions are supported" when a command tries to enable or disable them |
-| P4-TW-CHAT | running (Sol) |
+| P4-TW-CHAT | merged (196 tests in the crate). For P4-ACT-CORE: `Sent` and `ChatError` cannot carry Twitch's drop reason, the ids of parts already delivered, or a missing `is_sent`; the reference's AI caller (`message.handler.ts:333`) carries on after a failed part |
 | P4-BOT-INGRESS | running (Opus) |
 | P4-AI-MEMORY | running (Opus) |
