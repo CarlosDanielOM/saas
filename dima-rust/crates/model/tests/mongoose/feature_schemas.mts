@@ -8,6 +8,10 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const DECLARATIONS: Record<string, string[]> = {
+    'src/custom_widgets/widget-store.ts': ["schema", "WidgetStore"],
+    'src/custom_widgets/store.ts': ["schema", "CustomWidgets"],
+    'src/overlays/interactions.ts': ["Interaction"],
+    'src/overlays/store.ts': ["schema", "Studio"],
     'src/duel/completion.ts': ['restoreSchema', 'DuelModeratorRestore'],
     'src/duel/stats.ts': ['schema', 'DuelResult'],
     'src/duel/service.ts': ['schema', 'DuelChannel'],

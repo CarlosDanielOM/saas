@@ -1673,6 +1673,254 @@
   }
  ],
  "models": {
+  "custom_widget_store": {
+   "model": "CustomWidgetStore",
+   "file": "src/custom_widgets/widget-store.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": false,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "owner",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "namespace",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "key",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "json",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "bytes",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": [
+    {
+     "key": [
+      [
+       "owner",
+       1
+      ],
+      [
+       "namespace",
+       1
+      ],
+      [
+       "key",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "custom_widgets": {
+   "model": "CustomWidget",
+   "file": "src/custom_widgets/store.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": false,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "owner",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "name",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "engine",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "revision",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "revisions",
+      "kind": "mixedArray",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "media",
+      "kind": "mixed"
+     },
+     {
+      "name": "network",
+      "kind": "value",
+      "type": "String"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": [
+    {
+     "key": [
+      [
+       "owner",
+       1
+      ],
+      [
+       "createdAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "overlay_interactions": {
+   "model": "OverlayInteraction",
+   "file": "src/overlays/interactions.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "revision",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "state",
+      "kind": "mixed"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": []
+  },
+  "overlay_studios": {
+   "model": "OverlayStudio",
+   "file": "src/overlays/store.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "schemaVersion",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "revision",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "scenes",
+      "kind": "mixedArray",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "designs",
+      "kind": "mixedArray",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "controls",
+      "kind": "mixed"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": [
+    {
+     "key": [
+      [
+       "scenes.publicId",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
   "duel_moderator_restores": {
    "model": "DuelModeratorRestore",
    "file": "src/duel/completion.ts",
@@ -22284,7 +22532,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416e94743c645422146b"
+          "value": "6af4416e985aa8759b2aef36"
          }
         },
         {

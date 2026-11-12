@@ -301,6 +301,8 @@ pub mod clipdesigns;
 pub mod cliprecommendationconfigs;
 pub mod cliprecommendations;
 pub mod collection;
+pub mod custom_widget_store;
+pub mod custom_widgets;
 pub mod decode;
 mod defaults;
 pub mod duel_moderator_restores;
@@ -313,6 +315,8 @@ pub mod goal_custom_receipts;
 mod hooks;
 pub mod index;
 pub mod loaded;
+pub mod overlay_interactions;
+pub mod overlay_studios;
 pub mod private;
 pub mod roulette_channels;
 pub mod shape;
@@ -422,6 +426,10 @@ pub use writes::UpdateOptions;
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).
 pub static REGISTRY: &[&CollectionInfo] = &[
+    &custom_widget_store::INFO,
+    &custom_widgets::INFO,
+    &overlay_interactions::INFO,
+    &overlay_studios::INFO,
     &duel_moderator_restores::INFO,
     &duel_results::INFO,
     &duel_widgets::INFO,

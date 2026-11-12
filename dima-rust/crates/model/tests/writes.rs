@@ -349,6 +349,72 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("overlay_studios", "typed") => {
+            use dima_model::overlay_studios::*;
+            let input = NewOverlayStudio {
+                id: String::from("seed"),
+                schema_version: JsNumber(1.0),
+                revision: JsNumber(1.0),
+                scenes: Private::new(vec![OverlayStudioScenesContent(Bson::Document(
+                    bson::doc! {"id":String::from("main"),"publicId":String::from("secret-token"),"widgets":vec![bson::doc!{"config":bson::doc!{"values":bson::doc!{"a":Bson::Null}},"text":String::from("héllo 👋 مرحبا é")}]},
+                ))]),
+                designs: Private::new(vec![OverlayStudioDesignsContent(Bson::Document(
+                    bson::doc! {"id":String::from("starter"),"events":bson::doc!{}},
+                ))]),
+                controls: Some(Private::new(OverlayStudioControlsContent(Bson::Document(
+                    bson::doc! {"all":false},
+                )))),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("overlay_interactions", "typed") => {
+            use dima_model::overlay_interactions::*;
+            let input = NewOverlayInteraction {
+                id: String::from("seed"),
+                revision: JsNumber(1.0),
+                state: Some(Private::new(OverlayInteractionStateContent(
+                    Bson::Document(
+                        bson::doc! {"kind":String::from("poll"),"receipt":String::from("event1"),"deadline":Bson::Null},
+                    ),
+                ))),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("custom_widgets", "typed") => {
+            use dima_model::custom_widgets::*;
+            let input = NewCustomWidget {
+                id: String::from("seed"),
+                owner: String::from("111"),
+                name: String::from("héllo 👋 مرحبا é"),
+                engine: String::from("streamelements"),
+                revision: JsNumber(1.0),
+                revisions: Private::new(vec![CustomWidgetRevisionsContent(Bson::Document(
+                    bson::doc! {"revision":1.0,"files":bson::doc!{"html":bson::doc!{"key":String::from("private-key")}},"data":bson::doc!{"a":Bson::Null},"fields":Bson::Array(Vec::new())},
+                ))]),
+                created_at: JsDate(1794392430456),
+                updated_at: JsDate(1794392430456),
+                media: Some(Private::new(CustomWidgetMediaContent(Bson::Document(
+                    bson::doc! {"urlKey":bson::doc!{"url":String::from("https://example.invalid/a"),"assetId":String::from("asset")}},
+                )))),
+                network: Some(String::from("open")),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("custom_widget_store", "typed") => {
+            use dima_model::custom_widget_store::*;
+            let input = NewCustomWidgetStore {
+                id: String::from("seed"),
+                owner: String::from("111"),
+                namespace: String::from("se"),
+                key: String::from("a"),
+                json: Private::new(String::from(
+                    "{\"code\":\"<script>secret</script>\",\"a\":null}",
+                )),
+                bytes: JsNumber(46.0),
+                updated_at: JsDate(1794392430456),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
         ("duel_moderator_restores", "typed") => {
             use dima_model::duel_moderator_restores::*;
             let input = NewDuelModeratorRestore {
