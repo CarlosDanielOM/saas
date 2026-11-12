@@ -119,3 +119,11 @@ retryable startup around the eager shared MongoStore constructor. Shared
 MongoConfig has no socket-timeout knob, so overall timeouts wrap Mongo operations. No shared crate
 was changed. Open question for the lead: reference dependencies must be provisioned independently
 before parity/resource verification can finish; the agent was explicitly forbidden to install them.
+
+## Parity follow-up (2026-11-12)
+
+Part 1: analytics JSON responses now use dima-web's JSON send path instead of raw HTTP
+responses. This supplies Express weak ETags, conditional GET freshness and HEAD stripping.
+The access scenario saves `/health`'s ETag and reuses it in `If-None-Match`; Node and Rust
+both return 304 with an empty body. Default double-run recording and candidate verification
+passed for all 12 access steps. No ETag computation is duplicated in this service.

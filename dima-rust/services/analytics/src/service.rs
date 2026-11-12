@@ -102,15 +102,10 @@ pub async fn build(
     dima_web::App::new(root,State{infra_cache:Default::default(),names_mongo,mongo,collector:Default::default(),config,store,redis,clock,health:Mutex::new(json!({"ingestedAt":null,"invalidBatches":0,"ingestionErrors":0,"collectorError":false})),limits:Default::default(),names:Default::default(),draining:Default::default(),http,twitch}).map_err(|_|Error::Config)
 }
 fn reply(status: u16, body: V) -> dima_web::Response {
-    match http::Response::builder()
-        .status(status)
-        .header("content-type", "application/json; charset=utf-8")
-        .header("cache-control", "no-store")
-        .body(dima_web::Body::from(dima_text::to_js_json(&body)))
-    {
-        Ok(r) => dima_web::Response::from_http(r),
-        Err(_) => dima_web::Response::status(500).end(),
-    }
+    // Use the Express-compatible send path for ETags, freshness and HEAD handling.
+    dima_web::Response::status(status)
+        .set("cache-control", "no-store")
+        .json(&body)
 }
 fn denied(status: u16, message: &str) -> (u16, V) {
     (status, json!({"message":message}))
