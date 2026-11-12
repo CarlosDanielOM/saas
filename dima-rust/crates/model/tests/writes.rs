@@ -55,6 +55,7 @@ use dima_model::extension_wallet_transactions::{
     NewExtensionWalletTransaction, WalletTransactionType,
 };
 use dima_model::index::{IndexDifference, IndexError, IndexStatus};
+use dima_model::media_assets::{AssetScope, MarketplaceStatus, NewMediaAsset, ThumbnailStatus};
 use dima_model::oauth_clients::{ClientType, NewOAuthClient};
 use dima_model::oauth_grants::NewOAuthGrant;
 use dima_model::oauth_refresh_tokens::NewOAuthRefreshToken;
@@ -67,6 +68,9 @@ use dima_model::timer_commands::NewTimerCommand;
 use dima_model::user_extension_inventories::{
     ExtensionPlatform, ItemSource, NewInventoryConfig, NewInventoryItem, NewUserExtensionInventory,
     QuickPurchaseAction, QuickPurchasePriority,
+};
+use dima_model::user_media_library_items::{
+    LibraryAssetScope, NewUserMediaLibraryItem, RelationType,
 };
 use dima_model::users::{
     AccountType, EncryptedToken, Language, NewAccount, NewUser, PlanTier, TtsProvider,
@@ -1268,6 +1272,81 @@ fn typed_create(
                 _ => None,
             };
             pair(personality.to_document()?, personality.prepare(owner, ctx))
+        }
+        ("mediaassets", "upload" | "thumbnail") => {
+            let mut asset = NewMediaAsset {
+                legacy_trigger_file_id: Nullable::Null,
+                owner_user_id: "u1".into(),
+                owner_channel_id: "111".into(),
+                owner_channel_name: "seed".into(),
+                uploaded_by_user_id: "u1".into(),
+                original_name: format!("{text}.mp4"),
+                display_name: text.into(),
+                file_name: "clip-1.mp4".into(),
+                extension: "mp4".into(),
+                mime_type: "video/mp4".into(),
+                media_type: MediaType::Video,
+                bytes: JsNumber(3_000_000_000.0),
+                bucket: "media".into(),
+                s3_key: "private/video/111/clip-1.mp4".into(),
+                storage_url: "https://cdn.example.com/clip-1.mp4".into(),
+                proxy_path: Nullable::Null,
+                scope: AssetScope::Private,
+                marketplace_status: Some(MarketplaceStatus::NotListed),
+                checksum_sha256: Nullable::Null,
+                thumbnail_asset_id: Nullable::Null,
+                thumbnail_status: Some(ThumbnailStatus::Pending),
+                thumbnail_attempts: Some(JsNumber(0.0)),
+                thumbnail_last_error: Nullable::Null,
+                library_count: Some(JsNumber(1.0)),
+                trigger_reference_count: Some(JsNumber(0.0)),
+                alert_reference_count: None,
+                extension_reference_count: None,
+                deleted_at: Nullable::Null,
+            };
+            if key == "thumbnail" {
+                asset.legacy_trigger_file_id = Nullable::Unset;
+                asset.original_name = "a.mp4.thumb.jpg".into();
+                asset.display_name = "a (thumbnail)".into();
+                asset.file_name = "clip-1.mp4.thumb.jpg".into();
+                asset.extension = "jpg".into();
+                asset.mime_type = "image/jpeg".into();
+                asset.media_type = MediaType::Image;
+                asset.bytes = JsNumber(2048.0);
+                asset.s3_key = "system/thumb/1.jpg".into();
+                asset.storage_url = "https://cdn.example.com/1.jpg".into();
+                asset.scope = AssetScope::System;
+                asset.thumbnail_asset_id = Nullable::Unset;
+                asset.thumbnail_status = None;
+                asset.thumbnail_attempts = None;
+                asset.thumbnail_last_error = Nullable::Unset;
+                asset.library_count = Some(JsNumber(0.0));
+                asset.alert_reference_count = Some(JsNumber(0.0));
+                asset.extension_reference_count = Some(JsNumber(0.0));
+            }
+            pair(asset.to_document()?, asset.prepare(ctx))
+        }
+        ("usermedialibraryitems", "upload" | "public") => {
+            let mut item = NewUserMediaLibraryItem {
+                channel_id: "111".into(),
+                channel_name: "seed".into(),
+                added_by_user_id: "u1".into(),
+                asset_id: oid(1)?,
+                relation_type: RelationType::OwnerUpload,
+                local_alias: Nullable::Null,
+                quota_bytes_charged: JsNumber(3_000_000_000.0),
+                asset_scope: LibraryAssetScope::Private,
+                media_type: MediaType::Video,
+                is_active: Some(true),
+                deleted_at: Nullable::Null,
+            };
+            if key == "public" {
+                item.relation_type = RelationType::PublicLibraryAdd;
+                item.quota_bytes_charged = JsNumber(0.0);
+                item.asset_scope = LibraryAssetScope::Public;
+                item.media_type = MediaType::Gif;
+            }
+            pair(item.to_document()?, item.prepare(ctx))
         }
         _ => bail!("{collection}: no typed input named {key}"),
     }

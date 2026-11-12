@@ -70,6 +70,8 @@ const MODELS: Array<[string, string]> = [
     ['src/schemas/channel_tts_settings.schema.ts', 'channel_tts_settings'],
     ['src/schemas/channel_ai_memory.schema.ts', 'ChannelAIMemory'],
     ['src/schemas/channel_ai_personality.schema.ts', 'ChannelAIPersonality'],
+    ['src/schemas/media_asset.schema.ts', 'MediaAsset'],
+    ['src/schemas/user_media_library_item.schema.ts', 'UserMediaLibraryItem'],
 ];
 
 export const FIXED_MS = Date.UTC(2026, 10, 11, 10, 20, 30, 456);

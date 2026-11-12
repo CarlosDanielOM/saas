@@ -100,6 +100,8 @@ const FILES: Array<[string, string]> = [
     ['src/schemas/channel_tts_settings.schema.ts', 'channel_tts_settings'],
     ['src/schemas/channel_ai_memory.schema.ts', 'ChannelAIMemory'],
     ['src/schemas/channel_ai_personality.schema.ts', 'ChannelAIPersonality'],
+    ['src/schemas/media_asset.schema.ts', 'MediaAsset'],
+    ['src/schemas/user_media_library_item.schema.ts', 'UserMediaLibraryItem'],
 ];
 const MODELS: Record<string, any> = {};
 for (const [file, name] of FILES) {
@@ -357,7 +359,50 @@ const personalityLegacySeed = () => ({
     contextWindow: 7, recommendationsEnabled: true, streamSummariesEnabled: true, createdAt: T1, updatedAt: T1, __v: 0,
 });
 
+const uploadAsset = (extra: any = {}) => ({
+    legacyTriggerFileID: null, ownerUserID: 'u1', ownerChannelID: '111', ownerChannelName: 'seed', uploadedByUserID: 'u1',
+    originalName: `${TEXT}.mp4`, displayName: TEXT, fileName: 'clip-1.mp4', extension: 'mp4', mimeType: 'video/mp4', mediaType: 'video',
+    bytes: 3000000000, bucket: 'media', s3Key: 'private/video/111/clip-1.mp4', storageUrl: 'https://cdn.example.com/clip-1.mp4', proxyPath: null,
+    scope: 'private', marketplaceStatus: 'not_listed', checksumSha256: null, thumbnailAssetID: null, thumbnailStatus: 'pending',
+    thumbnailAttempts: 0, thumbnailLastError: null, libraryCount: 1, triggerReferenceCount: 0, deletedAt: null, ...extra,
+});
+const assetSeed = (extra: any = {}) => ({ _id: OID(1), ...uploadAsset(), alertReferenceCount: 0, extensionReferenceCount: 0, createdAt: T1, updatedAt: T1, __v: 0, ...extra });
+// From before the thumbnail fields and the alert and extension counters.
+const assetLegacySeed = () => without(assetSeed(), 'thumbnailAssetID', 'thumbnailStatus', 'thumbnailAttempts', 'thumbnailLastError', 'alertReferenceCount', 'extensionReferenceCount');
+const libraryItem = (extra: any = {}) => ({
+    channelID: '111', channelName: 'seed', addedByUserID: 'u1', assetID: OID(1), relationType: 'owner_upload', localAlias: null,
+    quotaBytesCharged: 1048576, assetScope: 'private', mediaType: 'video', isActive: true, deletedAt: null, ...extra,
+});
+const librarySeed = (extra: any = {}) => ({ _id: OID(1), ...libraryItem(), createdAt: T1, updatedAt: T1, __v: 0, ...extra });
+
 const CASES: Record<string, any[]> = {
+    mediaassets: [
+        { name: 'create_upload', op: 'create', rust: 'upload', doc: uploadAsset() },
+        // `thumbnail_generator.ts:112`: the thumbnail is an asset of its own.
+        { name: 'create_thumbnail', op: 'create', rust: 'thumbnail', doc: without(uploadAsset({ originalName: 'a.mp4.thumb.jpg', displayName: 'a (thumbnail)', fileName: 'clip-1.mp4.thumb.jpg', extension: 'jpg', mimeType: 'image/jpeg', mediaType: 'image', bytes: 2048, s3Key: 'system/thumb/1.jpg', storageUrl: 'https://cdn.example.com/1.jpg', scope: 'system', libraryCount: 0, alertReferenceCount: 0, extensionReferenceCount: 0 }), 'legacyTriggerFileID', 'thumbnailAssetID', 'thumbnailStatus', 'thumbnailAttempts', 'thumbnailLastError') },
+        { name: 'validate_enums', op: 'validate', doc: { mediaType: 'pdf', scope: 'world', marketplaceStatus: 'sold', thumbnailStatus: 'done', bytes: 1 } },
+        { name: 'inc_library', op: 'updateOne', seed: [assetSeed()], filter: { _id: OID(1) }, update: { $inc: { libraryCount: 1 } } },
+        { name: 'thumbnail_attempt', op: 'updateOne', seed: [assetLegacySeed()], filter: { _id: OID(1) }, update: { $inc: { thumbnailAttempts: 1 }, $set: { thumbnailStatus: 'pending' } } },
+        { name: 'thumbnail_ready', op: 'updateOne', seed: [assetSeed()], filter: { _id: OID(1) }, update: { $set: { thumbnailAssetID: OID(2), thumbnailStatus: 'ready', thumbnailLastError: null } } },
+        { name: 'thumbnail_skip', op: 'updateOne', seed: [assetSeed({ mediaType: 'audio' })], filter: { _id: OID(1), thumbnailStatus: { $ne: 'ready' } }, update: { $set: { thumbnailStatus: 'skipped', thumbnailLastError: null } } },
+        { name: 'thumbnail_failed', op: 'updateOne', seed: [assetSeed()], filter: { _id: OID(1) }, update: { $set: { thumbnailStatus: 'failed', thumbnailLastError: TEXT } } },
+        // `trigger.route.ts:883`: a private asset made public.
+        { name: 'save_promote', op: 'save', seed: [assetLegacySeed()], id: OID(1), changes: [{ set: 'scope', value: 'public' }, { set: 'marketplaceStatus', value: 'published' }] },
+        { name: 'save_invalid', op: 'save', seed: [assetSeed()], id: OID(1), changes: [{ set: 'scope', value: 'everyone' }] },
+        { name: 'set_counts', op: 'updateOne', seed: [assetSeed()], filter: { _id: OID(1) }, update: { $set: { libraryCount: 0, triggerReferenceCount: 3 } } },
+        { name: 'duplicate_key', op: 'create', seed: [assetSeed()], doc: uploadAsset({ displayName: 'other' }) },
+    ],
+    usermedialibraryitems: [
+        { name: 'create_upload', op: 'create', rust: 'upload', doc: libraryItem({ quotaBytesCharged: 3000000000 }) },
+        { name: 'create_public', op: 'create', rust: 'public', doc: libraryItem({ relationType: 'public_library_add', quotaBytesCharged: 0, assetScope: 'public', mediaType: 'gif' }) },
+        { name: 'validate_enums', op: 'validate', doc: { relationType: 'stolen', assetScope: 'system', mediaType: 'pdf' } },
+        { name: 'save_alias', op: 'save', seed: [librarySeed()], id: OID(1), changes: [{ set: 'localAlias', value: 'clip_1' }] },
+        { name: 'save_remove', op: 'save', seed: [librarySeed()], id: OID(1), changes: [{ set: 'isActive', value: false }, { set: 'deletedAt', value: T2 }] },
+        { name: 'save_promote', op: 'save', seed: [librarySeed()], id: OID(1), changes: [{ set: 'assetScope', value: 'public' }, { set: 'quotaBytesCharged', value: 0 }] },
+        { name: 'duplicate_active', op: 'create', seed: [librarySeed()], doc: libraryItem({ addedByUserID: 'u2' }) },
+        // The unique index is partial: removed items never collide.
+        { name: 'inactive_twice', op: 'create', seed: [librarySeed({ isActive: false, deletedAt: T1 })], doc: libraryItem({ isActive: false, deletedAt: T2 }) },
+    ],
     channelaimemories: [
         { name: 'create_memory', op: 'create', rust: 'memory', doc: memoryDoc() },
         { name: 'create_defaults', op: 'create', rust: 'defaults', doc: { channelID: '111', type: 'channel_lore', content: 'c', summary: 's', fingerprint: 'fp2', sourceEvidence: [{ message: 'hi', timestamp: 5 }] } },

@@ -164,7 +164,10 @@
 //!   `find_and_update_unchecked`); a save adapter calls `writes::save_with_hooks(&INFO, loaded,
 //!   changes, hook, ctx)`, where `hook` returns the changes the middleware makes (`hooks.rs` has
 //!   the `updatedAt`-on-save one). Both run validation and the guard; never call the store's
-//!   helpers directly.
+//!   helpers directly. A create with document middleware uses `writes::create_with_hooks`
+//!   (`pre('validate')` before validation, `pre('save')` after); a hook that reads another
+//!   collection takes what it reads as an argument (`channel_ai_personalities` takes the owner's
+//!   plan), and a hook that throws is [`ModelError::Refused`] with the reference's message.
 //! - Filters: `dima_store::mongo::filter::prepare_filter(INFO.schema, …)`; responses:
 //!   [`CollectionInfo::find_json`] and friends leave out the hidden paths.
 //! - At startup, binaries call [`ensure_indexes`] for every [`REGISTRY`] entry with
@@ -272,6 +275,7 @@ pub mod domain_events;
 pub mod events;
 pub mod eventsubs;
 pub mod extension_wallet_transactions;
+pub mod media_assets;
 pub mod oauth_clients;
 pub mod oauth_grants;
 pub mod oauth_refresh_tokens;
@@ -282,6 +286,7 @@ pub mod site_analytics;
 pub mod stream_sessions;
 pub mod timer_commands;
 pub mod user_extension_inventories;
+pub mod user_media_library_items;
 pub mod users;
 
 pub use collection::{CollectionInfo, Hooks, ReadError};
@@ -339,4 +344,6 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &channel_tts_settings::INFO,
     &channel_ai_memories::INFO,
     &channel_ai_personalities::INFO,
+    &media_assets::INFO,
+    &user_media_library_items::INFO,
 ];

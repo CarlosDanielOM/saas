@@ -11369,7 +11369,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416ef72e35ad4e2373c9"
+          "value": "6af4416e6888e34e2d2f17a1"
          }
         },
         {
@@ -12279,6 +12279,745 @@
     }
    ],
    "indexes": []
+  },
+  "mediaassets": {
+   "model": "MediaAsset",
+   "file": "src/schemas/media_asset.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "legacyTriggerFileID",
+      "kind": "value",
+      "type": "ObjectId",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "ownerUserID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "ownerChannelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "ownerChannelName",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "uploadedByUserID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "originalName",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "displayName",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "fileName",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "extension",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "mimeType",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "mediaType",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "bytes",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "bucket",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "s3Key",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "storageUrl",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "proxyPath",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "scope",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "marketplaceStatus",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "not_listed"
+      }
+     },
+     {
+      "name": "checksumSha256",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "thumbnailAssetID",
+      "kind": "value",
+      "type": "ObjectId",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "thumbnailStatus",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "pending"
+      }
+     },
+     {
+      "name": "thumbnailAttempts",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "thumbnailLastError",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "libraryCount",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "triggerReferenceCount",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "alertReferenceCount",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "extensionReferenceCount",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "deletedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "ownerUserID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "ownerChannelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "ownerChannelName",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "uploadedByUserID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "originalName",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "displayName",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "fileName",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "extension",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "mimeType",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "mediaType",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "mediaType",
+     "type": "enum",
+     "values": [
+      "video",
+      "audio",
+      "image",
+      "gif"
+     ]
+    },
+    {
+     "path": "bytes",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "bucket",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "s3Key",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "storageUrl",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "scope",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "scope",
+     "type": "enum",
+     "values": [
+      "public",
+      "private",
+      "system"
+     ]
+    },
+    {
+     "path": "marketplaceStatus",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "marketplaceStatus",
+     "type": "enum",
+     "values": [
+      "not_listed",
+      "published",
+      "pending_review",
+      "hidden",
+      "removed"
+     ]
+    },
+    {
+     "path": "thumbnailStatus",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "thumbnailStatus",
+     "type": "enum",
+     "values": [
+      "pending",
+      "ready",
+      "failed",
+      "skipped"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "legacyTriggerFileID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "ownerUserID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "ownerChannelID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "mediaType",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "s3Key",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "scope",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "marketplaceStatus",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "thumbnailAssetID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "thumbnailStatus",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "deletedAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "scope",
+       1
+      ],
+      [
+       "marketplaceStatus",
+       1
+      ],
+      [
+       "mediaType",
+       1
+      ],
+      [
+       "createdAt",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "usermedialibraryitems": {
+   "model": "UserMediaLibraryItem",
+   "file": "src/schemas/user_media_library_item.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelName",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "addedByUserID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "assetID",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "relationType",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "localAlias",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "quotaBytesCharged",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "assetScope",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "mediaType",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "isActive",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "deletedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelName",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "addedByUserID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "assetID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "relationType",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "relationType",
+     "type": "enum",
+     "values": [
+      "owner_upload",
+      "public_library_add"
+     ]
+    },
+    {
+     "path": "quotaBytesCharged",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "assetScope",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "assetScope",
+     "type": "enum",
+     "values": [
+      "public",
+      "private"
+     ]
+    },
+    {
+     "path": "mediaType",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "mediaType",
+     "type": "enum",
+     "values": [
+      "video",
+      "audio",
+      "image",
+      "gif"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "assetID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "assetScope",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "mediaType",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "isActive",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "deletedAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "assetID",
+       1
+      ],
+      [
+       "isActive",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "partialFilterExpression": {
+       "isActive": true
+      },
+      "background": true
+     }
+    }
+   ]
   }
  }
 }
