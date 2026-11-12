@@ -3,9 +3,48 @@ use anyhow::{Context, Result, bail};
 use dima_features::widgets::model;
 use serde_json::{Value, json};
 
+// Nodes point backwards, so expansion is bounded by the recording's line count.
+fn recording() -> Result<Value> {
+    let mut nodes: Vec<Value> = Vec::new();
+    fn expand(value: Value, nodes: &[Value]) -> Result<Value> {
+        if let Some(id) = value.get("$ref").and_then(Value::as_u64) {
+            return nodes
+                .get(id as usize)
+                .cloned()
+                .context("backward fixture reference");
+        }
+        Ok(value)
+    }
+    for line in include_str!("widgets_reference.json").lines() {
+        let node: Value = serde_json::from_str(line)?;
+        if let Some(root) = node.get("root") {
+            return expand(root.clone(), &nodes);
+        }
+        let value = if let Some(items) = node.get("array").and_then(Value::as_array) {
+            Value::Array(
+                items
+                    .iter()
+                    .cloned()
+                    .map(|v| expand(v, &nodes))
+                    .collect::<Result<_>>()?,
+            )
+        } else if let Some(map) = node.get("object").and_then(Value::as_object) {
+            Value::Object(
+                map.iter()
+                    .map(|(k, v)| Ok((k.clone(), expand(v.clone(), &nodes)?)))
+                    .collect::<Result<_>>()?,
+            )
+        } else {
+            bail!("invalid recording node");
+        };
+        nodes.push(value);
+    }
+    bail!("recording root missing")
+}
+
 #[test]
 fn widgets_recorded_inputs_and_public_projection() -> Result<()> {
-    let fixture: Value = serde_json::from_str(include_str!("widgets_reference.json"))?;
+    let fixture: Value = recording()?;
     assert_eq!(model::catalog()?, fixture["catalog"]);
     assert_eq!(model::initial(), fixture["initial"]);
     for case in fixture["cases"].as_array().context("cases")? {
@@ -62,7 +101,7 @@ impl dima_core::Random for RecordedRandom {
 
 #[test]
 fn widgets_recorded_draws_sequences_and_due_transitions() -> Result<()> {
-    let fixture: Value = serde_json::from_str(include_str!("widgets_reference.json"))?;
+    let fixture: Value = recording()?;
     for scenario in fixture["transitions"].as_array().context("transitions")? {
         let mut state = scenario["input"].clone();
         let random = RecordedRandom(scenario["ticket"].as_i64().context("ticket")?);
@@ -97,7 +136,7 @@ fn widgets_recorded_draws_sequences_and_due_transitions() -> Result<()> {
 
 #[test]
 fn widgets_recording_provenance() -> Result<()> {
-    let fixture: Value = serde_json::from_str(include_str!("widgets_reference.json"))?;
+    let fixture: Value = recording()?;
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../..")
         .join("dimabot/src");
@@ -109,8 +148,8 @@ fn widgets_recording_provenance() -> Result<()> {
         );
     }
     assert_eq!(
-        include_bytes!("../src/widgets/dbd.json").as_slice(),
-        std::fs::read(root.join("widgets/dbd.json"))?
+        serde_json::from_str::<Value>(include_str!("../src/widgets/dbd.json"))?,
+        serde_json::from_slice::<Value>(&std::fs::read(root.join("widgets/dbd.json"))?)?
     );
     Ok(())
 }
