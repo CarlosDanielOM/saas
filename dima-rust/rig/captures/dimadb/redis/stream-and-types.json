@@ -1,0 +1,183 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "redis/stream-and-types",
+  "scenario_hash": "fnv1a64:e3467487ee90e90e",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:1>"
+                },
+                "username": "root",
+                "role": "admin"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "events:📦",
+              "type": "stream",
+              "ttl": -1,
+              "value": [
+                {
+                  "id": "1-1",
+                  "message": {
+                    "10": "x",
+                    "type": "follow",
+                    "user": "zoë"
+                  }
+                },
+                {
+                  "id": "2-0",
+                  "message": {
+                    "type": "raid 🎉",
+                    "viewers": "42"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "temp",
+              "type": "string",
+              "ttl": 3600,
+              "value": "soon gone"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "counter",
+              "type": "string",
+              "ttl": -1,
+              "value": "9007199254740993"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "cursor": "0",
+              "keys": [
+                {
+                  "name": "counter",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "events:📦",
+                  "type": "stream",
+                  "ttl": -1
+                },
+                {
+                  "name": "temp",
+                  "type": "string",
+                  "ttl": 3600
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [
+    {
+      "key": "counter",
+      "type": "string",
+      "ttl": null,
+      "value": "9007199254740993"
+    },
+    {
+      "key": "events:📦",
+      "type": "stream",
+      "ttl": null,
+      "value": [
+        {
+          "id": "1-1",
+          "fields": {
+            "type": "follow",
+            "user": "zoë",
+            "10": "x"
+          }
+        },
+        {
+          "id": "2-0",
+          "fields": {
+            "type": "raid 🎉",
+            "viewers": "42"
+          }
+        }
+      ]
+    },
+    {
+      "key": "temp",
+      "type": "string",
+      "ttl": "<t+3600000ms@2026-11-12T00:59:50.614Z>",
+      "value": "soon gone"
+    }
+  ]
+}

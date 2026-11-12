@@ -1,0 +1,307 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "static/files",
+  "scenario_hash": "fnv1a64:4c4b04c08b644c6e",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-store, must-revalidate",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "body": {
+          "text": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-store, must-revalidate",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "body": {
+          "text": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "text/javascript; charset=utf-8"
+        },
+        "body": {
+          "text": "console.log(\"dimadb rig ✓\");\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "text/css; charset=utf-8"
+        },
+        "body": {
+          "text": "body { color: #fff; } /* é */\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "image/svg+xml"
+        },
+        "body": {
+          "text": "<svg xmlns=\"http://www.w3.org/2000/svg\"><text>🍕</text></svg>\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "image/x-icon"
+        },
+        "body": {
+          "text": "\u0000\u0000\u0001\u0000"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "application/octet-stream"
+        },
+        "body": {
+          "base64": "AAEC//4gYmluYXJ5"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "application/octet-stream"
+        },
+        "body": {
+          "text": "upper case extension\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-store, must-revalidate",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "body": {
+          "text": "<p>my index</p>\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "application/octet-stream"
+        },
+        "body": {
+          "text": "hidden dotfile\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "application/octet-stream"
+        },
+        "body": {
+          "text": "{\"name\":\"dimadb\",\"ok\":true}\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "application/octet-stream"
+        },
+        "body": {
+          "text": "nested file\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-store, must-revalidate",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "body": {
+          "text": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-store, must-revalidate",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "body": {
+          "text": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-store, must-revalidate",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "body": {
+          "text": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-store, must-revalidate",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "body": {
+          "text": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "text/javascript; charset=utf-8"
+        },
+        "body": {
+          "text": "console.log(\"dimadb rig ✓\");\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "text/css; charset=utf-8"
+        },
+        "body": {
+          "text": ""
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {},
+        "body": {
+          "text": ""
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "text/javascript; charset=utf-8"
+        },
+        "body": {
+          "text": "console.log(\"dimadb rig ✓\");\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "text/javascript; charset=utf-8"
+        },
+        "body": {
+          "text": "console.log(\"dimadb rig ✓\");\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "text/javascript; charset=utf-8"
+        },
+        "body": {
+          "text": "console.log(\"dimadb rig ✓\");\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "application/octet-stream"
+        },
+        "body": {
+          "text": "nested file\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-cache, no-store, must-revalidate",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "body": {
+          "text": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "public, max-age=2592000, immutable",
+          "content-type": "application/octet-stream"
+        },
+        "body": {
+          "text": "sibling directory: must not be served\n"
+        }
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": []
+}

@@ -1,0 +1,178 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "auth/csrf",
+  "scenario_hash": "fnv1a64:798d68f96700b759",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "ok": true,
+              "service": "dimadb",
+              "dataDir": {
+                "$rigText": "/tmp/dimadb-rig/<run:mongo_db>"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 404,
+            "message": "Not found"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 403,
+            "message": "Missing X-Dimadb header"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 403,
+            "message": "Missing X-Dimadb header"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "needsSetup": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 403,
+            "message": "Missing X-Dimadb header"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 403,
+            "message": "Missing X-Dimadb header"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 404,
+            "message": "Not found"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 403,
+            "message": "Missing X-Dimadb header"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 403,
+            "message": "Missing X-Dimadb header"
+          }
+        }
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": []
+}

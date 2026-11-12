@@ -1,0 +1,881 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "mongo/insert",
+  "scenario_hash": "fnv1a64:5cc5927b948aea32",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:1>"
+                },
+                "username": "root",
+                "role": "admin"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": [
+              {
+                "id": "env:dbname",
+                "name": "dbname",
+                "url": {
+                  "$rigText": "<run:mongo_db>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "<run:dragonfly_url>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:mongo:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "mongodb://root:***@127.0.0.1:27017/<run:mongo_db>?authSource=admin&directConnection=true"
+                },
+                "source": "env",
+                "engine": "mongo"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "inserted",
+              "id": "numbers",
+              "document": {
+                "_id": "numbers",
+                "int": 1,
+                "neg": -1,
+                "intMax": 2147483647,
+                "over": 2147483648,
+                "intMin": -2147483648,
+                "under": -2147483649,
+                "float": 1.5,
+                "one": 1,
+                "negZero": 0,
+                "negZeroF": 0,
+                "e": 100,
+                "big": 9007199254740992,
+                "huge": 1e+300,
+                "tiny": 5e-324,
+                "neg53": -9007199254740992
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "inserted",
+              "id": "ejson numbers",
+              "document": {
+                "_id": "ejson numbers",
+                "i": 7,
+                "l": 5,
+                "lBig": 9007199254740992,
+                "lMax": 9223372036854776000,
+                "d": 2,
+                "dHalf": 2.5,
+                "nan": {
+                  "$rigLiteral:$numberDouble": "NaN"
+                },
+                "inf": {
+                  "$rigLiteral:$numberDouble": "Infinity"
+                },
+                "ninf": {
+                  "$rigLiteral:$numberDouble": "-Infinity"
+                },
+                "dNegZero": 0,
+                "dec": {
+                  "$rigLiteral:$numberDecimal": "1.10"
+                },
+                "decNaN": {
+                  "$rigLiteral:$numberDecimal": "NaN"
+                },
+                "iText": 12
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 500,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 500,
+            "message": "The regular expression option [g] is not supported"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "inserted",
+              "id": "keys and text",
+              "document": {
+                "2": "two",
+                "10": "ten",
+                "_id": "keys and text",
+                "b": 1,
+                "a": "a",
+                "ключ": "🍕",
+                "emoji 👋": {
+                  "1": 2,
+                  "z": 1
+                },
+                "rtl": "مرحبا",
+                "comb": "é",
+                "nested": {
+                  "$rigLiteral:$foo": 1,
+                  "b": 2
+                },
+                "arr": [
+                  {
+                    "$rigLiteral:$x": 1
+                  },
+                  null,
+                  [
+                    true
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "inserted",
+              "id": {
+                "$rigText": "<oid:1>"
+              },
+              "document": {
+                "_id": {
+                  "$rigLiteral:$oid": {
+                    "$rigText": "<oid:1>"
+                  }
+                },
+                "name": "generated 🆔",
+                "at": {
+                  "$rigLiteral:$date": "2026-11-11T10:00:00Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "inserted",
+              "id": {
+                "$rigText": "<oid:2>"
+              },
+              "document": {
+                "_id": {
+                  "$rigLiteral:$oid": {
+                    "$rigText": "<oid:2>"
+                  }
+                },
+                "name": "null id"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "inserted",
+              "id": "as text",
+              "document": {
+                "_id": "as text",
+                "n": 9
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 404,
+            "message": "Document not found"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 500,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 500,
+            "message": {
+              "$rigText": "E11000 duplicate key error collection: <run:mongo_db>.inserted index: _id_ dup key: { _id: \"numbers\" }"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "$numberLong string \"12x\" is in an invalid format"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "$numberLong string is too long"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "abc not a valid Decimal128 string"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "input must be a 24 character hex string, 12 byte Uint8Array, or an integer"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "Unrecognized type for EJSON date: boolean"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "Unexpected Binary Extended JSON format {\"$binary\":\"aGk=\",\"$type\":\"00\"}"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "The regular expression option [g] is not supported"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "BSON Document field names cannot contain null bytes, found: \"a\\u0000b\""
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "Expected double-quoted property name in JSON at position 7 (line 1 column 8)"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "Unexpected token '}', \"{\"🍕\":tru}\" is not valid JSON"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "document must be an object"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "document must be an object"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "collection is required"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "db is required"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 500,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 500,
+            "message": "The regular expression option [g] is not supported"
+          }
+        }
+      }
+    }
+  ],
+  "mongo": {
+    "inserted": {
+      "type": "collection",
+      "options": {},
+      "indexes": {
+        "_id_": {
+          "v": {
+            "$numberInt": "2"
+          },
+          "key": {
+            "_id": {
+              "$numberInt": "1"
+            }
+          },
+          "name": "_id_"
+        }
+      },
+      "documents": [
+        {
+          "_id": "keys and text",
+          "2": "two",
+          "10": "ten",
+          "b": {
+            "$numberInt": "1"
+          },
+          "a": "a",
+          "ключ": "🍕",
+          "emoji 👋": {
+            "1": {
+              "$numberInt": "2"
+            },
+            "z": {
+              "$numberInt": "1"
+            }
+          },
+          "rtl": "مرحبا",
+          "comb": "é",
+          "nested": {
+            "$rigLiteral:$foo": {
+              "$numberInt": "1"
+            },
+            "b": {
+              "$numberInt": "2"
+            }
+          },
+          "arr": [
+            {
+              "$rigLiteral:$x": {
+                "$numberInt": "1"
+              }
+            },
+            null,
+            [
+              true
+            ]
+          ]
+        },
+        {
+          "_id": {
+            "$oid": "<oid:2>"
+          },
+          "name": "null id"
+        },
+        {
+          "_id": {
+            "$oid": "<oid:1>"
+          },
+          "name": "generated 🆔",
+          "at": {
+            "$date": "2026-11-11T10:00:00.000Z"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "6650a1b2c3d4e5f6012345aa"
+          },
+          "o": {
+            "$oid": "6650a1b2c3d4e5f601234567"
+          },
+          "iso": {
+            "$date": "2026-11-11T10:00:00.000Z"
+          },
+          "ms": {
+            "$date": "2026-11-11T10:00:00.123Z"
+          },
+          "num": {
+            "$date": "2023-11-14T22:13:20.000Z"
+          },
+          "long": {
+            "$date": "1969-12-31T23:59:59.999Z"
+          },
+          "offset": {
+            "$date": "2026-11-11T10:00:00.000Z"
+          },
+          "bad": {
+            "$date": "1970-01-01T00:00:00.000Z"
+          },
+          "day": {
+            "$date": "<t-86195750ms@2026-11-11T00:00:00.000Z>"
+          },
+          "b": {
+            "$binary": {
+              "base64": "AAEC+v8=",
+              "subType": "00"
+            }
+          },
+          "u": {
+            "$uuid": "01234567-89ab-cdef-0123-456789abcdef"
+          },
+          "r": {
+            "$regularExpression": {
+              "pattern": "^a/b$",
+              "options": "im"
+            }
+          },
+          "old": {
+            "$regularExpression": {
+              "pattern": "x",
+              "options": "is"
+            }
+          },
+          "t": {
+            "$timestamp": {
+              "t": 1,
+              "i": 2
+            }
+          },
+          "min": {
+            "$minKey": 1
+          },
+          "max": {
+            "$maxKey": 1
+          },
+          "code": {
+            "$code": "x"
+          },
+          "scoped": {
+            "$code": "y",
+            "$scope": {
+              "a": {
+                "$numberInt": "1"
+              }
+            }
+          },
+          "sym": {
+            "$symbol": "s"
+          },
+          "undef": null,
+          "ref": {
+            "$rigLiteral:$ref": "c",
+            "$rigLiteral:$id": {
+              "$oid": "6650a1b2c3d4e5f601234567"
+            }
+          },
+          "refDb": {
+            "$rigLiteral:$ref": "c",
+            "$rigLiteral:$id": {
+              "$numberInt": "1"
+            },
+            "$rigLiteral:$db": "x",
+            "extra": true
+          },
+          "refNs": {
+            "$rigLiteral:$ref": "c",
+            "$rigLiteral:$id": "t",
+            "$rigLiteral:$db": "d"
+          },
+          "notRef": {
+            "$rigLiteral:$ref": "c",
+            "$rigLiteral:$id": {
+              "$numberInt": "1"
+            },
+            "$rigLiteral:$other": {
+              "$numberInt": "2"
+            }
+          }
+        },
+        {
+          "_id": "as text",
+          "n": {
+            "$numberInt": "9"
+          }
+        },
+        {
+          "_id": "ejson numbers",
+          "i": {
+            "$numberInt": "7"
+          },
+          "l": {
+            "$numberInt": "5"
+          },
+          "lBig": {
+            "$numberDouble": "9007199254740992.0"
+          },
+          "lMax": {
+            "$numberDouble": "9.223372036854776e18"
+          },
+          "d": {
+            "$numberInt": "2"
+          },
+          "dHalf": {
+            "$numberDouble": "2.5"
+          },
+          "nan": {
+            "$numberDouble": "NaN"
+          },
+          "inf": {
+            "$numberDouble": "Infinity"
+          },
+          "ninf": {
+            "$numberDouble": "-Infinity"
+          },
+          "dNegZero": {
+            "$numberDouble": "-0.0"
+          },
+          "dec": {
+            "$numberDecimal": "1.10"
+          },
+          "decNaN": {
+            "$numberDecimal": "NaN"
+          },
+          "iText": {
+            "$numberInt": "12"
+          }
+        },
+        {
+          "_id": "numbers",
+          "int": {
+            "$numberInt": "1"
+          },
+          "neg": {
+            "$numberInt": "-1"
+          },
+          "intMax": {
+            "$numberInt": "2147483647"
+          },
+          "over": {
+            "$numberDouble": "2147483648.0"
+          },
+          "intMin": {
+            "$numberInt": "-2147483648"
+          },
+          "under": {
+            "$numberDouble": "-2147483649.0"
+          },
+          "float": {
+            "$numberDouble": "1.5"
+          },
+          "one": {
+            "$numberInt": "1"
+          },
+          "negZero": {
+            "$numberInt": "0"
+          },
+          "negZeroF": {
+            "$numberInt": "0"
+          },
+          "e": {
+            "$numberInt": "100"
+          },
+          "big": {
+            "$numberDouble": "9007199254740992.0"
+          },
+          "huge": {
+            "$numberDouble": "1e300"
+          },
+          "tiny": {
+            "$numberDouble": "5e-324"
+          },
+          "neg53": {
+            "$numberDouble": "-9007199254740992.0"
+          }
+        },
+        {
+          "_id": {
+            "$numberInt": "77"
+          },
+          "n": {
+            "$numberInt": "1"
+          }
+        }
+      ]
+    }
+  },
+  "dragonfly": []
+}

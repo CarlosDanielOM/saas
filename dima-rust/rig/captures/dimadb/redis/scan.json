@@ -1,0 +1,446 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "redis/scan",
+  "scenario_hash": "fnv1a64:7b9834912e0acba4",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:1>"
+                },
+                "username": "root",
+                "role": "admin"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "cursor": "0",
+              "keys": [
+                {
+                  "name": "menu:🍕",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "rank",
+                  "type": "zset",
+                  "ttl": -1
+                },
+                {
+                  "name": "queue",
+                  "type": "list",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:2",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "Ünïcode",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "session:b",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "set:🍕",
+                  "type": "set",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:1",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "🍕",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "ключ",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "session:a",
+                  "type": "string",
+                  "ttl": 900
+                },
+                {
+                  "name": "user:3:profile",
+                  "type": "hash",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:10",
+                  "type": "string",
+                  "ttl": -1
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "cursor": "0",
+              "keys": [
+                {
+                  "name": "user:2",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:1",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:3:profile",
+                  "type": "hash",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:10",
+                  "type": "string",
+                  "ttl": -1
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "cursor": "0",
+              "keys": [
+                {
+                  "name": "menu:🍕",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "set:🍕",
+                  "type": "set",
+                  "ttl": -1
+                },
+                {
+                  "name": "🍕",
+                  "type": "string",
+                  "ttl": -1
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "cursor": "0",
+              "keys": [
+                {
+                  "name": "session:b",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "session:a",
+                  "type": "string",
+                  "ttl": 900
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 500,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 500,
+            "message": "ERR value is not an integer or out of range"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "cursor": "0",
+              "keys": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "cursor": "0",
+              "keys": [
+                {
+                  "name": "user:2",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:1",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:3:profile",
+                  "type": "hash",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:10",
+                  "type": "string",
+                  "ttl": -1
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "cursor": "0",
+              "keys": [
+                {
+                  "name": "user:2",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:1",
+                  "type": "string",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:3:profile",
+                  "type": "hash",
+                  "ttl": -1
+                },
+                {
+                  "name": "user:10",
+                  "type": "string",
+                  "ttl": -1
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 500,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 500,
+            "message": "ERR invalid cursor"
+          }
+        }
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [
+    {
+      "key": "menu:🍕",
+      "type": "string",
+      "ttl": null,
+      "value": "pizza"
+    },
+    {
+      "key": "queue",
+      "type": "list",
+      "ttl": null,
+      "value": [
+        "1",
+        "2"
+      ]
+    },
+    {
+      "key": "rank",
+      "type": "zset",
+      "ttl": null,
+      "value": [
+        {
+          "member": "a",
+          "score": 1.0
+        }
+      ]
+    },
+    {
+      "key": "session:a",
+      "type": "string",
+      "ttl": "<t+900001ms@2026-11-12T00:14:50.138Z>",
+      "value": "x"
+    },
+    {
+      "key": "session:b",
+      "type": "string",
+      "ttl": null,
+      "value": "y"
+    },
+    {
+      "key": "set:🍕",
+      "type": "set",
+      "ttl": null,
+      "value": [
+        "a"
+      ]
+    },
+    {
+      "key": "user:1",
+      "type": "string",
+      "ttl": null,
+      "value": "ana"
+    },
+    {
+      "key": "user:10",
+      "type": "string",
+      "ttl": null,
+      "value": "cy"
+    },
+    {
+      "key": "user:2",
+      "type": "string",
+      "ttl": null,
+      "value": "bo"
+    },
+    {
+      "key": "user:3:profile",
+      "type": "hash",
+      "ttl": null,
+      "value": {
+        "name": "Zoë"
+      }
+    },
+    {
+      "key": "Ünïcode",
+      "type": "string",
+      "ttl": null,
+      "value": "u"
+    },
+    {
+      "key": "ключ",
+      "type": "string",
+      "ttl": null,
+      "value": "k"
+    },
+    {
+      "key": "🍕",
+      "type": "string",
+      "ttl": null,
+      "value": "solo"
+    }
+  ]
+}

@@ -1,0 +1,288 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "redis/list",
+  "scenario_hash": "fnv1a64:e9a4b48c051692f2",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:1>"
+                },
+                "username": "root",
+                "role": "admin"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "queue:🍕",
+              "type": "list",
+              "ttl": -1,
+              "value": [
+                "first"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "queue:🍕",
+              "type": "list",
+              "ttl": -1,
+              "value": [
+                "first",
+                "last ✓"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "queue:🍕",
+              "type": "list",
+              "ttl": -1,
+              "value": [
+                "0",
+                "first",
+                "last ✓"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "queue:🍕",
+              "type": "list",
+              "ttl": -1,
+              "value": [
+                "0",
+                "middle ☕",
+                "last ✓"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "queue:🍕",
+              "type": "list",
+              "ttl": -1,
+              "value": [
+                "0",
+                "middle ☕",
+                "end"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "index is required"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 500,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 500,
+            "message": "ERR index out of range"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "queue:🍕",
+              "type": "list",
+              "ttl": -1,
+              "value": [
+                "middle ☕",
+                "end"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "index is required"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 409,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 409,
+            "message": "Expected set, got list"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "queue:🍕",
+              "type": "list",
+              "ttl": -1,
+              "value": [
+                "middle ☕"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "queue:🍕",
+              "type": "none",
+              "ttl": -2,
+              "value": null
+            }
+          }
+        }
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": []
+}

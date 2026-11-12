@@ -1,0 +1,90 @@
+{
+  "rig_scenario": 1,
+  "description": "The X-Dimadb gate: every /api path but /api/health needs exactly `1`, checked before routing and before the session (unknown paths without it are 403 too).",
+  "restart": true,
+  "steps": [
+    {
+      "name": "health needs no header",
+      "http": {
+        "method": "GET",
+        "path": "/api/health"
+      }
+    },
+    {
+      "name": "POST /api/health needs no header but has no route",
+      "http": {
+        "method": "POST",
+        "path": "/api/health"
+      }
+    },
+    {
+      "name": "setup status without the header",
+      "http": {
+        "method": "GET",
+        "path": "/api/setup/status"
+      }
+    },
+    {
+      "name": "wrong value",
+      "http": {
+        "method": "GET",
+        "path": "/api/setup/status",
+        "headers": {
+          "x-dimadb": "true"
+        }
+      }
+    },
+    {
+      "name": "value with spaces",
+      "http": {
+        "method": "GET",
+        "path": "/api/setup/status",
+        "headers": {
+          "x-dimadb": " 1"
+        }
+      }
+    },
+    {
+      "name": "unknown path without the header",
+      "http": {
+        "method": "GET",
+        "path": "/api/nothing/here"
+      }
+    },
+    {
+      "name": "bare /api without the header",
+      "http": {
+        "method": "GET",
+        "path": "/api"
+      }
+    },
+    {
+      "name": "bare /api with the header",
+      "http": {
+        "method": "GET",
+        "path": "/api",
+        "headers": {
+          "x-dimadb": "1"
+        }
+      }
+    },
+    {
+      "name": "login without the header",
+      "http": {
+        "method": "POST",
+        "path": "/api/login",
+        "json": {
+          "username": "x",
+          "password": "y"
+        }
+      }
+    },
+    {
+      "name": "redis route without the header",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/keys"
+      }
+    }
+  ]
+}

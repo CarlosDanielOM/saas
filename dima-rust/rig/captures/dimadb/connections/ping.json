@@ -1,0 +1,168 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "connections/ping",
+  "scenario_hash": "fnv1a64:6e34c4896d6882df",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:1>"
+                },
+                "username": "root",
+                "role": "admin"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "ok": true,
+              "pong": "PONG"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "ok": true,
+              "pong": "PONG"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 404,
+            "message": "Connection not found"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 401,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 401,
+            "message": "Not authenticated"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 409,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 409,
+            "message": "Not a redis connection"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 409,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 409,
+            "message": "Not a mongo connection"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 404,
+            "message": "Connection not found"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 404,
+            "message": "Connection not found"
+          }
+        }
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": []
+}

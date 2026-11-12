@@ -1,0 +1,182 @@
+{
+  "rig_scenario": 1,
+  "description": "Cookie handling: unknown and tampered session ids, a malformed escape in any cookie (URIError, 500), several cookies, a cookie that is not the session, and the session cookie's attributes over HTTPS.",
+  "restart": true,
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "sessions",
+          "password": "s3ss10n-ключ"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "valid",
+      "http": {
+        "method": "GET",
+        "path": "/api/me",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "unknown session id",
+      "http": {
+        "method": "GET",
+        "path": "/api/me",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "dimadb_session=6f1c2a5e-1b2c-4d3e-8f90-123456789abc"
+        }
+      }
+    },
+    {
+      "name": "tampered session id",
+      "http": {
+        "method": "GET",
+        "path": "/api/me",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "dimadb_session=${cookie}x"
+        }
+      }
+    },
+    {
+      "name": "empty session id",
+      "http": {
+        "method": "GET",
+        "path": "/api/me",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "dimadb_session="
+        }
+      }
+    },
+    {
+      "name": "malformed escape in another cookie",
+      "http": {
+        "method": "GET",
+        "path": "/api/me",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "theme=%E0%A4%A; ${cookie}"
+        }
+      }
+    },
+    {
+      "name": "malformed escape on logout",
+      "http": {
+        "method": "POST",
+        "path": "/api/logout",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "a=%zz"
+        }
+      }
+    },
+    {
+      "name": "later duplicate wins",
+      "http": {
+        "method": "GET",
+        "path": "/api/me",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}; dimadb_session=nope"
+        }
+      }
+    },
+    {
+      "name": "earlier duplicate is replaced",
+      "http": {
+        "method": "GET",
+        "path": "/api/me",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "dimadb_session=nope; ${cookie}"
+        }
+      }
+    },
+    {
+      "name": "other cookies only",
+      "http": {
+        "method": "GET",
+        "path": "/api/me",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "lang=es; theme=🌙"
+        }
+      }
+    },
+    {
+      "name": "encoded session cookie",
+      "http": {
+        "method": "GET",
+        "path": "/api/me",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "dimadb_session=%36f1c"
+        }
+      }
+    },
+    {
+      "name": "login over https behind the proxy",
+      "http": {
+        "method": "POST",
+        "path": "/api/login",
+        "headers": {
+          "x-dimadb": "1",
+          "x-forwarded-proto": "https"
+        },
+        "json": {
+          "username": "sessions",
+          "password": "s3ss10n-ключ"
+        }
+      }
+    },
+    {
+      "name": "logout over http",
+      "http": {
+        "method": "POST",
+        "path": "/api/logout",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}",
+          "x-forwarded-proto": "http"
+        }
+      }
+    },
+    {
+      "name": "me after logout",
+      "http": {
+        "method": "GET",
+        "path": "/api/me",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ],
+  "compare": {
+    "headers": {
+      "add": [
+        "set-cookie"
+      ]
+    }
+  }
+}

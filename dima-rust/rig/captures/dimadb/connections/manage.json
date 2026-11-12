@@ -1,0 +1,512 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "connections/manage",
+  "scenario_hash": "fnv1a64:0dda0351ba796e7d",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:1>"
+                },
+                "username": "root",
+                "role": "admin"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": [
+              {
+                "id": "env:dbname",
+                "name": "dbname",
+                "url": {
+                  "$rigText": "<run:mongo_db>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "<run:dragonfly_url>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:mongo:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "mongodb://root:***@127.0.0.1:27017/<run:mongo_db>?authSource=admin&directConnection=true"
+                },
+                "source": "env",
+                "engine": "mongo"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "id": {
+                "$rigText": "<uuid:2>"
+              },
+              "name": "Cache 🧊",
+              "url": "redis://:***@127.0.0.1:6399/2",
+              "source": "local",
+              "engine": "redis"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "id": {
+                "$rigText": "<uuid:3>"
+              },
+              "name": "mongo.internal",
+              "url": "mongodb://user:***@mongo.internal:27017/app?authSource=admin",
+              "source": "local",
+              "engine": "mongo"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "id": {
+                "$rigText": "<uuid:4>"
+              },
+              "name": "redis",
+              "url": "rediss://",
+              "source": "local",
+              "engine": "redis"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "Invalid URL"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "Invalid URL"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "URL must start with redis://, rediss://, mongodb://, or mongodb+srv://"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "URL does not match mongo"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "URL does not match 1"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "Invalid URL"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "id": {
+                "$rigText": "<uuid:5>"
+              },
+              "name": "array-host",
+              "url": "redis://array-host:6379",
+              "source": "local",
+              "engine": "redis"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": [
+              {
+                "id": "env:dbname",
+                "name": "dbname",
+                "url": {
+                  "$rigText": "<run:mongo_db>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "<run:dragonfly_url>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:mongo:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "mongodb://root:***@127.0.0.1:27017/<run:mongo_db>?authSource=admin&directConnection=true"
+                },
+                "source": "env",
+                "engine": "mongo"
+              },
+              {
+                "id": {
+                  "$rigText": "<uuid:2>"
+                },
+                "name": "Cache 🧊",
+                "url": "redis://:***@127.0.0.1:6399/2",
+                "source": "local",
+                "engine": "redis"
+              },
+              {
+                "id": {
+                  "$rigText": "<uuid:3>"
+                },
+                "name": "mongo.internal",
+                "url": "mongodb://user:***@mongo.internal:27017/app?authSource=admin",
+                "source": "local",
+                "engine": "mongo"
+              },
+              {
+                "id": {
+                  "$rigText": "<uuid:4>"
+                },
+                "name": "redis",
+                "url": "rediss://",
+                "source": "local",
+                "engine": "redis"
+              },
+              {
+                "id": {
+                  "$rigText": "<uuid:5>"
+                },
+                "name": "array-host",
+                "url": "redis://array-host:6379",
+                "source": "local",
+                "engine": "redis"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 404,
+            "message": "Local connection not found"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 404,
+            "message": "Local connection not found"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "ok": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 404,
+            "message": "Local connection not found"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "ok": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": [
+              {
+                "id": "env:dbname",
+                "name": "dbname",
+                "url": {
+                  "$rigText": "<run:mongo_db>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "<run:dragonfly_url>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:mongo:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "mongodb://root:***@127.0.0.1:27017/<run:mongo_db>?authSource=admin&directConnection=true"
+                },
+                "source": "env",
+                "engine": "mongo"
+              },
+              {
+                "id": {
+                  "$rigText": "<uuid:4>"
+                },
+                "name": "redis",
+                "url": "rediss://",
+                "source": "local",
+                "engine": "redis"
+              },
+              {
+                "id": {
+                  "$rigText": "<uuid:5>"
+                },
+                "name": "array-host",
+                "url": "redis://array-host:6379",
+                "source": "local",
+                "engine": "redis"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 404,
+            "message": "Connection not found"
+          }
+        }
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": []
+}

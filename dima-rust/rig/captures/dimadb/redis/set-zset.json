@@ -1,0 +1,527 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "redis/set-zset",
+  "scenario_hash": "fnv1a64:2159af5bba3e72b5",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:1>"
+                },
+                "username": "root",
+                "role": "admin"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "tags",
+              "type": "set",
+              "ttl": -1,
+              "value": [
+                "rust 🦀"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "tags",
+              "type": "set",
+              "ttl": -1,
+              "value": [
+                "node",
+                "rust 🦀"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "tags",
+              "type": "set",
+              "ttl": -1,
+              "value": [
+                "node",
+                "rust 🦀",
+                "שלום"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "tags",
+              "type": "set",
+              "ttl": -1,
+              "value": [
+                "rust 🦀",
+                "שלום"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "member is required"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 409,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 409,
+            "message": "Expected zset, got set"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "board",
+              "type": "zset",
+              "ttl": -1,
+              "value": [
+                {
+                  "value": "ana",
+                  "score": 1.5
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "board",
+              "type": "zset",
+              "ttl": -1,
+              "value": [
+                {
+                  "value": "bo 🎯",
+                  "score": -2
+                },
+                {
+                  "value": "ana",
+                  "score": 1.5
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "board",
+              "type": "zset",
+              "ttl": -1,
+              "value": [
+                {
+                  "value": "bo 🎯",
+                  "score": -2
+                },
+                {
+                  "value": "ana",
+                  "score": 1.5
+                },
+                {
+                  "value": "top",
+                  "score": null
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "board",
+              "type": "zset",
+              "ttl": -1,
+              "value": [
+                {
+                  "value": "bo 🎯",
+                  "score": -2
+                },
+                {
+                  "value": "zero",
+                  "score": 0
+                },
+                {
+                  "value": "ana",
+                  "score": 1.5
+                },
+                {
+                  "value": "top",
+                  "score": null
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "board",
+              "type": "zset",
+              "ttl": -1,
+              "value": [
+                {
+                  "value": "bo 🎯",
+                  "score": -2
+                },
+                {
+                  "value": "zero",
+                  "score": 0
+                },
+                {
+                  "value": "ana",
+                  "score": 1.5
+                },
+                {
+                  "value": "big",
+                  "score": 1e+21
+                },
+                {
+                  "value": "top",
+                  "score": null
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "board",
+              "type": "zset",
+              "ttl": -1,
+              "value": [
+                {
+                  "value": "bo 🎯",
+                  "score": -2
+                },
+                {
+                  "value": "zero",
+                  "score": 0
+                },
+                {
+                  "value": "third",
+                  "score": 0.1
+                },
+                {
+                  "value": "ana",
+                  "score": 1.5
+                },
+                {
+                  "value": "big",
+                  "score": 1e+21
+                },
+                {
+                  "value": "top",
+                  "score": null
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "board",
+              "type": "zset",
+              "ttl": -1,
+              "value": [
+                {
+                  "value": "bo 🎯",
+                  "score": -2
+                },
+                {
+                  "value": "zero",
+                  "score": 0
+                },
+                {
+                  "value": "third",
+                  "score": 0.1
+                },
+                {
+                  "value": "ana",
+                  "score": 1.5
+                },
+                {
+                  "value": "big",
+                  "score": 1e+21
+                },
+                {
+                  "value": "top",
+                  "score": null
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "board",
+              "type": "zset",
+              "ttl": -1,
+              "value": [
+                {
+                  "value": "bo 🎯",
+                  "score": -2
+                },
+                {
+                  "value": "zero",
+                  "score": 0
+                },
+                {
+                  "value": "third",
+                  "score": 0.1
+                },
+                {
+                  "value": "big",
+                  "score": 1e+21
+                },
+                {
+                  "value": "top",
+                  "score": null
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "key": "tags",
+              "type": "set",
+              "ttl": -1,
+              "value": [
+                "rust 🦀",
+                "שלום"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [
+    {
+      "key": "board",
+      "type": "zset",
+      "ttl": null,
+      "value": [
+        {
+          "member": "big",
+          "score": 1e+21
+        },
+        {
+          "member": "bo 🎯",
+          "score": -2.0
+        },
+        {
+          "member": "third",
+          "score": 0.1
+        },
+        {
+          "member": "top",
+          "score": "inf"
+        },
+        {
+          "member": "zero",
+          "score": 0.0
+        }
+      ]
+    },
+    {
+      "key": "tags",
+      "type": "set",
+      "ttl": null,
+      "value": [
+        "rust 🦀",
+        "שלום"
+      ]
+    }
+  ]
+}

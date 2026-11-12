@@ -1,0 +1,229 @@
+{
+  "rig_scenario": 1,
+  "description": "Unknown routes and wrong methods: exact path matches only, a trailing slash or HEAD finds no route, the session check comes before the method check on the connection, mongo and redis paths, and percent-encoded connection ids (a malformed one is a URIError, 500).",
+  "restart": true,
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "HEAD /api/health",
+      "http": {
+        "method": "HEAD",
+        "path": "/api/health"
+      }
+    },
+    {
+      "name": "trailing slash",
+      "http": {
+        "method": "GET",
+        "path": "/api/health/",
+        "headers": {
+          "x-dimadb": "1"
+        }
+      }
+    },
+    {
+      "name": "query string",
+      "http": {
+        "method": "GET",
+        "path": "/api/health?x=1&y=%F0%9F%8D%95"
+      }
+    },
+    {
+      "name": "dot segments are resolved",
+      "http": {
+        "method": "GET",
+        "path": "/api/./setup/../health"
+      }
+    },
+    {
+      "name": "GET /api/setup",
+      "http": {
+        "method": "GET",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        }
+      }
+    },
+    {
+      "name": "GET /api/login",
+      "http": {
+        "method": "GET",
+        "path": "/api/login",
+        "headers": {
+          "x-dimadb": "1"
+        }
+      }
+    },
+    {
+      "name": "PATCH /api/connections",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1"
+        }
+      }
+    },
+    {
+      "name": "DELETE on ping without a session",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/connections/env%3Arig/ping",
+        "headers": {
+          "x-dimadb": "1"
+        }
+      }
+    },
+    {
+      "name": "DELETE on ping",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/connections/env%3Arig/ping",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "GET a connection",
+      "http": {
+        "method": "GET",
+        "path": "/api/connections/env%3Arig",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "malformed id escape",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections/%E0%A4%A/ping",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "mongo unknown action",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/nothing",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "mongo PATCH doc",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "mongo empty id",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo//dbs",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "redis GET command",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "redis unknown action without a session",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/nothing",
+        "headers": {
+          "x-dimadb": "1"
+        }
+      }
+    },
+    {
+      "name": "redis PUT keys",
+      "http": {
+        "method": "PUT",
+        "path": "/api/redis/env%3Arig/keys",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "redis id with emoji",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/%F0%9F%8D%95/keys",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "redis malformed id",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/%ZZ/keys",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "deeper path",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/key/extra",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ]
+}

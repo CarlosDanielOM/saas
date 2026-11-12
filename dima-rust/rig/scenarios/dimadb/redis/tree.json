@@ -1,0 +1,204 @@
+{
+  "rig_scenario": 1,
+  "description": "The key tree: folders split on the first ':' after the prefix, counted, sorted with localeCompare (case and accents), leaves sorted by UTF-16 code units (emoji before U+FFxx), query matching (substring, glob, '*' alone), and a prefix.",
+  "restart": true,
+  "seed": {
+    "dragonfly": [
+      [
+        "SET",
+        "user:1:name",
+        "a"
+      ],
+      [
+        "SET",
+        "user:1:mail",
+        "b"
+      ],
+      [
+        "SET",
+        "user:2:name",
+        "c"
+      ],
+      [
+        "SET",
+        "user:10",
+        "d"
+      ],
+      [
+        "SET",
+        "User:upper",
+        "e"
+      ],
+      [
+        "SET",
+        "éclair:1",
+        "f"
+      ],
+      [
+        "SET",
+        "eclair:2",
+        "g"
+      ],
+      [
+        "SET",
+        "zebra:1",
+        "h"
+      ],
+      [
+        "SET",
+        "menu:🍕",
+        "i"
+      ],
+      [
+        "SET",
+        "menu:～",
+        "j"
+      ],
+      [
+        "SET",
+        "menu:a:b",
+        "k"
+      ],
+      [
+        "SET",
+        "🍕",
+        "l"
+      ],
+      [
+        "SET",
+        "～",
+        "m"
+      ],
+      [
+        "SET",
+        "plain",
+        "n"
+      ],
+      [
+        "SET",
+        "Plain",
+        "o"
+      ],
+      [
+        "SET",
+        "a:b",
+        "p"
+      ],
+      [
+        "SET",
+        "x:b",
+        "q"
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "root",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/tree",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "prefix",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/tree?prefix=user%3A",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "nested prefix",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/tree?prefix=user%3A1%3A",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "query substring",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/tree?query=%F0%9F%8D%95",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "query glob",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/tree?query=*%3Ab",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "query star",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/tree?query=%20*%20",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "prefix wins over query",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/tree?prefix=menu%3A&query=nothing",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "cursor given",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/tree?cursor=0&query=zzz",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ]
+}

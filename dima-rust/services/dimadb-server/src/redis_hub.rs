@@ -240,9 +240,16 @@ impl Client {
         for a in args {
             cmd.arg(*a);
         }
-        cmd.query_async::<Reply>(&mut self.conn)
-            .await
-            .map_err(|error| ApiError::internal(redis_message(&error, "")))
+        // The raw reply: an error reply at the top fails the command (node-redis rejects), an
+        // error inside an array stays a value (node-redis keeps the `ErrorReply` object).
+        match self.conn.send_packed_command(&cmd).await {
+            Ok(Reply::ServerError(error)) => Err(ApiError::internal(match error.details() {
+                Some(detail) => format!("{} {detail}", error.code()),
+                None => error.code().to_owned(),
+            })),
+            Ok(reply) => Ok(reply),
+            Err(error) => Err(ApiError::internal(redis_message(&error, ""))),
+        }
     }
 
     async fn send_text(&mut self, args: &[&str]) -> ApiResult<Reply> {

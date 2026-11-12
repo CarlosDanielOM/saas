@@ -1,0 +1,490 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "redis/tree",
+  "scenario_hash": "fnv1a64:dca652142ea28cba",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:1>"
+                },
+                "username": "root",
+                "role": "admin"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "prefix": "",
+              "match": "*",
+              "cursor": "0",
+              "folders": [
+                {
+                  "prefix": "a:",
+                  "label": "a",
+                  "seen": 1
+                },
+                {
+                  "prefix": "eclair:",
+                  "label": "eclair",
+                  "seen": 1
+                },
+                {
+                  "prefix": "éclair:",
+                  "label": "éclair",
+                  "seen": 1
+                },
+                {
+                  "prefix": "menu:",
+                  "label": "menu",
+                  "seen": 3
+                },
+                {
+                  "prefix": "user:",
+                  "label": "user",
+                  "seen": 4
+                },
+                {
+                  "prefix": "User:",
+                  "label": "User",
+                  "seen": 1
+                },
+                {
+                  "prefix": "x:",
+                  "label": "x",
+                  "seen": 1
+                },
+                {
+                  "prefix": "zebra:",
+                  "label": "zebra",
+                  "seen": 1
+                }
+              ],
+              "keys": [
+                {
+                  "name": "Plain"
+                },
+                {
+                  "name": "plain"
+                },
+                {
+                  "name": "🍕"
+                },
+                {
+                  "name": "～"
+                }
+              ],
+              "scanned": 17
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "prefix": "user:",
+              "match": "user:*",
+              "cursor": "0",
+              "folders": [
+                {
+                  "prefix": "user:1:",
+                  "label": "1",
+                  "seen": 2
+                },
+                {
+                  "prefix": "user:2:",
+                  "label": "2",
+                  "seen": 1
+                }
+              ],
+              "keys": [
+                {
+                  "name": "user:10"
+                }
+              ],
+              "scanned": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "prefix": "user:1:",
+              "match": "user:1:*",
+              "cursor": "0",
+              "folders": [],
+              "keys": [
+                {
+                  "name": "user:1:mail"
+                },
+                {
+                  "name": "user:1:name"
+                }
+              ],
+              "scanned": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "prefix": "",
+              "match": "*🍕*",
+              "cursor": "0",
+              "folders": [
+                {
+                  "prefix": "menu:",
+                  "label": "menu",
+                  "seen": 1
+                }
+              ],
+              "keys": [
+                {
+                  "name": "🍕"
+                }
+              ],
+              "scanned": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "prefix": "",
+              "match": "*:b",
+              "cursor": "0",
+              "folders": [
+                {
+                  "prefix": "a:",
+                  "label": "a",
+                  "seen": 1
+                },
+                {
+                  "prefix": "menu:",
+                  "label": "menu",
+                  "seen": 1
+                },
+                {
+                  "prefix": "x:",
+                  "label": "x",
+                  "seen": 1
+                }
+              ],
+              "keys": [],
+              "scanned": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "prefix": "",
+              "match": "*",
+              "cursor": "0",
+              "folders": [
+                {
+                  "prefix": "a:",
+                  "label": "a",
+                  "seen": 1
+                },
+                {
+                  "prefix": "eclair:",
+                  "label": "eclair",
+                  "seen": 1
+                },
+                {
+                  "prefix": "éclair:",
+                  "label": "éclair",
+                  "seen": 1
+                },
+                {
+                  "prefix": "menu:",
+                  "label": "menu",
+                  "seen": 3
+                },
+                {
+                  "prefix": "user:",
+                  "label": "user",
+                  "seen": 4
+                },
+                {
+                  "prefix": "User:",
+                  "label": "User",
+                  "seen": 1
+                },
+                {
+                  "prefix": "x:",
+                  "label": "x",
+                  "seen": 1
+                },
+                {
+                  "prefix": "zebra:",
+                  "label": "zebra",
+                  "seen": 1
+                }
+              ],
+              "keys": [
+                {
+                  "name": "Plain"
+                },
+                {
+                  "name": "plain"
+                },
+                {
+                  "name": "🍕"
+                },
+                {
+                  "name": "～"
+                }
+              ],
+              "scanned": 17
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "prefix": "menu:",
+              "match": "menu:*",
+              "cursor": "0",
+              "folders": [
+                {
+                  "prefix": "menu:a:",
+                  "label": "a",
+                  "seen": 1
+                }
+              ],
+              "keys": [
+                {
+                  "name": "menu:🍕"
+                },
+                {
+                  "name": "menu:～"
+                }
+              ],
+              "scanned": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "prefix": "",
+              "match": "*zzz*",
+              "cursor": "0",
+              "folders": [],
+              "keys": [],
+              "scanned": 0
+            }
+          }
+        }
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [
+    {
+      "key": "Plain",
+      "type": "string",
+      "ttl": null,
+      "value": "o"
+    },
+    {
+      "key": "User:upper",
+      "type": "string",
+      "ttl": null,
+      "value": "e"
+    },
+    {
+      "key": "a:b",
+      "type": "string",
+      "ttl": null,
+      "value": "p"
+    },
+    {
+      "key": "eclair:2",
+      "type": "string",
+      "ttl": null,
+      "value": "g"
+    },
+    {
+      "key": "menu:a:b",
+      "type": "string",
+      "ttl": null,
+      "value": "k"
+    },
+    {
+      "key": "menu:～",
+      "type": "string",
+      "ttl": null,
+      "value": "j"
+    },
+    {
+      "key": "menu:🍕",
+      "type": "string",
+      "ttl": null,
+      "value": "i"
+    },
+    {
+      "key": "plain",
+      "type": "string",
+      "ttl": null,
+      "value": "n"
+    },
+    {
+      "key": "user:10",
+      "type": "string",
+      "ttl": null,
+      "value": "d"
+    },
+    {
+      "key": "user:1:mail",
+      "type": "string",
+      "ttl": null,
+      "value": "b"
+    },
+    {
+      "key": "user:1:name",
+      "type": "string",
+      "ttl": null,
+      "value": "a"
+    },
+    {
+      "key": "user:2:name",
+      "type": "string",
+      "ttl": null,
+      "value": "c"
+    },
+    {
+      "key": "x:b",
+      "type": "string",
+      "ttl": null,
+      "value": "q"
+    },
+    {
+      "key": "zebra:1",
+      "type": "string",
+      "ttl": null,
+      "value": "h"
+    },
+    {
+      "key": "éclair:1",
+      "type": "string",
+      "ttl": null,
+      "value": "f"
+    },
+    {
+      "key": "～",
+      "type": "string",
+      "ttl": null,
+      "value": "m"
+    },
+    {
+      "key": "🍕",
+      "type": "string",
+      "ttl": null,
+      "value": "l"
+    }
+  ]
+}

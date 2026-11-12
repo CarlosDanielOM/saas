@@ -1,0 +1,1959 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "mongo/browse",
+  "scenario_hash": "fnv1a64:6fa2088413dbf365",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:1>"
+                },
+                "username": "root",
+                "role": "admin"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": [
+              {
+                "id": "env:dbname",
+                "name": "dbname",
+                "url": {
+                  "$rigText": "<run:mongo_db>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "<run:dragonfly_url>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:mongo:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "mongodb://root:***@127.0.0.1:27017/<run:mongo_db>?authSource=admin&directConnection=true"
+                },
+                "source": "env",
+                "engine": "mongo"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": [
+              {
+                "name": "admin",
+                "sizeOnDisk": 176128,
+                "empty": false
+              },
+              {
+                "name": "config",
+                "sizeOnDisk": 491520,
+                "empty": false
+              },
+              {
+                "name": "domdimabot",
+                "sizeOnDisk": 618758144,
+                "empty": false
+              },
+              {
+                "name": "local",
+                "sizeOnDisk": 73728,
+                "empty": false
+              },
+              {
+                "name": "openclaw",
+                "sizeOnDisk": 143360,
+                "empty": false
+              },
+              {
+                "name": {
+                  "$rigText": "<run:mongo_db>"
+                },
+                "sizeOnDisk": 16384,
+                "empty": false
+              },
+              {
+                "name": "sam",
+                "sizeOnDisk": 258048,
+                "empty": false
+              },
+              {
+                "name": "sam_trading",
+                "sizeOnDisk": 475136,
+                "empty": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": [
+              {
+                "name": "badregex",
+                "type": "collection"
+              },
+              {
+                "name": "types",
+                "type": "collection"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "db is required"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 0,
+              "limit": 3,
+              "total": 8,
+              "docs": [
+                {
+                  "id": "6650a1b2c3d4e5f601234567",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$oid": "6650a1b2c3d4e5f601234567"
+                    },
+                    "int": 42,
+                    "intMin": -2147483648,
+                    "long": 7,
+                    "longBig": 9007199254740992,
+                    "longMax": 9223372036854776000,
+                    "double": 1.5,
+                    "doubleWhole": 2,
+                    "negZero": 0,
+                    "nan": {
+                      "$rigLiteral:$numberDouble": "NaN"
+                    },
+                    "inf": {
+                      "$rigLiteral:$numberDouble": "Infinity"
+                    },
+                    "ninf": {
+                      "$rigLiteral:$numberDouble": "-Infinity"
+                    },
+                    "tiny": 5e-324,
+                    "big": 1e+21,
+                    "dec": {
+                      "$rigLiteral:$numberDecimal": "1.10"
+                    },
+                    "decSci": {
+                      "$rigLiteral:$numberDecimal": "1.23E-40"
+                    },
+                    "date": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00Z"
+                    },
+                    "dateMs": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00.123Z"
+                    },
+                    "dateOld": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "-2208988800000"
+                      }
+                    },
+                    "dateFar": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "253402318800000"
+                      }
+                    },
+                    "bin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "AAEC+v8=",
+                        "subType": "00"
+                      }
+                    },
+                    "uuid": {
+                      "$rigLiteral:$binary": {
+                        "base64": "ASNFZ4mrze8BI0VniavN7w==",
+                        "subType": "04"
+                      }
+                    },
+                    "userBin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "aGk=",
+                        "subType": "80"
+                      }
+                    },
+                    "re": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "^a\\/b$",
+                        "options": "im"
+                      }
+                    },
+                    "reX": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "(?:)",
+                        "options": ""
+                      }
+                    },
+                    "ts": {
+                      "$rigLiteral:$timestamp": {
+                        "t": 1700000000,
+                        "i": 7
+                      }
+                    },
+                    "min": {
+                      "$rigLiteral:$minKey": 1
+                    },
+                    "max": {
+                      "$rigLiteral:$maxKey": 1
+                    },
+                    "code": {
+                      "$rigLiteral:$code": "function () { return '🍕'; }"
+                    },
+                    "scoped": {
+                      "$rigLiteral:$code": "x + y",
+                      "$rigLiteral:$scope": {
+                        "x": 1
+                      }
+                    },
+                    "sym": "sym ✓",
+                    "undef": null,
+                    "nul": null,
+                    "bool": true,
+                    "text": "مرحبا é 🍕 שלום",
+                    "nested": {
+                      "2": "two",
+                      "10": "ten",
+                      "z": 1,
+                      "ключ": "🍕"
+                    },
+                    "arr": [
+                      1,
+                      "two",
+                      null,
+                      [
+                        true
+                      ],
+                      {
+                        "x": 3
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "🍕 pizza",
+                  "document": {
+                    "_id": "🍕 pizza",
+                    "n": 1,
+                    "tag": "food"
+                  }
+                },
+                {
+                  "id": "5",
+                  "document": {
+                    "_id": 5,
+                    "n": 2,
+                    "tag": "number id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 3,
+              "limit": 3,
+              "total": 8,
+              "docs": [
+                {
+                  "id": "2.5",
+                  "document": {
+                    "_id": 2.5,
+                    "n": 3,
+                    "tag": "double id"
+                  }
+                },
+                {
+                  "id": "Thu Jan 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$date": "2026-01-01T00:00:00Z"
+                    },
+                    "n": 4,
+                    "tag": "date id"
+                  }
+                },
+                {
+                  "id": "9007199254740993",
+                  "document": {
+                    "_id": 9007199254740992,
+                    "n": 5,
+                    "tag": "long id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 0,
+              "limit": 50,
+              "total": 8,
+              "docs": [
+                {
+                  "id": "6650a1b2c3d4e5f601234567",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$oid": "6650a1b2c3d4e5f601234567"
+                    },
+                    "int": 42,
+                    "intMin": -2147483648,
+                    "long": 7,
+                    "longBig": 9007199254740992,
+                    "longMax": 9223372036854776000,
+                    "double": 1.5,
+                    "doubleWhole": 2,
+                    "negZero": 0,
+                    "nan": {
+                      "$rigLiteral:$numberDouble": "NaN"
+                    },
+                    "inf": {
+                      "$rigLiteral:$numberDouble": "Infinity"
+                    },
+                    "ninf": {
+                      "$rigLiteral:$numberDouble": "-Infinity"
+                    },
+                    "tiny": 5e-324,
+                    "big": 1e+21,
+                    "dec": {
+                      "$rigLiteral:$numberDecimal": "1.10"
+                    },
+                    "decSci": {
+                      "$rigLiteral:$numberDecimal": "1.23E-40"
+                    },
+                    "date": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00Z"
+                    },
+                    "dateMs": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00.123Z"
+                    },
+                    "dateOld": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "-2208988800000"
+                      }
+                    },
+                    "dateFar": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "253402318800000"
+                      }
+                    },
+                    "bin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "AAEC+v8=",
+                        "subType": "00"
+                      }
+                    },
+                    "uuid": {
+                      "$rigLiteral:$binary": {
+                        "base64": "ASNFZ4mrze8BI0VniavN7w==",
+                        "subType": "04"
+                      }
+                    },
+                    "userBin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "aGk=",
+                        "subType": "80"
+                      }
+                    },
+                    "re": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "^a\\/b$",
+                        "options": "im"
+                      }
+                    },
+                    "reX": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "(?:)",
+                        "options": ""
+                      }
+                    },
+                    "ts": {
+                      "$rigLiteral:$timestamp": {
+                        "t": 1700000000,
+                        "i": 7
+                      }
+                    },
+                    "min": {
+                      "$rigLiteral:$minKey": 1
+                    },
+                    "max": {
+                      "$rigLiteral:$maxKey": 1
+                    },
+                    "code": {
+                      "$rigLiteral:$code": "function () { return '🍕'; }"
+                    },
+                    "scoped": {
+                      "$rigLiteral:$code": "x + y",
+                      "$rigLiteral:$scope": {
+                        "x": 1
+                      }
+                    },
+                    "sym": "sym ✓",
+                    "undef": null,
+                    "nul": null,
+                    "bool": true,
+                    "text": "مرحبا é 🍕 שלום",
+                    "nested": {
+                      "2": "two",
+                      "10": "ten",
+                      "z": 1,
+                      "ключ": "🍕"
+                    },
+                    "arr": [
+                      1,
+                      "two",
+                      null,
+                      [
+                        true
+                      ],
+                      {
+                        "x": 3
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "🍕 pizza",
+                  "document": {
+                    "_id": "🍕 pizza",
+                    "n": 1,
+                    "tag": "food"
+                  }
+                },
+                {
+                  "id": "5",
+                  "document": {
+                    "_id": 5,
+                    "n": 2,
+                    "tag": "number id"
+                  }
+                },
+                {
+                  "id": "2.5",
+                  "document": {
+                    "_id": 2.5,
+                    "n": 3,
+                    "tag": "double id"
+                  }
+                },
+                {
+                  "id": "Thu Jan 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$date": "2026-01-01T00:00:00Z"
+                    },
+                    "n": 4,
+                    "tag": "date id"
+                  }
+                },
+                {
+                  "id": "9007199254740993",
+                  "document": {
+                    "_id": 9007199254740992,
+                    "n": 5,
+                    "tag": "long id"
+                  }
+                },
+                {
+                  "id": "01234567-89ab-cdef-0123-456789abcdef",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$binary": {
+                        "base64": "ASNFZ4mrze8BI0VniavN7w==",
+                        "subType": "04"
+                      }
+                    },
+                    "n": 6,
+                    "tag": "uuid id"
+                  }
+                },
+                {
+                  "id": "6650A1B2C3D4E5F601234567",
+                  "document": {
+                    "_id": "6650A1B2C3D4E5F601234567",
+                    "n": 7,
+                    "tag": "upper-case hex is a string id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 6,
+              "limit": 100,
+              "total": 8,
+              "docs": [
+                {
+                  "id": "01234567-89ab-cdef-0123-456789abcdef",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$binary": {
+                        "base64": "ASNFZ4mrze8BI0VniavN7w==",
+                        "subType": "04"
+                      }
+                    },
+                    "n": 6,
+                    "tag": "uuid id"
+                  }
+                },
+                {
+                  "id": "6650A1B2C3D4E5F601234567",
+                  "document": {
+                    "_id": "6650A1B2C3D4E5F601234567",
+                    "n": 7,
+                    "tag": "upper-case hex is a string id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 0,
+              "limit": 1,
+              "total": 8,
+              "docs": [
+                {
+                  "id": "6650a1b2c3d4e5f601234567",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$oid": "6650a1b2c3d4e5f601234567"
+                    },
+                    "int": 42,
+                    "intMin": -2147483648,
+                    "long": 7,
+                    "longBig": 9007199254740992,
+                    "longMax": 9223372036854776000,
+                    "double": 1.5,
+                    "doubleWhole": 2,
+                    "negZero": 0,
+                    "nan": {
+                      "$rigLiteral:$numberDouble": "NaN"
+                    },
+                    "inf": {
+                      "$rigLiteral:$numberDouble": "Infinity"
+                    },
+                    "ninf": {
+                      "$rigLiteral:$numberDouble": "-Infinity"
+                    },
+                    "tiny": 5e-324,
+                    "big": 1e+21,
+                    "dec": {
+                      "$rigLiteral:$numberDecimal": "1.10"
+                    },
+                    "decSci": {
+                      "$rigLiteral:$numberDecimal": "1.23E-40"
+                    },
+                    "date": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00Z"
+                    },
+                    "dateMs": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00.123Z"
+                    },
+                    "dateOld": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "-2208988800000"
+                      }
+                    },
+                    "dateFar": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "253402318800000"
+                      }
+                    },
+                    "bin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "AAEC+v8=",
+                        "subType": "00"
+                      }
+                    },
+                    "uuid": {
+                      "$rigLiteral:$binary": {
+                        "base64": "ASNFZ4mrze8BI0VniavN7w==",
+                        "subType": "04"
+                      }
+                    },
+                    "userBin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "aGk=",
+                        "subType": "80"
+                      }
+                    },
+                    "re": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "^a\\/b$",
+                        "options": "im"
+                      }
+                    },
+                    "reX": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "(?:)",
+                        "options": ""
+                      }
+                    },
+                    "ts": {
+                      "$rigLiteral:$timestamp": {
+                        "t": 1700000000,
+                        "i": 7
+                      }
+                    },
+                    "min": {
+                      "$rigLiteral:$minKey": 1
+                    },
+                    "max": {
+                      "$rigLiteral:$maxKey": 1
+                    },
+                    "code": {
+                      "$rigLiteral:$code": "function () { return '🍕'; }"
+                    },
+                    "scoped": {
+                      "$rigLiteral:$code": "x + y",
+                      "$rigLiteral:$scope": {
+                        "x": 1
+                      }
+                    },
+                    "sym": "sym ✓",
+                    "undef": null,
+                    "nul": null,
+                    "bool": true,
+                    "text": "مرحبا é 🍕 שלום",
+                    "nested": {
+                      "2": "two",
+                      "10": "ten",
+                      "z": 1,
+                      "ключ": "🍕"
+                    },
+                    "arr": [
+                      1,
+                      "two",
+                      null,
+                      [
+                        true
+                      ],
+                      {
+                        "x": 3
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 0,
+              "limit": 2,
+              "total": 8,
+              "docs": [
+                {
+                  "id": "6650a1b2c3d4e5f601234567",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$oid": "6650a1b2c3d4e5f601234567"
+                    },
+                    "int": 42,
+                    "intMin": -2147483648,
+                    "long": 7,
+                    "longBig": 9007199254740992,
+                    "longMax": 9223372036854776000,
+                    "double": 1.5,
+                    "doubleWhole": 2,
+                    "negZero": 0,
+                    "nan": {
+                      "$rigLiteral:$numberDouble": "NaN"
+                    },
+                    "inf": {
+                      "$rigLiteral:$numberDouble": "Infinity"
+                    },
+                    "ninf": {
+                      "$rigLiteral:$numberDouble": "-Infinity"
+                    },
+                    "tiny": 5e-324,
+                    "big": 1e+21,
+                    "dec": {
+                      "$rigLiteral:$numberDecimal": "1.10"
+                    },
+                    "decSci": {
+                      "$rigLiteral:$numberDecimal": "1.23E-40"
+                    },
+                    "date": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00Z"
+                    },
+                    "dateMs": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00.123Z"
+                    },
+                    "dateOld": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "-2208988800000"
+                      }
+                    },
+                    "dateFar": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "253402318800000"
+                      }
+                    },
+                    "bin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "AAEC+v8=",
+                        "subType": "00"
+                      }
+                    },
+                    "uuid": {
+                      "$rigLiteral:$binary": {
+                        "base64": "ASNFZ4mrze8BI0VniavN7w==",
+                        "subType": "04"
+                      }
+                    },
+                    "userBin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "aGk=",
+                        "subType": "80"
+                      }
+                    },
+                    "re": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "^a\\/b$",
+                        "options": "im"
+                      }
+                    },
+                    "reX": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "(?:)",
+                        "options": ""
+                      }
+                    },
+                    "ts": {
+                      "$rigLiteral:$timestamp": {
+                        "t": 1700000000,
+                        "i": 7
+                      }
+                    },
+                    "min": {
+                      "$rigLiteral:$minKey": 1
+                    },
+                    "max": {
+                      "$rigLiteral:$maxKey": 1
+                    },
+                    "code": {
+                      "$rigLiteral:$code": "function () { return '🍕'; }"
+                    },
+                    "scoped": {
+                      "$rigLiteral:$code": "x + y",
+                      "$rigLiteral:$scope": {
+                        "x": 1
+                      }
+                    },
+                    "sym": "sym ✓",
+                    "undef": null,
+                    "nul": null,
+                    "bool": true,
+                    "text": "مرحبا é 🍕 שלום",
+                    "nested": {
+                      "2": "two",
+                      "10": "ten",
+                      "z": 1,
+                      "ключ": "🍕"
+                    },
+                    "arr": [
+                      1,
+                      "two",
+                      null,
+                      [
+                        true
+                      ],
+                      {
+                        "x": 3
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "🍕 pizza",
+                  "document": {
+                    "_id": "🍕 pizza",
+                    "n": 1,
+                    "tag": "food"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 2,
+              "limit": 2,
+              "total": 8,
+              "docs": [
+                {
+                  "id": "5",
+                  "document": {
+                    "_id": 5,
+                    "n": 2,
+                    "tag": "number id"
+                  }
+                },
+                {
+                  "id": "2.5",
+                  "document": {
+                    "_id": 2.5,
+                    "n": 3,
+                    "tag": "double id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 1.5,
+              "limit": 2,
+              "total": 8,
+              "docs": [
+                {
+                  "id": "🍕 pizza",
+                  "document": {
+                    "_id": "🍕 pizza",
+                    "n": 1,
+                    "tag": "food"
+                  }
+                },
+                {
+                  "id": "5",
+                  "document": {
+                    "_id": 5,
+                    "n": 2,
+                    "tag": "number id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 0,
+              "limit": 50,
+              "total": 1,
+              "docs": [
+                {
+                  "id": "🍕 pizza",
+                  "document": {
+                    "_id": "🍕 pizza",
+                    "n": 1,
+                    "tag": "food"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 0,
+              "limit": 50,
+              "total": 1,
+              "docs": [
+                {
+                  "id": "6650a1b2c3d4e5f601234567",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$oid": "6650a1b2c3d4e5f601234567"
+                    },
+                    "int": 42,
+                    "intMin": -2147483648,
+                    "long": 7,
+                    "longBig": 9007199254740992,
+                    "longMax": 9223372036854776000,
+                    "double": 1.5,
+                    "doubleWhole": 2,
+                    "negZero": 0,
+                    "nan": {
+                      "$rigLiteral:$numberDouble": "NaN"
+                    },
+                    "inf": {
+                      "$rigLiteral:$numberDouble": "Infinity"
+                    },
+                    "ninf": {
+                      "$rigLiteral:$numberDouble": "-Infinity"
+                    },
+                    "tiny": 5e-324,
+                    "big": 1e+21,
+                    "dec": {
+                      "$rigLiteral:$numberDecimal": "1.10"
+                    },
+                    "decSci": {
+                      "$rigLiteral:$numberDecimal": "1.23E-40"
+                    },
+                    "date": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00Z"
+                    },
+                    "dateMs": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00.123Z"
+                    },
+                    "dateOld": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "-2208988800000"
+                      }
+                    },
+                    "dateFar": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "253402318800000"
+                      }
+                    },
+                    "bin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "AAEC+v8=",
+                        "subType": "00"
+                      }
+                    },
+                    "uuid": {
+                      "$rigLiteral:$binary": {
+                        "base64": "ASNFZ4mrze8BI0VniavN7w==",
+                        "subType": "04"
+                      }
+                    },
+                    "userBin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "aGk=",
+                        "subType": "80"
+                      }
+                    },
+                    "re": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "^a\\/b$",
+                        "options": "im"
+                      }
+                    },
+                    "reX": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "(?:)",
+                        "options": ""
+                      }
+                    },
+                    "ts": {
+                      "$rigLiteral:$timestamp": {
+                        "t": 1700000000,
+                        "i": 7
+                      }
+                    },
+                    "min": {
+                      "$rigLiteral:$minKey": 1
+                    },
+                    "max": {
+                      "$rigLiteral:$maxKey": 1
+                    },
+                    "code": {
+                      "$rigLiteral:$code": "function () { return '🍕'; }"
+                    },
+                    "scoped": {
+                      "$rigLiteral:$code": "x + y",
+                      "$rigLiteral:$scope": {
+                        "x": 1
+                      }
+                    },
+                    "sym": "sym ✓",
+                    "undef": null,
+                    "nul": null,
+                    "bool": true,
+                    "text": "مرحبا é 🍕 שלום",
+                    "nested": {
+                      "2": "two",
+                      "10": "ten",
+                      "z": 1,
+                      "ключ": "🍕"
+                    },
+                    "arr": [
+                      1,
+                      "two",
+                      null,
+                      [
+                        true
+                      ],
+                      {
+                        "x": 3
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 0,
+              "limit": 50,
+              "total": 1,
+              "docs": [
+                {
+                  "id": "Thu Jan 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$date": "2026-01-01T00:00:00Z"
+                    },
+                    "n": 4,
+                    "tag": "date id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 0,
+              "limit": 50,
+              "total": 1,
+              "docs": [
+                {
+                  "id": "5",
+                  "document": {
+                    "_id": 5,
+                    "n": 2,
+                    "tag": "number id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 0,
+              "limit": 50,
+              "total": 3,
+              "docs": [
+                {
+                  "id": "🍕 pizza",
+                  "document": {
+                    "_id": "🍕 pizza",
+                    "n": 1,
+                    "tag": "food"
+                  }
+                },
+                {
+                  "id": "5",
+                  "document": {
+                    "_id": 5,
+                    "n": 2,
+                    "tag": "number id"
+                  }
+                },
+                {
+                  "id": "2.5",
+                  "document": {
+                    "_id": 2.5,
+                    "n": 3,
+                    "tag": "double id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 0,
+              "limit": 50,
+              "total": 0,
+              "docs": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 500,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 500,
+            "message": "$where is not allowed in this context"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "db": {
+                "$rigText": "<run:mongo_db>"
+              },
+              "collection": "types",
+              "skip": 0,
+              "limit": 50,
+              "total": 8,
+              "docs": [
+                {
+                  "id": "6650a1b2c3d4e5f601234567",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$oid": "6650a1b2c3d4e5f601234567"
+                    },
+                    "int": 42,
+                    "intMin": -2147483648,
+                    "long": 7,
+                    "longBig": 9007199254740992,
+                    "longMax": 9223372036854776000,
+                    "double": 1.5,
+                    "doubleWhole": 2,
+                    "negZero": 0,
+                    "nan": {
+                      "$rigLiteral:$numberDouble": "NaN"
+                    },
+                    "inf": {
+                      "$rigLiteral:$numberDouble": "Infinity"
+                    },
+                    "ninf": {
+                      "$rigLiteral:$numberDouble": "-Infinity"
+                    },
+                    "tiny": 5e-324,
+                    "big": 1e+21,
+                    "dec": {
+                      "$rigLiteral:$numberDecimal": "1.10"
+                    },
+                    "decSci": {
+                      "$rigLiteral:$numberDecimal": "1.23E-40"
+                    },
+                    "date": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00Z"
+                    },
+                    "dateMs": {
+                      "$rigLiteral:$date": "2026-11-11T10:00:00.123Z"
+                    },
+                    "dateOld": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "-2208988800000"
+                      }
+                    },
+                    "dateFar": {
+                      "$rigLiteral:$date": {
+                        "$rigLiteral:$numberLong": "253402318800000"
+                      }
+                    },
+                    "bin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "AAEC+v8=",
+                        "subType": "00"
+                      }
+                    },
+                    "uuid": {
+                      "$rigLiteral:$binary": {
+                        "base64": "ASNFZ4mrze8BI0VniavN7w==",
+                        "subType": "04"
+                      }
+                    },
+                    "userBin": {
+                      "$rigLiteral:$binary": {
+                        "base64": "aGk=",
+                        "subType": "80"
+                      }
+                    },
+                    "re": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "^a\\/b$",
+                        "options": "im"
+                      }
+                    },
+                    "reX": {
+                      "$rigLiteral:$regularExpression": {
+                        "pattern": "(?:)",
+                        "options": ""
+                      }
+                    },
+                    "ts": {
+                      "$rigLiteral:$timestamp": {
+                        "t": 1700000000,
+                        "i": 7
+                      }
+                    },
+                    "min": {
+                      "$rigLiteral:$minKey": 1
+                    },
+                    "max": {
+                      "$rigLiteral:$maxKey": 1
+                    },
+                    "code": {
+                      "$rigLiteral:$code": "function () { return '🍕'; }"
+                    },
+                    "scoped": {
+                      "$rigLiteral:$code": "x + y",
+                      "$rigLiteral:$scope": {
+                        "x": 1
+                      }
+                    },
+                    "sym": "sym ✓",
+                    "undef": null,
+                    "nul": null,
+                    "bool": true,
+                    "text": "مرحبا é 🍕 שלום",
+                    "nested": {
+                      "2": "two",
+                      "10": "ten",
+                      "z": 1,
+                      "ключ": "🍕"
+                    },
+                    "arr": [
+                      1,
+                      "two",
+                      null,
+                      [
+                        true
+                      ],
+                      {
+                        "x": 3
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "🍕 pizza",
+                  "document": {
+                    "_id": "🍕 pizza",
+                    "n": 1,
+                    "tag": "food"
+                  }
+                },
+                {
+                  "id": "5",
+                  "document": {
+                    "_id": 5,
+                    "n": 2,
+                    "tag": "number id"
+                  }
+                },
+                {
+                  "id": "2.5",
+                  "document": {
+                    "_id": 2.5,
+                    "n": 3,
+                    "tag": "double id"
+                  }
+                },
+                {
+                  "id": "Thu Jan 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$date": "2026-01-01T00:00:00Z"
+                    },
+                    "n": 4,
+                    "tag": "date id"
+                  }
+                },
+                {
+                  "id": "9007199254740993",
+                  "document": {
+                    "_id": 9007199254740992,
+                    "n": 5,
+                    "tag": "long id"
+                  }
+                },
+                {
+                  "id": "01234567-89ab-cdef-0123-456789abcdef",
+                  "document": {
+                    "_id": {
+                      "$rigLiteral:$binary": {
+                        "base64": "ASNFZ4mrze8BI0VniavN7w==",
+                        "subType": "04"
+                      }
+                    },
+                    "n": 6,
+                    "tag": "uuid id"
+                  }
+                },
+                {
+                  "id": "6650A1B2C3D4E5F601234567",
+                  "document": {
+                    "_id": "6650A1B2C3D4E5F601234567",
+                    "n": 7,
+                    "tag": "upper-case hex is a string id"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "Invalid filter JSON"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "Invalid filter JSON"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 500,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 500,
+            "message": "unknown operator: $nope"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 500,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 500,
+            "message": "Query filter must be a plain object or ObjectId"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 500,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 500,
+            "message": "Query filter must be a plain object or ObjectId"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "collection is required"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 500,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 500,
+            "message": "Database names cannot contain the character '.'"
+          }
+        }
+      }
+    }
+  ],
+  "mongo": {
+    "badregex": {
+      "type": "collection",
+      "options": {},
+      "indexes": {
+        "_id_": {
+          "v": {
+            "$numberInt": "2"
+          },
+          "key": {
+            "_id": {
+              "$numberInt": "1"
+            }
+          },
+          "name": "_id_"
+        }
+      },
+      "documents": [
+        {
+          "_id": "s-option",
+          "re": {
+            "$regularExpression": {
+              "pattern": "a.b",
+              "options": "s"
+            }
+          }
+        }
+      ]
+    },
+    "types": {
+      "type": "collection",
+      "options": {},
+      "indexes": {
+        "_id_": {
+          "v": {
+            "$numberInt": "2"
+          },
+          "key": {
+            "_id": {
+              "$numberInt": "1"
+            }
+          },
+          "name": "_id_"
+        }
+      },
+      "documents": [
+        {
+          "_id": {
+            "$oid": "6650a1b2c3d4e5f601234567"
+          },
+          "int": {
+            "$numberInt": "42"
+          },
+          "intMin": {
+            "$numberInt": "-2147483648"
+          },
+          "long": {
+            "$numberLong": "7"
+          },
+          "longBig": {
+            "$numberLong": "9007199254740993"
+          },
+          "longMax": {
+            "$numberLong": "9223372036854775807"
+          },
+          "double": {
+            "$numberDouble": "1.5"
+          },
+          "doubleWhole": {
+            "$numberDouble": "2.0"
+          },
+          "negZero": {
+            "$numberDouble": "-0.0"
+          },
+          "nan": {
+            "$numberDouble": "NaN"
+          },
+          "inf": {
+            "$numberDouble": "Infinity"
+          },
+          "ninf": {
+            "$numberDouble": "-Infinity"
+          },
+          "tiny": {
+            "$numberDouble": "5e-324"
+          },
+          "big": {
+            "$numberDouble": "1e21"
+          },
+          "dec": {
+            "$numberDecimal": "1.10"
+          },
+          "decSci": {
+            "$numberDecimal": "1.23E-40"
+          },
+          "date": {
+            "$date": "2026-11-11T10:00:00.000Z"
+          },
+          "dateMs": {
+            "$date": "2026-11-11T10:00:00.123Z"
+          },
+          "dateOld": {
+            "$date": "1900-01-01T00:00:00.000Z"
+          },
+          "dateFar": {
+            "$date": {
+              "$numberLong": "253402318800000"
+            }
+          },
+          "bin": {
+            "$binary": {
+              "base64": "AAEC+v8=",
+              "subType": "00"
+            }
+          },
+          "uuid": {
+            "$uuid": "01234567-89ab-cdef-0123-456789abcdef"
+          },
+          "userBin": {
+            "$binary": {
+              "base64": "aGk=",
+              "subType": "80"
+            }
+          },
+          "re": {
+            "$regularExpression": {
+              "pattern": "^a/b$",
+              "options": "im"
+            }
+          },
+          "reX": {
+            "$regularExpression": {
+              "pattern": "",
+              "options": "x"
+            }
+          },
+          "ts": {
+            "$timestamp": {
+              "t": 1700000000,
+              "i": 7
+            }
+          },
+          "min": {
+            "$minKey": 1
+          },
+          "max": {
+            "$maxKey": 1
+          },
+          "code": {
+            "$code": "function () { return '🍕'; }"
+          },
+          "scoped": {
+            "$code": "x + y",
+            "$scope": {
+              "x": {
+                "$numberInt": "1"
+              }
+            }
+          },
+          "sym": {
+            "$symbol": "sym ✓"
+          },
+          "undef": {
+            "$undefined": true
+          },
+          "nul": null,
+          "bool": true,
+          "text": "مرحبا é 🍕 שלום",
+          "nested": {
+            "z": {
+              "$numberInt": "1"
+            },
+            "10": "ten",
+            "2": "two",
+            "ключ": "🍕"
+          },
+          "arr": [
+            {
+              "$numberInt": "1"
+            },
+            "two",
+            null,
+            [
+              true
+            ],
+            {
+              "x": {
+                "$numberLong": "3"
+              }
+            }
+          ]
+        },
+        {
+          "_id": "6650A1B2C3D4E5F601234567",
+          "n": {
+            "$numberInt": "7"
+          },
+          "tag": "upper-case hex is a string id"
+        },
+        {
+          "_id": "🍕 pizza",
+          "n": {
+            "$numberInt": "1"
+          },
+          "tag": "food"
+        },
+        {
+          "_id": {
+            "$date": "2026-01-01T00:00:00.000Z"
+          },
+          "n": {
+            "$numberInt": "4"
+          },
+          "tag": "date id"
+        },
+        {
+          "_id": {
+            "$uuid": "01234567-89ab-cdef-0123-456789abcdef"
+          },
+          "n": {
+            "$numberInt": "6"
+          },
+          "tag": "uuid id"
+        },
+        {
+          "_id": {
+            "$numberDouble": "2.5"
+          },
+          "n": {
+            "$numberInt": "3"
+          },
+          "tag": "double id"
+        },
+        {
+          "_id": {
+            "$numberInt": "5"
+          },
+          "n": {
+            "$numberInt": "2"
+          },
+          "tag": "number id"
+        },
+        {
+          "_id": {
+            "$numberLong": "9007199254740993"
+          },
+          "n": {
+            "$numberInt": "5"
+          },
+          "tag": "long id"
+        }
+      ]
+    }
+  },
+  "dragonfly": []
+}

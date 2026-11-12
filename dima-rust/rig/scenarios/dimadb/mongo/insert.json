@@ -1,0 +1,447 @@
+{
+  "rig_scenario": 1,
+  "description": "Inserting the values the UI can produce: plain JSON numbers (int32 or double as the Node serializer picks, -0 lost by the JSON round trip, integers beyond 2^53 rounded), Extended JSON numbers (int64 stored as int32 or double, as the reference does), every other Extended JSON type, array-index and non-ASCII field names, a generated ObjectId, a string document, and the errors (invalid Extended JSON values, a NUL in a field name, a duplicate _id, invalid JSON text with V8's message, a non-object document, missing names).",
+  "restart": true,
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "connections (the first row's URL is the side's database name)",
+      "http": {
+        "method": "GET",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "db": "body.data[0].url"
+        }
+      }
+    },
+    {
+      "name": "insert numbers",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "text": "{\"db\":\"${db}\",\"collection\":\"inserted\",\"document\":{\"_id\":\"numbers\",\"int\":1,\"neg\":-1,\"intMax\":2147483647,\"over\":2147483648,\"intMin\":-2147483648,\"under\":-2147483649,\"float\":1.5,\"one\":1.0,\"negZero\":-0,\"negZeroF\":-0.0,\"e\":1e2,\"big\":9007199254740993,\"huge\":1e300,\"tiny\":5e-324,\"neg53\":-9007199254740992}}"
+      }
+    },
+    {
+      "name": "insert ejson numbers",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "text": "{\"db\":\"${db}\",\"collection\":\"inserted\",\"document\":{\"_id\":\"ejson numbers\",\"i\":{\"$numberInt\":\"7\"},\"l\":{\"$numberLong\":\"5\"},\"lBig\":{\"$numberLong\":\"9007199254740993\"},\"lMax\":{\"$numberLong\":\"9223372036854775807\"},\"d\":{\"$numberDouble\":\"2.0\"},\"dHalf\":{\"$numberDouble\":\"2.5\"},\"nan\":{\"$numberDouble\":\"NaN\"},\"inf\":{\"$numberDouble\":\"Infinity\"},\"ninf\":{\"$numberDouble\":\"-Infinity\"},\"dNegZero\":{\"$numberDouble\":\"-0.0\"},\"dec\":{\"$numberDecimal\":\"1.10\"},\"decNaN\":{\"$numberDecimal\":\"NaN\"},\"iText\":{\"$numberInt\":\"12abc\"}}}"
+      }
+    },
+    {
+      "name": "insert types",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "text": "{\"db\":\"${db}\",\"collection\":\"inserted\",\"document\":{\"_id\":{\"$oid\":\"6650a1b2c3d4e5f6012345aa\"},\"o\":{\"$oid\":\"6650A1B2C3D4E5F601234567\"},\"iso\":{\"$date\":\"2026-11-11T10:00:00Z\"},\"ms\":{\"$date\":\"2026-11-11T10:00:00.123Z\"},\"num\":{\"$date\":1700000000000},\"long\":{\"$date\":{\"$numberLong\":\"-1\"}},\"offset\":{\"$date\":\"2026-11-11T12:00:00+02:00\"},\"bad\":{\"$date\":\"not a date\"},\"day\":{\"$date\":\"2026-11-11\"},\"b\":{\"$binary\":{\"base64\":\"AAEC+v8=\",\"subType\":\"00\"}},\"u\":{\"$uuid\":\"01234567-89ab-cdef-0123-456789abcdef\"},\"r\":{\"$regularExpression\":{\"pattern\":\"^a/b$\",\"options\":\"mi\"}},\"old\":{\"$regex\":\"x\",\"$options\":\"si\"},\"t\":{\"$timestamp\":{\"t\":1,\"i\":2}},\"min\":{\"$minKey\":1},\"max\":{\"$maxKey\":1},\"code\":{\"$code\":\"x\"},\"scoped\":{\"$code\":\"y\",\"$scope\":{\"a\":1}},\"sym\":{\"$symbol\":\"s\"},\"undef\":{\"$undefined\":true},\"ref\":{\"$ref\":\"c\",\"$id\":{\"$oid\":\"6650a1b2c3d4e5f601234567\"}},\"refDb\":{\"$ref\":\"c\",\"$id\":1,\"$db\":\"x\",\"extra\":true},\"refNs\":{\"$ref\":\"d.c\",\"$id\":\"t\"},\"notRef\":{\"$ref\":\"c\",\"$id\":1,\"$other\":2}}}"
+      }
+    },
+    {
+      "name": "insert keys and text",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "text": "{\"db\":\"${db}\",\"collection\":\"inserted\",\"document\":{\"_id\":\"keys and text\",\"b\":1,\"10\":\"ten\",\"2\":\"two\",\"a\":\"a\",\"ключ\":\"🍕\",\"emoji 👋\":{\"z\":1,\"1\":2},\"rtl\":\"مرحبا\",\"comb\":\"e\\u0301\",\"nested\":{\"$foo\":1,\"b\":2},\"arr\":[{\"$x\":1},null,[true]]}}"
+      }
+    },
+    {
+      "name": "insert with a generated id",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": {
+            "name": "generated 🆔",
+            "at": {
+              "$date": "2026-11-11T10:00:00Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "insert with a null id",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": {
+            "_id": null,
+            "name": "null id"
+          }
+        }
+      }
+    },
+    {
+      "name": "insert a document given as text",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": "{\"_id\":\"as text\",\"n\":{\"$numberLong\":\"9\"}}"
+        }
+      }
+    },
+    {
+      "name": "insert with a number id (not found after insert)",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": {
+            "_id": 77,
+            "n": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "duplicate id",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": {
+            "_id": "numbers"
+          }
+        }
+      }
+    },
+    {
+      "name": "bad numberLong",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": {
+            "l": {
+              "$numberLong": "12x"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "long numberLong",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": {
+            "l": {
+              "$numberLong": "123456789012345678901"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "bad decimal",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": {
+            "d": {
+              "$numberDecimal": "abc"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "bad oid",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": {
+            "o": {
+              "$oid": "xyz"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "bad date type",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": {
+            "d": {
+              "$date": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "legacy binary",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": {
+            "b": {
+              "$binary": "aGk=",
+              "$type": "00"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "bad regex option",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": {
+            "r": {
+              "$regularExpression": {
+                "pattern": "a",
+                "options": "g"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "NUL in a field name",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "text": "{\"db\":\"${db}\",\"collection\":\"inserted\",\"document\":{\"a\\u0000b\":1}}"
+      }
+    },
+    {
+      "name": "invalid JSON text",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": "{\"a\":1,}"
+        }
+      }
+    },
+    {
+      "name": "invalid JSON text with emoji",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": "{\"🍕\":tru}"
+        }
+      }
+    },
+    {
+      "name": "array document",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted",
+          "document": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "name": "no document",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "inserted"
+        }
+      }
+    },
+    {
+      "name": "no collection",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "document": {}
+        }
+      }
+    },
+    {
+      "name": "no db",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "collection": "inserted",
+          "document": {}
+        }
+      }
+    },
+    {
+      "name": "listing",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=inserted&limit=100",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ]
+}

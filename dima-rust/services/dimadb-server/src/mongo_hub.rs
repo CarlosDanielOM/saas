@@ -110,13 +110,15 @@ pub fn decode_document(document: Option<&Value>) -> ApiResult<Js> {
     ejson::deserialize(value).map_err(|error| ApiError::bad_request(error.0))
 }
 
-/// `Object.keys(value).length` for a deserialized filter.
+/// `Object.keys(value).length` for a deserialized filter (bson class instances have own
+/// properties such as `buffer`; `Date`, `MinKey` and `MaxKey` have none).
 fn key_count(value: &Js) -> usize {
     match value {
         Js::Object(entries) => entries.len(),
         Js::Array(items) => items.len(),
-        Js::String(text) => text.chars().count(),
-        _ => 0,
+        Js::String(text) => dima_text::utf16_len(text),
+        Js::Null | Js::Bool(_) | Js::Number(_) | Js::Date(_) | Js::MinKey | Js::MaxKey => 0,
+        _ => 1,
     }
 }
 
@@ -344,10 +346,27 @@ pub async fn docs(conn: Conn<'_>, query: &DocsQuery) -> ApiResult<Value> {
         skip
     }
     .max(0.0);
+    // `Object.keys(parsed)` runs first and throws on null; then the driver's `FindOperation`
+    // accepts only an object (a bson value is sent as that BSON type, which the server refuses)
+    // and turns an ObjectId into `{_id}`.
+    let find_filter = match &filter {
+        Js::Null => {
+            return Err(ApiError::internal(
+                "Cannot convert undefined or null to object",
+            ));
+        }
+        Js::Array(_) | Js::Number(_) | Js::String(_) | Js::Bool(_) => {
+            return Err(ApiError::internal(
+                "Query filter must be a plain object or ObjectId",
+            ));
+        }
+        Js::ObjectId(oid) => Bson::Document(doc! { "_id": *oid }),
+        other => ejson::to_bson(other),
+    };
     let filter_bson = ejson::to_bson(&filter);
     let find = doc! {
         "find": query.collection.clone(),
-        "filter": filter_bson.clone(),
+        "filter": find_filter,
         "skip": ejson::number_bson(from),
         "limit": ejson::number_bson(take),
     };

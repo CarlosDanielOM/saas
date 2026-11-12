@@ -1,0 +1,235 @@
+{
+  "rig_scenario": 1,
+  "description": "Admin-only user management: list, create a user-role account (and an admin when the role is anything else), duplicate names, then the user-role account gets 403 on user management but keeps access to the rest of the console.",
+  "restart": true,
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "chief",
+          "password": "chief-pass-👑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "list",
+      "http": {
+        "method": "GET",
+        "path": "/api/users",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "create a user",
+      "http": {
+        "method": "POST",
+        "path": "/api/users",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "username": "Viewer_1",
+          "password": "viewer-pass",
+          "role": "user"
+        }
+      }
+    },
+    {
+      "name": "role other than user is admin",
+      "http": {
+        "method": "POST",
+        "path": "/api/users",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "username": "second.admin",
+          "password": "second-pass",
+          "role": "superuser"
+        }
+      }
+    },
+    {
+      "name": "duplicate name, other case",
+      "http": {
+        "method": "POST",
+        "path": "/api/users",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "username": "VIEWER_1",
+          "password": "whatever-8"
+        }
+      }
+    },
+    {
+      "name": "invalid name",
+      "http": {
+        "method": "POST",
+        "path": "/api/users",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "username": "has space",
+          "password": "whatever-8"
+        }
+      }
+    },
+    {
+      "name": "short password",
+      "http": {
+        "method": "POST",
+        "path": "/api/users",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "username": "short",
+          "password": "1234567"
+        }
+      }
+    },
+    {
+      "name": "list again",
+      "http": {
+        "method": "GET",
+        "path": "/api/users",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "users without a session",
+      "http": {
+        "method": "GET",
+        "path": "/api/users",
+        "headers": {
+          "x-dimadb": "1"
+        }
+      }
+    },
+    {
+      "name": "login as the user",
+      "http": {
+        "method": "POST",
+        "path": "/api/login",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "viewer_1",
+          "password": "viewer-pass"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "viewer": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "user cannot list users",
+      "http": {
+        "method": "GET",
+        "path": "/api/users",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${viewer}"
+        }
+      }
+    },
+    {
+      "name": "user cannot create users",
+      "http": {
+        "method": "POST",
+        "path": "/api/users",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${viewer}"
+        },
+        "json": {
+          "username": "x2",
+          "password": "12345678"
+        }
+      }
+    },
+    {
+      "name": "user sees connections",
+      "http": {
+        "method": "GET",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${viewer}"
+        }
+      }
+    },
+    {
+      "name": "user runs redis commands",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${viewer}"
+        },
+        "json": {
+          "command": "PING"
+        }
+      }
+    },
+    {
+      "name": "me as the user",
+      "http": {
+        "method": "GET",
+        "path": "/api/me",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${viewer}"
+        }
+      }
+    },
+    {
+      "name": "PUT /api/users has no route",
+      "http": {
+        "method": "PUT",
+        "path": "/api/users",
+        "headers": {
+          "x-dimadb": "1"
+        }
+      }
+    }
+  ],
+  "compare": {
+    "headers": {
+      "add": [
+        "set-cookie"
+      ]
+    }
+  }
+}

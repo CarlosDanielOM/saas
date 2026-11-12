@@ -1,0 +1,368 @@
+{
+  "rig_capture": 1,
+  "target": "dimadb",
+  "scenario": "auth/users",
+  "scenario_hash": "fnv1a64:45112bf857a62fa6",
+  "steps": [
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8",
+          "set-cookie": {
+            "$rigText": "dimadb_session=<uuid:1>; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+          }
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:2>"
+                },
+                "username": "chief",
+                "role": "admin"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": [
+              {
+                "id": {
+                  "$rigText": "<uuid:2>"
+                },
+                "username": "chief",
+                "role": "admin"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "id": {
+                "$rigText": "<uuid:3>"
+              },
+              "username": "viewer_1",
+              "role": "user"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "id": {
+                "$rigText": "<uuid:4>"
+              },
+              "username": "second.admin",
+              "role": "admin"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 409,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 409,
+            "message": "Username already exists"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "Username must be 2-32 letters, numbers, or ._-"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "Password must be at least 8 characters"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": [
+              {
+                "id": {
+                  "$rigText": "<uuid:2>"
+                },
+                "username": "chief",
+                "role": "admin"
+              },
+              {
+                "id": {
+                  "$rigText": "<uuid:3>"
+                },
+                "username": "viewer_1",
+                "role": "user"
+              },
+              {
+                "id": {
+                  "$rigText": "<uuid:4>"
+                },
+                "username": "second.admin",
+                "role": "admin"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 401,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 401,
+            "message": "Not authenticated"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8",
+          "set-cookie": {
+            "$rigText": "dimadb_session=<uuid:5>; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+          }
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:3>"
+                },
+                "username": "viewer_1",
+                "role": "user"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 403,
+            "message": "Admin only"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 403,
+            "message": "Admin only"
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": [
+              {
+                "id": "env:dbname",
+                "name": "dbname",
+                "url": {
+                  "$rigText": "<run:mongo_db>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "<run:dragonfly_url>"
+                },
+                "source": "env",
+                "engine": "redis"
+              },
+              {
+                "id": "env:mongo:rig",
+                "name": "rig",
+                "url": {
+                  "$rigText": "mongodb://root:***@127.0.0.1:27017/<run:mongo_db>?authSource=admin&directConnection=true"
+                },
+                "source": "env",
+                "engine": "mongo"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "result": "PONG"
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "user": {
+                "id": {
+                  "$rigText": "<uuid:3>"
+                },
+                "username": "viewer_1",
+                "role": "user"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "http": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "json": {
+            "error": true,
+            "status": 404,
+            "message": "Not found"
+          }
+        }
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": []
+}
