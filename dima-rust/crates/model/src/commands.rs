@@ -19,19 +19,20 @@
 
 use crate::availability::{self, AvailabilityLease, AvailabilityState, Writer};
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::defaults::{empty, yes, zero};
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
 use crate::loaded::LoadedForSave;
+use crate::private::Private;
 use crate::shape::ReadNeed;
 use crate::timer_commands::{CREATION_DATE, CreationDate};
 use crate::validation::Rule;
 use crate::values::StringMap;
 use crate::writes::{find_and_update_unchecked, save_with_hooks, update_unchecked};
 use bson::oid::ObjectId;
-use bson::{Bson, Document, RawDocument};
+use bson::{Bson, Document};
 use dima_core::Random;
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
@@ -132,6 +133,9 @@ pub const RULES: &[Rule] = &[
     Rule::required("channelID"),
 ];
 
+/// The private paths: their read type fields are [`crate::Private`].
+pub const PRIVATE: &[&str] = &["blocks", "availability", "availabilityLease"];
+
 /// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
 pub const READ_NEEDS: &[ReadNeed] = &[
     ReadNeed::not_null("activation"),
@@ -165,7 +169,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::UpdatesAndSave,
-    decode: |raw: &RawDocument| decode::<Command>(raw).map(drop),
+    private: PRIVATE,
+    decode: decode_boxed::<Command>,
 };
 
 /// A stored command, defaults filled in as a hydrated Mongoose document shows them. The hidden
@@ -199,7 +204,7 @@ pub struct Command {
     /// The block tree (`select: false`: `None` when not selected, and when stored as `null`, the
     /// default).
     #[serde(default)]
-    pub blocks: Option<CommandBlocks>,
+    pub blocks: Option<Private<CommandBlocks>>,
     /// Response table of built-in functions (roulette outcomes, size ranges...).
     #[serde(default)]
     pub responses: CommandResponses,
@@ -262,10 +267,10 @@ pub struct Command {
     pub date: CreationDate,
     /// Scheduled availability (`select: false`).
     #[serde(default)]
-    pub availability: Option<AvailabilityState>,
+    pub availability: Option<Private<AvailabilityState>>,
     /// Availability synchronisation lease (`select: false`).
     #[serde(default, rename = "availabilityLease")]
-    pub availability_lease: Option<AvailabilityLease>,
+    pub availability_lease: Option<Private<AvailabilityLease>>,
 }
 
 fn command() -> Open<Activation> {
@@ -367,9 +372,9 @@ pub struct NewCommand {
     /// How the reply was written (default `text`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authoring: Option<Authoring>,
-    /// The block tree (the reference passes `null` for text commands).
+    /// The block tree (the reference passes `null` for text commands; `select: false`).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub blocks: Option<Bson>,
+    pub blocks: Option<Private<Bson>>,
     /// Response table.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub responses: Option<Vec<Bson>>,

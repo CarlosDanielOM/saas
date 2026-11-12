@@ -530,7 +530,8 @@ mod tests {
             rules: RULES,
             read_needs: &[],
             hooks: Hooks::Save,
-            decode: |_| Ok(()),
+            private: &[],
+            decode: |_| Ok(Box::new(())),
         };
         let mut ctx = WriteContext::new(0);
         let hook = |_: &Document, _: &[Change], _: &mut WriteContext| {

@@ -12,16 +12,17 @@
 
 use crate::availability::{self, AvailabilityLease, AvailabilityState, Writer};
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::defaults::{empty, yes, zero};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
 use crate::loaded::LoadedForSave;
+use crate::private::Private;
 use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use crate::writes::{find_and_update_unchecked, save_with_hooks, update_unchecked};
+use bson::Document;
 use bson::oid::ObjectId;
-use bson::{Document, RawDocument};
 use dima_core::Random;
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::id::IdType;
@@ -75,6 +76,9 @@ pub const RULES: &[Rule] = &[
     Rule::required("cost"),
 ];
 
+/// The private paths: their read type fields are [`crate::Private`].
+pub const PRIVATE: &[&str] = &["availability", "availabilityLease"];
+
 /// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
 pub const READ_NEEDS: &[ReadNeed] = &[
     ReadNeed::value("eventsubID"),
@@ -108,7 +112,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::UpdatesAndSave,
-    decode: |raw: &RawDocument| decode::<RedemptionReward>(raw).map(drop),
+    private: PRIVATE,
+    decode: decode_boxed::<RedemptionReward>,
 };
 
 /// A stored reward.
@@ -170,10 +175,10 @@ pub struct RedemptionReward {
     pub created_for: String,
     /// Scheduled availability (`select: false`).
     #[serde(default)]
-    pub availability: Option<AvailabilityState>,
+    pub availability: Option<Private<AvailabilityState>>,
     /// Availability synchronisation lease (`select: false`).
     #[serde(default, rename = "availabilityLease")]
-    pub availability_lease: Option<AvailabilityLease>,
+    pub availability_lease: Option<Private<AvailabilityLease>>,
 }
 
 fn custom() -> String {

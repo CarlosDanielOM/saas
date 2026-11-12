@@ -26,7 +26,11 @@
 //!    order; `$` stands for each element of a document array: `config.$.id`).
 //! 5. `INFO`, a [`CollectionInfo`], added to [`REGISTRY`].
 //! 6. The read type: `#[derive(Clone, Debug, Deserialize)]`, never `Serialize` (a whole document
-//!    is never written back: unknown fields must survive, `MIGRATION.md` data rule 1).
+//!    is never written back: unknown fields must survive, `MIGRATION.md` data rule 1). `Debug`
+//!    is derived only because every private value is a [`Private`] field (its `Debug` prints
+//!    `<private>`): every `select: false` path, e-mail addresses, tokens, external customer ids,
+//!    payloads with personal data, anything a person would not want in a log. List them in
+//!    `PRIVATE` (`INFO.private`); input types wrap the same fields.
 //! 7. The input type `NewX` (`Serialize`, `to_document()`, `prepare(ctx)` through
 //!    [`CollectionInfo::prepare_create`]): required fields are not `Option`, enumerations are the
 //!    closed enums, ranges and lengths are checked by a constructor that returns
@@ -151,6 +155,7 @@ pub mod error;
 mod hooks;
 pub mod index;
 pub mod loaded;
+pub mod private;
 pub mod shape;
 pub mod validation;
 pub mod values;
@@ -180,6 +185,7 @@ pub use enums::{Open, StrEnum};
 pub use error::ModelError;
 pub use index::{IndexFailure, IndexSpec, ensure_indexes};
 pub use loaded::LoadedForSave;
+pub use private::Private;
 pub use shape::ReadNeed;
 pub use validation::{Rule, ValidationError, ValidatorError, ValidatorKind};
 

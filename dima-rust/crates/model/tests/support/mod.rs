@@ -2,10 +2,12 @@
 //! `domdimabot` copy, and throwaway databases that are dropped even when a test fails.
 #![allow(dead_code)]
 
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
 use bson::oid::ObjectId;
+use bson::{Bson, Document};
 use dima_store::mongo::{MongoConfig, MongoStore};
 use futures_util::FutureExt;
+use serde_json::Value;
 use std::future::Future;
 use std::panic::AssertUnwindSafe;
 
@@ -158,4 +160,43 @@ pub mod entry {
             Ok(())
         }
     }
+}
+
+/// The recorded write cases (`tests/mongoose/writes.json`).
+pub fn recorded_cases() -> Result<Vec<Value>> {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/mongoose/writes.json");
+    let recording: Value = serde_json::from_str(&std::fs::read_to_string(path)?)?;
+    recording
+        .get("cases")
+        .and_then(Value::as_array)
+        .cloned()
+        .context("cases")
+}
+
+/// The recorded successful create cases of `collection` merged into one document (the first
+/// value of a key wins): a base document with as many paths filled as the recordings have.
+pub fn base_given(cases: &[Value], collection: &str) -> Result<Document> {
+    let mut base = Document::new();
+    for case in cases {
+        let op = case.get("op").and_then(Value::as_str);
+        if case.get("collection").and_then(Value::as_str) != Some(collection)
+            || !matches!(op, Some("create" | "journal"))
+            || case.get("error").is_some()
+        {
+            continue;
+        }
+        let doc = case.pointer("/intent/doc").context("doc")?;
+        let Bson::Document(doc) = Bson::try_from(doc.clone())? else {
+            bail!("{collection}: a create case without a document");
+        };
+        for (key, value) in doc {
+            if !base.contains_key(&key) {
+                base.insert(key, value);
+            }
+        }
+    }
+    if base.is_empty() {
+        bail!("{collection}: no recorded create case (add one to record.mts)");
+    }
+    Ok(base)
 }

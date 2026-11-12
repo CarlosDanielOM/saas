@@ -11,14 +11,14 @@
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::error::ModelError;
 use crate::index::IndexSpec;
 use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use crate::values::StringMap;
+use bson::Document;
 use bson::oid::ObjectId;
-use bson::{Document, RawDocument};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::id::IdType;
@@ -92,7 +92,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
-    decode: |raw: &RawDocument| decode::<AstVariables>(raw).map(drop),
+    private: &[],
+    decode: decode_boxed::<AstVariables>,
 };
 
 /// One stored variable scope.

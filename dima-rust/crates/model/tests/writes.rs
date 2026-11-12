@@ -225,8 +225,8 @@ fn typed_create(
             let mut account = NewAccount::new(AccountType::Twitch, "222");
             account.name = Some(text.into());
             account.email = Some("new@example.com".into());
-            account.refresh_token = Some(token());
-            account.access_token = Some(token());
+            account.refresh_token = Some(token().into());
+            account.access_token = Some(token().into());
             account.actived = Some(false);
             account.chat_enabled = Some(false);
             account.has_permissions = Some(false);
@@ -381,7 +381,8 @@ fn typed_create(
                 access_token: EncryptedToken {
                     iv: Some("i".into()),
                     content: Some("c".into()),
-                },
+                }
+                .into(),
             };
             pair(config.to_document()?, config.prepare(ctx))
         }
@@ -448,7 +449,7 @@ fn typed_create(
                 stream_id: None,
                 occurred_at: t1,
                 journaled_at: Some(t2),
-                payload: doc! { "user": { "id": "9", "login": text } },
+                payload: doc! { "user": { "id": "9", "login": text } }.into(),
                 metadata: Some(
                     doc! { "originalEventType": "channel.follow", "durableChatHandled": true },
                 ),
@@ -459,7 +460,7 @@ fn typed_create(
                 event.id = Some(oid(0x501)?);
                 event.event_key = "k2".into();
                 event.source_event_id = "k2".into();
-                event.payload = doc! {};
+                event.payload = doc! {}.into();
                 event.metadata = Some(doc! {});
                 event.subject = None;
                 event.owner_user_id = None;
@@ -483,7 +484,7 @@ fn typed_create(
                     stream_id: None,
                     occurred_at: t1,
                     journaled_at: None,
-                    payload: doc! { "a": 1 },
+                    payload: doc! { "a": 1 }.into(),
                     metadata: None,
                     dispatch_pending: None,
                     expires_at: t2,
@@ -499,7 +500,7 @@ fn typed_create(
             command.func = Some("custom".into());
             command.message = Some(format!("hola {text}"));
             command.authoring = Some(commands::Authoring::Text);
-            command.blocks = Some(Bson::Null);
+            command.blocks = Some(Bson::Null.into());
             command.responses = Some(Vec::new());
             command.kind = Some("command".into());
             command.reserved = Some(false);
@@ -1262,7 +1263,7 @@ async fn response_reads_hide_select_false_paths() -> Result<()> {
         let mut ctx = WriteContext::with_sequential_ids(1_794_392_430_456, 1);
         let mut command = NewCommand::new("111");
         command.cmd = Some("!hola".into());
-        command.blocks = Some(Bson::Document(doc! { "v": 1, "root": {} }));
+        command.blocks = Some(Bson::Document(doc! { "v": 1, "root": {} }).into());
         let prepared = command.prepare(&mut ctx)?;
         let id = prepared.document.get_object_id("_id")?;
         store

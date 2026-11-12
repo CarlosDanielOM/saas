@@ -10,15 +10,16 @@
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::error::ModelError;
 use crate::hooks::{save_stamping, stamp_insert};
 use crate::index::IndexSpec;
 use crate::loaded::LoadedForSave;
+use crate::private::Private;
 use crate::shape::ReadNeed;
 use crate::users::EncryptedToken;
+use bson::Document;
 use bson::oid::ObjectId;
-use bson::{Document, RawDocument};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::id::IdType;
@@ -39,6 +40,9 @@ static SCHEMA: Schema = Schema::new(&[
     Field::date("refreshed_at").default_fn(D::Now),
 ]);
 
+/// The private paths: their read type fields are [`crate::Private`].
+pub const PRIVATE: &[&str] = &["access_token"];
+
 /// What the read type cannot decode (`crate::shape`): nothing.
 pub const READ_NEEDS: &[ReadNeed] = &[];
 
@@ -54,7 +58,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: &[],
     read_needs: READ_NEEDS,
     hooks: Hooks::Save,
-    decode: |raw: &RawDocument| decode::<AppConfig>(raw).map(drop),
+    private: PRIVATE,
+    decode: decode_boxed::<AppConfig>,
 };
 
 /// The stored configuration.
@@ -68,7 +73,7 @@ pub struct AppConfig {
     pub name: Option<String>,
     /// The encrypted app token.
     #[serde(default)]
-    pub access_token: EncryptedToken,
+    pub access_token: Private<EncryptedToken>,
     /// Last save (`default: Date.now`, not applied on read).
     #[serde(default)]
     pub refreshed_at: Option<JsDate>,
@@ -80,7 +85,7 @@ pub struct NewAppConfig {
     /// The bot's login.
     pub name: String,
     /// The encrypted app token.
-    pub access_token: EncryptedToken,
+    pub access_token: Private<EncryptedToken>,
 }
 
 impl NewAppConfig {

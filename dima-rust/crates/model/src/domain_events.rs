@@ -18,14 +18,15 @@
 //! `metadata` (`Mixed`) is read as raw BSON ([`DomainEventMetadata`]).
 
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::private::Private;
 use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
-use bson::{Bson, Document, RawDocument, doc};
+use bson::{Bson, Document, doc};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::id::IdType;
@@ -157,6 +158,9 @@ pub const RULES: &[Rule] = &[
     Rule::required("expiresAt"),
 ];
 
+/// The private paths: their read type fields are [`crate::Private`].
+pub const PRIVATE: &[&str] = &["payload"];
+
 /// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
 pub const READ_NEEDS: &[ReadNeed] = &[
     ReadNeed::value("eventKey"),
@@ -184,7 +188,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
-    decode: |raw: &RawDocument| decode::<DomainEvent>(raw).map(drop),
+    private: PRIVATE,
+    decode: decode_boxed::<DomainEvent>,
 };
 
 /// A journaled event.
@@ -229,7 +234,7 @@ pub struct DomainEvent {
     pub journaled_at: Option<JsDate>,
     /// The payload (missing when it was journaled as `{}`).
     #[serde(default)]
-    pub payload: Option<DomainEventPayload>,
+    pub payload: Option<Private<DomainEventPayload>>,
     /// Metadata (`{}` when missing, as Mongoose's default).
     #[serde(default)]
     pub metadata: DomainEventMetadata,
@@ -331,7 +336,7 @@ pub struct NewDomainEvent {
     #[serde(rename = "journaledAt", skip_serializing_if = "Option::is_none")]
     pub journaled_at: Option<JsDate>,
     /// The payload.
-    pub payload: Document,
+    pub payload: Private<Document>,
     /// Metadata.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<Document>,

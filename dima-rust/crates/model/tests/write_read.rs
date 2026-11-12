@@ -25,7 +25,6 @@ use dima_store::mongo::schema::{Field, Kind, MapOf, Schema};
 use dima_store::mongo::update::UpdateOptions;
 use dima_store::mongo::{MongoStore, WriteContext};
 use futures_util::TryStreamExt;
-use serde_json::Value;
 use std::collections::BTreeMap;
 
 const NOW_MS: i64 = 1_794_392_430_456;
@@ -117,30 +116,6 @@ fn put(document: &mut Document, path: &str, value: Bson) -> bool {
         }
         _ => false,
     }
-}
-
-/// The recorded create cases of `collection`, merged (the first value of a key wins).
-fn base_given(cases: &[Value], collection: &str) -> Result<Document> {
-    let mut base = Document::new();
-    for case in cases {
-        let op = case.get("op").and_then(Value::as_str);
-        if case.get("collection").and_then(Value::as_str) != Some(collection)
-            || !matches!(op, Some("create" | "journal"))
-            || case.get("error").is_some()
-        {
-            continue;
-        }
-        let doc = case.pointer("/intent/doc").context("doc")?;
-        let Bson::Document(doc) = Bson::try_from(doc.clone())? else {
-            bail!("{collection}: a create case without a document");
-        };
-        for (key, value) in doc {
-            if !base.contains_key(&key) {
-                base.insert(key, value);
-            }
-        }
-    }
-    Ok(base)
 }
 
 /// Every document of the collection decoded with the read type; the failures.
@@ -308,18 +283,12 @@ impl Probe<'_> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn every_accepted_write_decodes() -> Result<()> {
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/mongoose/writes.json");
-    let recording: Value = serde_json::from_str(&std::fs::read_to_string(path)?)?;
-    let cases = recording
-        .get("cases")
-        .and_then(Value::as_array)
-        .cloned()
-        .context("cases")?;
+    let cases = support::recorded_cases()?;
     support::with_store(|store| async move {
         let mut failures = Vec::new();
         let mut summary = BTreeMap::new();
         for info in REGISTRY {
-            let given = base_given(&cases, info.name)?;
+            let given = support::base_given(&cases, info.name)?;
             if given.is_empty() {
                 bail!(
                     "{}: no recorded create case to build the base document from",

@@ -11,7 +11,7 @@
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
-use crate::decode::decode;
+use crate::decode::decode_boxed;
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::hooks::{save_stamping, stamp_insert};
@@ -21,7 +21,7 @@ use crate::shape::ReadNeed;
 use crate::users::PlanTier;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
-use bson::{Bson, Document, RawDocument};
+use bson::{Bson, Document};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::id::IdType;
@@ -185,7 +185,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::Save,
-    decode: |raw: &RawDocument| decode::<Event>(raw).map(drop),
+    private: &[],
+    decode: decode_boxed::<Event>,
 };
 
 /// A catalogue event.

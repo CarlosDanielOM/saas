@@ -1,7 +1,7 @@
 //! What every collection module declares ([`CollectionInfo`]) and the reads every HTTP route
 //! shares: documents without their `select: false` paths, rendered as Express renders them.
 
-use crate::decode::DecodeError;
+use crate::decode::{DecodeError, Decoded};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
 use crate::shape::ReadNeed;
@@ -40,8 +40,13 @@ pub struct CollectionInfo {
     pub read_needs: &'static [ReadNeed],
     /// The Mongoose middleware the module's adapters reproduce.
     pub hooks: Hooks,
-    /// Decodes a stored document with the module's read type (used by the real-data check).
-    pub decode: fn(&RawDocument) -> Result<(), DecodeError>,
+    /// The private paths of the read type (`$` for each array element): every `select: false`
+    /// path, e-mail addresses, tokens, payloads with personal data. Their read type fields are
+    /// [`crate::Private`], so `Debug` never shows them (`tests/private.rs`).
+    pub private: &'static [&'static str],
+    /// Decodes a stored document with the module's read type (the real-data check, the private
+    /// paths check).
+    pub decode: fn(&RawDocument) -> Result<Decoded, DecodeError>,
 }
 
 /// The Mongoose middleware of a collection. With any, writes go through the module's adapter
@@ -194,7 +199,8 @@ mod tests {
         rules: &[],
         read_needs: &[],
         hooks: Hooks::None,
-        decode: |_| Ok(()),
+        private: &[],
+        decode: |_| Ok(Box::new(())),
     };
 
     #[test]
