@@ -1,12 +1,15 @@
 //! Reward-cost orchestration. The reference PATCHes the internal rewards API, not Helix.
 //! The API owns reward writes; these functions only read `redemptionrewards`.
-//! VIP creation/expiration cannot be ported here until dima-model holds VipSchema (`vips`).
+pub mod unvipexpired;
+pub mod vip;
 use crate::functions::polls::FunctionError;
 use crate::{AccessToken, Twitch};
 use bson::{RawDocumentBuf, doc};
 use dima_model::redemption_rewards::{COLLECTION, RedemptionReward};
 use futures_util::{TryStreamExt, future::BoxFuture};
 use serde::{Deserialize, Serialize};
+pub use unvipexpired::unvip_expired_user;
+pub use vip::{VipRedemptionEvent, vip_redemption};
 /// The reference's internal PATCH body.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RewardUpdate {
