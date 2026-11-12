@@ -13,7 +13,8 @@ where
     Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
 }
 
-/// `{items: [...]}`; a missing or `null` `items` is empty (`response.items || []`).
+/// `{items: [...]}` of one page; a missing or `null` `items` is empty (`response.items || []`).
+/// The client's own lists are read to their end instead (see [`super::MAX_LIST_PAGES`]).
 #[derive(Clone, Debug, Deserialize)]
 #[serde(bound(deserialize = "T: Deserialize<'de>"))]
 pub struct ListResponse<T> {
@@ -22,11 +23,24 @@ pub struct ListResponse<T> {
     pub items: Vec<T>,
 }
 
-/// `{items}` kept as sent (the product list is read loosely).
-#[derive(Clone, Debug, Deserialize)]
-pub(crate) struct LooseList {
+/// One page of a list as sent: `{items, pagination}`, both read loosely (a missing or `null`
+/// `items` is `items || []`; a body that is not an object has neither).
+#[derive(Clone, Debug, Default, Deserialize)]
+pub(crate) struct LoosePage {
     #[serde(default)]
     pub items: Option<Value>,
+    #[serde(default)]
+    pub pagination: Option<Value>,
+}
+
+impl LoosePage {
+    /// `pagination.max_page`, when it is a number.
+    pub fn max_page(&self) -> Option<f64> {
+        self.pagination
+            .as_ref()
+            .and_then(|p| p.get("max_page"))
+            .and_then(Value::as_f64)
+    }
 }
 
 /// A subscription in a `/v1/subscriptions/` list (`PolarSubscription` in `billing.ts`).

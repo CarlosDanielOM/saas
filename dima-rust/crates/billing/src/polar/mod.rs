@@ -12,6 +12,10 @@
 //!
 //! - Paths are [`Path`] templates: ids are percent-encoded segments (the reference interpolates
 //!   them raw; every id it passes is a UUID or an id of `[A-Za-z0-9_-]`, where both agree).
+//! - Lists (subscriptions, products, discounts) are read to their end, page by page, within
+//!   [`MAX_LIST_PAGES`]; past it the call fails with [`PolarError::IncompleteHistory`] rather
+//!   than decide from a partial list (the reference read one page of 100). The first request
+//!   is the reference's own; later ones add `page=N`.
 //! - Responses tolerate fields Polar adds. Where the reference reads an answer loosely (product
 //!   lists, the raw customer state, orders and grants of the credit-source report), the value is
 //!   kept as JSON and read with the reference's own rules; where it reads it through the SDK's
@@ -48,6 +52,22 @@ pub const SDK_USER_AGENT: &str = "speakeasy-sdk/typescript 0.42.5 2.801.0 0.1.0 
 pub const ENTITLEMENT_TIMEOUT: Duration = Duration::from_secs(10);
 /// `AbortSignal.timeout(15_000)` (`credit_gift_provider.ts`).
 pub const GIFT_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// Pages of 100 a list is read to at most (subscriptions, products, discounts): 1,000 items,
+/// far above any customer's history or the product catalog.
+pub const MAX_LIST_PAGES: u32 = 10;
+/// The page size the reference asks for (`limit=100`).
+const LIST_PAGE_SIZE: usize = 100;
+
+/// A list read to its end, keeping the reference's loose reading of the first page.
+enum ListItems {
+    /// `items` missing or `null`.
+    Missing,
+    /// `items` of the first page is not an array.
+    NotArray(Value),
+    /// Every page's items, in order.
+    Items(Vec<Value>),
+}
 
 /// How the reference reached Polar for a call (see the module docs).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -86,6 +106,13 @@ pub enum PolarError {
         source: dima_http::Error,
         /// Whether the call was a `POST` sent before it failed.
         mutation: bool,
+    },
+    /// A list has more pages than [`MAX_LIST_PAGES`]: deciding from what was read would decide
+    /// from a partial history (item 6 of P2-BILLING-01b).
+    #[error("Polar {what} list exceeds {MAX_LIST_PAGES} pages: incomplete history")]
+    IncompleteHistory {
+        /// Which list.
+        what: &'static str,
     },
     /// The answer was not the JSON the call expects.
     #[error("Polar answered with an unexpected shape")]
@@ -257,7 +284,73 @@ impl PolarClient {
 
     // ------------------------------------------------------------------ billing.ts (fetch)
 
-    /// `GET /v1/subscriptions/?customer_id=…&limit=100[&active=…]` (`listSubscriptions`).
+    /// Reads a list to its end (item 6 of P2-BILLING-01b): the first request is the reference's
+    /// own (no `page`), later ones add `page=2`, `page=3`... Polar's `pagination.max_page` says
+    /// where it ends; without it, a page shorter than 100 items is the last. More than
+    /// [`MAX_LIST_PAGES`] pages is [`PolarError::IncompleteHistory`]: the reference read the
+    /// first page only and decided from it.
+    async fn read_list(
+        &self,
+        path: &'static str,
+        query: &[(&str, &str)],
+        what: &'static str,
+    ) -> Result<ListItems, PolarError> {
+        let mut all = Vec::new();
+        let mut page = 1_u32;
+        loop {
+            let number = page.to_string();
+            let mut paged = query.to_vec();
+            if page > 1 {
+                paged.push(("page", &number));
+            }
+            let body: LoosePage = self.get(Path::fixed(path), &paged, Profile::Fetch).await?;
+            let max_page = body.max_page();
+            let items = match body.items {
+                None | Some(Value::Null) if page == 1 => return Ok(ListItems::Missing),
+                None | Some(Value::Null) => Vec::new(),
+                Some(Value::Array(items)) => items,
+                Some(other) if page == 1 => return Ok(ListItems::NotArray(other)),
+                Some(_) => return Err(PolarError::Decode { mutation: false }),
+            };
+            let count = items.len();
+            all.extend(items);
+            let last = match max_page {
+                Some(max) => f64::from(page) >= max,
+                None => count < LIST_PAGE_SIZE,
+            };
+            if last {
+                return Ok(ListItems::Items(all));
+            }
+            if page >= MAX_LIST_PAGES || max_page.is_some_and(|max| max > f64::from(MAX_LIST_PAGES))
+            {
+                return Err(PolarError::IncompleteHistory { what });
+            }
+            page += 1;
+        }
+    }
+
+    /// A list of typed items read to its end: missing items are none (`items || []`), anything
+    /// else that is not an array, or an item of another shape, is [`PolarError::Decode`].
+    async fn read_typed_list<T: DeserializeOwned>(
+        &self,
+        path: &'static str,
+        query: &[(&str, &str)],
+        what: &'static str,
+    ) -> Result<Vec<T>, PolarError> {
+        match self.read_list(path, query, what).await? {
+            ListItems::Missing => Ok(Vec::new()),
+            ListItems::NotArray(_) => Err(PolarError::Decode { mutation: false }),
+            ListItems::Items(items) => items
+                .into_iter()
+                .map(|item| {
+                    serde_json::from_value(item).map_err(|_| PolarError::Decode { mutation: false })
+                })
+                .collect(),
+        }
+    }
+
+    /// `GET /v1/subscriptions/?customer_id=…&limit=100[&active=…]` (`listSubscriptions`), read
+    /// to its end ([`MAX_LIST_PAGES`]).
     pub async fn list_subscriptions(
         &self,
         customer_id: &str,
@@ -268,23 +361,24 @@ impl PolarClient {
         if let Some(active) = active {
             query.push(("active", active));
         }
-        let list: ListResponse<Subscription> = self
-            .get(Path::fixed("/v1/subscriptions/"), &query, Profile::Fetch)
-            .await?;
-        Ok(list.items)
+        self.read_typed_list("/v1/subscriptions/", &query, "subscription")
+            .await
     }
 
-    /// `GET /v1/products/?limit=100` (`getCreditPackCatalog`): the items as Polar sent them;
-    /// `None` when `items` is missing or `null` (`items || []`).
+    /// `GET /v1/products/?limit=100` (`getCreditPackCatalog`), read to its end: the items as
+    /// Polar sent them; `None` when `items` is missing or `null` (`items || []`); a first page
+    /// whose `items` is not an array is returned as it is (the catalog refuses it).
     pub async fn list_products(&self) -> Result<Option<Value>, PolarError> {
-        let list: LooseList = self
-            .get(
-                Path::fixed("/v1/products/"),
-                &[("limit", "100")],
-                Profile::Fetch,
-            )
-            .await?;
-        Ok(list.items.filter(|items| !items.is_null()))
+        Ok(
+            match self
+                .read_list("/v1/products/", &[("limit", "100")], "product")
+                .await?
+            {
+                ListItems::Missing => None,
+                ListItems::NotArray(value) => Some(value),
+                ListItems::Items(items) => Some(Value::Array(items)),
+            },
+        )
     }
 
     /// `GET /v1/products/{id}/` (`getProductBaseAmount`).
@@ -299,16 +393,14 @@ impl PolarClient {
         self.get(path, &[], Profile::Fetch).await
     }
 
-    /// `GET /v1/discounts/?query=…&limit=100` (`findDiscountByPromoCode`).
+    /// `GET /v1/discounts/?query=…&limit=100` (`findDiscountByPromoCode`), read to its end.
     pub async fn search_discounts(&self, query: &str) -> Result<Vec<Discount>, PolarError> {
-        let list: ListResponse<Discount> = self
-            .get(
-                Path::fixed("/v1/discounts/"),
-                &[("query", query), ("limit", "100")],
-                Profile::Fetch,
-            )
-            .await?;
-        Ok(list.items)
+        self.read_typed_list(
+            "/v1/discounts/",
+            &[("query", query), ("limit", "100")],
+            "discount",
+        )
+        .await
     }
 
     /// `POST /v1/checkouts/` with an `Idempotency-Key` (`createBillingCheckout`,
