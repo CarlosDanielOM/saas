@@ -188,3 +188,10 @@ two timer-dependent retry counters, one parser error message. No catalogue allow
 Rig limitation found: two simultaneous recordings restricted to Dragonfly DB4/5 can each
 reserve one database and wait for the other. Extra runs were interrupted with cleanup, and
 remaining runs were serialized. No rig/shared-crate source was modified.
+
+Part 5: the final 13-scenario verification reports no PostgreSQL catalogue difference.
+In particular, `access` starts with a fresh empty PostgreSQL database per side; both services
+create identical tables, ordered columns, SQL types, indexes and constraints, including daily
+partitions. The rig also compares final rows after each scenario. Its observer does not cover
+roles/grants, triggers/function bodies, user-defined types or sequence counters; those are
+not claimed here. The only SQL allowances concern fixture/quantized row timestamps.
