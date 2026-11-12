@@ -191,20 +191,21 @@ impl Activities {
         upsert: bool,
         production_widths: bool,
     ) -> Result<UpdateOutcome, Error> {
-        let mut prepared = info.prepare_update(
+        // The projector that runs in production is native Rust and stores int64 buckets and
+        // double counters; its port keeps those types instead of the ones Node would choose.
+        let mut ctx = WriteContext::new(self.clock.now_ms());
+        if production_widths {
+            ctx = ctx.native_numbers();
+        }
+        let prepared = info.prepare_update(
             &filter,
-            update.clone(),
+            update,
             UpdateOptions {
                 upsert,
                 ..UpdateOptions::default()
             },
-            &mut WriteContext::new(self.clock.now_ms()),
+            &mut ctx,
         )?;
-        // Compatibility adapter: the shared helper canonicalizes Number to Node's widths.
-        // These validated production-projector fields must instead retain native BSON widths.
-        if production_widths {
-            native_bson_compat::preserve_widths(&mut prepared.update, &update);
-        }
         let mut writes = self.store.writes(info.name);
         if info.name == stream_activities::COLLECTION {
             writes = writes.write_concern(
@@ -585,28 +586,5 @@ fn ignore_duplicate<T>(result: Result<T, Error>) -> Result<Option<T>, Error> {
             Ok(None)
         }
         Err(e) => Err(e),
-    }
-}
-/// Scoped workaround until model writes can preserve validated native numeric widths.
-mod native_bson_compat {
-    use super::*;
-    // Scoped workaround for preserving BSON written by the deployed native projector.
-    pub(super) fn preserve_widths(
-        prepared: &mut Option<dima_store::mongo::update::UpdateDoc>,
-        original: &Document,
-    ) {
-        if let Some(dima_store::mongo::update::UpdateDoc::Document(target)) = prepared {
-            for (op, body) in original {
-                if let Bson::Document(body) = body
-                    && let Ok(dest) = target.get_document_mut(op)
-                {
-                    for (key, value) in body {
-                        if matches!(value, Bson::Double(_) | Bson::Int64(_)) || key == "active" {
-                            dest.insert(key, value.clone());
-                        }
-                    }
-                }
-            }
-        }
     }
 }

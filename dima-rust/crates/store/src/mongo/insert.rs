@@ -18,7 +18,6 @@
 use crate::mongo::cast::{
     Caster, PrepareError, WriteContext, check_document_depth, minimize, truthy,
 };
-use crate::mongo::number::normalize_js_numbers;
 use crate::mongo::schema::Schema;
 use bson::{Bson, Document};
 
@@ -97,7 +96,7 @@ pub fn prepare_insert(
             minimize(schema, &mut doc);
         }
     }
-    normalize_js_numbers(&mut doc);
+    caster.ctx.normalize_numbers(&mut doc);
     Ok(PreparedInsert {
         document: doc,
         dropped_paths: caster.dropped,
