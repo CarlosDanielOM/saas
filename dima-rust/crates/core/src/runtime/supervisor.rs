@@ -19,6 +19,17 @@
 //! [`SupervisorHandle::run_until_shutdown`] returns so the binary stops the other tasks and exits
 //! non-zero ([`SupervisorReport::is_clean`] is false). This is MIGRATION.md section 6's rule for
 //! the single-process cron: the process exits and the container restarts it.
+//!
+//! **Restart delays.** By default every restart waits [`SupervisorConfig::restart_delay`], as
+//! the reference's supervisor does. With [`Supervisor::with_backoff`] the delay doubles on each
+//! restart that follows a short run, up to [`Backoff::max`], and falls back to the base delay
+//! after a run that lasted [`Backoff::reset_after`]: a task that fails at every start is retried
+//! ever more slowly instead of every few seconds for ever, while one that fails once in a while
+//! is retried at the base delay. The delays are per task; the other tasks are not affected.
+//!
+//! **Events.** [`Supervisor::with_events`] reports each start, end, scheduled restart (with its
+//! delay), stop and fatal stop to a [`TaskEvents`] sink, so a binary can turn them into logs and
+//! metrics.
 
 use super::deadline::panic_message;
 use super::registry::WorkRegistry;
@@ -70,6 +81,43 @@ impl Default for SupervisorConfig {
             stop_grace: Duration::from_secs(2),
         }
     }
+}
+
+/// Growing restart delays ([`Supervisor::with_backoff`]).
+///
+/// The delay before a restart is `restart_delay × 2^n`, at most `max` (and never less than
+/// `restart_delay`), where `n` counts the restarts in a row that followed a run shorter than
+/// `reset_after`. A run that lasted at least `reset_after` sets `n` back to 0.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Backoff {
+    /// The longest delay.
+    pub max: Duration,
+    /// How long a run must last to count as healthy.
+    pub reset_after: Duration,
+}
+
+impl Backoff {
+    /// The delay of a restart after `streak` short runs in a row before this one.
+    fn delay(&self, base: Duration, streak: u32) -> Duration {
+        let factor = 1_u32.checked_shl(streak.min(31)).unwrap_or(u32::MAX);
+        base.saturating_mul(factor).min(self.max.max(base))
+    }
+}
+
+/// What a [`Supervisor`] reports about its tasks ([`Supervisor::with_events`]). Every method is
+/// called from the task's supervising future: keep it quick and never block.
+pub trait TaskEvents: Send + Sync {
+    /// The task starts (`restarts`: how many times it has been restarted before).
+    fn started(&self, _task: &'static str, _restarts: u64) {}
+    /// A run of the task ended after `ran`, and everything it started has stopped.
+    fn ended(&self, _task: &'static str, _exit: &TaskExit, _ran: Duration) {}
+    /// The task will start again after `delay` (`restarts`: the count including this one).
+    fn restarting(&self, _task: &'static str, _restarts: u64, _delay: Duration) {}
+    /// The task stopped for shutdown and will not start again.
+    fn stopped(&self, _task: &'static str) {}
+    /// Work the task started did not stop: the task will not start again and the process must
+    /// exit ([`FatalError`]).
+    fn fatal(&self, _task: &'static str) {}
 }
 
 /// How a task's last run ended.
@@ -159,6 +207,8 @@ struct Entry {
 #[derive(Default)]
 pub struct Supervisor {
     config: SupervisorConfig,
+    backoff: Option<Backoff>,
+    events: Option<Arc<dyn TaskEvents>>,
     entries: Vec<Entry>,
 }
 
@@ -167,8 +217,26 @@ impl fmt::Debug for Supervisor {
         let names: Vec<_> = self.entries.iter().map(|entry| entry.name).collect();
         f.debug_struct("Supervisor")
             .field("config", &self.config)
+            .field("backoff", &self.backoff)
+            .field("events", &self.events.is_some())
             .field("tasks", &names)
             .finish()
+    }
+}
+
+/// What every supervising future of one supervisor shares.
+#[derive(Clone)]
+struct Policy {
+    config: SupervisorConfig,
+    backoff: Option<Backoff>,
+    events: Option<Arc<dyn TaskEvents>>,
+}
+
+impl Policy {
+    fn emit(&self, event: impl FnOnce(&dyn TaskEvents)) {
+        if let Some(events) = &self.events {
+            event(events.as_ref());
+        }
     }
 }
 
@@ -177,8 +245,25 @@ impl Supervisor {
     pub fn new(config: SupervisorConfig) -> Self {
         Self {
             config,
+            backoff: None,
+            events: None,
             entries: Vec::new(),
         }
+    }
+
+    /// Restart delays that grow while a task keeps failing soon after it starts (see
+    /// [`Backoff`]); without this every restart waits [`SupervisorConfig::restart_delay`].
+    #[must_use]
+    pub fn with_backoff(mut self, backoff: Backoff) -> Self {
+        self.backoff = Some(backoff);
+        self
+    }
+
+    /// Reports every start, end, restart, stop and fatal stop to `events`.
+    #[must_use]
+    pub fn with_events(mut self, events: Arc<dyn TaskEvents>) -> Self {
+        self.events = Some(events);
+        self
     }
 
     /// Adds a task. `task` is called for every (re)start with a token that fires on shutdown; the
@@ -203,6 +288,11 @@ impl Supervisor {
         let token = shutdown.child();
         let tracker = TaskTracker::new();
         let fatal = Arc::new(FatalState::default());
+        let policy = Policy {
+            config: self.config,
+            backoff: self.backoff,
+            events: self.events,
+        };
         let mut slots = Vec::new();
         for entry in self.entries {
             let slot = Arc::new(Slot {
@@ -218,7 +308,7 @@ impl Supervisor {
                 entry.factory,
                 token.clone(),
                 Arc::clone(&slot),
-                self.config,
+                policy.clone(),
                 Arc::clone(&fatal),
             ));
             slots.push(slot);
@@ -271,15 +361,22 @@ async fn supervise(
     factory: TaskFactory,
     token: Shutdown,
     slot: Arc<Slot>,
-    config: SupervisorConfig,
+    policy: Policy,
     fatal: Arc<FatalState>,
 ) {
+    let config = policy.config;
+    let name = slot.snapshot().name;
+    // Restarts in a row that followed a short run (see `Backoff`).
+    let mut streak: u32 = 0;
     loop {
         if token.is_triggered() {
             slot.update(|state| state.status = TaskStatus::Stopped);
+            policy.emit(|events| events.stopped(name));
             return;
         }
         slot.update(|state| state.status = TaskStatus::Running);
+        policy.emit(|events| events.started(name, slot.snapshot().restarts));
+        let started = tokio::time::Instant::now();
         // Everything this run starts through `run_with_deadline` is registered here, and so is
         // the run itself.
         let registry = WorkRegistry::new();
@@ -311,25 +408,45 @@ async fn supervise(
                 .await
                 .is_ok();
         slot.set_current(None);
-        if !stopped {
-            slot.update(|state| {
-                state.last_exit = Some(TaskExit::Unstoppable);
-                state.status = TaskStatus::Fatal;
-            });
-            fatal.report(slot.snapshot().name);
-            return;
-        }
-        slot.update(|state| state.last_exit = exit);
+        let ran = started.elapsed();
+        let exit = match exit {
+            Some(exit) if stopped => exit,
+            _ => {
+                slot.update(|state| {
+                    state.last_exit = Some(TaskExit::Unstoppable);
+                    state.status = TaskStatus::Fatal;
+                });
+                fatal.report(name);
+                policy.emit(|events| events.ended(name, &TaskExit::Unstoppable, ran));
+                policy.emit(|events| events.fatal(name));
+                return;
+            }
+        };
+        policy.emit(|events| events.ended(name, &exit, ran));
+        slot.update(|state| state.last_exit = Some(exit));
         if token.is_triggered() {
             slot.update(|state| state.status = TaskStatus::Stopped);
+            policy.emit(|events| events.stopped(name));
             return;
         }
+        let delay = match policy.backoff {
+            None => config.restart_delay,
+            Some(backoff) => {
+                if ran >= backoff.reset_after {
+                    streak = 0;
+                }
+                let delay = backoff.delay(config.restart_delay, streak);
+                streak = streak.saturating_add(1);
+                delay
+            }
+        };
         slot.update(|state| {
             state.restarts += 1;
             state.status = TaskStatus::Restarting;
         });
+        policy.emit(|events| events.restarting(name, slot.snapshot().restarts, delay));
         tokio::select! {
-            () = tokio::time::sleep(config.restart_delay) => {}
+            () = tokio::time::sleep(delay) => {}
             () = token.wait() => {}
         }
     }
@@ -511,6 +628,187 @@ mod tests {
                 .iter()
                 .all(|task| task.status == TaskStatus::Stopped)
         );
+    }
+
+    /// Every event, in order, as text.
+    #[derive(Default)]
+    struct Recorded(std::sync::Mutex<Vec<String>>);
+
+    impl Recorded {
+        fn push(&self, line: String) {
+            self.0.lock().unwrap().push(line);
+        }
+        fn lines(&self) -> Vec<String> {
+            self.0.lock().unwrap().clone()
+        }
+    }
+
+    impl TaskEvents for Recorded {
+        fn started(&self, task: &'static str, restarts: u64) {
+            self.push(format!("{task} started {restarts}"));
+        }
+        fn ended(&self, task: &'static str, exit: &TaskExit, ran: Duration) {
+            self.push(format!("{task} ended {exit:?} after {}ms", ran.as_millis()));
+        }
+        fn restarting(&self, task: &'static str, restarts: u64, delay: Duration) {
+            self.push(format!(
+                "{task} restart {restarts} in {}ms",
+                delay.as_millis()
+            ));
+        }
+        fn stopped(&self, task: &'static str) {
+            self.push(format!("{task} stopped"));
+        }
+        fn fatal(&self, task: &'static str) {
+            self.push(format!("{task} fatal"));
+        }
+    }
+
+    #[test]
+    fn backoff_doubles_from_the_base_and_stops_at_its_cap() {
+        let backoff = Backoff {
+            max: Duration::from_secs(60),
+            reset_after: Duration::from_secs(60),
+        };
+        let base = Duration::from_secs(5);
+        let delays: Vec<u64> = (0..8)
+            .map(|streak| backoff.delay(base, streak).as_secs())
+            .collect();
+        assert_eq!(delays, vec![5, 10, 20, 40, 60, 60, 60, 60]);
+        assert_eq!(backoff.delay(base, u32::MAX), Duration::from_secs(60));
+        // A cap below the base never shortens the base delay.
+        let tight = Backoff {
+            max: Duration::from_secs(1),
+            reset_after: Duration::ZERO,
+        };
+        assert_eq!(tight.delay(base, 3), base);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_task_failing_at_every_start_backs_off_to_the_cap_alone() {
+        let events = Arc::new(Recorded::default());
+        let (healthy_starts, healthy_seen) = counter();
+        let mut supervisor = Supervisor::new(config())
+            .with_backoff(Backoff {
+                max: Duration::from_secs(8),
+                reset_after: Duration::from_secs(30),
+            })
+            .with_events(events.clone());
+        supervisor.add("broken", |_| async { Err::<(), _>("no store") });
+        supervisor.add("healthy", move |token: Shutdown| {
+            healthy_starts.fetch_add(1, Ordering::SeqCst);
+            async move {
+                token.wait().await;
+                Ok::<(), String>(())
+            }
+        });
+        let handle = supervisor.start(&Shutdown::new());
+        // Delays 1, 2, 4, 8, 8 s: the sixth start happens at 23 s.
+        sleep(Duration::from_millis(23_500)).await;
+        let restarts: Vec<String> = events
+            .lines()
+            .into_iter()
+            .filter(|line| line.starts_with("broken restart"))
+            .collect();
+        assert_eq!(
+            restarts,
+            vec![
+                "broken restart 1 in 1000ms",
+                "broken restart 2 in 2000ms",
+                "broken restart 3 in 4000ms",
+                "broken restart 4 in 8000ms",
+                "broken restart 5 in 8000ms",
+                "broken restart 6 in 8000ms",
+            ]
+        );
+        let states = handle.snapshot();
+        assert_eq!(states[0].restarts, 6);
+        assert_eq!(
+            states[0].last_exit,
+            Some(TaskExit::Failed("no store".to_owned()))
+        );
+        assert_eq!(states[1].status, TaskStatus::Running);
+        assert_eq!(states[1].restarts, 0);
+        assert_eq!(healthy_seen.load(Ordering::SeqCst), 1);
+        assert!(handle.stop().await.is_clean());
+        let lines = events.lines();
+        assert!(lines.contains(&"broken stopped".to_owned()), "{lines:?}");
+        assert!(lines.contains(&"healthy stopped".to_owned()), "{lines:?}");
+        assert!(lines.contains(&"healthy started 0".to_owned()), "{lines:?}");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_healthy_run_resets_the_backoff() {
+        let events = Arc::new(Recorded::default());
+        let (runs, _) = counter();
+        let mut supervisor = Supervisor::new(config())
+            .with_backoff(Backoff {
+                max: Duration::from_secs(8),
+                reset_after: Duration::from_secs(30),
+            })
+            .with_events(events.clone());
+        supervisor.add("flaky", move |_| {
+            let run = runs.fetch_add(1, Ordering::SeqCst);
+            async move {
+                // Runs 0, 1, 2 fail at once; run 3 lasts a minute, then fails.
+                if run == 3 {
+                    sleep(Duration::from_secs(60)).await;
+                }
+                Err::<(), _>("lost")
+            }
+        });
+        let handle = supervisor.start(&Shutdown::new());
+        // 1 + 2 + 4 s of delays, then 60 s of run 3, then the delay after it.
+        sleep(Duration::from_millis(67_500)).await;
+        let restarts: Vec<String> = events
+            .lines()
+            .into_iter()
+            .filter(|line| line.starts_with("flaky restart"))
+            .collect();
+        assert_eq!(
+            restarts,
+            vec![
+                "flaky restart 1 in 1000ms",
+                "flaky restart 2 in 2000ms",
+                "flaky restart 3 in 4000ms",
+                "flaky restart 4 in 1000ms",
+            ]
+        );
+        assert!(
+            events
+                .lines()
+                .contains(&"flaky ended Failed(\"lost\") after 60000ms".to_owned())
+        );
+        handle.stop().await;
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_fatal_task_is_reported_to_the_events() {
+        let events = Arc::new(Recorded::default());
+        let mut supervisor = Supervisor::new(SupervisorConfig {
+            restart_delay: Duration::from_millis(10),
+            stop_deadline: Duration::from_secs(1),
+            stop_grace: Duration::from_millis(50),
+        })
+        .with_events(events.clone());
+        supervisor.add("stuck", |token: Shutdown| async move {
+            stubborn_work(&token, 10, 10, 300).await;
+            Err::<(), _>("work did not stop".to_owned())
+        });
+        let handle = supervisor.start(&Shutdown::new());
+        let report = tokio::time::timeout(Duration::from_secs(5), handle.run_until_shutdown())
+            .await
+            .unwrap();
+        assert!(!report.is_clean());
+        let lines = events.lines();
+        assert_eq!(lines.first().map(String::as_str), Some("stuck started 0"));
+        assert!(
+            lines
+                .iter()
+                .any(|line| line.starts_with("stuck ended Unstoppable")),
+            "{lines:?}"
+        );
+        assert_eq!(lines.last().map(String::as_str), Some("stuck fatal"));
     }
 
     #[tokio::test(start_paused = true)]

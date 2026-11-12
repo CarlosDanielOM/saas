@@ -17,6 +17,6 @@ pub use shutdown::{
     Shutdown, ShutdownReport, ShutdownStep, StepOutcome, StopSignal, shutdown_in_order, stop_signal,
 };
 pub use supervisor::{
-    FatalError, Supervisor, SupervisorConfig, SupervisorHandle, SupervisorReport, TaskExit,
-    TaskState, TaskStatus, restart_delay_from_env,
+    Backoff, FatalError, Supervisor, SupervisorConfig, SupervisorHandle, SupervisorReport,
+    TaskEvents, TaskExit, TaskState, TaskStatus, restart_delay_from_env,
 };

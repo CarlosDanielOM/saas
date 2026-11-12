@@ -1241,6 +1241,8 @@ Kept by the lead; a package not listed has not started.
 | P4-BOT-INGRESS | merged (dima-chat 29 tests, dima-actions 22). Hand-over: the trait `ingress::EventsubHandler` (`handle` after the answer, `revoke` before it), implemented by P4-CHAT-EVENTS and P4-CHAT-MESSAGE. Wanted: an accessor for the EventSub secret in `dima-twitch` (the ingress reads `TWITCH_EVENTSUB_SECRET` itself); a bounded body reader in `dima-web` (its parser reads up to 64 MiB of a refused body). Kept from the reference: chat messages and redemptions are processed at most once; the dead-letter list is in Dragonfly |
 | P4-ACT-CORE | running (Opus xhigh) |
 | P4-AI-MEMORY | merged. `MemoryStore::repair` restores a point missing after a failure: the cron calls it per channel with the stream-memory work (P4-CRON-RECAP), the operator CLI offers it (P4-OPS-CLI). Seen in the production copy: 769 confirmed `known_user_fact` memories about the channel itself, which current code would refuse to create; no confirmed viewer fact carries a user id, so viewer-fact recall is always empty |
-| P2-CRON-01 | running (Opus xhigh) |
+| P2-CRON-01 | merged (see `packages.md`) |
+| P4-MOD-RULES | running (Opus) |
+| P4-FEAT-WIDGETS | running (Sol) |
 | P4-FEAT-GAMES | merged (36 tests). Traits for later packages: `ChannelOwners`, `WinnerActionRunner`, `OverlayPresence`, `DuelEvents`, `DuelModeration`, `EditorCheck`, `LegacyTiers`; the cron calls `RouletteService::run_due_actions` every second and `DuelCompletion::tick` every 500 ms (P4-CRON-FEATURES), and the roulette completion worker moves in with P2-CRON-02. Not yet run against the Twitch mock: `TwitchDuelModeration` itself (compared at the wrapper level) |
 | P4-API-APP | running (Opus) |

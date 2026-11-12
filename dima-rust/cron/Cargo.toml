@@ -1,0 +1,50 @@
+[package]
+name = "dima-cron"
+description = "The cron process: every background worker as a supervised task in one process. Wiring only."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+# The worker framework, the worker table and the start-up wiring are a library so that the tests
+# (and the later cron packages) use them directly; `src/main.rs` only reads the command line and
+# the environment and runs it.
+[lib]
+name = "dima_cron"
+path = "src/lib.rs"
+
+[[bin]]
+name = "dima-cron"
+path = "src/main.rs"
+
+[dependencies]
+# What the cron runs (ledger/upper-layers.md section 2.3). It never links dima-chat,
+# dima-realtime, dima-routes, dima-site-agent or dima-services (api/tests/layers.rs). The later
+# cron packages add dima-event-handlers, dima-recap, dima-actions and dima-moderation.
+dima-stream = { workspace = true }
+dima-twitch = { workspace = true }
+# Wiring: the environment, the supervisor, the engine's stack contract, stores, telemetry.
+dima-core = { workspace = true }
+dima-engine = { workspace = true }
+dima-http = { workspace = true }
+dima-store = { workspace = true }
+dima-telemetry = { workspace = true }
+anyhow = { workspace = true }
+futures-util = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+dima-core = { workspace = true, features = ["test-util"] }
+dima-stream = { workspace = true, features = ["test-util"] }
+dima-twitch = { workspace = true, features = ["test-util"] }
+dima-http = { workspace = true, features = ["test-util"] }
+dima-model = { workspace = true }
+bson = { workspace = true }
+nix = { workspace = true }
+tokio = { workspace = true, features = ["test-util"] }
+uuid = { workspace = true }
