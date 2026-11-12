@@ -376,3 +376,95 @@ async fn a_chatter_is_first_exactly_once() {
     })
     .await;
 }
+
+fn decision(
+    mode: dima_moderation::rules::DecisionMode,
+    message: &str,
+    deadline_ms: i64,
+) -> dima_moderation::rules::decisions::NewDecision {
+    use dima_moderation::rules::advanced::ModerationMatch;
+    dima_moderation::rules::decisions::NewDecision {
+        channel_id: "c1".into(),
+        user_id: "u1".into(),
+        username: "viewer".into(),
+        message_id: message.into(),
+        message_text: "zorp 😀".into(),
+        rule_id: "r1".into(),
+        rule: bson::doc! {
+            "id": "r1", "type": "blacklist", "terms": ["zorp"],
+            "semantic": { "enabled": true, "policy": "No zorp." },
+            "variations": { "mode": "common", "allowSpaces": true, "entries": [
+                bson::serialize_to_bson(&dima_moderation::rules::variations::build_variation("rinn", &serde_json::json!(["rin"])).unwrap()).unwrap()
+            ] },
+        },
+        settings_version: 3.0,
+        matches: vec![ModerationMatch {
+            matcher_id: "literal".into(),
+            text: "zorp".into(),
+            start: 0,
+            end: 4,
+        }],
+        context: Vec::new(),
+        mode,
+        deadline_ms,
+        review_source: None,
+    }
+}
+
+#[tokio::test]
+async fn decisions_are_created_once_and_semantic_waits_are_fenced() {
+    use dima_moderation::rules::DecisionMode;
+    use dima_moderation::rules::decisions::moderation_decision_id;
+    with_store(|store, clock| async move {
+        let now = clock.now_ms();
+        let store = Arc::new(store);
+        // Two deliveries of the same message create one decision.
+        let input = decision(DecisionMode::Literal, "m1", now + 4000);
+        let (a, b) = tokio::join!(store.create_moderation_decision(&input), store.create_moderation_decision(&input));
+        let (a, b) = (a.unwrap(), b.unwrap());
+        assert_eq!(a, b);
+        assert_eq!(a.get_str("_id").unwrap(), moderation_decision_id("c1", "m1", "r1"));
+        assert_eq!(a.get_str("state").unwrap(), "completed");
+        assert_eq!(a.get_str("verdict").unwrap(), "violation");
+        assert_eq!(a.get_str("status").unwrap(), "matched");
+        assert_eq!(a.get_str("reviewSource").unwrap(), "rule");
+        assert_eq!(a.get_str("model").unwrap(), "");
+        assert_eq!(a.get_document("consequence").unwrap().get_str("status").unwrap(), "none");
+        let expires = a.get_datetime("expiresAt").unwrap().timestamp_millis();
+        assert_eq!(expires, now + 180 * 86_400_000);
+        // The rule is stored with its variations compiled for spaces.
+        let entry = a.get_document("rule").unwrap().get_document("variations").unwrap().get_array("entries").unwrap()[0].as_document().unwrap().clone();
+        assert_eq!(entry.get_bool("allowSpaces").unwrap(), true);
+        assert!(entry.get("symbolVersion").is_none());
+        assert_eq!(a.get_array("matches").unwrap()[0].as_document().unwrap().get("end"), Some(&bson::Bson::Int32(4)));
+
+        // A semantic decision the worker completes in time.
+        let pending = store.create_moderation_decision(&decision(DecisionMode::Semantic, "m2", now + 4000)).await.unwrap();
+        assert_eq!(pending.get_str("state").unwrap(), "pending");
+        assert_eq!(pending.get_document("rule").unwrap().get_document("semantic").unwrap().get("thresholdPercent"), Some(&bson::Bson::Int32(85)));
+        let id = pending.get_str("_id").unwrap().to_owned();
+        let worker = {
+            let store = Arc::clone(&store);
+            let id = id.clone();
+            async move {
+                tokio::time::sleep(Duration::from_millis(200)).await;
+                store.mongo.documents("moderation_decisions")
+                    .update_one(bson::doc! { "_id": &id }, bson::doc! { "$set": { "state": "completed", "verdict": "violation", "status": "scored" } })
+                    .await.unwrap();
+            }
+        };
+        let (done, ()) = tokio::join!(store.await_semantic_decision(&id, now + 4000), worker);
+        assert_eq!(done.unwrap().unwrap().get_str("verdict").unwrap(), "violation");
+
+        // Past its deadline, a pending decision is fenced to a timeout.
+        let late = store.create_moderation_decision(&decision(DecisionMode::Semantic, "m3", now - 1)).await.unwrap();
+        let fenced = store.await_semantic_decision(late.get_str("_id").unwrap(), now - 1).await.unwrap().unwrap();
+        assert_eq!(fenced.get_str("status").unwrap(), "timeout");
+        assert_eq!(fenced.get_str("verdict").unwrap(), "uncertain");
+        assert_eq!(fenced.get_document("consequence").unwrap().get_str("status").unwrap(), "allowed_fallback");
+        // A completed one is never overwritten by the fence.
+        let completed = store.await_semantic_decision(&id, now - 1).await.unwrap().unwrap();
+        assert_eq!(completed.get_str("status").unwrap(), "scored");
+    })
+    .await;
+}

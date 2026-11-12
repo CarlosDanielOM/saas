@@ -55,6 +55,7 @@
 pub mod advanced;
 pub mod blacklist;
 pub mod caps;
+pub mod decisions;
 pub mod emote_spam;
 pub mod engine;
 pub mod links;

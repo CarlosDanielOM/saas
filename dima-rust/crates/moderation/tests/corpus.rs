@@ -40,7 +40,12 @@ fn corpus() -> Value {
 }
 
 fn short(text: &str) -> String {
-    format!("#{}", &hex::encode(Sha256::digest(text.as_bytes()))[..16])
+    format!(
+        "#{}",
+        hex::encode(Sha256::digest(text.as_bytes()))
+            .get(..16)
+            .unwrap()
+    )
 }
 
 /// Why Rust's outcome differs from the reference's, on purpose.
@@ -145,7 +150,7 @@ fn recorded(results: &Value) -> BTreeMap<(u64, u64, u64), Value> {
 }
 
 fn in_subset(message: usize) -> bool {
-    message % 8 == 0
+    message.is_multiple_of(8)
 }
 
 /// The kind of an intended difference, or `None`.
