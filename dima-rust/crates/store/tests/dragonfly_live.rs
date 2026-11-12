@@ -40,7 +40,7 @@ impl CommandHook for Recorder {
 impl ErrorHook for Recorder {
     fn connection_error(&self, error: &ConnectionError<'_>) {
         if let Ok(mut errors) = self.errors.lock() {
-            errors.push(format!("{}:{}", error.caller, error.code));
+            errors.push(format!("{}:{}:{}", error.caller, error.code, error.error));
         }
     }
 }
@@ -408,7 +408,7 @@ async fn a_full_subscription_buffer_drops_and_counts() -> Result<()> {
 
 #[tokio::test]
 async fn json_handler_receives_the_envelope() -> Result<()> {
-    let Some(df) = plain().await? else {
+    let Some((df, recorder)) = connect_recorded(None).await? else {
         return Ok(());
     };
     let channel = prefix("pubsub-json");
@@ -428,6 +428,12 @@ async fn json_handler_receives_the_envelope() -> Result<()> {
         })
         .await?;
     df.publish(&channel, b"not json").await?;
+    // Valid JSON of the wrong shape: serde's message would quote the value.
+    df.publish(
+        &channel,
+        br#"{"channelID":"1","session":"s","timestamp":"top-secret-token"}"#,
+    )
+    .await?;
     let data = serde_json::json!({"channelID": "123", "session": "s \u{1F600}"});
     df.publish_envelope(&channel, &data, 1_794_000_000_000.0)
         .await?;
@@ -443,6 +449,27 @@ async fn json_handler_receives_the_envelope() -> Result<()> {
     );
     ensure!(
         envelope(&data, 1.0)? == r#"{"channelID":"123","session":"s 😀","timestamp":1}"#.as_bytes()
+    );
+    // Both bad payloads were reported, with a category and a position, never their text.
+    let errors = recorder
+        .errors
+        .lock()
+        .map(|e| e.clone())
+        .unwrap_or_default();
+    let reports: Vec<&String> = errors
+        .iter()
+        .filter(|e| e.contains("not the expected JSON"))
+        .collect();
+    ensure!(reports.len() == 2, "{errors:?}");
+    ensure!(
+        reports
+            .iter()
+            .all(|e| !e.contains("top-secret") && e.contains("column")),
+        "{reports:?}"
+    );
+    ensure!(
+        reports.iter().any(|e| e.contains("data error")),
+        "{reports:?}"
     );
     Ok(())
 }

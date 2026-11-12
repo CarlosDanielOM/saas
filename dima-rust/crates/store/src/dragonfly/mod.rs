@@ -38,7 +38,7 @@ pub use blocking::BlockingConnection;
 pub use client::Dragonfly;
 pub use commands::{End, SetCondition, SetExpiry, SetOptions, SetOutcome, Ttl};
 pub use config::DragonflyConfig;
-pub use error::DragonflyError;
+pub use error::{DecodeCategory, DecodeError, DragonflyError};
 pub use hooks::{CommandHook, ErrorHook, Hooks};
 pub use pubsub::{Message, Subscriber, Subscription, Topic};
 pub use queue::{DelayQueue, ListQueue, ProcessingList, QueueItem};

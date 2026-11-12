@@ -24,9 +24,13 @@ pub enum DragonflyError {
     /// A reply that must be text was not UTF-8.
     #[error("Dragonfly reply is not UTF-8 text")]
     NotUtf8,
-    /// A value could not be written as JSON (or a received payload could not be read as JSON).
+    /// A value Rust built could not be written as JSON.
     #[error("JSON: {0}")]
     Json(#[from] serde_json::Error),
+    /// A received payload (pub/sub message, queue item) is not the expected JSON. Carries a
+    /// fixed category and a position only: serde's own message quotes the offending input.
+    #[error(transparent)]
+    Decode(#[from] DecodeError),
     /// The subscriber task has stopped (it was shut down or its owner dropped it).
     #[error("Dragonfly subscriber has stopped")]
     SubscriberClosed,
@@ -56,5 +60,97 @@ impl DragonflyError {
     }
 }
 
+/// What kind of decode failure ([`serde_json::error::Category`] without the input text).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DecodeCategory {
+    /// Not syntactically valid JSON.
+    Syntax,
+    /// Valid JSON of the wrong shape (missing field, wrong type, ...).
+    Data,
+    /// The input ended inside a value.
+    Eof,
+    /// Reading failed (does not happen for in-memory input).
+    Io,
+}
+
+impl DecodeCategory {
+    /// A fixed lowercase name.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Syntax => "syntax",
+            Self::Data => "data",
+            Self::Eof => "eof",
+            Self::Io => "io",
+        }
+    }
+}
+
+/// A received payload did not decode. Only the category and the position (1-based line and
+/// column, 0 when unknown) are kept, never serde's message, which can quote payload text such
+/// as a token (`invalid type: string "..."`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("payload is not the expected JSON ({} error at line {line}, column {column})", .category.as_str())]
+pub struct DecodeError {
+    /// What went wrong.
+    pub category: DecodeCategory,
+    /// Line of the failure.
+    pub line: usize,
+    /// Column of the failure.
+    pub column: usize,
+}
+
+impl From<&serde_json::Error> for DecodeError {
+    fn from(error: &serde_json::Error) -> Self {
+        use serde_json::error::Category;
+        Self {
+            category: match error.classify() {
+                Category::Syntax => DecodeCategory::Syntax,
+                Category::Data => DecodeCategory::Data,
+                Category::Eof => DecodeCategory::Eof,
+                Category::Io => DecodeCategory::Io,
+            },
+            line: error.line(),
+            column: error.column(),
+        }
+    }
+}
+
+/// Decodes received JSON, keeping only a [`DecodeError`] on failure.
+pub(crate) fn decode<'a, T: serde::Deserialize<'a>>(bytes: &'a [u8]) -> Result<T> {
+    serde_json::from_slice(bytes).map_err(|error| DragonflyError::Decode((&error).into()))
+}
+
 /// Result alias for this module.
 pub type Result<T, E = DragonflyError> = std::result::Result<T, E>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug, serde::Deserialize)]
+    #[allow(dead_code)]
+    struct Shape {
+        n: u64,
+    }
+
+    #[test]
+    fn decode_errors_never_quote_the_payload() {
+        for (payload, category) in [
+            (&br#"{"n":"top-secret-token"}"#[..], DecodeCategory::Data),
+            (&br#"{"n":1,"top-secret-token"#[..], DecodeCategory::Eof),
+            (&br#"{"n":top-secret-token}"#[..], DecodeCategory::Syntax),
+        ] {
+            let error = decode::<Shape>(payload).unwrap_err();
+            let text = error.to_string();
+            assert!(!text.contains("top-secret"), "{text}");
+            assert!(!format!("{error:?}").contains("top-secret"), "{error:?}");
+            let DragonflyError::Decode(decode) = error else {
+                panic!("expected a decode error, got {error:?}")
+            };
+            assert_eq!(decode.category, category);
+            assert_eq!(decode.line, 1);
+            assert!(decode.column > 0);
+            assert!(text.contains(category.as_str()), "{text}");
+        }
+    }
+}

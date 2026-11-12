@@ -73,16 +73,15 @@ impl QueueItem {
     /// `Cow<str>`, `&RawValue`). Strict JSON: a lone surrogate escape (which `JSON.parse` accepts)
     /// is an error here; use [`Self::parse`] for such input.
     pub fn view<'a, T: Deserialize<'a>>(&'a self) -> Result<T> {
-        Ok(serde_json::from_slice(&self.raw)?)
+        super::error::decode(&self.raw)
     }
 
     /// A parsed copy, after replacing lone surrogate escapes with U+FFFD as `JSON.parse` input
     /// is repaired at the edge (text rule 3). The item keeps its original bytes for
-    /// acknowledgement and requeue.
+    /// acknowledgement and requeue. Failures of both are [`super::DragonflyError::Decode`]:
+    /// a category and a position, never the item's text.
     pub fn parse<T: DeserializeOwned>(&self) -> Result<T> {
-        Ok(serde_json::from_slice(&sanitize_lone_surrogates(
-            &self.raw,
-        ))?)
+        super::error::decode(&sanitize_lone_surrogates(&self.raw))
     }
 
     /// Gives up the item and returns its bytes.

@@ -243,10 +243,10 @@ impl Subscriber {
                 match parse_envelope::<T>(&message.payload) {
                     Ok(value) => handler(value),
                     Err(error) => {
-                        if let DragonflyError::Json(json) = &error {
+                        if let DragonflyError::Decode(decode) = &error {
                             shared
                                 .hooks
-                                .report_payload_error(&shared.config.caller, json);
+                                .report_payload_error(&shared.config.caller, decode);
                         }
                     }
                 }
@@ -304,9 +304,10 @@ pub fn envelope<T: Serialize + ?Sized>(data: &T, now_ms: f64) -> Result<Vec<u8>>
     Ok(to_js_json(&value).into_bytes())
 }
 
-/// `JSON.parse(message)` into `T`, lone surrogate escapes replaced first (text rule 3).
+/// `JSON.parse(message)` into `T`, lone surrogate escapes replaced first (text rule 3). A
+/// failure is a [`DragonflyError::Decode`]: category and position, never the payload's text.
 pub fn parse_envelope<T: DeserializeOwned>(payload: &[u8]) -> Result<T> {
-    Ok(serde_json::from_slice(&sanitize_lone_surrogates(payload))?)
+    super::error::decode(&sanitize_lone_surrogates(payload))
 }
 
 impl Dragonfly {
@@ -322,11 +323,12 @@ impl Dragonfly {
 }
 
 impl super::hooks::Hooks {
-    fn report_payload_error(&self, caller: &str, error: &serde_json::Error) {
+    /// Reports a payload that did not decode: the fixed category and the position only.
+    fn report_payload_error(&self, caller: &str, error: &super::error::DecodeError) {
         if let Some(hook) = &self.errors {
             let error = redis::RedisError::from(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("pub/sub payload is not the expected JSON: {error}"),
+                format!("pub/sub {error}"),
             ));
             hook.connection_error(&super::hooks::ConnectionError {
                 caller,
