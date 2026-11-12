@@ -37,6 +37,8 @@
 
 use crate::client::{self, Body, Cancel};
 use crate::error::{BlockReason, BoxError, Error, RequestInfo, Result};
+use crate::observe::{EndGuard, NoopObserver, Observer};
+use crate::redact::QueryShown;
 use crate::response::{Limits, Response};
 use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 use std::future::Future;
@@ -379,6 +381,29 @@ pub struct GuardedClient {
     inner: reqwest::Client,
     policy: Arc<GuardPolicy>,
     shutdown: dima_core::Shutdown,
+    observer: Arc<dyn Observer>,
+}
+
+/// What the observer is told about a guarded fetch instead of its URL: the provider is
+/// `"guarded"` and the template is the class of the host the caller asked for.
+pub mod host_class {
+    /// A name on the policy's host list.
+    pub const LISTED: &str = "listed-host";
+    /// Any public name (the policy has no host list).
+    pub const PUBLIC_NAME: &str = "public-name";
+    /// An IP literal.
+    pub const IP_LITERAL: &str = "ip-literal";
+    /// The URL did not parse.
+    pub const INVALID: &str = "invalid";
+}
+
+fn host_class(policy: &GuardPolicy, url: Option<&Url>) -> &'static str {
+    match url.and_then(Url::host) {
+        Some(url::Host::Domain(_)) if policy.hosts.is_some() => host_class::LISTED,
+        Some(url::Host::Domain(_)) => host_class::PUBLIC_NAME,
+        Some(url::Host::Ipv4(_) | url::Host::Ipv6(_)) => host_class::IP_LITERAL,
+        None => host_class::INVALID,
+    }
 }
 
 const INFO_PROVIDER: &str = "guarded";
@@ -414,7 +439,15 @@ impl GuardedClient {
             inner,
             policy,
             shutdown,
+            observer: Arc::new(NoopObserver),
         })
+    }
+
+    /// Reports every fetch to `observer`: provider `"guarded"`, the method, and a
+    /// [`host_class`] as the template; never the URL, its host or its path.
+    pub fn with_observer(mut self, observer: Arc<dyn Observer>) -> Self {
+        self.observer = observer;
+        self
     }
 
     /// Starts a GET of `url`.
@@ -443,7 +476,6 @@ fn info(method: Method) -> RequestInfo {
 }
 
 /// A request through the [`GuardedClient`].
-#[derive(Debug)]
 pub struct GuardedRequest<'a> {
     client: &'a GuardedClient,
     method: Method,
@@ -454,6 +486,19 @@ pub struct GuardedRequest<'a> {
     max_bytes: u64,
     idle_timeout: Duration,
     invalid: Option<&'static str>,
+}
+
+/// Method, header names and body length: never the URL (a user's URL can hold anything), a
+/// header value or the body.
+impl std::fmt::Debug for GuardedRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GuardedRequest")
+            .field("method", &self.method.as_str())
+            .field("url", &INFO_TEMPLATE)
+            .field("headers", &crate::redact::HeaderNames(&self.headers))
+            .field("body", &self.body)
+            .finish_non_exhaustive()
+    }
 }
 
 impl GuardedRequest<'_> {
@@ -494,6 +539,40 @@ impl GuardedRequest<'_> {
 
     /// Sends the request, following and re-checking redirects.
     pub async fn send(self) -> Result<Response> {
+        let parsed = parse(&self.url);
+        let class = host_class(&self.client.policy, parsed.as_ref().ok());
+        let bytes_sent = match &self.body {
+            Body::Bytes(bytes) => Some(bytes.len() as u64),
+            _ => Some(0),
+        };
+        let mut end = EndGuard::start(
+            Arc::clone(&self.client.observer),
+            INFO_PROVIDER,
+            &self.method,
+            class,
+            1,
+            bytes_sent,
+        );
+        match self.fetch(parsed).await {
+            Ok((response, info, limits, cancel)) => {
+                end.set_status(response.status().as_u16());
+                Ok(
+                    Response::new(response, info, QueryShown::NamesOnly, limits, cancel)
+                        .with_attempt_state(1, false, false, Some(end), None),
+                )
+            }
+            Err(error) => {
+                end.fail(error.class());
+                Err(error)
+            }
+        }
+    }
+
+    /// The hops of one fetch, up to the final response.
+    async fn fetch(
+        self,
+        parsed: std::result::Result<Url, BlockReason>,
+    ) -> Result<(reqwest::Response, RequestInfo, Limits, Cancel)> {
         let mut method = self.method;
         if let Some(reason) = self.invalid {
             return Err(Error::Invalid {
@@ -502,7 +581,7 @@ impl GuardedRequest<'_> {
             });
         }
         let deadline = tokio::time::Instant::now() + self.timeout;
-        let mut url = parse(&self.url).map_err(|reason| Error::Blocked {
+        let mut url = parsed.map_err(|reason| Error::Blocked {
             info: info(method.clone()),
             reason,
         })?;
@@ -552,14 +631,18 @@ impl GuardedRequest<'_> {
                         reason: BlockReason::BadRedirect,
                     })?;
                 drop(response);
-                let to_get = matches!(status, StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND)
-                    && method == Method::POST
-                    || status == StatusCode::SEE_OTHER && method != Method::HEAD;
+                let to_get = redirect_to_get(status, &method);
+                let carries_body = !to_get && !matches!(body, Body::Empty);
+                check_hop(&url, &origin, &next, carries_body).map_err(|reason| Error::Blocked {
+                    info: info(method.clone()),
+                    reason,
+                })?;
                 if to_get {
                     method = Method::GET;
                     body = Body::Empty;
-                    headers.remove(http::header::CONTENT_TYPE);
-                    headers.remove(http::header::CONTENT_LENGTH);
+                    for name in client::BODY_HEADERS {
+                        headers.remove(name);
+                    }
                 }
                 url = next;
                 hop += 1;
@@ -570,15 +653,35 @@ impl GuardedRequest<'_> {
                 idle: self.idle_timeout,
                 deadline,
             };
-            return Ok(Response::new(
-                response,
-                info(method),
-                Arc::from([]),
-                limits,
-                cancel,
-            ));
+            return Ok((response, info(method), limits, cancel));
         }
     }
+}
+
+/// Whether a redirect with `status` turns `method` into GET: 301/302 turn POST into GET and 303
+/// turns everything but HEAD into GET, as fetch does.
+pub(crate) fn redirect_to_get(status: StatusCode, method: &Method) -> bool {
+    (matches!(status, StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND) && *method == Method::POST)
+        || (status == StatusCode::SEE_OTHER && *method != Method::HEAD)
+}
+
+/// The two rules every followed redirect obeys, in the guarded client and the provider client
+/// alike: never from https to plain http, and never with a request body to an origin other than
+/// `origin`, the one the caller addressed (a 307 or 308 keeps the body; a key inside a JSON body
+/// must not reach another host, scheme or port).
+pub(crate) fn check_hop(
+    current: &Url,
+    origin: &url::Origin,
+    next: &Url,
+    carries_body: bool,
+) -> std::result::Result<(), BlockReason> {
+    if current.scheme() == "https" && next.scheme() != "https" {
+        return Err(BlockReason::InsecureRedirect);
+    }
+    if carries_body && next.origin() != *origin {
+        return Err(BlockReason::BodyToOtherOrigin);
+    }
+    Ok(())
 }
 
 /// Whether the authority holds an IPv6 zone id (`%25` inside brackets).
@@ -729,6 +832,54 @@ mod tests {
             strict.check_url(&Url::parse("https://8.8.8.8/").unwrap()),
             Err(BlockReason::Host)
         );
+    }
+
+    #[test]
+    fn redirects_never_downgrade_and_never_carry_a_body_elsewhere() {
+        let url = |raw: &str| Url::parse(raw).unwrap();
+        let start = url("https://a.test/start");
+        let origin = start.origin();
+        // A downgrade is refused with or without a body, even to the same host.
+        for body in [false, true] {
+            assert_eq!(
+                check_hop(&start, &origin, &url("http://a.test/x"), body),
+                Err(BlockReason::InsecureRedirect)
+            );
+        }
+        // A body stays on the addressed origin: host, scheme and port all count.
+        for other in ["https://b.test/x", "https://a.test:8443/x"] {
+            assert_eq!(
+                check_hop(&start, &origin, &url(other), true),
+                Err(BlockReason::BodyToOtherOrigin),
+                "{other}"
+            );
+            assert_eq!(check_hop(&start, &origin, &url(other), false), Ok(()));
+        }
+        assert_eq!(
+            check_hop(&start, &origin, &url("https://a.test/kept"), true),
+            Ok(())
+        );
+        // A hop back to the addressed origin after leaving it is still checked against it.
+        let away = url("https://b.test/x");
+        assert_eq!(
+            check_hop(&away, &origin, &url("https://a.test/back"), true),
+            Ok(())
+        );
+        // Plain http to plain http is the policy's business, not this rule's.
+        let plain = url("http://a.test/");
+        assert_eq!(
+            check_hop(&plain, &plain.origin(), &url("http://a.test/y"), true),
+            Ok(())
+        );
+        // Which redirects drop the body.
+        assert!(redirect_to_get(StatusCode::FOUND, &Method::POST));
+        assert!(!redirect_to_get(StatusCode::FOUND, &Method::PUT));
+        assert!(redirect_to_get(StatusCode::SEE_OTHER, &Method::PUT));
+        assert!(!redirect_to_get(StatusCode::SEE_OTHER, &Method::HEAD));
+        assert!(!redirect_to_get(
+            StatusCode::TEMPORARY_REDIRECT,
+            &Method::POST
+        ));
     }
 
     #[test]

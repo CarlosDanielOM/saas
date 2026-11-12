@@ -3,11 +3,11 @@
 use crate::client::Cancel;
 use crate::error::{Error, FailureClass, RequestInfo, Result, StatusError, TimeoutKind};
 use crate::observe::EndGuard;
+use crate::redact::QueryShown;
 use crate::sse::SseStream;
 use bytes::{Bytes, BytesMut};
 use http::{HeaderMap, StatusCode};
 use serde::de::DeserializeOwned;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio::sync::OwnedSemaphorePermit;
@@ -29,8 +29,9 @@ pub(crate) struct Limits {
 /// Dropping the response closes the connection if the body was not read to the end.
 pub struct Response {
     inner: reqwest::Response,
+    url: url::Url,
     info: RequestInfo,
-    secrets: Arc<[&'static str]>,
+    query: QueryShown,
     limits: Limits,
     received: u64,
     cancel: Cancel,
@@ -55,14 +56,15 @@ impl Response {
     pub(crate) fn new(
         inner: reqwest::Response,
         info: RequestInfo,
-        secrets: Arc<[&'static str]>,
+        query: QueryShown,
         limits: Limits,
         cancel: Cancel,
     ) -> Self {
         Self {
+            url: inner.url().clone(),
             inner,
             info,
-            secrets,
+            query,
             limits,
             received: 0,
             cancel,
@@ -79,14 +81,20 @@ impl Response {
         attempts: u32,
         refresh_unavailable: bool,
         retried_status: bool,
-        end: EndGuard,
+        end: Option<EndGuard>,
         permit: Option<OwnedSemaphorePermit>,
     ) -> Self {
         self.attempts = attempts;
         self.refresh_unavailable = refresh_unavailable;
         self.retried_status = retried_status;
-        self.end = Some(end);
+        self.end = end;
         self._permit = permit;
+        self
+    }
+
+    /// The URL this answered, for a response rebuilt from buffered parts.
+    pub(crate) fn with_url(mut self, url: url::Url) -> Self {
+        self.url = url;
         self
     }
 
@@ -100,11 +108,10 @@ impl Response {
         self.inner.headers()
     }
 
-    /// The request this answers (safe to print), with its redacted query.
+    /// The request this answers (safe to print), with its redacted query: a provider's secret
+    /// parameters are replaced; for a guarded request every value is replaced.
     pub fn info(&self) -> RequestInfo {
-        self.info
-            .clone()
-            .with_query(self.inner.url(), &self.secrets)
+        self.info.clone().with_query(&self.url, &self.query)
     }
 
     /// How many attempts were made.
@@ -245,31 +252,79 @@ impl Response {
         let clean = dima_text::sanitize_lone_surrogates(&bytes);
         serde_json::from_slice(&clean).map_err(|error| Error::Decode {
             info,
-            source: Box::new(error),
+            category: crate::error::DecodeCategory::of_json(&error),
+            line: error.line(),
+            column: error.column(),
         })
     }
 
-    /// Writes the body to `writer`, returning the bytes written.
+    /// Writes the body to `writer`, returning the bytes written. Waiting on the writer counts
+    /// against the request's total deadline and stops on shutdown, so a stalled destination
+    /// cannot hold the response (and its provider slot) forever.
     pub async fn write_to<W: AsyncWrite + Unpin>(mut self, writer: &mut W) -> Result<u64> {
         while let Some(chunk) = self.chunk().await? {
-            writer
-                .write_all(&chunk)
-                .await
-                .map_err(|error| Error::Transport {
-                    info: self.info(),
-                    source: Box::new(error),
-                })?;
+            self.write_step(writer.write_all(&chunk)).await?;
         }
-        writer.flush().await.map_err(|error| Error::Transport {
-            info: self.info(),
-            source: Box::new(error),
-        })?;
+        self.write_step(writer.flush()).await?;
         Ok(self.received)
     }
 
-    /// Reads the body as a Server-Sent Events stream.
+    /// One write to the destination under the deadline and shutdown.
+    async fn write_step(&mut self, write: impl Future<Output = std::io::Result<()>>) -> Result<()> {
+        enum Step {
+            Cancelled,
+            Total,
+            Done(std::io::Result<()>),
+        }
+        let step = tokio::select! {
+            biased;
+            () = self.cancel.wait() => Step::Cancelled,
+            () = tokio::time::sleep_until(self.limits.deadline) => Step::Total,
+            result = write => Step::Done(result),
+        };
+        match step {
+            Step::Cancelled => Err(self.fail(FailureClass::Cancelled)),
+            Step::Total => Err(self.fail(FailureClass::Timeout(TimeoutKind::Total))),
+            Step::Done(Ok(())) => Ok(()),
+            Step::Done(Err(error)) => {
+                if let Some(end) = &mut self.end {
+                    end.fail(FailureClass::Transport);
+                }
+                Err(Error::Transport {
+                    info: self.info(),
+                    source: Box::new(error),
+                })
+            }
+        }
+    }
+
+    /// Reads the body as a Server-Sent Events stream. Lines and events are bounded by the body
+    /// limit, and at most the default number of events is queued (see [`crate::sse`]).
     pub fn sse(self) -> SseStream {
         SseStream::new(self)
+    }
+
+    /// Reads the body as a Server-Sent Events stream with these limits.
+    pub fn sse_with_limits(self, limits: crate::sse::SseLimits) -> SseStream {
+        SseStream::with_limits(self, limits)
+    }
+
+    /// The body byte limit in force.
+    pub(crate) fn max_body_bytes(&self) -> u64 {
+        self.limits.max_bytes
+    }
+
+    /// Records an event stream that passed a decoder limit and builds its error.
+    pub(crate) fn decode_failed(&mut self, _error: crate::sse::SseError) -> Error {
+        if let Some(end) = &mut self.end {
+            end.fail(FailureClass::Decode);
+        }
+        Error::Decode {
+            info: self.info(),
+            category: crate::error::DecodeCategory::EventStream,
+            line: 0,
+            column: 0,
+        }
     }
 
     /// `Ok(self)` for a 2xx status; otherwise [`Error::Status`] with allow-listed headers and the

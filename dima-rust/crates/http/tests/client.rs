@@ -24,9 +24,11 @@ fn client() -> HttpClient {
 }
 
 fn provider(server: &MockServer) -> Provider {
-    Provider::builder("mock", "https://api.example.invalid/base")
-        .base_url(&format!("{}/base", server.url()))
-        .build()
+    server
+        .provider(Provider::builder(
+            "mock",
+            "https://api.example.invalid/base",
+        ))
         .unwrap()
 }
 
@@ -41,11 +43,12 @@ async fn json_round_trip_with_paths_queries_and_headers() {
         200,
         r#"{"data":[{"id":"1","name":"\ud800x"}]}"#,
     ));
-    let provider = Provider::builder("twitch", "https://api.twitch.tv/helix")
-        .base_url(&format!("{}/helix", server.url()))
-        .header("client-id", "abc")
-        .header("content-type", "application/json")
-        .build()
+    let provider = server
+        .provider(
+            Provider::builder("twitch", "https://api.twitch.tv/helix")
+                .header("client-id", "abc")
+                .header("content-type", "application/json"),
+        )
         .unwrap();
     let client = client();
     #[derive(serde::Deserialize)]
@@ -414,10 +417,11 @@ async fn refused_connection_is_a_connect_error_and_retried_when_allowed() {
 #[tokio::test]
 async fn retries_statuses_and_returns_the_last_response() {
     let server = MockServer::start().await.unwrap();
-    let provider = Provider::builder("ai", "https://openrouter.ai/api/v1")
-        .base_url(&server.url())
-        .retry(RetryPolicy::fetch_with_retry(&[ms(10), ms(10)]))
-        .build()
+    let provider = server
+        .provider(
+            Provider::builder("ai", "https://openrouter.ai/api/v1")
+                .retry(RetryPolicy::fetch_with_retry(&[ms(10), ms(10)])),
+        )
         .unwrap();
     let client = client();
     server.push(MockResponse::new(503));
@@ -539,10 +543,11 @@ async fn helix_run(
     for status in statuses {
         server.push(MockResponse::new(*status));
     }
-    let provider = Provider::builder("twitch", "https://api.twitch.tv/helix")
-        .base_url(&server.url())
-        .retry(RetryPolicy::twitch_helix_with(delays))
-        .build()
+    let provider = server
+        .provider(
+            Provider::builder("twitch", "https://api.twitch.tv/helix")
+                .retry(RetryPolicy::twitch_helix_with(delays)),
+        )
         .unwrap();
     let credential = Arc::new(ScriptedCredential {
         refreshes: Mutex::new(Vec::new()),
@@ -684,14 +689,15 @@ async fn redirects_error_manual_and_same_origin() {
 #[tokio::test]
 async fn nothing_secret_is_printed() {
     let server = MockServer::start().await.unwrap();
-    let provider = Provider::builder("polar", "https://api.polar.sh/v1")
-        .base_url(&format!("{}/v1", server.url()))
-        .secret_header(
-            "authorization",
-            &SecretString::from("Bearer polar_oat_SECRET1"),
+    let provider = server
+        .provider(
+            Provider::builder("polar", "https://api.polar.sh/v1")
+                .secret_header(
+                    "authorization",
+                    &SecretString::from("Bearer polar_oat_SECRET1"),
+                )
+                .secret_query_params(&["sig"]),
         )
-        .secret_query_params(&["sig"])
-        .build()
         .unwrap();
     let client = client();
     server.push(
@@ -795,11 +801,12 @@ async fn observer_sees_attempts_and_trace_headers_go_to_internal_providers_only(
         .trace_injector(Arc::new(Trace))
         .build()
         .unwrap();
-    let internal = Provider::builder("internal-api", "http://dima-server:3000")
-        .base_url(&server.url())
-        .internal(true)
-        .retry(RetryPolicy::fixed(&[ms(1)]).retry_statuses(StatusSet::new().with(503)))
-        .build()
+    let internal = server
+        .provider(
+            Provider::builder("internal-api", "http://dima-server:3000")
+                .internal(true)
+                .retry(RetryPolicy::fixed(&[ms(1)]).retry_statuses(StatusSet::new().with(503))),
+        )
         .unwrap();
     let external = provider(&server);
     server.push(MockResponse::new(503));
@@ -1096,4 +1103,445 @@ async fn brotli_bodies_are_decoded() {
     assert_eq!(text, "hola brotli hola brotli");
     let request = server.next_request().await.unwrap();
     assert!(request.header("accept-encoding").unwrap().contains("br"));
+}
+
+/// A credential whose refresh fetches a new token from the same provider.
+#[derive(Debug)]
+struct SameProviderCredential {
+    client: HttpClient,
+    provider: Provider,
+}
+
+impl Credential for SameProviderCredential {
+    fn refresh<'a>(&'a self, _attempt: u32, _rejected: &'a HeaderValue) -> BoxFuture<'a, Refresh> {
+        Box::pin(async move {
+            let token = self
+                .client
+                .post(&self.provider, "/token")
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+            Refresh::Rotated(HeaderValue::try_from(token).unwrap())
+        })
+    }
+}
+
+#[tokio::test]
+async fn the_refresh_hook_runs_after_the_slot_is_released() {
+    let server = MockServer::start().await.unwrap();
+    let provider = Provider::builder("twitch", &server.url())
+        .max_concurrency(1)
+        .timeout(Duration::from_secs(2))
+        .retry(RetryPolicy::twitch_helix_with(&[ms(1)]))
+        .build()
+        .unwrap();
+    let client = client();
+    server.push(MockResponse::new(401).body("expired"));
+    server.push(MockResponse::new(200).body("Bearer fresh"));
+    server.push(MockResponse::new(200).body("done"));
+    let credential = Arc::new(SameProviderCredential {
+        client: client.clone(),
+        provider: provider.clone(),
+    });
+    let started = Instant::now();
+    let text = client
+        .get(&provider, "/users")
+        .credential(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Bearer old"),
+            credential,
+        )
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    assert_eq!(text, "done");
+    assert!(
+        started.elapsed() < Duration::from_secs(1),
+        "{:?}",
+        started.elapsed()
+    );
+    let requests = server.requests();
+    assert_eq!(
+        requests
+            .iter()
+            .map(|r| (
+                r.path().to_owned(),
+                r.header("authorization").map(str::to_owned)
+            ))
+            .collect::<Vec<_>>(),
+        [
+            ("/users".to_owned(), Some("Bearer old".to_owned())),
+            ("/token".to_owned(), None),
+            ("/users".to_owned(), Some("Bearer fresh".to_owned())),
+        ]
+    );
+}
+
+/// A refresh that never answers.
+#[derive(Debug)]
+struct StalledCredential;
+
+impl Credential for StalledCredential {
+    fn refresh<'a>(&'a self, _attempt: u32, _rejected: &'a HeaderValue) -> BoxFuture<'a, Refresh> {
+        Box::pin(std::future::pending())
+    }
+}
+
+#[tokio::test]
+async fn a_stalled_refresh_is_bounded_by_its_deadline_and_by_shutdown() {
+    let server = MockServer::start().await.unwrap();
+    server.fallback(|_| MockResponse::new(401));
+    let provider = Provider::builder("twitch", &server.url())
+        .max_concurrency(1)
+        .retry(RetryPolicy::twitch_helix_with(&[ms(1)]))
+        .build()
+        .unwrap();
+    let shutdown = Shutdown::new();
+    let client = HttpClient::builder()
+        .shutdown(shutdown.clone())
+        .build()
+        .unwrap();
+    let send = |refresh_timeout| {
+        client
+            .get(&provider, "/users")
+            .credential(
+                header::AUTHORIZATION,
+                HeaderValue::from_static("Bearer old"),
+                Arc::new(StalledCredential),
+            )
+            .refresh_timeout(refresh_timeout)
+            .send()
+    };
+    let started = Instant::now();
+    let error = send(ms(100)).await.unwrap_err();
+    assert!(
+        matches!(
+            error,
+            Error::Timeout {
+                kind: TimeoutKind::Refresh,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+    assert!(started.elapsed() < Duration::from_secs(2));
+
+    // While a refresh stalls, its slot is free for others; shutdown ends the stalled one.
+    let stalled = tokio::spawn({
+        let client = client.clone();
+        let provider = provider.clone();
+        async move {
+            client
+                .get(&provider, "/users")
+                .credential(
+                    header::AUTHORIZATION,
+                    HeaderValue::from_static("Bearer old"),
+                    Arc::new(StalledCredential),
+                )
+                .send()
+                .await
+        }
+    });
+    server.wait_for(2).await;
+    tokio::time::sleep(ms(50)).await;
+    let other = client
+        .get(&provider, "/other")
+        .timeout(ms(500))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(other.status().as_u16(), 401);
+    drop(other);
+    shutdown.trigger();
+    let error = tokio::time::timeout(Duration::from_secs(2), stalled)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap_err();
+    assert!(matches!(error, Error::Cancelled { .. }), "{error:?}");
+}
+
+/// A redirect that turns a POST into a GET changes that attempt only: a retry sends the
+/// original POST with its body and body headers again, and the GET hop carries neither.
+#[tokio::test]
+async fn a_redirect_to_get_does_not_strip_the_body_from_a_retry() {
+    let server = MockServer::start().await.unwrap();
+    let provider = Provider::builder("f", &server.url())
+        .redirects(Redirects::SameOrigin { max: 2 })
+        .retry(
+            RetryPolicy::fixed(&[ms(1)])
+                .retry_statuses(StatusSet::new().with(503))
+                .retry_non_idempotent(true),
+        )
+        .build()
+        .unwrap();
+    server.push(MockResponse::new(302).header("location", "/two"));
+    server.push(MockResponse::new(503));
+    server.push(MockResponse::new(200));
+    let response = client()
+        .post(&provider, "/one")
+        .header("content-language", "es")
+        .header("content-length", "7")
+        .json(&serde_json::json!({"a": 1}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!((response.status().as_u16(), response.attempts()), (200, 2));
+    let requests = server.requests();
+    let seen: Vec<_> = requests
+        .iter()
+        .map(|r| {
+            (
+                r.method.as_str(),
+                r.path(),
+                r.body_text(),
+                r.header("content-type"),
+                r.header("content-language"),
+                r.header("content-length"),
+            )
+        })
+        .collect();
+    let post = (
+        "POST",
+        "/one",
+        r#"{"a":1}"#.to_owned(),
+        Some("application/json"),
+        Some("es"),
+        Some("7"),
+    );
+    assert_eq!(
+        seen,
+        [
+            post.clone(),
+            ("GET", "/two", String::new(), None, None, None),
+            post
+        ]
+    );
+}
+
+/// A destination that never accepts a byte.
+struct StalledWriter;
+
+impl tokio::io::AsyncWrite for StalledWriter {
+    fn poll_write(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+        _buf: &[u8],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        std::task::Poll::Pending
+    }
+    fn poll_flush(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::task::Poll::Pending
+    }
+    fn poll_shutdown(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::task::Poll::Pending
+    }
+}
+
+#[tokio::test]
+async fn a_stalled_destination_is_bounded_by_the_deadline_and_shutdown() {
+    let server = MockServer::start().await.unwrap();
+    server.fallback(|_| MockResponse::new(200).body("payload"));
+    let provider = Provider::builder("s3", &server.url())
+        .max_concurrency(1)
+        .build()
+        .unwrap();
+    let shutdown = Shutdown::new();
+    let client = HttpClient::builder()
+        .shutdown(shutdown.clone())
+        .build()
+        .unwrap();
+    let started = Instant::now();
+    let error = client
+        .get(&provider, "/a")
+        .timeout(ms(200))
+        .send()
+        .await
+        .unwrap()
+        .write_to(&mut StalledWriter)
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(
+            error,
+            Error::Timeout {
+                kind: TimeoutKind::Total,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+    assert!(started.elapsed() < Duration::from_secs(2));
+    // The slot was released with the response.
+    client.get(&provider, "/b").send().await.unwrap();
+
+    let response = client.get(&provider, "/c").send().await.unwrap();
+    let trigger = shutdown.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(ms(100)).await;
+        trigger.trigger();
+    });
+    let error = tokio::time::timeout(
+        Duration::from_secs(2),
+        response.write_to(&mut StalledWriter),
+    )
+    .await
+    .unwrap()
+    .unwrap_err();
+    assert!(matches!(error, Error::Cancelled { .. }), "{error:?}");
+}
+
+#[tokio::test]
+async fn request_bodies_are_bounded_per_provider_and_per_request() {
+    let server = MockServer::start().await.unwrap();
+    server.fallback(|_| MockResponse::new(204));
+    let provider = Provider::builder("mock", &server.url())
+        .max_request_bytes(10)
+        .build()
+        .unwrap();
+    assert_eq!(
+        Provider::builder("default", "https://x.test")
+            .build()
+            .unwrap()
+            .max_request_bytes(),
+        dima_http::provider::DEFAULT_MAX_REQUEST_BYTES
+    );
+    let client = client();
+    let too_large = |error: Error| {
+        assert!(
+            matches!(error, Error::RequestBodyTooLarge { limit: 10, .. }),
+            "{error:?}"
+        );
+        assert_eq!(error.class(), FailureClass::RequestTooLarge);
+    };
+    // Exactly at the limit is sent; one byte over is refused before sending, for every kind of
+    // body built from bytes.
+    client
+        .post(&provider, "/ok")
+        .body(vec![b'a'; 10])
+        .send()
+        .await
+        .unwrap();
+    too_large(
+        client
+            .post(&provider, "/")
+            .body(vec![b'a'; 11])
+            .send()
+            .await
+            .unwrap_err(),
+    );
+    too_large(
+        client
+            .post(&provider, "/")
+            .json(&serde_json::json!({"text": "0123456789"}))
+            .send()
+            .await
+            .unwrap_err(),
+    );
+    too_large(
+        client
+            .post(&provider, "/")
+            .json_js(&serde_json::json!({"text": "0123456789"}))
+            .send()
+            .await
+            .unwrap_err(),
+    );
+    too_large(
+        client
+            .post(&provider, "/")
+            .form(&[("text", "0123456789")])
+            .send()
+            .await
+            .unwrap_err(),
+    );
+    assert_eq!(server.requests().len(), 1);
+    // A request raises its own limit, before or after setting the body.
+    client
+        .post(&provider, "/raised")
+        .json(&serde_json::json!({"text": "0123456789"}))
+        .max_request_bytes(100)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(server.requests().len(), 2);
+
+    // A stream is counted as it is sent and stops when it passes the limit.
+    let chunks: Vec<Result<Bytes, std::io::Error>> = vec![
+        Ok(Bytes::from_static(b"123456")),
+        Ok(Bytes::from_static(b"789012")),
+    ];
+    let error = client
+        .request(&provider, Method::PUT, "/stream")
+        .body_stream(dima_http::StreamBody::wrap_stream(
+            futures_util::stream::iter(chunks),
+        ))
+        .send()
+        .await
+        .unwrap_err();
+    too_large(error);
+    let chunks: Vec<Result<Bytes, std::io::Error>> = vec![
+        Ok(Bytes::from_static(b"12345")),
+        Ok(Bytes::from_static(b"67890")),
+    ];
+    client
+        .request(&provider, Method::PUT, "/stream-ok")
+        .body_stream(dima_http::StreamBody::wrap_stream(
+            futures_util::stream::iter(chunks),
+        ))
+        .send()
+        .await
+        .unwrap();
+    let last = server.requests().pop().unwrap();
+    assert_eq!(
+        (last.path(), last.body_text().as_str()),
+        ("/stream-ok", "1234567890")
+    );
+}
+
+/// A POST is retried after a 429 only when the provider states that a 429 means "not
+/// processed".
+#[tokio::test]
+async fn a_429_retries_a_post_only_when_the_provider_guarantees_it() {
+    let server = MockServer::start().await.unwrap();
+    let policy = RetryPolicy::fixed(&[ms(1)]).retry_statuses(StatusSet::new().with(429));
+    let plain = Provider::builder("plain", &server.url())
+        .retry(policy.clone())
+        .build()
+        .unwrap();
+    let guaranteed = Provider::builder("guaranteed", &server.url())
+        .retry(policy)
+        .rate_limit_means_unprocessed(true)
+        .build()
+        .unwrap();
+    let client = client();
+    server.push(MockResponse::new(429));
+    let response = client
+        .post(&plain, "/charge")
+        .body("x")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!((response.status().as_u16(), response.attempts()), (429, 1));
+    drop(response);
+    server.push(MockResponse::new(429));
+    server.push(MockResponse::new(200));
+    let response = client
+        .post(&guaranteed, "/charge")
+        .body("x")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!((response.status().as_u16(), response.attempts()), (200, 2));
 }

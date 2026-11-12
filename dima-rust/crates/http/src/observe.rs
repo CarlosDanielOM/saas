@@ -6,7 +6,8 @@
 //! API hosts; PostHog and dima-analytics are not instrumented at all. Here the label is the
 //! [`crate::Provider`] name, trace headers go only to providers built with
 //! [`crate::ProviderBuilder::internal`], and the telemetry crate decides which providers it
-//! records.
+//! records. The guarded client reports as provider `"guarded"` with a
+//! [`crate::guard::host_class`] in place of the template, never the user's URL.
 
 use crate::error::FailureClass;
 use http::{HeaderMap, Method};

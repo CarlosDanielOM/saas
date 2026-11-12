@@ -5,6 +5,7 @@ use crate::guard::{BoxFuture, PlainResolver, Resolver};
 use crate::observe::{EndGuard, NoopObserver, Observer, TraceInjector};
 use crate::path::Path;
 use crate::provider::{DEFAULT_CONNECT_TIMEOUT, Provider, Redirects};
+use crate::redact::QueryShown;
 use crate::response::{Limits, Response};
 use crate::retry::{Context, Decision, Outcome, RetryPolicy, StopReason};
 use bytes::Bytes;
@@ -19,7 +20,7 @@ use tokio::time::Instant;
 use url::Url;
 
 /// What a credential refresh produced.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Refresh {
     /// A new value: the request is retried with it.
     Rotated(HeaderValue),
@@ -31,11 +32,25 @@ pub enum Refresh {
     Stop,
 }
 
+impl std::fmt::Debug for Refresh {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Rotated(_) => "Rotated(<redacted>)",
+            Self::Retry => "Retry",
+            Self::Stop => "Stop",
+        })
+    }
+}
+
 /// A credential that can be refreshed when the server answers 401 (see
 /// [`RetryPolicy::refresh_unauthorized`]).
 pub trait Credential: Send + Sync + std::fmt::Debug {
     /// Called once per 401 before the retry wait, with the attempt number and the value the
-    /// server rejected.
+    /// server rejected. The rejected response has been read and its connection and concurrency
+    /// slot released, so the hook may call the same provider. It runs under the request's
+    /// refresh deadline ([`RequestBuilder::refresh_timeout`]) and the shutdown tokens; past
+    /// either, it is dropped and the request fails with [`TimeoutKind::Refresh`] or
+    /// [`Error::Cancelled`].
     fn refresh<'a>(&'a self, attempt: u32, rejected: &'a HeaderValue) -> BoxFuture<'a, Refresh>;
 }
 
@@ -85,12 +100,23 @@ pub(crate) async fn await_with(
 }
 
 /// A request body.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub(crate) enum Body {
     #[default]
     Empty,
     Bytes(Bytes),
     Stream(reqwest::Body),
+}
+
+/// The length only, never the bytes.
+impl std::fmt::Debug for Body {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Empty => f.write_str("Empty"),
+            Self::Bytes(bytes) => write!(f, "Bytes({} bytes)", bytes.len()),
+            Self::Stream(_) => f.write_str("Stream"),
+        }
+    }
 }
 
 /// The shared client: one connection pool for every provider. Cheap to clone.
@@ -252,7 +278,6 @@ impl HttpClientBuilder {
 }
 
 /// A request being built. Nothing is sent until [`RequestBuilder::send`].
-#[derive(Debug)]
 #[must_use = "a request does nothing until it is sent"]
 pub struct RequestBuilder<'a> {
     client: &'a HttpClient,
@@ -266,11 +291,31 @@ pub struct RequestBuilder<'a> {
     timeout: Duration,
     headers_timeout: Option<Duration>,
     idle_timeout: Duration,
+    refresh_timeout: Option<Duration>,
     max_bytes: u64,
+    max_request_bytes: u64,
     retry: Option<RetryPolicy>,
     idempotent: Option<bool>,
     shutdown: Option<Shutdown>,
     invalid: Option<&'static str>,
+}
+
+/// Provider, method, path template, header names and body length: never the rendered URL, a
+/// header value or the body.
+impl std::fmt::Debug for RequestBuilder<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RequestBuilder")
+            .field("provider", &self.provider.0.name)
+            .field("method", &self.method.as_str())
+            .field("template", &self.template)
+            .field("headers", &crate::redact::HeaderNames(&self.headers))
+            .field(
+                "credential",
+                &self.credential.as_ref().map(|(_, name, _)| name.as_str()),
+            )
+            .field("body", &self.body)
+            .finish_non_exhaustive()
+    }
 }
 
 impl<'a> RequestBuilder<'a> {
@@ -294,7 +339,9 @@ impl<'a> RequestBuilder<'a> {
             timeout: p.timeout,
             headers_timeout: p.headers_timeout,
             idle_timeout: p.idle_timeout,
+            refresh_timeout: None,
             max_bytes: p.max_bytes,
+            max_request_bytes: p.max_request_bytes,
             retry: None,
             idempotent: None,
             shutdown: None,
@@ -453,9 +500,22 @@ impl<'a> RequestBuilder<'a> {
         self
     }
 
+    /// The deadline for one credential refresh after a 401 (by default the attempt timeout).
+    pub fn refresh_timeout(mut self, timeout: Duration) -> Self {
+        self.refresh_timeout = Some(timeout);
+        self
+    }
+
     /// The body limit.
     pub fn max_bytes(mut self, max: u64) -> Self {
         self.max_bytes = max;
+        self
+    }
+
+    /// The limit on the body this request sends (instead of the provider's). Checked when the
+    /// request is sent, so it may be set before or after the body.
+    pub fn max_request_bytes(mut self, max: u64) -> Self {
+        self.max_request_bytes = max;
         self
     }
 
@@ -491,6 +551,32 @@ impl<'a> RequestBuilder<'a> {
     }
 }
 
+/// A streamed body that fails as soon as more than `limit` bytes have passed.
+fn counted(body: reqwest::Body, limit: u64) -> reqwest::Body {
+    use futures_util::StreamExt;
+    use http_body_util::BodyExt;
+    let mut sent: u64 = 0;
+    let stream = body.into_data_stream().map(move |chunk| {
+        let chunk = chunk.map_err(|error| -> crate::error::BoxError { Box::new(error) })?;
+        sent = sent.saturating_add(chunk.len() as u64);
+        if sent > limit {
+            return Err(Box::new(crate::error::RequestLimit(limit)) as crate::error::BoxError);
+        }
+        Ok(chunk)
+    });
+    reqwest::Body::wrap_stream(stream)
+}
+
+/// The headers that describe a request body (fetch's "request-body-header names", plus the
+/// length): dropped when a redirect turns the request into a GET without its body.
+pub(crate) const BODY_HEADERS: [HeaderName; 5] = [
+    http::header::CONTENT_ENCODING,
+    http::header::CONTENT_LANGUAGE,
+    http::header::CONTENT_LOCATION,
+    CONTENT_TYPE,
+    http::header::CONTENT_LENGTH,
+];
+
 fn method_is_idempotent(method: &Method) -> bool {
     matches!(
         *method,
@@ -511,7 +597,9 @@ struct Sender<'a> {
     timeout: Duration,
     headers_timeout: Option<Duration>,
     idle_timeout: Duration,
+    refresh_timeout: Duration,
     max_bytes: u64,
+    max_request_bytes: u64,
     retry: Option<RetryPolicy>,
     idempotent: bool,
     cancel: Cancel,
@@ -545,7 +633,9 @@ impl<'a> Sender<'a> {
             timeout: request.timeout,
             headers_timeout: request.headers_timeout,
             idle_timeout: request.idle_timeout,
+            refresh_timeout: request.refresh_timeout.unwrap_or(request.timeout),
             max_bytes: request.max_bytes,
+            max_request_bytes: request.max_request_bytes,
             retry: request.retry,
             idempotent,
             cancel: Cancel::new(client.shutdown.clone(), request.shutdown),
@@ -554,8 +644,10 @@ impl<'a> Sender<'a> {
     }
 
     fn info(&self) -> RequestInfo {
-        RequestInfo::new(self.provider.0.name, self.method.clone(), self.template)
-            .with_query(&self.url, &self.provider.0.secret_query)
+        RequestInfo::new(self.provider.0.name, self.method.clone(), self.template).with_query(
+            &self.url,
+            &QueryShown::Redact(Arc::clone(&self.provider.0.secret_query)),
+        )
     }
 
     async fn run(mut self) -> Result<Response> {
@@ -563,6 +655,14 @@ impl<'a> Sender<'a> {
             return Err(Error::Invalid {
                 info: self.info(),
                 reason,
+            });
+        }
+        if let Body::Bytes(bytes) = &self.body
+            && bytes.len() as u64 > self.max_request_bytes
+        {
+            return Err(Error::RequestBodyTooLarge {
+                info: self.info(),
+                limit: self.max_request_bytes,
             });
         }
         let provider = Arc::clone(&self.provider.0);
@@ -585,6 +685,7 @@ impl<'a> Sender<'a> {
                 idempotent: self.idempotent,
                 replayable,
                 refreshable,
+                rate_limit_unprocessed: provider.rate_limit_unprocessed,
                 elapsed,
             };
             match result {
@@ -621,24 +722,23 @@ impl<'a> Sender<'a> {
                     };
                     if status == StatusCode::UNAUTHORIZED
                         && policy.refreshes_unauthorized()
-                        && let Some((credential, _, value)) = &mut self.credential
+                        && self.credential.is_some()
                     {
-                        match credential.refresh(attempt, value).await {
-                            Refresh::Rotated(mut fresh) => {
-                                fresh.set_sensitive(true);
-                                *value = fresh;
-                            }
-                            Refresh::Retry => {}
-                            Refresh::Stop => {
-                                return Ok(self.finish(
-                                    response, attempt, true, false, end, permit, deadline,
-                                ));
-                            }
+                        // Read the rejected answer (it is returned if the refresh stops) and
+                        // release its connection and slot before the hook runs: the hook may
+                        // call this provider, and a slow hook must not hold the slot.
+                        let rejected = self.buffer(response, attempt, end, deadline).await;
+                        drop(permit);
+                        if let Refresh::Stop = self.refresh(attempt).await? {
+                            return rejected.map(|response| {
+                                response.with_attempt_state(attempt, true, false, None, None)
+                            });
                         }
+                    } else {
+                        drop(response);
+                        drop(end);
+                        drop(permit);
                     }
-                    drop(response);
-                    drop(end);
-                    drop(permit);
                     self.sleep(delay).await?;
                 }
                 AttemptResult::Failed(error) => {
@@ -685,11 +785,81 @@ impl<'a> Sender<'a> {
         Response::new(
             response,
             RequestInfo::new(self.provider.0.name, self.method.clone(), self.template),
-            Arc::clone(&self.provider.0.secret_query),
+            QueryShown::Redact(Arc::clone(&self.provider.0.secret_query)),
             limits,
             self.cancel.clone(),
         )
-        .with_attempt_state(attempts, refresh_unavailable, retried_status, end, permit)
+        .with_attempt_state(
+            attempts,
+            refresh_unavailable,
+            retried_status,
+            Some(end),
+            permit,
+        )
+    }
+
+    /// Reads a response whole under the attempt's limits and rebuilds it from the bytes, so the
+    /// connection can be released and the answer still handed back later.
+    async fn buffer(
+        &self,
+        response: reqwest::Response,
+        attempt: u32,
+        end: EndGuard,
+        deadline: Instant,
+    ) -> Result<Response> {
+        let status = response.status();
+        let version = response.version();
+        let headers = response.headers().clone();
+        let url = response.url().clone();
+        let body = self
+            .finish(response, attempt, false, false, end, None, deadline)
+            .bytes()
+            .await?;
+        let mut rebuilt = http::Response::new(body);
+        *rebuilt.status_mut() = status;
+        *rebuilt.version_mut() = version;
+        *rebuilt.headers_mut() = headers;
+        // The body is already decoded: the length and encoding headers no longer describe it.
+        rebuilt.headers_mut().remove(http::header::CONTENT_ENCODING);
+        rebuilt.headers_mut().remove(http::header::CONTENT_LENGTH);
+        let limits = Limits {
+            max_bytes: self.max_bytes,
+            idle: self.idle_timeout,
+            deadline,
+        };
+        Ok(Response::new(
+            reqwest::Response::from(rebuilt),
+            RequestInfo::new(self.provider.0.name, self.method.clone(), self.template),
+            QueryShown::Redact(Arc::clone(&self.provider.0.secret_query)),
+            limits,
+            self.cancel.clone(),
+        )
+        .with_url(url))
+    }
+
+    /// Runs the credential's refresh under the refresh deadline and shutdown, and applies a
+    /// rotated value.
+    async fn refresh(&mut self, attempt: u32) -> Result<Refresh> {
+        let Some((credential, _, rejected)) = &self.credential else {
+            return Ok(Refresh::Retry);
+        };
+        let credential = Arc::clone(credential);
+        let rejected = rejected.clone();
+        let deadline = Instant::now() + self.refresh_timeout;
+        let outcome = tokio::select! {
+            biased;
+            () = self.cancel.wait() => return Err(Error::Cancelled { info: self.info() }),
+            () = tokio::time::sleep_until(deadline) => {
+                return Err(Error::Timeout { info: self.info(), kind: TimeoutKind::Refresh });
+            }
+            outcome = credential.refresh(attempt, &rejected) => outcome,
+        };
+        if let (Refresh::Rotated(fresh), Some((_, _, value))) = (&outcome, &mut self.credential) {
+            let mut fresh = fresh.clone();
+            fresh.set_sensitive(true);
+            *value = fresh;
+        }
+        Ok(outcome)
     }
 
     async fn acquire(
@@ -729,24 +899,34 @@ impl<'a> Sender<'a> {
             bytes_sent,
         );
         let headers_deadline = self.headers_timeout.map(|t| Instant::now() + t);
+        // Redirect state belongs to this attempt: the request itself is never changed, so a
+        // retry after a POST was redirected to a GET sends the original POST with its body.
         let mut url = self.url.clone();
         let mut method = self.method.clone();
+        let mut as_get = false;
         let mut hops: u8 = 0;
         loop {
-            let headers = self.headers_for_attempt();
+            let mut headers = self.headers_for_attempt();
+            if as_get {
+                for name in BODY_HEADERS {
+                    headers.remove(name);
+                }
+            }
             let mut builder = self
                 .client
                 .http
                 .request(method.clone(), url.clone())
                 .headers(headers);
             match &mut self.body {
+                _ if as_get => {}
                 Body::Empty => {}
                 Body::Bytes(bytes) => builder = builder.body(bytes.clone()),
                 Body::Stream(_) => {
                     if let Body::Stream(stream) = std::mem::take(&mut self.body) {
-                        builder = builder.body(stream);
+                        builder = builder.body(counted(stream, self.max_request_bytes));
                     }
-                    // The stream is consumed: a later attempt or hop has no body to send.
+                    // The stream is consumed: a later attempt or hop has no body to send (and
+                    // the retry policy never sends a stream twice).
                     self.body = Body::Stream(reqwest::Body::from(Bytes::new()));
                 }
             }
@@ -781,17 +961,24 @@ impl<'a> Sender<'a> {
                 .and_then(|l| l.to_str().ok())
                 .and_then(|l| url.join(l).ok());
             // 301/302 turn POST into GET and 303 turns everything but HEAD into GET, as fetch
-            // does; any other hop re-sends the body, which a consumed stream cannot.
-            let to_get = (matches!(status, StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND)
-                && method == Method::POST)
-                || (status == StatusCode::SEE_OTHER && method != Method::HEAD);
-            let replay_ok = to_get || !matches!(self.body, Body::Stream(_));
+            // does; any other hop re-sends the body, which a consumed stream cannot. The guard's
+            // two hop rules (no downgrade, no body to another origin) hold here too; the
+            // same-origin rule already implies them, they are checked anyway so that a looser
+            // mode added later cannot drop them.
+            let to_get = crate::guard::redirect_to_get(status, &method);
+            let replay_ok = to_get || as_get || !matches!(self.body, Body::Stream(_));
+            let carries_body = !to_get && !as_get && !matches!(self.body, Body::Empty);
+            let origin = self.url.origin();
             match next {
-                Some(next) if hops < max && next.origin() == url.origin() && replay_ok => {
+                Some(next)
+                    if hops < max
+                        && next.origin() == url.origin()
+                        && replay_ok
+                        && crate::guard::check_hop(&url, &origin, &next, carries_body).is_ok() =>
+                {
                     if to_get {
                         method = Method::GET;
-                        self.body = Body::Empty;
-                        self.headers.remove(CONTENT_TYPE);
+                        as_get = true;
                     }
                     url = next;
                     hops += 1;

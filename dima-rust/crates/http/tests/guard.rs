@@ -464,3 +464,132 @@ async fn the_reference_policy_refuses_what_media_ts_refuses() {
         BlockReason::Address("192.168.1.10".parse().unwrap())
     );
 }
+
+/// A 307 or 308 keeps the body: to another host, scheme or port it is refused before anything
+/// is sent there. A 303 to another origin drops the body and is followed.
+#[tokio::test]
+async fn a_body_never_follows_a_redirect_to_another_origin() {
+    let server = MockServer::start().await.unwrap();
+    let resolver = Arc::new(ScriptedResolver::default());
+    resolver.answer("a.test", &[&[LOOPBACK]]);
+    resolver.answer("b.test", &[&[LOOPBACK]]);
+    let port = server.addr().port();
+    let client = client(policy(&server, &["a.test", "b.test"]), &resolver);
+    for status in [307, 308] {
+        server.push(
+            MockResponse::new(status).header("location", &format!("http://b.test:{port}/steal")),
+        );
+        let error = client
+            .request(Method::POST, &format!("http://a.test:{port}/start"))
+            .header("content-type", "application/json")
+            .body(r#"{"api_key":"SECRET"}"#)
+            .send()
+            .await
+            .unwrap_err();
+        assert_eq!(reason(&error), BlockReason::BodyToOtherOrigin, "{status}");
+    }
+    let requests = server.requests();
+    assert_eq!(requests.len(), 2);
+    assert!(requests.iter().all(|r| r.target == "/start"));
+
+    server.push(MockResponse::new(303).header("location", &format!("http://b.test:{port}/got")));
+    server.push(MockResponse::new(200));
+    client
+        .request(Method::POST, &format!("http://a.test:{port}/start"))
+        .body(r#"{"api_key":"SECRET"}"#)
+        .send()
+        .await
+        .unwrap();
+    let last = server.requests().pop().unwrap();
+    assert_eq!(
+        (last.method.as_str(), last.target.as_str()),
+        ("GET", "/got")
+    );
+    assert!(last.body.is_empty());
+}
+
+/// A user's URL can carry any secret under any name: `Response::info()` and every error built
+/// from the response show the query's names, never a value.
+#[tokio::test]
+async fn guarded_responses_show_query_names_only() {
+    let server = MockServer::start().await.unwrap();
+    let resolver = Arc::new(ScriptedResolver::default());
+    resolver.answer("a.test", &[&[LOOPBACK]]);
+    let port = server.addr().port();
+    let client = client(policy(&server, &["a.test"]), &resolver);
+    let url = format!("http://a.test:{port}/p?session=MARKER1&X-Goog-Signature=MARKER2&flag");
+    server.push(MockResponse::new(404).body("missing"));
+    let response = client.get(&url).send().await.unwrap();
+    let info = format!("{} | {:?}", response.info(), response.info());
+    assert!(!info.contains("MARKER"), "{info}");
+    assert!(
+        info.contains("session=<redacted>") && info.contains("flag"),
+        "{info}"
+    );
+    let error = response.error_for_status().await.unwrap_err();
+    let printed = format!("{error} | {error:?}");
+    assert!(!printed.contains("MARKER"), "{printed}");
+    assert!(printed.contains("X-Goog-Signature"), "{printed}");
+}
+
+#[derive(Debug, Default)]
+struct Recorder {
+    events: Mutex<Vec<String>>,
+}
+
+impl dima_http::observe::Observer for Recorder {
+    fn request_start(&self, start: &dima_http::observe::RequestStart<'_>) {
+        self.events.lock().unwrap().push(format!("{start:?}"));
+    }
+    fn request_end(&self, end: &dima_http::observe::RequestEnd<'_>) {
+        self.events.lock().unwrap().push(format!("{end:?}"));
+    }
+}
+
+/// The observer sees each guarded fetch as provider "guarded" with the host class, its status,
+/// failure and sizes; never the URL, the host or the path.
+#[tokio::test]
+async fn the_observer_sees_the_host_class_never_the_url() {
+    let server = MockServer::start().await.unwrap();
+    let resolver = Arc::new(ScriptedResolver::default());
+    resolver.answer("secret-host.test", &[&[LOOPBACK]]);
+    let port = server.addr().port();
+    let recorder = Arc::new(Recorder::default());
+    let client =
+        client(policy(&server, &["secret-host.test"]), &resolver).with_observer(recorder.clone());
+    server.push(MockResponse::new(200).body("image"));
+    let body = client
+        .get(&format!(
+            "http://secret-host.test:{port}/secret-path?k=secret-query"
+        ))
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    assert_eq!(&body[..], b"image");
+    // A refused fetch is reported too.
+    client
+        .get("http://secret-host.test:1/secret-path")
+        .send()
+        .await
+        .unwrap_err();
+    client.get("not a url secret").send().await.unwrap_err();
+    let events = recorder.events.lock().unwrap().clone();
+    assert_eq!(events.len(), 6, "{events:#?}");
+    for event in &events {
+        assert!(!event.contains("secret"), "{event}");
+        assert!(event.contains("\"guarded\""), "{event}");
+    }
+    assert!(events[0].contains("listed-host"), "{}", events[0]);
+    assert!(
+        events[1].contains("status: Some(200)")
+            && events[1].contains("body_complete: true")
+            && events[1].contains("bytes_received: 5"),
+        "{}",
+        events[1]
+    );
+    assert!(events[3].contains("Blocked"), "{}", events[3]);
+    assert!(events[4].contains("invalid"), "{}", events[4]);
+}

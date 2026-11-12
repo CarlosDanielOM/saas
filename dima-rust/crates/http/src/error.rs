@@ -28,6 +28,8 @@ pub enum TimeoutKind {
     Total,
     /// No body bytes arrived for the idle timeout.
     Idle,
+    /// The credential refresh after a 401 did not finish in time.
+    Refresh,
 }
 
 impl fmt::Display for TimeoutKind {
@@ -38,6 +40,7 @@ impl fmt::Display for TimeoutKind {
             Self::Headers => "headers",
             Self::Total => "total",
             Self::Idle => "idle",
+            Self::Refresh => "refresh",
         })
     }
 }
@@ -64,6 +67,10 @@ pub enum BlockReason {
     TooManyRedirects,
     /// A redirect without a usable `Location`.
     BadRedirect,
+    /// A redirect from https to plain http.
+    InsecureRedirect,
+    /// A redirect that would carry the request body to another origin (a 307 or 308 elsewhere).
+    BodyToOtherOrigin,
 }
 
 impl fmt::Display for BlockReason {
@@ -78,6 +85,49 @@ impl fmt::Display for BlockReason {
             Self::Address(ip) => write!(f, "address {ip} not allowed"),
             Self::TooManyRedirects => f.write_str("too many redirects"),
             Self::BadRedirect => f.write_str("redirect without a valid location"),
+            Self::InsecureRedirect => f.write_str("redirect from https to http"),
+            Self::BodyToOtherOrigin => {
+                f.write_str("redirect would send the body to another origin")
+            }
+        }
+    }
+}
+
+/// What kind of body decoding failed. Nothing of the body itself is kept: a JSON error's text
+/// can quote the rejected input.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DecodeCategory {
+    /// The bytes are not valid JSON.
+    Syntax,
+    /// Valid JSON that does not fit the expected type.
+    Data,
+    /// The body ended in the middle of a JSON value.
+    Eof,
+    /// The compressed body (gzip, deflate, brotli) could not be decompressed.
+    Compression,
+    /// An event stream passed one of its limits (line length, event size, queued events).
+    EventStream,
+}
+
+impl fmt::Display for DecodeCategory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Syntax => "syntax",
+            Self::Data => "data",
+            Self::Eof => "eof",
+            Self::Compression => "compression",
+            Self::EventStream => "event stream",
+        })
+    }
+}
+
+impl DecodeCategory {
+    /// The category of a `serde_json` error.
+    pub(crate) fn of_json(error: &serde_json::Error) -> Self {
+        match error.classify() {
+            serde_json::error::Category::Data => Self::Data,
+            serde_json::error::Category::Eof => Self::Eof,
+            serde_json::error::Category::Syntax | serde_json::error::Category::Io => Self::Syntax,
         }
     }
 }
@@ -105,6 +155,8 @@ pub enum FailureClass {
     Invalid,
     /// An unexpected redirect.
     Redirect,
+    /// The request body was larger than its limit.
+    RequestTooLarge,
 }
 
 impl FailureClass {
@@ -116,6 +168,7 @@ impl FailureClass {
             Self::Timeout(TimeoutKind::Headers) => "timeout_headers",
             Self::Timeout(TimeoutKind::Total) => "timeout_total",
             Self::Timeout(TimeoutKind::Idle) => "timeout_idle",
+            Self::Timeout(TimeoutKind::Refresh) => "timeout_refresh",
             Self::Connect => "connect",
             Self::Transport => "transport",
             Self::Status => "status",
@@ -125,6 +178,7 @@ impl FailureClass {
             Self::Blocked => "blocked",
             Self::Invalid => "invalid",
             Self::Redirect => "redirect",
+            Self::RequestTooLarge => "request_too_large",
         }
     }
 }
@@ -138,7 +192,8 @@ pub struct RequestInfo {
     pub method: Method,
     /// The path template (`/v1/customers/{}/state`), never the rendered path.
     pub template: &'static str,
-    /// The query string with secret parameters replaced by `<redacted>`.
+    /// The query string with secret parameters replaced by `<redacted>` (for a guarded request,
+    /// a user-supplied URL, every value is replaced and only the names are shown).
     pub query: Option<Box<str>>,
 }
 
@@ -153,8 +208,8 @@ impl RequestInfo {
     }
 
     /// The same, with the redacted query of `url`.
-    pub(crate) fn with_query(mut self, url: &url::Url, secrets: &[&'static str]) -> Self {
-        self.query = redact::query(url, secrets);
+    pub(crate) fn with_query(mut self, url: &url::Url, shown: &redact::QueryShown) -> Self {
+        self.query = redact::query(url, shown);
         self
     }
 }
@@ -254,14 +309,27 @@ pub enum Error {
         /// The limit.
         limit: u64,
     },
-    /// The body could not be decoded (JSON, UTF-8).
-    #[error("{info}: decode failed")]
+    /// The body could not be decoded (JSON, decompression). Only where it failed is kept, never
+    /// the parser's message, which can quote the body.
+    #[error("{info}: decode failed ({category} at line {line} column {column})")]
     Decode {
         /// The request.
         info: RequestInfo,
-        /// The cause.
-        #[source]
-        source: BoxError,
+        /// What failed.
+        category: DecodeCategory,
+        /// The 1-based line of a JSON error (0 when unknown).
+        line: usize,
+        /// The 1-based column of a JSON error (0 when unknown).
+        column: usize,
+    },
+    /// The request body was longer than its limit
+    /// ([`crate::ProviderBuilder::max_request_bytes`], [`crate::RequestBuilder::max_request_bytes`]).
+    #[error("{info}: request body larger than {limit} bytes")]
+    RequestBodyTooLarge {
+        /// The request.
+        info: RequestInfo,
+        /// The limit.
+        limit: u64,
     },
     /// Shutdown fired while the request was waiting.
     #[error("{info}: cancelled")]
@@ -316,11 +384,6 @@ impl fmt::Debug for Error {
                 .field("info", info)
                 .field("source", &redact::ErrorChain(source.as_ref()))
                 .finish(),
-            Self::Decode { info, source } => f
-                .debug_struct("Decode")
-                .field("info", info)
-                .field("source", &redact::ErrorChain(source.as_ref()))
-                .finish(),
             Self::RetriesExhausted { attempts, last } => f
                 .debug_struct("RetriesExhausted")
                 .field("attempts", attempts)
@@ -341,6 +404,7 @@ impl Error {
             | Self::Connect { info, .. }
             | Self::Transport { info, .. }
             | Self::BodyTooLarge { info, .. }
+            | Self::RequestBodyTooLarge { info, .. }
             | Self::Decode { info, .. }
             | Self::Cancelled { info }
             | Self::Blocked { info, .. }
@@ -357,6 +421,7 @@ impl Error {
             Self::Transport { .. } => FailureClass::Transport,
             Self::Status(_) => FailureClass::Status,
             Self::BodyTooLarge { .. } => FailureClass::TooLarge,
+            Self::RequestBodyTooLarge { .. } => FailureClass::RequestTooLarge,
             Self::Decode { .. } => FailureClass::Decode,
             Self::Cancelled { .. } => FailureClass::Cancelled,
             Self::RetriesExhausted { last, .. } => last.class(),
@@ -403,11 +468,22 @@ impl Error {
         if let Some(reason) = crate::guard::find_block(&error) {
             return Self::Blocked { info, reason };
         }
+        if let Some(limit) = find_request_limit(&error) {
+            return Self::RequestBodyTooLarge { info, limit };
+        }
         let connect = error.is_connect();
         let timeout = error.is_timeout();
         // `Response::chunk` reports every body failure as "decode"; a failure of the connection
         // underneath shows as a body error in the source chain.
         let decode = error.is_decode() && !has_body_error(&error);
+        if decode {
+            return Self::Decode {
+                info,
+                category: DecodeCategory::Compression,
+                line: 0,
+                column: 0,
+            };
+        }
         let source: BoxError = Box::new(error.without_url());
         if connect && timeout {
             Self::Timeout {
@@ -416,12 +492,34 @@ impl Error {
             }
         } else if connect {
             Self::Connect { info, source }
-        } else if decode {
-            Self::Decode { info, source }
         } else {
             Self::Transport { info, source }
         }
     }
+}
+
+/// The error a counted request stream ends with when it passes its limit; found again in the
+/// transport error's source chain.
+#[derive(Debug)]
+pub(crate) struct RequestLimit(pub u64);
+
+impl fmt::Display for RequestLimit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "request body larger than {} bytes", self.0)
+    }
+}
+
+impl std::error::Error for RequestLimit {}
+
+fn find_request_limit(error: &(dyn std::error::Error + 'static)) -> Option<u64> {
+    let mut current: Option<&(dyn std::error::Error + 'static)> = Some(error);
+    while let Some(e) = current {
+        if let Some(RequestLimit(limit)) = e.downcast_ref::<RequestLimit>() {
+            return Some(*limit);
+        }
+        current = e.source();
+    }
+    None
 }
 
 /// Whether a "decode" error from `reqwest` is really a broken connection: the decompression

@@ -24,10 +24,18 @@ const SEGMENT: &AsciiSet = &NON_ALPHANUMERIC
 /// assert_eq!(path.template_str(), "/v1/customers/{}/state");
 /// assert_eq!(Path::fixed("/helix/users").as_str(), "/helix/users");
 /// ```
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Path {
     template: &'static str,
     rendered: Cow<'static, str>,
+}
+
+/// Only the template: a rendered argument may be an id or a secret (Polar's checkout client
+/// secret travels in a path).
+impl std::fmt::Debug for Path {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Path({:?})", self.template)
+    }
 }
 
 /// Why a path could not be built.

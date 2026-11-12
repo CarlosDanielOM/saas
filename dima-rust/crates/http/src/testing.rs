@@ -11,9 +11,16 @@
 //! # #[tokio::main(flavor = "current_thread")]
 //! # async fn main() {
 //! use dima_http::testing::{MockResponse, MockServer};
+//! use dima_http::Provider;
 //! let server = MockServer::start().await.unwrap();
 //! server.push(MockResponse::json(200, r#"{"ok":true}"#));
-//! // Point a provider at `server.url()`, send, then:
+//! // The real declaration, pointed at the mock through a loopback-only test mode
+//! // (`/helix` is kept: requests arrive at `/helix/...`).
+//! let twitch = server
+//!     .provider(Provider::builder("twitch", "https://api.twitch.tv/helix"))
+//!     .unwrap();
+//! assert!(twitch.base_url().as_str().starts_with("http://127.0.0.1:"));
+//! // Send, then:
 //! // let request = server.next_request().await;
 //! # }
 //! ```
@@ -239,6 +246,26 @@ impl MockServer {
             notify,
             task,
         })
+    }
+
+    /// Builds `provider` pointed at this server: a registry in
+    /// [`TestMode::RigMock`](crate::TestMode) (loopback only) overrides its base URL with
+    /// [`MockServer::url`] followed by the declared base path. Everything else the declaration
+    /// says (headers, secret headers, limits, retries) is kept.
+    pub fn provider(
+        &self,
+        provider: crate::ProviderBuilder,
+    ) -> Result<crate::Provider, crate::ConfigError> {
+        let name = provider.name();
+        let base = format!("{}{}", self.url(), provider.declared_path());
+        let registry = crate::ProviderRegistry::builder()
+            .test_mode(crate::TestMode::RigMock {
+                loopback_only: true,
+            })
+            .provider(provider)
+            .base_url_override(name, &base)
+            .build()?;
+        registry.get(name).cloned()
     }
 
     /// `http://127.0.0.1:<port>`.
