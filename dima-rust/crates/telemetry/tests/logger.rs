@@ -218,3 +218,50 @@ async fn a_hung_store_is_not_noticed() {
     caller_never_waits(support::local_store(port)).await;
     server.abort();
 }
+
+/// Counts how many items a log call pulls from it, up to a million.
+struct Endless(std::sync::Arc<std::sync::atomic::AtomicU64>);
+
+impl serde::Serialize for Endless {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeSeq;
+        let mut seq = serializer.serialize_seq(None)?;
+        for index in 0..1_000_000_u64 {
+            self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            seq.serialize_element(&index)?;
+        }
+        seq.end()
+    }
+}
+
+struct Panics;
+
+impl serde::Serialize for Panics {
+    fn serialize<S: serde::Serializer>(&self, _serializer: S) -> Result<S::Ok, S::Error> {
+        panic!("a caller's Serialize panicked")
+    }
+}
+
+#[tokio::test]
+async fn log_limits_apply_while_the_value_is_walked_and_panics_are_contained() {
+    let (config, console) = support::memory_config("api", None);
+    let telemetry = Telemetry::new(config).unwrap();
+    let running = telemetry.start();
+    let pulled = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+    telemetry.info(&Endless(pulled.clone()), LogOptions::console());
+    // The walk stops at the array limit instead of building a million values first.
+    assert!(pulled.load(std::sync::atomic::Ordering::Relaxed) <= 101);
+    telemetry.error(&Panics, LogOptions::console());
+    assert_eq!(telemetry.stats().unserializable, 1);
+    assert_eq!(
+        telemetry.stats().total_dropped(),
+        1,
+        "{:?}",
+        telemetry.stats()
+    );
+    running.shutdown(Duration::from_secs(2)).await;
+    let lines = support::lines(&console);
+    assert_eq!(lines.len(), 2);
+    assert_eq!(lines[0]["data"].as_array().map(Vec::len), Some(100));
+    assert_eq!(lines[1]["data"], "[unserializable]");
+}

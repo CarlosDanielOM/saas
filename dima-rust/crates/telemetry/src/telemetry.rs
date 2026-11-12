@@ -159,12 +159,18 @@ pub struct Stats {
     pub payloads_sent: u64,
     /// Cache log entries written.
     pub cache_written: u64,
+    /// Log calls whose data's `Serialize` failed or panicked (logged as `[unserializable]`).
+    pub unserializable: u64,
 }
 
 impl Stats {
     /// Everything this process failed to report: the admin page's `telemetry_dropped`.
     pub fn total_dropped(&self) -> u64 {
-        self.pipeline_dropped + self.console_dropped + self.cache_dropped + self.posthog_dropped
+        self.pipeline_dropped
+            + self.console_dropped
+            + self.cache_dropped
+            + self.posthog_dropped
+            + self.unserializable
     }
 }
 
@@ -265,6 +271,7 @@ pub(crate) struct Shared {
     pub(crate) dropped: AtomicU64,
     pub(crate) payloads_sent: AtomicU64,
     pub(crate) cache_written: AtomicU64,
+    pub(crate) unserializable: AtomicU64,
     pub(crate) sinks: Sinks,
     pub(crate) receivers: Mutex<Option<Receivers>>,
     pub(crate) posthog: Mutex<Option<otlp::Exporter>>,
@@ -367,6 +374,7 @@ impl Telemetry {
             dropped: AtomicU64::new(0),
             payloads_sent: AtomicU64::new(0),
             cache_written: AtomicU64::new(0),
+            unserializable: AtomicU64::new(0),
             sinks,
             receivers: Mutex::new(Some(receivers)),
             posthog: Mutex::new(posthog),
@@ -613,8 +621,12 @@ impl Telemetry {
 
     #[cold]
     fn emit<T: Serialize + ?Sized>(&self, level: Level, data: &T, options: &LogOptions<'_>) {
-        let mut value = serde_json::to_value(data)
-            .unwrap_or_else(|_| serde_json::Value::String("[unserializable]".to_owned()));
+        // Bounded while it is walked; a failing or panicking `Serialize` is contained.
+        let bounded = crate::bounded::to_value(data);
+        if bounded.failed {
+            self.0.unserializable.fetch_add(1, Ordering::Relaxed);
+        }
+        let mut value = bounded.value;
         let size = self.0.redactor.redact(&mut value);
         let context = trace::current();
         let trace_ids = context.as_ref().map(TraceContext::ids);
@@ -754,6 +766,7 @@ impl Telemetry {
             series: self.0.metrics.series(),
             payloads_sent: self.0.payloads_sent.load(Ordering::Relaxed),
             cache_written: self.0.cache_written.load(Ordering::Relaxed),
+            unserializable: self.0.unserializable.load(Ordering::Relaxed),
         }
     }
 

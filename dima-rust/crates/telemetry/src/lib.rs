@@ -75,6 +75,7 @@
 #![warn(missing_docs)]
 
 pub mod aggregate;
+mod bounded;
 pub mod hooks;
 pub mod label;
 pub mod logger;

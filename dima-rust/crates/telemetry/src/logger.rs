@@ -2,7 +2,9 @@
 //!
 //! The call site is [`crate::Telemetry::log`] and the six level methods. A call whose level is
 //! below the configured minimum returns after one comparison: no allocation, no serialisation.
-//! Otherwise the data is serialised once into JSON, redacted ([`crate::redact`]), and handed to
+//! Otherwise the data is serialised once into JSON under fixed limits that apply while the value
+//! is walked (a `Serialize` that fails or panics is contained and counted as
+//! [`crate::Stats::unserializable`]), redacted ([`crate::redact`]), and handed to
 //! each selected destination through its own bounded queue; the caller never waits for a socket
 //! or a pipe. A full queue, or the shared byte budget being spent, drops the entry for that
 //! destination and counts it.
