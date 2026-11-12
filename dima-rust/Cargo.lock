@@ -1643,6 +1643,7 @@ dependencies = [
  "dima-web",
  "futures-util",
  "http",
+ "http-body-util",
  "nix",
  "redis",
  "regex",
