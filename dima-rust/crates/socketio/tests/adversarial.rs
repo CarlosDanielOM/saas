@@ -1230,3 +1230,34 @@ async fn a_recovered_socket_keeps_its_data_and_skips_the_check() {
     assert!(Arc::ptr_eq(before.data(), after.data()));
     server.stop().await;
 }
+
+// ----- review fixes (F-SOCKETIO-b) ----------------------------------------------------------
+
+/// Finding 13: dropping the future of `emit_with_ack` (a `select!`, a timeout around it) frees
+/// its slot at once, on the socket and in the server's count.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_cancelled_acknowledgement_frees_its_slot() {
+    let options = Options {
+        max_pending_acks: 2,
+        ..Options::default()
+    };
+    let s = setup(options, NamespaceOptions::default()).await;
+    let mut client = Ws::open(s.server.addr).await;
+    client.join("/p", &ok()).await.unwrap();
+    let socket = s.probe.sockets("/p").pop().unwrap();
+    for _ in 0..5 {
+        let asked = socket.emit_with_ack("q", &[], 60 * SECOND);
+        // The client never answers: the wait is cancelled after the question went out.
+        let outcome = tokio::time::timeout(Duration::from_millis(20), asked).await;
+        assert!(outcome.is_err(), "cancelled, not refused: {outcome:?}");
+    }
+    assert_eq!(s.server.io.stats().pending_acks, 0);
+    assert_eq!(
+        socket
+            .emit_with_ack("q", &[], Duration::from_millis(50))
+            .await,
+        Err(AckError::Timeout)
+    );
+    client.close().await;
+    s.server.stop().await;
+}

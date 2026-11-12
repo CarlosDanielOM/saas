@@ -65,6 +65,8 @@ pub(crate) struct Shared {
     /// Bytes queued for all clients.
     pub outbound_bytes: AtomicUsize,
     pub recovery: recovery::Totals,
+    /// Server-to-client acknowledgements awaited.
+    pub pending_acks: AtomicUsize,
     namespaces: AtomicUsize,
     next_key: AtomicU64,
     next_ack: AtomicU64,
@@ -175,6 +177,7 @@ impl Builder {
             offsets: Offsets::default(),
             outbound_bytes: AtomicUsize::new(0),
             recovery: recovery::Totals::default(),
+            pending_acks: AtomicUsize::new(0),
             namespaces: AtomicUsize::new(0),
             next_key: AtomicU64::new(1),
             next_ack: AtomicU64::new(0),
@@ -489,6 +492,8 @@ pub struct Stats {
     pub stored_bytes: usize,
     /// Sessions kept for recovery.
     pub sessions: usize,
+    /// Server-to-client acknowledgements awaited.
+    pub pending_acks: usize,
 }
 
 impl SocketIo {
@@ -513,6 +518,7 @@ impl SocketIo {
             stored_packets: shared.recovery.packets.load(Ordering::Acquire),
             stored_bytes: shared.recovery.bytes.load(Ordering::Acquire),
             sessions: shared.recovery.sessions.load(Ordering::Acquire),
+            pending_acks: shared.pending_acks.load(Ordering::Acquire),
         }
     }
 

@@ -52,6 +52,10 @@ pub struct Options {
     /// Server-to-client events waiting for their acknowledgement, per socket (32). Beyond,
     /// `emit_with_ack` fails at once.
     pub max_pending_acks: usize,
+    /// Server-to-client events waiting for their acknowledgement in the whole server (16,384).
+    /// Beyond, `emit_with_ack` fails at once with [`crate::AckError::TooMany`]. A wait that is
+    /// cancelled (its future dropped) gives its slot back at once.
+    pub max_pending_acks_total: usize,
     /// The largest packet the server sends (16 MiB). A larger emit is refused.
     pub max_outbound_message: usize,
     /// Bytes waiting to be written to all clients together (128 MiB). An emit that would exceed
@@ -87,6 +91,7 @@ impl Default for Options {
             max_namespace_name: 256,
             max_inbound_queue: 256,
             max_pending_acks: 32,
+            max_pending_acks_total: 16_384,
             max_outbound_message: 16 << 20,
             max_outbound_total: 128 << 20,
             queue: QueueLimits::default(),

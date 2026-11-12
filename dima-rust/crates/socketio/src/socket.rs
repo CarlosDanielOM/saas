@@ -238,6 +238,41 @@ impl<D: Send + Sync + 'static> ErasedSocket for Core<D> {
     }
 }
 
+/// One awaited acknowledgement: its entry in the socket's table and its share of the server-wide
+/// count, both released when the awaiting future ends or is dropped.
+struct AckSlot<'a, D> {
+    core: &'a Core<D>,
+    id: u64,
+}
+
+impl<D> Drop for AckSlot<'_, D> {
+    fn drop(&mut self) {
+        self.core.lock().acks.remove(&self.id);
+        release(&self.core.def.shared().pending_acks, 1);
+    }
+}
+
+/// Takes `amount` from a counter bounded by `max` in one step (no check-then-increment race);
+/// `false` when it does not fit.
+pub(crate) fn reserve(counter: &std::sync::atomic::AtomicUsize, amount: usize, max: usize) -> bool {
+    counter
+        .try_update(
+            std::sync::atomic::Ordering::AcqRel,
+            std::sync::atomic::Ordering::Acquire,
+            |n| n.checked_add(amount).filter(|total| *total <= max),
+        )
+        .is_ok()
+}
+
+/// Gives back what [`reserve`] took.
+pub(crate) fn release(counter: &std::sync::atomic::AtomicUsize, amount: usize) {
+    let _ = counter.try_update(
+        std::sync::atomic::Ordering::AcqRel,
+        std::sync::atomic::Ordering::Acquire,
+        |n| Some(n.saturating_sub(amount)),
+    );
+}
+
 /// A client socket in a namespace. Clones share the socket.
 pub struct Socket<D> {
     pub(crate) core: Arc<Core<D>>,
@@ -360,45 +395,52 @@ impl<D: Send + Sync + 'static> Socket<D> {
             return Err(AckError::Send(SendError::Reserved));
         }
         let core = &self.core;
-        let max = core.def.shared().options.max_pending_acks;
+        let shared = core.def.shared();
         let (tx, rx) = oneshot::channel();
-        let id = {
+        // The slot is held by this future: dropping it (a `select!`, a timeout around the call)
+        // removes the entry and gives the server-wide slot back at once.
+        let slot = {
             let mut state = core.lock();
             if !state.connected {
                 return Err(AckError::Disconnected);
             }
-            if state.acks.len() >= max {
+            if state.acks.len() >= shared.options.max_pending_acks {
+                return Err(AckError::TooMany);
+            }
+            if !reserve(
+                &shared.pending_acks,
+                1,
+                shared.options.max_pending_acks_total,
+            ) {
                 return Err(AckError::TooMany);
             }
             // Never reused, also across a recovery (the reference counts per namespace and never
             // restarts): a late answer to a question of the socket's previous life can never
             // resolve a new one.
-            let id = core.def.shared().next_ack_id();
+            let id = shared.next_ack_id();
             state.acks.insert(id, tx);
-            id
+            AckSlot { core, id }
         };
         let packet = codec::encode_event(
             &core.nsp,
-            Some(id),
+            Some(slot.id),
             &codec::array_json(Some(event), args, None),
         );
-        let sent = if packet.len() > core.def.shared().options.max_outbound_message {
+        let sent = if packet.len() > shared.options.max_outbound_message {
             Err(SendError::TooLarge)
         } else {
             core.push(packet, &Delivery::Reliable)
         };
         if let Err(error) = sent {
-            core.lock().acks.remove(&id);
             return Err(AckError::Send(error));
         }
-        match tokio::time::timeout(timeout, rx).await {
+        let answer = match tokio::time::timeout(timeout, rx).await {
             Ok(Ok(answer)) => answer,
             Ok(Err(_)) => Err(AckError::Disconnected),
-            Err(_) => {
-                core.lock().acks.remove(&id);
-                Err(AckError::Timeout)
-            }
-        }
+            Err(_) => Err(AckError::Timeout),
+        };
+        drop(slot);
+        answer
     }
 
     /// `socket.disconnect()`: sends DISCONNECT (the client sees `io server disconnect` and does
