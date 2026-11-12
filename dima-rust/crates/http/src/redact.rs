@@ -117,6 +117,17 @@ impl fmt::Debug for HeadersDebug<'_> {
     }
 }
 
+/// Prints the names of a header map, never a value.
+pub(crate) struct HeaderNames<'a>(pub &'a HeaderMap);
+
+impl fmt::Debug for HeaderNames<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list()
+            .entries(self.0.keys().map(HeaderName::as_str))
+            .finish()
+    }
+}
+
 /// Prints an error and its sources on one line.
 pub(crate) struct ErrorChain<'a>(pub &'a (dyn std::error::Error + 'static));
 

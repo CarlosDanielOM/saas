@@ -19,7 +19,7 @@ use tokio::time::Instant;
 use url::Url;
 
 /// What a credential refresh produced.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Refresh {
     /// A new value: the request is retried with it.
     Rotated(HeaderValue),
@@ -29,6 +29,16 @@ pub enum Refresh {
     /// Stop: the 401 response is returned and [`Response::auth_refresh_unavailable`] is set (the
     /// reference's streamer path, which reports 503).
     Stop,
+}
+
+impl std::fmt::Debug for Refresh {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Rotated(_) => "Rotated(<redacted>)",
+            Self::Retry => "Retry",
+            Self::Stop => "Stop",
+        })
+    }
 }
 
 /// A credential that can be refreshed when the server answers 401 (see
@@ -85,12 +95,23 @@ pub(crate) async fn await_with(
 }
 
 /// A request body.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub(crate) enum Body {
     #[default]
     Empty,
     Bytes(Bytes),
     Stream(reqwest::Body),
+}
+
+/// The length only, never the bytes.
+impl std::fmt::Debug for Body {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Empty => f.write_str("Empty"),
+            Self::Bytes(bytes) => write!(f, "Bytes({} bytes)", bytes.len()),
+            Self::Stream(_) => f.write_str("Stream"),
+        }
+    }
 }
 
 /// The shared client: one connection pool for every provider. Cheap to clone.
@@ -252,7 +273,6 @@ impl HttpClientBuilder {
 }
 
 /// A request being built. Nothing is sent until [`RequestBuilder::send`].
-#[derive(Debug)]
 #[must_use = "a request does nothing until it is sent"]
 pub struct RequestBuilder<'a> {
     client: &'a HttpClient,
@@ -271,6 +291,24 @@ pub struct RequestBuilder<'a> {
     idempotent: Option<bool>,
     shutdown: Option<Shutdown>,
     invalid: Option<&'static str>,
+}
+
+/// Provider, method, path template, header names and body length: never the rendered URL, a
+/// header value or the body.
+impl std::fmt::Debug for RequestBuilder<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RequestBuilder")
+            .field("provider", &self.provider.0.name)
+            .field("method", &self.method.as_str())
+            .field("template", &self.template)
+            .field("headers", &crate::redact::HeaderNames(&self.headers))
+            .field(
+                "credential",
+                &self.credential.as_ref().map(|(_, name, _)| name.as_str()),
+            )
+            .field("body", &self.body)
+            .finish_non_exhaustive()
+    }
 }
 
 impl<'a> RequestBuilder<'a> {

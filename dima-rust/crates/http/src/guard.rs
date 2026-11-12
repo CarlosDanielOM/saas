@@ -443,7 +443,6 @@ fn info(method: Method) -> RequestInfo {
 }
 
 /// A request through the [`GuardedClient`].
-#[derive(Debug)]
 pub struct GuardedRequest<'a> {
     client: &'a GuardedClient,
     method: Method,
@@ -454,6 +453,19 @@ pub struct GuardedRequest<'a> {
     max_bytes: u64,
     idle_timeout: Duration,
     invalid: Option<&'static str>,
+}
+
+/// Method, header names and body length: never the URL (a user's URL can hold anything), a
+/// header value or the body.
+impl std::fmt::Debug for GuardedRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GuardedRequest")
+            .field("method", &self.method.as_str())
+            .field("url", &INFO_TEMPLATE)
+            .field("headers", &crate::redact::HeaderNames(&self.headers))
+            .field("body", &self.body)
+            .finish_non_exhaustive()
+    }
 }
 
 impl GuardedRequest<'_> {

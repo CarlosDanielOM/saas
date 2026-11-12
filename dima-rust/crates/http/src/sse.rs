@@ -27,7 +27,7 @@ pub struct SseEvent {
 }
 
 /// The incremental decoder: feed it bytes, take events out.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct SseDecoder {
     line: Vec<u8>,
     after_cr: bool,
@@ -38,6 +38,16 @@ pub struct SseDecoder {
     last_id: String,
     retry: Option<u64>,
     events: VecDeque<SseEvent>,
+}
+
+/// Sizes only: the buffered text is response content.
+impl std::fmt::Debug for SseDecoder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SseDecoder")
+            .field("pending_bytes", &self.pending_bytes())
+            .field("queued_events", &self.events.len())
+            .finish_non_exhaustive()
+    }
 }
 
 impl SseDecoder {

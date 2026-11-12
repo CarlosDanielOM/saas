@@ -89,7 +89,7 @@ impl std::fmt::Debug for Provider {
         f.debug_struct("Provider")
             .field("name", &p.name)
             .field("base", &p.base.as_str())
-            .field("headers", &crate::redact::HeadersDebug(&p.headers))
+            .field("headers", &crate::redact::HeaderNames(&p.headers))
             .field("timeout", &p.timeout)
             .field("retry_attempts", &p.retry.attempts())
             .field("redirects", &p.redirects)
@@ -133,12 +133,28 @@ impl Provider {
     }
 }
 
+/// A default header as declared: secret values stay in [`dima_core::SecretString`] until the
+/// provider is built.
+#[derive(Clone)]
+enum DeclaredHeader {
+    Plain(String, String),
+    Secret(String, dima_core::SecretString),
+}
+
+impl DeclaredHeader {
+    fn name(&self) -> &str {
+        match self {
+            Self::Plain(name, _) | Self::Secret(name, _) => name,
+        }
+    }
+}
+
 /// Builds a [`Provider`].
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ProviderBuilder {
     name: &'static str,
     base: String,
-    headers: Vec<(String, String, bool)>,
+    headers: Vec<DeclaredHeader>,
     timeout: Duration,
     headers_timeout: Option<Duration>,
     idle_timeout: Duration,
@@ -148,6 +164,27 @@ pub struct ProviderBuilder {
     max_concurrency: Option<usize>,
     secret_query: Vec<&'static str>,
     internal: bool,
+}
+
+/// The name and the header names only: the base URL is not validated yet (it could hold
+/// credentials) and header values may be secrets.
+impl std::fmt::Debug for ProviderBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProviderBuilder")
+            .field("name", &self.name)
+            .field(
+                "headers",
+                &self
+                    .headers
+                    .iter()
+                    .map(DeclaredHeader::name)
+                    .collect::<Vec<_>>(),
+            )
+            .field("timeout", &self.timeout)
+            .field("redirects", &self.redirects)
+            .field("internal", &self.internal)
+            .finish_non_exhaustive()
+    }
 }
 
 impl ProviderBuilder {
@@ -165,7 +202,7 @@ impl ProviderBuilder {
     /// A header sent with every request.
     pub fn header(mut self, name: &str, value: &str) -> Self {
         self.headers
-            .push((name.to_owned(), value.to_owned(), false));
+            .push(DeclaredHeader::Plain(name.to_owned(), value.to_owned()));
         self
     }
 
@@ -173,7 +210,7 @@ impl ProviderBuilder {
     /// sensitive for the HTTP stack).
     pub fn secret_header(mut self, name: &str, value: &dima_core::SecretString) -> Self {
         self.headers
-            .push((name.to_owned(), value.expose().to_owned(), true));
+            .push(DeclaredHeader::Secret(name.to_owned(), value.clone()));
         self
     }
 
@@ -247,8 +284,13 @@ impl ProviderBuilder {
             return Err(ConfigError::BaseUrl(name));
         }
         let mut headers = HeaderMap::with_capacity(self.headers.len());
-        for (header, value, secret) in self.headers {
-            let header = HeaderName::try_from(header).map_err(|_| ConfigError::Header(name))?;
+        for declared in &self.headers {
+            let (header, value, secret) = match declared {
+                DeclaredHeader::Plain(header, value) => (header, value.as_str(), false),
+                DeclaredHeader::Secret(header, value) => (header, value.expose(), true),
+            };
+            let header =
+                HeaderName::try_from(header.as_str()).map_err(|_| ConfigError::Header(name))?;
             let mut value = HeaderValue::try_from(value).map_err(|_| ConfigError::Header(name))?;
             if secret || crate::redact::is_sensitive(&header) {
                 value.set_sensitive(true);
@@ -407,6 +449,7 @@ mod tests {
             .unwrap();
         let text = format!("{provider:?}");
         assert!(!text.contains("SECRET"), "{text}");
-        assert!(text.contains("domdimabot.com"));
+        assert!(text.contains("http-referer"), "{text}");
+        assert!(!text.contains("domdimabot.com"), "{text}");
     }
 }
