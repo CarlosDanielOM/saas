@@ -127,3 +127,15 @@ responses. This supplies Express weak ETags, conditional GET freshness and HEAD 
 The access scenario saves `/health`'s ETag and reuses it in `If-None-Match`; Node and Rust
 both return 304 with an empty body. Default double-run recording and candidate verification
 passed for all 12 access steps. No ETag computation is duplicated in this service.
+
+Part 2: the ingestion time differences are quantization artefacts. Both stores use the same
+`floor(m.at / 1000 / resolution) * resolution` SQL for resolutions 10, 60 and 3600.
+The scenario interpolates wall-clock `${now_ms}` independently on each run; subtracting each
+run's start does not cancel flooring to UTC boundaries. The scenario now declares bounded
+time tolerances (10 s for freshness, 60 s for timeline, 3600 s for mixed-resolution stored
+rows). These do not excuse wrong bucketing: three SQL observations independently require
+all three metric rows to equal the exact floor of the stored unrounded span timestamp, and
+both HTTP freshness/timeline timestamps to equal their 10 s/60 s floors. Every captured
+predicate is true. Counts, sums, histograms and resolutions still compare exactly.
+Default double-run recording and candidate verification pass (16 steps); no capture was
+edited by hand. No service bucketing change was necessary.
