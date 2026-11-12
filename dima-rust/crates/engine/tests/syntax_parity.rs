@@ -161,7 +161,7 @@ fn every_corpus_case_gives_the_typescript_result() {
     let cases = corpus["cases"].as_array().expect("cases");
     assert_eq!(
         cases.len(),
-        1298,
+        1303,
         "regenerate the test's counts with the corpus"
     );
     let engine = SyntaxEngine::default();
@@ -220,7 +220,7 @@ fn every_corpus_case_gives_the_typescript_result() {
     assert!(failures.is_empty(), "{} corpus mismatches", failures.len());
     // Sources longer than a stored command may be, parsed like the reference does.
     assert_eq!(
-        over_source_limit, 6,
+        over_source_limit, 7,
         "cases over the 10,000-character source limit"
     );
     // The intended difference and how many cases it touches.

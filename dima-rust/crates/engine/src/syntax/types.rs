@@ -68,12 +68,16 @@ pub enum DiagnosticCode {
     SourceLimit,
     /// The text to parse has more characters than [`Limits::input_chars`].
     InputLimit,
-    /// More tokens than [`Limits::tokens`].
+    /// More tokens than [`Limits::tokens`] or the program's derived token budget.
     TokenLimit,
-    /// More AST nodes than [`Limits::nodes`].
+    /// More AST nodes than [`Limits::nodes`] or the program's derived node budget.
     NodeLimit,
-    /// Deeper than [`Limits::nesting`] or the persisted JSON depth ceiling.
+    /// Deeper than [`Limits::nesting`], or (only from
+    /// [`CompiledProgram::check_json_depth`]) deeper than the JSON reader's ceiling.
     NestingLimit,
+    /// The lexer visited more bytes than the program's work budget ([`WORK_BASE`],
+    /// [`WORK_PER_INPUT_BYTE`]): quoted templates nested in each other are lexed once per level.
+    WorkLimit,
     /// A grammar extension that the lexer cannot support.
     InvalidGrammar,
 }
@@ -94,6 +98,7 @@ impl DiagnosticCode {
             Self::TokenLimit => "TOKEN_LIMIT",
             Self::NodeLimit => "NODE_LIMIT",
             Self::NestingLimit => "NESTING_LIMIT",
+            Self::WorkLimit => "WORK_LIMIT",
             Self::InvalidGrammar => "INVALID_GRAMMAR",
         }
     }
@@ -128,6 +133,7 @@ impl Diagnostic {
                 | DiagnosticCode::TokenLimit
                 | DiagnosticCode::NodeLimit
                 | DiagnosticCode::NestingLimit
+                | DiagnosticCode::WorkLimit
         )
     }
 }
@@ -605,21 +611,16 @@ pub struct Limits {
     /// Longest text that parsing, scanning and compiling accept, in characters: a stored text
     /// with its placeholders substituted ([`MAX_INPUT_CHARS`]).
     pub input_chars: usize,
-    /// Tokens per compilation, nested arrays and interpolations included.
+    /// Tokens per program (a parse, or one template segment), nested arrays and interpolations
+    /// included. A fixed cap on top of the budget derived from the program's length
+    /// ([`TOKENS_PER_INPUT_BYTE`]); by default there is none.
     pub tokens: usize,
-    /// AST nodes per compilation, discarded nodes included.
+    /// AST nodes per program, discarded nodes included. A fixed cap on top of the budget
+    /// derived from the program's length ([`NODES_PER_INPUT_BYTE`]); by default there is none.
     pub nodes: usize,
-    /// Nesting depth; never above [`HARD_NESTING_CEILING`].
+    /// Nesting depth (recursion levels and AST height); never above [`MAX_NESTING`].
     pub nesting: usize,
 }
-
-/// The deepest nesting any configuration may allow. It also bounds the AST's depth, which keeps
-/// recursive traversal and destruction safe.
-pub const HARD_NESTING_CEILING: usize = 128;
-
-/// Exclusive ceiling for the persisted JSON shape's container depth: `serde_json` refuses to
-/// enter its 128th container, so every AST the parser builds stays readable by it.
-pub const HARD_JSON_NESTING_CEILING: usize = 128;
 
 /// The longest stored command text, in characters (the commands API enforces it on save).
 pub const MAX_SOURCE_CHARS: usize = 10_000;
@@ -638,14 +639,62 @@ pub const MAX_ARGUMENT_CHARS: usize = 500;
 /// becomes `%(cmd_arg_<32 hex digits>_<n>)` instead, at most 48 characters, which is shorter.
 pub const MAX_INPUT_CHARS: usize = MAX_SOURCE_CHARS / 2 * MAX_ARGUMENT_CHARS;
 
+/// The nesting a program is parsed with on the caller's stack. A deeper program is parsed again
+/// on a dedicated thread whose stack fits [`Limits::nesting`] (see [`MAX_NESTING`]). The block
+/// editor parses with this limit, so its recursive conversions stay on an ordinary stack.
+pub const HARD_NESTING_CEILING: usize = 128;
+
+/// The deepest nesting any configuration may allow, and the default.
+///
+/// The reference has no limit of its own: it fails where V8's call stack ends. Measured with
+/// Node 24's default stack (`node:24-alpine`, the production image), it parses at most 11,264
+/// nested unary operators (the cheapest nesting, one frame per level), 5,632 parentheses,
+/// 7,673 ternary branches and 2,048 nested arrays, and it evaluates far less of most of them
+/// (767 unary operators). This is above all of those, so nothing the reference can parse is
+/// refused for its depth, and it is above the depth of any text within the source limit
+/// (every level of nesting needs at least one character). A program this deep is parsed on a
+/// thread with a stack sized for it, and its tree is freed without recursion.
+pub const MAX_NESTING: usize = 16_384;
+
+/// Exclusive ceiling for the persisted JSON shape's container depth: `serde_json` refuses to
+/// enter its 128th container. Parsing does not apply it (the reference never stores a tree); a
+/// caller that stores a tree as JSON checks it with [`CompiledProgram::check_json_depth`].
+pub const HARD_JSON_NESTING_CEILING: usize = 128;
+
+/// Tokens a program can have per byte of its text, at most: a token starts at a byte no other
+/// token of the same program starts at (an array's items and a template's interpolations lie
+/// after the `%[` or `"` that starts it), so a program never has more tokens than bytes.
+pub const TOKENS_PER_INPUT_BYTE: usize = 1;
+
+/// AST nodes a program can make per byte of its text, at most. Every node is made for a token
+/// or for an empty part next to one, and the most a single token makes is three: a `?` whose
+/// branches are both empty (`*(1?)` makes the ternary and two empty literals). The robustness
+/// tests check the bound on random and adversarial input.
+pub const NODES_PER_INPUT_BYTE: usize = 3;
+
+/// Added to the derived token and node budgets: the root of a program and the empty literal
+/// of an empty one have no byte of their own.
+pub const BUDGET_BASE: usize = 64;
+
+/// Bytes the lexer may visit per byte of a program's text (nested arrays and quoted templates
+/// are visited once per enclosing level) for programs longer than [`WORK_BASE`] allows.
+pub const WORK_PER_INPUT_BYTE: usize = 32;
+
+/// The work budget of every program, however short. Quoted templates nested in each other are
+/// lexed once per level, like the reference re-tokenizes them, which is quadratic in the depth:
+/// the worst text within the 10,000-character source limit (about 950 levels around 4,300 emoji)
+/// visits about 19 million bytes; this is 64 Mi. Longer, substituted text gets
+/// [`WORK_PER_INPUT_BYTE`] per byte, so the work stays linear in the input.
+pub const WORK_BASE: usize = 1 << 26;
+
 impl Default for Limits {
     fn default() -> Self {
         Self {
             source_chars: MAX_SOURCE_CHARS,
             input_chars: MAX_INPUT_CHARS,
-            tokens: 20_000,
-            nodes: 4_000,
-            nesting: HARD_NESTING_CEILING,
+            tokens: usize::MAX,
+            nodes: usize::MAX,
+            nesting: MAX_NESTING,
         }
     }
 }
@@ -666,26 +715,121 @@ pub struct ParseStats {
 }
 
 impl ParseStats {
-    pub(crate) fn since(self, previous: Self) -> Self {
+    pub(crate) fn plus(self, other: Self) -> Self {
         Self {
-            tokens: self.tokens.saturating_sub(previous.tokens),
-            nodes: self.nodes.saturating_sub(previous.nodes),
-            arrays: self.arrays.saturating_sub(previous.arrays),
-            array_indexed_bytes: self
-                .array_indexed_bytes
-                .saturating_sub(previous.array_indexed_bytes),
-            lexed_bytes: self.lexed_bytes.saturating_sub(previous.lexed_bytes),
+            tokens: self.tokens + other.tokens,
+            nodes: self.nodes + other.nodes,
+            arrays: self.arrays + other.arrays,
+            array_indexed_bytes: self.array_indexed_bytes + other.array_indexed_bytes,
+            lexed_bytes: self.lexed_bytes + other.lexed_bytes,
         }
     }
 }
 
-/// A parsed program and the source it came from.
+/// A parsed program and the source it came from. Cloning it shares the tree; dropping the
+/// last clone frees the tree without recursion, however deep it is ([`MAX_NESTING`]).
 #[derive(Clone, Debug)]
 pub struct CompiledProgram {
     pub(crate) source: Arc<str>,
     pub(crate) span: Span,
-    pub(crate) root: AstNode,
+    pub(crate) root: Arc<AstNode>,
     pub(crate) stats: ParseStats,
+}
+
+impl Drop for CompiledProgram {
+    fn drop(&mut self) {
+        if let Some(root) = Arc::get_mut(&mut self.root) {
+            free(std::mem::replace(
+                root,
+                AstNode::Root {
+                    children: Vec::new(),
+                },
+            ));
+        }
+    }
+}
+
+/// Frees a tree node by node: each node is dropped after its children were moved out.
+fn free(node: AstNode) {
+    fn index(accessor: Option<ArrayAccessor>) -> Option<AstNode> {
+        match accessor? {
+            ArrayAccessor::Index { index }
+            | ArrayAccessor::SetIndex { index }
+            | ArrayAccessor::Remove { index } => Some(*index),
+            _ => None,
+        }
+    }
+    let mut pending = vec![node];
+    while let Some(node) = pending.pop() {
+        match node {
+            AstNode::Root { children }
+            | AstNode::Function { args: children, .. }
+            | AstNode::CommandRef { args: children, .. } => pending.extend(children),
+            AstNode::SetVar {
+                value,
+                accessor,
+                user_selector,
+                ..
+            } => {
+                pending.push(*value);
+                pending.extend(index(accessor));
+                pending.extend(user_selector.map(|node| *node));
+            }
+            AstNode::GetVar {
+                accessor,
+                user_selector,
+                ..
+            }
+            | AstNode::Exists {
+                accessor,
+                user_selector,
+                ..
+            }
+            | AstNode::DeleteVar {
+                accessor,
+                user_selector,
+                ..
+            } => {
+                pending.extend(index(accessor));
+                pending.extend(user_selector.map(|node| *node));
+            }
+            AstNode::Binary { left, right, .. } => pending.extend([*left, *right]),
+            AstNode::Unary { argument, .. } => pending.push(*argument),
+            AstNode::Ternary {
+                test,
+                consequent,
+                alternate,
+            } => pending.extend([*test, *consequent, *alternate]),
+            AstNode::Template { segments } => {
+                pending.extend(segments.into_iter().filter_map(|segment| match segment {
+                    TemplateSegment::Expr { node } => Some(node),
+                    TemplateSegment::Text { .. } => None,
+                }));
+            }
+            AstNode::ArrayLiteral { items, accessor } => {
+                pending.extend(items);
+                pending.extend(index(accessor));
+            }
+            AstNode::LoopAssign { value, .. } => pending.extend(value.map(|node| *node)),
+            AstNode::ForLoop {
+                init,
+                condition,
+                update,
+                iterable,
+                body,
+                ..
+            } => {
+                pending.extend(
+                    [init, condition, update, iterable]
+                        .into_iter()
+                        .flatten()
+                        .map(|node| *node),
+                );
+                pending.extend(body);
+            }
+            AstNode::Literal { .. } | AstNode::LoopVar { .. } | AstNode::Custom { .. } => {}
+        }
+    }
 }
 
 impl CompiledProgram {
@@ -708,15 +852,22 @@ impl CompiledProgram {
 
     /// The root's children.
     pub fn children(&self) -> &[AstNode] {
-        match &self.root {
+        match &*self.root {
             AstNode::Root { children } => children,
             _ => &[],
         }
     }
 
-    /// The AST as JSON.
+    /// The AST as JSON. Serializing recurses: a caller with a deep tree (above
+    /// [`HARD_NESTING_CEILING`]) checks [`Self::check_json_depth`] first.
     pub fn to_value(&self) -> Value {
         self.root.to_value()
+    }
+
+    /// Whether the tree's JSON shape stays below [`HARD_JSON_NESTING_CEILING`], for a caller that
+    /// stores it and reads it back with `serde_json` (counted without recursion).
+    pub fn check_json_depth(&self) -> Result<(), Diagnostic> {
+        super::persistence::validate(&self.root, self.span)
     }
 
     /// Work counters.

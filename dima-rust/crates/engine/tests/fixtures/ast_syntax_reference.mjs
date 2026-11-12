@@ -1420,6 +1420,15 @@ for (const item of cases) {
       legacyOutcome: diagnosticOutcome('MISSING_USER_SELECTOR', 'Missing user selector', span)
     });
   }
+
+  // Budgets follow the input's length: many expressions under the source limit
+  // (6,006 characters, 4,004 nodes), a stored command whose substituted text is
+  // longer than a stored command may be, and deep parentheses (no tree depth).
+  addCompiled('budget', '*(1+1)'.repeat(1001));
+  addCompiled('budget', '$(say &p1) '.repeat(30).replaceAll('&p1', 'x'.repeat(400)));
+  addParse('budget', '*(1+1)'.repeat(1001));
+  addParse('budget', `*(${'('.repeat(2000)}1${')'.repeat(2000)})`);
+  addCompiled('budget', `a *(${'('.repeat(2000)}1${')'.repeat(2000)}) b`);
 }
 
 // ===========================================================================

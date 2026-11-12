@@ -631,7 +631,20 @@ impl Parser<'_, '_> {
 
     /// `findTopLevelToken`: the first `target` outside parentheses, brackets and braces. A token
     /// whose reference string ends with `(` opens a parenthesis.
-    fn top_level(&self, target: &str, start: usize, end: usize) -> Option<usize> {
+    fn top_level(
+        &mut self,
+        target: &str,
+        start: usize,
+        end: usize,
+    ) -> Result<Option<usize>, Diagnostic> {
+        let found = self.find_top_level(target, start, end);
+        let stop = found.unwrap_or(end);
+        self.budget
+            .scan(stop.saturating_sub(start), self.span(start))?;
+        Ok(found)
+    }
+
+    fn find_top_level(&self, target: &str, start: usize, end: usize) -> Option<usize> {
         let (mut parens, mut brackets, mut braces) = (0usize, 0usize, 0usize);
         let mut i = start;
         while i < end {
@@ -682,7 +695,7 @@ impl Parser<'_, '_> {
             ));
         }
         let mode_at = self.next(name_at);
-        let Some(body_start) = self.top_level("{", mode_at, end) else {
+        let Some(body_start) = self.top_level("{", mode_at, end)? else {
             return Ok((
                 self.literal(error("missing loop body"), start)?,
                 self.next(start),
@@ -700,6 +713,8 @@ impl Parser<'_, '_> {
             closing = body_end;
             body_end = self.next(body_end);
         }
+        self.budget
+            .scan(body_end.saturating_sub(body_start), self.span(start))?;
         if braces != 0 {
             return Ok((
                 self.literal(error("unclosed loop body"), start)?,
@@ -714,8 +729,11 @@ impl Parser<'_, '_> {
             iterable = Some(Box::new(value.node));
             LoopMode::Foreach
         } else {
-            let first = self.top_level(";", mode_at, body_start);
-            let second = first.and_then(|first| self.top_level(";", self.next(first), body_start));
+            let first = self.top_level(";", mode_at, body_start)?;
+            let second = match first {
+                Some(first) => self.top_level(";", self.next(first), body_start)?,
+                None => None,
+            };
             let (Some(first), Some(second)) = (first, second) else {
                 return Ok((
                     self.literal(error("invalid range loop syntax"), start)?,
@@ -778,16 +796,13 @@ impl Parser<'_, '_> {
             let mut end = opening + 2;
             while end < range.end && braces > 0 {
                 match byte(&text, end) {
-                    b'{' => {
-                        braces += 1;
-                        self.budget
-                            .depth(depth + braces, view.span(opening..end + 1))?;
-                    }
+                    b'{' => braces += 1,
                     b'}' => braces -= 1,
                     _ => {}
                 }
                 end += 1;
             }
+            self.budget.scan(end - i, view.span(opening..end))?;
             if braces != 0 {
                 segments.push(TemplateSegment::Text {
                     value: sub(&text, opening..range.end).into(),
@@ -795,6 +810,12 @@ impl Parser<'_, '_> {
                 break;
             }
             let inner = opening + 2..end - 1;
+            // The reference's `try` also catches a stack overflow (`RangeError`) and shows the
+            // interpolation's text; a nesting limit here stands for it ([`MAX_NESTING`] is above
+            // the deepest nesting the reference parses). Other resource limits fail the program.
+            let caught = |error: &Diagnostic, budget: &Budget| {
+                error.code == DiagnosticCode::NestingLimit && !budget.needs_stack()
+            };
             match tokenize(
                 view.clone(),
                 inner.clone(),
@@ -802,6 +823,9 @@ impl Parser<'_, '_> {
                 self.budget,
                 depth,
             ) {
+                Err(error) if caught(&error, self.budget) => segments.push(TemplateSegment::Text {
+                    value: format!("[Parse error: {}]", sub(&text, inner)),
+                }),
                 Err(error) if error.is_resource_limit() => return Err(error),
                 Err(error) => segments.push(TemplateSegment::Text {
                     value: format!("[Parse error: {}]", error.message),
@@ -817,6 +841,11 @@ impl Parser<'_, '_> {
                         budget: self.budget,
                     };
                     match parser.star(range.start, range.end, 0, depth) {
+                        Err(error) if caught(&error, parser.budget) => {
+                            segments.push(TemplateSegment::Text {
+                                value: format!("[Parse error: {}]", sub(&text, inner)),
+                            });
+                        }
                         Err(error) if error.is_resource_limit() => return Err(error),
                         // The reference catches the throw and shows the expression's text.
                         Err(_) => segments.push(TemplateSegment::Text {
