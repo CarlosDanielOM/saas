@@ -26,7 +26,7 @@ pub fn canonical(name: &str) -> String {
 }
 pub fn filter(text: &str, provider: &str, enabled: &HashMap<String, bool>) -> String {
     let Ok(re) = Regex::new(
-        r"(?i)<[\s\x{FEFF}]*(/?)[\s\x{FEFF}]*([a-z][a-z -]*?)[\s\x{FEFF}]*>|\[([^\[\]]*)\]",
+        r"(?i)<[\t\n\x{b}\x{c}\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]*(/?)[\t\n\x{b}\x{c}\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]*([a-z][a-z -]*?)[\t\n\x{b}\x{c}\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]*>|\[([^\[\]]*)\]",
     ) else {
         return text.into();
     };
@@ -34,7 +34,7 @@ pub fn filter(text: &str, provider: &str, enabled: &HashMap<String, bool>) -> St
         let angle = c.get(2);
         let raw = angle.or_else(|| c.get(3)).map_or("", |m| m.as_str());
         let raw = if angle.is_some() {
-            Regex::new(r"[\s\x{FEFF}]*-[\s\x{FEFF}]*")
+            Regex::new(r"[\t\n\x{b}\x{c}\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]*-[\t\n\x{b}\x{c}\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]*")
                 .map(|r| r.replace_all(raw, "-").into_owned())
                 .unwrap_or_else(|_| raw.into())
         } else {
@@ -94,4 +94,37 @@ pub fn reinforce(text: &str) -> String {
     }
     out.push_str(text.get(end..).unwrap_or_default());
     out
+}
+
+/// Expand the legacy inline/wrapping switches, defaulting every missing/nonboolean cue to on.
+pub fn normalize_settings(input: &serde_json::Value) -> HashMap<String, bool> {
+    EXPRESSIVE_TAGS
+        .iter()
+        .map(|tag| {
+            let legacy = if *tag == "long-pause" {
+                "longPause"
+            } else {
+                tag
+            };
+            let value = input
+                .get(tag)
+                .filter(|v| !v.is_null())
+                .or_else(|| {
+                    input
+                        .get("inline")
+                        .and_then(|v| v.get(legacy))
+                        .filter(|v| !v.is_null())
+                })
+                .or_else(|| {
+                    input
+                        .get("wrapping")
+                        .and_then(|v| v.get(legacy))
+                        .filter(|v| !v.is_null())
+                });
+            (
+                (*tag).into(),
+                value.and_then(serde_json::Value::as_bool).unwrap_or(true),
+            )
+        })
+        .collect()
 }

@@ -79,7 +79,11 @@ pub fn parse_search(q: &Value) -> Result<Search, VoiceError> {
     {
         return Err(invalid());
     }
-    let page = page.parse::<u32>().map_err(|_| invalid())?;
+    let page = dima_text::parse_number(&page);
+    if !page.is_finite() || !(1.0..=50.0).contains(&page) {
+        return Err(invalid());
+    }
+    let page = page as u32;
     if !(1..=50).contains(&page) {
         return Err(invalid());
     }
@@ -135,9 +139,13 @@ pub fn normalize_voice(v: &Value) -> Option<Value> {
     }
     let cover = v["cover_image"]
         .as_str()
-        .filter(|s| s.strip_prefix("coverimage/").is_some_and(id_valid))
+        .filter(|s| {
+            s.get(..11)
+                .is_some_and(|p| p.eq_ignore_ascii_case("coverimage/"))
+                && s.get(11..).is_some_and(id_valid)
+        })
         .map(|s| format!("https://public-platform.r2.fish.audio/cdn-cgi/image/width=128/{s}"));
-    let sample_re=Regex::new(r"(?i)^https://platform\.r2\.fish\.audio/tasks?/(?:\d{4}-\d{2}-\d{2}/)?[a-f\d]{32}\.(?:mp3|wav|opus)$").ok()?;
+    let sample_re=Regex::new(r"(?i)^https://platform\.r2\.fish\.audio/tasks?/(?:[0-9]{4}-[0-9]{2}-[0-9]{2}/)?[a-f0-9]{32}\.(?:mp3|wav|opus)$").ok()?;
     let sample=v["samples"].as_array().and_then(|a|a.iter().find_map(|s|s["audio"].as_str().filter(|url|sample_re.is_match(url)).map(|url|json!({"url":url,"text":dima_text::truncate_chars(dima_text::trim(s["text"].as_str().unwrap_or_default()),400)}))));
     let uses = v["task_count"]
         .as_f64()
@@ -192,11 +200,13 @@ impl Catalog {
             Some(id) => Path::template("/model/{}", &[id]).map_err(|_| unavailable())?,
             None => Path::fixed("/model"),
         };
-        let response = self
-            .clients
-            .http
-            .get(&self.clients.fish, path)
-            .query(query)
+        let request = self.clients.http.get(&self.clients.fish, path);
+        let request = if query.is_empty() {
+            request
+        } else {
+            request.query(query)
+        };
+        let response = request
             .timeout(Duration::from_secs(12))
             .max_bytes(2 * 1024 * 1024)
             .send()

@@ -80,18 +80,25 @@ pub struct Audio {
     pub mime_type: &'static str,
     pub backend: &'static str,
     seen: bool,
+    deadline: tokio::time::Instant,
 }
 impl Audio {
     pub async fn chunk(&mut self) -> Result<Option<Bytes>, Error> {
-        let chunk = self.response.chunk().await?;
+        let chunk = tokio::time::timeout_at(self.deadline, self.response.chunk())
+            .await
+            .map_err(|_| Error::Message("Fish Audio TTS timed out".into()))??;
         if chunk.as_ref().is_some_and(|b| !b.is_empty()) {
             self.seen = true;
         }
         if chunk.is_none() && !self.seen && self.backend != "piper" {
-            return Err(Error::Message(format!(
-                "{} returned empty audio",
-                self.backend
-            )));
+            return Err(Error::Message(if self.backend == KOKORO_MODEL {
+                "Kokoro returned empty audio".into()
+            } else {
+                format!(
+                    "Fish Audio TTS returned empty audio from '{}'",
+                    self.backend
+                )
+            }));
         }
         Ok(chunk)
     }
@@ -143,6 +150,7 @@ impl Clients {
             body["provider"] =
                 json!({"only":["deepinfra"],"order":["deepinfra"],"allow_fallbacks":false});
         }
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
         let response = self
             .http
             .post(&self.openrouter, "/audio/speech")
@@ -179,6 +187,7 @@ impl Clients {
             mime_type: "audio/mpeg",
             backend: if kokoro { KOKORO_MODEL } else { FISH_MODEL },
             seen: false,
+            deadline,
         })
     }
     pub async fn kokoro(&self, r: &Request) -> Result<Audio, Error> {
@@ -199,14 +208,21 @@ impl Clients {
             ));
         }
         let body = msgpack(&crate::tags::reinforce(&r.text), dima_text::trim(&r.voice))?;
-        let response = self
-            .http
-            .post(&self.fish, "/v1/tts")
-            .header("model", "s2.1-pro")
-            .header("content-type", "application/msgpack")
-            .body(body)
-            .retry(
-                RetryPolicy::exponential(3, Duration::from_secs(1), 2.0, Duration::from_secs(60))
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+        let response = tokio::time::timeout_at(
+            deadline,
+            self.http
+                .post(&self.fish, "/v1/tts")
+                .header("model", "s2.1-pro")
+                .header("content-type", "application/msgpack")
+                .body(body)
+                .retry(
+                    RetryPolicy::exponential(
+                        3,
+                        Duration::from_secs(1),
+                        2.0,
+                        Duration::from_secs(60),
+                    )
                     .retry_statuses(
                         dima_http::retry::StatusSet::new()
                             .with(408)
@@ -222,22 +238,30 @@ impl Clients {
                     .server_delay(dima_http::retry::ServerDelay::retry_after(
                         Duration::from_secs(60),
                     )),
-            )
-            .timeout(Duration::from_secs(20))
-            .max_bytes(r.max_audio_bytes.min(DEFAULT_MAX_AUDIO_BYTES))
-            .cancel_on(&r.cancel)
-            .send()
-            .await?
-            .error_for_status()
-            .await?;
+                )
+                .timeout(Duration::from_secs(20))
+                .max_bytes(r.max_audio_bytes.min(DEFAULT_MAX_AUDIO_BYTES))
+                .cancel_on(&r.cancel)
+                .send(),
+        )
+        .await
+        .map_err(|_| Error::Message("Fish Audio TTS timed out".into()))??;
+        if !response.status().is_success() {
+            return Err(Error::Message(format!(
+                "Fish Audio synthesis failed (HTTP {})",
+                response.status().as_u16()
+            )));
+        }
         Ok(Audio {
             response,
             mime_type: "audio/mpeg",
             backend: "s2.1-pro",
             seen: false,
+            deadline,
         })
     }
     pub async fn piper(&self, r: &Request) -> Result<Audio, Error> {
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(30);
         let response = self
             .http
             .post(&self.piper, "/synthesize")
@@ -265,6 +289,7 @@ impl Clients {
             mime_type: "audio/wav",
             backend: "piper",
             seen: false,
+            deadline,
         })
     }
     /// Preserve failover even when primary fails during body consumption. Bounded memory, no files.
@@ -283,7 +308,9 @@ impl Clients {
                 };
                 match first {
                     Ok(b) => Ok((b, "audio/mpeg")),
-                    Err(e) if r.single_attempt => Err(e),
+                    Err(e) if r.single_attempt => Err(Error::Message(format!(
+                        "Fish Audio TTS failed on all enabled backends: {FISH_MODEL}: {e}"
+                    ))),
                     Err(first) => {
                         let second = match self.fish_direct(r).await {
                             Ok(a) => a.bytes().await,
@@ -322,4 +349,24 @@ fn msgpack(text: &str, voice: &str) -> Result<Vec<u8>, Error> {
         string(&mut out, s)?;
     }
     Ok(out)
+}
+
+pub struct Piper<'a>(pub &'a Clients);
+pub struct Kokoro<'a>(pub &'a Clients);
+impl SpeechProvider for Piper<'_> {
+    async fn synthesize(&self, r: &Request) -> Result<Audio, Error> {
+        self.0.piper(r).await
+    }
+}
+impl SpeechProvider for Kokoro<'_> {
+    async fn synthesize(&self, r: &Request) -> Result<Audio, Error> {
+        self.0.kokoro(r).await
+    }
+}
+/// Streaming Fish primary. Use `Clients::synthesize_buffered` when automatic failover is needed.
+pub struct Fish<'a>(pub &'a Clients);
+impl SpeechProvider for Fish<'_> {
+    async fn synthesize(&self, r: &Request) -> Result<Audio, Error> {
+        self.0.fish_primary(r).await
+    }
 }

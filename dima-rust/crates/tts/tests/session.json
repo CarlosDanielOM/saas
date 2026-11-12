@@ -1,0 +1,1 @@
+{"ttl":-1,"first":{"value":"minimum","payload":{"queueSession":null,"speechID":"minimum"},"session":null},"marker":"new-session","markerTtl":-1,"next":{"value":"first","payload":{"queueSession":"new-session","speechID":"first"},"session":"new-session"}}

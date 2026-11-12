@@ -45,7 +45,7 @@ pub fn normalize(raw: &str, options: &Options) -> Normalized {
     text.pop();
     if options.strip_links
         && let Ok(re) = Regex::new(
-            r"(?i)((http|https)://)?(www\.)?[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]{2,})+(:\d+)?(/[^\s\x{FEFF}]*)?(\?[^\s\x{FEFF}]+)?",
+            r"(?i-u:((http|https)://)?(www\.)?[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]{2,})+(:[0-9]+)?)(/[^\t\n\x{b}\x{c}\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]*)?(\?[^\t\n\x{b}\x{c}\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+)?",
         )
     {
         text = re.replace_all(&text, "[link]").into_owned();
@@ -101,7 +101,11 @@ pub fn migrate_legacy_template(message: Option<&str>) -> String {
     if body.is_empty() || body == "$(tts &t)" {
         return DEFAULT_SPEECH_TEMPLATE.into();
     }
-    if Regex::new(r"\$\(tts(?:[.\s)]|\x{FEFF})").is_ok_and(|r| r.is_match(body)) {
+    if body.match_indices("$(tts").any(|(i, _)| {
+        body.get(i + 5..)
+            .and_then(|s| s.chars().next())
+            .is_some_and(|c| matches!(c, '.' | ')') || is_js_whitespace(c))
+    }) {
         return raw.into();
     }
     format!("$(tts {raw})")
