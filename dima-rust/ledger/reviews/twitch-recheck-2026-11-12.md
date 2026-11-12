@@ -78,3 +78,42 @@ Unresolved recovery records must survive (no flush of the Dragonfly database tha
 any is left); all of them are reconciled into MongoDB before TypeScript is started again;
 `SECRET_KEY` must be the same on both sides. A `stop_grace_period` of 20 seconds alone does not
 close F4. A process killed before the first durable write of an answer still loses it.
+
+## Second re-check, at `f7500aaa`, after P2-TWITCH-01c (GPT-6.1 Sol, 2026-11-12)
+
+F2, F3, F4 and F6 are closed. F1 and F5 are partly closed; what remains is below, with the
+lead's decisions. The fixes are package P2-TWITCH-01d.
+
+**G1, BUG. A different token in MongoDB is taken for a newer one.** Exchange A for B; B is parked
+while MongoDB is down; MongoDB is then restored holding an older token X. Reconciliation sees a
+readable token that is neither A nor B, calls it newer, deletes B and reports nothing left; the
+only valid refresh token is gone. Reproduced. `recovery.rs:422`.
+*Decision: taken.* The generation decides where it can: a stored generation above the record's
+is newer and the record goes; a stored generation below it is a MongoDB that went back in time,
+and the record's answer is written over it; an equal generation with an unknown token is
+unmatched: nothing is deleted or overwritten, the record stays and is reported as its own
+count. For this to hold, every Rust write of credentials advances the generation, the login
+route's too.
+
+**G2, RISK. Two answers for one generation.** If the lease and the marker both failed and two
+exchanges from the same stored state both succeeded, giving B and C, the park script keeps B and
+tells C's holder that the record is in place; with MongoDB down, shutdown then treats C as safe
+though Dragonfly holds only B. Reasoned. `park_answer.lua:6`, `recovery.rs:751`.
+*Decision: taken in its small form.* The script reports a conflict instead of "kept"; the second
+answer is kept in a side record of its own and both are reported as unmatched for the operator.
+
+**G3, RISK. A corrupt record outlives a new login.** A recovery record that cannot be read blocks
+the streamer's refreshes; after the streamer signs in again it still does, for ever, and
+reconciliation keeps reporting one failed and one left. Reproduced. `recovery.rs:674`.
+*Decision: taken.* A verified sign-in supersedes whatever is parked for that account: its write
+advances the generation and moves any record that is older, or unreadable, to a quarantine key
+(kept for inspection, never read by a refresh). Signing in again is then the recovery for a
+streamer; the operator procedure for the rest is written into the cutover notes.
+
+Found sound: the Lua operations are bounded and atomic, removal is by exact text, a key of the
+wrong type fails without deleting; the last step of shutdown has one shared deadline; callers
+blocked by a marker do not renew it; no new secret disclosure.
+
+For the cutover and rollback notes: "nothing failed and nothing left" does not prove a rollback is
+safe until G1 is fixed; the procedure for a corrupt record and how to run the reconciliation with
+the services stopped must be written down (the cron binary needs a command for it).
