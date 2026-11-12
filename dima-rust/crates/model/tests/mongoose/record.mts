@@ -96,6 +96,8 @@ const FILES: Array<[string, string]> = [
     ['src/schemas/user_extension_inventory.schema.ts', 'UserExtensionInventory'],
     ['src/schemas/extension_wallet_transaction.schema.ts', 'ExtensionWalletTransaction'],
     ['src/schemas/dimafx_playback.schema.ts', 'DimafxPlayback'],
+    ['src/schemas/channel_fish_voice_favorites.schema.ts', 'channel_fish_voice_favorites'],
+    ['src/schemas/channel_tts_settings.schema.ts', 'channel_tts_settings'],
 ];
 const MODELS: Record<string, any> = {};
 for (const [file, name] of FILES) {
@@ -313,7 +315,49 @@ const ledgerSeedEntry = (extra: any = {}) => ({ _id: OID(1), ...ledgerEntry(), c
 const playbackPayload = () => ({ triggerID: 'bits-1', channelID: '111', itemID: 'i1', name: TEXT, category: 'tts', volume: 100, durationMs: 0, tts: { text: TEXT, voice: '', language: 'es' }, refundOnFailure: { userID: 'u1', priceBits: 100 }, source: 'bits_purchase', enqueuedAt: 1577934245006 });
 const playbackSeed = (extra: any = {}) => ({ _id: 'bits-1', channelID: '111', payload: playbackPayload(), state: 'queued', leaseOwner: '', leaseUntil: EPOCH, createdAt: T1, updatedAt: T1, __v: 0, ...extra });
 
+const { EXPRESSIVE_TTS_TAGS } = await imported('src/utils/tts/expressive_tts_tags.util.ts');
+const tagsWith = (off: string[]) => Object.fromEntries(EXPRESSIVE_TTS_TAGS.map((tag: string) => [tag, !off.includes(tag)]));
+const favoritesSeed = (extra: any = {}) => ({ _id: OID(1), channelID: '111', favorites: [{ id: 'm1', name: 'Gojo', alias: 'gojo_2' }], __v: 0, ...extra });
+const ttsSettings = () => ({
+    channelID: '111', channel: 'seed', enabled: true, provider: 'fish', defaultLanguage: 'en',
+    voices: { en: 'en_US-ryan-medium', es: 'es_MX-ald-medium', cloneDefault: 'm1', kokoroDefault: 'af_heart' },
+    filters: { skipEmotes: false, stripLinks: true, normalizeWhitespace: true, maxLength: 300, expressiveTags: tagsWith(['sad', 'clear throat']) },
+    queue: { maxItems: 7 },
+});
+// A document from before the expressive tags were flattened, with the removed AI provider's fields.
+const ttsLegacySeed = () => ({
+    _id: OID(1), channelID: '111', channel: 'seed', enabled: true, provider: 'piper', defaultLanguage: 'es', aiProvider: 'xai',
+    voices: { en: 'en_US-ryan-medium', es: 'es_MX-ald-medium', cloneDefault: 'gojo', aiDefault: null },
+    filters: { skipEmotes: true, stripLinks: true, normalizeWhitespace: true, maxLength: 280, expressiveTags: { inline: { laugh: false, longPause: true }, wrapping: { whisper: false } } },
+    queue: { maxItems: 5 }, createdAt: T1, updatedAt: T1, __v: 0,
+});
+
 const CASES: Record<string, any[]> = {
+    channel_fish_voice_favorites: [
+        { name: 'create_favorites', op: 'create', rust: 'favorites', doc: { channelID: '111', favorites: [{ id: 'm1', name: TEXT, alias: 'gojo_2' }] } },
+        { name: 'validate_missing', op: 'validate', doc: { favorites: [{ id: 'x' }] } },
+        // `channel_fish_voice_favorites.schema.ts:64-99`: ensure, add (guarded), remove, rename.
+        { name: 'ensure', op: 'updateOne', filter: { channelID: '222' }, update: { $setOnInsert: { channelID: '222', favorites: [] } }, options: { upsert: true } },
+        { name: 'add', op: 'findOneAndUpdate', seed: [favoritesSeed()], filter: { channelID: '111', 'favorites.id': { $ne: 'm2' }, 'favorites.alias': { $ne: 'voz' }, $expr: { $lt: [{ $size: '$favorites' }, 20] } }, update: { $push: { favorites: { id: 'm2', name: TEXT, alias: 'voz' } } }, options: { new: true } },
+        { name: 'remove', op: 'updateOne', seed: [favoritesSeed()], filter: { channelID: '111' }, update: { $pull: { favorites: { id: 'm1' } } } },
+        { name: 'rename', op: 'findOneAndUpdate', seed: [favoritesSeed()], filter: { channelID: '111', 'favorites.id': 'm1', 'favorites.alias': { $ne: 'sensei' } }, update: { $set: { 'favorites.$[target].alias': 'sensei' } }, options: { arrayFilters: [{ 'target.id': 'm1' }], new: true } },
+        { name: 'duplicate_channel', op: 'create', seed: [favoritesSeed()], doc: { channelID: '111' } },
+    ],
+    channel_tts_settings: [
+        { name: 'create_settings', op: 'create', rust: 'settings', doc: ttsSettings() },
+        { name: 'create_minimal', op: 'create', rust: 'minimal', doc: { channelID: '222' } },
+        { name: 'validate_enums', op: 'validate', doc: { provider: 'xai', defaultLanguage: 'fr' } },
+        // `upsertChannelTtsSettings`: the whole normalized settings set on the loaded document.
+        { name: 'save_normalized', op: 'save', seed: [ttsLegacySeed()], id: OID(1), changes: [{ set: 'provider', value: 'kokoro' }, { set: 'voices', value: ttsSettings().voices }, { set: 'filters.expressiveTags', value: tagsWith(['laugh']) }, { set: 'queue.maxItems', value: 9 }] },
+        { name: 'save_legacy_untouched', op: 'save', seed: [ttsLegacySeed()], id: OID(1), changes: [{ set: 'enabled', value: false }] },
+        // `setChannelFishVoice`: only the Fish default changes.
+        { name: 'fish_upsert', op: 'updateOne', filter: { channelID: '333' }, update: { $set: { provider: 'fish', 'voices.cloneDefault': 'm9' }, $setOnInsert: { channelID: '333', channel: 'three' } }, options: { upsert: true } },
+        { name: 'fish_existing', op: 'updateOne', seed: [ttsLegacySeed()], filter: { channelID: '111' }, update: { $set: { provider: 'fish', 'voices.cloneDefault': 'm9' }, $setOnInsert: { channelID: '111', channel: 'seed' } }, options: { upsert: true } },
+        // `tts_settings.service.ts:109`: the changed paths, guarded by their expected values.
+        { name: 'conditional_set', op: 'updateOne', seed: [ttsLegacySeed()], filter: { channelID: '111', provider: 'piper', 'filters.maxLength': 280 }, update: { $set: { 'filters.maxLength': 300, 'queue.maxItems': 7, 'filters.expressiveTags.clear throat': false } } },
+        { name: 'alias_move', op: 'updateOne', seed: [ttsLegacySeed()], filter: { channelID: '111', 'voices.cloneDefault': 'gojo' }, update: { $set: { 'voices.cloneDefault': 'm1' } } },
+        { name: 'duplicate_channel', op: 'create', seed: [ttsLegacySeed()], doc: { channelID: '111' } },
+    ],
     channelextensionitems: [
         { name: 'create_media', op: 'create', rust: 'media', doc: { ...itemBase(), name: ' Clip ', assetID: OID(0x41), category: 'video', mediaType: 'video', thumbnailUrl: 'https://example.com/t.png', durationMs: 5000 } },
         // `dimafx.route.ts:1157`: a TTS item has no asset (`assetID: null` passed through).

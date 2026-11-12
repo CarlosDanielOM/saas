@@ -27,6 +27,10 @@ use dima_model::channel_configs::{ChannelConfigDate, NewChannelConfig};
 use dima_model::channel_extension_items::{
     ItemCategory, MediaType, NewChannelExtensionItem, NewItemTts, TtsLanguage, TtsMode,
 };
+use dima_model::channel_fish_voice_favorites::{FishVoiceFavorite, NewChannelFishVoiceFavorites};
+use dima_model::channel_tts_settings::{
+    NewChannelTtsSettings, NewTtsFilters, NewTtsQueue, NewTtsVoices, expressive_tags_document,
+};
 use dima_model::command_user_variables::NewCommandUserVariables;
 use dima_model::commands::{self, Activation, MatchMode, NewCommand, NewKeywordSettings};
 use dima_model::countdown_timers::{CountdownConfig, NewCountdown};
@@ -1100,6 +1104,48 @@ fn typed_create(
                 lease_until: Some(JsDate(0)),
             };
             pair(job.to_document()?, job.prepare(ctx))
+        }
+        ("channel_fish_voice_favorites", "favorites") => {
+            let favorites = NewChannelFishVoiceFavorites {
+                channel_id: "111".into(),
+                favorites: vec![FishVoiceFavorite {
+                    id: "m1".into(),
+                    name: text.into(),
+                    alias: "gojo_2".into(),
+                }],
+            };
+            pair(favorites.to_document()?, favorites.prepare(ctx))
+        }
+        ("channel_tts_settings", "settings") => {
+            let settings = NewChannelTtsSettings {
+                channel_id: "111".into(),
+                channel: "seed".into(),
+                enabled: true,
+                provider: dima_model::channel_tts_settings::TtsProvider::Fish,
+                default_language: dima_model::channel_tts_settings::TtsLanguage::En,
+                voices: NewTtsVoices {
+                    en: "en_US-ryan-medium".into(),
+                    es: "es_MX-ald-medium".into(),
+                    clone_default: "m1".into(),
+                    kokoro_default: "af_heart".into(),
+                },
+                filters: NewTtsFilters {
+                    skip_emotes: false,
+                    strip_links: true,
+                    normalize_whitespace: true,
+                    max_length: JsNumber(300.0),
+                    expressive_tags: expressive_tags_document(&["sad", "clear throat"]),
+                },
+                queue: NewTtsQueue {
+                    max_items: JsNumber(7.0),
+                },
+            };
+            pair(settings.to_document()?, settings.prepare(ctx))
+        }
+        ("channel_tts_settings", "minimal") => {
+            let given = doc! { "channelID": "222" };
+            let prepared = dima_model::channel_tts_settings::INFO.prepare_create(&given, ctx);
+            pair(given, prepared)
         }
         _ => bail!("{collection}: no typed input named {key}"),
     }

@@ -9631,6 +9631,1059 @@
      }
     }
    ]
+  },
+  "channel_fish_voice_favorites": {
+   "model": "channel_fish_voice_favorites",
+   "file": "src/schemas/channel_fish_voice_favorites.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "favorites",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "id",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "name",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "alias",
+         "kind": "value",
+         "type": "String"
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "favorites.$.id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "favorites.$.name",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "favorites.$.alias",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "channel_tts_settings": {
+   "model": "channel_tts_settings",
+   "file": "src/schemas/channel_tts_settings.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "enabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "provider",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "piper"
+      }
+     },
+     {
+      "name": "defaultLanguage",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "es"
+      }
+     },
+     {
+      "name": "voices",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "en",
+        "kind": "value",
+        "type": "String",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": "en_US-ryan-medium"
+        }
+       },
+       {
+        "name": "es",
+        "kind": "value",
+        "type": "String",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": "es_MX-ald-medium"
+        }
+       },
+       {
+        "name": "cloneDefault",
+        "kind": "value",
+        "type": "String",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": "gojo"
+        }
+       },
+       {
+        "name": "kokoroDefault",
+        "kind": "value",
+        "type": "String",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": "ef_dora"
+        }
+       }
+      ]
+     },
+     {
+      "name": "filters",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "skipEmotes",
+        "kind": "value",
+        "type": "Boolean",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": true
+        }
+       },
+       {
+        "name": "stripLinks",
+        "kind": "value",
+        "type": "Boolean",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": true
+        }
+       },
+       {
+        "name": "normalizeWhitespace",
+        "kind": "value",
+        "type": "Boolean",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": true
+        }
+       },
+       {
+        "name": "maxLength",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": {
+          "$numberInt": "280"
+         }
+        }
+       },
+       {
+        "name": "expressiveTags",
+        "kind": "nested",
+        "fields": [
+         {
+          "name": "happy",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "sad",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "angry",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "excited",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "calm",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "nervous",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "confident",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "surprised",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "scared",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "worried",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "disappointed",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "curious",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "sarcastic",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "satisfied",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "delighted",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "upset",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "frustrated",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "depressed",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "empathetic",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "embarrassed",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "disgusted",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "moved",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "proud",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "relaxed",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "grateful",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "disdainful",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "unhappy",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "anxious",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "hysterical",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "indifferent",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "uncertain",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "doubtful",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "confused",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "regretful",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "guilty",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "ashamed",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "jealous",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "envious",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "hopeful",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "optimistic",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "pessimistic",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "nostalgic",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "lonely",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "bored",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "contemptuous",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "sympathetic",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "compassionate",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "determined",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "resigned",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "whisper",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "shouting",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "soft",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "singing",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "slow",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "fast",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "emphasis",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "screaming",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "laugh",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "chuckle",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "giggle",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "cry",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "sigh",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "gasp",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "inhale",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "exhale",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "sobbing",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "groaning",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "panting",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "yawning",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "snoring",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "clear throat",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "pause",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "long-pause",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "audience laughing",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         },
+         {
+          "name": "background laughter",
+          "kind": "value",
+          "type": "Boolean",
+          "default": {
+           "function": false,
+           "implicit": false,
+           "value": true
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "queue",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "maxItems",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": {
+          "$numberInt": "5"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "provider",
+     "type": "enum",
+     "values": [
+      "piper",
+      "fish",
+      "kokoro"
+     ]
+    },
+    {
+     "path": "defaultLanguage",
+     "type": "enum",
+     "values": [
+      "en",
+      "es"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
   }
  }
 }

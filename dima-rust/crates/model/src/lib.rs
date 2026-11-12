@@ -254,6 +254,8 @@ pub mod ast_variables;
 pub mod availability;
 pub mod channel_configs;
 pub mod channel_extension_items;
+pub mod channel_fish_voice_favorites;
+pub mod channel_tts_settings;
 pub mod command_user_variables;
 pub mod commands;
 pub mod countdown_timers;
@@ -331,4 +333,6 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &user_extension_inventories::INFO,
     &extension_wallet_transactions::INFO,
     &dimafx_playbacks::INFO,
+    &channel_fish_voice_favorites::INFO,
+    &channel_tts_settings::INFO,
 ];
